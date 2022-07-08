@@ -1,4 +1,16 @@
 [[package]]
+name = "click"
+version = "8.1.3"
+description = "Composable command line interface toolkit"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+colorama = {version = "*", markers = "platform_system == \"Windows\""}
+importlib-metadata = {version = "*", markers = "python_version < \"3.8\""}
+
+[[package]]
 name = "cma"
 version = "3.2.2"
 description = "CMA-ES, Covariance Matrix Adaptation Evolution Strategy for non-linear numerical optimization in Python"
@@ -12,6 +24,14 @@ numpy = "*"
 [package.extras]
 constrained-solution-tracking = ["moarchiving"]
 plotting = ["matplotlib"]
+
+[[package]]
+name = "colorama"
+version = "0.4.5"
+description = "Cross-platform colored terminal text."
+category = "main"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [[package]]
 name = "cycler"
@@ -302,10 +322,12 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7"
-content-hash = "02aed5f7f92c3c629eb159d3237348b7d3928cb831b6c114781fd07de82393d2"
+content-hash = "5171d8f93fc144ddd0199cd879fdf87cab3dfa1f636335d8e47af93c80de19a6"
 
 [metadata.files]
+click = []
 cma = []
+colorama = []
 cycler = []
 fonttools = []
 importlib-metadata = []
