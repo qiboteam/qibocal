@@ -209,8 +209,8 @@ tests = ["pytest", "cirq", "ply", "sklearn", "dill"]
 [package.source]
 type = "git"
 url = "ssh://git@github.com/qiboteam/qibo.git"
-reference = "abstractions"
-resolved_reference = "3700b62921779ee5d160b47beaa1a8b972c1262f"
+reference = "refqibolab"
+resolved_reference = "4cea4dad57abbf6d58dbb32cbfc212e4f51a70bc"
 
 [[package]]
 name = "scipy"
@@ -302,7 +302,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7"
-content-hash = "6d8e2d50ac5c60cb8f307e2d4fea24a19fe3d555bee092b6ba42e03a2c09a0a1"
+content-hash = "02aed5f7f92c3c629eb159d3237348b7d3928cb831b6c114781fd07de82393d2"
 
 [metadata.files]
 cma = []

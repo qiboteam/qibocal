@@ -16,7 +16,7 @@ classifiers=[
 
 [tool.poetry.dependencies]
 python = ">=3.7"
-qibo = {git = "ssh://git@github.com/qiboteam/qibo.git", rev = "abstractions"}
+qibo = {git = "ssh://git@github.com/qiboteam/qibo.git", rev = "refqibolab"}
 
 [tool.poetry.dev-dependencies]
 
