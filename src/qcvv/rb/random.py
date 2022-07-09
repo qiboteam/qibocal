@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import numpy as np
 from qibo import gates, models
 from qibo.noise import NoiseModel
@@ -18,10 +19,12 @@ def measure(queue, nshots=100, isHardware=False):
         i.execute(nshots=nshots, isHardware=isHardware)
     return queue
 
-class Data():
+
+class Data:
     """Simple data structure containing a circuit, number of qubits,
-       length and samples.
+    length and samples.
     """
+
     def __init__(self, nqubits=1, circuit=None, length=None):
         self.nqubits = nqubits
         self.circuit = circuit
@@ -30,7 +33,7 @@ class Data():
         else:
             self.length = length
         self.samples = None
-        self.probabilities=None
+        self.probabilities = None
 
     def execute(self, nshots=None, isHardware=False):
         if isHardware:
@@ -38,9 +41,11 @@ class Data():
         else:
             self.samples = self.circuit(nshots=nshots).samples()
 
+
 class Experiment(list):
     """List that holds the queue of :class:`qiborb.random.Data`"""
-    def __init__(self, nqubits = 1, nshots=1024):
+
+    def __init__(self, nqubits=1, nshots=1024):
         self.nqubits = nqubits
         self.lengths = set()
         self.nshots = nshots
@@ -52,17 +57,21 @@ class Experiment(list):
         super().append(data)
 
 
-class CircuitGenerator():
+class CircuitGenerator:
     """Class for generating random circuit"""
-    def __init__(self, nqubits = 1, length=10, invert=True, group="Clifford", noiseModel=None):
+
+    def __init__(
+        self, nqubits=1, length=10, invert=True, group="Clifford", noiseModel=None
+    ):
         self.nqubits = nqubits
         self.length = length
         self.group = group
         self.gate = None
         if group == "Clifford" and nqubits == 1:
             from qcvv.rb.clifford import OneQubitGate
+
             self.gate = OneQubitGate
-            #self.gates = [gates.X, gates.Y, gates.H] # gates.S, gates.SDG,
+            # self.gates = [gates.X, gates.Y, gates.H] # gates.S, gates.SDG,
         else:
             raise RuntimeError("Unknown set of gates.")
         self.invert = invert
@@ -76,8 +85,8 @@ class CircuitGenerator():
         for _ in range(length):
             circuit.add(self.gate())
         if self.invert:
-            #inverse = circuit.invert().fuse().queue[0].matrix
-            #circuit.add(inverse(matrix))
+            # inverse = circuit.invert().fuse().queue[0].matrix
+            # circuit.add(inverse(matrix))
             circuit.add(circuit.invert().fuse().queue[0])
         circuit.add(gates.M(0))
         if self.noiseModel is None:
