@@ -67,3 +67,13 @@ class RandomizedBenchmark:
             self.a0s.append(a0)
             self.b0s.append(b0)
             self.all_probs.append(probs)
+
+    def save_report(self, path=None):
+        if path is not None:
+            filename = f"{path}/rb_report.txt"
+            with open(filename, "w") as f:
+                f.write(f"Alpha = {np.mean(self.alphas)} +/- {np.std(self.alphas)}\n")
+                f.write(
+                    f"Error per Clifford = {np.mean(self.epcs)} +/- {np.std(self.epcs)}\n"
+                )
+                f.write(f"Gate infidelity: {1 - (0.5*np.mean(self.alphas)+0.5)}\n")
