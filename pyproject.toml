@@ -28,4 +28,4 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-rb = "qcvv.cli.rb:run_rb"
+calibrate = "qcvv:command"

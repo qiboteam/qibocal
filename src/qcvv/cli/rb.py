@@ -1,43 +1,29 @@
 # -*- coding: utf-8 -*-
 from qcvv.rb import RandomizedBenchmark, Experiment, CircuitGenerator
-import os
 import click
-import yaml
+from ._base import command
 
 
-@click.command()
-@click.argument("runcard", metavar="DEFAULT_CARD", type=click.Path(exists=True))
+@command.command("rb")
 @click.argument("repetitions", type=int)
-@click.argument("folder", type=click.Path())
 @click.option(
     "--lengths", "-l", default=[1, 5, 10, 25, 50, 75, 100, 150, 200], type=list
 )
 @click.option("--seqs_per_length", "-s", default=10, type=int)
+@click.pass_context
 def run_rb(
-    runcard,
+    ctx,
     lengths=[1, 5, 10, 25, 50, 75, 100, 150, 200],
     seqs_per_length=10,
     repetitions=5,
-    folder=None,
 ):
 
-    from qibo import gates, set_backend
-    from qibo.noise import PauliError, ThermalRelaxationError, NoiseModel, ResetError
+    from qibo import gates
+    from qibo.noise import PauliError, NoiseModel
     import numpy as np
 
-    if os.path.exists(folder):
-        raise (RuntimeError("Calibration folder with the same name already exists."))
-    else:
-        path = os.path.join(os.getcwd(), folder)
-        click.echo(f"Creating directory {path}.")
-        os.makedirs(path)
-
-    with open(runcard, "r") as file:
-        settings = yaml.safe_load(file)
-    nqubits = settings["nqubits"]
-    backend = settings["backend"]
-
-    set_backend(backend)
+    nqubits = ctx.obj["nqubits"]
+    path = ctx.obj["path"]
     exp = Experiment(nshots=30)
     pauli = PauliError(0, 0.01, 0)
 
