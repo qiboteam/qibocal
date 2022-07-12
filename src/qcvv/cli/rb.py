@@ -1,29 +1,25 @@
 # -*- coding: utf-8 -*-
-from qcvv.rb import RandomizedBenchmark, Experiment, CircuitGenerator
 import click
+
+from qcvv.rb import CircuitGenerator, Experiment, RandomizedBenchmark
+
 from ._base import command
 
 
-@command.command("rb")
-@click.argument("repetitions", type=int)
-@click.option(
-    "--lengths", "-l", default=[1, 5, 10, 25, 50, 75, 100, 150, 200], type=list
-)
-@click.option("--seqs_per_length", "-s", default=10, type=int)
-@click.pass_context
 def run_rb(
-    ctx,
+    path,
+    nqubits,
     lengths=[1, 5, 10, 25, 50, 75, 100, 150, 200],
     seqs_per_length=10,
     repetitions=5,
 ):
 
-    from qibo import gates
-    from qibo.noise import PauliError, NoiseModel
     import numpy as np
+    from qibo import gates
+    from qibo.noise import NoiseModel, PauliError
 
-    nqubits = ctx.obj["nqubits"]
-    path = ctx.obj["path"]
+    # nqubits = ctx.obj["nqubits"]
+    # path = ctx.obj["path"]
     exp = Experiment(nshots=30)
     pauli = PauliError(0, 0.01, 0)
 

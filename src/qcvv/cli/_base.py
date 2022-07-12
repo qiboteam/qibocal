@@ -9,12 +9,14 @@ import yaml
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 
-@click.group(context_settings=CONTEXT_SETTINGS)
-@click.argument("runcard", metavar="DEFAULT_CARD", type=click.Path(exists=True))
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument(
+    "platform_runcard", metavar="PLATFORM_CARD", type=click.Path(exists=True)
+)
+@click.argument("action_runcard", metavar="ACTION_CARD", type=click.Path(exists=True))
 @click.argument("folder", type=click.Path())
-@click.pass_context
-def command(ctx, runcard, folder):
-    ctx.ensure_object(dict)
+def command(platform_runcard, action_runcard, folder):
+
     """qcvv: Quantum Calibration Verification and Validation using Qibo."""
     if os.path.exists(folder):
         raise (RuntimeError("Calibration folder with the same name already exists."))
@@ -22,14 +24,23 @@ def command(ctx, runcard, folder):
         path = os.path.join(os.getcwd(), folder)
         click.echo(f"Creating directory {path}.")
         os.makedirs(path)
-        ctx.obj["path"] = path
 
-    with open(runcard, "r") as file:
-        settings = yaml.safe_load(file)
+    with open(platform_runcard, "r") as file:
+        platform_settings = yaml.safe_load(file)
 
-    ctx.obj["nqubits"] = settings["nqubits"]
-    backend = settings["backend"]
+    with open(action_runcard, "r") as file:
+        action_settings = yaml.safe_load(file)
 
     from qibo import set_backend
 
-    set_backend(backend)
+    set_backend(platform_settings["backend"])
+
+    for routine in action_settings:
+        if routine == "rb":
+            from .rb import run_rb
+
+            run_rb(
+                path,
+                platform_settings["nqubits"],
+                **action_settings[routine]["settings"],
+            )

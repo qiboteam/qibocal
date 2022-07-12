@@ -1,0 +1,7 @@
+rb:
+  settings:
+    repetitions: 5
+    seqs_per_length: 10
+    lengths: [1, 5, 10, 25, 50, 75, 100, 150, 200]
+
+qubit_spectroscopy:
