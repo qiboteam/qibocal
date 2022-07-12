@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 """Adds global CLI options."""
 
-import click
 import os
+
+import click
 import yaml
 
+CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
-@click.group()
+
+@click.group(context_settings=CONTEXT_SETTINGS)
 @click.argument("runcard", metavar="DEFAULT_CARD", type=click.Path(exists=True))
 @click.argument("folder", type=click.Path())
 @click.pass_context
