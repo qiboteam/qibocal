@@ -19,6 +19,7 @@ def command(platform_runcard, action_runcard, folder):
 
     """qcvv: Quantum Calibration Verification and Validation using Qibo."""
     from qibo.backends import set_backend, GlobalBackend
+
     platform = "tiiq"
     set_backend("qibolab", platform="tiiq", runcard=platform_runcard)
 
@@ -36,9 +37,14 @@ def command(platform_runcard, action_runcard, folder):
     with open(action_runcard, "r") as file:
         action_settings = yaml.safe_load(file)
 
-    
     for routine in action_settings:
         print(routine)
         if routine == "resonator_spectroscopy":
             from qcvv.res_spectr import resonator_spectroscopy
-            resonator_spectroscopy(platform, action_settings[routine]["qubit"], action_settings[routine]["settings"], path)
+
+            resonator_spectroscopy(
+                platform,
+                action_settings[routine]["qubit"],
+                action_settings[routine]["settings"],
+                path,
+            )
