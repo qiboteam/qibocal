@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "qcvv"
+version = "0.0.0"
+description = ""
+authors = ["andrea-pasquale <andreapasquale97@gmail.com>"]
+license = "Apache License 2.0"
+readme = "README.md"
+homepage = ""
+repository = "https://github.com/qiboteam/qcvv/"
+documentation = ""
+keywords = []
+classifiers=[
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Physics",
+    ]
+
+[tool.poetry.dependencies]
+python = ">=3.7"
+qibo = {git = "ssh://git@github.com/qiboteam/qibo.git", rev = "refqibolab"}
+
+[tool.poetry.dev-dependencies]
+black = "^22.6.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
