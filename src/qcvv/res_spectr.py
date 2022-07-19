@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import numpy as np
 from qibolab.pulses import PulseSequence
 
@@ -17,7 +18,6 @@ def variable_resolution_scanrange(
 
 def resonator_spectroscopy(platform, qubit, settings, folder):
     import numpy as np
-
 
     ro_pulse = platform.qubit_readout_pulse(qubit, 0)  # start = 0
     sequence = PulseSequence()
@@ -51,4 +51,3 @@ def resonator_spectroscopy(platform, qubit, settings, folder):
                 powers.append(att)
 
     np.save(f"{folder}/test.npy", np.array([freqs, voltages, powers]))
-
