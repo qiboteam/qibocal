@@ -18,6 +18,11 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 def command(platform_runcard, action_runcard, folder):
 
     """qcvv: Quantum Calibration Verification and Validation using Qibo."""
+    from qibo.backends import set_backend, GlobalBackend
+    platform = "tiiq"
+    set_backend("qibolab", platform="tiiq", runcard=platform_runcard)
+
+    platform = GlobalBackend().platform
     if os.path.exists(folder):
         raise (RuntimeError("Calibration folder with the same name already exists."))
     else:
@@ -31,16 +36,9 @@ def command(platform_runcard, action_runcard, folder):
     with open(action_runcard, "r") as file:
         action_settings = yaml.safe_load(file)
 
-    from qibo import set_backend
-
-    set_backend(platform_settings["backend"])
-
+    
     for routine in action_settings:
-        if routine == "rb":
-            from .rb import run_rb
-
-            run_rb(
-                path,
-                platform_settings["nqubits"],
-                **action_settings[routine]["settings"],
-            )
+        print(routine)
+        if routine == "resonator_spectroscopy":
+            from qcvv.res_spectr import resonator_spectroscopy
+            resonator_spectroscopy(platform, action_settings[routine]["qubit"], action_settings[routine]["settings"], path)

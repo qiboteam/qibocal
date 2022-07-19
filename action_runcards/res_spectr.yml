@@ -1,0 +1,11 @@
+resonator_spectroscopy:
+  qubit: 0
+  settings:
+    lowres_width: 10_000_000
+    lowres_step: 200_000 # 100_000
+    highres_width: 1_000_000
+    highres_step: 100_000 # 50_000
+    software_average: 1
+    min_power: 0
+    max_power: 60
+    step_power: 10
