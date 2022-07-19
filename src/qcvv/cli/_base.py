@@ -37,8 +37,10 @@ def command(platform_runcard, action_runcard, folder):
     with open(action_runcard, "r") as file:
         action_settings = yaml.safe_load(file)
 
+    platform.connect()
+    platform.setup()
+    platform.start()
     for routine in action_settings:
-        print(routine)
         if routine == "resonator_spectroscopy":
             from qcvv.res_spectr import resonator_spectroscopy
 
@@ -48,3 +50,6 @@ def command(platform_runcard, action_runcard, folder):
                 action_settings[routine]["settings"],
                 path,
             )
+
+    platform.stop()
+    platform.disconnect()

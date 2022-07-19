@@ -6,6 +6,6 @@ resonator_spectroscopy:
     highres_width: 1_000_000
     highres_step: 100_000 # 50_000
     software_average: 1
-    min_power: 0
-    max_power: 60
-    step_power: 10
+    min_att: 0
+    max_att: 60
+    step_att: 10

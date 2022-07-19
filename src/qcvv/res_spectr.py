@@ -18,8 +18,6 @@ def variable_resolution_scanrange(
 def resonator_spectroscopy(platform, qubit, settings, folder):
     import numpy as np
 
-    platform.connect()
-    platform.setup()
 
     ro_pulse = platform.qubit_readout_pulse(qubit, 0)  # start = 0
     sequence = PulseSequence()
@@ -34,27 +32,23 @@ def resonator_spectroscopy(platform, qubit, settings, folder):
         freqrange
         + platform.settings["characterization"]["single_qubit"][qubit]["resonator_freq"]
     )
-    powrange = np.flip(
-        np.arange(settings["min_power"], settings["max_power"], settings["step_power"])
+    attrange = np.flip(
+        np.arange(settings["min_att"], settings["max_att"], settings["step_att"])
     )
-    platform.start()
     voltages = []
     freqs = []
     powers = []
-    for freq in freqrange:
-        for power in powrange:
-            platform.qrm[qubit].set_device_parameter(
-                "out0_in0_lo_freq", freq + ro_pulse.frequency
-            )
-            platform.qrm[qubit].set_device_parameter("out0_att", power)
-            for s in range(settings["software_average"]):
-                print("OK")
+    for s in range(settings["software_average"]):
+        for freq in freqrange:
+            for att in attrange:
+                platform.qrm[qubit].set_device_parameter(
+                    "out0_in0_lo_freq", freq + ro_pulse.frequency
+                )
+                platform.qrm[qubit].set_device_parameter("out0_att", att)
                 res = platform.execute_pulse_sequence(sequence, 2000)
                 voltages.append(res[qubit][ro_pulse.serial][0])
                 freqs.append(freq)
-                powers.append(power)
+                powers.append(att)
 
     np.save(f"{folder}/test.npy", np.array([freqs, voltages, powers]))
 
-    platform.stop()
-    platform.disconnect()
