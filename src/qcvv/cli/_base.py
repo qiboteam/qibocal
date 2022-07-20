@@ -52,14 +52,6 @@ def command(platform_runcard, action_runcard, folder):
                 action_settings[routine]["settings"],
                 path,
             )
-        elif routine == "randomized_benchmarking":
-            from .rb import run_rb
-
-            run_rb(
-                path,
-                platform_settings["nqubits"],
-                **action_settings[routine]["settings"],
-            )
         else:
             raise_error(ValueError, "Unknown calibration routine")
 
