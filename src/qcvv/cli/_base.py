@@ -2,39 +2,41 @@
 """Adds global CLI options."""
 
 import os
+import shutil
 
 import click
 import yaml
 
-from qcvv.config import raise_error
+from qcvv.config import log, raise_error
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.argument(
-    "platform_runcard", metavar="PLATFORM_CARD", type=click.Path(exists=True)
-)
+@click.argument("platform", metavar="PLATFORM_NAME")
 @click.argument("action_runcard", metavar="ACTION_CARD", type=click.Path(exists=True))
 @click.argument("folder", type=click.Path())
-def command(platform_runcard, action_runcard, folder):
+def command(platform, action_runcard, folder):
 
     """qcvv: Quantum Calibration Verification and Validation using Qibo."""
     from qibo.backends import GlobalBackend, set_backend
 
-    platform = "tiiq"
-    set_backend("qibolab", platform="tiiq", runcard=platform_runcard)
+    set_backend("qibolab", platform=platform)
 
     platform = GlobalBackend().platform
-    if os.path.exists(folder):
-        raise (RuntimeError("Calibration folder with the same name already exists."))
-    else:
-        path = os.path.join(os.getcwd(), folder)
-        click.echo(f"Creating directory {path}.")
-        os.makedirs(path)
 
-    with open(platform_runcard, "r") as file:
-        platform_settings = yaml.safe_load(file)
+    if os.path.exists(folder):
+        raise_error(
+            RuntimeError, "Calibration folder with the same name already exists."
+        )
+    else:
+        from qibolab.paths import qibolab_folder
+
+        runcard = qibolab_folder / "runcards" / f"{platform}.yml"
+        path = os.path.join(os.getcwd(), folder)
+        log.info(f"Creating directory {path}.")
+        os.makedirs(path)
+        shutil.copy(runcard, f"{path}/")
 
     with open(action_runcard, "r") as file:
         action_settings = yaml.safe_load(file)
