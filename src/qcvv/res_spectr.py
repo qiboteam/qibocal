@@ -1,6 +1,11 @@
 # -*- coding: utf-8 -*-
+import os
+import time
+
 import numpy as np
 from qibolab.pulses import PulseSequence
+
+from qcvv.data import Dataset
 
 
 def variable_resolution_scanrange(
@@ -16,9 +21,11 @@ def variable_resolution_scanrange(
     return scanrange
 
 
-def resonator_spectroscopy(platform, qubit, settings, folder):
+def resonator_spectroscopy_attenuation(platform, qubit, settings, folder):
     import numpy as np
 
+    path = os.path.join(folder, "resonator_spectroscopy_attenuation")
+    data = Dataset(quantities=[("frequency", "MHz"), ("attenuation", "W")])
     ro_pulse = platform.qubit_readout_pulse(qubit, 0)  # start = 0
     sequence = PulseSequence()
     sequence.add(ro_pulse)
@@ -35,19 +42,21 @@ def resonator_spectroscopy(platform, qubit, settings, folder):
     attrange = np.flip(
         np.arange(settings["min_att"], settings["max_att"], settings["step_att"])
     )
-    voltages = []
-    freqs = []
-    powers = []
+    count = 0
     for s in range(settings["software_average"]):
         for freq in freqrange:
             for att in attrange:
                 platform.qrm[qubit].set_device_parameter(
                     "out0_in0_lo_freq", freq + ro_pulse.frequency
                 )
+                if count % data.points == 0:
+                    data.save(f"{path}/{time.strftime('%Y%m%d-%H%M%S')}.yml")
                 platform.qrm[qubit].set_device_parameter("out0_att", att)
                 res = platform.execute_pulse_sequence(sequence, 2000)
-                voltages.append(res[qubit][ro_pulse.serial][0])
-                freqs.append(freq)
-                powers.append(att)
-
-    np.save(f"{folder}/test.npy", np.array([freqs, voltages, powers]))
+                data.add(
+                    res,
+                    qubit,
+                    ro_pulse.serial,
+                    [("frequency", "MHz", freq), ("attenuation", "W", att)],
+                )
+                count += 1

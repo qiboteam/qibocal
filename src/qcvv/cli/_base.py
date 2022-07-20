@@ -18,7 +18,7 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 def command(platform_runcard, action_runcard, folder):
 
     """qcvv: Quantum Calibration Verification and Validation using Qibo."""
-    from qibo.backends import set_backend, GlobalBackend
+    from qibo.backends import GlobalBackend, set_backend
 
     platform = "tiiq"
     set_backend("qibolab", platform="tiiq", runcard=platform_runcard)
@@ -41,10 +41,10 @@ def command(platform_runcard, action_runcard, folder):
     platform.setup()
     platform.start()
     for routine in action_settings:
-        if routine == "resonator_spectroscopy":
-            from qcvv.res_spectr import resonator_spectroscopy
+        if routine == "resonator_spectroscopy_attenuation":
+            from qcvv.res_spectr import resonator_spectroscopy_attenuation
 
-            resonator_spectroscopy(
+            resonator_spectroscopy_attenuation(
                 platform,
                 action_settings[routine]["qubit"],
                 action_settings[routine]["settings"],
