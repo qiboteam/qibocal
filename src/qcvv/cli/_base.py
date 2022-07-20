@@ -16,7 +16,8 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 @click.argument("platform", metavar="PLATFORM_NAME")
 @click.argument("action_runcard", metavar="ACTION_CARD", type=click.Path(exists=True))
 @click.argument("folder", type=click.Path())
-def command(platform, action_runcard, folder):
+@click.option("--force", type=bool)
+def command(platform, action_runcard, folder, force=None):
 
     """qcvv: Quantum Calibration Verification and Validation using Qibo."""
     from qibo.backends import GlobalBackend, set_backend
@@ -25,7 +26,7 @@ def command(platform, action_runcard, folder):
 
     platform = GlobalBackend().platform
 
-    if os.path.exists(folder):
+    if os.path.exists(folder) and force is None:
         raise_error(
             RuntimeError, "Calibration folder with the same name already exists."
         )
@@ -34,8 +35,9 @@ def command(platform, action_runcard, folder):
 
         runcard = qibolab_folder / "runcards" / f"{platform}.yml"
         path = os.path.join(os.getcwd(), folder)
-        log.info(f"Creating directory {path}.")
-        os.makedirs(path)
+        if force is None:
+            log.info(f"Creating directory {path}.")
+            os.makedirs(path)
         shutil.copy(runcard, f"{path}/")
 
     with open(action_runcard, "r") as file:
