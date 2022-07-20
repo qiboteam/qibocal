@@ -53,7 +53,7 @@ def resonator_spectroscopy_attenuation(platform, qubit, settings, folder):
                     "out0_in0_lo_freq", freq + ro_pulse.frequency
                 )
                 if count % data.points == 0:
-                    data.save(f"{path}/test.yml")
+                    data.to_yaml(f"{path}/test.yml")
                 platform.qrm[qubit].set_device_parameter("out0_att", att)
                 res = platform.execute_pulse_sequence(sequence, 2000)
                 data.add(
@@ -64,4 +64,4 @@ def resonator_spectroscopy_attenuation(platform, qubit, settings, folder):
                 )
                 count += 1
 
-    data.save(f"{path}/test.yml")
+    data.to_yaml(f"{path}/test.yml")
