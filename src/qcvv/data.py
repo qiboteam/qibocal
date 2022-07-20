@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import yaml
 
+from qcvv.config import raise_error
+
 
 class MeasuredQuantity:
     """Data Structure for collecting all the information for a quantity
@@ -23,7 +25,7 @@ class MeasuredQuantity:
             assert self.name != data[1], "Impossible to compare different quantities"
             self.data.append(data[2])
         else:
-            raise RuntimeError("Error when adding data.")
+            raise_error(RuntimeError, "Error when adding data.")
 
     def __repr__(self):
         return f"{self.name} ({self.unit}): {self.data}"
@@ -61,7 +63,7 @@ class Dataset:
                 for item in quantities:
                     self.container[item[0]] = MeasuredQuantity(*item)
             else:
-                raise RuntimeError(f"Format of {quantities} is not valid.")
+                raise_error(RuntimeError, f"Format of {quantities} is not valid.")
         self.points = points
 
     def add(self, results, qubit, pulse_serial, quantities=None):
@@ -80,14 +82,14 @@ class Dataset:
                 for item in quantities:
                     self.container[item[0]].add(item[0], item[1], float(item[2]))
             else:
-                raise RuntimeError(f"Format of {quantities} is not valid.")
+                raise_error(RuntimeError, f"Format of {quantities} is not valid.")
 
-    def save(self, file):
-        to_yaml = {}
+    def to_yaml(self, file):
+        output = {}
         for i in self.container:
-            to_yaml[i] = {}
-            to_yaml[i]["name"] = self.container[i].name
-            to_yaml[i]["unit"] = self.container[i].unit
-            to_yaml[i]["data"] = self.container[i].data
+            output[i] = {}
+            output[i]["name"] = self.container[i].name
+            output[i]["unit"] = self.container[i].unit
+            output[i]["data"] = self.container[i].data
         with open(file, "w") as f:
-            yaml.dump(to_yaml, f)
+            yaml.dump(output, f)

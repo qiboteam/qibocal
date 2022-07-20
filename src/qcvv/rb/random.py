@@ -2,6 +2,8 @@
 import numpy as np
 from qibo import gates, models
 from qibo.noise import NoiseModel
+
+from qcvv.config import raise_error
 from qcvv.rb.clifford import OneQubitGate
 
 
@@ -73,7 +75,7 @@ class CircuitGenerator:
             self.gate = OneQubitGate
             # self.gates = [gates.X, gates.Y, gates.H] # gates.S, gates.SDG,
         else:
-            raise RuntimeError("Unknown set of gates.")
+            raise_error(RuntimeError, "Unknown set of gates.")
         self.invert = invert
         self.noiseModel = noiseModel
 

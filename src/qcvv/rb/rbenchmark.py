@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-from qcvv.rb.random import measure
 from scipy.optimize import curve_fit
+
+from qcvv.config import log
+from qcvv.rb.random import measure
 
 
 class RandomizedBenchmark:
@@ -14,7 +16,7 @@ class RandomizedBenchmark:
 
     def process_data(self, name="Ground State Probability"):
         """Calculate alpha and EPC for one repetition of the experiment"""
-        print("[+] Processing data")
+        log.info("Processing data for RB")
 
         if name == "Ground State Probability":
             self.probs = []
@@ -56,12 +58,12 @@ class RandomizedBenchmark:
         """Run n repetitions of the experiment"""
         self.alphas, self.epcs, self.a0s, self.b0s, self.all_probs = [], [], [], [], []
         for i in range(repetitions):
-            print(f"Running simulation {i}")
+            log.info(f"Running simulation {i}")
             self.experiment = measure(
                 self.experiment, self.experiment.nshots, self.isHardware
             )
             alpha, epc, a0, b0, probs = self.process_data()
-            print(f"[+] Alpha = {alpha}, EPC = {epc}")
+            log.info(f"Alpha = {alpha}, EPC = {epc}")
             self.alphas.append(alpha)
             self.epcs.append(epc)
             self.a0s.append(a0)

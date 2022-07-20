@@ -6,6 +6,8 @@ import os
 import click
 import yaml
 
+from qcvv.config import raise_error
+
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 
@@ -42,7 +44,7 @@ def command(platform_runcard, action_runcard, folder):
     platform.start()
     for routine in action_settings:
         if routine == "resonator_spectroscopy_attenuation":
-            from qcvv.res_spectr import resonator_spectroscopy_attenuation
+            from qcvv.resonator_spectroscopy import resonator_spectroscopy_attenuation
 
             resonator_spectroscopy_attenuation(
                 platform,
@@ -50,6 +52,16 @@ def command(platform_runcard, action_runcard, folder):
                 action_settings[routine]["settings"],
                 path,
             )
+        elif routine == "randomized_benchmarking":
+            from .rb import run_rb
+
+            run_rb(
+                path,
+                platform_settings["nqubits"],
+                **action_settings[routine]["settings"],
+            )
+        else:
+            raise_error(ValueError, "Unknown calibration routine")
 
     platform.stop()
     platform.disconnect()

@@ -1,4 +1,4 @@
-rb:
+randomized_benchmarking:
   settings:
     repetitions: 5
     seqs_per_length: 10
