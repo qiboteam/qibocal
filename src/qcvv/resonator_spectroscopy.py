@@ -3,22 +3,10 @@ import os
 import time
 
 import numpy as np
+from qibolab.calibration.utils import variable_resolution_scanrange
 from qibolab.pulses import PulseSequence
 
 from qcvv.data import Dataset
-
-
-def variable_resolution_scanrange(
-    lowres_width, lowres_step, highres_width, highres_step
-):
-    scanrange = np.concatenate(
-        (
-            np.arange(-lowres_width, -highres_width, lowres_step),
-            np.arange(-highres_width, highres_width, highres_step),
-            np.arange(highres_width, lowres_width, lowres_step),
-        )
-    )
-    return scanrange
 
 
 def resonator_spectroscopy_attenuation(platform, qubit, settings, folder):
