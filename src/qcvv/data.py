@@ -74,11 +74,11 @@ class Dataset:
         if quantities is not None:
             if isinstance(quantities, tuple):
                 self.container[quantities[0]].add(
-                    quantities[0], quantities[1], quantities[2]
+                    quantities[0], quantities[1], float(quantities[2])
                 )
             elif isinstance(quantities, list):
                 for item in quantities:
-                    self.container[item[0]].add(item[0], item[1], item[2])
+                    self.container[item[0]].add(item[0], item[1], float(item[2]))
             else:
                 raise RuntimeError(f"Format of {quantities} is not valid.")
 
@@ -90,4 +90,4 @@ class Dataset:
             to_yaml[i]["unit"] = self.container[i].unit
             to_yaml[i]["data"] = self.container[i].data
         with open(file, "w") as f:
-            yaml.dump(self._prepare_yaml(), f)
+            yaml.dump(to_yaml, f)

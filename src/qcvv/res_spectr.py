@@ -24,8 +24,11 @@ def variable_resolution_scanrange(
 def resonator_spectroscopy_attenuation(platform, qubit, settings, folder):
     import numpy as np
 
-    path = os.path.join(folder, "resonator_spectroscopy_attenuation")
-    data = Dataset(quantities=[("frequency", "MHz"), ("attenuation", "W")])
+    path = os.path.join(
+        folder, f"resonator_spectroscopy_attenuation/{time.strftime('%Y%m%d-%H%M%S')}"
+    )
+    os.makedirs(path)
+    data = Dataset(quantities=[("frequency", "MHz"), ("attenuation", "W")], points=2)
     ro_pulse = platform.qubit_readout_pulse(qubit, 0)  # start = 0
     sequence = PulseSequence()
     sequence.add(ro_pulse)
@@ -50,7 +53,7 @@ def resonator_spectroscopy_attenuation(platform, qubit, settings, folder):
                     "out0_in0_lo_freq", freq + ro_pulse.frequency
                 )
                 if count % data.points == 0:
-                    data.save(f"{path}/{time.strftime('%Y%m%d-%H%M%S')}.yml")
+                    data.save(f"{path}/test.yml")
                 platform.qrm[qubit].set_device_parameter("out0_att", att)
                 res = platform.execute_pulse_sequence(sequence, 2000)
                 data.add(
@@ -60,3 +63,5 @@ def resonator_spectroscopy_attenuation(platform, qubit, settings, folder):
                     [("frequency", "MHz", freq), ("attenuation", "W", att)],
                 )
                 count += 1
+
+    data.save(f"{path}/test.yml")
