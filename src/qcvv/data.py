@@ -70,9 +70,9 @@ class Dataset:
         self.points = points
 
     def add(self, msr, i, q, phase, quantities=None):
-        self.container["MSR"].add("MSR", "V", float(msr))
-        self.container["i"].add("i", "V", float(i))
-        self.container["q"].add("q", "V", float(q))
+        self.container["MSR"].add("MSR", "dB", float(msr))
+        self.container["i"].add("i", "dB", float(i))
+        self.container["q"].add("q", "dB", float(q))
         self.container["phase"].add("phase", "deg", float(phase))
 
         if quantities is not None:
@@ -86,9 +86,9 @@ class Dataset:
             else:
                 raise_error(RuntimeError, f"Format of {quantities} is not valid.")
 
-    def to_yaml(self, file):
+    def to_yaml(self, path):
         output = {}
         for i, c in self.container.items():
             output[i] = c.to_dict()
-        with open(file, "w") as f:
+        with open(f"{path}/data.yml", "w") as f:
             yaml.dump(output, f)
