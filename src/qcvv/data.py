@@ -69,8 +69,7 @@ class Dataset:
                 raise_error(RuntimeError, f"Format of {quantities} is not valid.")
         self.points = points
 
-    def add(self, results, qubit, pulse_serial, quantities=None):
-        msr, i, q, phase = results[qubit][pulse_serial]
+    def add(self, msr, i, q, phase, quantities=None):
         self.container["MSR"].add("MSR", "V", float(msr))
         self.container["i"].add("i", "V", float(i))
         self.container["q"].add("q", "V", float(q))

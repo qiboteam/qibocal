@@ -7,6 +7,7 @@ import shutil
 import click
 import yaml
 
+from qcvv import calibrations
 from qcvv.config import log, raise_error
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
@@ -44,18 +45,14 @@ def command(platform, action_runcard, folder, force=None):
     platform.connect()
     platform.setup()
     platform.start()
-    for routine in action_settings:
-        if routine == "resonator_spectroscopy_attenuation":
-            from qcvv.resonator_spectroscopy import resonator_spectroscopy_attenuation
-
-            resonator_spectroscopy_attenuation(
-                platform,
-                action_settings[routine]["qubit"],
-                action_settings[routine]["settings"],
-                path,
-            )
-        else:
-            raise_error(ValueError, "Unknown calibration routine")
+    for routine_name in action_settings:
+        routine = getattr(calibrations, routine_name)
+        routine(
+            platform,
+            action_settings[routine_name]["qubit"],
+            action_settings[routine_name]["settings"],
+            path,
+        )
 
     platform.stop()
     platform.disconnect()
