@@ -20,11 +20,9 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 def command(platform, action_runcard, folder, force=None):
 
     """qcvv: Quantum Calibration Verification and Validation using Qibo."""
-    from qibo.backends import GlobalBackend, set_backend
+    from qibo.backends import construct_backend
 
-    set_backend("qibolab", platform=platform)
-
-    platform = GlobalBackend().platform
+    platform = construct_backend("qibolab", platform=platform).platform
 
     if os.path.exists(folder) and force is None:
         raise_error(

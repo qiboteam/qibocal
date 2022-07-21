@@ -46,6 +46,9 @@ class MeasuredQuantity:
     def name(self, value):
         self._name = value
 
+    def to_dict(self):
+        return {"name": self.name, "unit": self.unit, "data": self.data}
+
 
 class Dataset:
     """First prototype of dataset for calibration routines."""
@@ -86,10 +89,7 @@ class Dataset:
 
     def to_yaml(self, file):
         output = {}
-        for i in self.container:
-            output[i] = {}
-            output[i]["name"] = self.container[i].name
-            output[i]["unit"] = self.container[i].unit
-            output[i]["data"] = self.container[i].data
+        for i, c in self.container.items():
+            output[i] = c.to_dict()
         with open(file, "w") as f:
             yaml.dump(output, f)

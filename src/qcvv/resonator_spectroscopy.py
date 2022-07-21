@@ -3,14 +3,13 @@ import os
 import time
 
 import numpy as np
-from qibolab.calibration.utils import variable_resolution_scanrange
 from qibolab.pulses import PulseSequence
 
 from qcvv.data import Dataset
+from qcvv.utils import variable_resolution_scanrange
 
 
 def resonator_spectroscopy_attenuation(platform, qubit, settings, folder):
-    import numpy as np
 
     path = os.path.join(
         folder, f"resonator_spectroscopy_attenuation/{time.strftime('%Y%m%d-%H%M%S')}"
