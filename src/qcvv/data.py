@@ -90,26 +90,26 @@ class Dataset:
     def compute_software_average(self, quantities):
         avg_dataset = self.__class__()
         if isinstance(quantities, str):
-            avg_dataset.add(
+            avg_dataset.container[quantities] = MeasuredQuantity(
                 self.container[quantities].name,
                 self.container[quantities].unit,
-                np.unique(self.container[quantities].data),
+                np.unique(self.container[quantities].data).tolist(),
             )
-            total = len(avg_dataset.container[quantities].data)
+            total = len(avg_dataset.container[quantities].data[0])
         elif isinstance(quantities, list):
             total = 1
             for quantity in quantities:
-                avg_dataset.add(
+                avg_dataset.container[quantity] = MeasuredQuantity(
                     self.container[quantity].name,
                     self.container[quantity].unit,
-                    np.unique(self.container[quantity].data),
+                    np.unique(self.container[quantity].data).tolist(),
                 )
-                total *= len(avg_dataset.container[quantity].data)
+                total *= len(avg_dataset.container[quantity].data[0])
         else:
             raise_error(RuntimeError, f"Format of {quantities} is not valid.")
 
-        for j in range(total):
-            for name, unit in [("MSR", "V"), ("i", "V"), ("q", "V"), ("phase", "deg")]:
+        for name, unit in [("MSR", "V"), ("i", "V"), ("q", "V"), ("phase", "deg")]:
+            for j in range(total):
                 avg_dataset.container[name].add(
                     name,
                     unit,
@@ -117,13 +117,12 @@ class Dataset:
                         np.mean(
                             [
                                 self.container[name].data[i]
-                                for i in range(total)
-                                if i % 5 == j
+                                for i in range(len(self.container[name].data))
+                                if i % total == j
                             ]
                         )
                     ),
                 )
-
         return avg_dataset
 
     def to_yaml(self, path, name="data"):
