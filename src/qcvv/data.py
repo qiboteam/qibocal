@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import numpy as np
 import yaml
 
 from qcvv.config import raise_error
@@ -70,9 +71,9 @@ class Dataset:
         self.points = points
 
     def add(self, msr, i, q, phase, quantities=None):
-        self.container["MSR"].add("MSR", "dB", float(msr))
-        self.container["i"].add("i", "dB", float(i))
-        self.container["q"].add("q", "dB", float(q))
+        self.container["MSR"].add("MSR", "V", float(msr))
+        self.container["i"].add("i", "V", float(i))
+        self.container["q"].add("q", "V", float(q))
         self.container["phase"].add("phase", "deg", float(phase))
 
         if quantities is not None:
@@ -86,9 +87,48 @@ class Dataset:
             else:
                 raise_error(RuntimeError, f"Format of {quantities} is not valid.")
 
-    def to_yaml(self, path):
+    def compute_software_average(self, quantities):
+        avg_dataset = self.__class__()
+        if isinstance(quantities, str):
+            avg_dataset.add(
+                self.container[quantities].name,
+                self.container[quantities].unit,
+                np.unique(self.container[quantities].data),
+            )
+            total = len(avg_dataset.container[quantities].data)
+        elif isinstance(quantities, list):
+            total = 1
+            for quantity in quantities:
+                avg_dataset.add(
+                    self.container[quantity].name,
+                    self.container[quantity].unit,
+                    np.unique(self.container[quantity].data),
+                )
+                total *= len(avg_dataset.container[quantity].data)
+        else:
+            raise_error(RuntimeError, f"Format of {quantities} is not valid.")
+
+        for j in range(total):
+            for name, unit in [("MSR", "V"), ("i", "V"), ("q", "V"), ("phase", "deg")]:
+                avg_dataset.container[name].add(
+                    name,
+                    unit,
+                    float(
+                        np.mean(
+                            [
+                                self.container[name].data[i]
+                                for i in range(total)
+                                if i % 5 == j
+                            ]
+                        )
+                    ),
+                )
+
+        return avg_dataset
+
+    def to_yaml(self, path, name="data"):
         output = {}
         for i, c in self.container.items():
             output[i] = c.to_dict()
-        with open(f"{path}/data.yml", "w") as f:
+        with open(f"{path}/{name}.yml", "w") as f:
             yaml.dump(output, f)
