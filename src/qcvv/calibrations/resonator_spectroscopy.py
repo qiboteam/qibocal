@@ -92,10 +92,10 @@ def resonator_spectroscopy(platform, qubit, settings, folder):
     avg_data = data.compute_software_average("frequency")
     avg_data.to_yaml(path, name="sweep_avg")
 
-    platform.qrm[qubit].out0_in0_lo_freq = max(avg_data.container["MSR"].data)
+    platform.qrm[qubit].out0_in0_lo_freq = max(avg_data.get_data("MSR"))
     avg_min_voltage = (
         np.mean(
-            avg_data.container["MSR"].data[
+            avg_data.get_data("MSR")[
                 : (settings["lowres_width"] // settings["lowres_step"])
             ]
         )
@@ -136,8 +136,7 @@ def resonator_spectroscopy(platform, qubit, settings, folder):
     # Fitting
     from scipy.signal import savgol_filter
 
-    print(precision_avg_data.container["MSR"].data)
-    smooth_dataset = savgol_filter(precision_avg_data.container["MSR"].data, 25, 2)
+    smooth_dataset = savgol_filter(precision_avg_data.get_data("MSR"), 25, 2)
     max_ro_voltage = smooth_dataset.max() * 1e6
 
     # f0, BW, Q = fitting.lorentzian_fit(

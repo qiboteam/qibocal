@@ -18,12 +18,12 @@ class MeasuredQuantity:
 
     def add(self, *data):
         if isinstance(data, MeasuredQuantity):
-            assert self.unit != data.unit, "Unit of measure are not compatible"
-            assert self.name != data.name, "Impossible to compare different quantities"
+            assert self.unit == data.unit, "Unit of measure are not compatible"
+            assert self.name == data.name, "Impossible to compare different quantities"
             self.data += data.data
         elif len(data) == 3:
-            assert self.unit != data[0], "Unit of measure are not compatible"
-            assert self.name != data[1], "Impossible to compare different quantities"
+            assert self.name == data[0], "Impossible to compare different quantities"
+            assert self.unit == data[1], "Unit of measure are not compatible"
             self.data.append(data[2])
         else:
             raise_error(RuntimeError, "Error when adding data.")
@@ -36,16 +36,24 @@ class MeasuredQuantity:
         return self._unit
 
     @unit.setter
-    def unit(self, value):
-        self._unit = value
+    def unit(self, unit):
+        self._unit = unit
 
     @property
     def name(self):
         return self._name
 
     @name.setter
-    def name(self, value):
-        self._name = value
+    def name(self, name):
+        self._name = name
+
+    @property
+    def data(self):
+        return self._data
+
+    @data.setter
+    def data(self, data):
+        self._data = data
 
     def to_dict(self):
         return {"name": self.name, "unit": self.unit, "data": self.data}
@@ -124,6 +132,9 @@ class Dataset:
                     ),
                 )
         return avg_dataset
+
+    def get_data(self, name):
+        return self.container[name].data
 
     def to_yaml(self, path, name="data"):
         output = {}
