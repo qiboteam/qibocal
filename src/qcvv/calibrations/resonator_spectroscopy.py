@@ -5,6 +5,7 @@ import time
 import numpy as np
 from qibolab.pulses import PulseSequence
 
+from qcvv.calibrations import fitting
 from qcvv.calibrations.utils import variable_resolution_scanrange
 from qcvv.data import Dataset
 
@@ -33,7 +34,7 @@ def resonator_spectroscopy_attenuation(platform, qubit, settings, folder):
         np.arange(settings["min_att"], settings["max_att"], settings["step_att"])
     )
     count = 0
-    for s in range(settings["software_average"]):
+    for s in range(settings["software_averages"]):
         for freq in freqrange:
             for att in attrange:
                 platform.qrm[qubit].set_device_parameter(
@@ -74,21 +75,23 @@ def resonator_spectroscopy(platform, qubit, settings, folder):
         + platform.settings["characterization"]["single_qubit"][qubit]["resonator_freq"]
     )
     count = 0
-    for s in range(settings["software_average"]):
+    for s in range(settings["software_averages"]):
         for freq in freqrange:
             if count % data.points == 0:
-                data.to_yaml(path)
+                data.to_yaml(path, name="sweep")
             platform.qrm[qubit].set_device_parameter(
                 "out0_in0_lo_freq", freq + ro_pulse.frequency
             )
             res = platform.execute_pulse_sequence(sequence, 2000)[qubit][
                 ro_pulse.serial
             ]
-            data.add(*res, ("frequency", "MHz", freq))
+            data.add(*res, ("frequency", "Hz", freq))
             count += 1
 
-    data.to_yaml(path)
+    data.to_yaml(path, name="sweep")
     avg_data = data.compute_software_average("frequency")
+    avg_data.to_yaml(path, name="sweep_avg")
+
     platform.qrm[qubit].out0_in0_lo_freq = max(avg_data.container["MSR"].data)
     avg_min_voltage = (
         np.mean(
@@ -98,3 +101,53 @@ def resonator_spectroscopy(platform, qubit, settings, folder):
         )
         * 1e6
     )
+
+    precision_data = Dataset(quantities=("frequency", "Hz"), points=2)
+    # Precision sweep
+    freqrange = np.arange(
+        -settings["precision_width"],
+        settings["precision_width"],
+        settings["precision_step"],
+    )
+    freqrange = (
+        freqrange
+        + platform.settings["characterization"]["single_qubit"][qubit]["resonator_freq"]
+    )
+    count = 0
+    for s in range(settings["software_averages"]):
+        for freq in freqrange:
+            if count % data.points == 0:
+                precision_data.to_yaml(path, name="sweep_precision")
+            platform.qrm[qubit].lo.frequency = freq + ro_pulse.frequency
+            sequence = PulseSequence()
+            sequence.add(ro_pulse)
+
+            res = platform.execute_pulse_sequence(sequence, 1024)[qubit][
+                ro_pulse.serial
+            ]
+            res = tuple(np.random.rand(4))
+            precision_data.add(*res, ("frequency", "Hz", freq))
+            count += 1
+
+    precision_data.to_yaml(path, name="sweep_precision")
+    precision_avg_data = precision_data.compute_software_average("frequency")
+    precision_avg_data.to_yaml(path, name="sweep_precision_avg")
+
+    # Fitting
+    from scipy.signal import savgol_filter
+
+    print(precision_avg_data.container["MSR"].data)
+    smooth_dataset = savgol_filter(precision_avg_data.container["MSR"].data, 25, 2)
+    max_ro_voltage = smooth_dataset.max() * 1e6
+
+    # f0, BW, Q = fitting.lorentzian_fit(
+    #     np.array(
+    #         [
+    #             precision_avg_data.container["frequency"],
+    #             precision_avg_data.container["MSR"],
+    #         ]
+    #     ),
+    #     min,
+    #     f"Resonator_spectroscopy_qubit{qubit}",
+    # )
+    # resonator_freq = f0 * 1e9 + ro_pulse.frequency
