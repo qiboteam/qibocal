@@ -7,33 +7,42 @@ from qibolab.pulses import PulseSequence
 
 from qcvv.calibrations.utils import variable_resolution_scanrange
 from qcvv.data import Dataset
-from qcvv.decorators import generate_output
+from qcvv.decorators import store
 
 
 # TODO: add mechanism to compute software averages
 # TODO: find a way to pass folder
-@generate_output(folder="test")
-def resonator_spectroscopy_attenuation(platform, qubit, settings, folder):
+@store(folder="test")
+def resonator_spectroscopy_attenuation(
+    platform,
+    qubit,
+    lowres_width,
+    lowres_step,
+    highres_width,
+    highres_step,
+    min_att,
+    max_att,
+    step_att,
+    software_averages,
+):
 
     data = Dataset(quantities=[("frequency", "Hz"), ("attenuation", "dB")], points=2)
-    ro_pulse = platform.qubit_readout_pulse(qubit, 0)  # start = 0
+    ro_pulse = platform.qubit_readout_pulse(qubit, 0)
     sequence = PulseSequence()
     sequence.add(ro_pulse)
     freqrange = variable_resolution_scanrange(
-        settings["lowres_width"],
-        settings["lowres_step"],
-        settings["highres_width"],
-        settings["highres_step"],
+        lowres_width,
+        lowres_step,
+        highres_width,
+        highres_step,
     )
     freqrange = (
         freqrange
         + platform.settings["characterization"]["single_qubit"][qubit]["resonator_freq"]
     )
-    attrange = np.flip(
-        np.arange(settings["min_att"], settings["max_att"], settings["step_att"])
-    )
+    attrange = np.flip(np.arange(min_att, max_att, step_att))
     count = 0
-    for s in range(settings["software_averages"]):
+    for s in range(software_averages):
         for freq in freqrange:
             for att in attrange:
                 platform.qrm[qubit].set_device_parameter(

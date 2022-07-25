@@ -46,13 +46,9 @@ def command(platform, action_runcard, folder, force=None):
     platform.setup()
     platform.start()
     for routine_name in action_settings:
+        print(action_settings)
         routine = getattr(calibrations, routine_name)
-        routine(
-            platform,
-            action_settings[routine_name]["qubit"],
-            action_settings[routine_name]["settings"],
-            path,
-        )
+        routine(platform, **action_settings[routine_name])
 
     platform.stop()
     platform.disconnect()

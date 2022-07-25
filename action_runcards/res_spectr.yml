@@ -1,14 +1,13 @@
 resonator_spectroscopy_attenuation:
   qubit: 0
-  settings:
-    lowres_width: 10_000_000
-    lowres_step: 5_000_000 # 100_000
-    highres_width: 1_000_000
-    highres_step: 500_000 # 50_000
-    software_averages: 2
-    min_att: 0
-    max_att: 60
-    step_att: 10
+  lowres_width: 10_000_000
+  lowres_step: 5_000_000 # 100_000
+  highres_width: 1_000_000
+  highres_step: 500_000 # 50_000
+  min_att: 0
+  max_att: 60
+  step_att: 10
+  software_averages: 2
 
 # resonator_spectroscopy:
 #   qubit: 0

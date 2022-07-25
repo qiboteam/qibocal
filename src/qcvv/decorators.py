@@ -5,7 +5,7 @@ import time
 import yaml
 
 
-def generate_output(folder=None):
+def store(folder=None):
     def inner(func):
         def wrapper(*args, **kwargs):
             path = os.path.join(
