@@ -5,7 +5,6 @@ import time
 import numpy as np
 from qibolab.pulses import PulseSequence
 
-from qcvv.calibrations import fitting
 from qcvv.calibrations.utils import variable_resolution_scanrange
 from qcvv.data import Dataset
 
@@ -125,7 +124,6 @@ def resonator_spectroscopy(platform, qubit, settings, folder):
             res = platform.execute_pulse_sequence(sequence, 1024)[qubit][
                 ro_pulse.serial
             ]
-            res = tuple(np.random.rand(4))
             precision_data.add(*res, ("frequency", "Hz", freq))
             count += 1
 
@@ -150,3 +148,49 @@ def resonator_spectroscopy(platform, qubit, settings, folder):
     #     f"Resonator_spectroscopy_qubit{qubit}",
     # )
     # resonator_freq = f0 * 1e9 + ro_pulse.frequency
+
+
+def resonator_flux_att(platform, qubit, settings, folder):
+
+    path = os.path.join(folder, f"resonator_flux/{time.strftime('%Y%m%d-%H%M%S')}")
+    os.makedirs(path)
+
+    ro_pulse = platform.qubit_readout_pulse(qubit, 0)  # start = 0
+
+    # 2D sweep
+    currange = np.arange(
+        settings["min_current"], settings["max_current"], settings["step_current"]
+    )
+    spi = platform.instruments["SPI"].device
+    dacs = [spi.mod2.dac0, spi.mod1.dac0, spi.mod1.dac1, spi.mod1.dac2, spi.mod1.dac3]
+
+    attrange = np.flip(
+        np.arange(settings["min_att"], settings["max_att"], settings["step_att"])
+    )
+
+    platform.qrm[qubit].lo.frequency = (
+        platform.characterization["single_qubit"][qubit]["resonator_freq"]
+        + ro_pulse.frequency
+    )
+
+    data = Dataset(quantities=[("current", "A"), ("attenuation", "dB")], points=2)
+    count = 0
+    for s in range(settings["software_averages"]):
+        for att in attrange:
+            for curr in currange:
+                if count % data.points == 0:
+                    data.to_yaml(path, name="sweep")
+                dacs[qubit].current(curr)
+                platform.qrm[qubit].set_device_parameter("out0_att", att)
+                sequence = PulseSequence()
+                sequence.add(ro_pulse)
+
+                res = platform.execute_pulse_sequence(sequence, 2000)[qubit][
+                    ro_pulse.serial
+                ]
+
+                data.add(*res, [("attenuation", "dB", att), ("current", "A", curr)])
+                count += 1
+
+    avg_data = data.compute_software_average(["attenuation", "current"])
+    avg_data.to_yaml(path, name="sweep_avg")
