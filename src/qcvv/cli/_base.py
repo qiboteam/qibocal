@@ -56,3 +56,11 @@ def command(platform, action_runcard, folder, force=None):
 
     platform.stop()
     platform.disconnect()
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument("path", metavar="PLOT_PATH", type=click.Path())
+def live_plot(path):
+    from qcvv.live import app
+    app.path = path # Bad hack to pass data path to all dash callbacks
+    app.run_server(debug=True)
