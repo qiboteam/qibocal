@@ -27,3 +27,4 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 qq = "qcvv:command"
+plotqq = "qcvv:live_plot"
