@@ -7,18 +7,14 @@ from dash import dcc
 from dash import html
 from dash.dependencies import Output, Input
 
-# number of trials that ``os.stat(path)`` should remain unchanged to
-# stop the live plotting
-NTRIALS = 5
 
 app = dash.Dash(__name__)
 
 app.layout = html.Div(children=[
         dcc.Input(id='last-modified', value=0, type='number', style={'display': 'none'}),
-        dcc.Input(id='stopper-trials', value=NTRIALS, type='number', style={'display': 'none'}),
-        dcc.Interval(id='stopper-interval', interval=2000, n_intervals=0, disabled=False),
+        dcc.Interval(id='stopper-interval', interval=1000, n_intervals=0, disabled=False),
         dcc.Graph(id='graph'),
-        dcc.Interval(id='graph-interval', interval=2000, n_intervals=0, disabled=False),
+        dcc.Interval(id='graph-interval', interval=1000, n_intervals=0, disabled=False),
 ])
 
 
@@ -50,20 +46,12 @@ def get_graph(n):
 
 
 @app.callback(Output('last-modified', 'value'),
-              Output('stopper-trials', 'value'),
               Output('graph-interval', 'disabled'),
-              Output('stopper-interval', 'disabled'),
               Input('stopper-interval', 'n_intervals'),
-              Input('stopper-trials', 'value'),
               Input('last-modified', 'value'))
-def stop_live_plotting(n, trials, last_modified):
+def toggle_interval(n, last_modified):
+    """Disables live plotting if data file is not being modified."""
     if not os.path.exists(app.path):
-        return 0, NTRIALS, True, True
-
-    # TODO: The stopper-interval can probably run forever
+        return 0, True
     new_modified = os.stat(app.path)[-1]
-    if new_modified == last_modified:
-        trials -= 1
-    else:
-        trials = NTRIALS
-    return new_modified, trials, new_modified == last_modified, trials <= 0
+    return new_modified, new_modified == last_modified
