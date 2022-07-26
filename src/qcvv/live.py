@@ -21,7 +21,7 @@ def serve_layout(path):
         action_path = os.path.join(path, action)
         if os.path.isdir(action_path):
             layout.append(html.H2(action))
-            for run in os.listdir(action_path):
+            for run in sorted(os.listdir(action_path)):
                 layout.append(
                     html.Details(children=[
                         html.Summary(run),
