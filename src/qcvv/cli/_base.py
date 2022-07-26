@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Adds global CLI options."""
-
+import inspect
 import os
 import shutil
 
@@ -39,23 +39,55 @@ def command(platform, action_runcard, folder, force=None):
             os.makedirs(path)
         shutil.copy(runcard, f"{path}/")
 
-    with open(action_runcard, "r") as file:
-        action_settings = yaml.safe_load(file)
-
     platform.connect()
     platform.setup()
     platform.start()
-    for routine_name in action_settings:
-        routine = getattr(calibrations, routine_name)
-        routine(
-            platform,
-            action_settings[routine_name]["qubit"],
-            action_settings[routine_name]["settings"],
-            path,
-        )
+    action_builder = ActionBuilder(platform, action_runcard, folder)
+    action_builder.execute_action()
 
     platform.stop()
     platform.disconnect()
+
+
+class ActionBuilder:
+    def __init__(self, platform, path, folder):
+        self.platform = platform
+        self.runcard = self.load_action_runcard(path)
+        self.folder = folder
+
+    def _build_single_action(self, name):
+        """This private method finds the correct function in the qcvv and
+        checks if any of the arguments are missing in the runcard"""
+        f = getattr(calibrations, name)
+        if hasattr(f, "prepare"):
+            self.output = f.prepare(name=f.__name__, folder=self.folder)
+        sig = inspect.signature(f)
+        params = self.runcard[name]
+        for param in list(sig.parameters)[1:]:
+            if param not in params:
+                raise_error(AttributeError, f"Missing parameter {param} in runcard.")
+        return f, params
+
+    def load_action_runcard(self, path):
+        """Loading action runcard"""
+        with open(path, "r") as file:
+            action_settings = yaml.safe_load(file)
+        return action_settings
+
+    def execute_action(self):
+        """Method to obtain the calibration routine with the arguments
+        checked"""
+        for action in self.runcard:
+            routine, args = self._build_single_action(action)
+            results = self.get_result(routine, args)
+
+    def get_result(self, routine, arguments):
+        """Method to execute the routine and saving data through
+        final action"""
+        results = routine(self.platform, **arguments)
+        if hasattr(routine, "final_action"):
+            return routine.final_action(results, self.output)
+        return results
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
