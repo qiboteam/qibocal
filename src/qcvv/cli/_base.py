@@ -93,6 +93,7 @@ class ActionBuilder:
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.argument("path", metavar="PLOT_PATH", type=click.Path())
 def live_plot(path):
-    from qcvv.live import app
-    app.path = path # Bad hack to pass data path to all dash callbacks
+    from qcvv.live import app, serve_layout
+    # Hack to pass data path to the layout
+    app.layout = lambda: serve_layout(path)
     app.run_server(debug=True)
