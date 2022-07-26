@@ -5,20 +5,22 @@ import time
 import yaml
 
 
-def store(folder=None):
-    def inner(func):
-        def wrapper(*args, **kwargs):
-            path = os.path.join(
-                folder, f"{func.__name__}/{time.strftime('%Y%m%d-%H%M%S')}"
-            )
-            os.makedirs(path)
-            for data in func(*args, **kwargs):
-                output = {}
-                for i, c in data.container.items():
-                    output[i] = c.to_dict()
-                with open(f"{path}/data.yml", "w") as f:
-                    yaml.dump(output, f)
+def prepare_path(name=None, folder=None):
+    path = os.path.join(folder, f"{name}/{time.strftime('%Y%m%d-%H%M%S')}")
+    os.makedirs(path)
+    return path
 
-        return wrapper
 
-    return inner
+def save(results, path, format="yaml"):
+    for data in results:
+        output = {}
+        for i, c in data.container.items():
+            output[i] = c.to_dict()
+        with open(f"{path}/data.yml", "w") as f:
+            yaml.dump(output, f)
+
+
+def store(f):
+    f.prepare = prepare_path
+    f.final_action = save
+    return f

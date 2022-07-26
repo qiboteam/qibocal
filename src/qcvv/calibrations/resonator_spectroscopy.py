@@ -10,9 +10,7 @@ from qcvv.data import Dataset
 from qcvv.decorators import store
 
 
-# TODO: add mechanism to compute software averages
-# TODO: find a way to pass folder
-# @store(folder="test") not uncomment
+@store
 def resonator_spectroscopy_attenuation(
     platform,
     qubit,
@@ -45,10 +43,11 @@ def resonator_spectroscopy_attenuation(
     for s in range(software_averages):
         for freq in freqrange:
             for att in attrange:
+                if count % data.points == 0:
+                    yield data
                 platform.qrm[qubit].set_device_parameter(
                     "out0_in0_lo_freq", freq + ro_pulse.frequency
                 )
-                yield data
                 platform.qrm[qubit].set_device_parameter("out0_att", att)
                 res = platform.execute_pulse_sequence(sequence, 2000)[qubit][
                     ro_pulse.serial

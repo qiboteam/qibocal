@@ -39,24 +39,28 @@ def command(platform, action_runcard, folder, force=None):
             os.makedirs(path)
         shutil.copy(runcard, f"{path}/")
 
-    # platform.connect()
-    # platform.setup()
-    # platform.start()
-    action_builder = ActionBuilder(action_runcard)
+    platform.connect()
+    platform.setup()
+    platform.start()
+    action_builder = ActionBuilder(platform, action_runcard, folder)
     action_builder.execute_action()
 
-    # platform.stop()
-    # platform.disconnect()
+    platform.stop()
+    platform.disconnect()
 
 
 class ActionBuilder:
-    def __init__(self, path):
+    def __init__(self, platform, path, folder):
+        self.platform = platform
         self.runcard = self.load_action_runcard(path)
+        self.folder = folder
 
     def _build_single_action(self, name):
         """This private method finds the correct function in the qcvv and
         checks if any of the arguments are missing in the runcard"""
         f = getattr(calibrations, name)
+        if hasattr(f, "prepare"):
+            self.output = f.prepare(name=f.__name__, folder=self.folder)
         sig = inspect.signature(f)
         params = self.runcard[name]
         for param in list(sig.parameters)[1:]:
@@ -70,9 +74,17 @@ class ActionBuilder:
             action_settings = yaml.safe_load(file)
         return action_settings
 
-    def execute_action(self, name=None):
+    def execute_action(self):
         """Method to obtain the calibration routine with the arguments
         checked"""
         for action in self.runcard:
             routine, args = self._build_single_action(action)
-        # TODO: works with single action return -> yield for multiple actions
+            results = self.get_result(routine, args)
+
+    def get_result(self, routine, arguments):
+        """Method to execute the routine and saving data through
+        final action"""
+        results = routine(self.platform, **arguments)
+        if hasattr(routine, "final_action"):
+            return routine.final_action(results, self.output)
+        return results
