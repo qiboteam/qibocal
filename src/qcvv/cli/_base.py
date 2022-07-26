@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Adds global CLI options."""
-
+import inspect
 import os
 import shutil
 
@@ -39,16 +39,40 @@ def command(platform, action_runcard, folder, force=None):
             os.makedirs(path)
         shutil.copy(runcard, f"{path}/")
 
-    with open(action_runcard, "r") as file:
-        action_settings = yaml.safe_load(file)
+    # platform.connect()
+    # platform.setup()
+    # platform.start()
+    action_builder = ActionBuilder(action_runcard)
+    action_builder.execute_action()
 
-    platform.connect()
-    platform.setup()
-    platform.start()
-    for routine_name in action_settings:
-        print(action_settings)
-        routine = getattr(calibrations, routine_name)
-        routine(platform, **action_settings[routine_name])
+    # platform.stop()
+    # platform.disconnect()
 
-    platform.stop()
-    platform.disconnect()
+
+class ActionBuilder:
+    def __init__(self, path):
+        self.runcard = self.load_action_runcard(path)
+
+    def _build_single_action(self, name):
+        """This private method finds the correct function in the qcvv and
+        checks if any of the arguments are missing in the runcard"""
+        f = getattr(calibrations, name)
+        sig = inspect.signature(f)
+        params = self.runcard[name]
+        for param in list(sig.parameters)[1:]:
+            if param not in params:
+                raise_error(AttributeError, f"Missing parameter {param} in runcard.")
+        return f, params
+
+    def load_action_runcard(self, path):
+        """Loading action runcard"""
+        with open(path, "r") as file:
+            action_settings = yaml.safe_load(file)
+        return action_settings
+
+    def execute_action(self, name=None):
+        """Method to obtain the calibration routine with the arguments
+        checked"""
+        for action in self.runcard:
+            routine, args = self._build_single_action(action)
+        # TODO: works with single action return -> yield for multiple actions

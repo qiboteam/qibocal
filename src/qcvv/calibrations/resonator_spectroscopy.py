@@ -12,7 +12,7 @@ from qcvv.decorators import store
 
 # TODO: add mechanism to compute software averages
 # TODO: find a way to pass folder
-@store(folder="test")
+# @store(folder="test") not uncomment
 def resonator_spectroscopy_attenuation(
     platform,
     qubit,
