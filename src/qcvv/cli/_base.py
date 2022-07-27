@@ -19,7 +19,7 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 @click.option(
     "--force", is_flag=True, help="Use --force option to overwrite the output folder."
 )
-def command(action_runcard, folder, force=None):
+def command(runcard, folder, force=None):
 
     """qcvv: Quantum Calibration Verification and Validation using Qibo.
 
@@ -30,13 +30,14 @@ def command(action_runcard, folder, force=None):
      - RUNCARD: runcard with declarative inputs.
     """
 
-    action_builder = ActionBuilder(action_runcard, folder, force)
+    action_builder = ActionBuilder(runcard, folder, force)
     action_builder.execute()
-    action_builder.save_runcard()
 
 
 class ActionBuilder:
-    def __init__(self, action_runcard, folder, force):
+    def __init__(self, runcard, folder, force):
+
+        # Creating output folder
         if os.path.exists(folder) and not force:
             raise_error(
                 RuntimeError, "Calibration folder with the same name already exists."
@@ -48,25 +49,47 @@ class ActionBuilder:
         path = os.path.join(os.getcwd(), folder)
         log.info(f"Creating directory {path}.")
         os.makedirs(path)
+
         self.folder = folder
         self.force = force
-        self.runcard = self.load_action_runcard(action_runcard)
+        self.runcard = self.load_runcard(runcard)
         self._allocate_platform(self.runcard["platform"])
         self.qubit = self.runcard["qubit"]
 
-        shutil.copy(action_runcard, f"{path}/runcard.yml")
-        self.save_runcard(path)
+        # Saving runcard
+        self.save_runcards(path, runcard)
 
     def _allocate_platform(self, platform_name):
         from qibo.backends import construct_backend
 
         self.platform = construct_backend("qibolab", platform=platform_name).platform
 
-    def save_runcard(self, path):
+    def save_runcards(self, path, runcard):
+        import datetime
+
+        import qibo
+        import qibolab
         from qibolab.paths import qibolab_folder
 
-        runcard = qibolab_folder / "runcards" / f"{self.runcard['platform']}.yml"
-        shutil.copy(runcard, f"{path}/platform.yml")
+        import qcvv
+
+        platform_runcard = (
+            qibolab_folder / "runcards" / f"{self.runcard['platform']}.yml"
+        )
+        shutil.copy(platform_runcard, f"{path}/platform.yml")
+
+        e = datetime.datetime.now()
+        meta = {}
+        meta["date"] = e.strftime("%Y-%m-%d %H:%M:%S")
+        meta["versions"] = {
+            "qibo": qibo.__version__,
+            "qibolab": qibolab.__version__,
+            "qcvv": qcvv.__version__,
+        }
+        with open(f"{path}/meta.yml", "w") as f:
+            yaml.dump(meta, f)
+
+        shutil.copy(runcard, f"{path}/runcard.yml")
 
     def _build_single_action(self, name):
         """This private method finds the correct function in the qcvv and
@@ -81,11 +104,11 @@ class ActionBuilder:
                 raise_error(AttributeError, f"Missing parameter {param} in runcard.")
         return f, params
 
-    def load_action_runcard(self, path):
-        """Loading action runcard"""
+    def load_runcard(self, path):
+        """Loading runcard"""
         with open(path, "r") as file:
-            action_settings = yaml.safe_load(file)
-        return action_settings
+            runcard = yaml.safe_load(file)
+        return runcard
 
     def execute(self):
         """Method to obtain the calibration routine with the arguments
