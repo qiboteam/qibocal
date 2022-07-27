@@ -32,8 +32,11 @@ class ActionBuilder:
             raise_error(
                 RuntimeError, "Calibration folder with the same name already exists."
             )
+        elif os.path.exists(folder) and force:
+            log.info(f"Overwriting folder {folder}.")
+            shutil.rmtree(os.path.join(os.getcwd(), folder))
+
         path = os.path.join(os.getcwd(), folder)
-        # if not self.force:
         log.info(f"Creating directory {path}.")
         os.makedirs(path)
         self.folder = folder
