@@ -14,16 +14,16 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.argument("platform", metavar="PLATFORM_NAME")
 @click.argument("action_runcard", metavar="ACTION_CARD", type=click.Path(exists=True))
 @click.argument("folder", type=click.Path())
 @click.option("--force", is_flag=True)
-def command(platform, action_runcard, folder, force=None):
+def command(action_runcard, folder, force=None):
 
     """qcvv: Quantum Calibration Verification and Validation using Qibo."""
 
     action_builder = ActionBuilder(action_runcard, folder, force)
     action_builder.execute()
+    action_builder.save_runcard()
 
 
 class ActionBuilder:
@@ -32,26 +32,29 @@ class ActionBuilder:
             raise_error(
                 RuntimeError, "Calibration folder with the same name already exists."
             )
-        self.runcard = self.load_action_runcard(action_runcard)
+        path = os.path.join(os.getcwd(), folder)
+        # if not self.force:
+        log.info(f"Creating directory {path}.")
+        os.makedirs(path)
         self.folder = folder
         self.force = force
-        self.qubit = self.runcard["qubit"]
+        self.runcard = self.load_action_runcard(action_runcard)
         self._allocate_platform(self.runcard["platform"])
+        self.qubit = self.runcard["qubit"]
+
+        shutil.copy(action_runcard, f"{path}/runcard.yml")
+        self.save_runcard(path)
 
     def _allocate_platform(self, platform_name):
         from qibo.backends import construct_backend
 
         self.platform = construct_backend("qibolab", platform=platform_name).platform
 
-    def _save_runcard(self):
+    def save_runcard(self, path):
         from qibolab.paths import qibolab_folder
 
         runcard = qibolab_folder / "runcards" / f"{self.runcard['platform']}.yml"
-        path = os.path.join(os.getcwd(), self.folder)
-        if not self.force:
-            log.info(f"Creating directory {path}.")
-            os.makedirs(path)
-        shutil.copy(runcard, f"{path}/")
+        shutil.copy(runcard, f"{path}/platform.yml")
 
     def _build_single_action(self, name):
         """This private method finds the correct function in the qcvv and
@@ -79,7 +82,6 @@ class ActionBuilder:
         self.platform.setup()
         self.platform.start()
         for action in self.runcard["actions"]:
-            print(action)
             routine, args = self._build_single_action(action)
             results = self.get_result(routine, args)
         self.platform.stop()

@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 import os
-import time
 
 import yaml
 
 
 def prepare_path(name=None, folder=None):
-    path = os.path.join(folder, f"{name}/{time.strftime('%Y%m%d-%H%M%S')}")
+    path = os.path.join(folder, f"data/{name}/")
     os.makedirs(path)
     return path
 
