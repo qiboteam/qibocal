@@ -14,12 +14,21 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.argument("action_runcard", metavar="ACTION_CARD", type=click.Path(exists=True))
+@click.argument("runcard", metavar="RUNCARD", type=click.Path(exists=True))
 @click.argument("folder", type=click.Path())
-@click.option("--force", is_flag=True)
+@click.option(
+    "--force", is_flag=True, help="Use --force option to overwrite the output folder."
+)
 def command(action_runcard, folder, force=None):
 
-    """qcvv: Quantum Calibration Verification and Validation using Qibo."""
+    """qcvv: Quantum Calibration Verification and Validation using Qibo.
+
+    Arguments:
+
+     - FOLDER: output folder.
+
+     - RUNCARD: runcard with declarative inputs.
+    """
 
     action_builder = ActionBuilder(action_runcard, folder, force)
     action_builder.execute()
