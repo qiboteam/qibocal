@@ -21,39 +21,37 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 def command(platform, action_runcard, folder, force=None):
 
     """qcvv: Quantum Calibration Verification and Validation using Qibo."""
-    from qibo.backends import construct_backend
 
-    platform = construct_backend("qibolab", platform=platform).platform
-
-    if os.path.exists(folder) and not force:
-        raise_error(
-            RuntimeError, "Calibration folder with the same name already exists."
-        )
-    else:
-        from qibolab.paths import qibolab_folder
-
-        runcard = qibolab_folder / "runcards" / f"{platform}.yml"
-        path = os.path.join(os.getcwd(), folder)
-        if not force:
-            log.info(f"Creating directory {path}.")
-            os.makedirs(path)
-        shutil.copy(runcard, f"{path}/")
-
-    platform.connect()
-    platform.setup()
-    platform.start()
-    action_builder = ActionBuilder(platform, action_runcard, folder)
-    action_builder.execute_action()
-
-    platform.stop()
-    platform.disconnect()
+    action_builder = ActionBuilder(action_runcard, folder, force)
+    action_builder.execute()
 
 
 class ActionBuilder:
-    def __init__(self, platform, path, folder):
-        self.platform = platform
-        self.runcard = self.load_action_runcard(path)
+    def __init__(self, action_runcard, folder, force):
+        if os.path.exists(folder) and not force:
+            raise_error(
+                RuntimeError, "Calibration folder with the same name already exists."
+            )
+        self.runcard = self.load_action_runcard(action_runcard)
         self.folder = folder
+        self.force = force
+        self.qubit = self.runcard["qubit"]
+        self._allocate_platform(self.runcard["platform"])
+
+    def _allocate_platform(self, platform_name):
+        from qibo.backends import construct_backend
+
+        self.platform = construct_backend("qibolab", platform=platform_name).platform
+
+    def _save_runcard(self):
+        from qibolab.paths import qibolab_folder
+
+        runcard = qibolab_folder / "runcards" / f"{self.runcard['platform']}.yml"
+        path = os.path.join(os.getcwd(), self.folder)
+        if not self.force:
+            log.info(f"Creating directory {path}.")
+            os.makedirs(path)
+        shutil.copy(runcard, f"{path}/")
 
     def _build_single_action(self, name):
         """This private method finds the correct function in the qcvv and
@@ -62,8 +60,8 @@ class ActionBuilder:
         if hasattr(f, "prepare"):
             self.output = f.prepare(name=f.__name__, folder=self.folder)
         sig = inspect.signature(f)
-        params = self.runcard[name]
-        for param in list(sig.parameters)[1:]:
+        params = self.runcard["actions"][name]
+        for param in list(sig.parameters)[2:]:
             if param not in params:
                 raise_error(AttributeError, f"Missing parameter {param} in runcard.")
         return f, params
@@ -74,17 +72,23 @@ class ActionBuilder:
             action_settings = yaml.safe_load(file)
         return action_settings
 
-    def execute_action(self):
+    def execute(self):
         """Method to obtain the calibration routine with the arguments
         checked"""
-        for action in self.runcard:
+        self.platform.connect()
+        self.platform.setup()
+        self.platform.start()
+        for action in self.runcard["actions"]:
+            print(action)
             routine, args = self._build_single_action(action)
             results = self.get_result(routine, args)
+        self.platform.stop()
+        self.platform.disconnect()
 
     def get_result(self, routine, arguments):
         """Method to execute the routine and saving data through
         final action"""
-        results = routine(self.platform, **arguments)
+        results = routine(self.platform, self.qubit, **arguments)
         if hasattr(routine, "final_action"):
             return routine.final_action(results, self.output)
         return results
