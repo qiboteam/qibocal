@@ -16,8 +16,8 @@ classifiers=[
 
 [tool.poetry.dependencies]
 python = ">=3.7"
-qibo = {git = "ssh://git@github.com/qiboteam/qibo.git", rev = "master"}
 dash = "^2.6.0"
+qibo = {git = "https://github.com/qiboteam/qibo.git", rev = "master"}
 
 [tool.poetry.dev-dependencies]
 black = "^22.6.0"
