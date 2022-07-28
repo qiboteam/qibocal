@@ -99,6 +99,7 @@ def live_plot(path):
     data to be plotted.
     """
     from qcvv.live import app, serve_layout
+
     # Hack to pass data path to the layout
     app.layout = lambda: serve_layout(path)
     app.run_server(debug=True)
