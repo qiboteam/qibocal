@@ -12,11 +12,8 @@ def prepare_path(name=None, folder=None):
 
 def save(results, path, format="yaml"):
     for data in results:
-        output = {}
-        for i, c in data.container.items():
-            output[i] = c.to_dict()
         with open(f"{path}/data.yml", "w") as f:
-            yaml.dump(output, f)
+            yaml.dump(data.df.to_dict(), f)
 
 
 def store(f):

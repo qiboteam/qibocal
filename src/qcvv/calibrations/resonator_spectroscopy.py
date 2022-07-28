@@ -55,8 +55,8 @@ def resonator_spectroscopy_attenuation(
                 res = platform.execute_pulse_sequence(sequence, 2000)[qubit][
                     ro_pulse.serial
                 ]
-                data.add(*res, [("frequency", "Hz", freq), ("attenuation", "dB", att)])
-                # data.add(*np.random.rand(4))
+                data.add(*res, freq, att)
+                # data.add(*np.random.rand(6))
                 count += 1
 
     yield data

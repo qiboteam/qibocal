@@ -12,7 +12,6 @@ mypy-extensions = ">=0.4.3"
 pathspec = ">=0.9.0"
 platformdirs = ">=2"
 tomli = {version = ">=1.1.0", markers = "python_full_version < \"3.11.0a7\""}
-typed-ast = {version = ">=1.4.2", markers = "python_version < \"3.8\" and implementation_name == \"cpython\""}
 typing-extensions = {version = ">=3.10.0.0", markers = "python_version < \"3.10\""}
 
 [package.extras]
@@ -31,7 +30,6 @@ python-versions = ">=3.7"
 
 [package.dependencies]
 colorama = {version = "*", markers = "platform_system == \"Windows\""}
-importlib-metadata = {version = "*", markers = "python_version < \"3.8\""}
 
 [[package]]
 name = "cma"
@@ -95,7 +93,6 @@ optional = false
 python-versions = ">=3.7"
 
 [package.dependencies]
-typing-extensions = {version = ">=3.6.4", markers = "python_version < \"3.8\""}
 zipp = ">=0.5"
 
 [package.extras]
@@ -118,9 +115,6 @@ description = "A fast implementation of the Cassowary constraint solver"
 category = "main"
 optional = false
 python-versions = ">=3.7"
-
-[package.dependencies]
-typing-extensions = {version = "*", markers = "python_version < \"3.8\""}
 
 [[package]]
 name = "matplotlib"
@@ -163,11 +157,11 @@ python-versions = "*"
 
 [[package]]
 name = "numpy"
-version = "1.21.1"
+version = "1.23.1"
 description = "NumPy is the fundamental package for array computing with Python."
 category = "main"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 
 [[package]]
 name = "packaging"
@@ -179,6 +173,27 @@ python-versions = ">=3.6"
 
 [package.dependencies]
 pyparsing = ">=2.0.2,<3.0.5 || >3.0.5"
+
+[[package]]
+name = "pandas"
+version = "1.4.3"
+description = "Powerful data structures for data analysis, time series, and statistics"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[package.dependencies]
+numpy = [
+    {version = ">=1.18.5", markers = "platform_machine != \"aarch64\" and platform_machine != \"arm64\" and python_version < \"3.10\""},
+    {version = ">=1.19.2", markers = "platform_machine == \"aarch64\" and python_version < \"3.10\""},
+    {version = ">=1.20.0", markers = "platform_machine == \"arm64\" and python_version < \"3.10\""},
+    {version = ">=1.21.0", markers = "python_version >= \"3.10\""},
+]
+python-dateutil = ">=2.8.1"
+pytz = ">=2020.1"
+
+[package.extras]
+test = ["hypothesis (>=5.5.3)", "pytest (>=6.0)", "pytest-xdist (>=1.31)"]
 
 [[package]]
 name = "pathspec"
@@ -199,6 +214,34 @@ python-versions = ">=3.7"
 [package.extras]
 docs = ["furo", "olefile", "sphinx (>=2.4)", "sphinx-copybutton", "sphinx-issues (>=3.0.1)", "sphinx-removed-in", "sphinxext-opengraph"]
 tests = ["check-manifest", "coverage", "defusedxml", "markdown2", "olefile", "packaging", "pyroma", "pytest", "pytest-cov", "pytest-timeout"]
+
+[[package]]
+name = "pint"
+version = "0.19.2"
+description = "Physical quantities module"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+
+[package.extras]
+numpy = ["numpy (>=1.19.5)"]
+test = ["pytest", "pytest-mpl", "pytest-cov", "pytest-subtests"]
+uncertainties = ["uncertainties (>=3.1.6)"]
+
+[[package]]
+name = "pint-pandas"
+version = "0.2"
+description = "Physical quantities module"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+pandas = ">=1.2"
+pint = ">=0.17"
+
+[package.extras]
+test = ["nbval", "coveralls", "codecov", "pytest-subtests", "pytest-cov", "pytest-mpl", "pytest"]
 
 [[package]]
 name = "platformdirs"
@@ -244,6 +287,14 @@ python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
 
 [package.dependencies]
 six = ">=1.5"
+
+[[package]]
+name = "pytz"
+version = "2022.1"
+description = "World timezone definitions, modern and historical"
+category = "main"
+optional = false
+python-versions = "*"
 
 [[package]]
 name = "pyyaml"
@@ -303,7 +354,6 @@ optional = false
 python-versions = ">=3.7"
 
 [package.dependencies]
-importlib-metadata = {version = "*", markers = "python_version < \"3.8\""}
 packaging = ">=20.0"
 tomli = ">=1.0.0"
 typing-extensions = "*"
@@ -351,14 +401,6 @@ optional = false
 python-versions = ">=3.7"
 
 [[package]]
-name = "typed-ast"
-version = "1.5.4"
-description = "a fork of Python 2 and 3 ast modules with type comment support"
-category = "dev"
-optional = false
-python-versions = ">=3.6"
-
-[[package]]
 name = "typing-extensions"
 version = "4.3.0"
 description = "Backported and Experimental Type Hints for Python 3.7+"
@@ -380,8 +422,8 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 
 [metadata]
 lock-version = "1.1"
-python-versions = ">=3.7"
-content-hash = "6fbd5c9c5e1986a1319bf284d276116932da358d67f3cf59911adb91b134ffc7"
+python-versions = ">=3.8"
+content-hash = "3bc107a83e4c09ba26ab03c104c25debae673f83d1f60203fb5fa403c0ac136c"
 
 [metadata.files]
 black = []
@@ -442,12 +484,21 @@ mpmath = []
 mypy-extensions = []
 numpy = []
 packaging = []
+pandas = []
 pathspec = []
 pillow = []
+pint = [
+    {file = "Pint-0.19.2.tar.gz", hash = "sha256:e1d4989ff510b378dad64f91711e7bdabe5ca78d75b06a18569ac454678c4baf"},
+]
+pint-pandas = [
+    {file = "Pint-Pandas-0.2.tar.gz", hash = "sha256:6f60d2e80ac102e0f94addb9206e0f6cca5ee42f0b7f8930d8c798002e41fa87"},
+    {file = "Pint_Pandas-0.2-py2.py3-none-any.whl", hash = "sha256:214e4d9b79f540e7caef3a1cfd3d9ee31cba6b1559303a49f4de04a5756cc507"},
+]
 platformdirs = []
 psutil = []
 pyparsing = []
 python-dateutil = []
+pytz = []
 pyyaml = []
 qibo = []
 scipy = []
@@ -456,6 +507,5 @@ six = []
 sympy = []
 tabulate = []
 tomli = []
-typed-ast = []
 typing-extensions = []
 zipp = []

@@ -15,8 +15,10 @@ classifiers=[
     ]
 
 [tool.poetry.dependencies]
-python = ">=3.7"
+python = ">=3.8"
 qibo = {git = "ssh://git@github.com/qiboteam/qibo.git", rev = "master"}
+pandas = "^1.4.3"
+Pint-Pandas = "^0.2"
 
 [tool.poetry.dev-dependencies]
 black = "^22.6.0"
