@@ -17,6 +17,7 @@ classifiers=[
 [tool.poetry.dependencies]
 python = ">=3.7"
 qibo = {git = "ssh://git@github.com/qiboteam/qibo.git", rev = "master"}
+dash = "^2.6.0"
 
 [tool.poetry.dev-dependencies]
 black = "^22.6.0"
@@ -31,7 +32,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 qq = "qcvv:command"
-liveqq = "qcvv:live_plot"
+qq-live = "qcvv:live_plot"
 
 [tool.poe.tasks]
 test = "pytest tests"
