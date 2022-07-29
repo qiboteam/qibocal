@@ -51,7 +51,7 @@ addopts = [
 # extensions not to check
 extension-pkg-whitelist = ["numpy"]
 ignored-modules = ["qibolab"]
-jobs = 1                                                          # has to be 1 as pylint is NOT threadsafe
+jobs = 1
 
 [tool.pylint.messages_control]
 disable = ["invalid-name", "fixme"]
