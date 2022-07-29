@@ -11,28 +11,33 @@ class Dataset:
     """First prototype of dataset for calibration routines."""
 
     def __init__(self, points=100, quantities=None):
-        self._data = {
-            "MSR": pd.Series([], dtype="pint[V]"),
-            "i": pd.Series([], dtype="pint[V]"),
-            "q": pd.Series([], dtype="pint[V]"),
-            "phase": pd.Series([], dtype="pint[deg]"),
-        }
+
+        self.points = points
+        self.df = pd.DataFrame(
+            {
+                "MSR": pd.Series(dtype="pint[V]"),
+                "i": pd.Series(dtype="pint[V]"),
+                "q": pd.Series(dtype="pint[V]"),
+                "phase": pd.Series(dtype="pint[deg]"),
+            }
+        )
 
         if quantities is not None:
-            if isinstance(quantities, tuple):
-                self._data[quantities[0]] = pd.Series(
-                    [], dtype=f"pint[{quantities[1]}]"
-                )
-            elif isinstance(quantities, list):
-                for item in quantities:
-                    self._data[item[0]] = pd.Series([], dtype=f"pint[{item[1]}]")
-            else:
-                raise_error(RuntimeError, f"Format of {quantities} is not valid.")
-        self.df = pd.DataFrame(self._data)
-        self.points = points
+            for name, unit in quantities.items():
+                self.df.insert(0, name, pd.Series(dtype=f"pint[{unit}]"))
 
-    def add(self, *args):
-        self.df.loc[len(self), list(self._data.keys())] = args
+    def add(self, data):
+        import re
+
+        from pint import UnitRegistry
+
+        ureg = UnitRegistry()
+        l = len(self)
+        for key, value in data.items():
+            name = key.split("[")[0]
+            unit = re.search(r"\[([A-Za-z0-9_]+)\]", key).group(1)
+            # TODO: find a better way to do this
+            self.df.loc[l + l // len(list(data.keys())), name] = value * ureg(unit)
 
     def __len__(self):
         return len(self.df)

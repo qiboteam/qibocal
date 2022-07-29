@@ -24,7 +24,7 @@ def resonator_spectroscopy_attenuation(
     software_averages,
 ):
 
-    data = Dataset(quantities=[("frequency", "Hz"), ("attenuation", "dB")], points=2)
+    data = Dataset(quantities={"frequency": "Hz", "attenuation": "dB"}, points=2)
     ro_pulse = platform.qubit_readout_pulse(qubit, 0)
     sequence = PulseSequence()
     sequence.add(ro_pulse)
@@ -52,11 +52,18 @@ def resonator_spectroscopy_attenuation(
                 )
                 # TODO: move this explicit instruction to the platform
                 platform.qrm[qubit].set_device_parameter("out0_att", att)
-                res = platform.execute_pulse_sequence(sequence, 2000)[qubit][
-                    ro_pulse.serial
-                ]
-                data.add(*res, freq, att)
-                # data.add(*np.random.rand(6))
+                msr, i, q, phase = platform.execute_pulse_sequence(sequence, 2000)[
+                    qubit
+                ][ro_pulse.serial]
+                results = {
+                    "MSR[V]": msr,
+                    "i[V]": i,
+                    "q[V]": q,
+                    "phase[deg]": phase,
+                    "frequency[Hz]": freq,
+                    "attenuation[dB]": att,
+                }
+                data.add(results)
                 count += 1
 
     yield data
