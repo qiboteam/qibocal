@@ -15,9 +15,10 @@ classifiers=[
     ]
 
 [tool.poetry.dependencies]
-python = ">=3.7"
+python = ">=3.8"
 dash = "^2.6.0"
 qibo = {git = "https://github.com/qiboteam/qibo.git", rev = "master"}
+pandas = "^1.4.3"
 
 [tool.poetry.dev-dependencies]
 black = "^22.6.0"
@@ -25,6 +26,7 @@ pylint = "2.12.2"
 pre-commit = "^2.20.0"
 pytest = "^7.1.2"
 pytest-cov = "^3.0.0"
+poethepoet = "^0.16.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -48,6 +50,7 @@ addopts = [
 [tool.pylint.master]
 # extensions not to check
 extension-pkg-whitelist = ["numpy"]
+ignored-modules = ["qibolab"]
 jobs = 1                                                          # has to be 1 as pylint is NOT threadsafe
 
 [tool.pylint.messages_control]
