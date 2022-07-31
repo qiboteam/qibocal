@@ -1,0 +1,14 @@
+<!-- Template for HTML reports -->
+<!-- The live plotting page layout is rendered in {{ body }} using jinja2 -->
+<html>
+<head>
+    <meta charset="utf-8" />
+    <script type="text/javascript">window.PlotlyConfig = {MathJaxConfig: 'local'};</script>
+    <!-- Reading the plotly js library from online to save space (not the latest version) -->
+    <!-- This is required for the report plots to remain interactive -->
+    <script type="text/javascript" src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+{{ body }}
+</body>
+</html>

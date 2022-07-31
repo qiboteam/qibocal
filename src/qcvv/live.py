@@ -21,29 +21,24 @@ def serve_layout(path):
         if os.path.isdir(action_path):
             layout.append(html.H2(action))
             for run in sorted(os.listdir(action_path)):
+                run_path = os.path.join(action_path, run)
                 layout.append(
                     html.Details(
                         children=[
                             html.Summary(run),
                             dcc.Graph(
-                                id={"type": "graph", "index": f"{action}/{run}"},
+                                id={"type": "graph", "index": run_path},
                             ),
                             dcc.Interval(
-                                id={"type": "interval", "index": f"{action}/{run}"},
+                                id={"type": "interval", "index": run_path},
                                 interval=1000,
                                 n_intervals=0,
                                 disabled=False,
                             ),
                             dcc.Input(
-                                id={"type": "path", "index": f"{action}/{run}"},
-                                value=f"test/{action}/{run}/data.yml",
-                                type="text",
-                                style={"display": "none"},
-                            ),
-                            dcc.Input(
                                 id={
                                     "type": "last-modified",
-                                    "index": f"{action}/{run}",
+                                    "index": run_path,
                                 },
                                 value=0,
                                 type="number",
@@ -63,10 +58,10 @@ app = Dash(__name__)
 @app.callback(
     Output({"type": "graph", "index": MATCH}, "figure"),
     Input({"type": "interval", "index": MATCH}, "n_intervals"),
-    Input({"type": "path", "index": MATCH}, "value"),
-    Input({"type": "path", "index": MATCH}, "id"),
+    Input({"type": "graph", "index": MATCH}, "id"),
 )
-def get_graph(n, path, action_id):
+def get_graph(n, graph_id):
+    path = os.path.join(graph_id.get("index"), "data.yml")
     if not os.path.exists(path):
         return go.Figure()
 
@@ -77,7 +72,7 @@ def get_graph(n, path, action_id):
         {f"{v.get('name')} ({v.get('unit')})": v.get("data") for v in data.values()}
     )
 
-    action = action_id.get("index").split("/")[0]
+    action = graph_id.get("index").split("/")[1]
     return getattr(plots, action)(df, autosize=False, width=1200, height=800)
 
 
@@ -86,10 +81,11 @@ def get_graph(n, path, action_id):
     Output({"type": "interval", "index": MATCH}, "disabled"),
     Input("stopper-interval", "n_intervals"),
     Input({"type": "last-modified", "index": MATCH}, "value"),
-    Input({"type": "path", "index": MATCH}, "value"),
+    Input({"type": "graph", "index": MATCH}, "id"),
 )
-def toggle_interval(n, last_modified, path):
+def toggle_interval(n, last_modified, graph_id):
     """Disables live plotting if data file is not being modified."""
+    path = graph_id.get("index")
     if not os.path.exists(path):
         return 0, True
     new_modified = os.stat(path)[-1]
