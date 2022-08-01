@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
+"""Decorators implementation."""
 import os
+
+from qcvv.config import raise_error
 
 
 def prepare_path(name=None, folder=None):
@@ -9,8 +12,12 @@ def prepare_path(name=None, folder=None):
     return path
 
 
-def save(results, path, format="csv"):
+def save(results, path, format=None):
     """Helper function to store the data in a particular format."""
+
+    if format is None:
+        raise_error(ValueError, f"Cannot store data using {format} format.")
+
     for data in results:
         getattr(data, f"to_{format}")(path)
 

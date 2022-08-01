@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
+"""Implementation of Dataset class to store measurements."""
 import pandas as pd
 import pint_pandas
-
-from qcvv.config import raise_error
 
 
 class Dataset:

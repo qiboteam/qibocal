@@ -35,13 +35,13 @@ def command(runcard, folder, force=None):
 
 
 class ActionBuilder:
-    def __init__(self, runcard, folder, force):
-        """ "Class for parsing and executing runcards.
-        Args:
-            runcard (path): path containing the runcard.
-            folder (path): path for the output folder.
-            force (bool): option to overwrite the output folder if it exists already."""
+    """ "Class for parsing and executing runcards.
+    Args:
+        runcard (path): path containing the runcard.
+        folder (path): path for the output folder.
+        force (bool): option to overwrite the output folder if it exists already."""
 
+    def __init__(self, runcard, folder, force):
         # Creating output folder
         if os.path.exists(folder) and not force:
             raise_error(
@@ -111,7 +111,8 @@ class ActionBuilder:
                 raise_error(AttributeError, f"Missing parameter {param} in runcard.")
         return f, params
 
-    def load_runcard(self, path):
+    @staticmethod
+    def load_runcard(path):
         """Method to load the runcard."""
         with open(path, "r") as file:
             runcard = yaml.safe_load(file)
@@ -134,18 +135,3 @@ class ActionBuilder:
         if hasattr(routine, "final_action"):
             return routine.final_action(results, self.output, self.format)
         return results
-
-
-@click.command(context_settings=CONTEXT_SETTINGS)
-@click.argument("path", metavar="DATA_FOLDER", type=click.Path())
-def live_plot(path):
-    """Real time plotting of calibration data on a dash server.
-
-    DATA_FOLDER is the path to the folder that contains the
-    data to be plotted.
-    """
-    from qcvv.live import app, serve_layout
-
-    # Hack to pass data path to the layout
-    app.layout = lambda: serve_layout(path)
-    app.run_server(debug=True)
