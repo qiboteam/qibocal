@@ -229,19 +229,26 @@ test = ["pytest", "pytest-mpl", "pytest-cov", "pytest-subtests"]
 uncertainties = ["uncertainties (>=3.1.6)"]
 
 [[package]]
-name = "pint-pandas"
-version = "0.2"
+name = "Pint-Pandas"
+version = "0.3.dev56+gcf527e4"
 description = "Physical quantities module"
 category = "main"
 optional = false
 python-versions = ">=3.6"
+develop = false
 
 [package.dependencies]
 pandas = ">=1.2"
 pint = ">=0.17"
 
 [package.extras]
-test = ["nbval", "coveralls", "codecov", "pytest-subtests", "pytest-cov", "pytest-mpl", "pytest"]
+test = ["pytest", "pytest-mpl", "pytest-cov", "pytest-subtests", "codecov", "coveralls", "nbval", "pyarrow"]
+
+[package.source]
+type = "git"
+url = "https://github.com/hgrecco/pint-pandas.git"
+reference = "master"
+resolved_reference = "cf527e48557a1e028c6f2d4e628aa7a6cd1b30d4"
 
 [[package]]
 name = "platformdirs"
@@ -423,7 +430,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8"
-content-hash = "3bc107a83e4c09ba26ab03c104c25debae673f83d1f60203fb5fa403c0ac136c"
+content-hash = "b9525fc710a75e974816754f966c348d363bc514e46e769ed4794aeff8a26924"
 
 [metadata.files]
 black = []
@@ -490,10 +497,7 @@ pillow = []
 pint = [
     {file = "Pint-0.19.2.tar.gz", hash = "sha256:e1d4989ff510b378dad64f91711e7bdabe5ca78d75b06a18569ac454678c4baf"},
 ]
-pint-pandas = [
-    {file = "Pint-Pandas-0.2.tar.gz", hash = "sha256:6f60d2e80ac102e0f94addb9206e0f6cca5ee42f0b7f8930d8c798002e41fa87"},
-    {file = "Pint_Pandas-0.2-py2.py3-none-any.whl", hash = "sha256:214e4d9b79f540e7caef3a1cfd3d9ee31cba6b1559303a49f4de04a5756cc507"},
-]
+Pint-Pandas = []
 platformdirs = []
 psutil = []
 pyparsing = []
