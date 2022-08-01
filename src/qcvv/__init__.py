@@ -2,4 +2,6 @@
 from .cli import command
 
 """qcvv: Quantum Calibration Verification and Validation using Qibo."""
-__version__ = "0.0.0"
+import importlib.metadata as im
+
+__version__ = im.version(__package__)
