@@ -134,3 +134,18 @@ class ActionBuilder:
         if hasattr(routine, "final_action"):
             return routine.final_action(results, self.output, self.format)
         return results
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument("path", metavar="DATA_FOLDER", type=click.Path())
+def live_plot(path):
+    """Real time plotting of calibration data on a dash server.
+
+    DATA_FOLDER is the path to the folder that contains the
+    data to be plotted.
+    """
+    from qcvv.live import app, serve_layout
+
+    # Hack to pass data path to the layout
+    app.layout = lambda: serve_layout(path)
+    app.run_server(debug=True)
