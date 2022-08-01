@@ -710,7 +710,7 @@ tests = ["pytest", "cirq", "ply", "sklearn", "dill"]
 
 [package.source]
 type = "git"
-url = "ssh://git@github.com/qiboteam/qibo.git"
+url = "https://github.com/qiboteam/qibo.git"
 reference = "master"
 resolved_reference = "1af034218bb34871294aa7ac6d34b3694856444c"
 
@@ -861,7 +861,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8"
-content-hash = "babf0d0226161907830c2bb77ac69c5829bdeaceae6fb0998b69326f34278e86"
+content-hash = "964afa2a70b130cec592c5755e76db6a0510cd0fec356ff65d760982a6602f15"
 
 [metadata.files]
 astroid = [
