@@ -17,7 +17,7 @@ def serve_layout(path):
 
     layout = [
         dcc.Interval(
-            id=f"stopper-interval", interval=1000, n_intervals=0, disabled=False
+            id=f"stopper-interval", interval=2000, n_intervals=0, disabled=False
         ),
         html.P(f"Path name: {path}"),
         html.P(f"Run date: {metadata.get('date')}"),
@@ -73,14 +73,16 @@ app = Dash(__name__)
     Input({"type": "graph", "index": MATCH}, "id"),
 )
 def get_graph(n, graph_id):
-    # path = os.path.join(graph_id.get("index"), "data.pkl")
-    # if not os.path.exists(path):
-    #    return go.Figure()
+    folder, routine = os.path.split(graph_id.get("index"))
+    folder, _ = os.path.split(folder)
+    # find data format
+    with open(os.path.join(folder, "runcard.yml"), "r") as file:
+        runcard = yaml.safe_load(file)
+    format = runcard.get("format")
 
     data = Dataset()
-    folder, routine = os.path.split(graph_id.get("index"))
     try:
-        data.load_data(folder, routine, "pickle")
+        data.load_data(folder, routine, format)
         return getattr(plots, routine)(data.df, autosize=False, width=1200, height=800)
     except FileNotFoundError:
         return go.Figure()
@@ -95,7 +97,7 @@ def get_graph(n, graph_id):
 )
 def toggle_interval(n, last_modified, graph_id):
     """Disables live plotting if data file is not being modified."""
-    path = graph_id.get("index")
+    path = os.path.join(graph_id.get("index"), "data.csv")
     if not os.path.exists(path):
         return 0, True
     new_modified = os.stat(path)[-1]
