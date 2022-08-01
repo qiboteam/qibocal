@@ -3,6 +3,8 @@
 import pandas as pd
 import pint_pandas
 
+from qcvv.config import raise_error
+
 
 class Dataset:
     """Class to store the data measured during the calibration routines.
@@ -56,6 +58,23 @@ class Dataset:
     def __len__(self):
         """Computes the length of the dataset."""
         return len(self.df)
+
+    def load_data(self, folder, routine, format):
+        """Load data from specific format.
+        Args:
+            folder (path): path to the output folder from which the data will be loaded
+            routine (str): calibration routine data to be loaded
+            format (str): data format. Possible choices are 'csv' and 'pickle'.
+        """
+        file = f"{path}/{routine}/"
+        if format == "csv":
+            file = f"{path}/{routine}/data.csv"
+            self.df.read_csv(file)
+        elif format == "pickle":
+            file = f"{path}/{routine}/data.pkl"
+            self.df = pd.read_pickle(path)
+        else:
+            raise_error(ValueError, f"Cannot load data using {format} format.")
 
     def to_csv(self, path):
         """Save data in csv file.
