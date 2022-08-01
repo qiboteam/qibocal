@@ -7,47 +7,59 @@ import yaml
 from dash import MATCH, Dash, Input, Output, dcc, html
 
 from qcvv import plots
+from qcvv.data import Dataset
 
 
 def serve_layout(path):
+    # show metadata in the layout
+    with open(os.path.join(path, "meta.yml"), "r") as file:
+        metadata = yaml.safe_load(file)
+
     layout = [
         dcc.Interval(
             id=f"stopper-interval", interval=1000, n_intervals=0, disabled=False
-        )
+        ),
+        html.P(f"Path name: {path}"),
+        html.P(f"Run date: {metadata.get('date')}"),
+        html.P(f"Versions: "),
+        html.Table(
+            [
+                html.Tr([html.Th(library), html.Th(version)])
+                for library, version in metadata.get("versions").items()
+            ]
+        ),
+        html.Br(),
     ]
 
-    for action in os.listdir(path):
-        action_path = os.path.join(path, action)
-        if os.path.isdir(action_path):
-            layout.append(html.H2(action))
-            for run in sorted(os.listdir(action_path)):
-                run_path = os.path.join(action_path, run)
-                layout.append(
-                    html.Details(
-                        children=[
-                            html.Summary(run),
-                            dcc.Graph(
-                                id={"type": "graph", "index": run_path},
-                            ),
-                            dcc.Interval(
-                                id={"type": "interval", "index": run_path},
-                                interval=1000,
-                                n_intervals=0,
-                                disabled=False,
-                            ),
-                            dcc.Input(
-                                id={
-                                    "type": "last-modified",
-                                    "index": run_path,
-                                },
-                                value=0,
-                                type="number",
-                                style={"display": "none"},
-                            ),
-                        ]
-                    )
-                )
-                layout.append(html.Br())
+    data_path = os.path.join(path, "data")
+    for routine in os.listdir(data_path):
+        routine_path = os.path.join(data_path, routine)
+        layout.append(
+            html.Details(
+                children=[
+                    html.Summary(routine),
+                    dcc.Graph(
+                        id={"type": "graph", "index": routine_path},
+                    ),
+                    dcc.Interval(
+                        id={"type": "interval", "index": routine_path},
+                        interval=1000,
+                        n_intervals=0,
+                        disabled=False,
+                    ),
+                    dcc.Input(
+                        id={
+                            "type": "last-modified",
+                            "index": routine_path,
+                        },
+                        value=0,
+                        type="number",
+                        style={"display": "none"},
+                    ),
+                ]
+            )
+        )
+        layout.append(html.Br())
 
     return html.Div(children=layout)
 
@@ -61,19 +73,17 @@ app = Dash(__name__)
     Input({"type": "graph", "index": MATCH}, "id"),
 )
 def get_graph(n, graph_id):
-    path = os.path.join(graph_id.get("index"), "data.yml")
-    if not os.path.exists(path):
+    # path = os.path.join(graph_id.get("index"), "data.pkl")
+    # if not os.path.exists(path):
+    #    return go.Figure()
+
+    data = Dataset()
+    folder, routine = os.path.split(graph_id.get("index"))
+    try:
+        data.load_data(folder, routine, "pickle")
+        return getattr(plots, routine)(data.df, autosize=False, width=1200, height=800)
+    except FileNotFoundError:
         return go.Figure()
-
-    with open(path, "r") as file:
-        data = yaml.safe_load(file)
-
-    df = pd.DataFrame(
-        {f"{v.get('name')} ({v.get('unit')})": v.get("data") for v in data.values()}
-    )
-
-    action = graph_id.get("index").split("/")[1]
-    return getattr(plots, action)(df, autosize=False, width=1200, height=800)
 
 
 @app.callback(
