@@ -36,6 +36,11 @@ def command(runcard, folder, force=None):
 
 class ActionBuilder:
     def __init__(self, runcard, folder, force):
+        """ "Class for parsing and executing runcards.
+        Args:
+            runcard (path): path containing the runcard.
+            folder (path): path for the output folder.
+            force (bool): option to overwrite the output folder if it exists already."""
 
         # Creating output folder
         if os.path.exists(folder) and not force:
@@ -55,16 +60,19 @@ class ActionBuilder:
         self.runcard = self.load_runcard(runcard)
         self._allocate_platform(self.runcard["platform"])
         self.qubit = self.runcard["qubit"]
+        self.format = self.runcard["format"]
 
         # Saving runcard
         self.save_runcards(path, runcard)
 
     def _allocate_platform(self, platform_name):
+        """Allocate the platform using Qibolab."""
         from qibo.backends import construct_backend
 
         self.platform = construct_backend("qibolab", platform=platform_name).platform
 
     def save_runcards(self, path, runcard):
+        """Save the output runcards."""
         import datetime
 
         import qibo
@@ -92,8 +100,7 @@ class ActionBuilder:
         shutil.copy(runcard, f"{path}/runcard.yml")
 
     def _build_single_action(self, name):
-        """This private method finds the correct function in the qcvv and
-        checks if any of the arguments are missing in the runcard"""
+        """Helper method to parse the actions in the runcard."""
         f = getattr(calibrations, name)
         if hasattr(f, "prepare"):
             self.output = f.prepare(name=f.__name__, folder=self.folder)
@@ -105,14 +112,13 @@ class ActionBuilder:
         return f, params
 
     def load_runcard(self, path):
-        """Loading runcard"""
+        """Method to load the runcard."""
         with open(path, "r") as file:
             runcard = yaml.safe_load(file)
         return runcard
 
     def execute(self):
-        """Method to obtain the calibration routine with the arguments
-        checked"""
+        """Method to execute sequentially all the actions in the runcard."""
         self.platform.connect()
         self.platform.setup()
         self.platform.start()
@@ -123,9 +129,8 @@ class ActionBuilder:
         self.platform.disconnect()
 
     def get_result(self, routine, arguments):
-        """Method to execute the routine and saving data through
-        final action"""
+        """Method to execute a single action and retrieving the results."""
         results = routine(self.platform, self.qubit, **arguments)
         if hasattr(routine, "final_action"):
-            return routine.final_action(results, self.output)
+            return routine.final_action(results, self.output, self.format)
         return results

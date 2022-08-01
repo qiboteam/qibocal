@@ -2,6 +2,8 @@ platform: tii5q
 
 qubit: 0
 
+format: pickle
+
 actions:
   resonator_spectroscopy_attenuation:
     lowres_width: 10_000_000
@@ -12,25 +14,3 @@ actions:
     max_att: 60
     step_att: 10
     software_averages: 2
-
-# resonator_spectroscopy:
-#   qubit: 0
-#   settings:
-#     lowres_width: 100_000
-#     lowres_step: 50_000
-#     highres_width: 100_000
-#     highres_step: 10_000
-#     precision_width: 3_000_000
-#     precision_step: 5_000
-#     software_averages: 1
-
-# resonator_flux_att:
-#   qubit: 0
-#   settings:
-#     min_current: -10.e-3
-#     max_current: 10.e-3
-#     step_current: 1.e-3
-#     min_att: 0
-#     max_att: 60
-#     step_att: 2
-#     software_averages: 1

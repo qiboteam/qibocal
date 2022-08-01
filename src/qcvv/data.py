@@ -1,14 +1,22 @@
 # -*- coding: utf-8 -*-
-import numpy as np
 import pandas as pd
 import pint_pandas
-import yaml
 
 from qcvv.config import raise_error
 
 
 class Dataset:
-    """First prototype of dataset for calibration routines."""
+    """Class to store the data measured during the calibration routines.
+    It is a wrapper to a pandas DataFrame with units of measure from the Pint
+    library.
+
+    Args:
+        points (int): number of rows that will be save to file dinamically. Useful
+        for the live plotting.
+        quantities (dict): dictionary containing additional quantities that the user
+        may save other than the pulse sequence output. The keys are the name of the
+        quantities and the corresponding values are the units of measure.
+    """
 
     def __init__(self, points=100, quantities=None):
 
@@ -27,6 +35,13 @@ class Dataset:
                 self.df.insert(0, name, pd.Series(dtype=f"pint[{unit}]"))
 
     def add(self, data):
+        """Add a row to dataset.
+
+        Args:
+            data (dict): dictionary containing the data to be added.
+                        Every key should have the following form:
+                        '<name>[<unit>]'.
+        """
         import re
 
         from pint import UnitRegistry
@@ -40,4 +55,17 @@ class Dataset:
             self.df.loc[l + l // len(list(data.keys())), name] = value * ureg(unit)
 
     def __len__(self):
+        """Computes the length of the dataset."""
         return len(self.df)
+
+    def to_csv(self, path):
+        """Save data in csv file.
+        Args:
+            path (str): Path containing output folder."""
+        self.df.to_csv(f"{path}/data.csv")
+
+    def to_pickle(self, path):
+        """Save data in pickel file.
+        Args:
+            path (str): Path containing output folder."""
+        self.df.to_pickle(f"{path}/data.pkl")
