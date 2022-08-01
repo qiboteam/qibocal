@@ -1,26 +1,29 @@
 # -*- coding: utf-8 -*-
+"""Decorators implementation."""
 import os
-import time
 
-import yaml
+from qcvv.config import raise_error
 
 
 def prepare_path(name=None, folder=None):
-    path = os.path.join(folder, f"{name}/{time.strftime('%Y%m%d-%H%M%S')}")
+    """Helper function to create the output folder for a particular calibration."""
+    path = os.path.join(folder, f"data/{name}/")
     os.makedirs(path)
     return path
 
 
-def save(results, path, format="yaml"):
+def save(results, path, format=None):
+    """Helper function to store the data in a particular format."""
+
+    if format is None:
+        raise_error(ValueError, f"Cannot store data using {format} format.")
+
     for data in results:
-        output = {}
-        for i, c in data.container.items():
-            output[i] = c.to_dict()
-        with open(f"{path}/data.yml", "w") as f:
-            yaml.dump(output, f)
+        getattr(data, f"to_{format}")(path)
 
 
 def store(f):
+    """Decorator storing data."""
     f.prepare = prepare_path
     f.final_action = save
     return f

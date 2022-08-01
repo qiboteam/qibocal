@@ -1,144 +1,89 @@
 # -*- coding: utf-8 -*-
-import numpy as np
-import yaml
+"""Implementation of Dataset class to store measurements."""
+import pandas as pd
+import pint_pandas
 
 from qcvv.config import raise_error
 
 
-class MeasuredQuantity:
-    """Data Structure for collecting all the information for a quantity
-    measured during a calibration routine"""
-
-    def __init__(self, name=None, unit=None, data=None):
-        self.unit = unit
-        self.name = name
-        self.data = []
-        if data is not None:
-            self.data.append(data)
-
-    def add(self, *data):
-        if isinstance(data, MeasuredQuantity):
-            assert self.unit == data.unit, "Unit of measure are not compatible"
-            assert self.name == data.name, "Impossible to compare different quantities"
-            self.data += data.data
-        elif len(data) == 3:
-            assert self.name == data[0], "Impossible to compare different quantities"
-            assert self.unit == data[1], "Unit of measure are not compatible"
-            self.data.append(data[2])
-        else:
-            raise_error(RuntimeError, "Error when adding data.")
-
-    def __repr__(self):
-        return f"{self.name} ({self.unit}): {self.data}"
-
-    @property
-    def unit(self):
-        return self._unit
-
-    @unit.setter
-    def unit(self, unit):
-        self._unit = unit
-
-    @property
-    def name(self):
-        return self._name
-
-    @name.setter
-    def name(self, name):
-        self._name = name
-
-    @property
-    def data(self):
-        return self._data
-
-    @data.setter
-    def data(self, data):
-        self._data = data
-
-    def to_dict(self):
-        return {"name": self.name, "unit": self.unit, "data": self.data}
-
-
 class Dataset:
-    """First prototype of dataset for calibration routines."""
+    """Class to store the data measured during the calibration routines.
+    It is a wrapper to a pandas DataFrame with units of measure from the Pint
+    library.
+
+    Args:
+        points (int): number of rows that will be save to file dinamically. Useful
+        for the live plotting.
+        quantities (dict): dictionary containing additional quantities that the user
+        may save other than the pulse sequence output. The keys are the name of the
+        quantities and the corresponding values are the units of measure.
+    """
 
     def __init__(self, points=100, quantities=None):
-        self.container = {}
-        self.container["MSR"] = MeasuredQuantity(name="MSR", unit="V")
-        self.container["i"] = MeasuredQuantity(name="i", unit="V")
-        self.container["q"] = MeasuredQuantity(name="q", unit="V")
-        self.container["phase"] = MeasuredQuantity(name="phase", unit="deg")
-        if quantities is not None:
-            if isinstance(quantities, tuple):
-                self.container[quantities[0]] = MeasuredQuantity(*quantities)
-            elif isinstance(quantities, list):
-                for item in quantities:
-                    self.container[item[0]] = MeasuredQuantity(*item)
-            else:
-                raise_error(RuntimeError, f"Format of {quantities} is not valid.")
+
         self.points = points
-
-    def add(self, msr, i, q, phase, quantities=None):
-        self.container["MSR"].add("MSR", "V", float(msr))
-        self.container["i"].add("i", "V", float(i))
-        self.container["q"].add("q", "V", float(q))
-        self.container["phase"].add("phase", "deg", float(phase))
+        self.df = pd.DataFrame(
+            {
+                "MSR": pd.Series(dtype="pint[V]"),
+                "i": pd.Series(dtype="pint[V]"),
+                "q": pd.Series(dtype="pint[V]"),
+                "phase": pd.Series(dtype="pint[deg]"),
+            }
+        )
 
         if quantities is not None:
-            if isinstance(quantities, tuple):
-                self.container[quantities[0]].add(
-                    quantities[0], quantities[1], float(quantities[2])
-                )
-            elif isinstance(quantities, list):
-                for item in quantities:
-                    self.container[item[0]].add(item[0], item[1], float(item[2]))
-            else:
-                raise_error(RuntimeError, f"Format of {quantities} is not valid.")
+            for name, unit in quantities.items():
+                self.df.insert(0, name, pd.Series(dtype=f"pint[{unit}]"))
 
-    def compute_software_average(self, quantities):
-        avg_dataset = self.__class__()
-        if isinstance(quantities, str):
-            avg_dataset.container[quantities] = MeasuredQuantity(
-                self.container[quantities].name,
-                self.container[quantities].unit,
-                np.unique(self.container[quantities].data).tolist(),
-            )
-            total = len(avg_dataset.container[quantities].data[0])
-        elif isinstance(quantities, list):
-            total = 1
-            for quantity in quantities:
-                avg_dataset.container[quantity] = MeasuredQuantity(
-                    self.container[quantity].name,
-                    self.container[quantity].unit,
-                    np.unique(self.container[quantity].data).tolist(),
-                )
-                total *= len(avg_dataset.container[quantity].data[0])
+    def add(self, data):
+        """Add a row to dataset.
+
+        Args:
+            data (dict): dictionary containing the data to be added.
+                        Every key should have the following form:
+                        '<name>[<unit>]'.
+        """
+        import re
+
+        from pint import UnitRegistry
+
+        ureg = UnitRegistry()
+        l = len(self)
+        for key, value in data.items():
+            name = key.split("[")[0]
+            unit = re.search(r"\[([A-Za-z0-9_]+)\]", key).group(1)
+            # TODO: find a better way to do this
+            self.df.loc[l + l // len(list(data.keys())), name] = value * ureg(unit)
+
+    def __len__(self):
+        """Computes the length of the dataset."""
+        return len(self.df)
+
+    def load_data(self, folder, routine, format):
+        """Load data from specific format.
+        Args:
+            folder (path): path to the output folder from which the data will be loaded
+            routine (str): calibration routine data to be loaded
+            format (str): data format. Possible choices are 'csv' and 'pickle'.
+        """
+        file = f"{path}/{routine}/"
+        if format == "csv":
+            file = f"{path}/{routine}/data.csv"
+            self.df.read_csv(file)
+        elif format == "pickle":
+            file = f"{path}/{routine}/data.pkl"
+            self.df = pd.read_pickle(path)
         else:
-            raise_error(RuntimeError, f"Format of {quantities} is not valid.")
+            raise_error(ValueError, f"Cannot load data using {format} format.")
 
-        for name, unit in [("MSR", "V"), ("i", "V"), ("q", "V"), ("phase", "deg")]:
-            for j in range(total):
-                avg_dataset.container[name].add(
-                    name,
-                    unit,
-                    float(
-                        np.mean(
-                            [
-                                self.container[name].data[i]
-                                for i in range(len(self.container[name].data))
-                                if i % total == j
-                            ]
-                        )
-                    ),
-                )
-        return avg_dataset
+    def to_csv(self, path):
+        """Save data in csv file.
+        Args:
+            path (str): Path containing output folder."""
+        self.df.to_csv(f"{path}/data.csv")
 
-    def get_data(self, name):
-        return self.container[name].data
-
-    def to_yaml(self, path, name="data"):
-        output = {}
-        for i, c in self.container.items():
-            output[i] = c.to_dict()
-        with open(f"{path}/{name}.yml", "w") as f:
-            yaml.dump(output, f)
+    def to_pickle(self, path):
+        """Save data in pickel file.
+        Args:
+            path (str): Path containing output folder."""
+        self.df.to_pickle(f"{path}/data.pkl")
