@@ -19,6 +19,7 @@ def serve_layout(path):
         dcc.Interval(
             id=f"stopper-interval", interval=2000, n_intervals=0, disabled=False
         ),
+        dcc.Input(id="path", value=path, type="text", style={"display": "none"}),
         html.P(f"Path name: {path}"),
         html.P(f"Run date: {metadata.get('date')}"),
         html.P(f"Versions: "),
@@ -33,16 +34,16 @@ def serve_layout(path):
 
     data_path = os.path.join(path, "data")
     for routine in os.listdir(data_path):
-        routine_path = os.path.join(data_path, routine)
         layout.append(
             html.Details(
                 children=[
                     html.Summary(routine),
                     dcc.Graph(
-                        id={"type": "graph", "index": routine_path},
+                        id={"type": "graph", "index": routine},
                     ),
                     dcc.Interval(
-                        id={"type": "interval", "index": routine_path},
+                        id={"type": "interval", "index": routine},
+                        # TODO: Perhaps the user should be allowed to change the refresh rate
                         interval=1000,
                         n_intervals=0,
                         disabled=False,
@@ -50,7 +51,7 @@ def serve_layout(path):
                     dcc.Input(
                         id={
                             "type": "last-modified",
-                            "index": routine_path,
+                            "index": routine,
                         },
                         value=0,
                         type="number",
@@ -71,10 +72,10 @@ app = Dash(__name__)
     Output({"type": "graph", "index": MATCH}, "figure"),
     Input({"type": "interval", "index": MATCH}, "n_intervals"),
     Input({"type": "graph", "index": MATCH}, "id"),
+    Input("path", "value"),
 )
-def get_graph(n, graph_id):
-    folder, routine = os.path.split(graph_id.get("index"))
-    folder, _ = os.path.split(folder)
+def get_graph(n, graph_id, folder):
+    routine = graph_id.get("index")
     # find data format
     with open(os.path.join(folder, "runcard.yml"), "r") as file:
         runcard = yaml.safe_load(file)
@@ -94,11 +95,16 @@ def get_graph(n, graph_id):
     Input("stopper-interval", "n_intervals"),
     Input({"type": "last-modified", "index": MATCH}, "value"),
     Input({"type": "graph", "index": MATCH}, "id"),
+    Input("path", "value"),
 )
-def toggle_interval(n, last_modified, graph_id):
+def toggle_interval(n, last_modified, graph_id, folder):
     """Disables live plotting if data file is not being modified."""
-    path = os.path.join(graph_id.get("index"), "data.csv")
+    routine = graph_id.get("index")
+    path = os.path.join(folder, "data", routine)
+
     if not os.path.exists(path):
         return 0, True
+
+    path = os.path.join(path, os.listdir(path)[0])
     new_modified = os.stat(path)[-1]
     return new_modified, new_modified == last_modified
