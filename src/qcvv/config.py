@@ -5,6 +5,7 @@ import logging
 
 def raise_error(exception, message=None, args=None):
     """Raise exception with logging error.
+
     Args:
         exception (Exception): python exception.
         message (str): the error message.
