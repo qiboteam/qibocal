@@ -66,13 +66,14 @@ class Dataset:
             routine (str): calibration routine data to be loaded
             format (str): data format. Possible choices are 'csv' and 'pickle'.
         """
-        file = f"{path}/{routine}/"
         if format == "csv":
-            file = f"{path}/{routine}/data.csv"
-            self.df.read_csv(file)
+            file = f"{folder}/data/{routine}/data.csv"
+            self.df = pd.read_csv(file, header=[0, 1])
+            self.df = self.df.pint.quantify(level=-1)
+            self.df.pop("Unnamed: 0_level_0")
         elif format == "pickle":
-            file = f"{path}/{routine}/data.pkl"
-            self.df = pd.read_pickle(path)
+            file = f"{folder}/data/{routine}/data.pkl"
+            self.df = pd.read_pickle(file)
         else:
             raise_error(ValueError, f"Cannot load data using {format} format.")
 
@@ -80,7 +81,7 @@ class Dataset:
         """Save data in csv file.
         Args:
             path (str): Path containing output folder."""
-        self.df.to_csv(f"{path}/data.csv")
+        self.df.pint.dequantify().to_csv(f"{path}/data.csv")
 
     def to_pickle(self, path):
         """Save data in pickel file.
