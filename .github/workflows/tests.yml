@@ -38,7 +38,7 @@ jobs:
           PIP="$(head -n1 $(which poetry) | cut -c 3-) -m pip"
           eval `ssh-agent -s`
           ssh-add - <<< '${{ secrets.SSH_PRIVATE_KEY }}'
-          ${PIP} install -r requirements.txt
+          ${PIP} install .[tiiq]
       - name: Install task runner
         run: pip install poethepoet
       - name: Lint
