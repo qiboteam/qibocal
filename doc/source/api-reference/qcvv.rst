@@ -1,46 +1,32 @@
-Qcvv package
-============
+Calibration routines
+--------------------
 
-Subpackages
------------
+In ``qcvv`` we provide the following calibration routines:
 
-.. toctree::
-   :maxdepth: 4
+Resonator Spectroscopy with Attenuation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-   qcvv.calibrations
-   qcvv.cli
-
-Submodules
-----------
-
-qcvv.config module
-------------------
-
-.. automodule:: qcvv.config
+.. automodule:: qcvv.calibrations.resonator_spectroscopy
    :members:
    :undoc-members:
    :show-inheritance:
 
-qcvv.data module
-----------------
+Utils
+^^^^^
 
-.. automodule:: qcvv.data
+.. automodule:: qcvv.calibrations.utils
    :members:
    :undoc-members:
    :show-inheritance:
 
-qcvv.decorators module
-----------------------
 
-.. automodule:: qcvv.decorators
-   :members:
-   :undoc-members:
-   :show-inheritance:
+Data structure
+--------------
 
-Module contents
----------------
+In ``qcvv`` all the data are stored using the :class:`qcvv.data.Dataset` which provide
+different formats for storing the data including `pickle <https://docs.python.org/3/library/pickle.html>`_
+and `csv <https://docs.python.org/3/library/csv.html>`_.
 
-.. automodule:: qcvv
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. autoclass:: qcvv.data.Dataset
+    :members:
+    :member-order: bysource
