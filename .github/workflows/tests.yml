@@ -36,7 +36,9 @@ jobs:
         run: |
           # same poetry env
           PIP="$(head -n1 $(which poetry) | cut -c 3-) -m pip"
-          ${PIP} install git+https://github.com/qiboteam/qibolab
+          eval `ssh-agent -s`
+          ssh-add - <<< '${{ secrets.PRIVATE_SSH_KEY }}'
+          {PIP} install -r requirements.txt
       - name: Install task runner
         run: pip install poethepoet
       - name: Lint
