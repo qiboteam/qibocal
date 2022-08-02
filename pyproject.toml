@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "qcvv"
-version = "0.0.0"
+version = "0.0.1.dev0"
 description = ""
 authors = ["andrea-pasquale <andreapasquale97@gmail.com>"]
 license = "Apache License 2.0"
