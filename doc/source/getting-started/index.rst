@@ -7,3 +7,5 @@ In this section we present the basic aspects of the Qcvv design and provide inst
     :maxdepth: 1
 
     installation
+    interface
+    runcard
