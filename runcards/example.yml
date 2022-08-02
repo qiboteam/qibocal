@@ -2,7 +2,7 @@ platform: tii5q
 
 qubit: 0
 
-format: pickle
+format: csv
 
 actions:
   resonator_spectroscopy_attenuation:
@@ -14,3 +14,4 @@ actions:
     max_att: 60
     step_att: 10
     software_averages: 2
+    points: 10
