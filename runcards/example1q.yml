@@ -14,3 +14,4 @@ actions:
     max_att: 60
     step_att: 10
     software_averages: 2
+    points: 10

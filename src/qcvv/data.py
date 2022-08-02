@@ -12,16 +12,13 @@ class Dataset:
     library.
 
     Args:
-        points (int): number of rows that will be save to file dinamically. Useful
-        for the live plotting.
         quantities (dict): dictionary containing additional quantities that the user
         may save other than the pulse sequence output. The keys are the name of the
         quantities and the corresponding values are the units of measure.
     """
 
-    def __init__(self, points=100, quantities=None):
+    def __init__(self, quantities=None):
 
-        self.points = points
         self.df = pd.DataFrame(
             {
                 "MSR": pd.Series(dtype="pint[V]"),
