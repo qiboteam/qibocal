@@ -26,6 +26,8 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-interaction --no-root
         if: steps.cache.outputs.cache-hit != 'true'
+      - name: Install project
+        run: poetry install --no-interaction ${{ inputs.poetry-extras }}
       - name: Install task runner
         run: pip install poethepoet
       - name: Lint
