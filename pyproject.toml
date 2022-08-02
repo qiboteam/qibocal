@@ -38,11 +38,12 @@ qq = "qcvv:command"
 qq-live = "qcvv:live_plot"
 
 [tool.poe.tasks]
-test = "pytest tests"
+test = "pytest src/qcvv/tests"
 lint = "pylint src/**/*.py -E"
 lint-warnings = "pylint src/**/*.py --exit-zero"
 
 [tool.pytest.ini_options]
+testpaths = ['src/qcvv/tests/']
 addopts = [
     '--cov=qcvv',
     '--cov-report=xml'
