@@ -121,7 +121,7 @@ class ActionBuilder:
             self.output = f.prepare(name=f.__name__, folder=self.folder)
         sig = inspect.signature(f)
         params = self.runcard["actions"][name]
-        for param in list(sig.parameters)[2:]:
+        for param in list(sig.parameters)[2:-1]:
             if param not in params:
                 raise_error(AttributeError, f"Missing parameter {param} in runcard.")
         return f, params

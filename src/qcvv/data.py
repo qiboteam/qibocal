@@ -12,16 +12,13 @@ class Dataset:
     library.
 
     Args:
-        points (int): number of rows that will be save to file dinamically. Useful
-        for the live plotting.
         quantities (dict): dictionary containing additional quantities that the user
         may save other than the pulse sequence output. The keys are the name of the
         quantities and the corresponding values are the units of measure.
     """
 
-    def __init__(self, points=100, quantities=None):
+    def __init__(self, quantities=None):
 
-        self.points = points
         self.df = pd.DataFrame(
             {
                 "MSR": pd.Series(dtype="pint[V]"),
@@ -59,23 +56,30 @@ class Dataset:
         """Computes the length of the dataset."""
         return len(self.df)
 
-    def load_data(self, folder, routine, format):
+    @classmethod
+    def load_data(cls, folder, routine, format):
         """Load data from specific format.
         Args:
             folder (path): path to the output folder from which the data will be loaded
             routine (str): calibration routine data to be loaded
             format (str): data format. Possible choices are 'csv' and 'pickle'.
+
+        Returns:
+            dataset (``Dataset``): dataset object with the loaded data.
         """
+        obj = cls()
         if format == "csv":
             file = f"{folder}/data/{routine}/data.csv"
-            self.df = pd.read_csv(file, header=[0, 1])
-            self.df = self.df.pint.quantify(level=-1)
-            self.df.pop("Unnamed: 0_level_0")
+            obj.df = pd.read_csv(file, header=[0, 1])
+            obj.df = obj.df.pint.quantify(level=-1)
+            obj.df.pop("Unnamed: 0_level_0")
         elif format == "pickle":
             file = f"{folder}/data/{routine}/data.pkl"
-            self.df = pd.read_pickle(file)
+            obj.df = pd.read_pickle(file)
         else:
             raise_error(ValueError, f"Cannot load data using {format} format.")
+
+        return obj
 
     def to_csv(self, path):
         """Save data in csv file.
