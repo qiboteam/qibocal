@@ -49,6 +49,8 @@ qq-live = "qcvv:live_plot"
 test = "pytest tests"
 lint = "pylint src/**/*.py -E"
 lint-warnings = "pylint src/**/*.py --exit-zero"
+docs = "make -c doc html"
+docs-clean = "make -c doc clean"
 
 [tool.pytest.ini_options]
 addopts = [
