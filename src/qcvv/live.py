@@ -81,9 +81,8 @@ def get_graph(n, graph_id, folder):
         runcard = yaml.safe_load(file)
     format = runcard.get("format")
 
-    data = Dataset()
     try:
-        data.load_data(folder, routine, format)
+        data = Dataset.load_data(folder, routine, format)
         return getattr(plots, routine)(data.df, autosize=False, width=1200, height=800)
     except FileNotFoundError:
         return go.Figure()
