@@ -2,7 +2,7 @@ platform: tii5q
 
 qubit: 0
 
-format: pickle
+format: csv
 
 actions:
   resonator_spectroscopy_attenuation:
