@@ -22,12 +22,9 @@ pre-commit install
 ```
 
 ## Minimal working example
-Make sure to first install [Qibolab](https://github.com/qiboteam/qibolab) in the same environment where you installed `qcvv`.
-
 The command for executing calibration routines is the following:
 ```sh
-qq <runcard> <output_folder>
+qq <runcard>
 ```
 where:
 - `<runcard>`: yaml file containing the calibration routines to be performed. For more information see the documentation or the runcard examples in the `runcards` folder.
-- `<output_folder>`: the folder that will be created to store the output, in order to use an existing folder you can use the option `--force`.

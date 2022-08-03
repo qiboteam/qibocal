@@ -9,10 +9,12 @@ In this section we present the different commands implemented in ``qcvv`` and ho
 
 .. code-block::
 
-    qq <runcard> <output_folder>
+    qq <runcard> -o <output_folder>
 
 It will run all the calibration routines specified in the ``<runcard>`` file and save all results
 in the ``<output_folder>``. The runcard layout is specified in the :ref:`this <runcard>` section.
+If no ``<output_folder>`` is specified ``qq`` will automatically create a default folder containing
+the current date and the username.
 
 
 ``qq-live``

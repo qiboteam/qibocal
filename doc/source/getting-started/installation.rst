@@ -3,15 +3,6 @@ Installation instructions
 
 .. _installing-qcvv:
 
-
-
-.. This section will be removed once we include qibolab in pyproject.toml
-
-Prerequisites
-^^^^^^^^^^^^^
-In order to use ``qcvv`` you need to first install ``qibolab``.
-We recommend to follow the installation instructions available `here <https://github.com/qiboteam/qibolab>`_.
-
 Qcvv
 ^^^^
 
