@@ -1,0 +1,3 @@
+ignore:
+  - "src/qcvv/cli"
+  - "src/qcvv/calibrations"
