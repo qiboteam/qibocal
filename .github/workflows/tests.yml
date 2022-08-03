@@ -13,6 +13,10 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: 3.9
+      - uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: ${{ secrets.KNOWN_HOSTS }}
       - name: Install and configure poetry
         uses: snok/install-poetry@v1
         with:
@@ -23,22 +27,11 @@ jobs:
         with:
           path: ~/.virtualenvs
           key: ${{ runner.os }}-py-${{ steps.setup-python.outputs.python-version }}-poetry-${{ hashFiles('poetry.lock') }}
-      - name: Set ssh-key for qibolab
-        uses: webfactory/ssh-agent@v0.5.3
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
       - name: Install dependencies
         run: poetry install --no-interaction --no-root
         if: steps.cache.outputs.cache-hit != 'true'
       - name: Install project
         run: poetry install --no-interaction ${{ inputs.poetry-extras }}
-      - name: Install qibolab
-        run: |
-          # same poetry env
-          PIP="$(head -n1 $(which poetry) | cut -c 3-) -m pip"
-          eval `ssh-agent -s`
-          ssh-add - <<< '${{ secrets.SSH_PRIVATE_KEY }}'
-          pip install git+ssh://git@github.com:qiboteam/qibolab.git
       - name: Install task runner
         run: pip install poethepoet
       - name: Lint
