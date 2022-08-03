@@ -1723,7 +1723,7 @@ tiiq = ["qblox-instruments", "quantify-core", "dash"]
 
 [package.source]
 type = "git"
-url = "https://github.com/qiboteam/qibolab.git"
+url = "git@github.com:qiboteam/qibolab.git"
 reference = "main"
 resolved_reference = "063d313f2746f6835daec499d1adae46c1bcee77"
 
@@ -2139,7 +2139,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8"
-content-hash = "e819ecebe9981fb82f295ede2ef6517c365287fed3b3707e5ef68e7071120da8"
+content-hash = "9575913e01801c989574448d94b0ca821ea018d2d91450992d3f426a6c5f2148"
 
 [metadata.files]
 appnope = []
