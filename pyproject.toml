@@ -53,7 +53,6 @@ addopts = [
 [tool.pylint.master]
 # extensions not to check
 extension-pkg-whitelist = ["numpy"]
-ignored-modules = ["qibolab"]
 jobs = 1
 
 [tool.pylint.messages_control]
