@@ -15,17 +15,23 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.argument("runcard", metavar="RUNCARD", type=click.Path(exists=True))
-@click.argument("folder", type=click.Path())
 @click.option(
-    "--force", is_flag=True, help="Use --force option to overwrite the output folder."
+    "folder",
+    "-o",
+    type=click.Path(),
+    help="Output folder. If not provided a standard name will generated.",
+)
+@click.option(
+    "force",
+    "-f",
+    is_flag=True,
+    help="Use --force option to overwrite the output folder.",
 )
 def command(runcard, folder, force=None):
 
     """qcvv: Quantum Calibration Verification and Validation using Qibo.
 
     Arguments:
-
-     - FOLDER: output folder.
 
      - RUNCARD: runcard with declarative inputs.
     """
@@ -56,22 +62,9 @@ class ActionBuilder:
         folder (path): path for the output folder.
         force (bool): option to overwrite the output folder if it exists already."""
 
-    def __init__(self, runcard, folder, force):
-        # Creating output folder
-        if os.path.exists(folder) and not force:
-            raise_error(
-                RuntimeError, "Calibration folder with the same name already exists."
-            )
-        elif os.path.exists(folder) and force:
-            log.info(f"Overwriting folder {folder}.")
-            shutil.rmtree(os.path.join(os.getcwd(), folder))
+    def __init__(self, runcard, folder=None, force=False):
 
-        path = os.path.join(os.getcwd(), folder)
-        log.info(f"Creating directory {path}.")
-        os.makedirs(path)
-
-        self.folder = folder
-        self.force = force
+        path, self.folder = self._generate_output_folder(folder, force)
         self.runcard = self.load_runcard(runcard)
         self._allocate_platform(self.runcard["platform"])
         self.qubit = self.runcard["qubit"]
@@ -79,6 +72,39 @@ class ActionBuilder:
 
         # Saving runcard
         self.save_runcards(path, runcard)
+
+    @staticmethod
+    def _generate_output_folder(folder, force):
+        """Static method for generating the output folder.
+
+        Args:
+            folder (path): path for the output folder. If None it will be created a folder automatically
+            force (bool): option to overwrite the output folder if it exists already.
+        """
+        if folder is None:
+            import datetime
+            import pwd
+
+            e = datetime.datetime.now()
+            user = pwd.getpwuid(os.getuid())[0].replace(".", "-")
+            date = e.strftime("%Y-%m-%d")
+            folder = f"{date}-{'000'}-{user}"
+            num = 0
+            while os.path.exists(folder):
+                log.warning(f"Directory {folder} already exists.")
+                num += 1
+                folder = f"{date}-{str(num).rjust(3, '0')}-{user}"
+                log.warning(f"Trying to create directory {folder}")
+        elif os.path.exists(folder) and not force:
+            raise_error(RuntimeError, f"Directory {folder} already exists.")
+        elif os.path.exists(folder) and force:
+            log.warning(f"Deleting previous directory {folder}.")
+            shutil.rmtree(os.path.join(os.getcwd(), folder))
+
+        path = os.path.join(os.getcwd(), folder)
+        log.info(f"Creating directory {folder}.")
+        os.makedirs(path)
+        return path, folder
 
     def _allocate_platform(self, platform_name):
         """Allocate the platform using Qibolab."""

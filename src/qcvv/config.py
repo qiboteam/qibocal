@@ -1,6 +1,12 @@
 # -*- coding: utf-8 -*-
 """Custom logger implemenation."""
 import logging
+import os
+
+# Logging level from 0 (all) to 4 (errors) (see https://docs.python.org/3/library/logging.html#logging-levels)
+QCVV_LOG_LEVEL = 1
+if "QCVV_LOG_LEVEL" in os.environ:  # pragma: no cover
+    QCVV_LOG_LEVEL = 10 * int(os.environ.get("QCVV_LOG_LEVEL"))
 
 
 def raise_error(exception, message=None, args=None):
@@ -30,4 +36,5 @@ class CustomHandler(logging.StreamHandler):
 
 # allocate logger object
 log = logging.getLogger(__name__)
+log.setLevel(QCVV_LOG_LEVEL)
 log.addHandler(CustomHandler())
