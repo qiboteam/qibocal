@@ -41,9 +41,6 @@ def live(path=None):
 
     children = [
         html.Title(path),
-        dcc.Interval(
-            id=f"stopper-interval", interval=3000, n_intervals=0, disabled=False
-        ),
         dcc.Input(id="path", value=path, type="text", style={"display": "none"}),
         html.H2(path),
         html.P(f"Run date: {metadata.get('date')}"),
@@ -73,15 +70,6 @@ def live(path=None):
                         interval=1000,
                         n_intervals=0,
                         disabled=False,
-                    ),
-                    dcc.Input(
-                        id={
-                            "type": "last-modified",
-                            "index": routine_path,
-                        },
-                        value=0,
-                        type="number",
-                        style={"display": "none"},
                     ),
                 ]
             )
