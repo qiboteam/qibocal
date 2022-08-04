@@ -5,10 +5,33 @@ import dash
 import yaml
 from dash import dcc, html
 
-dash.register_page(__name__, path_template="/live/<path>")
+
+def home():
+    folders = [
+        folder
+        for folder in os.listdir(os.getcwd())
+        if os.path.isdir(folder) and "meta.yml" in os.listdir(folder)
+    ]
+    return html.Div(
+        [
+            html.H1("Available runs:"),
+            html.Div(
+                [
+                    html.H3(
+                        dcc.Link(
+                            f"{folder}",
+                            href=f"/live/{folder}",
+                            target="_blank",  # to open in new tab
+                        )
+                    )
+                    for folder in sorted(folders)
+                ]
+            ),
+        ]
+    )
 
 
-def layout(path=None):
+def live(path=None):
     # show metadata in the layout
     try:
         with open(os.path.join(path, "meta.yml"), "r") as file:
@@ -22,7 +45,7 @@ def layout(path=None):
             id=f"stopper-interval", interval=3000, n_intervals=0, disabled=False
         ),
         dcc.Input(id="path", value=path, type="text", style={"display": "none"}),
-        html.P(f"Path name: {path}"),
+        html.H2(path),
         html.P(f"Run date: {metadata.get('date')}"),
         html.P(f"Versions: "),
         html.Table(

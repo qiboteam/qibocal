@@ -43,7 +43,7 @@ def command(runcard, folder, force=None):
 @click.command(context_settings=CONTEXT_SETTINGS)
 def live_plot():
     """Real time plotting of calibration data on a dash server."""
-    from qcvv.web.live import app
+    from qcvv.web.app import app
 
     app.run_server(debug=True)
 
