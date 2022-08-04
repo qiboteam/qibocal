@@ -41,17 +41,10 @@ def command(runcard, folder, force=None):
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.argument("path", metavar="DATA_FOLDER", type=click.Path())
-def live_plot(path):
-    """Real time plotting of calibration data on a dash server.
+def live_plot():
+    """Real time plotting of calibration data on a dash server."""
+    from qcvv.web.live import app
 
-    DATA_FOLDER is the path to the folder that contains the
-    data to be plotted.
-    """
-    from qcvv.live import app, serve_layout
-
-    # Hack to pass data path to the layout
-    app.layout = lambda: serve_layout(path)
     app.run_server(debug=True)
 
 
