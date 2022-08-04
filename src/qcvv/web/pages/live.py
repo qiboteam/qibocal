@@ -17,8 +17,9 @@ def layout(path=None):
         return html.Div(children=[html.H2(f"Path {path} not available.")])
 
     children = [
+        html.Title(path),
         dcc.Interval(
-            id=f"stopper-interval", interval=2000, n_intervals=0, disabled=False
+            id=f"stopper-interval", interval=3000, n_intervals=0, disabled=False
         ),
         dcc.Input(id="path", value=path, type="text", style={"display": "none"}),
         html.P(f"Path name: {path}"),
