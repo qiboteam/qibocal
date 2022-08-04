@@ -23,9 +23,11 @@ def get_graph(n, graph_id, folder):
 
     try:
         data = Dataset.load_data(folder, routine, format)
-        return getattr(plots, routine)(data.df, autosize=False, width=1200, height=800)
+        return getattr(plots, routine)(
+            data.df, autosize=False, width=1200, height=800, uirevision="0"
+        )
     except FileNotFoundError:
-        return go.Figure()
+        return dict()
 
 
 @callback(
