@@ -8,7 +8,13 @@ from qcvv import plots
 from qcvv.data import Dataset
 from qcvv.web.layouts import home, live
 
-app = Dash(__name__, suppress_callback_exceptions=True)
+app = Dash(
+    __name__,
+    suppress_callback_exceptions=True,
+    external_stylesheets=[
+        "https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css"
+    ],
+)
 
 app.layout = html.Div(
     [dcc.Location(id="url", refresh=False), html.Div(id="page-content")]

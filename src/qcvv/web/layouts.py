@@ -14,20 +14,26 @@ def home():
     ]
     return html.Div(
         [
-            html.H1("Available runs:"),
+            html.Br(),
+            html.H1("Available runs:", className="text-center"),
             html.Div(
-                [
-                    html.H3(
-                        dcc.Link(
-                            f"{folder}",
+                html.Ul(
+                    [
+                        html.A(
+                            html.Div(f"{folder}", className="text-center"),
                             href=f"/live/{folder}",
                             target="_blank",  # to open in new tab
+                            className="list-group-item list-group-item-action",
                         )
-                    )
-                    for folder in sorted(folders)
-                ]
+                        for folder in sorted(folders)
+                    ],
+                    className="list-group mx-auto justify-content-center",
+                    style={"width": "50%"},
+                ),
+                className="container",
             ),
-        ]
+        ],
+        className="container",
     )
 
 
@@ -42,14 +48,19 @@ def live(path=None):
     children = [
         html.Title(path),
         dcc.Input(id="path", value=path, type="text", style={"display": "none"}),
-        html.H2(path),
-        html.P(f"Run date: {metadata.get('date')}"),
-        html.P(f"Versions: "),
+        html.H1(path),
+        html.H2(f"Date: {metadata.get('date')}"),
         html.Table(
             [
-                html.Tr([html.Th(library), html.Th(version)])
-                for library, version in metadata.get("versions").items()
-            ]
+                html.Tbody(
+                    [
+                        html.Tr([html.Th(library), html.Th(version)])
+                        for library, version in metadata.get("versions").items()
+                    ]
+                )
+            ],
+            className="table table-hover table-bordered",
+            style={"width": "20%"},
         ),
         html.Br(),
     ]
@@ -76,4 +87,4 @@ def live(path=None):
         )
         children.append(html.Br())
 
-    return html.Div(children=children)
+    return html.Div(children=children, className="container")
