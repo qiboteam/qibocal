@@ -61,9 +61,9 @@ def live(path=None):
     for routine in os.listdir(data_path):
         routine_path = os.path.join(data_path, routine)
         children.append(
-            html.Details(
+            html.Div(
                 children=[
-                    html.Summary(routine),
+                    html.H3(routine),
                     dcc.Graph(
                         id={"type": "graph", "index": routine_path},
                     ),
