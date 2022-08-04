@@ -41,11 +41,28 @@ def command(runcard, folder, force=None):
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-def live_plot():
+@click.option(
+    "port",
+    "-p",
+    "--port",
+    default=8050,
+    type=int,
+    help="Localhost port to launch dash server.",
+)
+def live_plot(port):
     """Real time plotting of calibration data on a dash server."""
+    import socket
+
     from qcvv.web.app import app
 
-    app.run_server(debug=True)
+    # change port if it is already used
+    while True:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            if s.connect_ex(("localhost", port)) != 0:
+                break
+        port += 1
+
+    app.run_server(debug=True, port=port)
 
 
 class ActionBuilder:
