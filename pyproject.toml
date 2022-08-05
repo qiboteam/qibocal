@@ -17,6 +17,7 @@ classifiers=[
 [tool.poetry.dependencies]
 python = ">=3.8"
 qibo = {git = "https://github.com/qiboteam/qibo.git", rev = "master"}
+qibolab = {git = "git@github.com:qiboteam/qibolab.git", rev = "main"}
 pandas = "^1.4.3"
 Pint-Pandas = {git = "https://github.com/hgrecco/pint-pandas.git", rev = "master"}
 dash = "^2.6.0"
@@ -38,11 +39,12 @@ qq = "qcvv:command"
 qq-live = "qcvv:live_plot"
 
 [tool.poe.tasks]
-test = "pytest tests"
+test = "pytest src/qcvv/tests"
 lint = "pylint src/**/*.py -E"
 lint-warnings = "pylint src/**/*.py --exit-zero"
 
 [tool.pytest.ini_options]
+testpaths = ['src/qcvv/tests/']
 addopts = [
     '--cov=qcvv',
     '--cov-report=xml'
@@ -51,7 +53,6 @@ addopts = [
 [tool.pylint.master]
 # extensions not to check
 extension-pkg-whitelist = ["numpy"]
-ignored-modules = ["qibolab"]
 jobs = 1
 
 [tool.pylint.messages_control]
