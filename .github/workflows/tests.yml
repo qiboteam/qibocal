@@ -1,0 +1,51 @@
+name: Tests
+
+on: push
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: ${{ secrets.KNOWN_HOSTS }}
+      - name: Install and configure poetry
+        uses: snok/install-poetry@v1
+        with:
+          virtualenvs-path: ~/.virtualenvs
+          installer-parallel: true
+      - name: Cache poetry virtualenv
+        uses: actions/cache@v2
+        with:
+          path: ~/.virtualenvs
+          key: ${{ runner.os }}-py-${{ steps.setup-python.outputs.python-version }}-poetry-${{ hashFiles('poetry.lock') }}
+      - name: Install dependencies
+        run: poetry install --no-interaction --no-root
+        if: steps.cache.outputs.cache-hit != 'true'
+      - name: Install project
+        run: poetry install --no-interaction ${{ inputs.poetry-extras }}
+      - name: Install task runner
+        run: pip install poethepoet
+      - name: Lint
+        run: |
+          poe lint
+          poe lint-warnings
+      - name: Test
+        run: |
+          poe test
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v2
+        with:
+          files: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: true
+          token: ${{ secrets.codecov_token }}
