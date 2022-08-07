@@ -13,8 +13,8 @@ class Dataset:
 
     Args:
         quantities (dict): dictionary containing additional quantities that the user
-        may save other than the pulse sequence output. The keys are the name of the
-        quantities and the corresponding values are the units of measure.
+                        may save other than the pulse sequence output. The keys are the name of the
+                        quantities and the corresponding values are the units of measure.
     """
 
     def __init__(self, quantities=None):
@@ -38,7 +38,7 @@ class Dataset:
         Args:
             data (dict): dictionary containing the data to be added.
                         Every key should have the following form:
-                        '<name>[<unit>]'.
+                        ``<name>[<unit>]``.
         """
         import re
 
@@ -59,6 +59,7 @@ class Dataset:
     @classmethod
     def load_data(cls, folder, routine, format):
         """Load data from specific format.
+
         Args:
             folder (path): path to the output folder from which the data will be loaded
             routine (str): calibration routine data to be loaded
@@ -83,12 +84,14 @@ class Dataset:
 
     def to_csv(self, path):
         """Save data in csv file.
+
         Args:
             path (str): Path containing output folder."""
         self.df.pint.dequantify().to_csv(f"{path}/data.csv")
 
     def to_pickle(self, path):
         """Save data in pickel file.
+
         Args:
             path (str): Path containing output folder."""
         self.df.to_pickle(f"{path}/data.pkl")

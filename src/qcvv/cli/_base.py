@@ -93,10 +93,10 @@ class ActionBuilder:
         """
         if folder is None:
             import datetime
-            import pwd
+            import getpass
 
             e = datetime.datetime.now()
-            user = pwd.getpwuid(os.getuid())[0].replace(".", "-")
+            user = getpass.getuser().replace(".", "-")
             date = e.strftime("%Y-%m-%d")
             folder = f"{date}-{'000'}-{user}"
             num = 0

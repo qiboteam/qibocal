@@ -11,6 +11,7 @@ if "QCVV_LOG_LEVEL" in os.environ:  # pragma: no cover
 
 def raise_error(exception, message=None, args=None):
     """Raise exception with logging error.
+
     Args:
         exception (Exception): python exception.
         message (str): the error message.
