@@ -71,7 +71,8 @@ def live(path=None):
                         n_intervals=0,
                         disabled=False,
                     ),
-                ]
+                ],
+                className="container",
             )
         )
         children.append(html.Br())
