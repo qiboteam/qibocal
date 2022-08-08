@@ -17,12 +17,11 @@ classifiers=[
 [tool.poetry.dependencies]
 python = ">=3.8"
 qibo = {git = "https://github.com/qiboteam/qibo.git", rev = "master"}
-qibolab = [{git = "git@github.com:qiboteam/qibolab.git", rev = "main", extras = ["tiiq"], optional=true},
-    {git = "git@github.com:qiboteam/qibolab.git", rev = "main"},
-          ]
+qibolab = {git = "git@github.com:qiboteam/qibolab.git", rev = "main"}
 pandas = "^1.4.3"
 Pint-Pandas = {git = "https://github.com/hgrecco/pint-pandas.git", rev = "master"}
 dash = "^2.6.0"
+qblox-instruments = {version="^0.6.1", optional=true}
 
 [tool.poetry.dev-dependencies]
 black = "^22.6.0"
@@ -39,7 +38,7 @@ sphinx-markdown-tables = "^0.0.17"
 
 [tool.poetry.extras]
 docs = ["sphinx", "sphinx-rtd-theme", "sphinxcontrib-bibtex", "recommonmark", "sphinx-markdown-tables"]
-tiiq = ["qibolab"]
+tiiq = ["qblox-instruments"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
