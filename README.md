@@ -11,6 +11,10 @@ cd qcvv
 pip install .
 ```
 
+To be able to connect to the `TII` quantum hardware remember to install `qcvv` with the tiiq extension:
+```sh
+pip install .[tiiq]
+```
 
 ### Developer instructions
 For development make sure to install the package using [`poetry`](https://python-poetry.org/) and to install the pre-commit hooks:
