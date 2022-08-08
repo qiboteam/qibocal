@@ -30,10 +30,10 @@ def display_page(url):
     Output({"type": "graph", "index": MATCH}, "figure"),
     Input({"type": "interval", "index": MATCH}, "n_intervals"),
     Input({"type": "graph", "index": MATCH}, "id"),
-    Input("path", "value"),
 )
-def get_graph(n, graph_id, folder):
-    _, routine = os.path.split(graph_id.get("index"))
+def get_graph(n, graph_id):
+    folder, routine = os.path.split(graph_id.get("index"))
+    folder, _ = os.path.split(folder)
     # find data format
     with open(os.path.join(folder, "runcard.yml"), "r") as file:
         runcard = yaml.safe_load(file)

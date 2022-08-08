@@ -41,7 +41,6 @@ def live(path=None):
 
     children = [
         html.Title(path),
-        dcc.Input(id="path", value=path, type="text", style={"display": "none"}),
         html.H2(path),
         html.P(f"Run date: {metadata.get('date')}"),
         html.P(f"Versions: "),
