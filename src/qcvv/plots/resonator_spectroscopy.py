@@ -8,14 +8,18 @@ def get_values(df, quantity, unit):
 
 
 def resonator_spectroscopy_attenuation(data):
-    trace3_att = 30
+    plot1d_attenuation = 30  # attenuation value to use for 1D frequency vs MSR plot
 
     fig = make_subplots(
         rows=2,
         cols=2,
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
-        subplot_titles=("MSR (V)", "phase (deg)", f"Attenuation = {trace3_att}dB"),
+        subplot_titles=(
+            "MSR (V)",
+            "phase (deg)",
+            f"Attenuation = {plot1d_attenuation}dB",
+        ),
         specs=[[{}, {}], [{"colspan": 2}, None]],
     )
 
@@ -35,17 +39,30 @@ def resonator_spectroscopy_attenuation(data):
         colorbar_y=0.78,
         colorbar_len=0.45,
     )
-
-    smalldf = data.df[get_values(data.df, "attenuation", "dB") == 30]
-    trace3 = go.Scatter(
-        x=get_values(smalldf, "frequency", "GHz"), y=get_values(smalldf, "MSR", "V")
-    )
-
     fig.add_trace(trace1, row=1, col=1)
     fig.add_trace(trace2, row=1, col=2)
-    fig.add_trace(trace3, row=2, col=1)
+
+    # index data on a specific attenuation value
+    smalldf = data.df[
+        get_values(data.df, "attenuation", "dB") == plot1d_attenuation
+    ].copy()
+    # split multiple software averages to different datasets
+    datasets = []
+    while len(smalldf):
+        datasets.append(smalldf.drop_duplicates("frequency"))
+        smalldf.drop(datasets[-1].index, inplace=True)
+        fig.add_trace(
+            go.Scatter(
+                x=get_values(datasets[-1], "frequency", "GHz"),
+                y=get_values(datasets[-1], "MSR", "V"),
+            ),
+            row=2,
+            col=1,
+        )
+
     fig.update_layout(
         height=1000,
+        showlegend=False,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Frequency (GHz)",
         yaxis_title="Attenuation (dB)",
