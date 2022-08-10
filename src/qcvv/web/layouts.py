@@ -6,12 +6,13 @@ import yaml
 from dash import dcc, html
 
 
+def get_folders():
+    for folder in os.listdir(os.getcwd()):
+        if os.path.isdir(folder) and "meta.yml" in os.listdir(folder):
+            yield folder
+
+
 def home():
-    folders = [
-        folder
-        for folder in os.listdir(os.getcwd())
-        if os.path.isdir(folder) and "meta.yml" in os.listdir(folder)
-    ]
     return html.Div(
         [
             html.H1("Available runs:"),
@@ -24,7 +25,7 @@ def home():
                             target="_blank",  # to open in new tab
                         )
                     )
-                    for folder in sorted(folders)
+                    for folder in sorted(get_folders())
                 ]
             ),
         ]
@@ -43,37 +44,7 @@ def live(path=None):
     with open(os.path.join(path, "runcard.yml"), "r") as file:
         runcard = yaml.safe_load(file)
 
-    content = [
-        html.Div(
-            [
-                html.Div(
-                    [
-                        html.Div(
-                            [
-                                html.Button(
-                                    "Export",
-                                    type="button",
-                                    className="btn btn-sm btn-outline-secondary",
-                                )
-                            ],
-                            className="btn-group me-2",
-                        )
-                    ],
-                    className="btn-toolbar mb-2 mb-md-0",
-                ),
-            ],
-            className="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom",
-        ),
-        html.P(f"Versions: "),
-        html.Table(
-            [
-                html.Tr([html.Th(library), html.Th(version)])
-                for library, version in metadata.get("versions").items()
-            ]
-        ),
-        html.Br(),
-    ]
-
+    content = [html.Br()]
     navbar_routines = []
     for routine in runcard.get("actions").keys():
         routine_path = os.path.join(path, "data", routine)
@@ -94,7 +65,7 @@ def live(path=None):
         content.append(
             html.Div(
                 [
-                    html.H3(routine, id=routine),
+                    html.H3(routine),
                     dcc.Graph(
                         id={"type": "graph", "index": routine_path},
                     ),
@@ -105,7 +76,8 @@ def live(path=None):
                         n_intervals=0,
                         disabled=False,
                     ),
-                ]
+                ],
+                id=routine,
             )
         )
         content.append(html.Br())
@@ -116,7 +88,7 @@ def live(path=None):
             [
                 html.A(
                     f"qcvv {qcvv_version}",
-                    href="#",
+                    href="/",
                     className="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6",
                 ),
                 html.Div(
@@ -140,7 +112,6 @@ def live(path=None):
                     ),
                     className="navbar-nav",
                 ),
-                # html.Div(html.Div("a", className="nav-item text-nowrap"), className="navbar-nav"),
             ],
             className="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow",
         ),
@@ -169,24 +140,14 @@ def live(path=None):
                                                 [
                                                     # <span data-feather="file-text" class="align-text-bottom"></span>
                                                     html.A(
-                                                        "Current month",
-                                                        href="#",
+                                                        folder,
+                                                        href=f"/live/{folder}",
                                                         className="nav-link",
                                                     )
                                                 ],
                                                 className="nav-item",
-                                            ),
-                                            html.Li(
-                                                [
-                                                    # <span data-feather="file-text" class="align-text-bottom"></span>
-                                                    html.A(
-                                                        "Last quarter",
-                                                        href="#",
-                                                        className="nav-link",
-                                                    )
-                                                ],
-                                                className="nav-item",
-                                            ),
+                                            )
+                                            for folder in sorted(get_folders())
                                         ],
                                         className="nav flex-column mb-2",
                                     ),
