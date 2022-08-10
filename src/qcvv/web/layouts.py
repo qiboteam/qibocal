@@ -43,107 +43,6 @@ def live(path=None):
     with open(os.path.join(path, "runcard.yml"), "r") as file:
         runcard = yaml.safe_load(file)
 
-    navbar = html.Nav(
-        [
-            html.Div(
-                [
-                    html.Ul(
-                        [
-                            html.Li(
-                                [
-                                    html.A(
-                                        [
-                                            # html.Span(data-feather="home" className="align-text-bottom"),
-                                            "Dashboard",
-                                        ],
-                                        className="nav-link active",
-                                        href="#",
-                                    )
-                                ],
-                                className="nav-item",
-                            ),
-                            html.Li(
-                                [
-                                    html.A(
-                                        [
-                                            # html.Span(data-feather="home" className="align-text-bottom"),
-                                            "Orders",
-                                        ],
-                                        className="nav-link",
-                                        href="#",
-                                    )
-                                ],
-                                className="nav-item",
-                            ),
-                            html.Li(
-                                [
-                                    html.A(
-                                        [
-                                            # html.Span(data-feather="home" className="align-text-bottom"),
-                                            "Products",
-                                        ],
-                                        className="nav-link",
-                                        href="#",
-                                    )
-                                ],
-                                className="nav-item",
-                            ),
-                        ],
-                        className="nav flex-column",
-                    ),
-                    html.H6(
-                        [
-                            html.Span("Saved reports"),
-                            # html.A(className="link-secondary", href="#", aria-label="Add a new report">
-                            #    <span data-feather="plus-circle" class="align-text-bottom"></span>
-                        ],
-                        className="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase",
-                    ),
-                    html.Ul(
-                        [
-                            html.Li(
-                                [
-                                    # <span data-feather="file-text" class="align-text-bottom"></span>
-                                    html.A(
-                                        "Current month", href="#", className="nav-link"
-                                    )
-                                ],
-                                className="nav-item",
-                            ),
-                            html.Li(
-                                [
-                                    # <span data-feather="file-text" class="align-text-bottom"></span>
-                                    html.A(
-                                        "Last quarter", href="#", className="nav-link"
-                                    )
-                                ],
-                                className="nav-item",
-                            ),
-                        ],
-                        className="nav flex-column mb-2",
-                    ),
-                ],
-                className="position-sticky pt-3 sidebar-sticky",
-            )
-        ],
-        id="sidebarMenu",
-        className="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse",
-    )
-
-    # children = [
-    #    html.Title(path),
-    #    html.H2(path),
-    #    html.P(f"Run date: {metadata.get('date')}"),
-    #    html.P(f"Versions: "),
-    #    html.Table(
-    #        [
-    #            html.Tr([html.Th(library), html.Th(version)])
-    #            for library, version in metadata.get("versions").items()
-    #        ]
-    #    ),
-    #    html.Br(),
-    # ]
-
     content = [
         html.Div(
             [
@@ -177,9 +76,26 @@ def live(path=None):
         html.Br(),
     ]
 
+    navbar_routines = []
     for routine in runcard.get("actions").keys():
         routine_path = os.path.join(path, "data", routine)
-        content.append(html.Div([
+        navbar_routines.append(
+            html.Li(
+                [
+                    html.A(
+                        [
+                            routine,
+                        ],
+                        className="nav-link",
+                        href=f"#{routine}",
+                    )
+                ],
+                className="nav-item",
+            ),
+        )
+        content.append(
+            html.Div(
+                [
                     html.H3(routine, id=routine),
                     dcc.Graph(
                         id={"type": "graph", "index": routine_path},
@@ -191,14 +107,64 @@ def live(path=None):
                         n_intervals=0,
                         disabled=False,
                     ),
-                ])
+                ]
+            )
         )
         content.append(html.Br())
 
     return html.Div(
         html.Div(
             [
-                navbar,
+                html.Nav(
+                    [
+                        html.Div(
+                            [
+                                html.Ul(
+                                    navbar_routines,
+                                    className="nav flex-column",
+                                ),
+                                html.H6(
+                                    [
+                                        html.Span("Saved reports"),
+                                        # html.A(className="link-secondary", href="#", aria-label="Add a new report">
+                                        #    <span data-feather="plus-circle" class="align-text-bottom"></span>
+                                    ],
+                                    className="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase",
+                                ),
+                                html.Ul(
+                                    [
+                                        html.Li(
+                                            [
+                                                # <span data-feather="file-text" class="align-text-bottom"></span>
+                                                html.A(
+                                                    "Current month",
+                                                    href="#",
+                                                    className="nav-link",
+                                                )
+                                            ],
+                                            className="nav-item",
+                                        ),
+                                        html.Li(
+                                            [
+                                                # <span data-feather="file-text" class="align-text-bottom"></span>
+                                                html.A(
+                                                    "Last quarter",
+                                                    href="#",
+                                                    className="nav-link",
+                                                )
+                                            ],
+                                            className="nav-item",
+                                        ),
+                                    ],
+                                    className="nav flex-column mb-2",
+                                ),
+                            ],
+                            className="position-sticky pt-3 sidebar-sticky",
+                        )
+                    ],
+                    id="sidebarMenu",
+                    className="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse",
+                ),
                 html.Main(content, className="col-md-9 ms-sm-auto col-lg-10 px-md-4"),
             ],
             className="row",
