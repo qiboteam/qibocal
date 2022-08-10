@@ -32,8 +32,8 @@ def home():
 
 
 def live(path=None):
-    # show metadata in the layout
     try:
+        # read metadata and show in the live page
         with open(os.path.join(path, "meta.yml"), "r") as file:
             metadata = yaml.safe_load(file)
     except (FileNotFoundError, TypeError):
@@ -53,9 +53,12 @@ def live(path=None):
         html.Br(),
     ]
 
-    data_path = os.path.join(path, "data")
-    for routine in os.listdir(data_path):
-        routine_path = os.path.join(data_path, routine)
+    # read routines from action runcard
+    with open(os.path.join(path, "runcard.yml"), "r") as file:
+        runcard = yaml.safe_load(file)
+
+    for routine in runcard.get("actions").keys():
+        routine_path = os.path.join(path, "data", routine)
         children.append(
             html.Div(
                 children=[

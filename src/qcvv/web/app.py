@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 
+import pandas as pd
 import yaml
 from dash import MATCH, Dash, Input, Output, dcc, html
 
@@ -30,8 +31,9 @@ def display_page(url):
     Output({"type": "graph", "index": MATCH}, "figure"),
     Input({"type": "interval", "index": MATCH}, "n_intervals"),
     Input({"type": "graph", "index": MATCH}, "id"),
+    Input({"type": "graph", "index": MATCH}, "figure"),
 )
-def get_graph(n, graph_id):
+def get_graph(n, graph_id, current_figure):
     folder, routine = os.path.split(graph_id.get("index"))
     folder, _ = os.path.split(folder)
     # find data format
@@ -43,5 +45,5 @@ def get_graph(n, graph_id):
         data = Dataset.load_data(folder, routine, format)
         return getattr(plots, routine)(data)
 
-    except FileNotFoundError:
-        return dict()
+    except (FileNotFoundError, pd.errors.EmptyDataError):
+        return current_figure
