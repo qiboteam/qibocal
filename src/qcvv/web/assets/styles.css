@@ -51,13 +51,8 @@ body {
     color: #2470dc;
   }
 
-  .sidebar .nav-link:hover .feather,
-  .sidebar .nav-link.active .feather {
-    color: inherit;
-  }
-
   .sidebar-heading {
-    font-size: .75rem;
+    font-size: 0.9rem;
   }
 
   /*
@@ -69,31 +64,4 @@ body {
     padding-bottom: .75rem;
     background-color: #6400FF;
     box-shadow: inset -1px 0 0 #6400FF;
-  }
-
-  .navbar-brand {
-    padding-top: .75rem;
-    padding-bottom: .75rem;
-    background-color: #6400FF;
-    box-shadow: inset -1px 0 0 #6400FF;
-  }
-
-  .navbar .navbar-toggler {
-    top: .25rem;
-    right: 1rem;
-  }
-
-  .navbar .form-control {
-    padding: .75rem 1rem;
-  }
-
-  .form-control-dark {
-    color: #fff;
-    background-color: rgba(255, 255, 255, .1);
-    border-color: rgba(255, 255, 255, .1);
-  }
-
-  .form-control-dark:focus {
-    border-color: transparent;
-    box-shadow: 0 0 0 3px rgba(255, 255, 255, .25);
   }
