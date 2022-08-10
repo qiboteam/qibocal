@@ -97,33 +97,24 @@ def live(path=None):
         html.Header(
             [
                 html.A(
-                    f"qcvv {qcvv_version}",
+                    html.H6(f"qcvv {qcvv_version}"),
                     href="/",
-                    className="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6",
+                    className="navbar-nav nav-item nav-link px-3",
+                ),
+                html.A(
+                    html.H4(path), href="#", className="navbar-nav nav-item nav-link"
                 ),
                 html.Div(
-                    html.Div(
-                        html.A(html.H4(path), href="#", className="nav-link"),
-                        className="nav-item text-nowrap",
-                    ),
-                    className="navbar-nav",
+                    html.H6(f"Run date: {metadata.get('date')}"),
+                    className="navbar-nav nav-item nav-link",
                 ),
-                html.Div(
-                    html.Div(
-                        html.H6(f"Run date: {metadata.get('date')}"),
-                        className="nav-link text-nowrap",
-                    ),
-                    className="navbar-nav",
-                ),
-                html.Div(
-                    html.Div(
-                        html.A(html.H6("Export"), href="#", className="nav-link"),
-                        className="nav-item text-nowrap",
-                    ),
-                    className="navbar-nav",
+                html.A(
+                    html.H6("Export"),
+                    href="#",
+                    className="navbar-nav nav-item nav-link px-3",
                 ),
             ],
-            className="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow",
+            className="navbar navbar-dark sticky-top flex-md-nowrap p-0 shadow",
         ),
         html.Div(
             html.Div(
@@ -152,7 +143,9 @@ def live(path=None):
                                                     html.A(
                                                         folder,
                                                         href=f"/live/{folder}",
-                                                        className="nav-link",
+                                                        className="nav-link active"
+                                                        if folder == path
+                                                        else "nav-link",
                                                     )
                                                 ],
                                                 className="nav-item",
