@@ -46,7 +46,6 @@ def live(path=None):
     content = [
         html.Div(
             [
-                html.H2(path),
                 html.Div(
                     [
                         html.Div(
@@ -65,7 +64,6 @@ def live(path=None):
             ],
             className="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom",
         ),
-        html.P(f"Run date: {metadata.get('date')}"),
         html.P(f"Versions: "),
         html.Table(
             [
@@ -112,62 +110,99 @@ def live(path=None):
         )
         content.append(html.Br())
 
-    return html.Div(
-        html.Div(
+    qcvv_version = metadata.get("versions").get("qcvv")
+    return [
+        html.Header(
             [
-                html.Nav(
-                    [
-                        html.Div(
-                            [
-                                html.Ul(
-                                    navbar_routines,
-                                    className="nav flex-column",
-                                ),
-                                html.H6(
-                                    [
-                                        html.Span("Saved reports"),
-                                        # html.A(className="link-secondary", href="#", aria-label="Add a new report">
-                                        #    <span data-feather="plus-circle" class="align-text-bottom"></span>
-                                    ],
-                                    className="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase",
-                                ),
-                                html.Ul(
-                                    [
-                                        html.Li(
-                                            [
-                                                # <span data-feather="file-text" class="align-text-bottom"></span>
-                                                html.A(
-                                                    "Current month",
-                                                    href="#",
-                                                    className="nav-link",
-                                                )
-                                            ],
-                                            className="nav-item",
-                                        ),
-                                        html.Li(
-                                            [
-                                                # <span data-feather="file-text" class="align-text-bottom"></span>
-                                                html.A(
-                                                    "Last quarter",
-                                                    href="#",
-                                                    className="nav-link",
-                                                )
-                                            ],
-                                            className="nav-item",
-                                        ),
-                                    ],
-                                    className="nav flex-column mb-2",
-                                ),
-                            ],
-                            className="position-sticky pt-3 sidebar-sticky",
-                        )
-                    ],
-                    id="sidebarMenu",
-                    className="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse",
+                html.A(
+                    f"qcvv {qcvv_version}",
+                    href="#",
+                    className="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6",
                 ),
-                html.Main(content, className="col-md-9 ms-sm-auto col-lg-10 px-md-4"),
+                html.Div(
+                    html.Div(
+                        html.A(html.H4(path), href="#", className="nav-link"),
+                        className="nav-item text-nowrap",
+                    ),
+                    className="navbar-nav",
+                ),
+                html.Div(
+                    html.Div(
+                        html.H6(f"Run date: {metadata.get('date')}"),
+                        className="nav-link text-nowrap",
+                    ),
+                    className="navbar-nav",
+                ),
+                html.Div(
+                    html.Div(
+                        html.A("Export", href="#", className="nav-link"),
+                        className="nav-item text-nowrap",
+                    ),
+                    className="navbar-nav",
+                ),
+                # html.Div(html.Div("a", className="nav-item text-nowrap"), className="navbar-nav"),
             ],
-            className="row",
+            className="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow",
         ),
-        className="container-fluid",
-    )
+        html.Div(
+            html.Div(
+                [
+                    html.Nav(
+                        [
+                            html.Div(
+                                [
+                                    html.Ul(
+                                        navbar_routines,
+                                        className="nav flex-column",
+                                    ),
+                                    html.H6(
+                                        [
+                                            html.Span("Saved reports"),
+                                            # html.A(className="link-secondary", href="#", aria-label="Add a new report">
+                                            #    <span data-feather="plus-circle" class="align-text-bottom"></span>
+                                        ],
+                                        className="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase",
+                                    ),
+                                    html.Ul(
+                                        [
+                                            html.Li(
+                                                [
+                                                    # <span data-feather="file-text" class="align-text-bottom"></span>
+                                                    html.A(
+                                                        "Current month",
+                                                        href="#",
+                                                        className="nav-link",
+                                                    )
+                                                ],
+                                                className="nav-item",
+                                            ),
+                                            html.Li(
+                                                [
+                                                    # <span data-feather="file-text" class="align-text-bottom"></span>
+                                                    html.A(
+                                                        "Last quarter",
+                                                        href="#",
+                                                        className="nav-link",
+                                                    )
+                                                ],
+                                                className="nav-item",
+                                            ),
+                                        ],
+                                        className="nav flex-column mb-2",
+                                    ),
+                                ],
+                                className="position-sticky pt-3 sidebar-sticky",
+                            )
+                        ],
+                        id="sidebarMenu",
+                        className="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse",
+                    ),
+                    html.Main(
+                        content, className="col-md-9 ms-sm-auto col-lg-10 px-md-4"
+                    ),
+                ],
+                className="row",
+            ),
+            className="container-fluid",
+        ),
+    ]
