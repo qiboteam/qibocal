@@ -15,20 +15,25 @@ def get_folders():
 def home():
     return html.Div(
         [
-            html.H1("Available runs:"),
+            html.Br(),
+            html.H1("Available runs:", className="text-center"),
             html.Div(
-                [
-                    html.H3(
-                        dcc.Link(
-                            f"{folder}",
+                html.Ul(
+                    [
+                        html.A(
+                            html.Div(f"{folder}", className="text-center"),
                             href=f"/live/{folder}",
                             target="_blank",  # to open in new tab
+                            className="list-group-item list-group-item-action",
                         )
-                    )
-                    for folder in sorted(get_folders())
-                ]
+                        for folder in sorted(get_folders())
+                    ],
+                    className="list-group mx-auto justify-content-center",
+                    style={"width": "50%"},
+                ),
+                className="container",
             ),
-        ]
+        ],
     )
 
 
