@@ -12,21 +12,25 @@ from qcvv.web.layouts import home, live
 app = Dash(__name__, suppress_callback_exceptions=True, title="QCVV", update_title=None)
 
 app.layout = html.Div(
-    [dcc.Location(id="url", refresh=False), html.Div(id="page-content"), html.Div(id="blank-output")]
+    [
+        dcc.Location(id="url", refresh=False),
+        html.Div(id="page-content"),
+        html.Div(id="blank-output"),
+    ]
 )
 
 app.clientside_callback(
     """
     function(url) {
         if (url === '/') {
-            document.title = 'QCVV'
+            document.title = 'QCVV Home'
         } else {
             document.title = url.split('/')[2]
         }
     }
     """,
     Output("blank-output", "children"),
-    Input("url", "pathname")
+    Input("url", "pathname"),
 )
 
 
