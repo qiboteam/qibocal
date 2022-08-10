@@ -9,7 +9,15 @@ from qcvv import plots
 from qcvv.data import Dataset
 from qcvv.web.layouts import home, live
 
-app = Dash(__name__, suppress_callback_exceptions=True, title="QCVV", update_title=None)
+app = Dash(
+    __name__,
+    suppress_callback_exceptions=True,
+    title="QCVV",
+    update_title=None,
+    external_stylesheets=[
+        "https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css"
+    ],
+)
 
 app.layout = html.Div(
     [

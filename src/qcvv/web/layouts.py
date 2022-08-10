@@ -39,9 +39,133 @@ def live(path=None):
     except (FileNotFoundError, TypeError):
         return html.Div(children=[html.H2(f"Path {path} not available.")])
 
-    children = [
-        html.Title(path),
-        html.H2(path),
+    # read routines from action runcard
+    with open(os.path.join(path, "runcard.yml"), "r") as file:
+        runcard = yaml.safe_load(file)
+
+    navbar = html.Nav(
+        [
+            html.Div(
+                [
+                    html.Ul(
+                        [
+                            html.Li(
+                                [
+                                    html.A(
+                                        [
+                                            # html.Span(data-feather="home" className="align-text-bottom"),
+                                            "Dashboard",
+                                        ],
+                                        className="nav-link active",
+                                        href="#",
+                                    )
+                                ],
+                                className="nav-item",
+                            ),
+                            html.Li(
+                                [
+                                    html.A(
+                                        [
+                                            # html.Span(data-feather="home" className="align-text-bottom"),
+                                            "Orders",
+                                        ],
+                                        className="nav-link",
+                                        href="#",
+                                    )
+                                ],
+                                className="nav-item",
+                            ),
+                            html.Li(
+                                [
+                                    html.A(
+                                        [
+                                            # html.Span(data-feather="home" className="align-text-bottom"),
+                                            "Products",
+                                        ],
+                                        className="nav-link",
+                                        href="#",
+                                    )
+                                ],
+                                className="nav-item",
+                            ),
+                        ],
+                        className="nav flex-column",
+                    ),
+                    html.H6(
+                        [
+                            html.Span("Saved reports"),
+                            # html.A(className="link-secondary", href="#", aria-label="Add a new report">
+                            #    <span data-feather="plus-circle" class="align-text-bottom"></span>
+                        ],
+                        className="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase",
+                    ),
+                    html.Ul(
+                        [
+                            html.Li(
+                                [
+                                    # <span data-feather="file-text" class="align-text-bottom"></span>
+                                    html.A(
+                                        "Current month", href="#", className="nav-link"
+                                    )
+                                ],
+                                className="nav-item",
+                            ),
+                            html.Li(
+                                [
+                                    # <span data-feather="file-text" class="align-text-bottom"></span>
+                                    html.A(
+                                        "Last quarter", href="#", className="nav-link"
+                                    )
+                                ],
+                                className="nav-item",
+                            ),
+                        ],
+                        className="nav flex-column mb-2",
+                    ),
+                ],
+                className="position-sticky pt-3 sidebar-sticky",
+            )
+        ],
+        id="sidebarMenu",
+        className="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse",
+    )
+
+    # children = [
+    #    html.Title(path),
+    #    html.H2(path),
+    #    html.P(f"Run date: {metadata.get('date')}"),
+    #    html.P(f"Versions: "),
+    #    html.Table(
+    #        [
+    #            html.Tr([html.Th(library), html.Th(version)])
+    #            for library, version in metadata.get("versions").items()
+    #        ]
+    #    ),
+    #    html.Br(),
+    # ]
+
+    content = [
+        html.Div(
+            [
+                html.H2(path),
+                html.Div(
+                    [
+                        html.Div(
+                            [
+                                html.Button(
+                                    "Export",
+                                    type="button",
+                                    className="btn btn-sm btn-outline-secondary",
+                                )
+                            ],
+                            className="btn-group me-2",
+                        )
+                    ],
+                    className="btn-toolbar mb-2 mb-md-0",
+                ),
+            ],
+            className="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom",
+        ),
         html.P(f"Run date: {metadata.get('date')}"),
         html.P(f"Versions: "),
         html.Table(
@@ -53,16 +177,10 @@ def live(path=None):
         html.Br(),
     ]
 
-    # read routines from action runcard
-    with open(os.path.join(path, "runcard.yml"), "r") as file:
-        runcard = yaml.safe_load(file)
-
     for routine in runcard.get("actions").keys():
         routine_path = os.path.join(path, "data", routine)
-        children.append(
-            html.Div(
-                children=[
-                    html.H3(routine),
+        content.append(html.Div([
+                    html.H3(routine, id=routine),
                     dcc.Graph(
                         id={"type": "graph", "index": routine_path},
                     ),
@@ -73,10 +191,17 @@ def live(path=None):
                         n_intervals=0,
                         disabled=False,
                     ),
-                ],
-                className="container",
-            )
+                ])
         )
-        children.append(html.Br())
+        content.append(html.Br())
 
-    return html.Div(children=children)
+    return html.Div(
+        html.Div(
+            [
+                navbar,
+                html.Main(content, className="col-md-9 ms-sm-auto col-lg-10 px-md-4"),
+            ],
+            className="row",
+        ),
+        className="container-fluid",
+    )
