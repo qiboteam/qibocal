@@ -70,6 +70,11 @@ def live(path=None):
         content.append(
             html.Div(
                 [
+                    # Empty spaces so that top bar does not cover the
+                    # section title when using #links.
+                    html.Br(),
+                    html.Br(),
+                    html.Br(),
                     html.H3(routine),
                     dcc.Graph(
                         id={"type": "graph", "index": routine_path},
@@ -112,7 +117,7 @@ def live(path=None):
                 ),
                 html.Div(
                     html.Div(
-                        html.A("Export", href="#", className="nav-link"),
+                        html.A(html.H6("Export"), href="#", className="nav-link"),
                         className="nav-item text-nowrap",
                     ),
                     className="navbar-nav",

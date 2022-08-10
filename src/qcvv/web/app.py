@@ -69,7 +69,10 @@ def get_graph(n, graph_id, current_figure):
 
     try:
         data = Dataset.load_data(folder, routine, format)
-        return getattr(plots, routine)(data)
+        # FIXME: Temporarily hardcode the plotting method to test
+        # multiple routines with different names in one folder
+        return plots.resonator_spectroscopy_attenuation(data)
+        # return getattr(plots, routine)(data)
 
     except (FileNotFoundError, pd.errors.EmptyDataError):
         return current_figure
