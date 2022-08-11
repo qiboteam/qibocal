@@ -6,37 +6,6 @@ import yaml
 from dash import dcc, html
 
 
-def get_folders():
-    for folder in os.listdir(os.getcwd()):
-        if os.path.isdir(folder) and "meta.yml" in os.listdir(folder):
-            yield folder
-
-
-def home():
-    return html.Div(
-        [
-            html.Br(),
-            html.H1("Available runs:", className="text-center"),
-            html.Div(
-                html.Ul(
-                    [
-                        html.A(
-                            html.Div(f"{folder}", className="text-center"),
-                            href=f"/live/{folder}",
-                            target="_blank",  # to open in new tab
-                            className="list-group-item list-group-item-action",
-                        )
-                        for folder in sorted(get_folders())
-                    ],
-                    className="list-group mx-auto justify-content-center",
-                    style={"width": "50%"},
-                ),
-                className="container",
-            ),
-        ],
-    )
-
-
 def topbar():
     from qcvv import __version__
 
@@ -49,8 +18,13 @@ def topbar():
                 className="navbar-nav nav-item nav-link px-3",
             ),
             html.A(
-                html.H6("Export"),
-                href="#",
+                html.H6("Home"),
+                href="/",
+                className="navbar-nav nav-item nav-link px-3",
+            ),
+            html.A(
+                html.H6("GitHub"),
+                href="https://github.com/qiboteam/qcvv",
                 className="navbar-nav nav-item nav-link px-3",
             ),
         ],
@@ -58,44 +32,67 @@ def topbar():
     )
 
 
-def navbar(path, routines):
+def sidebar(path, routines):
+    if path is None:
+        menu = None
+    else:
+        menu = html.Ul(
+            [
+                html.Li(
+                    [
+                        html.A(
+                            "Summary",
+                            className="nav-link",
+                            href=f"#summary",
+                        )
+                    ],
+                    className="nav-item",
+                ),
+                html.Li(
+                    [
+                        html.A(
+                            "Actions",
+                            className="nav-link",
+                            href=f"#actions",
+                        )
+                    ],
+                    className="nav-item",
+                ),
+                html.Ul(
+                    [
+                        html.Li(
+                            routines,
+                            className="nav-item",
+                        )
+                    ]
+                ),
+            ],
+            className="nav flex-column",
+        )
+
+    saved_reports = html.Ul(
+        [
+            html.Li(
+                [
+                    # <span data-feather="file-text" class="align-text-bottom"></span>
+                    html.A(
+                        folder,
+                        href=f"/live/{folder}",
+                        className="nav-link active" if folder == path else "nav-link",
+                    )
+                ],
+                className="nav-item",
+            )
+            for folder in sorted(os.listdir(os.getcwd()))
+            if os.path.isdir(folder) and "meta.yml" in os.listdir(folder)
+        ],
+        className="nav flex-column mb-2",
+    )
     return html.Nav(
         [
             html.Div(
                 [
-                    html.Ul(
-                        [
-                            html.Li(
-                                [
-                                    html.A(
-                                        "Summary",
-                                        className="nav-link",
-                                        href=f"#summary",
-                                    )
-                                ],
-                                className="nav-item",
-                            ),
-                            html.Li(
-                                [
-                                    html.A(
-                                        "Actions",
-                                        className="nav-link",
-                                        href=f"#actions",
-                                    )
-                                ],
-                                className="nav-item",
-                            ),
-                            html.Ul(
-                                [
-                                    html.Li(
-                                        routines,
-                                        className="nav-item",
-                                    )
-                                ]
-                            ),
-                        ],
-                        className="nav flex-column",
-                    ),
+                    menu,
                     html.H6(
                         [
                             html.Span("Saved reports"),
@@ -104,25 +101,7 @@ def navbar(path, routines):
                         ],
                         className="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase",
                     ),
-                    html.Ul(
-                        [
-                            html.Li(
-                                [
-                                    # <span data-feather="file-text" class="align-text-bottom"></span>
-                                    html.A(
-                                        folder,
-                                        href=f"/live/{folder}",
-                                        className="nav-link active"
-                                        if folder == path
-                                        else "nav-link",
-                                    )
-                                ],
-                                className="nav-item",
-                            )
-                            for folder in sorted(get_folders())
-                        ],
-                        className="nav flex-column mb-2",
-                    ),
+                    saved_reports,
                 ],
                 className="position-sticky pt-3 sidebar-sticky",
             )
@@ -133,6 +112,9 @@ def navbar(path, routines):
 
 
 def summary(metadata):
+    if metadata is None:
+        return html.H2("Please select a report from the list on the left.")
+
     return html.Div(
         [
             html.Br(),
@@ -178,7 +160,7 @@ def page(path, metadata, routines_navbar, routines_content):
         html.Div(
             html.Div(
                 [
-                    navbar(path, routines_navbar),
+                    sidebar(path, routines_navbar),
                     html.Main(
                         [
                             html.Br(),
@@ -197,6 +179,9 @@ def page(path, metadata, routines_navbar, routines_content):
 
 
 def live(path=None):
+    if path is None:
+        return page(path, None, None, None)
+
     try:
         # read metadata and show in the live page
         with open(os.path.join(path, "meta.yml"), "r") as file:

@@ -7,7 +7,7 @@ from dash import MATCH, Dash, Input, Output, dcc, html
 
 from qcvv import plots
 from qcvv.data import Dataset
-from qcvv.web.layouts import home, live
+from qcvv.web.layouts import live
 
 app = Dash(
     __name__,
@@ -45,7 +45,7 @@ app.clientside_callback(
 @app.callback(Output("page-content", "children"), Input("url", "pathname"))
 def display_page(url):
     if url == "/":
-        return home()
+        return live()
     elif url[:5] == "/live":
         path = url.split("/")[-1]
         return live(path)
