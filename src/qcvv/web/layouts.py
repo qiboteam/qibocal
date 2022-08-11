@@ -49,17 +49,56 @@ def live(path=None):
     with open(os.path.join(path, "runcard.yml"), "r") as file:
         runcard = yaml.safe_load(file)
 
-    content = [html.Br()]
+    content = [
+        html.Br(),
+        html.H1(path),
+        html.Div(
+            [
+                html.Br(),
+                html.Br(),
+                html.Br(),
+                html.H2("Summary"),
+                html.H5(f"Run date: {metadata.get('date')}"),
+                html.Table(
+                    [
+                        html.Thead(
+                            [
+                                html.Tr(
+                                    [
+                                        html.Th("Library"),
+                                        html.Th("Version"),
+                                    ]
+                                )
+                            ]
+                        ),
+                        html.Tbody(
+                            [
+                                html.Tr(
+                                    [
+                                        html.Th(library),
+                                        html.Th(version),
+                                    ]
+                                )
+                                for library, version in metadata.get("versions").items()
+                            ]
+                        ),
+                    ],
+                    className="table table-hover",
+                    style={"width": "20%"},
+                ),
+            ],
+            id="summary",
+        ),
+    ]
     navbar_routines = []
     for routine in runcard.get("actions").keys():
+        routine_pretty = routine.replace("_", " ").title()
         routine_path = os.path.join(path, "data", routine)
         navbar_routines.append(
             html.Li(
                 [
                     html.A(
-                        [
-                            routine,
-                        ],
+                        routine_pretty,
                         className="nav-link",
                         href=f"#{routine}",
                     )
@@ -75,7 +114,7 @@ def live(path=None):
                     html.Br(),
                     html.Br(),
                     html.Br(),
-                    html.H3(routine),
+                    html.H3(routine_pretty),
                     dcc.Graph(
                         id={"type": "graph", "index": routine_path},
                     ),
@@ -92,21 +131,16 @@ def live(path=None):
         )
         content.append(html.Br())
 
-    qcvv_version = metadata.get("versions").get("qcvv")
+    from qcvv import __version__
+
     return [
         html.Header(
             [
                 html.A(
-                    html.H6(f"qcvv {qcvv_version}"),
-                    href="/",
+                    html.H6(f"qcvv {__version__}"),
+                    href="https://github.com/qiboteam/qcvv",
+                    target="_blank",
                     className="navbar-nav nav-item nav-link px-3",
-                ),
-                html.A(
-                    html.H4(path), href="#", className="navbar-nav nav-item nav-link"
-                ),
-                html.Div(
-                    html.H6(f"Run date: {metadata.get('date')}"),
-                    className="navbar-nav nav-item nav-link",
                 ),
                 html.A(
                     html.H6("Export"),
@@ -124,7 +158,36 @@ def live(path=None):
                             html.Div(
                                 [
                                     html.Ul(
-                                        navbar_routines,
+                                        [
+                                            html.Li(
+                                                [
+                                                    html.A(
+                                                        "Summary",
+                                                        className="nav-link",
+                                                        href=f"#summary",
+                                                    )
+                                                ],
+                                                className="nav-item",
+                                            ),
+                                            html.Li(
+                                                [
+                                                    html.A(
+                                                        "Actions",
+                                                        className="nav-link",
+                                                        href=f"#actions",
+                                                    )
+                                                ],
+                                                className="nav-item",
+                                            ),
+                                            html.Ul(
+                                                [
+                                                    html.Li(
+                                                        navbar_routines,
+                                                        className="nav-item",
+                                                    )
+                                                ]
+                                            ),
+                                        ],
                                         className="nav flex-column",
                                     ),
                                     html.H6(
