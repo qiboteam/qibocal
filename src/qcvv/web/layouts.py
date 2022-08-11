@@ -49,52 +49,12 @@ def live(path=None):
     with open(os.path.join(path, "runcard.yml"), "r") as file:
         runcard = yaml.safe_load(file)
 
-    content = [
-        html.Br(),
-        html.H1(path),
-        html.Div(
-            [
-                html.Br(),
-                html.Br(),
-                html.Br(),
-                html.H2("Summary"),
-                html.H5(f"Run date: {metadata.get('date')}"),
-                html.Table(
-                    [
-                        html.Thead(
-                            [
-                                html.Tr(
-                                    [
-                                        html.Th("Library"),
-                                        html.Th("Version"),
-                                    ]
-                                )
-                            ]
-                        ),
-                        html.Tbody(
-                            [
-                                html.Tr(
-                                    [
-                                        html.Th(library),
-                                        html.Th(version),
-                                    ]
-                                )
-                                for library, version in metadata.get("versions").items()
-                            ]
-                        ),
-                    ],
-                    className="table table-hover",
-                    style={"width": "20%"},
-                ),
-            ],
-            id="summary",
-        ),
-    ]
-    navbar_routines = []
+    routines_content = [html.Br(), html.Br(), html.Br(), html.H2("Actions")]
+    routines_navbar = []
     for routine in runcard.get("actions").keys():
         routine_pretty = routine.replace("_", " ").title()
         routine_path = os.path.join(path, "data", routine)
-        navbar_routines.append(
+        routines_navbar.append(
             html.Li(
                 [
                     html.A(
@@ -106,7 +66,7 @@ def live(path=None):
                 className="nav-item",
             ),
         )
-        content.append(
+        routines_content.append(
             html.Div(
                 [
                     # Empty spaces so that top bar does not cover the
@@ -129,7 +89,7 @@ def live(path=None):
                 id=routine,
             )
         )
-        content.append(html.Br())
+        routines_content.append(html.Br())
 
     from qcvv import __version__
 
@@ -182,7 +142,7 @@ def live(path=None):
                                             html.Ul(
                                                 [
                                                     html.Li(
-                                                        navbar_routines,
+                                                        routines_navbar,
                                                         className="nav-item",
                                                     )
                                                 ]
@@ -225,7 +185,51 @@ def live(path=None):
                         className="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse",
                     ),
                     html.Main(
-                        content, className="col-md-9 ms-sm-auto col-lg-10 px-md-4"
+                        [
+                            html.Br(),
+                            html.H1(path),
+                            html.Div(
+                                [
+                                    html.Br(),
+                                    html.Br(),
+                                    html.Br(),
+                                    html.H2("Summary"),
+                                    html.H5(f"Run date: {metadata.get('date')}"),
+                                    html.Table(
+                                        [
+                                            html.Thead(
+                                                [
+                                                    html.Tr(
+                                                        [
+                                                            html.Th("Library"),
+                                                            html.Th("Version"),
+                                                        ]
+                                                    )
+                                                ]
+                                            ),
+                                            html.Tbody(
+                                                [
+                                                    html.Tr(
+                                                        [
+                                                            html.Th(library),
+                                                            html.Th(version),
+                                                        ]
+                                                    )
+                                                    for library, version in metadata.get(
+                                                        "versions"
+                                                    ).items()
+                                                ]
+                                            ),
+                                        ],
+                                        className="table table-hover",
+                                        style={"width": "20%"},
+                                    ),
+                                ],
+                                id="summary",
+                            ),
+                            html.Div(routines_content, id="actions"),
+                        ],
+                        className="col-md-9 ms-sm-auto col-lg-10 px-md-4",
                     ),
                 ],
                 className="row",
