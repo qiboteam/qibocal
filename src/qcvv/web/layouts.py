@@ -132,6 +132,70 @@ def navbar(path, routines):
     )
 
 
+def summary(metadata):
+    return html.Div(
+        [
+            html.Br(),
+            html.Br(),
+            html.Br(),
+            html.H2("Summary"),
+            html.H5(f"Run date: {metadata.get('date')}"),
+            html.Table(
+                [
+                    html.Thead(
+                        [
+                            html.Tr(
+                                [
+                                    html.Th("Library"),
+                                    html.Th("Version"),
+                                ]
+                            )
+                        ]
+                    ),
+                    html.Tbody(
+                        [
+                            html.Tr(
+                                [
+                                    html.Th(library),
+                                    html.Th(version),
+                                ]
+                            )
+                            for library, version in metadata.get("versions").items()
+                        ]
+                    ),
+                ],
+                className="table table-hover",
+                style={"width": "20%"},
+            ),
+        ],
+        id="summary",
+    )
+
+
+def page(path, metadata, routines_navbar, routines_content):
+    return [
+        topbar(),
+        html.Div(
+            html.Div(
+                [
+                    navbar(path, routines_navbar),
+                    html.Main(
+                        [
+                            html.Br(),
+                            html.H1(path),
+                            summary(metadata),
+                            html.Div(routines_content, id="actions"),
+                        ],
+                        className="col-md-9 ms-sm-auto col-lg-10 px-md-4",
+                    ),
+                ],
+                className="row",
+            ),
+            className="container-fluid",
+        ),
+    ]
+
+
 def live(path=None):
     try:
         # read metadata and show in the live page
@@ -186,62 +250,4 @@ def live(path=None):
         )
         routines_content.append(html.Br())
 
-    return [
-        topbar(),
-        html.Div(
-            html.Div(
-                [
-                    navbar(path, routines_navbar),
-                    html.Main(
-                        [
-                            html.Br(),
-                            html.H1(path),
-                            html.Div(
-                                [
-                                    html.Br(),
-                                    html.Br(),
-                                    html.Br(),
-                                    html.H2("Summary"),
-                                    html.H5(f"Run date: {metadata.get('date')}"),
-                                    html.Table(
-                                        [
-                                            html.Thead(
-                                                [
-                                                    html.Tr(
-                                                        [
-                                                            html.Th("Library"),
-                                                            html.Th("Version"),
-                                                        ]
-                                                    )
-                                                ]
-                                            ),
-                                            html.Tbody(
-                                                [
-                                                    html.Tr(
-                                                        [
-                                                            html.Th(library),
-                                                            html.Th(version),
-                                                        ]
-                                                    )
-                                                    for library, version in metadata.get(
-                                                        "versions"
-                                                    ).items()
-                                                ]
-                                            ),
-                                        ],
-                                        className="table table-hover",
-                                        style={"width": "20%"},
-                                    ),
-                                ],
-                                id="summary",
-                            ),
-                            html.Div(routines_content, id="actions"),
-                        ],
-                        className="col-md-9 ms-sm-auto col-lg-10 px-md-4",
-                    ),
-                ],
-                className="row",
-            ),
-            className="container-fluid",
-        ),
-    ]
+    return page(path, metadata, routines_navbar, routines_content)
