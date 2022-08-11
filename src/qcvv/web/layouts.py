@@ -37,6 +37,101 @@ def home():
     )
 
 
+def topbar():
+    from qcvv import __version__
+
+    return html.Header(
+        [
+            html.A(
+                html.H6(f"qcvv {__version__}"),
+                href="https://github.com/qiboteam/qcvv",
+                target="_blank",
+                className="navbar-nav nav-item nav-link px-3",
+            ),
+            html.A(
+                html.H6("Export"),
+                href="#",
+                className="navbar-nav nav-item nav-link px-3",
+            ),
+        ],
+        className="navbar navbar-dark sticky-top flex-md-nowrap p-0 shadow",
+    )
+
+
+def navbar(path, routines):
+    return html.Nav(
+        [
+            html.Div(
+                [
+                    html.Ul(
+                        [
+                            html.Li(
+                                [
+                                    html.A(
+                                        "Summary",
+                                        className="nav-link",
+                                        href=f"#summary",
+                                    )
+                                ],
+                                className="nav-item",
+                            ),
+                            html.Li(
+                                [
+                                    html.A(
+                                        "Actions",
+                                        className="nav-link",
+                                        href=f"#actions",
+                                    )
+                                ],
+                                className="nav-item",
+                            ),
+                            html.Ul(
+                                [
+                                    html.Li(
+                                        routines,
+                                        className="nav-item",
+                                    )
+                                ]
+                            ),
+                        ],
+                        className="nav flex-column",
+                    ),
+                    html.H6(
+                        [
+                            html.Span("Saved reports"),
+                            # html.A(className="link-secondary", href="#", aria-label="Add a new report">
+                            #    <span data-feather="plus-circle" class="align-text-bottom"></span>
+                        ],
+                        className="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase",
+                    ),
+                    html.Ul(
+                        [
+                            html.Li(
+                                [
+                                    # <span data-feather="file-text" class="align-text-bottom"></span>
+                                    html.A(
+                                        folder,
+                                        href=f"/live/{folder}",
+                                        className="nav-link active"
+                                        if folder == path
+                                        else "nav-link",
+                                    )
+                                ],
+                                className="nav-item",
+                            )
+                            for folder in sorted(get_folders())
+                        ],
+                        className="nav flex-column mb-2",
+                    ),
+                ],
+                className="position-sticky pt-3 sidebar-sticky",
+            )
+        ],
+        id="sidebarMenu",
+        className="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse",
+    )
+
+
 def live(path=None):
     try:
         # read metadata and show in the live page
@@ -91,99 +186,12 @@ def live(path=None):
         )
         routines_content.append(html.Br())
 
-    from qcvv import __version__
-
     return [
-        html.Header(
-            [
-                html.A(
-                    html.H6(f"qcvv {__version__}"),
-                    href="https://github.com/qiboteam/qcvv",
-                    target="_blank",
-                    className="navbar-nav nav-item nav-link px-3",
-                ),
-                html.A(
-                    html.H6("Export"),
-                    href="#",
-                    className="navbar-nav nav-item nav-link px-3",
-                ),
-            ],
-            className="navbar navbar-dark sticky-top flex-md-nowrap p-0 shadow",
-        ),
+        topbar(),
         html.Div(
             html.Div(
                 [
-                    html.Nav(
-                        [
-                            html.Div(
-                                [
-                                    html.Ul(
-                                        [
-                                            html.Li(
-                                                [
-                                                    html.A(
-                                                        "Summary",
-                                                        className="nav-link",
-                                                        href=f"#summary",
-                                                    )
-                                                ],
-                                                className="nav-item",
-                                            ),
-                                            html.Li(
-                                                [
-                                                    html.A(
-                                                        "Actions",
-                                                        className="nav-link",
-                                                        href=f"#actions",
-                                                    )
-                                                ],
-                                                className="nav-item",
-                                            ),
-                                            html.Ul(
-                                                [
-                                                    html.Li(
-                                                        routines_navbar,
-                                                        className="nav-item",
-                                                    )
-                                                ]
-                                            ),
-                                        ],
-                                        className="nav flex-column",
-                                    ),
-                                    html.H6(
-                                        [
-                                            html.Span("Saved reports"),
-                                            # html.A(className="link-secondary", href="#", aria-label="Add a new report">
-                                            #    <span data-feather="plus-circle" class="align-text-bottom"></span>
-                                        ],
-                                        className="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase",
-                                    ),
-                                    html.Ul(
-                                        [
-                                            html.Li(
-                                                [
-                                                    # <span data-feather="file-text" class="align-text-bottom"></span>
-                                                    html.A(
-                                                        folder,
-                                                        href=f"/live/{folder}",
-                                                        className="nav-link active"
-                                                        if folder == path
-                                                        else "nav-link",
-                                                    )
-                                                ],
-                                                className="nav-item",
-                                            )
-                                            for folder in sorted(get_folders())
-                                        ],
-                                        className="nav flex-column mb-2",
-                                    ),
-                                ],
-                                className="position-sticky pt-3 sidebar-sticky",
-                            )
-                        ],
-                        id="sidebarMenu",
-                        className="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse",
-                    ),
+                    navbar(path, routines_navbar),
                     html.Main(
                         [
                             html.Br(),
