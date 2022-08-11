@@ -17,18 +17,25 @@ def topbar():
                 target="_blank",
                 className="navbar-nav nav-item nav-link px-3",
             ),
-            html.A(
-                html.H6("Home"),
-                href="/",
-                className="navbar-nav nav-item nav-link px-3",
-            ),
-            html.A(
-                html.H6("GitHub"),
-                href="https://github.com/qiboteam/qcvv",
-                className="navbar-nav nav-item nav-link px-3",
+            html.Ul(
+                [
+                    html.Li(
+                        html.A(html.H6("Home"), href="/", className="nav-link"),
+                        className="nav-item col-6 col-lg-auto",
+                    ),
+                    html.Li(
+                        html.A(
+                            html.H6("GitHub"),
+                            href="https://github.com/qiboteam/qcvv",
+                            className="nav-link",
+                        ),
+                        className="nav-item col-6 col-lg-auto px-3",
+                    ),
+                ],
+                className="navbar-nav flex-row flex-wrap ms-md-auto",
             ),
         ],
-        className="navbar navbar-dark sticky-top flex-md-nowrap p-0 shadow",
+        className="navbar navbar-dark sticky-top p-0 shadow",
     )
 
 
