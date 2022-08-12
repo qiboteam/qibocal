@@ -121,7 +121,7 @@
             <br>
             <h4>{{ header }}</h4>
             <!-- find a way to change height and width depending on screen type -->
-            <iframe src="/dash/{{ path }}/data/{{ routine }}/{{ method }}" style="position: relative; height: 500px; width: 100%;"></iframe>
+            <iframe src="/dash/{{ path }}/data/{{ routine }}/{{ method }}/{{ runcard.get('format') }}" style="position: relative; height: 500px; width: 100%;"></iframe>
           </div>
           {% endfor %}
         </div>

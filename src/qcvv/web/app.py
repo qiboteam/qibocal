@@ -11,7 +11,6 @@ from qcvv.web.server import server
 
 app = Dash(
     server=server,
-    routes_pathname_prefix="/dash/",
     suppress_callback_exceptions=True,
 )
 
@@ -26,12 +25,12 @@ app.layout = html.Div(
 
 @app.callback(Output("page-content", "children"), Input("url", "pathname"))
 def display_dash(url):
-    routine_path = os.path.join(*url.split("/")[2:])
+    path = os.path.join(*url.split("/")[2:])
     return html.Div(
         [
-            dcc.Graph(id={"type": "graph", "index": routine_path}),
+            dcc.Graph(id={"type": "graph", "index": path}),
             dcc.Interval(
-                id={"type": "interval", "index": routine_path},
+                id={"type": "interval", "index": path},
                 # TODO: Perhaps the user should be allowed to change the refresh rate
                 interval=1000,
                 n_intervals=0,
@@ -48,14 +47,10 @@ def display_dash(url):
     Input({"type": "graph", "index": MATCH}, "figure"),
 )
 def get_graph(n, graph_id, current_figure):
-    folder, method = os.path.split(graph_id.get("index"))
+    folder, format = os.path.split(graph_id.get("index"))
+    folder, method = os.path.split(folder)
     folder, routine = os.path.split(folder)
     folder, _ = os.path.split(folder)
-    # find data format
-    with open(os.path.join(folder, "runcard.yml"), "r") as file:
-        runcard = yaml.safe_load(file)
-    format = runcard.get("format")
-
     try:
         data = Dataset.load_data(folder, routine, format)
         # FIXME: Temporarily hardcode the plotting method to test
