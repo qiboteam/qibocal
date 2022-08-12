@@ -152,6 +152,8 @@ class ActionBuilder:
         for action in self.runcard["actions"]:
             routine, args = self._build_single_action(action)
             results = self.get_result(routine, args)
+            data = self.fit(routine)
+            self.update(routine, data)
         self.platform.stop()
         self.platform.disconnect()
 
@@ -161,3 +163,20 @@ class ActionBuilder:
         if hasattr(routine, "final_action"):
             return routine.final_action(results, self.output, self.format)
         return results
+
+    def fit(self, routine):
+        """Method to call fitting routines."""
+        if hasattr(routine, "post_processing"):
+            return routine.post_processing(
+                routine,
+                self.folder,
+                self.format,
+                self.platform,
+                self.qubit,
+                self.runcard["actions"][routine.__name__],
+            )
+
+    def update(self, routine, data):
+        """Method to update the platform runcard."""
+        if hasattr(routine, "update"):
+            return routine.update(routine, self.folder, self.qubit, data)

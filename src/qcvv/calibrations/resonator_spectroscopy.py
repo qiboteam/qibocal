@@ -4,9 +4,10 @@ from qibolab.pulses import PulseSequence
 
 from qcvv.calibrations.utils import variable_resolution_scanrange
 from qcvv.data import Dataset
-from qcvv.decorators import store
+from qcvv.decorators import fit, store
 
 
+@fit
 @store
 def resonator_spectroscopy(
     platform,
@@ -38,7 +39,7 @@ def resonator_spectroscopy(
     )
     data = Dataset(name="fast_sweep", quantities={"frequency": "Hz"})
     count = 0
-    for _ in range(software_averages):
+    for _ in range(1):
         for freq in freqrange:
             if count % points == 0:
                 yield data
@@ -68,6 +69,7 @@ def resonator_spectroscopy(
     freqrange = (
         np.arange(-precision_width, precision_width, precision_step) + lo_qrm_frequency
     )
+
     count = 0
     for _ in range(software_averages):
         for freq in freqrange:
@@ -87,19 +89,6 @@ def resonator_spectroscopy(
             prec_data.add(results)
             count += 1
     yield prec_data
-    # TODO: add fitting (possibly without quantify)
-    # # Fitting
-    # if self.resonator_type == '3D':
-    #     f0, BW, Q, peak_voltage = fitting.lorentzian_fit("last", max, "Resonator_spectroscopy")
-    #     resonator_freq = int(f0 + ro_pulse.frequency)
-    # elif self.resonator_type == '2D':
-    #     f0, BW, Q, peak_voltage = fitting.lorentzian_fit("last", min, "Resonator_spectroscopy")
-    #     resonator_freq = int(f0 + ro_pulse.frequency)
-    #     # TODO: Fix fitting of minimum values
-    # peak_voltage = peak_voltage * 1e6
-
-    # print(f"\nResonator Frequency = {resonator_freq}")
-    # return resonator_freq, avg_voltage, peak_voltage, dataset
 
 
 @store
