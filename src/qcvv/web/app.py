@@ -60,14 +60,10 @@ def display_page(url):
     Input({"type": "graph", "index": MATCH}, "figure"),
 )
 def get_graph(n, graph_id, current_figure):
-    folder, method = os.path.split(graph_id.get("index"))
+    folder, format = os.path.split(graph_id.get("index"))
+    folder, method = os.path.split(folder)
     folder, routine = os.path.split(folder)
     folder, _ = os.path.split(folder)
-    # find data format
-    with open(os.path.join(folder, "runcard.yml"), "r") as file:
-        runcard = yaml.safe_load(file)
-    format = runcard.get("format")
-
     try:
         data = Dataset.load_data(folder, routine, format)
         # FIXME: Temporarily hardcode the plotting method to test

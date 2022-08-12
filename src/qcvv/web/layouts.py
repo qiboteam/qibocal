@@ -250,13 +250,17 @@ def live(path=None):
                         dcc.Graph(
                             id={
                                 "type": "graph",
-                                "index": os.path.join(routine_path, method),
+                                "index": os.path.join(
+                                    routine_path, method, runcard.get("format")
+                                ),
                             },
                         ),
                         dcc.Interval(
                             id={
                                 "type": "interval",
-                                "index": os.path.join(routine_path, method),
+                                "index": os.path.join(
+                                    routine_path, method, runcard.get("format")
+                                ),
                             },
                             # TODO: Perhaps the user should be allowed to change the refresh rate
                             interval=1000,
