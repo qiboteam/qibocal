@@ -5,6 +5,8 @@ import dash
 import yaml
 from dash import dcc, html
 
+from qcvv.plots import METHODS
+
 
 def topbar():
     from qcvv import __version__
@@ -211,6 +213,19 @@ def live(path=None):
     for routine in runcard.get("actions").keys():
         routine_pretty = routine.replace("_", " ").title()
         routine_path = os.path.join(path, "data", routine)
+        graphs_navbar = [
+            html.Li(
+                [
+                    html.A(
+                        header,
+                        className="nav-link",
+                        href=f"#{routine}-{method}",
+                    )
+                ],
+                className="nav-item",
+            )
+            for method, header in METHODS.get(routine)
+        ]
         routines_navbar.append(
             html.Li(
                 [
@@ -218,10 +233,41 @@ def live(path=None):
                         routine_pretty,
                         className="nav-link",
                         href=f"#{routine}",
-                    )
+                    ),
+                    html.Ul(graphs_navbar),
                 ],
                 className="nav-item",
             ),
+        )
+        graphs = html.Div(
+            [
+                html.Div(
+                    [
+                        html.Br(),
+                        html.Br(),
+                        html.Br(),
+                        html.H4(header),
+                        dcc.Graph(
+                            id={
+                                "type": "graph",
+                                "index": os.path.join(routine_path, method),
+                            },
+                        ),
+                        dcc.Interval(
+                            id={
+                                "type": "interval",
+                                "index": os.path.join(routine_path, method),
+                            },
+                            # TODO: Perhaps the user should be allowed to change the refresh rate
+                            interval=1000,
+                            n_intervals=0,
+                            disabled=False,
+                        ),
+                    ],
+                    id=f"{routine}-{method}",
+                )
+                for method, header in METHODS.get(routine)
+            ]
         )
         routines_content.append(
             html.Div(
@@ -232,16 +278,7 @@ def live(path=None):
                     html.Br(),
                     html.Br(),
                     html.H3(routine_pretty),
-                    dcc.Graph(
-                        id={"type": "graph", "index": routine_path},
-                    ),
-                    dcc.Interval(
-                        id={"type": "interval", "index": routine_path},
-                        # TODO: Perhaps the user should be allowed to change the refresh rate
-                        interval=1000,
-                        n_intervals=0,
-                        disabled=False,
-                    ),
+                    graphs,
                 ],
                 id=routine,
             )
