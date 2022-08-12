@@ -5,6 +5,7 @@ import yaml
 from flask import Flask, render_template
 
 from qcvv import __version__
+from qcvv.plots import METHODS
 
 server = Flask(__name__)
 
@@ -42,4 +43,5 @@ def page(path=None):
         path=path,
         metadata=metadata,
         runcard=runcard,
+        plotters=METHODS,
     )

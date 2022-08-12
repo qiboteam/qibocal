@@ -45,6 +45,14 @@
             {% for routine in runcard.get('actions').keys() %}
             <li class="nav-item">
               <a class="nav-link" href="#{{ routine }}">{{ routine.replace("_", " ").title() }}</a>
+              <!-- plots submenu -->
+              <ul>
+                {% for method, header in plotters.get(routine) %}
+                <li class="nav_item">
+                  <a class="nav-link" href="#{{ routine }}-{{ method }}">{{ header }}</a>
+                </li>
+                {% endfor %}
+              </ul>
             </li>
             {% endfor %}
           </ul>
@@ -103,8 +111,15 @@
           <br>
           <br>
           <h3>{{ routine.replace("_", " ").title() }}</h3>
-          <!-- find a way to change height and width depending on screen type -->
-          <iframe src="/dash/{{ path }}/data/{{ routine }}" height="600px" width="1500px"></iframe>
+          {% for method, header in plotters.get(routine) %}
+          <div id="{{ routine }}-{{ method }}">
+            <br>
+            <br>
+            <h4>{{ header }}</h4>
+            <!-- find a way to change height and width depending on screen type -->
+            <iframe src="/dash/{{ path }}/data/{{ routine }}/{{ method }}" height="600px" width="1500px"></iframe>
+          </div>
+          {% endfor %}
         </div>
         {% endfor %}
       </div>
