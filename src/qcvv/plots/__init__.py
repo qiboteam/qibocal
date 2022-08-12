@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from qcvv.plots.resonator_spectroscopy import *
 
+# TODO: Maybe move this to yaml?
 METHODS = {
     "resonator_spectroscopy_attenuation": [
         ("frequency_vs_attenuation", "Frequency vs Attenuation"),
