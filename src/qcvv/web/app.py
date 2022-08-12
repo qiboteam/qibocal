@@ -7,16 +7,12 @@ from dash import MATCH, Dash, Input, Output, dcc, html
 
 from qcvv import plots
 from qcvv.data import Dataset
-from qcvv.web.layouts import live
+from qcvv.fweb.server import server
 
 app = Dash(
-    __name__,
+    server=server,
+    routes_pathname_prefix="/dash/",
     suppress_callback_exceptions=True,
-    title="QCVV",
-    update_title=None,
-    external_stylesheets=[
-        "https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css"
-    ],
 )
 
 app.layout = html.Div(
@@ -27,30 +23,22 @@ app.layout = html.Div(
     ]
 )
 
-app.clientside_callback(
-    """
-    function(url) {
-        if (url === '/') {
-            document.title = 'QCVV Home'
-        } else {
-            document.title = url.split('/')[2]
-        }
-    }
-    """,
-    Output("blank-output", "children"),
-    Input("url", "pathname"),
-)
-
 
 @app.callback(Output("page-content", "children"), Input("url", "pathname"))
-def display_page(url):
-    if url == "/":
-        return live()
-    elif url[:5] == "/live":
-        path = url.split("/")[-1]
-        return live(path)
-    else:
-        return html.H1("This page does not exist.")
+def display_dash(url):
+    routine_path = os.path.join(*url.split("/")[2:])
+    return html.Div(
+        [
+            dcc.Graph(id={"type": "graph", "index": routine_path}),
+            dcc.Interval(
+                id={"type": "interval", "index": routine_path},
+                # TODO: Perhaps the user should be allowed to change the refresh rate
+                interval=1000,
+                n_intervals=0,
+                disabled=False,
+            ),
+        ]
+    )
 
 
 @app.callback(

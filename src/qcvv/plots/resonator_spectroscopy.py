@@ -8,6 +8,23 @@ def get_values(df, quantity, unit):
 
 
 def resonator_spectroscopy_attenuation(data):
+    fig = go.Figure(
+        data=go.Heatmap(
+            x=get_values(data.df, "frequency", "GHz"),
+            y=get_values(data.df, "attenuation", "dB"),
+            z=get_values(data.df, "MSR", "V"),
+        )
+    )
+    fig.update_layout(
+        showlegend=False,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Frequency (GHz)",
+        yaxis_title="Attenuation (dB)",
+    )
+    return fig
+
+
+def resonator_spectroscopy_attenuation_full(data):
     plot1d_attenuation = 30  # attenuation value to use for 1D frequency vs MSR plot
 
     fig = make_subplots(
