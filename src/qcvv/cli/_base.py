@@ -49,7 +49,14 @@ def command(runcard, folder, force=None):
     type=int,
     help="Localhost port to launch dash server.",
 )
-def live_plot(port):
+@click.option(
+    "debug",
+    "-d",
+    "--debug",
+    is_flag=True,
+    help="Launch server in debugging mode.",
+)
+def live_plot(port, debug):
     """Real time plotting of calibration data on a dash server."""
     import socket
 
@@ -62,7 +69,7 @@ def live_plot(port):
                 break
         port += 1
 
-    app.run_server(debug=True, port=port)
+    app.run_server(debug=debug, port=port)
 
 
 class ActionBuilder:
