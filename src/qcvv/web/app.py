@@ -9,6 +9,8 @@ from qcvv import plots
 from qcvv.data import Dataset
 from qcvv.web.layouts import live
 
+Dataset()  # dummy dataset call to suppress ``pint[V]`` error
+
 app = Dash(
     __name__,
     suppress_callback_exceptions=True,
