@@ -2,11 +2,6 @@ body {
     font-size: .875rem;
   }
 
-  .feather {
-    width: 16px;
-    height: 16px;
-  }
-
   /*
    * Sidebar
    */
@@ -37,23 +32,31 @@ body {
     overflow-y: auto; /* Scrollable contents if viewport is shorter than content. */
   }
 
-  .sidebar .nav-link {
-    font-weight: 500;
-    color: #333;
+  .list-group.list-group-root {
+    padding: 0;
+    overflow: hidden;
   }
 
-  .sidebar .nav-link .feather {
-    margin-right: 4px;
-    color: #727272;
+  .list-group.list-group-root .list-group {
+    margin-bottom: 0;
   }
 
-  .sidebar .nav-link.active {
-    color: #2470dc;
+  .list-group.list-group-root .list-group-item {
+    border-radius: 0;
   }
 
-  .sidebar-heading {
-    font-size: 0.9rem;
+  .list-group.list-group-root > .list-group-item:first-child {
+    border-top-width: 0;
   }
+
+  .list-group.list-group-root > .list-group > .list-group-item {
+    padding-left: 30px;
+  }
+
+  .list-group.list-group-root > .list-group > .list-group > .list-group-item {
+    padding-left: 45px;
+  }
+
 
   /*
    * Navbar

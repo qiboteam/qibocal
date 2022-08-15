@@ -27,54 +27,42 @@
   <div class="row">
 
     <!-- side bar -->
-    <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+    <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-white sidebar collapse">
       <div class="position-sticky pt-3 sidebar-sticky">
         {% if path %}
         <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
           <span>Index</span>
         </h6>
-        <ul class="nav flex-column">
-          <li class="nav-item">
-            <a class="nav-link" href="#summary">
-              Summary
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="#actions">
-              Actions
-            </a>
-          </li>
+        <div class="list-group list-group-root">
+          <a class="list-group-item list-group-item-action list-group-item-light" href="#summary">
+            Summary
+          </a>
+          <a class="list-group-item list-group-item-action list-group-item-light" href="#actions">
+            Actions
+          </a>
           <!-- actions submenu -->
-          <ul>
+          <div class="list-group">
             {% for routine in runcard.get('actions').keys() %}
-            <li class="nav-item">
-              <a class="nav-link" href="#{{ routine }}">{{ routine.replace("_", " ").title() }}</a>
-              <!-- plots submenu -->
-              <ul>
+            <a class="list-group-item list-group-item-action list-group-item-light" href="#{{ routine }}">{{ routine.replace("_", " ").title() }}</a>
+            <!-- plots submenu -->
+              <div class="list-group">
                 {% for method, header in plotters.get(routine) %}
-                <li class="nav_item">
-                  <a class="nav-link" href="#{{ routine }}-{{ method }}">{{ header }}</a>
-                </li>
+                <a class="list-group-item list-group-item-action list-group-item-light" href="#{{ routine }}-{{ method }}">{{ header }}</a>
                 {% endfor %}
-              </ul>
-            </li>
+              </div>
             {% endfor %}
-          </ul>
-        </ul>
+          </div>
         {% endif %}
         <!-- saved reports menu -->
         <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
           <span>Saved reports</span>
         </h6>
-        <ul class="nav flex-column mb-2">
+        <div class="list-group list-group-root">
           {% for folder in folders %}
-          <li class="nav-item">
-            <a class="nav-link{{ ' active' if folder == path else '' }}" href="{{ url_for('page', path=folder) }}">
-              {{ folder }}
-            </a>
-          </li>
+          <a class="list-group-item list-group-item-action list-group-item-light {{ ' active' if folder == path else '' }}" href="{{ url_for('page', path=folder) }}">
+            {{ folder }}
+          </a>
           {% endfor %}
-        </ul>
       </div>
     </nav>
 
