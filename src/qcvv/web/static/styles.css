@@ -18,6 +18,7 @@ body {
     z-index: 100; /* Behind the navbar */
     padding: 48px 0 0; /* Height of navbar */
     box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+    font-size: 1.0rem;
   }
 
   @media (max-width: 767.98px) {
@@ -67,4 +68,11 @@ body {
     padding-bottom: .75rem;
     background-color: #6400FF;
     box-shadow: inset -1px 0 0 #6400FF;
+  }
+
+  :target::before {
+    content: "";
+    display: block;
+    height: 48px; /* fixed header height*/
+    margin: -48px 0 0; /* negative fixed header height */
   }
