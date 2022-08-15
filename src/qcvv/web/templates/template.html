@@ -46,7 +46,7 @@
             <a class="list-group-item list-group-item-action list-group-item-light" href="#{{ routine }}">{{ routine.replace("_", " ").title() }}</a>
             <!-- plots submenu -->
               <div class="list-group">
-                {% for method, header in plotters.get(routine) %}
+                {% for header, method in plotters.get(routine).items() %}
                 <a class="list-group-item list-group-item-action list-group-item-light" href="#{{ routine }}-{{ method }}">{{ header }}</a>
                 {% endfor %}
               </div>
@@ -98,7 +98,7 @@
         {% for routine in runcard.get('actions').keys() %}
         <div id="{{ routine }}">
           <h3>{{ routine.replace("_", " ").title() }}</h3>
-          {% for method, header in plotters.get(routine) %}
+          {% for header, method in plotters.get(routine).items() %}
           <div id="{{ routine }}-{{ method }}">
             <h4>{{ header }}</h4>
             <!-- find a way to change height and width depending on screen type -->

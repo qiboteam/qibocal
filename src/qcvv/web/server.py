@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 import os
+import pathlib
 
 import yaml
 from flask import Flask, render_template
 
 from qcvv import __version__
-from qcvv.plots import METHODS
 
 server = Flask(__name__)
 
@@ -36,6 +36,10 @@ def page(path=None):
     with open(os.path.join(path, "runcard.yml"), "r") as file:
         runcard = yaml.safe_load(file)
 
+    # read plot configuration yaml
+    with open(pathlib.Path(__file__).with_name("plots.yml"), "r") as file:
+        plotters = yaml.safe_load(file)
+
     return render_template(
         "template.html",
         version=__version__,
@@ -43,5 +47,5 @@ def page(path=None):
         path=path,
         metadata=metadata,
         runcard=runcard,
-        plotters=METHODS,
+        plotters=plotters,
     )
