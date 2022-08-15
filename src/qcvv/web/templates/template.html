@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {% if path %}
+    <title>{{ path }}</title>
+    {% else %}
+    <title>QCVV Home</title>
+    {% endif %}
+    <link rel="icon" type="image/x-icon" href="/_favicon.ico?v=2.6.0">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+
+<!-- top bar -->
+<header class="navbar navbar-dark sticky-top p-0 shadow">
+  <a class="navbar-nav nav-item nav-link px-3" href="https://github.com/qiboteam/qcvv" target="_blank"><h6>qcvv {{ version }}</h6></a>
+  <ul class="navbar-nav flex-row flex-wrap ms-md-auto">
+    <li class="nav-item col-6 col-lg-auto"><a href="/" class="nav-link"><h6>Home</h6></a></li>
+    <li class="nav-item col-6 col-lg-auto px-3"><a href="https://github.com/qiboteam/qcvv" class="nav-link"><h6>GitHub</h6></a></li>
+  </ul>
+</header>
+
+<div class="container-fluid">
+  <div class="row">
+
+    <!-- side bar -->
+    <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+      <div class="position-sticky pt-3 sidebar-sticky">
+        {% if path %}
+        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
+          <span>Index</span>
+        </h6>
+        <ul class="nav flex-column">
+          <li class="nav-item">
+            <a class="nav-link" href="#summary">
+              Summary
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#actions">
+              Actions
+            </a>
+          </li>
+          <!-- actions submenu -->
+          <ul>
+            {% for routine in runcard.get('actions').keys() %}
+            <li class="nav-item">
+              <a class="nav-link" href="#{{ routine }}">{{ routine.replace("_", " ").title() }}</a>
+              <!-- plots submenu -->
+              <ul>
+                {% for method, header in plotters.get(routine) %}
+                <li class="nav_item">
+                  <a class="nav-link" href="#{{ routine }}-{{ method }}">{{ header }}</a>
+                </li>
+                {% endfor %}
+              </ul>
+            </li>
+            {% endfor %}
+          </ul>
+        </ul>
+        {% endif %}
+        <!-- saved reports menu -->
+        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
+          <span>Saved reports</span>
+        </h6>
+        <ul class="nav flex-column mb-2">
+          {% for folder in folders %}
+          <li class="nav-item">
+            <a class="nav-link{{ ' active' if folder == path else '' }}" href="{{ url_for('page', path=folder) }}">
+              {{ folder }}
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </nav>
+
+    <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+      <br>
+      {% if path %}
+      <h1>{{ path }}</h1>
+      <div id="summary">
+        <br>
+        <br>
+        <h2>Summary</h2>
+        <br>
+        <h5>Run date: {{ metadata.get('date') }}</h5>
+        <table class="table table-hover" style="width:20%">
+          <thead>
+            <tr>
+              <th>Library</th>
+              <th>Version</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for library, version in metadata.get('versions').items() %}
+            <tr>
+              <th>{{ library }}</th>
+              <th>{{ version }}</th>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div id="actions">
+        <br>
+        <br>
+        <h2>Actions</h2>
+        {% for routine in runcard.get('actions').keys() %}
+        <div id="{{ routine }}">
+          <br>
+          <br>
+          <h3>{{ routine.replace("_", " ").title() }}</h3>
+          {% for method, header in plotters.get(routine) %}
+          <div id="{{ routine }}-{{ method }}">
+            <br>
+            <br>
+            <h4>{{ header }}</h4>
+            <!-- find a way to change height and width depending on screen type -->
+            <iframe src="/dash/{{ path }}/data/{{ routine }}/{{ method }}/{{ runcard.get('format') }}" style="position: relative; height: 500px; width: 100%;"></iframe>
+          </div>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+
+      {% else %}
+      <h2>Please select a report from the list on the left.</h2>
+      {% endif %}
+
+    </main>
+
+  </div>
+</div>
+</body>
+</html>
