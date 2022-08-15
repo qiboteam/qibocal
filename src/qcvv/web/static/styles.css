@@ -51,10 +51,12 @@ body {
   }
 
   .list-group.list-group-root > .list-group > .list-group-item {
+    border-top-width: 0;
     padding-left: 30px;
   }
 
   .list-group.list-group-root > .list-group > .list-group > .list-group-item {
+    border-top-width: 0;
     padding-left: 45px;
   }
 
