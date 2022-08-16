@@ -6,12 +6,11 @@ format: csv
 
 actions:
   resonator_spectroscopy:
-    lowres_width: 10_000_000
-    lowres_step: 5_000_000 # 100_000
-    highres_width: 1_000_000
-    highres_step: 500_000 # 50_000
-    min_att: 0
-    max_att: 60
-    step_att: 10
+    lowres_width: 5_000_000
+    lowres_step: 2_000_000
+    highres_width: 1_500_000
+    highres_step: 200_000
+    precision_width: 1_500_000
+    precision_step: 100_000
     software_averages: 2
     points: 10

@@ -1,0 +1,15 @@
+platform: tii5q
+
+qubit: 0
+
+format: csv
+
+actions:
+  resonator_punchout:
+    freq_width: 10_000_000
+    freq_step: 200_000
+    min_att: 0
+    max_att: 60
+    step_att: 10
+    software_averages: 2
+    points: 10
