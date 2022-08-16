@@ -25,10 +25,9 @@ def resonator_spectroscopy(
     ro_pulse = platform.qubit_readout_pulse(qubit, start=0)
     sequence.add(ro_pulse)
 
-    lo_qrm_frequency = (
-        platform.characterization["single_qubit"][qubit]["resonator_freq"]
-        - ro_pulse.frequency
-    )
+    lo_qrm_frequency = platform.characterization["single_qubit"][qubit][
+        "resonator_freq"
+    ]
 
     freqrange = (
         variable_resolution_scanrange(
@@ -36,13 +35,14 @@ def resonator_spectroscopy(
         )
         + lo_qrm_frequency
     )
-    data = Dataset(name="fast_sweep", quantities={"frequency": "Hz"})
+
+    data = Dataset(name="ignore", quantities={"frequency": "Hz"})
     count = 0
     for _ in range(software_averages):
         for freq in freqrange:
             if count % points == 0:
                 yield data
-            platform.ro_port[qubit].lo_freq = freq
+            platform.ro_port[qubit].lo_freq = freq - ro_pulse.frequency
             msr, i, q, phase = platform.execute_pulse_sequence(sequence)[qubit][
                 ro_pulse.serial
             ]
@@ -57,14 +57,16 @@ def resonator_spectroscopy(
             count += 1
     yield data
 
-    if platform.settings["nqubits"] == 1:
-        lo_qrm_frequency = data.df.frequency[data.df.MSR.argmax()].magnitude
-        avg_voltage = np.mean(data.df.MSR.values[: (lowres_width // lowres_step)]) * 1e6
-    else:
-        lo_qrm_frequency = data.df.frequency[data.df.MSR.argmin()].magnitude
-        avg_voltage = np.mean(data.df.MSR.values[: (lowres_width // lowres_step)]) * 1e6
+    # FIXME: have live ploting work for multiple datasets saved
 
-    prec_data = Dataset(name="precision_sweep", quantities={"frequency": "Hz"})
+    # if platform.settings["nqubits"] == 1:
+    #     lo_qrm_frequency = data.df.frequency[data.df.MSR.argmax()].magnitude
+    #     avg_voltage = np.mean(data.df.MSR.values[: (lowres_width // lowres_step)]) * 1e6
+    # else:
+    #     lo_qrm_frequency = data.df.frequency[data.df.MSR.argmin()].magnitude
+    #     avg_voltage = np.mean(data.df.MSR.values[: (lowres_width // lowres_step)]) * 1e6
+
+    prec_data = Dataset(name="data", quantities={"frequency": "Hz"})
     freqrange = (
         np.arange(-precision_width, precision_width, precision_step) + lo_qrm_frequency
     )
@@ -73,7 +75,7 @@ def resonator_spectroscopy(
         for freq in freqrange:
             if count % points == 0:
                 yield prec_data
-            platform.ro_port[qubit].lo_freq = freq
+            platform.ro_port[qubit].lo_freq = freq - ro_pulse.frequency
             msr, i, q, phase = platform.execute_pulse_sequence(sequence)[qubit][
                 ro_pulse.serial
             ]
@@ -128,6 +130,7 @@ def resonator_punchout(
     freqrange = np.arange(-freq_width, freq_width, freq_step) + lo_qrm_frequency
     attrange = np.flip(np.arange(min_att, max_att, step_att))
     count = 0
+    print(type(qubit))
     for s in range(software_averages):
         for att in attrange:
             for freq in freqrange:
