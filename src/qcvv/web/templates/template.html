@@ -15,7 +15,7 @@
   <body>
 
 <!-- top bar -->
-<header class="navbar navbar-dark sticky-top p-0 shadow">
+<header class="navbar fixed-top navbar-dark sticky-top p-0 shadow">
   <a class="navbar-nav nav-item nav-link px-3" href="https://github.com/qiboteam/qcvv" target="_blank"><h6>qcvv {{ version }}</h6></a>
   <ul class="navbar-nav flex-row flex-wrap ms-md-auto">
     <li class="nav-item col-6 col-lg-auto"><a href="/" class="nav-link"><h6>Home</h6></a></li>
@@ -27,54 +27,42 @@
   <div class="row">
 
     <!-- side bar -->
-    <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+    <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-white sidebar collapse">
       <div class="position-sticky pt-3 sidebar-sticky">
         {% if path %}
         <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
           <span>Index</span>
         </h6>
-        <ul class="nav flex-column">
-          <li class="nav-item">
-            <a class="nav-link" href="#summary">
-              Summary
-            </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="#actions">
-              Actions
-            </a>
-          </li>
+        <div class="list-group list-group-root">
+          <a class="list-group-item list-group-item-action list-group-item-light" href="#summary">
+            Summary
+          </a>
+          <a class="list-group-item list-group-item-action list-group-item-light" href="#actions">
+            Actions
+          </a>
           <!-- actions submenu -->
-          <ul>
+          <div class="list-group">
             {% for routine in runcard.get('actions').keys() %}
-            <li class="nav-item">
-              <a class="nav-link" href="#{{ routine }}">{{ routine.replace("_", " ").title() }}</a>
-              <!-- plots submenu -->
-              <ul>
-                {% for method, header in plotters.get(routine) %}
-                <li class="nav_item">
-                  <a class="nav-link" href="#{{ routine }}-{{ method }}">{{ header }}</a>
-                </li>
+            <a class="list-group-item list-group-item-action list-group-item-light" href="#{{ routine }}">{{ routine.replace("_", " ").title() }}</a>
+            <!-- plots submenu -->
+              <div class="list-group">
+                {% for header, method in plotters.get(routine).items() %}
+                <a class="list-group-item list-group-item-action list-group-item-light" href="#{{ routine }}-{{ method }}">{{ header }}</a>
                 {% endfor %}
-              </ul>
-            </li>
+              </div>
             {% endfor %}
-          </ul>
-        </ul>
+          </div>
         {% endif %}
         <!-- saved reports menu -->
         <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted text-uppercase">
           <span>Saved reports</span>
         </h6>
-        <ul class="nav flex-column mb-2">
+        <div class="list-group list-group-root">
           {% for folder in folders %}
-          <li class="nav-item">
-            <a class="nav-link{{ ' active' if folder == path else '' }}" href="{{ url_for('page', path=folder) }}">
-              {{ folder }}
-            </a>
-          </li>
+          <a class="list-group-item list-group-item-action list-group-item-light {{ ' active' if folder == path else '' }}" href="{{ url_for('page', path=folder) }}">
+            {{ folder }}
+          </a>
           {% endfor %}
-        </ul>
       </div>
     </nav>
 
@@ -82,11 +70,9 @@
       <br>
       {% if path %}
       <h1>{{ path }}</h1>
+      <br>
       <div id="summary">
-        <br>
-        <br>
         <h2>Summary</h2>
-        <br>
         <h5>Run date: {{ metadata.get('date') }}</h5>
         <table class="table table-hover" style="width:20%">
           <thead>
@@ -105,20 +91,15 @@
           </tbody>
         </table>
       </div>
+      <br>
 
       <div id="actions">
-        <br>
-        <br>
         <h2>Actions</h2>
         {% for routine in runcard.get('actions').keys() %}
         <div id="{{ routine }}">
-          <br>
-          <br>
           <h3>{{ routine.replace("_", " ").title() }}</h3>
-          {% for method, header in plotters.get(routine) %}
+          {% for header, method in plotters.get(routine).items() %}
           <div id="{{ routine }}-{{ method }}">
-            <br>
-            <br>
             <h4>{{ header }}</h4>
             <!-- find a way to change height and width depending on screen type -->
             <iframe src="/dash/{{ path }}/data/{{ routine }}/{{ method }}/{{ runcard.get('format') }}" style="position: relative; height: 500px; width: 100%;"></iframe>
