@@ -46,7 +46,7 @@ def qubit_spectroscopy(
             if count % points == 0:
                 yield data
             platform.qd_port[qubit].lo_freq = freq
-            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[qubit][
+            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
                 ro_pulse.serial
             ]
             results = {
@@ -80,7 +80,7 @@ def qubit_spectroscopy(
             if count % points == 0:
                 yield prec_data
             platform.qd_port[qubit].lo_freq = freq
-            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[qubit][
+            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
                 ro_pulse.serial
             ]
             results = {
