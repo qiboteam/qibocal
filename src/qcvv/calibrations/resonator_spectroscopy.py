@@ -129,8 +129,8 @@ def resonator_punchout(
     attrange = np.flip(np.arange(min_att, max_att, step_att))
     count = 0
     for s in range(software_averages):
-        for freq in freqrange:
-            for att in attrange:
+        for att in attrange:
+            for freq in freqrange:
                 if count % points == 0:
                     yield data
                 # TODO: move these explicit instructions to the platform
