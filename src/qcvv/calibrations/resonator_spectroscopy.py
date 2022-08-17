@@ -115,7 +115,9 @@ def resonator_punchout(
     points=10,
 ):
 
-    data = Dataset(quantities={"frequency": "Hz", "attenuation": "dB"})
+    data = Dataset(
+        name=f"data_q{qubit}", quantities={"frequency": "Hz", "attenuation": "dB"}
+    )
     ro_pulse = platform.qubit_readout_pulse(qubit, start=0)
     sequence = PulseSequence()
     sequence.add(ro_pulse)

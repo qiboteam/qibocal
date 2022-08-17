@@ -1,20 +1,3 @@
-resonator_spectroscopy_attenuation:
-    Frequency vs Attenuation: frequency_vs_attenuation
-    MSR vs Frequency: msr_vs_frequency
-
-# temporary entries for testing
-resonator_spectroscopy_1:
-    Frequency vs Attenuation: frequency_vs_attenuation
-    MSR vs Frequency: msr_vs_frequency
-
-resonator_spectroscopy_2:
-    Frequency vs Attenuation: frequency_vs_attenuation
-    MSR vs Frequency: msr_vs_frequency
-
-resonator_spectroscopy_3:
-    Frequency vs Attenuation: frequency_vs_attenuation
-    MSR vs Frequency: msr_vs_frequency
-
-resonator_spectroscopy_4:
+resonator_punchout:
     Frequency vs Attenuation: frequency_vs_attenuation
     MSR vs Frequency: msr_vs_frequency
