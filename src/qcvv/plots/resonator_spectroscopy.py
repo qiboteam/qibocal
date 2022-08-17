@@ -2,51 +2,13 @@
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-
-class resonator_spectroscopy:
-    @staticmethod
-    def frequency_vs_msr_phase(data):
-        fig = make_subplots(
-            rows=1,
-            cols=2,
-            horizontal_spacing=0.1,
-            vertical_spacing=0.1,
-            subplot_titles=(
-                "MSR (V)",
-                "phase (deg)",
-            ),
-        )
-
-        fig.add_trace(
-            go.Scatter(
-                x=data.get_values("frequency", "GHz"),
-                y=data.get_values("MSR", "uV"),
-            ),
-            row=1,
-            col=1,
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=data.get_values("frequency", "GHz"),
-                y=data.get_values("phase", "deg"),
-            ),
-            row=1,
-            col=2,
-        )
-        fig.update_layout(
-            showlegend=False,
-            uirevision="0",  # ``uirevision`` allows zooming while live plotting
-            xaxis_title="Frequency (GHz)",
-            yaxis_title="MSR (uV)",
-            xaxis2_title="Frequency (GHz)",
-            yaxis2_title="Phase (deg)",
-        )
-        return fig
+from qcvv.data import Dataset
 
 
 class resonator_punchout:
     @staticmethod
-    def frequency_vs_attenuation(data):
+    def frequency_vs_attenuation(folder, routine, qubit, format):
+        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
         fig = make_subplots(
             rows=1,
             cols=2,
@@ -89,8 +51,9 @@ class resonator_punchout:
         return fig
 
     @staticmethod
-    def msr_vs_frequency(data):
-        plot1d_attenuation = 24  # attenuation value to use for 1D frequency vs MSR plot
+    def msr_vs_frequency(folder, routine, qubit, format):
+        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+        plot1d_attenuation = 30  # attenuation value to use for 1D frequency vs MSR plot
 
         fig = go.Figure()
         # index data on a specific attenuation value

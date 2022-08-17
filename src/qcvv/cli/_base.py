@@ -84,7 +84,7 @@ class ActionBuilder:
         path, self.folder = self._generate_output_folder(folder, force)
         self.runcard = self.load_runcard(runcard)
         self._allocate_platform(self.runcard["platform"])
-        self.qubit = self.runcard["qubit"]
+        self.qubits = self.runcard["qubits"]
         self.format = self.runcard["format"]
 
         # Saving runcard
@@ -189,7 +189,8 @@ class ActionBuilder:
 
     def get_result(self, routine, arguments):
         """Method to execute a single action and retrieving the results."""
-        results = routine(self.platform, self.qubit, **arguments)
-        if hasattr(routine, "final_action"):
-            return routine.final_action(results, self.output, self.format)
+        for qubit in self.qubits:
+            results = routine(self.platform, qubit, **arguments)
+            if hasattr(routine, "final_action"):
+                results = routine.final_action(results, self.output, self.format)
         return results

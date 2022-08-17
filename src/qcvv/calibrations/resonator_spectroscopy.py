@@ -35,8 +35,7 @@ def resonator_spectroscopy(
         )
         + lo_qrm_frequency
     )
-
-    data = Dataset(name="ignore", quantities={"frequency": "Hz"})
+    data = Dataset(name=f"fast_sweep_q{qubit}", quantities={"frequency": "Hz"})
     count = 0
     for _ in range(software_averages):
         for freq in freqrange:
@@ -66,7 +65,9 @@ def resonator_spectroscopy(
     #     lo_qrm_frequency = data.df.frequency[data.df.MSR.argmin()].magnitude
     #     avg_voltage = np.mean(data.df.MSR.values[: (lowres_width // lowres_step)]) * 1e6
 
-    prec_data = Dataset(name="data", quantities={"frequency": "Hz"})
+    prec_data = Dataset(
+        name=f"precision_sweep_q{qubit}", quantities={"frequency": "Hz"}
+    )
     freqrange = (
         np.arange(-precision_width, precision_width, precision_step) + lo_qrm_frequency
     )
@@ -117,7 +118,9 @@ def resonator_punchout(
     points=10,
 ):
 
-    data = Dataset(quantities={"frequency": "Hz", "attenuation": "dB"})
+    data = Dataset(
+        name=f"data_q{qubit}", quantities={"frequency": "Hz", "attenuation": "dB"}
+    )
     ro_pulse = platform.qubit_readout_pulse(qubit, start=0)
     sequence = PulseSequence()
     sequence.add(ro_pulse)
@@ -171,7 +174,9 @@ def resonator_spectroscopy_flux(
     points=10,
 ):
 
-    data = Dataset(quantities={"frequency": "Hz", "current": "A"})
+    data = Dataset(
+        name=f"data_q{qubit}", quantities={"frequency": "Hz", "current": "A"}
+    )
     sequence = PulseSequence()
     ro_pulse = platform.qubit_readout_pulse(qubit, start=0)
     sequence.add(ro_pulse)(sequence)[0]

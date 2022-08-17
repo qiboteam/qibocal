@@ -39,16 +39,17 @@ app.layout = html.Div(
 def get_graph(n, current_figure, url):
     path = os.path.join(*url.split("/")[2:])
     folder, format = os.path.split(path)
+    folder, qubit = os.path.split(folder)
     folder, method = os.path.split(folder)
     folder, routine = os.path.split(folder)
     folder, _ = os.path.split(folder)
     try:
-        data = Dataset.load_data(folder, routine, format, "data")
+        data = Dataset.load_data(folder, routine, format)
         # FIXME: Temporarily hardcode the plotting method to test
         # multiple routines with different names in one folder
-        # return getattr(plots.resonator_spectroscopy_attenuation, method)(data)
+        return getattr(plots.resonator_spectroscopy_attenuation, method)(data)
         # should be changed to:
-        return getattr(getattr(plots, routine), method)(data)
+        # return getattr(getattr(plots, routine), method)(data)
 
     except (FileNotFoundError, pd.errors.EmptyDataError):
         return current_figure
