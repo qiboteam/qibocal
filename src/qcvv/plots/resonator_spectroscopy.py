@@ -7,8 +7,8 @@ from qcvv.data import Dataset
 
 class resonator_punchout:
     @staticmethod
-    def frequency_vs_attenuation(folder, routine, format):
-        data = Dataset.load_data(folder, routine, format, "data_q0")
+    def frequency_vs_attenuation(folder, routine, qubit, format):
+        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
         fig = make_subplots(
             rows=1,
             cols=2,
@@ -51,8 +51,8 @@ class resonator_punchout:
         return fig
 
     @staticmethod
-    def msr_vs_frequency(folder, routine, format):
-        data = Dataset.load_data(folder, routine, format, "data_q0")
+    def msr_vs_frequency(folder, routine, qubit, format):
+        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
         plot1d_attenuation = 30  # attenuation value to use for 1D frequency vs MSR plot
 
         fig = go.Figure()

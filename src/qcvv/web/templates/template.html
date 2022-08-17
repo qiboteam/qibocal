@@ -43,13 +43,15 @@
           <!-- actions submenu -->
           <div class="list-group">
             {% for routine in runcard.get('actions').keys() %}
-            <a class="list-group-item list-group-item-action list-group-item-light" href="#{{ routine }}">{{ routine.replace("_", " ").title() }}</a>
+            {% for qubit in runcard.get('qubits') %}
+            <a class="list-group-item list-group-item-action list-group-item-light" href="#{{ routine }}-{{ qubit }}">{{ routine.replace("_", " ").title() }} - Qubit {{ qubit }}</a>
             <!-- plots submenu -->
               <div class="list-group">
                 {% for header, method in plotters.get(routine).items() %}
                 <a class="list-group-item list-group-item-action list-group-item-light" href="#{{ routine }}-{{ method }}">{{ header }}</a>
                 {% endfor %}
               </div>
+            {% endfor %}
             {% endfor %}
           </div>
         {% endif %}
@@ -96,16 +98,18 @@
       <div id="actions">
         <h2>Actions</h2>
         {% for routine in runcard.get('actions').keys() %}
-        <div id="{{ routine }}">
-          <h3>{{ routine.replace("_", " ").title() }}</h3>
+        {% for qubit in runcard.get('qubits') %}
+        <div id="{{ routine }}-{{ qubit }}">
+          <h3>{{ routine.replace("_", " ").title() }} - Qubit {{qubit }}</h3>
           {% for header, method in plotters.get(routine).items() %}
           <div id="{{ routine }}-{{ method }}">
             <h4>{{ header }}</h4>
             <!-- find a way to change height and width depending on screen type -->
-            <iframe src="/dash/{{ path }}/data/{{ routine }}/{{ method }}/{{ runcard.get('format') }}" style="position: relative; height: 500px; width: 100%;"></iframe>
+            <iframe src="/dash/{{ path }}/data/{{ routine }}/{{ method }}/{{ qubit }}/{{ runcard.get('format') }}" style="position: relative; height: 500px; width: 100%;"></iframe>
           </div>
           {% endfor %}
         </div>
+        {% endfor %}
         {% endfor %}
       </div>
 

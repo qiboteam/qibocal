@@ -39,11 +39,12 @@ app.layout = html.Div(
 def get_graph(n, current_figure, url):
     path = os.path.join(*url.split("/")[2:])
     folder, format = os.path.split(path)
+    folder, qubit = os.path.split(folder)
     folder, method = os.path.split(folder)
     folder, routine = os.path.split(folder)
     folder, _ = os.path.split(folder)
     try:
-        return getattr(getattr(plots, routine), method)(folder, routine, format)
+        return getattr(getattr(plots, routine), method)(folder, routine, qubit, format)
 
     except (FileNotFoundError, pd.errors.EmptyDataError):
         return current_figure
