@@ -43,7 +43,7 @@ def resonator_spectroscopy(
             if count % points == 0:
                 yield data
             platform.ro_port[qubit].lo_freq = freq - ro_pulse.frequency
-            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[qubit][
+            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
                 ro_pulse.serial
             ]
             results = {
@@ -76,7 +76,7 @@ def resonator_spectroscopy(
             if count % points == 0:
                 yield prec_data
             platform.ro_port[qubit].lo_freq = freq - ro_pulse.frequency
-            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[qubit][
+            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
                 ro_pulse.serial
             ]
             results = {
@@ -139,7 +139,7 @@ def resonator_punchout(
                 # TODO: move these explicit instructions to the platform
                 platform.ro_port[qubit].lo_freq = freq
                 platform.ro_port[qubit].attenuation = att
-                msr, i, q, phase = platform.execute_pulse_sequence(sequence)[qubit][
+                msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
                     ro_pulse.serial
                 ]
                 results = {
@@ -174,7 +174,7 @@ def resonator_spectroscopy_flux(
     data = Dataset(quantities={"frequency": "Hz", "current": "A"})
     sequence = PulseSequence()
     ro_pulse = platform.qubit_readout_pulse(qubit, start=0)
-    sequence.add(ro_pulse)
+    sequence.add(ro_pulse)(sequence)[0]
 
     lo_qrm_frequency = (
         platform.characterization["single_qubit"][qubit]["resonator_freq"]
@@ -197,7 +197,7 @@ def resonator_spectroscopy_flux(
                 # TODO: move these explicit instructions to the platform
                 platform.ro_port[qubit].lo_freq = freq
                 dacs[fluxline].current = curr
-                msr, i, q, phase = platform.execute_pulse_sequence(sequence)[qubit][
+                msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
                     ro_pulse.serial
                 ]
                 results = {
