@@ -12,5 +12,5 @@ actions:
     precision_start: -500_000
     precision_end: 500_000
     precision_step: 20_000
-    software_averages: 2
+    software_averages: 4
     points: 10

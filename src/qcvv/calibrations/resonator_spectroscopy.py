@@ -36,14 +36,14 @@ def resonator_spectroscopy(
         + lo_qrm_frequency
     )
 
-    data = Dataset(name="ignore", quantities={"frequency": "Hz"})
+    data = Dataset(name="data", quantities={"frequency": "Hz"})
     count = 0
     for _ in range(software_averages):
         for freq in freqrange:
             if count % points == 0:
                 yield data
-            platform.ro_port[qubit].lo_freq = freq - ro_pulse.frequency
-            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[qubit][
+            platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
+            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
                 ro_pulse.serial
             ]
             results = {
@@ -59,14 +59,14 @@ def resonator_spectroscopy(
 
     # FIXME: have live ploting work for multiple datasets saved
 
-    # if platform.settings["nqubits"] == 1:
-    #     lo_qrm_frequency = data.df.frequency[data.df.MSR.argmax()].magnitude
-    #     avg_voltage = np.mean(data.df.MSR.values[: (lowres_width // lowres_step)]) * 1e6
-    # else:
-    #     lo_qrm_frequency = data.df.frequency[data.df.MSR.argmin()].magnitude
-    #     avg_voltage = np.mean(data.df.MSR.values[: (lowres_width // lowres_step)]) * 1e6
+    if platform.settings["nqubits"] == 1:
+        lo_qrm_frequency = data.df.frequency[data.df.MSR.argmax()].magnitude
+        avg_voltage = np.mean(data.df.MSR.values[: (lowres_width // lowres_step)]) * 1e6
+    else:
+        lo_qrm_frequency = data.df.frequency[data.df.MSR.argmin()].magnitude
+        avg_voltage = np.mean(data.df.MSR.values[: (lowres_width // lowres_step)]) * 1e6
 
-    prec_data = Dataset(name="data", quantities={"frequency": "Hz"})
+    prec_data = Dataset(name="ignore", quantities={"frequency": "Hz"})
     freqrange = (
         np.arange(-precision_width, precision_width, precision_step) + lo_qrm_frequency
     )
@@ -75,8 +75,8 @@ def resonator_spectroscopy(
         for freq in freqrange:
             if count % points == 0:
                 yield prec_data
-            platform.ro_port[qubit].lo_freq = freq - ro_pulse.frequency
-            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[qubit][
+            platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
+            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
                 ro_pulse.serial
             ]
             results = {
@@ -125,7 +125,6 @@ def resonator_punchout(
     # TODO: move this explicit instruction to the platform
     lo_qrm_frequency = (
         platform.characterization["single_qubit"][qubit]["resonator_freq"]
-        - ro_pulse.frequency
     )
     freqrange = np.arange(-freq_width, freq_width, freq_step) + lo_qrm_frequency
     attrange = np.flip(np.arange(min_att, max_att, step_att))
@@ -137,9 +136,9 @@ def resonator_punchout(
                 if count % points == 0:
                     yield data
                 # TODO: move these explicit instructions to the platform
-                platform.ro_port[qubit].lo_freq = freq
+                platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
                 platform.ro_port[qubit].attenuation = att
-                msr, i, q, phase = platform.execute_pulse_sequence(sequence)[qubit][
+                msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
                     ro_pulse.serial
                 ]
                 results = {
@@ -178,7 +177,6 @@ def resonator_spectroscopy_flux(
 
     lo_qrm_frequency = (
         platform.characterization["single_qubit"][qubit]["resonator_freq"]
-        - ro_pulse.frequency
     )
     spi = platform.instruments["SPI"].device
     dacs = [spi.mod2.dac0, spi.mod1.dac0, spi.mod1.dac1, spi.mod1.dac2, spi.mod1.dac3]
@@ -195,9 +193,9 @@ def resonator_spectroscopy_flux(
                 if count % points == 0:
                     yield data
                 # TODO: move these explicit instructions to the platform
-                platform.ro_port[qubit].lo_freq = freq
+                platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
                 dacs[fluxline].current = curr
-                msr, i, q, phase = platform.execute_pulse_sequence(sequence)[qubit][
+                msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
                     ro_pulse.serial
                 ]
                 results = {

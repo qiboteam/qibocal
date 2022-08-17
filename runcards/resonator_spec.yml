@@ -1,0 +1,16 @@
+platform: tii1q
+
+qubit: 0
+
+format: csv
+
+actions:
+    resonator_spectroscopy:
+      lowres_width: 5_000_000
+      lowres_step: 2_000_000
+      highres_width: 1_500_000
+      highres_step: 200_000
+      precision_width: 1_500_000
+      precision_step: 100_000
+      software_averages: 1
+      points: 5
