@@ -129,11 +129,10 @@ def qubit_spectroscopy_flux(
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
 
-    # TODO: call platform.qfm[fluxline] instead of dacs[fluxline]
-    # TODO: automatically extract fluxline from runcard given a qubit number
-    spi = platform.instruments["SPI"].device
-    dacs = [spi.mod2.dac0, spi.mod1.dac0, spi.mod1.dac1, spi.mod1.dac2, spi.mod1.dac3]
-    spi.set_dacs_zero()
+    # TESTME: Delete when tested
+    # spi = platform.instruments["SPI"].device
+    # dacs = [spi.mod2.dac0, spi.mod1.dac0, spi.mod1.dac1, spi.mod1.dac2, spi.mod1.dac3]
+    # spi.set_dacs_zero()
 
     data = Dataset(quantities={"frequency": "Hz", "current": "A"})
 
@@ -149,7 +148,7 @@ def qubit_spectroscopy_flux(
                     yield data
                 platform.qd_port[qubit].lo_frequency = freq - qd_pulse.frequency
                 # platform.qf_port[qubit].current = curr
-                dacs[fluxline].current = curr
+                platform.qf_port[fluxline].current = curr
                 msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
                     ro_pulse.serial
                 ]
