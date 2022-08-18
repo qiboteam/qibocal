@@ -107,3 +107,62 @@ def qubit_spectroscopy(
     # # TODO: Estimate avg_voltage correctly
     # print(f"\nQubit Frequency = {qubit_freq}")
     # return qubit_freq, avg_voltage, peak_voltage, dataset
+
+
+@store
+def qubit_spectroscopy_flux(
+    platform,
+    qubit,
+    freq_width,
+    freq_step,
+    current_max,
+    current_min,
+    current_step,
+    software_averages,
+    fluxline=0,
+    points=10,
+):
+
+    sequence = PulseSequence()
+    qd_pulse = platform.qubit_drive_pulse(qubit, start=0, duration=5000)
+    ro_pulse = platform.qubit_readout_pulse(qubit, start=5000)
+    sequence.add(qd_pulse)
+    sequence.add(ro_pulse)
+
+    # TODO: call platform.qfm[fluxline] instead of dacs[fluxline]
+    # TODO: automatically extract fluxline from runcard given a qubit number
+    spi = platform.instruments["SPI"].device
+    dacs = [spi.mod2.dac0, spi.mod1.dac0, spi.mod1.dac1, spi.mod1.dac2, spi.mod1.dac3]
+    spi.set_dacs_zero()
+
+    data = Dataset(quantities={"frequency": "Hz", "current": "A"})
+
+    lo_qcm_frequency = platform.characterization["single_qubit"][qubit]["qubit_freq"]
+    freqrange = np.arange(-freq_width, freq_width, freq_step) + lo_qcm_frequency
+    currange = np.arange(current_min, current_max, current_step)
+
+    count = 0
+    for _ in range(software_averages):
+        for freq in freqrange:
+            for curr in currange:
+                if count % points == 0:
+                    yield data
+                platform.qd_port[qubit].lo_frequency = freq - qd_pulse.frequency
+                # platform.qf_port[qubit].current = curr
+                dacs[fluxline].current = curr
+                msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
+                    ro_pulse.serial
+                ]
+                results = {
+                    "MSR[V]": msr,
+                    "i[V]": i,
+                    "q[V]": q,
+                    "phase[deg]": phase,
+                    "frequency[Hz]": freq,
+                    "current[A]": curr,
+                }
+                # TODO: implement normalization
+                data.add(results)
+                count += 1
+
+    yield data

@@ -183,6 +183,9 @@ def resonator_spectroscopy_flux(
     lo_qrm_frequency = platform.characterization["single_qubit"][qubit][
         "resonator_freq"
     ]
+
+    # TODO: call platform.qfm[fluxline] instead of dacs[fluxline]
+    # TODO: automatically extract fluxline from runcard given a qubit number
     spi = platform.instruments["SPI"].device
     dacs = [spi.mod2.dac0, spi.mod1.dac0, spi.mod1.dac1, spi.mod1.dac2, spi.mod1.dac3]
     spi.set_dacs_zero()

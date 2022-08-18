@@ -5,5 +5,11 @@ resonator_punchout:
 resonator_spectroscopy:
     MSR and Phase vs Frequency: frequency_vs_msr_phase
 
+resonator_spectroscopy_flux:
+    MSR and Phase vs Flux Current: frequency_vs_current
+
 qubit_spectroscopy:
     MSR and Phase vs Frequency: frequency_vs_msr_phase
+
+qubit_spectroscopy_flux:
+    MSR and Phase vs Flux Current: frequency_vs_current
