@@ -18,7 +18,7 @@ app = Dash(
 app.layout = html.Div(
     [
         dcc.Location(id="url", refresh=False),
-        dcc.Graph(id="graph"),
+        dcc.Graph(id="graph", figure={}),
         dcc.Interval(
             id="interval",
             # TODO: Perhaps the user should be allowed to change the refresh rate
