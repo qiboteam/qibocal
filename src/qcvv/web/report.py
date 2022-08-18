@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
 import pathlib
+import tempfile
 
 import yaml
 from jinja2 import Environment, FileSystemLoader
@@ -39,10 +40,10 @@ def create_report(path):
             figure = getattr(plots.resonator_spectroscopy_attenuation, method)(
                 path, routine, format
             )
-            figure.write_html("tempfig.html", include_plotlyjs=False, full_html=False)
-            with open("tempfig.html", "r") as file:
-                figures[routine][method] = file.read()
-            os.remove("tempfig.html")
+            with tempfile.NamedTemporaryFile() as temp:
+                tempname = temp.name
+                figure.write_html(tempname, include_plotlyjs=False, full_html=False)
+                figures[routine][method] = temp.read().decode("utf-8")
 
     report = template.render(
         is_static=True,
@@ -55,8 +56,5 @@ def create_report(path):
         plotters=plotters,
     )
 
-    with open(f"report.html", "w") as file:
+    with open(os.path.join(path, "report.html"), "w") as file:
         file.write(report)
-
-
-create_report("many-routines")
