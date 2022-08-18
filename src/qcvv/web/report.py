@@ -36,8 +36,9 @@ def create_report(path):
         for method in plotters.get(routine).values():
             # find a way to change height and width depending on screen type
             format = runcard.get("format")
-            data = Dataset.load_data(path, routine, format)
-            figure = getattr(plots.resonator_spectroscopy_attenuation, method)(data)
+            figure = getattr(plots.resonator_spectroscopy_attenuation, method)(
+                path, routine, format
+            )
             figure.write_html("tempfig.html", include_plotlyjs=False, full_html=False)
             with open("tempfig.html", "r") as file:
                 figures[routine][method] = file.read()
