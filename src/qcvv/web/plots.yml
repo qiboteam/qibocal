@@ -5,19 +5,5 @@ resonator_punchout:
 resonator_spectroscopy:
     MSR and Phase vs Frequency: frequency_vs_msr_phase
 
-# temporary entries for testing
-resonator_spectroscopy_1:
-    Frequency vs Attenuation: frequency_vs_attenuation
-    MSR vs Frequency: msr_vs_frequency
-
-resonator_spectroscopy_2:
-    Frequency vs Attenuation: frequency_vs_attenuation
-    MSR vs Frequency: msr_vs_frequency
-
-resonator_spectroscopy_3:
-    Frequency vs Attenuation: frequency_vs_attenuation
-    MSR vs Frequency: msr_vs_frequency
-
-resonator_spectroscopy_4:
-    Frequency vs Attenuation: frequency_vs_attenuation
-    MSR vs Frequency: msr_vs_frequency
+qubit_spectroscopy:
+    MSR and Phase vs Frequency: frequency_vs_msr_phase

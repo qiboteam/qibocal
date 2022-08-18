@@ -1,6 +1,6 @@
 platform: tiiq
 
-qubit: 0
+qubits: [0]
 
 format: csv
 

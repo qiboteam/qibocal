@@ -6,6 +6,7 @@ from qcvv.calibrations.utils import variable_resolution_scanrange
 from qcvv.data import Dataset
 from qcvv.decorators import store
 
+
 @store
 def qubit_spectroscopy(
     platform,
@@ -18,27 +19,25 @@ def qubit_spectroscopy(
     precision_step,
     software_averages,
     points=10,
-
 ):
     data = Dataset(quantities={"frequency": "Hz", "attenuation": "dB"})
     sequence = PulseSequence()
-    qd_pulse = platform.qubit_drive_pulse(qubit, start = 0, duration = 5000) 
-    ro_pulse = platform.qubit_readout_pulse(qubit, start = 5000)
+    qd_pulse = platform.qubit_drive_pulse(qubit, start=0, duration=5000)
+    ro_pulse = platform.qubit_readout_pulse(qubit, start=5000)
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
 
-    lo_qcm_frequency = (
-        platform.characterization["single_qubit"][qubit]["qubit_freq"]
+    lo_qcm_frequency = platform.characterization["single_qubit"][qubit]["qubit_freq"]
+
+    freqrange = np.arange(fast_start, fast_end, fast_step) + lo_qcm_frequency
+
+    # FIXME: Waiting for decision and action
+    platform.ro_port[qubit].lo_frequency = (
+        platform.characterization["single_qubit"][qubit]["resonator_freq"]
+        - ro_pulse.frequency
     )
 
-    freqrange = (
-        np.arange(
-            fast_start, fast_end, fast_step
-        )
-        + lo_qcm_frequency
-    )
-
-    data = Dataset(name="data", quantities={"frequency": "Hz"})
+    data = Dataset(name=f"fast_sweep_q{qubit}", quantities={"frequency": "Hz"})
     count = 0
     for _ in range(software_averages):
         for freq in freqrange:
@@ -61,18 +60,20 @@ def qubit_spectroscopy(
 
     if platform.settings["nqubits"] == 1:
         lo_qcm_frequency = data.df.frequency[data.df.MSR.argmin()].magnitude
-        avg_voltage = np.mean(data.df.MSR.values[: ((fast_end - fast_start) // fast_step)]) * 1e6
+        avg_voltage = (
+            np.mean(data.df.MSR.values[: ((fast_end - fast_start) // fast_step)]) * 1e6
+        )
     else:
         lo_qcm_frequency = data.df.frequency[data.df.MSR.argmax()].magnitude
-        avg_voltage = np.mean(data.df.MSR.values[: ((fast_end - fast_start) // fast_step)]) * 1e6
+        avg_voltage = (
+            np.mean(data.df.MSR.values[: ((fast_end - fast_start) // fast_step)]) * 1e6
+        )
 
-
-    prec_data = Dataset(name="ignore", quantities={"frequency": "Hz"})
+    prec_data = Dataset(
+        name=f"precision_sweep_q{qubit}", quantities={"frequency": "Hz"}
+    )
     freqrange = (
-        np.arange(
-            precision_start, precision_end, precision_step
-        ) 
-        + lo_qcm_frequency
+        np.arange(precision_start, precision_end, precision_step) + lo_qcm_frequency
     )
     count = 0
     for _ in range(software_averages):
@@ -106,5 +107,3 @@ def qubit_spectroscopy(
     # # TODO: Estimate avg_voltage correctly
     # print(f"\nQubit Frequency = {qubit_freq}")
     # return qubit_freq, avg_voltage, peak_voltage, dataset
-
-    

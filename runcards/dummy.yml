@@ -1,6 +1,6 @@
 platform: dummy
 
-qubit: 0
+qubits: [0]
 
 format: csv
 
