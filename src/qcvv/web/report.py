@@ -41,8 +41,7 @@ def create_report(path):
                 path, routine, format
             )
             with tempfile.NamedTemporaryFile() as temp:
-                tempname = temp.name
-                figure.write_html(tempname, include_plotlyjs=False, full_html=False)
+                figure.write_html(temp.name, include_plotlyjs=False, full_html=False)
                 figures[routine][method] = temp.read().decode("utf-8")
 
     report = template.render(
