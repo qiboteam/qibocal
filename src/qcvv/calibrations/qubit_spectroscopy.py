@@ -31,7 +31,7 @@ def qubit_spectroscopy(
 
     freqrange = np.arange(fast_start, fast_end, fast_step) + lo_qcm_frequency
 
-    # FIXME: Waiting for decision and action
+    # FIXME: Waiting for Qblox platform to take care of that
     platform.ro_port[qubit].lo_frequency = (
         platform.characterization["single_qubit"][qubit]["resonator_freq"]
         - ro_pulse.frequency
@@ -129,12 +129,13 @@ def qubit_spectroscopy_flux(
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
 
-    # TESTME: Delete when tested
-    # spi = platform.instruments["SPI"].device
-    # dacs = [spi.mod2.dac0, spi.mod1.dac0, spi.mod1.dac1, spi.mod1.dac2, spi.mod1.dac3]
-    # spi.set_dacs_zero()
+    # FIXME: Waitng for abstract platform to have qf_port[qubit] working
+    spi = platform.instruments["SPI"].device
+    dacs = [spi.mod2.dac0, spi.mod1.dac0, spi.mod1.dac1, spi.mod1.dac2, spi.mod1.dac3]
 
-    data = Dataset(quantities={"frequency": "Hz", "current": "A"})
+    data = Dataset(
+        name=f"data_q{qubit}", quantities={"frequency": "Hz", "current": "A"}
+    )
 
     lo_qcm_frequency = platform.characterization["single_qubit"][qubit]["qubit_freq"]
     freqrange = np.arange(-freq_width, freq_width, freq_step) + lo_qcm_frequency
@@ -147,8 +148,8 @@ def qubit_spectroscopy_flux(
                 if count % points == 0:
                     yield data
                 platform.qd_port[qubit].lo_frequency = freq - qd_pulse.frequency
-                # platform.qf_port[qubit].current = curr
-                platform.qf_port[fluxline].current = curr
+                # platform.qf_port[fluxline].current = curr
+                dacs[fluxline].current(curr)
                 msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
                     ro_pulse.serial
                 ]

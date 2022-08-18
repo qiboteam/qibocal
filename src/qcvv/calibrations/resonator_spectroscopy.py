@@ -184,11 +184,9 @@ def resonator_spectroscopy_flux(
         "resonator_freq"
     ]
 
-    # TODO: call platform.qfm[fluxline] instead of dacs[fluxline]
-    # TODO: automatically extract fluxline from runcard given a qubit number
+    # FIXME: Waitng for abstract platform to have qf_port[qubit] working
     spi = platform.instruments["SPI"].device
     dacs = [spi.mod2.dac0, spi.mod1.dac0, spi.mod1.dac1, spi.mod1.dac2, spi.mod1.dac3]
-    spi.set_dacs_zero()
 
     scanrange = np.arange(-freq_width, freq_width, freq_step)
     freqs = scanrange + lo_qrm_frequency
@@ -200,9 +198,9 @@ def resonator_spectroscopy_flux(
             for curr in currange:
                 if count % points == 0:
                     yield data
-                # TODO: move these explicit instructions to the platform
                 platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
-                dacs[fluxline].current = curr
+                # platform.qf_port[fluxline].current = curr
+                dacs[fluxline].current(curr)
                 msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
                     ro_pulse.serial
                 ]
