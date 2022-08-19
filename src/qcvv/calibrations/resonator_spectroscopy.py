@@ -25,9 +25,7 @@ def resonator_spectroscopy(
     ro_pulse = platform.qubit_readout_pulse(qubit, start=0)
     sequence.add(ro_pulse)
 
-    lo_qrm_frequency = platform.characterization["single_qubit"][qubit][
-        "resonator_freq"
-    ]
+    lo_qrm_frequency = platform.qpucard["single_qubit"][qubit]["resonator_freq"]
 
     freqrange = (
         variable_resolution_scanrange(
@@ -56,14 +54,12 @@ def resonator_spectroscopy(
             count += 1
     yield data
 
-    # FIXME: have live ploting work for multiple datasets saved
-
-    if platform.settings["nqubits"] == 1:
-        lo_qrm_frequency = data.df.frequency[data.df.MSR.argmax()].magnitude
-        avg_voltage = np.mean(data.df.MSR.values[: (lowres_width // lowres_step)]) * 1e6
-    else:
-        lo_qrm_frequency = data.df.frequency[data.df.MSR.argmin()].magnitude
-        avg_voltage = np.mean(data.df.MSR.values[: (lowres_width // lowres_step)]) * 1e6
+    # if platform.settings["nqubits"] == 1:
+    #     lo_qrm_frequency = data.df.frequency[data.df.MSR.argmax()].magnitude
+    #     avg_voltage = np.mean(data.df.MSR.values[: (lowres_width // lowres_step)]) * 1e6
+    # else:
+    #     lo_qrm_frequency = data.df.frequency[data.df.MSR.argmin()].magnitude
+    #     avg_voltage = np.mean(data.df.MSR.values[: (lowres_width // lowres_step)]) * 1e6
 
     prec_data = Dataset(
         name=f"precision_sweep_q{qubit}", quantities={"frequency": "Hz"}
@@ -126,9 +122,7 @@ def resonator_punchout(
     sequence.add(ro_pulse)
 
     # TODO: move this explicit instruction to the platform
-    lo_qrm_frequency = platform.characterization["single_qubit"][qubit][
-        "resonator_freq"
-    ]
+    lo_qrm_frequency = platform.qpucard["single_qubit"][qubit]["resonator_freq"]
     freqrange = np.arange(-freq_width, freq_width, freq_step) + lo_qrm_frequency
     attrange = np.flip(np.arange(min_att, max_att, step_att))
     count = 0
@@ -180,9 +174,7 @@ def resonator_spectroscopy_flux(
     ro_pulse = platform.qubit_readout_pulse(qubit, start=0)
     sequence.add(ro_pulse)
 
-    lo_qrm_frequency = platform.characterization["single_qubit"][qubit][
-        "resonator_freq"
-    ]
+    lo_qrm_frequency = platform.qpucard["single_qubit"][qubit]["resonator_freq"]
 
     # FIXME: Waitng for abstract platform to have qf_port[qubit] working
     spi = platform.instruments["SPI"].device
@@ -194,8 +186,8 @@ def resonator_spectroscopy_flux(
 
     count = 0
     for s in range(software_averages):
-        for freq in freqs:
-            for curr in currange:
+        for curr in currange:
+            for freq in freqs:
                 if count % points == 0:
                     yield data
                 platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency

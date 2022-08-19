@@ -27,14 +27,13 @@ def qubit_spectroscopy(
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
 
-    lo_qcm_frequency = platform.characterization["single_qubit"][qubit]["qubit_freq"]
+    lo_qcm_frequency = platform.qpucard["single_qubit"][qubit]["qubit_freq"]
 
     freqrange = np.arange(fast_start, fast_end, fast_step) + lo_qcm_frequency
 
     # FIXME: Waiting for Qblox platform to take care of that
     platform.ro_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["resonator_freq"]
-        - ro_pulse.frequency
+        platform.qpucard["single_qubit"][qubit]["resonator_freq"] - ro_pulse.frequency
     )
 
     data = Dataset(name=f"fast_sweep_q{qubit}", quantities={"frequency": "Hz"})
@@ -58,16 +57,16 @@ def qubit_spectroscopy(
             count += 1
     yield data
 
-    if platform.settings["nqubits"] == 1:
-        lo_qcm_frequency = data.df.frequency[data.df.MSR.argmin()].magnitude
-        avg_voltage = (
-            np.mean(data.df.MSR.values[: ((fast_end - fast_start) // fast_step)]) * 1e6
-        )
-    else:
-        lo_qcm_frequency = data.df.frequency[data.df.MSR.argmax()].magnitude
-        avg_voltage = (
-            np.mean(data.df.MSR.values[: ((fast_end - fast_start) // fast_step)]) * 1e6
-        )
+    # if platform.settings["nqubits"] == 1:
+    #     lo_qcm_frequency = data.df.frequency[data.df.MSR.argmin()].magnitude
+    #     avg_voltage = (
+    #         np.mean(data.df.MSR.values[: ((fast_end - fast_start) // fast_step)]) * 1e6
+    #     )
+    # else:
+    #     lo_qcm_frequency = data.df.frequency[data.df.MSR.argmax()].magnitude
+    #     avg_voltage = (
+    #         np.mean(data.df.MSR.values[: ((fast_end - fast_start) // fast_step)]) * 1e6
+    #     )
 
     prec_data = Dataset(
         name=f"precision_sweep_q{qubit}", quantities={"frequency": "Hz"}
@@ -123,6 +122,8 @@ def qubit_spectroscopy_flux(
     points=10,
 ):
 
+    # FiXME: Need to include resonator's moving to work
+
     sequence = PulseSequence()
     qd_pulse = platform.qubit_drive_pulse(qubit, start=0, duration=5000)
     ro_pulse = platform.qubit_readout_pulse(qubit, start=5000)
@@ -137,7 +138,7 @@ def qubit_spectroscopy_flux(
         name=f"data_q{qubit}", quantities={"frequency": "Hz", "current": "A"}
     )
 
-    lo_qcm_frequency = platform.characterization["single_qubit"][qubit]["qubit_freq"]
+    lo_qcm_frequency = platform.qpucard["single_qubit"][qubit]["qubit_freq"]
     freqrange = np.arange(-freq_width, freq_width, freq_step) + lo_qcm_frequency
     currange = np.arange(current_min, current_max, current_step)
 

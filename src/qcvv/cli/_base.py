@@ -2,6 +2,7 @@
 """Adds global CLI options."""
 import inspect
 import os
+import pathlib
 import shutil
 
 import click
@@ -87,6 +88,10 @@ class ActionBuilder:
         self.qubits = self.runcard["qubits"]
         self.format = self.runcard["format"]
 
+        self.platform.qpucard = self._load_qpucard(
+            self.runcard["platform"]
+        )  # We can call it characterization but diff for now to avoid conflict
+
         # Saving runcard
         self.save_runcards(path, runcard)
 
@@ -128,6 +133,12 @@ class ActionBuilder:
         from qibo.backends import construct_backend
 
         self.platform = construct_backend("qibolab", platform=platform_name).platform
+
+    def _load_qpucard(self, platform_name):
+        qcvv_path = pathlib.Path(__file__).parent.parent
+        with open(qcvv_path / "qpucards" / f"{platform_name}.yml", "r") as file:
+            qpucard = yaml.safe_load(file)
+        return qpucard
 
     def save_runcards(self, path, runcard):
         """Save the output runcards."""
