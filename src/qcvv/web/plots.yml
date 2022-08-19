@@ -16,3 +16,6 @@ qubit_spectroscopy_flux:
 
 rabi_pulse_length:
     MSR vs Time: time_msr_phase 
+
+rabi_pulse_gain:
+    MSR vs Time: gain_msr_phase 

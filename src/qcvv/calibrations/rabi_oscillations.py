@@ -44,3 +44,43 @@ def rabi_pulse_length(
             data.add(results)
             count += 1
     yield data
+
+@store
+def rabi_pulse_gain(
+    platform,
+    qubit,
+    pulse_gain_start,
+    pulse_gain_end,
+    pulse_gain_step,
+    software_averages,
+    points=10,
+):
+
+    data = Dataset(name=f"data_q{qubit}", quantities={"gain": "db"})
+
+    sequence = PulseSequence()
+    #qd_pulse = platform.qubit_drive_pulse(qubit, start=0, duration=5000)
+    qd_pulse = platform.RX_pulse(qubit, start=0)
+    ro_pulse = platform.qubit_readout_pulse(qubit, start=qd_pulse.duration)
+    sequence.add(qd_pulse)
+    sequence.add(ro_pulse)
+
+    qd_pulse_gain_range = np.arange(pulse_gain_start, pulse_gain_end, pulse_gain_step)
+
+    count = 0
+    for _ in range(software_averages):
+        for gain in qd_pulse_gain_range:
+            platform.qd_port[qubit].gain = gain
+            if count % points == 0:
+                yield data
+            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][ro_pulse.serial]
+            results = {
+                "MSR[V]": msr,
+                "i[V]": i,
+                "q[V]": q,
+                "phase[deg]": phase,
+                "gain[db]": gain,
+            }
+            data.add(results)
+            count += 1
+    yield data
