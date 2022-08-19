@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Implementation of Dataset class to store measurements."""
+from dataclasses import dataclass
 import pandas as pd
 import pint_pandas
 
@@ -17,7 +18,12 @@ class Dataset:
                         quantities and the corresponding values are the units of measure.
     """
 
-    def __init__(self, quantities=None):
+    def __init__(self, name=None, quantities=None):
+
+        if name is None:
+            self.name = 'data'
+        else:
+            self.name = name
 
         self.df = pd.DataFrame(
             {
@@ -69,7 +75,7 @@ class Dataset:
         return len(self.df)
 
     @classmethod
-    def load_data(cls, folder, routine, format):
+    def load_data(cls, folder, routine, format, name):
         """Load data from specific format.
 
         Args:
@@ -82,12 +88,12 @@ class Dataset:
         """
         obj = cls()
         if format == "csv":
-            file = f"{folder}/data/{routine}/data.csv"
+            file = f"{folder}/data/{routine}/{name}.csv"
             obj.df = pd.read_csv(file, header=[0, 1])
             obj.df = obj.df.pint.quantify(level=-1)
             obj.df.pop("Unnamed: 0_level_0")
         elif format == "pickle":
-            file = f"{folder}/data/{routine}/data.pkl"
+            file = f"{folder}/data/{routine}/{name}.pkl"
             obj.df = pd.read_pickle(file)
         else:
             raise_error(ValueError, f"Cannot load data using {format} format.")
@@ -99,11 +105,11 @@ class Dataset:
 
         Args:
             path (str): Path containing output folder."""
-        self.df.pint.dequantify().to_csv(f"{path}/data.csv")
+        self.df.pint.dequantify().to_csv(f"{path}/{self.name}.csv")
 
     def to_pickle(self, path):
         """Save data in pickel file.
 
         Args:
             path (str): Path containing output folder."""
-        self.df.to_pickle(f"{path}/data.pkl")
+        self.df.to_pickle(f"{path}/{self.name}.pkl")
