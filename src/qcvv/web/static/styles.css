@@ -1,0 +1,80 @@
+body {
+    font-size: .875rem;
+  }
+
+  /*
+   * Sidebar
+   */
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    /* rtl:raw:
+    right: 0;
+    */
+    bottom: 0;
+    /* rtl:remove */
+    left: 0;
+    z-index: 100; /* Behind the navbar */
+    padding: 48px 0 0; /* Height of navbar */
+    box-shadow: inset -1px 0 0 rgba(0, 0, 0, .1);
+    font-size: 1.0rem;
+  }
+
+  @media (max-width: 767.98px) {
+    .sidebar {
+      top: 5rem;
+    }
+  }
+
+  .sidebar-sticky {
+    height: calc(100vh - 48px);
+    overflow-x: hidden;
+    overflow-y: auto; /* Scrollable contents if viewport is shorter than content. */
+  }
+
+  .list-group.list-group-root {
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .list-group.list-group-root .list-group {
+    margin-bottom: 0;
+  }
+
+  .list-group.list-group-root .list-group-item {
+    border-radius: 0;
+  }
+
+  .list-group.list-group-root > .list-group-item:first-child {
+    border-top-width: 0;
+  }
+
+  .list-group.list-group-root > .list-group > .list-group-item {
+    border-top-width: 0;
+    padding-left: 30px;
+  }
+
+  .list-group.list-group-root > .list-group > .list-group > .list-group-item {
+    border-top-width: 0;
+    padding-left: 45px;
+  }
+
+
+  /*
+   * Navbar
+   */
+
+  .navbar {
+    padding-top: .75rem;
+    padding-bottom: .75rem;
+    background-color: #6400FF;
+    box-shadow: inset -1px 0 0 #6400FF;
+  }
+
+  :target::before {
+    content: "";
+    display: block;
+    height: 48px; /* fixed header height*/
+    margin: -48px 0 0; /* negative fixed header height */
+  }
