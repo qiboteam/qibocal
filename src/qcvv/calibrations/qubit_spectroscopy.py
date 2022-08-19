@@ -20,7 +20,7 @@ def qubit_spectroscopy(
     software_averages,
     points=10,
 ):
-    data = Dataset(quantities={"frequency": "Hz", "attenuation": "dB"})
+    #data = Dataset(quantities={"frequency": "Hz", "attenuation": "dB"})
     sequence = PulseSequence()
     qd_pulse = platform.qubit_drive_pulse(qubit, start=0, duration=5000)
     ro_pulse = platform.qubit_readout_pulse(qubit, start=5000)
