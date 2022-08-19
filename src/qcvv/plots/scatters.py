@@ -6,10 +6,16 @@ from qcvv.data import Dataset
 
 
 def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
-    data_fast = Dataset.load_data(folder, routine, format, f"fast_sweep_q{qubit}")
-    data_precision = Dataset.load_data(
-        folder, routine, format, f"precision_sweep_q{qubit}"
-    )
+    try:
+        data_fast = Dataset.load_data(folder, routine, format, f"fast_sweep_q{qubit}")
+    except:
+        data_fast = Dataset()
+    try:
+        data_precision = Dataset.load_data(
+            folder, routine, format, f"precision_sweep_q{qubit}"
+        )
+    except:
+        data_precision = Dataset()
     fig = make_subplots(
         rows=1,
         cols=2,
