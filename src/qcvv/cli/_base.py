@@ -73,6 +73,14 @@ def live_plot(port, debug):
     app.run_server(debug=debug, port=port)
 
 
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument("folder", metavar="FOLDER", type=click.Path(exists=True))
+def report(folder):
+    from qcvv.web.report import create_report
+
+    create_report(folder)
+
+
 class ActionBuilder:
     """ "Class for parsing and executing runcards.
     Args:
