@@ -122,8 +122,6 @@ def qubit_spectroscopy_flux(
     points=10,
 ):
 
-    # FiXME: Need to include resonator's moving to work
-
     sequence = PulseSequence()
     qd_pulse = platform.qubit_drive_pulse(qubit, start=0, duration=5000)
     ro_pulse = platform.qubit_readout_pulse(qubit, start=5000)
@@ -148,6 +146,14 @@ def qubit_spectroscopy_flux(
             for curr in currange:
                 if count % points == 0:
                     yield data
+                platform.ro_port[qubit].lo_frequency = (
+                    np.poly1d(
+                        platform.qpuruncard["single_qubit"][qubit][
+                            "resonator_polycoef_flux"
+                        ]
+                    )(curr)
+                    - ro_pulse.frequency
+                )
                 platform.qd_port[qubit].lo_frequency = freq - qd_pulse.frequency
                 # platform.qf_port[fluxline].current = curr
                 dacs[fluxline].current(curr)

@@ -6,16 +6,6 @@ from qcvv.data import Dataset
 
 
 def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
-    try:
-        data_fast = Dataset.load_data(folder, routine, format, f"fast_sweep_q{qubit}")
-    except:
-        data_fast = Dataset()
-    try:
-        data_precision = Dataset.load_data(
-            folder, routine, format, f"precision_sweep_q{qubit}"
-        )
-    except:
-        data_precision = Dataset()
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -26,43 +16,54 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
             "phase (deg)",
         ),
     )
+    try:
+        data_fast = Dataset.load_data(folder, routine, format, f"fast_sweep_q{qubit}")
+        fig.add_trace(
+            go.Scatter(
+                x=data_fast.get_values("frequency", "GHz"),
+                y=data_fast.get_values("MSR", "uV"),
+                name="Fast",
+            ),
+            row=1,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=data_fast.get_values("frequency", "GHz"),
+                y=data_fast.get_values("phase", "deg"),
+                name="Fast",
+            ),
+            row=1,
+            col=2,
+        )
+    except:
+        pass
+    try:
+        data_precision = Dataset.load_data(
+            folder, routine, format, f"precision_sweep_q{qubit}"
+        )
 
-    fig.add_trace(
-        go.Scatter(
-            x=data_fast.get_values("frequency", "GHz"),
-            y=data_fast.get_values("MSR", "uV"),
-            name="Fast",
-        ),
-        row=1,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=data_fast.get_values("frequency", "GHz"),
-            y=data_fast.get_values("phase", "deg"),
-            name="Fast",
-        ),
-        row=1,
-        col=2,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=data_precision.get_values("frequency", "GHz"),
-            y=data_precision.get_values("MSR", "uV"),
-            name="Precision",
-        ),
-        row=1,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=data_precision.get_values("frequency", "GHz"),
-            y=data_precision.get_values("phase", "deg"),
-            name="Precision",
-        ),
-        row=1,
-        col=2,
-    )
+        fig.add_trace(
+            go.Scatter(
+                x=data_precision.get_values("frequency", "GHz"),
+                y=data_precision.get_values("MSR", "uV"),
+                name="Precision",
+            ),
+            row=1,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=data_precision.get_values("frequency", "GHz"),
+                y=data_precision.get_values("phase", "deg"),
+                name="Precision",
+            ),
+            row=1,
+            col=2,
+        )
+    except:
+        pass
+
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
