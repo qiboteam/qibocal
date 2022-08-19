@@ -19,3 +19,6 @@ rabi_pulse_length:
 
 rabi_pulse_gain:
     MSR vs Time: gain_msr_phase 
+
+rabi_pulse_amplitude:
+    MSR vs Time: amplitude_msr_phase 
