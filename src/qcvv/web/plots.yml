@@ -15,10 +15,16 @@ qubit_spectroscopy_flux:
     MSR and Phase vs Flux Current: frequency_flux_msr_phase
 
 rabi_pulse_length:
-    MSR vs Time: time_msr_phase 
+    MSR vs Time: time_msr_phase
 
 rabi_pulse_gain:
-    MSR vs Time: gain_msr_phase 
+    MSR vs Gain: gain_msr_phase
 
 rabi_pulse_amplitude:
-    MSR vs Time: amplitude_msr_phase 
+    MSR vs Amplitude: amplitude_msr_phase
+
+rabi_pulse_length_and_gain:
+    MSR vs length and gain: duration_gain_msr_phase
+
+rabi_pulse_length_and_amplitude:
+    MSR vs length and amplitude: duration_amplitude_msr_phase

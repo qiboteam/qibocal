@@ -101,7 +101,8 @@ def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
     )
     return fig
 
-#For Rabi oscillations
+
+# For Rabi oscillations
 def time_msr_phase(folder, routine, qubit, format):
     data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
     fig = make_subplots(
@@ -144,6 +145,7 @@ def time_msr_phase(folder, routine, qubit, format):
     )
     return fig
 
+
 def gain_msr_phase(folder, routine, qubit, format):
     data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
     fig = make_subplots(
@@ -151,9 +153,7 @@ def gain_msr_phase(folder, routine, qubit, format):
         cols=2,
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
-        subplot_titles=(
-            f"Rabi Oscillations varying phase qubit_{qubit}",
-        ),
+        subplot_titles=(f"Rabi Oscillations varying phase qubit_{qubit}",),
     )
 
     fig.add_trace(
@@ -174,6 +174,7 @@ def gain_msr_phase(folder, routine, qubit, format):
     )
     return fig
 
+
 def amplitude_msr_phase(folder, routine, qubit, format):
     data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
     fig = make_subplots(
@@ -181,9 +182,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
         cols=2,
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
-        subplot_titles=(
-            f"Rabi Oscillations varying amplitude qubit_{qubit}",
-        ),
+        subplot_titles=(f"Rabi Oscillations varying amplitude qubit_{qubit}",),
     )
 
     fig.add_trace(
