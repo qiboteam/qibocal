@@ -103,3 +103,88 @@ def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
         yaxis_title="MSR (V)",
     )
     return fig
+
+#For Rabi oscillations
+def time_msr_phase(folder, routine, qubit, format):
+    data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        subplot_titles=(
+            "MSR (V)",
+            "phase (deg)",
+        ),
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=data.get_values("Time", "ns"),
+            y=data.get_values("MSR", "uV"),
+            name="Rabi Oscillations",
+        ),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=data.get_values("Time", "ns"),
+            y=data.get_values("phase", "deg"),
+            name="Rabi Oscillations",
+        ),
+        row=1,
+        col=2,
+    )
+
+    fig.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Time (ns)",
+        yaxis_title="MSR (uV)",
+        xaxis2_title="Time (ns)",
+        yaxis2_title="Phase (deg)",
+    )
+    return fig
+
+def gain_msr_phase(folder, routine, qubit, format):
+    data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        subplot_titles=(
+            "MSR (V)",
+            "phase (deg)",
+        ),
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=data.get_values("gain", "db"),
+            y=data.get_values("MSR", "uV"),
+            name="Rabi Oscillations",
+        ),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=data.get_values("gain", "db"),
+            y=data.get_values("phase", "deg"),
+            name="Rabi Oscillations",
+        ),
+        row=1,
+        col=2,
+    )
+
+    fig.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Gain (db)",
+        yaxis_title="MSR (uV)",
+        xaxis2_title="Gain (db)",
+        yaxis2_title="Phase (deg)",
+    )
+    return fig

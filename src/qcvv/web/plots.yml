@@ -13,3 +13,9 @@ qubit_spectroscopy:
 
 qubit_spectroscopy_flux:
     MSR and Phase vs Flux Current: frequency_flux_msr_phase
+
+rabi_pulse_length:
+    MSR vs Time: time_msr_phase 
+
+rabi_pulse_gain:
+    MSR vs Time: gain_msr_phase 
