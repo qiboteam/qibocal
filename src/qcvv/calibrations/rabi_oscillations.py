@@ -220,7 +220,7 @@ def rabi_pulse_length_and_amplitude(
         pulse_duration_start, pulse_duration_end, pulse_duration_step
     )
     qd_pulse_amplitude_range = np.arange(
-        pulse_gain_start, pulse_gain_end, pulse_gain_step
+        pulse_amplitude_start, pulse_amplitude_end, pulse_amplitude_step
     )
 
     count = 0
