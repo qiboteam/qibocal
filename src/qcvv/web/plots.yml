@@ -28,3 +28,6 @@ ramsey_frequency_detuned:
 
 qubit_attenuation:
     Frequency vs Attenuation: frequency_attenuation_msr_phase
+
+t1:
+    MSR vs Time: time_msr_phase
