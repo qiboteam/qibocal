@@ -28,3 +28,6 @@ rabi_pulse_length_and_gain:
 
 rabi_pulse_length_and_amplitude:
     MSR vs length and amplitude: duration_amplitude_msr_phase
+
+t1:
+    MSR vs Time: time_msr_phase
