@@ -15,6 +15,7 @@ def ramsey(
     delay_between_pulses_end,
     delay_between_pulses_step,
     software_averages,
+    frequency_offset,
     points=10,
 ):
 
@@ -36,14 +37,30 @@ def ramsey(
         delay_between_pulses_step,
     )
 
-    data = Dataset(name=f"data_q{qubit}", quantities={"wait": "ns"})
+    # FIXME: Waiting to be able to pass qpucard to qibolab
+    platform.ro_port[qubit].lo_frequency = (
+        platform.qpucard["single_qubit"][qubit]["resonator_freq"] - ro_pulse.frequency
+    )
+    platform.qd_port[qubit].lo_frequency = (
+        platform.qpucard["single_qubit"][qubit]["qubit_freq"]
+        - ro_pulse.frequency
+        - frequency_offset
+    )
+
+    data = Dataset(name=f"data_q{qubit}", quantities={"Time": "ns"})
     count = 0
     for _ in range(software_averages):
         for wait in waits:
             if count % points == 0:
                 yield data
             RX90_pulse2.start = RX90_pulse1.duration + wait
+
+            # FIXME: Phase will soon be taken into account in the hardware
+            RX90_pulse2.phase = (
+                RX90_pulse1.duration / sampling_rate * 2 * np.pi * RX90_pulse1.frequency
+            )
             ro_pulse.start = RX90_pulse1.duration + wait + RX90_pulse2.duration
+
             sequence = PulseSequence()
             sequence.add(RX90_pulse1)
             sequence.add(RX90_pulse2)
@@ -56,7 +73,7 @@ def ramsey(
                 "i[V]": i,
                 "q[V]": q,
                 "phase[deg]": phase,
-                "wait[ns]": wait,
+                "Time[ns]": wait,
             }
             data.add(results)
             count += 1
@@ -113,6 +130,7 @@ def ramsey_frequency_detuned(
 
     data = Dataset(name=f"data_q{qubit}", quantities={"wait": "ns", "t_max": "ns"})
     count = 0
+    t_end = np.array(t_end)
     for _ in range(software_averages):
         for t_max in t_end:
             t_range = np.arange(t_start, t_max, t_step)
@@ -148,6 +166,7 @@ def ramsey_frequency_detuned(
                     "wait[ns]": wait,
                     "t_max[ns]": t_max,
                 }
+                print(results)
                 data.add(results)
                 count += 1
             # # # Fitting

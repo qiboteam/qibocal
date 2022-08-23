@@ -23,7 +23,7 @@ rabi_pulse_gain:
 ramsey:
     MSR vs Time: time_msr_phase
 
-run_ramsey_frequency_detuned:
+ramsey_frequency_detuned:
     MSR vs Time: wait_t_msr_phase
 
 qubit_attenuation:
