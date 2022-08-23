@@ -5,17 +5,8 @@ from plotly.subplots import make_subplots
 from qcvv.data import Dataset
 
 
-def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
-    try:
-        data_fast = Dataset.load_data(folder, routine, format, f"fast_sweep_q{qubit}")
-    except:
-        data_fast = Dataset()
-    try:
-        data_precision = Dataset.load_data(
-            folder, routine, format, f"precision_sweep_q{qubit}"
-        )
-    except:
-        data_precision = Dataset()
+def frequency_msr_phase__fast_precision(folder, routine, qubit, formato):
+
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -27,48 +18,62 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
         ),
     )
 
-    fig.add_trace(
-        go.Scatter(
-            x=data_fast.get_values("frequency", "GHz"),
-            y=data_fast.get_values("MSR", "uV"),
-            name="Fast",
-        ),
-        row=1,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=data_fast.get_values("frequency", "GHz"),
-            y=data_fast.get_values("phase", "deg"),
-            name="Fast",
-        ),
-        row=1,
-        col=2,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=data_precision.get_values("frequency", "GHz"),
-            y=data_precision.get_values("MSR", "uV"),
-            name="Precision",
-        ),
-        row=1,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=data_precision.get_values("frequency", "GHz"),
-            y=data_precision.get_values("phase", "deg"),
-            name="Precision",
-        ),
-        row=1,
-        col=2,
-    )
+    import os.path
+
+    file_fast = f"{folder}/data/{routine}/fast_sweep_q{qubit}.csv"
+    if os.path.exists(file_fast):
+        data_fast = Dataset.load_data(folder, routine, formato, f"fast_sweep_q{qubit}")
+
+        fig.add_trace(
+            go.Scatter(
+                x=data_fast.get_values("frequency", "Hz"),
+                y=data_fast.get_values("MSR", "uV"),
+                name="Fast",
+            ),
+            row=1,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=data_fast.get_values("frequency", "Hz"),
+                y=data_fast.get_values("phase", "deg"),
+                name="Fast",
+            ),
+            row=1,
+            col=2,
+        )
+
+    file_precision = f"{folder}/data/{routine}/precision_sweep_q{qubit}.csv"
+    if os.path.exists(file_precision):
+        data_precision = Dataset.load_data(
+            folder, routine, formato, f"precision_sweep_q{qubit}"
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=data_precision.get_values("frequency", "Hz"),
+                y=data_precision.get_values("MSR", "uV"),
+                name="Precision",
+            ),
+            row=1,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=data_precision.get_values("frequency", "Hz"),
+                y=data_precision.get_values("phase", "deg"),
+                name="Precision",
+            ),
+            row=1,
+            col=2,
+        )
+
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Frequency (GHz)",
+        xaxis_title="Frequency (Hz)",
         yaxis_title="MSR (uV)",
-        xaxis2_title="Frequency (GHz)",
+        xaxis2_title="Frequency (Hz)",
         yaxis2_title="Phase (deg)",
     )
     return fig
