@@ -163,6 +163,13 @@ class ActionBuilder:
         )
         shutil.copy(platform_runcard, f"{path}/platform.yml")
 
+        qpucard = (
+            pathlib.Path(__file__).parent.parent
+            / "qpucards"
+            / f"{self.runcard['platform']}.yml"
+        )
+        shutil.copy(qpucard, f"{path}/qpucard.yml")
+
         e = datetime.datetime.now()
         meta = {}
         meta["date"] = e.strftime("%Y-%m-%d %H:%M:%S")
