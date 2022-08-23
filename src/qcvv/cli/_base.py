@@ -186,6 +186,7 @@ class ActionBuilder:
             results = self.get_result(routine, args)
         self.platform.stop()
         self.platform.disconnect()
+        self.dump_report()
 
     def get_result(self, routine, arguments):
         """Method to execute a single action and retrieving the results."""
@@ -193,3 +194,8 @@ class ActionBuilder:
         if hasattr(routine, "final_action"):
             return routine.final_action(results, self.output, self.format)
         return results
+
+    def dump_report(self):
+        from qcvv.web.report import create_report
+
+        create_report(self.folder)
