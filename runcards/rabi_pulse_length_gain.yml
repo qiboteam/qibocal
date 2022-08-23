@@ -1,0 +1,16 @@
+platform: tii1q
+
+qubits: [0]
+
+format: csv
+
+actions:
+  rabi_pulse_length_and_gain:
+    pulse_duration_start: 4 # minimum 4ns
+    pulse_duration_end: 200
+    pulse_duration_step: 4
+    pulse_gain_start: 0 # -1.0<=g<=1.0
+    pulse_gain_end: 1
+    pulse_gain_step: 0.02
+    software_averages: 1
+    points: 10

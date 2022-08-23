@@ -1,0 +1,16 @@
+platform: tii1q
+
+qubits: [0]
+
+format: csv
+
+actions:
+  rabi_pulse_length_and_amplitude:
+    pulse_duration_start: 4 # minimum 4ns
+    pulse_duration_end: 200
+    pulse_duration_step: 4
+    pulse_amplitude_start: 0 # -1.0<= amplitude <=1.0
+    pulse_amplitude_end: 1
+    pulse_amplitude_step: 0.02
+    software_averages: 1
+    points: 10
