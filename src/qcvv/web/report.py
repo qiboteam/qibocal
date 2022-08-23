@@ -7,14 +7,25 @@ import yaml
 from jinja2 import Environment, FileSystemLoader
 
 from qcvv import __version__, plots
-from qcvv.data import Dataset
+
+
+def get_figure(folder, routine, method, format):
+    # FIXME: Temporarily hardcode the plotting method to test
+    # multiple routines with different names in one folder
+    figure = getattr(plots.resonator_spectroscopy_attenuation, method)(
+        folder, routine, format
+    )
+    # should be changed to:
+    # figure = getattr(plots, method)(folder, routine, format)
+    with tempfile.NamedTemporaryFile() as temp:
+        figure.write_html(temp.name, include_plotlyjs=False, full_html=False)
+        fightml = temp.read().decode("utf-8")
+    return fightml
 
 
 def create_report(path):
     """Creates an HTML report for the data in the given path."""
     filepath = pathlib.Path(__file__)
-    env = Environment(loader=FileSystemLoader(filepath.with_name("templates")))
-    template = env.get_template("template.html")
 
     with open(os.path.join(filepath.with_name("static"), "styles.css"), "r") as file:
         css_styles = f"<style>\n{file.read()}\n</style>"
@@ -31,19 +42,9 @@ def create_report(path):
     with open(pathlib.Path(__file__).with_name("plots.yml"), "r") as file:
         plotters = yaml.safe_load(file)
 
-    figures = {}
-    for routine in runcard.get("actions"):
-        figures[routine] = {}
-        for method in plotters.get(routine).values():
-            # find a way to change height and width depending on screen type
-            format = runcard.get("format")
-            figure = getattr(plots.resonator_spectroscopy_attenuation, method)(
-                path, routine, format
-            )
-            with tempfile.NamedTemporaryFile() as temp:
-                figure.write_html(temp.name, include_plotlyjs=False, full_html=False)
-                figures[routine][method] = temp.read().decode("utf-8")
-
+    env = Environment(loader=FileSystemLoader(filepath.with_name("templates")))
+    env.globals.update(get_figure=get_figure)
+    template = env.get_template("template.html")
     report = template.render(
         is_static=True,
         css_styles=css_styles,
@@ -51,7 +52,6 @@ def create_report(path):
         path=path,
         metadata=metadata,
         runcard=runcard,
-        figures=figures,
         plotters=plotters,
     )
 

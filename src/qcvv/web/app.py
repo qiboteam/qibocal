@@ -49,7 +49,7 @@ def get_graph(n, current_figure, url):
             folder, routine, format
         )
         # should be changed to:
-        # return getattr(getattr(plots, routine), method)(data)
+        # return getattr(plots, method)(folder, routine, format)
 
     except (FileNotFoundError, pd.errors.EmptyDataError):
         return current_figure

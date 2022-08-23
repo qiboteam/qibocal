@@ -115,7 +115,7 @@
           <div id="{{ routine }}-{{ method }}">
             <h4>{{ header }}</h4>
             {% if is_static %}
-              {{ figures.get(routine).get(method) }}
+              {{ get_figure(path, routine, method, runcard.get('format')) }}
             {% else %}
             <iframe src="/dash/{{ path }}/data/{{ routine }}/{{ method }}/{{ runcard.get('format') }}" style="position: relative; height: 500px; width: 100%;"></iframe>
             {% endif %}
