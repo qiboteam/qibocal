@@ -55,11 +55,13 @@
             {% for routine in runcard.get('actions').keys() %}
             <a class="list-group-item list-group-item-action list-group-item-light" href="#{{ routine }}">{{ routine.replace("_", " ").title() }}</a>
             <!-- plots submenu -->
+              {% if routine in plotters %}
               <div class="list-group">
                 {% for header, method in plotters.get(routine).items() %}
                 <a class="list-group-item list-group-item-action list-group-item-light" href="#{{ routine }}-{{ method }}">{{ header }}</a>
                 {% endfor %}
               </div>
+              {% endif %}
             {% endfor %}
           </div>
         {% endif %}
@@ -111,6 +113,7 @@
         {% for routine in runcard.get('actions').keys() %}
         <div id="{{ routine }}">
           <h3>{{ routine.replace("_", " ").title() }}</h3>
+          {% if routine in plotters %}
           {% for header, method in plotters.get(routine).items() %}
           <div id="{{ routine }}-{{ method }}">
             <h4>{{ header }}</h4>
@@ -121,6 +124,9 @@
             {% endif %}
           </div>
           {% endfor %}
+          {% else %}
+          <p>No plotting methods available for {{ routine }}. Please update plots.yml.</p>
+          {% endif %}
         </div>
         {% endfor %}
       </div>
