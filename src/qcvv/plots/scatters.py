@@ -123,7 +123,6 @@ def time_msr_phase(folder, routine, qubit, format):
         go.Scatter(
             x=data.get_values("Time", "ns"),
             y=data.get_values("MSR", "uV"),
-            name="Rabi Oscillations",
         ),
         row=1,
         col=1,
@@ -132,7 +131,6 @@ def time_msr_phase(folder, routine, qubit, format):
         go.Scatter(
             x=data.get_values("Time", "ns"),
             y=data.get_values("phase", "deg"),
-            name="Rabi Oscillations",
         ),
         row=1,
         col=2,
@@ -166,7 +164,6 @@ def gain_msr_phase(folder, routine, qubit, format):
         go.Scatter(
             x=data.get_values("gain", "db"),
             y=data.get_values("MSR", "uV"),
-            name="Rabi Oscillations",
         ),
         row=1,
         col=1,
@@ -175,7 +172,6 @@ def gain_msr_phase(folder, routine, qubit, format):
         go.Scatter(
             x=data.get_values("gain", "db"),
             y=data.get_values("phase", "deg"),
-            name="Rabi Oscillations",
         ),
         row=1,
         col=2,

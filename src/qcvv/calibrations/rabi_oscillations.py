@@ -34,7 +34,7 @@ def rabi_pulse_length(
         platform.qpucard["single_qubit"][qubit]["resonator_freq"] - ro_pulse.frequency
     )
     platform.qd_port[qubit].lo_frequency = (
-        platform.qpucard["single_qubit"][qubit]["qubit_freq"] - ro_pulse.frequency
+        platform.qpucard["single_qubit"][qubit]["qubit_freq"] - qd_pulse.frequency
     )
     count = 0
     for _ in range(software_averages):
@@ -82,7 +82,7 @@ def rabi_pulse_gain(
         platform.qpucard["single_qubit"][qubit]["resonator_freq"] - ro_pulse.frequency
     )
     platform.qd_port[qubit].lo_frequency = (
-        platform.qpucard["single_qubit"][qubit]["qubit_freq"] - ro_pulse.frequency
+        platform.qpucard["single_qubit"][qubit]["qubit_freq"] - qd_pulse.frequency
     )
 
     count = 0

@@ -43,7 +43,7 @@ def ramsey(
     )
     platform.qd_port[qubit].lo_frequency = (
         platform.qpucard["single_qubit"][qubit]["qubit_freq"]
-        - ro_pulse.frequency
+        - RX90_pulse1.frequency
         - frequency_offset
     )
 
@@ -55,7 +55,7 @@ def ramsey(
                 yield data
             RX90_pulse2.start = RX90_pulse1.duration + wait
 
-            # FIXME: Phase will soon be taken into account in the hardware
+            # FIXME: Phase will soon be taken into account in the qiboab
             RX90_pulse2.phase = (
                 RX90_pulse1.duration / sampling_rate * 2 * np.pi * RX90_pulse1.frequency
             )
@@ -166,7 +166,6 @@ def ramsey_frequency_detuned(
                     "wait[ns]": wait,
                     "t_max[ns]": t_max,
                 }
-                print(results)
                 data.add(results)
                 count += 1
             # # # Fitting

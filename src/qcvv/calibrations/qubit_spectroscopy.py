@@ -237,7 +237,6 @@ def qubit_attenuation(
                     "frequency[Hz]": freq,
                     "attenuation[dB]": att,
                 }
-                print(att)
                 # TODO: implement normalization
                 data.add(results)
                 count += 1
