@@ -13,7 +13,7 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
         subplot_titles=(
-            "MSR (V)",
+            "MSR (mV)",
             "phase (deg)",
         ),
     )
@@ -22,7 +22,7 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
         go.Heatmap(
             x=data.get_values("frequency", "GHz"),
             y=data.get_values("current", "A"),
-            z=data.get_values("MSR", "V"),
+            z=data.get_values("MSR", "mV"),
             colorbar_x=0.45,
         ),
         row=1,
@@ -57,7 +57,7 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
         subplot_titles=(
-            "MSR (V)",
+            "MSR (mV)",
             "phase (deg)",
         ),
     )
@@ -66,7 +66,7 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
         go.Heatmap(
             x=data.get_values("frequency", "GHz"),
             y=data.get_values("attenuation", "dB"),
-            z=data.get_values("MSR", "V"),
+            z=data.get_values("MSR", "mV"),
             colorbar_x=0.45,
         ),
         row=1,
@@ -101,7 +101,7 @@ def wait_t_msr_phase(folder, routine, qubit, format):
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
         subplot_titles=(
-            "MSR (V)",
+            "MSR (mV)",
             "phase (deg)",
         ),
     )
@@ -110,7 +110,7 @@ def wait_t_msr_phase(folder, routine, qubit, format):
         go.Heatmap(
             x=data.get_values("wait", "ns"),
             y=data.get_values("t_max", "ns"),
-            z=data.get_values("MSR", "V"),
+            z=data.get_values("MSR", "mV"),
             colorbar_x=0.45,
         ),
         row=1,

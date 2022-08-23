@@ -5,6 +5,7 @@ from qibolab.pulses import PulseSequence
 from qcvv.data import Dataset
 from qcvv.decorators import store
 
+
 @store
 def rabi_pulse_length(
     platform,
@@ -24,8 +25,17 @@ def rabi_pulse_length(
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
 
-    qd_pulse_duration_range = np.arange(pulse_duration_start, pulse_duration_end, pulse_duration_step)
+    qd_pulse_duration_range = np.arange(
+        pulse_duration_start, pulse_duration_end, pulse_duration_step
+    )
 
+    # FIXME: Waiting to be able to pass qpucard to qibolab
+    platform.ro_port[qubit].lo_frequency = (
+        platform.qpucard["single_qubit"][qubit]["resonator_freq"] - ro_pulse.frequency
+    )
+    platform.qd_port[qubit].lo_frequency = (
+        platform.qpucard["single_qubit"][qubit]["qubit_freq"] - ro_pulse.frequency
+    )
     count = 0
     for _ in range(software_averages):
         for duration in qd_pulse_duration_range:
@@ -33,7 +43,9 @@ def rabi_pulse_length(
             ro_pulse.start = duration
             if count % points == 0:
                 yield data
-            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][ro_pulse.serial]
+            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
+                ro_pulse.serial
+            ]
             results = {
                 "MSR[V]": msr,
                 "i[V]": i,
@@ -44,6 +56,7 @@ def rabi_pulse_length(
             data.add(results)
             count += 1
     yield data
+
 
 @store
 def rabi_pulse_gain(
@@ -58,22 +71,34 @@ def rabi_pulse_gain(
 
     data = Dataset(name=f"data_q{qubit}", quantities={"gain": "db"})
 
-    sequence = PulseSequence()
-    #qd_pulse = platform.qubit_drive_pulse(qubit, start=0, duration=5000)
+    # qd_pulse = platform.qubit_drive_pulse(qubit, start=0, duration=5000)
     qd_pulse = platform.RX_pulse(qubit, start=0)
     ro_pulse = platform.qubit_readout_pulse(qubit, start=qd_pulse.duration)
-    sequence.add(qd_pulse)
-    sequence.add(ro_pulse)
 
     qd_pulse_gain_range = np.arange(pulse_gain_start, pulse_gain_end, pulse_gain_step)
+
+    # FIXME: Waiting to be able to pass qpucard to qibolab
+    platform.ro_port[qubit].lo_frequency = (
+        platform.qpucard["single_qubit"][qubit]["resonator_freq"] - ro_pulse.frequency
+    )
+    platform.qd_port[qubit].lo_frequency = (
+        platform.qpucard["single_qubit"][qubit]["qubit_freq"] - ro_pulse.frequency
+    )
 
     count = 0
     for _ in range(software_averages):
         for gain in qd_pulse_gain_range:
-            platform.qd_port[qubit].gain = gain
+            qd_pulse.amplitude = gain
+            # platform.qd_port[qubit].gain = gain
+            sequence = PulseSequence()
+            sequence.add(qd_pulse)
+            sequence.add(ro_pulse)
+
             if count % points == 0:
                 yield data
-            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][ro_pulse.serial]
+            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
+                ro_pulse.serial
+            ]
             results = {
                 "MSR[V]": msr,
                 "i[V]": i,

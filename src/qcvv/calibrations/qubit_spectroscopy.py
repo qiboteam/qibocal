@@ -21,6 +21,7 @@ def qubit_spectroscopy(
     precision_end,
     precision_step,
     software_averages,
+    attenuation,
     points=10,
 ):
     # data = Dataset(quantities={"frequency": "Hz", "attenuation": "dB"})
@@ -38,6 +39,11 @@ def qubit_spectroscopy(
     platform.ro_port[qubit].lo_frequency = (
         platform.qpucard["single_qubit"][qubit]["resonator_freq"] - ro_pulse.frequency
     )
+    for i in range(5):
+        if isinstance(attenuation, list):
+            platform.qd_port[i].attenuation = attenuation[i]
+        else:
+            platform.qd_port[i].attenuation = attenuation
 
     data = Dataset(name=f"fast_sweep_q{qubit}", quantities={"frequency": "Hz"})
     count = 0
@@ -196,10 +202,7 @@ def qubit_attenuation(
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
 
-    # FIXME: Waitng for abstract platform to have qf_port[qubit] working
-    spi = platform.instruments["SPI"].device
-    dacs = [spi.mod2.dac0, spi.mod1.dac0, spi.mod1.dac1, spi.mod1.dac2, spi.mod1.dac3]
-
+    # FIXME: Waiting to be able to pass qpucard to qibolab
     platform.ro_port[qubit].lo_frequency = (
         platform.qpucard["single_qubit"][qubit]["resonator_freq"] - ro_pulse.frequency
     )
@@ -212,15 +215,13 @@ def qubit_attenuation(
     freqrange = np.arange(freq_start, freq_end, freq_step) + lo_qcm_frequency
 
     if isinstance(attenuation_list, str):
-        fun_name = re.findall(r"(\w+)", attenuation_list)[0]
-        fun_param = re.findall(r"[\w+\d\.\d]+", attenuation_list)[1:]
-        print(fun_name)
-        attenuation_list = importlib.import_module(fun_name)(**fun_param)
+        attenuation_list = eval(attenuation_list)
 
     count = 0
+    attenuation_list = np.array(attenuation_list)
     for _ in range(software_averages):
-        for freq in freqrange:
-            for att in attenuation_list:
+        for att in attenuation_list:
+            for freq in freqrange:
                 if count % points == 0:
                     yield data
                 platform.qd_port[qubit].lo_frequency = freq - qd_pulse.frequency
@@ -234,8 +235,9 @@ def qubit_attenuation(
                     "q[V]": q,
                     "phase[deg]": phase,
                     "frequency[Hz]": freq,
-                    "att[dB]": att,
+                    "attenuation[dB]": att,
                 }
+                print(att)
                 # TODO: implement normalization
                 data.add(results)
                 count += 1

@@ -104,7 +104,8 @@ def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
     )
     return fig
 
-#For Rabi oscillations
+
+# For Rabi oscillations
 def time_msr_phase(folder, routine, qubit, format):
     data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
     fig = make_subplots(
@@ -147,6 +148,7 @@ def time_msr_phase(folder, routine, qubit, format):
     )
     return fig
 
+
 def gain_msr_phase(folder, routine, qubit, format):
     data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
     fig = make_subplots(
@@ -182,9 +184,9 @@ def gain_msr_phase(folder, routine, qubit, format):
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Gain (db)",
+        xaxis_title="Gain (a.u.)",
         yaxis_title="MSR (uV)",
-        xaxis2_title="Gain (db)",
+        xaxis2_title="Gain (a.u.)",
         yaxis2_title="Phase (deg)",
     )
     return fig
