@@ -74,11 +74,11 @@
               data-bs-toggle="collapse" data-bs-target="#saved-reports" aria-expanded="true">
               Saved reports
             </button>
-            <div class="collapse show" id="saved-reports">
+            <div class="collapse show list-group" id="saved-reports">
               <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
                 {% for folder in folders %}
-                <li><a href="{{ url_for('page', path=folder) }}"
-                    class="link-dark d-inline-flex text-decoration-none rounded">{{ folder }}</a></li>
+                <li><a id="reports" href="{{ url_for('page', path=folder) }}"
+                    class="link-dark d-inline-flex text-decoration-none rounded list-group-item {{ 'active' if folder == path else '' }}">{{ folder }}</a></li>
                 {% endfor %}
               </ul>
             </div>

@@ -20,6 +20,16 @@
   overflow-y: auto; /* Scrollable contents if viewport is shorter than content. */
 }
 
+.list-group-item.active {
+  background-color: #6600ff1c;
+  border-color: #6600ff1c;
+}
+
+.list-group-item {
+  background-color: inherit;
+  border-width: 0px;
+}
+
 /*
  * Navbar
  */
