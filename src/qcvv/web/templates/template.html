@@ -68,8 +68,8 @@
             {% endfor %}
           </li>
           <li class="border-top my-3"></li>
-          {% endif %}
           <li class="mb-1">
+          {% endif %}
             <button class="btn btn-toggle d-inline-flex align-items-center rounded border-0 collapsed"
               data-bs-toggle="collapse" data-bs-target="#saved-reports" aria-expanded="true">
               Saved reports
@@ -82,7 +82,9 @@
                 {% endfor %}
               </ul>
             </div>
+          {% if path %}
           </li>
+          {% endif %}
         </ul>
 
       </div>
