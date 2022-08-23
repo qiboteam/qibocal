@@ -130,9 +130,9 @@ def duration_gain_msr_phase(folder, routine, qubit, format):
         showlegend=False,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="duration (ns)",
-        yaxis_title="gain (db)",
+        yaxis_title="gain (a.u.)",
         xaxis2_title="duration (ns)",
-        yaxis2_title="gain (db)",
+        yaxis2_title="gain (a.u.)",
     )
     return fig
 
