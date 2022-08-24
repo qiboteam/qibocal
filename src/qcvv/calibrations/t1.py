@@ -28,6 +28,14 @@ def t1(
         delay_before_readout_start, delay_before_readout_end, delay_before_readout_step
     )
 
+    # FIXME: Waiting to be able to pass qpucard to qibolab
+    platform.ro_port[qubit].lo_frequency = (
+        platform.qpucard["single_qubit"][qubit]["resonator_freq"] - ro_pulse.frequency
+    )
+    platform.qd_port[qubit].lo_frequency = (
+        platform.qpucard["single_qubit"][qubit]["qubit_freq"] - qd_pulse.frequency
+    )
+
     data = Dataset(name=f"data_q{qubit}", quantities={"Time": "ns"})
 
     count = 0
