@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
   {% if path %}
-  <title>{{ path }}</title>
+  <title>{{ title }}</title>
   {% else %}
   <title>QCVV {{version}}</title>
   {% endif %}
@@ -67,12 +67,14 @@
               <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
                 <li><a href="#{{ routine }}" class="link-dark d-inline-flex text-decoration-none rounded">{{
                     routine.replace("_", " ").title() }}</a></li>
+                {% if routine in plotters %}
                 {% for header, method in plotters.get(routine).items() %}
                 <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
                   <li><a class="link-dark d-inline-flex text-decoration-none rounded"
                       href="#{{ routine }}-{{ method }}">- {{ header }}</a></li>
                 </ul>
                 {% endfor %}
+                {% endif %}
               </ul>
             </div>
             {% endfor %}
