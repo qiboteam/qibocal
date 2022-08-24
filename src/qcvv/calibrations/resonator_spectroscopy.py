@@ -18,6 +18,7 @@ def resonator_spectroscopy(
     precision_width,
     precision_step,
     software_averages,
+    drive_attenuation,
     points=10,
 ):
 
@@ -33,6 +34,13 @@ def resonator_spectroscopy(
         )
         + lo_qrm_frequency
     )
+
+    for i in range(platform.settings["nqubits"]):
+        if isinstance(drive_attenuation, list):
+            platform.qd_port[i].attenuation = drive_attenuation[i]
+        else:
+            platform.qd_port[i].attenuation = drive_attenuation
+
     data = Dataset(name=f"fast_sweep_q{qubit}", quantities={"frequency": "Hz"})
     count = 0
     for _ in range(software_averages):
@@ -114,9 +122,6 @@ def resonator_punchout(
     points=10,
 ):
 
-    data = Dataset(
-        name=f"data_q{qubit}", quantities={"frequency": "Hz", "attenuation": "dB"}
-    )
     ro_pulse = platform.qubit_readout_pulse(qubit, start=0)
     sequence = PulseSequence()
     sequence.add(ro_pulse)
@@ -126,6 +131,11 @@ def resonator_punchout(
     freqrange = np.arange(-freq_width, freq_width, freq_step) + lo_qrm_frequency
     attrange = np.flip(np.arange(min_att, max_att, step_att))
     count = 0
+
+    data = Dataset(
+        name=f"data_q{qubit}", quantities={"frequency": "Hz", "attenuation": "dB"}
+    )
+
     for s in range(software_averages):
         for att in attrange:
             for freq in freqrange:

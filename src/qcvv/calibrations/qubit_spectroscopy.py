@@ -39,6 +39,7 @@ def qubit_spectroscopy(
     platform.ro_port[qubit].lo_frequency = (
         platform.qpucard["single_qubit"][qubit]["resonator_freq"] - ro_pulse.frequency
     )
+
     for i in range(platform.settings["nqubits"]):
         if isinstance(attenuation, list):
             platform.qd_port[i].attenuation = attenuation[i]
