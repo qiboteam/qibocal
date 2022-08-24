@@ -31,6 +31,11 @@ def ramsey(
         qubit, start=RX90_pulse1.duration + RX90_pulse2.duration
     )
 
+    sequence = PulseSequence()
+    sequence.add(RX90_pulse1)
+    sequence.add(RX90_pulse2)
+    sequence.add(ro_pulse)
+
     waits = np.arange(
         delay_between_pulses_start,
         delay_between_pulses_end,
@@ -61,10 +66,6 @@ def ramsey(
             )
             ro_pulse.start = RX90_pulse1.duration + wait + RX90_pulse2.duration
 
-            sequence = PulseSequence()
-            sequence.add(RX90_pulse1)
-            sequence.add(RX90_pulse2)
-            sequence.add(ro_pulse)
             msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
                 ro_pulse.serial
             ]
@@ -118,6 +119,10 @@ def ramsey_frequency_detuned(
     ro_pulse = platform.qubit_readout_pulse(
         qubit, start=RX90_pulse1.duration + RX90_pulse2.duration
     )
+    sequence = PulseSequence()
+    sequence.add(RX90_pulse1)
+    sequence.add(RX90_pulse2)
+    sequence.add(ro_pulse)
 
     runcard_qubit_freq = platform.qpucard["single_qubit"][qubit]["qubit_freq"]
     runcard_T2 = platform.qpucard["single_qubit"][qubit]["T2"]
@@ -149,11 +154,6 @@ def ramsey_frequency_detuned(
                     * (RX90_pulse2.frequency - offset_freq)
                 )
                 ro_pulse.start = RX90_pulse1.duration + RX90_pulse2.duration + wait
-
-                sequence = PulseSequence()
-                sequence.add(RX90_pulse1)
-                sequence.add(RX90_pulse2)
-                sequence.add(ro_pulse)
 
                 msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
                     ro_pulse.serial
