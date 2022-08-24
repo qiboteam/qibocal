@@ -40,6 +40,38 @@ def command(runcard, folder, force=None):
     action_builder.execute()
 
 
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option(
+    "port",
+    "-p",
+    "--port",
+    default=8050,
+    type=int,
+    help="Localhost port to launch dash server.",
+)
+@click.option(
+    "debug",
+    "-d",
+    "--debug",
+    is_flag=True,
+    help="Launch server in debugging mode.",
+)
+def live_plot(port, debug):
+    """Real time plotting of calibration data on a dash server."""
+    import socket
+
+    from qcvv.web.app import app
+
+    # change port if it is already used
+    while True:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            if s.connect_ex(("localhost", port)) != 0:
+                break
+        port += 1
+
+    app.run_server(debug=debug, port=port)
+
+
 class ActionBuilder:
     """ "Class for parsing and executing runcards.
     Args:

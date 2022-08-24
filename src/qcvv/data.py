@@ -58,6 +58,18 @@ class Dataset:
             # TODO: find a better way to do this
             self.df.loc[l + l // len(list(data.keys())), name] = value * ureg(unit)
 
+    def get_values(self, quantity, unit):
+        """Get values of a quantity in specified units.
+
+        Args:
+            quantity (str): Quantity to get the values of.
+            unit (str): Unit of the returned values.
+
+        Returns:
+            ``pd.Series`` with the quantity values in the given units.
+        """
+        return self.df[quantity].pint.to(unit).pint.magnitude
+
     def __len__(self):
         """Computes the length of the dataset."""
         return len(self.df)
