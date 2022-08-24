@@ -31,3 +31,9 @@ qubit_attenuation:
 
 t1:
     MSR vs Time: time_msr_phase
+
+spin_echo:
+    MSR vs Time: time_msr_phase
+
+spin_echo_3pulses:
+    MSR vs Time: time_msr_phase
