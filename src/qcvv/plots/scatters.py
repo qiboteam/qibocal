@@ -174,7 +174,7 @@ def gain_msr_phase(folder, routine, qubit, format):
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Gain (db)",
+        xaxis_title="Gain (a.u.)",
         yaxis_title="MSR (uV)",
     )
     return fig
@@ -187,7 +187,10 @@ def amplitude_msr_phase(folder, routine, qubit, format):
         cols=2,
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
-        subplot_titles=(f"Rabi Oscillations varying amplitude qubit_{qubit}",),
+        subplot_titles=(
+            "MSR (V)",
+            "phase (deg)",
+        ),
     )
 
     fig.add_trace(
