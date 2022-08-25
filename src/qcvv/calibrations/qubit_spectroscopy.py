@@ -17,10 +17,11 @@ def qubit_spectroscopy(
     precision_start,
     precision_end,
     precision_step,
+    attenuation,
     software_averages,
     points=10,
 ):
-    #data = Dataset(quantities={"frequency": "Hz", "attenuation": "dB"})
+    # data = Dataset(quantities={"frequency": "Hz", "attenuation": "dB"})
     sequence = PulseSequence()
     qd_pulse = platform.qubit_drive_pulse(qubit, start=0, duration=5000)
     ro_pulse = platform.qubit_readout_pulse(qubit, start=5000)
@@ -36,6 +37,12 @@ def qubit_spectroscopy(
         platform.characterization["single_qubit"][qubit]["resonator_freq"]
         - ro_pulse.frequency
     )
+
+    for i in range(platform.settings["nqubits"]):
+        if isinstance(attenuation, list):
+            platform.qd_port[i].attenuation = attenuation[i]
+        else:
+            platform.qd_port[i].attenuation = attenuation
 
     data = Dataset(name=f"fast_sweep_q{qubit}", quantities={"frequency": "Hz"})
     count = 0

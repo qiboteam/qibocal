@@ -6,11 +6,12 @@ format: csv
 
 actions:
   qubit_spectroscopy:
-    fast_start: -5_000_000
-    fast_end: 5_000_000
-    fast_step: 200_000
-    precision_start: -500_000
-    precision_end: 500_000
-    precision_step: 20_000
+    fast_start: -30_000_000
+    fast_end: 30_000_000
+    fast_step: 500_000
+    precision_start: -100_000
+    precision_end: 100_000
+    precision_step: 50_000
     software_averages: 1
-    points: 10
+    attenuation: 50
+    points: 1

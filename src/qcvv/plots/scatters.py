@@ -237,3 +237,32 @@ def ro_phase_msr(folder, routine, qubit, format):
         yaxis_title="MSR (uV)",
     )
     return fig
+
+
+# For Ramsey oscillations
+def time_msr(folder, routine, qubit, format):
+    data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        subplot_titles=("MSR (V)",),
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=data.get_values("wait", "ns"),
+            y=data.get_values("MSR", "uV"),
+            name="Ramsey detuned",
+        ),
+        row=1,
+        col=1,
+    )
+    fig.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Time (ns)",
+        yaxis_title="MSR (uV)",
+    )
+    return fig
