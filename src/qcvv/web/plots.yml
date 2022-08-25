@@ -31,3 +31,6 @@ rabi_pulse_length_and_amplitude:
 
 t1:
     MSR vs Time: time_msr_phase
+
+ro_pulse_phase:
+    MSR vs RO phase: ro_phase_msr
