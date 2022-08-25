@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Adds global CLI options."""
+import datetime
 import inspect
 import os
 import shutil
@@ -99,7 +100,6 @@ class ActionBuilder:
             force (bool): option to overwrite the output folder if it exists already.
         """
         if folder is None:
-            import datetime
             import getpass
 
             e = datetime.datetime.now()
@@ -131,8 +131,6 @@ class ActionBuilder:
 
     def save_runcards(self, path, runcard):
         """Save the output runcards."""
-        import datetime
-
         import qibo
         import qibolab
         from qibolab.paths import qibolab_folder
@@ -146,14 +144,16 @@ class ActionBuilder:
 
         e = datetime.datetime.utcnow()
         meta = {}
-        meta["date"] = e.strftime("%Y-%m-%d %H:%M:%S")
+        meta["date"] = e.strftime("%Y-%m-%d")
+        meta["start-time"] = e.strftime("%H:%M:%S")
+        meta["end-time"] = e.strftime("%H:%M:%S")
         meta["versions"] = {
             "qibo": qibo.__version__,
             "qibolab": qibolab.__version__,
             "qcvv": qcvv.__version__,
         }
-        with open(f"{path}/meta.yml", "w") as f:
-            yaml.dump(meta, f)
+        with open(f"{path}/meta.yml", "w") as file:
+            yaml.dump(meta, file)
 
         shutil.copy(runcard, f"{path}/runcard.yml")
 
@@ -197,5 +197,13 @@ class ActionBuilder:
 
     def dump_report(self):
         from qcvv.web.report import create_report
+
+        # update end time
+        with open(f"{self.folder}/meta.yml", "r") as file:
+            meta = yaml.safe_load(file)
+        e = datetime.datetime.utcnow()
+        meta["end-time"] = e.strftime("%H:%M:%S")
+        with open(f"{self.folder}/meta.yml", "w") as file:
+            yaml.dump(meta, file)
 
         create_report(self.folder)
