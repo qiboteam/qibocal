@@ -157,6 +157,69 @@ def rabi_pulse_amplitude(
     yield data
 
 
+@store
+def rabi_pulse_amplitude_attenuation(
+    platform,
+    qubit,
+    pulse_amplitude_start,
+    pulse_amplitude_end,
+    pulse_amplitude_step,
+    software_averages,
+    attenuation_list,
+    points=10,
+):
+
+    data = Dataset(
+        name=f"data_q{qubit}", quantities={"amplitude": "unit", "attenuation": "dB"}
+    )
+
+    sequence = PulseSequence()
+    # qd_pulse = platform.qubit_drive_pulse(qubit, start=0, duration=5000)
+    qd_pulse = platform.RX_pulse(qubit, start=0)
+    ro_pulse = platform.qubit_readout_pulse(qubit, start=qd_pulse.duration)
+    sequence.add(qd_pulse)
+    sequence.add(ro_pulse)
+
+    qd_pulse_amplitude_range = np.arange(
+        pulse_amplitude_start, pulse_amplitude_end, pulse_amplitude_step
+    )
+
+    if isinstance(attenuation_list, str):
+        attenuation_list = eval(attenuation_list)
+    attenuation_list = np.array(attenuation_list)
+
+    # FIXME: Waiting to be able to pass qpucard to qibolab
+    platform.ro_port[qubit].lo_frequency = (
+        platform.qpucard["single_qubit"][qubit]["resonator_freq"] - ro_pulse.frequency
+    )
+    platform.qd_port[qubit].lo_frequency = (
+        platform.qpucard["single_qubit"][qubit]["qubit_freq"] - qd_pulse.frequency
+    )
+
+    count = 0
+    for _ in range(software_averages):
+        for att in attenuation_list:
+            platform.qd_port[qubit].attenuation = att
+            for amplitude in qd_pulse_amplitude_range:
+                qd_pulse.amplitude = amplitude
+                if count % points == 0:
+                    yield data
+                msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
+                    ro_pulse.serial
+                ]
+                results = {
+                    "MSR[V]": msr,
+                    "i[V]": i,
+                    "q[V]": q,
+                    "phase[deg]": phase,
+                    "amplitude[unit]": amplitude,
+                    "attenuation[dB]": att,
+                }
+                data.add(results)
+                count += 1
+    yield data
+
+
 # Not working with current qibolab
 # @store
 # def rabi_pulse_length_and_gain(
