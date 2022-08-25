@@ -183,18 +183,17 @@ class ActionBuilder:
         self.platform.start()
         for action in self.runcard["actions"]:
             routine, args = self._build_single_action(action)
-            results = self.get_result(routine, args)
+            self._execute_single_action(routine, args)
         self.platform.stop()
         self.platform.disconnect()
         self.dump_report()
 
-    def get_result(self, routine, arguments):
+    def _execute_single_action(self, routine, arguments):
         """Method to execute a single action and retrieving the results."""
         for qubit in self.qubits:
             results = routine(self.platform, qubit, **arguments)
             if hasattr(routine, "final_action"):
-                results = routine.final_action(results, self.output, self.format)
-        return results
+                routine.final_action(results, self.output, self.format)
 
     def dump_report(self):
         from qcvv.web.report import create_report
