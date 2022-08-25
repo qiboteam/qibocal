@@ -78,6 +78,6 @@ def resonator_spectroscopy_fit(folder, format, platform, qubit, params):
     )
     peak_voltage *= 1e6
 
-    resonator_freq = f0 + platform.qubit_readout_pulse(qubit, start=0).frequency
+    resonator_freq = f0  # + platform.qubit_readout_pulse(qubit, start=0).frequency
 
     return resonator_freq, avg_voltage, peak_voltage

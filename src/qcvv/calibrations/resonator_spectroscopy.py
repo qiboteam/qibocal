@@ -26,10 +26,9 @@ def resonator_spectroscopy(
     ro_pulse = platform.qubit_readout_pulse(qubit, start=0)
     sequence.add(ro_pulse)
 
-    lo_qrm_frequency = (
-        platform.characterization["single_qubit"][qubit]["resonator_freq"]
-        - ro_pulse.frequency
-    )
+    lo_qrm_frequency = platform.characterization["single_qubit"][qubit][
+        "resonator_freq"
+    ]
 
     freqrange = (
         variable_resolution_scanrange(
@@ -43,8 +42,8 @@ def resonator_spectroscopy(
         for freq in freqrange:
             if count % points == 0:
                 yield data
-            platform.ro_port[qubit].lo_freq = freq
-            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[qubit][
+            platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
+            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
                 ro_pulse.serial
             ]
             results = {
@@ -75,8 +74,8 @@ def resonator_spectroscopy(
         for freq in freqrange:
             if count % points == 0:
                 yield prec_data
-            platform.ro_port[qubit].lo_freq = freq
-            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[qubit][
+            platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
+            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
                 ro_pulse.serial
             ]
             results = {

@@ -1,5 +1,5 @@
-resonator_spectroscopy_attenuation:
-    Frequency vs Attenuation: frequency_vs_attenuation
+resonator_spectroscopy:
+    # Frequency vs Attenuation: frequency_vs_attenuation
     MSR vs Frequency: msr_vs_frequency
 
 # temporary entries for testing
