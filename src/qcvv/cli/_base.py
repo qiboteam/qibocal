@@ -144,7 +144,7 @@ class ActionBuilder:
         )
         shutil.copy(platform_runcard, f"{path}/platform.yml")
 
-        e = datetime.datetime.now()
+        e = datetime.datetime.utcnow()
         meta = {}
         meta["date"] = e.strftime("%Y-%m-%d %H:%M:%S")
         meta["versions"] = {
