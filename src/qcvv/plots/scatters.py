@@ -195,8 +195,17 @@ def amplitude_msr_phase(folder, routine, qubit, format):
 
     fig.add_trace(
         go.Scatter(
-            x=data.get_values("amplitude", "db"),
+            x=data.get_values("amplitude", "unit"),
             y=data.get_values("MSR", "uV"),
+        ),
+        row=1,
+        col=1,
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=data.get_values("amplitude", "unit"),
+            y=data.get_values("phase", "deg"),
         ),
         row=1,
         col=2,
@@ -205,9 +214,9 @@ def amplitude_msr_phase(folder, routine, qubit, format):
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Amplitude (a.u.)",
+        xaxis_title="Amplitude (factor)",
         yaxis_title="MSR (uV)",
-        xaxis2_title="Gain (a.u.)",
+        xaxis2_title="Amplitude (factor)",
         yaxis2_title="Phase (deg)",
     )
     return fig

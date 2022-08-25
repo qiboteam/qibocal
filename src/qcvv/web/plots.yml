@@ -39,4 +39,7 @@ spin_echo_3pulses:
     MSR vs Time: time_msr_phase
 
 rabi_pulse_amplitude_attenuation:
-    MSR and Phase vs Amplitude and Attenuation: amplitude_time_msr_phase
+    MSR and Phase vs Amplitude and Attenuation: amplitude_attenuation_msr_phase
+
+rabi_pulse_amplitude:
+    MSR and Phase vs Amplitude: amplitude_msr_phase

@@ -115,7 +115,7 @@ def rabi_pulse_amplitude(
     points=10,
 ):
 
-    data = Dataset(name=f"data_q{qubit}", quantities={"amplitude": "db"})
+    data = Dataset(name=f"data_q{qubit}", quantities={"amplitude": "unit"})
 
     sequence = PulseSequence()
     # qd_pulse = platform.qubit_drive_pulse(qubit, start=0, duration=5000)
@@ -150,7 +150,7 @@ def rabi_pulse_amplitude(
                 "i[V]": i,
                 "q[V]": q,
                 "phase[deg]": phase,
-                "amplitude[db]": amplitude,
+                "amplitude[unit]": amplitude,
             }
             data.add(results)
             count += 1

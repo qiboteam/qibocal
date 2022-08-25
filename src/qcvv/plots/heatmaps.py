@@ -181,7 +181,7 @@ def duration_amplitude_msr_phase(folder, routine, qubit, format):
     return fig
 
 
-def amplitude_time_msr_phase(folder, routine, qubit, format):
+def amplitude_attenuation_msr_phase(folder, routine, qubit, format):
     data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
     fig = make_subplots(
         rows=1,
