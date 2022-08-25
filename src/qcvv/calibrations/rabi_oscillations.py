@@ -31,10 +31,12 @@ def rabi_pulse_length(
 
     # FIXME: Waiting to be able to pass qpucard to qibolab
     platform.ro_port[qubit].lo_frequency = (
-        platform.qpucard["single_qubit"][qubit]["resonator_freq"] - ro_pulse.frequency
+        platform.characterization["single_qubit"][qubit]["resonator_freq"]
+        - ro_pulse.frequency
     )
     platform.qd_port[qubit].lo_frequency = (
-        platform.qpucard["single_qubit"][qubit]["qubit_freq"] - qd_pulse.frequency
+        platform.characterization["single_qubit"][qubit]["qubit_freq"]
+        - qd_pulse.frequency
     )
 
     count = 0
@@ -130,10 +132,12 @@ def rabi_pulse_amplitude(
 
     # FIXME: Waiting to be able to pass qpucard to qibolab
     platform.ro_port[qubit].lo_frequency = (
-        platform.qpucard["single_qubit"][qubit]["resonator_freq"] - ro_pulse.frequency
+        platform.characterization["single_qubit"][qubit]["resonator_freq"]
+        - ro_pulse.frequency
     )
     platform.qd_port[qubit].lo_frequency = (
-        platform.qpucard["single_qubit"][qubit]["qubit_freq"] - qd_pulse.frequency
+        platform.characterization["single_qubit"][qubit]["qubit_freq"]
+        - qd_pulse.frequency
     )
 
     count = 0
@@ -187,10 +191,10 @@ def rabi_pulse_amplitude(
 
 #     # FIXME: Waiting to be able to pass qpucard to qibolab
 #     platform.ro_port[qubit].lo_frequency = (
-#         platform.qpucard["single_qubit"][qubit]["resonator_freq"] - ro_pulse.frequency
+#         platform.characterization["single_qubit"][qubit]["resonator_freq"] - ro_pulse.frequency
 #     )
 #     platform.qd_port[qubit].lo_frequency = (
-#         platform.qpucard["single_qubit"][qubit]["qubit_freq"] - qd_pulse.frequency
+#         platform.characterization["single_qubit"][qubit]["qubit_freq"] - qd_pulse.frequency
 #     )
 
 #     count = 0
@@ -252,10 +256,12 @@ def rabi_pulse_length_and_amplitude(
 
     # FIXME: Waiting to be able to pass qpucard to qibolab
     platform.ro_port[qubit].lo_frequency = (
-        platform.qpucard["single_qubit"][qubit]["resonator_freq"] - ro_pulse.frequency
+        platform.characterization["single_qubit"][qubit]["resonator_freq"]
+        - ro_pulse.frequency
     )
     platform.qd_port[qubit].lo_frequency = (
-        platform.qpucard["single_qubit"][qubit]["qubit_freq"] - qd_pulse.frequency
+        platform.characterization["single_qubit"][qubit]["qubit_freq"]
+        - qd_pulse.frequency
     )
 
     count = 0
