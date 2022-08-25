@@ -142,7 +142,7 @@ class ActionBuilder:
         )
         shutil.copy(platform_runcard, f"{path}/platform.yml")
 
-        e = datetime.datetime.utcnow()
+        e = datetime.datetime.now(datetime.timezone.utc)
         meta = {}
         meta["date"] = e.strftime("%Y-%m-%d")
         meta["start-time"] = e.strftime("%H:%M:%S")
@@ -201,7 +201,7 @@ class ActionBuilder:
         # update end time
         with open(f"{self.folder}/meta.yml", "r") as file:
             meta = yaml.safe_load(file)
-        e = datetime.datetime.utcnow()
+        e = datetime.datetime.now(datetime.timezone.utc)
         meta["end-time"] = e.strftime("%H:%M:%S")
         with open(f"{self.folder}/meta.yml", "w") as file:
             yaml.dump(meta, file)
