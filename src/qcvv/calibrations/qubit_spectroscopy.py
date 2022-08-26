@@ -23,7 +23,7 @@ def qubit_spectroscopy(
     #data = Dataset(quantities={"frequency": "Hz", "attenuation": "dB"})
     sequence = PulseSequence()
     qd_pulse = platform.qubit_drive_pulse(qubit, start=0, duration=5000)
-    ro_pulse = platform.qubit_readout_pulse(qubit, start=5000)
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=5000)
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
 
@@ -44,7 +44,7 @@ def qubit_spectroscopy(
             if count % points == 0:
                 yield data
             platform.qd_port[qubit].lo_frequency = freq - qd_pulse.frequency
-            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
+            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[
                 ro_pulse.serial
             ]
             results = {
@@ -81,7 +81,7 @@ def qubit_spectroscopy(
             if count % points == 0:
                 yield prec_data
             platform.qd_port[qubit].lo_frequency = freq - qd_pulse.frequency
-            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
+            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[
                 ro_pulse.serial
             ]
             results = {
@@ -125,7 +125,7 @@ def qubit_spectroscopy_flux(
 
     sequence = PulseSequence()
     qd_pulse = platform.qubit_drive_pulse(qubit, start=0, duration=5000)
-    ro_pulse = platform.qubit_readout_pulse(qubit, start=5000)
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=5000)
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
 
@@ -150,7 +150,7 @@ def qubit_spectroscopy_flux(
                 platform.qd_port[qubit].lo_frequency = freq - qd_pulse.frequency
                 # platform.qf_port[fluxline].current = curr
                 dacs[fluxline].current(curr)
-                msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
+                msr, i, q, phase = platform.execute_pulse_sequence(sequence)[
                     ro_pulse.serial
                 ]
                 results = {

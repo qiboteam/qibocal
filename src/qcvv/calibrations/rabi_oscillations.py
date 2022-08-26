@@ -21,7 +21,7 @@ def rabi_pulse_length(
 
     sequence = PulseSequence()
     qd_pulse = platform.qubit_drive_pulse(qubit, start=0, duration=4)
-    ro_pulse = platform.qubit_readout_pulse(qubit, start=4)
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=4)
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
 
@@ -44,7 +44,7 @@ def rabi_pulse_length(
             ro_pulse.start = duration
             if count % points == 0:
                 yield data
-            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
+            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[
                 ro_pulse.serial
             ]
             results = {
@@ -77,7 +77,7 @@ def rabi_pulse_length(
 #     sequence = PulseSequence()
 #     # qd_pulse = platform.qubit_drive_pulse(qubit, start=0, duration=5000)
 #     qd_pulse = platform.RX_pulse(qubit, start=0)
-#     ro_pulse = platform.qubit_readout_pulse(qubit, start=qd_pulse.duration)
+#     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=qd_pulse.duration)
 #     sequence.add(qd_pulse)
 #     sequence.add(ro_pulse)
 
@@ -89,7 +89,7 @@ def rabi_pulse_length(
 #             platform.qd_port[qubit].gain = gain
 #             if count % points == 0:
 #                 yield data
-#             msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
+#             msr, i, q, phase = platform.execute_pulse_sequence(sequence)[
 #                 ro_pulse.serial
 #             ]
 #             results = {
@@ -120,7 +120,7 @@ def rabi_pulse_amplitude(
     sequence = PulseSequence()
     # qd_pulse = platform.qubit_drive_pulse(qubit, start=0, duration=5000)
     qd_pulse = platform.RX_pulse(qubit, start=0)
-    ro_pulse = platform.qubit_readout_pulse(qubit, start=qd_pulse.duration)
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=qd_pulse.duration)
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
 
@@ -142,7 +142,7 @@ def rabi_pulse_amplitude(
             qd_pulse.amplitude = amplitude
             if count % points == 0:
                 yield data
-            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
+            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[
                 ro_pulse.serial
             ]
             results = {
@@ -176,7 +176,7 @@ def rabi_pulse_amplitude(
 
 #     sequence = PulseSequence()
 #     qd_pulse = platform.qubit_drive_pulse(qubit, start=0, duration=4)
-#     ro_pulse = platform.qubit_readout_pulse(qubit, start=4)
+#     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=4)
 #     sequence.add(qd_pulse)
 #     sequence.add(ro_pulse)
 
@@ -202,7 +202,7 @@ def rabi_pulse_amplitude(
 #                 platform.qd_port[qubit].gain = gain
 #                 if count % points == 0:
 #                     yield data
-#                 msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
+#                 msr, i, q, phase = platform.execute_pulse_sequence(sequence)[
 #                     ro_pulse.serial
 #                 ]
 #                 results = {
@@ -239,7 +239,7 @@ def rabi_pulse_length_and_amplitude(
 
     sequence = PulseSequence()
     qd_pulse = platform.qubit_drive_pulse(qubit, start=0, duration=4)
-    ro_pulse = platform.qubit_readout_pulse(qubit, start=4)
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=4)
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
 
@@ -267,7 +267,7 @@ def rabi_pulse_length_and_amplitude(
                 qd_pulse.amplitude = amplitude
                 if count % points == 0:
                     yield data
-                msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
+                msr, i, q, phase = platform.execute_pulse_sequence(sequence)[
                     ro_pulse.serial
                 ]
                 results = {

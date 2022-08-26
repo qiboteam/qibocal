@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from qibolab.pulses import PulseSequence
-
+from qibolab.platforms.abstract import AbstractPlatform
 from qcvv.calibrations.utils import variable_resolution_scanrange
 from qcvv.data import Dataset
 from qcvv.decorators import store
@@ -9,7 +9,7 @@ from qcvv.decorators import store
 
 @store
 def resonator_spectroscopy(
-    platform,
+    platform: AbstractPlatform,
     qubit,
     lowres_width,
     lowres_step,
@@ -22,7 +22,7 @@ def resonator_spectroscopy(
 ):
 
     sequence = PulseSequence()
-    ro_pulse = platform.qubit_readout_pulse(qubit, start=0)
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
     sequence.add(ro_pulse)
 
     lo_qrm_frequency = platform.characterization["single_qubit"][qubit][
@@ -42,7 +42,7 @@ def resonator_spectroscopy(
             if count % points == 0:
                 yield data
             platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
-            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
+            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[
                 ro_pulse.serial
             ]
             results = {
@@ -77,7 +77,7 @@ def resonator_spectroscopy(
             if count % points == 0:
                 yield prec_data
             platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
-            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
+            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[
                 ro_pulse.serial
             ]
             results = {
@@ -121,7 +121,7 @@ def resonator_punchout(
     data = Dataset(
         name=f"data_q{qubit}", quantities={"frequency": "Hz", "attenuation": "dB"}
     )
-    ro_pulse = platform.qubit_readout_pulse(qubit, start=0)
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
     sequence = PulseSequence()
     sequence.add(ro_pulse)
 
@@ -141,7 +141,7 @@ def resonator_punchout(
                 # TODO: move these explicit instructions to the platform
                 platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
                 platform.ro_port[qubit].attenuation = att
-                msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
+                msr, i, q, phase = platform.execute_pulse_sequence(sequence)[
                     ro_pulse.serial
                 ]
                 results = {
@@ -177,7 +177,7 @@ def resonator_spectroscopy_flux(
         name=f"data_q{qubit}", quantities={"frequency": "Hz", "current": "A"}
     )
     sequence = PulseSequence()
-    ro_pulse = platform.qubit_readout_pulse(qubit, start=0)
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
     sequence.add(ro_pulse)
 
     lo_qrm_frequency = platform.characterization["single_qubit"][qubit][
@@ -201,7 +201,7 @@ def resonator_spectroscopy_flux(
                 platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
                 # platform.qf_port[fluxline].current = curr
                 dacs[fluxline].current(curr)
-                msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
+                msr, i, q, phase = platform.execute_pulse_sequence(sequence)[
                     ro_pulse.serial
                 ]
                 results = {
