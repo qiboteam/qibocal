@@ -133,7 +133,7 @@ def resonator_punchout(
     lo_qrm_frequency = platform.characterization["single_qubit"][qubit][
         "resonator_freq"
     ]
-    freqrange = np.arange(-freq_width, freq_width, freq_step)  # + lo_qrm_frequency
+    freqrange = np.arange(-freq_width, freq_width, freq_step) + lo_qrm_frequency
     attrange = np.flip(np.arange(min_att, max_att, step_att))
     count = 0
     for s in range(software_averages):
