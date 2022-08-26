@@ -6,13 +6,11 @@ import tempfile
 import yaml
 from jinja2 import Environment, FileSystemLoader
 
-from qcvv import __version__, plots
+from qcvv import __version__, calibrations, plots
 
 
 def get_figure(folder, routine, method, qubit, format):
-    figure = getattr(getattr(plots, routine), method)(folder, routine, qubit, format)
-    # TODO: Change this line to the one below when PR#30 is merged
-    # figure = getattr(plots, method)(folder, routine, qubit, format)
+    figure = getattr(plots, method)(folder, routine.name, qubit, format)
     with tempfile.NamedTemporaryFile() as temp:
         figure.write_html(temp.name, include_plotlyjs=False, full_html=False)
         fightml = temp.read().decode("utf-8")
@@ -33,10 +31,17 @@ def create_report(path):
     # read routines from action runcard
     with open(os.path.join(path, "runcard.yml"), "r") as file:
         runcard = yaml.safe_load(file)
-
-    # read plot configuration yaml
-    with open(pathlib.Path(__file__).with_name("plots.yml"), "r") as file:
-        plotters = yaml.safe_load(file)
+    # create routine objects
+    routines = []
+    for name in runcard.get("actions").keys():
+        routine = getattr(calibrations, name)
+        routine.name = routine.__name__
+        routine.pretty_name = routine.name.replace("_", " ").title()
+        if hasattr(routine, "plots"):
+            routine.plots = routine.plots[::-1]
+        else:
+            routine.plots = []
+        routines.append(routine)
 
     env = Environment(loader=FileSystemLoader(filepath.with_name("templates")))
     env.globals.update(get_figure=get_figure)
@@ -55,7 +60,7 @@ def create_report(path):
         title=title,
         metadata=metadata,
         runcard=runcard,
-        plotters=plotters,
+        routines=routines,
     )
 
     with open(os.path.join(path, "report.html"), "w") as file:

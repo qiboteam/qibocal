@@ -66,18 +66,16 @@
               {% for qubit in runcard.get('qubits') %}
               <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
                 <li><a href="#qubit{{ qubit }}" class="link-dark d-inline-flex text-decoration-none rounded">Qubit {{ qubit }}</a></li>
-                {% for routine in runcard.get('actions').keys() %}
+                {% for routine in routines %}
                 <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
-                  <li><a href="#{{ routine }}-{{ qubit }}" class="link-dark d-inline-flex text-decoration-none rounded">{{
-                      routine.replace("_", " ").title() }}</a></li>
-                  {% if routine in plotters %}
-                  {% for header, method in plotters.get(routine).items() %}
+                  <li><a href="#{{ routine.__name__ }}-{{ qubit }}" class="link-dark d-inline-flex text-decoration-none rounded">{{
+                      routine.__name__.replace("_", " ").title() }}</a></li>
+                  {% for header, method in routine.plots %}
                   <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
                     <li><a class="link-dark d-inline-flex text-decoration-none rounded"
-                        href="#{{ routine }}-{{ qubit }}-{{ method }}">- {{ header }}</a></li>
+                        href="#{{ routine.__name__ }}-{{ qubit }}-{{ method }}">- {{ header }}</a></li>
                   </ul>
                   {% endfor %}
-                  {% endif %}
                 </ul>
                 {% endfor %}
               </ul>
@@ -157,14 +155,14 @@
 
       {% for qubit in runcard.get('qubits') %}
       <div id="qubit{{ qubit }}" style="scroll-margin-top: 4em;">
-        {% for routine in runcard.get('actions').keys() %}
-        <div id="{{ routine }}-{{ qubit }}" style="scroll-margin-top: 4em;">
+        {% for routine in routines %}
+        <div id="{{ routine.__name__ }}-{{ qubit }}" style="scroll-margin-top: 4em;">
           <h4
             class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-            {{ routine.replace("_", " ").title() }} - Qubit {{ qubit }}</h4>
-          {% if routine in plotters %}
-          {% for header, method in plotters.get(routine).items() %}
-          <div id="{{ routine }}-{{ qubit }}-{{ method }}" style="scroll-margin-top: 4em;">
+            {{ routine.__name__.replace("_", " ").title() }} - Qubit {{ qubit }}</h4>
+          {% if routine.plots %}
+          {% for header, method in routine.plots %}
+          <div id="{{ routine.__name__ }}-{{ qubit }}-{{ method }}" style="scroll-margin-top: 4em;">
             <h5
               class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
               {{ header }}</h5>
@@ -172,13 +170,13 @@
               {{ get_figure(path, routine, method, qubit, runcard.get('format')) }}
             {% else %}
             <!-- find a way to change height and width depending on screen type -->
-            <iframe src="/dash/{{ path }}/data/{{ routine }}/{{ method }}/{{ qubit }}/{{ runcard.get('format') }}"
+            <iframe src="/dash/{{ path }}/data/{{ routine.__name__ }}/{{ method }}/{{ qubit }}/{{ runcard.get('format') }}"
               style="position: relative; height: 500px; width: 100%;"></iframe>
             {% endif %}
           </div>
           {% endfor %}
           {% else %}
-          <p>No plotting methods available for {{ routine }}. Please update plots.yml.</p>
+          <p>No plotting methods available for {{ routine.__name__ }}. Please update plots.yml.</p>
           {% endif %}
         </div>
         {% endfor %}

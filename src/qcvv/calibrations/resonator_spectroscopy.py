@@ -2,12 +2,14 @@
 import numpy as np
 from qibolab.pulses import PulseSequence
 
+from qcvv import plots
 from qcvv.calibrations.utils import variable_resolution_scanrange
 from qcvv.data import Dataset
-from qcvv.decorators import store
+from qcvv.decorators import plot, store
 
 
 @store
+@plot("MSR and Phase vs Frequency", "frequency_msr_phase__fast_precision")
 def resonator_spectroscopy(
     platform,
     qubit,
@@ -106,6 +108,8 @@ def resonator_spectroscopy(
 
 
 @store
+@plot("Frequency vs Attenuation", "frequency_attenuation_msr_phase")
+@plot("MSR vs Frequency", "frequency_attenuation_msr_phase__cut")
 def resonator_punchout(
     platform,
     qubit,
@@ -129,10 +133,9 @@ def resonator_punchout(
     lo_qrm_frequency = platform.characterization["single_qubit"][qubit][
         "resonator_freq"
     ]
-    freqrange = np.arange(-freq_width, freq_width, freq_step) + lo_qrm_frequency
+    freqrange = np.arange(-freq_width, freq_width, freq_step)  # + lo_qrm_frequency
     attrange = np.flip(np.arange(min_att, max_att, step_att))
     count = 0
-    print(type(qubit))
     for s in range(software_averages):
         for att in attrange:
             for freq in freqrange:
@@ -144,6 +147,7 @@ def resonator_punchout(
                 msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
                     ro_pulse.serial
                 ]
+                msr, i, q, phase = np.random.random(4)
                 results = {
                     "MSR[V]": msr,
                     "i[V]": i,

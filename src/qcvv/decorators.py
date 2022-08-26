@@ -27,3 +27,14 @@ def store(f):
     f.prepare = prepare_path
     f.final_action = save
     return f
+
+
+def plot(header, method):
+    def wrapped(f):
+        if hasattr(f, "plots"):
+            f.plots.append((header, method))
+        else:
+            f.plots = [(header, method)]
+        return f
+
+    return wrapped
