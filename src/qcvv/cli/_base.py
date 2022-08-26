@@ -184,8 +184,8 @@ class ActionBuilder:
         for action in self.runcard["actions"]:
             routine, args = self._build_single_action(action)
             results = self.get_result(routine, args)
-            data = self.fit(routine)
-            self.update(routine, data)
+            data, fitted = self.fit(routine)
+            self.update(routine, data, fitted)
         self.platform.stop()
         self.platform.disconnect()
 
@@ -200,15 +200,10 @@ class ActionBuilder:
         """Method to call fitting routines."""
         if hasattr(routine, "post_processing"):
             return routine.post_processing(
-                routine,
-                self.folder,
-                self.format,
-                self.platform,
-                self.qubit,
-                self.runcard["actions"][routine.__name__],
+                routine, self.folder, self.format, int(self.runcard["nqubits"])
             )
 
-    def update(self, routine, data):
+    def update(self, routine, data, fitted):
         """Method to update the platform runcard."""
         if hasattr(routine, "update"):
-            return routine.update(routine, self.folder, self.qubit, data)
+            return routine.update(routine, self.folder, self.qubit, data, fitted)

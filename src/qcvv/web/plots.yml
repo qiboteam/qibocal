@@ -1,6 +1,7 @@
 resonator_spectroscopy:
     # Frequency vs Attenuation: frequency_vs_attenuation
-    MSR vs Frequency: msr_vs_frequency
+    # MSR vs Frequency: msr_vs_frequency
+    MSR vs Frequency: fit
 
 # temporary entries for testing
 resonator_spectroscopy_1:

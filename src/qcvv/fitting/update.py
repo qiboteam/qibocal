@@ -3,16 +3,16 @@
 import yaml
 
 
-def resonator_spectroscopy_update(folder, qubit, freq, avg_voltage, peak_voltage):
+def resonator_spectroscopy_update(folder, qubit, res, fitted):
     """Function to update platform runcard when executing a resonator spectroscopy"""
+
+    freq = res[0]
+    peak_voltage = res[1]
 
     with open(f"{folder}/platform.yml", "r") as file:
         settings = yaml.safe_load(file)
 
     settings["characterization"]["single_qubit"][qubit]["resonator_freq"] = int(freq)
-    settings["characterization"]["single_qubit"][qubit][
-        "resonator_spectroscopy_avg_ro_voltage"
-    ] = float(avg_voltage)
     settings["characterization"]["single_qubit"][qubit]["state0_voltage"] = int(
         peak_voltage
     )

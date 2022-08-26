@@ -2,30 +2,14 @@
 """Routine-specific method for post-processing data acquired."""
 import lmfit
 import numpy as np
+import yaml
 
 from qcvv.data import Dataset
 from qcvv.fitting.utils import get_values, lorenzian
 
 
-def resonator_spectroscopy_fit(folder, format, platform, qubit, params):
+def resonator_spectroscopy_fit(folder, format, nqubits):
     """Fitting routine for resonator spectroscopy"""
-
-    data_fast = Dataset.load_data(
-        folder, "resonator_spectroscopy", format, "fast_sweep"
-    )
-
-    lowres_width = params["lowres_width"]
-    lowres_step = params["lowres_step"]
-    nqubits = platform.settings["nqubits"]
-
-    if nqubits == 1:
-        avg_voltage = (
-            np.mean(data_fast.df.MSR.values[: (lowres_width // lowres_step)]) * 1e6
-        )
-    else:
-        avg_voltage = (
-            np.mean(data_fast.df.MSR.values[: (lowres_width // lowres_step)]) * 1e6
-        )
 
     data = Dataset.load_data(
         folder, "resonator_spectroscopy", format, "precision_sweep"
@@ -78,6 +62,20 @@ def resonator_spectroscopy_fit(folder, format, platform, qubit, params):
     )
     peak_voltage *= 1e6
 
-    resonator_freq = f0  # + platform.qubit_readout_pulse(qubit, start=0).frequency
+    resonator_freq = f0
 
-    return resonator_freq, avg_voltage, peak_voltage
+    params = resonator_freq, peak_voltage
+
+    for keys in fit_res.best_values:
+        fit_res.best_values[keys] = float(fit_res.best_values[keys])
+
+    with open(f"{folder}/data/resonator_spectroscopy/fit.yml", "w+") as file:
+        yaml.dump(
+            fit_res.best_values,
+            file,
+            sort_keys=False,
+            indent=4,
+            default_flow_style=None,
+        )
+
+    return params, fit_res.best_values

@@ -22,21 +22,19 @@ def save(results, path, format=None):
         getattr(data, f"to_{format}")(path)
 
 
-def fitting_routine(routine, folder, format, platform, qubit, params):
+def fitting_routine(routine, folder, format, nqubits):
     """Helper function to call the fitting methods"""
     from qcvv.fitting import methods
 
-    params = getattr(methods, f"{routine.__name__}_fit")(
-        folder, format, platform, qubit, params
-    )
-    return params
+    res, fitted = getattr(methods, f"{routine.__name__}_fit")(folder, format, nqubits)
+    return res, fitted
 
 
-def update_routine(routine, folder, qubit, data):
+def update_routine(routine, folder, qubit, res, fitted):
     """Helper function to update the platform runcard."""
     from qcvv.fitting import update
 
-    getattr(update, f"{routine.__name__}_update")(folder, qubit, *data)
+    getattr(update, f"{routine.__name__}_update")(folder, qubit, res, fitted)
 
 
 def store(f):

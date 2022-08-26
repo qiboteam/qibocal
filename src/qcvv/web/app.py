@@ -2,10 +2,12 @@
 import os
 
 import pandas as pd
+import yaml
 from dash import Dash, Input, Output, dcc, html
 
 from qcvv import plots
 from qcvv.data import Dataset
+from qcvv.fitting.methods import resonator_spectroscopy_fit
 from qcvv.web.server import server
 
 Dataset()  # dummy dataset call to suppress ``pint[V]`` error
@@ -44,9 +46,15 @@ def get_graph(n, current_figure, url):
     folder, _ = os.path.split(folder)
     try:
         data = Dataset.load_data(folder, routine, format, "precision_sweep")
+        if len(data) > 2:
+            params, fit = resonator_spectroscopy_fit(folder, format, 1)
+            return getattr(plots.resonator_spectroscopy, method)(data, params, fit)
+
         # FIXME: Temporarily hardcode the plotting method to test
         # multiple routines with different names in one folder
-        return getattr(plots.resonator_spectroscopy, method)(data)
+        return getattr(plots.resonator_spectroscopy, method)(
+            data, params=None, fit=None
+        )
         # should be changed to:
         # return getattr(getattr(plots, routine), method)(data)
 
