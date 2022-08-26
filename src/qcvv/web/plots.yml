@@ -37,3 +37,6 @@ ro_pulse_phase:
 
 ramsey_frequency_detuned:
     MSR vs Time: time_msr
+
+calibrate_qubit_states:
+    exc vs gnd: exc_gnd

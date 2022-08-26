@@ -266,3 +266,92 @@ def time_msr(folder, routine, qubit, format):
         yaxis_title="MSR (uV)",
     )
     return fig
+
+
+# For calibrate qubit states
+def exc_gnd(folder, routine, qubit, formato):
+
+    import os.path
+
+    file_exc = f"{folder}/data/{routine}/data_exc_q{qubit}.csv"
+    if os.path.exists(file_exc):
+        data_exc = Dataset.load_data(folder, routine, formato, f"data_exc_q{qubit}")
+
+        fig = make_subplots(
+            rows=1,
+            cols=2,
+            horizontal_spacing=0.1,
+            vertical_spacing=0.1,
+            subplot_titles=("Calibrate qubit states",),
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=data_exc.get_values("i", "V"),
+                y=data_exc.get_values("q", "V"),
+                name="exc_state",
+                mode="markers",
+            ),
+            row=1,
+            col=1,
+        )
+
+        i_exc = data_exc.get_values("i", "V")
+        q_exc = data_exc.get_values("q", "V")
+
+        i_mean_exc = i_exc.mean()
+        q_mean_exc = q_exc.mean()
+
+        fig.add_trace(
+            go.Scatter(
+                x=[i_mean_exc],
+                y=[q_mean_exc],
+                name="mean_exc_state",
+                mode="markers",
+                marker_size=16,
+            ),
+            row=1,
+            col=1,
+        )
+
+    file_gnd = f"{folder}/data/{routine}/data_gnd_q{qubit}.csv"
+    if os.path.exists(file_gnd):
+        data_gnd = Dataset.load_data(folder, routine, formato, f"data_gnd_q{qubit}")
+
+        fig.add_trace(
+            go.Scatter(
+                x=data_gnd.get_values("i", "V"),
+                y=data_gnd.get_values("q", "V"),
+                name="gnd state",
+                mode="markers",
+            ),
+            row=1,
+            col=1,
+        )
+
+        i_gnd = data_gnd.get_values("i", "V")
+        q_gnd = data_gnd.get_values("q", "V")
+
+        i_mean_gnd = i_gnd.mean()
+        q_mean_gnd = q_gnd.mean()
+
+        fig.add_trace(
+            go.Scatter(
+                x=[i_mean_gnd],
+                y=[q_mean_gnd],
+                name="mean_gnd_state",
+                mode="markers",
+                marker_size=16,
+            ),
+            row=1,
+            col=1,
+        )
+
+        fig.update_layout(
+            showlegend=True,
+            uirevision="0",  # ``uirevision`` allows zooming while live plotting
+            xaxis_title="i (V)",
+            yaxis_title="q (V)",
+        )
+
+    return fig

@@ -1,0 +1,10 @@
+platform: tii5q
+
+qubits: [1, 2, 3, 4]
+
+format: csv
+
+actions:
+  calibrate_qubit_states:
+    niter: 10
+    points: 1
