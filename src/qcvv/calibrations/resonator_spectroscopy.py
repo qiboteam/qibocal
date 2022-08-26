@@ -147,7 +147,6 @@ def resonator_punchout(
                 msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
                     ro_pulse.serial
                 ]
-                msr, i, q, phase = np.random.random(4)
                 results = {
                     "MSR[V]": msr,
                     "i[V]": i,
