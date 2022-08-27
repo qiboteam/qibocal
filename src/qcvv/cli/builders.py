@@ -177,15 +177,29 @@ class ReportBuilder:
 
         self.format = self.runcard.get("format")
         self.qubits = self.runcard.get("qubits")
-        self.routines = self._create_routines()
 
-    def _create_routines(self):
-        routines = []
-        for name in self.runcard.get("actions").keys():
-            routine = getattr(calibrations, name)
-            routine.name = routine.__name__
-            routine.pretty_name = routine.name.replace("_", " ").title()
+        self.routines = []
+        for action in self.runcard.get("actions"):
+            routine = getattr(calibrations, action)
             if not hasattr(routine, "plots"):
                 routine.plots = []
-            routines.append(routine)
-        return routines
+            self.routines.append(routine)
+
+    def get_routine_name(self, routine):
+        return routine.__name__.replace("_", " ").title()
+
+    def get_figure(self, routine, method, qubit):
+        import tempfile
+
+        from qcvv import plots
+
+        figure = getattr(plots, method)(self.path, routine.__name__, qubit, self.format)
+        with tempfile.NamedTemporaryFile() as temp:
+            figure.write_html(temp.name, include_plotlyjs=False, full_html=False)
+            fightml = temp.read().decode("utf-8")
+        return fightml
+
+    def get_live_figure(self, routine, method, qubit):
+        return (
+            f"/dash/{self.path}/data/{routine.__name__}/{method}/{qubit}/{self.format}"
+        )

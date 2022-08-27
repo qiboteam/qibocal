@@ -68,12 +68,12 @@
                 <li><a href="#qubit{{ qubit }}" class="link-dark d-inline-flex text-decoration-none rounded">Qubit {{ qubit }}</a></li>
                 {% for routine in report.routines %}
                 <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
-                  <li><a href="#{{ routine.name }}-{{ qubit }}" class="link-dark d-inline-flex text-decoration-none rounded">{{
-                      routine.pretty_name }}</a></li>
+                  <li><a href="#{{ routine.__name__ }}-{{ qubit }}" class="link-dark d-inline-flex text-decoration-none rounded">{{
+                      report.get_routine_name(routine) }}</a></li>
                   {% for header, method in routine.plots %}
                   <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
                     <li><a class="link-dark d-inline-flex text-decoration-none rounded"
-                        href="#{{ routine.name }}-{{ qubit }}-{{ method }}">- {{ header }}</a></li>
+                        href="#{{ routine.__name__ }}-{{ qubit }}-{{ method }}">- {{ header }}</a></li>
                   </ul>
                   {% endfor %}
                 </ul>
@@ -151,27 +151,29 @@
       {% for qubit in report.qubits %}
       <div id="qubit{{ qubit }}" style="scroll-margin-top: 4em;">
         {% for routine in report.routines %}
-        <div id="{{ routine.name }}-{{ qubit }}" style="scroll-margin-top: 4em;">
+        <div id="{{ routine.__name__ }}-{{ qubit }}" style="scroll-margin-top: 4em;">
           <h4
             class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-            {{ routine.pretty_name }} - Qubit {{ qubit }}</h4>
+            {{ report.get_routine_name(routine) }} - Qubit {{ qubit }}</h4>
           {% if routine.plots %}
           {% for header, method in routine.plots %}
-          <div id="{{ routine.name }}-{{ qubit }}-{{ method }}" style="scroll-margin-top: 4em;">
+          <div id="{{ routine.__name__ }}-{{ qubit }}-{{ method }}" style="scroll-margin-top: 4em;">
             <h5
               class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
               {{ header }}</h5>
             {% if is_static %}
-              {{ get_figure(report.path, routine, method, qubit, report.format) }}
+              {{ report.get_figure(routine, method, qubit) }}
             {% else %}
-            <!-- find a way to change height and width depending on screen type -->
+            <!-- find a way to change height and width depending on screen type
             <iframe src="/dash/{{ report.path }}/data/{{ routine.name }}/{{ method }}/{{ qubit }}/{{ report.format }}"
+              style="position: relative; height: 500px; width: 100%;"></iframe> -->
+            <iframe src="{{ report.get_live_figure(routine, method, qubit) }}"
               style="position: relative; height: 500px; width: 100%;"></iframe>
             {% endif %}
           </div>
           {% endfor %}
           {% else %}
-          <p>No plotting methods available for {{ routine.name }}. Please update plots.yml.</p>
+          <p>No plots available for {{ routine.__name__ }}.</p>
           {% endif %}
         </div>
         {% endfor %}

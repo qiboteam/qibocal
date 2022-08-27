@@ -28,7 +28,7 @@ def create_report(path):
 
     report = ReportBuilder(path)
     env = Environment(loader=FileSystemLoader(filepath.with_name("templates")))
-    env.globals.update(get_figure=get_figure)
+    # env.globals.update(get_figure=get_figure)
     template = env.get_template("template.html")
 
     html = template.render(
