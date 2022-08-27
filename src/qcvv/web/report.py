@@ -1,21 +1,12 @@
 # -*- coding: utf-8 -*-
 import os
 import pathlib
-import tempfile
 
 import yaml
 from jinja2 import Environment, FileSystemLoader
 
-from qcvv import __version__, calibrations, plots
+from qcvv import __version__
 from qcvv.cli.builders import ReportBuilder
-
-
-def get_figure(folder, routine, method, qubit, format):
-    figure = getattr(plots, method)(folder, routine.name, qubit, format)
-    with tempfile.NamedTemporaryFile() as temp:
-        figure.write_html(temp.name, include_plotlyjs=False, full_html=False)
-        fightml = temp.read().decode("utf-8")
-    return fightml
 
 
 def create_report(path):
@@ -28,7 +19,6 @@ def create_report(path):
 
     report = ReportBuilder(path)
     env = Environment(loader=FileSystemLoader(filepath.with_name("templates")))
-    # env.globals.update(get_figure=get_figure)
     template = env.get_template("template.html")
 
     html = template.render(
