@@ -19,17 +19,13 @@ def page(path=None):
         for folder in sorted(os.listdir(os.getcwd()))
         if os.path.isdir(folder) and "meta.yml" in os.listdir(folder)
     ]
-    if path is None:
-        render_template(
-            "template.html", version=__version__, folders=folders, report=None
-        )
 
-    try:
-        report = ReportBuilder(path)
-    except (FileNotFoundError, TypeError):
-        return render_template(
-            "template.html", version=__version__, folders=folders, report=None
-        )
+    report = None
+    if path is not None:
+        try:
+            report = ReportBuilder(path)
+        except (FileNotFoundError, TypeError):
+            pass
 
     return render_template(
         "template.html",
