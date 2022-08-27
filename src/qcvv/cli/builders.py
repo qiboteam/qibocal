@@ -149,6 +149,7 @@ class ActionBuilder:
 
 
 class Metadata:
+    # TODO: Use this class in both builders
     def __init__(self, metadata):
         self.date = metadata.get("date")
         self.start_time = metadata.get("start-time")
@@ -178,9 +179,7 @@ class ReportBuilder:
             routine = getattr(calibrations, name)
             routine.name = routine.__name__
             routine.pretty_name = routine.name.replace("_", " ").title()
-            if hasattr(routine, "plots"):
-                routine.plots = routine.plots[::-1]
-            else:
+            if not hasattr(routine, "plots"):
                 routine.plots = []
             routines.append(routine)
         return routines

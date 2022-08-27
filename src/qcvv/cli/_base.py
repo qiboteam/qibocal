@@ -2,9 +2,7 @@
 """Adds global CLI options."""
 import click
 
-from qcvv import calibrations
 from qcvv.cli.builders import ActionBuilder
-from qcvv.config import log, raise_error
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 

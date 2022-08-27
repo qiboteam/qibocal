@@ -32,7 +32,7 @@ def store(f):
 def plot(header, method):
     def wrapped(f):
         if hasattr(f, "plots"):
-            f.plots.append((header, method))
+            f.plots.insert(0, (header, method))
         else:
             f.plots = [(header, method)]
         return f
