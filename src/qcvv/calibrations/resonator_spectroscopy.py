@@ -59,10 +59,10 @@ def resonator_spectroscopy(
     # FIXME: have live ploting work for multiple datasets saved
 
     if platform.settings["nqubits"] == 1:
-        lo_qrm_frequency = data.df.frequency[data.df.MSR.argmax()].magnitude
+        lo_qrm_frequency = data.df.frequency[data.df.MSR.index[data.df.MSR.argmax()]].magnitude
         avg_voltage = np.mean(data.df.MSR.values[: (lowres_width // lowres_step)]) * 1e6
     else:
-        lo_qrm_frequency = data.df.frequency[data.df.MSR.argmin()].magnitude
+        lo_qrm_frequency = data.df.frequency[data.df.MSR.index[data.df.MSR.argmin()]].magnitude
         avg_voltage = np.mean(data.df.MSR.values[: (lowres_width // lowres_step)]) * 1e6
 
     prec_data = Dataset(

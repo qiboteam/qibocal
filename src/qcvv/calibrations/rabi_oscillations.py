@@ -20,7 +20,7 @@ def rabi_pulse_length(
     data = Dataset(name=f"data_q{qubit}", quantities={"Time": "ns"})
 
     sequence = PulseSequence()
-    qd_pulse = platform.qubit_drive_pulse(qubit, start=0, duration=4)
+    qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=4)
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
@@ -75,8 +75,8 @@ def rabi_pulse_length(
 #     data = Dataset(name=f"data_q{qubit}", quantities={"gain": "db"})
 
 #     sequence = PulseSequence()
-#     # qd_pulse = platform.qubit_drive_pulse(qubit, start=0, duration=5000)
-#     qd_pulse = platform.RX_pulse(qubit, start=0)
+#     # qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=5000)
+#     qd_pulse = platform.create_RX_pulse(qubit, start=0)
 #     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=qd_pulse.duration)
 #     sequence.add(qd_pulse)
 #     sequence.add(ro_pulse)
@@ -118,8 +118,8 @@ def rabi_pulse_amplitude(
     data = Dataset(name=f"data_q{qubit}", quantities={"amplitude": "db"})
 
     sequence = PulseSequence()
-    # qd_pulse = platform.qubit_drive_pulse(qubit, start=0, duration=5000)
-    qd_pulse = platform.RX_pulse(qubit, start=0)
+    # qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=5000)
+    qd_pulse = platform.create_RX_pulse(qubit, start=0)
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=qd_pulse.duration)
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
@@ -175,7 +175,7 @@ def rabi_pulse_amplitude(
 #     data = Dataset(name=f"data_q{qubit}", quantities={"duration": "ns", "gain": "db"})
 
 #     sequence = PulseSequence()
-#     qd_pulse = platform.qubit_drive_pulse(qubit, start=0, duration=4)
+#     qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
 #     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=4)
 #     sequence.add(qd_pulse)
 #     sequence.add(ro_pulse)
@@ -238,7 +238,7 @@ def rabi_pulse_length_and_amplitude(
     )
 
     sequence = PulseSequence()
-    qd_pulse = platform.qubit_drive_pulse(qubit, start=0, duration=4)
+    qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=4)
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)

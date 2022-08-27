@@ -22,7 +22,7 @@ def qubit_spectroscopy(
 ):
     #data = Dataset(quantities={"frequency": "Hz", "attenuation": "dB"})
     sequence = PulseSequence()
-    qd_pulse = platform.qubit_drive_pulse(qubit, start=0, duration=5000)
+    qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=5000)
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=5000)
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
@@ -59,12 +59,12 @@ def qubit_spectroscopy(
     yield data
 
     if platform.settings["nqubits"] == 1:
-        lo_qcm_frequency = data.df.frequency[data.df.MSR.argmin()].magnitude
+        lo_qcm_frequency = data.df.frequency[data.df.MSR.index[data.df.MSR.argmin()]].magnitude
         avg_voltage = (
             np.mean(data.df.MSR.values[: ((fast_end - fast_start) // fast_step)]) * 1e6
         )
     else:
-        lo_qcm_frequency = data.df.frequency[data.df.MSR.argmax()].magnitude
+        lo_qcm_frequency = data.df.frequency[data.df.MSR.index[data.df.MSR.argmax()]].magnitude
         avg_voltage = (
             np.mean(data.df.MSR.values[: ((fast_end - fast_start) // fast_step)]) * 1e6
         )
@@ -124,7 +124,7 @@ def qubit_spectroscopy_flux(
 ):
 
     sequence = PulseSequence()
-    qd_pulse = platform.qubit_drive_pulse(qubit, start=0, duration=5000)
+    qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=5000)
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=5000)
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
