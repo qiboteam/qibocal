@@ -44,14 +44,14 @@ def rabi_pulse_length(
             ro_pulse.start = duration
             if count % points == 0:
                 yield data
-            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[
+            msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
                 ro_pulse.serial
             ]
             results = {
                 "MSR[V]": msr,
                 "i[V]": i,
                 "q[V]": q,
-                "phase[deg]": phase,
+                "phase[rad]": phase,
                 "Time[ns]": duration,
             }
             data.add(results)
@@ -89,14 +89,14 @@ def rabi_pulse_length(
 #             platform.qd_port[qubit].gain = gain
 #             if count % points == 0:
 #                 yield data
-#             msr, i, q, phase = platform.execute_pulse_sequence(sequence)[
+#             msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
 #                 ro_pulse.serial
 #             ]
 #             results = {
 #                 "MSR[V]": msr,
 #                 "i[V]": i,
 #                 "q[V]": q,
-#                 "phase[deg]": phase,
+#                 "phase[rad]": phase,
 #                 "gain[db]": gain,
 #             }
 #             data.add(results)
@@ -142,14 +142,14 @@ def rabi_pulse_amplitude(
             qd_pulse.amplitude = amplitude
             if count % points == 0:
                 yield data
-            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[
+            msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
                 ro_pulse.serial
             ]
             results = {
                 "MSR[V]": msr,
                 "i[V]": i,
                 "q[V]": q,
-                "phase[deg]": phase,
+                "phase[rad]": phase,
                 "amplitude[db]": amplitude,
             }
             data.add(results)
@@ -202,14 +202,14 @@ def rabi_pulse_amplitude(
 #                 platform.qd_port[qubit].gain = gain
 #                 if count % points == 0:
 #                     yield data
-#                 msr, i, q, phase = platform.execute_pulse_sequence(sequence)[
+#                 msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
 #                     ro_pulse.serial
 #                 ]
 #                 results = {
 #                     "MSR[V]": msr,
 #                     "i[V]": i,
 #                     "q[V]": q,
-#                     "phase[deg]": phase,
+#                     "phase[rad]": phase,
 #                     "duration[ns]": duration,
 #                     "gain[db]": gain,
 #                 }
@@ -267,14 +267,14 @@ def rabi_pulse_length_and_amplitude(
                 qd_pulse.amplitude = amplitude
                 if count % points == 0:
                     yield data
-                msr, i, q, phase = platform.execute_pulse_sequence(sequence)[
+                msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
                     ro_pulse.serial
                 ]
                 results = {
                     "MSR[V]": msr,
                     "i[V]": i,
                     "q[V]": q,
-                    "phase[deg]": phase,
+                    "phase[rad]": phase,
                     "duration[ns]": duration,
                     "amplitude[V]": amplitude,
                 }

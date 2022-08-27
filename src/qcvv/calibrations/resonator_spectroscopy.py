@@ -42,14 +42,14 @@ def resonator_spectroscopy(
             if count % points == 0:
                 yield fast_sweep_data
             platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
-            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[
+            msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
                 ro_pulse.serial
             ]
             results = {
                 "MSR[V]": msr,
                 "i[V]": i,
                 "q[V]": q,
-                "phase[deg]": phase,
+                "phase[rad]": phase,
                 "frequency[Hz]": freq,
             }
             fast_sweep_data.add(results)
@@ -77,14 +77,14 @@ def resonator_spectroscopy(
             if count % points == 0:
                 yield precision_sweep_data
             platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
-            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[
+            msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
                 ro_pulse.serial
             ]
             results = {
                 "MSR[V]": msr,
                 "i[V]": i,
                 "q[V]": q,
-                "phase[deg]": phase,
+                "phase[rad]": phase,
                 "frequency[Hz]": freq,
             }
             precision_sweep_data.add(results)
@@ -130,7 +130,7 @@ def resonator_punchout(
     resonator_frequency = platform.characterization["single_qubit"][qubit][
         "resonator_freq"
     ]
-    frequency_range = np.arange(-freq_width, freq_width, freq_step) + resonator_frequency
+    frequency_range = np.arange(-freq_width, freq_width, freq_step) + resonator_frequency - (freq_width/4)
     attenuation_range = np.flip(np.arange(min_att, max_att, step_att))
     count = 0
     print(type(qubit))
@@ -142,14 +142,14 @@ def resonator_punchout(
                 # TODO: move these explicit instructions to the platform
                 platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
                 platform.ro_port[qubit].attenuation = att
-                msr, i, q, phase = platform.execute_pulse_sequence(sequence)[
+                msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
                     ro_pulse.serial
                 ]
                 results = {
-                    "Normalised_MSR[V]": msr * (np.exp(att / 10)),
+                    "MSR[V]": msr * (np.exp(att / 10)),
                     "i[V]": i,
                     "q[V]": q,
-                    "phase[deg]": phase,
+                    "phase[rad]": phase,
                     "frequency[Hz]": freq,
                     "attenuation[dB]": att,
                 }
@@ -200,14 +200,14 @@ def resonator_spectroscopy_flux(
                 platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
                 # platform.qf_port[fluxline].current = curr
                 dacs[fluxline].current(curr)
-                msr, i, q, phase = platform.execute_pulse_sequence(sequence)[
+                msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
                     ro_pulse.serial
                 ]
                 results = {
                     "MSR[V]": msr,
                     "i[V]": i,
                     "q[V]": q,
-                    "phase[deg]": phase,
+                    "phase[rad]": phase,
                     "frequency[Hz]": freq,
                     "current[A]": curr,
                 }

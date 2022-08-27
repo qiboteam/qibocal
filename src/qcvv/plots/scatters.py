@@ -14,7 +14,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, formato):
         vertical_spacing=0.1,
         subplot_titles=(
             "MSR (V)",
-            "phase (deg)",
+            "phase (rad)",
         ),
     )
 
@@ -36,7 +36,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, formato):
         fig.add_trace(
             go.Scatter(
                 x=data_fast.get_values("frequency", "Hz"),
-                y=data_fast.get_values("phase", "deg"),
+                y=data_fast.get_values("phase", "rad"),
                 name="Fast",
             ),
             row=1,
@@ -61,7 +61,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, formato):
         fig.add_trace(
             go.Scatter(
                 x=data_precision.get_values("frequency", "Hz"),
-                y=data_precision.get_values("phase", "deg"),
+                y=data_precision.get_values("phase", "rad"),
                 name="Precision",
             ),
             row=1,
@@ -74,7 +74,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, formato):
         xaxis_title="Frequency (Hz)",
         yaxis_title="MSR (uV)",
         xaxis2_title="Frequency (Hz)",
-        yaxis2_title="Phase (deg)",
+        yaxis2_title="Phase (rad)",
     )
     return fig
 
@@ -117,7 +117,7 @@ def time_msr_phase(folder, routine, qubit, format):
         vertical_spacing=0.1,
         subplot_titles=(
             "MSR (V)",
-            "phase (deg)",
+            "phase (rad)",
         ),
     )
 
@@ -133,7 +133,7 @@ def time_msr_phase(folder, routine, qubit, format):
     fig.add_trace(
         go.Scatter(
             x=data.get_values("Time", "ns"),
-            y=data.get_values("phase", "deg"),
+            y=data.get_values("phase", "rad"),
             name="Rabi Oscillations",
         ),
         row=1,
@@ -146,7 +146,7 @@ def time_msr_phase(folder, routine, qubit, format):
         xaxis_title="Time (ns)",
         yaxis_title="MSR (uV)",
         xaxis2_title="Time (ns)",
-        yaxis2_title="Phase (deg)",
+        yaxis2_title="Phase (rad)",
     )
     return fig
 
@@ -160,7 +160,7 @@ def gain_msr_phase(folder, routine, qubit, format):
         vertical_spacing=0.1,
         subplot_titles=(
             "MSR (V)",
-            "phase (deg)",
+            "phase (rad)",
         ),
     )
 
@@ -191,7 +191,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
         vertical_spacing=0.1,
         subplot_titles=(
             "MSR (V)",
-            "phase (deg)",
+            "phase (rad)",
         ),
     )
 

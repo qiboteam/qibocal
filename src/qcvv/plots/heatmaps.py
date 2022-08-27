@@ -14,7 +14,7 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
         vertical_spacing=0.1,
         subplot_titles=(
             "MSR (V)",
-            "phase (deg)",
+            "phase (rad)",
         ),
     )
 
@@ -32,7 +32,7 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
         go.Heatmap(
             x=data.get_values("frequency", "GHz"),
             y=data.get_values("current", "A"),
-            z=data.get_values("phase", "deg"),
+            z=data.get_values("phase", "rad"),
             colorbar_x=1.0,
         ),
         row=1,
@@ -58,7 +58,7 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
         vertical_spacing=0.1,
         subplot_titles=(
             "MSR (V)",
-            "phase (deg)",
+            "phase (rad)",
         ),
     )
 
@@ -76,7 +76,7 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
         go.Heatmap(
             x=data.get_values("frequency", "GHz"),
             y=data.get_values("attenuation", "dB"),
-            z=data.get_values("phase", "deg"),
+            z=data.get_values("phase", "rad"),
             colorbar_x=1.0,
         ),
         row=1,
@@ -102,7 +102,7 @@ def duration_gain_msr_phase(folder, routine, qubit, format):
         vertical_spacing=0.1,
         subplot_titles=(
             "MSR (V)",
-            "phase (deg)",
+            "phase (rad)",
         ),
     )
 
@@ -120,7 +120,7 @@ def duration_gain_msr_phase(folder, routine, qubit, format):
         go.Heatmap(
             x=data.get_values("duration", "ns"),
             y=data.get_values("gain", "db"),
-            z=data.get_values("phase", "deg"),
+            z=data.get_values("phase", "rad"),
             colorbar_x=1.0,
         ),
         row=1,
@@ -146,7 +146,7 @@ def duration_amplitude_msr_phase(folder, routine, qubit, format):
         vertical_spacing=0.1,
         subplot_titles=(
             "MSR (V)",
-            "phase (deg)",
+            "phase (rad)",
         ),
     )
 
@@ -164,7 +164,7 @@ def duration_amplitude_msr_phase(folder, routine, qubit, format):
         go.Heatmap(
             x=data.get_values("duration", "ns"),
             y=data.get_values("amplitude", "V"),
-            z=data.get_values("phase", "deg"),
+            z=data.get_values("phase", "rad"),
             colorbar_x=1.0,
         ),
         row=1,

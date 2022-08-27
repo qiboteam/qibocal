@@ -12,8 +12,8 @@ from qcvv.data import Dataset
 def random_dataset(length):
     data = Dataset()
     for _ in range(length):
-        msr, i, q, phase = np.random.rand(len(data.df.columns))
-        data.add({"MSR[V]": msr, "i[V]": i, "q[V]": q, "phase[deg]": phase})
+        msr, phase, i, q = np.random.rand(len(data.df.columns))
+        data.add({"MSR[V]": msr, "i[V]": i, "q[V]": q, "phase[rad]": phase})
     return data
 
 
@@ -52,16 +52,16 @@ def test_add():
             "MSR[V]": msr,
             "i[V]": i,
             "q[V]": q,
-            "phase[deg]": phase,
+            "phase[rad]": phase,
             "attenuation[dB]": att,
         }
     )
     assert len(data1) == 1
 
     data2 = Dataset()
-    msr, i, q, phase = np.random.rand(len(data2.df.columns))
+    msr, phase, i, q = np.random.rand(len(data2.df.columns))
     with pytest.raises(DimensionalityError):
-        data2.add({"MSR[dB]": msr, "i[V]": i, "q[V]": q, "phase[deg]": phase})
+        data2.add({"MSR[dB]": msr, "i[V]": i, "q[V]": q, "phase[rad]": phase})
 
     with pytest.raises(UndefinedUnitError):
-        data2.add({"MSR[test]": msr, "i[V]": i, "q[V]": q, "phase[deg]": phase})
+        data2.add({"MSR[test]": msr, "i[V]": i, "q[V]": q, "phase[rad]": phase})

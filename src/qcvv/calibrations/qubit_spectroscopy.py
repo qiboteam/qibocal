@@ -44,14 +44,14 @@ def qubit_spectroscopy(
             if count % points == 0:
                 yield data
             platform.qd_port[qubit].lo_frequency = freq - qd_pulse.frequency
-            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[
+            msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
                 ro_pulse.serial
             ]
             results = {
                 "MSR[V]": msr,
                 "i[V]": i,
                 "q[V]": q,
-                "phase[deg]": phase,
+                "phase[rad]": phase,
                 "frequency[Hz]": freq,
             }
             data.add(results)
@@ -81,14 +81,14 @@ def qubit_spectroscopy(
             if count % points == 0:
                 yield prec_data
             platform.qd_port[qubit].lo_frequency = freq - qd_pulse.frequency
-            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[
+            msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
                 ro_pulse.serial
             ]
             results = {
                 "MSR[V]": msr,
                 "i[V]": i,
                 "q[V]": q,
-                "phase[deg]": phase,
+                "phase[rad]": phase,
                 "frequency[Hz]": freq,
             }
             prec_data.add(results)
@@ -150,14 +150,14 @@ def qubit_spectroscopy_flux(
                 platform.qd_port[qubit].lo_frequency = freq - qd_pulse.frequency
                 # platform.qf_port[fluxline].current = curr
                 dacs[fluxline].current(curr)
-                msr, i, q, phase = platform.execute_pulse_sequence(sequence)[
+                msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
                     ro_pulse.serial
                 ]
                 results = {
                     "MSR[V]": msr,
                     "i[V]": i,
                     "q[V]": q,
-                    "phase[deg]": phase,
+                    "phase[rad]": phase,
                     "frequency[Hz]": freq,
                     "current[A]": curr,
                 }

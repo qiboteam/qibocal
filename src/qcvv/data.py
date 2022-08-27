@@ -31,7 +31,7 @@ class Dataset:
                 "MSR": pd.Series(dtype="pint[V]"),
                 "i": pd.Series(dtype="pint[V]"),
                 "q": pd.Series(dtype="pint[V]"),
-                "phase": pd.Series(dtype="pint[deg]"),
+                "phase": pd.Series(dtype="pint[rad]"),
             }
         )
 
