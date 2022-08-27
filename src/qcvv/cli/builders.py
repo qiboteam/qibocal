@@ -146,6 +146,12 @@ class ActionBuilder:
 
 
 class ReportBuilder:
+    """Parses routines and plots to report and live plotting page.
+
+    Args:
+        path (str): Path to the data folder to generate report for.
+    """
+
     def __init__(self, path):
         self.path = path
         self.metadata = load_yaml(os.path.join(path, "meta.yml"))
@@ -159,6 +165,8 @@ class ReportBuilder:
         self.format = self.runcard.get("format")
         self.qubits = self.runcard.get("qubits")
 
+        # create calibration routine objects
+        # (could be incorporated to :meth:`qcvv.cli.builders.ActionBuilder._build_single_action`)
         self.routines = []
         for action in self.runcard.get("actions"):
             routine = getattr(calibrations, action)
@@ -167,9 +175,17 @@ class ReportBuilder:
             self.routines.append(routine)
 
     def get_routine_name(self, routine):
+        """Prettify routine's name for report headers."""
         return routine.__name__.replace("_", " ").title()
 
     def get_figure(self, routine, method, qubit):
+        """Get html figure for report.
+
+        Args:
+            routine (Callable): Calibration method.
+            method (Callable): Plot method.
+            qubit (int): Qubit id.
+        """
         import tempfile
 
         figure = method(self.path, routine.__name__, qubit, self.format)
@@ -179,6 +195,15 @@ class ReportBuilder:
         return fightml
 
     def get_live_figure(self, routine, method, qubit):
+        """Get url to dash page for live plotting.
+
+        This url is used by :meth:`qcvv.web.app.get_graph`.
+
+        Args:
+            routine (Callable): Calibration method.
+            method (Callable): Plot method.
+            qubit (int): Qubit id.
+        """
         return os.path.join(
             method.__name__,
             self.path,
