@@ -169,6 +169,12 @@ class ReportBuilder:
 
         self.metadata = Metadata(metadata)
 
+        self.path = path
+        # find proper path title
+        base, self.title = os.path.join(os.getcwd(), path), ""
+        while self.title in ("", "."):
+            base, self.title = os.path.split(base)
+
         self.format = self.runcard.get("format")
         self.qubits = self.runcard.get("qubits")
         self.routines = self._create_routines()

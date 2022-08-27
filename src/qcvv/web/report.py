@@ -31,18 +31,10 @@ def create_report(path):
     env.globals.update(get_figure=get_figure)
     template = env.get_template("template.html")
 
-    # find proper path title
-    base, title = os.path.join(os.getcwd(), path), ""
-    while title in ("", "."):
-        base, title = os.path.split(base)
-
     html = template.render(
         is_static=True,
         css_styles=css_styles,
         version=__version__,
-        path=path,
-        title=title,
-        # TODO: Move title and path to report
         report=report,
     )
 

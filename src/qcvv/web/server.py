@@ -21,21 +21,19 @@ def page(path=None):
     ]
     if path is None:
         render_template(
-            "template.html", version=__version__, folders=folders, path=None
+            "template.html", version=__version__, folders=folders, report=None
         )
 
     try:
         report = ReportBuilder(path)
     except (FileNotFoundError, TypeError):
         return render_template(
-            "template.html", version=__version__, folders=folders, path=None
+            "template.html", version=__version__, folders=folders, report=None
         )
 
     return render_template(
         "template.html",
         version=__version__,
         folders=folders,
-        path=path,
-        title=path,
         report=report,
     )
