@@ -46,8 +46,10 @@ def get_graph(n, current_figure, url):
     folder, _ = os.path.split(folder)
     try:
         data = Dataset.load_data(folder, routine, format, "precision_sweep")
+        with open(f"{folder}/platform.yml", "r") as f:
+            nqubits = yaml.safe_load(f)["nqubits"]
         if len(data) > 2:
-            params, fit = resonator_spectroscopy_fit(folder, format, 1)
+            params, fit = resonator_spectroscopy_fit(folder, format, nqubits)
             return getattr(plots.resonator_spectroscopy, method)(data, params, fit)
 
         # FIXME: Temporarily hardcode the plotting method to test

@@ -7,7 +7,7 @@ from qcvv.data import Dataset
 from qcvv.decorators import fit, store
 
 
-@fit
+# @fit
 @store
 def resonator_spectroscopy(
     platform,

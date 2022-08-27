@@ -200,7 +200,10 @@ class ActionBuilder:
         """Method to call fitting routines."""
         if hasattr(routine, "post_processing"):
             return routine.post_processing(
-                routine, self.folder, self.format, int(self.runcard["nqubits"])
+                routine,
+                self.folder,
+                self.format,
+                int(self.platform.settings["nqubits"]),
             )
 
     def update(self, routine, data, fitted):
