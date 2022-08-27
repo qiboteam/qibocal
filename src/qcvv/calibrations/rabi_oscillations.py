@@ -16,7 +16,8 @@ def rabi_pulse_length(
     software_averages,
     points=10,
 ):
-
+    platform.reload_settings()
+    
     data = Dataset(name=f"data_q{qubit}", quantities={"Time": "ns"})
 
     sequence = PulseSequence()
@@ -114,7 +115,8 @@ def rabi_pulse_amplitude(
     software_averages,
     points=10,
 ):
-
+    platform.reload_settings()
+    
     data = Dataset(name=f"data_q{qubit}", quantities={"amplitude": "db"})
 
     sequence = PulseSequence()
@@ -232,7 +234,8 @@ def rabi_pulse_length_and_amplitude(
     software_averages,
     points=10,
 ):
-
+    platform.reload_settings()
+    
     data = Dataset(
         name=f"data_q{qubit}", quantities={"duration": "ns", "amplitude": "V"}
     )

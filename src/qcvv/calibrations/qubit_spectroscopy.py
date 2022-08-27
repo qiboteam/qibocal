@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from qibolab.pulses import PulseSequence
-
+from qibolab.platforms.abstract import AbstractPlatform
 from qcvv.calibrations.utils import variable_resolution_scanrange
 from qcvv.data import Dataset
 from qcvv.decorators import store
@@ -9,7 +9,7 @@ from qcvv.decorators import store
 
 @store
 def qubit_spectroscopy(
-    platform,
+    platform: AbstractPlatform,
     qubit,
     fast_start,
     fast_end,
@@ -20,6 +20,8 @@ def qubit_spectroscopy(
     software_averages,
     points=10,
 ):
+    platform.reload_settings()
+    
     #data = Dataset(quantities={"frequency": "Hz", "attenuation": "dB"})
     sequence = PulseSequence()
     qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=5000)
@@ -27,9 +29,9 @@ def qubit_spectroscopy(
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
 
-    lo_qcm_frequency = platform.characterization["single_qubit"][qubit]["qubit_freq"]
+    qubit_frequency = platform.characterization["single_qubit"][qubit]["qubit_freq"]
 
-    freqrange = np.arange(fast_start, fast_end, fast_step) + lo_qcm_frequency
+    frequency_range = np.arange(fast_start, fast_end, fast_step) + qubit_frequency
 
     # FIXME: Waiting for Qblox platform to take care of that
     platform.ro_port[qubit].lo_frequency = (
@@ -40,7 +42,7 @@ def qubit_spectroscopy(
     data = Dataset(name=f"fast_sweep_q{qubit}", quantities={"frequency": "Hz"})
     count = 0
     for _ in range(software_averages):
-        for freq in freqrange:
+        for freq in frequency_range:
             if count % points == 0:
                 yield data
             platform.qd_port[qubit].lo_frequency = freq - qd_pulse.frequency
@@ -59,12 +61,12 @@ def qubit_spectroscopy(
     yield data
 
     if platform.resonator_type == "3D":
-        lo_qcm_frequency = data.df.frequency[data.df.MSR.index[data.df.MSR.argmin()]].magnitude
+        qubit_frequency = data.df.frequency[data.df.MSR.index[data.df.MSR.argmin()]].magnitude
         avg_voltage = (
             np.mean(data.df.MSR.values[: ((fast_end - fast_start) // fast_step)]) * 1e6
         )
     else:
-        lo_qcm_frequency = data.df.frequency[data.df.MSR.index[data.df.MSR.argmax()]].magnitude
+        qubit_frequency = data.df.frequency[data.df.MSR.index[data.df.MSR.argmax()]].magnitude
         avg_voltage = (
             np.mean(data.df.MSR.values[: ((fast_end - fast_start) // fast_step)]) * 1e6
         )
@@ -72,12 +74,12 @@ def qubit_spectroscopy(
     prec_data = Dataset(
         name=f"precision_sweep_q{qubit}", quantities={"frequency": "Hz"}
     )
-    freqrange = (
-        np.arange(precision_start, precision_end, precision_step) + lo_qcm_frequency
+    frequency_range = (
+        np.arange(precision_start, precision_end, precision_step) + qubit_frequency
     )
     count = 0
     for _ in range(software_averages):
-        for freq in freqrange:
+        for freq in frequency_range:
             if count % points == 0:
                 yield prec_data
             platform.qd_port[qubit].lo_frequency = freq - qd_pulse.frequency
@@ -111,7 +113,7 @@ def qubit_spectroscopy(
 
 @store
 def qubit_spectroscopy_flux(
-    platform,
+    platform: AbstractPlatform,
     qubit,
     freq_width,
     freq_step,
@@ -122,6 +124,8 @@ def qubit_spectroscopy_flux(
     fluxline=0,
     points=10,
 ):
+    platform.reload_settings()
+    
 
     sequence = PulseSequence()
     qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=5000)
@@ -129,27 +133,22 @@ def qubit_spectroscopy_flux(
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
 
-    # FIXME: Waitng for abstract platform to have qf_port[qubit] working
-    spi = platform.instruments["SPI"].device
-    dacs = [spi.mod2.dac0, spi.mod1.dac0, spi.mod1.dac1, spi.mod1.dac2, spi.mod1.dac3]
-
     data = Dataset(
         name=f"data_q{qubit}", quantities={"frequency": "Hz", "current": "A"}
     )
 
-    lo_qcm_frequency = platform.characterization["single_qubit"][qubit]["qubit_freq"]
-    freqrange = np.arange(-freq_width, freq_width, freq_step) + lo_qcm_frequency
-    currange = np.arange(current_min, current_max, current_step)
+    qubit_frequency = platform.characterization["single_qubit"][qubit]["qubit_freq"]
+    frequency_range = np.arange(-freq_width, freq_width, freq_step) + qubit_frequency
+    current_range = np.arange(current_min, current_max, current_step)
 
     count = 0
     for _ in range(software_averages):
-        for freq in freqrange:
-            for curr in currange:
+        for curr in current_range:
+            for freq in frequency_range:
                 if count % points == 0:
                     yield data
                 platform.qd_port[qubit].lo_frequency = freq - qd_pulse.frequency
-                # platform.qf_port[fluxline].current = curr
-                dacs[fluxline].current(curr)
+                platform.qf_port[fluxline].current = curr
                 msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
                     ro_pulse.serial
                 ]
