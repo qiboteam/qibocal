@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 import os
-import pathlib
 
 import pandas as pd
-import yaml
 from dash import Dash, Input, Output, dcc, html
 
 from qcvv import plots
@@ -39,17 +37,8 @@ app.layout = html.Div(
     Input("url", "pathname"),
 )
 def get_graph(n, current_figure, url):
-    path = os.path.join(*url.split("/")[2:])
-    folder, format = os.path.split(path)
-    folder, qubit = os.path.split(folder)
-    folder, method = os.path.split(folder)
-    folder, routine = os.path.split(folder)
-    folder, _ = os.path.split(folder)
+    method, folder, routine, qubit, format = url.split(os.sep)[2:]
     try:
-        # with open(pathlib.Path(__file__).with_name("plots.yml"), "r") as file:
-        #    plotters = yaml.safe_load(file)
-        # func = plotters.get(routine)
         return getattr(plots, method)(folder, routine, qubit, format)
-
     except (FileNotFoundError, pd.errors.EmptyDataError):
         return current_figure

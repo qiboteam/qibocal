@@ -199,11 +199,9 @@ class ReportBuilder:
 
     def get_live_figure(self, routine, method, qubit):
         return os.path.join(
-            "/dash",
-            self.path,
-            "data",
-            routine.__name__,
             method.__name__,
+            self.path,
+            routine.__name__,
             str(qubit),
             self.format,
         )

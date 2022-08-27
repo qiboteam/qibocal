@@ -164,9 +164,7 @@
             {% if is_static %}
               {{ report.get_figure(routine, method, qubit) }}
             {% else %}
-            <!-- find a way to change height and width depending on screen type
-            <iframe src="/dash/{{ report.path }}/data/{{ routine.name }}/{{ method }}/{{ qubit }}/{{ report.format }}"
-              style="position: relative; height: 500px; width: 100%;"></iframe> -->
+            <!-- find a way to change height and width depending on screen type -->
             <iframe src="{{ report.get_live_figure(routine, method, qubit) }}"
               style="position: relative; height: 500px; width: 100%;"></iframe>
             {% endif %}
