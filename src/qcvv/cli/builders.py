@@ -10,6 +10,13 @@ from qcvv import calibrations
 from qcvv.config import log, raise_error
 
 
+def load_yaml(path):
+    """Load yaml file from disk."""
+    with open(path, "r") as file:
+        data = yaml.safe_load(file)
+    return data
+
+
 class ActionBuilder:
     """Class for parsing and executing runcards.
 
@@ -20,9 +27,8 @@ class ActionBuilder:
     """
 
     def __init__(self, runcard, folder=None, force=False):
-
         path, self.folder = self._generate_output_folder(folder, force)
-        self.runcard = self.load_runcard(runcard)
+        self.runcard = load_yaml(runcard)
         self._allocate_platform(self.runcard["platform"])
         self.qubits = self.runcard["qubits"]
         self.format = self.runcard["format"]
@@ -108,13 +114,6 @@ class ActionBuilder:
                 raise_error(AttributeError, f"Missing parameter {param} in runcard.")
         return f, params
 
-    @staticmethod
-    def load_runcard(path):
-        """Method to load the runcard."""
-        with open(path, "r") as file:
-            runcard = yaml.safe_load(file)
-        return runcard
-
     def execute(self):
         """Method to execute sequentially all the actions in the runcard."""
         self.platform.connect()
@@ -138,8 +137,7 @@ class ActionBuilder:
         from qcvv.web.report import create_report
 
         # update end time
-        with open(f"{self.folder}/meta.yml", "r") as file:
-            meta = yaml.safe_load(file)
+        meta = load_yaml(f"{self.folder}/meta.yml")
         e = datetime.datetime.now(datetime.timezone.utc)
         meta["end-time"] = e.strftime("%H:%M:%S")
         with open(f"{self.folder}/meta.yml", "w") as file:
@@ -148,33 +146,17 @@ class ActionBuilder:
         create_report(self.folder)
 
 
-class Metadata:
-    # TODO: Use this class in both builders
-    def __init__(self, metadata):
-        self.date = metadata.get("date")
-        self.start_time = metadata.get("start-time")
-        self.end_time = metadata.get("end-time")
-        self.versions = metadata.get("versions")
-
-
 class ReportBuilder:
     def __init__(self, path):
-        # TODO: Create a ``load_yaml`` method and use it here and in
-        # ``ActionBuilder``
-        with open(os.path.join(path, "runcard.yml"), "r") as file:
-            self.runcard = yaml.safe_load(file)
-
-        with open(os.path.join(path, "meta.yml"), "r") as file:
-            metadata = yaml.safe_load(file)
-
-        self.metadata = Metadata(metadata)
-
         self.path = path
+        self.metadata = load_yaml(os.path.join(path, "meta.yml"))
+
         # find proper path title
         base, self.title = os.path.join(os.getcwd(), path), ""
         while self.title in ("", "."):
             base, self.title = os.path.split(base)
 
+        self.runcard = load_yaml(os.path.join(path, "runcard.yml"))
         self.format = self.runcard.get("format")
         self.qubits = self.runcard.get("qubits")
 

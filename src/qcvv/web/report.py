@@ -2,7 +2,6 @@
 import os
 import pathlib
 
-import yaml
 from jinja2 import Environment, FileSystemLoader
 
 from qcvv import __version__
@@ -11,7 +10,6 @@ from qcvv.cli.builders import ReportBuilder
 
 def create_report(path):
     """Creates an HTML report for the data in the given path."""
-    # TODO: Consider moving this method to the report builder
     filepath = pathlib.Path(__file__)
 
     with open(os.path.join(filepath.with_name("static"), "styles.css"), "r") as file:

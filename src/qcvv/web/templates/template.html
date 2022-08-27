@@ -114,9 +114,9 @@
         <h1>{{ report.title }}</h1>
       </div>
       <p>
-        Run date: {{ report.metadata.date }}<br>
-        Start time (UTC): {{ report.metadata.start_time }}<br>
-        End time (UTC): {{ report.metadata.end_time }}
+        Run date: {{ report.metadata.get('date') }}<br>
+        Start time (UTC): {{ report.metadata.get('start-time') }}<br>
+        End time (UTC): {{ report.metadata.get('end-time') }}
       </p>
       <h3 id="summary" style="scroll-margin-top: 2.5em;"
         class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
@@ -133,7 +133,7 @@
             </tr>
           </thead>
           <tbody>
-            {% for library, version in report.metadata.versions.items() %}
+            {% for library, version in report.metadata.get('versions').items() %}
             <tr>
               <td>{{ library }}</td>
               <td>{{ version }}</td>
