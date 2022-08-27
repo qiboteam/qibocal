@@ -32,6 +32,7 @@ def command(runcard, folder, force=None):
 
     action_builder = ActionBuilder(runcard, folder, force)
     action_builder.execute()
+    action_builder.dump_report()
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)

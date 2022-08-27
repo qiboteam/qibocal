@@ -124,7 +124,6 @@ class ActionBuilder:
             self._execute_single_action(routine, args)
         self.platform.stop()
         self.platform.disconnect()
-        self.dump_report()
 
     def _execute_single_action(self, routine, arguments):
         """Method to execute a single action and retrieving the results."""

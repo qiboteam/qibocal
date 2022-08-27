@@ -9,7 +9,7 @@ from qcvv.decorators import plot, store
 
 
 @store
-@plot("MSR and Phase vs Frequency", "frequency_msr_phase__fast_precision")
+@plot("MSR and Phase vs Frequency", plots.frequency_msr_phase__fast_precision)
 def resonator_spectroscopy(
     platform,
     qubit,
@@ -108,8 +108,8 @@ def resonator_spectroscopy(
 
 
 @store
-@plot("Frequency vs Attenuation", "frequency_attenuation_msr_phase")
-@plot("MSR vs Frequency", "frequency_attenuation_msr_phase__cut")
+@plot("Frequency vs Attenuation", plots.frequency_attenuation_msr_phase)
+@plot("MSR vs Frequency", plots.frequency_attenuation_msr_phase__cut)
 def resonator_punchout(
     platform,
     qubit,
@@ -163,6 +163,7 @@ def resonator_punchout(
 
 
 @store
+@plot("MSR and Phase vs Flux Current", plots.frequency_flux_msr_phase)
 def resonator_spectroscopy_flux(
     platform,
     qubit,

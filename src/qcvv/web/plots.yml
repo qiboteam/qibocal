@@ -1,8 +1,0 @@
-resonator_spectroscopy_flux:
-    MSR and Phase vs Flux Current: frequency_flux_msr_phase
-
-qubit_spectroscopy:
-    MSR and Phase vs Frequency: frequency_msr_phase__fast_precision
-
-qubit_spectroscopy_flux:
-    MSR and Phase vs Flux Current: frequency_flux_msr_phase

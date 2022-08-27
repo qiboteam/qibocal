@@ -2,12 +2,14 @@
 import numpy as np
 from qibolab.pulses import PulseSequence
 
+from qcvv import plots
 from qcvv.calibrations.utils import variable_resolution_scanrange
 from qcvv.data import Dataset
-from qcvv.decorators import store
+from qcvv.decorators import plot, store
 
 
 @store
+@plot("MSR and Phase vs Frequency", plots.frequency_msr_phase__fast_precision)
 def qubit_spectroscopy(
     platform,
     qubit,
@@ -110,6 +112,7 @@ def qubit_spectroscopy(
 
 
 @store
+@plot("MSR and Phase vs Frequency", plots.frequency_flux_msr_phase)
 def qubit_spectroscopy_flux(
     platform,
     qubit,
