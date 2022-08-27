@@ -58,7 +58,7 @@ def qubit_spectroscopy(
             count += 1
     yield data
 
-    if platform.settings["nqubits"] == 1:
+    if platform.resonator_type == "3D":
         lo_qcm_frequency = data.df.frequency[data.df.MSR.index[data.df.MSR.argmin()]].magnitude
         avg_voltage = (
             np.mean(data.df.MSR.values[: ((fast_end - fast_start) // fast_step)]) * 1e6

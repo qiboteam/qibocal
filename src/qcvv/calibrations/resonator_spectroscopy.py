@@ -25,22 +25,22 @@ def resonator_spectroscopy(
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
     sequence.add(ro_pulse)
 
-    lo_qrm_frequency = platform.characterization["single_qubit"][qubit][
+    resonator_frequency = platform.characterization["single_qubit"][qubit][
         "resonator_freq"
     ]
 
-    freqrange = (
+    frequency_range = (
         variable_resolution_scanrange(
             lowres_width, lowres_step, highres_width, highres_step
         )
-        + lo_qrm_frequency
+        + resonator_frequency
     )
-    data = Dataset(name=f"fast_sweep_q{qubit}", quantities={"frequency": "Hz"})
+    fast_sweep_data = Dataset(name=f"fast_sweep_q{qubit}", quantities={"frequency": "Hz"})
     count = 0
     for _ in range(software_averages):
-        for freq in freqrange:
+        for freq in frequency_range:
             if count % points == 0:
-                yield data
+                yield fast_sweep_data
             platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
             msr, i, q, phase = platform.execute_pulse_sequence(sequence)[
                 ro_pulse.serial
@@ -52,30 +52,30 @@ def resonator_spectroscopy(
                 "phase[deg]": phase,
                 "frequency[Hz]": freq,
             }
-            data.add(results)
+            fast_sweep_data.add(results)
             count += 1
-    yield data
+    yield fast_sweep_data
 
     # FIXME: have live ploting work for multiple datasets saved
 
-    if platform.settings["nqubits"] == 1:
-        lo_qrm_frequency = data.df.frequency[data.df.MSR.index[data.df.MSR.argmax()]].magnitude
-        avg_voltage = np.mean(data.df.MSR.values[: (lowres_width // lowres_step)]) * 1e6
+    if platform.resonator_type == "3D":
+        resonator_frequency = fast_sweep_data.df.frequency[fast_sweep_data.df.MSR.index[fast_sweep_data.df.MSR.argmax()]].magnitude
+        avg_voltage = np.mean(fast_sweep_data.df.MSR.values[: (lowres_width // lowres_step)]) * 1e6
     else:
-        lo_qrm_frequency = data.df.frequency[data.df.MSR.index[data.df.MSR.argmin()]].magnitude
-        avg_voltage = np.mean(data.df.MSR.values[: (lowres_width // lowres_step)]) * 1e6
+        resonator_frequency = fast_sweep_data.df.frequency[fast_sweep_data.df.MSR.index[fast_sweep_data.df.MSR.argmin()]].magnitude
+        avg_voltage = np.mean(fast_sweep_data.df.MSR.values[: (lowres_width // lowres_step)]) * 1e6
 
-    prec_data = Dataset(
+    precision_sweep_data = Dataset(
         name=f"precision_sweep_q{qubit}", quantities={"frequency": "Hz"}
     )
-    freqrange = (
-        np.arange(-precision_width, precision_width, precision_step) + lo_qrm_frequency
+    frequency_range = (
+        np.arange(-precision_width, precision_width, precision_step) + resonator_frequency
     )
     count = 0
     for _ in range(software_averages):
-        for freq in freqrange:
+        for freq in frequency_range:
             if count % points == 0:
-                yield prec_data
+                yield precision_sweep_data
             platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
             msr, i, q, phase = platform.execute_pulse_sequence(sequence)[
                 ro_pulse.serial
@@ -87,15 +87,16 @@ def resonator_spectroscopy(
                 "phase[deg]": phase,
                 "frequency[Hz]": freq,
             }
-            prec_data.add(results)
+            precision_sweep_data.add(results)
             count += 1
-    yield prec_data
+    yield precision_sweep_data
+
     # TODO: add fitting (possibly without quantify)
     # # Fitting
-    # if self.resonator_type == '3D':
+    # if platform.resonator_type == '3D':
     #     f0, BW, Q, peak_voltage = fitting.lorentzian_fit("last", max, "Resonator_spectroscopy")
     #     resonator_freq = int(f0 + ro_pulse.frequency)
-    # elif self.resonator_type == '2D':
+    # elif platform.resonator_type == '2D':
     #     f0, BW, Q, peak_voltage = fitting.lorentzian_fit("last", min, "Resonator_spectroscopy")
     #     resonator_freq = int(f0 + ro_pulse.frequency)
     #     # TODO: Fix fitting of minimum values
@@ -107,7 +108,7 @@ def resonator_spectroscopy(
 
 @store
 def resonator_punchout(
-    platform,
+    platform: AbstractPlatform,
     qubit,
     freq_width,
     freq_step,
@@ -121,21 +122,21 @@ def resonator_punchout(
     data = Dataset(
         name=f"data_q{qubit}", quantities={"frequency": "Hz", "attenuation": "dB"}
     )
-    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
     sequence = PulseSequence()
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
     sequence.add(ro_pulse)
 
     # TODO: move this explicit instruction to the platform
-    lo_qrm_frequency = platform.characterization["single_qubit"][qubit][
+    resonator_frequency = platform.characterization["single_qubit"][qubit][
         "resonator_freq"
     ]
-    freqrange = np.arange(-freq_width, freq_width, freq_step) + lo_qrm_frequency
-    attrange = np.flip(np.arange(min_att, max_att, step_att))
+    frequency_range = np.arange(-freq_width, freq_width, freq_step) + resonator_frequency
+    attenuation_range = np.flip(np.arange(min_att, max_att, step_att))
     count = 0
     print(type(qubit))
-    for s in range(software_averages):
-        for att in attrange:
-            for freq in freqrange:
+    for _ in range(software_averages):
+        for att in attenuation_range:
+            for freq in frequency_range:
                 if count % points == 0:
                     yield data
                 # TODO: move these explicit instructions to the platform
@@ -145,23 +146,21 @@ def resonator_punchout(
                     ro_pulse.serial
                 ]
                 results = {
-                    "MSR[V]": msr,
+                    "Normalised_MSR[V]": msr * (np.exp(att / 10)),
                     "i[V]": i,
                     "q[V]": q,
                     "phase[deg]": phase,
                     "frequency[Hz]": freq,
                     "attenuation[dB]": att,
                 }
-                # TODO: implement normalization
                 data.add(results)
                 count += 1
-
     yield data
 
 
 @store
 def resonator_spectroscopy_flux(
-    platform,
+    platform: AbstractPlatform,
     qubit,
     freq_width,
     freq_step,
