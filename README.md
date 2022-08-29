@@ -21,7 +21,7 @@ poetry install
 pre-commit install
 ```
 
-When installing Qcvv poetry will also install [Qibolab](https://github.com/qiboteam/qibolab). Make sure to setup SSH autentication for your GitHub account
+When installing QCVV poetry will also install [Qibolab](https://github.com/qiboteam/qibolab). Make sure to setup SSH authentication for your GitHub account
 to avoid errors during installation. Here are the instructions on how to [generate](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent) a new SSH key and to [add](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account) it to your GitHub account.
 
 If you are looking to test new features in Qibolab make sure to reinstall Qibolab in the same environment where qcvv is installed.
