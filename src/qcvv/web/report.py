@@ -9,14 +9,10 @@ from jinja2 import Environment, FileSystemLoader
 from qcvv import __version__, plots
 
 
-def get_figure(folder, routine, method, format):
-    # FIXME: Temporarily hardcode the plotting method to test
-    # multiple routines with different names in one folder
-    figure = getattr(plots.resonator_spectroscopy_attenuation, method)(
-        folder, routine, format
-    )
-    # should be changed to:
-    # figure = getattr(plots, method)(folder, routine, format)
+def get_figure(folder, routine, method, qubit, format):
+    figure = getattr(getattr(plots, routine), method)(folder, routine, qubit, format)
+    # TODO: Change this line to the one below when PR#30 is merged
+    # figure = getattr(plots, method)(folder, routine, qubit, format)
     with tempfile.NamedTemporaryFile() as temp:
         figure.write_html(temp.name, include_plotlyjs=False, full_html=False)
         fightml = temp.read().decode("utf-8")
