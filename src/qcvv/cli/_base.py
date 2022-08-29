@@ -1,9 +1,15 @@
 # -*- coding: utf-8 -*-
 """Adds global CLI options."""
+import base64
 import datetime
 import inspect
 import os
+import pathlib
 import shutil
+import subprocess
+import uuid
+from tabnanny import check
+from urllib.parse import urljoin
 
 import click
 import yaml
@@ -12,6 +18,11 @@ from qcvv import calibrations
 from qcvv.config import log, raise_error
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
+
+# options for report upload
+UPLOAD_HOST = "qcvv@login.qrccluster.com"
+TARGET_DIR = "qcvv-reports/"
+ROOT_URL = "http://login.qrccluster.com:9000/"
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
@@ -71,6 +82,75 @@ def live_plot(port, debug):
         port += 1
 
     app.run_server(debug=debug, port=port)
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument("output_folder", metavar="FOLDER", type=click.Path(exists=True))
+def upload(output_folder):
+    """Uploads output folder to server"""
+
+    output_path = pathlib.Path(output_folder)
+
+    # check the rsync command exists.
+    if not shutil.which("rsync"):
+        raise_error(
+            RuntimeError,
+            "Could not find the rsync command. Please make sure it is installed.",
+        )
+
+    # check that we can authentica with a certificate
+    ssh_command_line = (
+        "ssh",
+        "-o",
+        "PreferredAuthentications=publickey",
+        "-q",
+        UPLOAD_HOST,
+        "exit",
+    )
+
+    str_line = " ".join(repr(ele) for ele in ssh_command_line)
+
+    log.info(f"Checking SSH connection to {UPLOAD_HOST}.")
+
+    try:
+        subprocess.run(ssh_command_line, check=True)
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(
+            (
+                "Could not validate the SSH key. "
+                "The command\n%s\nreturned a non zero exit status. "
+                "Please make sure that your public SSH key is on the server."
+            )
+            % str_line
+        ) from e
+    except OSError as e:
+        raise RuntimeError(
+            "Could not run the command\n{}\n: {}".format(str_line, e)
+        ) from e
+
+    log.info("Connection seems OK.")
+
+    # upload output
+    randname = base64.urlsafe_b64encode(uuid.uuid4().bytes).decode()
+    newdir = TARGET_DIR + randname
+
+    rsync_command = (
+        "rsync",
+        "-aLz",
+        "--chmod=ug=rwx,o=rx",
+        f"{output_path}/",
+        f"{UPLOAD_HOST}:{newdir}",
+    )
+
+    log.info(f"Uploading output ({output_path}) to {UPLOAD_HOST}")
+    try:
+        subprocess.run(rsync_command, check=True)
+    except subprocess.CalledProcessError as e:
+        msg = f"Failed to upload output: {e}"
+        raise RuntimeError(msg) from e
+
+    url = urljoin(ROOT_URL, randname)
+    log.info(f"Upload completed. The result is available at:\n{url}")
 
 
 class ActionBuilder:
