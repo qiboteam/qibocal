@@ -8,7 +8,6 @@ import pathlib
 import shutil
 import subprocess
 import uuid
-from tabnanny import check
 from urllib.parse import urljoin
 
 import click
