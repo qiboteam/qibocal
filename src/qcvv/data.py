@@ -57,7 +57,7 @@ class Dataset:
             name = key.split("[")[0]
             unit = re.search(r"\[([A-Za-z0-9_]+)\]", key).group(1)
             # TODO: find a better way to do this
-            self.df.loc[l + l // len(list(data.keys())), name] = value * ureg(unit)
+            self.df.loc[l, name] = value * ureg(unit)
 
     def get_values(self, quantity, unit):
         """Get values of a quantity in specified units.
