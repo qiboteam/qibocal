@@ -45,6 +45,7 @@ def page(path=None):
         version=__version__,
         folders=folders,
         path=path,
+        title=path,
         metadata=metadata,
         runcard=runcard,
         plotters=plotters,

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Adds global CLI options."""
+import datetime
 import inspect
 import os
 import shutil
@@ -84,7 +85,7 @@ class ActionBuilder:
         path, self.folder = self._generate_output_folder(folder, force)
         self.runcard = self.load_runcard(runcard)
         self._allocate_platform(self.runcard["platform"])
-        self.qubit = self.runcard["qubit"]
+        self.qubits = self.runcard["qubits"]
         self.format = self.runcard["format"]
 
         # Saving runcard
@@ -99,7 +100,6 @@ class ActionBuilder:
             force (bool): option to overwrite the output folder if it exists already.
         """
         if folder is None:
-            import datetime
             import getpass
 
             e = datetime.datetime.now()
@@ -131,8 +131,6 @@ class ActionBuilder:
 
     def save_runcards(self, path, runcard):
         """Save the output runcards."""
-        import datetime
-
         import qibo
         import qibolab
         from qibolab.paths import qibolab_folder
@@ -144,16 +142,18 @@ class ActionBuilder:
         )
         shutil.copy(platform_runcard, f"{path}/platform.yml")
 
-        e = datetime.datetime.now()
+        e = datetime.datetime.now(datetime.timezone.utc)
         meta = {}
-        meta["date"] = e.strftime("%Y-%m-%d %H:%M:%S")
+        meta["date"] = e.strftime("%Y-%m-%d")
+        meta["start-time"] = e.strftime("%H:%M:%S")
+        meta["end-time"] = e.strftime("%H:%M:%S")
         meta["versions"] = {
             "qibo": qibo.__version__,
             "qibolab": qibolab.__version__,
             "qcvv": qcvv.__version__,
         }
-        with open(f"{path}/meta.yml", "w") as f:
-            yaml.dump(meta, f)
+        with open(f"{path}/meta.yml", "w") as file:
+            yaml.dump(meta, file)
 
         shutil.copy(runcard, f"{path}/runcard.yml")
 
@@ -183,13 +183,27 @@ class ActionBuilder:
         self.platform.start()
         for action in self.runcard["actions"]:
             routine, args = self._build_single_action(action)
-            results = self.get_result(routine, args)
+            self._execute_single_action(routine, args)
         self.platform.stop()
         self.platform.disconnect()
+        self.dump_report()
 
-    def get_result(self, routine, arguments):
+    def _execute_single_action(self, routine, arguments):
         """Method to execute a single action and retrieving the results."""
-        results = routine(self.platform, self.qubit, **arguments)
-        if hasattr(routine, "final_action"):
-            return routine.final_action(results, self.output, self.format)
-        return results
+        for qubit in self.qubits:
+            results = routine(self.platform, qubit, **arguments)
+            if hasattr(routine, "final_action"):
+                routine.final_action(results, self.output, self.format)
+
+    def dump_report(self):
+        from qcvv.web.report import create_report
+
+        # update end time
+        with open(f"{self.folder}/meta.yml", "r") as file:
+            meta = yaml.safe_load(file)
+        e = datetime.datetime.now(datetime.timezone.utc)
+        meta["end-time"] = e.strftime("%H:%M:%S")
+        with open(f"{self.folder}/meta.yml", "w") as file:
+            yaml.dump(meta, file)
+
+        create_report(self.folder)
