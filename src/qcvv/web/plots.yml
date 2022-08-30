@@ -40,3 +40,9 @@ ramsey_frequency_detuned:
 
 calibrate_qubit_states:
     exc vs gnd: exc_gnd
+
+allXY:
+    Prob vs gate sequence: prob_gate
+
+allXY_iteration:
+    Prob vs gate sequence: prob_gate_iteration

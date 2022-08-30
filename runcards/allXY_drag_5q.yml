@@ -1,0 +1,11 @@
+platform: tii5q
+
+qubits: [1, 2]
+
+format: csv
+
+actions:
+  allXY:
+    beta_param: Null
+    software_averages: 1
+    points: 1

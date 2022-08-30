@@ -355,3 +355,78 @@ def exc_gnd(folder, routine, qubit, formato):
         )
 
     return fig
+
+
+# allXY
+def prob_gate(folder, routine, qubit, format):
+    data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        subplot_titles=(f"allXY_qubit{qubit}",),
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=data.get_values("gateNumber", "unit"),
+            y=data.get_values("probability", "unit"),
+            mode="markers",
+            name="Probabilities",
+        ),
+        row=1,
+        col=1,
+    )
+    fig.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Gate sequene number",
+        yaxis_title="Z projection probability of qubit state |o>",
+    )
+    return fig
+
+
+# allXY
+def prob_gate_iteration(folder, routine, qubit, format):
+    data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        subplot_titles=(f"allXY_qubit{qubit}",),
+    )
+
+    gates = len(data.get_values("gateNumber", "unit"))
+    # print(gates)
+    import numpy as np
+
+    for n in range(gates // 21):
+        data_start = n * 21
+        data_end = data_start + 21
+        beta_param = np.array(data.get_values("beta_param", "unit"))[data_start]
+        gates = np.array(data.get_values("gateNumber", "unit"))[data_start:data_end]
+        probabilities = np.array(data.get_values("probability", "unit"))[
+            data_start:data_end
+        ]
+        c = "#" + "{:06x}".format(n * 823000)
+        fig.add_trace(
+            go.Scatter(
+                x=gates,
+                y=probabilities,
+                mode="markers+lines",
+                line=dict(color=c),
+                name=f"beta_parameter = {beta_param}",
+                marker_size=16,
+            ),
+            row=1,
+            col=1,
+        )
+    fig.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Gate sequene number",
+        yaxis_title="Z projection probability of qubit state |o>",
+    )
+    return fig
