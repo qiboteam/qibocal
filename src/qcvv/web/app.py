@@ -50,13 +50,12 @@ def get_graph(n, current_figure, url):
             nqubits = yaml.safe_load(f)["nqubits"]
         if len(data) > 2:
             params, fit = resonator_spectroscopy_fit(folder, format, nqubits)
-            return getattr(plots.resonator_spectroscopy, method)(data, params, fit)
+        else:
+            params, fit = None, None
+        return getattr(plots.resonator_spectroscopy, method)(data, params, fit)
 
         # FIXME: Temporarily hardcode the plotting method to test
         # multiple routines with different names in one folder
-        return getattr(plots.resonator_spectroscopy, method)(
-            data, params=None, fit=None
-        )
         # should be changed to:
         # return getattr(getattr(plots, routine), method)(data)
 
