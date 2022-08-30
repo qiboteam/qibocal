@@ -21,9 +21,9 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 # options for report upload
 UPLOAD_HOST = (
-    "qcvv@" + "localhost"
+    "qcvv@localhost"
     if socket.gethostname() == "saadiyat"
-    else "login.qrccluster.com"
+    else "qcvv@login.qrccluster.com"
 )
 TARGET_DIR = "qcvv-reports/"
 ROOT_URL = "http://login.qrccluster.com:9000/"
