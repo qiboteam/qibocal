@@ -8,6 +8,7 @@ import pathlib
 import shutil
 import subprocess
 import uuid
+import socket
 from urllib.parse import urljoin
 
 import click
