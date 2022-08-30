@@ -5,7 +5,7 @@ import numpy as np
 import yaml
 
 from qcvv.data import Dataset
-from qcvv.fitting.utils import get_values, lorenzian
+from qcvv.fitting.utils import lorenzian
 
 
 def resonator_spectroscopy_fit(folder, format, nqubits):
@@ -15,8 +15,8 @@ def resonator_spectroscopy_fit(folder, format, nqubits):
         folder, "resonator_spectroscopy", format, "precision_sweep"
     )
 
-    voltages = get_values(data.df, "MSR", "V")
-    frequencies = get_values(data.df, "frequency", "Hz")
+    voltages = data.get_values("MSR", "V")
+    frequencies = data.get_values("frequency", "Hz")
 
     # Create a lmfit model for fitting equation defined in resonator_peak
     model_Q = lmfit.Model(lorenzian)
