@@ -9,7 +9,6 @@ import shutil
 import socket
 import subprocess
 import uuid
-import socket
 from urllib.parse import urljoin
 
 import click
@@ -169,13 +168,14 @@ class ActionBuilder:
 
         path, self.folder = self._generate_output_folder(folder, force)
         self.runcard = self.load_runcard(runcard)
-        self._allocate_platform(self.runcard["platform"])
+        platform_name = self.runcard["platform"]
+        self._allocate_platform(platform_name)
         self.qubits = self.runcard["qubits"]
         self.format = self.runcard["format"]
 
-        # Saving runcard
+        # Saving runcards
         self.save_runcards(path, runcard)
-        self.save_meta(path, self.folder)
+        self.save_meta(path, self.folder, platform_name)
 
     @staticmethod
     def _generate_output_folder(folder, force):
@@ -225,7 +225,7 @@ class ActionBuilder:
         shutil.copy(platform_runcard, f"{path}/platform.yml")
         shutil.copy(runcard, f"{path}/runcard.yml")
 
-    def save_meta(self, path, folder):
+    def save_meta(self, path, folder, platform_name):
         """Save the metadata."""
         import qibo
         import qibolab
@@ -235,6 +235,7 @@ class ActionBuilder:
         e = datetime.datetime.now(datetime.timezone.utc)
         meta = {}
         meta["title"] = folder
+        meta["platform"] = platform_name
         meta["date"] = e.strftime("%Y-%m-%d")
         meta["start-time"] = e.strftime("%H:%M:%S")
         meta["end-time"] = e.strftime("%H:%M:%S")

@@ -12,8 +12,14 @@ import yaml
 ROOT = "/home/users/qcvv/qcvv-reports"
 ROOT_URL = "http://login.qrccluster.com:9000/"
 OUT = "/home/users/qcvv/qcvv-reports/index.json"
-DEFAULTS = {"title": "-", "date": "-", "end-time": "-"}
-REQUIRED_FILE_METADATA = {"title", "date", "end-time"}
+DEFAULTS = {
+    "title": "-",
+    "date": "-",
+    "platform": "-",
+    "start-time": "-",
+    "end-time": "-",
+}
+REQUIRED_FILE_METADATA = {"title", "date", "platform", "start-time" "end-time"}
 
 
 def meta_from_path(p):
@@ -32,10 +38,16 @@ def meta_from_path(p):
 
 def register(p):
     path_meta = meta_from_path(p)
-    title, date, end_time = path_meta["title"], path_meta["date"], path_meta["end-time"]
+    title, date, platform, start_time, end_time = (
+        path_meta["title"],
+        path_meta["date"],
+        path_meta["platform"],
+        path_meta["start-time"],
+        path_meta["end-time"],
+    )
     url = ROOT_URL + p.name
     titlelink = f'<a href="{url}">{title}</a>'
-    return (titlelink, date, end_time)
+    return (titlelink, date, platform, start_time, end_time)
 
 
 def make_index():

@@ -117,6 +117,7 @@
       </div>
       {% if 'start-time' in metadata %}
       <p>
+        Platform: {{ metadata.get('platform')}}<br>
         Run date: {{ metadata.get('date') }}<br>
         Start time (UTC): {{ metadata.get('start-time') }}<br>
         End time (UTC): {{ metadata.get('end-time') }}
