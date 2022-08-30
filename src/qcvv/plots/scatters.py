@@ -9,13 +9,13 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
     try:
         data_fast = Dataset.load_data(folder, routine, format, f"fast_sweep_q{qubit}")
     except:
-        data_fast = Dataset()
+        data_fast = Dataset(quantities={"frequency": "Hz"})
     try:
         data_precision = Dataset.load_data(
             folder, routine, format, f"precision_sweep_q{qubit}"
         )
     except:
-        data_precision = Dataset()
+        data_precision = Dataset(quantities={"frequency": "Hz"})
     fig = make_subplots(
         rows=1,
         cols=2,
