@@ -8,7 +8,7 @@ from qcvv.decorators import store
 
 
 @store
-def resonator_spectroscopy_(
+def resonator_spectroscopy(
     platform: AbstractPlatform,
     qubit,
     lowres_width,

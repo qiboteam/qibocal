@@ -28,7 +28,7 @@ def ro_pulse_phase(
         pulse_phase_start, pulse_phase_end, pulse_phase_step
     )
 
-    data = Dataset(name=f"data_q{qubit}", quantities={"RO_pulse_phase": "deg"})
+    data = Dataset(name=f"data_q{qubit}", quantities={"RO_pulse_phase": "rad"})
 
     count = 0
     for _ in range(software_averages):
@@ -36,15 +36,15 @@ def ro_pulse_phase(
             if count % points == 0:
                 yield data
             ro_pulse.phase = phase
-            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
+            msr, phase, i, q = platform.execute_pulse_sequence(sequence)[0][
                 ro_pulse.serial
             ]
             results = {
                 "MSR[V]": msr,
                 "i[V]": i,
                 "q[V]": q,
-                "phase[deg]": phase,
-                "RO_pulse_phase[deg]": phase,
+                "phase[rad]": phase,
+                "RO_pulse_phase[rad]": phase,
             }
             data.add(results)
             count += 1

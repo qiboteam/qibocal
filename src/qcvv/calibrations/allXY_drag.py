@@ -43,7 +43,7 @@ def allXY(
     gnd = complex(platform.characterization["single_qubit"][qubit]["state1_voltage"])
     exc = complex(platform.characterization["single_qubit"][qubit]["state0_voltage"])
     data = Dataset(
-        name=f"data_q{qubit}", quantities={"probability": "unit", "gateNumber": "unit"}
+        name=f"data_q{qubit}", quantities={"probability": "dimensionless", "gateNumber": "dimensionless"}
     )
 
     count = 0
@@ -56,7 +56,7 @@ def allXY(
                 platform, gates, qubit, beta_param
             )
             seq.add(ro_pulse)
-            msr, i, q, phase = platform.execute_pulse_sequence(seq, nshots=1024)[0][
+            msr, phase, i, q = platform.execute_pulse_sequence(seq, nshots=1024)[0][
                 ro_pulse.serial
             ]
             prob = np.abs(msr * 1e6 - gnd) / (exc - gnd)
@@ -65,9 +65,9 @@ def allXY(
                 "MSR[V]": msr,
                 "i[V]": i,
                 "q[V]": q,
-                "phase[deg]": phase,
-                "probability[unit]": prob,
-                "gateNumber[unit]": np.array(gateNumber),
+                "phase[rad]": phase,
+                "probability[dimensionless]": prob,
+                "gateNumber[dimensionless]": np.array(gateNumber),
             }
             data.add(results)
             count += 1
@@ -114,7 +114,7 @@ def allXY_iteration(
     exc = complex(platform.characterization["single_qubit"][qubit]["state0_voltage"])
     data = Dataset(
         name=f"data_q{qubit}",
-        quantities={"probability": "unit", "gateNumber": "unit", "beta_param": "unit"},
+        quantities={"probability": "", "gateNumber": "dimensionless", "beta_param": "dimensionless"},
     )
 
     count = 0
@@ -128,7 +128,7 @@ def allXY_iteration(
                     platform, gates, qubit, beta_param
                 )
                 seq.add(ro_pulse)
-                msr, i, q, phase = platform.execute_pulse_sequence(seq, nshots=1024)[0][
+                msr, phase, i, q = platform.execute_pulse_sequence(seq, nshots=1024)[0][
                     ro_pulse.serial
                 ]
                 prob = np.abs(msr * 1e6 - gnd) / (exc - gnd)
@@ -137,10 +137,10 @@ def allXY_iteration(
                     "MSR[V]": msr,
                     "i[V]": i,
                     "q[V]": q,
-                    "phase[deg]": phase,
-                    "probability[unit]": prob,
-                    "gateNumber[unit]": np.array(gateNumber),
-                    "beta_param[unit]": np.array(beta_param),
+                    "phase[rad]": phase,
+                    "probability[dimensionless]": prob,
+                    "gateNumber[dimensionless]": np.array(gateNumber),
+                    "beta_param[dimensionless]": np.array(beta_param),
                 }
                 data.add(results)
                 count += 1

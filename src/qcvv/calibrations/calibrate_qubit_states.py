@@ -32,21 +32,21 @@ def calibrate_qubit_states(
         - RX_pulse.frequency
     )
 
-    data_exc = Dataset(name=f"data_exc_q{qubit}", quantities={"iteration": "s"})
+    data_exc = Dataset(name=f"data_exc_q{qubit}", quantities={"iteration": "dimensionless"})
 
     count = 0
     for n in np.arange(niter):
         if count % points == 0:
             yield data_exc
-        msr, i, q, phase = platform.execute_pulse_sequence(exc_sequence, nshots=1)[0][
+        msr, phase, i, q = platform.execute_pulse_sequence(exc_sequence, nshots=1)[0][
             ro_pulse.serial
         ]
         results = {
             "MSR[V]": msr,
             "i[V]": i,
             "q[V]": q,
-            "phase[deg]": phase,
-            "iteration[s]": n,
+            "phase[rad]": phase,
+            "iteration[dimensionless]": n,
         }
         data_exc.add(results)
         count += 1
@@ -56,20 +56,20 @@ def calibrate_qubit_states(
     ro_pulse = platform.qubit_readout_pulse(qubit, start=0)
     gnd_sequence.add(ro_pulse)
 
-    data_gnd = Dataset(name=f"data_gnd_q{qubit}", quantities={"iteration": "s"})
+    data_gnd = Dataset(name=f"data_gnd_q{qubit}", quantities={"iteration": "dimensionless"})
     count = 0
     for n in np.arange(niter):
         if count % points == 0:
             yield data_gnd
-        msr, i, q, phase = platform.execute_pulse_sequence(gnd_sequence, nshots=1)[0][
+        msr, phase, i, q = platform.execute_pulse_sequence(gnd_sequence, nshots=1)[0][
             ro_pulse.serial
         ]
         results = {
             "MSR[V]": msr,
             "i[V]": i,
             "q[V]": q,
-            "phase[deg]": phase,
-            "iteration[s]": n,
+            "phase[rad]": phase,
+            "iteration[dimensionless]": n,
         }
         data_gnd.add(results)
         count += 1

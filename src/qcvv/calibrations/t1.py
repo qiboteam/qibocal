@@ -46,14 +46,14 @@ def t1(
             if count % points == 0:
                 yield data
             ro_pulse.start = qd_pulse.duration + wait
-            msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
+            msr, phase, i, q = platform.execute_pulse_sequence(sequence)[0][
                 ro_pulse.serial
             ]
             results = {
                 "MSR[V]": msr,
                 "i[V]": i,
                 "q[V]": q,
-                "phase[deg]": phase,
+                "phase[rad]": phase,
                 "Time[ns]": wait,
             }
             data.add(results)

@@ -71,14 +71,14 @@ def ramsey_frequency_detuned(
                 )
                 ro_pulse.start = RX90_pulse1.duration + RX90_pulse2.duration + wait
 
-                msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
+                msr, phase, i, q = platform.execute_pulse_sequence(sequence)[0][
                     ro_pulse.serial
                 ]
                 results = {
                     "MSR[V]": msr,
                     "i[V]": i,
                     "q[V]": q,
-                    "phase[deg]": phase,
+                    "phase[rad]": phase,
                     "wait[ns]": wait,
                     "t_max[ns]": t_max,
                 }

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-from qibolab.pulses import PulseSequence
+from qibolab.pulses import PulseSequence, Pulse
+from qibolab.symbolic import intSymbolicExpression as se_int
 
 from qcvv.data import Dataset
 from qcvv.decorators import store
@@ -62,49 +63,47 @@ def rabi_pulse_length(
     yield data
 
 
-# Not working with Qibolab currently
 
-# @store
-# def rabi_pulse_gain(
-#     platform,
-#     qubit,
-#     pulse_gain_start,
-#     pulse_gain_end,
-#     pulse_gain_step,
-#     software_averages,
-#     points=10,
-# ):
+@store
+def rabi_pulse_gain(
+    platform,
+    qubit,
+    pulse_gain_start,
+    pulse_gain_end,
+    pulse_gain_step,
+    software_averages,
+    points=10,
+):
 
-#     data = Dataset(name=f"data_q{qubit}", quantities={"gain": "db"})
+    data = Dataset(name=f"data_q{qubit}", quantities={"gain": "dimensionless"})
 
-#     sequence = PulseSequence()
-#     # qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=5000)
-#     qd_pulse = platform.create_RX_pulse(qubit, start=0)
-#     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=qd_pulse.duration)
-#     sequence.add(qd_pulse)
-#     sequence.add(ro_pulse)
+    sequence = PulseSequence()
+    qd_pulse: Pulse = platform.create_RX_pulse(qubit, start=0)
+    ro_pulse: Pulse = platform.create_qubit_readout_pulse(qubit, start=qd_pulse.finish)
+    sequence.add(qd_pulse)
+    sequence.add(ro_pulse)
 
-#     qd_pulse_gain_range = np.arange(pulse_gain_start, pulse_gain_end, pulse_gain_step)
+    qd_pulse_gain_range = np.arange(pulse_gain_start, pulse_gain_end, pulse_gain_step)
 
-#     count = 0
-#     for _ in range(software_averages):
-#         for gain in qd_pulse_gain_range:
-#             platform.qd_port[qubit].gain = gain
-#             if count % points == 0:
-#                 yield data
-#             msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
-#                 ro_pulse.serial
-#             ]
-#             results = {
-#                 "MSR[V]": msr,
-#                 "i[V]": i,
-#                 "q[V]": q,
-#                 "phase[rad]": phase,
-#                 "gain[db]": gain,
-#             }
-#             data.add(results)
-#             count += 1
-#     yield data
+    count = 0
+    for _ in range(software_averages):
+        for gain in qd_pulse_gain_range:
+            platform.qd_port[qubit].gain = gain
+            if count % points == 0:
+                yield data
+            msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
+                ro_pulse.serial
+            ]
+            results = {
+                "MSR[V]": msr,
+                "i[V]": i,
+                "q[V]": q,
+                "phase[rad]": phase,
+                "gain[dimensionless]": gain,
+            }
+            data.add(results)
+            count += 1
+    yield data
 
 
 @store
@@ -119,7 +118,7 @@ def rabi_pulse_amplitude(
 ):
     platform.reload_settings()
     
-    data = Dataset(name=f"data_q{qubit}", quantities={"amplitude": "db"})
+    data = Dataset(name=f"data_q{qubit}", quantities={"amplitude": "dimensionless"})
 
     sequence = PulseSequence()
     # qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=5000)
@@ -156,7 +155,7 @@ def rabi_pulse_amplitude(
                 "i[V]": i,
                 "q[V]": q,
                 "phase[rad]": phase,
-                "amplitude[db]": amplitude,
+                "amplitude[dimensionless]": amplitude,
             }
             data.add(results)
             count += 1
@@ -178,7 +177,7 @@ def rabi_pulse_amplitude(
 #     points=10,
 # ):
 
-#     data = Dataset(name=f"data_q{qubit}", quantities={"duration": "ns", "gain": "db"})
+#     data = Dataset(name=f"data_q{qubit}", quantities={"duration": "ns", "gain": "dimensionless"})
 
 #     sequence = PulseSequence()
 #     qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
@@ -217,7 +216,7 @@ def rabi_pulse_amplitude(
 #                     "q[V]": q,
 #                     "phase[rad]": phase,
 #                     "duration[ns]": duration,
-#                     "gain[db]": gain,
+#                     "gain[dimensionless]": gain,
 #                 }
 #                 data.add(results)
 #                 count += 1
@@ -241,7 +240,7 @@ def rabi_pulse_length_and_amplitude(
     platform.reload_settings()
     
     data = Dataset(
-        name=f"data_q{qubit}", quantities={"duration": "ns", "amplitude": "V"}
+        name=f"data_q{qubit}", quantities={"duration": "ns", "amplitude": "dimensionless"}
     )
 
     sequence = PulseSequence()
@@ -285,7 +284,7 @@ def rabi_pulse_length_and_amplitude(
                     "q[V]": q,
                     "phase[rad]": phase,
                     "duration[ns]": duration,
-                    "amplitude[V]": amplitude,
+                    "amplitude[dimensionless]": amplitude,
                 }
                 data.add(results)
                 count += 1
