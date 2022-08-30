@@ -6,6 +6,7 @@ import inspect
 import os
 import pathlib
 import shutil
+import socket
 import subprocess
 import uuid
 import socket
@@ -21,9 +22,9 @@ CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
 # options for report upload
 UPLOAD_HOST = (
-    "qcvv@" + "localhost"
+    "qcvv@localhost"
     if socket.gethostname() == "saadiyat"
-    else "login.qrccluster.com"
+    else "qcvv@login.qrccluster.com"
 )
 TARGET_DIR = "qcvv-reports/"
 ROOT_URL = "http://login.qrccluster.com:9000/"
@@ -174,6 +175,7 @@ class ActionBuilder:
 
         # Saving runcard
         self.save_runcards(path, runcard)
+        self.save_meta(path, self.folder)
 
     @staticmethod
     def _generate_output_folder(folder, force):
@@ -215,19 +217,24 @@ class ActionBuilder:
 
     def save_runcards(self, path, runcard):
         """Save the output runcards."""
-        import qibo
-        import qibolab
         from qibolab.paths import qibolab_folder
-
-        import qcvv
 
         platform_runcard = (
             qibolab_folder / "runcards" / f"{self.runcard['platform']}.yml"
         )
         shutil.copy(platform_runcard, f"{path}/platform.yml")
+        shutil.copy(runcard, f"{path}/runcard.yml")
+
+    def save_meta(self, path, folder):
+        """Save the metadata."""
+        import qibo
+        import qibolab
+
+        import qcvv
 
         e = datetime.datetime.now(datetime.timezone.utc)
         meta = {}
+        meta["title"] = folder
         meta["date"] = e.strftime("%Y-%m-%d")
         meta["start-time"] = e.strftime("%H:%M:%S")
         meta["end-time"] = e.strftime("%H:%M:%S")
@@ -238,8 +245,6 @@ class ActionBuilder:
         }
         with open(f"{path}/meta.yml", "w") as file:
             yaml.dump(meta, file)
-
-        shutil.copy(runcard, f"{path}/runcard.yml")
 
     def _build_single_action(self, name):
         """Helper method to parse the actions in the runcard."""
