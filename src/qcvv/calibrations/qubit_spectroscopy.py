@@ -8,7 +8,6 @@ from qcvv.data import Dataset
 from qcvv.decorators import plot, store
 
 
-@store
 @plot("MSR and Phase vs Frequency", plots.frequency_msr_phase__fast_precision)
 def qubit_spectroscopy(
     platform,
@@ -111,7 +110,6 @@ def qubit_spectroscopy(
     # return qubit_freq, avg_voltage, peak_voltage, dataset
 
 
-@store
 @plot("MSR and Phase vs Frequency", plots.frequency_flux_msr_phase)
 def qubit_spectroscopy_flux(
     platform,

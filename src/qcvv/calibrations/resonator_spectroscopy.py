@@ -8,8 +8,6 @@ from qcvv.data import Dataset
 from qcvv.decorators import plot, store
 
 
-# @fit
-@store
 @plot("MSR and Phase vs Frequency", plots.frequency_msr_phase__fast_precision)
 def resonator_spectroscopy(
     platform,
@@ -96,7 +94,6 @@ def resonator_spectroscopy(
     yield prec_data
 
 
-@store
 @plot("Frequency vs Attenuation", plots.frequency_attenuation_msr_phase)
 @plot("MSR vs Frequency", plots.frequency_attenuation_msr_phase__cut)
 def resonator_punchout(
@@ -151,7 +148,6 @@ def resonator_punchout(
     yield data
 
 
-@store
 @plot("MSR and Phase vs Flux Current", plots.frequency_flux_msr_phase)
 def resonator_spectroscopy_flux(
     platform,
