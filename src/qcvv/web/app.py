@@ -20,7 +20,7 @@ app = Dash(
 app.layout = html.Div(
     [
         dcc.Location(id="url", refresh=False),
-        dcc.Graph(id="graph"),
+        dcc.Graph(id="graph", figure={}),
         dcc.Interval(
             id="interval",
             # TODO: Perhaps the user should be allowed to change the refresh rate
@@ -39,25 +39,22 @@ app.layout = html.Div(
     Input("url", "pathname"),
 )
 def get_graph(n, current_figure, url):
-    path = os.path.join(*url.split("/")[2:])
-    folder, format = os.path.split(path)
-    folder, method = os.path.split(folder)
-    folder, routine = os.path.split(folder)
-    folder, _ = os.path.split(folder)
+    method, folder, routine, qubit, format = url.split(os.sep)[2:]
     try:
-        data = Dataset.load_data(folder, routine, format, "precision_sweep")
-        with open(f"{folder}/platform.yml", "r") as f:
-            nqubits = yaml.safe_load(f)["nqubits"]
-        if len(data) > 2:
-            params, fit = resonator_spectroscopy_fit(folder, format, nqubits)
-        else:
-            params, fit = None, None
-        return getattr(plots.resonator_spectroscopy, method)(data, params, fit)
+        # data = Dataset.load_data(folder, routine, format, "precision_sweep")
+        # with open(f"{folder}/platform.yml", "r") as f:
+        #     nqubits = yaml.safe_load(f)["nqubits"]
+        # if len(data) > 2:
+        #     params, fit = resonator_spectroscopy_fit(folder, format, nqubits)
+        # else:
+        #     params, fit = None, None
+        # return getattr(plots.resonator_spectroscopy, method)(data, params, fit)
 
-        # FIXME: Temporarily hardcode the plotting method to test
-        # multiple routines with different names in one folder
-        # should be changed to:
-        # return getattr(getattr(plots, routine), method)(data)
+        # # FIXME: Temporarily hardcode the plotting method to test
+        # # multiple routines with different names in one folder
+        # # should be changed to:
+        # # return getattr(getattr(plots, routine), method)(data)
 
+        return getattr(plots, method)(folder, routine, qubit, format)
     except (FileNotFoundError, pd.errors.EmptyDataError):
         return current_figure

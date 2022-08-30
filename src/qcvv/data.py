@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Implementation of Dataset class to store measurements."""
 from dataclasses import dataclass
+
 import pandas as pd
 import pint_pandas
 
@@ -21,7 +22,7 @@ class Dataset:
     def __init__(self, name=None, quantities=None):
 
         if name is None:
-            self.name = 'data'
+            self.name = "data"
         else:
             self.name = name
 
