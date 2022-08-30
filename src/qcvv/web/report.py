@@ -58,5 +58,5 @@ def create_report(path):
         plotters=plotters,
     )
 
-    with open(os.path.join(path, "report.html"), "w") as file:
+    with open(os.path.join(path, "index.html"), "w") as file:
         file.write(report)
