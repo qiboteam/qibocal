@@ -8,11 +8,17 @@ resonator_spectroscopy:
 resonator_spectroscopy_flux:
     MSR and Phase vs Flux Current: frequency_flux_msr_phase
 
+resonator_spectroscopy_optimize:
+    MSR and Phase vs Frequency: frequency_msr_phase
+
 qubit_spectroscopy:
     MSR and Phase vs Frequency: frequency_msr_phase__fast_precision
 
 qubit_spectroscopy_flux:
     MSR and Phase vs Flux Current: frequency_flux_msr_phase
+
+qubit_spectroscopy_optimize:
+    MSR and Phase vs Frequency: frequency_msr_phase
 
 rabi_pulse_length:
     MSR vs Time: time_msr_phase

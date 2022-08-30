@@ -106,6 +106,53 @@ def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
     )
     return fig
 
+def frequency_msr_phase(folder, routine, qubit, format):
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        subplot_titles=(
+            "MSR (V)",
+            "phase (rad)",
+        ),
+    )
+    import os.path
+    file = f"{folder}/data/{routine}/data_q{qubit}.csv"
+    if os.path.exists(file):
+        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+        data.df.sort_values(by='frequency', inplace=True)
+        fig.add_trace(
+            go.Scatter(
+                x=data.get_values("frequency", "Hz"),
+                y=data.get_values("MSR", "uV"),
+                name="MSR",
+                mode='lines+markers',
+                marker=dict(size=5, color="LightSeaGreen"),
+            ),
+            row=1,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=data.get_values("frequency", "Hz"),
+                y=data.get_values("phase", "rad"),
+                name="phase",
+                mode='lines+markers',
+                marker=dict(size=5, color="LightSeaGreen"),
+            ),
+            row=1,
+            col=2,
+        )
+
+    fig.update_layout(
+        showlegend=False,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting,
+        xaxis_title="Frequency (GHz)",
+        yaxis_title="MSR (V)",
+    )
+    return fig
+
 
 # For Rabi oscillations
 def time_msr_phase(folder, routine, qubit, format):
