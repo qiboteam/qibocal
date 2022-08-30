@@ -34,3 +34,21 @@ rabi_pulse_length_and_gain:
 
 rabi_pulse_length_and_amplitude:
     MSR vs length and amplitude: duration_amplitude_msr_phase
+
+t1:
+    MSR vs Time: time_msr_phase
+
+ro_pulse_phase:
+    MSR vs RO phase: ro_phase_msr
+
+ramsey_frequency_detuned:
+    MSR vs Time: time_msr
+
+calibrate_qubit_states:
+    exc vs gnd: exc_gnd
+
+allXY:
+    Prob vs gate sequence: prob_gate
+
+allXY_iteration:
+    Prob vs gate sequence: prob_gate_iteration

@@ -1,0 +1,17 @@
+platform: tii5q
+
+qubits: [1, 2, 3, 4]
+
+format: csv
+
+actions:
+  qubit_spectroscopy:
+    fast_start: -30_000_000
+    fast_end: 30_000_000
+    fast_step: 500_000
+    precision_start: -100_000
+    precision_end: 100_000
+    precision_step: 50_000
+    software_averages: 1
+    attenuation: 50
+    points: 1

@@ -1,0 +1,13 @@
+platform: tii1q
+
+qubits: [0]
+
+format: csv
+
+actions:
+  ro_pulse_phase:
+    pulse_phase_start: 0
+    pulse_phase_end: 6.28318
+    pulse_phase_step: 0.1
+    software_averages: 1
+    points: 10

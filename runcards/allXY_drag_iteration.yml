@@ -1,0 +1,13 @@
+platform: tii1q
+
+qubits: [0]
+
+format: csv
+
+actions:
+  allXY_iteration:
+    beta_start: -1
+    beta_end: 1
+    beta_step: 0.2
+    software_averages: 1
+    points: 1
