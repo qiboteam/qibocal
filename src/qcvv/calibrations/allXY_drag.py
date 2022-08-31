@@ -15,6 +15,8 @@ def allXY(
     software_averages=1,
     points=10,
 ):
+    platform.reload_settings()
+
     # allXY rotations
     gatelist = [
         ["I", "I"],
@@ -85,6 +87,8 @@ def allXY_iteration(
     software_averages=1,
     points=10,
 ):
+    platform.reload_settings()
+    
     # allXY rotations
     gatelist = [
         ["I", "I"],
@@ -114,7 +118,7 @@ def allXY_iteration(
     exc = complex(platform.characterization["single_qubit"][qubit]["state0_voltage"])
     data = Dataset(
         name=f"data_q{qubit}",
-        quantities={"probability": "", "gateNumber": "dimensionless", "beta_param": "dimensionless"},
+        quantities={"probability": "dimensionless", "gateNumber": "dimensionless", "beta_param": "dimensionless"},
     )
 
     count = 0
