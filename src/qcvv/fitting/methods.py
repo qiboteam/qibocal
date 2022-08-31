@@ -4,11 +4,11 @@ import lmfit
 import numpy as np
 import yaml
 
-from qcvv.data import Dataset
+from qcvv.data import Data
 from qcvv.fitting.utils import lorenzian, parse
 
 
-def lorentzian_fit(data, x, y, nqubits):
+def lorentzian_fit(data, x, y, qubit, nqubits):
     """Fitting routine for resonator spectroscopy"""
 
     frequencies = data.get_values(*parse(x))
@@ -57,9 +57,9 @@ def lorentzian_fit(data, x, y, nqubits):
         + fit_res.best_values["offset"]
     )
 
-    data_fit = Dataset(
-        name="fit",
-        options=[
+    data_fit = Data(
+        name=f"fit_q{qubit}",
+        quantities=[
             "fit_amplitude",
             "fit_center",
             "fit_sigma",
@@ -68,9 +68,8 @@ def lorentzian_fit(data, x, y, nqubits):
             "resonator_freq",
         ],
     )
-    data_fit.remove_quantities()
 
-    peak_voltage *= 1e6
+    # peak_voltage *= 1e6
 
     resonator_freq = f0
 

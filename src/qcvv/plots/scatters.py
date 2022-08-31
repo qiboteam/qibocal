@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
+import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from qcvv.data import Dataset
+from qcvv.data import Data, Dataset
+from qcvv.fitting.utils import lorenzian
 
 
 def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
@@ -16,6 +18,11 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
         )
     except:
         data_precision = Dataset(quantities={"frequency": "Hz"})
+    try:
+        data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
+    except:
+        data_fit = Data()
+
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -63,6 +70,28 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
         row=1,
         col=2,
     )
+    if len(data_fast) > 0:
+        freqrange = np.linspace(
+            min(data_fast.get_values("frequency", "GHz")),
+            max(data_fast.get_values("frequency", "GHz")),
+            20,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=freqrange,
+                y=lorenzian(
+                    freqrange,
+                    data_fit.df["fit_amplitude"][0],
+                    data_fit.df["fit_center"][0],
+                    data_fit.df["fit_sigma"][0],
+                    data_fit.df["fit_offset"][0],
+                ),
+                name="Fit",
+                line=go.scatter.Line(dash="dot"),
+            ),
+            row=1,
+            col=1,
+        )
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting

@@ -41,8 +41,15 @@ def resonator_spectroscopy(
     count = 0
     for _ in range(1):
         for freq in freqrange:
-            if count % points == 0:
+            if count % points == 0 and count > 0:
                 yield data
+                yield lorentzian_fit(
+                    data,
+                    x="frequency[GHz]",
+                    y="MSR[uV]",
+                    qubit=qubit,
+                    nqubits=platform.settings["nqubits"],
+                )
 
             platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
             msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
@@ -81,7 +88,11 @@ def resonator_spectroscopy(
             if count % points == 0 and count > 0:
                 yield prec_data
                 yield lorentzian_fit(
-                    prec_data, x="frequency[Hz]", y="MSR[V]", nqubits=1
+                    prec_data,
+                    x="frequency[GHz]",
+                    y="MSR[uV]",
+                    qubit=qubit,
+                    nqubits=platform.settings["nqubits"],
                 )
 
             platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
