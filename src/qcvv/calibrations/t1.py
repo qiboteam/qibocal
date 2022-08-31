@@ -19,8 +19,8 @@ def t1(
 ):
 
     sequence = PulseSequence()
-    qd_pulse = platform.RX_pulse(qubit, start=0)
-    ro_pulse = platform.qubit_readout_pulse(qubit, start=qd_pulse.duration)
+    qd_pulse = platform.create_RX_pulse(qubit, start=0)
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=qd_pulse.duration)
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
 
@@ -46,7 +46,7 @@ def t1(
             if count % points == 0:
                 yield data
             ro_pulse.start = qd_pulse.duration + wait
-            msr, phase, i, q = platform.execute_pulse_sequence(sequence)[0][
+            msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
                 ro_pulse.serial
             ]
             results = {

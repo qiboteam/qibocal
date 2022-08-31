@@ -17,8 +17,8 @@ def calibrate_qubit_states(
 
     # create exc sequence
     exc_sequence = PulseSequence()
-    RX_pulse = platform.RX_pulse(qubit, start=0)
-    ro_pulse = platform.qubit_readout_pulse(qubit, start=RX_pulse.duration)
+    RX_pulse = platform.create_RX_pulse(qubit, start=0)
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=RX_pulse.duration)
     exc_sequence.add(RX_pulse)
     exc_sequence.add(ro_pulse)
 
@@ -38,7 +38,7 @@ def calibrate_qubit_states(
     for n in np.arange(niter):
         if count % points == 0:
             yield data_exc
-        msr, phase, i, q = platform.execute_pulse_sequence(exc_sequence, nshots=1)[0][
+        msr, phase, i, q = platform.execute_pulse_sequence(exc_sequence, nshots=1)[
             ro_pulse.serial
         ]
         results = {
@@ -53,7 +53,7 @@ def calibrate_qubit_states(
     yield data_exc
 
     gnd_sequence = PulseSequence()
-    ro_pulse = platform.qubit_readout_pulse(qubit, start=0)
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
     gnd_sequence.add(ro_pulse)
 
     data_gnd = Dataset(name=f"data_gnd_q{qubit}", quantities={"iteration": "dimensionless"})
@@ -61,7 +61,7 @@ def calibrate_qubit_states(
     for n in np.arange(niter):
         if count % points == 0:
             yield data_gnd
-        msr, phase, i, q = platform.execute_pulse_sequence(gnd_sequence, nshots=1)[0][
+        msr, phase, i, q = platform.execute_pulse_sequence(gnd_sequence, nshots=1)[
             ro_pulse.serial
         ]
         results = {

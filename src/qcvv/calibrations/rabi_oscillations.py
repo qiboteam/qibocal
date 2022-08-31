@@ -162,66 +162,65 @@ def rabi_pulse_amplitude(
     yield data
 
 
-# Not working with current qibolab
-# @store
-# def rabi_pulse_length_and_gain(
-#     platform,
-#     qubit,
-#     pulse_duration_start,
-#     pulse_duration_end,
-#     pulse_duration_step,
-#     pulse_gain_start,
-#     pulse_gain_end,
-#     pulse_gain_step,
-#     software_averages,
-#     points=10,
-# ):
+@store
+def rabi_pulse_length_and_gain(
+    platform,
+    qubit,
+    pulse_duration_start,
+    pulse_duration_end,
+    pulse_duration_step,
+    pulse_gain_start,
+    pulse_gain_end,
+    pulse_gain_step,
+    software_averages,
+    points=10,
+):
 
-#     data = Dataset(name=f"data_q{qubit}", quantities={"duration": "ns", "gain": "dimensionless"})
+    data = Dataset(name=f"data_q{qubit}", quantities={"duration": "ns", "gain": "dimensionless"})
 
-#     sequence = PulseSequence()
-#     qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
-#     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=4)
-#     sequence.add(qd_pulse)
-#     sequence.add(ro_pulse)
+    sequence = PulseSequence()
+    qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=4)
+    sequence.add(qd_pulse)
+    sequence.add(ro_pulse)
 
-#     qd_pulse_duration_range = np.arange(
-#         pulse_duration_start, pulse_duration_end, pulse_duration_step
-#     )
-#     qd_pulse_gain_range = np.arange(pulse_gain_start, pulse_gain_end, pulse_gain_step)
+    qd_pulse_duration_range = np.arange(
+        pulse_duration_start, pulse_duration_end, pulse_duration_step
+    )
+    qd_pulse_gain_range = np.arange(pulse_gain_start, pulse_gain_end, pulse_gain_step)
 
-#     # FIXME: Waiting to be able to pass qpucard to qibolab
-#     platform.ro_port[qubit].lo_frequency = (
-#         platform.characterization["single_qubit"][qubit]["resonator_freq"] - ro_pulse.frequency
-#     )
-#     platform.qd_port[qubit].lo_frequency = (
-#         platform.characterization["single_qubit"][qubit]["qubit_freq"] - qd_pulse.frequency
-#     )
+    # FIXME: Waiting to be able to pass qpucard to qibolab
+    platform.ro_port[qubit].lo_frequency = (
+        platform.characterization["single_qubit"][qubit]["resonator_freq"] - ro_pulse.frequency
+    )
+    platform.qd_port[qubit].lo_frequency = (
+        platform.characterization["single_qubit"][qubit]["qubit_freq"] - qd_pulse.frequency
+    )
 
-#     count = 0
-#     for _ in range(software_averages):
-#         for duration in qd_pulse_duration_range:
-#             qd_pulse.duration = duration
-#             ro_pulse.start = duration
-#             for gain in qd_pulse_gain_range:
-#                 platform.qd_port[qubit].gain = gain
-#                 if count % points == 0:
-#                     yield data
-#                 msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
-#                     ro_pulse.serial
-#                 ]
-#                 results = {
-#                     "MSR[V]": msr,
-#                     "i[V]": i,
-#                     "q[V]": q,
-#                     "phase[rad]": phase,
-#                     "duration[ns]": duration,
-#                     "gain[dimensionless]": gain,
-#                 }
-#                 data.add(results)
-#                 count += 1
+    count = 0
+    for _ in range(software_averages):
+        for duration in qd_pulse_duration_range:
+            qd_pulse.duration = duration
+            ro_pulse.start = duration
+            for gain in qd_pulse_gain_range:
+                platform.qd_port[qubit].gain = gain
+                if count % points == 0:
+                    yield data
+                msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
+                    ro_pulse.serial
+                ]
+                results = {
+                    "MSR[V]": msr,
+                    "i[V]": i,
+                    "q[V]": q,
+                    "phase[rad]": phase,
+                    "duration[ns]": duration,
+                    "gain[dimensionless]": gain,
+                }
+                data.add(results)
+                count += 1
 
-#     yield data
+    yield data
 
 
 @store

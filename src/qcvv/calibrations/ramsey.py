@@ -14,15 +14,12 @@ def ramsey_frequency_detuned(
 
     sampling_rate = platform.sampling_rate
 
-    RX90_pulse1 = platform.RX90_pulse(qubit, start=0)
-    RX90_pulse2 = platform.RX90_pulse(
+    RX90_pulse1 = platform.create_RX90_pulse(qubit, start=0)
+    RX90_pulse2 = platform.create_RX90_pulse(
         qubit,
-        start=RX90_pulse1.duration,
-        phase=(RX90_pulse1.duration / sampling_rate)
-        * (2 * np.pi)
-        * (RX90_pulse1.frequency),
+        start=RX90_pulse1.duration
     )
-    ro_pulse = platform.qubit_readout_pulse(
+    ro_pulse = platform.create_qubit_readout_pulse(
         qubit, start=RX90_pulse1.duration + RX90_pulse2.duration
     )
     sequence = PulseSequence()
@@ -64,14 +61,14 @@ def ramsey_frequency_detuned(
                     yield data
 
                 RX90_pulse2.start = RX90_pulse1.duration + wait
-                RX90_pulse2.phase = (
+                RX90_pulse2.relative_phase = (
                     (RX90_pulse2.start / sampling_rate)
                     * (2 * np.pi)
                     * (RX90_pulse2.frequency - offset_freq)
                 )
                 ro_pulse.start = RX90_pulse1.duration + RX90_pulse2.duration + wait
 
-                msr, phase, i, q = platform.execute_pulse_sequence(sequence)[0][
+                msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
                     ro_pulse.serial
                 ]
                 results = {
