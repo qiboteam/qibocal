@@ -213,7 +213,7 @@ def gain_msr_phase(folder, routine, qubit, format):
 
     fig.add_trace(
         go.Scatter(
-            x=data.get_values("gain", "unit"),
+            x=data.get_values("gain", "dimensionless"),
             y=data.get_values("MSR", "uV"),
         ),
         row=1,
@@ -244,7 +244,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
 
     fig.add_trace(
         go.Scatter(
-            x=data.get_values("amplitude", "unit"),
+            x=data.get_values("amplitude", "dimensionless"),
             y=data.get_values("MSR", "uV"),
         ),
         row=1,
@@ -417,8 +417,8 @@ def prob_gate(folder, routine, qubit, format):
 
     fig.add_trace(
         go.Scatter(
-            x=data.get_values("gateNumber", "unit"),
-            y=data.get_values("probability", "unit"),
+            x=data.get_values("gateNumber", "dimensionless"),
+            y=data.get_values("probability", "dimensionless"),
             mode="markers",
             name="Probabilities",
         ),
@@ -445,16 +445,16 @@ def prob_gate_iteration(folder, routine, qubit, format):
         subplot_titles=(f"allXY_qubit{qubit}",),
     )
 
-    gates = len(data.get_values("gateNumber", "unit"))
+    gates = len(data.get_values("gateNumber", "dimensionless"))
     # print(gates)
     import numpy as np
 
     for n in range(gates // 21):
         data_start = n * 21
         data_end = data_start + 21
-        beta_param = np.array(data.get_values("beta_param", "unit"))[data_start]
-        gates = np.array(data.get_values("gateNumber", "unit"))[data_start:data_end]
-        probabilities = np.array(data.get_values("probability", "unit"))[
+        beta_param = np.array(data.get_values("beta_param", "dimensionless"))[data_start]
+        gates = np.array(data.get_values("gateNumber", "dimensionless"))[data_start:data_end]
+        probabilities = np.array(data.get_values("probability", "dimensionless"))[
             data_start:data_end
         ]
         c = "#" + "{:06x}".format(n * 823000)
