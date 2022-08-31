@@ -8,6 +8,7 @@ import yaml
 
 from qcvv import calibrations
 from qcvv.config import log, raise_error
+from qcvv.data import Data
 
 
 def load_yaml(path):
@@ -135,6 +136,24 @@ class ActionBuilder:
                 )
             for data in results:
                 getattr(data, f"to_{self.format}")(path)
+
+            self.update_platform_runcard(qubit, routine.__name__)
+
+    def update_platform_runcard(self, qubit, routine):
+
+        data_fit = Data.load_data(self.folder, routine, self.format, f"fit_q{qubit}")
+        params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
+        settings = load_yaml(f"{self.folder}/platform.yml")
+
+        for param in params:
+            settings["characterization"]["single_qubit"][qubit][param] = int(
+                data_fit.df[param][0]
+            )
+
+        with open(f"{self.folder}/data/{routine}/platform.yml", "a+") as file:
+            yaml.dump(
+                settings, file, sort_keys=False, indent=4, default_flow_style=None
+            )
 
     def dump_report(self):
         from qcvv.web.report import create_report

@@ -98,7 +98,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
                 x=0,
                 y=-0.25,
                 showarrow=False,
-                text=f"The estimated resonator frequency is {data_fit.df['resonator_freq'][0]:.6f} GHz.",
+                text=f"The estimated resonator frequency is {data_fit.df['resonator_freq'][0]:.1f} Hz.",
                 textangle=0,
                 xanchor="left",
                 xref="paper",

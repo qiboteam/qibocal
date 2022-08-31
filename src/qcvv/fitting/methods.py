@@ -71,7 +71,7 @@ def lorentzian_fit(data, x, y, qubit, nqubits):
 
     # peak_voltage *= 1e6
 
-    resonator_freq = f0
+    resonator_freq = f0 * 1e6
 
     data_fit.add(
         {
