@@ -1,6 +1,6 @@
 platform: tii5q
 
-qubit: 1
+qubits: [0, 1, 2]
 
 format: csv
 
