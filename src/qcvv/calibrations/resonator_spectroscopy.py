@@ -6,6 +6,7 @@ from qcvv import plots
 from qcvv.calibrations.utils import variable_resolution_scanrange
 from qcvv.data import Dataset
 from qcvv.decorators import plot
+from qcvv.fitting.methods import lorentzian_fit
 
 
 @plot("MSR and Phase vs Frequency", plots.frequency_msr_phase__fast_precision)
@@ -42,6 +43,7 @@ def resonator_spectroscopy(
         for freq in freqrange:
             if count % points == 0:
                 yield data
+
             platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
             msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
                 ro_pulse.serial
@@ -76,8 +78,12 @@ def resonator_spectroscopy(
     count = 0
     for _ in range(software_averages):
         for freq in freqrange:
-            if count % points == 0:
+            if count % points == 0 and count > 0:
                 yield prec_data
+                yield lorentzian_fit(
+                    prec_data, x="frequency[Hz]", y="MSR[V]", nqubits=1
+                )
+
             platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
             msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
                 ro_pulse.serial

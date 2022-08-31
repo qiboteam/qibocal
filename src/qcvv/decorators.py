@@ -5,28 +5,6 @@ import os
 from qcvv.config import raise_error
 
 
-def fitting_routine(routine, folder, format, nqubits):
-    """Helper function to call the fitting methods"""
-    from qcvv.fitting import methods
-
-    res, fitted = getattr(methods, f"{routine.__name__}_fit")(folder, format, nqubits)
-    return res, fitted
-
-
-def update_routine(routine, folder, qubit, res, fitted):
-    """Helper function to update the platform runcard."""
-    from qcvv.fitting import update
-
-    getattr(update, f"{routine.__name__}_update")(folder, qubit, res, fitted)
-
-
-def fit(f):
-    """Decorator fitting data and updating the platform runcard."""
-    f.post_processing = fitting_routine
-    f.update = update_routine
-    return f
-
-
 def plot(header, method):
     """Decorator for adding plots in the report and live plotting page.
 

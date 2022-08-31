@@ -5,18 +5,14 @@ import numpy as np
 import yaml
 
 from qcvv.data import Dataset
-from qcvv.fitting.utils import lorenzian
+from qcvv.fitting.utils import lorenzian, parse
 
 
-def resonator_spectroscopy_fit(folder, format, nqubits):
+def lorentzian_fit(data, x, y, nqubits):
     """Fitting routine for resonator spectroscopy"""
 
-    data = Dataset.load_data(
-        folder, "resonator_spectroscopy", format, "precision_sweep"
-    )
-
-    voltages = data.get_values("MSR", "V")
-    frequencies = data.get_values("frequency", "Hz")
+    frequencies = data.get_values(*parse(x))
+    voltages = data.get_values(*parse(y))
 
     # Create a lmfit model for fitting equation defined in resonator_peak
     model_Q = lmfit.Model(lorenzian)
@@ -60,22 +56,48 @@ def resonator_spectroscopy_fit(folder, format, nqubits):
         fit_res.best_values["amplitude"] / (fit_res.best_values["sigma"] * np.pi)
         + fit_res.best_values["offset"]
     )
+
+    data_fit = Dataset(
+        name="fit",
+        options=[
+            "fit_amplitude",
+            "fit_center",
+            "fit_sigma",
+            "fit_offset",
+            "peak_voltage",
+            "resonator_freq",
+        ],
+    )
+    data_fit.remove_quantities()
+
     peak_voltage *= 1e6
 
     resonator_freq = f0
 
-    params = resonator_freq, peak_voltage
+    data_fit.add(
+        {
+            "peak_voltage": peak_voltage,
+            "resonator_freq": resonator_freq,
+            "fit_amplitude": fit_res.best_values["amplitude"],
+            "fit_center": fit_res.best_values["center"],
+            "fit_sigma": fit_res.best_values["sigma"],
+            "fit_offset": fit_res.best_values["offset"],
+        }
+    )
+    return data_fit
 
-    for keys in fit_res.best_values:
-        fit_res.best_values[keys] = float(fit_res.best_values[keys])
+    # params = resonator_freq, peak_voltage
 
-    with open(f"{folder}/data/resonator_spectroscopy/fit.yml", "w+") as file:
-        yaml.dump(
-            fit_res.best_values,
-            file,
-            sort_keys=False,
-            indent=4,
-            default_flow_style=None,
-        )
+    # for keys in fit_res.best_values:
+    #     fit_res.best_values[keys] = float(fit_res.best_values[keys])
 
-    return params, fit_res.best_values
+    # with open(f"{folder}/data/resonator_spectroscopy/fit.yml", "w+") as file:
+    #     yaml.dump(
+    #         fit_res.best_values,
+    #         file,
+    #         sort_keys=False,
+    #         indent=4,
+    #         default_flow_style=None,
+    #     )
+
+    # return params, fit_res.best_values

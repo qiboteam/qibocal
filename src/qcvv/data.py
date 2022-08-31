@@ -19,7 +19,7 @@ class Dataset:
                         quantities and the corresponding values are the units of measure.
     """
 
-    def __init__(self, name=None, quantities=None):
+    def __init__(self, name=None, quantities=None, options=None):
 
         if name is None:
             self.name = "data"
@@ -34,10 +34,16 @@ class Dataset:
                 "phase": pd.Series(dtype="pint[deg]"),
             }
         )
-
+        self.quantities = {"MSR": "V", "i": "V", "q": "V", "phase": "deg"}
+        self.options = None
         if quantities is not None:
+            self.quantities.update(quantities)
             for name, unit in quantities.items():
                 self.df.insert(0, name, pd.Series(dtype=f"pint[{unit}]"))
+        if options is not None:
+            self.options = options
+            for name in options:
+                self.df.insert(0, name, pd.Series())
 
     def add(self, data):
         """Add a row to dataset.
@@ -54,10 +60,18 @@ class Dataset:
         ureg = UnitRegistry()
         l = len(self)
         for key, value in data.items():
-            name = key.split("[")[0]
-            unit = re.search(r"\[([A-Za-z0-9_]+)\]", key).group(1)
-            # TODO: find a better way to do this
-            self.df.loc[l + l // len(list(data.keys())), name] = value * ureg(unit)
+            if "[" not in key:
+                self.df.loc[l, key] = value
+            else:
+                name = key.split("[")[0]
+                unit = re.search(r"\[([A-Za-z0-9_]+)\]", key).group(1)
+                # TODO: find a better way to do this
+                self.df.loc[l, name] = value * ureg(unit)
+
+    def remove_quantities(self):
+        """Auxiliary method to remove columns with Pulse Sequence output."""
+        self.df = self.df.drop(list(self.quantities.keys()), axis=1)
+        self.quantities = None
 
     def get_values(self, quantity, unit):
         """Get values of a quantity in specified units.
@@ -106,7 +120,10 @@ class Dataset:
 
         Args:
             path (str): Path containing output folder."""
-        self.df.pint.dequantify().to_csv(f"{path}/{self.name}.csv")
+        if self.quantities == None:
+            self.df.to_csv(f"{path}/{self.name}.csv")
+        else:
+            self.df.pint.dequantify().to_csv(f"{path}/{self.name}.csv")
 
     def to_pickle(self, path):
         """Save data in pickel file.

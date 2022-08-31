@@ -7,7 +7,6 @@ from dash import Dash, Input, Output, dcc, html
 
 from qcvv import plots
 from qcvv.data import Dataset
-from qcvv.fitting.methods import resonator_spectroscopy_fit
 from qcvv.web.server import server
 
 Dataset()  # dummy dataset call to suppress ``pint[V]`` error
