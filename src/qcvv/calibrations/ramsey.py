@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-from qibolab.pulses import PulseSequence
-
+from qibolab.pulses import PulseSequence, Pulse
+from qibolab.platforms.abstract import AbstractPlatform
 from qcvv.calibrations.utils import variable_resolution_scanrange
 from qcvv.data import Dataset
 from qcvv.decorators import store
@@ -9,19 +9,16 @@ from qcvv.decorators import store
 
 @store
 def ramsey_frequency_detuned(
-    platform, qubit, t_start, t_end, t_step, n_osc, software_averages, points=10
+    platform: AbstractPlatform, qubit, t_start, t_end, t_step, n_osc, software_averages, points=10
 ):
+    platform.reload_settings()
 
     sampling_rate = platform.sampling_rate
 
     RX90_pulse1 = platform.create_RX90_pulse(qubit, start=0)
-    RX90_pulse2 = platform.create_RX90_pulse(
-        qubit,
-        start=RX90_pulse1.duration
-    )
-    ro_pulse = platform.create_qubit_readout_pulse(
-        qubit, start=RX90_pulse1.duration + RX90_pulse2.duration
-    )
+    RX90_pulse2 = platform.create_RX90_pulse(qubit,start=RX90_pulse1.finish)
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=RX90_pulse2.finish)
+
     sequence = PulseSequence()
     sequence.add(RX90_pulse1)
     sequence.add(RX90_pulse2)
@@ -29,9 +26,7 @@ def ramsey_frequency_detuned(
 
     runcard_qubit_freq = platform.characterization["single_qubit"][qubit]["qubit_freq"]
     runcard_T2 = platform.characterization["single_qubit"][qubit]["T2"]
-    intermediate_freq = platform.settings["native_gates"]["single_qubit"][qubit]["RX"][
-        "frequency"
-    ]
+    intermediate_freq = platform.settings["native_gates"]["single_qubit"][qubit]["RX"]["frequency"]
 
     current_qubit_freq = runcard_qubit_freq
     current_T2 = runcard_T2
@@ -60,13 +55,13 @@ def ramsey_frequency_detuned(
                 if count % points == 0:
                     yield data
 
-                RX90_pulse2.start = RX90_pulse1.duration + wait
+                RX90_pulse2.start = RX90_pulse1.finish + wait
                 RX90_pulse2.relative_phase = (
                     (RX90_pulse2.start / sampling_rate)
                     * (2 * np.pi)
-                    * (RX90_pulse2.frequency - offset_freq)
+                    * (-offset_freq)
                 )
-                ro_pulse.start = RX90_pulse1.duration + RX90_pulse2.duration + wait
+                ro_pulse.start = RX90_pulse2.finish
 
                 msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
                     ro_pulse.serial
