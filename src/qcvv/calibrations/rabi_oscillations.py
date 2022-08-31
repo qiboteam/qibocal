@@ -74,6 +74,7 @@ def rabi_pulse_gain(
     software_averages,
     points=10,
 ):
+    platform.reload_settings()
 
     data = Dataset(name=f"data_q{qubit}", quantities={"gain": "dimensionless"})
 
@@ -84,6 +85,16 @@ def rabi_pulse_gain(
     sequence.add(ro_pulse)
 
     qd_pulse_gain_range = np.arange(pulse_gain_start, pulse_gain_end, pulse_gain_step)
+
+    # FIXME: Waiting to be able to pass qpucard to qibolab
+    platform.ro_port[qubit].lo_frequency = (
+        platform.characterization["single_qubit"][qubit]["resonator_freq"]
+        - ro_pulse.frequency
+    )
+    platform.qd_port[qubit].lo_frequency = (
+        platform.characterization["single_qubit"][qubit]["qubit_freq"]
+        - qd_pulse.frequency
+    )
 
     count = 0
     for _ in range(software_averages):
@@ -175,7 +186,8 @@ def rabi_pulse_length_and_gain(
     software_averages,
     points=10,
 ):
-
+    platform.reload_settings()
+    
     data = Dataset(name=f"data_q{qubit}", quantities={"duration": "ns", "gain": "dimensionless"})
 
     sequence = PulseSequence()
