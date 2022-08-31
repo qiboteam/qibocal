@@ -19,6 +19,10 @@ class AbstractDataset:
 
         self.df = pd.DataFrame()
 
+    # def __add__(self, data):
+    #     self.df = pd.concat([self.df, data.df)
+    #     return self
+
     @abstractmethod
     def add(self, data):
         raise_error(NotImplementedError)
@@ -147,14 +151,11 @@ class Dataset(AbstractDataset):
 
 
 class Data(AbstractDataset):
-    """Class to store the data measured during the calibration routines.
-    It is a wrapper to a pandas DataFrame with units of measure from the Pint
-    library.
+    """Class to store the data obtained from calibration routines.
+    It is a wrapper to a pandas DataFrame.
 
     Args:
-        quantities (dict): dictionary containing additional quantities that the user
-                        may save other than the pulse sequence output. The keys are the name of the
-                        quantities and the corresponding values are the units of measure.
+        quantities (dict): dictionary quantities to be saved.
     """
 
     def __init__(self, name=None, quantities=None):
@@ -183,7 +184,6 @@ class Data(AbstractDataset):
 
         Args:
             quantity (str): Quantity to get the values of.
-            unit (str): Unit of the returned values.
 
         Returns:
             ``pd.Series`` with the quantity values in the given units.

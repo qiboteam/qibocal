@@ -92,6 +92,32 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
             row=1,
             col=1,
         )
+        fig.add_annotation(
+            dict(
+                font=dict(color="black", size=12),
+                x=0,
+                y=-0.25,
+                showarrow=False,
+                text=f"The estimated resonator frequency is {data_fit.df['resonator_freq'][0]:.6f} GHz.",
+                textangle=0,
+                xanchor="left",
+                xref="paper",
+                yref="paper",
+            )
+        )
+        fig.add_annotation(
+            dict(
+                font=dict(color="black", size=12),
+                x=0,
+                y=-0.30,
+                showarrow=False,
+                text=f"The estimated peak voltage is {data_fit.df['peak_voltage'][0]:.3f} uV.",
+                textangle=0,
+                xanchor="left",
+                xref="paper",
+                yref="paper",
+            )
+        )
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
