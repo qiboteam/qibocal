@@ -76,6 +76,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
             max(data_fast.get_values("frequency", "GHz")),
             20,
         )
+        params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
         fig.add_trace(
             go.Scatter(
                 x=freqrange,
@@ -98,7 +99,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
                 x=0,
                 y=-0.25,
                 showarrow=False,
-                text=f"The estimated resonator frequency is {data_fit.df['resonator_freq'][0]:.1f} Hz.",
+                text=f"The estimated {params[0]} is {data_fit.df[params[0]][0]:.1f} Hz.",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
@@ -111,7 +112,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
                 x=0,
                 y=-0.30,
                 showarrow=False,
-                text=f"The estimated peak voltage is {data_fit.df['peak_voltage'][0]:.3f} uV.",
+                text=f"The estimated {params[1]} is {data_fit.df[params[1]][0]:.3f} uV.",
                 textangle=0,
                 xanchor="left",
                 xref="paper",

@@ -3,9 +3,9 @@ import numpy as np
 from qibolab.pulses import PulseSequence
 
 from qcvv import plots
-from qcvv.calibrations.utils import variable_resolution_scanrange
 from qcvv.data import Dataset
 from qcvv.decorators import plot
+from qcvv.fitting.methods import lorentzian_fit
 
 
 @plot("MSR and Phase vs Frequency", plots.frequency_msr_phase__fast_precision)
@@ -42,8 +42,17 @@ def qubit_spectroscopy(
     count = 0
     for _ in range(software_averages):
         for freq in freqrange:
-            if count % points == 0:
+            if count % points == 0 and count > 0:
                 yield data
+                yield lorentzian_fit(
+                    data,
+                    x="frequency[GHz]",
+                    y="MSR[uV]",
+                    qubit=qubit,
+                    nqubits=platform.settings["nqubits"],
+                    labels=["qubit_freq", "peak_voltage"],
+                )
+
             platform.qd_port[qubit].lo_frequency = freq - qd_pulse.frequency
             msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
                 ro_pulse.serial
@@ -79,8 +88,16 @@ def qubit_spectroscopy(
     count = 0
     for _ in range(software_averages):
         for freq in freqrange:
-            if count % points == 0:
+            if count % points == 0 and count > 0:
                 yield prec_data
+                yield lorentzian_fit(
+                    prec_data,
+                    x="frequency[GHz]",
+                    y="MSR[uV]",
+                    qubit=qubit,
+                    nqubits=platform.settings["nqubits"],
+                    labels=["qubit_freq", "peak_voltage"],
+                )
             platform.qd_port[qubit].lo_frequency = freq - qd_pulse.frequency
             msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
                 ro_pulse.serial

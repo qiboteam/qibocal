@@ -8,7 +8,7 @@ from qcvv.data import Data
 from qcvv.fitting.utils import lorenzian, parse
 
 
-def lorentzian_fit(data, x, y, qubit, nqubits):
+def lorentzian_fit(data, x, y, qubit, nqubits, labels):
     """Fitting routine for resonator spectroscopy"""
 
     frequencies = data.get_values(*parse(x))
@@ -18,7 +18,7 @@ def lorentzian_fit(data, x, y, qubit, nqubits):
     model_Q = lmfit.Model(lorenzian)
 
     # Guess parameters for Lorentzian max or min
-    if nqubits == 1:
+    if nqubits == 1 and labels[0] == "resonator_freq":
         guess_center = frequencies[
             np.argmax(voltages)
         ]  # Argmax = Returns the indices of the maximum values along an axis.
@@ -64,19 +64,17 @@ def lorentzian_fit(data, x, y, qubit, nqubits):
             "fit_center",
             "fit_sigma",
             "fit_offset",
-            "peak_voltage",
-            "resonator_freq",
+            labels[1],
+            labels[0],
         ],
     )
 
-    # peak_voltage *= 1e6
-
-    resonator_freq = f0 * 1e6
+    freq = f0 * 1e6
 
     data_fit.add(
         {
-            "peak_voltage": peak_voltage,
-            "resonator_freq": resonator_freq,
+            labels[1]: peak_voltage,
+            labels[0]: freq,
             "fit_amplitude": fit_res.best_values["amplitude"],
             "fit_center": fit_res.best_values["center"],
             "fit_sigma": fit_res.best_values["sigma"],

@@ -49,6 +49,7 @@ def resonator_spectroscopy(
                     y="MSR[uV]",
                     qubit=qubit,
                     nqubits=platform.settings["nqubits"],
+                    labels=["resonator_freq", "peak_voltage"],
                 )
 
             platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
@@ -93,6 +94,7 @@ def resonator_spectroscopy(
                     y="MSR[uV]",
                     qubit=qubit,
                     nqubits=platform.settings["nqubits"],
+                    labels=["resonator_freq", "peak_voltage"],
                 )
 
             platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
