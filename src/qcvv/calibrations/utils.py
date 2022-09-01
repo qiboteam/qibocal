@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import numpy as np
+from scipy.optimize import curve_fit
 
 
 def variable_resolution_scanrange(
@@ -13,3 +14,24 @@ def variable_resolution_scanrange(
             np.arange(highres_width, lowres_width, lowres_step),
         )
     )
+
+
+def flipping_fit_3D(x_data, y_data):
+    pguess = [0.0003, np.mean(y_data), -18, 0]  # epsilon guess parameter
+    popt, pcov = curve_fit(flipping, x_data, y_data, p0=pguess)
+    return popt
+
+
+def flipping_fit_2D(x_data, y_data):
+    pguess = [0.0003, np.mean(y_data), 18, 0]  # epsilon guess parameter
+    popt, pcov = curve_fit(flipping, x_data, y_data, p0=pguess)
+    return popt
+
+
+def flipping(x, p0, p1, p2, p3):
+    # A fit to Flipping Qubit oscillation
+    # Epsilon                       : p[0]
+    # Offset                        : p[1]
+    # Period of oscillation         : p[2]
+    # phase for the first point corresponding to pi/2 rotation   : p[3]
+    return np.sin(x * 2 * np.pi / p2 + p3) * p0 + p1

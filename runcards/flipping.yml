@@ -1,0 +1,10 @@
+platform: tii1q
+
+qubits: [0]
+
+format: csv
+
+actions:
+  flipping:
+    niter: 10
+    step: 2
