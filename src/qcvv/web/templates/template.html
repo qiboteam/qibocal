@@ -58,28 +58,32 @@
             </div>
           </li>
           <li class="mb-1">
-            {% for routine in runcard.get('actions').keys() %}
             <button class="btn btn-toggle d-inline-flex align-items-center rounded border-0" data-bs-toggle="collapse"
-              data-bs-target="#{{ routine }}-collapse" aria-expanded="true">
-              {{ routine.replace("_", " ").title() }}
+              data-bs-target="#actions-collapse" aria-expanded="true">
+              Actions
             </button>
-            {% if routine in plotters %}
-            <div class="collapse show" id="{{ routine }}-collapse">
+            <div class="collapse show" id="actions-collapse">
+              {% for routine in runcard.get('actions').keys() %}
               <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
-                {% for header, method in plotters.get(routine).items() %}
-                <li><a class="link-dark d-inline-flex text-decoration-none rounded"
-                    href="#{{ routine }}-{{ method }}">{{ header }}</a></li>
+                <li><a href="#{{ routine }}" class="link-dark d-inline-flex text-decoration-none rounded">{{
+                    routine.replace("_", " ").title() }}</a></li>
+                {% if routine in plotters %}
                 <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
-                  {% for qubit in runcard.get('qubits') %}
+                  {% for header, method in plotters.get(routine).items() %}
                   <li><a class="link-dark d-inline-flex text-decoration-none rounded"
-                    href="#{{ routine }}-{{ method }}-{{ qubit }}">- Qubit {{ qubit }}</a></li>
+                      href="#{{ routine }}-{{ method }}">- {{ header }}</a></li>
+                  <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
+                    {% for qubit in runcard.get('qubits') %}
+                    <li><a class="link-dark d-inline-flex text-decoration-none rounded"
+                      href="#{{ routine }}-{{ method }}-{{ qubit }}"> &nbsp; &nbsp; - Qubit {{ qubit }}</a></li>
+                    {% endfor %}
+                  </ul>
                   {% endfor %}
                 </ul>
-                {% endfor %}
+                {% endif %}
               </ul>
+              {% endfor %}
             </div>
-            {% endif %}
-            {% endfor %}
           </li>
           <li class="border-top my-3"></li>
           {% endif %}
