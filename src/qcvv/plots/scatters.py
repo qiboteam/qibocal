@@ -106,6 +106,7 @@ def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
     )
     return fig
 
+
 def frequency_msr_phase(folder, routine, qubit, format):
     fig = make_subplots(
         rows=1,
@@ -118,16 +119,17 @@ def frequency_msr_phase(folder, routine, qubit, format):
         ),
     )
     import os.path
+
     file = f"{folder}/data/{routine}/data_q{qubit}.csv"
     if os.path.exists(file):
         data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
-        data.df.sort_values(by='frequency', inplace=True)
+        data.df.sort_values(by="frequency", inplace=True)
         fig.add_trace(
             go.Scatter(
                 x=data.get_values("frequency", "Hz"),
                 y=data.get_values("MSR", "uV"),
                 name="MSR",
-                mode='lines+markers',
+                mode="lines+markers",
                 marker=dict(size=5, color="LightSeaGreen"),
             ),
             row=1,
@@ -138,7 +140,7 @@ def frequency_msr_phase(folder, routine, qubit, format):
                 x=data.get_values("frequency", "Hz"),
                 y=data.get_values("phase", "rad"),
                 name="phase",
-                mode='lines+markers',
+                mode="lines+markers",
                 marker=dict(size=5, color="LightSeaGreen"),
             ),
             row=1,
@@ -228,7 +230,7 @@ def gain_msr_phase(folder, routine, qubit, format):
         ),
         row=1,
         col=2,
-    )    
+    )
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
@@ -367,12 +369,14 @@ def exc_gnd(folder, routine, qubit, formato):
 
         i_mean_exc = i_exc.mean()
         q_mean_exc = q_exc.mean()
+        iq_mean_exc = complex(i_mean_exc, q_mean_exc)
+        mod_iq_exc = abs(iq_mean_exc) * 1e6
 
         fig.add_trace(
             go.Scatter(
                 x=[i_mean_exc],
                 y=[q_mean_exc],
-                name="mean_exc_state",
+                name=f" state1_voltage: {mod_iq_exc} <br> mean_exc_state: {iq_mean_exc}",
                 mode="markers",
                 marker_size=16,
             ),
@@ -400,12 +404,14 @@ def exc_gnd(folder, routine, qubit, formato):
 
         i_mean_gnd = i_gnd.mean()
         q_mean_gnd = q_gnd.mean()
+        iq_mean_gnd = complex(i_mean_gnd, q_mean_gnd)
+        mod_iq_gnd = abs(iq_mean_gnd) * 1e6
 
         fig.add_trace(
             go.Scatter(
                 x=[i_mean_gnd],
                 y=[q_mean_gnd],
-                name="mean_gnd_state",
+                name=f" state0_voltage: {mod_iq_gnd} <br> mean_gnd_state: {iq_mean_gnd}",
                 mode="markers",
                 marker_size=16,
             ),
@@ -471,8 +477,12 @@ def prob_gate_iteration(folder, routine, qubit, format):
     for n in range(gates // 21):
         data_start = n * 21
         data_end = data_start + 21
-        beta_param = np.array(data.get_values("beta_param", "dimensionless"))[data_start]
-        gates = np.array(data.get_values("gateNumber", "dimensionless"))[data_start:data_end]
+        beta_param = np.array(data.get_values("beta_param", "dimensionless"))[
+            data_start
+        ]
+        gates = np.array(data.get_values("gateNumber", "dimensionless"))[
+            data_start:data_end
+        ]
         probabilities = np.array(data.get_values("probability", "dimensionless"))[
             data_start:data_end
         ]

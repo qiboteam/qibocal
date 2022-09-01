@@ -42,10 +42,16 @@ def allXY(
         ["RY(pi/2)", "RY(pi/2)"],
     ]
 
-    gnd = complex(platform.characterization["single_qubit"][qubit]["state1_voltage"])
-    exc = complex(platform.characterization["single_qubit"][qubit]["state0_voltage"])
+    state0_voltage = complex(
+        platform.characterization["single_qubit"][qubit]["state0_voltage"]
+    )
+    state1_voltage = complex(
+        platform.characterization["single_qubit"][qubit]["state1_voltage"]
+    )
+
     data = Dataset(
-        name=f"data_q{qubit}", quantities={"probability": "dimensionless", "gateNumber": "dimensionless"}
+        name=f"data_q{qubit}",
+        quantities={"probability": "dimensionless", "gateNumber": "dimensionless"},
     )
 
     count = 0
@@ -61,8 +67,19 @@ def allXY(
             msr, phase, i, q = platform.execute_pulse_sequence(seq, nshots=1024)[
                 ro_pulse.serial
             ]
-            prob = np.abs(msr * 1e6 - gnd) / (exc - gnd)
-            prob = (2 * prob) - 1
+
+            if platform.resonator_type == "3D":
+                prob = np.abs(msr * 1e6 - state1_voltage) / (
+                    state0_voltage - state1_voltage
+                )
+                prob = (2 * prob) - 1
+
+            else:
+                prob = np.abs(msr * 1e6 - state1_voltage) / (
+                    state1_voltage - state0_voltage
+                )
+                prob = (2 * prob) - 1
+
             results = {
                 "MSR[V]": msr,
                 "i[V]": i,
@@ -88,7 +105,7 @@ def allXY_iteration(
     points=10,
 ):
     platform.reload_settings()
-    
+
     # allXY rotations
     gatelist = [
         ["I", "I"],
@@ -114,11 +131,20 @@ def allXY_iteration(
         ["RY(pi/2)", "RY(pi/2)"],
     ]
 
-    gnd = complex(platform.characterization["single_qubit"][qubit]["state1_voltage"])
-    exc = complex(platform.characterization["single_qubit"][qubit]["state0_voltage"])
+    state0_voltage = complex(
+        platform.characterization["single_qubit"][qubit]["state0_voltage"]
+    )
+    state1_voltage = complex(
+        platform.characterization["single_qubit"][qubit]["state1_voltage"]
+    )
+
     data = Dataset(
         name=f"data_q{qubit}",
-        quantities={"probability": "dimensionless", "gateNumber": "dimensionless", "beta_param": "dimensionless"},
+        quantities={
+            "probability": "dimensionless",
+            "gateNumber": "dimensionless",
+            "beta_param": "dimensionless",
+        },
     )
 
     count = 0
@@ -135,8 +161,19 @@ def allXY_iteration(
                 msr, phase, i, q = platform.execute_pulse_sequence(seq, nshots=1024)[
                     ro_pulse.serial
                 ]
-                prob = np.abs(msr * 1e6 - gnd) / (exc - gnd)
-                prob = (2 * prob) - 1
+
+                if platform.resonator_type == "3D":
+                    prob = np.abs(msr * 1e6 - state1_voltage) / (
+                        state0_voltage - state1_voltage
+                    )
+                    prob = (2 * prob) - 1
+
+                else:
+                    prob = np.abs(msr * 1e6 - state1_voltage) / (
+                        state1_voltage - state0_voltage
+                    )
+                    prob = (2 * prob) - 1
+
                 results = {
                     "MSR[V]": msr,
                     "i[V]": i,
@@ -195,7 +232,7 @@ def _get_sequence_from_gate_pair(platform, gates, qubit, beta_param):
                     start=pulse_start,
                 )
             else:
-                RX90_pulse = platform.RX90_drag_pulse(
+                RX90_pulse = platform.create_RX90_drag_pulse(
                     qubit,
                     start=pulse_start,
                     beta=beta_param,
@@ -228,7 +265,7 @@ def _get_sequence_from_gate_pair(platform, gates, qubit, beta_param):
                     relative_phase=np.pi / 2,
                 )
             else:
-                RY90_pulse = platform.RX90_drag_pulse(
+                RY90_pulse = platform.create_RX90_drag_pulse(
                     qubit,
                     start=pulse_start,
                     relative_phase=np.pi / 2,
