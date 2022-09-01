@@ -8,6 +8,7 @@ import yaml
 
 from qcvv import calibrations
 from qcvv.config import log, raise_error
+from qcvv.data import Data
 
 
 def load_yaml(path):
@@ -105,14 +106,14 @@ class ActionBuilder:
     def _build_single_action(self, name):
         """Helper method to parse the actions in the runcard."""
         f = getattr(calibrations, name)
-        if hasattr(f, "prepare"):
-            self.output = f.prepare(name=f.__name__, folder=self.folder)
+        path = os.path.join(self.folder, f"data/{name}/")
+        os.makedirs(path)
         sig = inspect.signature(f)
         params = self.runcard["actions"][name]
         for param in list(sig.parameters)[2:-1]:
             if param not in params:
                 raise_error(AttributeError, f"Missing parameter {param} in runcard.")
-        return f, params
+        return f, params, path
 
     def execute(self):
         """Method to execute sequentially all the actions in the runcard."""
@@ -120,17 +121,39 @@ class ActionBuilder:
         self.platform.setup()
         self.platform.start()
         for action in self.runcard["actions"]:
-            routine, args = self._build_single_action(action)
-            self._execute_single_action(routine, args)
+            routine, args, path = self._build_single_action(action)
+            self._execute_single_action(routine, args, path)
         self.platform.stop()
         self.platform.disconnect()
 
-    def _execute_single_action(self, routine, arguments):
+    def _execute_single_action(self, routine, arguments, path):
         """Method to execute a single action and retrieving the results."""
         for qubit in self.qubits:
             results = routine(self.platform, qubit, **arguments)
-            if hasattr(routine, "final_action"):
-                routine.final_action(results, self.output, self.format)
+            if self.format is None:
+                raise_error(
+                    ValueError, f"Cannot store data using {self.format} format."
+                )
+            for data in results:
+                getattr(data, f"to_{self.format}")(path)
+
+            self.update_platform_runcard(qubit, routine.__name__)
+
+    def update_platform_runcard(self, qubit, routine):
+
+        data_fit = Data.load_data(self.folder, routine, self.format, f"fit_q{qubit}")
+        params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
+        settings = load_yaml(f"{self.folder}/platform.yml")
+
+        for param in params:
+            settings["characterization"]["single_qubit"][qubit][param] = int(
+                data_fit.df[param][0]
+            )
+
+        with open(f"{self.folder}/data/{routine}/platform.yml", "a+") as file:
+            yaml.dump(
+                settings, file, sort_keys=False, indent=4, default_flow_style=None
+            )
 
     def dump_report(self):
         from qcvv.web.report import create_report

@@ -5,10 +5,10 @@ from qibolab.pulses import PulseSequence
 from qcvv import plots
 from qcvv.calibrations.utils import variable_resolution_scanrange
 from qcvv.data import Dataset
-from qcvv.decorators import plot, store
+from qcvv.decorators import plot
+from qcvv.fitting.methods import lorentzian_fit
 
 
-@store
 @plot("MSR and Phase vs Frequency", plots.frequency_msr_phase__fast_precision)
 def resonator_spectroscopy(
     platform,
@@ -39,10 +39,19 @@ def resonator_spectroscopy(
     )
     data = Dataset(name=f"fast_sweep_q{qubit}", quantities={"frequency": "Hz"})
     count = 0
-    for _ in range(software_averages):
+    for _ in range(1):
         for freq in freqrange:
-            if count % points == 0:
+            if count % points == 0 and count > 0:
                 yield data
+                yield lorentzian_fit(
+                    data,
+                    x="frequency[GHz]",
+                    y="MSR[uV]",
+                    qubit=qubit,
+                    nqubits=platform.settings["nqubits"],
+                    labels=["resonator_freq", "peak_voltage"],
+                )
+
             platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
             msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
                 ro_pulse.serial
@@ -73,11 +82,21 @@ def resonator_spectroscopy(
     freqrange = (
         np.arange(-precision_width, precision_width, precision_step) + lo_qrm_frequency
     )
+
     count = 0
     for _ in range(software_averages):
         for freq in freqrange:
-            if count % points == 0:
+            if count % points == 0 and count > 0:
                 yield prec_data
+                yield lorentzian_fit(
+                    prec_data,
+                    x="frequency[GHz]",
+                    y="MSR[uV]",
+                    qubit=qubit,
+                    nqubits=platform.settings["nqubits"],
+                    labels=["resonator_freq", "peak_voltage"],
+                )
+
             platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
             msr, i, q, phase = platform.execute_pulse_sequence(sequence)[0][
                 ro_pulse.serial
@@ -92,22 +111,8 @@ def resonator_spectroscopy(
             prec_data.add(results)
             count += 1
     yield prec_data
-    # TODO: add fitting (possibly without quantify)
-    # # Fitting
-    # if self.resonator_type == '3D':
-    #     f0, BW, Q, peak_voltage = fitting.lorentzian_fit("last", max, "Resonator_spectroscopy")
-    #     resonator_freq = int(f0 + ro_pulse.frequency)
-    # elif self.resonator_type == '2D':
-    #     f0, BW, Q, peak_voltage = fitting.lorentzian_fit("last", min, "Resonator_spectroscopy")
-    #     resonator_freq = int(f0 + ro_pulse.frequency)
-    #     # TODO: Fix fitting of minimum values
-    # peak_voltage = peak_voltage * 1e6
-
-    # print(f"\nResonator Frequency = {resonator_freq}")
-    # return resonator_freq, avg_voltage, peak_voltage, dataset
 
 
-@store
 @plot("Frequency vs Attenuation", plots.frequency_attenuation_msr_phase)
 @plot("MSR vs Frequency", plots.frequency_attenuation_msr_phase__cut)
 def resonator_punchout(
@@ -162,7 +167,6 @@ def resonator_punchout(
     yield data
 
 
-@store
 @plot("MSR and Phase vs Flux Current", plots.frequency_flux_msr_phase)
 def resonator_spectroscopy_flux(
     platform,
