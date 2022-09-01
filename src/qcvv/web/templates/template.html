@@ -72,12 +72,6 @@
                   {% for header, method in plotters.get(routine).items() %}
                   <li><a class="link-dark d-inline-flex text-decoration-none rounded"
                       href="#{{ routine }}-{{ method }}">- {{ header }}</a></li>
-                  <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
-                    {% for qubit in runcard.get('qubits') %}
-                    <li><a class="link-dark d-inline-flex text-decoration-none rounded"
-                      href="#{{ routine }}-{{ method }}-{{ qubit }}"> &nbsp; &nbsp; - Qubit {{ qubit }}</a></li>
-                    {% endfor %}
-                  </ul>
                   {% endfor %}
                 </ul>
                 {% endif %}
