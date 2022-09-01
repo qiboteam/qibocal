@@ -23,7 +23,7 @@ def test_data_initialization():
     assert len(data.df.columns) == 4
     assert list(data.df.columns) == ["MSR", "i", "q", "phase"]
 
-    data1 = Dataset({"attenuation": "dB"})
+    data1 = Dataset(quantities={"attenuation": "dB"})
     assert len(data1.df.columns) == 5
     assert list(data1.df.columns) == ["attenuation", "MSR", "i", "q", "phase"]
 
@@ -33,11 +33,11 @@ def test_units():
     data = Dataset()
     assert data.df.MSR.values.units == "volt"
 
-    data1 = Dataset({"frequency": "Hz"})
+    data1 = Dataset(quantities={"frequency": "Hz"})
     assert data1.df.frequency.values.units == "hertz"
 
     with pytest.raises(UndefinedUnitError):
-        data2 = Dataset({"fake_unit": "fake"})
+        data2 = Dataset(quantities={"fake_unit": "fake"})
 
 
 def test_add():
@@ -45,7 +45,7 @@ def test_add():
     data = random_dataset(5)
     assert len(data) == 5
 
-    data1 = Dataset({"attenuation": "dB"})
+    data1 = Dataset(quantities={"attenuation": "dB"})
     msr, i, q, phase, att = np.random.rand(len(data1.df.columns))
     data1.add(
         {
@@ -57,6 +57,17 @@ def test_add():
         }
     )
     assert len(data1) == 1
+
+    data1.add(
+        {
+            "MSR[V]": 0,
+            "i[V]": 0.0,
+            "q[V]": 0.0,
+            "phase[deg]": 0,
+            "attenuation[dB]": 1,
+        }
+    )
+    assert len(data1) == 2
 
     data2 = Dataset()
     msr, i, q, phase = np.random.rand(len(data2.df.columns))

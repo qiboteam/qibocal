@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>QCVV reports</title>
+  <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-gH2yIJqKdNHPEq0n4Mqa/HGKIhSkIHeL5AyhkYV8i59U5AR6csBvApHHNl/vI1Bx" crossorigin="anonymous">
+  <link rel="stylesheet" href="styles.css">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+  <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/1.10.13/js/jquery.dataTables.min.js"></script>
+
+  <script type="text/javascript">
+  $(document).ready(function() {
+    $.getJSON("index.json", function(json){
+      var data = json['data'];
+      var global_table = $('#global').DataTable({
+        "data": data,
+        "order": [[2, "desc"]],
+        "dom": "frtipl"
+      });
+    });
+  });
+  </script>
+</head>
+
+<body>
+
+  <header class="navbar navbar-dark sticky-top p-0">
+    <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6" href="/"><span class="fs-4">QCVV Reports</span></a>
+  </header>
+
+  <div class="container-fluid">
+
+    <main class="col-md-10 mx-sm-auto col-lg-8 px-md-4">
+      <div
+        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <h2>Uploaded Reports</h2>
+      </div>
+      <p>
+        Please select a report from the table below:
+      </p>
+
+      <table id="global" class="table table-striped table-sm">
+        <thead>
+          <tr>
+            <th scope="col">Title</th>
+            <th scope="col">Date</th>
+            <th scope="col">Platform</th>
+            <th scope="col">Start-time (UTC)</th>
+            <th scope="col">End-time (UTC)</th>
+          </tr>
+        </thead>
+      </table>
+
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-A3rJD856KowSb7dwlZdYEkO39Gagi7vIsF0jrRAoQmDKKtQBHUuLZ9AsSv4jD4Xa"
+    crossorigin="anonymous"></script>
+</body>
+
+</html>
