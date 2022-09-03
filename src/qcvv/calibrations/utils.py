@@ -35,3 +35,16 @@ def flipping(x, p0, p1, p2, p3):
     # Period of oscillation         : p[2]
     # phase for the first point corresponding to pi/2 rotation   : p[3]
     return np.sin(x * 2 * np.pi / p2 + p3) * p0 + p1
+
+
+def classify(point: complex, mean_gnd, mean_exc):
+    import math
+
+    """Classify the given state as |0> or |1>."""
+
+    def distance(a, b):
+        return math.sqrt(
+            (np.real(a) - np.real(b)) ** 2 + (np.imag(a) - np.imag(b)) ** 2
+        )
+
+    return int(distance(point, mean_exc) < distance(point, mean_gnd))
