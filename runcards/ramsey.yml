@@ -1,0 +1,13 @@
+platform: tii1q
+
+qubits: [0]
+
+format: csv
+
+actions:
+  ramsey:
+    delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
+    delay_between_pulses_end: 4000
+    delay_between_pulses_step: 16 # must be a multiple of 4
+    software_averages: 1
+    points: 1

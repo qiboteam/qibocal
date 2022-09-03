@@ -1,22 +1,101 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-from qibolab.pulses import PulseSequence, Pulse
 from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.pulses import Pulse, PulseSequence
+
 from qcvv.calibrations.utils import variable_resolution_scanrange
 from qcvv.data import Dataset
 from qcvv.decorators import store
 
 
 @store
-def ramsey_frequency_detuned(
-    platform: AbstractPlatform, qubit, t_start, t_end, t_step, n_osc, software_averages, points=10
+def ramsey(
+    platform: AbstractPlatform,
+    qubit,
+    delay_between_pulses_start,
+    delay_between_pulses_end,
+    delay_between_pulses_step,
+    software_averages,
+    points=10,
 ):
     platform.reload_settings()
 
     sampling_rate = platform.sampling_rate
 
     RX90_pulse1 = platform.create_RX90_pulse(qubit, start=0)
-    RX90_pulse2 = platform.create_RX90_pulse(qubit,start=RX90_pulse1.finish)
+    RX90_pulse2 = platform.create_RX90_pulse(qubit, start=RX90_pulse1.finish)
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=RX90_pulse2.finish)
+
+    sequence = PulseSequence()
+    sequence.add(RX90_pulse1)
+    sequence.add(RX90_pulse2)
+    sequence.add(ro_pulse)
+
+    waits = np.arange(
+        delay_between_pulses_start,
+        delay_between_pulses_end,
+        delay_between_pulses_step,
+    )
+
+    # FIXME: Waiting to be able to pass qpucard to qibolab
+    platform.ro_port[qubit].lo_frequency = (
+        platform.characterization["single_qubit"][qubit]["resonator_freq"]
+        - ro_pulse.frequency
+    )
+    platform.qd_port[qubit].lo_frequency = (
+        platform.characterization["single_qubit"][qubit]["qubit_freq"]
+        - RX90_pulse1.frequency
+    )
+
+    data = Dataset(name=f"data_q{qubit}", quantities={"wait": "ns", "t_max": "ns"})
+    count = 0
+    for _ in range(software_averages):
+        for wait in waits:
+            if count % points == 0:
+                yield data
+
+            RX90_pulse2.start = RX90_pulse1.finish + wait
+            # RX90_pulse2.relative_phase = (
+            #     (RX90_pulse2.start / sampling_rate)
+            #     * (2 * np.pi)
+            #     * (-offset_freq)
+            # )
+            ro_pulse.start = RX90_pulse2.finish
+
+            msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
+                ro_pulse.serial
+            ]
+
+            results = {
+                "MSR[V]": msr,
+                "i[V]": i,
+                "q[V]": q,
+                "phase[deg]": phase,
+                "wait[ns]": wait,
+                "t_max[ns]": np.array(delay_between_pulses_end),
+            }
+            data.add(results)
+            count += 1
+    yield data
+
+
+@store
+def ramsey_frequency_detuned(
+    platform: AbstractPlatform,
+    qubit,
+    t_start,
+    t_end,
+    t_step,
+    n_osc,
+    software_averages,
+    points=10,
+):
+    platform.reload_settings()
+
+    sampling_rate = platform.sampling_rate
+
+    RX90_pulse1 = platform.create_RX90_pulse(qubit, start=0)
+    RX90_pulse2 = platform.create_RX90_pulse(qubit, start=RX90_pulse1.finish)
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=RX90_pulse2.finish)
 
     sequence = PulseSequence()
@@ -26,7 +105,9 @@ def ramsey_frequency_detuned(
 
     runcard_qubit_freq = platform.characterization["single_qubit"][qubit]["qubit_freq"]
     runcard_T2 = platform.characterization["single_qubit"][qubit]["T2"]
-    intermediate_freq = platform.settings["native_gates"]["single_qubit"][qubit]["RX"]["frequency"]
+    intermediate_freq = platform.settings["native_gates"]["single_qubit"][qubit]["RX"][
+        "frequency"
+    ]
 
     current_qubit_freq = runcard_qubit_freq
     current_T2 = runcard_T2
@@ -57,9 +138,7 @@ def ramsey_frequency_detuned(
 
                 RX90_pulse2.start = RX90_pulse1.finish + wait
                 RX90_pulse2.relative_phase = (
-                    (RX90_pulse2.start / sampling_rate)
-                    * (2 * np.pi)
-                    * (-offset_freq)
+                    (RX90_pulse2.start / sampling_rate) * (2 * np.pi) * (-offset_freq)
                 )
                 ro_pulse.start = RX90_pulse2.finish
 
