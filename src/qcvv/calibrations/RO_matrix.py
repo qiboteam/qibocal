@@ -62,12 +62,10 @@ def RO_matrix(
                 "mean_exc_states"
             ]
             mean_exc = complex(mean_exc_states)
+            results = platform.execute_pulse_sequence(seq, nshots=1)
 
             for qubit in range(nqubits):
-                # FIXME: Esto ejecuta la secuencia en cada lectura!!!
-                msr, phase, i, q = platform.execute_pulse_sequence(seq, nshots=1)[
-                    ro_serials[qubit]
-                ]
+                msr, phase, i, q = results[ro_serials[qubit]]
                 # classify state of qubit n
                 point = complex(i, q)
                 res += str(utils.classify(point, mean_gnd, mean_exc))

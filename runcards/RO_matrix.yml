@@ -6,4 +6,4 @@ format: csv
 
 actions:
   RO_matrix:
-    niter: 1024 # set niter = 1024 to collect good statistics
+    niter: 10 # set niter = 1024 to collect good statistics
