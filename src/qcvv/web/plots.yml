@@ -55,3 +55,6 @@ allXY:
 
 allXY_iteration:
     Prob vs gate sequence: prob_gate_iteration
+
+dispersive_shift:
+    MSR and Phase vs Frequency: dispersive_frequency_msr_phase

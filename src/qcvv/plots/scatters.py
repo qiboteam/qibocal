@@ -506,3 +506,77 @@ def prob_gate_iteration(folder, routine, qubit, format):
         yaxis_title="Z projection probability of qubit state |o>",
     )
     return fig
+
+
+def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
+
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        subplot_titles=(
+            "MSR (V)",
+            "phase (rad)",
+        ),
+    )
+
+    import os.path
+
+    file_fast = f"{folder}/data/{routine}/data_spec_q{qubit}.csv"
+    if os.path.exists(file_fast):
+        data_fast = Dataset.load_data(folder, routine, formato, f"data_spec_q{qubit}")
+
+        fig.add_trace(
+            go.Scatter(
+                x=data_fast.get_values("frequency", "Hz"),
+                y=data_fast.get_values("MSR", "uV"),
+                name="Normal Spectroscopy",
+            ),
+            row=1,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=data_fast.get_values("frequency", "Hz"),
+                y=data_fast.get_values("phase", "rad"),
+                name="Normal Spectroscopy",
+            ),
+            row=1,
+            col=2,
+        )
+
+    file_precision = f"{folder}/data/{routine}/data_shifted_q{qubit}.csv"
+    if os.path.exists(file_precision):
+        data_precision = Dataset.load_data(
+            folder, routine, formato, f"data_shifted_q{qubit}"
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=data_precision.get_values("frequency", "Hz"),
+                y=data_precision.get_values("MSR", "uV"),
+                name="Shifted Spectroscopy",
+            ),
+            row=1,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=data_precision.get_values("frequency", "Hz"),
+                y=data_precision.get_values("phase", "rad"),
+                name="Shifted Spectroscopy",
+            ),
+            row=1,
+            col=2,
+        )
+
+    fig.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Frequency (Hz)",
+        yaxis_title="MSR (uV)",
+        xaxis2_title="Frequency (Hz)",
+        yaxis2_title="Phase (rad)",
+    )
+    return fig
