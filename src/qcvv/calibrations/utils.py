@@ -48,3 +48,16 @@ def classify(point: complex, mean_gnd, mean_exc):
         )
 
     return int(distance(point, mean_exc) < distance(point, mean_gnd))
+
+
+def fit_drag_tunning(res1, res2, beta_params):
+
+    # find line of best fit
+    a, b = np.polyfit(beta_params, res1, 1)
+    c, d = np.polyfit(beta_params, res2, 1)
+
+    # find interception point
+    xi = (b - d) / (c - a)
+    yi = a * xi + b
+
+    return xi

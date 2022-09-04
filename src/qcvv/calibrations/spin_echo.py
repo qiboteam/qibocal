@@ -51,9 +51,6 @@ def spin_echo(
             if count % points == 0:
                 yield data
             RX_pulse.start = RX_pulse.duration + wait
-            # RX_pulse.phase = (
-            #     (RX_pulse.start / sampling_rate) * (2 * np.pi) * RX_pulse.frequency
-            # )
             ro_pulse.start = 2 * RX_pulse.duration + 2 * wait
 
             msr, i, q, phase = platform.execute_pulse_sequence(sequence)[
@@ -118,15 +115,7 @@ def spin_echo_3pulses(
                 yield data
 
             RX_pulse.start = RX_pulse.duration + wait
-            # RX_pulse.phase = (
-            #     (RX_pulse.start / sampling_rate) * (2 * np.pi) * RX_pulse.frequency
-            # )
             RX90_pulse2.start = 2 * RX_pulse.duration + 2 * wait
-            # RX90_pulse2.phase = (
-            #     (RX90_pulse2.start / sampling_rate)
-            #     * (2 * np.pi)
-            #     * RX90_pulse2.frequency
-            # )
             ro_pulse.start = 3 * RX_pulse.duration + 2 * wait
 
             msr, i, q, phase = platform.execute_pulse_sequence(sequence)[

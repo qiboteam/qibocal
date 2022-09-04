@@ -55,11 +55,6 @@ def ramsey(
                 yield data
 
             RX90_pulse2.start = RX90_pulse1.finish + wait
-            # RX90_pulse2.relative_phase = (
-            #     (RX90_pulse2.start / sampling_rate)
-            #     * (2 * np.pi)
-            #     * (-offset_freq)
-            # )
             ro_pulse.start = RX90_pulse2.finish
 
             msr, phase, i, q = platform.execute_pulse_sequence(sequence)[

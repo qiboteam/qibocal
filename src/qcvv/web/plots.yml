@@ -56,8 +56,14 @@ allXY:
 allXY_iteration:
     Prob vs gate sequence: prob_gate_iteration
 
+drag_pulse_tunning:
+    MSR vs beta parameter: msr_beta
+
 dispersive_shift:
     MSR and Phase vs Frequency: dispersive_frequency_msr_phase
 
 spin_echo:
+    MSR vs Time: time_msr_phase
+
+spin_echo_3pulses:
     MSR vs Time: time_msr_phase

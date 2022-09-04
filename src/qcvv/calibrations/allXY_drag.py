@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 import numpy as np
+from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
-from qcvv.calibrations.utils import variable_resolution_scanrange
+from qcvv.calibrations.utils import fit_drag_tunning
 from qcvv.data import Dataset
 from qcvv.decorators import store
 
@@ -279,3 +280,96 @@ def _get_sequence_from_gate_pair(platform, gates, qubit, beta_param):
     # RO pulse starting just after pair of gates
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=sequenceDuration + 4)
     return sequence, ro_pulse
+
+
+def drag_pulse_tunning(
+    platform: AbstractPlatform,
+    qubit,
+    beta_start,
+    beta_end,
+    beta_step,
+    points=10,
+):
+
+    platform.reload_settings()
+    # sampling_rate = platform.sampling_rate
+
+    res1 = []
+    res2 = []
+    beta_params = []
+    data = Dataset(name=f"data_q{qubit}", quantities={"beta_param": "dimensionless"})
+    count = 0
+    for beta_param in np.arange(beta_start, beta_end, beta_step).round(4):
+        print("entro")
+        if count % points == 0:
+            yield data
+        # drag pulse RX(pi/2)
+        RX90_drag_pulse = platform.create_RX90_drag_pulse(
+            qubit, start=0, beta=beta_param
+        )
+        # drag pulse RY(pi)
+        RY_drag_pulse = platform.create_RX_drag_pulse(
+            qubit,
+            start=RX90_drag_pulse.finish,
+            relative_phase=+np.pi / 2,
+            beta=beta_param,
+        )
+        # RO pulse
+        ro_pulse = platform.create_qubit_readout_pulse(
+            qubit, start=RY_drag_pulse.finish
+        )
+
+        # Rx(pi/2) - Ry(pi) - Ro
+        seq1 = PulseSequence()
+        seq1.add(RX90_drag_pulse)
+        seq1.add(RY_drag_pulse)
+        seq1.add(ro_pulse)
+        msr, i, q, phase = platform.execute_pulse_sequence(seq2, nshots=1024)[
+            ro_pulse.serial
+        ]
+        results = {
+            "MSR[V]": msr,
+            "i[V]": i,
+            "q[V]": q,
+            "phase[deg]": phase,
+            "beta_param[dimensionless]": beta_param,
+        }
+        data.add(results)
+        count += 1
+
+        # drag pulse RY(pi)
+        RY_drag_pulse = platform.create_RX_drag_pulse(
+            qubit, start=0, relative_phase=np.pi / 2, beta=beta_param
+        )
+        # drag pulse RX(pi/2)
+        RX90_drag_pulse = platform.create_RX90_drag_pulse(
+            qubit, start=RY_drag_pulse.finish, beta=beta_param
+        )
+
+        # Ry(pi) - Rx(pi/2) - Ro
+        seq2 = PulseSequence()
+        seq2.add(RY_drag_pulse)
+        seq2.add(RX90_drag_pulse)
+        seq2.add(ro_pulse)
+        msr, i, q, phase = platform.execute_pulse_sequence(seq2, nshots=1024)[
+            ro_pulse.serial
+        ]
+        results = {
+            "MSR[V]": msr,
+            "i[V]": i,
+            "q[V]": q,
+            "phase[deg]": phase,
+            "beta_param[dimensionless]": beta_param,
+        }
+        data.add(results)
+        count += 1
+
+        # save IQ_module and beta param of each iteration
+        res1.append(msr)
+        res2.append(msr)
+        beta_params.append(beta_param)
+
+    yield data
+    beta_optimal = fit_drag_tunning(res1, res2, beta_params)
+
+    print(beta_optimal)
