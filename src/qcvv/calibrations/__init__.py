@@ -9,4 +9,5 @@ from qcvv.calibrations.ramsey import *
 from qcvv.calibrations.resonator_spectroscopy import *
 from qcvv.calibrations.RO_matrix import *
 from qcvv.calibrations.ro_pulse_phase import *
+from qcvv.calibrations.spin_echo import *
 from qcvv.calibrations.t1 import *

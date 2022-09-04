@@ -58,3 +58,6 @@ allXY_iteration:
 
 dispersive_shift:
     MSR and Phase vs Frequency: dispersive_frequency_msr_phase
+
+spin_echo:
+    MSR vs Time: time_msr_phase
