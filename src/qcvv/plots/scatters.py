@@ -337,13 +337,13 @@ def time_msr(folder, routine, qubit, format):
 
 
 # For calibrate qubit states
-def exc_gnd(folder, routine, qubit, formato):
+def exc_gnd(folder, routine, qubit, format):
 
     import os.path
 
     file_exc = f"{folder}/data/{routine}/data_exc_q{qubit}.csv"
     if os.path.exists(file_exc):
-        data_exc = Dataset.load_data(folder, routine, formato, f"data_exc_q{qubit}")
+        data_exc = Dataset.load_data(folder, routine, format, f"data_exc_q{qubit}")
 
         fig = make_subplots(
             rows=1,

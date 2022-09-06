@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-from qibolab.pulses import PulseSequence
 from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.pulses import PulseSequence
+
 from qcvv.calibrations.utils import variable_resolution_scanrange
 from qcvv.data import Dataset
 from qcvv.decorators import store
@@ -18,6 +19,7 @@ def resonator_spectroscopy(
     precision_width,
     precision_step,
     software_averages,
+    drive_attenuation=None,
     points=10,
 ):
     platform.reload_settings()
@@ -30,14 +32,22 @@ def resonator_spectroscopy(
         "resonator_freq"
     ]
 
+    for i in range(platform.settings["nqubits"]):
+        if isinstance(drive_attenuation, list):
+            platform.qd_port[i].attenuation = drive_attenuation[i]
+        else:
+            platform.qd_port[i].attenuation = drive_attenuation
+
     frequency_range = (
         variable_resolution_scanrange(
             lowres_width, lowres_step, highres_width, highres_step
         )
         + resonator_frequency
     )
-    
-    fast_sweep_data = Dataset(name=f"fast_sweep_q{qubit}", quantities={"frequency": "Hz"})
+
+    fast_sweep_data = Dataset(
+        name=f"fast_sweep_q{qubit}", quantities={"frequency": "Hz"}
+    )
     count = 0
     for _ in range(software_averages):
         for freq in frequency_range:
@@ -61,17 +71,28 @@ def resonator_spectroscopy(
     # FIXME: have live ploting work for multiple datasets saved
 
     if platform.resonator_type == "3D":
-        resonator_frequency = fast_sweep_data.df.frequency[fast_sweep_data.df.MSR.index[fast_sweep_data.df.MSR.argmax()]].magnitude
-        avg_voltage = np.mean(fast_sweep_data.df.MSR.values[: (lowres_width // lowres_step)]) * 1e6
+        resonator_frequency = fast_sweep_data.df.frequency[
+            fast_sweep_data.df.MSR.index[fast_sweep_data.df.MSR.argmax()]
+        ].magnitude
+        avg_voltage = (
+            np.mean(fast_sweep_data.df.MSR.values[: (lowres_width // lowres_step)])
+            * 1e6
+        )
     else:
-        resonator_frequency = fast_sweep_data.df.frequency[fast_sweep_data.df.MSR.index[fast_sweep_data.df.MSR.argmin()]].magnitude
-        avg_voltage = np.mean(fast_sweep_data.df.MSR.values[: (lowres_width // lowres_step)]) * 1e6
+        resonator_frequency = fast_sweep_data.df.frequency[
+            fast_sweep_data.df.MSR.index[fast_sweep_data.df.MSR.argmin()]
+        ].magnitude
+        avg_voltage = (
+            np.mean(fast_sweep_data.df.MSR.values[: (lowres_width // lowres_step)])
+            * 1e6
+        )
 
     precision_sweep_data = Dataset(
         name=f"precision_sweep_q{qubit}", quantities={"frequency": "Hz"}
     )
     frequency_range = (
-        np.arange(-precision_width, precision_width, precision_step) + resonator_frequency
+        np.arange(-precision_width, precision_width, precision_step)
+        + resonator_frequency
     )
     count = 0
     for _ in range(software_averages):
@@ -121,7 +142,7 @@ def resonator_punchout(
     points=10,
 ):
     platform.reload_settings()
-    
+
     data = Dataset(
         name=f"data_q{qubit}", quantities={"frequency": "Hz", "attenuation": "dB"}
     )
@@ -133,7 +154,11 @@ def resonator_punchout(
     resonator_frequency = platform.characterization["single_qubit"][qubit][
         "resonator_freq"
     ]
-    frequency_range = np.arange(-freq_width, freq_width, freq_step) + resonator_frequency - (freq_width/4)
+    frequency_range = (
+        np.arange(-freq_width, freq_width, freq_step)
+        + resonator_frequency
+        - (freq_width / 4)
+    )
     attenuation_range = np.flip(np.arange(min_att, max_att, step_att))
     count = 0
     print(type(qubit))
@@ -175,10 +200,7 @@ def resonator_spectroscopy_flux(
     points=10,
 ):
     platform.reload_settings()
-    
-    data = Dataset(
-        name=f"data_q{qubit}", quantities={"frequency": "Hz", "current": "A"}
-    )
+
     sequence = PulseSequence()
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
     sequence.add(ro_pulse)
@@ -187,10 +209,16 @@ def resonator_spectroscopy_flux(
         "resonator_freq"
     ]
 
-    frequency_range = np.arange(-freq_width, freq_width, freq_step) + resonator_frequency
+    frequency_range = (
+        np.arange(-freq_width, freq_width, freq_step) + resonator_frequency
+    )
     current_range = np.arange(current_min, current_max, current_step)
 
     count = 0
+
+    data = Dataset(
+        name=f"data_q{qubit}", quantities={"frequency": "Hz", "current": "A"}
+    )
     for _ in range(software_averages):
         for curr in current_range:
             for freq in frequency_range:
@@ -219,3 +247,68 @@ def resonator_spectroscopy_flux(
     # TODO: automatically extract the sweet spot current
     # TODO: add a method to generate the matrix
 
+
+@store
+def resonator_spectroscopy_flux_matrix(
+    platform: AbstractPlatform,
+    qubit,
+    freq_width,
+    freq_step,
+    current_min,
+    current_max,
+    current_step,
+    fluxlines,
+    software_averages,
+    points=10,
+):
+    platform.reload_settings()
+
+    sequence = PulseSequence()
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
+    sequence.add(ro_pulse)
+
+    resonator_frequency = platform.characterization["single_qubit"][qubit][
+        "resonator_freq"
+    ]
+
+    frequency_range = (
+        np.arange(-freq_width, freq_width, freq_step) + resonator_frequency
+    )
+    current_range = np.arange(current_min, current_max, current_step)
+
+    count = 0
+
+    for fluxline in fluxlines:
+        fluxline = int(fluxline)
+        print(fluxline)
+        data = Dataset(
+            name=f"data_q{qubit}_f{fluxline}",
+            quantities={"frequency": "Hz", "current": "A"},
+        )
+        for _ in range(software_averages):
+            for curr in current_range:
+                for freq in frequency_range:
+                    if count % points == 0:
+                        yield data
+                    platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
+                    platform.qf_port[fluxline].current = curr
+                    msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
+                        ro_pulse.serial
+                    ]
+                    results = {
+                        "MSR[V]": msr,
+                        "i[V]": i,
+                        "q[V]": q,
+                        "phase[rad]": phase,
+                        "frequency[Hz]": freq,
+                        "current[A]": curr,
+                    }
+                    # TODO: implement normalization
+                    data.add(results)
+                    count += 1
+
+    yield data
+    # spi.set_dacs_zero() is this needed?
+    # TODO: call platform.qfm[fluxline] instead of dacs[fluxline]
+    # TODO: automatically extract the sweet spot current
+    # TODO: add a method to generate the matrix
