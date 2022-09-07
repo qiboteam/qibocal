@@ -30,7 +30,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
         vertical_spacing=0.1,
         subplot_titles=(
             "MSR (V)",
-            "phase (deg)",
+            "phase (rad)",
         ),
     )
 
@@ -46,7 +46,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
     fig.add_trace(
         go.Scatter(
             x=data_fast.get_values("frequency", "GHz"),
-            y=data_fast.get_values("phase", "deg"),
+            y=data_fast.get_values("phase", "rad"),
             name="Fast",
         ),
         row=1,
@@ -64,7 +64,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
     fig.add_trace(
         go.Scatter(
             x=data_precision.get_values("frequency", "GHz"),
-            y=data_precision.get_values("phase", "deg"),
+            y=data_precision.get_values("phase", "rad"),
             name="Precision",
         ),
         row=1,
@@ -125,7 +125,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
         xaxis_title="Frequency (GHz)",
         yaxis_title="MSR (uV)",
         xaxis2_title="Frequency (GHz)",
-        yaxis2_title="Phase (deg)",
+        yaxis2_title="Phase (rad)",
     )
     return fig
 
