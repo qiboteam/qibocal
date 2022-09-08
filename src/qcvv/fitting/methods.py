@@ -2,14 +2,26 @@
 """Routine-specific method for post-processing data acquired."""
 import lmfit
 import numpy as np
-import yaml
 
+from qcvv.config import log
 from qcvv.data import Data
 from qcvv.fitting.utils import lorenzian, parse
 
 
 def lorentzian_fit(data, x, y, qubit, nqubits, labels):
     """Fitting routine for resonator spectroscopy"""
+
+    data_fit = Data(
+        name=f"fit_q{qubit}",
+        quantities=[
+            "fit_amplitude",
+            "fit_center",
+            "fit_sigma",
+            "fit_offset",
+            labels[1],
+            labels[0],
+        ],
+    )
 
     frequencies = data.get_values(*parse(x))
     voltages = data.get_values(*parse(y))
@@ -46,7 +58,13 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels):
     guess_parameters = model_Q.make_params()
 
     # fit the model with the data and guessed parameters
-    fit_res = model_Q.fit(data=voltages, frequency=frequencies, params=guess_parameters)
+    try:
+        fit_res = model_Q.fit(
+            data=voltages, frequency=frequencies, params=guess_parameters
+        )
+    except:
+        log.warning("The fitting was not successful")
+        return data_fit
 
     # get the values for postprocessing and for legend.
     f0 = fit_res.best_values["center"]
@@ -55,18 +73,6 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels):
     peak_voltage = (
         fit_res.best_values["amplitude"] / (fit_res.best_values["sigma"] * np.pi)
         + fit_res.best_values["offset"]
-    )
-
-    data_fit = Data(
-        name=f"fit_q{qubit}",
-        quantities=[
-            "fit_amplitude",
-            "fit_center",
-            "fit_sigma",
-            "fit_offset",
-            labels[1],
-            labels[0],
-        ],
     )
 
     freq = f0 * 1e6
