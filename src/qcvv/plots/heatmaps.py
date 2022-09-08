@@ -102,9 +102,13 @@ def frequency_flux_msr_phase__matrix(folder, routine, qubit, format):
         if os.path.exists(file):
             fluxes += [i]
 
+    if len(fluxes) < 1:
+        nb = 1
+    else:
+        nb = len(fluxes)
     fig = make_subplots(
         rows=2,
-        cols=len(fluxes),
+        cols=nb,
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
         x_title="Frequency (Hz)",
@@ -114,13 +118,17 @@ def frequency_flux_msr_phase__matrix(folder, routine, qubit, format):
     )
 
     for j in fluxes:
+        if j == fluxes[-1]:
+            showscale = True
+        else:
+            showscale = False
         data = Dataset.load_data(folder, routine, format, f"data_q{qubit}_f{j}")
         fig.add_trace(
             go.Heatmap(
                 x=data.get_values("frequency", "GHz"),
                 y=data.get_values("current", "A"),
                 z=data.get_values("MSR", "V"),
-                colorbar_x=0.45,
+                showscale=showscale,
             ),
             row=1,
             col=j,
@@ -130,7 +138,7 @@ def frequency_flux_msr_phase__matrix(folder, routine, qubit, format):
                 x=data.get_values("frequency", "GHz"),
                 y=data.get_values("current", "A"),
                 z=data.get_values("phase", "rad"),
-                colorbar_x=1.0,
+                showscale=showscale,
             ),
             row=2,
             col=j,

@@ -91,6 +91,8 @@ class ActionBuilder:
         e = datetime.datetime.now(datetime.timezone.utc)
         meta = {}
         meta["date"] = e.strftime("%Y-%m-%d")
+        meta["title"] = self.folder
+        meta["platform"] = self.runcard["platform"]
         meta["start-time"] = e.strftime("%H:%M:%S")
         meta["end-time"] = e.strftime("%H:%M:%S")
         meta["versions"] = {
