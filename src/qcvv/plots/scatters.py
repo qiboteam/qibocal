@@ -21,7 +21,16 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
     except:
-        data_fit = Data()
+        data_fit = Data(
+            quantities=[
+                "fit_amplitude",
+                "fit_center",
+                "fit_sigma",
+                "fit_offset",
+                "label1",
+                "label2",
+            ]
+        )
 
     fig = make_subplots(
         rows=1,
@@ -70,7 +79,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
         row=1,
         col=2,
     )
-    if len(data_fast) > 0:
+    if len(data_fast) > 0 and len(data_fit) > 0:
         freqrange = np.linspace(
             min(data_fast.get_values("frequency", "GHz")),
             max(data_fast.get_values("frequency", "GHz")),

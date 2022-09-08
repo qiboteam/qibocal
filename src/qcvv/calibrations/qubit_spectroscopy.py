@@ -100,7 +100,7 @@ def qubit_spectroscopy(
             if count % points == 0 and count > 0:
                 yield prec_data
                 yield lorentzian_fit(
-                    prec_data,
+                    data + prec_data,
                     x="frequency[GHz]",
                     y="MSR[uV]",
                     qubit=qubit,
