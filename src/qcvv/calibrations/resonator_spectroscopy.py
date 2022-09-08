@@ -278,6 +278,14 @@ def resonator_spectroscopy_flux_matrix(
 
     count = 0
 
+    if fluxlines == "diag":
+        fluxlines = [qubit]
+    elif fluxlines == "all":
+        fluxlines = range(platform.nqubits)
+    elif fluxlines == "outer":
+        fluxlines = np.arange(platform.nqubits)
+        fluxlines = fluxlines[fluxlines != qubit]
+
     for fluxline in fluxlines:
         fluxline = int(fluxline)
         print(fluxline)
