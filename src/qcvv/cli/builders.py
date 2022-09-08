@@ -141,7 +141,13 @@ class ActionBuilder:
 
     def update_platform_runcard(self, qubit, routine):
 
-        data_fit = Data.load_data(self.folder, routine, self.format, f"fit_q{qubit}")
+        try:
+            data_fit = Data.load_data(
+                self.folder, routine, self.format, f"fit_q{qubit}"
+            )
+        except:
+            data_fit = Data()
+
         params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
         settings = load_yaml(f"{self.folder}/platform.yml")
 
