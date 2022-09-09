@@ -30,7 +30,9 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels):
     model_Q = lmfit.Model(lorenzian)
 
     # Guess parameters for Lorentzian max or min
-    if nqubits == 1 and labels[0] == "resonator_freq":
+    if (nqubits == 1 and labels[0] == "resonator_freq") or (
+        nqubits != 1 and labels[0] == "qubit_freq"
+    ):
         guess_center = frequencies[
             np.argmax(voltages)
         ]  # Argmax = Returns the indices of the maximum values along an axis.
