@@ -16,7 +16,7 @@ server = Flask(__name__)
 def page(path=None):
     folders = [
         folder
-        for folder in sorted(os.listdir(os.getcwd()), reverse=True)
+        for folder in reversed(sorted(os.listdir(os.getcwd())))
         if os.path.isdir(folder) and "meta.yml" in os.listdir(folder)
     ]
 

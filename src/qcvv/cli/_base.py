@@ -9,6 +9,7 @@ import uuid
 from urllib.parse import urljoin
 
 import click
+from qibo.config import log, raise_error
 
 from qcvv.cli.builders import ActionBuilder
 

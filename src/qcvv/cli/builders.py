@@ -30,12 +30,14 @@ class ActionBuilder:
     def __init__(self, runcard, folder=None, force=False):
         path, self.folder = self._generate_output_folder(folder, force)
         self.runcard = load_yaml(runcard)
-        self._allocate_platform(self.runcard["platform"])
+        platform_name = self.runcard["platform"]
+        self._allocate_platform(platform_name)
         self.qubits = self.runcard["qubits"]
         self.format = self.runcard["format"]
 
         # Saving runcard
         self.save_runcards(path, runcard)
+        self.save_meta(path, self.folder, platform_name)
 
     @staticmethod
     def _generate_output_folder(folder, force):
@@ -77,19 +79,24 @@ class ActionBuilder:
 
     def save_runcards(self, path, runcard):
         """Save the output runcards."""
-        import qibo
-        import qibolab
         from qibolab.paths import qibolab_folder
-
-        import qcvv
 
         platform_runcard = (
             qibolab_folder / "runcards" / f"{self.runcard['platform']}.yml"
         )
         shutil.copy(platform_runcard, f"{path}/platform.yml")
+        shutil.copy(runcard, f"{path}/runcard.yml")
+
+    def save_meta(self, path, folder, platform_name):
+        import qibo
+        import qibolab
+
+        import qcvv
 
         e = datetime.datetime.now(datetime.timezone.utc)
         meta = {}
+        meta["title"] = folder
+        meta["platform"] = platform_name
         meta["date"] = e.strftime("%Y-%m-%d")
         meta["start-time"] = e.strftime("%H:%M:%S")
         meta["end-time"] = e.strftime("%H:%M:%S")
@@ -100,8 +107,6 @@ class ActionBuilder:
         }
         with open(f"{path}/meta.yml", "w") as file:
             yaml.dump(meta, file)
-
-        shutil.copy(runcard, f"{path}/runcard.yml")
 
     def _build_single_action(self, name):
         """Helper method to parse the actions in the runcard."""
