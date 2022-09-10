@@ -11,6 +11,17 @@ def lorenzian(frequency, amplitude, center, sigma, offset):
     ) + offset
 
 
+def rabi(x, p0, p1, p2, p3, p4):
+    # A fit to Superconducting Qubit Rabi Oscillation
+    #   Offset                       : p[0]
+    #   Oscillation amplitude        : p[1]
+    #   Period    T                  : 1/p[2]
+    #   Phase                        : p[3]
+    #   Arbitrary parameter T_2      : 1/p[4]
+    # return p[0] + p[1] * np.sin(2 * np.pi / p[2] * x + p[3]) * np.exp(-x / p[4])
+    return p0 + p1 * np.sin(2 * np.pi * x * p2 + p3) * np.exp(-x * p4)
+
+
 def parse(key):
     name = key.split("[")[0]
     unit = re.search(r"\[([A-Za-z0-9_]+)\]", key).group(1)
