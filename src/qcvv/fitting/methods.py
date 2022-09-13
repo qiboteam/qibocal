@@ -6,7 +6,7 @@ from scipy.optimize import curve_fit
 
 from qcvv.config import log
 from qcvv.data import Data
-from qcvv.fitting.utils import exp, lorenzian, parse, rabi, ramsey
+from qcvv.fitting.utils import exp, flipping, lorenzian, parse, rabi, ramsey
 
 
 def lorentzian_fit(data, x, y, qubit, nqubits, labels):
@@ -230,6 +230,42 @@ def t1_fit(data, x, y, qubit, nqubits, labels):
             "popt1": popt[1],
             "popt2": popt[2],
             labels[0]: t1,
+        }
+    )
+    return data_fit
+
+
+def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
+
+    flips = data.get_values(*parse(x))  # Check X data stores. N flips or i?
+    voltages = data.get_values(*parse(y))
+
+    if nqubits == 1:
+        pguess = [0.0003, np.mean(voltages), -18, 0]  # epsilon guess parameter
+    else:
+        pguess = [0.0003, np.mean(voltages), 18, 0]  # epsilon guess parameter
+
+    popt, pcov = curve_fit(flipping, flips, voltages, p0=pguess, maxfev=2000000)
+    angle = (niter * 2 * np.pi / popt[2] + popt[3]) / (1 + 4 * niter)
+    amplitude_delta = angle * 2 / np.pi * pi_pulse_amplitude
+
+    data_fit = Data(
+        name=f"fit_q{qubit}",
+        quantities=[
+            "popt0",
+            "popt1",
+            "popt2",
+            "popt3",
+            labels[0],
+        ],
+    )
+    data_fit.add(
+        {
+            "popt0": popt[0],
+            "popt1": popt[1],
+            "popt2": popt[2],
+            "popt3": popt[3],
+            labels[0]: amplitude_delta,
         }
     )
     return data_fit
