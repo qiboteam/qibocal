@@ -4,6 +4,7 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
 from qcvv import plots
+from qcvv.calibrations.utils import check_frequency
 from qcvv.data import Dataset
 from qcvv.decorators import plot
 from qcvv.fitting.methods import rabi_fit
@@ -33,15 +34,7 @@ def rabi_pulse_length(
         pulse_duration_start, pulse_duration_end, pulse_duration_step
     )
 
-    # FIXME: Waiting to be able to pass qpucard to qibolab
-    platform.ro_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["resonator_freq"]
-        - ro_pulse.frequency
-    )
-    platform.qd_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["qubit_freq"]
-        - qd_pulse.frequency
-    )
+    check_frequency(platform, write=True)
 
     count = 0
     for _ in range(software_averages):
@@ -99,15 +92,7 @@ def rabi_pulse_gain(
 
     qd_pulse_gain_range = np.arange(pulse_gain_start, pulse_gain_end, pulse_gain_step)
 
-    # FIXME: Waiting to be able to pass qpucard to qibolab
-    platform.ro_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["resonator_freq"]
-        - ro_pulse.frequency
-    )
-    platform.qd_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["qubit_freq"]
-        - qd_pulse.frequency
-    )
+    check_frequency(platform, write=True)
 
     count = 0
     for _ in range(software_averages):
@@ -166,15 +151,7 @@ def rabi_pulse_amplitude(
         pulse_amplitude_start, pulse_amplitude_end, pulse_amplitude_step
     )
 
-    # FIXME: Waiting to be able to pass qpucard to qibolab
-    platform.ro_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["resonator_freq"]
-        - ro_pulse.frequency
-    )
-    platform.qd_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["qubit_freq"]
-        - qd_pulse.frequency
-    )
+    check_frequency(platform, write=True)
 
     count = 0
     for _ in range(software_averages):
@@ -239,15 +216,7 @@ def rabi_pulse_length_and_gain(
     )
     qd_pulse_gain_range = np.arange(pulse_gain_start, pulse_gain_end, pulse_gain_step)
 
-    # FIXME: Waiting to be able to pass qpucard to qibolab
-    platform.ro_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["resonator_freq"]
-        - ro_pulse.frequency
-    )
-    platform.qd_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["qubit_freq"]
-        - qd_pulse.frequency
-    )
+    check_frequency(platform, write=True)
 
     count = 0
     for _ in range(software_averages):
@@ -308,15 +277,7 @@ def rabi_pulse_length_and_amplitude(
         pulse_amplitude_start, pulse_amplitude_end, pulse_amplitude_step
     )
 
-    # FIXME: Waiting to be able to pass qpucard to qibolab
-    platform.ro_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["resonator_freq"]
-        - ro_pulse.frequency
-    )
-    platform.qd_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["qubit_freq"]
-        - qd_pulse.frequency
-    )
+    check_frequency(platform, write=True)
 
     count = 0
     for _ in range(software_averages):
@@ -336,6 +297,65 @@ def rabi_pulse_length_and_amplitude(
                     "q[V]": q,
                     "phase[rad]": phase,
                     "duration[ns]": duration,
+                    "amplitude[dimensionless]": amplitude,
+                }
+                data.add(results)
+                count += 1
+
+    yield data
+
+
+@plot("MSR vs length and amplitude", plots.amplitude_attenuation_msr_phase)
+def rabi_pulse_amplitude_and_attenuation(
+    platform,
+    qubit,
+    pulse_amplitude_start,
+    pulse_amplitude_end,
+    pulse_amplitude_step,
+    qd_pulse_attenuation_range,
+    software_averages,
+    points=10,
+):
+    platform.reload_settings()
+
+    data = Dataset(
+        name=f"data_q{qubit}",
+        quantities={"attenuation": "dB", "amplitude": "dimensionless"},
+    )
+
+    sequence = PulseSequence()
+    qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=40)
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=qd_pulse.duration)
+    sequence.add(qd_pulse)
+    sequence.add(ro_pulse)
+
+    if isinstance(qd_pulse_attenuation_range, str):
+        qd_pulse_attenuation_range = eval(qd_pulse_attenuation_range)
+    qd_pulse_attenuation_range = np.array(qd_pulse_attenuation_range)
+
+    qd_pulse_amplitude_range = np.arange(
+        pulse_amplitude_start, pulse_amplitude_end, pulse_amplitude_step
+    )
+
+    check_frequency(platform, write=True)
+
+    count = 0
+    for _ in range(software_averages):
+        for att in qd_pulse_attenuation_range:
+            platform.qd_port[qubit].attenuation = att
+            for amplitude in qd_pulse_amplitude_range:
+                qd_pulse.amplitude = amplitude
+                if count % points == 0:
+                    yield data
+                msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
+                    ro_pulse.serial
+                ]
+                results = {
+                    "MSR[V]": msr,
+                    "i[V]": i,
+                    "q[V]": q,
+                    "phase[rad]": phase,
+                    "attenuation[dB]": att,
                     "amplitude[dimensionless]": amplitude,
                 }
                 data.add(results)

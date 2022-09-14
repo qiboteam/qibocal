@@ -4,7 +4,7 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
 from qcvv import plots
-from qcvv.calibrations.utils import variable_resolution_scanrange
+from qcvv.calibrations.utils import check_frequency, variable_resolution_scanrange
 from qcvv.data import Dataset
 from qcvv.decorators import plot
 from qcvv.fitting.methods import lorentzian_fit
@@ -21,8 +21,11 @@ def resonator_spectroscopy(
     precision_width,
     precision_step,
     software_averages,
+    drive_attenuation=None,
     points=10,
 ):
+    platform.reload_settings()
+    check_frequency(platform, write=False)
 
     platform.reload_settings()
     sequence = PulseSequence()
@@ -32,6 +35,12 @@ def resonator_spectroscopy(
     resonator_frequency = platform.characterization["single_qubit"][qubit][
         "resonator_freq"
     ]
+
+    for i in range(platform.settings["nqubits"]):
+        if isinstance(drive_attenuation, list):
+            platform.qd_port[i].attenuation = drive_attenuation[i]
+        else:
+            platform.qd_port[i].attenuation = drive_attenuation
 
     frequency_range = (
         variable_resolution_scanrange(
@@ -142,12 +151,14 @@ def resonator_punchout(
     points=10,
 ):
     platform.reload_settings()
+    check_frequency(platform, write=False)
 
     data = Dataset(
         name=f"data_q{qubit}", quantities={"frequency": "Hz", "attenuation": "dB"}
     )
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
     sequence = PulseSequence()
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
     sequence.add(ro_pulse)
 
     # TODO: move this explicit instruction to the platform
@@ -180,10 +191,8 @@ def resonator_punchout(
                     "frequency[Hz]": freq,
                     "attenuation[dB]": att,
                 }
-                # TODO: implement normalization
                 data.add(results)
                 count += 1
-
     yield data
 
 
