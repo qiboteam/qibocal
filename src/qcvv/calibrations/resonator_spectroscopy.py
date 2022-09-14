@@ -322,3 +322,62 @@ def resonator_spectroscopy_flux_matrix(
                     count += 1
 
     yield data
+
+
+@plot("Frequency vs Attenuation", plots.frequency_attenuation_msr_phase)
+def resonator_drive_noise(
+    platform: AbstractPlatform,
+    qubit,
+    freq_width,
+    freq_step,
+    min_att,
+    max_att,
+    step_att,
+    software_averages,
+    points=10,
+):
+    platform.reload_settings()
+    check_frequency(platform, write=False)
+
+    data = Dataset(
+        name=f"data_q{qubit}", quantities={"frequency": "Hz", "attenuation": "dB"}
+    )
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
+    sequence = PulseSequence()
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
+    sequence.add(ro_pulse)
+
+    # TODO: move this explicit instruction to the platform
+    resonator_frequency = platform.characterization["single_qubit"][qubit][
+        "resonator_freq"
+    ]
+    frequency_range = (
+        np.arange(-freq_width, freq_width, freq_step)
+        + resonator_frequency
+        - (freq_width / 4)
+    )
+    attenuation_range = np.flip(np.arange(min_att, max_att, step_att))
+    count = 0
+    for _ in range(software_averages):
+        for att in attenuation_range:
+            for i in range(platform.nqubits):
+                platform.qd_port[qubit].attenuation = att
+            for freq in frequency_range:
+                if count % points == 0:
+                    yield data
+                # TODO: move these explicit instructions to the platform
+                platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
+                msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
+                    ro_pulse.serial
+                ]
+                results = {
+                    "MSR[V]": msr,
+                    "i[V]": i,
+                    "q[V]": q,
+                    "phase[rad]": phase,
+                    "frequency[Hz]": freq,
+                    "attenuation[dB]": att,
+                }
+                data.add(results)
+                count += 1
+    yield data
