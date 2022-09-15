@@ -1,6 +1,6 @@
 platform: tii5q
 
-qubits: [1, 2, 3, 4]
+qubits: [2]
 
 format: csv
 
@@ -105,12 +105,12 @@ actions:
   #   software_averages: 1
   #   points: 10
 
-  ramsey_frequency_detuned:
-    t_start: 4
-    t_end: [3000, 4000, 6000] #t_end (optimal) = 3.5 * T2
-    t_step: 16
-    n_osc: 4
-    points: 5 #minimum set to 5 for live fitting
+  # ramsey_frequency_detuned:
+  #   t_start: 4
+  #   t_end: [3000, 4000, 6000] #t_end (optimal) = 3.5 * T2
+  #   t_step: 16
+  #   n_osc: 4
+  #   points: 5 #minimum set to 5 for live fitting
 
   ramsey:
     delay_between_pulses_start: 4 # must be a multiple of 4 incl 0
