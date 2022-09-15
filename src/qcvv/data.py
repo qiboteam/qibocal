@@ -7,9 +7,7 @@ import pandas as pd
 import pint_pandas
 
 from qcvv.config import raise_error
-import re
 
-from pint import UnitRegistry
 
 class AbstractDataset:
     def __init__(self, name=None):
@@ -86,6 +84,8 @@ class Dataset(AbstractDataset):
             for name, unit in quantities.items():
                 self.df.insert(0, name, pd.Series(dtype=f"pint[{unit}]"))
 
+        from pint import UnitRegistry
+
         self.ureg = UnitRegistry()
 
     def add(self, data):
@@ -96,6 +96,8 @@ class Dataset(AbstractDataset):
                         Every key should have the following form:
                         ``<name>[<unit>]``.
         """
+        import re
+
         l = len(self)
         for key, value in data.items():
             name = key.split("[")[0]
