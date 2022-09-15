@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Implementation of Dataset class to store measurements."""
 
+import re
 from abc import abstractmethod
 
 import pandas as pd
@@ -84,6 +85,10 @@ class Dataset(AbstractDataset):
             for name, unit in quantities.items():
                 self.df.insert(0, name, pd.Series(dtype=f"pint[{unit}]"))
 
+        from pint import UnitRegistry
+
+        self.ureg = UnitRegistry()
+
     def add(self, data):
         """Add a row to dataset.
 
@@ -92,17 +97,12 @@ class Dataset(AbstractDataset):
                         Every key should have the following form:
                         ``<name>[<unit>]``.
         """
-        import re
-
-        from pint import UnitRegistry
-
-        ureg = UnitRegistry()
         l = len(self)
         for key, value in data.items():
             name = key.split("[")[0]
             unit = re.search(r"\[([A-Za-z0-9_]+)\]", key).group(1)
             # TODO: find a better way to do this
-            self.df.loc[l, name] = value * ureg(unit)
+            self.df.loc[l, name] = value * self.ureg(unit)
 
     def get_values(self, quantity, unit):
         """Get values of a quantity in specified units.
