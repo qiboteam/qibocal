@@ -210,7 +210,7 @@ def time_msr_phase(folder, routine, qubit, format):
     )
 
     # add fitting trace
-    if len(data) > 0:
+    if len(data) > 0 and len(data_fit) > 0:
         timerange = np.linspace(
             min(data.get_values("Time", "ns")),
             max(data.get_values("Time", "ns")),
@@ -333,7 +333,7 @@ def gain_msr_phase(folder, routine, qubit, format):
     )
 
     # add fitting trace
-    if len(data) > 0:
+    if len(data) > 0 and len(data_fit) > 0:
         timerange = np.linspace(
             min(data.get_values("gain", "dimensionless")),
             max(data.get_values("gain", "dimensionless")),
@@ -437,7 +437,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
     )
 
     # add fitting trace
-    if len(data) > 0:
+    if len(data) > 0 and len(data_fit) > 0:
         timerange = np.linspace(
             min(data.get_values("amplitude", "dimensionless")),
             max(data.get_values("amplitude", "dimensionless")),
