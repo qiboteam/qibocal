@@ -1,6 +1,6 @@
 platform: tii5q
 
-qubits: [3]
+qubits: [2]
 
 format: csv
 
@@ -107,7 +107,7 @@ actions:
 
   # ramsey_frequency_detuned:
   #   t_start: 4
-  #   t_end: [3000, 4000, 6000] #t_end (optimal) = 3.5 * T2
+  #   t_end: [3000] #t_end (optimal) = 3.5 * T2
   #   t_step: 16
   #   n_osc: 4
   #   points: 5 #minimum set to 5 for live fitting
@@ -127,7 +127,7 @@ actions:
   #   points: 5
 
   flipping:
-    niter: 20
+    niter: 60
     step: 1
     points: 5
 

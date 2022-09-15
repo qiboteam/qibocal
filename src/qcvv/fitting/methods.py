@@ -94,6 +94,20 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels):
 
 
 def rabi_fit(data, x, y, qubit, nqubits, labels):
+    data_fit = Data(
+        name=f"fit_q{qubit}",
+        quantities=[
+            "popt0",
+            "popt1",
+            "popt2",
+            "popt3",
+            "popt4",
+            labels[0],
+            labels[1],
+            labels[2],
+        ],
+    )
+
     time = data.get_values(*parse(x))
     voltages = data.get_values(*parse(y))
 
@@ -113,26 +127,18 @@ def rabi_fit(data, x, y, qubit, nqubits, labels):
             np.pi / 2,
             0.1e-6,
         ]
+    try:
+        popt, pcov = curve_fit(
+            rabi, time.values, voltages.values, p0=pguess, maxfev=10000
+        )
+        smooth_dataset = rabi(time.values, *popt)
+        pi_pulse_duration = np.abs((1.0 / popt[2]) / 2)
+        rabi_oscillations_pi_pulse_max_voltage = smooth_dataset.max() * 1e6
+        t1 = 1.0 / popt[4]  # double check T1
+    except:
+        log.warning("The fitting was not succesful")
+        return data_fit
 
-    popt, pcov = curve_fit(rabi, time.values, voltages.values, p0=pguess, maxfev=10000)
-    smooth_dataset = rabi(time.values, *popt)
-    pi_pulse_duration = np.abs((1.0 / popt[2]) / 2)
-    rabi_oscillations_pi_pulse_max_voltage = smooth_dataset.max() * 1e6
-    t1 = 1.0 / popt[4]  # double check T1
-
-    data_fit = Data(
-        name=f"fit_q{qubit}",
-        quantities=[
-            "popt0",
-            "popt1",
-            "popt2",
-            "popt3",
-            "popt4",
-            labels[0],
-            labels[1],
-            labels[2],
-        ],
-    )
     data_fit.add(
         {
             "popt0": popt[0],
@@ -149,23 +155,6 @@ def rabi_fit(data, x, y, qubit, nqubits, labels):
 
 
 def ramsey_fit(data, x, y, qubit, qubit_freq, sampling_rate, offset_freq, labels):
-    time = data.get_values(*parse(x))
-    voltages = data.get_values(*parse(y))
-
-    pguess = [
-        np.mean(voltages.values),
-        np.max(voltages.values) - np.min(voltages.values),
-        0.5 / time.values[np.argmin(voltages.values)],
-        np.pi / 2,
-        500e-9,
-    ]
-    popt, pcov = curve_fit(
-        ramsey, time.values, voltages.values, p0=pguess, maxfev=2000000
-    )
-    delta_fitting = popt[2]
-    delta_phys = int((delta_fitting * sampling_rate) - offset_freq)
-    corrected_qubit_frequency = int(qubit_freq - delta_phys)
-    t2 = 1.0 / popt[4]
 
     data_fit = Data(
         name=f"fit_q{qubit}",
@@ -180,6 +169,30 @@ def ramsey_fit(data, x, y, qubit, qubit_freq, sampling_rate, offset_freq, labels
             labels[2],
         ],
     )
+
+    time = data.get_values(*parse(x))
+    voltages = data.get_values(*parse(y))
+
+    pguess = [
+        np.mean(voltages.values),
+        np.max(voltages.values) - np.min(voltages.values),
+        0.5 / time.values[np.argmin(voltages.values)],
+        np.pi / 2,
+        500e-9,
+    ]
+
+    try:
+        popt, pcov = curve_fit(
+            ramsey, time.values, voltages.values, p0=pguess, maxfev=2000000
+        )
+        delta_fitting = popt[2]
+        delta_phys = int((delta_fitting * sampling_rate) - offset_freq)
+        corrected_qubit_frequency = int(qubit_freq - delta_phys)
+        t2 = 1.0 / popt[4]
+    except:
+        log.warning("The fitting was not succesful")
+        return data_fit
+
     data_fit.add(
         {
             "popt0": popt[0],
@@ -197,6 +210,16 @@ def ramsey_fit(data, x, y, qubit, qubit_freq, sampling_rate, offset_freq, labels
 
 def t1_fit(data, x, y, qubit, nqubits, labels):
 
+    data_fit = Data(
+        name=f"fit_q{qubit}",
+        quantities=[
+            "popt0",
+            "popt1",
+            "popt2",
+            labels[0],
+        ],
+    )
+
     time = data.get_values(*parse(x))
     voltages = data.get_values(*parse(y))
 
@@ -212,18 +235,17 @@ def t1_fit(data, x, y, qubit, nqubits, labels):
             (max(voltages.values) - min(voltages.values)),
             1 / 250,
         ]
-    popt, pcov = curve_fit(exp, time.values, voltages.values, p0=pguess, maxfev=2000000)
-    t1 = abs(1 / popt[2])
 
-    data_fit = Data(
-        name=f"fit_q{qubit}",
-        quantities=[
-            "popt0",
-            "popt1",
-            "popt2",
-            labels[0],
-        ],
-    )
+    try:
+        popt, pcov = curve_fit(
+            exp, time.values, voltages.values, p0=pguess, maxfev=2000000
+        )
+        t1 = abs(1 / popt[2])
+
+    except:
+        log.warning("The fitting was not succesful")
+        return data_fit
+
     data_fit.add(
         {
             "popt0": popt[0],
@@ -237,18 +259,6 @@ def t1_fit(data, x, y, qubit, nqubits, labels):
 
 def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
 
-    flips = data.get_values(*parse(x))  # Check X data stores. N flips or i?
-    voltages = data.get_values(*parse(y))
-
-    if nqubits == 1:
-        pguess = [0.0003, np.mean(voltages), -18, 0]  # epsilon guess parameter
-    else:
-        pguess = [0.0003, np.mean(voltages), 18, 0]  # epsilon guess parameter
-
-    popt, pcov = curve_fit(flipping, flips, voltages, p0=pguess, maxfev=2000000)
-    angle = (niter * 2 * np.pi / popt[2] + popt[3]) / (1 + 4 * niter)
-    amplitude_delta = angle * 2 / np.pi * pi_pulse_amplitude
-
     data_fit = Data(
         name=f"fit_q{qubit}",
         quantities=[
@@ -257,8 +267,29 @@ def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
             "popt2",
             "popt3",
             labels[0],
+            labels[1],
         ],
     )
+
+    flips = data.get_values(*parse(x))  # Check X data stores. N flips or i?
+    voltages = data.get_values(*parse(y))
+
+    if nqubits == 1:
+        pguess = [0.0003, np.mean(voltages), -18, 0]  # epsilon guess parameter
+    else:
+        pguess = [0.0003, np.mean(voltages), 18, 0]  # epsilon guess parameter
+
+    try:
+        popt, pcov = curve_fit(flipping, flips, voltages, p0=pguess, maxfev=2000000)
+        epsilon = -np.pi / popt[2]
+        amplitude_delta = np.pi / (np.pi + epsilon)
+        corrected_amplitude = amplitude_delta * pi_pulse_amplitude
+        # angle = (niter * 2 * np.pi / popt[2] + popt[3]) / (1 + 4 * niter)
+        # amplitude_delta = angle * 2 / np.pi * pi_pulse_amplitude
+    except:
+        log.warning("The fitting was not succesful")
+        return data_fit
+
     data_fit.add(
         {
             "popt0": popt[0],
@@ -266,6 +297,7 @@ def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
             "popt2": popt[2],
             "popt3": popt[3],
             labels[0]: amplitude_delta,
+            labels[1]: corrected_amplitude,
         }
     )
     return data_fit
