@@ -11,7 +11,7 @@ from urllib.parse import urljoin
 import click
 from qibo.config import log, raise_error
 
-from qcvv.cli.builders import ActionBuilder
+from qcvv.cli.builders import ActionBuilderHighLevel, ActionBuilderLowLevel
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -39,6 +39,34 @@ ROOT_URL = "http://login.qrccluster.com:9000/"
     is_flag=True,
     help="Use --force option to overwrite the output folder.",
 )
+def high(runcard, folder, force=None):
+
+    """qcvv: Quantum Calibration Verification and Validation using Qibo.
+
+    Arguments:
+
+     - RUNCARD: runcard with declarative inputs.
+    """
+
+    action_builder = ActionBuilderHighLevel(runcard, folder, force)
+    action_builder.execute()
+    action_builder.dump_report()
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument("runcard", metavar="RUNCARD", type=click.Path(exists=True))
+@click.option(
+    "folder",
+    "-o",
+    type=click.Path(),
+    help="Output folder. If not provided a standard name will generated.",
+)
+@click.option(
+    "force",
+    "-f",
+    is_flag=True,
+    help="Use --force option to overwrite the output folder.",
+)
 def command(runcard, folder, force=None):
 
     """qcvv: Quantum Calibration Verification and Validation using Qibo.
@@ -48,7 +76,7 @@ def command(runcard, folder, force=None):
      - RUNCARD: runcard with declarative inputs.
     """
 
-    action_builder = ActionBuilder(runcard, folder, force)
+    action_builder = ActionBuilderLowLevel(runcard, folder, force)
     action_builder.execute()
     action_builder.dump_report()
 

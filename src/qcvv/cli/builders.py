@@ -18,26 +18,13 @@ def load_yaml(path):
     return data
 
 
-class ActionBuilder:
-    """Class for parsing and executing runcards.
-
-    Args:
-        runcard (path): path containing the runcard.
-        folder (path): path for the output folder.
-        force (bool): option to overwrite the output folder if it exists already.
-    """
-
+class AbstractActionBuilder:
     def __init__(self, runcard, folder=None, force=False):
-        path, self.folder = self._generate_output_folder(folder, force)
+        self.path, self.folder = self._generate_output_folder(folder, force)
         self.runcard = load_yaml(runcard)
-        platform_name = self.runcard["platform"]
-        self._allocate_platform(platform_name)
-        self.qubits = self.runcard["qubits"]
         self.format = self.runcard["format"]
-
-        # Saving runcard
-        self.save_runcards(path, runcard)
-        self.save_meta(path, self.folder, platform_name)
+        self.save_runcard(self.path, runcard)
+        self.save_meta(self.path, self.folder)
 
     @staticmethod
     def _generate_output_folder(folder, force):
@@ -71,13 +58,69 @@ class ActionBuilder:
         os.makedirs(path)
         return path, folder
 
+    def save_runcard(self, path, runcard):
+        """Save the output runcards."""
+        shutil.copy(runcard, f"{path}/runcard.yml")
+
+    def save_meta(self, path, folder):
+        import qibo
+
+        import qcvv
+
+        e = datetime.datetime.now(datetime.timezone.utc)
+        meta = {}
+        meta["title"] = folder
+        meta["date"] = e.strftime("%Y-%m-%d")
+        meta["start-time"] = e.strftime("%H:%M:%S")
+        meta["end-time"] = e.strftime("%H:%M:%S")
+        meta["versions"] = {
+            "qibo": qibo.__version__,
+            "qcvv": qcvv.__version__,
+        }
+        with open(f"{path}/meta.yml", "w") as file:
+            yaml.dump(meta, file)
+
+    def dump_report(self):
+        from qcvv.web.report import create_report
+
+        # update end time
+        meta = load_yaml(f"{self.folder}/meta.yml")
+        e = datetime.datetime.now(datetime.timezone.utc)
+        meta["end-time"] = e.strftime("%H:%M:%S")
+        with open(f"{self.folder}/meta.yml", "w") as file:
+            yaml.dump(meta, file)
+
+        create_report(self.folder)
+
+
+class ActionBuilderLowLevel(AbstractActionBuilder):
+    """Class for parsing and executing runcards.
+
+    Args:
+        runcard (path): path containing the runcard.
+        folder (path): path for the output folder.
+        force (bool): option to overwrite the output folder if it exists already.
+    """
+
+    def __init__(self, runcard, folder=None, force=False):
+
+        super().__init__(runcard, folder, force)
+        platform_name = self.runcard["platform"]
+        self.qubits = self.runcard["qubits"]
+        self._allocate_platform(platform_name)
+
+        # Saving runcard
+        self.save_platform_runcard(self.path)
+        self.update_meta(platform_name)
+
     def _allocate_platform(self, platform_name):
         """Allocate the platform using Qibolab."""
-        from qibo.backends import construct_backend
+        from qibo.backends import GlobalBackend, set_backend
 
-        self.platform = construct_backend("qibolab", platform=platform_name).platform
+        set_backend(backend="qibolab", platform=platform_name)
+        self.platform = GlobalBackend().platform
 
-    def save_runcards(self, path, runcard):
+    def save_platform_runcard(self, path):
         """Save the output runcards."""
         from qibolab.paths import qibolab_folder
 
@@ -85,27 +128,18 @@ class ActionBuilder:
             qibolab_folder / "runcards" / f"{self.runcard['platform']}.yml"
         )
         shutil.copy(platform_runcard, f"{path}/platform.yml")
-        shutil.copy(runcard, f"{path}/runcard.yml")
 
-    def save_meta(self, path, folder, platform_name):
-        import qibo
+    def update_meta(self, platform_name):
         import qibolab
 
-        import qcvv
+        path = f"{self.path}/meta.yml"
+        meta = load_yaml(path)
 
-        e = datetime.datetime.now(datetime.timezone.utc)
-        meta = {}
-        meta["title"] = folder
         meta["platform"] = platform_name
-        meta["date"] = e.strftime("%Y-%m-%d")
-        meta["start-time"] = e.strftime("%H:%M:%S")
-        meta["end-time"] = e.strftime("%H:%M:%S")
         meta["versions"] = {
-            "qibo": qibo.__version__,
             "qibolab": qibolab.__version__,
-            "qcvv": qcvv.__version__,
         }
-        with open(f"{path}/meta.yml", "w") as file:
+        with open(f"path", "w") as file:
             yaml.dump(meta, file)
 
     def _build_single_action(self, name):
@@ -166,17 +200,72 @@ class ActionBuilder:
                 settings, file, sort_keys=False, indent=4, default_flow_style=None
             )
 
-    def dump_report(self):
-        from qcvv.web.report import create_report
 
-        # update end time
-        meta = load_yaml(f"{self.folder}/meta.yml")
-        e = datetime.datetime.now(datetime.timezone.utc)
-        meta["end-time"] = e.strftime("%H:%M:%S")
-        with open(f"{self.folder}/meta.yml", "w") as file:
+class ActionBuilderHighLevel(AbstractActionBuilder):
+    """Class for parsing and executing runcards.
+
+    Args:
+        runcard (path): path containing the runcard.
+        folder (path): path for the output folder.
+        force (bool): option to overwrite the output folder if it exists already.
+    """
+
+    def __init__(self, runcard, folder=None, force=False):
+
+        super().__init__(runcard, folder, force)
+        backend_name = self.runcard["backend"]
+        self.nqubits = self.runcard["nqubits"]
+        self._allocate_backend(backend_name)
+
+        # Saving runcard
+        self.update_meta(backend_name)
+
+    def _allocate_backend(self, backend_name):
+        """Allocate the platform using Qibolab."""
+        from qibo.backends import GlobalBackend, set_backend
+
+        set_backend(backend=backend_name)
+
+    def update_meta(self, backend_name):
+
+        path = f"{self.path}/meta.yml"
+        meta = load_yaml(path)
+
+        meta["backend"] = backend_name
+        if backend_name == "qibojit":
+            import qibojit
+
+            meta["versions"] = {
+                "qibojit": qibojit.__version__,
+            }
+        with open(f"{path}", "w") as file:
             yaml.dump(meta, file)
 
-        create_report(self.folder)
+    def _build_single_action(self, name):
+        """Helper method to parse the actions in the runcard."""
+        f = getattr(calibrations, name)
+        path = os.path.join(self.folder, f"data/{name}/")
+        os.makedirs(path)
+        sig = inspect.signature(f)
+        params = self.runcard["actions"][name]
+        for param in list(sig.parameters)[1:-1]:
+            if param not in params:
+                raise_error(AttributeError, f"Missing parameter {param} in runcard.")
+        return f, params, path
+
+    def execute(self):
+        """Method to execute sequentially all the actions in the runcard."""
+        for action in self.runcard["actions"]:
+            routine, args, path = self._build_single_action(action)
+            self._execute_single_action(routine, args, path)
+
+    def _execute_single_action(self, routine, arguments, path):
+        """Method to execute a single action and retrieving the results."""
+        results = routine(self.nqubits, **arguments)
+        if self.format is None:
+            raise_error(ValueError, f"Cannot store data using {self.format} format.")
+        for data in results:
+            getattr(data, f"to_{self.format}")(path)
 
 
 class ReportBuilder:

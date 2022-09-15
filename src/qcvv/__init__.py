@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from .cli import command, live_plot, upload
+from .cli import command, high, live_plot, upload
 
 """qcvv: Quantum Calibration Verification and Validation using Qibo."""
 import importlib.metadata as im
