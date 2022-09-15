@@ -19,9 +19,9 @@ class AbstractDataset:
 
         self.df = pd.DataFrame()
 
-    # def __add__(self, data):
-    #     self.df = pd.concat([self.df, data.df)
-    #     return self
+    def __add__(self, data):
+        self.df = pd.concat([self.df, data.df], ignore_index=True)
+        return self
 
     @abstractmethod
     def add(self, data):
@@ -165,7 +165,7 @@ class Data(AbstractDataset):
         if quantities is not None:
             self.quantities = quantities
             for name in quantities:
-                self.df.insert(0, name, pd.Series())
+                self.df.insert(0, name, pd.Series(dtype=object))
 
     def add(self, data):
         """Add a row to dataset.

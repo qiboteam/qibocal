@@ -104,7 +104,7 @@ def resonator_spectroscopy(
             if count % points == 0 and count > 0:
                 yield precision_sweep__data
                 yield lorentzian_fit(
-                    precision_sweep__data,
+                    fast_sweep_data + precision_sweep__data,
                     x="frequency[GHz]",
                     y="MSR[uV]",
                     qubit=qubit,
