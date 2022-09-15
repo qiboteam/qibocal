@@ -529,7 +529,7 @@ def time_msr(folder, routine, qubit, format):
     )
 
     # add fitting trace
-    if len(data) > 0:
+    if len(data) > 0 and len(data_fit) > 0:
         timerange = np.linspace(
             min(data.get_values("wait", "ns")),
             max(data.get_values("wait", "ns")),
