@@ -259,21 +259,6 @@ def t1_fit(data, x, y, qubit, nqubits, labels):
 
 def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
 
-    flips = data.get_values(*parse(x))  # Check X data stores. N flips or i?
-    voltages = data.get_values(*parse(y))
-
-    if nqubits == 1:
-        pguess = [0.0003, np.mean(voltages), -18, 0]  # epsilon guess parameter
-    else:
-        pguess = [0.0003, np.mean(voltages), 18, 0]  # epsilon guess parameter
-
-    popt, pcov = curve_fit(flipping, flips, voltages, p0=pguess, maxfev=2000000)
-    epsilon = -np.pi / popt[2]
-    amplitude_delta = np.pi / (np.pi + epsilon)
-    corrected_amplitude = amplitude_delta * pi_pulse_amplitude
-    # angle = (niter * 2 * np.pi / popt[2] + popt[3]) / (1 + 4 * niter)
-    # amplitude_delta = angle * 2 / np.pi * pi_pulse_amplitude
-
     data_fit = Data(
         name=f"fit_q{qubit}",
         quantities=[
@@ -285,6 +270,26 @@ def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
             labels[1],
         ],
     )
+
+    flips = data.get_values(*parse(x))  # Check X data stores. N flips or i?
+    voltages = data.get_values(*parse(y))
+
+    if nqubits == 1:
+        pguess = [0.0003, np.mean(voltages), -18, 0]  # epsilon guess parameter
+    else:
+        pguess = [0.0003, np.mean(voltages), 18, 0]  # epsilon guess parameter
+
+    try:
+        popt, pcov = curve_fit(flipping, flips, voltages, p0=pguess, maxfev=2000000)
+        epsilon = -np.pi / popt[2]
+        amplitude_delta = np.pi / (np.pi + epsilon)
+        corrected_amplitude = amplitude_delta * pi_pulse_amplitude
+        # angle = (niter * 2 * np.pi / popt[2] + popt[3]) / (1 + 4 * niter)
+        # amplitude_delta = angle * 2 / np.pi * pi_pulse_amplitude
+    except:
+        log.warning("The fitting was not succesful")
+        return data_fit
+
     data_fit.add(
         {
             "popt0": popt[0],

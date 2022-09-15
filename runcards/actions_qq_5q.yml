@@ -5,15 +5,15 @@ qubits: [2]
 format: csv
 
 actions:
-  resonator_spectroscopy:
-    lowres_width: 5_000_000
-    lowres_step: 2_000_000
-    highres_width: 1_500_000
-    highres_step: 200_000
-    precision_width: 1_500_000
-    precision_step: 100_000
-    software_averages: 1
-    points: 5
+  # resonator_spectroscopy:
+  #   lowres_width: 5_000_000
+  #   lowres_step: 2_000_000
+  #   highres_width: 1_500_000
+  #   highres_step: 200_000
+  #   precision_width: 1_500_000
+  #   precision_step: 100_000
+  #   software_averages: 1
+  #   points: 5
 
   # resonator_spectroscopy_flux:
   #   freq_width: 3_000_000
@@ -126,10 +126,10 @@ actions:
   #   software_averages: 1
   #   points: 5
 
-  # flipping:
-  #   niter: 40
-  #   step: 1
-  #   points: 5
+  flipping:
+    niter: 40
+    step: 1
+    points: 5
 
   # allXY_iteration:
   #   beta_start: -1
