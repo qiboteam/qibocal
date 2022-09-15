@@ -45,6 +45,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry.scripts]
 qq = "qcvv:command"
 qq-live = "qcvv:live_plot"
+qq-upload = "qcvv:upload"
 
 [tool.poe.tasks]
 test = "pytest src/qcvv/tests"
