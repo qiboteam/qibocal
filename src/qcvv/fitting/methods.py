@@ -210,6 +210,16 @@ def ramsey_fit(data, x, y, qubit, qubit_freq, sampling_rate, offset_freq, labels
 
 def t1_fit(data, x, y, qubit, nqubits, labels):
 
+    data_fit = Data(
+        name=f"fit_q{qubit}",
+        quantities=[
+            "popt0",
+            "popt1",
+            "popt2",
+            labels[0],
+        ],
+    )
+
     time = data.get_values(*parse(x))
     voltages = data.get_values(*parse(y))
 
@@ -225,18 +235,17 @@ def t1_fit(data, x, y, qubit, nqubits, labels):
             (max(voltages.values) - min(voltages.values)),
             1 / 250,
         ]
-    popt, pcov = curve_fit(exp, time.values, voltages.values, p0=pguess, maxfev=2000000)
-    t1 = abs(1 / popt[2])
 
-    data_fit = Data(
-        name=f"fit_q{qubit}",
-        quantities=[
-            "popt0",
-            "popt1",
-            "popt2",
-            labels[0],
-        ],
-    )
+    try:
+        popt, pcov = curve_fit(
+            exp, time.values, voltages.values, p0=pguess, maxfev=2000000
+        )
+        t1 = abs(1 / popt[2])
+
+    except:
+        log.warning("The fitting was not succesful")
+        return data_fit
+
     data_fit.add(
         {
             "popt0": popt[0],
