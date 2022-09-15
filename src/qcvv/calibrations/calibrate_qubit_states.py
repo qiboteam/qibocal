@@ -11,7 +11,6 @@ from qcvv.decorators import plot
 @plot("exc vs gnd", plots.exc_gnd)
 def calibrate_qubit_states_binning(platform: AbstractPlatform, qubit, niter):
     platform.reload_settings()
-    platform.settings["hardware_avg"] = 1
     platform.qrm[qubit].ports[
         "i1"
     ].hardware_demod_en = True  # binning only works with hardware demodulation enabled

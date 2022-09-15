@@ -5,7 +5,13 @@ import numpy as np
 import qibolab
 import yaml
 from qibo.config import log, raise_error
+from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
+
+from qcvv import plots
+from qcvv.data import Dataset
+from qcvv.decorators import plot
 
 
 def variable_resolution_scanrange(
@@ -123,3 +129,68 @@ def check_frequency(platform, write=False):
         log.info(f"WARNING: Writting YAML")
         with open(path, "w") as f:
             yaml.dump(settings, f, sort_keys=False, indent=4, default_flow_style=None)
+
+
+def get_fidelity(platform: AbstractPlatform, qubit, niter, param=None, save=True):
+    """
+    Returns the read-out fidelity for a
+
+    """
+
+    if save:
+        if param is None:
+            raise_error(ValueError, "Please provide the varied parameters")
+
+    platform.reload_settings()
+    platform.settings["hardware_avg"] = 1
+    platform.qrm[qubit].ports[
+        "i1"
+    ].hardware_demod_en = True  # binning only works with hardware demodulation enabled
+    # create exc sequence
+    exc_sequence = PulseSequence()
+    RX_pulse = platform.create_RX_pulse(qubit, start=0)
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=RX_pulse.duration)
+    exc_sequence.add(RX_pulse)
+    exc_sequence.add(ro_pulse)
+
+    data_exc = Dataset(
+        name=f"data_exc_q{qubit}", quantities={"iteration": "dimensionless"}
+    )
+    shots_results = platform.execute_pulse_sequence(exc_sequence, nshots=niter)[
+        "shots"
+    ][ro_pulse.serial]
+    for n in np.arange(niter):
+        msr, phase, i, q = shots_results[n]
+        results = {
+            "MSR[V]": msr,
+            "i[V]": i,
+            "q[V]": q,
+            "phase[rad]": phase,
+            "iteration[dimensionless]": n,
+        }
+        data_exc.add(results)
+    if save:
+        yield data_exc
+
+    gnd_sequence = PulseSequence()
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
+    gnd_sequence.add(ro_pulse)
+
+    data_gnd = Dataset(
+        name=f"data_gnd_q{qubit}", quantities={"iteration": "dimensionless"}
+    )
+
+    shots_results = platform.execute_pulse_sequence(gnd_sequence, nshots=niter)[
+        "shots"
+    ][ro_pulse.serial]
+    for n in np.arange(niter):
+        msr, phase, i, q = shots_results[n]
+        results = {
+            "MSR[V]": msr,
+            "i[V]": i,
+            "q[V]": q,
+            "phase[rad]": phase,
+            "iteration[dimensionless]": n,
+        }
+        data_gnd.add(results)
+    yield data_gnd
