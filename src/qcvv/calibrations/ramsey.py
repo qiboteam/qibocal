@@ -115,7 +115,7 @@ def ramsey_frequency_detuned(
         corrected_qubit_freq = data_fit.get_values("corrected_qubit_frequency")
 
         # if ((new_t2 * 3.5) > t_max):
-        if (new_t2 > current_T2).bool():
+        if (new_t2 > current_T2).bool() and len(t_end) > 1:
             current_qubit_freq = int(corrected_qubit_freq)
             current_T2 = new_t2
             data = Dataset(
