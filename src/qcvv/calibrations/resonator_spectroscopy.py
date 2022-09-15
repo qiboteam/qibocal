@@ -21,7 +21,6 @@ def resonator_spectroscopy(
     precision_width,
     precision_step,
     software_averages,
-    drive_attenuation=None,
     points=10,
 ):
     platform.reload_settings()
@@ -37,10 +36,7 @@ def resonator_spectroscopy(
     ]
 
     for i in range(platform.settings["nqubits"]):
-        if isinstance(drive_attenuation, list):
-            platform.qd_port[i].attenuation = drive_attenuation[i]
-        else:
-            platform.qd_port[i].attenuation = drive_attenuation
+        platform.qd_port[i].attenuation = 60
 
     frequency_range = (
         variable_resolution_scanrange(

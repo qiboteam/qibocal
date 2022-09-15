@@ -122,4 +122,4 @@ def check_frequency(platform, write=False):
     if write:
         log.info(f"WARNING: Writting YAML")
         with open(path, "w") as f:
-            yaml.dump(settings, f, sort_keys=False, indent=4)
+            yaml.dump(settings, f, sort_keys=False, indent=4, default_flow_style=None)

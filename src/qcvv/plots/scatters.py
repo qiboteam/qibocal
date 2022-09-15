@@ -1,10 +1,70 @@
 # -*- coding: utf-8 -*-
 import numpy as np
+import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from qcvv.data import Data, Dataset
 from qcvv.fitting.utils import exp, lorenzian, rabi, ramsey
+
+
+def frequency_msr_phase__multiplex(folder, routine, qubit, format):
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        subplot_titles=(
+            "MSR (uV)",
+            "phase (rad)",
+        ),
+    )
+    data = Dataset.load_data(folder, routine, format, f"data")
+    data.df.sort_values(by="frequency", inplace=True)
+
+    for qubit in data.df["qubit"].unique():
+        qubit_df = data.df[data.df["qubit"] == qubit]
+        q = int(qubit.magnitude)
+        fig.add_trace(
+            go.Scatter(
+                x=qubit_df["frequency"].pint.to("Hz").pint.magnitude,
+                y=qubit_df["MSR"].pint.to("uV").pint.magnitude,
+                name=f"qubit {q} MSR",
+                mode="lines+markers",
+                marker=dict(
+                    size=5,
+                    color=px.colors.qualitative.Plotly[
+                        q % len(px.colors.qualitative.Plotly)
+                    ],
+                ),
+            ),
+            row=1,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=qubit_df["frequency"].pint.to("Hz").pint.magnitude,
+                y=qubit_df["phase"].pint.to("rad").pint.magnitude,
+                name=f"qubit {q} phase",
+                mode="lines+markers",
+                marker=dict(
+                    size=5,
+                    color=px.colors.qualitative.Plotly[
+                        q % len(px.colors.qualitative.Plotly)
+                    ],
+                ),
+            ),
+            row=1,
+            col=2,
+        )
+
+    fig.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting,
+        xaxis_title="Frequency (GHz)",
+        yaxis_title="MSR (uV)",
+    )
+    return fig
 
 
 def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
