@@ -1,0 +1,178 @@
+platform: tii5q
+
+qubits: [1, 2]
+
+format: csv
+
+actions:
+  resonator_spectroscopy:
+    lowres_width: 5_000_000
+    lowres_step: 2_000_000
+    highres_width: 1_500_000
+    highres_step: 200_000
+    precision_width: 1_500_000
+    precision_step: 100_000
+    software_averages: 1
+    points: 5
+
+  resonator_spectroscopy_flux:
+    freq_width: 3_000_000
+    freq_step: 200_000
+    current_max: +0.000 # absolute max is 40 mA
+    current_min: -10.e-3 # absolute min is -40 mA
+    current_step: 3.e-3
+    fluxline: qubit # Ask alvaro automatic way to obtain fluxline from runcard
+    software_averages: 1
+    points: 10
+
+  resonator_spectroscopy_flux_matrix:
+    freq_width: 3_000_000
+    freq_step: 200_000
+    current_max: +0.000 # absolute max is 40 mA
+    current_min: -10.e-3 # absolute min is -40 mA
+    current_step: 3.e-3
+    fluxlines: [1, 2] # Ask alvaro automatic way to obtain fluxline from runcard
+    software_averages: 2
+    points: 10
+
+  resonator_punchout:
+    freq_width: 10_000_000
+    freq_step: 500_000
+    min_att: 10
+    max_att: 40
+    step_att: 10 # attenuation must be a multiple of 2
+    software_averages: 1
+    points: 10
+
+  qubit_spectroscopy:
+    fast_start: -50_000_000
+    fast_end: 50_000_000
+    fast_step: 500_000
+    precision_start: -500_000
+    precision_end: 500_000
+    precision_step: 100_000
+    software_averages: 1
+    points: 10
+
+  qubit_spectroscopy_flux:
+    freq_width: 50_000_000
+    freq_step: 200_000
+    current_min: -0.0012 # -0.0025 # absolute min is -40 mA
+    current_max: -0.0004 # +0.001 # absolute max is 40 mA
+    current_step: 0.00002 # 0.0001
+    fluxline: 1 # Ask alvaro automatic way to obtain fluxline from runcard
+    software_averages: 2
+    points: 10
+
+  # rabi_pulse_amplitude:
+  #   pulse_amplitude_start: 0 # 0<=a<=1
+  #   pulse_amplitude_end: 1
+  #   pulse_amplitude_step: 0.02
+  #   software_averages: 1
+  #   points: 10
+
+  # rabi_pulse_gain:
+  #   pulse_gain_start: 0 # -1.0<=g<=1.0
+  #   pulse_gain_end: 1
+  #   pulse_gain_step: 0.02
+  #   software_averages: 1
+  #   points: 10
+
+  # rabi_pulse_length_and_amplitude:
+  #   pulse_duration_start: 4 # minimum 4ns
+  #   pulse_duration_end: 200
+  #   pulse_duration_step: 4
+  #   pulse_amplitude_start: 0 # -1.0<= amplitude <=1.0
+  #   pulse_amplitude_end: 1
+  #   pulse_amplitude_step: 0.02
+  #   software_averages: 1
+  #   points: 10
+
+  # rabi_pulse_length_and_gain:
+  #   pulse_duration_start: 4 # minimum 4ns
+  #   pulse_duration_end: 200
+  #   pulse_duration_step: 4
+  #   pulse_gain_start: 0 # -1.0<=g<=1.0
+  #   pulse_gain_end: 1
+  #   pulse_gain_step: 0.02
+  #   software_averages: 1
+  #   points: 10
+
+  # rabi_pulse_length:
+  #   pulse_duration_start: 4 # minimum 4ns
+  #   pulse_duration_end: 200
+  #   pulse_duration_step: 4
+  #   software_averages: 1
+  #   points: 10
+
+  # allXY_iteration:
+  #   beta_start: -1
+  #   beta_end: 1
+  #   beta_step: 0.2
+  #   software_averages: 1
+  #   points: 1
+
+  # allXY:
+  #   beta_param: Null
+  #   software_averages: 1
+  #   points: 1
+
+  # calibrate_qubit_states:
+  #   niter: 1024
+  #   points: 1
+
+  # dispersive_shift:
+  #   freq_width: 5_000_000
+  #   freq_step: 200_000
+  #   software_averages: 1
+  #   points: 5
+
+  # flipping:
+  #   niter: 10
+  #   step: 2
+
+  # ramsey_frequency_detuned:
+  #   t_start: 4
+  #   t_end: [2000] #t_end (optimal) = 3.5 * T2 (limited by HW to 8000ns)
+  #   t_step: 16
+  #   n_osc: 4
+  #   software_averages: 1
+  #   points: 1
+
+  # ramsey:
+  #   delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
+  #   delay_between_pulses_end: 4000
+  #   delay_between_pulses_step: 16 # must be a multiple of 4
+  #   software_averages: 1
+  #   points: 1
+
+  # RO_matrix:
+  #   niter: 10 # set niter = 1024 to collect good statistics
+
+  # ro_pulse_phase:
+  #   pulse_phase_start: 0
+  #   pulse_phase_end: 6.28318
+  #   pulse_phase_step: 0.1
+  #   software_averages: 1
+  #   points: 10
+
+  # t1:
+  #   delay_before_readout_start: 4
+  #   delay_before_readout_end: 50_000
+  #   delay_before_readout_step: 500
+  #   software_averages: 1
+  #   points: 5
+
+  # spin_echo:
+  #   delay_between_pulses_start: 4
+  #   delay_between_pulses_end: 4000
+  #   delay_between_pulses_step: 20
+  #   software_averages: 1
+  #   points: 5
+
+  # spin_echo_3pulses:
+  #   delay_between_pulses_start: 4
+  #   delay_between_pulses_end: 30000
+  #   delay_between_pulses_step: 20
+  #   software_averages: 1
+  #   points: 5
