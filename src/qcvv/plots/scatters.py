@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+import os.path
+
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
@@ -759,31 +761,27 @@ def t1_time_msr_phase(folder, routine, qubit, format):
 
 def exc_gnd(folder, routine, qubit, format):
 
-    import os.path
+    data_exc = Dataset.load_data(folder, routine, format, f"data_exc_q{qubit}")
 
-    file_exc = f"{folder}/data/{routine}/data_exc_q{qubit}.csv"
-    if os.path.exists(file_exc):
-        data_exc = Dataset.load_data(folder, routine, format, f"data_exc_q{qubit}")
+    fig = make_subplots(
+        rows=1,
+        cols=1,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        subplot_titles=("Calibrate qubit states",),
+    )
 
-        fig = make_subplots(
-            rows=1,
-            cols=1,
-            horizontal_spacing=0.1,
-            vertical_spacing=0.1,
-            subplot_titles=("Calibrate qubit states",),
-        )
-
-        fig.add_trace(
-            go.Scatter(
-                x=data_exc.get_values("i", "V"),
-                y=data_exc.get_values("q", "V"),
-                name="exc_state",
-                mode="markers",
-                marker=dict(size=3, color="lightcoral"),
-            ),
-            row=1,
-            col=1,
-        )
+    fig.add_trace(
+        go.Scatter(
+            x=data_exc.get_values("i", "V"),
+            y=data_exc.get_values("q", "V"),
+            name="exc_state",
+            mode="markers",
+            marker=dict(size=3, color="lightcoral"),
+        ),
+        row=1,
+        col=1,
+    )
 
     file_gnd = f"{folder}/data/{routine}/data_gnd_q{qubit}.csv"
     if os.path.exists(file_gnd):
