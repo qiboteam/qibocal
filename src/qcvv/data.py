@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Implementation of Dataset class to store measurements."""
 
+import re
 from abc import abstractmethod
 
 import pandas as pd
@@ -96,8 +97,6 @@ class Dataset(AbstractDataset):
                         Every key should have the following form:
                         ``<name>[<unit>]``.
         """
-        import re
-
         l = len(self)
         for key, value in data.items():
             name = key.split("[")[0]
