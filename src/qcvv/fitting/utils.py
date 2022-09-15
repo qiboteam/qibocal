@@ -39,11 +39,12 @@ def exp(x, *p):
 
 def flipping(x, p0, p1, p2, p3):
     # A fit to Flipping Qubit oscillation
-    # Epsilon                       : p[0]
+    # Epsilon?? shoule be Amplitude : p[0]
     # Offset                        : p[1]
     # Period of oscillation         : p[2]
     # phase for the first point corresponding to pi/2 rotation   : p[3]
     return np.sin(x * 2 * np.pi / p2 + p3) * p0 + p1
+    # return p0 * np.sin(p3 + (2 * np.pi * x) / p2) + p1
 
 
 def parse(key):

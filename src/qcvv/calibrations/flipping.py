@@ -24,6 +24,9 @@ def flipping(
 
     data = Dataset(name=f"data_q{qubit}", quantities={"flips": "dimensionless"})
 
+    sequence = PulseSequence()
+    RX90_pulse = platform.create_RX90_pulse(qubit, start=0)
+
     count = 0
     # repeat N iter times
     for n in range(0, niter, step):
@@ -37,12 +40,10 @@ def flipping(
                 nqubits=platform.settings["nqubits"],
                 niter=niter,
                 pi_pulse_amplitude=pi_pulse_amplitude,
-                labels=["delta_amplitude"],
+                labels=["amplitude_delta", "corrected_amplitude"],
             )
-        # execute sequence RX(pi/2) - [RX(pi) - RX(pi)] from 0...n times - RO
-        sequence = PulseSequence()
-        RX90_pulse = platform.create_RX90_pulse(qubit, start=0)
         sequence.add(RX90_pulse)
+        # execute sequence RX(pi/2) - [RX(pi) - RX(pi)] from 0...n times - RO
         start1 = RX90_pulse.duration
         for j in range(n):
             RX_pulse1 = platform.create_RX_pulse(qubit, start=start1)
@@ -66,5 +67,6 @@ def flipping(
         }
         data.add(results)
         count += 1
+        sequence = PulseSequence()
 
     yield data

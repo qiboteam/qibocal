@@ -768,9 +768,22 @@ def flips_msr_phase(folder, routine, qubit, format):
             dict(
                 font=dict(color="black", size=12),
                 x=0,
-                y=-0.20,
+                y=-0.25,
                 showarrow=False,
                 text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.4f}",
+                textangle=0,
+                xanchor="left",
+                xref="paper",
+                yref="paper",
+            )
+        )
+        fig.add_annotation(
+            dict(
+                font=dict(color="black", size=12),
+                x=0,
+                y=-0.30,
+                showarrow=False,
+                text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.3f}",
                 textangle=0,
                 xanchor="left",
                 xref="paper",

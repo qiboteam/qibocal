@@ -246,8 +246,11 @@ def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
         pguess = [0.0003, np.mean(voltages), 18, 0]  # epsilon guess parameter
 
     popt, pcov = curve_fit(flipping, flips, voltages, p0=pguess, maxfev=2000000)
-    angle = (niter * 2 * np.pi / popt[2] + popt[3]) / (1 + 4 * niter)
-    amplitude_delta = angle * 2 / np.pi * pi_pulse_amplitude
+    epsilon = -np.pi / popt[2]
+    amplitude_delta = np.pi / (np.pi + epsilon)
+    corrected_amplitude = amplitude_delta * pi_pulse_amplitude
+    # angle = (niter * 2 * np.pi / popt[2] + popt[3]) / (1 + 4 * niter)
+    # amplitude_delta = angle * 2 / np.pi * pi_pulse_amplitude
 
     data_fit = Data(
         name=f"fit_q{qubit}",
@@ -257,6 +260,7 @@ def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
             "popt2",
             "popt3",
             labels[0],
+            labels[1],
         ],
     )
     data_fit.add(
@@ -266,6 +270,7 @@ def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
             "popt2": popt[2],
             "popt3": popt[3],
             labels[0]: amplitude_delta,
+            labels[1]: corrected_amplitude,
         }
     )
     return data_fit
