@@ -1,18 +1,32 @@
 import subprocess
+import click
 import json
-import os
-import pandas as pd
-
-OUT = "running_jobs.json"
-
-#subprocess.call("", shell=True)
-p = subprocess.getoutput("echo ciao")
-print(p)
-#retcode = p.wait()
-
-#df = pd.read_csv('running_jobs.csv')
-#df_tii1q = df[]
+from datetime import datetime
 
 
-#with open(OUT, "w") as f:
-#    json.dump({"data": data}, f)
+
+#@click.command()
+#@click.option('--platform_name', prompt='Chosen platform', help='The platform you choose.')
+
+
+#OUT = "monitor/qpu_status.json"
+OUT = "qpu_status.json"
+
+current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+def get_platform_status(platform_name):
+
+	process = subprocess.getoutput(f"sinfo -p {platform_name} -h")
+
+	return process.split(" ")[-2]
+
+
+status_qpu1q = get_platform_status("qpu1q")
+status_qpu5q = get_platform_status("qpu5q")
+
+data = [[status_qpu1q, status_qpu5q]]
+times = [[current_time]]
+
+
+with open(OUT, "w") as f:
+    json.dump({"data" : data, "date-time" : times}, f)

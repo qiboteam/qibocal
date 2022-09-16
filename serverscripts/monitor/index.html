@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
 
-  <title>Monitor TII QPUs</title>
+  <title>Monitor QPUs</title>
   <link rel="icon" href="data:;base64,iVBORw0KGgo=">
 
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/css/bootstrap.min.css" rel="stylesheet"
@@ -14,25 +14,217 @@
 
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
   <script type="text/javascript" language="javascript" src="https://cdn.datatables.net/1.10.13/js/jquery.dataTables.min.js"></script>
+  
+  <style>
+  * {
+    box-sizing: border-box;
+  }
+
+  .row {
+    margin-left:-5px;
+    margin-right:-5px;
+  }
+    
+  .column {
+    float: left;
+    width: 50%;
+    padding: 5px;
+  }
+
+  /* Clearfix (clear floats) */
+  .row::after {
+    content: "";
+    clear: both;
+    display: table;
+  }
+
+  table {
+    border-collapse: collapse;
+    border-spacing: 0;
+    width: 100%;
+    border: 1px solid #ddd;
+  }
+
+  th, td {
+    text-align: center;
+    padding: 16px;
+  }
+
+  .center {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  tr:nth-child(even) {
+    background-color: #ddd;
+  }
+
+</style>
+
+<script type="text/javascript">
+
+  $(document).ready(function() {
+      $.getJSON("qpu_status.json", function(json){
+        var data_status = json['data'];
+        var global_table = $('#global_status').DataTable({
+          "data": data_status,
+          "order": [[0, "asc"]],
+          "dom": "",
+          "columnDefs": [{"className": "dt-center", "targets": "_all"}],
+        });
+      });
+    });
+
+    $(document).ready(function() {
+      $.getJSON("qpu_status.json", function(json){
+        var data_status = json['date-time'];
+        $("#text").text(data_status);
+      });
+    });
+
+
+  $(document).ready(function() {
+    $.getJSON("monitor_tii1q.json", function(json){
+      var data_tii1q = json['data'];
+      var global_table = $('#global_tii1q').DataTable({
+        "data": data_tii1q,
+        "order": [[0, "asc"]],
+        "dom": ""
+      });
+    });
+  });
+
+  $(document).ready(function() {
+    $.getJSON("monitor_tii5q.json", function(json){
+      var data_tii5q = json['data'];
+      var global_table = $('#global_tii5q').DataTable({
+        "data": data_tii5q,
+        "order": [[0, "asc"]],
+        "dom": ""
+      });
+    });
+  });
+
+ 
+
+</script>
+
+
 </head>
 
 
 <body>
-  <header class="navbar navbar-dark sticky-top p-0">
-    <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6" href="/"><span class="fs-4">TII Quantum Cluster</span></a>
-  </header>
 
+
+  <header class="navbar navbar-dark sticky-top p-0">
+    <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3 fs-6" href="/"><span class="fs-4">QPUs monitoring tool</span></a>
+  </header>
+ 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js"
     integrity="sha384-A3rJD856KowSb7dwlZdYEkO39Gagi7vIsF0jrRAoQmDKKtQBHUuLZ9AsSv4jD4Xa"
-    crossorigin="anonymous"></script>
+    crossorigin="anonymous">
+  </script>
 
-    <div style="text-align:center;" class="d-grid gap-2 col-10 mx-auto">
-        <a href="report.html">
-        <button type="button" class="btn btn-primary btn-lg"> Reports </button>
-        </a>
-        <a href="monitor.html">
-        <button type="button" class="btn btn-primary btn-lg"> Monitor </button>
-        </a>
+  <div style="width:1200px; text-align:center; margin-top:30px; margin-bottom:30px ;" class="row">
+    <div style="float:left">  
+
+      <svg height="200" width="200" style="margin-right:300px; margin-left:300px">
+        <line x1="35" y1="85" x2="0" y2="85" stroke="black", stroke-width=3 />
+        <line x1="35" y1="100" x2="15" y2="100" stroke="black", stroke-width=3 />
+	      <line x1="35" y1="115" x2="0" y2="115" stroke="black", stroke-width=3 />
+        <line x1="165" y1="85" x2="200" y2="85" stroke="black", stroke-width=3 />
+        <line x1="165" y1="100" x2="180" y2="100" stroke="black", stroke-width=3 />
+	      <line x1="165" y1="115" x2="200" y2="115" stroke="black", stroke-width=3 />
+        <line x1="100" y1="35" x2="100" y2="15" stroke="black", stroke-width=3 />
+        <line x1="85" y1="35" x2="85" y2="0" stroke="black", stroke-width=3 />
+	      <line x1="115" y1="35" x2="115" y2="0" stroke="black", stroke-width=3 />
+        <line x1="100" y1="185" x2="100" y2="165" stroke="black", stroke-width=3 />
+        <line x1="85" y1="200" x2="85" y2="165" stroke="black", stroke-width=3 />
+	      <line x1="115" y1="200" x2="115" y2="165" stroke="black", stroke-width=3 />
+        <circle cx="100" cy="100" r="8" stroke="black" stroke-width="1" fill="purple" fill-opacity="0.5" id="q0"/>
+        <rect x="35" y="35" width="130" height="130" style="fill:blue;stroke:black;stroke-width:2;fill-opacity:0.1;stroke-opacity:1" /> 
+      </svg>
+
+
+      <svg height="200" width="200">
+        <line x1="35" y1="85" x2="0" y2="85" stroke="black", stroke-width=3 />
+        <line x1="35" y1="100" x2="15" y2="100" stroke="black", stroke-width=3 />
+	      <line x1="35" y1="115" x2="0" y2="115" stroke="black", stroke-width=3 />
+        <line x1="165" y1="85" x2="200" y2="85" stroke="black", stroke-width=3 />
+        <line x1="165" y1="100" x2="180" y2="100" stroke="black", stroke-width=3 />
+	      <line x1="165" y1="115" x2="200" y2="115" stroke="black", stroke-width=3 />
+        <line x1="100" y1="35" x2="100" y2="15" stroke="black", stroke-width=3 />
+        <line x1="85" y1="35" x2="85" y2="0" stroke="black", stroke-width=3 />
+	      <line x1="115" y1="35" x2="115" y2="0" stroke="black", stroke-width=3 />
+        <line x1="100" y1="185" x2="100" y2="165" stroke="black", stroke-width=3 />
+        <line x1="85" y1="200" x2="85" y2="165" stroke="black", stroke-width=3 />
+	      <line x1="115" y1="200" x2="115" y2="165" stroke="black", stroke-width=3 />
+        <polyline points=" 95,95 55,55 " style="fill:white;stroke:black;stroke-width:2" /> 
+        <polyline points=" 95,105 55,145" style="fill:white;stroke:black;stroke-width:2" />    
+        <polyline points=" 105,95 145,55" style="fill:white;stroke:black;stroke-width:2" />  
+        <polyline points=" 105,105 145,145" style="fill:white;stroke:black;stroke-width:2" />
+        <circle cx="50" cy="50" r="8" stroke="black" stroke-width="1" fill="purple"   fill-opacity="0.5" />
+        <circle cx="100" cy="100" r="8" stroke="black" stroke-width="1" fill="purple" fill-opacity="0.5" />
+        <circle cx="50" cy="150" r="8" stroke="black" stroke-width="1" fill="purple"  fill-opacity="0.5"/>
+        <circle cx="150" cy="50" r="8" stroke="black" stroke-width="1" fill="purple"  fill-opacity="0.5"/>
+        <circle cx="150" cy="150" r="8" stroke="black" stroke-width="1" fill="purple" fill-opacity="0.5"/>
+        <rect x="35" y="35" width="130" height="130" style="fill:blue;stroke:black;stroke-width:2;fill-opacity:0.1;stroke-opacity:1" /> 
+      </svg>
     </div>
+  </div>
+
+
+
+  <table id="global_status" class="table table-striped table-sm center" style="width:50%">
+    <thead>
+      <tr>
+        <th style="text-align:center" scope="col">1 qubit chip status</th>
+        <th style="text-align:center" scope="col">5 qubits chip status</th>
+      </tr>
+    </thead>
+  </table>
+
+
+
+<div class="row">
+  <div class="column">
+    <table id="global_tii1q" class="table table-striped table-sm">
+      <thead>
+        <tr>
+          <th scope="col">Qubit ID</th>
+          <th scope="col">Res freq (Hz) </th>
+          <th scope="col">Qubit freq (Hz)</th>
+          <th scope="col">T1 (us)</th>
+          <th scope="col">T2 (us)</th>
+        </tr>
+      </thead>
+    </table>
+  </div>
+  <div class="column">
+    <table id="global_tii5q" class="table table-striped table-sm">
+      <thead>
+        <tr>
+          <th scope="col">Qubit ID</th>
+          <th scope="col">Res freq (Hz)</th>
+          <th scope="col">Qubit freq (Hz)</th>
+          <th scope="col">T1 (us)</th>
+          <th scope="col">T2 (us)</th>
+        </tr>
+      </thead>
+    </table>
+  </div>
+</div>
+
+<div style="margin-left:30px; margin-right:1000px;">
+   <p style="color:rgb(167, 123, 182);" id="text"></p> 
+</div>
+
+
 </body>
+</html>
+
+   
+
+</body>
+
 </html>

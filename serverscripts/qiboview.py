@@ -26,9 +26,8 @@ def main(platform_name, json_path):
     
     data = []
     for _ in range(nqubits):
-        info_qubit = [_ + 1]+[platform_data["characterization"]["single_qubit"][_][i] for i in REQUIRED_FILE_METADATA] 
+        info_qubit = [_ + 1]+["{:.4e}".format(platform_data["characterization"]["single_qubit"][_][i]) for i in REQUIRED_FILE_METADATA] 
         data.append(info_qubit)
-
     with open(OUT_MONITOR, "w") as f:
         json.dump({"data": data}, f)
 
