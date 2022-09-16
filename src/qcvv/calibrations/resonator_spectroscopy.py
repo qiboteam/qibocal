@@ -35,9 +35,6 @@ def resonator_spectroscopy(
         "resonator_freq"
     ]
 
-    for i in range(platform.settings["nqubits"]):
-        platform.qd_port[i].attenuation = 60
-
     frequency_range = (
         variable_resolution_scanrange(
             lowres_width, lowres_step, highres_width, highres_step

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import pathlib
+from turtle import update
 
 import numpy as np
 import qibolab
@@ -194,3 +195,117 @@ def get_fidelity(platform: AbstractPlatform, qubit, niter, param=None, save=True
         }
         data_gnd.add(results)
     yield data_gnd
+
+
+def get_fidelity(platform: AbstractPlatform, qubit, niter, param=None, save=True):
+    """
+    Returns the read-out fidelity for the measurement.
+
+    Param:
+    platform: Qibolab platform for QPU
+    qubit: Qubit number under investigation
+    niter: number of iterations
+    param: name and units of the varied parameters to save the data in a dictionary format {"name[PintUnit]": vals, ...}
+    save: bool to save the data or not
+
+    Returns:
+    fidelity: float C [0,1]
+    """
+    if save:
+        if param is None:
+            raise_error(
+                ValueError,
+                "Please provide the varied parameters in a dict of QCVV type",
+            )
+
+    platform.reload_settings()
+    platform.qrm[qubit].ports[
+        "i1"
+    ].hardware_demod_en = True  # binning only works with hardware demodulation enabled
+    # create exc sequence
+    exc_sequence = PulseSequence()
+    RX_pulse = platform.create_RX_pulse(qubit, start=0)
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=RX_pulse.duration)
+    exc_sequence.add(RX_pulse)
+    exc_sequence.add(ro_pulse)
+
+    param_dict = {}
+    for key in param:
+        param_dict[key.split("[")[0]] = key.split("[")[1].replace("]", "")
+    quantities = {"iteration": "dimensionless"}
+    quantities.update(param_dict)
+    data_exc = Dataset(name=f"data_exc_{param}_q{qubit}", quantities=quantities)
+    shots_results = platform.execute_pulse_sequence(exc_sequence, nshots=niter)[
+        "shots"
+    ][ro_pulse.serial]
+    for n in np.arange(niter):
+        msr, phase, i, q = shots_results[n]
+        results = {
+            "MSR[V]": msr,
+            "i[V]": i,
+            "q[V]": q,
+            "phase[rad]": phase,
+            "iteration[dimensionless]": n,
+        }
+        results.update(param)
+        data_exc.add(results)
+    if save:
+        print("save")
+
+    gnd_sequence = PulseSequence()
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
+    gnd_sequence.add(ro_pulse)
+
+    data_gnd = Dataset(name=f"data_gnd_q{qubit}", quantities=quantities)
+
+    shots_results = platform.execute_pulse_sequence(gnd_sequence, nshots=niter)[
+        "shots"
+    ][ro_pulse.serial]
+    for n in np.arange(niter):
+        msr, phase, i, q = shots_results[n]
+        results = {
+            "MSR[V]": msr,
+            "i[V]": i,
+            "q[V]": q,
+            "phase[rad]": phase,
+            "iteration[dimensionless]": n,
+        }
+        results.update(param)
+        data_gnd.add(results)
+    if save:
+        print("save")
+
+    fidelity = rotate_iq(data_exc, data_gnd)
+
+    return fidelity
+
+
+def rotate_iq(data_exc, data_gnd):
+    iq_exc = (
+        data_exc.get_values("i", "V").to_numpy()
+        + 1j * data_exc.get_values("q", "V").to_numpy()
+    )
+    iq_gnd = (
+        data_gnd.get_values("i", "V").to_numpy()
+        + 1j * data_gnd.get_values("q", "V").to_numpy()
+    )
+    # Debug
+    import matplotlib.pyplot as plt
+
+    plt.plot(np.real(iq_gnd), np.imag(iq_gnd), "ok", alpha=0.3)
+    plt.plot(np.real(iq_exc), np.imag(iq_exc), "or", alpha=0.3)
+    plt.plot(np.real(np.mean(iq_gnd)), np.imag(np.mean(iq_gnd)), "ok", markersize=10)
+    plt.plot(np.real(np.mean(iq_exc)), np.imag(np.mean(iq_exc)), "or", markersize=10)
+
+    iq_mid = np.mean(iq_exc + iq_gnd) / 2
+    angle = np.pi / 2 - np.arctan(np.imag(iq_mid / np.real(iq_mid)))
+    iq_exc = iq_exc * np.exp(1j * angle)
+    iq_gnd = iq_gnd * np.exp(1j * angle)
+
+    plt.plot(np.real(iq_gnd), np.imag(iq_gnd), "ob", alpha=0.3)
+    plt.plot(np.real(iq_exc), np.imag(iq_exc), "og", alpha=0.3)
+    plt.plot(np.real(np.mean(iq_gnd)), np.imag(np.mean(iq_gnd)), "ob", markersize=10)
+    plt.plot(np.real(np.mean(iq_exc)), np.imag(np.mean(iq_exc)), "og", markersize=10)
+    plt.savefig("fig.png")
+    plt.close()
+    return 1
