@@ -1,0 +1,21 @@
+# Example of a high level action (executing circuits instead of pulse sequences) qcvv
+# Qcvv will generate an error if the high-level runcard does not contain the following parameters:
+# - backend: qibo backend ( "numpy", "tensorflow", "qibojit", "qibolab" )
+# - platform: platform where the circuit will be executed (for simulation you must set None)
+# - nqubits: number of qubits
+# - format: format for storing data
+# - actions: routines to be execute with the corresponding arguments
+
+
+backend: qibolab
+
+platform: tii5q
+
+nqubits: 1
+
+format: pickle
+
+actions:
+    test:
+      nshots: 100
+      points: 1

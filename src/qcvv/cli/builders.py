@@ -3,10 +3,11 @@ import datetime
 import inspect
 import os
 import shutil
+from multiprocessing.dummy import Value
 
 import yaml
 
-from qcvv import calibrations
+from qcvv import calibrations, protocols
 from qcvv.config import log, raise_error
 from qcvv.data import Data
 
@@ -214,17 +215,18 @@ class ActionBuilderHighLevel(AbstractActionBuilder):
 
         super().__init__(runcard, folder, force)
         backend_name = self.runcard["backend"]
+        platform_name = self.runcard["platform"]
         self.nqubits = self.runcard["nqubits"]
-        self._allocate_backend(backend_name)
+        self._allocate_backend(backend_name, platform_name)
 
         # Saving runcard
         self.update_meta(backend_name)
 
-    def _allocate_backend(self, backend_name):
+    def _allocate_backend(self, backend_name, platform_name):
         """Allocate the platform using Qibolab."""
         from qibo.backends import GlobalBackend, set_backend
 
-        set_backend(backend=backend_name)
+        set_backend(backend=backend_name, platform=platform_name)
 
     def update_meta(self, backend_name):
 
@@ -238,12 +240,12 @@ class ActionBuilderHighLevel(AbstractActionBuilder):
             meta["versions"] = {
                 "qibojit": qibojit.__version__,
             }
-        with open(f"{path}", "w") as file:
+        with open(f"{self.path}", "w") as file:
             yaml.dump(meta, file)
 
     def _build_single_action(self, name):
         """Helper method to parse the actions in the runcard."""
-        f = getattr(calibrations, name)
+        f = getattr(protocols, name)
         path = os.path.join(self.folder, f"data/{name}/")
         os.makedirs(path)
         sig = inspect.signature(f)
@@ -292,7 +294,13 @@ class ReportBuilder:
         # (could be incorporated to :meth:`qcvv.cli.builders.ActionBuilder._build_single_action`)
         self.routines = []
         for action in self.runcard.get("actions"):
-            routine = getattr(calibrations, action)
+            if hasattr(calibrations, action):
+                routine = getattr(calibrations, action)
+            elif hasattr(protocols, action):
+                routine = getattr(protocols, action)
+            else:
+                raise_error(ValueError, "Undefined action in report.")
+
             if not hasattr(routine, "plots"):
                 routine.plots = []
             self.routines.append(routine)
