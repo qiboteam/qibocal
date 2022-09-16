@@ -240,7 +240,7 @@ class ActionBuilderHighLevel(AbstractActionBuilder):
             meta["versions"] = {
                 "qibojit": qibojit.__version__,
             }
-        with open(f"{self.path}", "w") as file:
+        with open(f"{path}", "w") as file:
             yaml.dump(meta, file)
 
     def _build_single_action(self, name):
