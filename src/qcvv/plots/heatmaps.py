@@ -131,7 +131,7 @@ def frequency_flux_msr_phase__matrix(folder, routine, qubit, format):
                 showscale=showscale,
             ),
             row=1,
-            col=j,
+            col=j + 1,
         )
         fig.add_trace(
             go.Heatmap(
@@ -141,7 +141,7 @@ def frequency_flux_msr_phase__matrix(folder, routine, qubit, format):
                 showscale=showscale,
             ),
             row=2,
-            col=j,
+            col=j + 1,
         )
     fig.update_layout(
         showlegend=False,
