@@ -105,7 +105,7 @@ def frequency_flux_msr_phase__matrix(folder, routine, qubit, format):
     if len(fluxes) < 1:
         nb = 1
     else:
-        nb = len(fluxes)
+        nb = max(fluxes) + 1
     fig = make_subplots(
         rows=2,
         cols=nb,
