@@ -1,9 +1,6 @@
 import subprocess
-import click
+#import click
 import json
-from datetime import datetime
-
-
 
 #@click.command()
 #@click.option('--platform_name', prompt='Chosen platform', help='The platform you choose.')
@@ -12,21 +9,33 @@ from datetime import datetime
 #OUT = "monitor/qpu_status.json"
 OUT = "qpu_status.json"
 
-current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
 def get_platform_status(platform_name):
-
+	"""
+	Check platform_name's status
+	Args:
+		platform_name: string which identifies the platform
+	Returns: a tuple ["platform_status", integer value representing the jobs in queue]
+	"""
 	process = subprocess.getoutput(f"sinfo -p {platform_name} -h")
+	platform_status = process.split(" ")[-2]
 
-	return process.split(" ")[-2]
+	if(platform_status == "alloc"):
+		jobs_on_platform = subprocess.getoutput(f"squeue -p {platform_name} -h")
+		len_queue = len(jobs_on_platform.split("\n")) - 1
+	else:
+		len_queue = 0
+		
+	return {"name" : platform_name, "status" : platform_status, "queue" : len_queue}
 
 
-status_qpu1q = get_platform_status("qpu1q")
-status_qpu5q = get_platform_status("qpu5q")
+current_time = subprocess.getoutput('''date +"%A %d %B %T" ''')
 
-data = [[status_qpu1q, status_qpu5q]]
-times = [[current_time]]
+data_platform_1 = get_platform_status("qpu1q")
+data_platform_2 = get_platform_status("qpu5q")
 
+time = ["Last status check:  " + current_time]
 
 with open(OUT, "w") as f:
-    json.dump({"data" : data, "date-time" : times}, f)
+    json.dump({"data_platform_1": data_platform_1,
+	           "data_platform_2": data_platform_2,
+			   "date-time": time}, f)

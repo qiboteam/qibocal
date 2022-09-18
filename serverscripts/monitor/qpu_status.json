@@ -1,1 +1,1 @@
-{"data": [["drain", "idle"]], "date-time": [["Last status check:  Friday 16 September 13:43:39"]]}
+{"data_platform_1": {"name" : "qpu1q", "status" : "idle", "queue" : 0}, "data_platform_2": {"name" : "qpu5q", "status" : "idle", "queue" : 0}, "date-time": [["Last status check:  Sunday 18 September 14:05:20"]]}
