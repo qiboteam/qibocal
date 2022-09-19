@@ -1,6 +1,6 @@
 platform: tii5q
 
-qubits: [1, 2, 3, 4]
+qubits: [2]
 
 format: csv
 
@@ -44,15 +44,15 @@ actions:
   #   software_averages: 1
   #   points: 10
 
-  qubit_spectroscopy:
-    fast_start: -50_000_000
-    fast_end: 50_000_000
-    fast_step: 500_000
-    precision_start: -500_000
-    precision_end: 500_000
-    precision_step: 100_000
-    software_averages: 1
-    points: 10
+  # qubit_spectroscopy:
+  #   fast_start: -50_000_000
+  #   fast_end: 50_000_000
+  #   fast_step: 500_000
+  #   precision_start: -500_000
+  #   precision_end: 500_000
+  #   precision_step: 100_000
+  #   software_averages: 1
+  #   points: 10
 
   # qubit_spectroscopy_flux:
   #   freq_width: 50_000_000
@@ -105,6 +105,20 @@ actions:
   #   software_averages: 1
   #   points: 10
 
+  # ramsey_frequency_detuned:
+  #   t_start: 4
+  #   t_end: [3000, 4000, 6000] #t_end (optimal) = 3.5 * T2
+  #   t_step: 16
+  #   n_osc: 4
+  #   points: 5 #minimum set to 5 for live fitting
+
+  ramsey:
+    delay_between_pulses_start: 4 # must be a multiple of 4 incl 0
+    delay_between_pulses_end: 3000
+    delay_between_pulses_step: 16 # must be a multiple of 4
+    software_averages: 1
+    points: 5
+
   # allXY_iteration:
   #   beta_start: -1
   #   beta_end: 1
@@ -130,21 +144,6 @@ actions:
   # flipping:
   #   niter: 10
   #   step: 2
-
-  # ramsey_frequency_detuned:
-  #   t_start: 4
-  #   t_end: [2000] #t_end (optimal) = 3.5 * T2 (limited by HW to 8000ns)
-  #   t_step: 16
-  #   n_osc: 4
-  #   software_averages: 1
-  #   points: 1
-
-  # ramsey:
-  #   delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
-  #   delay_between_pulses_end: 4000
-  #   delay_between_pulses_step: 16 # must be a multiple of 4
-  #   software_averages: 1
-  #   points: 1
 
   # RO_matrix:
   #   niter: 10 # set niter = 1024 to collect good statistics
