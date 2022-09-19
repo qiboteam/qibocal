@@ -2,10 +2,11 @@
 """Routine-specific method for post-processing data acquired."""
 import lmfit
 import numpy as np
+from scipy.optimize import curve_fit
 
 from qcvv.config import log
 from qcvv.data import Data
-from qcvv.fitting.utils import lorenzian, parse
+from qcvv.fitting.utils import lorenzian, parse, rabi
 
 
 def lorentzian_fit(data, x, y, qubit, nqubits, labels):
@@ -91,18 +92,63 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels):
     )
     return data_fit
 
-    # params = resonator_freq, peak_voltage
 
-    # for keys in fit_res.best_values:
-    #     fit_res.best_values[keys] = float(fit_res.best_values[keys])
+def rabi_fit(data, x, y, qubit, nqubits, labels):
+    data_fit = Data(
+        name=f"fit_q{qubit}",
+        quantities=[
+            "popt0",
+            "popt1",
+            "popt2",
+            "popt3",
+            "popt4",
+            labels[0],
+            labels[1],
+            labels[2],
+        ],
+    )
 
-    # with open(f"{folder}/data/resonator_spectroscopy/fit.yml", "w+") as file:
-    #     yaml.dump(
-    #         fit_res.best_values,
-    #         file,
-    #         sort_keys=False,
-    #         indent=4,
-    #         default_flow_style=None,
-    #     )
+    time = data.get_values(*parse(x))
+    voltages = data.get_values(*parse(y))
 
-    # return params, fit_res.best_values
+    if nqubits == 1:
+        pguess = [
+            np.mean(voltages.values),
+            np.max(voltages.values) - np.min(voltages.values),
+            0.5 / time.values[np.argmin(voltages.values)],
+            np.pi / 2,
+            0.1e-6,
+        ]
+    else:
+        pguess = [
+            np.mean(voltages.values),
+            np.max(voltages.values) - np.min(voltages.values),
+            0.5 / time.values[np.argmax(voltages.values)],
+            np.pi / 2,
+            0.1e-6,
+        ]
+    try:
+        popt, pcov = curve_fit(
+            rabi, time.values, voltages.values, p0=pguess, maxfev=10000
+        )
+        smooth_dataset = rabi(time.values, *popt)
+        pi_pulse_duration = np.abs((1.0 / popt[2]) / 2)
+        rabi_oscillations_pi_pulse_max_voltage = smooth_dataset.max() * 1e6
+        t1 = 1.0 / popt[4]  # double check T1
+    except:
+        log.warning("The fitting was not succesful")
+        return data_fit
+
+    data_fit.add(
+        {
+            "popt0": popt[0],
+            "popt1": popt[1],
+            "popt2": popt[2],
+            "popt3": popt[3],
+            "popt4": popt[4],
+            labels[0]: pi_pulse_duration,
+            labels[1]: rabi_oscillations_pi_pulse_max_voltage,
+            labels[2]: t1,
+        }
+    )
+    return data_fit
