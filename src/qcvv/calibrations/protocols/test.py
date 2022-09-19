@@ -10,12 +10,12 @@ def test(
     nshots,
     points=1,
 ):
-    data = Data("test", quantities=["probabilities", "nshots"])
-    circuit = models.Circuit(2)
+    data = Data("test", quantities=["nshots"])
+    circuit = models.Circuit(1)
     circuit.add(gates.H(0))
-    circuit.add(gates.H(1))
-    circuit.add(gates.M(0, 1))
+    # circuit.add(gates.H(1))
+    circuit.add(gates.M(0))
     execution = circuit(nshots=nshots)
 
-    data.add({"nshots": nshots, "probabilities": execution.probabilities()})
+    data.add({"nshots": nshots})
     yield data

@@ -81,24 +81,24 @@ class ActionBuilder:
 
         set_backend(backend=backend_name, platform=platform_name)
         backend = GlobalBackend()
-        platform = backend.platform
 
-        # Temporary solution: for simulation we allocate a dummy platform object.
-        if not isinstance(backend.platform, AbstractPlatform):
-            platform = Platform("dummy")
+        if backend_name == "qibolab":
+            platform = backend.platform
+        else:
+            platform = None
+
         return backend, platform
 
     def save_runcards(self, path, runcard, platform_name):
         """Save the output runcards."""
         shutil.copy(runcard, f"{path}/runcard.yml")
-        from qibolab.paths import qibolab_folder
+        if self.platform is not None:
+            from qibolab.paths import qibolab_folder
 
-        platform_runcard = qibolab_folder / "runcards" / f"{platform_name}.yml"
-        shutil.copy(platform_runcard, f"{path}/platform.yml")
+            platform_runcard = qibolab_folder / "runcards" / f"{platform_name}.yml"
+            shutil.copy(platform_runcard, f"{path}/platform.yml")
 
     def save_meta(self, path, folder):
-        import qibo
-
         import qcvv
 
         e = datetime.datetime.now(datetime.timezone.utc)
@@ -109,11 +109,9 @@ class ActionBuilder:
         meta["date"] = e.strftime("%Y-%m-%d")
         meta["start-time"] = e.strftime("%H:%M:%S")
         meta["end-time"] = e.strftime("%H:%M:%S")
-        meta["versions"] = {
-            "qibo": qibo.__version__,
-            "qcvv": qcvv.__version__,
-            self.backend.name: self.backend.version,
-        }
+        meta["versions"] = self.backend.versions
+        meta["versions"]["qcvv"] = qcvv.__version__
+
         with open(f"{path}/meta.yml", "w") as file:
             yaml.dump(meta, file)
 
@@ -131,14 +129,18 @@ class ActionBuilder:
 
     def execute(self):
         """Method to execute sequentially all the actions in the runcard."""
-        self.platform.connect()
-        self.platform.setup()
-        self.platform.start()
+        if self.platform is not None:
+            self.platform.connect()
+            self.platform.setup()
+            self.platform.start()
+
         for action in self.runcard["actions"]:
             routine, args, path = self._build_single_action(action)
             self._execute_single_action(routine, args, path)
-        self.platform.stop()
-        self.platform.disconnect()
+
+        if self.platform is not None:
+            self.platform.stop()
+            self.platform.disconnect()
 
     def _execute_single_action(self, routine, arguments, path):
         """Method to execute a single action and retrieving the results."""
@@ -151,7 +153,8 @@ class ActionBuilder:
             for data in results:
                 getattr(data, f"to_{self.format}")(path)
 
-            self.update_platform_runcard(qubit, routine.__name__)
+            if self.platform is not None:
+                self.update_platform_runcard(qubit, routine.__name__)
 
     def update_platform_runcard(self, qubit, routine):
 

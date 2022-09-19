@@ -1,6 +1,6 @@
-backend: qibolab
+backend: tensorflow
 
-platform: tii5q
+platform:
 
 qubits: [0, ]
 
