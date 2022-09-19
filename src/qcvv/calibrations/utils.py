@@ -275,12 +275,17 @@ def get_fidelity(platform: AbstractPlatform, qubit, niter, param=None, save=True
     if save:
         print("save")
 
-    fidelity = rotate_iq(data_exc, data_gnd)
+    exc, gnd = rotate_to_distribution(data_exc, data_gnd)
+    import matplotlib.pyplot as plt
 
-    return fidelity
+    plt.hist(exc, bins=50)
+    plt.hist(gnd, bins=50)
+    plt.savefig("fig.png")
+    plt.close()
+    return np.array(1)
 
 
-def rotate_iq(data_exc, data_gnd):
+def rotate_to_distribution(data_exc, data_gnd):
     iq_exc = (
         data_exc.get_values("i", "V").to_numpy()
         + 1j * data_exc.get_values("q", "V").to_numpy()
@@ -290,22 +295,28 @@ def rotate_iq(data_exc, data_gnd):
         + 1j * data_gnd.get_values("q", "V").to_numpy()
     )
     # Debug
-    import matplotlib.pyplot as plt
+    # import matplotlib.pyplot as plt
 
-    plt.plot(np.real(iq_gnd), np.imag(iq_gnd), "ok", alpha=0.3)
-    plt.plot(np.real(iq_exc), np.imag(iq_exc), "or", alpha=0.3)
-    plt.plot(np.real(np.mean(iq_gnd)), np.imag(np.mean(iq_gnd)), "ok", markersize=10)
-    plt.plot(np.real(np.mean(iq_exc)), np.imag(np.mean(iq_exc)), "or", markersize=10)
+    # plt.plot(np.real(iq_gnd), np.imag(iq_gnd), "ok", alpha=0.3)
+    # plt.plot(np.real(iq_exc), np.imag(iq_exc), "or", alpha=0.3)
+    # plt.plot(np.real(np.mean(iq_gnd)), np.imag(np.mean(iq_gnd)), "ok", markersize=10)
+    # plt.plot(np.real(np.mean(iq_exc)), np.imag(np.mean(iq_exc)), "or", markersize=10)
 
-    iq_mid = np.mean(iq_exc + iq_gnd) / 2
-    angle = np.pi / 2 - np.arctan(np.imag(iq_mid / np.real(iq_mid)))
-    iq_exc = iq_exc * np.exp(1j * angle)
-    iq_gnd = iq_gnd * np.exp(1j * angle)
+    # iq_mid = np.mean(iq_exc + iq_gnd) / 2
+    # angle = np.pi / 2 - np.arctan(np.imag(iq_mid / np.real(iq_mid)))
+    # iq_exc = iq_exc * np.exp(1j * angle)
+    # iq_gnd = iq_gnd * np.exp(1j * angle)
 
-    plt.plot(np.real(iq_gnd), np.imag(iq_gnd), "ob", alpha=0.3)
-    plt.plot(np.real(iq_exc), np.imag(iq_exc), "og", alpha=0.3)
-    plt.plot(np.real(np.mean(iq_gnd)), np.imag(np.mean(iq_gnd)), "ob", markersize=10)
-    plt.plot(np.real(np.mean(iq_exc)), np.imag(np.mean(iq_exc)), "og", markersize=10)
-    plt.savefig("fig.png")
-    plt.close()
-    return 1
+    iq_gnd = iq_gnd - np.mean(np.imag(iq_gnd))
+    iq_exc = iq_exc - np.mean(np.imag(iq_gnd))
+    angle = np.angle(np.mean(iq_exc))
+    iq_exc = iq_exc * np.exp(-1j * angle)
+    iq_gnd = iq_gnd * np.exp(-1j * angle)
+
+    # plt.plot(np.real(iq_gnd), np.imag(iq_gnd), "ob", alpha=0.3)
+    # plt.plot(np.real(iq_exc), np.imag(iq_exc), "og", alpha=0.3)
+    # plt.plot(np.real(np.mean(iq_gnd)), np.imag(np.mean(iq_gnd)), "ob", markersize=10)
+    # plt.plot(np.real(np.mean(iq_exc)), np.imag(np.mean(iq_exc)), "og", markersize=10)
+    # plt.savefig("fig.png")
+    # plt.close()
+    return np.absolute(iq_exc), np.absolute(iq_gnd)

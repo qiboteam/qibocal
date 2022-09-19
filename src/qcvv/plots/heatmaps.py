@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os.path
 
+import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -103,9 +104,9 @@ def frequency_flux_msr_phase__matrix(folder, routine, qubit, format):
             fluxes += [i]
 
     if len(fluxes) < 1:
-        nb = 1
+        nb = 0
     else:
-        nb = max(fluxes) + 1
+        nb = len(fluxes)
     fig = make_subplots(
         rows=2,
         cols=nb,
@@ -115,20 +116,23 @@ def frequency_flux_msr_phase__matrix(folder, routine, qubit, format):
         y_title="Current (A)",
         shared_xaxes=True,
         shared_yaxes=True,
+        column_titles=fluxes,
+        row_titles=["MSR", "Phase"],
     )
 
-    for j in fluxes:
-        if j == fluxes[-1]:
+    for j in range(nb):
+        if j == nb - 1:
             showscale = True
         else:
             showscale = False
-        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}_f{j}")
+        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}_f{fluxes[j]}")
         fig.add_trace(
             go.Heatmap(
                 x=data.get_values("frequency", "GHz"),
                 y=data.get_values("current", "A"),
                 z=data.get_values("MSR", "V"),
                 showscale=showscale,
+                colorbar=dict(len=0.5, y=0.75),
             ),
             row=1,
             col=j + 1,
@@ -139,6 +143,7 @@ def frequency_flux_msr_phase__matrix(folder, routine, qubit, format):
                 y=data.get_values("current", "A"),
                 z=data.get_values("phase", "rad"),
                 showscale=showscale,
+                colorbar=dict(len=0.5, y=0.25),
             ),
             row=2,
             col=j + 1,
