@@ -6,7 +6,7 @@ import shutil
 
 import yaml
 
-from qcvv import calibrations, protocols
+from qcvv import calibrations
 from qcvv.config import log, raise_error
 from qcvv.data import Data
 
@@ -31,7 +31,7 @@ class ActionBuilder:
         self.runcard = load_yaml(runcard)
         # Qibolab default backend if not provided in runcard.
         backend_name = self.runcard.get("backend", "qibolab")
-        platform_name = self.runcard.get("platform", None)
+        platform_name = self.runcard.get("platform", "dummy")
         self.backend, self.platform = self._allocate_backend(
             backend_name, platform_name
         )
@@ -39,7 +39,7 @@ class ActionBuilder:
         self.format = self.runcard["format"]
 
         # Saving runcard
-        self.save_runcards(path, runcard)
+        self.save_runcards(path, runcard, platform_name)
         self.save_meta(path, self.folder)
 
     @staticmethod
@@ -88,16 +88,13 @@ class ActionBuilder:
             platform = Platform("dummy")
         return backend, platform
 
-    def save_runcards(self, path, runcard):
+    def save_runcards(self, path, runcard, platform_name):
         """Save the output runcards."""
         shutil.copy(runcard, f"{path}/runcard.yml")
-        if self.backend.name == "qibolab":
-            from qibolab.paths import qibolab_folder
+        from qibolab.paths import qibolab_folder
 
-            platform_runcard = (
-                qibolab_folder / "runcards" / f"{self.runcard['platform']}.yml"
-            )
-            shutil.copy(platform_runcard, f"{path}/platform.yml")
+        platform_runcard = qibolab_folder / "runcards" / f"{platform_name}.yml"
+        shutil.copy(platform_runcard, f"{path}/platform.yml")
 
     def save_meta(self, path, folder):
         import qibo

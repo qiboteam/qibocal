@@ -11,7 +11,7 @@ from urllib.parse import urljoin
 import click
 from qibo.config import log, raise_error
 
-from qcvv.cli.utils import allocate_builder
+from qcvv.cli.builders import ActionBuilder
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -48,7 +48,7 @@ def command(runcard, folder, force=None):
      - RUNCARD: runcard with declarative inputs.
     """
 
-    builder = allocate_builder(runcard, folder, force)
+    builder = ActionBuilder(runcard, folder, force)
     builder.execute()
     builder.dump_report()
 

@@ -1,3 +1,4 @@
 # -*- coding: utf-8 -*-
-from qcvv.calibrations.qubit_spectroscopy import *
-from qcvv.calibrations.resonator_spectroscopy import *
+from qcvv.calibrations.characterization.qubit_spectroscopy import *
+from qcvv.calibrations.characterization.resonator_spectroscopy import *
+from qcvv.calibrations.protocols.test import *

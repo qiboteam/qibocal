@@ -11,7 +11,7 @@ backend: qibolab
 
 platform: tii5q
 
-nqubits: 1
+qubits: [0, ]
 
 format: pickle
 

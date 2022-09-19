@@ -4,7 +4,7 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
 from qcvv import plots
-from qcvv.calibrations.utils import variable_resolution_scanrange
+from qcvv.calibrations.characterization.utils import variable_resolution_scanrange
 from qcvv.data import Dataset
 from qcvv.decorators import plot
 from qcvv.fitting.methods import lorentzian_fit
