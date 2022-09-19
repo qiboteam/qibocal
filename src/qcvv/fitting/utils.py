@@ -47,6 +47,10 @@ def flipping(x, p0, p1, p2, p3):
     # return p0 * np.sin(p3 + (2 * np.pi * x) / p2) + p1
 
 
+def curve(x, p0, p1):
+    return p0 * np.sin(x) + p1
+
+
 def parse(key):
     name = key.split("[")[0]
     unit = re.search(r"\[([A-Za-z0-9_]+)\]", key).group(1)

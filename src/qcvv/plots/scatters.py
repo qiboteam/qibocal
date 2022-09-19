@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from qcvv.data import Data, Dataset
-from qcvv.fitting.utils import exp, flipping, lorenzian, rabi, ramsey
+from qcvv.fitting.utils import curve, exp, flipping, lorenzian, rabi, ramsey
 
 
 def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
@@ -897,7 +897,226 @@ def exc_gnd(folder, routine, qubit, format):
             uirevision="0",  # ``uirevision`` allows zooming while live plotting
             xaxis_title="i (V)",
             yaxis_title="q (V)",
-            width=1000
+            width=1000,
         )
 
+    return fig
+
+
+# allXY
+def prob_gate(folder, routine, qubit, format):
+
+    try:
+        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+    except:
+        data = Dataset(
+            quantities={"probability": "dimensionless", "gateNumber": "dimensionless"}
+        )
+
+    fig = make_subplots(
+        rows=1,
+        cols=1,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        subplot_titles=(f"allXY_qubit{qubit}",),
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=data.get_values("gateNumber", "dimensionless"),
+            y=data.get_values("probability", "dimensionless"),
+            mode="markers",
+            name="Probabilities",
+        ),
+        row=1,
+        col=1,
+    )
+    fig.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Gate sequene number",
+        yaxis_title="Z projection probability of qubit state |o>",
+    )
+    return fig
+
+
+# allXY
+def prob_gate_iteration(folder, routine, qubit, format):
+
+    try:
+        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+    except:
+        data = Dataset(
+            quantities={
+                "probability": "dimensionless",
+                "gateNumber": "dimensionless",
+                "beta_param": "dimensionless",
+            }
+        )
+
+    data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+    fig = make_subplots(
+        rows=1,
+        cols=1,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        subplot_titles=(f"allXY_qubit{qubit}",),
+    )
+
+    gates = len(data.get_values("gateNumber", "dimensionless"))
+    # print(gates)
+    import numpy as np
+
+    for n in range(gates // 21):
+        data_start = n * 21
+        data_end = data_start + 21
+        beta_param = np.array(data.get_values("beta_param", "dimensionless"))[
+            data_start
+        ]
+        gates = np.array(data.get_values("gateNumber", "dimensionless"))[
+            data_start:data_end
+        ]
+        probabilities = np.array(data.get_values("probability", "dimensionless"))[
+            data_start:data_end
+        ]
+        c = "#" + "{:06x}".format(n * 823000)
+        fig.add_trace(
+            go.Scatter(
+                x=gates,
+                y=probabilities,
+                mode="markers+lines",
+                line=dict(color=c),
+                name=f"beta_parameter = {beta_param}",
+                marker_size=16,
+            ),
+            row=1,
+            col=1,
+        )
+    fig.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Gate sequene number",
+        yaxis_title="Z projection probability of qubit state |o>",
+    )
+    return fig
+
+
+# beta param tuning
+def msr_beta(folder, routine, qubit, format):
+
+    try:
+        data_seq1 = Dataset.load_data(folder, routine, format, f"data_seq1_q{qubit}")
+    except:
+        data_seq1 = Dataset(
+            name=f"data_seq1_q{qubit}", quantities={"beta_param": "dimensionless"}
+        )
+
+    try:
+        data_seq2 = Dataset.load_data(folder, routine, format, f"data_seq2_q{qubit}")
+    except:
+        data_seq2 = Dataset(
+            name=f"data_seq2_q{qubit}", quantities={"beta_param": "dimensionless"}
+        )
+
+    try:
+        data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
+    except:
+        data_fit = Dataset()
+
+    fig = make_subplots(
+        rows=1,
+        cols=1,
+        horizontal_spacing=0.01,
+        vertical_spacing=0.01,
+        subplot_titles=(f"beta_param_tuning_qubit{qubit}",),
+    )
+
+    c = "#ac1d1c"
+    fig.add_trace(
+        go.Scatter(
+            x=data_seq1.get_values("beta_param", "dimensionless"),
+            y=data_seq1.get_values("MSR", "V"),
+            line=dict(color=c),
+            mode="markers",
+            name="Rx(pi/2) - Ry(pi) - Ro",
+        ),
+        row=1,
+        col=1,
+    )
+
+    c = "#1c4e05"
+    fig.add_trace(
+        go.Scatter(
+            x=data_seq2.get_values("beta_param", "dimensionless"),
+            y=data_seq2.get_values("MSR", "V"),
+            line=dict(color=c),
+            mode="markers",
+            name="Ry(pi) - Rx(pi/2) - Ro",
+        ),
+        row=1,
+        col=1,
+    )
+
+    # add fitting traces
+    if len(data_seq1) > 0 and len(data_fit) > 0:
+        beta_param1 = np.linspace(
+            min(data_seq1.get_values("beta_param", "dimensionless")),
+            max(data_seq1.get_values("beta_param", "dimensionless")),
+            20,
+        )
+        beta_param2 = np.linspace(
+            min(data_seq2.get_values("beta_param", "dimensionless")),
+            max(data_seq2.get_values("beta_param", "dimensionless")),
+            20,
+        )
+        params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
+        # fig.add_trace(
+        #     go.Scatter(
+        #         x=beta_param1,
+        #         y=curve(
+        #             beta_param1,
+        #             data_fit.df["popt0"][0],
+        #             data_fit.df["popt1"][0],
+        #         ),
+        #         name="Fit",
+        #         line=go.scatter.Line(dash="dot"),
+        #     ),
+        #     row=1,
+        #     col=1,
+        # )
+        # fig.add_trace(
+        #     go.Scatter(
+        #         x=beta_param2,
+        #         y=line(
+        #             beta_param2,
+        #             data_fit.df["c"][0],
+        #             data_fit.df["d"][0],
+        #         ),
+        #         name="Fit",
+        #         line=go.scatter.Line(dash="dot"),
+        #     ),
+        #     row=1,
+        #     col=1,
+        # )
+
+        fig.add_annotation(
+            dict(
+                font=dict(color="black", size=12),
+                x=0,
+                y=-0.25,
+                showarrow=False,
+                text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.4f}",
+                textangle=0,
+                xanchor="left",
+                xref="paper",
+                yref="paper",
+            )
+        )
+
+    fig.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Beta parameter",
+        yaxis_title="MSR[V]",
+    )
     return fig

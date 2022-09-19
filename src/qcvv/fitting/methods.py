@@ -6,7 +6,7 @@ from scipy.optimize import curve_fit
 
 from qcvv.config import log
 from qcvv.data import Data
-from qcvv.fitting.utils import exp, flipping, lorenzian, parse, rabi, ramsey
+from qcvv.fitting.utils import curve, exp, flipping, lorenzian, parse, rabi, ramsey
 
 
 def lorentzian_fit(data, x, y, qubit, nqubits, labels):
@@ -298,6 +298,41 @@ def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
             "popt3": popt[3],
             labels[0]: amplitude_delta,
             labels[1]: corrected_amplitude,
+        }
+    )
+    return data_fit
+
+
+def drag_tunning_fit(data_seq1, data_seq2, x, y, qubit, nqubits, labels):
+
+    data_fit = Data(
+        name=f"fit_q{qubit}",
+        quantities=[
+            "popt0",
+            "pop1",
+            labels[0],
+            labels[1],
+        ],
+    )
+
+    beta_params1 = data_seq1.get_values(*parse(x))
+    beta_params2 = data_seq2.get_values(*parse(x))
+
+    voltages1 = data_seq1.get_values(*parse(y))
+    voltages2 = data_seq2.get_values(*parse(y))
+
+    try:
+        popt, pcov = curve_fit(curve, beta_params1, voltages1.values)
+    except:
+        log.warning("The fitting was not succesful")
+        return data_fit
+
+    data_fit.add(
+        {
+            "popt0": popt[0],
+            "popt1": popt[1],
+            labels[0]: popt[0],
+            labels[1]: popt[1],
         }
     )
     return data_fit
