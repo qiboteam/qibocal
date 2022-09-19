@@ -724,7 +724,7 @@ def flips_msr_phase(folder, routine, qubit, format):
         go.Scatter(
             x=data.get_values("flips", "dimensionless"),
             y=data.get_values("MSR", "uV"),
-            name="T1",
+            name="Flipping MSR",
         ),
         row=1,
         col=1,
@@ -733,7 +733,7 @@ def flips_msr_phase(folder, routine, qubit, format):
         go.Scatter(
             x=data.get_values("flips", "dimensionless"),
             y=data.get_values("phase", "rad"),
-            name="T1",
+            name="Flipping Phase",
         ),
         row=1,
         col=2,
