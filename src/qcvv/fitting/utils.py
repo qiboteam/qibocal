@@ -33,6 +33,10 @@ def ramsey(x, p0, p1, p2, p3, p4):
     return p0 + p1 * np.sin(2 * np.pi * x * p2 + p3) * np.exp(-x * p4)
 
 
+def exp(x, *p):
+    return p[0] - p[1] * np.exp(-1 * x * p[2])
+
+
 def parse(key):
     name = key.split("[")[0]
     unit = re.search(r"\[([A-Za-z0-9_]+)\]", key).group(1)

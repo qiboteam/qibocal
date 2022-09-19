@@ -6,7 +6,7 @@ from scipy.optimize import curve_fit
 
 from qcvv.config import log
 from qcvv.data import Data
-from qcvv.fitting.utils import lorenzian, parse, rabi, ramsey
+from qcvv.fitting.utils import exp, lorenzian, parse, rabi, ramsey
 
 
 def lorentzian_fit(data, x, y, qubit, nqubits, labels):
@@ -203,6 +203,55 @@ def ramsey_fit(data, x, y, qubit, qubit_freq, sampling_rate, offset_freq, labels
             labels[0]: delta_phys,
             labels[1]: corrected_qubit_frequency,
             labels[2]: t2,
+        }
+    )
+    return data_fit
+
+
+def t1_fit(data, x, y, qubit, nqubits, labels):
+
+    data_fit = Data(
+        name=f"fit_q{qubit}",
+        quantities=[
+            "popt0",
+            "popt1",
+            "popt2",
+            labels[0],
+        ],
+    )
+
+    time = data.get_values(*parse(x))
+    voltages = data.get_values(*parse(y))
+
+    if nqubits == 1:
+        pguess = [
+            max(voltages.values),
+            (max(voltages.values) - min(voltages.values)),
+            1 / 250,
+        ]
+    else:
+        pguess = [
+            min(voltages.values),
+            (max(voltages.values) - min(voltages.values)),
+            1 / 250,
+        ]
+
+    try:
+        popt, pcov = curve_fit(
+            exp, time.values, voltages.values, p0=pguess, maxfev=2000000
+        )
+        t1 = abs(1 / popt[2])
+
+    except:
+        log.warning("The fitting was not succesful")
+        return data_fit
+
+    data_fit.add(
+        {
+            "popt0": popt[0],
+            "popt1": popt[1],
+            "popt2": popt[2],
+            labels[0]: t1,
         }
     )
     return data_fit
