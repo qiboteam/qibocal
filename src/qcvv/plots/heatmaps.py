@@ -103,10 +103,7 @@ def frequency_flux_msr_phase__matrix(folder, routine, qubit, format):
         if os.path.exists(file):
             fluxes += [i]
 
-    if len(fluxes) < 1:
-        nb = 0
-    else:
-        nb = len(fluxes)
+    nb = len(fluxes)
     fig = make_subplots(
         rows=2,
         cols=nb,
