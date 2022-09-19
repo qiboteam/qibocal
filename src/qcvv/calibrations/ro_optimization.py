@@ -34,7 +34,7 @@ def ro_frequency_optimization(
             yield data
         platform.ro_port[qubit].lo_frequency = freq
         fidelity = get_fidelity(
-            platform, qubit, niter, param={"frequency[Hz]": freq}, save=False
+            platform, qubit, niter, param={"frequency[Hz]": freq}, save=True
         )
         results = {
             "fidelity[dimensionless]": np.array(fidelity * 1.0),

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import pathlib
 from turtle import update
 
@@ -11,6 +12,7 @@ from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
 
 from qcvv import plots
+from qcvv.calibrations.utils import get_latest_datafolder
 from qcvv.data import Dataset
 from qcvv.decorators import plot
 
@@ -48,6 +50,8 @@ def get_fidelity(platform: AbstractPlatform, qubit, niter, param=None, save=True
                 ValueError,
                 "Please provide the varied parameters in a dict of QCVV type",
             )
+        path = get_latest_datafolder() / "data_param"
+        os.makedirs(path, exist_ok=True)
 
     platform.qrm[qubit].ports[
         "i1"
@@ -80,13 +84,13 @@ def get_fidelity(platform: AbstractPlatform, qubit, niter, param=None, save=True
         results.update(param)
         data_exc.add(results)
     if save:
-        print("save")
+        data_exc.to_csv(path)
 
     gnd_sequence = PulseSequence()
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
     gnd_sequence.add(ro_pulse)
 
-    data_gnd = Dataset(name=f"data_gnd_q{qubit}", quantities=quantities)
+    data_gnd = Dataset(name=f"data_gnd_{param}_q{qubit}", quantities=quantities)
 
     shots_results = platform.execute_pulse_sequence(gnd_sequence, nshots=niter)[
         "shots"
@@ -103,7 +107,7 @@ def get_fidelity(platform: AbstractPlatform, qubit, niter, param=None, save=True
         results.update(param)
         data_gnd.add(results)
     if save:
-        print("save")
+        data_gnd.to_csv(path)
 
     exc, gnd = rotate_to_distribution(data_exc, data_gnd)
 
