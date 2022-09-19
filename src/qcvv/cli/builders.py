@@ -3,7 +3,6 @@ import datetime
 import inspect
 import os
 import shutil
-from multiprocessing.dummy import Value
 
 import yaml
 
@@ -77,10 +76,17 @@ class ActionBuilder:
     def _allocate_backend(self, backend_name, platform_name):
         """Allocate the platform using Qibolab."""
         from qibo.backends import GlobalBackend, set_backend
+        from qibolab.platform import Platform
+        from qibolab.platforms.abstract import AbstractPlatform
 
         set_backend(backend=backend_name, platform=platform_name)
         backend = GlobalBackend()
-        return backend, backend.platform
+        platform = backend.platform
+
+        # Temporary solution: for simulation we allocate a dummy platform object.
+        if not isinstance(backend.platform, AbstractPlatform):
+            platform = Platform("dummy")
+        return backend, platform
 
     def save_runcards(self, path, runcard):
         """Save the output runcards."""
@@ -92,7 +98,6 @@ class ActionBuilder:
                 qibolab_folder / "runcards" / f"{self.runcard['platform']}.yml"
             )
             shutil.copy(platform_runcard, f"{path}/platform.yml")
-        shutil.copy(runcard, f"{path}/runcard.yml")
 
     def save_meta(self, path, folder):
         import qibo
@@ -103,7 +108,7 @@ class ActionBuilder:
         meta = {}
         meta["title"] = folder
         meta["backend"] = str(self.backend)
-        meta["platform"] = str(self.platform)
+        meta["platform"] = str(self.backend.platform)
         meta["date"] = e.strftime("%Y-%m-%d")
         meta["start-time"] = e.strftime("%H:%M:%S")
         meta["end-time"] = e.strftime("%H:%M:%S")
