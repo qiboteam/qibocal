@@ -321,7 +321,8 @@ def drag_tunning_fit(data, x, y, qubit, nqubits, labels):
 
     pguess = [
         0,  # Offset:    p[0]
-        -0.008,  # Amplitude: p[1]
+        beta_params.values[np.argmax(voltages)]
+        - beta_params.values[np.argmin(voltages)],  # Amplitude: p[1]
         4,  # Period:    p[2]
         0.3,  # Phase:     p[3]
     ]

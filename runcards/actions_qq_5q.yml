@@ -136,9 +136,9 @@ actions:
   #   points: 1
 
   # allXY_iteration:
-  #   beta_start: -1
-  #   beta_end: 1
-  #   beta_step: 0.2
+  #   beta_start: -0.09
+  #   beta_end: 0
+  #   beta_step: 0.01
   #   software_averages: 1
   #   points: 1
 
@@ -152,7 +152,6 @@ actions:
     beta_end: 1
     beta_step: 0.01
     points: 1
-
 
   # dispersive_shift:
   #   freq_width: 5_000_000

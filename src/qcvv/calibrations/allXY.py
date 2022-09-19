@@ -125,7 +125,7 @@ def allXY_iteration(
 
     count = 0
     for _ in range(software_averages):
-        for beta_param in np.arange(beta_start, beta_end, beta_step).round(1):
+        for beta_param in np.arange(beta_start, beta_end, beta_step).round(4):
             gateNumber = 1
             for gates in gatelist:
                 if count % points == 0 and count > 0:
@@ -178,9 +178,6 @@ def drag_pulse_tunning(
     platform.reload_settings()
 
     data = Dataset(name=f"data_q{qubit}", quantities={"beta_param": "dimensionless"})
-    # data_seq2 = Dataset(
-    #     name=f"data_seq2_q{qubit}", quantities={"beta_param": "dimensionless"}
-    # )
 
     count = 0
     for beta_param in np.arange(beta_start, beta_end, beta_step).round(4):
@@ -220,14 +217,6 @@ def drag_pulse_tunning(
         msr1, i1, q1, phase1 = platform.execute_pulse_sequence(seq1, nshots=1024)[
             ro_pulse.serial
         ]
-        # results = {
-        #     "MSR[V]": msr1,
-        #     "i[V]": i1,
-        #     "q[V]": q1,
-        #     "phase[deg]": phase1,
-        #     "beta_param[dimensionless]": beta_param,
-        # }
-        # data_seq1.add(results)
 
         # drag pulse RY(pi)
         RY_drag_pulse = platform.create_RX_drag_pulse(

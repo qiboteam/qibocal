@@ -1078,6 +1078,6 @@ def msr_beta(folder, routine, qubit, format):
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Beta parameter",
-        yaxis_title="MSR[V]",
+        yaxis_title="MSR[uV]",
     )
     return fig
