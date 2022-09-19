@@ -6,7 +6,7 @@ from scipy.optimize import curve_fit
 
 from qcvv.config import log
 from qcvv.data import Data
-from qcvv.fitting.utils import curve, exp, flipping, lorenzian, parse, rabi, ramsey
+from qcvv.fitting.utils import cos, exp, flipping, lorenzian, parse, rabi, ramsey
 
 
 def lorentzian_fit(data, x, y, qubit, nqubits, labels):
@@ -303,26 +303,34 @@ def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
     return data_fit
 
 
-def drag_tunning_fit(data_seq1, data_seq2, x, y, qubit, nqubits, labels):
+def drag_tunning_fit(data, x, y, qubit, nqubits, labels):
 
     data_fit = Data(
         name=f"fit_q{qubit}",
         quantities=[
             "popt0",
-            "pop1",
+            "popt1",
+            "popt2",
+            "popt3",
             labels[0],
-            labels[1],
         ],
     )
 
-    beta_params1 = data_seq1.get_values(*parse(x))
-    beta_params2 = data_seq2.get_values(*parse(x))
+    beta_params = data.get_values(*parse(x))
+    voltages = data.get_values(*parse(y))
 
-    voltages1 = data_seq1.get_values(*parse(y))
-    voltages2 = data_seq2.get_values(*parse(y))
+    pguess = [
+        0,  # Offset:    p[0]
+        -0.008,  # Amplitude: p[1]
+        4,  # Period:    p[2]
+        0.3,  # Phase:     p[3]
+    ]
 
     try:
-        popt, pcov = curve_fit(curve, beta_params1, voltages1.values)
+        popt, pcov = curve_fit(cos, beta_params.values, voltages.values)
+        smooth_dataset = cos(beta_params.values, popt[0], popt[1], popt[2], popt[3])
+        beta_optimal = beta_params.values[np.argmin(smooth_dataset)]
+
     except:
         log.warning("The fitting was not succesful")
         return data_fit
@@ -331,8 +339,9 @@ def drag_tunning_fit(data_seq1, data_seq2, x, y, qubit, nqubits, labels):
         {
             "popt0": popt[0],
             "popt1": popt[1],
-            labels[0]: popt[0],
-            labels[1]: popt[1],
+            "popt2": popt[2],
+            "popt3": popt[3],
+            labels[0]: beta_optimal,
         }
     )
     return data_fit

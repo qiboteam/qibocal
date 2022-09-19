@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from qcvv.data import Data, Dataset
-from qcvv.fitting.utils import curve, exp, flipping, lorenzian, rabi, ramsey
+from qcvv.fitting.utils import cos, exp, flipping, lorenzian, rabi, ramsey
 
 
 def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
@@ -1005,19 +1005,11 @@ def prob_gate_iteration(folder, routine, qubit, format):
 def msr_beta(folder, routine, qubit, format):
 
     try:
-        data_seq1 = Dataset.load_data(folder, routine, format, f"data_seq1_q{qubit}")
+        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
     except:
-        data_seq1 = Dataset(
-            name=f"data_seq1_q{qubit}", quantities={"beta_param": "dimensionless"}
+        data = Dataset(
+            name=f"data_q{qubit}", quantities={"beta_param": "dimensionless"}
         )
-
-    try:
-        data_seq2 = Dataset.load_data(folder, routine, format, f"data_seq2_q{qubit}")
-    except:
-        data_seq2 = Dataset(
-            name=f"data_seq2_q{qubit}", quantities={"beta_param": "dimensionless"}
-        )
-
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
     except:
@@ -1031,79 +1023,48 @@ def msr_beta(folder, routine, qubit, format):
         subplot_titles=(f"beta_param_tuning_qubit{qubit}",),
     )
 
-    c = "#ac1d1c"
+    c = "#6597aa"
     fig.add_trace(
         go.Scatter(
-            x=data_seq1.get_values("beta_param", "dimensionless"),
-            y=data_seq1.get_values("MSR", "V"),
+            x=data.get_values("beta_param", "dimensionless"),
+            y=data.get_values("MSR", "uV"),
             line=dict(color=c),
             mode="markers",
-            name="Rx(pi/2) - Ry(pi) - Ro",
+            name="[Rx(pi/2) - Ry(pi)] - [Ry(pi) - Rx(pi/2)]",
         ),
         row=1,
         col=1,
     )
-
-    c = "#1c4e05"
-    fig.add_trace(
-        go.Scatter(
-            x=data_seq2.get_values("beta_param", "dimensionless"),
-            y=data_seq2.get_values("MSR", "V"),
-            line=dict(color=c),
-            mode="markers",
-            name="Ry(pi) - Rx(pi/2) - Ro",
-        ),
-        row=1,
-        col=1,
-    )
-
     # add fitting traces
-    if len(data_seq1) > 0 and len(data_fit) > 0:
-        beta_param1 = np.linspace(
-            min(data_seq1.get_values("beta_param", "dimensionless")),
-            max(data_seq1.get_values("beta_param", "dimensionless")),
-            20,
-        )
-        beta_param2 = np.linspace(
-            min(data_seq2.get_values("beta_param", "dimensionless")),
-            max(data_seq2.get_values("beta_param", "dimensionless")),
+    if len(data) > 0 and len(data_fit) > 0:
+        beta_param = np.linspace(
+            min(data.get_values("beta_param", "dimensionless")),
+            max(data.get_values("beta_param", "dimensionless")),
             20,
         )
         params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
-        # fig.add_trace(
-        #     go.Scatter(
-        #         x=beta_param1,
-        #         y=curve(
-        #             beta_param1,
-        #             data_fit.df["popt0"][0],
-        #             data_fit.df["popt1"][0],
-        #         ),
-        #         name="Fit",
-        #         line=go.scatter.Line(dash="dot"),
-        #     ),
-        #     row=1,
-        #     col=1,
-        # )
-        # fig.add_trace(
-        #     go.Scatter(
-        #         x=beta_param2,
-        #         y=line(
-        #             beta_param2,
-        #             data_fit.df["c"][0],
-        #             data_fit.df["d"][0],
-        #         ),
-        #         name="Fit",
-        #         line=go.scatter.Line(dash="dot"),
-        #     ),
-        #     row=1,
-        #     col=1,
-        # )
+        fig.add_trace(
+            go.Scatter(
+                x=beta_param,
+                y=cos(
+                    beta_param,
+                    data_fit.df["popt0"][0],
+                    data_fit.df["popt1"][0],
+                    data_fit.df["popt2"][0],
+                    data_fit.df["popt3"][0],
+                ),
+                name="Fit",
+                line=go.scatter.Line(dash="dot"),
+            ),
+            row=1,
+            col=1,
+        )
 
         fig.add_annotation(
             dict(
                 font=dict(color="black", size=12),
                 x=0,
-                y=-0.25,
+                y=-0.20,
                 showarrow=False,
                 text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.4f}",
                 textangle=0,

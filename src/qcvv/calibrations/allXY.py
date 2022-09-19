@@ -177,28 +177,23 @@ def drag_pulse_tunning(
 
     platform.reload_settings()
 
-    data_seq1 = Dataset(
-        name=f"data_seq1_q{qubit}", quantities={"beta_param": "dimensionless"}
-    )
-    data_seq2 = Dataset(
-        name=f"data_seq2_q{qubit}", quantities={"beta_param": "dimensionless"}
-    )
+    data = Dataset(name=f"data_q{qubit}", quantities={"beta_param": "dimensionless"})
+    # data_seq2 = Dataset(
+    #     name=f"data_seq2_q{qubit}", quantities={"beta_param": "dimensionless"}
+    # )
 
     count = 0
     for beta_param in np.arange(beta_start, beta_end, beta_step).round(4):
         if count % points == 0 and count > 0:
-            yield data_seq1
-            yield data_seq2
+            yield data
             yield drag_tunning_fit(
-                data_seq1,
-                data_seq2,
+                data,
                 x="beta_param[dimensionless]",
                 y="MSR[uV]",
                 qubit=qubit,
                 nqubits=platform.settings["nqubits"],
                 labels=[
                     "optimal_beta_param",
-                    "optimal_beta_param_y",
                 ],
             )
         # drag pulse RX(pi/2)
@@ -222,17 +217,17 @@ def drag_pulse_tunning(
         seq1.add(RX90_drag_pulse)
         seq1.add(RY_drag_pulse)
         seq1.add(ro_pulse)
-        msr, i, q, phase = platform.execute_pulse_sequence(seq1, nshots=1024)[
+        msr1, i1, q1, phase1 = platform.execute_pulse_sequence(seq1, nshots=1024)[
             ro_pulse.serial
         ]
-        results = {
-            "MSR[V]": msr,
-            "i[V]": i,
-            "q[V]": q,
-            "phase[deg]": phase,
-            "beta_param[dimensionless]": beta_param,
-        }
-        data_seq1.add(results)
+        # results = {
+        #     "MSR[V]": msr1,
+        #     "i[V]": i1,
+        #     "q[V]": q1,
+        #     "phase[deg]": phase1,
+        #     "beta_param[dimensionless]": beta_param,
+        # }
+        # data_seq1.add(results)
 
         # drag pulse RY(pi)
         RY_drag_pulse = platform.create_RX_drag_pulse(
@@ -248,25 +243,20 @@ def drag_pulse_tunning(
         seq2.add(RY_drag_pulse)
         seq2.add(RX90_drag_pulse)
         seq2.add(ro_pulse)
-        msr, phase, i, q = platform.execute_pulse_sequence(seq2, nshots=1024)[
+        msr2, phase2, i2, q2 = platform.execute_pulse_sequence(seq2, nshots=1024)[
             ro_pulse.serial
         ]
         results = {
-            "MSR[V]": msr,
-            "i[V]": i,
-            "q[V]": q,
-            "phase[deg]": phase,
+            "MSR[V]": msr1 - msr2,
+            "i[V]": i1 - i2,
+            "q[V]": q1 - q2,
+            "phase[deg]": phase1 - phase2,
             "beta_param[dimensionless]": beta_param,
         }
-        data_seq2.add(results)
+        data.add(results)
         count += 1
 
-        # save IQ_module and beta param of each iteration
-    yield data_seq1
-    yield data_seq2
-
-    # beta_optimal = fit_drag_tunning(res1, res2, beta_params)
-    # print(beta_optimal)
+    yield data
 
 
 def _get_sequence_from_gate_pair(platform, gates, qubit, beta_param):
