@@ -11,7 +11,7 @@ from qcvv.data import Dataset
 from qcvv.decorators import plot
 
 
-# @plot("exc vs gnd", plots.exc_gnd)
+@plot("Fidelity vs Frequency", plots.frequency_fidelity)
 def ro_frequency_optimization(
     platform: AbstractPlatform, qubit, freq_width, freq_step, niter, points=5
 ):
@@ -20,7 +20,7 @@ def ro_frequency_optimization(
 
     freqrange = (
         np.arange(-freq_width / 2, freq_width / 2, freq_step)
-        + platform.qd_port[qubit].lo_frequency
+        + platform.ro_port[qubit].lo_frequency
     )
 
     data = Dataset(
@@ -32,6 +32,7 @@ def ro_frequency_optimization(
     for freq in freqrange:
         if count % points == 0:
             yield data
+        platform.ro_port[qubit].lo_frequency = freq
         fidelity = get_fidelity(
             platform, qubit, niter, param={"frequency[Hz]": freq}, save=False
         )
