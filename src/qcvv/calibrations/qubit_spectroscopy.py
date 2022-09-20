@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-from smtplib import quotedata
-
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence

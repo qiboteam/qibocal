@@ -175,3 +175,35 @@ actions:
   #   delay_between_pulses_step: 20
   #   software_averages: 1
   #   points: 5
+
+  # qubit_spectroscopy_flux_track:
+  #   freq_width: 50_000_000
+  #   freq_step: 1_000_000
+  #   current_offset: 10.e-3
+  #   current_step: 4.e-3 # 0.0001
+  #   attenuation: 46
+  #   software_averages: 1
+  #   points: 10
+
+  # rabi_pulse_amplitude_and_attenuation:
+  #   pulse_amplitude_start: 0
+  #   pulse_amplitude_end: 1
+  #   pulse_amplitude_step: 0.01
+  #   qd_pulse_attenuation_range: [10, 18, 24] #range(0,20,4)
+  #   software_averages: 1
+  #   points: 1
+
+  # resonator_drive_noise:
+  #   freq_width: 500_000
+  #   freq_step: 10_000
+  #   min_att: 00
+  #   max_att: 40
+  #   step_att: 10 # attenuation must be a multiple of 2
+  #   software_averages: 1
+  #   points: 10
+
+  # qubit_attenuation:
+  #   freq_start: -50.e+6
+  #   freq_end: +50.e+6
+  #   freq_step: 1.e+6
+  #   attenuation_list: range(0, 60, 2) # Or [2,16,40]
