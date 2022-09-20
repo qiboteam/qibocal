@@ -574,7 +574,7 @@ def time_msr(folder, routine, qubit, format):
 
     fig = make_subplots(
         rows=1,
-        cols=1,
+        cols=2,
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
         subplot_titles=("MSR (V)",),
@@ -584,10 +584,20 @@ def time_msr(folder, routine, qubit, format):
         go.Scatter(
             x=data.get_values("wait", "ns"),
             y=data.get_values("MSR", "uV"),
-            name="Ramsey",
+            name="Ramsey MSR",
         ),
         row=1,
         col=1,
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=data.get_values("wait", "ns"),
+            y=data.get_values("phase", "deg"),
+            name="Ramsey Phase",
+        ),
+        row=1,
+        col=2,
     )
 
     # add fitting trace
@@ -663,6 +673,8 @@ def time_msr(folder, routine, qubit, format):
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Time (ns)",
         yaxis_title="MSR (uV)",
+        xaxis2_title="Time (ns)",
+        yaxis2_title="Phase (deg)",
     )
     return fig
 

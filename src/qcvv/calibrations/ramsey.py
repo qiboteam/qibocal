@@ -4,6 +4,7 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
 from qcvv import plots
+from qcvv.calibrations.utils import check_frequency
 from qcvv.data import Dataset
 from qcvv.decorators import plot
 from qcvv.fitting.methods import ramsey_fit
@@ -20,6 +21,7 @@ def ramsey_frequency_detuned(
     points=10,
 ):
     platform.reload_settings()
+    check_frequency(platform, write=True)
     sampling_rate = platform.sampling_rate
 
     data = Dataset(name=f"data_q{qubit}", quantities={"wait": "ns", "t_max": "ns"})
@@ -41,16 +43,6 @@ def ramsey_frequency_detuned(
 
     current_qubit_freq = runcard_qubit_freq
     current_T2 = runcard_T2
-
-    # FIXME: Waiting to be able to pass qpucard to qibolab
-    platform.ro_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["resonator_freq"]
-        - ro_pulse.frequency
-    )
-    platform.qd_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["qubit_freq"]
-        - RX90_pulse1.frequency
-    )
 
     t_end = np.array(t_end)
     for t_max in t_end:
@@ -136,15 +128,19 @@ def ramsey(
     delay_between_pulses_start,
     delay_between_pulses_end,
     delay_between_pulses_step,
+    frequency_offset,
     software_averages,
     points=10,
 ):
     platform.reload_settings()
+    check_frequency(platform, write=True)
     sampling_rate = platform.sampling_rate
     qubit_freq = platform.characterization["single_qubit"][qubit]["qubit_freq"]
 
     RX90_pulse1 = platform.create_RX90_pulse(qubit, start=0)
+    RX90_pulse1.frequency = RX90_pulse1.frequency - frequency_offset
     RX90_pulse2 = platform.create_RX90_pulse(qubit, start=RX90_pulse1.finish)
+    RX90_pulse2.frequency = RX90_pulse1.frequency - frequency_offset
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=RX90_pulse2.finish)
 
     sequence = PulseSequence()
@@ -156,16 +152,6 @@ def ramsey(
         delay_between_pulses_start,
         delay_between_pulses_end,
         delay_between_pulses_step,
-    )
-
-    # FIXME: Waiting to be able to pass qpucard to qibolab
-    platform.ro_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["resonator_freq"]
-        - ro_pulse.frequency
-    )
-    platform.qd_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["qubit_freq"]
-        - RX90_pulse1.frequency
     )
 
     data = Dataset(name=f"data_q{qubit}", quantities={"wait": "ns", "t_max": "ns"})
@@ -181,7 +167,7 @@ def ramsey(
                     qubit=qubit,
                     qubit_freq=qubit_freq,
                     sampling_rate=sampling_rate,
-                    offset_freq=0,
+                    offset_freq=frequency_offset,
                     labels=[
                         "delta_frequency",
                         "corrected_qubit_frequency",
