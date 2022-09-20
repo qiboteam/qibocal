@@ -9,7 +9,12 @@ from qcvv.decorators import plot
 
 
 @plot("exc vs gnd", plots.exc_gnd)
-def calibrate_qubit_states_binning(platform: AbstractPlatform, qubit, niter):
+def calibrate_qubit_states_binning(
+    platform: AbstractPlatform,
+    qubit,
+    niter,
+    points=10,
+):
     platform.reload_settings()
     platform.qrm[qubit].ports[
         "i1"
