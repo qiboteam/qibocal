@@ -30,7 +30,15 @@ def variable_resolution_scanrange(
     )
 
 
-def get_fidelity(platform: AbstractPlatform, qubit, niter, param=None, save=True):
+def get_fidelity(
+    platform: AbstractPlatform,
+    qubit,
+    niter,
+    param=None,
+    save=True,
+    amplitude_ro_pulse=0.9,
+    amplitude_qd_pulse=None,
+):
     """
     Returns the read-out fidelity for the measurement.
 
@@ -40,6 +48,8 @@ def get_fidelity(platform: AbstractPlatform, qubit, niter, param=None, save=True
     niter: number of iterations
     param: name and units of the varied parameters to save the data in a dictionary format {"name[PintUnit]": vals, ...}
     save: bool to save the data or not
+    optional parameters for designed routines: #FIXME: find a better way to do it, extracting pulses from sequence?
+        amplitude_ro_pulse = 0.9 #Not 1 for a reason I forgot
 
     Returns:
     fidelity: float C [0,1]
@@ -60,6 +70,9 @@ def get_fidelity(platform: AbstractPlatform, qubit, niter, param=None, save=True
     exc_sequence = PulseSequence()
     RX_pulse = platform.create_RX_pulse(qubit, start=0)
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=RX_pulse.duration)
+    ro_pulse.amplitude = amplitude_ro_pulse
+    if amplitude_qd_pulse is not None:
+        RX_pulse.amplitude = amplitude_qd_pulse
     exc_sequence.add(RX_pulse)
     exc_sequence.add(ro_pulse)
 
@@ -88,6 +101,7 @@ def get_fidelity(platform: AbstractPlatform, qubit, niter, param=None, save=True
 
     gnd_sequence = PulseSequence()
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
+    ro_pulse.amplitude = amplitude_ro_pulse
     gnd_sequence.add(ro_pulse)
 
     data_gnd = Dataset(name=f"data_gnd_{param}_q{qubit}", quantities=quantities)
