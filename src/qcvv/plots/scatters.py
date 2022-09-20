@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from qcvv.data import Data, Dataset
-from qcvv.fitting.utils import exp, flipping, lorenzian, rabi, ramsey
+from qcvv.fitting.utils import cos, exp, flipping, lorenzian, rabi, ramsey
 
 
 def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
@@ -896,4 +896,184 @@ def exc_gnd(folder, routine, qubit, format):
         width=1000,
     )
 
+    return fig
+
+
+# allXY
+def prob_gate(folder, routine, qubit, format):
+
+    try:
+        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+    except:
+        data = Dataset(
+            quantities={"probability": "dimensionless", "gateNumber": "dimensionless"}
+        )
+
+    fig = make_subplots(
+        rows=1,
+        cols=1,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        subplot_titles=(f"allXY",),
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=data.get_values("gateNumber", "dimensionless"),
+            y=data.get_values("probability", "dimensionless"),
+            mode="markers",
+            name="Probabilities",
+        ),
+        row=1,
+        col=1,
+    )
+    fig.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Gate sequence number",
+        yaxis_title="Z projection probability of qubit state |o>",
+    )
+    return fig
+
+
+# allXY
+def prob_gate_iteration(folder, routine, qubit, format):
+
+    try:
+        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+    except:
+        data = Dataset(
+            quantities={
+                "probability": "dimensionless",
+                "gateNumber": "dimensionless",
+                "beta_param": "dimensionless",
+            }
+        )
+
+    data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+    fig = make_subplots(
+        rows=1,
+        cols=1,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        subplot_titles=(f"allXY",),
+    )
+
+    gates = len(data.get_values("gateNumber", "dimensionless"))
+    # print(gates)
+    import numpy as np
+
+    for n in range(gates // 21):
+        data_start = n * 21
+        data_end = data_start + 21
+        beta_param = np.array(data.get_values("beta_param", "dimensionless"))[
+            data_start
+        ]
+        gates = np.array(data.get_values("gateNumber", "dimensionless"))[
+            data_start:data_end
+        ]
+        probabilities = np.array(data.get_values("probability", "dimensionless"))[
+            data_start:data_end
+        ]
+        c = "#" + "{:06x}".format(n * 823000)
+        fig.add_trace(
+            go.Scatter(
+                x=gates,
+                y=probabilities,
+                mode="markers+lines",
+                line=dict(color=c),
+                name=f"beta_parameter = {beta_param}",
+                marker_size=16,
+            ),
+            row=1,
+            col=1,
+        )
+    fig.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Gate sequence number",
+        yaxis_title="Z projection probability of qubit state |o>",
+    )
+    return fig
+
+
+# beta param tuning
+def msr_beta(folder, routine, qubit, format):
+
+    try:
+        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+    except:
+        data = Dataset(
+            name=f"data_q{qubit}", quantities={"beta_param": "dimensionless"}
+        )
+    try:
+        data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
+    except:
+        data_fit = Dataset()
+
+    fig = make_subplots(
+        rows=1,
+        cols=1,
+        horizontal_spacing=0.01,
+        vertical_spacing=0.01,
+        subplot_titles=(f"beta_param_tuning",),
+    )
+
+    c = "#6597aa"
+    fig.add_trace(
+        go.Scatter(
+            x=data.get_values("beta_param", "dimensionless"),
+            y=data.get_values("MSR", "uV"),
+            line=dict(color=c),
+            mode="markers",
+            name="[Rx(pi/2) - Ry(pi)] - [Ry(pi) - Rx(pi/2)]",
+        ),
+        row=1,
+        col=1,
+    )
+    # add fitting traces
+    if len(data) > 0 and len(data_fit) > 0:
+        beta_param = np.linspace(
+            min(data.get_values("beta_param", "dimensionless")),
+            max(data.get_values("beta_param", "dimensionless")),
+            20,
+        )
+        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+        fig.add_trace(
+            go.Scatter(
+                x=beta_param,
+                y=cos(
+                    beta_param,
+                    data_fit.df["popt0"][0],
+                    data_fit.df["popt1"][0],
+                    data_fit.df["popt2"][0],
+                    data_fit.df["popt3"][0],
+                ),
+                name="Fit",
+                line=go.scatter.Line(dash="dot"),
+            ),
+            row=1,
+            col=1,
+        )
+
+        fig.add_annotation(
+            dict(
+                font=dict(color="black", size=12),
+                x=0,
+                y=-0.20,
+                showarrow=False,
+                text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.4f}",
+                textangle=0,
+                xanchor="left",
+                xref="paper",
+                yref="paper",
+            )
+        )
+
+    fig.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Beta parameter",
+        yaxis_title="MSR[uV]",
+    )
     return fig

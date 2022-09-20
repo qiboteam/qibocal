@@ -131,20 +131,26 @@ actions:
   #   step: 1
   #   points: 5
 
-  calibrate_qubit_states_binning:
-    niter: 1024
-    points: 1
-
-  # allXY_iteration:
-  #   beta_start: -1
-  #   beta_end: 1
-  #   beta_step: 0.2
-  #   software_averages: 1
+  # calibrate_qubit_states_binning:
+  #   niter: 1024
   #   points: 1
+
+  allXY_iteration:
+    beta_start: -0.09
+    beta_end: 0
+    beta_step: 0.01
+    software_averages: 1
+    points: 1
 
   # allXY:
   #   beta_param: Null
   #   software_averages: 1
+  #   points: 1
+
+  # drag_pulse_tunning:
+  #   beta_start: -1
+  #   beta_end: 1
+  #   beta_step: 0.01
   #   points: 1
 
   # dispersive_shift:

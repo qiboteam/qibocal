@@ -18,7 +18,6 @@ def rabi(x, p0, p1, p2, p3, p4):
     #   Period    T                  : 1/p[2]
     #   Phase                        : p[3]
     #   Arbitrary parameter T_2      : 1/p[4]
-    # return p[0] + p[1] * np.sin(2 * np.pi / p[2] * x + p[3]) * np.exp(-x / p[4])
     return p0 + p1 * np.sin(2 * np.pi * x * p2 + p3) * np.exp(-x * p4)
 
 
@@ -29,7 +28,6 @@ def ramsey(x, p0, p1, p2, p3, p4):
     #   DeltaFreq                    : p[2]
     #   Phase                        : p[3]
     #   Arbitrary parameter T_2      : 1/p[4]
-    # return p[0] + p[1] * np.sin(2 * np.pi / p[2] * x + p[3]) * np.exp(-x / p[4])
     return p0 + p1 * np.sin(2 * np.pi * x * p2 + p3) * np.exp(-x * p4)
 
 
@@ -44,7 +42,14 @@ def flipping(x, p0, p1, p2, p3):
     # Period of oscillation         : p[2]
     # phase for the first point corresponding to pi/2 rotation   : p[3]
     return np.sin(x * 2 * np.pi / p2 + p3) * p0 + p1
-    # return p0 * np.sin(p3 + (2 * np.pi * x) / p2) + p1
+
+
+def cos(x, p0, p1, p2, p3):
+    # Offset                  : p[0]
+    # Amplitude               : p[1]
+    # Period                  : p[2]
+    # Phase                   : p[3]
+    return p0 + p1 * np.cos(2 * np.pi * x / p2 + p3)
 
 
 def parse(key):
