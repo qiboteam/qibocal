@@ -914,7 +914,7 @@ def prob_gate(folder, routine, qubit, format):
         cols=1,
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
-        subplot_titles=(f"allXY_qubit{qubit}",),
+        subplot_titles=(f"allXY",),
     )
 
     fig.add_trace(
@@ -930,7 +930,7 @@ def prob_gate(folder, routine, qubit, format):
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Gate sequene number",
+        xaxis_title="Gate sequence number",
         yaxis_title="Z projection probability of qubit state |o>",
     )
     return fig
@@ -956,7 +956,7 @@ def prob_gate_iteration(folder, routine, qubit, format):
         cols=1,
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
-        subplot_titles=(f"allXY_qubit{qubit}",),
+        subplot_titles=(f"allXY",),
     )
 
     gates = len(data.get_values("gateNumber", "dimensionless"))
@@ -991,7 +991,7 @@ def prob_gate_iteration(folder, routine, qubit, format):
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Gate sequene number",
+        xaxis_title="Gate sequence number",
         yaxis_title="Z projection probability of qubit state |o>",
     )
     return fig
@@ -1016,7 +1016,7 @@ def msr_beta(folder, routine, qubit, format):
         cols=1,
         horizontal_spacing=0.01,
         vertical_spacing=0.01,
-        subplot_titles=(f"beta_param_tuning_qubit{qubit}",),
+        subplot_titles=(f"beta_param_tuning",),
     )
 
     c = "#6597aa"
@@ -1038,7 +1038,7 @@ def msr_beta(folder, routine, qubit, format):
             max(data.get_values("beta_param", "dimensionless")),
             20,
         )
-        params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
+        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
             go.Scatter(
                 x=beta_param,
