@@ -1077,3 +1077,80 @@ def msr_beta(folder, routine, qubit, format):
         yaxis_title="MSR[uV]",
     )
     return fig
+
+
+def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
+
+    try:
+        data_spec = Dataset.load_data(folder, routine, formato, f"data_q{qubit}")
+    except:
+        data_spec = Dataset(name=f"data_q{qubit}", quantities={"frequency": "Hz"})
+
+    try:
+        data_shifted = Data.load_data(
+            folder, routine, formato, f"data_shifted_q{qubit}"
+        )
+    except:
+        data_shifted = Dataset(
+            name=f"data_shifted_q{qubit}", quantities={"frequency": "Hz"}
+        )
+
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        subplot_titles=(
+            "MSR (V)",
+            "phase (rad)",
+        ),
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=data_spec.get_values("frequency", "GHz"),
+            y=data_spec.get_values("MSR", "uV"),
+            name="Spectroscopy",
+        ),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=data_spec.get_values("frequency", "GHz"),
+            y=data_spec.get_values("phase", "rad"),
+            name="Spectroscopy",
+        ),
+        row=1,
+        col=2,
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=data_shifted.get_values("frequency", "GHz"),
+            y=data_shifted.get_values("MSR", "uV"),
+            name="Shifted Spectroscopy",
+        ),
+        row=1,
+        col=1,
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=data_shifted.get_values("frequency", "GHz"),
+            y=data_shifted.get_values("phase", "rad"),
+            name="Shifted Spectroscopy",
+        ),
+        row=1,
+        col=2,
+    )
+
+    fig.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Frequency (GHz)",
+        yaxis_title="MSR (uV)",
+        xaxis2_title="Frequency (GHz)",
+        yaxis2_title="Phase (rad)",
+    )
+    return fig
