@@ -1,8 +1,6 @@
-backend: tensorflow
+backend: numpy
 
-platform:
-
-qubits: [0, ]
+qubits: [0, 1, 2]
 
 format: pickle
 
