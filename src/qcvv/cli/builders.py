@@ -133,16 +133,14 @@ class ActionBuilder:
 
     def _execute_single_action(self, routine, arguments, path):
         """Method to execute a single action and retrieving the results."""
-        for qubit in self.qubits:
-            results = routine(self.platform, qubit, **arguments)
-            if self.format is None:
-                raise_error(
-                    ValueError, f"Cannot store data using {self.format} format."
-                )
-            for data in results:
-                getattr(data, f"to_{self.format}")(path)
+        results = routine(self.platform, self.qubits, **arguments)
+        if self.format is None:
+            raise_error(ValueError, f"Cannot store data using {self.format} format.")
+        for data in results:
+            getattr(data, f"to_{self.format}")(path)
 
-            self.update_platform_runcard(qubit, routine.__name__)
+        # TODO: refactor update_platform_runcard
+        # self.update_platform_runcard(qubit, routine.__name__)
 
     def update_platform_runcard(self, qubit, routine):
 
