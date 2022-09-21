@@ -12,7 +12,7 @@ from qcvv.fitting.methods import rabi_fit
 @plot("MSR vs Time", plots.time_msr_phase)
 def rabi_pulse_length(
     platform: AbstractPlatform,
-    qubit,
+    qubit: int,
     pulse_duration_start,
     pulse_duration_end,
     pulse_duration_step,
@@ -80,7 +80,7 @@ def rabi_pulse_length(
 @plot("MSR vs Gain", plots.gain_msr_phase)
 def rabi_pulse_gain(
     platform: AbstractPlatform,
-    qubit,
+    qubit: int,
     pulse_gain_start,
     pulse_gain_end,
     pulse_gain_step,
@@ -145,7 +145,7 @@ def rabi_pulse_gain(
 @plot("MSR vs Amplitude", plots.amplitude_msr_phase)
 def rabi_pulse_amplitude(
     platform,
-    qubit,
+    qubit: int,
     pulse_amplitude_start,
     pulse_amplitude_end,
     pulse_amplitude_step,
@@ -212,7 +212,7 @@ def rabi_pulse_amplitude(
 @plot("MSR vs length and gain", plots.duration_gain_msr_phase)
 def rabi_pulse_length_and_gain(
     platform: AbstractPlatform,
-    qubit,
+    qubit: int,
     pulse_duration_start,
     pulse_duration_end,
     pulse_duration_step,
@@ -278,7 +278,7 @@ def rabi_pulse_length_and_gain(
 @plot("MSR vs length and amplitude", plots.duration_amplitude_msr_phase)
 def rabi_pulse_length_and_amplitude(
     platform,
-    qubit,
+    qubit: int,
     pulse_duration_start,
     pulse_duration_end,
     pulse_duration_step,

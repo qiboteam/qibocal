@@ -11,7 +11,7 @@ from qcvv.decorators import plot
 @plot("exc vs gnd", plots.exc_gnd)
 def calibrate_qubit_states_binning(
     platform: AbstractPlatform,
-    qubit,
+    qubit: int,
     niter,
     points=10,
 ):

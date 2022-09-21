@@ -125,7 +125,12 @@ class ActionBuilder:
         for param in list(sig.parameters)[2:-1]:
             if param not in params:
                 raise_error(AttributeError, f"Missing parameter {param} in runcard.")
-        return f, params, path
+        if f.__annotations__["qubit"] == int:
+            single_qubit_action = True
+        else:
+            single_qubit_action = False
+
+        return f, params, path, single_qubit_action
 
     def execute(self):
         """Method to execute sequentially all the actions in the runcard."""
@@ -135,21 +140,29 @@ class ActionBuilder:
             self.platform.start()
 
         for action in self.runcard["actions"]:
-            routine, args, path = self._build_single_action(action)
-            self._execute_single_action(routine, args, path)
+            routine, args, path, single_qubit_action = self._build_single_action(action)
+            self._execute_single_action(routine, args, path, single_qubit_action)
 
         if self.platform is not None:
             self.platform.stop()
             self.platform.disconnect()
 
-    def _execute_single_action(self, routine, arguments, path):
+    def _execute_single_action(self, routine, arguments, path, single_qubit):
         """Method to execute a single action and retrieving the results."""
-        for qubit in self.qubits:
-            results = routine(self.platform, qubit, **arguments)
-            if self.format is None:
-                raise_error(
-                    ValueError, f"Cannot store data using {self.format} format."
-                )
+        if self.format is None:
+            raise_error(ValueError, f"Cannot store data using {self.format} format.")
+        if single_qubit:
+            for qubit in self.qubits:
+                results = routine(self.platform, qubit, **arguments)
+
+                for data in results:
+                    getattr(data, f"to_{self.format}")(path)
+
+                if self.platform is not None:
+                    self.update_platform_runcard(qubit, routine.__name__)
+        else:
+            results = routine(self.platform, self.qubits, **arguments)
+
             for data in results:
                 getattr(data, f"to_{self.format}")(path)
 

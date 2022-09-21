@@ -12,7 +12,7 @@ from qcvv.fitting.methods import t1_fit
 @plot("MSR vs Time", plots.t1_time_msr_phase)
 def t1(
     platform: AbstractPlatform,
-    qubit,
+    qubit: int,
     delay_before_readout_start,
     delay_before_readout_end,
     delay_before_readout_step,
