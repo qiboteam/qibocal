@@ -51,6 +51,7 @@ actions:
   #   precision_start: -500_000
   #   precision_end: 500_000
   #   precision_step: 100_000
+  #   attenuation: 46
   #   software_averages: 1
   #   points: 10
 
@@ -60,6 +61,7 @@ actions:
   #   current_min: -0.0012 # -0.0025 # absolute min is -40 mA
   #   current_max: -0.0004 # +0.001 # absolute max is 40 mA
   #   current_step: 0.00002 # 0.0001
+  #   attenuation: 46
   #   fluxline: 1 # Ask alvaro automatic way to obtain fluxline from runcard
   #   software_averages: 2
   #   points: 10

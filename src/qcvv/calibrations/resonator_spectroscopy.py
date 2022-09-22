@@ -21,7 +21,6 @@ def resonator_spectroscopy(
     precision_width,
     precision_step,
     software_averages,
-    drive_attenuation=None,
     points=10,
 ):
     platform.reload_settings()
@@ -35,12 +34,6 @@ def resonator_spectroscopy(
     resonator_frequency = platform.characterization["single_qubit"][qubit][
         "resonator_freq"
     ]
-
-    for i in range(platform.settings["nqubits"]):
-        if isinstance(drive_attenuation, list):
-            platform.qd_port[i].attenuation = drive_attenuation[i]
-        else:
-            platform.qd_port[i].attenuation = drive_attenuation
 
     frequency_range = (
         variable_resolution_scanrange(
@@ -156,7 +149,7 @@ def resonator_punchout(
     data = Dataset(
         name=f"data_q{qubit}", quantities={"frequency": "Hz", "attenuation": "dB"}
     )
-    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
+
     sequence = PulseSequence()
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
     sequence.add(ro_pulse)
