@@ -343,8 +343,16 @@ def dispersive_shift(
     count = 0
     for _ in range(software_averages):
         for freq in frequency_range:
-            if count % points == 0:
+            if count % points == 0 and count > 0:
                 yield data_spec
+                yield lorentzian_fit(
+                    data_spec,
+                    x="frequency[GHz]",
+                    y="MSR[uV]",
+                    qubit=qubit,
+                    nqubits=platform.settings["nqubits"],
+                    labels=["resonator_freq", "peak_voltage"],
+                )
             platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
             msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
                 ro_pulse.serial
@@ -373,8 +381,17 @@ def dispersive_shift(
     count = 0
     for _ in range(software_averages):
         for freq in frequency_range:
-            if count % points == 0:
+            if count % points == 0 and count > 0:
                 yield data_shifted
+                yield lorentzian_fit(
+                    data_spec,
+                    x="frequency[GHz]",
+                    y="MSR[uV]",
+                    qubit=qubit,
+                    nqubits=platform.settings["nqubits"],
+                    labels=["resonator_freq", "peak_voltage"],
+                    fit_file_name="fit_shifted",
+                )
             platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
             msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
                 ro_pulse.serial
