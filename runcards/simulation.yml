@@ -1,4 +1,4 @@
-backend: numpy
+backend: qibojit
 
 qubits: [0, 1, 2]
 

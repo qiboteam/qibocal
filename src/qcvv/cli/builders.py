@@ -231,7 +231,7 @@ class ReportBuilder:
             if hasattr(calibrations, action):
                 routine = getattr(calibrations, action)
             else:
-                raise_error(ValueError, "Undefined action in report.")
+                raise_error(ValueError, f"Undefined action {action} in report.")
 
             if not hasattr(routine, "plots"):
                 routine.plots = []
