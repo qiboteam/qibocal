@@ -600,73 +600,74 @@ def time_msr(folder, routine, qubit, format):
         col=2,
     )
 
-    # add fitting trace
-    if len(data) > 0 and len(data_fit) > 0:
-        timerange = np.linspace(
-            min(data.get_values("wait", "ns")),
-            max(data.get_values("wait", "ns")),
-            20,
-        )
-        params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
-        fig.add_trace(
-            go.Scatter(
-                x=timerange,
-                y=ramsey(
-                    timerange,
-                    data_fit.df["popt0"][0],
-                    data_fit.df["popt1"][0],
-                    data_fit.df["popt2"][0],
-                    data_fit.df["popt3"][0],
-                    data_fit.df["popt4"][0],
+    for j in range(2):
+        # add fitting trace
+        if len(data) > 0 and len(data_fit) > 0:
+            timerange = np.linspace(
+                min(data.get_values("wait", "ns")),
+                max(data.get_values("wait", "ns")),
+                20,
+            )
+            params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
+            fig.add_trace(
+                go.Scatter(
+                    x=timerange,
+                    y=ramsey(
+                        timerange,
+                        data_fit.df["popt0"][j],
+                        data_fit.df["popt1"][j],
+                        data_fit.df["popt2"][j],
+                        data_fit.df["popt3"][j],
+                        data_fit.df["popt4"][j],
+                    ),
+                    name="Fit",
+                    line=go.scatter.Line(dash="dot"),
                 ),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
-            ),
-            row=1,
-            col=1,
-        )
-
-        fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=0,
-                y=-0.30,
-                showarrow=False,
-                text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.3f} Hz.",
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
+                row=1,
+                col=j + 1,
             )
-        )
 
-        fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=0,
-                y=-0.20,
-                showarrow=False,
-                text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.1f} ns",
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
+            fig.add_annotation(
+                dict(
+                    font=dict(color="black", size=12),
+                    x=j / 2,
+                    y=-0.30,
+                    showarrow=False,
+                    text=f"Estimated {params[1]} is {data_fit.df[params[1]][j]:.3f} Hz.",
+                    textangle=0,
+                    xanchor="left",
+                    xref="paper",
+                    yref="paper",
+                )
             )
-        )
 
-        fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=0,
-                y=-0.25,
-                showarrow=False,
-                text=f"Estimated {params[2]} is {data_fit.df[params[2]][0]:.3f} Hz",
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
+            fig.add_annotation(
+                dict(
+                    font=dict(color="black", size=12),
+                    x=j / 2,
+                    y=-0.20,
+                    showarrow=False,
+                    text=f"Estimated {params[0]} is {data_fit.df[params[0]][j]:.1f} ns",
+                    textangle=0,
+                    xanchor="left",
+                    xref="paper",
+                    yref="paper",
+                )
             )
-        )
+
+            fig.add_annotation(
+                dict(
+                    font=dict(color="black", size=12),
+                    x=j / 2,
+                    y=-0.25,
+                    showarrow=False,
+                    text=f"Estimated {params[2]} is {data_fit.df[params[2]][j]:.3f} Hz",
+                    textangle=0,
+                    xanchor="left",
+                    xref="paper",
+                    yref="paper",
+                )
+            )
 
     fig.update_layout(
         showlegend=True,

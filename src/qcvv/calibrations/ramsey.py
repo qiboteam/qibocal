@@ -55,8 +55,8 @@ def ramsey_frequency_detuned(
                 yield data
                 yield ramsey_fit(
                     data,
-                    x="wait[ns]",
-                    y="MSR[uV]",
+                    xtag="wait[ns]",
+                    ytags=["MSR[uV]", "phase[deg]"],
                     qubit=qubit,
                     qubit_freq=current_qubit_freq,
                     sampling_rate=sampling_rate,
@@ -90,8 +90,8 @@ def ramsey_frequency_detuned(
         # # Fitting
         data_fit = ramsey_fit(
             data,
-            x="wait[ns]",
-            y="MSR[uV]",
+            xtag="wait[ns]",
+            ytags=["MSR[uV]", "phase[deg]"],
             qubit=qubit,
             qubit_freq=current_qubit_freq,
             sampling_rate=sampling_rate,
@@ -103,11 +103,12 @@ def ramsey_frequency_detuned(
             ],
         )
 
-        new_t2 = data_fit.get_values("t2")
-        corrected_qubit_freq = data_fit.get_values("corrected_qubit_frequency")
+        idx = np.argmax(data_fit.get_values("t2"))
+        new_t2 = data_fit.get_values("t2")[idx]
+        corrected_qubit_freq = data_fit.get_values("corrected_qubit_frequency")[idx]
 
         # if ((new_t2 * 3.5) > t_max):
-        if (new_t2 > current_T2).bool() and len(t_end) > 1:
+        if (new_t2 > current_T2) and len(t_end) > 1:
             current_qubit_freq = int(corrected_qubit_freq)
             current_T2 = new_t2
             data = Dataset(
@@ -162,8 +163,8 @@ def ramsey(
                 yield data
                 yield ramsey_fit(
                     data,
-                    x="wait[ns]",
-                    y="MSR[uV]",
+                    xtag="wait[ns]",
+                    ytags=["MSR[uV]", "phase[deg]"],
                     qubit=qubit,
                     qubit_freq=qubit_freq,
                     sampling_rate=sampling_rate,

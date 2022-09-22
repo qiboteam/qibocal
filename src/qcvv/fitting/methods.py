@@ -154,7 +154,9 @@ def rabi_fit(data, x, y, qubit, nqubits, labels):
     return data_fit
 
 
-def ramsey_fit(data, x, y, qubit, qubit_freq, sampling_rate, offset_freq, labels):
+def ramsey_fit(
+    data, xtag: str, ytags: list, qubit, qubit_freq, sampling_rate, offset_freq, labels
+):
 
     data_fit = Data(
         name=f"fit_q{qubit}",
@@ -170,41 +172,48 @@ def ramsey_fit(data, x, y, qubit, qubit_freq, sampling_rate, offset_freq, labels
         ],
     )
 
-    time = data.get_values(*parse(x))
-    voltages = data.get_values(*parse(y))
+    if not isinstance(ytags, list):
+        ytags = [ytags]
 
-    pguess = [
-        np.mean(voltages.values),
-        np.max(voltages.values) - np.min(voltages.values),
-        0.5 / time.values[np.argmin(voltages.values)],
-        np.pi / 2,
-        500e-9,
-    ]
+    for ytag in ytags:
+        time = data.get_values(*parse(xtag))
+        voltages = data.get_values(*parse(ytag))
 
-    try:
-        popt, pcov = curve_fit(
-            ramsey, time.values, voltages.values, p0=pguess, maxfev=2000000
+        pguess = [
+            np.mean(voltages.values),
+            np.max(voltages.values) - np.min(voltages.values),
+            0.5 / time.values[np.argmin(voltages.values)],
+            np.pi / 2,
+            500e-9,
+        ]
+
+        try:
+            popt, pcov = curve_fit(
+                ramsey, time.values, voltages.values, p0=pguess, maxfev=2000000
+            )
+            delta_fitting = popt[2]
+            delta_phys = int((delta_fitting * sampling_rate) - offset_freq)
+            corrected_qubit_frequency = int(qubit_freq - delta_phys)
+            t2 = 1.0 / popt[4]
+        except:
+            log.warning("The fitting was not succesful")
+            popt = np.array([0, 0, 0, 0, 0])
+            delta_phys = np.array(0)
+            corrected_qubit_frequency = np.array(0)
+            t2 = np.array(0)
+
+        data_fit.add(
+            {
+                "popt0": popt[0],
+                "popt1": popt[1],
+                "popt2": popt[2],
+                "popt3": popt[3],
+                "popt4": popt[4],
+                labels[0]: delta_phys,
+                labels[1]: corrected_qubit_frequency,
+                labels[2]: t2,
+            }
         )
-        delta_fitting = popt[2]
-        delta_phys = int((delta_fitting * sampling_rate) - offset_freq)
-        corrected_qubit_frequency = int(qubit_freq - delta_phys)
-        t2 = 1.0 / popt[4]
-    except:
-        log.warning("The fitting was not succesful")
-        return data_fit
-
-    data_fit.add(
-        {
-            "popt0": popt[0],
-            "popt1": popt[1],
-            "popt2": popt[2],
-            "popt3": popt[3],
-            "popt4": popt[4],
-            labels[0]: delta_phys,
-            labels[1]: corrected_qubit_frequency,
-            labels[2]: t2,
-        }
-    )
     return data_fit
 
 
