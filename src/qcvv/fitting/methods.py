@@ -257,7 +257,9 @@ def t1_fit(data, x, y, qubit, nqubits, labels):
     return data_fit
 
 
-def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
+def flipping_fit(
+    data, xtag: str, ytags: list, qubit, nqubits, niter, pi_pulse_amplitude, labels
+):
 
     data_fit = Data(
         name=f"fit_q{qubit}",
@@ -270,36 +272,46 @@ def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
             labels[1],
         ],
     )
+    if not isinstance(ytags, list):
+        ytags = [ytags]
 
-    flips = data.get_values(*parse(x))  # Check X data stores. N flips or i?
-    voltages = data.get_values(*parse(y))
+    for ytag in ytags:
+        x = data.get_values(*parse(xtag))  # Check X data stores. N flips or i?
+        y = data.get_values(*parse(ytag))
 
-    if nqubits == 1:
-        pguess = [0.0003, np.mean(voltages), -18, 0]  # epsilon guess parameter
-    else:
-        pguess = [0.0003, np.mean(voltages), 18, 0]  # epsilon guess parameter
+        if nqubits == 1:
+            pguess = [
+                max(y - np.mean(y)),
+                np.mean(y),
+                -18,
+                0,
+            ]  # epsilon guess parameter
+        else:
+            pguess = [max(y - np.mean(y)), np.mean(y), 18, 0]  # epsilon guess parameter
 
-    try:
-        popt, pcov = curve_fit(flipping, flips, voltages, p0=pguess, maxfev=2000000)
-        epsilon = -np.pi / popt[2]
-        amplitude_delta = np.pi / (np.pi + epsilon)
-        corrected_amplitude = amplitude_delta * pi_pulse_amplitude
-        # angle = (niter * 2 * np.pi / popt[2] + popt[3]) / (1 + 4 * niter)
-        # amplitude_delta = angle * 2 / np.pi * pi_pulse_amplitude
-    except:
-        log.warning("The fitting was not succesful")
-        return data_fit
+        try:
+            popt, pcov = curve_fit(flipping, x, y, p0=pguess, maxfev=2000000)
+            epsilon = -np.pi / popt[2]
+            amplitude_delta = np.pi / (np.pi + epsilon)
+            corrected_amplitude = amplitude_delta * pi_pulse_amplitude
+            # angle = (niter * 2 * np.pi / popt[2] + popt[3]) / (1 + 4 * niter)
+            # amplitude_delta = angle * 2 / np.pi * pi_pulse_amplitude
+        except:
+            log.warning("The fitting was not succesful")
+            popt = np.array([0, 0, 0, 0])
+            amplitude_delta = np.array(0)
+            corrected_amplitude = np.array(0)
 
-    data_fit.add(
-        {
-            "popt0": popt[0],
-            "popt1": popt[1],
-            "popt2": popt[2],
-            "popt3": popt[3],
-            labels[0]: amplitude_delta,
-            labels[1]: corrected_amplitude,
-        }
-    )
+        data_fit.add(
+            {
+                "popt0": popt[0],
+                "popt1": popt[1],
+                "popt2": popt[2],
+                "popt3": popt[3],
+                labels[0]: amplitude_delta,
+                labels[1]: corrected_amplitude,
+            }
+        )
     return data_fit
 
 

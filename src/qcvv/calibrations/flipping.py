@@ -34,8 +34,8 @@ def flipping(
             yield data
             yield flipping_fit(
                 data,
-                x="flips[dimensionless]",
-                y="MSR[uV]",
+                xtag="flips[dimensionless]",
+                ytags=["MSR[uV]", "phase[rad]"],
                 qubit=qubit,
                 nqubits=platform.settings["nqubits"],
                 niter=niter,

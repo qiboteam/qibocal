@@ -820,50 +820,51 @@ def flips_msr_phase(folder, routine, qubit, format):
             max(data.get_values("flips", "dimensionless")),
             20,
         )
-        params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
-        fig.add_trace(
-            go.Scatter(
-                x=timerange,
-                y=flipping(
-                    timerange,
-                    data_fit.df["popt0"][0],
-                    data_fit.df["popt1"][0],
-                    data_fit.df["popt2"][0],
-                    data_fit.df["popt3"][0],
+        for j in range(2):
+            params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
+            fig.add_trace(
+                go.Scatter(
+                    x=timerange,
+                    y=flipping(
+                        timerange,
+                        data_fit.df["popt0"][j],
+                        data_fit.df["popt1"][j],
+                        data_fit.df["popt2"][j],
+                        data_fit.df["popt3"][j],
+                    ),
+                    name="Fit",
+                    line=go.scatter.Line(dash="dot"),
                 ),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
-            ),
-            row=1,
-            col=1,
-        )
+                row=1,
+                col=j + 1,
+            )
 
-        fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=0,
-                y=-0.25,
-                showarrow=False,
-                text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.4f}",
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
+            fig.add_annotation(
+                dict(
+                    font=dict(color="black", size=12),
+                    x=0 + j / 2,
+                    y=-0.25,
+                    showarrow=False,
+                    text=f"Estimated {params[0]} is {data_fit.df[params[0]][j]:.4f}",
+                    textangle=0,
+                    xanchor="left",
+                    xref="paper",
+                    yref="paper",
+                )
             )
-        )
-        fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=0,
-                y=-0.30,
-                showarrow=False,
-                text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.3f}",
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
+            fig.add_annotation(
+                dict(
+                    font=dict(color="black", size=12),
+                    x=0 + j / 2,
+                    y=-0.30,
+                    showarrow=False,
+                    text=f"Estimated {params[1]} is {data_fit.df[params[1]][j]:.3f}",
+                    textangle=0,
+                    xanchor="left",
+                    xref="paper",
+                    yref="paper",
+                )
             )
-        )
 
     # last part
     fig.update_layout(
