@@ -13,3 +13,12 @@ def variable_resolution_scanrange(
             np.arange(highres_width, lowres_width, lowres_step),
         )
     )
+
+
+def classify(point: complex, mean_gnd, mean_exc):
+    """Classify the given state as |0> or |1>."""
+
+    def distance(a, b):
+        return np.sqrt((np.real(a) - np.real(b)) ** 2 + (np.imag(a) - np.imag(b)) ** 2)
+
+    return int(distance(point, mean_exc) < distance(point, mean_gnd))

@@ -1,6 +1,6 @@
 platform: tii5q
 
-qubits: [3]
+qubits: [2]
 
 format: csv
 
@@ -44,11 +44,11 @@ actions:
   #   software_averages: 1
   #   points: 10
 
-    dispersive_shift:
-      freq_width: 5_000_000
-      freq_step: 200_000
-      software_averages: 1
-      points: 5
+  # dispersive_shift:
+  #   freq_width: 5_000_000
+  #   freq_step: 200_000
+  #   software_averages: 1
+  #   points: 5
 
   # qubit_spectroscopy:
   #   fast_start: -50_000_000
@@ -159,8 +159,8 @@ actions:
   #   beta_step: 0.01
   #   points: 1
 
-  # RO_matrix:
-  #   niter: 10 # set niter = 1024 to collect good statistics
+  RO_matrix:
+    niter: 10 # set niter = 1024 to collect good statistics
 
   # ro_pulse_phase:
   #   pulse_phase_start: 0

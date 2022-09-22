@@ -236,3 +236,38 @@ def duration_amplitude_msr_phase(folder, routine, qubit, format):
         yaxis2_title="amplitude (dimensionless)",
     )
     return fig
+
+
+def ro_matrix(folder, routine, qubit, format):
+
+    data = Dataset.load_data(folder, routine, format, f"probabilities")
+    fig = make_subplots(
+        rows=1,
+        cols=1,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+    )
+    nqubits = 5
+    str_states = []
+    for int_state in range(2**nqubits):
+        str_state = bin(int(int_state))[2:].zfill(nqubits)
+        str_states.append(str_state)
+
+    fig.add_trace(
+        go.Heatmap(
+            z=data.df.pint.dequantify().to_numpy(),
+            x=str_states,
+            y=str_states,
+            texttemplate="%{z}",
+        ),
+        row=1,
+        col=1,
+    )
+    fig.update_layout(
+        showlegend=False,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        width=1000,
+        xaxis=dict(title="Read State", side="top"),
+        yaxis=dict(title="Prepared State", autorange="reversed"),
+    )
+    return fig
