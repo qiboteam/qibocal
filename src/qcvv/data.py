@@ -4,6 +4,7 @@
 import re
 from abc import abstractmethod
 
+import numpy as np
 import pandas as pd
 import pint_pandas
 
@@ -102,7 +103,7 @@ class Dataset(AbstractDataset):
             name = key.split("[")[0]
             unit = re.search(r"\[([A-Za-z0-9_]+)\]", key).group(1)
             # TODO: find a better way to do this
-            self.df.loc[l, name] = value * self.ureg(unit)
+            self.df.loc[l, name] = np.array(value) * self.ureg(unit)
 
     def get_values(self, quantity, unit):
         """Get values of a quantity in specified units.
