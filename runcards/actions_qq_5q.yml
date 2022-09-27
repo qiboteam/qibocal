@@ -1,6 +1,6 @@
 platform: tii5q
 
-qubits: [1, 2, 3, 4]
+qubits: [2]
 
 format: csv
 
@@ -107,7 +107,7 @@ actions:
 
   # ramsey_frequency_detuned:
   #   t_start: 4
-  #   t_end: [3000, 4000, 6000] #t_end (optimal) = 3.5 * T2
+  #   t_end: [3000] #t_end (optimal) = 3.5 * T2
   #   t_step: 16
   #   n_osc: 4
   #   points: 5 #minimum set to 5 for live fitting
@@ -119,12 +119,21 @@ actions:
   #   software_averages: 1
   #   points: 5
 
-  t1:
-    delay_before_readout_start: 4
-    delay_before_readout_end: 50_000
-    delay_before_readout_step: 500
-    software_averages: 1
-    points: 5
+  # t1:
+  #   delay_before_readout_start: 4
+  #   delay_before_readout_end: 50_000
+  #   delay_before_readout_step: 500
+  #   software_averages: 1
+  #   points: 5
+
+  # flipping:
+  #   niter: 60
+  #   step: 1
+  #   points: 5
+
+  calibrate_qubit_states_binning:
+    niter: 1024
+    points: 1
 
   # allXY_iteration:
   #   beta_start: -1
@@ -138,19 +147,11 @@ actions:
   #   software_averages: 1
   #   points: 1
 
-  # calibrate_qubit_states:
-  #   niter: 1024
-  #   points: 1
-
   # dispersive_shift:
   #   freq_width: 5_000_000
   #   freq_step: 200_000
   #   software_averages: 1
   #   points: 5
-
-  # flipping:
-  #   niter: 10
-  #   step: 2
 
   # RO_matrix:
   #   niter: 10 # set niter = 1024 to collect good statistics
