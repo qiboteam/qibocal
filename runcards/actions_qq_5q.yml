@@ -1,6 +1,6 @@
 platform: tii5q
 
-qubits: [1, 2, 3, 4]
+qubits: [2]
 
 format: csv
 
@@ -51,6 +51,7 @@ actions:
   #   precision_start: -500_000
   #   precision_end: 500_000
   #   precision_step: 100_000
+  #   attenuation: 46
   #   software_averages: 1
   #   points: 10
 
@@ -60,6 +61,7 @@ actions:
   #   current_min: -0.0012 # -0.0025 # absolute min is -40 mA
   #   current_max: -0.0004 # +0.001 # absolute max is 40 mA
   #   current_step: 0.00002 # 0.0001
+  #   attenuation: 46
   #   fluxline: 1 # Ask alvaro automatic way to obtain fluxline from runcard
   #   software_averages: 2
   #   points: 10
@@ -105,12 +107,12 @@ actions:
   #   software_averages: 1
   #   points: 10
 
-  # ramsey_frequency_detuned:
-  #   t_start: 4
-  #   t_end: [3000, 4000, 6000] #t_end (optimal) = 3.5 * T2
-  #   t_step: 16
-  #   n_osc: 4
-  #   points: 5 #minimum set to 5 for live fitting
+  # # ramsey_frequency_detuned:
+  # #   t_start: 4
+  # #   t_end: [3000, 4000, 6000] #t_end (optimal) = 3.5 * T2
+  # #   t_step: 16
+  # #   n_osc: 4
+  # #   points: 5 #minimum set to 5 for live fitting
 
   # ramsey:
   #   delay_between_pulses_start: 4 # must be a multiple of 4 incl 0
@@ -175,3 +177,35 @@ actions:
   #   delay_between_pulses_step: 20
   #   software_averages: 1
   #   points: 5
+
+  # qubit_spectroscopy_flux_track:
+  #   freq_width: 50_000_000
+  #   freq_step: 1_000_000
+  #   current_offset: 10.e-3
+  #   current_step: 4.e-3 # 0.0001
+  #   attenuation: 46
+  #   software_averages: 1
+  #   points: 10
+
+  # rabi_pulse_amplitude_and_attenuation:
+  #   pulse_amplitude_start: 0
+  #   pulse_amplitude_end: 1
+  #   pulse_amplitude_step: 0.01
+  #   qd_pulse_attenuation_range: [10, 18, 24] #range(0,20,4)
+  #   software_averages: 1
+  #   points: 1
+
+  # resonator_drive_noise:
+  #   freq_width: 500_000
+  #   freq_step: 10_000
+  #   min_att: 00
+  #   max_att: 40
+  #   step_att: 10 # attenuation must be a multiple of 2
+  #   software_averages: 1
+  #   points: 10
+
+  # qubit_attenuation:
+  #   freq_start: -50.e+6
+  #   freq_end: +50.e+6
+  #   freq_step: 1.e+6
+  #   attenuation_list: range(0, 60, 2) # Or [2,16,40]

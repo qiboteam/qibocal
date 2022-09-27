@@ -35,8 +35,6 @@ def resonator_spectroscopy(
         "resonator_freq"
     ]
 
-    for i in range(platform.settings["nqubits"]):
-        platform.qd_port[i].attenuation = 60
 
     frequency_range = (
         variable_resolution_scanrange(
@@ -152,7 +150,7 @@ def resonator_punchout(
     data = Dataset(
         name=f"data_q{qubit}", quantities={"frequency": "Hz", "attenuation": "dB"}
     )
-    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
+
     sequence = PulseSequence()
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
     sequence.add(ro_pulse)
