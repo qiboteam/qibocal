@@ -139,9 +139,9 @@ def ramsey(
     qubit_freq = platform.characterization["single_qubit"][qubit]["qubit_freq"]
 
     RX90_pulse1 = platform.create_RX90_pulse(qubit, start=0)
-    RX90_pulse1.frequency = RX90_pulse1.frequency - frequency_offset
+    RX90_pulse1.frequency = RX90_pulse1.frequency + frequency_offset
     RX90_pulse2 = platform.create_RX90_pulse(qubit, start=RX90_pulse1.finish)
-    RX90_pulse2.frequency = RX90_pulse1.frequency - frequency_offset
+    RX90_pulse2.frequency = RX90_pulse1.frequency + frequency_offset
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=RX90_pulse2.finish)
 
     sequence = PulseSequence()
@@ -176,7 +176,7 @@ def ramsey(
                     ],
                 )
             RX90_pulse2.start = RX90_pulse1.finish + wait
-            ro_pulse.start = RX90_pulse2.finish
+            ro_pulse.start = RX90_pulse2.finish + 100
 
             msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
                 ro_pulse.serial

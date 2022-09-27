@@ -156,10 +156,10 @@ class ActionBuilder:
         params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
         settings = load_yaml(f"{self.folder}/platform.yml")
 
-        for param in params:
-            settings["characterization"]["single_qubit"][qubit][param] = int(
-                data_fit.df[param][0]
-            )
+        # for param in params:
+        #     settings["characterization"]["single_qubit"][qubit][param] = int(
+        #         data_fit.df[param][0]
+        #     )
 
         with open(f"{self.folder}/data/{routine}/platform.yml", "a+") as file:
             yaml.dump(

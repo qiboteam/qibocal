@@ -71,11 +71,11 @@ def check_frequency(platform, write=False):
                         f"WARNING: Instrument parameters not matching with the characterization sweetspot of qubit {i}: {sweetspot[i]} for {sweetspot_spi[i]}"
                     )
 
-            if write:
-                chan = settings["qubit_channel_map"][i][2]
-                settings["instruments"]["SPI"]["settings"]["s4g_modules"][chan][
-                    2
-                ] = sweetspot[i]
+                if write:
+                    chan = settings["qubit_channel_map"][i][2]
+                    settings["instruments"]["SPI"]["settings"]["s4g_modules"][chan][
+                        2
+                    ] = sweetspot[i]
 
         if "control" in settings["instruments"][inst]["roles"]:
             freq = {}

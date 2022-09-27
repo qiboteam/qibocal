@@ -29,7 +29,7 @@ def gain_msr_phase(folder, routine, qubit, format):
         vertical_spacing=0.1,
         subplot_titles=(
             "MSR (V)",
-            "phase (rad)",
+            "phase (deg)",
         ),
     )
 
@@ -45,7 +45,7 @@ def gain_msr_phase(folder, routine, qubit, format):
     fig.add_trace(
         go.Scatter(
             x=data.get_values("gain", "dimensionless"),
-            y=data.get_values("phase", "rad"),
+            y=data.get_values("phase", "deg"),
             name="Rabi Oscillations",
         ),
         row=1,
@@ -133,7 +133,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
         vertical_spacing=0.1,
         subplot_titles=(
             "MSR (V)",
-            "phase (rad)",
+            "phase (deg)",
         ),
     )
 
@@ -149,7 +149,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
     fig.add_trace(
         go.Scatter(
             x=data.get_values("amplitude", "dimensionless"),
-            y=data.get_values("phase", "rad"),
+            y=data.get_values("phase", "deg"),
             name="Rabi Oscillations",
         ),
         row=1,
@@ -215,6 +215,8 @@ def amplitude_msr_phase(folder, routine, qubit, format):
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Amplitude (dimensionless)",
         yaxis_title="MSR (uV)",
+        xaxis2_title="Amplitude (dimensionless)",
+        yaxis2_title="Phase (deg)",
     )
     return fig
 

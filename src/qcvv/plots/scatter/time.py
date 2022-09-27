@@ -29,7 +29,7 @@ def time_msr_phase(folder, routine, qubit, format):
         vertical_spacing=0.1,
         subplot_titles=(
             "MSR (V)",
-            "phase (rad)",
+            "phase (deg)",
         ),
     )
 
@@ -45,7 +45,7 @@ def time_msr_phase(folder, routine, qubit, format):
     fig.add_trace(
         go.Scatter(
             x=data.get_values("Time", "ns"),
-            y=data.get_values("phase", "rad"),
+            y=data.get_values("phase", "deg"),
             name="Rabi Oscillations",
         ),
         row=1,
@@ -128,7 +128,7 @@ def time_msr_phase(folder, routine, qubit, format):
         xaxis_title="Time (ns)",
         yaxis_title="MSR (uV)",
         xaxis2_title="Time (ns)",
-        yaxis2_title="Phase (rad)",
+        yaxis2_title="Phase (deg)",
     )
     return fig
 
@@ -152,7 +152,7 @@ def t1_time_msr_phase(folder, routine, qubit, format):
         vertical_spacing=0.1,
         subplot_titles=(
             "MSR (V)",
-            "phase (rad)",
+            "phase (deg)",
         ),
     )
 
@@ -168,7 +168,7 @@ def t1_time_msr_phase(folder, routine, qubit, format):
     fig.add_trace(
         go.Scatter(
             x=data.get_values("Time", "ns"),
-            y=data.get_values("phase", "rad"),
+            y=data.get_values("phase", "deg"),
             name="T1",
         ),
         row=1,
@@ -220,7 +220,7 @@ def t1_time_msr_phase(folder, routine, qubit, format):
         xaxis_title="Time (ns)",
         yaxis_title="MSR (uV)",
         xaxis2_title="Time (ns)",
-        yaxis2_title="Phase (rad)",
+        yaxis2_title="Phase (deg)",
     )
     return fig
 
@@ -270,7 +270,7 @@ def time_msr(folder, routine, qubit, format):
             timerange = np.linspace(
                 min(data.get_values("wait", "ns")),
                 max(data.get_values("wait", "ns")),
-                20,
+                len(data.get_values("wait", "ns")) * 2,
             )
             params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
             fig.add_trace(
