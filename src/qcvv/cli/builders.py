@@ -33,13 +33,13 @@ class ActionBuilder:
         backend_name = self.runcard.get("backend", "qibolab")
         platform_name = self.runcard.get("platform", "dummy")
         self.backend, self.platform = self._allocate_backend(
-            backend_name, platform_name
+            backend_name, platform_name, path
         )
         self.qubits = self.runcard["qubits"]
         self.format = self.runcard["format"]
 
         # Saving runcard
-        self.save_runcards(path, runcard, platform_name)
+        shutil.copy(runcard, f"{path}/runcard.yml")
         self.save_meta(path, self.folder)
 
     @staticmethod
@@ -73,7 +73,7 @@ class ActionBuilder:
         os.makedirs(path)
         return path, folder
 
-    def _allocate_backend(self, backend_name, platform_name):
+    def _allocate_backend(self, backend_name, platform_name, path):
         """Allocate the platform using Qibolab."""
         from qibo.backends import GlobalBackend, set_backend
         from qibolab.platform import Platform
@@ -83,20 +83,21 @@ class ActionBuilder:
         backend = GlobalBackend()
 
         if backend_name == "qibolab":
-            platform = backend.platform
+            from qibolab import Platform
+            from qibolab.paths import qibolab_folder
+
+            original_runcard = qibolab_folder / "runcards" / f"{platform_name}.yml"
+            # copy of the original runcard that will stay unmodified
+            shutil.copy(original_runcard, f"{path}/platform.yml")
+            # copy of the original runcard that will be modified during calibration
+            updated_runcard = f"{self.folder}/new_platform.yml"
+            shutil.copy(original_runcard, updated_runcard)
+            # create platform using the runcard that is modified
+            platform = Platform(platform_name, runcard=updated_runcard)
         else:
             platform = None
 
         return backend, platform
-
-    def save_runcards(self, path, runcard, platform_name):
-        """Save the output runcards."""
-        shutil.copy(runcard, f"{path}/runcard.yml")
-        if self.platform is not None:
-            from qibolab.paths import qibolab_folder
-
-            platform_runcard = qibolab_folder / "runcards" / f"{platform_name}.yml"
-            shutil.copy(platform_runcard, f"{path}/platform.yml")
 
     def save_meta(self, path, folder):
         import qcvv
@@ -179,14 +180,14 @@ class ActionBuilder:
             data_fit = Data()
 
         params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
-        settings = load_yaml(f"{self.folder}/platform.yml")
+        settings = load_yaml(f"{self.folder}/new_platform.yml")
 
         for param in params:
             settings["characterization"]["single_qubit"][qubit][param] = int(
                 data_fit.df[param][0]
             )
 
-        with open(f"{self.folder}/data/{routine}/platform.yml", "a+") as file:
+        with open(f"{self.folder}/new_platform.yml", "w") as file:
             yaml.dump(
                 settings, file, sort_keys=False, indent=4, default_flow_style=None
             )
