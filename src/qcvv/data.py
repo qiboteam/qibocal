@@ -20,6 +20,7 @@ class AbstractDataset:
             self.name = name
 
         self.df = pd.DataFrame()
+        self.quantities = None
 
     def __add__(self, data):
         self.df = pd.concat([self.df, data.df], ignore_index=True)
@@ -33,7 +34,7 @@ class AbstractDataset:
         """Computes the length of the dataset."""
         return len(self.df)
 
-    @abstractmethod
+    @classmethod
     def load_data(cls, folder, routine, format, name):
         raise_error(NotImplementedError)
 

@@ -75,18 +75,18 @@ def resonator_spectroscopy(
 
     if platform.resonator_type == "3D":
         resonator_frequency = fast_sweep_data.df.frequency[
-            fast_sweep_data.df.MSR.index[fast_sweep_data.df.MSR.argmax()]
+            fast_sweep_data.df.MSR.index[fast_sweep_data.df.MSR.argmax()] # pylint: disable=E1101
         ].magnitude
         avg_voltage = (
-            np.mean(fast_sweep_data.df.MSR.values[: (lowres_width // lowres_step)])
+            np.mean(fast_sweep_data.df.MSR.values[: (lowres_width // lowres_step)]) # pylint: disable=E1101
             * 1e6
         )
     else:
-        resonator_frequency = fast_sweep_data.df.frequency[
-            fast_sweep_data.df.MSR.index[fast_sweep_data.df.MSR.argmin()]
+        resonator_frequency = fast_sweep_data.df.frequency[ # pylint: disable=E1101
+            fast_sweep_data.df.MSR.index[fast_sweep_data.df.MSR.argmin()] # pylint: disable=E1101
         ].magnitude
         avg_voltage = (
-            np.mean(fast_sweep_data.df.MSR.values[: (lowres_width // lowres_step)])
+            np.mean(fast_sweep_data.df.MSR.values[: (lowres_width // lowres_step)]) # pylint: disable=E1101
             * 1e6
         )
 

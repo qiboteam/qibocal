@@ -110,7 +110,7 @@ class ActionBuilder:
         meta["date"] = e.strftime("%Y-%m-%d")
         meta["start-time"] = e.strftime("%H:%M:%S")
         meta["end-time"] = e.strftime("%H:%M:%S")
-        meta["versions"] = self.backend.versions
+        meta["versions"] = self.backend.versions # pylint: disable=E1101
         meta["versions"]["qcvv"] = qcvv.__version__
 
         with open(f"{path}/meta.yml", "w") as file:
@@ -184,7 +184,7 @@ class ActionBuilder:
 
         for param in params:
             settings["characterization"]["single_qubit"][qubit][param] = int(
-                data_fit.df[param][0]
+                data_fit.get_values(param)
             )
 
         with open(f"{self.folder}/new_platform.yml", "w") as file:
