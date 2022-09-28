@@ -15,10 +15,10 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels):
     data_fit = Data(
         name=f"fit_q{qubit}",
         quantities=[
-            "fit_amplitude",
-            "fit_center",
-            "fit_sigma",
-            "fit_offset",
+            "popt0",
+            "popt1",
+            "popt2",
+            "popt3",
             labels[1],
             labels[0],
         ],
@@ -84,10 +84,10 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels):
         {
             labels[1]: peak_voltage,
             labels[0]: freq,
-            "fit_amplitude": fit_res.best_values["amplitude"],
-            "fit_center": fit_res.best_values["center"],
-            "fit_sigma": fit_res.best_values["sigma"],
-            "fit_offset": fit_res.best_values["offset"],
+            "popt0": fit_res.best_values["amplitude"],
+            "popt1": fit_res.best_values["center"],
+            "popt2": fit_res.best_values["sigma"],
+            "popt3": fit_res.best_values["offset"],
         }
     )
     return data_fit

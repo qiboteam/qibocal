@@ -179,7 +179,7 @@ class ActionBuilder:
         except:
             data_fit = Data()
 
-        params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
+        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         settings = load_yaml(f"{self.folder}/new_platform.yml")
 
         for param in params:
