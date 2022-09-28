@@ -1,0 +1,10 @@
+backend: qibojit
+
+qubits: [0, 1, 2]
+
+format: pickle
+
+actions:
+    test:
+      nshots: 100
+      points: 1
