@@ -10,7 +10,7 @@ from qcvv.data import Data, Dataset
 from qcvv.fitting.utils import cos, exp, flipping, lorenzian, rabi, ramsey
 
 
-def frequency_msr_phase__multiplex(folder, routine, qubit, format):
+def frequency_msr_phase__multiplex(folder, routine, qubits, format):
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -18,43 +18,44 @@ def frequency_msr_phase__multiplex(folder, routine, qubit, format):
         vertical_spacing=0.1,
         subplot_titles=(
             "MSR (uV)",
-            "phase (rad)",
+            "phase (deg)",
         ),
     )
     data = Dataset.load_data(folder, routine, format, f"data")
-    data.df.sort_values(by="frequency", inplace=True)
 
-    for qubit in data.df["qubit"].unique():
-        qubit_df = data.df[data.df["qubit"] == qubit]
-        q = int(qubit.magnitude)
+    x = data.get_values("frequency", "GHz").to_numpy()
+    y = data.get_values("MSR", "uV").to_numpy()
+    y_phase = data.get_values("phase", "deg").to_numpy()
+    q = data.get_values("qubit", "unit").to_numpy()
+
+    for qubit in qubits:
         fig.add_trace(
             go.Scatter(
-                x=qubit_df["frequency"].pint.to("Hz").pint.magnitude,
-                y=qubit_df["MSR"].pint.to("uV").pint.magnitude,
-                name=f"qubit {q} MSR",
+                x=x[q == qubit],
+                y=y[q == qubit],
+                name=f"qubit {qubit} MSR",
                 mode="lines+markers",
-                marker=dict(
-                    size=5,
-                    color=px.colors.qualitative.Plotly[
-                        q % len(px.colors.qualitative.Plotly)
-                    ],
-                ),
+                # marker=dict(
+                #     size=5,
+                #     color=px.colors.qualitative.Plotly[
+                #         qubit % len(px.colors.qualitative.Plotly)
+                #     ],
+                # ),
             ),
             row=1,
             col=1,
         )
         fig.add_trace(
             go.Scatter(
-                x=qubit_df["frequency"].pint.to("Hz").pint.magnitude,
-                y=qubit_df["phase"].pint.to("rad").pint.magnitude,
-                name=f"qubit {q} phase",
+                x=x[q == qubit],
+                y=y_phase[q == qubit],
+                name=f"qubit {qubit} phase",
                 mode="lines+markers",
-                marker=dict(
-                    size=5,
-                    color=px.colors.qualitative.Plotly[
-                        q % len(px.colors.qualitative.Plotly)
-                    ],
-                ),
+                # marker=dict(
+                #     size=5,
+                #     color=px.colors.qualitative.Plotly[
+                #         qubit % len(px.colors.qualitative.Plotly)],
+                # ),
             ),
             row=1,
             col=2,
@@ -65,13 +66,15 @@ def frequency_msr_phase__multiplex(folder, routine, qubit, format):
         uirevision="0",  # ``uirevision`` allows zooming while live plotting,
         xaxis_title="Frequency (GHz)",
         yaxis_title="MSR (uV)",
+        xaxis2_title="Frequency (GHz)",
+        yaxis2_title="Phase (deg)",
     )
     return fig
 
 
 def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
     try:
-        data_fast = Dataset.load_data(folder, routine, format, f"fast_sweep_q{qubit}")
+        data_fast = Dataset.load_data(folder, routine, format, f"fast_sweep")
     except:
         data_fast = Dataset(quantities={"frequency": "Hz"})
     try:

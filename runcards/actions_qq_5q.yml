@@ -1,19 +1,16 @@
 platform: tii5q
 
-qubits: [2]
+qubits: [1,2,3,4]
 
 format: csv
 
 actions:
-  # resonator_spectroscopy:
-  #   lowres_width: 5_000_000
-  #   lowres_step: 2_000_000
-  #   highres_width: 1_500_000
-  #   highres_step: 200_000
-  #   precision_width: 1_500_000
-  #   precision_step: 100_000
-  #   software_averages: 1
-  #   points: 5
+  resonator_spectroscopy:
+    min_freq: -20_000_000
+    max_freq: +20_000_000
+    step_freq: 500_000
+    software_averages: 1
+    points: 1
 
   # resonator_spectroscopy_flux:
   #   freq_width: 3_000_000
@@ -147,11 +144,11 @@ actions:
   #   software_averages: 1
   #   points: 1
 
-  drag_pulse_tunning:
-    beta_start: -1
-    beta_end: 1
-    beta_step: 0.01
-    points: 1
+  # drag_pulse_tunning:
+  #   beta_start: -1
+  #   beta_end: 1
+  #   beta_step: 0.01
+  #   points: 1
 
   # dispersive_shift:
   #   freq_width: 5_000_000

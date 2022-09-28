@@ -13,8 +13,9 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels):
     """Fitting routine for resonator spectroscopy"""
 
     data_fit = Data(
-        name=f"fit_q{qubit}",
+        name=f"fit",
         quantities=[
+            qubit,
             "fit_amplitude",
             "fit_center",
             "fit_sigma",
