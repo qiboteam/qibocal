@@ -66,6 +66,7 @@ class Dataset(AbstractDataset):
         quantities (dict): dictionary containing additional quantities that the user
                         may save other than the pulse sequence output. The keys are the name of the
                         quantities and the corresponding values are the units of measure.
+        options (list): list containing additional values to be saved.
     """
 
     def __init__(self, name=None, quantities=None, options=None):
@@ -81,6 +82,7 @@ class Dataset(AbstractDataset):
             }
         )
         self.quantities = {"MSR": "V", "i": "V", "q": "V", "phase": "rad"}
+        self.options = []
 
         if quantities is not None:
             self.quantities.update(quantities)
@@ -106,14 +108,8 @@ class Dataset(AbstractDataset):
         """
         l = len(self)
 
-        def is_quantity(name):
-            if "[" in name:
-                return True
-            else:
-                return False
-
         for key, value in data.items():
-            if is_quantity(key):
+            if "[" in key:
                 name = key.split("[")[0]
                 unit = re.search(r"\[([A-Za-z0-9_]+)\]", key).group(1)
                 # TODO: find a better way to do this
@@ -121,7 +117,7 @@ class Dataset(AbstractDataset):
             else:
                 self.df.loc[l, key] = value
 
-    def get_values(self, quantity, unit):
+    def get_values(self, key, unit=None):
         """Get values of a quantity in specified units.
 
         Args:
@@ -131,7 +127,10 @@ class Dataset(AbstractDataset):
         Returns:
             ``pd.Series`` with the quantity values in the given units.
         """
-        return self.df[quantity].pint.to(unit).pint.magnitude
+        if unit is None:
+            return self.df[key]
+        else:
+            return self.df[key].pint.to(unit).pint.magnitude
 
     @classmethod
     def load_data(cls, folder, routine, format, name):
