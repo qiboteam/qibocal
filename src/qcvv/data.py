@@ -68,7 +68,7 @@ class Dataset(AbstractDataset):
                         quantities and the corresponding values are the units of measure.
     """
 
-    def __init__(self, name=None, quantities=None):
+    def __init__(self, name=None, quantities=None, options=None):
 
         super().__init__(name=name)
 
@@ -80,12 +80,17 @@ class Dataset(AbstractDataset):
                 "phase": pd.Series(dtype="pint[deg]"),
             }
         )
-        self.quantities = {"MSR": "V", "i": "V", "q": "V", "phase": "deg"}
+        self.quantities = {"MSR": "V", "i": "V", "q": "V", "phase": "rad"}
 
         if quantities is not None:
             self.quantities.update(quantities)
             for name, unit in quantities.items():
                 self.df.insert(0, name, pd.Series(dtype=f"pint[{unit}]"))
+
+        if options is not None:
+            self.options = options
+            for option in options:
+                self.df.insert(0, option, pd.Series(dtype=object))
 
         from pint import UnitRegistry
 
@@ -100,11 +105,21 @@ class Dataset(AbstractDataset):
                         ``<name>[<unit>]``.
         """
         l = len(self)
+
+        def is_quantity(name):
+            if "[" in name:
+                return True
+            else:
+                return False
+
         for key, value in data.items():
-            name = key.split("[")[0]
-            unit = re.search(r"\[([A-Za-z0-9_]+)\]", key).group(1)
-            # TODO: find a better way to do this
-            self.df.loc[l, name] = np.array(value) * self.ureg(unit)
+            if is_quantity(key):
+                name = key.split("[")[0]
+                unit = re.search(r"\[([A-Za-z0-9_]+)\]", key).group(1)
+                # TODO: find a better way to do this
+                self.df.loc[l, name] = np.array(value) * self.ureg(unit)
+            else:
+                self.df.loc[l, key] = value
 
     def get_values(self, quantity, unit):
         """Get values of a quantity in specified units.
@@ -134,8 +149,18 @@ class Dataset(AbstractDataset):
         if format == "csv":
             file = f"{folder}/data/{routine}/{name}.csv"
             obj.df = pd.read_csv(file, header=[0, 1])
-            obj.df = obj.df.pint.quantify(level=-1)
             obj.df.pop("Unnamed: 0_level_0")
+            quantities_label = []
+            obj.options = []
+            for column in obj.df.columns:
+                if "Unnamed" not in column[1]:
+                    quantities_label.append(column[0])
+                else:
+                    obj.options.append(column[0])
+            quantities_df = obj.df[quantities_label].pint.quantify()
+            options_df = obj.df[obj.options]
+            options_df.columns = options_df.columns.droplevel(1)
+            obj.df = pd.concat([quantities_df, options_df], axis=1)
         elif format == "pickle":
             file = f"{folder}/data/{routine}/{name}.pkl"
             obj.df = pd.read_pickle(file)
@@ -149,7 +174,10 @@ class Dataset(AbstractDataset):
 
         Args:
             path (str): Path containing output folder."""
-        self.df.pint.dequantify().to_csv(f"{path}/{self.name}.csv")
+        df = self.df[list(self.quantities)].pint.dequantify()
+        firsts = df.index.get_level_values(None)
+        df[self.options] = self.df[self.options].loc[firsts].values
+        df.to_csv(f"{path}/{self.name}.csv")
 
 
 class Data(AbstractDataset):
