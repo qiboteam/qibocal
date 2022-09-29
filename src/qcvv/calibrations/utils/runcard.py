@@ -42,16 +42,14 @@ def check_frequency(platform, write=False):
                         f"WARNING: Instrument parameters not matching with the characterization frequency of qubit {i}: {freq_qrm[i]} for {freq[i]}"
                     )
             if write:
+                lo, freq_if = _frequency_allocation(freq)
                 for i in range(settings["nqubits"]):
                     settings["instruments"]["qrm_rf"]["settings"]["ports"]["o1"][
                         "lo_frequency"
-                    ] = (max(freq) + min(freq)) / 2
-                    settings["native_gates"]["single_qubit"][i]["MZ"]["frequency"] = (
-                        freq[i]
-                        - settings["instruments"]["qrm_rf"]["settings"]["ports"]["o1"][
-                            "lo_frequency"
-                        ]
-                    )
+                    ] = lo
+                    settings["native_gates"]["single_qubit"][i]["MZ"][
+                        "frequency"
+                    ] = freq_if[i]
 
         if "flux" in settings["instruments"][inst]["roles"]:
             sweetspot = []
@@ -117,3 +115,57 @@ def check_frequency(platform, write=False):
         log.info(f"WARNING: Writting YAML")
         with open(path, "w") as f:
             yaml.dump(settings, f, sort_keys=False, indent=4, default_flow_style=None)
+
+
+def _frequency_allocation(freq, bandwidth=600e6, weights=[1, 1, 1, 1]):
+    """
+    Function suppose to set the center frequency (LO) to avoid that spurs overlap the desired frequencies. Few problems:
+    - scipy.minimize not working well, so it is simply iterating through all values
+    - weights are too hard to choose, so a different weighting method should be used
+    - for most weights, the solution is to set the LO to be furthest to most peaks, this would result in spurs greatly spaced
+    which might work well
+
+    Param:
+    bandwidth: bandwidth of the instrument
+    weights: factor to which to value important of a peak [image_spur, image, lo_leake, rf_spur]
+
+    Return:
+    LO_optimal: optimal lo frequency
+    if: IF frequencies to setup
+    """
+    scale = 1 / max(freq)
+    bandwidth = np.array(bandwidth) * scale
+    freq = np.array(freq) * scale
+
+    rn = list(range(len(freq)))
+
+    dx = bandwidth - (max(freq) - min(freq))
+    if dx <= 0:
+        raise ValueError("Bandwitch too small for resonator's spacing")
+    freq_max = max(freq) - (bandwidth / 2 - dx)
+    freq_min = min(freq) + (bandwidth / 2 - dx)
+
+    def cost(LO):
+        LO = LO[0]
+        freqs = np.zeros((len(rn), 4))
+
+        for i in rn:
+            freqs[i, :] = np.array(
+                [-2 * (freq[i] - LO), -(freq[i] - LO), 0, 2 * (freq[i] - LO)]
+            ) + np.array(LO)
+        c = 0
+        for i in rn:
+            for j in rn:
+                if i != j:
+                    c += np.sum((1) / (1 + weights * np.abs(freq[i] - freqs[j, :])))
+        return c
+
+    # result = minimize(lambda x: cost(x), x0 = (min(freq)+max(freq))/2, method="Nelder-Mead", bounds=[(freq_min, freq_max)])
+    x = np.arange(freq_min, freq_max, 100e3 * scale)
+    y = []
+    for f in x:
+        y += [cost([f])]
+
+    LO_optimal = x[np.argmin(y)] / scale
+
+    return LO_optimal, freq - LO_optimal
