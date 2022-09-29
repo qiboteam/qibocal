@@ -318,7 +318,7 @@ def resonator_spectroscopy_flux_matrix(
 @plot("MSR and Phase vs Frequency", plots.dispersive_frequency_msr_phase)
 def dispersive_shift(
     platform: AbstractPlatform,
-    qubit,
+    qubit: int,
     freq_width,
     freq_step,
     software_averages,
