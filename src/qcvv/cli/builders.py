@@ -219,6 +219,7 @@ class ReportBuilder:
             qubit (int): Qubit id. If ``None`` it uses all qubits.
         """
         import tempfile
+
         if qubit is None:
             qubit = self.qubits
         figure = method(self.path, routine.__name__, qubit, self.format)
