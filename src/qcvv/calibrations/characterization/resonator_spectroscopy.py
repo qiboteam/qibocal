@@ -4,7 +4,7 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
 from qcvv import plots
-from qcvv.calibrations.utils import variable_resolution_scanrange
+from qcvv.calibrations.characterization.utils import variable_resolution_scanrange
 from qcvv.data import Dataset
 from qcvv.decorators import plot
 from qcvv.fitting.methods import lorentzian_fit
@@ -13,7 +13,7 @@ from qcvv.fitting.methods import lorentzian_fit
 @plot("MSR and Phase vs Frequency", plots.frequency_msr_phase__fast_precision)
 def resonator_spectroscopy(
     platform: AbstractPlatform,
-    qubit,
+    qubit: int,
     lowres_width,
     lowres_step,
     highres_width,
@@ -132,7 +132,7 @@ def resonator_spectroscopy(
 @plot("MSR vs Frequency", plots.frequency_attenuation_msr_phase__cut)
 def resonator_punchout(
     platform: AbstractPlatform,
-    qubit,
+    qubit: int,
     freq_width,
     freq_step,
     min_att,
@@ -190,7 +190,7 @@ def resonator_punchout(
 @plot("MSR and Phase vs Flux Current", plots.frequency_flux_msr_phase)
 def resonator_spectroscopy_flux(
     platform: AbstractPlatform,
-    qubit,
+    qubit: int,
     freq_width,
     freq_step,
     current_max,
@@ -257,7 +257,7 @@ def resonator_spectroscopy_flux(
 @plot("MSR row 1 and Phase row 2", plots.frequency_flux_msr_phase__matrix)
 def resonator_spectroscopy_flux_matrix(
     platform: AbstractPlatform,
-    qubit,
+    qubit: int,
     freq_width,
     freq_step,
     current_min,

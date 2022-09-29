@@ -48,9 +48,9 @@ def command(runcard, folder, force=None):
      - RUNCARD: runcard with declarative inputs.
     """
 
-    action_builder = ActionBuilder(runcard, folder, force)
-    action_builder.execute()
-    action_builder.dump_report()
+    builder = ActionBuilder(runcard, folder, force)
+    builder.execute()
+    builder.dump_report()
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)

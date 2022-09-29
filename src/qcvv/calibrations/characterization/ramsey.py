@@ -12,7 +12,7 @@ from qcvv.fitting.methods import ramsey_fit
 @plot("MSR vs Time", plots.time_msr)
 def ramsey_frequency_detuned(
     platform: AbstractPlatform,
-    qubit,
+    qubit: int,
     t_start,
     t_end,
     t_step,
@@ -132,7 +132,7 @@ def ramsey_frequency_detuned(
 @plot("MSR vs Time", plots.time_msr)
 def ramsey(
     platform: AbstractPlatform,
-    qubit,
+    qubit: int,
     delay_between_pulses_start,
     delay_between_pulses_end,
     delay_between_pulses_step,

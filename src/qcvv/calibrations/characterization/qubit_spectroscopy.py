@@ -12,7 +12,7 @@ from qcvv.fitting.methods import lorentzian_fit
 @plot("MSR and Phase vs Frequency", plots.frequency_msr_phase__fast_precision)
 def qubit_spectroscopy(
     platform: AbstractPlatform,
-    qubit,
+    qubit: int,
     fast_start,
     fast_end,
     fast_step,
@@ -127,7 +127,7 @@ def qubit_spectroscopy(
 @plot("MSR and Phase vs Frequency", plots.frequency_flux_msr_phase)
 def qubit_spectroscopy_flux(
     platform: AbstractPlatform,
-    qubit,
+    qubit: int,
     freq_width,
     freq_step,
     current_max,

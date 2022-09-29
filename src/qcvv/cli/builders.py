@@ -20,7 +20,6 @@ def load_yaml(path):
 
 class ActionBuilder:
     """Class for parsing and executing runcards.
-
     Args:
         runcard (path): path containing the runcard.
         folder (path): path for the output folder.
@@ -30,19 +29,22 @@ class ActionBuilder:
     def __init__(self, runcard, folder=None, force=False):
         path, self.folder = self._generate_output_folder(folder, force)
         self.runcard = load_yaml(runcard)
-        platform_name = self.runcard["platform"]
-        self._allocate_platform(platform_name)
+        # Qibolab default backend if not provided in runcard.
+        backend_name = self.runcard.get("backend", "qibolab")
+        platform_name = self.runcard.get("platform", "dummy")
+        self.backend, self.platform = self._allocate_backend(
+            backend_name, platform_name
+        )
         self.qubits = self.runcard["qubits"]
         self.format = self.runcard["format"]
 
         # Saving runcard
-        self.save_runcards(path, runcard)
-        self.save_meta(path, self.folder, platform_name)
+        self.save_runcards(path, runcard, platform_name)
+        self.save_meta(path, self.folder)
 
     @staticmethod
     def _generate_output_folder(folder, force):
         """Static method for generating the output folder.
-
         Args:
             folder (path): path for the output folder. If None it will be created a folder automatically
             force (bool): option to overwrite the output folder if it exists already.
@@ -71,40 +73,45 @@ class ActionBuilder:
         os.makedirs(path)
         return path, folder
 
-    def _allocate_platform(self, platform_name):
+    def _allocate_backend(self, backend_name, platform_name):
         """Allocate the platform using Qibolab."""
-        from qibo.backends import construct_backend
+        from qibo.backends import GlobalBackend, set_backend
+        from qibolab.platform import Platform
+        from qibolab.platforms.abstract import AbstractPlatform
 
-        self.platform = construct_backend("qibolab", platform=platform_name).platform
+        set_backend(backend=backend_name, platform=platform_name)
+        backend = GlobalBackend()
 
-    def save_runcards(self, path, runcard):
+        if backend_name == "qibolab":
+            platform = backend.platform
+        else:
+            platform = None
+
+        return backend, platform
+
+    def save_runcards(self, path, runcard, platform_name):
         """Save the output runcards."""
-        from qibolab.paths import qibolab_folder
-
-        platform_runcard = (
-            qibolab_folder / "runcards" / f"{self.runcard['platform']}.yml"
-        )
-        shutil.copy(platform_runcard, f"{path}/platform.yml")
         shutil.copy(runcard, f"{path}/runcard.yml")
+        if self.platform is not None:
+            from qibolab.paths import qibolab_folder
 
-    def save_meta(self, path, folder, platform_name):
-        import qibo
-        import qibolab
+            platform_runcard = qibolab_folder / "runcards" / f"{platform_name}.yml"
+            shutil.copy(platform_runcard, f"{path}/platform.yml")
 
+    def save_meta(self, path, folder):
         import qcvv
 
         e = datetime.datetime.now(datetime.timezone.utc)
         meta = {}
         meta["title"] = folder
-        meta["platform"] = platform_name
+        meta["backend"] = str(self.backend)
+        meta["platform"] = str(self.backend.platform)
         meta["date"] = e.strftime("%Y-%m-%d")
         meta["start-time"] = e.strftime("%H:%M:%S")
         meta["end-time"] = e.strftime("%H:%M:%S")
-        meta["versions"] = {
-            "qibo": qibo.__version__,
-            "qibolab": qibolab.__version__,
-            "qcvv": qcvv.__version__,
-        }
+        meta["versions"] = self.backend.versions
+        meta["versions"]["qcvv"] = qcvv.__version__
+
         with open(f"{path}/meta.yml", "w") as file:
             yaml.dump(meta, file)
 
@@ -118,31 +125,49 @@ class ActionBuilder:
         for param in list(sig.parameters)[2:-1]:
             if param not in params:
                 raise_error(AttributeError, f"Missing parameter {param} in runcard.")
-        return f, params, path
+        if f.__annotations__["qubit"] == int:
+            single_qubit_action = True
+        else:
+            single_qubit_action = False
+
+        return f, params, path, single_qubit_action
 
     def execute(self):
         """Method to execute sequentially all the actions in the runcard."""
-        self.platform.connect()
-        self.platform.setup()
-        self.platform.start()
-        for action in self.runcard["actions"]:
-            routine, args, path = self._build_single_action(action)
-            self._execute_single_action(routine, args, path)
-        self.platform.stop()
-        self.platform.disconnect()
+        if self.platform is not None:
+            self.platform.connect()
+            self.platform.setup()
+            self.platform.start()
 
-    def _execute_single_action(self, routine, arguments, path):
+        for action in self.runcard["actions"]:
+            routine, args, path, single_qubit_action = self._build_single_action(action)
+            self._execute_single_action(routine, args, path, single_qubit_action)
+
+        if self.platform is not None:
+            self.platform.stop()
+            self.platform.disconnect()
+
+    def _execute_single_action(self, routine, arguments, path, single_qubit):
         """Method to execute a single action and retrieving the results."""
-        for qubit in self.qubits:
-            results = routine(self.platform, qubit, **arguments)
-            if self.format is None:
-                raise_error(
-                    ValueError, f"Cannot store data using {self.format} format."
-                )
+        if self.format is None:
+            raise_error(ValueError, f"Cannot store data using {self.format} format.")
+        if single_qubit:
+            for qubit in self.qubits:
+                results = routine(self.platform, qubit, **arguments)
+
+                for data in results:
+                    getattr(data, f"to_{self.format}")(path)
+
+                if self.platform is not None:
+                    self.update_platform_runcard(qubit, routine.__name__)
+        else:
+            results = routine(self.platform, self.qubits, **arguments)
+
             for data in results:
                 getattr(data, f"to_{self.format}")(path)
 
-            self.update_platform_runcard(qubit, routine.__name__)
+            if self.platform is not None:
+                self.update_platform_runcard(qubit, routine.__name__)
 
     def update_platform_runcard(self, qubit, routine):
 
@@ -203,7 +228,11 @@ class ReportBuilder:
         # (could be incorporated to :meth:`qcvv.cli.builders.ActionBuilder._build_single_action`)
         self.routines = []
         for action in self.runcard.get("actions"):
-            routine = getattr(calibrations, action)
+            if hasattr(calibrations, action):
+                routine = getattr(calibrations, action)
+            else:
+                raise_error(ValueError, f"Undefined action {action} in report.")
+
             if not hasattr(routine, "plots"):
                 routine.plots = []
             self.routines.append(routine)
