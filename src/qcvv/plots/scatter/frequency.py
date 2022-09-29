@@ -10,7 +10,12 @@ from qcvv.data import Data, Dataset
 from qcvv.fitting.utils import cos, exp, flipping, lorenzian, rabi, ramsey
 
 
-def frequency_msr_phase__multiplex(folder, routine, qubits, format):
+def frequency_msr_phase__all(folder, routine, qubits, format):
+    if not isinstance(qubits, list):
+        qubits = [qubits]
+        showleg = False
+    else:
+        showleg = True
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -21,12 +26,14 @@ def frequency_msr_phase__multiplex(folder, routine, qubits, format):
             "phase (deg)",
         ),
     )
-    data = Dataset.load_data(folder, routine, format, f"data")
-
-    x = data.get_values("frequency", "GHz").to_numpy()
-    y = data.get_values("MSR", "uV").to_numpy()
-    y_phase = data.get_values("phase", "deg").to_numpy()
-    q = data.get_values("qubit", "unit").to_numpy()
+    try:
+        data = Dataset.load_data(folder, routine, format, f"data")
+        x = data.get_values("frequency", "GHz").to_numpy()
+        y = data.get_values("MSR", "uV").to_numpy()
+        y_phase = data.get_values("phase", "deg").to_numpy()
+        q = data.get_values("qubit", "unit").to_numpy()
+    except:
+        x, y, y_phase, q = np.array([]), np.array([]), np.array([]), np.array([])
 
     for qubit in qubits:
         fig.add_trace(
@@ -62,7 +69,59 @@ def frequency_msr_phase__multiplex(folder, routine, qubits, format):
         )
 
     fig.update_layout(
-        showlegend=True,
+        showlegend=showleg,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting,
+        xaxis_title="Frequency (GHz)",
+        yaxis_title="MSR (uV)",
+        xaxis2_title="Frequency (GHz)",
+        yaxis2_title="Phase (deg)",
+    )
+    return fig
+
+
+def frequency_msr_phase(folder, routine, qubit, format):
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        subplot_titles=(
+            "MSR (uV)",
+            "phase (deg)",
+        ),
+    )
+    try:
+        data = Dataset.load_data(folder, routine, format, f"data")
+        x = data.get_values("frequency", "GHz").to_numpy()
+        y = data.get_values("MSR", "uV").to_numpy()
+        y_phase = data.get_values("phase", "deg").to_numpy()
+        q = data.get_values("qubit", "unit").to_numpy()
+    except:
+        x, y, y_phase, q = np.array([]), np.array([]), np.array([]), np.array([])
+
+    fig.add_trace(
+        go.Scatter(
+            x=x[q == qubit],
+            y=y[q == qubit],
+            name=f"qubit {qubit} MSR",
+            mode="lines",
+        ),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=x[q == qubit],
+            y=y_phase[q == qubit],
+            name=f"qubit {qubit} phase",
+            mode="lines",
+        ),
+        row=1,
+        col=2,
+    )
+
+    fig.update_layout(
+        showlegend=False,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting,
         xaxis_title="Frequency (GHz)",
         yaxis_title="MSR (uV)",

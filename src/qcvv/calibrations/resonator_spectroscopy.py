@@ -10,7 +10,8 @@ from qcvv.decorators import plot
 from qcvv.fitting.methods import lorentzian_fit
 
 
-# @plot("MSR and Phase vs Frequency", plots.frequency_msr_phase__fast_precision)
+@plot("MSR and Phase vs Frequency", plots.frequency_msr_phase__all)
+@plot("MSR and Phase vs Frequency", plots.frequency_msr_phase__all, qubit_sections=True)
 def resonator_spectroscopy(
     platform: AbstractPlatform,
     qubits,
