@@ -152,20 +152,17 @@
         {% if routine.plots %}
         {% for header, method in routine.plots %}
         <div id="{{ routine }}-{{ method }}" style="scroll-margin-top: 4em;">
-          {% for qubit in report.qubits %}
-          <div id="{{ routine }}-{{ method }}-{{ qubit }}" style="scroll-margin-top: 4em;">
           <h5
             class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-            {{ header }} - Qubit {{ qubit }}</h5>
+            {{ header }}</h5>
           {% if is_static %}
-            {{ report.get_figure(routine, method, qubit) }}
+            {{ report.get_figure(routine, method) }}
           {% else %}
           <!-- find a way to change height and width depending on screen type -->
-          <iframe src="{{ report.get_live_figure(routine, method, qubit) }}"
+          <iframe src="{{ report.get_live_figure(routine, method) }}"
             style="position: relative; height: 500px; width: 100%;"></iframe>
           {% endif %}
           </div>
-          {% endfor %}
         </div>
         {% endfor %}
         {% else %}

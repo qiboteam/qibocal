@@ -38,7 +38,8 @@ app.layout = html.Div(
     Input("url", "pathname"),
 )
 def get_graph(n, current_figure, url):
-    method, folder, routine, qubit, format = url.split(os.sep)[2:]
+    method, folder, routine, qubits, format = url.split(os.sep)[2:]
+    qubits = [int(q) for q in qubits.split("_")]
     try:
         # data = Dataset.load_data(folder, routine, format, "precision_sweep")
         # with open(f"{folder}/platform.yml", "r") as f:
@@ -54,6 +55,6 @@ def get_graph(n, current_figure, url):
         # # should be changed to:
         # # return getattr(getattr(plots, routine), method)(data)
 
-        return getattr(plots, method)(folder, routine, qubit, format)
+        return getattr(plots, method)(folder, routine, qubits, format)
     except (FileNotFoundError, pd.errors.EmptyDataError):
         return current_figure
