@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 """Some tests for the Dataset class"""
-import tempfile
-
 import numpy as np
 import pytest
 from pint import DimensionalityError, UndefinedUnitError
@@ -26,6 +24,17 @@ def test_data_initialization():
     data1 = Dataset(quantities={"attenuation": "dB"})
     assert len(data1.df.columns) == 5
     assert list(data1.df.columns) == ["attenuation", "MSR", "i", "q", "phase"]
+
+    data2 = Dataset(quantities={"attenuation": "dB"}, options=["option1"])
+    assert len(data2.df.columns) == 6
+    assert list(data2.df.columns) == [
+        "option1",
+        "attenuation",
+        "MSR",
+        "i",
+        "q",
+        "phase",
+    ]
 
 
 def test_units():
