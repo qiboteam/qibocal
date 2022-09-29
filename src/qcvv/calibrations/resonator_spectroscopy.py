@@ -20,20 +20,22 @@ def resonator_spectroscopy(
     software_averages,
     points=10,
 ):
-    platform.reload_settings()
-    check_frequency(platform, write=True)
 
+    check_frequency(platform, write=True)
+    platform.reload_settings()
+
+    LOs = {}
     sequence = PulseSequence()
     for qubit in qubits:
         ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
         sequence.add(ro_pulse)
+        LOs[qubit] = platform.ro_port[qubit].lo_frequency
 
     frequency_range = np.arange(min_freq, max_freq, step_freq)
     data = Dataset(name=f"data", quantities={"frequency": "Hz", "qubit": "unit"})
     count = 0
     for _ in range(software_averages):
         for freq in frequency_range:
-            LOs = {}
             for qubit in qubits:
                 if count % points == 0 and count > 0:
                     yield data
@@ -45,9 +47,6 @@ def resonator_spectroscopy(
                         nqubits=platform.settings["nqubits"],
                         labels=["resonator_freq", "peak_voltage"],
                     )
-                LOs[qubit] = platform.ro_port[qubit].lo_frequency
-
-            for qubit in qubits:
                 platform.ro_port[qubit].lo_frequency = freq + LOs[qubit]
 
             results = platform.execute_pulse_sequence(sequence)

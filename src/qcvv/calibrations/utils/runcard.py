@@ -25,43 +25,46 @@ def check_frequency(platform, write=False):
 
     for inst in settings["instruments"]:
         if "readout" in settings["instruments"][inst]["roles"]:
-            freq = []
-            freq_qrm = []
-            for i in range(settings["nqubits"]):
-                freq += [
-                    settings["characterization"]["single_qubit"][i]["resonator_freq"]
+            freq = {}
+            freq_qrm = {}
+            for i in platform.qubits:
+                freq[i] = settings["characterization"]["single_qubit"][i][
+                    "resonator_freq"
                 ]
-                freq_qrm += [
+
+                freq_qrm[i] = (
                     settings["instruments"]["qrm_rf"]["settings"]["ports"]["o1"][
                         "lo_frequency"
                     ]
                     + settings["native_gates"]["single_qubit"][i]["MZ"]["frequency"]
-                ]
+                )
+
                 if abs(freq[i] - freq_qrm[i]) > 1:  # leaving a 1Hz resolution
                     log.info(
                         f"WARNING: Instrument parameters not matching with the characterization frequency of qubit {i}: {freq_qrm[i]} for {freq[i]}"
                     )
             if write:
-                lo, freq_if = _frequency_allocation(freq)
-                for i in range(settings["nqubits"]):
+                lo = _frequency_allocation(list(freq.values()))
+                for i in platform.qubits:
                     settings["instruments"]["qrm_rf"]["settings"]["ports"]["o1"][
                         "lo_frequency"
-                    ] = lo
+                    ] = float(lo)
                     settings["native_gates"]["single_qubit"][i]["MZ"][
                         "frequency"
-                    ] = freq_if[i]
+                    ] = int(freq[i] - float(lo))
 
         if "flux" in settings["instruments"][inst]["roles"]:
-            sweetspot = []
-            sweetspot_spi = []
-            for i in range(settings["nqubits"]):
+            sweetspot = {}
+            sweetspot_spi = {}
+            for i in platform.qubits:
                 chan = settings["qubit_channel_map"][i][2]
-                sweetspot += [
-                    settings["characterization"]["single_qubit"][i]["sweetspot"]
+                sweetspot[i] = settings["characterization"]["single_qubit"][i][
+                    "sweetspot"
                 ]
-                sweetspot_spi += [
-                    settings["instruments"]["SPI"]["settings"]["s4g_modules"][chan][2]
-                ]
+                sweetspot_spi[i] = settings["instruments"]["SPI"]["settings"][
+                    "s4g_modules"
+                ][chan][2]
+
                 if (
                     abs(sweetspot[i] - sweetspot_spi[i]) > 1.0e-9
                 ):  # leaving a 1uA resolution
@@ -78,7 +81,7 @@ def check_frequency(platform, write=False):
         if "control" in settings["instruments"][inst]["roles"]:
             freq = {}
             freq_qcm = {}
-            for i in range(settings["nqubits"]):
+            for i in platform.qubits:
                 chan = settings["qubit_channel_map"][i][1]
                 if (
                     chan
@@ -168,4 +171,4 @@ def _frequency_allocation(freq, bandwidth=600e6, weights=[1, 1, 1, 1]):
 
     LO_optimal = x[np.argmin(y)] / scale
 
-    return LO_optimal, freq - LO_optimal
+    return LO_optimal
