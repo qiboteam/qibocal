@@ -210,22 +210,24 @@ class ReportBuilder:
         """Prettify routine's name for report headers."""
         return routine.__name__.replace("_", " ").title()
 
-    def get_figure(self, routine, method):
+    def get_figure(self, routine, method, qubit=None):
         """Get html figure for report.
 
         Args:
             routine (Callable): Calibration method.
             method (Callable): Plot method.
+            qubit (int): Qubit id. If ``None`` it uses all qubits.
         """
         import tempfile
-
-        figure = method(self.path, routine.__name__, self.qubits, self.format)
+        if qubit is None:
+            qubit = self.qubits
+        figure = method(self.path, routine.__name__, qubit, self.format)
         with tempfile.NamedTemporaryFile() as temp:
             figure.write_html(temp.name, include_plotlyjs=False, full_html=False)
             fightml = temp.read().decode("utf-8")
         return fightml
 
-    def get_live_figure(self, routine, method):
+    def get_live_figure(self, routine, method, qubit=None):
         """Get url to dash page for live plotting.
 
         This url is used by :meth:`qcvv.web.app.get_graph`.
@@ -233,13 +235,15 @@ class ReportBuilder:
         Args:
             routine (Callable): Calibration method.
             method (Callable): Plot method.
+            qubit (int): Qubit id. If ``None`` it uses all qubits.
         """
         # Bad way of parsing qubits to string
-        qubits = "_".join(str(q) for q in self.qubits)
+        if qubit is None:
+            qubit = "_".join(str(q) for q in self.qubits)
         return os.path.join(
             method.__name__,
             self.path,
             routine.__name__,
-            qubits,
+            qubit,
             self.format,
         )

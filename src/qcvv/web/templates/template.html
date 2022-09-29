@@ -67,7 +67,7 @@
               <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
                 <li><a href="#{{ routine }}" class="link-dark d-inline-flex text-decoration-none rounded">{{
                     report.get_routine_name(routine) }}</a></li>
-                {% for header, method in routine.plots %}
+                {% for header, method, _ in routine.plots %}
                 <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
                   <li><a class="link-dark d-inline-flex text-decoration-none rounded"
                       href="#{{ routine }}-{{ method }}">- {{ header }}</a></li>
@@ -150,19 +150,40 @@
           class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
           {{ report.get_routine_name(routine) }}</h4>
         {% if routine.plots %}
-        {% for header, method in routine.plots %}
+        {% for header, method, qubit_sections in routine.plots %}
         <div id="{{ routine }}-{{ method }}" style="scroll-margin-top: 4em;">
-          <h5
-            class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-            {{ header }}</h5>
           {% if is_static %}
+            {% if qubit_sections %}
+            {% for qubit in report.qubits %}
+            <h5
+              class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+              {{ header }} - Qubit {{ qubit }}</h5>
+            {{ report.get_figure(routine, method, qubit) }}
+            {% endfor %}
+            {% else %}
+            <h5
+              class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+              {{ header }}</h5>
             {{ report.get_figure(routine, method) }}
+            {% endif %}
           {% else %}
           <!-- find a way to change height and width depending on screen type -->
-          <iframe src="{{ report.get_live_figure(routine, method) }}"
-            style="position: relative; height: 500px; width: 100%;"></iframe>
+            {% if qubit_sections %}
+            {% for qubit in report.qubits %}
+            <h5
+              class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+              {{ header }} - Qubit {{ qubit }}</h5>
+            <iframe src="{{ report.get_live_figure(routine, method, qubit) }}"
+              style="position: relative; height: 500px; width: 100%;"></iframe>
+            {% endfor %}
+            {% else %}
+            <h5
+              class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+              {{ header }}</h5>
+            <iframe src="{{ report.get_live_figure(routine, method) }}"
+              style="position: relative; height: 500px; width: 100%;"></iframe>
+            {% endif %}
           {% endif %}
-          </div>
         </div>
         {% endfor %}
         {% else %}
