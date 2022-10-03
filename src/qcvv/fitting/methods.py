@@ -1,96 +1,102 @@
 # -*- coding: utf-8 -*-
 """Routine-specific method for post-processing data acquired."""
+
+from curses import qiflush
+
 import lmfit
 import numpy as np
 from scipy.optimize import curve_fit
 
 from qcvv.config import log
 from qcvv.data import Data
-from qcvv.fitting.utils import cos, exp, flipping, lorenzian, parse, rabi, ramsey
+from qcvv.fitting.utils import (
+    cos,
+    exp,
+    flipping,
+    lorenzian,
+    lorenzian_diff,
+    parse,
+    rabi,
+    ramsey,
+)
 
 
-def lorentzian_fit(data, x, y, qubit, nqubits, labels):
-    """Fitting routine for resonator spectroscopy"""
+def lorentzian_fit(x, y, qubits, name="fit"):
 
     data_fit = Data(
-        name=f"fit",
+        name=name,
         quantities=[
-            qubit,
+            "qubit",
+            "peak_value",
             "fit_amplitude",
             "fit_center",
             "fit_sigma",
             "fit_offset",
-            labels[1],
-            labels[0],
         ],
     )
-
-    frequencies = data.get_values(*parse(x))
-    voltages = data.get_values(*parse(y))
-
     # Create a lmfit model for fitting equation defined in resonator_peak
     model_Q = lmfit.Model(lorenzian)
 
-    # Guess parameters for Lorentzian max or min
-    if (nqubits == 1 and labels[0] == "resonator_freq") or (
-        nqubits != 1 and labels[0] == "qubit_freq"
-    ):
-        guess_center = frequencies[
-            np.argmax(voltages)
-        ]  # Argmax = Returns the indices of the maximum values along an axis.
-        guess_offset = np.mean(
-            voltages[np.abs(voltages - np.mean(voltages) < np.std(voltages))]
+    for qubit in np.unique(qubits).tolist():
+        xq = x[qubit == qubits]
+
+        yq = y[qubit == qubits]
+
+        y_peak = yq[np.argmax(np.diff(yq))]
+        guess_center = xq[yq == y_peak][0]
+        xsigma = []
+        for xi in xq[xq >= guess_center]:
+            if yq[xi == xq] > np.std(yq):
+                xsigma += [xi]
+            else:
+                break
+        if len(xsigma) == 0:
+            xsigma = x
+        guess_sigma = max(xsigma) - min(xsigma)
+        guess_offset = np.mean(yq[np.abs(yq - np.mean(yq) < np.std(yq))])
+        guess_amp = (y_peak - guess_offset) * guess_sigma * np.pi
+
+        # Add guessed parameters to the model
+        model_Q.set_param_hint("center", value=guess_center, vary=True)
+        model_Q.set_param_hint("sigma", value=guess_sigma, vary=True)
+        model_Q.set_param_hint("amplitude", value=guess_amp, vary=True)
+        model_Q.set_param_hint("offset", value=guess_offset, vary=True)
+        guess_parameters = model_Q.make_params()
+
+        # fit the model with the data and guessed parameters
+        try:
+            fit_res = model_Q.fit(data=yq, frequency=xq, params=guess_parameters)
+        except:
+            r = {
+                "qubit": qubit,
+                "peak_value": 0,
+                "fit_amplitude": guess_amp,
+                "fit_center": guess_center,
+                "fit_sigma": guess_sigma,
+                "fit_offset": guess_offset,
+            }
+            data_fit.add(r)
+            return data_fit
+
+        # get the values for postprocessing and for legend.
+        f0 = fit_res.best_values["center"]
+        BW = fit_res.best_values["sigma"] * 2
+        Q = abs(f0 / BW)
+        peak_voltage = (
+            fit_res.best_values["amplitude"] / (fit_res.best_values["sigma"] * np.pi)
+            + fit_res.best_values["offset"]
         )
-        guess_sigma = abs(frequencies[np.argmin(voltages)] - guess_center)
-        guess_amp = (np.max(voltages) - guess_offset) * guess_sigma * np.pi
 
-    else:
-        guess_center = frequencies[
-            np.argmin(voltages)
-        ]  # Argmin = Returns the indices of the minimum values along an axis.
-        guess_offset = np.mean(
-            voltages[np.abs(voltages - np.mean(voltages) < np.std(voltages))]
-        )
-        guess_sigma = abs(frequencies[np.argmax(voltages)] - guess_center)
-        guess_amp = (np.min(voltages) - guess_offset) * guess_sigma * np.pi
-
-    # Add guessed parameters to the model
-    model_Q.set_param_hint("center", value=guess_center, vary=True)
-    model_Q.set_param_hint("sigma", value=guess_sigma, vary=True)
-    model_Q.set_param_hint("amplitude", value=guess_amp, vary=True)
-    model_Q.set_param_hint("offset", value=guess_offset, vary=True)
-    guess_parameters = model_Q.make_params()
-
-    # fit the model with the data and guessed parameters
-    try:
-        fit_res = model_Q.fit(
-            data=voltages, frequency=frequencies, params=guess_parameters
-        )
-    except:
-        log.warning("The fitting was not successful")
-        return data_fit
-
-    # get the values for postprocessing and for legend.
-    f0 = fit_res.best_values["center"]
-    BW = fit_res.best_values["sigma"] * 2
-    Q = abs(f0 / BW)
-    peak_voltage = (
-        fit_res.best_values["amplitude"] / (fit_res.best_values["sigma"] * np.pi)
-        + fit_res.best_values["offset"]
-    )
-
-    freq = f0 * 1e6
-
-    data_fit.add(
-        {
-            labels[1]: peak_voltage,
-            labels[0]: freq,
+        r = {
+            "qubit": qubit,
+            "peak_value": peak_voltage,
             "fit_amplitude": fit_res.best_values["amplitude"],
             "fit_center": fit_res.best_values["center"],
             "fit_sigma": fit_res.best_values["sigma"],
             "fit_offset": fit_res.best_values["offset"],
         }
-    )
+        # print(r)
+        data_fit.add(r)
     return data_fit
 
 

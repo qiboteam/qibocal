@@ -11,6 +11,13 @@ def lorenzian(frequency, amplitude, center, sigma, offset):
     ) + offset
 
 
+def lorenzian_diff(frequency, amplitude, center, sigma, offset):
+    # http://openafox.com/science/peak-function-derivations.html
+    return -((amplitude * sigma / np.pi) * (frequency - 2 * center)) / (
+        ((frequency - center) ** 2 + sigma**2) ** 2
+    )
+
+
 def rabi(x, p0, p1, p2, p3, p4):
     # A fit to Superconducting Qubit Rabi Oscillation
     #   Offset                       : p[0]

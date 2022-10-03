@@ -5,9 +5,9 @@ from qibolab.pulses import PulseSequence
 
 from qcvv import plots
 from qcvv.calibrations.utils import check_frequency, variable_resolution_scanrange
-from qcvv.data import Dataset
+from qcvv.data import Data, Dataset
 from qcvv.decorators import plot
-from qcvv.fitting.methods import lorentzian_fit
+from qcvv.fitting.methods import lorentzian_diff_fit, lorentzian_fit
 
 
 @plot("MSR and Phase vs Frequency", plots.frequency_msr_phase__all)
@@ -22,7 +22,7 @@ def resonator_spectroscopy(
     points=10,
 ):
 
-    check_frequency(platform, write=True)
+    check_frequency(platform, write=True)  # Put in Qibolab
     platform.reload_settings()
 
     LOs = {}
@@ -30,25 +30,29 @@ def resonator_spectroscopy(
     for qubit in qubits:
         ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
         sequence.add(ro_pulse)
-        LOs[qubit] = platform.ro_port[qubit].lo_frequency
+        LOs[qubit] = platform.ro_port[qubit].lo_frequency  # FIXME: Platform dependant
 
     frequency_range = np.arange(min_freq, max_freq, step_freq)
     data = Dataset(name=f"data", quantities={"frequency": "Hz", "qubit": "unit"})
+
     count = 0
     for _ in range(software_averages):
         for freq in frequency_range:
+            if count % points == 0 and count > 2:
+                yield data
+                x = data.get_values("frequency", "Hz").to_numpy()
+                q = data.get_values("qubit", "unit").to_numpy()
+                yield lorentzian_fit(
+                    x,
+                    data.get_values("MSR", "V").to_numpy(),
+                    q,
+                    name="fit_msr",
+                )
+
             for qubit in qubits:
-                if count % points == 0 and count > 0:
-                    yield data
-                    yield lorentzian_fit(
-                        data,
-                        x="frequency[GHz]",
-                        y="MSR[uV]",
-                        qubit=qubit,
-                        nqubits=platform.settings["nqubits"],
-                        labels=["resonator_freq", "peak_voltage"],
-                    )
-                platform.ro_port[qubit].lo_frequency = freq + LOs[qubit]
+                platform.ro_port[qubit].lo_frequency = (
+                    freq + LOs[qubit]
+                )  # FIXME: Platform dependant
 
             results = platform.execute_pulse_sequence(sequence)
 
@@ -62,7 +66,7 @@ def resonator_spectroscopy(
                     "frequency[Hz]": np.array(
                         platform.ro_port[ro_pulse.qubit].lo_frequency
                         + ro_pulse.frequency
-                    ),
+                    ),  # FIXME: Platform dependant
                     "qubit[unit]": np.array(ro_pulse.qubit),
                 }
                 data.add(r)

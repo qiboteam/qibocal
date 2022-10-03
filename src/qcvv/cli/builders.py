@@ -245,6 +245,6 @@ class ReportBuilder:
             method.__name__,
             self.path,
             routine.__name__,
-            qubit,
+            str(qubit),
             self.format,
         )

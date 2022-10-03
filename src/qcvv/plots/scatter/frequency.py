@@ -7,127 +7,124 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from qcvv.data import Data, Dataset
-from qcvv.fitting.utils import cos, exp, flipping, lorenzian, rabi, ramsey
+from qcvv.fitting.utils import (
+    cos,
+    exp,
+    flipping,
+    lorenzian,
+    lorenzian_diff,
+    rabi,
+    ramsey,
+)
 
 
 def frequency_msr_phase__all(folder, routine, qubits, format):
+    # Method that can plot 1 or multiple qubits
     if not isinstance(qubits, list):
         qubits = [qubits]
         showleg = False
     else:
         showleg = True
+
     fig = make_subplots(
         rows=1,
         cols=2,
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
         subplot_titles=(
-            "MSR (uV)",
-            "phase (deg)",
+            "MSR (V)",
+            "phase (rad)",
         ),
     )
+    fig.update_layout(
+        showlegend=showleg,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting,
+        xaxis_title="Frequency (Hz)",
+        yaxis_title="MSR (V)",
+        xaxis2_title="Frequency (Hz)",
+        yaxis2_title="Phase (rad)",
+    )
+
+    # Raw data
     try:
         data = Dataset.load_data(folder, routine, format, f"data")
-        x = data.get_values("frequency", "GHz").to_numpy()
-        y = data.get_values("MSR", "uV").to_numpy()
-        y_phase = data.get_values("phase", "deg").to_numpy()
-        q = data.get_values("qubit", "unit").to_numpy()
+        d = {
+            "x": data.get_values("frequency", "Hz").to_numpy(),
+            "MSR": data.get_values("MSR", "V").to_numpy(),
+            "Phase": data.get_values("phase", "rad").to_numpy(),
+            "q": data.get_values("qubit", "unit").to_numpy(),
+        }
+
     except:
-        x, y, y_phase, q = np.array([]), np.array([]), np.array([]), np.array([])
+        qubits = []
 
     for qubit in qubits:
+        for i, key in enumerate(["MSR", "Phase"]):
+            if key == "Phase":
+                d[key][d["q"] == qubit] = np.unwrap(d[key][d["q"] == qubit])
+            fig.add_trace(
+                go.Scatter(
+                    x=d["x"][d["q"] == qubit],
+                    y=d[key][d["q"] == qubit],
+                    name=f"{key} qubit {qubit}",
+                    mode="lines",
+                ),
+                row=1,
+                col=i + 1,
+            )
+
+    # Fitting
+    try:
+        data_fit_msr = Data.load_data(folder, routine, format, f"fit_msr")
+        dfit = {
+            "fit_amplitude": data_fit_msr.df["fit_amplitude"].to_numpy(),
+            "center frequency": data_fit_msr.df["fit_center"].to_numpy(),
+            "fit_sigma": data_fit_msr.df["fit_sigma"].to_numpy(),
+            "fit_offset": data_fit_msr.df["fit_offset"].to_numpy(),
+            "peak value": data_fit_msr.df["peak_value"].to_numpy(),
+            "q": data_fit_msr.df["qubit"].to_numpy(),
+        }
+    except:
+        qubits = []
+
+    for qubit in qubits:
+        x = np.linspace(
+            min(d["x"][d["q"] == qubit]),
+            max(d["x"][d["q"] == qubit]),
+            2 * len(d["x"][d["q"] == qubit]),
+        )
+
         fig.add_trace(
             go.Scatter(
-                x=x[q == qubit],
-                y=y[q == qubit],
-                name=f"qubit {qubit} MSR",
-                mode="lines+markers",
-                # marker=dict(
-                #     size=5,
-                #     color=px.colors.qualitative.Plotly[
-                #         qubit % len(px.colors.qualitative.Plotly)
-                #     ],
-                # ),
+                x=x,
+                y=lorenzian(
+                    x,
+                    float(dfit["fit_amplitude"][dfit["q"] == qubit]),
+                    float(dfit["center frequency"][dfit["q"] == qubit]),
+                    float(dfit["fit_sigma"][dfit["q"] == qubit]),
+                    float(dfit["fit_offset"][dfit["q"] == qubit]),
+                ),
+                line=go.scatter.Line(dash="dot"),
+                name=f"Fit MSR qubit {qubit}",
             ),
             row=1,
             col=1,
         )
-        fig.add_trace(
-            go.Scatter(
-                x=x[q == qubit],
-                y=y_phase[q == qubit],
-                name=f"qubit {qubit} phase",
-                mode="lines+markers",
-                # marker=dict(
-                #     size=5,
-                #     color=px.colors.qualitative.Plotly[
-                #         qubit % len(px.colors.qualitative.Plotly)],
-                # ),
-            ),
-            row=1,
-            col=2,
-        )
+        for i, key in enumerate(["center frequency", "peak value"]):
+            fig.add_annotation(
+                dict(
+                    font=dict(color="black", size=12),
+                    x=0,
+                    y=-0.25 - 0.05 * i,
+                    showarrow=False,
+                    text=f"The estimated {key} is {dfit[key][dfit['q'] == qubit]} {['Hz','V]'][i]}.",
+                    textangle=0,
+                    xanchor="left",
+                    xref="paper",
+                    yref="paper",
+                )
+            )
 
-    fig.update_layout(
-        showlegend=showleg,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting,
-        xaxis_title="Frequency (GHz)",
-        yaxis_title="MSR (uV)",
-        xaxis2_title="Frequency (GHz)",
-        yaxis2_title="Phase (deg)",
-    )
-    return fig
-
-
-def frequency_msr_phase(folder, routine, qubit, format):
-    fig = make_subplots(
-        rows=1,
-        cols=2,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
-        subplot_titles=(
-            "MSR (uV)",
-            "phase (deg)",
-        ),
-    )
-    try:
-        data = Dataset.load_data(folder, routine, format, f"data")
-        x = data.get_values("frequency", "GHz").to_numpy()
-        y = data.get_values("MSR", "uV").to_numpy()
-        y_phase = data.get_values("phase", "deg").to_numpy()
-        q = data.get_values("qubit", "unit").to_numpy()
-    except:
-        x, y, y_phase, q = np.array([]), np.array([]), np.array([]), np.array([])
-
-    fig.add_trace(
-        go.Scatter(
-            x=x[q == qubit],
-            y=y[q == qubit],
-            name=f"qubit {qubit} MSR",
-            mode="lines",
-        ),
-        row=1,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=x[q == qubit],
-            y=y_phase[q == qubit],
-            name=f"qubit {qubit} phase",
-            mode="lines",
-        ),
-        row=1,
-        col=2,
-    )
-
-    fig.update_layout(
-        showlegend=False,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting,
-        xaxis_title="Frequency (GHz)",
-        yaxis_title="MSR (uV)",
-        xaxis2_title="Frequency (GHz)",
-        yaxis2_title="Phase (deg)",
-    )
     return fig
 
 
