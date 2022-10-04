@@ -1,5 +1,4 @@
-backend: qibolab
-platform: tii5q
+backend: qibojit
 
 qubits: [0]
 
@@ -13,5 +12,5 @@ format: pickle
 actions:
     standard_rb:
       generator_name: 'UIRSOnequbitcliffords'
-      sequence_lengths: [1,3,5,10]
+      sequence_lengths: [1,3,5,7,10,15,20,25]
       nshots: 100

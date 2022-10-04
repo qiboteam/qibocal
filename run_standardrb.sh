@@ -1,5 +1,5 @@
 #!/bin/bash
 #SBATCH --job-name=qcvv
-#SBATCH --partition=qpu5q
+#SBATCH --partition=lightsim
 
 qq runcards/simulation_standardrb.yml

@@ -1077,3 +1077,57 @@ def msr_beta(folder, routine, qubit, format):
         yaxis_title="MSR[uV]",
     )
     return fig
+
+def standard_rb_plot(folder, routine, qubit, format):
+    from scipy.optimize import curve_fit
+    def exp_func(x,A,f,B):
+        """
+        """
+        return A*f**x+B
+    data = Dataset.load_data(
+        folder, 'standard_rb', 'pickle', 'standardrb')
+    dataframe = data.df
+    # Extract the data.
+    xdata = np.array(dataframe.columns)
+    # Multiple runs means multiple rows. 
+    ydata = dataframe.to_numpy()
+    runs = ydata.shape[0]
+    pm = np.sum(ydata, axis=0)/runs
+    # Calculate an exponential fit to the given data pm dependent on m.
+    # 'popt' stores the optimized parameters and pcov the covariance of popt.
+    popt, pcov = curve_fit(exp_func, xdata, pm, p0=[1, 0.98, 0])
+    # The variance of the variables in 'popt' are calculated with 'pcov'.
+    perr = np.sqrt(np.diag(pcov))
+    # Plot the data and the fit.
+    x_fit = np.linspace(xdata[0], xdata[-1], num=100)
+    fig = make_subplots(
+        rows=1,
+        cols=1,
+        horizontal_spacing=0.01,
+        vertical_spacing=0.01,
+        subplot_titles=(f"standard rb",),
+        )
+    c = "#6597aa"
+    fig.add_trace(
+        go.Scatter(
+            x=xdata,
+            y=pm,
+            line=dict(color=c),
+            mode="markers",
+            name="pm",
+        ),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=x_fit,
+            y=exp_func(x_fit, *popt),
+            name='A: %f, f: %f, B: %f'%(popt[0], popt[1], popt[2]) ,
+            line=go.scatter.Line(dash="dot"),
+        ),
+        row=1,
+        col=1,
+    )
+    
+    return fig

@@ -2,7 +2,9 @@
 from qibo import gates, models
 
 from qcvv.data import Data
-
+from qcvv import plots
+from qcvv.data import Dataset
+from qcvv.decorators import plot
 
 from cmath import exp
 import numpy as np
@@ -12,30 +14,6 @@ from copy import deepcopy
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 from qibo.noise import PauliError, ThermalRelaxationError, NoiseModel, ResetError
-
-
-def test(
-    platform,
-    qubit: list,
-    nshots,
-    points=1,
-):
-    mylist = list(map(str, [0, 5]))
-    data = Data("test", quantities=mylist)
-    data.add({f"{mylist[0]}":13., f"{mylist[1]}":1.})
-    data.add({f"{mylist[0]}":14., f"{mylist[1]}":2.})
-    # data = Data("test", quantities=["nshots", "probabilities"])
-    # nqubits = len(qubit)
-    # circuit = models.Circuit(nqubits)
-    # circuit.add(gates.H(qubit[0]))
-    # circuit.add(gates.H(qubit[1]))
-    # # circuit.add(gates.H(1))
-    # circuit.add(gates.M(*qubit))
-    # execution = circuit(nshots=nshots)
-
-    # data.add({"nshots": nshots, "probabilities": [execution.probabilities()]})
-    # data.add({"nshots": nshots, "probabilities": [execution.probabilities()]})
-    yield data
 
 
 class UIRS():
@@ -49,10 +27,7 @@ class UIRS():
         self.nqubits = nqubits
         self.gate_generator = None
         self.invert = kwargs.get('invert', False)
-        # TODO ask Andrea: what is a Pauli error?
         self.noisemodel = kwargs.get('noisemodel', None)
-        # TODO ask Andrea: How does the measuremet gate work and can we also
-        # define different ones?
         self.measurement = kwargs.get(
             'measurement', gates.M(*range(nqubits)))
 
@@ -264,7 +239,6 @@ def experimental_protocol(circuit_generator, myshadow, **kwargs):
                 # Getting the samples is not possible, hence the probabilities
                 # have to be stored.
                 outcome = executed.probabilities()
-                print(outcome)
             # Store the samples.
             myshadow.append(gate, outcome)
             # Store everything.
@@ -308,6 +282,7 @@ def standard_rb_postprocessing(myshadow, **kwargs):
     print('A: %f, f: %f, B: %f'%(popt[0], popt[1], popt[2]))
 
 
+@plot("Test Standard RB", plots.standard_rb_plot)
 def standard_rb(
     platform,
     qubit : list,
@@ -327,13 +302,12 @@ def standard_rb(
     noise = NoiseModel()
     noise.add(pauli, gates.Unitary)
     if generator_name == 'UIRSOnequbitcliffords':
-        mygenerator = UIRSOnequbitcliffords(1, invert=True, noisemodel=False)
+        mygenerator = UIRSOnequbitcliffords(1, invert=True, noisemodel=noise)
     else:
         raise ValueError('This generator is not implemented.')
     myshadow = experimental_protocol(
         mygenerator, myshadow, nshots=nshots)
     for count in range(runs):
-        print(myshadow.probabilities)
         data.add({sequence_lengths[i]:myshadow.probabilities[count][i] \
             for i in range(len(sequence_lengths))})
     # pm = np.sum(myshadow.probabilities, axis=0)/runs
