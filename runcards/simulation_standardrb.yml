@@ -12,5 +12,5 @@ format: pickle
 actions:
     standard_rb:
       generator_name: 'UIRSOnequbitcliffords'
-      sequence_lengths: [1,3,5,7,10,15,20,25]
+      sequence_lengths: [1,3,5,7,10,15,20,25,30,50]
       nshots: 100

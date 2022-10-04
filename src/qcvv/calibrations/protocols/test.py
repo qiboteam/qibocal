@@ -245,43 +245,6 @@ def experimental_protocol(circuit_generator, myshadow, **kwargs):
     return myshadow
 
 
-def classical_postprocessing(myshadow, **kwargs):
-    """ Takes a Shadow object and processes the data inside.
-    """
-    pass
-
-def exp_func(x,A,f,B):
-    """
-    """
-    return A*f**x+B
-
-def standard_rb_postprocessing(myshadow, **kwargs):
-    """ Takes the survival probabilities and fits an exponential curve
-    to it.
-
-    Parameters
-    ----------
-    myshadow : Shadow
-    """
-    # Extract the probabilities from 'myshadow' dependent on the sequence
-    # length m, for each run of the rb protocol there is an array of data.
-    pm_runs = myshadow.probabilities
-    # They can be averaged or looked at one by one, for now 
-    # the average will be used.
-    pm = np.sum(pm_runs, axis=0)/myshadow.runs
-    m = myshadow.sequence_lengths
-    # Calculate an exponential fit to the given data pm dependent on m.
-    # 'popt' stores the optimized parameters and pcov the covariance of popt.
-    popt, pcov = curve_fit(exp_func, m, pm, p0=[1, 0.98, 0])
-    # The variance of the variables in 'popt' are calculated with 'pcov'.
-    perr = np.sqrt(np.diag(pcov))
-    # Plot the data and the fit.
-    plt.plot(m, pm, 'o', label='data')
-    x_fit = np.linspace(m[0], m[-1], num=100)
-    plt.plot(x_fit, exp_func(x_fit, *popt), '--', label='fit')
-    print('A: %f, f: %f, B: %f'%(popt[0], popt[1], popt[2]))
-
-
 @plot("Test Standard RB", plots.standard_rb_plot)
 def standard_rb(
     platform,
@@ -298,7 +261,7 @@ def standard_rb(
     measurement_type = "Ground State"
     runs = 2
     myshadow = Shadow(measurement_type, sequence_lengths, runs, nshots)
-    pauli = PauliError(0.05, 0.05, 0.05)
+    pauli = PauliError(0.0, 0.01, 0.0)
     noise = NoiseModel()
     noise.add(pauli, gates.Unitary)
     if generator_name == 'UIRSOnequbitcliffords':
