@@ -1,0 +1,17 @@
+backend: qibolab
+platform: tii5q
+
+qubits: [0]
+
+format: pickle
+
+# actions:
+#   test:
+#     nshots: 1024
+#     points: 1
+# 
+actions:
+    standard_rb:
+      generator_name: 'UIRSOnequbitcliffords'
+      sequence_lengths: [1,3,5,10]
+      nshots: 100
