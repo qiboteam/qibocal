@@ -1,6 +1,6 @@
 platform: tii5q
 
-qubits: [2]
+qubits: [3]
 
 format: csv
 
@@ -43,6 +43,12 @@ actions:
   #   step_att: 10 # attenuation must be a multiple of 2
   #   software_averages: 1
   #   points: 10
+
+    dispersive_shift:
+      freq_width: 5_000_000
+      freq_step: 200_000
+      software_averages: 1
+      points: 5
 
   # qubit_spectroscopy:
   #   fast_start: -50_000_000
@@ -135,12 +141,12 @@ actions:
   #   niter: 1024
   #   points: 1
 
-  allXY_iteration:
-    beta_start: -0.09
-    beta_end: 0
-    beta_step: 0.01
-    software_averages: 1
-    points: 1
+  # allXY_iteration:
+  #   beta_start: -0.09
+  #   beta_end: 0
+  #   beta_step: 0.01
+  #   software_averages: 1
+  #   points: 1
 
   # allXY:
   #   beta_param: Null
@@ -152,12 +158,6 @@ actions:
   #   beta_end: 1
   #   beta_step: 0.01
   #   points: 1
-
-  # dispersive_shift:
-  #   freq_width: 5_000_000
-  #   freq_step: 200_000
-  #   software_averages: 1
-  #   points: 5
 
   # RO_matrix:
   #   niter: 10 # set niter = 1024 to collect good statistics

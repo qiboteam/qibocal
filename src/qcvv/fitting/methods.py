@@ -9,20 +9,32 @@ from qcvv.data import Data
 from qcvv.fitting.utils import cos, exp, flipping, lorenzian, parse, rabi, ramsey
 
 
-def lorentzian_fit(data, x, y, qubit, nqubits, labels):
+def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None):
     """Fitting routine for resonator spectroscopy"""
-
-    data_fit = Data(
-        name=f"fit_q{qubit}",
-        quantities=[
-            "fit_amplitude",
-            "fit_center",
-            "fit_sigma",
-            "fit_offset",
-            labels[1],
-            labels[0],
-        ],
-    )
+    if fit_file_name == None:
+        data_fit = Data(
+            name=f"fit_q{qubit}",
+            quantities=[
+                "fit_amplitude",
+                "fit_center",
+                "fit_sigma",
+                "fit_offset",
+                labels[1],
+                labels[0],
+            ],
+        )
+    else:
+        data_fit = Data(
+            name=fit_file_name + f"_q{qubit}",
+            quantities=[
+                "fit_amplitude",
+                "fit_center",
+                "fit_sigma",
+                "fit_offset",
+                labels[1],
+                labels[0],
+            ],
+        )
 
     frequencies = data.get_values(*parse(x))
     voltages = data.get_values(*parse(y))
