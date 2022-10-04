@@ -23,24 +23,23 @@ def resonator_spectroscopy(
     software_averages,
     points=10,
 ):
-    platform.reload_settings()
-    check_frequency(platform, write=False)
 
     platform.reload_settings()
     sequence = PulseSequence()
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
     sequence.add(ro_pulse)
 
-    resonator_frequency = platform.characterization["single_qubit"][qubit][
-        "resonator_freq"
-    ]
-
     frequency_range = (
         variable_resolution_scanrange(
             lowres_width, lowres_step, highres_width, highres_step
         )
-        + resonator_frequency
+        + ro_pulse.frequency
     )
+
+    if platform.mixer_based:
+        ro_pulse.if_frequency = 200e6
+        # ro_pulse.lo_frequency = 7.3557e9
+
     fast_sweep_data = Dataset(
         name=f"fast_sweep_q{qubit}", quantities={"frequency": "Hz"}
     )
@@ -58,10 +57,15 @@ def resonator_spectroscopy(
                     labels=["resonator_freq", "peak_voltage"],
                 )
 
-            platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
+            ro_pulse.frequency = freq
             msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
                 ro_pulse.serial
             ]
+
+            if platform.mixer_based:
+                ro_pulse.lo_frequency = None
+                # ro_pulse.if_frequency = None
+
             results = {
                 "MSR[V]": msr,
                 "i[V]": i,
@@ -95,10 +99,18 @@ def resonator_spectroscopy(
     precision_sweep__data = Dataset(
         name=f"precision_sweep_q{qubit}", quantities={"frequency": "Hz"}
     )
+
+    sequence = PulseSequence()
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
+    sequence.add(ro_pulse)  # if not it will use the freq of the above scan as center
     freqrange = (
         np.arange(-precision_width, precision_width, precision_step)
-        + resonator_frequency
+        + ro_pulse.frequency
     )
+
+    if platform.mixer_based:
+        ro_pulse.if_frequency = 200e6
+        # ro_pulse.lo_frequency = 7.3557e9
 
     count = 0
     for _ in range(software_averages):
@@ -114,10 +126,15 @@ def resonator_spectroscopy(
                     labels=["resonator_freq", "peak_voltage"],
                 )
 
-            platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
+            ro_pulse.frequency = freq
             msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
                 ro_pulse.serial
             ]
+
+            if platform.mixer_based:
+                ro_pulse.lo_frequency = None
+                # ro_pulse.if_frequency = None
+
             results = {
                 "MSR[V]": msr,
                 "i[V]": i,
