@@ -90,7 +90,7 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None):
         + fit_res.best_values["offset"]
     )
 
-    freq = f0 * 1e6
+    freq = f0 * 1e9
 
     data_fit.add(
         {
@@ -145,7 +145,7 @@ def rabi_fit(data, x, y, qubit, nqubits, labels):
         )
         smooth_dataset = rabi(time.values, *popt)
         pi_pulse_duration = np.abs((1.0 / popt[2]) / 2)
-        rabi_oscillations_pi_pulse_max_voltage = smooth_dataset.max() * 1e6
+        pi_pulse_max_voltage = smooth_dataset.max()
         t1 = 1.0 / popt[4]  # double check T1
     except:
         log.warning("The fitting was not succesful")
@@ -159,7 +159,7 @@ def rabi_fit(data, x, y, qubit, nqubits, labels):
             "popt3": popt[3],
             "popt4": popt[4],
             labels[0]: pi_pulse_duration,
-            labels[1]: rabi_oscillations_pi_pulse_max_voltage,
+            labels[1]: pi_pulse_max_voltage,
             labels[2]: t1,
         }
     )

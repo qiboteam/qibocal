@@ -8,7 +8,14 @@ from qcvv.data import Dataset
 
 
 def frequency_flux_msr_phase(folder, routine, qubit, format):
-    data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+
+    try:
+        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+    except:
+        data = Dataset(
+            name=f"data_q{qubit}", quantities={"frequency": "Hz", "current": "A"}
+        )
+
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -52,7 +59,14 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
 
 
 def frequency_attenuation_msr_phase(folder, routine, qubit, format):
-    data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+
+    try:
+        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+    except:
+        data = Dataset(
+            name=f"data_q{qubit}", quantities={"frequency": "Hz", "attenuation": "dB"}
+        )
+
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -122,7 +136,14 @@ def frequency_flux_msr_phase__matrix(folder, routine, qubit, format):
             showscale = True
         else:
             showscale = False
-        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}_f{j}")
+        try:
+            data = Dataset.load_data(folder, routine, format, f"data_q{qubit}_f{j}")
+        except:
+            data = Dataset(
+                name=f"data_q{qubit}_f{j}",
+                quantities={"frequency": "Hz", "current": "A"},
+            )
+
         fig.add_trace(
             go.Heatmap(
                 x=data.get_values("frequency", "GHz"),
@@ -151,7 +172,15 @@ def frequency_flux_msr_phase__matrix(folder, routine, qubit, format):
 
 
 def duration_gain_msr_phase(folder, routine, qubit, format):
-    data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+
+    try:
+        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+    except:
+        data = Dataset(
+            name=f"data_q{qubit}",
+            quantities={"duration": "ns", "gain": "dimensionless"},
+        )
+
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -195,7 +224,15 @@ def duration_gain_msr_phase(folder, routine, qubit, format):
 
 
 def duration_amplitude_msr_phase(folder, routine, qubit, format):
-    data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+
+    try:
+        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+    except:
+        data = Dataset(
+            name=f"data_q{qubit}",
+            quantities={"duration": "ns", "amplitude": "dimensionless"},
+        )
+
     fig = make_subplots(
         rows=1,
         cols=2,

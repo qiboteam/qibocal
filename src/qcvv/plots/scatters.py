@@ -83,7 +83,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
         freqrange = np.linspace(
             min(data_fast.get_values("frequency", "GHz")),
             max(data_fast.get_values("frequency", "GHz")),
-            20,
+            200,
         )
         params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
         fig.add_trace(
@@ -140,7 +140,14 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
 
 
 def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
-    data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+
+    try:
+        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+    except:
+        data = Dataset(
+            name=f"data_q{qubit}", quantities={"frequency": "Hz", "attenuation": "dB"}
+        )
+
     plot1d_attenuation = 30  # attenuation value to use for 1D frequency vs MSR plot
 
     fig = go.Figure()
@@ -177,7 +184,18 @@ def time_msr_phase(folder, routine, qubit, format):
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
     except:
-        data_fit = Dataset()
+        data_fit = Data(
+            quantities=[
+                "popt0",
+                "popt1",
+                "popt2",
+                "popt3",
+                "popt4",
+                "label1",
+                "label2",
+                "label3",
+            ]
+        )
 
     fig = make_subplots(
         rows=1,
@@ -214,7 +232,7 @@ def time_msr_phase(folder, routine, qubit, format):
         timerange = np.linspace(
             min(data.get_values("Time", "ns")),
             max(data.get_values("Time", "ns")),
-            20,
+            200,
         )
         params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
         fig.add_trace(
@@ -300,7 +318,18 @@ def gain_msr_phase(folder, routine, qubit, format):
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
     except:
-        data_fit = Dataset()
+        data_fit = Data(
+            quantities=[
+                "popt0",
+                "popt1",
+                "popt2",
+                "popt3",
+                "popt4",
+                "label1",
+                "label2",
+                "label3",
+            ]
+        )
 
     fig = make_subplots(
         rows=1,
@@ -362,7 +391,7 @@ def gain_msr_phase(folder, routine, qubit, format):
             dict(
                 font=dict(color="black", size=12),
                 x=0,
-                y=-0.30,
+                y=-0.25,
                 showarrow=False,
                 text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.3f} uV.",
                 textangle=0,
@@ -378,7 +407,7 @@ def gain_msr_phase(folder, routine, qubit, format):
                 x=0,
                 y=-0.20,
                 showarrow=False,
-                text=f"Estimated {params[2]} is {data_fit.df[params[2]][0]:.1f}",
+                text=f"Estimated {params[2]} is {data_fit.df[params[2]][0]:.4f}",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
@@ -391,6 +420,8 @@ def gain_msr_phase(folder, routine, qubit, format):
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Gain (dimensionless)",
         yaxis_title="MSR (uV)",
+        xaxis2_title="Gain (dimensionless)",
+        yaxis2_title="Phase (rad)",
     )
     return fig
 
@@ -404,7 +435,18 @@ def amplitude_msr_phase(folder, routine, qubit, format):
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
     except:
-        data_fit = Dataset()
+        data_fit = Data(
+            quantities=[
+                "popt0",
+                "popt1",
+                "popt2",
+                "popt3",
+                "popt4",
+                "label1",
+                "label2",
+                "label3",
+            ]
+        )
 
     fig = make_subplots(
         rows=1,
@@ -466,7 +508,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
             dict(
                 font=dict(color="black", size=12),
                 x=0,
-                y=-0.30,
+                y=-0.25,
                 showarrow=False,
                 text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.3f} uV.",
                 textangle=0,
@@ -482,7 +524,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
                 x=0,
                 y=-0.20,
                 showarrow=False,
-                text=f"Estimated {params[2]} is {data_fit.df[params[2]][0]:.1f}",
+                text=f"Estimated {params[2]} is {data_fit.df[params[2]][0]:.4f}",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
@@ -495,6 +537,8 @@ def amplitude_msr_phase(folder, routine, qubit, format):
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Amplitude (dimensionless)",
         yaxis_title="MSR (uV)",
+        xaxis2_title="Amplitude (dimensionless)",
+        yaxis2_title="Phase (rad)",
     )
     return fig
 
@@ -508,7 +552,18 @@ def time_msr(folder, routine, qubit, format):
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
     except:
-        data_fit = Dataset()
+        data_fit = Data(
+            quantities=[
+                "popt0",
+                "popt1",
+                "popt2",
+                "popt3",
+                "popt4",
+                "label1",
+                "label2",
+                "label3",
+            ]
+        )
 
     fig = make_subplots(
         rows=1,
@@ -533,7 +588,7 @@ def time_msr(folder, routine, qubit, format):
         timerange = np.linspace(
             min(data.get_values("wait", "ns")),
             max(data.get_values("wait", "ns")),
-            20,
+            200,
         )
         params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
         fig.add_trace(
@@ -615,7 +670,14 @@ def t1_time_msr_phase(folder, routine, qubit, format):
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
     except:
-        data_fit = Dataset()
+        data_fit = Data(
+            quantities=[
+                "popt0",
+                "popt1",
+                "popt2",
+                "label1",
+            ]
+        )
 
     fig = make_subplots(
         rows=1,
@@ -744,7 +806,7 @@ def flips_msr_phase(folder, routine, qubit, format):
         timerange = np.linspace(
             min(data.get_values("flips", "dimensionless")),
             max(data.get_values("flips", "dimensionless")),
-            20,
+            200,
         )
         params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
         fig.add_trace(
@@ -1180,7 +1242,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
         freqrange = np.linspace(
             min(data_spec.get_values("frequency", "GHz")),
             max(data_spec.get_values("frequency", "GHz")),
-            20,
+            200,
         )
         params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
         fig.add_trace(
@@ -1218,7 +1280,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
         freqrange = np.linspace(
             min(data_shifted.get_values("frequency", "GHz")),
             max(data_shifted.get_values("frequency", "GHz")),
-            20,
+            200,
         )
         params = [i for i in list(data_fit_shifted.df.keys()) if "fit" not in i]
         fig.add_trace(
