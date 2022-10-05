@@ -12,7 +12,7 @@ from qcvv.fitting.methods import flipping_fit
 @plot("MSR vs Flips", plots.flips_msr_phase)
 def flipping(
     platform: AbstractPlatform,
-    qubit,
+    qubit: int,
     niter,
     step,
     points=10,

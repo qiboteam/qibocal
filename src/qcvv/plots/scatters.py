@@ -1077,3 +1077,186 @@ def msr_beta(folder, routine, qubit, format):
         yaxis_title="MSR[uV]",
     )
     return fig
+
+
+def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
+
+    try:
+        data_spec = Dataset.load_data(folder, routine, formato, f"data_q{qubit}")
+    except:
+        data_spec = Dataset(name=f"data_q{qubit}", quantities={"frequency": "Hz"})
+
+    try:
+        data_shifted = Dataset.load_data(
+            folder, routine, formato, f"data_shifted_q{qubit}"
+        )
+    except:
+        data_shifted = Dataset(
+            name=f"data_shifted_q{qubit}", quantities={"frequency": "Hz"}
+        )
+
+    try:
+        data_fit = Data.load_data(folder, routine, formato, f"fit_q{qubit}")
+    except:
+        data_fit = Data(
+            quantities=[
+                "fit_amplitude",
+                "fit_center",
+                "fit_sigma",
+                "fit_offset",
+                "label1",
+                "label2",
+            ]
+        )
+
+    try:
+        data_fit_shifted = Data.load_data(
+            folder, routine, formato, f"fit_shifted_q{qubit}"
+        )
+    except:
+        data_fit_shifted = Data(
+            quantities=[
+                "fit_amplitude",
+                "fit_center",
+                "fit_sigma",
+                "fit_offset",
+                "label1",
+                "label2",
+            ]
+        )
+
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        subplot_titles=(
+            "MSR (V)",
+            "phase (rad)",
+        ),
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=data_spec.get_values("frequency", "GHz"),
+            y=data_spec.get_values("MSR", "uV"),
+            name="Spectroscopy",
+        ),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=data_spec.get_values("frequency", "GHz"),
+            y=data_spec.get_values("phase", "rad"),
+            name="Spectroscopy",
+        ),
+        row=1,
+        col=2,
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=data_shifted.get_values("frequency", "GHz"),
+            y=data_shifted.get_values("MSR", "uV"),
+            name="Shifted Spectroscopy",
+        ),
+        row=1,
+        col=1,
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=data_shifted.get_values("frequency", "GHz"),
+            y=data_shifted.get_values("phase", "rad"),
+            name="Shifted Spectroscopy",
+        ),
+        row=1,
+        col=2,
+    )
+
+    # fitting traces
+    if len(data_spec) > 0 and len(data_fit) > 0:
+        freqrange = np.linspace(
+            min(data_spec.get_values("frequency", "GHz")),
+            max(data_spec.get_values("frequency", "GHz")),
+            20,
+        )
+        params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
+        fig.add_trace(
+            go.Scatter(
+                x=freqrange,
+                y=lorenzian(
+                    freqrange,
+                    data_fit.df["fit_amplitude"][0],
+                    data_fit.df["fit_center"][0],
+                    data_fit.df["fit_sigma"][0],
+                    data_fit.df["fit_offset"][0],
+                ),
+                name="Fit spectroscopy",
+                line=go.scatter.Line(dash="dot"),
+            ),
+            row=1,
+            col=1,
+        )
+        fig.add_annotation(
+            dict(
+                font=dict(color="black", size=12),
+                x=0,
+                y=-0.25,
+                showarrow=False,
+                text=f"The estimated {params[0]} is {data_fit.df[params[0]][0]:.1f} Hz.",
+                textangle=0,
+                xanchor="left",
+                xref="paper",
+                yref="paper",
+            )
+        )
+
+    # fitting shifted  traces
+    if len(data_shifted) > 0 and len(data_fit_shifted) > 0:
+        freqrange = np.linspace(
+            min(data_shifted.get_values("frequency", "GHz")),
+            max(data_shifted.get_values("frequency", "GHz")),
+            20,
+        )
+        params = [i for i in list(data_fit_shifted.df.keys()) if "fit" not in i]
+        fig.add_trace(
+            go.Scatter(
+                x=freqrange,
+                y=lorenzian(
+                    freqrange,
+                    data_fit_shifted.df["fit_amplitude"][0],
+                    data_fit_shifted.df["fit_center"][0],
+                    data_fit_shifted.df["fit_sigma"][0],
+                    data_fit_shifted.df["fit_offset"][0],
+                ),
+                name="Fit shifted spectroscopy",
+                line=go.scatter.Line(dash="dot"),
+            ),
+            row=1,
+            col=1,
+        )
+        fig.add_annotation(
+            dict(
+                font=dict(color="black", size=12),
+                x=0,
+                y=-0.30,
+                showarrow=False,
+                text=f"The estimated shifted {params[0]} is {data_fit_shifted.df[params[0]][0]:.1f} Hz.",
+                textangle=0,
+                xanchor="left",
+                xref="paper",
+                yref="paper",
+            )
+        )
+
+    fig.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Frequency (GHz)",
+        yaxis_title="MSR (uV)",
+        xaxis2_title="Frequency (GHz)",
+        yaxis2_title="Phase (rad)",
+    )
+    return fig

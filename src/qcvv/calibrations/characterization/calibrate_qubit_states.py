@@ -11,12 +11,14 @@ from qcvv.decorators import plot
 @plot("exc vs gnd", plots.exc_gnd)
 def calibrate_qubit_states_binning(
     platform: AbstractPlatform,
-    qubit,
+    qubit: int,
     niter,
     points=10,
 ):
     platform.reload_settings()
-    platform.qrm[qubit].ports['i1'].hardware_demod_en = True # binning only works with hardware demodulation enabled
+    platform.qrm[qubit].ports[
+        "i1"
+    ].hardware_demod_en = True  # binning only works with hardware demodulation enabled
     # create exc sequence
     exc_sequence = PulseSequence()
     RX_pulse = platform.create_RX_pulse(qubit, start=0)
@@ -41,7 +43,9 @@ def calibrate_qubit_states_binning(
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
     gnd_sequence.add(ro_pulse)
 
-    data_gnd = Dataset(name=f"data_gnd_q{qubit}", quantities={"iteration": "dimensionless"})
+    data_gnd = Dataset(
+        name=f"data_gnd_q{qubit}", quantities={"iteration": "dimensionless"}
+    )
 
     shots_results = platform.execute_pulse_sequence(gnd_sequence, nshots=niter)['binned_integrated'][ro_pulse.serial]
     for n in np.arange(niter):
