@@ -4,14 +4,32 @@ import numpy as np
 import pytest
 from pint import DimensionalityError, UndefinedUnitError
 
-from qcvv.data import Dataset
+from qcvv.data import Data, Dataset
 
 
-def random_dataset(length):
-    data = Dataset()
-    for _ in range(length):
-        msr, i, q, phase = np.random.rand(len(data.df.columns))
-        data.add({"MSR[V]": msr, "i[V]": i, "q[V]": q, "phase[deg]": phase})
+def random_dataset(length, options=None):
+    data = Dataset(options=options)
+    for l in range(length):
+        msr, i, q, phase = np.random.rand(4)
+        pulse_sequence_result = {
+            "MSR[V]": msr,
+            "i[V]": i,
+            "q[V]": q,
+            "phase[deg]": phase,
+        }
+        add_options = {}
+        if options is not None:
+            for option in options:
+                add_options[option] = str(l)
+        data.add({**pulse_sequence_result, **add_options})
+
+    return data
+
+
+def random_data(length):
+    data = Data()
+    for i in range(length):
+        data.add({"int": int(i), "float": float(i), "string": str(i), "bool": bool(i)})
     return data
 
 
@@ -37,26 +55,26 @@ def test_data_initialization():
     ]
 
 
-def test_units():
+def test_dataset_units():
     """Test units of measure in Dataset"""
-    data = Dataset()
-    assert data.df.MSR.values.units == "volt"
+    dataset = Dataset()
+    assert dataset.df.MSR.values.units == "volt"
 
-    data1 = Dataset(quantities={"frequency": "Hz"})
-    assert data1.df.frequency.values.units == "hertz"
+    dataset1 = Dataset(quantities={"frequency": "Hz"})
+    assert dataset1.df.frequency.values.units == "hertz"
 
     with pytest.raises(UndefinedUnitError):
-        data2 = Dataset(quantities={"fake_unit": "fake"})
+        dataset2 = Dataset(quantities={"fake_unit": "fake"})
 
 
-def test_add():
+def test_dataset_add():
     """Test add method of Dataset"""
-    data = random_dataset(5)
-    assert len(data) == 5
+    dataset = random_dataset(5)
+    assert len(dataset) == 5
 
-    data1 = Dataset(quantities={"attenuation": "dB"})
-    msr, i, q, phase, att = np.random.rand(len(data1.df.columns))
-    data1.add(
+    dataset1 = Dataset(quantities={"attenuation": "dB"})
+    msr, i, q, phase, att = np.random.rand(len(dataset1.df.columns))
+    dataset1.add(
         {
             "MSR[V]": msr,
             "i[V]": i,
@@ -65,9 +83,9 @@ def test_add():
             "attenuation[dB]": att,
         }
     )
-    assert len(data1) == 1
+    assert len(dataset1) == 1
 
-    data1.add(
+    dataset1.add(
         {
             "MSR[V]": 0,
             "i[V]": 0.0,
@@ -76,12 +94,40 @@ def test_add():
             "attenuation[dB]": 1,
         }
     )
-    assert len(data1) == 2
+    assert len(dataset1) == 2
 
-    data2 = Dataset()
-    msr, i, q, phase = np.random.rand(len(data2.df.columns))
+    dataset2 = Dataset()
+    msr, i, q, phase = np.random.rand(len(dataset2.df.columns))
     with pytest.raises(DimensionalityError):
-        data2.add({"MSR[dB]": msr, "i[V]": i, "q[V]": q, "phase[deg]": phase})
+        dataset2.add({"MSR[dB]": msr, "i[V]": i, "q[V]": q, "phase[deg]": phase})
 
     with pytest.raises(UndefinedUnitError):
-        data2.add({"MSR[test]": msr, "i[V]": i, "q[V]": q, "phase[deg]": phase})
+        dataset2.add({"MSR[test]": msr, "i[V]": i, "q[V]": q, "phase[deg]": phase})
+
+    dataset3 = random_dataset(10, options=["test"])
+    assert len(dataset3) == 10
+
+
+def test_data_add():
+    """Test add method of Data class"""
+    data = random_data(5)
+    assert len(data) == 5
+    data.add({"int": 123, "float": 123.456, "string": "123", "bool": True})
+    assert len(data) == 6
+
+
+def test_get_values_dataset():
+    """Test get_values method of Dataset class"""
+    dataset = random_dataset(5, options=["option"])
+
+    assert (dataset.get_values("option") == dataset.df["option"]).all()
+    assert (
+        dataset.get_values("MSR", "uV")
+        == dataset.df["MSR"].pint.to("uV").pint.magnitude
+    ).all()
+
+
+def test_get_values_data():
+    """Test get_values method of Data class"""
+    data = random_data(5)
+    assert (data.get_values("int") == data.df["int"]).all()
