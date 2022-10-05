@@ -217,7 +217,10 @@ class Data(AbstractDataset):
         Returns:
             ``pd.Series`` with the quantity values in the given units.
         """
-        return self.df[quantity]
+        if type(self.df[quantity]) in [float, int]:
+            return self.df[quantity][0]
+        else:
+            return self.df[quantity]
 
     @classmethod
     def load_data(cls, folder, routine, format, name):

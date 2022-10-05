@@ -78,7 +78,7 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels):
         + fit_res.best_values["offset"]
     )
 
-    freq = f0 * 1e6
+    freq = f0 * 1e9
 
     data_fit.add(
         {

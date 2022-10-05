@@ -23,10 +23,10 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
     except:
         data_fit = Data(
             quantities=[
-                "fit_amplitude",
-                "fit_center",
-                "fit_sigma",
-                "fit_offset",
+                "popt0",
+                "popt1",
+                "popt2",
+                "popt3",
                 "label1",
                 "label2",
             ]
@@ -91,10 +91,10 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
                 x=freqrange,
                 y=lorenzian(
                     freqrange,
-                    data_fit.get_values("fit_amplitude"),
-                    data_fit.get_values("fit_center"),
-                    data_fit.get_values("fit_sigma"),
-                    data_fit.get_values("fit_offset"),
+                    data_fit.get_values("popt0"),
+                    data_fit.get_values("popt1"),
+                    data_fit.get_values("popt2"),
+                    data_fit.get_values("popt3"),
                 ),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
