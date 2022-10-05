@@ -58,7 +58,7 @@ def rabi_pulse_length(
                     nqubits=platform.settings["nqubits"],
                     labels=[
                         "pi_pulse_duration",
-                        "pi_pulse_max_voltage",
+                        "rabi_oscillations_pi_pulse_max_voltage",
                         "t1",
                     ],
                 )
@@ -123,7 +123,7 @@ def rabi_pulse_gain(
                     nqubits=platform.settings["nqubits"],
                     labels=[
                         "pi_pulse_gain",
-                        "pi_pulse_max_voltage",
+                        "rabi_oscillations_pi_pulse_max_voltage",
                         "t1",
                     ],
                 )
@@ -190,7 +190,7 @@ def rabi_pulse_amplitude(
                     nqubits=platform.settings["nqubits"],
                     labels=[
                         "pi_pulse_amplitude",
-                        "pi_pulse_max_voltage",
+                        "rabi_oscillations_pi_pulse_max_voltage",
                         "t1",
                     ],
                 )
