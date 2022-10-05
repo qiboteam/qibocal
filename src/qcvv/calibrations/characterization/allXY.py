@@ -37,7 +37,7 @@ gatelist = [
 @plot("Prob vs gate sequence", plots.prob_gate)
 def allXY(
     platform: AbstractPlatform,
-    qubit,
+    qubit: int,
     beta_param=None,
     software_averages=1,
     points=10,
@@ -98,7 +98,7 @@ def allXY(
 @plot("Prob vs gate sequence", plots.prob_gate_iteration)
 def allXY_iteration(
     platform: AbstractPlatform,
-    qubit,
+    qubit: int,
     beta_start,
     beta_end,
     beta_step,
@@ -168,7 +168,7 @@ def allXY_iteration(
 @plot("MSR vs beta parameter", plots.msr_beta)
 def drag_pulse_tunning(
     platform: AbstractPlatform,
-    qubit,
+    qubit: int,
     beta_start,
     beta_end,
     beta_step,
