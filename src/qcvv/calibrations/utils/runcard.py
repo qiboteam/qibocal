@@ -1,18 +1,10 @@
 # -*- coding: utf-8 -*-
 import pathlib
-from turtle import update
 
 import numpy as np
 import qibolab
 import yaml
-from qibo.config import log, raise_error
-from qibolab.platforms.abstract import AbstractPlatform
-from qibolab.pulses import PulseSequence
-from scipy.optimize import curve_fit
-
-from qcvv import plots
-from qcvv.data import Dataset
-from qcvv.decorators import plot
+from qibo.config import log
 
 
 def check_frequency(platform, write=False):
@@ -25,45 +17,46 @@ def check_frequency(platform, write=False):
 
     for inst in settings["instruments"]:
         if "readout" in settings["instruments"][inst]["roles"]:
-            freq = []
-            freq_qrm = []
-            for i in range(settings["nqubits"]):
-                freq += [
-                    settings["characterization"]["single_qubit"][i]["resonator_freq"]
+            freq = {}
+            freq_qrm = {}
+            for i in platform.qubits:
+                freq[i] = settings["characterization"]["single_qubit"][i][
+                    "resonator_freq"
                 ]
-                freq_qrm += [
+
+                freq_qrm[i] = (
                     settings["instruments"]["qrm_rf"]["settings"]["ports"]["o1"][
                         "lo_frequency"
                     ]
                     + settings["native_gates"]["single_qubit"][i]["MZ"]["frequency"]
-                ]
+                )
+
                 if abs(freq[i] - freq_qrm[i]) > 1:  # leaving a 1Hz resolution
                     log.info(
                         f"WARNING: Instrument parameters not matching with the characterization frequency of qubit {i}: {freq_qrm[i]} for {freq[i]}"
                     )
             if write:
-                for i in range(settings["nqubits"]):
+                lo = _frequency_allocation(list(freq.values()))
+                for i in platform.qubits:
                     settings["instruments"]["qrm_rf"]["settings"]["ports"]["o1"][
                         "lo_frequency"
-                    ] = (max(freq) + min(freq)) / 2
-                    settings["native_gates"]["single_qubit"][i]["MZ"]["frequency"] = (
-                        freq[i]
-                        - settings["instruments"]["qrm_rf"]["settings"]["ports"]["o1"][
-                            "lo_frequency"
-                        ]
-                    )
+                    ] = float(lo)
+                    settings["native_gates"]["single_qubit"][i]["MZ"][
+                        "frequency"
+                    ] = int(freq[i] - float(lo))
 
         if "flux" in settings["instruments"][inst]["roles"]:
-            sweetspot = []
-            sweetspot_spi = []
-            for i in range(settings["nqubits"]):
+            sweetspot = {}
+            sweetspot_spi = {}
+            for i in platform.qubits:
                 chan = settings["qubit_channel_map"][i][2]
-                sweetspot += [
-                    settings["characterization"]["single_qubit"][i]["sweetspot"]
+                sweetspot[i] = settings["characterization"]["single_qubit"][i][
+                    "sweetspot"
                 ]
-                sweetspot_spi += [
-                    settings["instruments"]["SPI"]["settings"]["s4g_modules"][chan][2]
-                ]
+                sweetspot_spi[i] = settings["instruments"]["SPI"]["settings"][
+                    "s4g_modules"
+                ][chan][2]
+
                 if (
                     abs(sweetspot[i] - sweetspot_spi[i]) > 1.0e-9
                 ):  # leaving a 1uA resolution
@@ -71,16 +64,16 @@ def check_frequency(platform, write=False):
                         f"WARNING: Instrument parameters not matching with the characterization sweetspot of qubit {i}: {sweetspot[i]} for {sweetspot_spi[i]}"
                     )
 
-            if write:
-                chan = settings["qubit_channel_map"][i][2]
-                settings["instruments"]["SPI"]["settings"]["s4g_modules"][chan][
-                    2
-                ] = sweetspot[i]
+                if write:
+                    chan = settings["qubit_channel_map"][i][2]
+                    settings["instruments"]["SPI"]["settings"]["s4g_modules"][chan][
+                        2
+                    ] = sweetspot[i]
 
         if "control" in settings["instruments"][inst]["roles"]:
             freq = {}
             freq_qcm = {}
-            for i in range(settings["nqubits"]):
+            for i in platform.qubits:
                 chan = settings["qubit_channel_map"][i][1]
                 if (
                     chan
@@ -117,3 +110,80 @@ def check_frequency(platform, write=False):
         log.info(f"WARNING: Writting YAML")
         with open(path, "w") as f:
             yaml.dump(settings, f, sort_keys=False, indent=4, default_flow_style=None)
+
+
+def _frequency_allocation(freq, bandwidth=600e6, peak_width=20e6):
+    """
+    Sets the LO to be the center frequency + peak_width to avoid spurs' overlap
+    Param:
+    freq: the list of IF frequencies for which to choose an LO
+    bandwidth: bandwidth of the instrument
+    peak_width: typical peaks width
+    Return:
+    LO_optimal: optimal lo frequency
+    if: IF frequencies to setup
+    """
+
+    dx = bandwidth - (max(freq) - min(freq))
+    if dx <= 0:
+        raise ValueError("Bandwitch too small for resonator's spacing")
+    elif dx < peak_width:
+        peak_width = dx
+
+    if len(freq) > 1:
+        lo = peak_width + (min(freq) + max(freq)) / 2
+    else:
+        lo = freq - bandwidth / 2
+    return lo
+
+
+def _frequency_allocation_vain(freq, bandwidth=600e6, weights=[1, 1, 1, 1]):
+    """
+    Function suppose to set the center frequency (LO) to avoid that spurs overlap the desired frequencies. Few problems:
+    - scipy.minimize not working well, so it is simply iterating through all values
+    - weights are too hard to choose, so a different weighting method should be used
+    - for most weights, the solution is to set the LO to be furthest to most peaks, this would result in spurs greatly spaced
+    which might work well
+    Param:
+    bandwidth: bandwidth of the instrument
+    weights: factor to which to value important of a peak [image_spur, image, lo_leake, rf_spur]
+    Return:
+    LO_optimal: optimal lo frequency
+    if: IF frequencies to setup
+    """
+    scale = 1 / max(freq)
+    bandwidth = np.array(bandwidth) * scale
+    freq = np.array(freq) * scale
+
+    rn = list(range(len(freq)))
+
+    dx = bandwidth - (max(freq) - min(freq))
+    if dx <= 0:
+        raise ValueError("Bandwitch too small for resonator's spacing")
+    freq_max = max(freq) - (bandwidth / 2 - dx)
+    freq_min = min(freq) + (bandwidth / 2 - dx)
+
+    def cost(LO):
+        LO = LO[0]
+        freqs = np.zeros((len(rn), 4))
+
+        for i in rn:
+            freqs[i, :] = np.array(
+                [-2 * (freq[i] - LO), -(freq[i] - LO), 0, 2 * (freq[i] - LO)]
+            ) + np.array(LO)
+        c = 0
+        for i in rn:
+            for j in rn:
+                if i != j:
+                    c += np.sum((1) / (1 + weights * np.abs(freq[i] - freqs[j, :])))
+        return c
+
+    # result = minimize(lambda x: cost(x), x0 = (min(freq)+max(freq))/2, method="Nelder-Mead", bounds=[(freq_min, freq_max)])
+    x = np.arange(freq_min, freq_max, 100e3 * scale)
+    y = []
+    for f in x:
+        y += [cost([f])]
+
+    LO_optimal = x[np.argmin(y)] / scale
+
+    return LO_optimal
