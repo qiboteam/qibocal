@@ -50,6 +50,13 @@ def allXY(
         platform.characterization["single_qubit"][qubit]["state1_voltage"]
     )
 
+    mean_state0: complex = complex(
+        platform.characterization["single_qubit"][qubit]["mean_gnd_states"]
+    )
+    mean_state1: complex = complex(
+        platform.characterization["single_qubit"][qubit]["mean_exc_states"]
+    )
+
     data = Dataset(
         name=f"data_q{qubit}",
         quantities={"probability": "dimensionless", "gateNumber": "dimensionless"},
@@ -69,24 +76,21 @@ def allXY(
                 ro_pulse.serial
             ]
 
-            if platform.resonator_type == "3D":
-                prob = np.abs(msr * 1e6 - state1_voltage) / (
-                    state0_voltage - state1_voltage
-                )
-                prob = (2 * prob) - 1
+            measurement: complex = complex(i, q)
+            d0 = abs(measurement - mean_state0)
+            d1 = abs(measurement - mean_state1)
+            d01 = abs(mean_state0 - mean_state1)
+            prob = (d1**2 + d01**2 - d0**2) / 2 / d01**2
 
-            else:
-                prob = np.abs(msr * 1e6 - state1_voltage) / (
-                    state1_voltage - state0_voltage
-                )
-                prob = (2 * prob) - 1
+            # prob = np.abs(msr * 1e6 - state1_voltage) / np.abs(state1_voltage - state0_voltage)
+            # prob = (2 * prob) - 1
 
             results = {
                 "MSR[V]": msr,
                 "i[V]": i,
                 "q[V]": q,
                 "phase[rad]": phase,
-                "probability[dimensionless]": prob,
+                "probability[dimensionless]": np.array(prob),
                 "gateNumber[dimensionless]": np.array(gateNumber),
             }
             data.add(results)
@@ -138,17 +142,10 @@ def allXY_iteration(
                     ro_pulse.serial
                 ]
 
-                if platform.resonator_type == "3D":
-                    prob = np.abs(msr * 1e6 - state1_voltage) / (
-                        state0_voltage - state1_voltage
-                    )
-                    prob = (2 * prob) - 1
-
-                else:
-                    prob = np.abs(msr * 1e6 - state1_voltage) / (
-                        state1_voltage - state0_voltage
-                    )
-                    prob = (2 * prob) - 1
+                prob = np.abs(msr * 1e6 - state1_voltage) / np.abs(
+                    state1_voltage - state0_voltage
+                )
+                prob = (2 * prob) - 1
 
                 results = {
                     "MSR[V]": msr,
@@ -248,7 +245,7 @@ def drag_pulse_tunning(
     yield data
 
 
-def _get_sequence_from_gate_pair(platform, gates, qubit, beta_param):
+def _get_sequence_from_gate_pair(platform: AbstractPlatform, gates, qubit, beta_param):
     sampling_rate = platform.sampling_rate
     pulse_frequency = platform.settings["native_gates"]["single_qubit"][qubit]["RX"][
         "frequency"

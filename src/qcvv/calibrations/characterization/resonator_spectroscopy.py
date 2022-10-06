@@ -384,7 +384,7 @@ def dispersive_shift(
             if count % points == 0 and count > 0:
                 yield data_shifted
                 yield lorentzian_fit(
-                    data_spec,
+                    data_shifted,
                     x="frequency[GHz]",
                     y="MSR[uV]",
                     qubit=qubit,

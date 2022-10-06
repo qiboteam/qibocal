@@ -29,7 +29,7 @@ def calibrate_qubit_states_binning(
         name=f"data_exc_q{qubit}", quantities={"iteration": "dimensionless"}
     )
     shots_results = platform.execute_pulse_sequence(exc_sequence, nshots=niter)[
-        "shots"
+        "binned_integrated"
     ][ro_pulse.serial]
     for n in np.arange(niter):
         msr, phase, i, q = shots_results[n]
@@ -52,7 +52,7 @@ def calibrate_qubit_states_binning(
     )
 
     shots_results = platform.execute_pulse_sequence(gnd_sequence, nshots=niter)[
-        "shots"
+        "binned_integrated"
     ][ro_pulse.serial]
     for n in np.arange(niter):
         msr, phase, i, q = shots_results[n]

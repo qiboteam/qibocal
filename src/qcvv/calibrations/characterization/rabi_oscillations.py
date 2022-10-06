@@ -59,7 +59,6 @@ def rabi_pulse_length(
                     labels=[
                         "pi_pulse_duration",
                         "pi_pulse_max_voltage",
-                        "t1",
                     ],
                 )
             msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
@@ -124,7 +123,6 @@ def rabi_pulse_gain(
                     labels=[
                         "pi_pulse_gain",
                         "pi_pulse_max_voltage",
-                        "t1",
                     ],
                 )
             msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
@@ -191,7 +189,6 @@ def rabi_pulse_amplitude(
                     labels=[
                         "pi_pulse_amplitude",
                         "pi_pulse_max_voltage",
-                        "t1",
                     ],
                 )
             msr, phase, i, q = platform.execute_pulse_sequence(sequence)[

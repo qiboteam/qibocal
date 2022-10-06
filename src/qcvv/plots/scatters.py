@@ -83,7 +83,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
         freqrange = np.linspace(
             min(data_fast.get_values("frequency", "GHz")),
             max(data_fast.get_values("frequency", "GHz")),
-            200,
+            2 * len(data_fast),
         )
         params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
         fig.add_trace(
@@ -193,7 +193,6 @@ def time_msr_phase(folder, routine, qubit, format):
                 "popt4",
                 "label1",
                 "label2",
-                "label3",
             ]
         )
 
@@ -232,7 +231,7 @@ def time_msr_phase(folder, routine, qubit, format):
         timerange = np.linspace(
             min(data.get_values("Time", "ns")),
             max(data.get_values("Time", "ns")),
-            200,
+            2 * len(data),
         )
         params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
         fig.add_trace(
@@ -252,28 +251,14 @@ def time_msr_phase(folder, routine, qubit, format):
             row=1,
             col=1,
         )
-        # add annotation for label[0] -> pi_pulse_duration
+
         fig.add_annotation(
             dict(
                 font=dict(color="black", size=12),
                 x=0,
-                y=-0.25,
+                y=-0.20,
                 showarrow=False,
-                text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.1f} ns.",
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
-            )
-        )
-        # add annotation for label[0] -> rabi_oscillations_pi_pulse_max_voltage
-        fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=0,
-                y=-0.30,
-                showarrow=False,
-                text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.3f} uV.",
+                text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.3f} ns.",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
@@ -281,14 +266,13 @@ def time_msr_phase(folder, routine, qubit, format):
             )
         )
 
-        # add annotation for label[0] -> rabi_oscillations_pi_pulse_max_voltage
         fig.add_annotation(
             dict(
                 font=dict(color="black", size=12),
                 x=0,
-                y=-0.20,
+                y=-0.25,
                 showarrow=False,
-                text=f"Estimated {params[2]} is {data_fit.df[params[2]][0]:.1f} ns.",
+                text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.1f} uV.",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
@@ -327,7 +311,6 @@ def gain_msr_phase(folder, routine, qubit, format):
                 "popt4",
                 "label1",
                 "label2",
-                "label3",
             ]
         )
 
@@ -363,17 +346,17 @@ def gain_msr_phase(folder, routine, qubit, format):
 
     # add fitting trace
     if len(data) > 0 and len(data_fit) > 0:
-        timerange = np.linspace(
+        gainrange = np.linspace(
             min(data.get_values("gain", "dimensionless")),
             max(data.get_values("gain", "dimensionless")),
-            20,
+            2 * len(data),
         )
         params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
         fig.add_trace(
             go.Scatter(
-                x=timerange,
+                x=gainrange,
                 y=rabi(
-                    timerange,
+                    gainrange,
                     data_fit.df["popt0"][0],
                     data_fit.df["popt1"][0],
                     data_fit.df["popt2"][0],
@@ -391,23 +374,23 @@ def gain_msr_phase(folder, routine, qubit, format):
             dict(
                 font=dict(color="black", size=12),
                 x=0,
-                y=-0.25,
+                y=-0.20,
                 showarrow=False,
-                text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.3f} uV.",
+                text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.3f}",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
                 yref="paper",
             )
         )
-        # add annotation for label[0] -> pi_pulse_gain
+
         fig.add_annotation(
             dict(
                 font=dict(color="black", size=12),
                 x=0,
-                y=-0.20,
+                y=-0.25,
                 showarrow=False,
-                text=f"Estimated {params[2]} is {data_fit.df[params[2]][0]:.4f}",
+                text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.4f} uV",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
@@ -480,17 +463,17 @@ def amplitude_msr_phase(folder, routine, qubit, format):
 
     # add fitting trace
     if len(data) > 0 and len(data_fit) > 0:
-        timerange = np.linspace(
+        amplituderange = np.linspace(
             min(data.get_values("amplitude", "dimensionless")),
             max(data.get_values("amplitude", "dimensionless")),
-            20,
+            2 * len(data),
         )
         params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
         fig.add_trace(
             go.Scatter(
-                x=timerange,
+                x=amplituderange,
                 y=rabi(
-                    timerange,
+                    amplituderange,
                     data_fit.df["popt0"][0],
                     data_fit.df["popt1"][0],
                     data_fit.df["popt2"][0],
@@ -508,23 +491,23 @@ def amplitude_msr_phase(folder, routine, qubit, format):
             dict(
                 font=dict(color="black", size=12),
                 x=0,
-                y=-0.25,
+                y=-0.20,
                 showarrow=False,
-                text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.3f} uV.",
+                text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.3f}.",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
                 yref="paper",
             )
         )
-        # add annotation for label[0] -> pi_pulse_gain
+
         fig.add_annotation(
             dict(
                 font=dict(color="black", size=12),
                 x=0,
-                y=-0.20,
+                y=-0.25,
                 showarrow=False,
-                text=f"Estimated {params[2]} is {data_fit.df[params[2]][0]:.4f}",
+                text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.4f} uV.",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
@@ -588,7 +571,7 @@ def time_msr(folder, routine, qubit, format):
         timerange = np.linspace(
             min(data.get_values("wait", "ns")),
             max(data.get_values("wait", "ns")),
-            200,
+            2 * len(data),
         )
         params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
         fig.add_trace(
@@ -714,7 +697,7 @@ def t1_time_msr_phase(folder, routine, qubit, format):
         timerange = np.linspace(
             min(data.get_values("Time", "ns")),
             max(data.get_values("Time", "ns")),
-            20,
+            2 * len(data),
         )
         params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
         fig.add_trace(
@@ -806,7 +789,7 @@ def flips_msr_phase(folder, routine, qubit, format):
         timerange = np.linspace(
             min(data.get_values("flips", "dimensionless")),
             max(data.get_values("flips", "dimensionless")),
-            200,
+            2 * len(data),
         )
         params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
         fig.add_trace(
@@ -1242,7 +1225,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
         freqrange = np.linspace(
             min(data_spec.get_values("frequency", "GHz")),
             max(data_spec.get_values("frequency", "GHz")),
-            200,
+            2 * len(data_spec),
         )
         params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
         fig.add_trace(
@@ -1280,7 +1263,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
         freqrange = np.linspace(
             min(data_shifted.get_values("frequency", "GHz")),
             max(data_shifted.get_values("frequency", "GHz")),
-            200,
+            2 * len(data_shifted),
         )
         params = [i for i in list(data_fit_shifted.df.keys()) if "fit" not in i]
         fig.add_trace(
