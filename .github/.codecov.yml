@@ -25,5 +25,5 @@ github_checks:
   annotations: false
 
 ignore:
-  - "src/qcvv/cli"
-  - "src/qcvv/calibrations"
+  - "src/qibocal/cli"
+  - "src/qibocal/calibrations"
