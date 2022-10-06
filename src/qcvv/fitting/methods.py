@@ -1,8 +1,5 @@
 # -*- coding: utf-8 -*-
 """Routine-specific method for post-processing data acquired."""
-
-from curses import qiflush
-
 import lmfit
 import numpy as np
 from scipy.optimize import curve_fit
