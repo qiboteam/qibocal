@@ -3,9 +3,9 @@ import os
 import pathlib
 
 from jinja2 import Environment, FileSystemLoader
-from qcvv.cli.builders import ReportBuilder
 
-from qcvv import __version__
+from qibocal import __version__
+from qibocal.cli.builders import ReportBuilder
 
 
 def create_report(path):

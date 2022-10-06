@@ -4,10 +4,10 @@ import os
 import pandas as pd
 import yaml
 from dash import Dash, Input, Output, dcc, html
-from qcvv.data import Dataset
-from qcvv.web.server import server
 
-from qcvv import plots
+from qibocal import plots
+from qibocal.data import Dataset
+from qibocal.web.server import server
 
 Dataset()  # dummy dataset call to suppress ``pint[V]`` error
 

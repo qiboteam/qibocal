@@ -4,9 +4,9 @@ import pathlib
 
 import yaml
 from flask import Flask, render_template
-from qcvv.cli.builders import ReportBuilder
 
-from qcvv import __version__
+from qibocal import __version__
+from qibocal.cli.builders import ReportBuilder
 
 server = Flask(__name__)
 
