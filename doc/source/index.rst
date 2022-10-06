@@ -1,19 +1,19 @@
 .. title::
-      Qcvv
+      Qibocal
 
-What is QCVV?
-=============
+What is Qibocal?
+================
 
-Qcvv is a python module that implements Quatum Characterization Validation and Verification using
+Qibocal is a python module that implements Quatum Characterization Validation and Verification using
 `Qibo <https://github.com/qiboteam/qibo>`_ and `Qibolab <https://github.com/qiboteam/qibolab>`_.
 
-Qcvv key features:
+Qibocal key features:
 
 * Automatization of calibration routines.
 * Declarative inputs using runcard.
 * Generation of a report.
 
-This documentation refers to qcvv |release|.
+This documentation refers to qibocal |release|.
 
 Contents
 ========
