@@ -8,6 +8,7 @@ from qcvv.decorators import plot
 
 from cmath import exp
 import numpy as np
+from itertools import product
 from qibo import gates, get_backend, models
 import pdb
 from copy import deepcopy
@@ -15,6 +16,94 @@ from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
 from qibo.noise import PauliError, ThermalRelaxationError, NoiseModel, ResetError
 
+
+def gellmann(j, k, d):
+    """Returns a generalized Gell-Mann matrix of dimension d.
+    According to the convention in *Bloch Vectors for Qubits* by
+    Bertlmann and Krammer (2008),
+    https://en.wikipedia.org/wiki/Generalizations_of_Pauli_matrices#Construction
+    Taken from Jonathan Gross. Revision 449580a1
+    Parameters
+    ----------
+    j : int
+        First index for generalized Gell-Mann matrix
+    k : int
+        Second index for generalized Gell-Mann matrix
+    d : int
+        Dimension of the generalized Gell-Mann matrix
+    Returns
+    -------
+    A genereralized Gell-Mann matrix : np.ndarray
+    """
+    # Check the indices 'j' and 'k.
+    if j > k:
+        gjkd = np.zeros((d, d), dtype=np.complex128)
+        gjkd[j - 1][k - 1] = 1
+        gjkd[k - 1][j - 1] = 1
+    elif k > j:
+        gjkd = np.zeros((d, d), dtype=np.complex128)
+        gjkd[j - 1][k - 1] = -1.j
+        gjkd[k - 1][j - 1] = 1.j
+    elif j == k and j < d:
+        gjkd = np.sqrt(2/(j*(j + 1)))* \
+            np.diag([1 + 0.j if n <= j
+            else (-j + 0.j if n == (j + 1)
+            else 0 + 0.j)
+            for n in range(1, d + 1)])
+    else:
+        # Identity matrix
+        gjkd = np.diag([1 + 0.j for n in range(1, d + 1)])
+        # normalize such that trace(gjkd*gjkd) = 2
+        gjkd = gjkd*np.sqrt(2/d)
+
+    return gjkd
+
+def get_basis(dim):
+    """Return a basis of orthogonal Hermitian operators
+    in a Hilbert space of dimension d, with the identity element
+    in the last place.
+    Taken from Jonathan Gross. Revision 449580a1
+    Parameters
+    ----------
+    dim : int
+        The amount of matrix basis elements and which
+        dimension the matrices have.
+    """
+    return [gellmann(j, k, dim) for j, k 
+        in product(range(1, dim + 1), repeat=2)]
+
+X = np.array([[0,1],[1,0]])
+Y = np.array([[0,-1j],[1j, 0]])
+Z = np.array([[1,0],[0,-1]])
+
+pauli = [np.eye(2)/np.sqrt(2), X/np.sqrt(2), Y/np.sqrt(2), Z/np.sqrt(2)]
+def liouville_representation_errorchannel(error_channel, **kwargs):
+    """ For single qubit error channels only.
+    """
+    # For single qubit the dimension is two.
+    dim = 2
+    if error_channel.channel.__name__ == 'PauliNoiseChannel':
+        flipprobs = error_channel.options
+        X = np.array([[0,1],[1,0]])
+        Y = np.array([[0,-1j],[1j, 0]])
+        Z = np.array([[1,0],[0,-1]])
+        def acts(gmatrix):
+            return (1-flipprobs[0]-flipprobs[1]-flipprobs[2])*gmatrix \
+                + flipprobs[0]*X@gmatrix@X \
+                + flipprobs[1]*Y@gmatrix@Y \
+                + flipprobs[2]*Z@gmatrix@Z
+    return np.array(
+        [[np.trace(p2.conj().T@acts(p1)) for p1 in pauli] for p2 in pauli]
+    )
+   
+
+def effective_depol(error_channel, **kwargs):
+    """
+    """
+    liouvillerep = liouville_representation_errorchannel(error_channel)
+    d = int(np.sqrt(len(liouvillerep)))
+    depolp = ((np.trace(liouvillerep)+d)/(d+1)-1)/(d-1)
+    return depolp
 
 class UIRS():
     """
@@ -59,7 +148,11 @@ class UIRS():
             # FIXME ask Andrea: Something is not right with the inversion.
             # Invert all the already added circuits, multiply them with each
             # other and add as a new circuit to the list.
-            circuit.add(circuit.invert().fuse().queue[0])
+            # TODO changed fusion gate calculation by hand.
+            circuit.add(gates.Unitary(circuit.invert().fuse().queue[0].matrix,0))
+        #     print(circuit.unitary())
+        #     circuit.add(circuit.invert().fuse().queue[0])
+        #     print(circuit.unitary())
         circuit.add(self.measurement)
         # For a simulation a noise model has to be added
         if self.noisemodel is None or not self.noisemodel:
@@ -140,7 +233,7 @@ class Shadow():
         outcomes and one for the corresponding sequence length of the gate.
         """
         self.povms = povms
-        self.gate_list = []
+        self.circuit_list = []
         self.outcome_list = []
         self.samples_list = []
         self.probabilities_list = []
@@ -148,12 +241,12 @@ class Shadow():
         self.runs = runs
         self.nshots = nshots
     
-    def append(self, gate, outcome):
-        """ Update the shadow by appending the used gates and the corresponding
+    def append(self, circuit, outcome):
+        """ Update the shadow by appending the used circuits and the corresponding
         outcomes.
         """
-        # Store the gates.
-        self.gate_list.append(gate)
+        # Store the circuits.
+        self.circuit_list.append(circuit)
         # Convert to list to check shape better.
         outcome = np.array(outcome)
         # Check the outcome type and shape. If it as as many entries as there
@@ -190,7 +283,8 @@ class Shadow():
                 return np.array(
                     self.probabilities_list)[:,0].reshape(self.runs, -1) 
     
-def experimental_protocol(circuit_generator, myshadow, **kwargs):
+def experimental_protocol(circuit_generator, myshadow,
+        inject_noise=False, **kwargs):
     """ 
 
     Always the same, takes sequences of circuits of a certain gate set,
@@ -222,25 +316,35 @@ def experimental_protocol(circuit_generator, myshadow, **kwargs):
     runs = myshadow.runs
     # Store the circuit generator just to make the experiment repeatable.
     myshadow.cirucuit_generator = circuit_generator
+    if inject_noise:
+        pauli = PauliError(*inject_noise)
+        noise = NoiseModel()
+        noise.add(pauli, gates.Unitary)
     # Loop 'runs' many times over the whole protocol.
     for _ in range(runs):
         # Go through every sequence in the protocol.
         for m in sequence_lengths:
             # Generate the right circuits bunched to one gate.
-            gate = next(circuit_generator(m),m)
-            # Execute the qibo gate.
-            executed = gate(nshots=kwargs.get('nshots'))
+            circuit = next(circuit_generator(m))
+            if inject_noise:
+                noisy_circuit = noise.apply(circuit)
+                executed = noisy_circuit(nshots=kwargs.get('nshots'))
+            else:
+                # Execute the qibo circuit.
+                executed = circuit(nshots=kwargs.get('nshots'))
             # TODO this will be changed in the future.
+            # Also, this does not work for quantum hardware.
             try:
                 # Get the samples from the executed gate. It should be an
                 # object filled with as many integers as used shots.
+                # outcome = executed.probabilities()
                 outcome = executed.samples()  
             except:
                 # Getting the samples is not possible, hence the probabilities
                 # have to be stored.
                 outcome = executed.probabilities()
             # Store the samples.
-            myshadow.append(gate, outcome)
+            myshadow.append(circuit, outcome)
             # Store everything.
     return myshadow
 
@@ -251,31 +355,86 @@ def standard_rb(
     qubit : list,
     generator_name,
     sequence_lengths,
+    runs,
     nshots,
+    inject_noise
 ):
     # Define the data object.
     # Use the sequence_lengths list as labels for the data
-    data = Data("standardrb",
+    data1 = Data("standardrb",
         quantities=list(sequence_lengths))
     # Generate the circuits
     measurement_type = "Ground State"
-    runs = 2
     myshadow = Shadow(measurement_type, sequence_lengths, runs, nshots)
-    pauli = PauliError(0.0, 0.01, 0.0)
-    noise = NoiseModel()
-    noise.add(pauli, gates.Unitary)
     if generator_name == 'UIRSOnequbitcliffords':
-        mygenerator = UIRSOnequbitcliffords(1, invert=True, noisemodel=noise)
+        mygenerator = UIRSOnequbitcliffords(1, invert=True, noisemodel=False)
     else:
         raise ValueError('This generator is not implemented.')
     myshadow = experimental_protocol(
-        mygenerator, myshadow, nshots=nshots)
+        mygenerator, myshadow, inject_noise=inject_noise, nshots=nshots)
     for count in range(runs):
-        data.add({sequence_lengths[i]:myshadow.probabilities[count][i] \
+        data1.add({sequence_lengths[i]:myshadow.probabilities[count][i] \
             for i in range(len(sequence_lengths))})
     # pm = np.sum(myshadow.probabilities, axis=0)/runs
     # print(sequence_lengths)
     # print(pm)
     # data.add({'survival_probabilities':pm,
     #     'sequence_lengths':sequence_lengths})
-    yield data
+    yield data1
+    pauli = PauliError(*inject_noise)
+    noise = NoiseModel()
+    noise.add(pauli, gates.Unitary)
+    data2 = Data("effectivedepol", quantities=["effective_depol"])
+    data2.add({"effective_depol": effective_depol(pauli)})
+    yield data2
+
+
+# def filtered_rb(
+#     platform,
+#     qubit : list,
+#     generator_name,
+#     sequence_lengths,
+#     runs,
+#     nshots,
+#     inject_noise
+# ):
+#     # Define the data object.
+#     # Use the sequence_lengths list as labels for the data
+#     data1 = Data("standardrb",
+#         quantities=list(sequence_lengths))
+#     # Generate the circuits
+#     measurement_type = "Ground State"
+#     myshadow = Shadow(measurement_type, sequence_lengths, runs, nshots)
+#     if generator_name == 'UIRSOnequbitcliffords':
+#         mygenerator = UIRSOnequbitcliffords(1, invert=True, noisemodel=False)
+#     else:
+#         raise ValueError('This generator is not implemented.')
+#     myshadow = experimental_protocol(
+#         mygenerator, myshadow, inject_noise=inject_noise, nshots=nshots)
+    
+#     povms = np.array([[1,0],[0,0]]), np.array([[0,0],[0,1]])
+#     rho = np.array([[1,0],[0,0]])
+#     def splusP_ad(gmatrix):
+#         return (gmatrix - np.trace(gmatrix)*np.eye(2)/2)*(d+1)
+
+#     # for count in range(len(myshadow.samples_list)):
+#     #     outcome_array = myshadow.samples_list[count]
+#     #     mycircuit = myshadow.circuit_list[count]
+#     #     for outcome in outcome_array:
+#     #         np.trace(povms[outcome]@mycircuit())
+
+#     for count in range(runs):
+#         data1.add({sequence_lengths[i]:myshadow.probabilities[count][i] \
+#             for i in range(len(sequence_lengths))})
+#     # pm = np.sum(myshadow.probabilities, axis=0)/runs
+#     # print(sequence_lengths)
+#     # print(pm)
+#     # data.add({'survival_probabilities':pm,
+#     #     'sequence_lengths':sequence_lengths})
+#     yield data1
+#     pauli = PauliError(*inject_noise)
+#     noise = NoiseModel()
+#     noise.add(pauli, gates.Unitary)
+#     data2 = Data("effectivedepol", quantities=["effective_depol"])
+#     data2.add({"effective_depol": effective_depol(pauli)})
+#     yield data2

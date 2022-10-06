@@ -1095,11 +1095,14 @@ def standard_rb_plot(folder, routine, qubit, format):
     pm = np.sum(ydata, axis=0)/runs
     # Calculate an exponential fit to the given data pm dependent on m.
     # 'popt' stores the optimized parameters and pcov the covariance of popt.
-    popt, pcov = curve_fit(exp_func, xdata, pm, p0=[1, 0.98, 0])
+    try:
+        popt, pcov = curve_fit(exp_func, xdata, pm, p0=[0.5, 0.5, 0.5])
+    except:
+        popt, pcov = (1,1,1), (None)
     # The variance of the variables in 'popt' are calculated with 'pcov'.
-    perr = np.sqrt(np.diag(pcov))
+    # perr = np.sqrt(np.diag(pcov))
     # Plot the data and the fit.
-    x_fit = np.linspace(xdata[0], xdata[-1], num=100)
+    x_fit = np.linspace(np.sort(xdata)[0], np.sort(xdata)[-1], num=100)
     fig = make_subplots(
         rows=1,
         cols=1,
@@ -1129,5 +1132,21 @@ def standard_rb_plot(folder, routine, qubit, format):
         row=1,
         col=1,
     )
+    data = Dataset.load_data(
+        folder, 'standard_rb', 'pickle', 'effectivedepol')
+    depol = data.df.to_numpy()[0,0]
+    fig.add_annotation(
+            dict(
+                font=dict(color="black", size=12),
+                x=0,
+                y=-0.20,
+                showarrow=False,
+                text=f"Effective depol param: {depol}",
+                textangle=0,
+                xanchor="left",
+                xref="paper",
+                yref="paper",
+            )
+        )
     
     return fig
