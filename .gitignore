@@ -133,3 +133,7 @@ dmypy.json
 
 # QCVV output directories
 20*
+
+# Jadwiga testing files
+datareading_test.py
+run_standardrb.sh
