@@ -413,14 +413,15 @@ def filtered_rb(
         mygenerator, myshadow, inject_noise=inject_noise, nshots=nshots)
 
     d=2
+    amount_sequences = len(sequence_lengths)
     for count in range(runs):
-        for shot in range(nshots):
-            outcome_array = myshadow.samples_list[count][shot]
-            mycircuit = myshadow.circuit_list[count][shot]
+        for m in range(amount_sequences):
+            mycircuit = myshadow.circuit_list[count]
             executed_circuit = circuit(nshots=1024)
-            for outcome in outcome_array:
+            for shot in range(nshots):
+                outcome = myshadow.samples_list[count,m,shot]
                 prob = executed_circuit.probabilities()[int(outcome)]
-                filter = (d+1)(np.abs(prob)**2 - 1/d)
+                filterf = (d+1)(np.abs(prob)**2 - 1/d)
 
     for count in range(runs):
         data1.add({sequence_lengths[i]:myshadow.probabilities[count][i] \
