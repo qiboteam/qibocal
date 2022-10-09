@@ -76,14 +76,26 @@ def allXY(
                 ro_pulse.serial
             ]
 
-            measurement: complex = complex(i, q)
-            d0 = abs(measurement - mean_state0)
-            d1 = abs(measurement - mean_state1)
-            d01 = abs(mean_state0 - mean_state1)
-            prob = (d1**2 + d01**2 - d0**2) / 2 / d01**2
+            # measurement: complex = complex(i, q)
+            # d0 = abs(measurement - mean_state0)
+            # d1 = abs(measurement - mean_state1)
+            # d01 = abs(mean_state0 - mean_state1)
+            # prob = (d1**2 + d01**2 - d0**2) / 2 / d01**2
 
             # prob = np.abs(msr * 1e6 - state1_voltage) / np.abs(state1_voltage - state0_voltage)
             # prob = (2 * prob) - 1
+
+            if platform.resonator_type == "3D":
+                prob = np.abs(msr * 1e6 - state1_voltage) / (
+                    state0_voltage - state1_voltage
+                )
+                prob = (2 * prob) - 1
+
+            else:
+                prob = np.abs(msr * 1e6 - state1_voltage) / (
+                    state1_voltage - state0_voltage
+                )
+                prob = (2 * prob) - 1
 
             results = {
                 "MSR[V]": msr,

@@ -1,6 +1,6 @@
 platform: tii5q
 
-qubits: [3]
+qubits: [2]
 
 format: csv
 
@@ -137,9 +137,9 @@ actions:
   #   step: 1
   #   points: 1
 
-  # calibrate_qubit_states_binning:
-  #   niter: 4000
-  #   points: 1
+  calibrate_qubit_states_binning:
+    niter: 1024
+    points: 1
 
   # allXY_iteration:
   #   beta_start: -0.09
