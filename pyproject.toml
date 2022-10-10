@@ -1,12 +1,12 @@
 [tool.poetry]
-name = "qcvv"
+name = "qibocal"
 version = "0.0.1.dev0"
 description = ""
 authors = ["andrea-pasquale <andreapasquale97@gmail.com>"]
 license = "Apache License 2.0"
 readme = "README.md"
 homepage = ""
-repository = "https://github.com/qiboteam/qcvv/"
+repository = "https://github.com/qiboteam/qibocal/"
 documentation = ""
 keywords = []
 classifiers=[
@@ -43,21 +43,21 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-qq = "qcvv:command"
-qq-live = "qcvv:live_plot"
-qq-upload = "qcvv:upload"
+qq = "qibocal:command"
+qq-live = "qibocal:live_plot"
+qq-upload = "qibocal:upload"
 
 [tool.poe.tasks]
-test = "pytest src/qcvv/tests"
+test = "pytest src/qibocal/tests"
 lint = "pylint src/**/*.py -E"
 lint-warnings = "pylint src/**/*.py --exit-zero"
 docs = "make -C doc html"
 docs-clean = "make -C doc clean"
 
 [tool.pytest.ini_options]
-testpaths = ['src/qcvv/tests/']
+testpaths = ['src/qibocal/tests/']
 addopts = [
-    '--cov=qcvv',
+    '--cov=qibocal',
     '--cov-report=xml'
 ]
 
