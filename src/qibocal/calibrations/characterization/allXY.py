@@ -214,9 +214,7 @@ def drag_pulse_tunning(
         seq1.add(RX90_drag_pulse)
         seq1.add(RY_drag_pulse)
         seq1.add(ro_pulse)
-        msr1, i1, q1, phase1 = platform.execute_pulse_sequence(seq1)[
-            ro_pulse.serial
-        ]
+        msr1, i1, q1, phase1 = platform.execute_pulse_sequence(seq1)[ro_pulse.serial]
 
         # drag pulse RY(pi/2)
         RY90_drag_pulse = platform.create_RX90_drag_pulse(
@@ -232,9 +230,7 @@ def drag_pulse_tunning(
         seq2.add(RY90_drag_pulse)
         seq2.add(RX_drag_pulse)
         seq2.add(ro_pulse)
-        msr2, phase2, i2, q2 = platform.execute_pulse_sequence(seq2)[
-            ro_pulse.serial
-        ]
+        msr2, phase2, i2, q2 = platform.execute_pulse_sequence(seq2)[ro_pulse.serial]
         results = {
             "MSR[V]": msr1 - msr2,
             "i[V]": i1 - i2,
