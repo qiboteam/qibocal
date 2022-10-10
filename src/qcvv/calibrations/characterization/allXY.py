@@ -42,7 +42,7 @@ def allXY(
     software_averages=1,
     points=10,
 ):
-    platform.reload_settings()
+    # platform.reload_settings()
     state0_voltage = complex(
         platform.characterization["single_qubit"][qubit]["state0_voltage"]
     )
@@ -50,16 +50,22 @@ def allXY(
         platform.characterization["single_qubit"][qubit]["state1_voltage"]
     )
 
-    mean_state0: complex = complex(
-        platform.characterization["single_qubit"][qubit]["mean_gnd_states"]
-    )
-    mean_state1: complex = complex(
-        platform.characterization["single_qubit"][qubit]["mean_exc_states"]
-    )
-
     data = Dataset(
         name=f"data_q{qubit}",
         quantities={"probability": "dimensionless", "gateNumber": "dimensionless"},
+    )
+
+    # FIXME: Waiting to be able to pass qpucard to qibolab
+    ro_pulse_test = platform.create_qubit_readout_pulse(qubit, start=4)
+    platform.ro_port[qubit].lo_frequency = (
+        platform.characterization["single_qubit"][qubit]["resonator_freq"]
+        - ro_pulse_test.frequency
+    )
+
+    qd_pulse_test = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
+    platform.qd_port[qubit].lo_frequency = (
+        platform.characterization["single_qubit"][qubit]["qubit_freq"]
+        - qd_pulse_test.frequency
     )
 
     count = 0
@@ -72,30 +78,14 @@ def allXY(
                 platform, gates, qubit, beta_param
             )
             seq.add(ro_pulse)
-            msr, phase, i, q = platform.execute_pulse_sequence(seq, nshots=1024)[
+            msr, phase, i, q = platform.execute_pulse_sequence(seq, nshots=2048)[
                 ro_pulse.serial
             ]
 
-            # measurement: complex = complex(i, q)
-            # d0 = abs(measurement - mean_state0)
-            # d1 = abs(measurement - mean_state1)
-            # d01 = abs(mean_state0 - mean_state1)
-            # prob = (d1**2 + d01**2 - d0**2) / 2 / d01**2
-
-            # prob = np.abs(msr * 1e6 - state1_voltage) / np.abs(state1_voltage - state0_voltage)
-            # prob = (2 * prob) - 1
-
-            if platform.resonator_type == "3D":
-                prob = np.abs(msr * 1e6 - state1_voltage) / (
-                    state0_voltage - state1_voltage
-                )
-                prob = (2 * prob) - 1
-
-            else:
-                prob = np.abs(msr * 1e6 - state1_voltage) / (
-                    state1_voltage - state0_voltage
-                )
-                prob = (2 * prob) - 1
+            prob = np.abs(msr * 1e6 - state1_voltage) / np.abs(
+                state1_voltage - state0_voltage
+            )
+            prob = (2 * prob) - 1
 
             results = {
                 "MSR[V]": msr,
@@ -258,10 +248,11 @@ def drag_pulse_tunning(
 
 
 def _get_sequence_from_gate_pair(platform: AbstractPlatform, gates, qubit, beta_param):
-    sampling_rate = platform.sampling_rate
-    pulse_frequency = platform.settings["native_gates"]["single_qubit"][qubit]["RX"][
-        "frequency"
-    ]
+    # sampling_rate = platform.sampling_rate
+    # pulse_frequency = platform.settings["native_gates"]["single_qubit"][qubit]["RX"][
+    #     "frequency"
+    # ]
+
     pulse_duration = platform.settings["native_gates"]["single_qubit"][qubit]["RX"][
         "duration"
     ]
@@ -346,4 +337,6 @@ def _get_sequence_from_gate_pair(platform: AbstractPlatform, gates, qubit, beta_
 
     # RO pulse starting just after pair of gates
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=sequenceDuration + 4)
+    print(ro_pulse.serial)
+
     return sequence, ro_pulse
