@@ -3,10 +3,10 @@
 How to write your runcard?
 ==========================
 
-In ``qcvv`` we adopt a declarative programming paradigm, i.e. the user should specify directly
+In ``qibocal`` we adopt a declarative programming paradigm, i.e. the user should specify directly
 what he wants to do without caring about the underlying implementation.
 
-This paradigm is implemented in ``qcvv`` in the form of runcards. A runcard will contain all
+This paradigm is implemented in ``qibocal`` in the form of runcards. A runcard will contain all
 the essential information to run a specific task.
 
 In the case of the ``qq`` command a possible runcard should look like this:
