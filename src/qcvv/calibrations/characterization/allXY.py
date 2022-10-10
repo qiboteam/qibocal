@@ -111,7 +111,20 @@ def allXY_iteration(
     software_averages=1,
     points=10,
 ):
-    platform.reload_settings()
+    # platform.reload_settings()
+
+    # FIXME: Waiting to be able to pass qpucard to qibolab
+    ro_pulse_test = platform.create_qubit_readout_pulse(qubit, start=4)
+    platform.ro_port[qubit].lo_frequency = (
+        platform.characterization["single_qubit"][qubit]["resonator_freq"]
+        - ro_pulse_test.frequency
+    )
+
+    qd_pulse_test = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
+    platform.qd_port[qubit].lo_frequency = (
+        platform.characterization["single_qubit"][qubit]["qubit_freq"]
+        - qd_pulse_test.frequency
+    )
 
     state0_voltage = complex(
         platform.characterization["single_qubit"][qubit]["state0_voltage"]
@@ -174,7 +187,20 @@ def drag_pulse_tunning(
     points=10,
 ):
 
-    platform.reload_settings()
+    # platform.reload_settings()
+
+    # FIXME: Waiting to be able to pass qpucard to qibolab
+    ro_pulse_test = platform.create_qubit_readout_pulse(qubit, start=4)
+    platform.ro_port[qubit].lo_frequency = (
+        platform.characterization["single_qubit"][qubit]["resonator_freq"]
+        - ro_pulse_test.frequency
+    )
+
+    qd_pulse_test = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
+    platform.qd_port[qubit].lo_frequency = (
+        platform.characterization["single_qubit"][qubit]["qubit_freq"]
+        - qd_pulse_test.frequency
+    )
 
     data = Dataset(name=f"data_q{qubit}", quantities={"beta_param": "dimensionless"})
 
@@ -248,10 +274,6 @@ def drag_pulse_tunning(
 
 
 def _get_sequence_from_gate_pair(platform: AbstractPlatform, gates, qubit, beta_param):
-    # sampling_rate = platform.sampling_rate
-    # pulse_frequency = platform.settings["native_gates"]["single_qubit"][qubit]["RX"][
-    #     "frequency"
-    # ]
 
     pulse_duration = platform.settings["native_gates"]["single_qubit"][qubit]["RX"][
         "duration"
