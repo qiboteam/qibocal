@@ -807,6 +807,19 @@ def flips_msr_phase(folder, routine, qubit, format):
 def exc_gnd(folder, routine, qubit, format):
 
     try:
+        parameters = Dataset.load_data(folder, routine, format, f"parameters_q{qubit}")
+        rotation_angle = parameters.get_values("rotation_angle", "dimensionless")[0]
+        threshold = parameters.get_values("threshold", "V")[0]
+        fidelity = parameters.get_values("fidelity", "dimensionless")[0]
+        assignment_fidelity = parameters.get_values("assignment_fidelity", "dimensionless")[0]
+    except:
+        parameters = Dataset(name=f"parameters_q{qubit}", quantities={
+            "rotation_angle": "dimensionless", # in degrees
+            "threshold": "V",
+            "fidelity": "dimensionless",
+            "assignment_fidelity": "dimensionless"  })
+
+    try:
         data_exc = Dataset.load_data(folder, routine, format, f"data_exc_q{qubit}")
     except:
         data_exc = Dataset(quantities={"iteration": "dimensionless"})
@@ -895,7 +908,15 @@ def exc_gnd(folder, routine, qubit, format):
         yaxis_title="q (V)",
         width=1000,
     )
+    
+    title_text = f"""
+    rotation_angle = {rotation_angle}<br>
+    threshold = {threshold}<br>
+    fidelity = {fidelity}<br>
+    assignment_fidelity = {assignment_fidelity}
+    """
 
+    fig.update_xaxes(title_text=title_text, row=1, col=1)
     return fig
 
 
