@@ -10,9 +10,9 @@ format: pickle
 #     points: 1
 # 
 actions:
-    standard_rb:
+    filtered_rb:
       generator_name: 'UIRSOnequbitcliffords'
-      sequence_lengths: [5,10,15,20,25,17,3,6,14]
-      runs: 10
+      sequence_lengths: [5,10,15,20,25,30, 40, 17,3,6,14]
+      runs: 100
       nshots: 1024
-      inject_noise: [0.05, 0.05, 0.05]
+      inject_noise: [0.1, 0.1, 0.1]

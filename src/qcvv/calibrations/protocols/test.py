@@ -339,6 +339,7 @@ def experimental_protocol(circuit_generator, myshadow,
                 # object filled with as many integers as used shots.
                 # outcome = executed.probabilities()
                 outcome = executed.samples()  
+                myshadow.probabilities_list.append(outcome)
             except:
                 # Getting the samples is not possible, hence the probabilities
                 # have to be stored.
@@ -389,6 +390,7 @@ def standard_rb(
     yield data2
 
 
+@plot("Test Standard RB", plots.standard_rb_plot)
 def filtered_rb(
     platform,
     qubit : list,
@@ -399,42 +401,50 @@ def filtered_rb(
     inject_noise
 ):
     # Define the data object.
-    # Use the sequence_lengths list as labels for the data
+    # Use the sequence_lengths list as rows (labels) for the data.
     data1 = Data("standardrb",
         quantities=list(sequence_lengths))
-    # Generate the circuits
     measurement_type = "Ground State"
     myshadow = Shadow(measurement_type, sequence_lengths, runs, nshots)
+    # Get the circuit generator.
     if generator_name == 'UIRSOnequbitcliffords':
-        mygenerator = UIRSOnequbitcliffords(1, invert=True, noisemodel=False)
+        mygenerator = UIRSOnequbitcliffords(1, invert=False, noisemodel=False)
     else:
         raise ValueError('This generator is not implemented.')
+    # Perform the experiment.
     myshadow = experimental_protocol(
         mygenerator, myshadow, inject_noise=inject_noise, nshots=nshots)
-
+    # Calculate the postprocessed data, here meaning the filter values.
     d=2
     amount_sequences = len(sequence_lengths)
+    filterslist = []
     for count in range(runs):
         for m in range(amount_sequences):
-            mycircuit = myshadow.circuit_list[count]
-            executed_circuit = circuit(nshots=1024)
-            for shot in range(nshots):
-                outcome = myshadow.samples_list[count,m,shot]
-                prob = executed_circuit.probabilities()[int(outcome)]
-                filterf = (d+1)(np.abs(prob)**2 - 1/d)
-
+            mycircuit = myshadow.circuit_list[count*amount_sequences+m]
+            executed_circuit = mycircuit(nshots=nshots)
+            filterf = 0 
+            alpha, beta = executed_circuit.probabilities()
+            gamma, xi = myshadow.probabilities[count,m], 1-myshadow.probabilities[count,m] 
+            filterf = (d+1)*(np.abs(np.sqrt(alpha)*np.sqrt(gamma) + np.sqrt(beta)*np.sqrt(xi))**2 - 1/d)
+    #         for shot in range(nshots):
+    #             outcome = myshadow.samples_list[count*amount_sequences+m][shot]
+    #             prob = executed_circuit.probabilities()[int(outcome)]
+    #             filterf += (d+1)*(np.abs(prob)**2 - 1/d)
+            filterslist.append(filterf)
+    filtersarray = np.array(filterslist).reshape(runs, amount_sequences)
+    print(filtersarray)
     for count in range(runs):
-        data1.add({sequence_lengths[i]:myshadow.probabilities[count][i] \
+        data1.add({sequence_lengths[i]:filtersarray[count][i] \
             for i in range(len(sequence_lengths))})
-    # pm = np.sum(myshadow.probabilities, axis=0)/runs
-    # print(sequence_lengths)
-    # print(pm)
-    # data.add({'survival_probabilities':pm,
-    #     'sequence_lengths':sequence_lengths})
+
     yield data1
-    pauli = PauliError(*inject_noise)
-    noise = NoiseModel()
-    noise.add(pauli, gates.Unitary)
+    if inject_noise:
+        pauli = PauliError(*inject_noise)
+        noise = NoiseModel()
+        noise.add(pauli, gates.Unitary)
+        effective = effective_depol(pauli)
+    else:
+        effective = 0
     data2 = Data("effectivedepol", quantities=["effective_depol"])
-    data2.add({"effective_depol": effective_depol(pauli)})
+    data2.add({"effective_depol": effective})
     yield data2

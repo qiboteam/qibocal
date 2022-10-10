@@ -1085,7 +1085,7 @@ def standard_rb_plot(folder, routine, qubit, format):
         """
         return A*f**x+B
     data = Dataset.load_data(
-        folder, 'standard_rb', 'pickle', 'standardrb')
+        folder, routine, 'pickle', 'standardrb')
     dataframe = data.df
     # Extract the data.
     xdata = np.array(dataframe.columns)
@@ -1098,7 +1098,7 @@ def standard_rb_plot(folder, routine, qubit, format):
     try:
         popt, pcov = curve_fit(exp_func, xdata, pm, p0=[0.5, 0.5, 0.5])
     except:
-        popt, pcov = (1,1,1), (None)
+        popt, pcov = (1,1,0), (None)
     # The variance of the variables in 'popt' are calculated with 'pcov'.
     # perr = np.sqrt(np.diag(pcov))
     # Plot the data and the fit.
@@ -1133,7 +1133,7 @@ def standard_rb_plot(folder, routine, qubit, format):
         col=1,
     )
     data = Dataset.load_data(
-        folder, 'standard_rb', 'pickle', 'effectivedepol')
+        folder, routine, 'pickle', 'effectivedepol')
     depol = data.df.to_numpy()[0,0]
     fig.add_annotation(
             dict(
