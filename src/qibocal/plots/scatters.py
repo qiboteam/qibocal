@@ -1026,7 +1026,7 @@ def msr_beta(folder, routine, qubit, format):
             y=data.get_values("MSR", "uV"),
             line=dict(color=c),
             mode="markers",
-            name="[Rx(pi/2) - Ry(pi)] - [Ry(pi) - Rx(pi/2)]",
+            name="[Rx(pi/2) - Ry(pi)] - [Ry(pi/2) - Rx(pi)]",
         ),
         row=1,
         col=1,
