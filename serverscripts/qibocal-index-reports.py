@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""qcvv-index-reports.py
+"""qibocal-index-reports.py
 Generates a JSON index with reports information.
 """
 import json
@@ -9,9 +9,9 @@ from collections import ChainMap
 
 import yaml
 
-ROOT = "/home/users/qcvv/qcvv-reports"
+ROOT = "/home/users/qibocal/qibocal-reports"
 ROOT_URL = "http://login.qrccluster.com:9000/"
-OUT = "/home/users/qcvv/qcvv-reports/index.json"
+OUT = "/home/users/qibocal/qibocal-reports/index.json"
 DEFAULTS = {
     "title": "-",
     "date": "-",
