@@ -138,7 +138,7 @@ actions:
   #   points: 1
 
   # calibrate_qubit_states_binning:
-  #   niter: 6000
+  #   niter: 1024
   #   points: 1
 
   # calibrate_qubit_states:
