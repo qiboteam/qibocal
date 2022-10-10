@@ -811,13 +811,19 @@ def exc_gnd(folder, routine, qubit, format):
         rotation_angle = parameters.get_values("rotation_angle", "dimensionless")[0]
         threshold = parameters.get_values("threshold", "V")[0]
         fidelity = parameters.get_values("fidelity", "dimensionless")[0]
-        assignment_fidelity = parameters.get_values("assignment_fidelity", "dimensionless")[0]
+        assignment_fidelity = parameters.get_values(
+            "assignment_fidelity", "dimensionless"
+        )[0]
     except:
-        parameters = Dataset(name=f"parameters_q{qubit}", quantities={
-            "rotation_angle": "dimensionless", # in degrees
-            "threshold": "V",
-            "fidelity": "dimensionless",
-            "assignment_fidelity": "dimensionless"  })
+        parameters = Dataset(
+            name=f"parameters_q{qubit}",
+            quantities={
+                "rotation_angle": "dimensionless",  # in degrees
+                "threshold": "V",
+                "fidelity": "dimensionless",
+                "assignment_fidelity": "dimensionless",
+            },
+        )
 
     try:
         data_exc = Dataset.load_data(folder, routine, format, f"data_exc_q{qubit}")
@@ -908,7 +914,7 @@ def exc_gnd(folder, routine, qubit, format):
         yaxis_title="q (V)",
         width=1000,
     )
-    
+
     title_text = f"""
     rotation_angle = {rotation_angle}<br>
     threshold = {threshold}<br>
