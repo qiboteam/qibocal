@@ -75,17 +75,27 @@ def qubit_spectroscopy(
 
     if platform.resonator_type == "3D":
         qubit_frequency = data.df.frequency[
-            data.df.MSR.index[data.df.MSR.argmin()]
+            data.df.MSR.index[data.df.MSR.argmin()]  # pylint: disable=E1101
         ].magnitude
         avg_voltage = (
-            np.mean(data.df.MSR.values[: ((fast_end - fast_start) // fast_step)]) * 1e6
+            np.mean(
+                data.df.MSR.values[  # pylint: disable=E1101
+                    : ((fast_end - fast_start) // fast_step)
+                ]
+            )
+            * 1e6
         )
     else:
-        qubit_frequency = data.df.frequency[
-            data.df.MSR.index[data.df.MSR.argmax()]
+        qubit_frequency = data.df.frequency[  # pylint: disable=E1101
+            data.df.MSR.index[data.df.MSR.argmax()]  # pylint: disable=E1101
         ].magnitude
         avg_voltage = (
-            np.mean(data.df.MSR.values[: ((fast_end - fast_start) // fast_step)]) * 1e6
+            np.mean(
+                data.df.MSR.values[  # pylint: disable=E1101
+                    : ((fast_end - fast_start) // fast_step)
+                ]
+            )
+            * 1e6
         )
 
     prec_data = Dataset(

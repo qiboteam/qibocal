@@ -74,19 +74,31 @@ def resonator_spectroscopy(
     # FIXME: have live ploting work for multiple datasets saved
 
     if platform.resonator_type == "3D":
-        resonator_frequency = fast_sweep_data.df.frequency[
-            fast_sweep_data.df.MSR.index[fast_sweep_data.df.MSR.argmax()]
+        resonator_frequency = fast_sweep_data.df.frequency[  # pylint: disable=E1101
+            fast_sweep_data.df.MSR.index[  # pylint: disable=E1101
+                fast_sweep_data.df.MSR.argmax()  # pylint: disable=E1101
+            ]
         ].magnitude
         avg_voltage = (
-            np.mean(fast_sweep_data.df.MSR.values[: (lowres_width // lowres_step)])
+            np.mean(
+                fast_sweep_data.df.MSR.values[  # pylint: disable=E1101
+                    : (lowres_width // lowres_step)
+                ]
+            )
             * 1e6
         )
     else:
-        resonator_frequency = fast_sweep_data.df.frequency[
-            fast_sweep_data.df.MSR.index[fast_sweep_data.df.MSR.argmin()]
+        resonator_frequency = fast_sweep_data.df.frequency[  # pylint: disable=E1101
+            fast_sweep_data.df.MSR.index[  # pylint: disable=E1101
+                fast_sweep_data.df.MSR.argmin()  # pylint: disable=E1101
+            ]
         ].magnitude
         avg_voltage = (
-            np.mean(fast_sweep_data.df.MSR.values[: (lowres_width // lowres_step)])
+            np.mean(
+                fast_sweep_data.df.MSR.values[  # pylint: disable=E1101
+                    : (lowres_width // lowres_step)
+                ]
+            )
             * 1e6
         )
 
@@ -384,7 +396,7 @@ def dispersive_shift(
             if count % points == 0 and count > 0:
                 yield data_shifted
                 yield lorentzian_fit(
-                    data_spec,
+                    data_shifted,
                     x="frequency[GHz]",
                     y="MSR[uV]",
                     qubit=qubit,

@@ -23,10 +23,10 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
     except:
         data_fit = Data(
             quantities=[
-                "fit_amplitude",
-                "fit_center",
-                "fit_sigma",
-                "fit_offset",
+                "popt0",
+                "popt1",
+                "popt2",
+                "popt3",
                 "label1",
                 "label2",
             ]
@@ -85,16 +85,16 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
             max(data_fast.get_values("frequency", "GHz")),
             20,
         )
-        params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
+        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
             go.Scatter(
                 x=freqrange,
                 y=lorenzian(
                     freqrange,
-                    data_fit.df["fit_amplitude"][0],
-                    data_fit.df["fit_center"][0],
-                    data_fit.df["fit_sigma"][0],
-                    data_fit.df["fit_offset"][0],
+                    data_fit.get_values("popt0"),
+                    data_fit.get_values("popt1"),
+                    data_fit.get_values("popt2"),
+                    data_fit.get_values("popt3"),
                 ),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
@@ -216,17 +216,17 @@ def time_msr_phase(folder, routine, qubit, format):
             max(data.get_values("Time", "ns")),
             20,
         )
-        params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
+        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
             go.Scatter(
                 x=timerange,
                 y=rabi(
                     timerange,
-                    data_fit.df["popt0"][0],
-                    data_fit.df["popt1"][0],
-                    data_fit.df["popt2"][0],
-                    data_fit.df["popt3"][0],
-                    data_fit.df["popt4"][0],
+                    data_fit.get_values("popt0"),
+                    data_fit.get_values("popt1"),
+                    data_fit.get_values("popt2"),
+                    data_fit.get_values("popt3"),
+                    data_fit.get_values("popt4"),
                 ),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
@@ -339,17 +339,17 @@ def gain_msr_phase(folder, routine, qubit, format):
             max(data.get_values("gain", "dimensionless")),
             20,
         )
-        params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
+        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
             go.Scatter(
                 x=timerange,
                 y=rabi(
                     timerange,
-                    data_fit.df["popt0"][0],
-                    data_fit.df["popt1"][0],
-                    data_fit.df["popt2"][0],
-                    data_fit.df["popt3"][0],
-                    data_fit.df["popt4"][0],
+                    data_fit.get_values("popt0"),
+                    data_fit.get_values("popt1"),
+                    data_fit.get_values("popt2"),
+                    data_fit.get_values("popt3"),
+                    data_fit.get_values("popt4"),
                 ),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
@@ -443,17 +443,17 @@ def amplitude_msr_phase(folder, routine, qubit, format):
             max(data.get_values("amplitude", "dimensionless")),
             20,
         )
-        params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
+        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
             go.Scatter(
                 x=timerange,
                 y=rabi(
                     timerange,
-                    data_fit.df["popt0"][0],
-                    data_fit.df["popt1"][0],
-                    data_fit.df["popt2"][0],
-                    data_fit.df["popt3"][0],
-                    data_fit.df["popt4"][0],
+                    data_fit.get_values("popt0"),
+                    data_fit.get_values("popt1"),
+                    data_fit.get_values("popt2"),
+                    data_fit.get_values("popt3"),
+                    data_fit.get_values("popt4"),
                 ),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
@@ -535,17 +535,17 @@ def time_msr(folder, routine, qubit, format):
             max(data.get_values("wait", "ns")),
             20,
         )
-        params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
+        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
             go.Scatter(
                 x=timerange,
                 y=ramsey(
                     timerange,
-                    data_fit.df["popt0"][0],
-                    data_fit.df["popt1"][0],
-                    data_fit.df["popt2"][0],
-                    data_fit.df["popt3"][0],
-                    data_fit.df["popt4"][0],
+                    data_fit.get_values("popt0"),
+                    data_fit.get_values("popt1"),
+                    data_fit.get_values("popt2"),
+                    data_fit.get_values("popt3"),
+                    data_fit.get_values("popt4"),
                 ),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
@@ -654,15 +654,15 @@ def t1_time_msr_phase(folder, routine, qubit, format):
             max(data.get_values("Time", "ns")),
             20,
         )
-        params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
+        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
             go.Scatter(
                 x=timerange,
                 y=exp(
                     timerange,
-                    data_fit.df["popt0"][0],
-                    data_fit.df["popt1"][0],
-                    data_fit.df["popt2"][0],
+                    data_fit.get_values("popt0"),
+                    data_fit.get_values("popt1"),
+                    data_fit.get_values("popt2"),
                 ),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
@@ -746,16 +746,16 @@ def flips_msr_phase(folder, routine, qubit, format):
             max(data.get_values("flips", "dimensionless")),
             20,
         )
-        params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
+        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
             go.Scatter(
                 x=timerange,
                 y=flipping(
                     timerange,
-                    data_fit.df["popt0"][0],
-                    data_fit.df["popt1"][0],
-                    data_fit.df["popt2"][0],
-                    data_fit.df["popt3"][0],
+                    data_fit.get_values("popt0"),
+                    data_fit.get_values("popt1"),
+                    data_fit.get_values("popt2"),
+                    data_fit.get_values("popt3"),
                 ),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
@@ -1044,10 +1044,10 @@ def msr_beta(folder, routine, qubit, format):
                 x=beta_param,
                 y=cos(
                     beta_param,
-                    data_fit.df["popt0"][0],
-                    data_fit.df["popt1"][0],
-                    data_fit.df["popt2"][0],
-                    data_fit.df["popt3"][0],
+                    data_fit.get_values("popt0"),
+                    data_fit.get_values("popt1"),
+                    data_fit.get_values("popt2"),
+                    data_fit.get_values("popt3"),
                 ),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
@@ -1100,10 +1100,10 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
     except:
         data_fit = Data(
             quantities=[
-                "fit_amplitude",
-                "fit_center",
-                "fit_sigma",
-                "fit_offset",
+                "popt0",
+                "popt1",
+                "popt2",
+                "popt3",
                 "label1",
                 "label2",
             ]
@@ -1116,10 +1116,10 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
     except:
         data_fit_shifted = Data(
             quantities=[
-                "fit_amplitude",
-                "fit_center",
-                "fit_sigma",
-                "fit_offset",
+                "popt0",
+                "popt1",
+                "popt2",
+                "popt3",
                 "label1",
                 "label2",
             ]
@@ -1182,16 +1182,16 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
             max(data_spec.get_values("frequency", "GHz")),
             20,
         )
-        params = [i for i in list(data_fit.df.keys()) if "fit" not in i]
+        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
             go.Scatter(
                 x=freqrange,
                 y=lorenzian(
                     freqrange,
-                    data_fit.df["fit_amplitude"][0],
-                    data_fit.df["fit_center"][0],
-                    data_fit.df["fit_sigma"][0],
-                    data_fit.df["fit_offset"][0],
+                    data_fit.get_values("popt0"),
+                    data_fit.get_values("popt1"),
+                    data_fit.get_values("popt2"),
+                    data_fit.get_values("popt3"),
                 ),
                 name="Fit spectroscopy",
                 line=go.scatter.Line(dash="dot"),
@@ -1220,16 +1220,16 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
             max(data_shifted.get_values("frequency", "GHz")),
             20,
         )
-        params = [i for i in list(data_fit_shifted.df.keys()) if "fit" not in i]
+        params = [i for i in list(data_fit_shifted.df.keys()) if "popt" not in i]
         fig.add_trace(
             go.Scatter(
                 x=freqrange,
                 y=lorenzian(
                     freqrange,
-                    data_fit_shifted.df["fit_amplitude"][0],
-                    data_fit_shifted.df["fit_center"][0],
-                    data_fit_shifted.df["fit_sigma"][0],
-                    data_fit_shifted.df["fit_offset"][0],
+                    data_fit_shifted.get_values("popt0"),
+                    data_fit_shifted.get_values("popt1"),
+                    data_fit_shifted.get_values("popt2"),
+                    data_fit_shifted.get_values("popt3"),
                 ),
                 name="Fit shifted spectroscopy",
                 line=go.scatter.Line(dash="dot"),
