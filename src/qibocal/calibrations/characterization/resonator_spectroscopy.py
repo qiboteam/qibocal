@@ -81,9 +81,9 @@ def resonator_spectroscopy(
         ].magnitude
         avg_voltage = (
             np.mean(
-                fast_sweep_data.df.MSR.values[
+                fast_sweep_data.df.MSR.values[  # pylint: disable=E1101
                     : (lowres_width // lowres_step)
-                ]  # pylint: disable=E1101
+                ]
             )
             * 1e6
         )
@@ -95,9 +95,9 @@ def resonator_spectroscopy(
         ].magnitude
         avg_voltage = (
             np.mean(
-                fast_sweep_data.df.MSR.values[
+                fast_sweep_data.df.MSR.values[  # pylint: disable=E1101
                     : (lowres_width // lowres_step)
-                ]  # pylint: disable=E1101
+                ]
             )
             * 1e6
         )

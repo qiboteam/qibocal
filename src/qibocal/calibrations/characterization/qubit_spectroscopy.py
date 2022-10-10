@@ -79,8 +79,10 @@ def qubit_spectroscopy(
         ].magnitude
         avg_voltage = (
             np.mean(
-                data.df.MSR.values[: ((fast_end - fast_start) // fast_step)]
-            )  # pylint: disable=E1101
+                data.df.MSR.values[  # pylint: disable=E1101
+                    : ((fast_end - fast_start) // fast_step)
+                ]
+            )
             * 1e6
         )
     else:
@@ -89,8 +91,10 @@ def qubit_spectroscopy(
         ].magnitude
         avg_voltage = (
             np.mean(
-                data.df.MSR.values[: ((fast_end - fast_start) // fast_step)]
-            )  # pylint: disable=E1101
+                data.df.MSR.values[  # pylint: disable=E1101
+                    : ((fast_end - fast_start) // fast_step)
+                ]
+            )
             * 1e6
         )
 
