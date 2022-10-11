@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from .cli import command, live_plot, upload
 
 """qibocal: Quantum Calibration Verification and Validation using Qibo."""

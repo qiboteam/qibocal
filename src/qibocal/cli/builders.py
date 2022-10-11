@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import datetime
 import inspect
 import os
@@ -13,7 +12,7 @@ from qibocal.data import Data
 
 def load_yaml(path):
     """Load yaml file from disk."""
-    with open(path, "r") as file:
+    with open(path) as file:
         data = yaml.safe_load(file)
     return data
 

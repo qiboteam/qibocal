@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Routine-specific method for post-processing data acquired."""
 import lmfit
 import numpy as np
