@@ -130,3 +130,6 @@ dmypy.json
 
 # SLURM output files
 *.out
+
+# QCVV output directories
+20*

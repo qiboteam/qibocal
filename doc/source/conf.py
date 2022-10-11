@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Configuration file for the Sphinx documentation builder.
 #
 # This file only contains a selection of the most common options. For a full
@@ -17,16 +18,16 @@ from recommonmark.transform import AutoStructify
 
 sys.path.insert(0, os.path.abspath(".."))
 
-import qcvv
+import qibocal
 
 # -- Project information -----------------------------------------------------
 
-project = "qcvv"
+project = "qibocal"
 copyright = "2022, The Qibo team"
 author = "The Qibo team"
 
 # The full version, including alpha/beta/rc tags
-release = qcvv.__version__
+release = qibocal.__version__
 
 
 # -- General configuration ---------------------------------------------------
