@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Adds global CLI options."""
 import inspect
 import os
@@ -140,7 +139,7 @@ class ActionBuilder:
     @staticmethod
     def load_runcard(path):
         """Method to load the runcard."""
-        with open(path, "r") as file:
+        with open(path) as file:
             runcard = yaml.safe_load(file)
         return runcard
 
