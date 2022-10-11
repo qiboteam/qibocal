@@ -7,6 +7,7 @@ from qibocal import plots
 from qibocal.data import Dataset
 from qibocal.decorators import plot
 
+
 @plot("exc vs gnd", plots.exc_gnd)
 def calibrate_qubit_states(
     platform: AbstractPlatform,
