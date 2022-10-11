@@ -1,7 +1,7 @@
 Getting started
 ===============
 
-In this section we present the basic aspects of the Qcvv design and provide installation instructions.
+In this section we present the basic aspects of the Qibocal design and provide installation instructions.
 
 .. toctree::
     :maxdepth: 1

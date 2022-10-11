@@ -3,10 +3,10 @@
 How to write your runcard?
 ==========================
 
-In ``qcvv`` we adopt a declarative programming paradigm, i.e. the user should specify directly
+In ``qibocal`` we adopt a declarative programming paradigm, i.e. the user should specify directly
 what he wants to do without caring about the underlying implementation.
 
-This paradigm is implemented in ``qcvv`` in the form of runcards. A runcard will contain all
+This paradigm is implemented in ``qibocal`` in the form of runcards. A runcard will contain all
 the essential information to run a specific task.
 
 In the case of the ``qq`` command a possible runcard should look like this:
@@ -15,7 +15,7 @@ In the case of the ``qq`` command a possible runcard should look like this:
 
     platform: tii5q
 
-    qubit: 0
+    qubits: [0]
 
     format: pickle
 
@@ -31,7 +31,7 @@ In the case of the ``qq`` command a possible runcard should look like this:
 
 First, the user will need to specify some global parameters including:
     * ``platform``: the platform name.
-    * ``qubit``: the qubit(s) that we are calibrating.
+    * ``qubits``: the qubit(s) that we are calibrating.
     * ``format``: the format for storing the measurements.
 
 After those the user will simply populate ``actions`` with all the routines
