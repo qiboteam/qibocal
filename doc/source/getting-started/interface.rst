@@ -1,11 +1,11 @@
 Interface
 =========
 
-In this section we present the different commands implemented in ``qcvv`` and how to use them.
+In this section we present the different commands implemented in ``qibocal`` and how to use them.
 
 ``qq``
 ^^^^^^
-``qq`` is the base command in ``qcvv``. It can be launched from the command line using:
+``qq`` is the base command in ``qibocal``. It can be launched from the command line using:
 
 .. code-block::
 
@@ -32,6 +32,3 @@ is still running ``qq-live`` will instead produce a live-plotting.
 
 ``qq-upload``
 ^^^^^^^^^^^^^
-
-``qq-compare``
-^^^^^^^^^^^^^^
