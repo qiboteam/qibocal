@@ -349,7 +349,7 @@ def gain_msr_phase(folder, routine, qubit, format):
             go.Scatter(
                 x=gainrange,
                 y=rabi(
-                    timerange,
+                    gainrange,
                     data_fit.get_values("popt0"),
                     data_fit.get_values("popt1"),
                     data_fit.get_values("popt2"),
@@ -453,7 +453,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
             go.Scatter(
                 x=amplituderange,
                 y=rabi(
-                    timerange,
+                    amplituderange,
                     data_fit.get_values("popt0"),
                     data_fit.get_values("popt1"),
                     data_fit.get_values("popt2"),
@@ -746,7 +746,7 @@ def flips_msr_phase(folder, routine, qubit, format):
 
     # add fitting trace
     if len(data) > 0 and len(data_fit) > 0:
-        timerange = np.linspace(
+        flipsrange = np.linspace(
             min(data.get_values("flips", "dimensionless")),
             max(data.get_values("flips", "dimensionless")),
             2 * len(data),
@@ -754,9 +754,9 @@ def flips_msr_phase(folder, routine, qubit, format):
         params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
             go.Scatter(
-                x=timerange,
+                x=flipsrange,
                 y=flipping(
-                    timerange,
+                    flipsrange,
                     data_fit.get_values("popt0"),
                     data_fit.get_values("popt1"),
                     data_fit.get_values("popt2"),
@@ -980,7 +980,7 @@ def prob_gate_iteration(folder, routine, qubit, format):
         probabilities = np.array(data.get_values("probability", "dimensionless"))[
             data_start:data_end
         ]
-        c = "#" + "{:06x}".format(n * 823000)
+        c = "#" + "{:06x}".format(n * 99999)
         fig.add_trace(
             go.Scatter(
                 x=gates,
