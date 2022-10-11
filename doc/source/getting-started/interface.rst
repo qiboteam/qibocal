@@ -32,6 +32,3 @@ is still running ``qq-live`` will instead produce a live-plotting.
 
 ``qq-upload``
 ^^^^^^^^^^^^^
-
-``qq-compare``
-^^^^^^^^^^^^^^
