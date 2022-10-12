@@ -80,6 +80,14 @@ actions:
   #   software_averages: 1
   #   points: 10
 
+  # qubit_attenuation:
+  #   freq_start: -100.e+6
+  #   freq_end: +100.e+6
+  #   freq_step: 2.e+6
+  #   attenuation_list: range(38,60,2)
+  #   software_averages: 1
+  #   points: 1
+
   # rabi_pulse_length:
   #   pulse_duration_start: 4 # minimum 4ns
   #   pulse_duration_end: 200

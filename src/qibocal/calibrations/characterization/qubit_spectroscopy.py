@@ -269,3 +269,60 @@ def qubit_spectroscopy_flux_track(
                 count += 1
 
     yield data
+
+
+@plot("Frequency vs Attenuation", plots.frequency_attenuation_msr_phase)
+def qubit_attenuation(
+    platform: AbstractPlatform,
+    qubit: int,
+    freq_start,
+    freq_end,
+    freq_step,
+    attenuation_list,
+    software_averages,
+    points=10,
+):
+    platform.reload_settings()
+
+    sequence = PulseSequence()
+    qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=5000)
+    qd_pulse.frequency = 1.0e6
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=5000)
+    sequence.add(qd_pulse)
+    sequence.add(ro_pulse)
+
+    data = Dataset(
+        name=f"data_q{qubit}", quantities={"frequency": "Hz", "attenuation": "dB"}
+    )
+
+    lo_qcm_frequency = platform.characterization["single_qubit"][qubit]["qubit_freq"]
+    freqrange = np.arange(freq_start, freq_end, freq_step) + lo_qcm_frequency
+
+    if isinstance(attenuation_list, str):
+        attenuation_list = eval(attenuation_list)
+
+    count = 0
+    attenuation_list = np.array(attenuation_list)
+    for _ in range(software_averages):
+        for att in attenuation_list:
+            for freq in freqrange:
+                if count % points == 0:
+                    yield data
+                platform.qd_port[qubit].lo_frequency = freq - qd_pulse.frequency
+                platform.qd_port[qubit].attenuation = att
+                msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
+                    ro_pulse.serial
+                ]
+                results = {
+                    "MSR[V]": msr,
+                    "i[V]": i,
+                    "q[V]": q,
+                    "phase[deg]": phase,
+                    "frequency[Hz]": freq,
+                    "attenuation[dB]": att,
+                }
+                # TODO: implement normalization
+                data.add(results)
+                count += 1
+
+    yield data
