@@ -865,7 +865,7 @@ def exc_gnd(folder, routine, qubit, format):
         go.Scatter(
             x=[i_mean_exc],
             y=[q_mean_exc],
-            name=f" state1_voltage: {mod_iq_exc} <br> mean_exc_state: {iq_mean_exc}",
+            name=f" state1_voltage: {mod_iq_exc} <br> mean_state1: {iq_mean_exc}",
             mode="markers",
             marker=dict(size=10, color="red"),
         ),
@@ -885,7 +885,7 @@ def exc_gnd(folder, routine, qubit, format):
         go.Scatter(
             x=[i_mean_gnd],
             y=[q_mean_gnd],
-            name=f" state0_voltage: {mod_iq_gnd} <br> mean_gnd_state: {iq_mean_gnd}",
+            name=f" state0_voltage: {mod_iq_gnd} <br> mean_state0: {iq_mean_gnd}",
             mode="markers",
             marker=dict(size=10, color="blue"),
         ),
