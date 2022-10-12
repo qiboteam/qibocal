@@ -57,6 +57,7 @@ actions:
   #   precision_start: -500_000
   #   precision_end: 500_000
   #   precision_step: 100_000
+  #   attenuation: 46
   #   software_averages: 1
   #   points: 10
 

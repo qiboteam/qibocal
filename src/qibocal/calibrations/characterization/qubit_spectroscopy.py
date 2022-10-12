@@ -19,29 +19,23 @@ def qubit_spectroscopy(
     precision_start,
     precision_end,
     precision_step,
+    attenuation,
     software_averages,
     points=10,
 ):
-
     platform.reload_settings()
 
     sequence = PulseSequence()
     qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=5000)
+    qd_pulse.frequency = 1.0e6
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=5000)
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
+    platform.qd_port[qubit].attenuation = attenuation
 
     qubit_frequency = platform.characterization["single_qubit"][qubit]["qubit_freq"]
 
     freqrange = np.arange(fast_start, fast_end, fast_step) + qubit_frequency
-
-    data = Dataset(quantities={"frequency": "Hz", "attenuation": "dB"})
-
-    # FIXME: Waiting for Qblox platform to take care of that
-    platform.ro_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["resonator_freq"]
-        - ro_pulse.frequency
-    )
 
     data = Dataset(name=f"fast_sweep_q{qubit}", quantities={"frequency": "Hz"})
     count = 0
