@@ -42,7 +42,7 @@ def allXY(
     software_averages=1,
     points=10,
 ):
-    # platform.reload_settings()
+
     state0_voltage = complex(
         platform.characterization["single_qubit"][qubit]["state0_voltage"]
     )
@@ -111,7 +111,6 @@ def allXY_iteration(
     software_averages=1,
     points=10,
 ):
-    # platform.reload_settings()
 
     # FIXME: Waiting to be able to pass qpucard to qibolab
     ro_pulse_test = platform.create_qubit_readout_pulse(qubit, start=4)

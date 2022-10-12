@@ -16,8 +16,6 @@ def calibrate_qubit_states(
     points=10,
 ):
 
-    platform.reload_settings()
-
     # create exc sequence
     exc_sequence = PulseSequence()
     RX_pulse = platform.create_RX_pulse(qubit, start=0)
