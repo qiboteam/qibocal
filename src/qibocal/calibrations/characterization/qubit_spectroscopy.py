@@ -192,3 +192,80 @@ def qubit_spectroscopy_flux(
                 count += 1
 
     yield data
+
+
+@plot("MSR (row 1) and Phase (row 2)", plots.frequency_flux_msr_phase)
+def qubit_spectroscopy_flux_track(
+    platform: AbstractPlatform,
+    qubit: int,
+    freq_width,
+    freq_step,
+    current_offset,
+    current_step,
+    software_averages,
+    attenuation=46,
+    points=10,
+):
+    platform.reload_settings()
+
+    sequence = PulseSequence()
+    qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=5000)
+    qd_pulse.frequency = 1.0e6
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=5000)
+    sequence.add(qd_pulse)
+    sequence.add(ro_pulse)
+    platform.qd_port[qubit].attenuation = attenuation
+
+    data = Dataset(
+        name=f"data_q{qubit}", quantities={"frequency": "Hz", "current": "A"}
+    )
+
+    qubit_frequency = platform.characterization["single_qubit"][qubit]["qubit_freq"]
+    frequency_array = np.arange(-freq_width, freq_width, freq_step)
+    sweetspot = platform.characterization["single_qubit"][qubit]["sweetspot"]
+    current_range = np.arange(0, current_offset, current_step)
+    current_range = np.append(current_range, -current_range) + sweetspot
+
+    count = 0
+    for _ in range(software_averages):
+        for curr in current_range:
+            platform.ro_port[qubit].lo_frequency = (
+                np.poly1d(
+                    platform.characterization["single_qubit"][qubit][
+                        "resonator_polycoef_flux"
+                    ]
+                )(curr)
+                - ro_pulse.frequency
+            )
+
+            if curr == sweetspot:
+                center = qubit_frequency
+                msrs = []
+            else:
+                idx = np.argmax(msrs)
+                center = np.mean(frequency_range[idx])
+                msrs = []
+
+            frequency_range = frequency_array + center
+            for freq in frequency_range:
+                if count % points == 0:
+                    yield data
+                platform.qd_port[qubit].lo_frequency = freq - qd_pulse.frequency
+                platform.qf_port[qubit].current = curr
+                msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
+                    ro_pulse.serial
+                ]
+                results = {
+                    "MSR[V]": msr,
+                    "i[V]": i,
+                    "q[V]": q,
+                    "phase[rad]": phase,
+                    "frequency[Hz]": freq,
+                    "current[A]": curr,
+                }
+                msrs += [msr]
+                # TODO: implement normalization
+                data.add(results)
+                count += 1
+
+    yield data

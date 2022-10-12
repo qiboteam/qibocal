@@ -71,6 +71,15 @@ actions:
   #   software_averages: 2
   #   points: 10
 
+  # qubit_spectroscopy_flux_track:
+  #   freq_width: 50_000_000
+  #   freq_step: 1_000_000
+  #   current_offset: 10.e-3
+  #   current_step: 4.e-3 # 0.0001
+  #   attenuation: 46
+  #   software_averages: 1
+  #   points: 10
+
   # rabi_pulse_length:
   #   pulse_duration_start: 4 # minimum 4ns
   #   pulse_duration_end: 200
