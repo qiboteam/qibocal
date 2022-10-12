@@ -200,7 +200,7 @@ def ramsey(
                 "q[V]": q,
                 "phase[deg]": phase,
                 "wait[ns]": wait,
-                "t_max[ns]": np.array(delay_between_pulses_end),
+                "t_max[ns]": delay_between_pulses_end,
             }
             data.add(results)
             count += 1

@@ -92,8 +92,8 @@ def allXY(
                 "i[V]": i,
                 "q[V]": q,
                 "phase[rad]": phase,
-                "probability[dimensionless]": np.array(prob),
-                "gateNumber[dimensionless]": np.array(gateNumber),
+                "probability[dimensionless]": prob,
+                "gateNumber[dimensionless]": gateNumber,
             }
             data.add(results)
             count += 1
@@ -168,8 +168,8 @@ def allXY_iteration(
                     "q[V]": q,
                     "phase[rad]": phase,
                     "probability[dimensionless]": prob,
-                    "gateNumber[dimensionless]": np.array(gateNumber),
-                    "beta_param[dimensionless]": np.array(beta_param),
+                    "gateNumber[dimensionless]": gateNumber,
+                    "beta_param[dimensionless]": beta_param,
                 }
                 data.add(results)
                 count += 1
