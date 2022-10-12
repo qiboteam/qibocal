@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """Some tests for the Dataset class"""
 import numpy as np
 import pytest

@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from qibo import gates, models
 
 from qibocal.data import Data

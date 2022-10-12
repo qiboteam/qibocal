@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from qibocal.calibrations.characterization.allXY import *
 from qibocal.calibrations.characterization.calibrate_qubit_states import *
 from qibocal.calibrations.characterization.flipping import *
