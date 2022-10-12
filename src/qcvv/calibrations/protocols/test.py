@@ -423,14 +423,13 @@ def filtered_rb(
             mycircuit = myshadow.circuit_list[count*amount_sequences+m]
             executed_circuit = mycircuit(nshots=nshots)
             filterf = 0 
-            alpha, beta = executed_circuit.probabilities()
-            gamma, xi = myshadow.probabilities[count,m], 1-myshadow.probabilities[count,m] 
-            filterf = (d+1)*(np.abs(np.sqrt(alpha)*np.sqrt(gamma) + np.sqrt(beta)*np.sqrt(xi))**2 - 1/d)
-    #         for shot in range(nshots):
-    #             outcome = myshadow.samples_list[count*amount_sequences+m][shot]
-    #             prob = executed_circuit.probabilities()[int(outcome)]
-    #             filterf += (d+1)*(np.abs(prob)**2 - 1/d)
-            filterslist.append(filterf)
+            talpha, tbeta = executed_circuit.probabilities()
+            alpha, beta = myshadow.probabilities[count,m], 1-myshadow.probabilities[count,m] 
+            for shot in range(nshots):
+                outcome = myshadow.samples_list[count*amount_sequences+m][shot]
+                prob = executed_circuit.probabilities()[int(outcome)]
+                filterf += (d+1)*(np.abs(prob) - 1/d)
+            filterslist.append(filterf/nshots)
     filtersarray = np.array(filterslist).reshape(runs, amount_sequences)
     print(filtersarray)
     for count in range(runs):
