@@ -250,7 +250,7 @@ def drag_pulse_tunning(
             qubit, start=RY90_drag_pulse.finish, beta=beta_param
         )
 
-        # Ry(pi) - Rx(pi/2) - Ro
+        # Ry(pi/2) - Rx(pi) - Ro
         seq2 = PulseSequence()
         seq2.add(RY90_drag_pulse)
         seq2.add(RX_drag_pulse)
