@@ -263,7 +263,7 @@ def time_msr_phase(folder, routine, qubit, format):
             dict(
                 font=dict(color="black", size=12),
                 x=0,
-                y=-0.25,
+                y=-0.30,
                 showarrow=False,
                 text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.1f} uV.",
                 textangle=0,
