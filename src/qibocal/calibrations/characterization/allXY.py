@@ -355,6 +355,5 @@ def _get_sequence_from_gate_pair(platform: AbstractPlatform, gates, qubit, beta_
 
     # RO pulse starting just after pair of gates
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=sequenceDuration + 4)
-    print(ro_pulse.serial)
 
     return sequence, ro_pulse
