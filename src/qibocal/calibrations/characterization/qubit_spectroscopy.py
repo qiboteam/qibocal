@@ -138,6 +138,7 @@ def qubit_spectroscopy_flux(
     current_min,
     current_step,
     software_averages,
+    attenuation,
     fluxline,
     points=10,
 ):
@@ -148,9 +149,11 @@ def qubit_spectroscopy_flux(
 
     sequence = PulseSequence()
     qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=5000)
+    qd_pulse.frequency = 1.0e6
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=5000)
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
+    platform.qd_port[qubit].attenuation = attenuation
 
     data = Dataset(
         name=f"data_q{qubit}", quantities={"frequency": "Hz", "current": "A"}
