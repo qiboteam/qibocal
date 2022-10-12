@@ -116,7 +116,6 @@ def rabi_fit(data, x, y, qubit, nqubits, labels):
             "popt4",
             labels[0],
             labels[1],
-            labels[2],
         ],
     )
 
@@ -145,8 +144,8 @@ def rabi_fit(data, x, y, qubit, nqubits, labels):
         )
         smooth_dataset = rabi(time.values, *popt)
         pi_pulse_duration = np.abs((1.0 / popt[2]) / 2)
-        rabi_oscillations_pi_pulse_max_voltage = smooth_dataset.max() * 1e6
-        t1 = 1.0 / popt[4]  # double check T1
+        pi_pulse_max_voltage = smooth_dataset.max()
+        t2 = 1.0 / popt[4]  # double check T1
     except:
         log.warning("The fitting was not succesful")
         return data_fit
@@ -159,8 +158,7 @@ def rabi_fit(data, x, y, qubit, nqubits, labels):
             "popt3": popt[3],
             "popt4": popt[4],
             labels[0]: pi_pulse_duration,
-            labels[1]: rabi_oscillations_pi_pulse_max_voltage,
-            labels[2]: t1,
+            labels[1]: pi_pulse_max_voltage,
         }
     )
     return data_fit
@@ -199,7 +197,7 @@ def ramsey_fit(data, x, y, qubit, qubit_freq, sampling_rate, offset_freq, labels
         )
         delta_fitting = popt[2]
         delta_phys = int((delta_fitting * sampling_rate) - offset_freq)
-        corrected_qubit_frequency = int(qubit_freq - delta_phys)
+        corrected_qubit_frequency = int(qubit_freq + delta_phys)
         t2 = 1.0 / popt[4]
     except:
         log.warning("The fitting was not succesful")
