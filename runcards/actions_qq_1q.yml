@@ -34,6 +34,14 @@ actions:
     software_averages: 1
     points: 10
 
+  # qubit_attenuation:
+  #   freq_start: -100.e+6
+  #   freq_end: +100.e+6
+  #   freq_step: 2.e+6
+  #   attenuation_list: range(38,60,2)
+  #   software_averages: 1
+  #   points: 1
+
   # rabi_pulse_amplitude:
   #   pulse_amplitude_start: 0 # 0<=a<=1
   #   pulse_amplitude_end: 1
