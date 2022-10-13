@@ -17,7 +17,7 @@ classifiers=[
 [tool.poetry.dependencies]
 python = ">=3.8, <4"
 qibo = ">=0.1.8"
-qibolab = {git = "git@github.com:qiboteam/qibolab.git", rev = "main"}
+qibolab = {git = "https://github.com/qiboteam/qibolab.git", rev = "main"}
 pandas = "^1.4.3"
 Pint-Pandas = {git = "https://github.com/hgrecco/pint-pandas.git", rev = "master"}
 dash = "^2.6.0"
