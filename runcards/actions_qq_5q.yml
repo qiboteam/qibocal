@@ -216,3 +216,17 @@ actions:
   #   delay_between_pulses_step: 20
   #   software_averages: 1
   #   points: 5
+
+  # ro_power_optimization:
+  #   amplitude_min: 0
+  #   amplitude_step: 0.1
+  #   amplitude_max: 1
+  #   attenuation_reduction: 0
+  #   niter: 2000
+  #   points: 1
+
+  # ro_power_optimization:
+  #   freq_width: 0
+  #   freq_step: 0.1
+  #   niter: 2000
+  #   points: 1
