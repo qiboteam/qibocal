@@ -129,6 +129,22 @@ actions:
   #   software_averages: 1
   #   points: 10
 
+  # rabi_pulse_amplitude_and_attenuation:
+  #   pulse_amplitude_start: 0 # 0<=a<=1
+  #   pulse_amplitude_end: 1
+  #   pulse_amplitude_step: 0.02
+  #   qd_pulse_attenuation_range: range(0,60,2)  #or [12, 2, 20]
+  #   software_averages: 1
+  #   points: 10
+
+  # rabi_pulse_gain_and_attenuation:
+  #   pulse_gain_start: 0 # 0<=a<=1
+  #   pulse_gain_end: 1
+  #   pulse_gain_step: 0.02
+  #   qd_pulse_attenuation_range: range(0,60,2)  #or [12, 2, 20]
+  #   software_averages: 1
+  #   points: 10
+
   # ramsey_frequency_detuned:
   #   t_start: 4
   #   t_end: [3000] #t_end (optimal) = 3.5 * T2
