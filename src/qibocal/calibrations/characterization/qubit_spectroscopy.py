@@ -19,7 +19,6 @@ def qubit_spectroscopy(
     precision_start,
     precision_end,
     precision_step,
-    attenuation,
     software_averages,
     points=10,
 ):
@@ -31,7 +30,6 @@ def qubit_spectroscopy(
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=5000)
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
-    platform.qd_port[qubit].attenuation = attenuation
 
     qubit_frequency = platform.characterization["single_qubit"][qubit]["qubit_freq"]
 
