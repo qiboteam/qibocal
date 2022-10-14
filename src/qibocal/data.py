@@ -130,7 +130,9 @@ class Dataset(AbstractDataset):
             if "[" in key:
                 name = key.split("[")[0]
                 unit = re.search(r"\[([A-Za-z0-9_]+)\]", key).group(1)
-                processed_data[name] = pd.Series(data=(np.array(values) * self.ureg(unit)), dtype=f"pint[{unit}]")
+                processed_data[name] = pd.Series(
+                    data=(np.array(values) * self.ureg(unit)), dtype=f"pint[{unit}]"
+                )
             else:
                 processed_data[name] = pd.Series(data=(values), dtype=object)
         self.df = pd.DataFrame(processed_data)
