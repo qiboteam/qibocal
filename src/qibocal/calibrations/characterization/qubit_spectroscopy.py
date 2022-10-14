@@ -19,7 +19,6 @@ def qubit_spectroscopy(
     precision_start,
     precision_end,
     precision_step,
-    attenuation,
     software_averages,
     points=10,
 ):
@@ -31,7 +30,6 @@ def qubit_spectroscopy(
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=5000)
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
-    platform.qd_port[qubit].attenuation = attenuation
 
     qubit_frequency = platform.characterization["single_qubit"][qubit]["qubit_freq"]
 
@@ -138,7 +136,6 @@ def qubit_spectroscopy_flux(
     current_min,
     current_step,
     software_averages,
-    attenuation,
     fluxline,
     points=10,
 ):
@@ -153,7 +150,6 @@ def qubit_spectroscopy_flux(
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=5000)
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
-    platform.qd_port[qubit].attenuation = attenuation
 
     data = Dataset(
         name=f"data_q{qubit}", quantities={"frequency": "Hz", "current": "A"}
@@ -203,7 +199,6 @@ def qubit_spectroscopy_flux_track(
     current_offset,
     current_step,
     software_averages,
-    attenuation=46,
     points=10,
 ):
     platform.reload_settings()
@@ -214,7 +209,6 @@ def qubit_spectroscopy_flux_track(
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=5000)
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
-    platform.qd_port[qubit].attenuation = attenuation
 
     data = Dataset(
         name=f"data_q{qubit}", quantities={"frequency": "Hz", "current": "A"}
