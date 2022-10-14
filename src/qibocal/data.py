@@ -92,7 +92,9 @@ class Dataset(AbstractDataset):
         if options is not None:
             self.options = options
             for option in options:
-                self.data.insert(0, option, pd.Series(dtype=object))
+                self.data.insert(  # pylint: disable=E1101
+                    0, option, pd.Series(dtype=object)
+                )
 
         from pint import UnitRegistry
 
@@ -176,7 +178,7 @@ class Dataset(AbstractDataset):
             obj.data.pop("Unnamed: 0_level_0")
             quantities_label = []
             obj.options = []
-            for column in obj.data.columns:
+            for column in obj.data.columns:  # pylint: disable=E1101
                 if "Unnamed" not in column[1]:
                     quantities_label.append(column[0])
                 else:

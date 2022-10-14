@@ -37,15 +37,26 @@ def test_data_initialization():
     """Test Dataset constructor"""
     data = Dataset()
     assert len(data.data.columns) == 4
-    assert list(data.data.columns) == ["MSR", "i", "q", "phase"]
+    assert list(data.data.columns) == [  # pylint: disable=E1101
+        "MSR",
+        "i",
+        "q",
+        "phase",
+    ]
 
     data1 = Dataset(quantities={"attenuation": "dB"})
     assert len(data1.data.columns) == 5
-    assert list(data1.data.columns) == ["attenuation", "MSR", "i", "q", "phase"]
+    assert list(data1.data.columns) == [  # pylint: disable=E1101
+        "attenuation",
+        "MSR",
+        "i",
+        "q",
+        "phase",
+    ]
 
     data2 = Dataset(quantities={"attenuation": "dB"}, options=["option1"])
     assert len(data2.data.columns) == 6
-    assert list(data2.data.columns) == [
+    assert list(data2.data.columns) == [  # pylint: disable=E1101
         "option1",
         "attenuation",
         "MSR",
