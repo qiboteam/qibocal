@@ -113,17 +113,20 @@ class Dataset(AbstractDataset):
                         Every key should have the following form:
                         ``<name>[<unit>]``.
         """
-        processed_data = {}
-        for key, values in data.items():
-            if "[" in key:
-                name = key.split("[")[0]
-                unit = re.search(r"\[([A-Za-z0-9_]+)\]", key).group(1)
-                processed_data[name] = pd.Series(
-                    data=(np.array(values) * self.ureg(unit)), dtype=f"pint[{unit}]"
-                )
-            else:
-                processed_data[key] = pd.Series(data=(values), dtype=object)
-        self._data = pd.DataFrame(processed_data)
+        if isinstance(data, pd.DataFrame):
+            self._data = data
+        else:
+            processed_data = {}
+            for key, values in data.items():
+                if "[" in key:
+                    name = key.split("[")[0]
+                    unit = re.search(r"\[([A-Za-z0-9_]+)\]", key).group(1)
+                    processed_data[name] = pd.Series(
+                        data=(np.array(values) * self.ureg(unit)), dtype=f"pint[{unit}]"
+                    )
+                else:
+                    processed_data[key] = pd.Series(data=(values), dtype=object)
+            self._data = pd.DataFrame(processed_data)
 
     def add(self, data):
         """Add a row to dataset.
@@ -234,10 +237,13 @@ class Data(AbstractDataset):
         Args:
             data (dict): dictionary containing the data to be added.
         """
-        processed_data = {}
-        for key, values in data.items():
-            processed_data[key] = pd.Series(data=(values), dtype=object)
-        self._data = pd.DataFrame(processed_data)
+        if isinstance(data, pd.DataFrame):
+            self._data = data
+        else:
+            processed_data = {}
+            for key, values in data.items():
+                processed_data[key] = pd.Series(data=(values), dtype=object)
+            self._data = pd.DataFrame(processed_data)
 
     def add(self, data):
         """Add a row to data.
