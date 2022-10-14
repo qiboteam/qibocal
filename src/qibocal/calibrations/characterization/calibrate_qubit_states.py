@@ -23,7 +23,9 @@ def calibrate_qubit_states(
     exc_sequence.add(RX_pulse)
     exc_sequence.add(ro_pulse)
 
-    data_exc = Dataset(name=f"data_exc_q{qubit}", quantities={"iteration": "dimensionless"})
+    data_exc = Dataset(
+        name=f"data_exc_q{qubit}", quantities={"iteration": "dimensionless"}
+    )
     iq_exc = []
     count = 0
     for n in np.arange(nshots):
@@ -46,7 +48,9 @@ def calibrate_qubit_states(
 
     gnd_sequence = PulseSequence(ro_pulse)
 
-    data_gnd = Dataset(name=f"data_gnd_q{qubit}", quantities={"iteration": "dimensionless"})
+    data_gnd = Dataset(
+        name=f"data_gnd_q{qubit}", quantities={"iteration": "dimensionless"}
+    )
     iq_gnd = []
     count = 0
     for n in np.arange(nshots):
@@ -66,11 +70,15 @@ def calibrate_qubit_states(
         data_gnd.add(results)
         count += 1
     yield data_gnd
-    parameters = Dataset(name=f"parameters_q{qubit}", quantities={
-        "rotation_angle": "dimensionless", # in degrees
-        "threshold": "V",
-        "fidelity": "dimensionless",
-        "assignment_fidelity": "dimensionless"  })
+    parameters = Dataset(
+        name=f"parameters_q{qubit}",
+        quantities={
+            "rotation_angle": "dimensionless",  # in degrees
+            "threshold": "V",
+            "fidelity": "dimensionless",
+            "assignment_fidelity": "dimensionless",
+        },
+    )
 
     iq_mean_exc = np.mean(iq_exc)
     iq_mean_gnd = np.mean(iq_gnd)
@@ -85,18 +93,22 @@ def calibrate_qubit_states(
 
     real_values_exc = iq_exc_rotated.real
     real_values_gnd = iq_gnd_rotated.real
-    
+
     real_values_combined = np.concatenate((real_values_exc, real_values_gnd))
     real_values_combined.sort()
 
     cum_distribution_exc = [
-        sum(map(lambda x: x.real >= real_value, real_values_exc)) for real_value in real_values_combined
+        sum(map(lambda x: x.real >= real_value, real_values_exc))
+        for real_value in real_values_combined
     ]
     cum_distribution_gnd = [
-        sum(map(lambda x: x.real >= real_value, real_values_gnd)) for real_value in real_values_combined
+        sum(map(lambda x: x.real >= real_value, real_values_gnd))
+        for real_value in real_values_combined
     ]
 
-    cum_distribution_diff = np.abs(np.array(cum_distribution_exc) - np.array(cum_distribution_gnd))
+    cum_distribution_diff = np.abs(
+        np.array(cum_distribution_exc) - np.array(cum_distribution_gnd)
+    )
     argmax = np.argmax(cum_distribution_diff)
     threshold = real_values_combined[argmax]
     errors_exc = nshots - cum_distribution_exc[argmax]
@@ -104,15 +116,16 @@ def calibrate_qubit_states(
     fidelity = cum_distribution_diff[argmax] / nshots
     assignment_fidelity = 1 - (errors_exc + errors_gnd) / nshots / 2
     # assignment_fidelity = 1/2 + (cum_distribution_exc[argmax] - cum_distribution_gnd[argmax])/nshots/2
-    
+
     results = {
-        "rotation_angle[dimensionless]": (rotation_angle * 360 / (2 * np.pi)) % 360, # in degrees
+        "rotation_angle[dimensionless]": (rotation_angle * 360 / (2 * np.pi))
+        % 360,  # in degrees
         "threshold[V]": threshold,
         "fidelity[dimensionless]": fidelity,
-        "assignment_fidelity[dimensionless]": assignment_fidelity 
+        "assignment_fidelity[dimensionless]": assignment_fidelity,
     }
     parameters.add(results)
-    yield(parameters)
+    yield (parameters)
 
 
 @plot("exc vs gnd", plots.exc_gnd)
@@ -132,9 +145,13 @@ def calibrate_qubit_states_binning(
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=RX_pulse.duration)
     exc_sequence.add(RX_pulse)
     exc_sequence.add(ro_pulse)
-    data_exc = Dataset(name=f"data_exc_q{qubit}", quantities={"iteration": "dimensionless"})
-    msr, phase, i, q = platform.execute_pulse_sequence(exc_sequence, nshots)['binned_integrated'][ro_pulse.serial]
-    
+    data_exc = Dataset(
+        name=f"data_exc_q{qubit}", quantities={"iteration": "dimensionless"}
+    )
+    msr, phase, i, q = platform.execute_pulse_sequence(exc_sequence, nshots)[
+        "binned_integrated"
+    ][ro_pulse.serial]
+
     iq_exc = i + 1j * q
     results = {
         "MSR[V]": msr,
@@ -148,9 +165,13 @@ def calibrate_qubit_states_binning(
 
     gnd_sequence = PulseSequence(ro_pulse)
 
-    data_gnd = Dataset(name=f"data_gnd_q{qubit}", quantities={"iteration": "dimensionless"})
-    msr, phase, i, q = platform.execute_pulse_sequence(gnd_sequence, nshots)['binned_integrated'][ro_pulse.serial]
-    
+    data_gnd = Dataset(
+        name=f"data_gnd_q{qubit}", quantities={"iteration": "dimensionless"}
+    )
+    msr, phase, i, q = platform.execute_pulse_sequence(gnd_sequence, nshots)[
+        "binned_integrated"
+    ][ro_pulse.serial]
+
     iq_gnd = i + 1j * q
     results = {
         "MSR[V]": msr,
@@ -162,12 +183,15 @@ def calibrate_qubit_states_binning(
     data_gnd.set(results)
     yield data_gnd
 
-
-    parameters = Dataset(name=f"parameters_q{qubit}", quantities={
-        "rotation_angle": "dimensionless", # in degrees
-        "threshold": "V",
-        "fidelity": "dimensionless",
-        "assignment_fidelity": "dimensionless"  })
+    parameters = Dataset(
+        name=f"parameters_q{qubit}",
+        quantities={
+            "rotation_angle": "dimensionless",  # in degrees
+            "threshold": "V",
+            "fidelity": "dimensionless",
+            "assignment_fidelity": "dimensionless",
+        },
+    )
 
     iq_mean_exc = np.mean(iq_exc)
     iq_mean_gnd = np.mean(iq_gnd)
@@ -182,18 +206,22 @@ def calibrate_qubit_states_binning(
 
     real_values_exc = iq_exc_rotated.real
     real_values_gnd = iq_gnd_rotated.real
-    
+
     real_values_combined = np.concatenate((real_values_exc, real_values_gnd))
     real_values_combined.sort()
 
     cum_distribution_exc = [
-        sum(map(lambda x: x.real >= real_value, real_values_exc)) for real_value in real_values_combined
+        sum(map(lambda x: x.real >= real_value, real_values_exc))
+        for real_value in real_values_combined
     ]
     cum_distribution_gnd = [
-        sum(map(lambda x: x.real >= real_value, real_values_gnd)) for real_value in real_values_combined
+        sum(map(lambda x: x.real >= real_value, real_values_gnd))
+        for real_value in real_values_combined
     ]
 
-    cum_distribution_diff = np.abs(np.array(cum_distribution_exc) - np.array(cum_distribution_gnd))
+    cum_distribution_diff = np.abs(
+        np.array(cum_distribution_exc) - np.array(cum_distribution_gnd)
+    )
     argmax = np.argmax(cum_distribution_diff)
     threshold = real_values_combined[argmax]
     errors_exc = nshots - cum_distribution_exc[argmax]
@@ -201,12 +229,13 @@ def calibrate_qubit_states_binning(
     fidelity = cum_distribution_diff[argmax] / nshots
     assignment_fidelity = 1 - (errors_exc + errors_gnd) / nshots / 2
     # assignment_fidelity = 1/2 + (cum_distribution_exc[argmax] - cum_distribution_gnd[argmax])/nshots/2
-    
+
     results = {
-        "rotation_angle[dimensionless]": (rotation_angle * 360 / (2 * np.pi)) % 360, # in degrees
+        "rotation_angle[dimensionless]": (rotation_angle * 360 / (2 * np.pi))
+        % 360,  # in degrees
         "threshold[V]": threshold,
         "fidelity[dimensionless]": fidelity,
-        "assignment_fidelity[dimensionless]": assignment_fidelity 
+        "assignment_fidelity[dimensionless]": assignment_fidelity,
     }
     parameters.add(results)
-    yield(parameters)
+    yield (parameters)
