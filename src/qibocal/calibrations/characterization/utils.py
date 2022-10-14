@@ -83,8 +83,9 @@ def get_fidelity(
     quantities.update(param_dict)
     data_exc = Dataset(name=f"data_exc_{param}_q{qubit}", quantities=quantities)
     shots_results = platform.execute_pulse_sequence(exc_sequence, nshots=niter)[
-        "shots"
+        "binned_integrated"
     ][ro_pulse.serial]
+
     for n in np.arange(niter):
         msr, phase, i, q = shots_results[n]
         results = {
@@ -106,9 +107,10 @@ def get_fidelity(
 
     data_gnd = Dataset(name=f"data_gnd_{param}_q{qubit}", quantities=quantities)
 
-    shots_results = platform.execute_pulse_sequence(gnd_sequence, nshots=niter)[
-        "shots"
+    shots_results = platform.execute_pulse_sequence(exc_sequence, nshots=niter)[
+        "binned_integrated"
     ][ro_pulse.serial]
+
     for n in np.arange(niter):
         msr, phase, i, q = shots_results[n]
         results = {
