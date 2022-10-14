@@ -209,7 +209,6 @@ def qubit_spectroscopy_flux_track(
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=5000)
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
-    platform.qd_port[qubit].attenuation = attenuation
 
     data = Dataset(
         name=f"data_q{qubit}", quantities={"frequency": "Hz", "current": "A"}
