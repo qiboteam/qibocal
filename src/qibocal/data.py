@@ -101,7 +101,7 @@ class Dataset(AbstractDataset):
     @property
     def data(self):
         return self._data
-    
+
     @data.setter
     def data(self, data):
         """Set data attribute.
@@ -122,7 +122,6 @@ class Dataset(AbstractDataset):
             else:
                 processed_data[key] = pd.Series(data=(values), dtype=object)
         self._data = pd.DataFrame(processed_data)
-
 
     def add(self, data):
         """Add a row to dataset.
@@ -225,7 +224,7 @@ class Data(AbstractDataset):
     @property
     def data(self):
         return self._data
-    
+
     @data.setter
     def data(self, data):
         """Set data attribute.
@@ -235,7 +234,7 @@ class Data(AbstractDataset):
         """
         processed_data = {}
         for key, values in data.items():
-             processed_data[key] = pd.Series(data=(values), dtype=object)
+            processed_data[key] = pd.Series(data=(values), dtype=object)
         self._data = pd.DataFrame(processed_data)
 
     def add(self, data):

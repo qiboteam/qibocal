@@ -115,35 +115,46 @@ def test_data_add():
     data.add({"int": 123, "float": 123.456, "string": "123", "bool": True})
     assert len(data) == 6
 
+
 def test_dataset_set():
     """Test set method of Dataset class"""
     dataset = Dataset()
-    test = { "MSR[V]" : [1,2,3], "i[V]" : [3., 4., 5.], "q[V]": np.array([3,4,5]), "phase[deg]": [6., 7., 8.]}
+    test = {
+        "MSR[V]": [1, 2, 3],
+        "i[V]": [3.0, 4.0, 5.0],
+        "q[V]": np.array([3, 4, 5]),
+        "phase[deg]": [6.0, 7.0, 8.0],
+    }
     dataset.data = test
     assert len(dataset) == 3
-    assert (dataset.get_values('MSR', 'V') == [1,2,3]).all()
-    assert (dataset.get_values('i', 'V') == [3., 4., 5.]).all()
-    assert (dataset.get_values('q', 'V') == [3,4,5]).all()
-    assert (dataset.get_values('phase', 'deg') == [6.,7.,8.]).all()
+    assert (dataset.get_values("MSR", "V") == [1, 2, 3]).all()
+    assert (dataset.get_values("i", "V") == [3.0, 4.0, 5.0]).all()
+    assert (dataset.get_values("q", "V") == [3, 4, 5]).all()
+    assert (dataset.get_values("phase", "deg") == [6.0, 7.0, 8.0]).all()
 
     dataset1 = Dataset(options=["option1", "option2"])
-    test = {'option1' : ["one", "two", "three"], 'option2' : [1, 2, 3]}
+    test = {"option1": ["one", "two", "three"], "option2": [1, 2, 3]}
     dataset1.data = test
     assert len(dataset1) == 3
-    assert (dataset1.get_values('option1') == ["one","two","three"]).all()
-    assert (dataset1.get_values('option2') == [1,2,3]).all()
+    assert (dataset1.get_values("option1") == ["one", "two", "three"]).all()
+    assert (dataset1.get_values("option2") == [1, 2, 3]).all()
 
 
 def test_data_set():
     """Test set method of Data class"""
     data = random_data(5)
-    test = { "int" : [1,2,3], "float" : [3., 4., 5.], "string": ["one","two","three"], "bool": [True, False, True]}
+    test = {
+        "int": [1, 2, 3],
+        "float": [3.0, 4.0, 5.0],
+        "string": ["one", "two", "three"],
+        "bool": [True, False, True],
+    }
     data.data = test
     assert len(data) == 3
-    assert (data.get_values('int') == [1,2,3]).all()
-    assert (data.get_values('float') == [3., 4., 5.]).all()
-    assert (data.get_values('string') == ["one", "two", "three"]).all()
-    assert (data.get_values('bool') == [True,False,True]).all()
+    assert (data.get_values("int") == [1, 2, 3]).all()
+    assert (data.get_values("float") == [3.0, 4.0, 5.0]).all()
+    assert (data.get_values("string") == ["one", "two", "three"]).all()
+    assert (data.get_values("bool") == [True, False, True]).all()
 
 
 def test_get_values_dataset():
