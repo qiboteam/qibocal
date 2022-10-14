@@ -19,11 +19,11 @@ class AbstractDataset:
         else:
             self.name = name
 
-        self.df = pd.DataFrame()
+        self.data = pd.DataFrame()
         self.quantities = None
 
     def __add__(self, data):
-        self.df = pd.concat([self.df, data.df], ignore_index=True)
+        self.data = pd.concat([self.data, data.data], ignore_index=True)
         return self
 
     @abstractmethod
@@ -32,7 +32,7 @@ class AbstractDataset:
 
     def __len__(self):
         """Computes the length of the dataset."""
-        return len(self.df)
+        return len(self.data)
 
     @classmethod
     def load_data(cls, folder, routine, format, name):
@@ -45,16 +45,16 @@ class AbstractDataset:
         Args:
             path (str): Path containing output folder."""
         if self.quantities == None:
-            self.df.to_csv(f"{path}/{self.name}.csv")
+            self.data.to_csv(f"{path}/{self.name}.csv")
         else:
-            self.df.pint.dequantify().to_csv(f"{path}/{self.name}.csv")
+            self.data.pint.dequantify().to_csv(f"{path}/{self.name}.csv")
 
     def to_pickle(self, path):
         """Save data in pickel file.
 
         Args:
             path (str): Path containing output folder."""
-        self.df.to_pickle(f"{path}/{self.name}.pkl")
+        self.data.to_pickle(f"{path}/{self.name}.pkl")
 
 
 class Dataset(AbstractDataset):
@@ -73,7 +73,7 @@ class Dataset(AbstractDataset):
 
         super().__init__(name=name)
 
-        self.df = pd.DataFrame(
+        self._data = pd.DataFrame(
             {
                 "MSR": pd.Series(dtype="pint[V]"),
                 "i": pd.Series(dtype="pint[V]"),
@@ -87,16 +87,42 @@ class Dataset(AbstractDataset):
         if quantities is not None:
             self.quantities.update(quantities)
             for name, unit in quantities.items():
-                self.df.insert(0, name, pd.Series(dtype=f"pint[{unit}]"))
+                self.data.insert(0, name, pd.Series(dtype=f"pint[{unit}]"))
 
         if options is not None:
             self.options = options
             for option in options:
-                self.df.insert(0, option, pd.Series(dtype=object))
+                self.data.insert(0, option, pd.Series(dtype=object))
 
         from pint import UnitRegistry
 
         self.ureg = UnitRegistry()
+
+    @property
+    def data(self):
+        return self._data
+    
+    @data.setter
+    def data(self, data):
+        """Set data attribute.
+
+        Args:
+            data (dict): dictionary containing the data to be added.
+                        Every key should have the following form:
+                        ``<name>[<unit>]``.
+        """
+        processed_data = {}
+        for key, values in data.items():
+            if "[" in key:
+                name = key.split("[")[0]
+                unit = re.search(r"\[([A-Za-z0-9_]+)\]", key).group(1)
+                processed_data[name] = pd.Series(
+                    data=(np.array(values) * self.ureg(unit)), dtype=f"pint[{unit}]"
+                )
+            else:
+                processed_data[key] = pd.Series(data=(values), dtype=object)
+        self._data = pd.DataFrame(processed_data)
+
 
     def add(self, data):
         """Add a row to dataset.
@@ -113,29 +139,9 @@ class Dataset(AbstractDataset):
                 name = key.split("[")[0]
                 unit = re.search(r"\[([A-Za-z0-9_]+)\]", key).group(1)
                 # TODO: find a better way to do this
-                self.df.loc[l, name] = np.array(value) * self.ureg(unit)
+                self.data.loc[l, name] = np.array(value) * self.ureg(unit)
             else:
-                self.df.loc[l, key] = value
-
-    def set(self, data):
-        """Add a row to dataset.
-
-        Args:
-            data (dict): dictionary containing the data to be added.
-                        Every key should have the following form:
-                        ``<name>[<unit>]``.
-        """
-        processed_data = {}
-        for key, values in data.items():
-            if "[" in key:
-                name = key.split("[")[0]
-                unit = re.search(r"\[([A-Za-z0-9_]+)\]", key).group(1)
-                processed_data[name] = pd.Series(
-                    data=(np.array(values) * self.ureg(unit)), dtype=f"pint[{unit}]"
-                )
-            else:
-                processed_data[name] = pd.Series(data=(values), dtype=object)
-        self.df = pd.DataFrame(processed_data)
+                self.data.loc[l, key] = value
 
     def get_values(self, key, unit=None):
         """Get values of a quantity in specified units.
@@ -148,9 +154,9 @@ class Dataset(AbstractDataset):
             ``pd.Series`` with the quantity values in the given units.
         """
         if unit is None:
-            return self.df[key]
+            return self.data[key]
         else:
-            return self.df[key].pint.to(unit).pint.magnitude
+            return self.data[key].pint.to(unit).pint.magnitude
 
     @classmethod
     def load_data(cls, folder, routine, format, name):
@@ -167,22 +173,22 @@ class Dataset(AbstractDataset):
         obj = cls()
         if format == "csv":
             file = f"{folder}/data/{routine}/{name}.csv"
-            obj.df = pd.read_csv(file, header=[0, 1])
-            obj.df.pop("Unnamed: 0_level_0")
+            obj.data = pd.read_csv(file, header=[0, 1])
+            obj.data.pop("Unnamed: 0_level_0")
             quantities_label = []
             obj.options = []
-            for column in obj.df.columns:
+            for column in obj.data.columns:
                 if "Unnamed" not in column[1]:
                     quantities_label.append(column[0])
                 else:
                     obj.options.append(column[0])
-            quantities_df = obj.df[quantities_label].pint.quantify()
-            options_df = obj.df[obj.options]
-            options_df.columns = options_df.columns.droplevel(1)
-            obj.df = pd.concat([quantities_df, options_df], axis=1)
+            quantities_data = obj.data[quantities_label].pint.quantify()
+            options_data = obj.data[obj.options]
+            options_data.columns = options_data.columns.droplevel(1)
+            obj.data = pd.concat([quantities_data, options_data], axis=1)
         elif format == "pickle":
             file = f"{folder}/data/{routine}/{name}.pkl"
-            obj.df = pd.read_pickle(file)
+            obj.data = pd.read_pickle(file)
         else:
             raise_error(ValueError, f"Cannot load data using {format} format.")
 
@@ -193,10 +199,10 @@ class Dataset(AbstractDataset):
 
         Args:
             path (str): Path containing output folder."""
-        df = self.df[list(self.quantities)].pint.dequantify()
-        firsts = df.index.get_level_values(None)
-        df[self.options] = self.df[self.options].loc[firsts].values
-        df.to_csv(f"{path}/{self.name}.csv")
+        data = self.data[list(self.quantities)].pint.dequantify()
+        firsts = data.index.get_level_values(None)
+        data[self.options] = self.data[self.options].loc[firsts].values
+        data.to_csv(f"{path}/{self.name}.csv")
 
 
 class Data(AbstractDataset):
@@ -214,10 +220,26 @@ class Data(AbstractDataset):
         if quantities is not None:
             self.quantities = quantities
             for name in quantities:
-                self.df.insert(0, name, pd.Series(dtype=object))
+                self.data.insert(0, name, pd.Series(dtype=object))
+
+    @property
+    def data(self):
+        return self._data
+    
+    @data.setter
+    def data(self, data):
+        """Set data attribute.
+
+        Args:
+            data (dict): dictionary containing the data to be added.
+        """
+        processed_data = {}
+        for key, values in data.items():
+             processed_data[key] = pd.Series(data=(values), dtype=object)
+        self._data = pd.DataFrame(processed_data)
 
     def add(self, data):
-        """Add a row to dataset.
+        """Add a row to data.
 
         Args:
             data (dict): dictionary containing the data to be added.
@@ -226,7 +248,7 @@ class Data(AbstractDataset):
         """
         l = len(self)
         for key, value in data.items():
-            self.df.loc[l, key] = value
+            self.data.loc[l, key] = value
 
     def get_values(self, quantity):
         """Get values of a quantity in specified units.
@@ -237,7 +259,7 @@ class Data(AbstractDataset):
         Returns:
             ``pd.Series`` with the quantity values in the given units.
         """
-        return self.df[quantity].values
+        return self.data[quantity].values
 
     @classmethod
     def load_data(cls, folder, routine, format, name):
@@ -254,11 +276,11 @@ class Data(AbstractDataset):
         obj = cls()
         if format == "csv":
             file = f"{folder}/data/{routine}/{name}.csv"
-            obj.df = pd.read_csv(file)
-            obj.df.pop("Unnamed: 0")
+            obj.data = pd.read_csv(file)
+            obj.data.pop("Unnamed: 0")
         elif format == "pickle":
             file = f"{folder}/data/{routine}/{name}.pkl"
-            obj.df = pd.read_pickle(file)
+            obj.data = pd.read_pickle(file)
         else:
             raise_error(ValueError, f"Cannot load data using {format} format.")
 
@@ -269,11 +291,11 @@ class Data(AbstractDataset):
 
         Args:
             path (str): Path containing output folder."""
-        self.df.to_csv(f"{path}/{self.name}.csv")
+        self.data.to_csv(f"{path}/{self.name}.csv")
 
     def to_pickle(self, path):
         """Save data in pickel file.
 
         Args:
             path (str): Path containing output folder."""
-        self.df.to_pickle(f"{path}/{self.name}.pkl")
+        self.data.to_pickle(f"{path}/{self.name}.pkl")
