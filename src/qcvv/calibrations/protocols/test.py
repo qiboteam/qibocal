@@ -220,6 +220,39 @@ class UIRSOnequbitcliffords(UIRS):
         return self.Rn(*onequbit_clifford_params[
             np.random.randint(len(onequbit_clifford_params))])
 
+
+class UIRSNqubitscliffords(UIRSOnequbitcliffords):
+    """
+    """
+
+    def __init__(self, nqubits, **kwargs):
+        """
+        """
+        super().__init__(nqubits, **kwargs)
+        self.gate_generator = self.nqubit_clifford
+    
+    def Rn(self, qubit, theta=0, nx=0, ny=0, nz=0):
+        """ 
+        """
+        matrix = np.array([[np.cos(theta/2) - 1.j*nz*np.sin(theta/2),
+                        - ny*np.sin(theta/2) - 1.j*nx*np.sin(theta/2)],
+                        [ny*np.sin(theta/2)- 1.j*nx*np.sin(theta/2),
+                        np.cos(theta/2) + 1.j*nz*np.sin(theta/2)]])
+        return gates.Unitary(matrix, qubit)
+    
+    def nqubit_clifford(self):
+        """
+        """
+        circuit = models.Circuit(self.nqubits)
+        
+        for count in range (self.nqubits):
+            circuit.add(self.Rn(count, *onequbit_clifford_params[
+            np.random.randint(len(onequbit_clifford_params))]))
+        qubitlist = list(np.arange(0,self.nqubits))
+        blub = gates.Unitary(circuit.fuse().unitary(), *qubitlist)
+        return blub
+
+
 class Shadow():
     """ Saves gate-set shadows, e.g. POVM measurement outcome and
     the corresponding gates leading to the state which was measured.
@@ -228,11 +261,12 @@ class Shadow():
     along with the used set of POVMs.
     # TODO ask Ingo: What defines an outcome and what POVMs should we use?
     """
-    def __init__(self, povms, sequence_lengths, runs, nshots):
+    def __init__(self, qubits, povms, sequence_lengths, runs, nshots):
         """ Initiate three lists, one for gates, one for the corresponding
         outcomes and one for the corresponding sequence length of the gate.
         """
         self.povms = povms
+        self.qubits = qubits
         self.circuit_list = []
         self.outcome_list = []
         self.samples_list = []
@@ -255,9 +289,8 @@ class Shadow():
         if len(outcome.shape)==2 and outcome.shape[0]==self.nshots:
             # Flatten the outcome list and append it.
             self.samples_list.append(np.array(outcome).flatten())
-        elif len(outcome) == 2:
-            # This must be the probabilities for 1 qubit either being in
-            # ground state or exited state.
+        elif len(outcome.shape)==1 and len(outcome) == int(2**self.qubits):
+            # This must be the probabilities for the qubits.
             self.probabilities_list.append(np.array(outcome))
         else:
             raise ValueError('The given list doesnt have the right dimension.')
@@ -268,7 +301,7 @@ class Shadow():
         """
         samples = np.array(self.samples_list)
         N = len(self.sequence_lengths)
-        samples = samples.reshape((self.runs, N, self.nshots))
+        samples = samples.reshape((self.runs, N, self.nshots, self.qubits))
         return samples
 
     @property
@@ -281,7 +314,16 @@ class Shadow():
                     /float(self.samples.shape[-1])
             elif self.probabilities_list:
                 return np.array(
-                    self.probabilities_list)[:,0].reshape(self.runs, -1) 
+                    self.probabilities_list)[:,0].reshape(self.runs, -1)
+        elif self.povms == "Basis Measurement":
+            if self.probabilities_list:
+                return np.array(
+                    self.probabilities_list).reshape(
+                        self.runs,-1,int(2**self.qubits))
+            elif self.samples_list:
+                return np.average(self.samples, axis=2)
+
+
     
 def experimental_protocol(circuit_generator, myshadow,
         inject_noise=False, **kwargs):
@@ -339,7 +381,8 @@ def experimental_protocol(circuit_generator, myshadow,
                 # object filled with as many integers as used shots.
                 # outcome = executed.probabilities()
                 outcome = executed.samples()  
-                myshadow.probabilities_list.append(outcome)
+                probs = np.abs(executed.execution_result)**2
+                myshadow.probabilities_list.append(probs)
             except:
                 # Getting the samples is not possible, hence the probabilities
                 # have to be stored.
@@ -366,7 +409,7 @@ def standard_rb(
         quantities=list(sequence_lengths))
     # Generate the circuits
     measurement_type = "Ground State"
-    myshadow = Shadow(measurement_type, sequence_lengths, runs, nshots)
+    myshadow = Shadow(len(qubit), measurement_type, sequence_lengths, runs, nshots)
     if generator_name == 'UIRSOnequbitcliffords':
         mygenerator = UIRSOnequbitcliffords(1, invert=True, noisemodel=False)
     else:
@@ -405,7 +448,7 @@ def filtered_rb(
     data1 = Data("standardrb",
         quantities=list(sequence_lengths))
     measurement_type = "Ground State"
-    myshadow = Shadow(measurement_type, sequence_lengths, runs, nshots)
+    myshadow = Shadow(len(qubit), measurement_type, sequence_lengths, runs, nshots)
     # Get the circuit generator.
     if generator_name == 'UIRSOnequbitcliffords':
         mygenerator = UIRSOnequbitcliffords(1, invert=False, noisemodel=False)
@@ -418,20 +461,109 @@ def filtered_rb(
     d=2
     amount_sequences = len(sequence_lengths)
     filterslist = []
+    if False: # single shot
+        for count in range(runs):
+            for m in range(amount_sequences):
+                mycircuit = myshadow.circuit_list[count*amount_sequences+m]
+                executed_circuit = mycircuit(nshots=nshots)
+                filterf = 0 
+                talpha, tbeta = executed_circuit.probabilities()
+                alpha, beta = myshadow.probabilities[count,m], 1-myshadow.probabilities[count,m] 
+                for shot in range(nshots):
+                    outcome = myshadow.samples_list[count*amount_sequences+m][shot]
+                    prob = executed_circuit.probabilities()[int(outcome)]
+                    filterf += (d+1)*(np.abs(prob) - 1/d)
+                filterslist.append(filterf/nshots)
+        filtersarray = np.array(filterslist).reshape(runs, amount_sequences)
+    else: # probabilities
+        for count in range(runs):
+            for m in range(amount_sequences):
+                mycircuit = myshadow.circuit_list[count*amount_sequences+m]
+                executed_circuit = mycircuit(nshots=nshots)
+                filterf = 0 
+                talpha, tbeta = executed_circuit.probabilities()
+                alpha = np.sqrt(myshadow.probabilities[count,m])
+                beta = np.sqrt(1-myshadow.probabilities[count,m])
+                talpha, tbeta = np.sqrt(executed_circuit.probabilities()[0])
+                filterf = (d+1)*(np.abs(alpha*talpha + beta*tbeta)**2 - 1/d)
+                filterslist.append(filterf)
+        filtersarray = np.array(filterslist).reshape(runs, amount_sequences)
     for count in range(runs):
-        for m in range(amount_sequences):
-            mycircuit = myshadow.circuit_list[count*amount_sequences+m]
-            executed_circuit = mycircuit(nshots=nshots)
-            filterf = 0 
-            talpha, tbeta = executed_circuit.probabilities()
-            alpha, beta = myshadow.probabilities[count,m], 1-myshadow.probabilities[count,m] 
-            for shot in range(nshots):
-                outcome = myshadow.samples_list[count*amount_sequences+m][shot]
-                prob = executed_circuit.probabilities()[int(outcome)]
-                filterf += (d+1)*(np.abs(prob) - 1/d)
-            filterslist.append(filterf/nshots)
-    filtersarray = np.array(filterslist).reshape(runs, amount_sequences)
-    print(filtersarray)
+        data1.add({sequence_lengths[i]:filtersarray[count][i] \
+            for i in range(len(sequence_lengths))})
+
+    yield data1
+    if inject_noise:
+        pauli = PauliError(*inject_noise)
+        noise = NoiseModel()
+        noise.add(pauli, gates.Unitary)
+        effective = effective_depol(pauli)
+    else:
+        effective = 0
+    data2 = Data("effectivedepol", quantities=["effective_depol"])
+    data2.add({"effective_depol": effective})
+    yield data2
+
+
+@plot("Test Standard RB", plots.standard_rb_plot)
+def sim_rb(
+    platform,
+    qubit : list,
+    generator_name,
+    sequence_lengths,
+    runs,
+    nshots,
+    inject_noise
+):
+    # Define the data object.
+    # Use the sequence_lengths list as rows (labels) for the data.
+    data1 = Data("standardrb",
+        quantities=list(sequence_lengths))
+    measurement_type = "Basis Measurement"
+    myshadow = Shadow(len(qubit), measurement_type, sequence_lengths, runs, nshots)
+    # Get the circuit generator.
+    if generator_name == 'UIRSOnequbitcliffords':
+        mygenerator = UIRSOnequbitcliffords(1, invert=False, noisemodel=False)
+    elif generator_name == 'UIRSNqubitscliffords':
+        mygenerator = UIRSNqubitscliffords(len(qubit), invert=False, noisemodel=False)
+    else:
+        raise ValueError('This generator is not implemented.')
+    # Perform the experiment.
+    myshadow = experimental_protocol(
+        mygenerator, myshadow, inject_noise=inject_noise, nshots=nshots)
+    # Calculate the postprocessed data, here meaning the filter values.
+    d=2**len(qubit)
+    amount_sequences = len(sequence_lengths)
+    filterslist = []
+    if False: # single shot
+        for count in range(runs):
+            for m in range(amount_sequences):
+                mycircuit = myshadow.circuit_list[count*amount_sequences+m]
+                executed_circuit = mycircuit(nshots=nshots)
+                filterf = 0 
+                probs_noerror = np.abs(executed_circuit.execution_result)**2
+                probs_error = myshadow.probabilities[count,m] 
+                for shot in range(nshots):
+                    outcome = myshadow.samples_list[count*amount_sequences+m][shot]
+                    prob = executed_circuit.probabilities()[int(outcome)]
+                    filterf += (d+1)*(np.abs(prob) - 1/d)
+                filterslist.append(filterf/nshots)
+        filtersarray = np.array(filterslist).reshape(runs, amount_sequences)
+    else: # probabilities
+        for count in range(runs):
+            for m in range(amount_sequences):
+                mycircuit = myshadow.circuit_list[count*amount_sequences+m]
+                executed_circuit = mycircuit(nshots=nshots)
+                filterf = 0 
+                probs_noerror = np.abs(executed_circuit.execution_result)**2
+                probs_error = myshadow.probabilities[count,m] 
+                a = np.abs(np.sqrt(probs_noerror[0]+probs_noerror[1])*np.sqrt(probs_error[0]+probs_error[1]) \
+                    + np.sqrt(probs_noerror[2]+probs_noerror[3])*np.sqrt(probs_error[2]+probs_error[3]))**2
+                b = np.abs(np.sqrt(probs_noerror[0]+probs_noerror[2])*np.sqrt(probs_error[0]+probs_error[2]) \
+                    + np.sqrt(probs_noerror[1]+probs_noerror[3])*np.sqrt(probs_error[1]+probs_error[3]))**2
+                filterf = (2+1)*a*(b - 1/2)
+                filterslist.append(filterf)
+        filtersarray = np.array(filterslist).reshape(runs, amount_sequences)
     for count in range(runs):
         data1.add({sequence_lengths[i]:filtersarray[count][i] \
             for i in range(len(sequence_lengths))})
