@@ -46,7 +46,8 @@ def calibrate_qubit_states(
         count += 1
     yield data_exc
 
-    gnd_sequence = PulseSequence(ro_pulse)
+    gnd_sequence = PulseSequence()
+    gnd_sequence.add(ro_pulse)
 
     data_gnd = Dataset(
         name=f"data_gnd_q{qubit}", quantities={"iteration": "dimensionless"}
@@ -163,7 +164,8 @@ def calibrate_qubit_states_binning(
     data_exc.set(results)
     yield data_exc
 
-    gnd_sequence = PulseSequence(ro_pulse)
+    gnd_sequence = PulseSequence()
+    gnd_sequence.add(ro_pulse)
 
     data_gnd = Dataset(
         name=f"data_gnd_q{qubit}", quantities={"iteration": "dimensionless"}
