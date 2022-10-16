@@ -12,7 +12,7 @@ def create_report(path):
     """Creates an HTML report for the data in the given path."""
     filepath = pathlib.Path(__file__)
 
-    with open(os.path.join(filepath.with_name("static"), "styles.css"), "r") as file:
+    with open(os.path.join(filepath.with_name("static"), "styles.css")) as file:
         css_styles = f"<style>\n{file.read()}\n</style>"
 
     report = ReportBuilder(path)

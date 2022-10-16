@@ -63,7 +63,7 @@ def flipping(
             "i[V]": i,
             "q[V]": q,
             "phase[rad]": phase,
-            "flips[dimensionless]": np.array(n),
+            "flips[dimensionless]": n,
         }
         data.add(results)
         count += 1
