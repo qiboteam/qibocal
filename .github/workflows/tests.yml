@@ -5,24 +5,32 @@ on: push
 jobs:
   test:
     name: Test
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+          os: [ubuntu-latest, macos-latest, windows-latest]
+          python-version: [3.8, 3.9, '3.10']
+    defaults:
+      run:
+        shell: bash
+    runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v2
       - name: Setup python
         uses: actions/setup-python@v2
         with:
-          python-version: 3.9
+          python-version: ${{ matrix.python-version }}
       - name: Install and configure poetry
         uses: snok/install-poetry@v1
         with:
-          virtualenvs-path: ~/.virtualenvs
-          installer-parallel: true
-      - name: Cache poetry virtualenv
-        uses: actions/cache@v2
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+      - name: Load cached venv
+        id: cached-pip-wheels
+        uses: actions/cache@v3
         with:
-          path: ~/.virtualenvs
-          key: ${{ runner.os }}-py-${{ steps.setup-python.outputs.python-version }}-poetry-${{ hashFiles('poetry.lock') }}
+          path: ~/.cache
+          key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
       - name: Install dependencies
         run: poetry install --no-interaction --no-root
         if: steps.cache.outputs.cache-hit != 'true'
@@ -32,10 +40,12 @@ jobs:
         run: pip install poethepoet
       - name: Lint
         run: |
+          source $VENV
           poe lint
           poe lint-warnings
       - name: Test
         run: |
+          source $VENV
           poe test
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2
