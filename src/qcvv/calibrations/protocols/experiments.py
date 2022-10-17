@@ -5,7 +5,8 @@ class Experiment():
     """
     """
     def __init__(self, sequence_lengths:list, qubits:list,
-            nshots:int=1024, circuit_generator:str=None, inverse=False, **kwargs) -> None:
+            nshots:int=1024, circuit_generator:str=None, inverse=False,
+            **kwargs) -> None:
         self.circuit_generator = self.convert_to_object(circuit_generator)
         self.sequence_lengths = sequence_lengths
         self.qubits = qubits

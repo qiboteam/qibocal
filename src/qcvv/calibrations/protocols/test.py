@@ -393,7 +393,6 @@ def experimental_protocol(circuit_generator, myshadow,
             # Store everything.
     return myshadow
 
-
 @plot("Test Standard RB", plots.standard_rb_plot)
 def standard_rb(
     platform,
