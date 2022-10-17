@@ -23,7 +23,9 @@ def calibrate_qubit_states(
     exc_sequence.add(RX_pulse)
     exc_sequence.add(ro_pulse)
 
-    data_exc = DataUnits(name=f"data_exc_q{qubit}", quantities={"iteration": "dimensionless"})
+    data_exc = DataUnits(
+        name=f"data_exc_q{qubit}", quantities={"iteration": "dimensionless"}
+    )
     iq_exc = []
     platform.qd_port[qubit].lo_frequency = (
         platform.characterization["single_qubit"][qubit]["qubit_freq"]
@@ -52,7 +54,9 @@ def calibrate_qubit_states(
     gnd_sequence = PulseSequence()
     gnd_sequence.add(ro_pulse)
 
-    data_gnd = DataUnits(name=f"data_gnd_q{qubit}", quantities={"iteration": "dimensionless"})
+    data_gnd = DataUnits(
+        name=f"data_gnd_q{qubit}", quantities={"iteration": "dimensionless"}
+    )
     iq_gnd = []
 
     count = 0
