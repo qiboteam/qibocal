@@ -814,7 +814,9 @@ def flips_msr_phase(folder, routine, qubit, format):
 def exc_gnd(folder, routine, qubit, format):
 
     try:
-        parameters = DataUnits.load_data(folder, routine, format, f"parameters_q{qubit}")
+        parameters = DataUnits.load_data(
+            folder, routine, format, f"parameters_q{qubit}"
+        )
         rotation_angle = parameters.get_values("rotation_angle", "dimensionless")[0]
         threshold = parameters.get_values("threshold", "V")[0]
         fidelity = parameters.get_values("fidelity", "dimensionless")[0]
