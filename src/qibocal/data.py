@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Implementation of Dataset class to store measurements."""
+"""Implementation of DataUnits and Data class to store calibration routines outputs."""
 
 import re
 from abc import abstractmethod
@@ -11,7 +11,7 @@ import pint_pandas
 from qibocal.config import raise_error
 
 
-class AbstractDataset:
+class AbstractData:
     def __init__(self, name=None):
 
         if name is None:
@@ -31,7 +31,7 @@ class AbstractDataset:
         raise_error(NotImplementedError)
 
     def __len__(self):
-        """Computes the length of the dataset."""
+        """Computes the length of the data."""
         return len(self.df)
 
     @classmethod
@@ -57,7 +57,7 @@ class AbstractDataset:
         self.df.to_pickle(f"{path}/{self.name}.pkl")
 
 
-class Dataset(AbstractDataset):
+class DataUnits(AbstractData):
     """Class to store the data measured during the calibration routines.
     It is a wrapper to a pandas DataFrame with units of measure from the Pint
     library.
@@ -73,7 +73,7 @@ class Dataset(AbstractDataset):
 
         super().__init__(name=name)
 
-        self.df = pd.DataFrame(
+        self._df = pd.DataFrame(
             {
                 "MSR": pd.Series(dtype="pint[V]"),
                 "i": pd.Series(dtype="pint[V]"),
@@ -92,14 +92,53 @@ class Dataset(AbstractDataset):
         if options is not None:
             self.options = options
             for option in options:
-                self.df.insert(0, option, pd.Series(dtype=object))
+                self.df.insert(  # pylint: disable=E1101
+                    0, option, pd.Series(dtype=object)
+                )
 
         from pint import UnitRegistry
 
         self.ureg = UnitRegistry()
 
+    @property
+    def df(self):
+        return self._df
+
+    @df.setter
+    def df(self, df):
+        """Set df attribute.
+
+        Args:
+            df (pd.DataFrame): pandas DataFrame. Every key should have the following form:
+                               ``<name>[<unit>]``.
+        """
+        if isinstance(df, pd.DataFrame):
+            self._df = df
+        else:
+            raise_error(TypeError, f"{df.type} is not a pd.DataFrame.")
+
+    def load_data_from_dict(self, data: dict):
+        """Set df attribute.
+
+        Args:
+            data (dict): dictionary containing the data to be added.
+                        Every key should have the following form:
+                        ``<name>[<unit>]``.
+        """
+        processed_data = {}
+        for key, values in data.items():
+            if "[" in key:
+                name = key.split("[")[0]
+                unit = re.search(r"\[([A-Za-z0-9_]+)\]", key).group(1)
+                processed_data[name] = pd.Series(
+                    data=(np.array(values) * self.ureg(unit)), dtype=f"pint[{unit}]"
+                )
+            else:
+                processed_data[key] = pd.Series(data=(values), dtype=object)
+        self._df = pd.DataFrame(processed_data)
+
     def add(self, data):
-        """Add a row to dataset.
+        """Add a row to `DataUnits`.
 
         Args:
             data (dict): dictionary containing the data to be added.
@@ -116,24 +155,6 @@ class Dataset(AbstractDataset):
                 self.df.loc[l, name] = np.array(value) * self.ureg(unit)
             else:
                 self.df.loc[l, key] = value
-
-    def set(self, data):
-        """Add a row to dataset.
-
-        Args:
-            data (dict): dictionary containing the data to be added.
-                        Every key should have the following form:
-                        ``<name>[<unit>]``.
-        """
-        processed_data = {}
-        for key, values in data.items():
-            if "[" in key:
-                name = key.split("[")[0]
-                unit = re.search(r"\[([A-Za-z0-9_]+)\]", key).group(1)
-                processed_data[name] = pd.Series(data=(np.array(values) * self.ureg(unit)), dtype=f"pint[{unit}]")
-            else:
-                processed_data[name] = pd.Series(data=(values), dtype=object)
-        self.df = pd.DataFrame(processed_data)
 
     def get_values(self, key, unit=None):
         """Get values of a quantity in specified units.
@@ -160,7 +181,7 @@ class Dataset(AbstractDataset):
             format (str): data format. Possible choices are 'csv' and 'pickle'.
 
         Returns:
-            dataset (``Dataset``): dataset object with the loaded data.
+            data (``DataUnits``): dataset object with the loaded data.
         """
         obj = cls()
         if format == "csv":
@@ -169,7 +190,7 @@ class Dataset(AbstractDataset):
             obj.df.pop("Unnamed: 0_level_0")
             quantities_label = []
             obj.options = []
-            for column in obj.df.columns:
+            for column in obj.df.columns:  # pylint: disable=E1101
                 if "Unnamed" not in column[1]:
                     quantities_label.append(column[0])
                 else:
@@ -191,13 +212,13 @@ class Dataset(AbstractDataset):
 
         Args:
             path (str): Path containing output folder."""
-        df = self.df[list(self.quantities)].pint.dequantify()
-        firsts = df.index.get_level_values(None)
-        df[self.options] = self.df[self.options].loc[firsts].values
-        df.to_csv(f"{path}/{self.name}.csv")
+        data = self.df[list(self.quantities)].pint.dequantify()
+        firsts = data.index.get_level_values(None)
+        data[self.options] = self.df[self.options].loc[firsts].values
+        data.to_csv(f"{path}/{self.name}.csv")
 
 
-class Data(AbstractDataset):
+class Data(AbstractData):
     """Class to store the data obtained from calibration routines.
     It is a wrapper to a pandas DataFrame.
 
@@ -214,8 +235,33 @@ class Data(AbstractDataset):
             for name in quantities:
                 self.df.insert(0, name, pd.Series(dtype=object))
 
+    @property
+    def df(self):
+        return self._df
+
+    @df.setter
+    def df(self, data):
+        """Set df attribute.
+
+        Args:
+            df (pd.DataFrame):
+        """
+        if isinstance(data, pd.DataFrame):
+            self._df = data
+
+    def load_data_from_dict(self, data: dict):
+        """Set df attribute.
+
+        Args:
+            df (dict): dictionary containing the data to be added.
+        """
+        processed_data = {}
+        for key, values in data.items():
+            processed_data[key] = pd.Series(data=(values), dtype=object)
+        self._df = pd.DataFrame(processed_data)
+
     def add(self, data):
-        """Add a row to dataset.
+        """Add a row to data.
 
         Args:
             data (dict): dictionary containing the data to be added.
@@ -247,7 +293,7 @@ class Data(AbstractDataset):
             format (str): data format. Possible choices are 'csv' and 'pickle'.
 
         Returns:
-            dataset (``Dataset``): dataset object with the loaded data.
+            data (``Data``): data object with the loaded data.
         """
         obj = cls()
         if format == "csv":

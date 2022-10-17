@@ -4,7 +4,7 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
 from qibocal import plots
-from qibocal.data import Dataset
+from qibocal.data import DataUnits
 from qibocal.decorators import plot
 
 
@@ -23,10 +23,13 @@ def calibrate_qubit_states(
     exc_sequence.add(RX_pulse)
     exc_sequence.add(ro_pulse)
 
-    data_exc = Dataset(
-        name=f"data_exc_q{qubit}", quantities={"iteration": "dimensionless"}
-    )
+    data_exc = DataUnits(name=f"data_exc_q{qubit}", quantities={"iteration": "s"})
     iq_exc = []
+    platform.qd_port[qubit].lo_frequency = (
+        platform.characterization["single_qubit"][qubit]["qubit_freq"]
+        - RX_pulse.frequency
+    )
+
     count = 0
     for n in np.arange(nshots):
         if count % points == 0:
@@ -49,10 +52,9 @@ def calibrate_qubit_states(
     gnd_sequence = PulseSequence()
     gnd_sequence.add(ro_pulse)
 
-    data_gnd = Dataset(
-        name=f"data_gnd_q{qubit}", quantities={"iteration": "dimensionless"}
-    )
+    data_gnd = DataUnits(name=f"data_gnd_q{qubit}", quantities={"iteration": "s"})
     iq_gnd = []
+
     count = 0
     for n in np.arange(nshots):
         if count % points == 0:
@@ -71,7 +73,7 @@ def calibrate_qubit_states(
         data_gnd.add(results)
         count += 1
     yield data_gnd
-    parameters = Dataset(
+    parameters = DataUnits(
         name=f"parameters_q{qubit}",
         quantities={
             "rotation_angle": "dimensionless",  # in degrees
@@ -89,8 +91,8 @@ def calibrate_qubit_states(
     iq_exc_translated = iq_exc - origin
     rotation_angle = np.angle(np.mean(iq_exc_translated))
 
-    iq_exc_rotated = iq_exc_translated * np.exp(-1j * rotation_angle) + origin
-    iq_gnd_rotated = iq_gnd_translated * np.exp(-1j * rotation_angle) + origin
+    iq_exc_rotated = iq_exc * np.exp(-1j * rotation_angle)
+    iq_gnd_rotated = iq_gnd * np.exp(-1j * rotation_angle)
 
     real_values_exc = iq_exc_rotated.real
     real_values_gnd = iq_gnd_rotated.real
@@ -119,7 +121,7 @@ def calibrate_qubit_states(
     # assignment_fidelity = 1/2 + (cum_distribution_exc[argmax] - cum_distribution_gnd[argmax])/nshots/2
 
     results = {
-        "rotation_angle[dimensionless]": (rotation_angle * 360 / (2 * np.pi))
+        "rotation_angle[dimensionless]": (- rotation_angle * 360 / (2 * np.pi))
         % 360,  # in degrees
         "threshold[V]": threshold,
         "fidelity[dimensionless]": fidelity,
@@ -146,7 +148,7 @@ def calibrate_qubit_states_binning(
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=RX_pulse.duration)
     exc_sequence.add(RX_pulse)
     exc_sequence.add(ro_pulse)
-    data_exc = Dataset(
+    data_exc = DataUnits(
         name=f"data_exc_q{qubit}", quantities={"iteration": "dimensionless"}
     )
     msr, phase, i, q = platform.execute_pulse_sequence(exc_sequence, nshots)[
@@ -167,7 +169,7 @@ def calibrate_qubit_states_binning(
     gnd_sequence = PulseSequence()
     gnd_sequence.add(ro_pulse)
 
-    data_gnd = Dataset(
+    data_gnd = DataUnits(
         name=f"data_gnd_q{qubit}", quantities={"iteration": "dimensionless"}
     )
     msr, phase, i, q = platform.execute_pulse_sequence(gnd_sequence, nshots)[
@@ -185,7 +187,7 @@ def calibrate_qubit_states_binning(
     data_gnd.set(results)
     yield data_gnd
 
-    parameters = Dataset(
+    parameters = DataUnits(
         name=f"parameters_q{qubit}",
         quantities={
             "rotation_angle": "dimensionless",  # in degrees
@@ -203,8 +205,8 @@ def calibrate_qubit_states_binning(
     iq_exc_translated = iq_exc - origin
     rotation_angle = np.angle(np.mean(iq_exc_translated))
 
-    iq_exc_rotated = iq_exc_translated * np.exp(-1j * rotation_angle) + origin
-    iq_gnd_rotated = iq_gnd_translated * np.exp(-1j * rotation_angle) + origin
+    iq_exc_rotated = iq_exc * np.exp(-1j * rotation_angle)
+    iq_gnd_rotated = iq_gnd * np.exp(-1j * rotation_angle)
 
     real_values_exc = iq_exc_rotated.real
     real_values_gnd = iq_gnd_rotated.real
@@ -233,7 +235,7 @@ def calibrate_qubit_states_binning(
     # assignment_fidelity = 1/2 + (cum_distribution_exc[argmax] - cum_distribution_gnd[argmax])/nshots/2
 
     results = {
-        "rotation_angle[dimensionless]": (rotation_angle * 360 / (2 * np.pi))
+        "rotation_angle[dimensionless]": (- rotation_angle * 360 / (2 * np.pi))
         % 360,  # in degrees
         "threshold[V]": threshold,
         "fidelity[dimensionless]": fidelity,

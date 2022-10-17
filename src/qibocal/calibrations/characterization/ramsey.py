@@ -4,7 +4,7 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
 from qibocal import plots
-from qibocal.data import Dataset
+from qibocal.data import DataUnits
 from qibocal.decorators import plot
 from qibocal.fitting.methods import ramsey_fit
 
@@ -22,7 +22,7 @@ def ramsey_frequency_detuned(
     platform.reload_settings()
     sampling_rate = platform.sampling_rate
 
-    data = Dataset(name=f"data_q{qubit}", quantities={"wait": "ns", "t_max": "ns"})
+    data = DataUnits(name=f"data_q{qubit}", quantities={"wait": "ns", "t_max": "ns"})
 
     RX90_pulse1 = platform.create_RX90_pulse(qubit, start=0)
     RX90_pulse2 = platform.create_RX90_pulse(qubit, start=RX90_pulse1.finish)
@@ -118,7 +118,7 @@ def ramsey_frequency_detuned(
         if (new_t2 > current_T2).bool() and len(t_end) > 1:
             current_qubit_freq = int(corrected_qubit_freq)
             current_T2 = new_t2
-            data = Dataset(
+            data = DataUnits(
                 name=f"data_q{qubit}", quantities={"wait": "ns", "t_max": "ns"}
             )
         else:
@@ -168,7 +168,7 @@ def ramsey(
         - RX90_pulse1.frequency
     )
 
-    data = Dataset(name=f"data_q{qubit}", quantities={"wait": "ns", "t_max": "ns"})
+    data = DataUnits(name=f"data_q{qubit}", quantities={"wait": "ns", "t_max": "ns"})
     count = 0
     for _ in range(software_averages):
         for wait in waits:

@@ -76,14 +76,8 @@ class ActionBuilder:
     def _allocate_backend(self, backend_name, platform_name, path):
         """Allocate the platform using Qibolab."""
         from qibo.backends import GlobalBackend, set_backend
-        from qibolab.platform import Platform
-        from qibolab.platforms.abstract import AbstractPlatform
-
-        set_backend(backend=backend_name, platform=platform_name)
-        backend = GlobalBackend()
 
         if backend_name == "qibolab":
-            from qibolab import Platform
             from qibolab.paths import qibolab_folder
 
             original_runcard = qibolab_folder / "runcards" / f"{platform_name}.yml"
@@ -92,12 +86,16 @@ class ActionBuilder:
             # copy of the original runcard that will be modified during calibration
             updated_runcard = f"{self.folder}/new_platform.yml"
             shutil.copy(original_runcard, updated_runcard)
-            # create platform using the runcard that is modified
-            platform = Platform(platform_name, runcard=updated_runcard)
+            # allocate backend with updated_runcard
+            set_backend(
+                backend=backend_name, platform=platform_name, runcard=updated_runcard
+            )
+            backend = GlobalBackend()
+            return backend, backend.platform
         else:
-            platform = None
-
-        return backend, platform
+            set_backend(backend=backend_name, platform=platform_name)
+            backend = GlobalBackend()
+            return backend, None
 
     def save_meta(self, path, folder):
         import qibocal
