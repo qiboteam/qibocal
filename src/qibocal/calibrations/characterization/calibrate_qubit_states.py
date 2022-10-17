@@ -163,7 +163,7 @@ def calibrate_qubit_states_binning(
         "phase[rad]": phase,
         "iteration[dimensionless]": np.arange(nshots),
     }
-    data_exc.set(results)
+    data_exc.load_data_from_dict(results)
     yield data_exc
 
     gnd_sequence = PulseSequence()
@@ -184,7 +184,7 @@ def calibrate_qubit_states_binning(
         "phase[rad]": phase,
         "iteration[dimensionless]": np.arange(nshots),
     }
-    data_gnd.set(results)
+    data_gnd.load_data_from_dict(results)
     yield data_gnd
 
     parameters = DataUnits(
