@@ -138,7 +138,11 @@ actions:
   #   points: 1
 
   # calibrate_qubit_states:
-  #   niter: 1024
+  #   nshots: 1024
+  #   points: 1
+
+  # calibrate_qubit_states_binning:
+  #   nshots: 1024
   #   points: 1
 
   # allXY_iteration:
