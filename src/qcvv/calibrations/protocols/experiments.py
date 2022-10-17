@@ -6,8 +6,9 @@ class Experiment():
     """
     """
     def __init__(self, sequence_lengths:list, qubits:list,
-            nshots:int=1024, circuit_generator:str=None, inverse=False, **kwargs) -> None:
-        self.circuit_generator = self.convert_to_object(circuit_generator)
+            nshots:int=1024, circuit_generator:str=None,
+            inverse=False, **kwargs) -> None:
+        self.circuit_generator = circuit_generator
         self.sequence_lengths = sequence_lengths
         self.qubits = qubits
         self.nshots = nshots
@@ -43,19 +44,3 @@ class Experiment():
         """
         """
         pass
-
-class ExperimentOnequbitcliffords(Experiment):
-    """
-    """
-    def __init__(self, sequence_lengths: list,
-            qubits: list, nshots: int = 1024, inverse=False, **kwargs) -> None:
-        # Inherit all the attributes and methods from parentclass 
-        # 'Experiment'.
-        super().__init__(sequence_lengths, qubits, nshots,
-            inverse, circuit_generator='', **kwargs)
-    
-    def prebuild_a_save(self, **kwargs):
-        """ 
-        """
-        for ll in self.sequence_lengths:
-            kennzeichnung = next(self.circuit_generator)

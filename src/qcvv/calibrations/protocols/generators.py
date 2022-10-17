@@ -1,5 +1,6 @@
 import numpy as np
 from qibo import models, gates, get_backend
+from utils import onequbit_clifford_params
 
 class Generator():
     """
@@ -20,7 +21,7 @@ class Generator():
         """
         pass
 
-    def buid_gate(self):
+    def build_gate(self):
         """
         """
         pass
@@ -41,20 +42,14 @@ class Generator():
         # Initiate the empty circuit from qibo with 'self.nqubits'
         # many qubits.
         circuit = models.Circuit(self.nqubits)
-        # Initiate an empty list for the minimal representation of the gate.
-        minimal_rep = []
         # Iterate over the sequence length.
         for _ in range(sequence_length):
             # Use the attribute to generate gates. This attribute can
             # differ for different classes since this encodes different
-            # gat sets. For every loop retrieve the gate and the minimal
-            # representation for that gate.
-            rep, gate = self.gate_generator()
+            # gat sets. For every loop retrieve the gate.
+            gate = self.gate_generator()
             # Add the generated unitary gate to the list of circuits.
             circuit.add(gate)
-            # Also add the minimal representation to the list of
-            # characterisations.
-            minimal_rep.append(rep)
         # For the standard randomized benchmarking scheme this is
         # useful but can also be ommitted and be done in the classical
         # postprocessing.
@@ -65,41 +60,16 @@ class Generator():
             inversion_unitary = circuit.invert().fuse().queue[0].matrix
             # Add it as a unitary gate to the circuit.
             circuit.add(gates.Unitary(inversion_unitary ,0))
-            # Add the whole inversion gate to the minimal representaiton
-            # list.
-            minimal_rep.append(inversion_unitary)
         circuit.add(self.measurement)
         # No noise model added, for a simulation either the platform
         # introduces the errors or the error gates will be added
         # before execution.
-        yield minimal_rep, circuit
+        yield circuit
 
 class GeneratorOnequbitcliffords(Generator):
     """
     TODO optimize the Clifford drawing
     """
-    # To not define the parameters for one qubit Cliffords every time a
-    # new qubits is drawn define the parameters as global variable.
-    global onequbit_clifford_params
-    onequbit_clifford_params = [
-        (0, 0, 0, 0), (np.pi, 1, 0, 0), (np.pi,0, 1, 0),
-        (np.pi, 0, 0, 1), (np.pi/2, 1, 0, 0), (-np.pi/2, 1, 0, 0),
-        (np.pi/2, 0, 1, 0), (-np.pi/2, 0, 1, 0), (np.pi/2, 0, 0, 1),
-        (-np.pi/2, 0, 0, 1),
-        (np.pi, 1/np.sqrt(2), 1/np.sqrt(2), 0),
-        (np.pi, 1/np.sqrt(2), 0, 1/np.sqrt(2)),
-        (np.pi, 0, 1/np.sqrt(2), 1/np.sqrt(2)),
-        (np.pi, -1/np.sqrt(2), 1/np.sqrt(2), 0),
-        (np.pi, 1/np.sqrt(2), 0, -1/np.sqrt(2)),
-        (np.pi, 0, -1/np.sqrt(2), 1/np.sqrt(2)),
-        (2*np.pi/3, 1/np.sqrt(3), 1/np.sqrt(3), 1/np.sqrt(3)),
-        (-2*np.pi/3, 1/np.sqrt(3), 1/np.sqrt(3), 1/np.sqrt(3)),
-        (2*np.pi/3, -1/np.sqrt(3), 1/np.sqrt(3), 1/np.sqrt(3)),
-        (-2*np.pi/3, -1/np.sqrt(3), 1/np.sqrt(3), 1/np.sqrt(3)),
-        (2*np.pi/3, 1/np.sqrt(3), -1/np.sqrt(3), 1/np.sqrt(3)),
-        (-2*np.pi/3, 1/np.sqrt(3), -1/np.sqrt(3), 1/np.sqrt(3)),
-        (2*np.pi/3, 1/np.sqrt(3), 1/np.sqrt(3), -1/np.sqrt(3)),
-        (-2*np.pi/3, 1/np.sqrt(3), 1/np.sqrt(3), -1/np.sqrt(3))]
 
 
     def __init__(self, nqubits, **kwargs):
@@ -114,8 +84,8 @@ class GeneratorOnequbitcliffords(Generator):
         """ One single Clifford qubit gate can be specified with four
         parameters.
 
-        The parameters are hard coded and stored in the global 
-        'onequbit_clifford_params' variable, a tuple is drawn randomly.
+        The parameters are hard coded and stored in the file utils.py as
+        'onequbit_clifford_params', a tuple is drawn randomly.
         
         Args:
             seed (int): optional, set the starting seed for random
@@ -164,4 +134,4 @@ class GeneratorOnequbitcliffords(Generator):
             ``qibo.gates.Unitary``: the Clifford gate
         """
         random_parameters = self.minimal_representation(seed=seed)
-        return random_parameters, self.build_gate(*random_parameters)
+        return self.build_gate(*random_parameters)
