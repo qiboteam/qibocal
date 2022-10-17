@@ -1,4 +1,3 @@
-
 from qcvv.data import Data
 
 
@@ -44,7 +43,23 @@ class Experiment():
         """
         pass
 
-class ExperimentOnequbitcliffords(Experiment):
+class Experiment1qubitcliffords(Experiment):
+    """
+    """
+    def __init__(self, sequence_lengths: list,
+            qubits: list, nshots: int = 1024, inverse=False, **kwargs) -> None:
+        # Inherit all the attributes and methods from parentclass 
+        # 'Experiment'.
+        super().__init__(sequence_lengths, qubits, nshots,
+            inverse, circuit_generator='', **kwargs)
+    
+    def prebuild_a_save(self, **kwargs):
+        """ 
+        """
+        for ll in self.sequence_lengths:
+            kennzeichnung = next(self.circuit_generator)
+
+class ExperimentNqubitcliffords(Experiment):
     """
     """
     def __init__(self, sequence_lengths: list,
