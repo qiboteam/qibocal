@@ -25,11 +25,6 @@ def calibrate_qubit_states(
 
     data_exc = DataUnits(name=f"data_exc_q{qubit}", quantities={"iteration": "dimensionless"})
     iq_exc = []
-    platform.qd_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["qubit_freq"]
-        - RX_pulse.frequency
-    )
-
     count = 0
     for n in np.arange(nshots):
         if count % points == 0:
@@ -54,7 +49,6 @@ def calibrate_qubit_states(
 
     data_gnd = DataUnits(name=f"data_gnd_q{qubit}", quantities={"iteration": "dimensionless"})
     iq_gnd = []
-
     count = 0
     for n in np.arange(nshots):
         if count % points == 0:
@@ -82,6 +76,9 @@ def calibrate_qubit_states(
             "assignment_fidelity": "dimensionless",
         },
     )
+
+    iq_exc = np.array(iq_exc)
+    iq_gnd = np.array(iq_gnd)
 
     iq_mean_exc = np.mean(iq_exc)
     iq_mean_gnd = np.mean(iq_gnd)
