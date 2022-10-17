@@ -127,7 +127,7 @@ def test_data_add():
     assert len(data) == 6
 
 
-def test_data_units_set():
+def test_data_units_load_data_from_dict():
     """Test set method of DataUnits class"""
     data_units = DataUnits()
     test = {
@@ -136,7 +136,7 @@ def test_data_units_set():
         "q[V]": np.array([3, 4, 5]),
         "phase[deg]": [6.0, 7.0, 8.0],
     }
-    data_units.df = test
+    data_units.load_data_from_dict(test)
     assert len(data_units) == 3
     assert (data_units.get_values("MSR", "V") == [1, 2, 3]).all()
     assert (data_units.get_values("i", "V") == [3.0, 4.0, 5.0]).all()
@@ -145,13 +145,13 @@ def test_data_units_set():
 
     data_units1 = DataUnits(options=["option1", "option2"])
     test = {"option1": ["one", "two", "three"], "option2": [1, 2, 3]}
-    data_units1.df = test
+    data_units1.load_data_from_dict(test)
     assert len(data_units1) == 3
     assert (data_units1.get_values("option1") == ["one", "two", "three"]).all()
     assert (data_units1.get_values("option2") == [1, 2, 3]).all()
 
 
-def test_data_set():
+def test_data_load_data_from_dict():
     """Test set method of Data class"""
     data = random_data(5)
     test = {
@@ -160,7 +160,7 @@ def test_data_set():
         "string": ["one", "two", "three"],
         "bool": [True, False, True],
     }
-    data.df = test
+    data.load_data_from_dict(test)
     assert len(data) == 3
     assert (data.get_values("int") == [1, 2, 3]).all()
     assert (data.get_values("float") == [3.0, 4.0, 5.0]).all()

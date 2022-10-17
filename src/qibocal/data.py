@@ -23,7 +23,7 @@ class AbstractData:
         self.quantities = None
 
     def __add__(self, data):
-        self.df = pd.concat([self.df, data.data], ignore_index=True)
+        self.df = pd.concat([self.df, data.df], ignore_index=True)
         return self
 
     @abstractmethod
@@ -105,28 +105,37 @@ class DataUnits(AbstractData):
         return self._df
 
     @df.setter
-    def df(self, data):
-        """Set data attribute.
+    def df(self, df):
+        """Set df attribute.
+
+        Args:
+            df (pd.DataFrame): pandas DataFrame. Every key should have the following form:
+                               ``<name>[<unit>]``.
+        """
+        if isinstance(df, pd.DataFrame):
+            self._df = df
+        else:
+            raise_error(TypeError, f"{df.type} is not a pd.DataFrame.")
+
+    def load_data_from_dict(self, data: dict):
+        """Set df attribute.
 
         Args:
             data (dict): dictionary containing the data to be added.
                         Every key should have the following form:
                         ``<name>[<unit>]``.
         """
-        if isinstance(data, pd.DataFrame):
-            self._df = data
-        else:
-            processed_data = {}
-            for key, values in data.items():
-                if "[" in key:
-                    name = key.split("[")[0]
-                    unit = re.search(r"\[([A-Za-z0-9_]+)\]", key).group(1)
-                    processed_data[name] = pd.Series(
-                        data=(np.array(values) * self.ureg(unit)), dtype=f"pint[{unit}]"
-                    )
-                else:
-                    processed_data[key] = pd.Series(data=(values), dtype=object)
-            self._df = pd.DataFrame(processed_data)
+        processed_data = {}
+        for key, values in data.items():
+            if "[" in key:
+                name = key.split("[")[0]
+                unit = re.search(r"\[([A-Za-z0-9_]+)\]", key).group(1)
+                processed_data[name] = pd.Series(
+                    data=(np.array(values) * self.ureg(unit)), dtype=f"pint[{unit}]"
+                )
+            else:
+                processed_data[key] = pd.Series(data=(values), dtype=object)
+        self._df = pd.DataFrame(processed_data)
 
     def add(self, data):
         """Add a row to `DataUnits`.
@@ -232,18 +241,24 @@ class Data(AbstractData):
 
     @df.setter
     def df(self, data):
-        """Set data attribute.
+        """Set df attribute.
 
         Args:
-            data (dict): dictionary containing the data to be added.
+            df (pd.DataFrame):
         """
         if isinstance(data, pd.DataFrame):
             self._df = data
-        else:
-            processed_data = {}
-            for key, values in data.items():
-                processed_data[key] = pd.Series(data=(values), dtype=object)
-            self._df = pd.DataFrame(processed_data)
+
+    def load_data_from_dict(self, data: dict):
+        """Set df attribute.
+
+        Args:
+            df (dict): dictionary containing the data to be added.
+        """
+        processed_data = {}
+        for key, values in data.items():
+            processed_data[key] = pd.Series(data=(values), dtype=object)
+        self._df = pd.DataFrame(processed_data)
 
     def add(self, data):
         """Add a row to data.
