@@ -301,6 +301,7 @@ class Shadow():
         """
         samples = np.array(self.samples_list)
         N = len(self.sequence_lengths)
+        print(self.samples_list)
         samples = samples.reshape((self.runs, N, self.nshots, self.qubits))
         return samples
 
@@ -431,6 +432,51 @@ def standard_rb(
     data2 = Data("effectivedepol", quantities=["effective_depol"])
     data2.add({"effective_depol": effective_depol(pauli)})
     yield data2
+
+
+# @plot("Test Standard RB", plots.standard_rb_plot)
+def standard_rb_test(
+    platform,
+    qubit : list,
+    generator_name,
+    sequence_lengths,
+    runs,
+    nshots,
+    inject_noise
+):
+    # Define the data object.
+    # Use the sequence_lengths list as labels for the data
+    data1 = Data("standardrb_data",
+        quantities=list(sequence_lengths))
+    data2 = Data("standardrb_circuits",
+        quantities=list(sequence_lengths))
+    # Generate the circuits
+    measurement_type = "Ground State"
+    myshadow = Shadow(len(qubit), measurement_type, sequence_lengths, runs, nshots)
+    if generator_name == 'UIRSOnequbitcliffords':
+        mygenerator = UIRSOnequbitcliffords(1, invert=True, noisemodel=False)
+    else:
+        raise ValueError('This generator is not implemented.')
+    myshadow = experimental_protocol(
+        mygenerator, myshadow, inject_noise=inject_noise, nshots=nshots)
+    for count in range(runs):
+        data1.add({sequence_lengths[i]:myshadow.probabilities[count][i] \
+            for i in range(len(sequence_lengths))})
+        data2.add({sequence_lengths[i]:myshadow.circuit_list[count*len(sequence_lengths)+i] \
+            for i in range(len(sequence_lengths))})
+    # pm = np.sum(myshadow.probabilities, axis=0)/runs
+    # print(sequence_lengths)
+    # print(pm)
+    # data.add({'survival_probabilities':pm,
+    #     'sequence_lengths':sequence_lengths})
+    yield data1
+    yield data2
+    pauli = PauliError(*inject_noise)
+    noise = NoiseModel()
+    noise.add(pauli, gates.Unitary)
+    data3 = Data("effectivedepol", quantities=["effective_depol"])
+    data3.add({"effective_depol": effective_depol(pauli)})
+    yield data3
 
 
 @plot("Test Standard RB", plots.standard_rb_plot)

@@ -4,14 +4,13 @@ from qcvv.data import Data
 class Experiment():
     """
     """
-    def __init__(self, circuit_generator, sequence_lengths:list, qubits:list,
-            runs:int, nshots:int=1024, **kwargs) -> None:
-        self.circuit_generator = circuit_generator
+    def __init__(self, sequence_lengths:list, qubits:list,
+            nshots:int=1024, circuit_generator:str=None, inverse=False, **kwargs) -> None:
+        self.circuit_generator = self.convert_to_object(circuit_generator)
         self.sequence_lengths = sequence_lengths
         self.qubits = qubits
-        self.runs = runs
         self.nshots = nshots
-        self.inverse = circuit_generator.invert
+        self.inverse = inverse
 
     def prebuild_a_save(self, **kwargs):
         """ 
