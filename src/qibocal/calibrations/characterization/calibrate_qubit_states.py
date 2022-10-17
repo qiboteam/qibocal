@@ -121,7 +121,7 @@ def calibrate_qubit_states(
     # assignment_fidelity = 1/2 + (cum_distribution_exc[argmax] - cum_distribution_gnd[argmax])/nshots/2
 
     results = {
-        "rotation_angle[dimensionless]": (- rotation_angle * 360 / (2 * np.pi))
+        "rotation_angle[dimensionless]": (-rotation_angle * 360 / (2 * np.pi))
         % 360,  # in degrees
         "threshold[V]": threshold,
         "fidelity[dimensionless]": fidelity,
@@ -235,7 +235,7 @@ def calibrate_qubit_states_binning(
     # assignment_fidelity = 1/2 + (cum_distribution_exc[argmax] - cum_distribution_gnd[argmax])/nshots/2
 
     results = {
-        "rotation_angle[dimensionless]": (- rotation_angle * 360 / (2 * np.pi))
+        "rotation_angle[dimensionless]": (-rotation_angle * 360 / (2 * np.pi))
         % 360,  # in degrees
         "threshold[V]": threshold,
         "fidelity[dimensionless]": fidelity,
