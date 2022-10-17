@@ -19,11 +19,11 @@ class AbstractData:
         else:
             self.name = name
 
-        self.data = pd.DataFrame()
+        self.df = pd.DataFrame()
         self.quantities = None
 
     def __add__(self, data):
-        self.data = pd.concat([self.data, data.data], ignore_index=True)
+        self.df = pd.concat([self.df, data.data], ignore_index=True)
         return self
 
     @abstractmethod
@@ -32,7 +32,7 @@ class AbstractData:
 
     def __len__(self):
         """Computes the length of the data."""
-        return len(self.data)
+        return len(self.df)
 
     @classmethod
     def load_data(cls, folder, routine, format, name):
@@ -45,16 +45,16 @@ class AbstractData:
         Args:
             path (str): Path containing output folder."""
         if self.quantities == None:
-            self.data.to_csv(f"{path}/{self.name}.csv")
+            self.df.to_csv(f"{path}/{self.name}.csv")
         else:
-            self.data.pint.dequantify().to_csv(f"{path}/{self.name}.csv")
+            self.df.pint.dequantify().to_csv(f"{path}/{self.name}.csv")
 
     def to_pickle(self, path):
         """Save data in pickel file.
 
         Args:
             path (str): Path containing output folder."""
-        self.data.to_pickle(f"{path}/{self.name}.pkl")
+        self.df.to_pickle(f"{path}/{self.name}.pkl")
 
 
 class DataUnits(AbstractData):
@@ -73,7 +73,7 @@ class DataUnits(AbstractData):
 
         super().__init__(name=name)
 
-        self._data = pd.DataFrame(
+        self._df = pd.DataFrame(
             {
                 "MSR": pd.Series(dtype="pint[V]"),
                 "i": pd.Series(dtype="pint[V]"),
@@ -87,12 +87,12 @@ class DataUnits(AbstractData):
         if quantities is not None:
             self.quantities.update(quantities)
             for name, unit in quantities.items():
-                self.data.insert(0, name, pd.Series(dtype=f"pint[{unit}]"))
+                self.df.insert(0, name, pd.Series(dtype=f"pint[{unit}]"))
 
         if options is not None:
             self.options = options
             for option in options:
-                self.data.insert(  # pylint: disable=E1101
+                self.df.insert(  # pylint: disable=E1101
                     0, option, pd.Series(dtype=object)
                 )
 
@@ -101,11 +101,11 @@ class DataUnits(AbstractData):
         self.ureg = UnitRegistry()
 
     @property
-    def data(self):
-        return self._data
+    def df(self):
+        return self._df
 
-    @data.setter
-    def data(self, data):
+    @df.setter
+    def df(self, data):
         """Set data attribute.
 
         Args:
@@ -114,7 +114,7 @@ class DataUnits(AbstractData):
                         ``<name>[<unit>]``.
         """
         if isinstance(data, pd.DataFrame):
-            self._data = data
+            self._df = data
         else:
             processed_data = {}
             for key, values in data.items():
@@ -126,7 +126,7 @@ class DataUnits(AbstractData):
                     )
                 else:
                     processed_data[key] = pd.Series(data=(values), dtype=object)
-            self._data = pd.DataFrame(processed_data)
+            self._df = pd.DataFrame(processed_data)
 
     def add(self, data):
         """Add a row to `DataUnits`.
@@ -143,9 +143,9 @@ class DataUnits(AbstractData):
                 name = key.split("[")[0]
                 unit = re.search(r"\[([A-Za-z0-9_]+)\]", key).group(1)
                 # TODO: find a better way to do this
-                self.data.loc[l, name] = np.array(value) * self.ureg(unit)
+                self.df.loc[l, name] = np.array(value) * self.ureg(unit)
             else:
-                self.data.loc[l, key] = value
+                self.df.loc[l, key] = value
 
     def get_values(self, key, unit=None):
         """Get values of a quantity in specified units.
@@ -158,9 +158,9 @@ class DataUnits(AbstractData):
             ``pd.Series`` with the quantity values in the given units.
         """
         if unit is None:
-            return self.data[key]
+            return self.df[key]
         else:
-            return self.data[key].pint.to(unit).pint.magnitude
+            return self.df[key].pint.to(unit).pint.magnitude
 
     @classmethod
     def load_data(cls, folder, routine, format, name):
@@ -177,22 +177,22 @@ class DataUnits(AbstractData):
         obj = cls()
         if format == "csv":
             file = f"{folder}/data/{routine}/{name}.csv"
-            obj.data = pd.read_csv(file, header=[0, 1])
-            obj.data.pop("Unnamed: 0_level_0")
+            obj.df = pd.read_csv(file, header=[0, 1])
+            obj.df.pop("Unnamed: 0_level_0")
             quantities_label = []
             obj.options = []
-            for column in obj.data.columns:  # pylint: disable=E1101
+            for column in obj.df.columns:  # pylint: disable=E1101
                 if "Unnamed" not in column[1]:
                     quantities_label.append(column[0])
                 else:
                     obj.options.append(column[0])
-            quantities_data = obj.data[quantities_label].pint.quantify()
-            options_data = obj.data[obj.options]
-            options_data.columns = options_data.columns.droplevel(1)
-            obj.data = pd.concat([quantities_data, options_data], axis=1)
+            quantities_df = obj.df[quantities_label].pint.quantify()
+            options_df = obj.df[obj.options]
+            options_df.columns = options_df.columns.droplevel(1)
+            obj.df = pd.concat([quantities_df, options_df], axis=1)
         elif format == "pickle":
             file = f"{folder}/data/{routine}/{name}.pkl"
-            obj.data = pd.read_pickle(file)
+            obj.df = pd.read_pickle(file)
         else:
             raise_error(ValueError, f"Cannot load data using {format} format.")
 
@@ -203,9 +203,9 @@ class DataUnits(AbstractData):
 
         Args:
             path (str): Path containing output folder."""
-        data = self.data[list(self.quantities)].pint.dequantify()
+        data = self.df[list(self.quantities)].pint.dequantify()
         firsts = data.index.get_level_values(None)
-        data[self.options] = self.data[self.options].loc[firsts].values
+        data[self.options] = self.df[self.options].loc[firsts].values
         data.to_csv(f"{path}/{self.name}.csv")
 
 
@@ -224,26 +224,26 @@ class Data(AbstractData):
         if quantities is not None:
             self.quantities = quantities
             for name in quantities:
-                self.data.insert(0, name, pd.Series(dtype=object))
+                self.df.insert(0, name, pd.Series(dtype=object))
 
     @property
-    def data(self):
-        return self._data
+    def df(self):
+        return self._df
 
-    @data.setter
-    def data(self, data):
+    @df.setter
+    def df(self, data):
         """Set data attribute.
 
         Args:
             data (dict): dictionary containing the data to be added.
         """
         if isinstance(data, pd.DataFrame):
-            self._data = data
+            self._df = data
         else:
             processed_data = {}
             for key, values in data.items():
                 processed_data[key] = pd.Series(data=(values), dtype=object)
-            self._data = pd.DataFrame(processed_data)
+            self._df = pd.DataFrame(processed_data)
 
     def add(self, data):
         """Add a row to data.
@@ -255,7 +255,7 @@ class Data(AbstractData):
         """
         l = len(self)
         for key, value in data.items():
-            self.data.loc[l, key] = value
+            self.df.loc[l, key] = value
 
     def get_values(self, quantity):
         """Get values of a quantity in specified units.
@@ -266,7 +266,7 @@ class Data(AbstractData):
         Returns:
             ``pd.Series`` with the quantity values in the given units.
         """
-        return self.data[quantity].values
+        return self.df[quantity].values
 
     @classmethod
     def load_data(cls, folder, routine, format, name):
@@ -283,11 +283,11 @@ class Data(AbstractData):
         obj = cls()
         if format == "csv":
             file = f"{folder}/data/{routine}/{name}.csv"
-            obj.data = pd.read_csv(file)
-            obj.data.pop("Unnamed: 0")
+            obj.df = pd.read_csv(file)
+            obj.df.pop("Unnamed: 0")
         elif format == "pickle":
             file = f"{folder}/data/{routine}/{name}.pkl"
-            obj.data = pd.read_pickle(file)
+            obj.df = pd.read_pickle(file)
         else:
             raise_error(ValueError, f"Cannot load data using {format} format.")
 
@@ -298,11 +298,11 @@ class Data(AbstractData):
 
         Args:
             path (str): Path containing output folder."""
-        self.data.to_csv(f"{path}/{self.name}.csv")
+        self.df.to_csv(f"{path}/{self.name}.csv")
 
     def to_pickle(self, path):
         """Save data in pickel file.
 
         Args:
             path (str): Path containing output folder."""
-        self.data.to_pickle(f"{path}/{self.name}.pkl")
+        self.df.to_pickle(f"{path}/{self.name}.pkl")

@@ -85,7 +85,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
             max(data_fast.get_values("frequency", "GHz")),
             2 * len(data_fast),
         )
-        params = [i for i in list(data_fit.data.keys()) if "popt" not in i]
+        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
             go.Scatter(
                 x=freqrange,
@@ -108,7 +108,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
                 x=0,
                 y=-0.25,
                 showarrow=False,
-                text=f"The estimated {params[0]} is {data_fit.data[params[0]][0]:.1f} Hz.",
+                text=f"The estimated {params[0]} is {data_fit.df[params[0]][0]:.1f} Hz.",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
@@ -121,7 +121,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
                 x=0,
                 y=-0.30,
                 showarrow=False,
-                text=f"The estimated {params[1]} is {data_fit.data[params[1]][0]:.3f} uV.",
+                text=f"The estimated {params[1]} is {data_fit.df[params[1]][0]:.3f} uV.",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
@@ -145,14 +145,12 @@ def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
 
     fig = go.Figure()
     # index data on a specific attenuation value
-    smalldata = data.data[
-        data.get_values("attenuation", "dB") == plot1d_attenuation
-    ].copy()
+    smalldf = data.df[data.get_values("attenuation", "dB") == plot1d_attenuation].copy()
     # split multiple software averages to different datasets
     datasets = []
-    while len(smalldata):
-        datasets.append(smalldata.drop_duplicates("frequency"))
-        smalldata.drop(datasets[-1].index, inplace=True)
+    while len(smalldf):
+        datasets.append(smalldf.drop_duplicates("frequency"))
+        smalldf.drop(datasets[-1].index, inplace=True)
         fig.add_trace(
             go.Scatter(
                 x=datasets[-1]["frequency"].pint.to("GHz").pint.magnitude,
@@ -228,7 +226,7 @@ def time_msr_phase(folder, routine, qubit, format):
             max(data.get_values("Time", "ns")),
             2 * len(data),
         )
-        params = [i for i in list(data_fit.data.keys()) if "popt" not in i]
+        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
             go.Scatter(
                 x=timerange,
@@ -253,7 +251,7 @@ def time_msr_phase(folder, routine, qubit, format):
                 x=0,
                 y=-0.20,
                 showarrow=False,
-                text=f"Estimated {params[1]} is {data_fit.data[params[1]][0]:.3f} ns.",
+                text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.3f} ns.",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
@@ -267,7 +265,7 @@ def time_msr_phase(folder, routine, qubit, format):
                 x=0,
                 y=-0.30,
                 showarrow=False,
-                text=f"Estimated {params[0]} is {data_fit.data[params[0]][0]:.1f} uV.",
+                text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.1f} uV.",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
@@ -346,7 +344,7 @@ def gain_msr_phase(folder, routine, qubit, format):
             max(data.get_values("gain", "dimensionless")),
             2 * len(data),
         )
-        params = [i for i in list(data_fit.data.keys()) if "popt" not in i]
+        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
             go.Scatter(
                 x=gainrange,
@@ -371,7 +369,7 @@ def gain_msr_phase(folder, routine, qubit, format):
                 x=0,
                 y=-0.20,
                 showarrow=False,
-                text=f"Estimated {params[1]} is {data_fit.data[params[1]][0]:.3f}",
+                text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.3f}",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
@@ -385,7 +383,7 @@ def gain_msr_phase(folder, routine, qubit, format):
                 x=0,
                 y=-0.25,
                 showarrow=False,
-                text=f"Estimated {params[0]} is {data_fit.data[params[0]][0]:.4f} uV",
+                text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.4f} uV",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
@@ -450,7 +448,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
             max(data.get_values("amplitude", "dimensionless")),
             2 * len(data),
         )
-        params = [i for i in list(data_fit.data.keys()) if "popt" not in i]
+        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
             go.Scatter(
                 x=amplituderange,
@@ -475,7 +473,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
                 x=0,
                 y=-0.30,
                 showarrow=False,
-                text=f"Estimated {params[0]} is {data_fit.data[params[0]][0]:.3f} uV.",
+                text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.3f} uV.",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
@@ -489,7 +487,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
                 x=0,
                 y=-0.25,
                 showarrow=False,
-                text=f"Estimated {params[1]} is {data_fit.data[params[1]][0]:.4f}",
+                text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.4f}",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
@@ -544,7 +542,7 @@ def time_msr(folder, routine, qubit, format):
             max(data.get_values("wait", "ns")),
             2 * len(data),
         )
-        params = [i for i in list(data_fit.data.keys()) if "popt" not in i]
+        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
             go.Scatter(
                 x=timerange,
@@ -569,7 +567,7 @@ def time_msr(folder, routine, qubit, format):
                 x=0,
                 y=-0.30,
                 showarrow=False,
-                text=f"Estimated {params[1]} is {data_fit.data[params[1]][0]:.3f} Hz.",
+                text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.3f} Hz.",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
@@ -583,7 +581,7 @@ def time_msr(folder, routine, qubit, format):
                 x=0,
                 y=-0.20,
                 showarrow=False,
-                text=f"Estimated {params[0]} is {data_fit.data[params[0]][0]:.1f} ns",
+                text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.1f} ns",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
@@ -597,7 +595,7 @@ def time_msr(folder, routine, qubit, format):
                 x=0,
                 y=-0.25,
                 showarrow=False,
-                text=f"Estimated {params[2]} is {data_fit.data[params[2]][0]:.3f} Hz",
+                text=f"Estimated {params[2]} is {data_fit.df[params[2]][0]:.3f} Hz",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
@@ -663,7 +661,7 @@ def t1_time_msr_phase(folder, routine, qubit, format):
             max(data.get_values("Time", "ns")),
             2 * len(data),
         )
-        params = [i for i in list(data_fit.data.keys()) if "popt" not in i]
+        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
             go.Scatter(
                 x=timerange,
@@ -686,7 +684,7 @@ def t1_time_msr_phase(folder, routine, qubit, format):
                 x=0,
                 y=-0.20,
                 showarrow=False,
-                text=f"Estimated {params[0]} is {data_fit.data[params[0]][0]:.1f} ns.",
+                text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.1f} ns.",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
@@ -755,7 +753,7 @@ def flips_msr_phase(folder, routine, qubit, format):
             max(data.get_values("flips", "dimensionless")),
             2 * len(data),
         )
-        params = [i for i in list(data_fit.data.keys()) if "popt" not in i]
+        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
             go.Scatter(
                 x=flipsrange,
@@ -779,7 +777,7 @@ def flips_msr_phase(folder, routine, qubit, format):
                 x=0,
                 y=-0.25,
                 showarrow=False,
-                text=f"Estimated {params[0]} is {data_fit.data[params[0]][0]:.4f}",
+                text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.4f}",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
@@ -792,7 +790,7 @@ def flips_msr_phase(folder, routine, qubit, format):
                 x=0,
                 y=-0.30,
                 showarrow=False,
-                text=f"Estimated {params[1]} is {data_fit.data[params[1]][0]:.3f}",
+                text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.3f}",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
@@ -1047,7 +1045,7 @@ def msr_beta(folder, routine, qubit, format):
             max(data.get_values("beta_param", "dimensionless")),
             20,
         )
-        params = [i for i in list(data_fit.data.keys()) if "popt" not in i]
+        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
             go.Scatter(
                 x=beta_param,
@@ -1071,7 +1069,7 @@ def msr_beta(folder, routine, qubit, format):
                 x=0,
                 y=-0.20,
                 showarrow=False,
-                text=f"Estimated {params[0]} is {data_fit.data[params[0]][0]:.4f}",
+                text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.4f}",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
@@ -1191,7 +1189,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
             max(data_spec.get_values("frequency", "GHz")),
             2 * len(data_spec),
         )
-        params = [i for i in list(data_fit.data.keys()) if "popt" not in i]
+        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
             go.Scatter(
                 x=freqrange,
@@ -1214,7 +1212,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
                 x=0,
                 y=-0.25,
                 showarrow=False,
-                text=f"The estimated {params[0]} is {data_fit.data[params[0]][0]:.1f} Hz.",
+                text=f"The estimated {params[0]} is {data_fit.df[params[0]][0]:.1f} Hz.",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
@@ -1229,7 +1227,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
             max(data_shifted.get_values("frequency", "GHz")),
             2 * len(data_shifted),
         )
-        params = [i for i in list(data_fit_shifted.data.keys()) if "popt" not in i]
+        params = [i for i in list(data_fit_shifted.df.keys()) if "popt" not in i]
         fig.add_trace(
             go.Scatter(
                 x=freqrange,
@@ -1252,7 +1250,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
                 x=0,
                 y=-0.30,
                 showarrow=False,
-                text=f"The estimated shifted {params[0]} is {data_fit_shifted.data[params[0]][0]:.1f} Hz.",
+                text=f"The estimated shifted {params[0]} is {data_fit_shifted.df[params[0]][0]:.1f} Hz.",
                 textangle=0,
                 xanchor="left",
                 xref="paper",

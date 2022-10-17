@@ -36,8 +36,8 @@ def random_data(length):
 def test_data_initialization():
     """Test DataUnits constructor"""
     data = DataUnits()
-    assert len(data.data.columns) == 4
-    assert list(data.data.columns) == [  # pylint: disable=E1101
+    assert len(data.df.columns) == 4
+    assert list(data.df.columns) == [  # pylint: disable=E1101
         "MSR",
         "i",
         "q",
@@ -45,8 +45,8 @@ def test_data_initialization():
     ]
 
     data1 = DataUnits(quantities={"attenuation": "dB"})
-    assert len(data1.data.columns) == 5
-    assert list(data1.data.columns) == [  # pylint: disable=E1101
+    assert len(data1.df.columns) == 5
+    assert list(data1.df.columns) == [  # pylint: disable=E1101
         "attenuation",
         "MSR",
         "i",
@@ -55,8 +55,8 @@ def test_data_initialization():
     ]
 
     data2 = DataUnits(quantities={"attenuation": "dB"}, options=["option1"])
-    assert len(data2.data.columns) == 6
-    assert list(data2.data.columns) == [  # pylint: disable=E1101
+    assert len(data2.df.columns) == 6
+    assert list(data2.df.columns) == [  # pylint: disable=E1101
         "option1",
         "attenuation",
         "MSR",
@@ -69,10 +69,10 @@ def test_data_initialization():
 def test_data_units_units():
     """Test units of measure in DataUnits"""
     data_units = DataUnits()
-    assert data_units.data.MSR.values.units == "volt"
+    assert data_units.df.MSR.values.units == "volt"
 
     data_units1 = DataUnits(quantities={"frequency": "Hz"})
-    assert data_units1.data.frequency.values.units == "hertz"
+    assert data_units1.df.frequency.values.units == "hertz"
 
     with pytest.raises(UndefinedUnitError):
         data_units2 = DataUnits(quantities={"fake_unit": "fake"})
@@ -84,7 +84,7 @@ def test_data_units_add():
     assert len(data_units) == 5
 
     data_units1 = DataUnits(quantities={"attenuation": "dB"})
-    msr, i, q, phase, att = np.random.rand(len(data_units1.data.columns))
+    msr, i, q, phase, att = np.random.rand(len(data_units1.df.columns))
     data_units1.add(
         {
             "MSR[V]": msr,
@@ -108,7 +108,7 @@ def test_data_units_add():
     assert len(data_units1) == 2
 
     data_units2 = DataUnits()
-    msr, i, q, phase = np.random.rand(len(data_units2.data.columns))
+    msr, i, q, phase = np.random.rand(len(data_units2.df.columns))
     with pytest.raises(DimensionalityError):
         data_units2.add({"MSR[dB]": msr, "i[V]": i, "q[V]": q, "phase[deg]": phase})
 
@@ -136,7 +136,7 @@ def test_data_units_set():
         "q[V]": np.array([3, 4, 5]),
         "phase[deg]": [6.0, 7.0, 8.0],
     }
-    data_units.data = test
+    data_units.df = test
     assert len(data_units) == 3
     assert (data_units.get_values("MSR", "V") == [1, 2, 3]).all()
     assert (data_units.get_values("i", "V") == [3.0, 4.0, 5.0]).all()
@@ -145,7 +145,7 @@ def test_data_units_set():
 
     data_units1 = DataUnits(options=["option1", "option2"])
     test = {"option1": ["one", "two", "three"], "option2": [1, 2, 3]}
-    data_units1.data = test
+    data_units1.df = test
     assert len(data_units1) == 3
     assert (data_units1.get_values("option1") == ["one", "two", "three"]).all()
     assert (data_units1.get_values("option2") == [1, 2, 3]).all()
@@ -160,7 +160,7 @@ def test_data_set():
         "string": ["one", "two", "three"],
         "bool": [True, False, True],
     }
-    data.data = test
+    data.df = test
     assert len(data) == 3
     assert (data.get_values("int") == [1, 2, 3]).all()
     assert (data.get_values("float") == [3.0, 4.0, 5.0]).all()
@@ -172,14 +172,14 @@ def test_get_values_data_units():
     """Test get_values method of DataUnits class"""
     data_units = random_data_units(5, options=["option"])
 
-    assert (data_units.get_values("option") == data_units.data["option"]).all()
+    assert (data_units.get_values("option") == data_units.df["option"]).all()
     assert (
         data_units.get_values("MSR", "uV")
-        == data_units.data["MSR"].pint.to("uV").pint.magnitude
+        == data_units.df["MSR"].pint.to("uV").pint.magnitude
     ).all()
 
 
 def test_get_values_data():
     """Test get_values method of Data class"""
     data = random_data(5)
-    assert (data.get_values("int") == data.data["int"]).all()
+    assert (data.get_values("int") == data.df["int"]).all()
