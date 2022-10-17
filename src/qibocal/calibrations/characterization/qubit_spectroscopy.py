@@ -4,7 +4,7 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
 from qibocal import plots
-from qibocal.data import Dataset
+from qibocal.data import DataUnits
 from qibocal.decorators import plot
 from qibocal.fitting.methods import lorentzian_fit
 
@@ -35,7 +35,7 @@ def qubit_spectroscopy(
 
     freqrange = np.arange(fast_start, fast_end, fast_step) + qubit_frequency
 
-    data = Dataset(quantities={"frequency": "Hz", "attenuation": "dB"})
+    data = DataUnits(quantities={"frequency": "Hz", "attenuation": "dB"})
 
     # FIXME: Waiting for Qblox platform to take care of that
     platform.ro_port[qubit].lo_frequency = (
@@ -43,7 +43,7 @@ def qubit_spectroscopy(
         - ro_pulse.frequency
     )
 
-    data = Dataset(name=f"fast_sweep_q{qubit}", quantities={"frequency": "Hz"})
+    data = DataUnits(name=f"fast_sweep_q{qubit}", quantities={"frequency": "Hz"})
     count = 0
     for _ in range(software_averages):
         for freq in freqrange:
@@ -98,7 +98,7 @@ def qubit_spectroscopy(
             * 1e6
         )
 
-    prec_data = Dataset(
+    prec_data = DataUnits(
         name=f"precision_sweep_q{qubit}", quantities={"frequency": "Hz"}
     )
     freqrange = (
@@ -158,7 +158,7 @@ def qubit_spectroscopy_flux(
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
 
-    data = Dataset(
+    data = DataUnits(
         name=f"data_q{qubit}", quantities={"frequency": "Hz", "current": "A"}
     )
 

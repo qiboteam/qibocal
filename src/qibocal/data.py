@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Implementation of Dataset class to store measurements."""
+"""Implementation of DataUnits and Data class to store calibration routines outputs."""
 
 import re
 from abc import abstractmethod
@@ -11,7 +11,7 @@ import pint_pandas
 from qibocal.config import raise_error
 
 
-class AbstractDataset:
+class AbstractData:
     def __init__(self, name=None):
 
         if name is None:
@@ -31,7 +31,7 @@ class AbstractDataset:
         raise_error(NotImplementedError)
 
     def __len__(self):
-        """Computes the length of the dataset."""
+        """Computes the length of the data."""
         return len(self.data)
 
     @classmethod
@@ -57,7 +57,7 @@ class AbstractDataset:
         self.data.to_pickle(f"{path}/{self.name}.pkl")
 
 
-class Dataset(AbstractDataset):
+class DataUnits(AbstractData):
     """Class to store the data measured during the calibration routines.
     It is a wrapper to a pandas DataFrame with units of measure from the Pint
     library.
@@ -129,7 +129,7 @@ class Dataset(AbstractDataset):
             self._data = pd.DataFrame(processed_data)
 
     def add(self, data):
-        """Add a row to dataset.
+        """Add a row to `DataUnits`.
 
         Args:
             data (dict): dictionary containing the data to be added.
@@ -172,7 +172,7 @@ class Dataset(AbstractDataset):
             format (str): data format. Possible choices are 'csv' and 'pickle'.
 
         Returns:
-            dataset (``Dataset``): dataset object with the loaded data.
+            data (``DataUnits``): dataset object with the loaded data.
         """
         obj = cls()
         if format == "csv":
@@ -209,7 +209,7 @@ class Dataset(AbstractDataset):
         data.to_csv(f"{path}/{self.name}.csv")
 
 
-class Data(AbstractDataset):
+class Data(AbstractData):
     """Class to store the data obtained from calibration routines.
     It is a wrapper to a pandas DataFrame.
 
@@ -278,7 +278,7 @@ class Data(AbstractDataset):
             format (str): data format. Possible choices are 'csv' and 'pickle'.
 
         Returns:
-            dataset (``Dataset``): dataset object with the loaded data.
+            data (``Data``): data object with the loaded data.
         """
         obj = cls()
         if format == "csv":

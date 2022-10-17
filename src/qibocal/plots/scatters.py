@@ -3,21 +3,21 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from qibocal.data import Data, Dataset
+from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import cos, exp, flipping, lorenzian, rabi, ramsey
 
 
 def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
     try:
-        data_fast = Dataset.load_data(folder, routine, format, f"fast_sweep_q{qubit}")
+        data_fast = DataUnits.load_data(folder, routine, format, f"fast_sweep_q{qubit}")
     except:
-        data_fast = Dataset(quantities={"frequency": "Hz"})
+        data_fast = DataUnits(quantities={"frequency": "Hz"})
     try:
-        data_precision = Dataset.load_data(
+        data_precision = DataUnits.load_data(
             folder, routine, format, f"precision_sweep_q{qubit}"
         )
     except:
-        data_precision = Dataset(quantities={"frequency": "Hz"})
+        data_precision = DataUnits(quantities={"frequency": "Hz"})
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
     except:
@@ -140,7 +140,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
 
 
 def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
-    data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+    data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     plot1d_attenuation = 30  # attenuation value to use for 1D frequency vs MSR plot
 
     fig = go.Figure()
@@ -172,9 +172,9 @@ def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
 # For Rabi oscillations
 def time_msr_phase(folder, routine, qubit, format):
     try:
-        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     except:
-        data = Dataset(quantities={"Time": "ns"})
+        data = DataUnits(quantities={"Time": "ns"})
 
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
@@ -290,9 +290,9 @@ def time_msr_phase(folder, routine, qubit, format):
 def gain_msr_phase(folder, routine, qubit, format):
 
     try:
-        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     except:
-        data = Dataset(quantities={"gain", "dimensionless"})
+        data = DataUnits(quantities={"gain", "dimensionless"})
 
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
@@ -405,13 +405,13 @@ def gain_msr_phase(folder, routine, qubit, format):
 def amplitude_msr_phase(folder, routine, qubit, format):
 
     try:
-        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     except:
-        data = Dataset(quantities={"amplitude", "dimensionless"})
+        data = DataUnits(quantities={"amplitude", "dimensionless"})
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
     except:
-        data_fit = Dataset()
+        data_fit = DataUnits()
 
     fig = make_subplots(
         rows=1,
@@ -509,13 +509,15 @@ def amplitude_msr_phase(folder, routine, qubit, format):
 # For Ramsey oscillations
 def time_msr(folder, routine, qubit, format):
     try:
-        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     except:
-        data = Dataset(name=f"data_q{qubit}", quantities={"wait": "ns", "t_max": "ns"})
+        data = DataUnits(
+            name=f"data_q{qubit}", quantities={"wait": "ns", "t_max": "ns"}
+        )
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
     except:
-        data_fit = Dataset()
+        data_fit = DataUnits()
 
     fig = make_subplots(
         rows=1,
@@ -615,14 +617,14 @@ def time_msr(folder, routine, qubit, format):
 # T1
 def t1_time_msr_phase(folder, routine, qubit, format):
     try:
-        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     except:
-        data = Dataset(quantities={"Time": "ns"})
+        data = DataUnits(quantities={"Time": "ns"})
 
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
     except:
-        data_fit = Dataset()
+        data_fit = DataUnits()
 
     fig = make_subplots(
         rows=1,
@@ -707,14 +709,14 @@ def t1_time_msr_phase(folder, routine, qubit, format):
 # Flipping
 def flips_msr_phase(folder, routine, qubit, format):
     try:
-        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     except:
-        data = Dataset(quantities={"flips": "dimensionless"})
+        data = DataUnits(quantities={"flips": "dimensionless"})
 
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
     except:
-        data_fit = Dataset()
+        data_fit = DataUnits()
 
     fig = make_subplots(
         rows=1,
@@ -814,9 +816,9 @@ def flips_msr_phase(folder, routine, qubit, format):
 def exc_gnd(folder, routine, qubit, format):
 
     try:
-        data_exc = Dataset.load_data(folder, routine, format, f"data_exc_q{qubit}")
+        data_exc = DataUnits.load_data(folder, routine, format, f"data_exc_q{qubit}")
     except:
-        data_exc = Dataset(quantities={"iteration": "dimensionless"})
+        data_exc = DataUnits(quantities={"iteration": "dimensionless"})
 
     fig = make_subplots(
         rows=1,
@@ -839,9 +841,9 @@ def exc_gnd(folder, routine, qubit, format):
     )
 
     try:
-        data_gnd = Dataset.load_data(folder, routine, format, f"data_gnd_q{qubit}")
+        data_gnd = DataUnits.load_data(folder, routine, format, f"data_gnd_q{qubit}")
     except:
-        data_gnd = Dataset(quantities={"iteration": "dimensionless"})
+        data_gnd = DataUnits(quantities={"iteration": "dimensionless"})
 
     fig.add_trace(
         go.Scatter(
@@ -910,9 +912,9 @@ def exc_gnd(folder, routine, qubit, format):
 def prob_gate(folder, routine, qubit, format):
 
     try:
-        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     except:
-        data = Dataset(
+        data = DataUnits(
             quantities={"probability": "dimensionless", "gateNumber": "dimensionless"}
         )
 
@@ -947,9 +949,9 @@ def prob_gate(folder, routine, qubit, format):
 def prob_gate_iteration(folder, routine, qubit, format):
 
     try:
-        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     except:
-        data = Dataset(
+        data = DataUnits(
             quantities={
                 "probability": "dimensionless",
                 "gateNumber": "dimensionless",
@@ -957,7 +959,7 @@ def prob_gate_iteration(folder, routine, qubit, format):
             }
         )
 
-    data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+    data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     fig = make_subplots(
         rows=1,
         cols=1,
@@ -1008,15 +1010,15 @@ def prob_gate_iteration(folder, routine, qubit, format):
 def msr_beta(folder, routine, qubit, format):
 
     try:
-        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     except:
-        data = Dataset(
+        data = DataUnits(
             name=f"data_q{qubit}", quantities={"beta_param": "dimensionless"}
         )
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
     except:
-        data_fit = Dataset()
+        data_fit = DataUnits()
 
     fig = make_subplots(
         rows=1,
@@ -1089,16 +1091,16 @@ def msr_beta(folder, routine, qubit, format):
 def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
 
     try:
-        data_spec = Dataset.load_data(folder, routine, formato, f"data_q{qubit}")
+        data_spec = DataUnits.load_data(folder, routine, formato, f"data_q{qubit}")
     except:
-        data_spec = Dataset(name=f"data_q{qubit}", quantities={"frequency": "Hz"})
+        data_spec = DataUnits(name=f"data_q{qubit}", quantities={"frequency": "Hz"})
 
     try:
-        data_shifted = Dataset.load_data(
+        data_shifted = DataUnits.load_data(
             folder, routine, formato, f"data_shifted_q{qubit}"
         )
     except:
-        data_shifted = Dataset(
+        data_shifted = DataUnits(
             name=f"data_shifted_q{qubit}", quantities={"frequency": "Hz"}
         )
 
