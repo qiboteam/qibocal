@@ -66,7 +66,6 @@ class GeneratorOnequbitcliffords(Generator):
     TODO optimize the Clifford drawing
     """
 
-
     def __init__(self, nqubits, **kwargs):
         """
         """

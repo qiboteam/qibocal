@@ -1,4 +1,3 @@
-
 from qcvv.data import Data
 
 
@@ -23,7 +22,8 @@ class Experiment():
         self.save(circuits_list, **kwargs)
 
     def prebuild(self, **kwargs):
-        """
+        """ Build a list out of the circuits required to run for the wanted
+        experiment.
         """
         # Use the __call__ function of the circuit generator to retrieve a
         # random circuit 'runs' many times for each sequence length.
@@ -33,7 +33,14 @@ class Experiment():
         return circuits_list
 
     def save(self, circuits_list, **kwargs):
-        """
+        """ Save the given circuits list.
+        Args:
+            circuits_list (list) : The list of lists of circuits. 
+            axis 1: different runs, axis 2: different sequence lengths.
+        
+        Returns:
+            (data object): The data object to store the circuits and sequence
+            lengths.
         """
         # Initiate the data structure from qibocal.
         data = Data("experiment", quantities=list(self.sequence_lengths))
