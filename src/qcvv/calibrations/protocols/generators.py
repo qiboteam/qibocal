@@ -36,7 +36,7 @@ class Generator():
         """
         # Initiate the empty circuit from qibo with 'self.nqubits'
         # many qubits.
-        circuit = models.Circuit(self.nqubits)
+        circuit = models.Circuit(len(self.qubits))
         # Iterate over the sequence length.
         for _ in range(sequence_length):
             # Use the attribute to generate gates. This attribute can
