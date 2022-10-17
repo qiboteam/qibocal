@@ -5,25 +5,45 @@ from qcvv.data import Data
 class Experiment():
     """
     """
-    def __init__(self, sequence_lengths:list, qubits:list,
-            nshots:int=1024, circuit_generator:str=None,
-            inverse=False, **kwargs) -> None:
+    def __init__(self, circuit_generator, sequence_lengths:list, qubits:list,
+            runs:int, nshots:int=1024, **kwargs) -> None:
         self.circuit_generator = circuit_generator
         self.sequence_lengths = sequence_lengths
         self.qubits = qubits
+        self.runs = runs
         self.nshots = nshots
-        self.inverse = inverse
+        self.inverse = circuit_generator.invert
 
     def prebuild_a_save(self, **kwargs):
         """ 
         """
-        for ll in self.sequence_lengths:
-            kennzeichnung = next(self.circuit_generator)
-        # experiment_data = Data("experiment",
-        #     quantities=list(sequence_lengths))
-        # yielda experiment_data
-        # sequencel_data
-        pass
+        # Build the whole list of circuits.
+        circuits_list = self.prebuild(**kwargs)
+        # Store it.
+        self.save(circuits_list, **kwargs)
+
+    def prebuild(self, **kwargs):
+        """
+        """
+        # Use the __call__ function of the circuit generator to retrieve a
+        # random circuit 'runs' many times for each sequence length.
+        circuits_list = [
+            [next(self.circuit_generator(length))
+            for length in self.sequence_lengths] for _ in range(self.runs) ]
+        return circuits_list
+
+    def save(self, circuits_list, **kwargs):
+        """
+        """
+        # Initiate the data structure from qibocal.
+        data = Data("experiment", quantities=list(self.sequence_lengths))
+        # Store the data in a pandas dataframe. The columns are indexed by the
+        # different sequence lengths. The rows are indexing the different runs.
+        for count in range(self.runs):
+            # The data object takes dictionaries.
+            data.add({self.sequence_lengths[i]:circuits_list[count][i] \
+                for i in range(len(self.sequence_lengths))})
+        yield data
 
     def retrive_from_file(self, filename:str, **kwargs):
         """
