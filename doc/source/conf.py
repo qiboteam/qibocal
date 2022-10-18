@@ -95,8 +95,4 @@ autodoc_member_order = "bysource"
 def setup(app):
     app.add_config_value("recommonmark_config", {"enable_eval_rst": True}, True)
     app.add_transform(AutoStructify)
-
-
-def setup(app):
-    """Include custom style to change colors"""
     app.add_css_file("css/style.css")

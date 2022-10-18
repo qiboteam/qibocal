@@ -4,7 +4,7 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
 from qibocal import plots
-from qibocal.data import Dataset
+from qibocal.data import DataUnits
 from qibocal.decorators import plot
 from qibocal.fitting.methods import lorentzian_fit
 
@@ -35,7 +35,7 @@ def qubit_spectroscopy(
 
     freqrange = np.arange(fast_start, fast_end, fast_step) + qubit_frequency
 
-    data = Dataset(name=f"fast_sweep_q{qubit}", quantities={"frequency": "Hz"})
+    data = DataUnits(name=f"fast_sweep_q{qubit}", quantities={"frequency": "Hz"})
     count = 0
     for _ in range(software_averages):
         for freq in freqrange:
@@ -66,31 +66,27 @@ def qubit_spectroscopy(
     yield data
 
     if platform.resonator_type == "3D":
-        qubit_frequency = data.df.frequency[
-            data.df.MSR.index[data.df.MSR.argmin()]  # pylint: disable=E1101
-        ].magnitude
+        qubit_frequency = data.get_values("frequency", "Hz")[
+            np.argmin(data.get_values("MSR", "V"))
+        ]
         avg_voltage = (
             np.mean(
-                data.df.MSR.values[  # pylint: disable=E1101
-                    : ((fast_end - fast_start) // fast_step)
-                ]
+                data.get_values("MSR", "V")[: ((fast_end - fast_start) // fast_step)]
             )
             * 1e6
         )
     else:
-        qubit_frequency = data.df.frequency[  # pylint: disable=E1101
-            data.df.MSR.index[data.df.MSR.argmax()]  # pylint: disable=E1101
-        ].magnitude
+        qubit_frequency = data.get_values("frequency", "Hz")[
+            np.argmax(data.get_values("MSR", "V"))
+        ]
         avg_voltage = (
             np.mean(
-                data.df.MSR.values[  # pylint: disable=E1101
-                    : ((fast_end - fast_start) // fast_step)
-                ]
+                data.get_values("MSR", "V")[: ((fast_end - fast_start) // fast_step)]
             )
             * 1e6
         )
 
-    prec_data = Dataset(
+    prec_data = DataUnits(
         name=f"precision_sweep_q{qubit}", quantities={"frequency": "Hz"}
     )
     freqrange = (
@@ -151,7 +147,7 @@ def qubit_spectroscopy_flux(
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
 
-    data = Dataset(
+    data = DataUnits(
         name=f"data_q{qubit}", quantities={"frequency": "Hz", "current": "A"}
     )
 

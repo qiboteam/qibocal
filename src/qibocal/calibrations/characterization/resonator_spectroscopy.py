@@ -5,7 +5,7 @@ from qibolab.pulses import PulseSequence
 
 from qibocal import plots
 from qibocal.calibrations.characterization.utils import variable_resolution_scanrange
-from qibocal.data import Dataset
+from qibocal.data import DataUnits
 from qibocal.decorators import plot
 from qibocal.fitting.methods import lorentzian_fit
 
@@ -39,7 +39,7 @@ def resonator_spectroscopy(
         )
         + resonator_frequency
     )
-    fast_sweep_data = Dataset(
+    fast_sweep_data = DataUnits(
         name=f"fast_sweep_q{qubit}", quantities={"frequency": "Hz"}
     )
     count = 0
@@ -71,38 +71,28 @@ def resonator_spectroscopy(
             count += 1
     yield fast_sweep_data
 
-    # FIXME: have live ploting work for multiple datasets saved
-
     if platform.resonator_type == "3D":
-        resonator_frequency = fast_sweep_data.df.frequency[  # pylint: disable=E1101
-            fast_sweep_data.df.MSR.index[  # pylint: disable=E1101
-                fast_sweep_data.df.MSR.argmax()  # pylint: disable=E1101
-            ]
-        ].magnitude
+        resonator_frequency = fast_sweep_data.get_values("frequency", "Hz")[
+            np.argmax(fast_sweep_data.get_values("MSR", "V"))
+        ]
         avg_voltage = (
             np.mean(
-                fast_sweep_data.df.MSR.values[  # pylint: disable=E1101
-                    : (lowres_width // lowres_step)
-                ]
+                fast_sweep_data.get_values("MSR", "V")[: (lowres_width // lowres_step)]
             )
             * 1e6
         )
     else:
-        resonator_frequency = fast_sweep_data.df.frequency[  # pylint: disable=E1101
-            fast_sweep_data.df.MSR.index[  # pylint: disable=E1101
-                fast_sweep_data.df.MSR.argmin()  # pylint: disable=E1101
-            ]
-        ].magnitude
+        resonator_frequency = fast_sweep_data.get_values("frequency", "Hz")[
+            np.argmin(fast_sweep_data.get_values("MSR", "V"))
+        ]
         avg_voltage = (
             np.mean(
-                fast_sweep_data.df.MSR.values[  # pylint: disable=E1101
-                    : (lowres_width // lowres_step)
-                ]
+                fast_sweep_data.get_values("MSR", "V")[: (lowres_width // lowres_step)]
             )
             * 1e6
         )
 
-    precision_sweep__data = Dataset(
+    precision_sweep__data = DataUnits(
         name=f"precision_sweep_q{qubit}", quantities={"frequency": "Hz"}
     )
     freqrange = (
@@ -155,7 +145,7 @@ def resonator_punchout(
 ):
     platform.reload_settings()
 
-    data = Dataset(
+    data = DataUnits(
         name=f"data_q{qubit}", quantities={"frequency": "Hz", "attenuation": "dB"}
     )
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
@@ -221,7 +211,7 @@ def resonator_spectroscopy_flux(
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
     sequence.add(ro_pulse)
 
-    data = Dataset(
+    data = DataUnits(
         name=f"data_q{qubit}", quantities={"frequency": "Hz", "current": "A"}
     )
 
@@ -298,7 +288,7 @@ def resonator_spectroscopy_flux_matrix(
     for fluxline in fluxlines:
         fluxline = int(fluxline)
         print(fluxline)
-        data = Dataset(
+        data = DataUnits(
             name=f"data_q{qubit}_f{fluxline}",
             quantities={"frequency": "Hz", "current": "A"},
         )
@@ -351,7 +341,7 @@ def dispersive_shift(
         np.arange(-freq_width, freq_width, freq_step) + resonator_frequency
     )
 
-    data_spec = Dataset(name=f"data_q{qubit}", quantities={"frequency": "Hz"})
+    data_spec = DataUnits(name=f"data_q{qubit}", quantities={"frequency": "Hz"})
     count = 0
     for _ in range(software_averages):
         for freq in frequency_range:
@@ -387,7 +377,7 @@ def dispersive_shift(
     sequence.add(RX_pulse)
     sequence.add(ro_pulse)
 
-    data_shifted = Dataset(
+    data_shifted = DataUnits(
         name=f"data_shifted_q{qubit}", quantities={"frequency": "Hz"}
     )
     count = 0

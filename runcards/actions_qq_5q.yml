@@ -1,19 +1,19 @@
 platform: tii5q
 
-qubits: [3]
+qubits: [2]
 
 format: csv
 
 actions:
-  resonator_spectroscopy:
-    lowres_width: 5_000_000
-    lowres_step: 2_000_000
-    highres_width: 1_500_000
-    highres_step: 200_000
-    precision_width: 1_500_000
-    precision_step: 100_000
-    software_averages: 1
-    points: 1
+  # resonator_spectroscopy:
+  #   lowres_width: 5_000_000
+  #   lowres_step: 2_000_000
+  #   highres_width: 1_500_000
+  #   highres_step: 200_000
+  #   precision_width: 1_500_000
+  #   precision_step: 100_000
+  #   software_averages: 1
+  #   points: 1
 
   # resonator_spectroscopy_flux:
   #   freq_width: 3_000_000
@@ -119,13 +119,6 @@ actions:
   #   software_averages: 1
   #   points: 10
 
-  # ramsey_frequency_detuned:
-  #   t_start: 4
-  #   t_end: [3000] #t_end (optimal) = 3.5 * T2
-  #   t_step: 16
-  #   n_osc: 4
-  #   points: 5 #minimum set to 5 for live fitting
-
   # ramsey:
   #   delay_between_pulses_start: 4 # must be a multiple of 4 incl 0
   #   delay_between_pulses_end: 3000
@@ -133,9 +126,16 @@ actions:
   #   software_averages: 1
   #   points: 5
 
+  # ramsey_frequency_detuned:
+  #   t_start: 4
+  #   t_end: [3000] #t_end (optimal) = 3.5 * T2
+  #   t_step: 16
+  #   n_osc: 4
+  #   points: 5 #minimum set to 5 for live fitting
+
   # t1:
   #   delay_before_readout_start: 4
-  #   delay_before_readout_end: 50_000
+  #   delay_before_readout_end: 200_000
   #   delay_before_readout_step: 500
   #   software_averages: 1
   #   points: 5
@@ -143,15 +143,15 @@ actions:
   # flipping:
   #   niter: 60
   #   step: 1
-  #   points: 5
+  #   points: 1
 
-  # calibrate_qubit_states_binning:
+  # calibrate_qubit_states:
   #   niter: 1024
   #   points: 1
 
   # allXY_iteration:
   #   beta_start: -0.09
-  #   beta_end: 0
+  #   beta_end: 0.2
   #   beta_step: 0.01
   #   software_averages: 1
   #   points: 1
@@ -166,27 +166,3 @@ actions:
   #   beta_end: 1
   #   beta_step: 0.01
   #   points: 1
-
-  # RO_matrix:
-  #   niter: 10 # set niter = 1024 to collect good statistics
-
-  # ro_pulse_phase:
-  #   pulse_phase_start: 0
-  #   pulse_phase_end: 6.28318
-  #   pulse_phase_step: 0.1
-  #   software_averages: 1
-  #   points: 10
-
-  # spin_echo:
-  #   delay_between_pulses_start: 4
-  #   delay_between_pulses_end: 4000
-  #   delay_between_pulses_step: 20
-  #   software_averages: 1
-  #   points: 5
-
-  # spin_echo_3pulses:
-  #   delay_between_pulses_start: 4
-  #   delay_between_pulses_end: 30000
-  #   delay_between_pulses_step: 20
-  #   software_averages: 1
-  #   points: 5

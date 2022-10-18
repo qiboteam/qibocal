@@ -6,10 +6,10 @@ import yaml
 from dash import Dash, Input, Output, dcc, html
 
 from qibocal import plots
-from qibocal.data import Dataset
+from qibocal.data import DataUnits
 from qibocal.web.server import server
 
-Dataset()  # dummy dataset call to suppress ``pint[V]`` error
+DataUnits()  # dummy dataset call to suppress ``pint[V]`` error
 
 app = Dash(
     server=server,
@@ -40,7 +40,7 @@ app.layout = html.Div(
 def get_graph(n, current_figure, url):
     method, folder, routine, qubit, format = url.split(os.sep)[2:]
     try:
-        # data = Dataset.load_data(folder, routine, format, "precision_sweep")
+        # data = DataUnits.load_data(folder, routine, format, "precision_sweep")
         # with open(f"{folder}/platform.yml", "r") as f:
         #     nqubits = yaml.safe_load(f)["nqubits"]
         # if len(data) > 2:

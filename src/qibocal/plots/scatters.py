@@ -3,21 +3,21 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from qibocal.data import Data, Dataset
+from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import cos, exp, flipping, lorenzian, rabi, ramsey
 
 
 def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
     try:
-        data_fast = Dataset.load_data(folder, routine, format, f"fast_sweep_q{qubit}")
+        data_fast = DataUnits.load_data(folder, routine, format, f"fast_sweep_q{qubit}")
     except:
-        data_fast = Dataset(quantities={"frequency": "Hz"})
+        data_fast = DataUnits(quantities={"frequency": "Hz"})
     try:
-        data_precision = Dataset.load_data(
+        data_precision = DataUnits.load_data(
             folder, routine, format, f"precision_sweep_q{qubit}"
         )
     except:
-        data_precision = Dataset(quantities={"frequency": "Hz"})
+        data_precision = DataUnits(quantities={"frequency": "Hz"})
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
     except:
@@ -83,7 +83,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
         freqrange = np.linspace(
             min(data_fast.get_values("frequency", "GHz")),
             max(data_fast.get_values("frequency", "GHz")),
-            20,
+            2 * len(data_fast),
         )
         params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
@@ -140,7 +140,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
 
 
 def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
-    data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+    data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     plot1d_attenuation = 30  # attenuation value to use for 1D frequency vs MSR plot
 
     fig = go.Figure()
@@ -170,14 +170,24 @@ def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
 # For Rabi oscillations
 def time_msr_phase(folder, routine, qubit, format):
     try:
-        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     except:
-        data = Dataset(quantities={"Time": "ns"})
+        data = DataUnits(quantities={"Time": "ns"})
 
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
     except:
-        data_fit = Dataset()
+        data_fit = Data(
+            quantities=[
+                "popt0",
+                "popt1",
+                "popt2",
+                "popt3",
+                "popt4",
+                "label1",
+                "label2",
+            ]
+        )
 
     fig = make_subplots(
         rows=1,
@@ -214,7 +224,7 @@ def time_msr_phase(folder, routine, qubit, format):
         timerange = np.linspace(
             min(data.get_values("Time", "ns")),
             max(data.get_values("Time", "ns")),
-            20,
+            2 * len(data),
         )
         params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
@@ -234,28 +244,14 @@ def time_msr_phase(folder, routine, qubit, format):
             row=1,
             col=1,
         )
-        # add annotation for label[0] -> pi_pulse_duration
+
         fig.add_annotation(
             dict(
                 font=dict(color="black", size=12),
                 x=0,
-                y=-0.25,
+                y=-0.20,
                 showarrow=False,
-                text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.1f} ns.",
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
-            )
-        )
-        # add annotation for label[0] -> rabi_oscillations_pi_pulse_max_voltage
-        fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=0,
-                y=-0.30,
-                showarrow=False,
-                text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.3f} uV.",
+                text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.3f} ns.",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
@@ -263,14 +259,13 @@ def time_msr_phase(folder, routine, qubit, format):
             )
         )
 
-        # add annotation for label[0] -> rabi_oscillations_pi_pulse_max_voltage
         fig.add_annotation(
             dict(
                 font=dict(color="black", size=12),
                 x=0,
-                y=-0.20,
+                y=-0.30,
                 showarrow=False,
-                text=f"Estimated {params[2]} is {data_fit.df[params[2]][0]:.1f} ns.",
+                text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.1f} uV.",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
@@ -293,14 +288,24 @@ def time_msr_phase(folder, routine, qubit, format):
 def gain_msr_phase(folder, routine, qubit, format):
 
     try:
-        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     except:
-        data = Dataset(quantities={"gain", "dimensionless"})
+        data = DataUnits(quantities={"gain", "dimensionless"})
 
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
     except:
-        data_fit = Dataset()
+        data_fit = Data(
+            quantities=[
+                "popt0",
+                "popt1",
+                "popt2",
+                "popt3",
+                "popt4",
+                "label1",
+                "label2",
+            ]
+        )
 
     fig = make_subplots(
         rows=1,
@@ -334,17 +339,17 @@ def gain_msr_phase(folder, routine, qubit, format):
 
     # add fitting trace
     if len(data) > 0 and len(data_fit) > 0:
-        timerange = np.linspace(
+        gainrange = np.linspace(
             min(data.get_values("gain", "dimensionless")),
             max(data.get_values("gain", "dimensionless")),
-            20,
+            2 * len(data),
         )
         params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
             go.Scatter(
-                x=timerange,
+                x=gainrange,
                 y=rabi(
-                    timerange,
+                    gainrange,
                     data_fit.get_values("popt0"),
                     data_fit.get_values("popt1"),
                     data_fit.get_values("popt2"),
@@ -362,23 +367,23 @@ def gain_msr_phase(folder, routine, qubit, format):
             dict(
                 font=dict(color="black", size=12),
                 x=0,
-                y=-0.30,
+                y=-0.20,
                 showarrow=False,
-                text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.3f} uV.",
+                text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.3f}",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
                 yref="paper",
             )
         )
-        # add annotation for label[0] -> pi_pulse_gain
+
         fig.add_annotation(
             dict(
                 font=dict(color="black", size=12),
                 x=0,
-                y=-0.20,
+                y=-0.25,
                 showarrow=False,
-                text=f"Estimated {params[2]} is {data_fit.df[params[2]][0]:.1f}",
+                text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.4f} uV",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
@@ -398,13 +403,13 @@ def gain_msr_phase(folder, routine, qubit, format):
 def amplitude_msr_phase(folder, routine, qubit, format):
 
     try:
-        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     except:
-        data = Dataset(quantities={"amplitude", "dimensionless"})
+        data = DataUnits(quantities={"amplitude", "dimensionless"})
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
     except:
-        data_fit = Dataset()
+        data_fit = DataUnits()
 
     fig = make_subplots(
         rows=1,
@@ -438,17 +443,17 @@ def amplitude_msr_phase(folder, routine, qubit, format):
 
     # add fitting trace
     if len(data) > 0 and len(data_fit) > 0:
-        timerange = np.linspace(
+        amplituderange = np.linspace(
             min(data.get_values("amplitude", "dimensionless")),
             max(data.get_values("amplitude", "dimensionless")),
-            20,
+            2 * len(data),
         )
         params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
             go.Scatter(
-                x=timerange,
+                x=amplituderange,
                 y=rabi(
-                    timerange,
+                    amplituderange,
                     data_fit.get_values("popt0"),
                     data_fit.get_values("popt1"),
                     data_fit.get_values("popt2"),
@@ -468,21 +473,21 @@ def amplitude_msr_phase(folder, routine, qubit, format):
                 x=0,
                 y=-0.30,
                 showarrow=False,
-                text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.3f} uV.",
+                text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.3f} uV.",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
                 yref="paper",
             )
         )
-        # add annotation for label[0] -> pi_pulse_gain
+
         fig.add_annotation(
             dict(
                 font=dict(color="black", size=12),
                 x=0,
-                y=-0.20,
+                y=-0.25,
                 showarrow=False,
-                text=f"Estimated {params[2]} is {data_fit.df[params[2]][0]:.1f}",
+                text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.4f}",
                 textangle=0,
                 xanchor="left",
                 xref="paper",
@@ -502,13 +507,15 @@ def amplitude_msr_phase(folder, routine, qubit, format):
 # For Ramsey oscillations
 def time_msr(folder, routine, qubit, format):
     try:
-        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     except:
-        data = Dataset(name=f"data_q{qubit}", quantities={"wait": "ns", "t_max": "ns"})
+        data = DataUnits(
+            name=f"data_q{qubit}", quantities={"wait": "ns", "t_max": "ns"}
+        )
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
     except:
-        data_fit = Dataset()
+        data_fit = DataUnits()
 
     fig = make_subplots(
         rows=1,
@@ -533,7 +540,7 @@ def time_msr(folder, routine, qubit, format):
         timerange = np.linspace(
             min(data.get_values("wait", "ns")),
             max(data.get_values("wait", "ns")),
-            20,
+            2 * len(data),
         )
         params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
@@ -608,14 +615,14 @@ def time_msr(folder, routine, qubit, format):
 # T1
 def t1_time_msr_phase(folder, routine, qubit, format):
     try:
-        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     except:
-        data = Dataset(quantities={"Time": "ns"})
+        data = DataUnits(quantities={"Time": "ns"})
 
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
     except:
-        data_fit = Dataset()
+        data_fit = DataUnits()
 
     fig = make_subplots(
         rows=1,
@@ -652,7 +659,7 @@ def t1_time_msr_phase(folder, routine, qubit, format):
         timerange = np.linspace(
             min(data.get_values("Time", "ns")),
             max(data.get_values("Time", "ns")),
-            20,
+            2 * len(data),
         )
         params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
@@ -700,14 +707,14 @@ def t1_time_msr_phase(folder, routine, qubit, format):
 # Flipping
 def flips_msr_phase(folder, routine, qubit, format):
     try:
-        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     except:
-        data = Dataset(quantities={"flips": "dimensionless"})
+        data = DataUnits(quantities={"flips": "dimensionless"})
 
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
     except:
-        data_fit = Dataset()
+        data_fit = DataUnits()
 
     fig = make_subplots(
         rows=1,
@@ -741,17 +748,17 @@ def flips_msr_phase(folder, routine, qubit, format):
 
     # add fitting trace
     if len(data) > 0 and len(data_fit) > 0:
-        timerange = np.linspace(
+        flipsrange = np.linspace(
             min(data.get_values("flips", "dimensionless")),
             max(data.get_values("flips", "dimensionless")),
-            20,
+            2 * len(data),
         )
         params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
             go.Scatter(
-                x=timerange,
+                x=flipsrange,
                 y=flipping(
-                    timerange,
+                    flipsrange,
                     data_fit.get_values("popt0"),
                     data_fit.get_values("popt1"),
                     data_fit.get_values("popt2"),
@@ -807,9 +814,9 @@ def flips_msr_phase(folder, routine, qubit, format):
 def exc_gnd(folder, routine, qubit, format):
 
     try:
-        data_exc = Dataset.load_data(folder, routine, format, f"data_exc_q{qubit}")
+        data_exc = DataUnits.load_data(folder, routine, format, f"data_exc_q{qubit}")
     except:
-        data_exc = Dataset(quantities={"iteration": "dimensionless"})
+        data_exc = DataUnits(quantities={"iteration": "dimensionless"})
 
     fig = make_subplots(
         rows=1,
@@ -832,9 +839,9 @@ def exc_gnd(folder, routine, qubit, format):
     )
 
     try:
-        data_gnd = Dataset.load_data(folder, routine, format, f"data_gnd_q{qubit}")
+        data_gnd = DataUnits.load_data(folder, routine, format, f"data_gnd_q{qubit}")
     except:
-        data_gnd = Dataset(quantities={"iteration": "dimensionless"})
+        data_gnd = DataUnits(quantities={"iteration": "dimensionless"})
 
     fig.add_trace(
         go.Scatter(
@@ -860,7 +867,7 @@ def exc_gnd(folder, routine, qubit, format):
         go.Scatter(
             x=[i_mean_exc],
             y=[q_mean_exc],
-            name=f" state1_voltage: {mod_iq_exc} <br> mean_exc_state: {iq_mean_exc}",
+            name=f" state1_voltage: {mod_iq_exc} <br> mean_state1: {iq_mean_exc}",
             mode="markers",
             marker=dict(size=10, color="red"),
         ),
@@ -880,7 +887,7 @@ def exc_gnd(folder, routine, qubit, format):
         go.Scatter(
             x=[i_mean_gnd],
             y=[q_mean_gnd],
-            name=f" state0_voltage: {mod_iq_gnd} <br> mean_gnd_state: {iq_mean_gnd}",
+            name=f" state0_voltage: {mod_iq_gnd} <br> mean_state0: {iq_mean_gnd}",
             mode="markers",
             marker=dict(size=10, color="blue"),
         ),
@@ -903,9 +910,9 @@ def exc_gnd(folder, routine, qubit, format):
 def prob_gate(folder, routine, qubit, format):
 
     try:
-        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     except:
-        data = Dataset(
+        data = DataUnits(
             quantities={"probability": "dimensionless", "gateNumber": "dimensionless"}
         )
 
@@ -940,9 +947,9 @@ def prob_gate(folder, routine, qubit, format):
 def prob_gate_iteration(folder, routine, qubit, format):
 
     try:
-        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     except:
-        data = Dataset(
+        data = DataUnits(
             quantities={
                 "probability": "dimensionless",
                 "gateNumber": "dimensionless",
@@ -950,7 +957,7 @@ def prob_gate_iteration(folder, routine, qubit, format):
             }
         )
 
-    data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+    data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     fig = make_subplots(
         rows=1,
         cols=1,
@@ -975,7 +982,7 @@ def prob_gate_iteration(folder, routine, qubit, format):
         probabilities = np.array(data.get_values("probability", "dimensionless"))[
             data_start:data_end
         ]
-        c = "#" + "{:06x}".format(n * 823000)
+        c = "#" + "{:06x}".format(n * 99999)
         fig.add_trace(
             go.Scatter(
                 x=gates,
@@ -1001,15 +1008,15 @@ def prob_gate_iteration(folder, routine, qubit, format):
 def msr_beta(folder, routine, qubit, format):
 
     try:
-        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     except:
-        data = Dataset(
+        data = DataUnits(
             name=f"data_q{qubit}", quantities={"beta_param": "dimensionless"}
         )
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
     except:
-        data_fit = Dataset()
+        data_fit = DataUnits()
 
     fig = make_subplots(
         rows=1,
@@ -1082,16 +1089,16 @@ def msr_beta(folder, routine, qubit, format):
 def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
 
     try:
-        data_spec = Dataset.load_data(folder, routine, formato, f"data_q{qubit}")
+        data_spec = DataUnits.load_data(folder, routine, formato, f"data_q{qubit}")
     except:
-        data_spec = Dataset(name=f"data_q{qubit}", quantities={"frequency": "Hz"})
+        data_spec = DataUnits(name=f"data_q{qubit}", quantities={"frequency": "Hz"})
 
     try:
-        data_shifted = Dataset.load_data(
+        data_shifted = DataUnits.load_data(
             folder, routine, formato, f"data_shifted_q{qubit}"
         )
     except:
-        data_shifted = Dataset(
+        data_shifted = DataUnits(
             name=f"data_shifted_q{qubit}", quantities={"frequency": "Hz"}
         )
 
@@ -1180,7 +1187,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
         freqrange = np.linspace(
             min(data_spec.get_values("frequency", "GHz")),
             max(data_spec.get_values("frequency", "GHz")),
-            20,
+            2 * len(data_spec),
         )
         params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
@@ -1218,7 +1225,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
         freqrange = np.linspace(
             min(data_shifted.get_values("frequency", "GHz")),
             max(data_shifted.get_values("frequency", "GHz")),
-            20,
+            2 * len(data_shifted),
         )
         params = [i for i in list(data_fit_shifted.df.keys()) if "popt" not in i]
         fig.add_trace(
