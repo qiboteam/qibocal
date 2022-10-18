@@ -6,6 +6,7 @@ import shutil
 import socket
 import subprocess
 import uuid
+from importlib import import_module
 from urllib.parse import urljoin
 
 import click
@@ -23,6 +24,15 @@ UPLOAD_HOST = (
 )
 TARGET_DIR = "qibocal-reports/"
 ROOT_URL = "http://login.qrccluster.com:9000/"
+
+
+# options for report compare
+UPLOAD_COMPARE_HOST = (
+    "david.fuentes@localhost"
+    if socket.gethostname() == "saadiyat"
+    else "david.fuentes@login.qrccluster.com"
+)
+TARGET_COMPARE_DIR = "qibocal-report-compare/"
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
@@ -152,3 +162,127 @@ def upload(output_folder):
 
     url = urljoin(ROOT_URL, randname)
     log.info(f"Upload completed. The result is available at:\n{url}")
+
+
+# qq-compare
+@click.command(context_settings=CONTEXT_SETTINGS)
+# @click.argument("output_folder", metavar="FOLDER", type=click.Path(exists=True))
+@click.argument("folders", metavar="FOLDER", type=click.Path(exists=True), nargs=-1)
+def compare(folders):
+    """Uploads list of folders to be compared into server"""
+
+    # check list of folders exists.
+    foldernames = folders_exists(folders)
+
+    # check folder structures matches
+    if not check_folder_structure(foldernames):
+        raise_error(
+            RuntimeError,
+            "Could not compare the list of folders. Please make sure that they have the same structure",
+        )
+    else:
+        log.info(f"Folders are comparable.")
+
+    # check the rsync command exists.
+    if not shutil.which("rsync"):
+        raise_error(
+            RuntimeError,
+            "Could not find the rsync command. Please make sure it is installed.",
+        )
+
+    # check that we can authentica with a certificate
+    ssh_command_line = (
+        "ssh",
+        "-o",
+        "PreferredAuthentications=publickey",
+        "-q",
+        UPLOAD_COMPARE_HOST,
+        "exit",
+    )
+
+    str_line = " ".join(repr(ele) for ele in ssh_command_line)
+
+    log.info(f"Checking SSH connection to {UPLOAD_COMPARE_HOST}.")
+
+    try:
+        subprocess.run(ssh_command_line, check=True)
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(
+            (
+                "Could not validate the SSH key. "
+                "The command\n%s\nreturned a non zero exit status. "
+                "Please make sure that your public SSH key is on the server."
+            )
+            % str_line
+        ) from e
+    except OSError as e:
+        raise RuntimeError(
+            "Could not run the command\n{}\n: {}".format(str_line, e)
+        ) from e
+
+    log.info("Connection seems OK.")
+
+    # upload data
+    i = 0
+    randname = base64.urlsafe_b64encode(uuid.uuid4().bytes).decode()
+    for name in foldernames:
+        if name[-1] == "/":
+            name = name[:-1]
+
+        # subdirectory = get_data_subdirectory_name(name)
+        origin_data_folder = f"{name}"
+        newdir = TARGET_COMPARE_DIR + randname  # + f"/data_{i}"
+        # newdir = TARGET_COMPARE_DIR + f"data_{i}"
+        rsync_command = (
+            "rsync",
+            "-aLz",
+            "--chmod=ug=rwx,o=rx",
+            f"{origin_data_folder}",
+            f"{UPLOAD_COMPARE_HOST}:{newdir}",
+        )
+
+        log.info(f"Uploading ({origin_data_folder}) to {UPLOAD_COMPARE_HOST}:{newdir}")
+        try:
+            subprocess.run(rsync_command, check=True)
+        except subprocess.CalledProcessError as e:
+            msg = f"Failed to upload output: {e}"
+            raise RuntimeError(msg) from e
+
+        # url = urljoin(ROOT_URL)
+        log.info(f"Upload completed")
+        i = +1
+
+
+def folders_exists(folders):
+    from glob import glob
+
+    foldernames = []
+    for foldername in folders:
+        expanded = list(glob(foldername))
+        if len(expanded) == 0 and "*" not in foldername:
+            raise (click.BadParameter("file '{}' not found".format(foldername)))
+        foldernames.extend(expanded)
+
+    return foldernames
+
+
+def check_folder_structure(folderList):
+    import os
+
+    all_subdirList = []
+    for folder in folderList:
+        folder_subdirList = []
+        for dirName, subdirList, fileList in os.walk(folder):
+            folder_subdirList.append(subdirList)
+        all_subdirList.append(folder_subdirList)
+
+    return all(x == all_subdirList[0] for x in all_subdirList)
+
+
+def get_data_subdirectory_name(folder):
+    import os
+
+    folder_subdirList = []
+    for dirName, subdirList, fileList in os.walk(folder):
+        folder_subdirList.append(subdirList)
+    return "".join(folder_subdirList[1])
