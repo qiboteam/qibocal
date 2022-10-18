@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Implementation of Dataset class to store measurements."""
 
 import re
