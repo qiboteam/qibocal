@@ -4,11 +4,11 @@ import os.path
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from qibocal.data import Dataset
+from qibocal.data import DataUnits
 
 
 def frequency_flux_msr_phase(folder, routine, qubit, format):
-    data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+    data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -52,7 +52,7 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
 
 
 def frequency_attenuation_msr_phase(folder, routine, qubit, format):
-    data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+    data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -122,7 +122,7 @@ def frequency_flux_msr_phase__matrix(folder, routine, qubit, format):
             showscale = True
         else:
             showscale = False
-        data = Dataset.load_data(folder, routine, format, f"data_q{qubit}_f{j}")
+        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}_f{j}")
         fig.add_trace(
             go.Heatmap(
                 x=data.get_values("frequency", "GHz"),
@@ -151,7 +151,7 @@ def frequency_flux_msr_phase__matrix(folder, routine, qubit, format):
 
 
 def duration_gain_msr_phase(folder, routine, qubit, format):
-    data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+    data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -195,7 +195,7 @@ def duration_gain_msr_phase(folder, routine, qubit, format):
 
 
 def duration_amplitude_msr_phase(folder, routine, qubit, format):
-    data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+    data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     fig = make_subplots(
         rows=1,
         cols=2,

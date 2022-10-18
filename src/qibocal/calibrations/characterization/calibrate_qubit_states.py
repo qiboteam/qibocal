@@ -4,7 +4,7 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
 from qibocal import plots
-from qibocal.data import Dataset
+from qibocal.data import DataUnits
 from qibocal.decorators import plot
 
 
@@ -33,7 +33,7 @@ def calibrate_qubit_states(
         - RX_pulse.frequency
     )
 
-    data_exc = Dataset(name=f"data_exc_q{qubit}", quantities={"iteration": "s"})
+    data_exc = DataUnits(name=f"data_exc_q{qubit}", quantities={"iteration": "s"})
 
     count = 0
     for n in np.arange(niter):
@@ -57,7 +57,7 @@ def calibrate_qubit_states(
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
     gnd_sequence.add(ro_pulse)
 
-    data_gnd = Dataset(name=f"data_gnd_q{qubit}", quantities={"iteration": "s"})
+    data_gnd = DataUnits(name=f"data_gnd_q{qubit}", quantities={"iteration": "s"})
     count = 0
     for n in np.arange(niter):
         if count % points == 0:

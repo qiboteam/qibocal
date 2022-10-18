@@ -4,7 +4,7 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
 from qibocal import plots
-from qibocal.data import Dataset
+from qibocal.data import DataUnits
 from qibocal.decorators import plot
 from qibocal.fitting.methods import t1_fit
 
@@ -39,7 +39,7 @@ def t1(
         - qd_pulse.frequency
     )
 
-    data = Dataset(name=f"data_q{qubit}", quantities={"Time": "ns"})
+    data = DataUnits(name=f"data_q{qubit}", quantities={"Time": "ns"})
 
     count = 0
     for _ in range(software_averages):
