@@ -59,10 +59,14 @@ Utils
 Data structure
 --------------
 
-In ``qibocal`` all the data are stored using the :class:`qibocal.data.Dataset` which provide
+In ``qibocal`` all the data are stored using the :class:`qibocal.data.DataUnits` and :class:`qibocal.data.Data` which provide
 different formats for storing the data including `pickle <https://docs.python.org/3/library/pickle.html>`_
 and `csv <https://docs.python.org/3/library/csv.html>`_.
 
-.. autoclass:: qibocal.data.Dataset
+.. autoclass:: qibocal.data.DataUnits
+    :members:
+    :member-order: bysource
+
+.. autoclass:: qibocal.data.Data
     :members:
     :member-order: bysource
