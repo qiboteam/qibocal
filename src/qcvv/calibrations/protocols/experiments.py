@@ -101,8 +101,11 @@ class Experiment():
             # The data object takes dictionaries.
             data.add({self.sequence_lengths[i]:self.circuits_list[count][i] \
                 for i in range(len(self.sequence_lengths))})
-        # Save the circuits in pickle format.
-        data.to_pickle(self.directory)
+        if kwargs.get('yield_data'):
+            yield data
+        else:
+            # Save the circuits in pickle format.
+            data.to_pickle(self.directory)
 
     def save_metadata(self, **kwargs):
         """
@@ -132,27 +135,9 @@ class Experiment():
     def save_experiment(self, **kwargs):
         """
         """
-        self.save_metadata()
-        self.save_circuits()
+        self.save_metadata(**kwargs)
+        self.save_circuits(**kwargs)
         return self.directory
-
-    def save_outcome(self, **kwargs):
-        """
-        """
-        # Check if there has been made a directory already for this experiment.
-        if not hasattr(self, 'directory'):
-            # Make and get the directory.
-            self.make_directory()
-        # Check for which outcome types there are.
-        if self.outcome_probs:
-            # Initiate the data structure from qibocal.
-            data_probs = Data(
-                'probabilities', quantities=list(self.sequence_lengths))
-            
-            # Put the probabilities into the data object.
-            data_probs.add({
-                self.sequence_lengths[i]:self.outcome_probs[count_runs*i+i] \
-                for i in range(len(self.sequence_lengths))})
 
     def build_onthefly(self, **kwargs):
         """
@@ -160,7 +145,10 @@ class Experiment():
         pass
 
     def execute_a_save(self, **kwargs):
-        """
+        """ FIXME the circuits have to be build already (or loaded), 
+        add something to check that and if they were not build yet build or
+        load them.
+
         Args:
             kwargs (dict):
                 'paulierror_noiseparams' = [p1, p2, p3]
@@ -224,8 +212,11 @@ class Experiment():
                 for i in range(amount_m)})
         # Save the data.
         data_probs.to_pickle(self.directory)
-        # Push data.
-        return self.outcome_probs
+        if kwargs.get('yield_data'):
+            yield data_probs
+        else:
+            # Push data.
+            return self.outcome_probs
 
 
     @classmethod
