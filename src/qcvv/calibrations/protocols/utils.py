@@ -98,9 +98,9 @@ def pkl_to_list(filename:str, **kwargs):
         dataframe = read_pickle(filename)
         # Put them in a list, first axis is the different runs, second axis
         # the sequence lengths.
-        circuits_list = dataframe.values.tolist()
+        object_list = dataframe.values.tolist()
         # Get the sequence lengths.
         sequence_lenghts = dataframe.columns.tolist()
-        return sequence_lenghts, circuits_list
+        return sequence_lenghts, object_list
 
 
