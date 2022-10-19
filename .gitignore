@@ -139,3 +139,4 @@ datareading_test.py
 run_standardrb.sh
 mytest.py
 experiments/
+.vscode/
