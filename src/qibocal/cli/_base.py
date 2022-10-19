@@ -6,10 +6,12 @@ import shutil
 import socket
 import subprocess
 import uuid
+from datetime import date, datetime
 from importlib import import_module
 from urllib.parse import urljoin
 
 import click
+import yaml
 from qibo.config import log, raise_error
 
 from qibocal.cli.builders import ActionBuilder
@@ -25,14 +27,7 @@ UPLOAD_HOST = (
 TARGET_DIR = "qibocal-reports/"
 ROOT_URL = "http://login.qrccluster.com:9000/"
 
-
-# options for report compare
-UPLOAD_COMPARE_HOST = (
-    "david.fuentes@localhost"
-    if socket.gethostname() == "saadiyat"
-    else "david.fuentes@login.qrccluster.com"
-)
-TARGET_COMPARE_DIR = "qibocal-report-compare/"
+TARGET_COMPARE_DIR = "qq-compare/"
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
@@ -166,7 +161,6 @@ def upload(output_folder):
 
 # qq-compare
 @click.command(context_settings=CONTEXT_SETTINGS)
-# @click.argument("output_folder", metavar="FOLDER", type=click.Path(exists=True))
 @click.argument("folders", metavar="FOLDER", type=click.Path(exists=True), nargs=-1)
 def compare(folders):
     """Uploads list of folders to be compared into server"""
@@ -183,74 +177,46 @@ def compare(folders):
     else:
         log.info(f"Folders are comparable.")
 
-    # check the rsync command exists.
-    if not shutil.which("rsync"):
-        raise_error(
-            RuntimeError,
-            "Could not find the rsync command. Please make sure it is installed.",
-        )
+    # move old compare folder and remove
+    import datetime
+    import glob
+    import os
 
-    # check that we can authentica with a certificate
-    ssh_command_line = (
-        "ssh",
-        "-o",
-        "PreferredAuthentications=publickey",
-        "-q",
-        UPLOAD_COMPARE_HOST,
-        "exit",
-    )
+    tmp_folder = "qq-compare_" + str(datetime.datetime.now())
+    if os.path.isdir(TARGET_COMPARE_DIR):
+        os.rename(TARGET_COMPARE_DIR, tmp_folder)
 
-    str_line = " ".join(repr(ele) for ele in ssh_command_line)
+    os.mkdir(TARGET_COMPARE_DIR)
+    # TODO: prepare meta.yml and runcard.yml as mix of all meta and runcard files
+    shutil.copy(f"{foldernames[0]}/meta.yml", TARGET_COMPARE_DIR)
+    shutil.copy(f"{foldernames[0]}/runcard.yml", TARGET_COMPARE_DIR)
 
-    log.info(f"Checking SSH connection to {UPLOAD_COMPARE_HOST}.")
-
-    try:
-        subprocess.run(ssh_command_line, check=True)
-    except subprocess.CalledProcessError as e:
-        raise RuntimeError(
-            (
-                "Could not validate the SSH key. "
-                "The command\n%s\nreturned a non zero exit status. "
-                "Please make sure that your public SSH key is on the server."
-            )
-            % str_line
-        ) from e
-    except OSError as e:
-        raise RuntimeError(
-            "Could not run the command\n{}\n: {}".format(str_line, e)
-        ) from e
-
-    log.info("Connection seems OK.")
-
-    # upload data
     i = 0
-    randname = base64.urlsafe_b64encode(uuid.uuid4().bytes).decode()
-    for name in foldernames:
-        if name[-1] == "/":
-            name = name[:-1]
-
-        # subdirectory = get_data_subdirectory_name(name)
-        origin_data_folder = f"{name}"
-        newdir = TARGET_COMPARE_DIR + randname  # + f"/data_{i}"
-        # newdir = TARGET_COMPARE_DIR + f"data_{i}"
-        rsync_command = (
-            "rsync",
-            "-aLz",
-            "--chmod=ug=rwx,o=rx",
-            f"{origin_data_folder}",
-            f"{UPLOAD_COMPARE_HOST}:{newdir}",
-        )
-
-        log.info(f"Uploading ({origin_data_folder}) to {UPLOAD_COMPARE_HOST}:{newdir}")
+    for folder in foldernames:
+        newdir = TARGET_COMPARE_DIR + f"data{i}"
+        log.info(f"Copying ({folder}) into {newdir}")
         try:
-            subprocess.run(rsync_command, check=True)
+            shutil.copytree(f"{folder}/data", newdir)
+            for file in glob.glob(os.path.join(folder, "*.html")):
+                shutil.copy2(file, newdir)
+            for file in glob.glob(os.path.join(folder, "*.yml")):
+                shutil.copy2(file, newdir)
         except subprocess.CalledProcessError as e:
             msg = f"Failed to upload output: {e}"
             raise RuntimeError(msg) from e
 
-        # url = urljoin(ROOT_URL)
+        if i > 0:
+            # update meta.yml for comparing report
+            metadata_new = load_yaml(os.path.join(folder, "meta.yml"))
+            metadata = load_yaml(os.path.join(TARGET_COMPARE_DIR, "meta.yml"))
+            update_meta(metadata, metadata_new)
+            # update runcard.yml for comparing report
+            rundata_new = load_yaml(os.path.join(folder, "runcard.yml"))
+            rundata = load_yaml(os.path.join(TARGET_COMPARE_DIR, "runcard.yml"))
+            update_runcard(rundata, rundata_new)
+
         log.info(f"Upload completed")
-        i = +1
+        i += 1
 
 
 def folders_exists(folders):
@@ -286,3 +252,50 @@ def get_data_subdirectory_name(folder):
     for dirName, subdirList, fileList in os.walk(folder):
         folder_subdirList.append(subdirList)
     return "".join(folder_subdirList[1])
+
+
+def load_yaml(path):
+    """Load yaml file from disk."""
+    with open(path) as file:
+        data = yaml.safe_load(file)
+    return data
+
+
+def update_meta(metadata, metadata_new):
+    metadata["backend"] = metadata["backend"] + " , " + metadata_new["backend"]
+    metadata["date"] = metadata["date"] + " , " + metadata_new["date"]
+    metadata["end-time"] = metadata["end-time"] + " , " + metadata_new["end-time"]
+    metadata["platform"] = metadata["platform"] + " , " + metadata_new["platform"]
+    metadata["start-time"] = metadata["start-time"] + " , " + metadata_new["start-time"]
+    metadata["title"] = metadata["title"] + " , " + metadata_new["title"]
+    metadata["versions"]["numpy"] = (
+        metadata["versions"]["numpy"] + " , " + metadata_new["versions"]["numpy"]
+    )
+    metadata["versions"]["qibo"] = (
+        metadata["versions"]["qibo"] + " , " + metadata_new["versions"]["qibo"]
+    )
+    metadata["versions"]["qibocal"] = (
+        metadata["versions"]["qibocal"] + " , " + metadata_new["versions"]["qibocal"]
+    )
+    metadata["versions"]["qibolab"] = (
+        metadata["versions"]["qibolab"] + " , " + metadata_new["versions"]["qibolab"]
+    )
+    with open(f"{TARGET_COMPARE_DIR}/meta.yml", "w") as file:
+        yaml.safe_dump(metadata, file)
+
+
+def update_runcard(rundata, rundata_new):
+    rundata["platform"] = rundata["platform"] + " , " + rundata_new["platform"]
+    unique = list(set(rundata["qubits"] + rundata_new["qubits"]))
+    # unique_str = ','.join([str(i) for i in unique])
+    # rundata["qubits"] = "[" + unique_str + "]"
+    rundata["qubits"] = unique
+    with open(f"{TARGET_COMPARE_DIR}/runcard.yml", "w") as file:
+        yaml.safe_dump(
+            rundata,
+            file,
+            indent=4,
+            allow_unicode=False,
+            sort_keys=False,
+            default_flow_style=None,
+        )

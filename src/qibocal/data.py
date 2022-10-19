@@ -172,7 +172,7 @@ class DataUnits(AbstractData):
             return self.df[key].pint.to(unit).pint.magnitude
 
     @classmethod
-    def load_data(cls, folder, routine, format, name):
+    def load_data(cls, folder, subfolder, routine, format, name):
         """Load data from specific format.
 
         Args:
@@ -185,7 +185,7 @@ class DataUnits(AbstractData):
         """
         obj = cls()
         if format == "csv":
-            file = f"{folder}/data/{routine}/{name}.csv"
+            file = f"{folder}/{subfolder}/{routine}/{name}.csv"
             obj.df = pd.read_csv(file, header=[0, 1])
             obj.df.pop("Unnamed: 0_level_0")
             quantities_label = []
@@ -284,7 +284,7 @@ class Data(AbstractData):
         return self.df[quantity].values
 
     @classmethod
-    def load_data(cls, folder, routine, format, name):
+    def load_data(cls, folder, subfolder, routine, format, name):
         """Load data from specific format.
 
         Args:
@@ -297,7 +297,7 @@ class Data(AbstractData):
         """
         obj = cls()
         if format == "csv":
-            file = f"{folder}/data/{routine}/{name}.csv"
+            file = f"{folder}/{subfolder}/{routine}/{name}.csv"
             obj.df = pd.read_csv(file)
             obj.df.pop("Unnamed: 0")
         elif format == "pickle":
