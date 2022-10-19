@@ -136,10 +136,23 @@ class Experiment():
         self.save_circuits()
         return self.directory
 
-    def retrive_from_file(self, filename:str, **kwargs):
+    def save_outcome(self, **kwargs):
         """
         """
-        pass
+        # Check if there has been made a directory already for this experiment.
+        if not hasattr(self, 'directory'):
+            # Make and get the directory.
+            self.make_directory()
+        # Check for which outcome types there are.
+        if self.outcome_probs:
+            # Initiate the data structure from qibocal.
+            data_probs = Data(
+                'probabilities', quantities=list(self.sequence_lengths))
+            
+            # Put the probabilities into the data object.
+            data_probs.add({
+                self.sequence_lengths[i]:self.outcome_probs[count_runs*i+i] \
+                for i in range(len(self.sequence_lengths))})
 
     def build_onthefly(self, **kwargs):
         """
@@ -152,12 +165,16 @@ class Experiment():
             kwargs (dict):
                 'paulierror_noiseparams' = [p1, p2, p3]
         """
+        # Check if there has been made a directory already for this experiment.
+        if not hasattr(self, 'directory'):
+            # Make and get the directory.
+            self.make_directory()
         # Initiate the outcome lists, one for the single shot samples and
         # one for the probabilities.
         self.outcome_samples, self.outcome_probs = [], []
         # Also initiate the data structure where the outcomes will be stored.
-        data_probabilities = Data(
-            'experiment/probabilities', quantities=list(self.sequence_lengths))
+        data_probs = Data(
+            'probabilities', quantities=list(self.sequence_lengths))
         # If the circuits are simulated and not run on quantum hardware, the
         # noise has to be simulated, too.
         if kwargs.get('paulierror_noiseparams'):
@@ -166,10 +183,14 @@ class Experiment():
             noise = NoiseModel()
             # The noise should be applied with each unitary in the circuit.
             noise.add(pauli, gates.Unitary)
+        # Makes code easier to read.
+        amount_m = len(self.sequence_lengths)
         # Loop 'runs' many times over the whole protocol.
         for count_runs in range(self.runs):
+            # Initiate a list to store the outcome for every sequence.
+            temp_list = []
             # Go through every sequence in the protocol.
-            for count_m in range(len(self.sequence_lengths)):
+            for count_m in range(amount_m):
                 # Get the circuit.
                 circuit = self.circuits_list[count_runs][count_m]
                 # For the simulation the noise has to be added to the circuit.
@@ -195,20 +216,23 @@ class Experiment():
                 # 'executed.probabilities()' only contains an entry for qubit
                 # if it is nonzero, the shape can vary, fix that FIXME.
                 # Store them.
-                self.outcome_probs.append(executed.probabilities())
+                temp_list.append(executed.probabilities())
+            self.outcome_probs.append(temp_list)
             # Put the probabilities into the data object.
-            data_probabilities.add({
-                self.sequence_lengths[i]:self.outcome_probs[count_runs*i+i] \
-                for i in range(len(self.sequence_lengths))})
+            data_probs.add({
+                self.sequence_lengths[i]:temp_list[i] \
+                for i in range(amount_m)})
+        # Save the data.
+        data_probs.to_pickle(self.directory)
         # Push data.
-        return data_probabilities
-    
+        return self.outcome_probs
+
+
     @classmethod
-    def retreive_experiment(cls, path:str, **kwargs):
+    def retrieve_experiment(cls, path:str, **kwargs):
         """
         """
         from qcvv.calibrations.protocols.utils import pkl_to_list, dict_from_comments_txt
-        import ast
         # Initiate an instance of the experiment class.
         obj = cls()
         # Get the metadata in form of a dictionary.
@@ -226,6 +250,8 @@ class Experiment():
         obj.__dict__ = metadata_dict
         # Store the diven path.
         obj.directory = path
+        # Store the sequence lenghts.
+        obj.sequence_lengths = list(sequence_lenghts)
         # Get the circuits list and make it an attribute.
         sequences_frompkl, circuits_list = pkl_to_list(f'{path}circuits.pkl')
         # Make sure that the order is the same, right now the order is reversed.
@@ -235,7 +261,18 @@ class Experiment():
         # Every list in circuits_list has entries refering to the different
         # sequence lengths. Meaning that the order is crucial.
         obj.circuits_list = [x[::-1] for x in circuits_list]
-        # Also store the sequence lenghts.
-        obj.sequence_lengths = list(sequence_lenghts)
         return obj
-        
+
+    def load_outcome(self, path:str, **kwargs):
+        """
+        """
+        from qcvv.calibrations.protocols.utils import pkl_to_list
+        # Get the pandas data frame from the pikle file.
+        sequences_frompkl, probs_list = pkl_to_list(f'{path}probabilities.pkl')
+        # Make sure that the order is the same, right now the order is reversed.
+        assert np.array_equal(
+            np.array(sequences_frompkl)[::-1], self.sequence_lengths), \
+            'The order of the restored outcome is not the same as when build'
+        # Store the outcome as an attribute to further work with its.
+        self.outcome_probs = [x[::-1] for x in probs_list]
+        return self.outcome_probs
