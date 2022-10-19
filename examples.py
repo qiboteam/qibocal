@@ -85,17 +85,17 @@ def test_retrieve_experiment():
     # Build the circuits and save them.
     circuits_list, directory = oldexperiment.build_a_save()
     # Load the circuits and attributes back to a new experiment object.
-    newexperiment = Experiment.retreive_experiment(directory)
+    recexperiment = Experiment.retrieve_experiment(directory)
     # Compare the circuits. They should be the same.
     for countruns in range(runs):
         for countm in range(len(sequence_lengths)): 
-            oldcircuit = oldexperiment.circuits_list[countruns][countm]
-            newcircuit = newexperiment.circuits_list[countruns][countm]
-            assert np.array_equal(oldcircuit.unitary(), newcircuit.unitary())
-            assert len(oldcircuit.queue) == len(newcircuit.queue)
+            circuit = oldexperiment.circuits_list[countruns][countm]
+            reccircuit = recexperiment.circuits_list[countruns][countm]
+            assert np.array_equal(circuit.unitary(), reccircuit.unitary())
+            assert len(circuit.queue) == len(reccircuit.queue)
     # Also the attributes.
     olddict = oldexperiment.__dict__
-    newdict = newexperiment.__dict__
+    newdict = recexperiment.__dict__
     for key in olddict:
         # The attribute circuits_list was checked above.
         if key != 'circuits_list':
@@ -110,6 +110,31 @@ def test_retrieve_experiment():
                 raise TypeError(f'Type {type(oldvalue)} not checked!')
     print('test_retrieve_experiment successfull')
 
-test_generators()
-test_retrieve_experiment()
+def test_exectute_and_save():
+    """
+    """
+    from shutil import rmtree
+    # Set the parameters
+    sequence_lengths = [1,2,5]
+    runs = 3
+    qubits = [0]
+    mygenerator = GeneratorOnequbitcliffords(qubits)
+    myexperiment = Experiment(mygenerator, sequence_lengths, qubits, runs)
+    # Build the circuits and save them.
+    circuits_list, directory = myexperiment.build_a_save()
+    # Execute the experiment and save the outcome.
+    probs = myexperiment.execute_a_save()
+    # Load the experiment from the files.
+    recexperiment = Experiment.retrieve_experiment(directory)
+    # Also, load the outcome.
+    recprobs = recexperiment.load_outcome(directory)
+    for count_runs in range(runs):
+        assert np.array_equal(probs[count_runs], recprobs[count_runs])
+    # Remove the directory.
+    rmtree(directory)
+
+
+# test_generators()
+# test_retrieve_experiment()
+test_exectute_and_save()
 
