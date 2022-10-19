@@ -1,5 +1,6 @@
 from numpy import sqrt, pi
 import pdb
+import numpy as np
 # To not define the parameters for one qubit Cliffords every time a
 # new qubits is drawn define the parameters as global variable.
 # This are parameters for all 24 one qubit clifford gates.
@@ -22,6 +23,39 @@ onequbit_clifford_params = [
     (-2*pi/3, 1/sqrt(3), -1/sqrt(3), 1/sqrt(3)),
     (2*pi/3, 1/sqrt(3), 1/sqrt(3), -1/sqrt(3)),
     (-2*pi/3, 1/sqrt(3), 1/sqrt(3), -1/sqrt(3))]
+
+X = np.array([[0,1],[1,0]])
+Y = np.array([[0,-1j],[1j, 0]])
+Z = np.array([[1,0],[0,-1]])
+pauli = [np.eye(2)/np.sqrt(2), X/np.sqrt(2), Y/np.sqrt(2), Z/np.sqrt(2)]
+
+def liouville_representation_errorchannel(error_channel, **kwargs):
+    """ For single qubit error channels only.
+    """
+    # For single qubit the dimension is two.
+    dim = 2
+    if error_channel.channel.__name__ == 'PauliNoiseChannel':
+        flipprobs = error_channel.options
+        X = np.array([[0,1],[1,0]])
+        Y = np.array([[0,-1j],[1j, 0]])
+        Z = np.array([[1,0],[0,-1]])
+        def acts(gmatrix):
+            return (1-flipprobs[0]-flipprobs[1]-flipprobs[2])*gmatrix \
+                + flipprobs[0]*X@gmatrix@X \
+                + flipprobs[1]*Y@gmatrix@Y \
+                + flipprobs[2]*Z@gmatrix@Z
+    return np.array(
+        [[np.trace(p2.conj().T@acts(p1)) for p1 in pauli] for p2 in pauli]
+    )
+   
+
+def effective_depol(error_channel, **kwargs):
+    """
+    """
+    liouvillerep = liouville_representation_errorchannel(error_channel)
+    d = int(np.sqrt(len(liouvillerep)))
+    depolp = ((np.trace(liouvillerep)+d)/(d+1)-1)/(d-1)
+    return depolp
 
 def dict_to_txt(filename:str, gdict:dict, comments:bool=True,
         openingstring:str='a') -> None:
