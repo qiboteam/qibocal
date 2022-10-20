@@ -8,13 +8,13 @@ In the table below we summarize the status of *pre-compiled binaries
 distributed with pypi* for the packages listed above.
 
 +------------------+---------+
-| Operating System | qibocal | 
+| Operating System | qibocal |
 +==================+=========+
-| Linux x86        |   Yes   | 
+| Linux x86        |   Yes   |
 +------------------+---------+
-| MacOS >= 10.15   |   Yes   | 
+| MacOS >= 10.15   |   Yes   |
 +------------------+---------+
-| Windows          |   Yes   | 
+| Windows          |   Yes   |
 +------------------+---------+
 
 .. note::
