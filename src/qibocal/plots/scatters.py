@@ -195,7 +195,8 @@ def time_msr_phase(folder, routine, qubit, fformat):
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
-    print(subfolders)
+    # print(subfolders)
+    i = 0
     for subfolder in subfolders:
         try:
             data = DataUnits.load_data(
@@ -225,7 +226,7 @@ def time_msr_phase(folder, routine, qubit, fformat):
             go.Scatter(
                 x=data.get_values("Time", "ns"),
                 y=data.get_values("MSR", "uV"),
-                name="Rabi Oscillations",
+                name=f"Rabi q{qubit}/r{i}",
             ),
             row=1,
             col=1,
@@ -234,7 +235,7 @@ def time_msr_phase(folder, routine, qubit, fformat):
             go.Scatter(
                 x=data.get_values("Time", "ns"),
                 y=data.get_values("phase", "rad"),
-                name="Rabi Oscillations",
+                name=f"Rabi q{qubit}/r{i}",
             ),
             row=1,
             col=2,
@@ -259,7 +260,7 @@ def time_msr_phase(folder, routine, qubit, fformat):
                         data_fit.get_values("popt3"),
                         data_fit.get_values("popt4"),
                     ),
-                    name="Fit",
+                    name=f"Fit q{qubit}/r{i}",
                     line=go.scatter.Line(dash="dot"),
                 ),
                 row=1,
@@ -269,10 +270,10 @@ def time_msr_phase(folder, routine, qubit, fformat):
             fig.add_annotation(
                 dict(
                     font=dict(color="black", size=12),
-                    x=0,
-                    y=-0.20,
+                    x=i * 0.13,
+                    y=-0.25,
                     showarrow=False,
-                    text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.3f} ns.",
+                    text=f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f} ns.",
                     textangle=0,
                     xanchor="left",
                     xref="paper",
@@ -283,16 +284,17 @@ def time_msr_phase(folder, routine, qubit, fformat):
             fig.add_annotation(
                 dict(
                     font=dict(color="black", size=12),
-                    x=0,
+                    x=i * 0.13,
                     y=-0.30,
                     showarrow=False,
-                    text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.1f} uV.",
+                    text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} uV.",
                     textangle=0,
                     xanchor="left",
                     xref="paper",
                     yref="paper",
                 )
             )
+        i += 1
 
     # last part
     fig.update_layout(
