@@ -15,6 +15,21 @@ def calibrate_qubit_states(
     niter,
     points=10,
 ):
+    """
+    Method which implements the state's calibration of a chosen qubit. Two analogous tests are performed for calibrate the ground state and the excited state of the oscillator.
+    The subscripts `etc` and `gnd` will represent the |1> and |0> respectively.
+    In case the qubit belows to the 5-qubits chip, the index notation is the following:
+          1
+          |
+     2 -- 0 -- 3
+          |
+          4
+    Args:
+        platform (:class:`qibolab.platforms.abstract.AbstractPlatform`): custom abstract platform on which we perform the calibration.
+        qubit (int): index representing the target qubit into the chip. 
+        niter (int): number of times the pulse sequence will be reproduced.
+        points (int): every points step data are saved.
+    """
 
     # create exc sequence
     exc_sequence = PulseSequence()
