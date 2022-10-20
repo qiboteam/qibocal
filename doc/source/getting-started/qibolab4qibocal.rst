@@ -1,4 +1,4 @@
-How to calibrate a TII device?
+Qibocal needs Qibolab!
 ==============================
 
 The ``qibocal`` package works closely with ``qibolab``. 

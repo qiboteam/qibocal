@@ -11,4 +11,4 @@ hardware so that you can improve the execution of your algorithms.
     installation
     interface
     runcard
-    calibration
+    qibolab4qibocal
