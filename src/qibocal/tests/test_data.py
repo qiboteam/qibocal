@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
-"""Some tests for the Dataset class"""
+"""Some tests for the Data and DataUnits class"""
 import numpy as np
 import pytest
 from pint import DimensionalityError, UndefinedUnitError
 
-from qibocal.data import Data, Dataset
+from qibocal.data import Data, DataUnits
 
 
-def random_dataset(length, options=None):
-    data = Dataset(options=options)
+def random_data_units(length, options=None):
+    data = DataUnits(options=options)
     for l in range(length):
         msr, i, q, phase = np.random.rand(4)
         pulse_sequence_result = {
@@ -34,18 +34,29 @@ def random_data(length):
 
 
 def test_data_initialization():
-    """Test Dataset constructor"""
-    data = Dataset()
+    """Test DataUnits constructor"""
+    data = DataUnits()
     assert len(data.df.columns) == 4
-    assert list(data.df.columns) == ["MSR", "i", "q", "phase"]
+    assert list(data.df.columns) == [  # pylint: disable=E1101
+        "MSR",
+        "i",
+        "q",
+        "phase",
+    ]
 
-    data1 = Dataset(quantities={"attenuation": "dB"})
+    data1 = DataUnits(quantities={"attenuation": "dB"})
     assert len(data1.df.columns) == 5
-    assert list(data1.df.columns) == ["attenuation", "MSR", "i", "q", "phase"]
+    assert list(data1.df.columns) == [  # pylint: disable=E1101
+        "attenuation",
+        "MSR",
+        "i",
+        "q",
+        "phase",
+    ]
 
-    data2 = Dataset(quantities={"attenuation": "dB"}, options=["option1"])
+    data2 = DataUnits(quantities={"attenuation": "dB"}, options=["option1"])
     assert len(data2.df.columns) == 6
-    assert list(data2.df.columns) == [
+    assert list(data2.df.columns) == [  # pylint: disable=E1101
         "option1",
         "attenuation",
         "MSR",
@@ -55,26 +66,26 @@ def test_data_initialization():
     ]
 
 
-def test_dataset_units():
-    """Test units of measure in Dataset"""
-    dataset = Dataset()
-    assert dataset.df.MSR.values.units == "volt"
+def test_data_units_units():
+    """Test units of measure in DataUnits"""
+    data_units = DataUnits()
+    assert data_units.df.MSR.values.units == "volt"
 
-    dataset1 = Dataset(quantities={"frequency": "Hz"})
-    assert dataset1.df.frequency.values.units == "hertz"
+    data_units1 = DataUnits(quantities={"frequency": "Hz"})
+    assert data_units1.df.frequency.values.units == "hertz"
 
     with pytest.raises(UndefinedUnitError):
-        dataset2 = Dataset(quantities={"fake_unit": "fake"})
+        data_units2 = DataUnits(quantities={"fake_unit": "fake"})
 
 
-def test_dataset_add():
-    """Test add method of Dataset"""
-    dataset = random_dataset(5)
-    assert len(dataset) == 5
+def test_data_units_add():
+    """Test add method of DataUnits"""
+    data_units = random_data_units(5)
+    assert len(data_units) == 5
 
-    dataset1 = Dataset(quantities={"attenuation": "dB"})
-    msr, i, q, phase, att = np.random.rand(len(dataset1.df.columns))
-    dataset1.add(
+    data_units1 = DataUnits(quantities={"attenuation": "dB"})
+    msr, i, q, phase, att = np.random.rand(len(data_units1.df.columns))
+    data_units1.add(
         {
             "MSR[V]": msr,
             "i[V]": i,
@@ -83,9 +94,9 @@ def test_dataset_add():
             "attenuation[dB]": att,
         }
     )
-    assert len(dataset1) == 1
+    assert len(data_units1) == 1
 
-    dataset1.add(
+    data_units1.add(
         {
             "MSR[V]": 0,
             "i[V]": 0.0,
@@ -94,18 +105,18 @@ def test_dataset_add():
             "attenuation[dB]": 1,
         }
     )
-    assert len(dataset1) == 2
+    assert len(data_units1) == 2
 
-    dataset2 = Dataset()
-    msr, i, q, phase = np.random.rand(len(dataset2.df.columns))
+    data_units2 = DataUnits()
+    msr, i, q, phase = np.random.rand(len(data_units2.df.columns))
     with pytest.raises(DimensionalityError):
-        dataset2.add({"MSR[dB]": msr, "i[V]": i, "q[V]": q, "phase[deg]": phase})
+        data_units2.add({"MSR[dB]": msr, "i[V]": i, "q[V]": q, "phase[deg]": phase})
 
     with pytest.raises(UndefinedUnitError):
-        dataset2.add({"MSR[test]": msr, "i[V]": i, "q[V]": q, "phase[deg]": phase})
+        data_units2.add({"MSR[test]": msr, "i[V]": i, "q[V]": q, "phase[deg]": phase})
 
-    dataset3 = random_dataset(10, options=["test"])
-    assert len(dataset3) == 10
+    data_units3 = random_data_units(10, options=["test"])
+    assert len(data_units3) == 10
 
 
 def test_data_add():
@@ -116,14 +127,55 @@ def test_data_add():
     assert len(data) == 6
 
 
-def test_get_values_dataset():
-    """Test get_values method of Dataset class"""
-    dataset = random_dataset(5, options=["option"])
+def test_data_units_load_data_from_dict():
+    """Test set method of DataUnits class"""
+    data_units = DataUnits()
+    test = {
+        "MSR[V]": [1, 2, 3],
+        "i[V]": [3.0, 4.0, 5.0],
+        "q[V]": np.array([3, 4, 5]),
+        "phase[deg]": [6.0, 7.0, 8.0],
+    }
+    data_units.load_data_from_dict(test)
+    assert len(data_units) == 3
+    assert (data_units.get_values("MSR", "V") == [1, 2, 3]).all()
+    assert (data_units.get_values("i", "V") == [3.0, 4.0, 5.0]).all()
+    assert (data_units.get_values("q", "V") == [3, 4, 5]).all()
+    assert (data_units.get_values("phase", "deg") == [6.0, 7.0, 8.0]).all()
 
-    assert (dataset.get_values("option") == dataset.df["option"]).all()
+    data_units1 = DataUnits(options=["option1", "option2"])
+    test = {"option1": ["one", "two", "three"], "option2": [1, 2, 3]}
+    data_units1.load_data_from_dict(test)
+    assert len(data_units1) == 3
+    assert (data_units1.get_values("option1") == ["one", "two", "three"]).all()
+    assert (data_units1.get_values("option2") == [1, 2, 3]).all()
+
+
+def test_data_load_data_from_dict():
+    """Test set method of Data class"""
+    data = random_data(5)
+    test = {
+        "int": [1, 2, 3],
+        "float": [3.0, 4.0, 5.0],
+        "string": ["one", "two", "three"],
+        "bool": [True, False, True],
+    }
+    data.load_data_from_dict(test)
+    assert len(data) == 3
+    assert (data.get_values("int") == [1, 2, 3]).all()
+    assert (data.get_values("float") == [3.0, 4.0, 5.0]).all()
+    assert (data.get_values("string") == ["one", "two", "three"]).all()
+    assert (data.get_values("bool") == [True, False, True]).all()
+
+
+def test_get_values_data_units():
+    """Test get_values method of DataUnits class"""
+    data_units = random_data_units(5, options=["option"])
+
+    assert (data_units.get_values("option") == data_units.df["option"]).all()
     assert (
-        dataset.get_values("MSR", "uV")
-        == dataset.df["MSR"].pint.to("uV").pint.magnitude
+        data_units.get_values("MSR", "uV")
+        == data_units.df["MSR"].pint.to("uV").pint.magnitude
     ).all()
 
 
