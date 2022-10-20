@@ -19,6 +19,7 @@ def get_data_subfolders(folder):
     return subfolders
 
 
+# For resonator and qubit spectroscopies
 def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
     try:
         data_fast = DataUnits.load_data(folder, routine, format, f"fast_sweep_q{qubit}")
@@ -151,6 +152,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
     return fig
 
 
+# For resonator and qubit spectroscopies
 def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
     data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     plot1d_attenuation = 30  # attenuation value to use for 1D frequency vs MSR plot
@@ -179,7 +181,7 @@ def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
     return fig
 
 
-# For Rabi oscillations
+# For Rabi oscillations pulse length - tested
 def time_msr_phase(folder, routine, qubit, fformat):
 
     fig = make_subplots(
@@ -195,7 +197,6 @@ def time_msr_phase(folder, routine, qubit, fformat):
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
-    # print(subfolders)
     i = 0
     for subfolder in subfolders:
         try:
@@ -308,27 +309,8 @@ def time_msr_phase(folder, routine, qubit, fformat):
     return fig
 
 
+# For Rabi oscillations pulse gain - tested
 def gain_msr_phase(folder, routine, qubit, format):
-
-    try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
-    except:
-        data = DataUnits(quantities={"gain", "dimensionless"})
-
-    try:
-        data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
-    except:
-        data_fit = Data(
-            quantities=[
-                "popt0",
-                "popt1",
-                "popt2",
-                "popt3",
-                "popt4",
-                "label1",
-                "label2",
-            ]
-        )
 
     fig = make_subplots(
         rows=1,
@@ -341,78 +323,107 @@ def gain_msr_phase(folder, routine, qubit, format):
         ),
     )
 
-    fig.add_trace(
-        go.Scatter(
-            x=data.get_values("gain", "dimensionless"),
-            y=data.get_values("MSR", "uV"),
-            name="Rabi Oscillations",
-        ),
-        row=1,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=data.get_values("gain", "dimensionless"),
-            y=data.get_values("phase", "rad"),
-            name="Rabi Oscillations",
-        ),
-        row=1,
-        col=2,
-    )
+    # iterate over multiple data folders
+    subfolders = get_data_subfolders(folder)
+    i = 0
+    for subfolder in subfolders:
+        try:
+            data = DataUnits.load_data(
+                folder, subfolder, routine, format, f"data_q{qubit}"
+            )
+        except:
+            data = DataUnits(quantities={"gain", "dimensionless"})
 
-    # add fitting trace
-    if len(data) > 0 and len(data_fit) > 0:
-        gainrange = np.linspace(
-            min(data.get_values("gain", "dimensionless")),
-            max(data.get_values("gain", "dimensionless")),
-            2 * len(data),
-        )
-        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+        try:
+            data_fit = Data.load_data(
+                folder, subfolder, routine, format, f"fit_q{qubit}"
+            )
+        except:
+            data_fit = Data(
+                quantities=[
+                    "popt0",
+                    "popt1",
+                    "popt2",
+                    "popt3",
+                    "popt4",
+                    "label1",
+                    "label2",
+                ]
+            )
+
         fig.add_trace(
             go.Scatter(
-                x=gainrange,
-                y=rabi(
-                    gainrange,
-                    data_fit.get_values("popt0"),
-                    data_fit.get_values("popt1"),
-                    data_fit.get_values("popt2"),
-                    data_fit.get_values("popt3"),
-                    data_fit.get_values("popt4"),
-                ),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
+                x=data.get_values("gain", "dimensionless"),
+                y=data.get_values("MSR", "uV"),
+                name=f"Rabi q{qubit}/r{i}",
             ),
             row=1,
             col=1,
         )
-
-        fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=0,
-                y=-0.20,
-                showarrow=False,
-                text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.3f}",
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
-            )
+        fig.add_trace(
+            go.Scatter(
+                x=data.get_values("gain", "dimensionless"),
+                y=data.get_values("phase", "rad"),
+                name=f"Rabi q{qubit}/r{i}",
+            ),
+            row=1,
+            col=2,
         )
 
-        fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=0,
-                y=-0.25,
-                showarrow=False,
-                text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.4f} uV",
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
+        # add fitting trace
+        if len(data) > 0 and len(data_fit) > 0:
+            gainrange = np.linspace(
+                min(data.get_values("gain", "dimensionless")),
+                max(data.get_values("gain", "dimensionless")),
+                2 * len(data),
             )
-        )
+            params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+            fig.add_trace(
+                go.Scatter(
+                    x=gainrange,
+                    y=rabi(
+                        gainrange,
+                        data_fit.get_values("popt0"),
+                        data_fit.get_values("popt1"),
+                        data_fit.get_values("popt2"),
+                        data_fit.get_values("popt3"),
+                        data_fit.get_values("popt4"),
+                    ),
+                    name=f"Fit q{qubit}/r{i}",
+                    line=go.scatter.Line(dash="dot"),
+                ),
+                row=1,
+                col=1,
+            )
+
+            fig.add_annotation(
+                dict(
+                    font=dict(color="black", size=12),
+                    x=i * 0.15,
+                    y=-0.25,
+                    showarrow=False,
+                    text=f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f}",
+                    textangle=0,
+                    xanchor="left",
+                    xref="paper",
+                    yref="paper",
+                )
+            )
+
+            fig.add_annotation(
+                dict(
+                    font=dict(color="black", size=12),
+                    x=i * 0.15,
+                    y=-0.30,
+                    showarrow=False,
+                    text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.4f} uV",
+                    textangle=0,
+                    xanchor="left",
+                    xref="paper",
+                    yref="paper",
+                )
+            )
+        i += 1
 
     fig.update_layout(
         showlegend=True,
@@ -423,16 +434,8 @@ def gain_msr_phase(folder, routine, qubit, format):
     return fig
 
 
+# For Rabi oscillations pulse amplitude - tested
 def amplitude_msr_phase(folder, routine, qubit, format):
-
-    try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
-    except:
-        data = DataUnits(quantities={"amplitude", "dimensionless"})
-    try:
-        data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
-    except:
-        data_fit = DataUnits()
 
     fig = make_subplots(
         rows=1,
@@ -445,78 +448,97 @@ def amplitude_msr_phase(folder, routine, qubit, format):
         ),
     )
 
-    fig.add_trace(
-        go.Scatter(
-            x=data.get_values("amplitude", "dimensionless"),
-            y=data.get_values("MSR", "uV"),
-            name="Rabi Oscillations",
-        ),
-        row=1,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=data.get_values("amplitude", "dimensionless"),
-            y=data.get_values("phase", "rad"),
-            name="Rabi Oscillations",
-        ),
-        row=1,
-        col=2,
-    )
+    # iterate over multiple data folders
+    subfolders = get_data_subfolders(folder)
+    i = 0
+    for subfolder in subfolders:
 
-    # add fitting trace
-    if len(data) > 0 and len(data_fit) > 0:
-        amplituderange = np.linspace(
-            min(data.get_values("amplitude", "dimensionless")),
-            max(data.get_values("amplitude", "dimensionless")),
-            2 * len(data),
-        )
-        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+        try:
+            data = DataUnits.load_data(
+                folder, subfolder, routine, format, f"data_q{qubit}"
+            )
+        except:
+            data = DataUnits(quantities={"amplitude", "dimensionless"})
+        try:
+            data_fit = Data.load_data(
+                folder, subfolder, routine, format, f"fit_q{qubit}"
+            )
+        except:
+            data_fit = DataUnits()
+
         fig.add_trace(
             go.Scatter(
-                x=amplituderange,
-                y=rabi(
-                    amplituderange,
-                    data_fit.get_values("popt0"),
-                    data_fit.get_values("popt1"),
-                    data_fit.get_values("popt2"),
-                    data_fit.get_values("popt3"),
-                    data_fit.get_values("popt4"),
-                ),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
+                x=data.get_values("amplitude", "dimensionless"),
+                y=data.get_values("MSR", "uV"),
+                name=f"Rabi q{qubit}/r{i}",
             ),
             row=1,
             col=1,
         )
-
-        fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=0,
-                y=-0.30,
-                showarrow=False,
-                text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.3f} uV.",
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
-            )
+        fig.add_trace(
+            go.Scatter(
+                x=data.get_values("amplitude", "dimensionless"),
+                y=data.get_values("phase", "rad"),
+                name=f"Rabi q{qubit}/r{i}",
+            ),
+            row=1,
+            col=2,
         )
 
-        fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=0,
-                y=-0.25,
-                showarrow=False,
-                text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.4f}",
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
+        # add fitting trace
+        if len(data) > 0 and len(data_fit) > 0:
+            amplituderange = np.linspace(
+                min(data.get_values("amplitude", "dimensionless")),
+                max(data.get_values("amplitude", "dimensionless")),
+                2 * len(data),
             )
-        )
+            params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+            fig.add_trace(
+                go.Scatter(
+                    x=amplituderange,
+                    y=rabi(
+                        amplituderange,
+                        data_fit.get_values("popt0"),
+                        data_fit.get_values("popt1"),
+                        data_fit.get_values("popt2"),
+                        data_fit.get_values("popt3"),
+                        data_fit.get_values("popt4"),
+                    ),
+                    name=f"Fit q{qubit}/r{i}",
+                    line=go.scatter.Line(dash="dot"),
+                ),
+                row=1,
+                col=1,
+            )
+
+            fig.add_annotation(
+                dict(
+                    font=dict(color="black", size=12),
+                    x=i * 0.15,
+                    y=-0.30,
+                    showarrow=False,
+                    text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.3f} uV.",
+                    textangle=0,
+                    xanchor="left",
+                    xref="paper",
+                    yref="paper",
+                )
+            )
+
+            fig.add_annotation(
+                dict(
+                    font=dict(color="black", size=12),
+                    x=i * 0.15,
+                    y=-0.25,
+                    showarrow=False,
+                    text=f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.4f}",
+                    textangle=0,
+                    xanchor="left",
+                    xref="paper",
+                    yref="paper",
+                )
+            )
+        i += 1
 
     fig.update_layout(
         showlegend=True,
@@ -527,19 +549,8 @@ def amplitude_msr_phase(folder, routine, qubit, format):
     return fig
 
 
-# For Ramsey oscillations
+# For Ramsey oscillations - tested
 def time_msr(folder, routine, qubit, format):
-    try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
-    except:
-        data = DataUnits(
-            name=f"data_q{qubit}", quantities={"wait": "ns", "t_max": "ns"}
-        )
-    try:
-        data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
-    except:
-        data_fit = DataUnits()
-
     fig = make_subplots(
         rows=1,
         cols=1,
@@ -548,83 +559,103 @@ def time_msr(folder, routine, qubit, format):
         subplot_titles=("MSR (V)",),
     )
 
-    fig.add_trace(
-        go.Scatter(
-            x=data.get_values("wait", "ns"),
-            y=data.get_values("MSR", "uV"),
-            name="Ramsey",
-        ),
-        row=1,
-        col=1,
-    )
+    # iterate over multiple data folders
+    subfolders = get_data_subfolders(folder)
+    i = 0
+    for subfolder in subfolders:
+        try:
+            data = DataUnits.load_data(
+                folder, subfolder, routine, format, f"data_q{qubit}"
+            )
+        except:
+            data = DataUnits(
+                name=f"data_q{qubit}", quantities={"wait": "ns", "t_max": "ns"}
+            )
+        try:
+            data_fit = Data.load_data(
+                folder, subfolder, routine, format, f"fit_q{qubit}"
+            )
+        except:
+            data_fit = DataUnits()
 
-    # add fitting trace
-    if len(data) > 0 and len(data_fit) > 0:
-        timerange = np.linspace(
-            min(data.get_values("wait", "ns")),
-            max(data.get_values("wait", "ns")),
-            2 * len(data),
-        )
-        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
         fig.add_trace(
             go.Scatter(
-                x=timerange,
-                y=ramsey(
-                    timerange,
-                    data_fit.get_values("popt0"),
-                    data_fit.get_values("popt1"),
-                    data_fit.get_values("popt2"),
-                    data_fit.get_values("popt3"),
-                    data_fit.get_values("popt4"),
-                ),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
+                x=data.get_values("wait", "ns"),
+                y=data.get_values("MSR", "uV"),
+                name=f"Ramsey q{qubit}/r{i}",
             ),
             row=1,
             col=1,
         )
 
-        fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=0,
-                y=-0.30,
-                showarrow=False,
-                text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.3f} Hz.",
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
+        # add fitting trace
+        if len(data) > 0 and len(data_fit) > 0:
+            timerange = np.linspace(
+                min(data.get_values("wait", "ns")),
+                max(data.get_values("wait", "ns")),
+                2 * len(data),
             )
-        )
+            params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+            fig.add_trace(
+                go.Scatter(
+                    x=timerange,
+                    y=ramsey(
+                        timerange,
+                        data_fit.get_values("popt0"),
+                        data_fit.get_values("popt1"),
+                        data_fit.get_values("popt2"),
+                        data_fit.get_values("popt3"),
+                        data_fit.get_values("popt4"),
+                    ),
+                    name=f"Fit q{qubit}/r{i}",
+                    line=go.scatter.Line(dash="dot"),
+                ),
+                row=1,
+                col=1,
+            )
 
-        fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=0,
-                y=-0.20,
-                showarrow=False,
-                text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.1f} ns",
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
+            fig.add_annotation(
+                dict(
+                    font=dict(color="black", size=12),
+                    x=i * 0.18,
+                    y=-0.30,
+                    showarrow=False,
+                    text=f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f} Hz.",
+                    textangle=0,
+                    xanchor="left",
+                    xref="paper",
+                    yref="paper",
+                )
             )
-        )
 
-        fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=0,
-                y=-0.25,
-                showarrow=False,
-                text=f"Estimated {params[2]} is {data_fit.df[params[2]][0]:.3f} Hz",
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
+            fig.add_annotation(
+                dict(
+                    font=dict(color="black", size=12),
+                    x=i * 0.18,
+                    y=-0.20,
+                    showarrow=False,
+                    text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} ns",
+                    textangle=0,
+                    xanchor="left",
+                    xref="paper",
+                    yref="paper",
+                )
             )
-        )
+
+            fig.add_annotation(
+                dict(
+                    font=dict(color="black", size=12),
+                    x=i * 0.18,
+                    y=-0.25,
+                    showarrow=False,
+                    text=f"q{qubit}/r{i} {params[2]}: {data_fit.df[params[2]][0]:.3f} Hz",
+                    textangle=0,
+                    xanchor="left",
+                    xref="paper",
+                    yref="paper",
+                )
+            )
+        i += 1
 
     fig.update_layout(
         showlegend=True,
@@ -833,34 +864,8 @@ def flips_msr_phase(folder, routine, qubit, format):
     return fig
 
 
-# For calibrate qubit states
+# For calibrate qubit states - tested
 def exc_gnd(folder, routine, qubit, format):
-
-    try:
-        parameters = DataUnits.load_data(
-            folder, routine, format, f"parameters_q{qubit}"
-        )
-        rotation_angle = parameters.get_values("rotation_angle", "dimensionless")[0]
-        threshold = parameters.get_values("threshold", "V")[0]
-        fidelity = parameters.get_values("fidelity", "dimensionless")[0]
-        assignment_fidelity = parameters.get_values(
-            "assignment_fidelity", "dimensionless"
-        )[0]
-    except:
-        parameters = DataUnits(
-            name=f"parameters_q{qubit}",
-            quantities={
-                "rotation_angle": "dimensionless",  # in degrees
-                "threshold": "V",
-                "fidelity": "dimensionless",
-                "assignment_fidelity": "dimensionless",
-            },
-        )
-
-    try:
-        data_exc = DataUnits.load_data(folder, routine, format, f"data_exc_q{qubit}")
-    except:
-        data_exc = DataUnits(quantities={"iteration": "dimensionless"})
 
     fig = make_subplots(
         rows=1,
@@ -870,75 +875,126 @@ def exc_gnd(folder, routine, qubit, format):
         subplot_titles=("Calibrate qubit states",),
     )
 
-    fig.add_trace(
-        go.Scatter(
-            x=data_exc.get_values("i", "V"),
-            y=data_exc.get_values("q", "V"),
-            name="exc_state",
-            mode="markers",
-            marker=dict(size=3, color="lightcoral"),
-        ),
-        row=1,
-        col=1,
-    )
+    # iterate over multiple data folders
+    subfolders = get_data_subfolders(folder)
+    i = 0
+    for subfolder in subfolders:
+        try:
+            parameters = DataUnits.load_data(
+                folder, subfolder, routine, format, f"parameters_q{qubit}"
+            )
+            rotation_angle = parameters.get_values("rotation_angle", "dimensionless")[0]
+            threshold = parameters.get_values("threshold", "V")[0]
+            fidelity = parameters.get_values("fidelity", "dimensionless")[0]
+            assignment_fidelity = parameters.get_values(
+                "assignment_fidelity", "dimensionless"
+            )[0]
+        except:
+            parameters = DataUnits(
+                name=f"parameters_q{qubit}",
+                quantities={
+                    "rotation_angle": "dimensionless",  # in degrees
+                    "threshold": "V",
+                    "fidelity": "dimensionless",
+                    "assignment_fidelity": "dimensionless",
+                },
+            )
 
-    try:
-        data_gnd = DataUnits.load_data(folder, routine, format, f"data_gnd_q{qubit}")
-    except:
-        data_gnd = DataUnits(quantities={"iteration": "dimensionless"})
+        try:
+            data_exc = DataUnits.load_data(
+                folder, subfolder, routine, format, f"data_exc_q{qubit}"
+            )
+        except:
+            data_exc = DataUnits(quantities={"iteration": "dimensionless"})
 
-    fig.add_trace(
-        go.Scatter(
-            x=data_gnd.get_values("i", "V"),
-            y=data_gnd.get_values("q", "V"),
-            name="gnd state",
-            mode="markers",
-            marker=dict(size=3, color="skyblue"),
-        ),
-        row=1,
-        col=1,
-    )
+        fig.add_trace(
+            go.Scatter(
+                x=data_exc.get_values("i", "V"),
+                y=data_exc.get_values("q", "V"),
+                name=f"q{qubit}/r{i}: exc_state",
+                mode="markers",
+                marker=dict(size=3),  # , color="lightcoral"),
+            ),
+            row=1,
+            col=1,
+        )
 
-    i_exc = data_exc.get_values("i", "V")
-    q_exc = data_exc.get_values("q", "V")
+        try:
+            data_gnd = DataUnits.load_data(
+                folder, subfolder, routine, format, f"data_gnd_q{qubit}"
+            )
+        except:
+            data_gnd = DataUnits(quantities={"iteration": "dimensionless"})
 
-    i_mean_exc = i_exc.mean()
-    q_mean_exc = q_exc.mean()
-    iq_mean_exc = complex(i_mean_exc, q_mean_exc)
-    mod_iq_exc = abs(iq_mean_exc) * 1e6
+        fig.add_trace(
+            go.Scatter(
+                x=data_gnd.get_values("i", "V"),
+                y=data_gnd.get_values("q", "V"),
+                name=f"q{qubit}/r{i}: gnd state",
+                mode="markers",
+                marker=dict(size=3),  # color="skyblue"),
+            ),
+            row=1,
+            col=1,
+        )
 
-    fig.add_trace(
-        go.Scatter(
-            x=[i_mean_exc],
-            y=[q_mean_exc],
-            name=f" state1_voltage: {mod_iq_exc} <br> mean_state1: {iq_mean_exc}",
-            mode="markers",
-            marker=dict(size=10, color="red"),
-        ),
-        row=1,
-        col=1,
-    )
+        i_exc = data_exc.get_values("i", "V")
+        q_exc = data_exc.get_values("q", "V")
 
-    i_gnd = data_gnd.get_values("i", "V")
-    q_gnd = data_gnd.get_values("q", "V")
+        i_mean_exc = i_exc.mean()
+        q_mean_exc = q_exc.mean()
+        iq_mean_exc = complex(i_mean_exc, q_mean_exc)
+        mod_iq_exc = abs(iq_mean_exc) * 1e6
 
-    i_mean_gnd = i_gnd.mean()
-    q_mean_gnd = q_gnd.mean()
-    iq_mean_gnd = complex(i_mean_gnd, q_mean_gnd)
-    mod_iq_gnd = abs(iq_mean_gnd) * 1e6
+        fig.add_trace(
+            go.Scatter(
+                x=[i_mean_exc],
+                y=[q_mean_exc],
+                name=f"q{qubit}/r{i}: state1_voltage: {mod_iq_exc} <br>mean_state1: {iq_mean_exc}",
+                mode="markers",
+                marker=dict(size=10),  # color="red"),
+            ),
+            row=1,
+            col=1,
+        )
 
-    fig.add_trace(
-        go.Scatter(
-            x=[i_mean_gnd],
-            y=[q_mean_gnd],
-            name=f" state0_voltage: {mod_iq_gnd} <br> mean_state0: {iq_mean_gnd}",
-            mode="markers",
-            marker=dict(size=10, color="blue"),
-        ),
-        row=1,
-        col=1,
-    )
+        i_gnd = data_gnd.get_values("i", "V")
+        q_gnd = data_gnd.get_values("q", "V")
 
+        i_mean_gnd = i_gnd.mean()
+        q_mean_gnd = q_gnd.mean()
+        iq_mean_gnd = complex(i_mean_gnd, q_mean_gnd)
+        mod_iq_gnd = abs(iq_mean_gnd) * 1e6
+
+        fig.add_trace(
+            go.Scatter(
+                x=[i_mean_gnd],
+                y=[q_mean_gnd],
+                name=f"q{qubit}/r{i}: state0_voltage: {mod_iq_gnd} <br>mean_state0: {iq_mean_gnd}",
+                mode="markers",
+                marker=dict(size=10),  # color="blue"),
+            ),
+            row=1,
+            col=1,
+        )
+
+        title_text = f"q{qubit}/r{i}: r_angle = {rotation_angle:.3f} / thrld = {threshold:.3f}<br>q{qubit}/r{i}: fidelity = {fidelity:.3f} / ass_fidelity = {assignment_fidelity:.3f}"
+        fig.add_annotation(
+            dict(
+                font=dict(color="black", size=12),
+                x=i * 0.55,
+                y=-0.25,
+                showarrow=False,
+                text=f"{title_text}",
+                textangle=0,
+                xanchor="left",
+                xref="paper",
+                yref="paper",
+            )
+        )
+        i += 1
+
+    # fig.update_xaxes(title_text=title_text, row=1, col=1)
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
@@ -946,28 +1002,12 @@ def exc_gnd(folder, routine, qubit, format):
         yaxis_title="q (V)",
         width=1000,
     )
-
-    title_text = f"""
-    rotation_angle = {rotation_angle}<br>
-    threshold = {threshold}<br>
-    fidelity = {fidelity}<br>
-    assignment_fidelity = {assignment_fidelity}
-    """
-
-    fig.update_xaxes(title_text=title_text, row=1, col=1)
     return fig
 
 
-# allXY
+# allXY - tested
 def prob_gate(folder, routine, qubit, format):
 
-    try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
-    except:
-        data = DataUnits(
-            quantities={"probability": "dimensionless", "gateNumber": "dimensionless"}
-        )
-
     fig = make_subplots(
         rows=1,
         cols=1,
@@ -976,77 +1016,34 @@ def prob_gate(folder, routine, qubit, format):
         subplot_titles=(f"allXY",),
     )
 
-    fig.add_trace(
-        go.Scatter(
-            x=data.get_values("gateNumber", "dimensionless"),
-            y=data.get_values("probability", "dimensionless"),
-            mode="markers",
-            name="Probabilities",
-        ),
-        row=1,
-        col=1,
-    )
-    fig.update_layout(
-        showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Gate sequence number",
-        yaxis_title="Z projection probability of qubit state |o>",
-    )
-    return fig
+    # iterate over multiple data folders
+    subfolders = get_data_subfolders(folder)
+    i = 0
+    for subfolder in subfolders:
+        try:
+            data = DataUnits.load_data(
+                folder, subfolder, routine, format, f"data_q{qubit}"
+            )
+        except:
+            data = DataUnits(
+                quantities={
+                    "probability": "dimensionless",
+                    "gateNumber": "dimensionless",
+                }
+            )
 
-
-# allXY
-def prob_gate_iteration(folder, routine, qubit, format):
-
-    try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
-    except:
-        data = DataUnits(
-            quantities={
-                "probability": "dimensionless",
-                "gateNumber": "dimensionless",
-                "beta_param": "dimensionless",
-            }
-        )
-
-    data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
-    fig = make_subplots(
-        rows=1,
-        cols=1,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
-        subplot_titles=(f"allXY",),
-    )
-
-    gates = len(data.get_values("gateNumber", "dimensionless"))
-    # print(gates)
-    import numpy as np
-
-    for n in range(gates // 21):
-        data_start = n * 21
-        data_end = data_start + 21
-        beta_param = np.array(data.get_values("beta_param", "dimensionless"))[
-            data_start
-        ]
-        gates = np.array(data.get_values("gateNumber", "dimensionless"))[
-            data_start:data_end
-        ]
-        probabilities = np.array(data.get_values("probability", "dimensionless"))[
-            data_start:data_end
-        ]
-        c = "#" + "{:06x}".format(n * 99999)
         fig.add_trace(
             go.Scatter(
-                x=gates,
-                y=probabilities,
-                mode="markers+lines",
-                line=dict(color=c),
-                name=f"beta_parameter = {beta_param}",
-                marker_size=16,
+                x=data.get_values("gateNumber", "dimensionless"),
+                y=data.get_values("probability", "dimensionless"),
+                mode="markers",
+                name=f"Probabilities q{qubit}/r{i}",
             ),
             row=1,
             col=1,
         )
+        i += 1
+
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
@@ -1056,19 +1053,76 @@ def prob_gate_iteration(folder, routine, qubit, format):
     return fig
 
 
-# beta param tuning
-def msr_beta(folder, routine, qubit, format):
+# allXY - TO BE tested
+def prob_gate_iteration(folder, routine, qubit, format):
 
-    try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
-    except:
-        data = DataUnits(
-            name=f"data_q{qubit}", quantities={"beta_param": "dimensionless"}
-        )
-    try:
-        data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
-    except:
-        data_fit = DataUnits()
+    import numpy as np
+
+    fig = make_subplots(
+        rows=1,
+        cols=1,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        subplot_titles=(f"allXY",),
+    )
+
+    # iterate over multiple data folders
+    subfolders = get_data_subfolders(folder)
+    i = 0
+    for subfolder in subfolders:
+
+        try:
+            data = DataUnits.load_data(
+                folder, subfolder, routine, format, f"data_q{qubit}"
+            )
+        except:
+            data = DataUnits(
+                quantities={
+                    "probability": "dimensionless",
+                    "gateNumber": "dimensionless",
+                    "beta_param": "dimensionless",
+                }
+            )
+
+        gates = len(data.get_values("gateNumber", "dimensionless"))
+        for n in range(gates // 21):
+            data_start = n * 21
+            data_end = data_start + 21
+            beta_param = np.array(data.get_values("beta_param", "dimensionless"))[
+                data_start
+            ]
+            gates = np.array(data.get_values("gateNumber", "dimensionless"))[
+                data_start:data_end
+            ]
+            probabilities = np.array(data.get_values("probability", "dimensionless"))[
+                data_start:data_end
+            ]
+            c = "#" + "{:06x}".format(n * 99999)
+            fig.add_trace(
+                go.Scatter(
+                    x=gates,
+                    y=probabilities,
+                    mode="markers+lines",
+                    line=dict(color=c),
+                    name=f"q{qubit}/r{i}: beta_param = {beta_param}",
+                    marker_size=16,
+                ),
+                row=1,
+                col=1,
+            )
+        i += 1
+
+    fig.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Gate sequence number",
+        yaxis_title="Z projection probability of qubit state |o>",
+    )
+    return fig
+
+
+# beta param tuning - tested
+def msr_beta(folder, routine, qubit, format):
 
     fig = make_subplots(
         rows=1,
@@ -1078,56 +1132,76 @@ def msr_beta(folder, routine, qubit, format):
         subplot_titles=(f"beta_param_tuning",),
     )
 
-    c = "#6597aa"
-    fig.add_trace(
-        go.Scatter(
-            x=data.get_values("beta_param", "dimensionless"),
-            y=data.get_values("MSR", "uV"),
-            line=dict(color=c),
-            mode="markers",
-            name="[Rx(pi/2) - Ry(pi)] - [Ry(pi/2) - Rx(pi)]",
-        ),
-        row=1,
-        col=1,
-    )
-    # add fitting traces
-    if len(data) > 0 and len(data_fit) > 0:
-        beta_param = np.linspace(
-            min(data.get_values("beta_param", "dimensionless")),
-            max(data.get_values("beta_param", "dimensionless")),
-            20,
-        )
-        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+    # iterate over multiple data folders
+    subfolders = get_data_subfolders(folder)
+    i = 0
+    for subfolder in subfolders:
+        try:
+            data = DataUnits.load_data(
+                folder, subfolder, routine, format, f"data_q{qubit}"
+            )
+        except:
+            data = DataUnits(
+                name=f"data_q{qubit}", quantities={"beta_param": "dimensionless"}
+            )
+        try:
+            data_fit = Data.load_data(
+                folder, subfolder, routine, format, f"fit_q{qubit}"
+            )
+        except:
+            data_fit = DataUnits()
+
+        # c = "#6597aa"
         fig.add_trace(
             go.Scatter(
-                x=beta_param,
-                y=cos(
-                    beta_param,
-                    data_fit.get_values("popt0"),
-                    data_fit.get_values("popt1"),
-                    data_fit.get_values("popt2"),
-                    data_fit.get_values("popt3"),
-                ),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
+                x=data.get_values("beta_param", "dimensionless"),
+                y=data.get_values("MSR", "uV"),
+                # line=dict(color=c),
+                mode="markers",
+                name=f"q{qubit}/r{i}: [Rx(pi/2) - Ry(pi)] - [Ry(pi/2) - Rx(pi)]",
             ),
             row=1,
             col=1,
         )
-
-        fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=0,
-                y=-0.20,
-                showarrow=False,
-                text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.4f}",
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
+        # add fitting traces
+        if len(data) > 0 and len(data_fit) > 0:
+            beta_param = np.linspace(
+                min(data.get_values("beta_param", "dimensionless")),
+                max(data.get_values("beta_param", "dimensionless")),
+                20,
             )
-        )
+            params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+            fig.add_trace(
+                go.Scatter(
+                    x=beta_param,
+                    y=cos(
+                        beta_param,
+                        data_fit.get_values("popt0"),
+                        data_fit.get_values("popt1"),
+                        data_fit.get_values("popt2"),
+                        data_fit.get_values("popt3"),
+                    ),
+                    name=f"Fit q{qubit}/r{i}",
+                    line=go.scatter.Line(dash="dot"),
+                ),
+                row=1,
+                col=1,
+            )
+
+            fig.add_annotation(
+                dict(
+                    font=dict(color="black", size=12),
+                    x=0,
+                    y=-0.13 + (-i * 0.05),
+                    showarrow=False,
+                    text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.4f}",
+                    textangle=0,
+                    xanchor="left",
+                    xref="paper",
+                    yref="paper",
+                )
+            )
+            i += 1
 
     fig.update_layout(
         showlegend=True,
@@ -1138,6 +1212,7 @@ def msr_beta(folder, routine, qubit, format):
     return fig
 
 
+# dispersive shift
 def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
 
     try:
