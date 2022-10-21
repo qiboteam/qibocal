@@ -1,9 +1,13 @@
+from ctypes import Union
+from random import sample
 from qcvv.data import Data
 from qibo.noise import PauliError, NoiseModel
 from qibo import gates
 import numpy as np
 import pdb
 from  qcvv.calibrations.protocols.generators import *
+from typing import Union
+from itertools import product
 
 
 class Experiment():
@@ -13,6 +17,7 @@ class Experiment():
 
 
     Attributes:
+        TODO work in possible error models better
 
     circuits_list (list) : The list of lists of circuits. 
             axis 1: different runs, axis 2: different sequence lengths.
@@ -28,15 +33,97 @@ class Experiment():
         self.nshots = nshots
         if hasattr(circuit_generator, 'invert'):
             self.inverse = circuit_generator.invert
+    
+    ############################### PROPERTIES ###############################
 
-    def build_a_save(self, **kwargs):
-        """ 
+    @property
+    def data_circuits(self):
         """
-        # Build the whole list of circuits.
-        self.build(**kwargs)
-        # Store it.
-        return self.circuits_list, self.save_experiment(**kwargs)
+        """
+        # Initiate the data structure from qibocal.
+        data_circs = Data(
+            'circuits', quantities=list(self.sequence_lengths))
+        # Store the data in a pandas dataframe. The columns are indexed by the
+        # different sequence lengths. The rows are indexing the different runs.
+        for count in range(self.runs):
+            # The data object takes dictionaries.
+            data_circs.add({
+                self.sequence_lengths[i]:self.circuits_list[count][i] \
+                for i in range(len(self.sequence_lengths))})
+        return data_circs
 
+    @property
+    def data_samples(self):
+        """
+        """
+        # Initiate the data structure where the outcomes will be stored.
+        data_samples = Data(
+            'samples', quantities=list(self.sequence_lengths))
+        # Go through every run and this way store the whole list of samples.
+        for count in range (self.runs):
+            # Add the samples to the data structure.
+            data_samples.add(
+                {self.sequence_lengths[count]:self.outcome_samples[count][i] \
+                    for i in range(len(self.sequence_lengths))})
+        return data_samples
+
+    @property
+    def data_probabilities(self):
+        """
+        """
+        # Initiate the data structure where the outcomes will be stored.
+        data_probs = Data(
+            'probabilities', quantities=list(self.sequence_lengths))
+        # Go through every run and this way store the whole list
+        # of probabilites.
+        for count in range (self.runs):
+            # Put the probabilities into the data object.
+            data_probs.add(
+                {self.sequence_lengths[i]:self.outcome_probs[count][i] \
+                for i in range(len(self.sequence_lengths))})
+        return data_probs
+    
+    ############################## CLASS METHODS ##############################
+
+    @classmethod
+    def retrieve_experiment(cls, path:str, **kwargs):
+        """
+        """
+        from qcvv.calibrations.protocols.utils import dict_from_comments_txt
+        from qcvv.calibrations.protocols.utils import pkl_to_list
+        # Initiate an instance of the experiment class.
+        obj = cls()
+        # Get the metadata in form of a dictionary.
+        metadata_dict = dict_from_comments_txt(f'{path}metadata.txt')
+        # Get the (not commented) sequence lengths array.
+        sequence_lenghts = np.loadtxt(f'{path}metadata.txt')
+        # The circuit generator has to be restored, this will get the class.
+        Generator = eval(metadata_dict['circuit_generator'])
+        # Build the generator.
+        circuit_generator = Generator(metadata_dict['qubits'])
+        # Write it to the dictionary.
+        metadata_dict['circuit_generator'] = circuit_generator
+        # Give the objects the attributes as a dictionary. Every attribute
+        # would be overwritten by that.
+        obj.__dict__ = metadata_dict
+        # Store the diven path.
+        obj.directory = path
+        # Store the sequence lenghts.
+        obj.sequence_lengths = list(sequence_lenghts)
+        # Get the circuits list and make it an attribute.
+        sequences_frompkl, circuits_list = pkl_to_list(f'{path}circuits.pkl')
+        # Make sure that the order is the same, right now the order is reversed.
+        assert np.array_equal(
+            np.array(sequences_frompkl)[::-1], sequence_lenghts), \
+            'The order of the restored circuits is not the same as when build'
+        # Every list in circuits_list has entries refering to the different
+        # sequence lengths. Meaning that the order is crucial.
+        obj.circuits_list = [x[::-1] for x in circuits_list]
+        return obj
+
+    ################################# METHODS #################################
+
+    ############################## Build ##############################
 
     def build(self, **kwargs):
         """ Build a list out of the circuits required to run for the wanted
@@ -52,6 +139,90 @@ class Experiment():
         # pikle file?
         self.circuits_list = circuits_list
         return circuits_list
+    
+    def build_onthefly(self, **kwargs):
+        """
+        """
+        pass
+
+    def build_a_save(self, **kwargs):
+        """ 
+        """
+        # Build the whole list of circuits.
+        self.build(**kwargs)
+        # Store it.
+        return self.circuits_list, self.save_experiment(**kwargs)
+    
+    ################################ Execute ################################
+
+    def execute_experiment(self, **kwargs):
+        """ FIXME the circuits have to be build already (or loaded), 
+        add something to check that and if they were not build yet build or
+        load them.
+
+        Args:
+            kwargs (dict):
+                'paulierror_noiseparams' = [p1, p2, p3]
+        """
+        # Initiate the outcome lists, one for the single shot samples and
+        # one for the probabilities.
+        self.outcome_samples, self.outcome_probs = [], []
+        # If the circuits are simulated and not run on quantum hardware, the
+        # noise has to be simulated, too.
+        if kwargs.get('paulierror_noiseparams'):
+            # Insert artificial noise, namely random Pauli flips.
+            pauli = PauliError(*kwargs.get('paulierror_noiseparams'))
+            noise = NoiseModel()
+            # The noise should be applied with each unitary in the circuit.
+            noise.add(pauli, gates.Unitary)
+        # Makes code easier to read.
+        amount_m = len(self.sequence_lengths)
+        # Loop 'runs' many times over the whole protocol.
+        for count_runs in range(self.runs):
+            # Initiate two lists to store the outcome for every sequence.
+            probs_list, samples_list = [], []
+            # Go through every sequence in the protocol.
+            for count_m in range(amount_m):
+                # Get the circuit.
+                circuit = self.circuits_list[count_runs][count_m]
+                # For the simulation the noise has to be added to the circuit.
+                if kwargs.get('paulierror_noiseparams'):
+                    # Add the noise to the circuit (more like the other way
+                    # around, the circuit to the noise).
+                    noisy_circuit = noise.apply(circuit)
+                    # Execute the noisy circuit.
+                    executed = noisy_circuit(nshots=self.nshots)
+                else:
+                    # Execute the qibo circuit without artificial noise.
+                    executed = circuit(nshots=self.nshots)
+                # FIXME The samples (zeros and ones per shot) acquisition does 
+                # not work for quantum hardware yet.
+                try:
+                    # Get the samples from the executed gate. It should be an
+                    # object filled with as many integers as used shots.
+                    # Append the samples.
+                    samples_list.append(executed.samples())
+                except:
+                    print('Retrieving samples not possible.')
+                    # pass
+                # Either way store the probabilities. Since
+                # 'executed.probabilities()' only contains an entry for qubit
+                # if it is nonzero, the shape can vary, fix that FIXME.
+                # Store them.
+                probs_list.append(list(executed.probabilities()))
+            # For each run store the temporary lists in the attribute.
+            # It could happend that the samples list is empty if the samples
+            # cannot be retrieved.
+            self.outcome_samples.append(samples_list)
+            self.outcome_probs.append(probs_list)
+
+    def execute_a_save(self, **kwargs):
+        """
+        """
+        self.execute_experiment(**kwargs)
+        self.save_outcome(**kwargs)
+
+    ###################### Datastructures and save/load ######################
     
     def make_directory(self, **kwargs):
         """ Make the directory where the experiment will be stored.
@@ -92,20 +263,10 @@ class Experiment():
         if not hasattr(self, 'directory'):
             # Make and get the directory.
             self.make_directory()
-        # Initiate the data structure from qibocal.
-        data = Data(
-            'circuits', quantities=list(self.sequence_lengths))
-        # Store the data in a pandas dataframe. The columns are indexed by the
-        # different sequence lengths. The rows are indexing the different runs.
-        for count in range(self.runs):
-            # The data object takes dictionaries.
-            data.add({self.sequence_lengths[i]:self.circuits_list[count][i] \
-                for i in range(len(self.sequence_lengths))})
-        if kwargs.get('yield_data'):
-            yield data
-        else:
-            # Save the circuits in pickle format.
-            data.to_pickle(self.directory)
+        # Use the property.
+        data_circs = self.data_circuits 
+        # Save the circuits in pickle format.
+        data_circs.to_pickle(self.directory)
 
     def save_metadata(self, **kwargs):
         """
@@ -139,120 +300,19 @@ class Experiment():
         self.save_circuits(**kwargs)
         return self.directory
 
-    def build_onthefly(self, **kwargs):
+    def save_outcome(self, **kwargs):
         """
         """
-        pass
-
-    def execute_a_save(self, **kwargs):
-        """ FIXME the circuits have to be build already (or loaded), 
-        add something to check that and if they were not build yet build or
-        load them.
-
-        Args:
-            kwargs (dict):
-                'paulierror_noiseparams' = [p1, p2, p3]
-        """
-        # Check if there has been made a directory already for this experiment.
+         # Check if there has been made a directory already for this experiment.
         if not hasattr(self, 'directory'):
             # Make and get the directory.
             self.make_directory()
-        # Initiate the outcome lists, one for the single shot samples and
-        # one for the probabilities.
-        self.outcome_samples, self.outcome_probs = [], []
-        # Also initiate the data structure where the outcomes will be stored.
-        data_probs = Data(
-            'probabilities', quantities=list(self.sequence_lengths))
-        # If the circuits are simulated and not run on quantum hardware, the
-        # noise has to be simulated, too.
-        if kwargs.get('paulierror_noiseparams'):
-            # Insert artificial noise, namely random Pauli flips.
-            pauli = PauliError(*kwargs.get('paulierror_noiseparams'))
-            noise = NoiseModel()
-            # The noise should be applied with each unitary in the circuit.
-            noise.add(pauli, gates.Unitary)
-        # Makes code easier to read.
-        amount_m = len(self.sequence_lengths)
-        # Loop 'runs' many times over the whole protocol.
-        for count_runs in range(self.runs):
-            # Initiate a list to store the outcome for every sequence.
-            temp_list = []
-            # Go through every sequence in the protocol.
-            for count_m in range(amount_m):
-                # Get the circuit.
-                circuit = self.circuits_list[count_runs][count_m]
-                # For the simulation the noise has to be added to the circuit.
-                if kwargs.get('paulierror_noiseparams'):
-                    # Add the noise to the circuit (more like the other way
-                    # around, the circuit to the noise).
-                    noisy_circuit = noise.apply(circuit)
-                    # Execute the noisy circuit.
-                    executed = noisy_circuit(nshots=kwargs.get('nshots'))
-                else:
-                    # Execute the qibo circuit without artificial noise.
-                    executed = circuit(nshots=kwargs.get('nshots'))
-                # FIXME The samples (zeros and ones per shot) acquisition does 
-                # not work for quantum hardware yet.
-                try:
-                    # Get the samples from the executed gate. It should be an
-                    # object filled with as many integers as used shots.
-                    # Append the samples.
-                    self.outcome_samples.append(executed.samples())
-                except:
-                    print('Retrieving samples not possible.')
-                # Either way store the probabilities. Since
-                # 'executed.probabilities()' only contains an entry for qubit
-                # if it is nonzero, the shape can vary, fix that FIXME.
-                # Store them.
-                temp_list.append(executed.probabilities())
-            self.outcome_probs.append(temp_list)
-            # Put the probabilities into the data object.
-            data_probs.add({
-                self.sequence_lengths[i]:temp_list[i] \
-                for i in range(amount_m)})
-        # Save the data.
+        # Use the properties.
+        data_probs = self.data_probabilities
+        data_samples = self.data_samples
+        # Save the data structures.
+        data_samples.to_pickle(self.directory)
         data_probs.to_pickle(self.directory)
-        if kwargs.get('yield_data'):
-            yield data_probs
-        else:
-            # Push data.
-            return self.outcome_probs
-
-
-    @classmethod
-    def retrieve_experiment(cls, path:str, **kwargs):
-        """
-        """
-        from qcvv.calibrations.protocols.utils import pkl_to_list, dict_from_comments_txt
-        # Initiate an instance of the experiment class.
-        obj = cls()
-        # Get the metadata in form of a dictionary.
-        metadata_dict = dict_from_comments_txt(f'{path}metadata.txt')
-        # Get the (not commented) sequence lengths array.
-        sequence_lenghts = np.loadtxt(f'{path}metadata.txt')
-        # The circuit generator has to be restored, this will get the class.
-        Generator = eval(metadata_dict['circuit_generator'])
-        # Build the generator.
-        circuit_generator = Generator(metadata_dict['qubits'])
-        # Write it to the dictionary.
-        metadata_dict['circuit_generator'] = circuit_generator
-        # Give the objects the attributes as a dictionary. Every attribute
-        # would be overwritten by that.
-        obj.__dict__ = metadata_dict
-        # Store the diven path.
-        obj.directory = path
-        # Store the sequence lenghts.
-        obj.sequence_lengths = list(sequence_lenghts)
-        # Get the circuits list and make it an attribute.
-        sequences_frompkl, circuits_list = pkl_to_list(f'{path}circuits.pkl')
-        # Make sure that the order is the same, right now the order is reversed.
-        assert np.array_equal(
-            np.array(sequences_frompkl)[::-1], sequence_lenghts), \
-            'The order of the restored circuits is not the same as when build'
-        # Every list in circuits_list has entries refering to the different
-        # sequence lengths. Meaning that the order is crucial.
-        obj.circuits_list = [x[::-1] for x in circuits_list]
-        return obj
 
     def load_outcome(self, path:str, **kwargs):
         """
@@ -267,3 +327,77 @@ class Experiment():
         # Store the outcome as an attribute to further work with its.
         self.outcome_probs = [x[::-1] for x in probs_list]
         return self.outcome_probs
+
+    ########################### Outcome processing ###########################
+
+    def probabilities(
+            self, averaged:bool=True, run:Union[int, list]=None,
+            **kwargs) -> np.ndarray:
+        """
+        """
+        # Check if the samples attribute is not empty e.g. the first entry is
+        # not just an empty list.
+        if len(self.outcome_samples[0]) != 0:
+            # Create all possible state vectors.
+            allstates = np.array(list(product([0,1], repeat=len(self.qubits))))
+            # The attribute should be lists out of lists out of lists out
+            # of lists, make it an array.
+            samples = np.array(self.outcome_samples)
+            if averaged:
+                # Put the runs together, now the shape is
+                # (amount sequences, runs*nshots, qubits).
+                samples_conc = np.concatenate(samples, axis=1)
+                # For each sequence length count the different state vectors and
+                # divide by the total number of shots.
+                probs = [[np.sum(np.product(samples_conc[countm]==state, axis=1))  
+                    for state in allstates]
+                    for countm in range(len(self.sequence_lengths))]
+                probs = np.array(probs)/(self.runs*self.nshots)
+            else:
+                # If only a specific run (runs) is requested, choose that one.
+                if run:
+                    # Since the concatination in the next step only works when
+                    # there are 4 dimensions, reshape it to 4 dimensions.
+                    samples = samples[run].reshape(
+                        -1, len(self.sequence_lengths),
+                        self.nshots, len(self.qubits))
+                # Do the same thing as above just for every run.
+                probs = [[[
+                    np.sum(np.product(samples[countrun, countm]==state, axis=1))  
+                    for state in allstates]
+                    for countm in range(len(self.sequence_lengths))]
+                    for countrun in range(len(samples))]
+                probs = np.array(probs)/(self.nshots)
+        else:
+            # The actual probabilites are used.
+            probs = np.array(self.outcome_probs)
+            if averaged:
+                # If needed, average over the different runs for each sequence
+                # length.
+                probs = np.average(probs, axis=0)
+            # Or pick a run. But if averaged is set to True this will not
+            # happen.
+            if run:
+                probs = probs[run]
+        return probs
+
+    def samples(self, run:Union[int, list]=None) -> np.ndarray:
+        """
+        """
+        # Check if the samples attribute is not empty e.g. the first entry is
+        # not just an empty list.
+        if len(self.outcome_samples[0]) != 0:
+            # It should be lists out of lists out of lists out of lists,
+            # make it an array.
+            samples =  np.array(self.outcome_samples)
+            if run:
+                # Specific runs can be chosen.
+                samples = samples[run]
+            return samples
+        else:
+            raise ValueError('No samples there. Try probabilities().')
+
+    def postprocess(self, **kwargs):
+        """
+        """
+        pass
