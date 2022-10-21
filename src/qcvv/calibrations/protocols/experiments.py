@@ -34,8 +34,11 @@ class Experiment():
         """
         # Build the whole list of circuits.
         self.build(**kwargs)
-        # Store it.
-        return self.circuits_list, self.save_experiment(**kwargs)
+        if kwargs.get('return_data'):
+            yield self.save_experiment(**kwargs)
+        else:
+            # Store it.
+            return self.circuits_list, self.save_experiment(**kwargs)
 
 
     def build(self, **kwargs):
@@ -101,8 +104,8 @@ class Experiment():
             # The data object takes dictionaries.
             data.add({self.sequence_lengths[i]:self.circuits_list[count][i] \
                 for i in range(len(self.sequence_lengths))})
-        if kwargs.get('yield_data'):
-            yield data
+        if kwargs.get('return_data'):
+            return data
         else:
             # Save the circuits in pickle format.
             data.to_pickle(self.directory)
@@ -204,16 +207,17 @@ class Experiment():
                 # 'executed.probabilities()' only contains an entry for qubit
                 # if it is nonzero, the shape can vary, fix that FIXME.
                 # Store them.
-                temp_list.append(executed.probabilities())
+                temp_list.append(list(executed.probabilities()))
             self.outcome_probs.append(temp_list)
+            print(temp_list)
             # Put the probabilities into the data object.
             data_probs.add({
-                self.sequence_lengths[i]:temp_list[i] \
+                self.sequence_lengths[i]:str(temp_list[i]) \
                 for i in range(amount_m)})
         # Save the data.
         data_probs.to_pickle(self.directory)
-        if kwargs.get('yield_data'):
-            yield data_probs
+        if kwargs.get('return_data'):
+            return data_probs
         else:
             # Push data.
             return self.outcome_probs

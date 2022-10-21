@@ -1154,17 +1154,20 @@ def standard_rb_plot(folder, routine, qubit, format):
 
 def rb_plot(folder, routine, qubit, format):
     from scipy.optimize import curve_fit
+    from ast import literal_eval
     def exp_func(x,A,f,B):
         """
         """
         return A*f**x+B
     data = Dataset.load_data(
-        folder, routine, 'pickle', 'standardrb')
+        folder, routine, 'pickle', 'probabilities')
     dataframe = data.df
     # Extract the data.
     xdata = np.array(dataframe.columns)
     # Multiple runs means multiple rows. 
     ydata = dataframe.to_numpy()
+    # FIXME pandas version does not support arrays as entries. Hence the strings.
+    ydata = np.array([[literal_eval(x) for x in a] for a in dataframe.to_numpy()])
     runs = ydata.shape[0]
     pm = np.sum(ydata, axis=0)/runs
     # Calculate an exponential fit to the given data pm dependent on m.

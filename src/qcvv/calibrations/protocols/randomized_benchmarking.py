@@ -9,10 +9,10 @@ from qcvv.decorators import plot
 from qcvv import plots
 
 
-@plot("Test Standard RB", plots.rb_plot)
+@plot("Randomized benchmarking", plots.rb_plot)
 def dummyrb(
     platform,
-    qubits : list,
+    qubit : list,
     circuit_generator_class : str,
     invert : bool,
     sequence_lengths : list,
@@ -23,15 +23,18 @@ def dummyrb(
     # Make the generator class out of the name.
     circuit_generator_class = eval(circuit_generator_class)
     # Make a generator object out of the generator class.
-    circuit_generator = circuit_generator_class(qubits, invert=invert)
+    circuit_generator = circuit_generator_class(qubit, invert=invert)
     # Initiate the Experiment object, not filled with circuits yet. 
     experiment = Experiment(
-        circuit_generator, sequence_lengths, qubits, runs, nshots)
+        circuit_generator, sequence_lengths, qubit, runs, nshots)
     # Build the circuits and store them.
-    directory = experiment.build_a_save(yield_data=True)
+    experiment.build()
+    data_circuits =  experiment.save_circuits(return_data=True)
     # Execute the circuits and store the outcome.
-    experiment.execute_a_save(
-        yield_data=True, paulierror_noisparams=inject_noise)
+    data_outcome = experiment.execute_a_save(
+        return_data=True, paulierror_noisparams=inject_noise)
+    # yield data_circuits
+    yield data_outcome
     # Store the effective depol parameter.
     pauli = PauliError(*inject_noise)
     noise = NoiseModel()

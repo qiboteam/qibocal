@@ -117,8 +117,11 @@ class UIRS():
         self.gate_generator = None
         self.invert = kwargs.get('invert', False)
         self.noisemodel = kwargs.get('noisemodel', None)
+        # self.measurement = kwargs.get(
+        #     'measurement', gates.M(*range(nqubits)))
+        # CHANGED THAT
         self.measurement = kwargs.get(
-            'measurement', gates.M(*range(nqubits)))
+            'measurement', gates.M(2))
 
     def __call__(self, sequence_length):
         """ For generating a sequence of circuits the object itself has to be
@@ -135,7 +138,8 @@ class UIRS():
             An object which is executable as a simulation or on hardware
         """
         # Initiate the empty circuit from qibo with 'self.nqubits' many qubits.
-        circuit = models.Circuit(self.nqubits)
+        # circuit = models.Circuit(self.nqubits)
+        circuit = models.Circuit(5)
         # Iterate over the sequence length.
         for _ in range(sequence_length):
             # Use the attribute to generate gates. This attribute can differ
@@ -149,7 +153,9 @@ class UIRS():
             # Invert all the already added circuits, multiply them with each
             # other and add as a new circuit to the list.
             # TODO changed fusion gate calculation by hand.
-            circuit.add(gates.Unitary(circuit.invert().fuse().queue[0].matrix,0))
+            # CHANGED THAT
+            # circuit.add(gates.Unitary(circuit.invert().fuse().queue[0].matrix,0))
+            circuit.add(gates.Unitary(circuit.invert().fuse().queue[0].matrix,2))
         #     print(circuit.unitary())
         #     circuit.add(circuit.invert().fuse().queue[0])
         #     print(circuit.unitary())
@@ -208,7 +214,9 @@ class UIRSOnequbitcliffords(UIRS):
                         - ny*np.sin(theta/2) - 1.j*nx*np.sin(theta/2)],
                         [ny*np.sin(theta/2)- 1.j*nx*np.sin(theta/2),
                         np.cos(theta/2) + 1.j*nz*np.sin(theta/2)]])
-        return gates.Unitary(matrix, 0)
+        # CHANGED THAT
+        # return gates.Unitary(matrix, 0)
+        return gates.Unitary(matrix, 2)
     
     def onequbit_clifford(self, seed=None):
         """
@@ -301,7 +309,6 @@ class Shadow():
         """
         samples = np.array(self.samples_list)
         N = len(self.sequence_lengths)
-        print(self.samples_list)
         samples = samples.reshape((self.runs, N, self.nshots, self.qubits))
         return samples
 
@@ -323,8 +330,6 @@ class Shadow():
                         self.runs,-1,int(2**self.qubits))
             elif self.samples_list:
                 return np.average(self.samples, axis=2)
-
-
     
 def experimental_protocol(circuit_generator, myshadow,
         inject_noise=False, **kwargs):
@@ -383,15 +388,35 @@ def experimental_protocol(circuit_generator, myshadow,
                 # outcome = executed.probabilities()
                 outcome = executed.samples()  
                 probs = np.abs(executed.execution_result)**2
+                print(outcome)
+                print(probs)
                 myshadow.probabilities_list.append(probs)
             except:
                 # Getting the samples is not possible, hence the probabilities
                 # have to be stored.
                 outcome = executed.probabilities()
+                print(outcome)
+                print(executed.samples())
             # Store the samples.
             myshadow.append(circuit, outcome)
             # Store everything.
     return myshadow
+
+def test_hardware(
+    platform,
+    qubit: list,
+    nshots
+):
+    circuit = models.Circuit(5)
+    circuit.add(gates.H(2))
+    circuit.add(gates.M(2))
+    # circuit.add(gates.X(3))
+    # circuit.add(gates.M(3))
+    print(circuit.draw())
+    executed = circuit()
+    print(executed.probabilities())
+    print(executed.execution_result)
+    print(execute.samples())
 
 @plot("Test Standard RB", plots.standard_rb_plot)
 def standard_rb(
