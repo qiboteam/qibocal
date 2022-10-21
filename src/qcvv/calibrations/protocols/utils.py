@@ -36,9 +36,6 @@ def liouville_representation_errorchannel(error_channel, **kwargs):
     dim = 2
     if error_channel.channel.__name__ == 'PauliNoiseChannel':
         flipprobs = error_channel.options
-        X = np.array([[0,1],[1,0]])
-        Y = np.array([[0,-1j],[1j, 0]])
-        Z = np.array([[1,0],[0,-1]])
         def acts(gmatrix):
             return (1-flipprobs[0]-flipprobs[1]-flipprobs[2])*gmatrix \
                 + flipprobs[0]*X@gmatrix@X \
@@ -123,6 +120,7 @@ def dict_from_comments_txt(filename:str):
                 comments_dict[key] = value
             else:
                 return comments_dict
+        return comments_dict
 
 def pkl_to_list(filename:str, **kwargs):
         """

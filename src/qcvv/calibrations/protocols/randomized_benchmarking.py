@@ -17,24 +17,31 @@ def dummyrb(
     invert : bool,
     sequence_lengths : list,
     runs : int,
-    nshots: int,
-    inject_noise : list,
+    nshots: int=1024,
+    inject_noise : list=None,
+    active_qubit : int=None,
 ):
     # Make the generator class out of the name.
     circuit_generator_class = eval(circuit_generator_class)
     # Make a generator object out of the generator class.
-    circuit_generator = circuit_generator_class(qubit, invert=invert)
+    circuit_generator = circuit_generator_class(
+        qubits, invert=invert, act_on=active_qubit)
     # Initiate the Experiment object, not filled with circuits yet. 
     experiment = Experiment(
-        circuit_generator, sequence_lengths, qubit, runs, nshots)
-    # Build the circuits and store them.
+        circuit_generator, sequence_lengths, qubits, runs, nshots)
+    # Build the circuits.
     experiment.build()
-    data_circuits =  experiment.save_circuits(return_data=True)
-    # Execute the circuits and store the outcome.
-    data_outcome = experiment.execute_a_save(
-        return_data=True, paulierror_noisparams=inject_noise)
-    # yield data_circuits
-    yield data_outcome
+    # Execute the circuits.
+    experiment.execute(paulierror_noisparams=inject_noise)
+    # Get the data objects.
+    data_probs = experiment.data_probabilities
+    data_samples = experiment.data_samples
+    # Get the circuits object.
+    data_circs = experiment.data_circuits
+    # Yield the circuits and outcome data objects.
+    yield data_circs
+    yield data_probs
+    yield data_samples
     # Store the effective depol parameter.
     pauli = PauliError(*inject_noise)
     noise = NoiseModel()

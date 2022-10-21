@@ -1,6 +1,7 @@
 import numpy as np
 from qibo import models, gates, get_backend
 from qcvv.calibrations.protocols.utils import onequbit_clifford_params
+from ctypes import Union
 import pdb
 
 class Generator():
@@ -8,7 +9,8 @@ class Generator():
     Uniform Independent Random Sequence
     """
 
-    def __init__(self, qubits:list, **kwargs) -> None:
+    def __init__(self, qubits:list, act_on:int=None,
+            **kwargs) -> None:
         """
         """
         # Check the type of the variable 'qubits', different versions of
@@ -24,9 +26,15 @@ class Generator():
         # For standard RB the inverse is needed, but it can be costly to
         # calculate hence filtered RB and other protocols don't need it.
         self.invert = kwargs.get('invert', False)
-        # Every qubit should be measured in the end (basis measurement).
+        # Sometimes not all qubits should be used, only one.
+        if act_on:
+            self.used_qubits = [act_on]
+        else:
+            self.used_qubits = self.qubits
+        # Every used qubit should be measured in the end (basis measurement).
         self.measurement = kwargs.get(
-            'measurement', gates.M(*self.qubits))
+            'measurement', gates.M(*self.used_qubits))
+
 
 
     def __call__(self, sequence_length:list):
@@ -62,7 +70,7 @@ class Generator():
             # Calculate the inversion matrix.
             inversion_unitary = circuit.invert().fuse().queue[0].matrix
             # Add it as a unitary gate to the circuit.
-            circuit.add(gates.Unitary(inversion_unitary,*self.qubits))
+            circuit.add(gates.Unitary(inversion_unitary,*self.used_qubits))
         circuit.add(self.measurement)
         # No noise model added, for a simulation either the platform
         # introduces the errors or the error gates will be added
@@ -121,12 +129,13 @@ class GeneratorOnequbitcliffords(Generator):
         # Initiate the matrix to start the kronecker (tensor) product.
         unitary = self.clifford_unitary(
             *onequbit_clifford_params[np.random.randint(amount)])
-        # Choose as many random integers between 0 and 23 as there are qubits.
+        # Choose as many random integers between 0 and 23 as there are 
+        # used qubits.
         # Get the clifford parameters and build the unitary.
-        for rint in np.random.randint(0, amount, size=len(self.qubits)-1):
+        for rint in np.random.randint(0, amount, size=len(self.used_qubits)-1):
             # Build the random Clifford matrix and take the tensor product
             # with the matrix before.
             unitary = np.kron(
                 self.clifford_unitary(*onequbit_clifford_params[rint]), unitary)
         # Make a unitary gate out of 'unitary' for the qubits.
-        return gates.Unitary(unitary, *self.qubits)
+        return gates.Unitary(unitary, *self.used_qubits)
