@@ -1,4 +1,3 @@
-from ctypes import Union
 from qcvv.calibrations.protocols.utils import dict_to_txt
 from qcvv.calibrations.protocols.utils import pkl_to_list
 from qcvv.data import Data
@@ -38,7 +37,7 @@ class Experiment():
         if hasattr(circuit_generator, 'invert'):
             self.inverse = circuit_generator.invert
     
-    ############################### PROPERTIES ###############################
+    ############################ PROPERTIES/SETTER ############################
 
     @property
     def data_circuits(self):
@@ -55,6 +54,26 @@ class Experiment():
                 self.sequence_lengths[i]:self.circuits_list[count][i] \
                 for i in range(len(self.sequence_lengths))})
         return data_circs
+    
+    @data_circuits.setter
+    def data_circuits(self, gdata):
+        """
+        """
+        # Extract the data frame.
+        dataframe = gdata.df
+        # Put them in a list, first axis is the different runs, second axis
+        # the sequence lengths.
+        circuits_list = dataframe.values.tolist()
+        # Check if the attribute does not exist yet.
+        if not hasattr(self, 'sequence_lengths') or \
+            self.sequence_lengths is None:
+            # Get the sequence lengths.
+            sequence_lenghts = dataframe.columns.tolist()
+            # The pickeling process reverses the order, reoder ot.
+            self.sequence_lengths = np.array(sequence_lenghts[::-1])
+        # Store the outcome as an attribute to further work with its.
+        self.circuits_list = [x[::-1] for x in circuits_list]
+
 
     @property
     def data_samples(self):
@@ -63,13 +82,33 @@ class Experiment():
         # Initiate the data structure where the outcomes will be stored.
         data_samples = Data(
             'samples', quantities=list(self.sequence_lengths))
-        # Go through every run and this way store the whole list of samples.
-        for count in range (self.runs):
-            # Add the samples to the data structure.
-            data_samples.add(
-                {self.sequence_lengths[i]:self.outcome_samples[count][i] \
-                    for i in range(len(self.sequence_lengths))})
+        if len(self.outcome_samples[0]) != 0:
+            # Go through every run and this way store the whole list of samples.
+            for count in range (self.runs):
+                # Add the samples to the data structure.
+                data_samples.add(
+                    {self.sequence_lengths[i]:self.outcome_samples[count][i] \
+                        for i in range(len(self.sequence_lengths))})
         return data_samples
+    
+    @data_samples.setter
+    def data_samples(self, gdata):
+        """
+        """
+        # Extract the data frame.
+        dataframe = gdata.df
+        # Put them in a list, first axis is the different runs, second axis
+        # the sequence lengths.
+        samples_list = dataframe.values.tolist()
+        # Check if the attribute does not exist yet.
+        if not hasattr(self, 'sequence_lengths') or \
+            self.sequence_lengths is None:
+            # Get the sequence lengths.
+            sequence_lenghts = dataframe.columns.tolist()
+            # The pickeling process reverses the order, reoder ot.
+            self.sequence_lengths = np.array(sequence_lenghts[::-1])
+        # Store the outcome as an attribute to further work with its.
+        self.outcome_samples = [x[::-1] for x in samples_list]
 
     @property
     def data_probabilities(self):
@@ -87,10 +126,29 @@ class Experiment():
                 for i in range(len(self.sequence_lengths))})
         return data_probs
     
+    @data_probabilities.setter
+    def data_probabilities(self, gdata):
+        """
+        """
+        # Extract the data frame.
+        dataframe = gdata.df
+        # Put them in a list, first axis is the different runs, second axis
+        # the sequence lengths.
+        probabilities_list = dataframe.values.tolist()
+        # Check if the attribute does not exist yet.
+        if not hasattr(self, 'sequence_lengths') or \
+            self.sequence_lengths is None:
+            # Get the sequence lengths.
+            sequence_lenghts = dataframe.columns.tolist()
+            # The pickeling process reverses the order, reoder ot.
+            self.sequence_lengths = np.array(sequence_lenghts[::-1])
+        # Store the outcome as an attribute to further work with its.
+        self.outcome_probabilities = [x[::-1] for x in probabilities_list]
+    
     ############################## CLASS METHODS ##############################
 
     @classmethod
-    def retrieve_experiment(cls, path:str, **kwargs):
+    def retrieve_from_path(cls, path:str, **kwargs):
         """
         """
         from qcvv.calibrations.protocols.utils import dict_from_comments_txt
@@ -119,7 +177,31 @@ class Experiment():
             # If there are no outcomes (yet), there will be no files.
             print('No outcomes to retrieve.')
         return obj
-
+    
+    @classmethod
+    def retrieve_from_dataobjects(
+            cls, data_circs, data_samples, data_probs, **kwargs):
+        """
+        """
+        # Initiate an instance of the experiment class.
+        obj = cls()
+        # Put the three different data objects.
+        obj.data_circuits = data_circs
+        # If there were no samples this data structure is empty but that
+        # should be no problem.
+        obj.data_samples = data_samples
+        obj.data_probabilities = data_probs
+        # Retrieve the meta data which can be extracted from the data frames.
+        obj.runs = len(obj.circuits_list)
+        if obj.outcome_samples:
+            obj.nshots = len(obj.outcome_samples[0][0])
+        else:
+            obj.nshots = None
+        if obj.outcome_probabilities:
+            amount_qubits = int(np.log2(len(obj.outcome_probabilities[0][0])))
+            obj.qubits = list(range(amount_qubits))
+        return obj
+        
     ################################# METHODS #################################
 
     ############################## Build ##############################
@@ -420,22 +502,6 @@ class Experiment():
             if run:
                 probs = probs[run]
         return probs
-
-    def samples(self, run:Union[int, list]=None) -> np.ndarray:
-        """
-        """
-        # Check if the samples attribute is not empty e.g. the first entry is
-        # not just an empty list.
-        if len(self.outcome_samples[0]) != 0:
-            # It should be lists out of lists out of lists out of lists,
-            # make it an array.
-            samples =  np.array(self.outcome_samples)
-            if run:
-                # Specific runs can be chosen.
-                samples = samples[run]
-            return samples
-        else:
-            raise ValueError('No samples there. Try probabilities().')
 
     def postprocess(self, **kwargs):
         """
