@@ -1,9 +1,13 @@
 from ctypes import Union
-from random import sample
+from qcvv.calibrations.protocols.utils import dict_to_txt
+from qcvv.calibrations.protocols.utils import pkl_to_list
 from qcvv.data import Data
 from qibo.noise import PauliError, NoiseModel
 from qibo import gates
 import numpy as np
+from os.path import isdir
+from os.path import isfile
+from os import mkdir
 import pdb
 from  qcvv.calibrations.protocols.generators import *
 from typing import Union
@@ -63,7 +67,7 @@ class Experiment():
         for count in range (self.runs):
             # Add the samples to the data structure.
             data_samples.add(
-                {self.sequence_lengths[count]:self.outcome_samples[count][i] \
+                {self.sequence_lengths[i]:self.outcome_samples[count][i] \
                     for i in range(len(self.sequence_lengths))})
         return data_samples
 
@@ -79,7 +83,7 @@ class Experiment():
         for count in range (self.runs):
             # Put the probabilities into the data object.
             data_probs.add(
-                {self.sequence_lengths[i]:self.outcome_probs[count][i] \
+                {self.sequence_lengths[i]:self.outcome_probabilities[count][i] \
                 for i in range(len(self.sequence_lengths))})
         return data_probs
     
@@ -90,13 +94,10 @@ class Experiment():
         """
         """
         from qcvv.calibrations.protocols.utils import dict_from_comments_txt
-        from qcvv.calibrations.protocols.utils import pkl_to_list
         # Initiate an instance of the experiment class.
         obj = cls()
         # Get the metadata in form of a dictionary.
         metadata_dict = dict_from_comments_txt(f'{path}metadata.txt')
-        # Get the (not commented) sequence lengths array.
-        sequence_lenghts = np.loadtxt(f'{path}metadata.txt')
         # The circuit generator has to be restored, this will get the class.
         Generator = eval(metadata_dict['circuit_generator'])
         # Build the generator.
@@ -108,17 +109,15 @@ class Experiment():
         obj.__dict__ = metadata_dict
         # Store the diven path.
         obj.directory = path
-        # Store the sequence lenghts.
-        obj.sequence_lengths = list(sequence_lenghts)
         # Get the circuits list and make it an attribute.
-        sequences_frompkl, circuits_list = pkl_to_list(f'{path}circuits.pkl')
-        # Make sure that the order is the same, right now the order is reversed.
-        assert np.array_equal(
-            np.array(sequences_frompkl)[::-1], sequence_lenghts), \
-            'The order of the restored circuits is not the same as when build'
-        # Every list in circuits_list has entries refering to the different
-        # sequence lengths. Meaning that the order is crucial.
-        obj.circuits_list = [x[::-1] for x in circuits_list]
+        obj.load_circuits(path)
+        # Try to load the outcomes. 
+        try:
+            obj.load_samples(path)
+            obj.load_probabilities(path)
+        except FileNotFoundError:
+            # If there are no outcomes (yet), there will be no files.
+            print('No outcomes to retrieve.')
         return obj
 
     ################################# METHODS #################################
@@ -150,8 +149,13 @@ class Experiment():
         """
         # Build the whole list of circuits.
         self.build(**kwargs)
-        # Store it.
-        return self.circuits_list, self.save_experiment(**kwargs)
+        # Store the list of circuits.
+        self.save_experiment(**kwargs)
+    
+    def build_noise(self, **kwargs):
+        """
+        """
+        pass
     
     ################################ Execute ################################
 
@@ -166,7 +170,7 @@ class Experiment():
         """
         # Initiate the outcome lists, one for the single shot samples and
         # one for the probabilities.
-        self.outcome_samples, self.outcome_probs = [], []
+        self.outcome_samples, self.outcome_probabilities = [], []
         # If the circuits are simulated and not run on quantum hardware, the
         # noise has to be simulated, too.
         if kwargs.get('paulierror_noiseparams'):
@@ -214,7 +218,7 @@ class Experiment():
             # It could happend that the samples list is empty if the samples
             # cannot be retrieved.
             self.outcome_samples.append(samples_list)
-            self.outcome_probs.append(probs_list)
+            self.outcome_probabilities.append(probs_list)
 
     def execute_a_save(self, **kwargs):
         """
@@ -227,24 +231,23 @@ class Experiment():
     def make_directory(self, **kwargs):
         """ Make the directory where the experiment will be stored.
         """
-        import os
         from datetime import datetime
         overall_dir = 'experiments/'
         # Check if the overall directory exists. If not create it.
-        if not os.path.isdir(overall_dir):
-            os.mkdir(overall_dir)
+        if not isdir(overall_dir):
+            mkdir(overall_dir)
         # Get the current date and time.
         dt_string = datetime.now().strftime("%y%b%d_%H%M%S")
         # Get the name of the generator.
         gname = self.circuit_generator.__class__.__name__
         # Every generator for the circuits gets its own directory.
         directory_generator = f'{overall_dir}{gname}/'
-        if not os.path.isdir(directory_generator):
-            os.mkdir(directory_generator)
+        if not isdir(directory_generator):
+            mkdir(directory_generator)
         # Name the final directory for this experiment.
         directory = f'{directory_generator}experiment{dt_string}/'
-        if not os.path.isdir(directory):
-            os.mkdir(directory)
+        if not isdir(directory):
+            mkdir(directory)
         # Store this as an attribute.
         self.directory = directory
         return directory
@@ -271,12 +274,12 @@ class Experiment():
     def save_metadata(self, **kwargs):
         """
         """
-        from qcvv.calibrations.protocols.utils import dict_to_txt
         # Check if there has been made a directory already for this experiment.
         if not hasattr(self, 'directory'):
             # Make and get the directory.
             self.make_directory()
         # Store the metadata in a .txt file. For that create a dictionary.
+        # Store any parameters given through kwargs.
         metadata_dict = {
             'qubits' : self.qubits,
             'nshots' : self.nshots,
@@ -288,9 +291,6 @@ class Experiment():
         metadata_filename = f'{self.directory}metadata.txt'
         # Write the meta data as comments to the .txt file.
         dict_to_txt(metadata_filename, metadata_dict, openingstring='w')
-        # Write the sequence lengths list.
-        with open(metadata_filename, 'a') as f:
-            np.savetxt(f, self.sequence_lengths)
         # The file is automatically closed.
     
     def save_experiment(self, **kwargs):
@@ -307,6 +307,9 @@ class Experiment():
         if not hasattr(self, 'directory'):
             # Make and get the directory.
             self.make_directory()
+        if isfile(f'{self.directory}metadata.txt'):
+            dict_to_txt(f'{self.directory}metadata.txt',
+            kwargs, comments=True, openingstring='a')
         # Use the properties.
         data_probs = self.data_probabilities
         data_samples = self.data_samples
@@ -314,30 +317,67 @@ class Experiment():
         data_samples.to_pickle(self.directory)
         data_probs.to_pickle(self.directory)
 
-    def load_outcome(self, path:str, **kwargs):
+    def load_circuits(self, path:str, **kwargs):
         """
         """
-        from qcvv.calibrations.protocols.utils import pkl_to_list
-        # Get the pandas data frame from the pikle file.
-        sequences_frompkl, probs_list = pkl_to_list(f'{path}probabilities.pkl')
-        # Make sure that the order is the same, right now the order is reversed.
-        assert np.array_equal(
-            np.array(sequences_frompkl)[::-1], self.sequence_lengths), \
-            'The order of the restored outcome is not the same as when build'
-        # Store the outcome as an attribute to further work with its.
-        self.outcome_probs = [x[::-1] for x in probs_list]
-        return self.outcome_probs
+        if isfile(f'{path}circuits.pkl'):
+            # Get the pandas data frame from the pikle file.
+            sequences_frompkl, circuits_list = pkl_to_list(
+                f'{path}circuits.pkl')
+            # Check if the attribute does not exist yet.
+            if not hasattr(self, 'sequence_lengths'):
+                # The pickeling process reverses the order, reoder ot.
+                self.sequence_lengths = np.array(sequences_frompkl)[::-1]
+            # Store the outcome as an attribute to further work with its.
+            self.circuits_list = [x[::-1] for x in circuits_list]
+            return self.circuits_list
+        else:
+            raise FileNotFoundError('There is no file for circuits.')
+
+    def load_samples(self, path:str, **kwargs):
+        """
+        """
+        if isfile(f'{path}samples.pkl'):
+            # Get the pandas data frame from the pikle file.
+            sequences_frompkl, samples_list = pkl_to_list(f'{path}samples.pkl')
+            # Make sure that the order is the same.
+            assert np.array_equal(
+                np.array(sequences_frompkl)[::-1], self.sequence_lengths), \
+                'The order of the restored outcome is not the same as when build'
+            # Store the outcome as an attribute to further work with its.
+            self.outcome_samples = [x[::-1] for x in samples_list]
+            return self.outcome_samples
+        else:
+            raise FileNotFoundError('There is no file for samples.')
+    
+    def load_probabilities(self, path:str, **kwargs):
+        """
+        """
+        if isfile(f'{path}probabilities.pkl'):
+            # Get the pandas data frame from the pikle file.
+            sequences_frompkl, probabilities_list = pkl_to_list(
+                f'{path}probabilities.pkl')
+            # Make sure that the order is the same, right now the
+            # order is reversed.
+            assert np.array_equal(
+                np.array(sequences_frompkl)[::-1], self.sequence_lengths), \
+                'The order of the restored outcome is not the same as when build'
+            # Store the outcome as an attribute to further work with its.
+            self.outcome_probabilities = [x[::-1] for x in probabilities_list]
+            return self.outcome_probabilities
+        else:
+            raise FileNotFoundError('There is no file for probabilities.')
 
     ########################### Outcome processing ###########################
 
     def probabilities(
             self, averaged:bool=True, run:Union[int, list]=None,
-            **kwargs) -> np.ndarray:
+            from_samples:bool=True, **kwargs) -> np.ndarray:
         """
         """
         # Check if the samples attribute is not empty e.g. the first entry is
         # not just an empty list.
-        if len(self.outcome_samples[0]) != 0:
+        if len(self.outcome_samples[0]) != 0 and from_samples:
             # Create all possible state vectors.
             allstates = np.array(list(product([0,1], repeat=len(self.qubits))))
             # The attribute should be lists out of lists out of lists out
@@ -370,7 +410,7 @@ class Experiment():
                 probs = np.array(probs)/(self.nshots)
         else:
             # The actual probabilites are used.
-            probs = np.array(self.outcome_probs)
+            probs = np.array(self.outcome_probabilities)
             if averaged:
                 # If needed, average over the different runs for each sequence
                 # length.
