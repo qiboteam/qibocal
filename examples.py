@@ -110,12 +110,13 @@ def test_retrieve_experiment():
                 raise TypeError(f'Type {type(oldvalue)} not checked!')
     print('test_retrieve_experiment successfull')
 
-def test_exectute_and_save():
+def test_execute_and_save():
     """
     """
     from shutil import rmtree
+    from ast import literal_eval
     # Set the parameters
-    sequence_lengths = [1,2,5]
+    sequence_lengths = [1,2,5,10]
     runs = 3
     qubits = [0]
     mygenerator = GeneratorOnequbitcliffords(qubits)
@@ -123,7 +124,7 @@ def test_exectute_and_save():
     # Build the circuits and save them.
     circuits_list, directory = myexperiment.build_a_save()
     # Execute the experiment and save the outcome.
-    probs = myexperiment.execute_a_save()
+    samples, probs = myexperiment.execute_a_save()
     # Load the experiment from the files.
     recexperiment = Experiment.retrieve_experiment(directory)
     # Also, load the outcome.
@@ -132,9 +133,58 @@ def test_exectute_and_save():
         assert np.array_equal(probs[count_runs], recprobs[count_runs])
     # Remove the directory.
     rmtree(directory)
+    # Make a new experiment, this time with some injected noise!
+    mygenerator = GeneratorOnequbitcliffords(qubits, invert=True)
+    myexperiment = Experiment(mygenerator, sequence_lengths, qubits, runs)
+    myexperiment.build()
+    samples, probs = myexperiment.execute_a_save(
+        paulierror_noiseparams=[0.1,0.1,0.1])
+    samples = np.array(myexperiment.outcome_samples)
+    probabilities = np.average(
+        samples, axis=1).reshape(runs, len(sequence_lengths))
+    pdb.set_trace()
+    print(np.array(probs))
+    rmtree(myexperiment.directory)
+    print('test_execute_and_save successfull!')
+
+def test_probabilities_a_samples():
+    """
+    """
+    # Set the parameters
+    sequence_lengths = [1, 2, 5]
+    runs = 2
+    # Set two qubits
+    qubits = [0, 1]
+    # Put the shots up a lot to see if the samples yield the same probabilities.
+    nshots = int(1e6)
+    # Initiate the circuit generator abd the experiment.
+    mygenerator = GeneratorOnequbitcliffords(qubits)
+    myexperiment = Experiment(
+        mygenerator, sequence_lengths, qubits, runs, nshots=nshots)
+    # Build the cirucuits, the yare stored as attribute in the object.
+    myexperiment.build()
+    # Execute the experiment, e.g. the single circuits, store the outcomes
+    # as attributes.
+    myexperiment.execute_experiment()
+    assert myexperiment.samples().shape == (
+        runs, len(sequence_lengths), nshots, len(qubits))
+    # Get the probabilities calculated with the outcome samples.
+    probs_fromsamples = myexperiment.probabilities(averaged=True)
+    # Get the probabilities return from the executed circuit itself.
+    probs_natural = np.average(myexperiment.outcome_probs, axis=0)
+    # Check if they are close.
+    assert np.allclose(probs_fromsamples, probs_natural, atol=1e-03)
+    # For fitting and error bar estimation the probabilities of every run
+    # are needed, meaning that there is no average over the runs.
+    probs_runs = myexperiment.probabilities(averaged=False)
+    assert probs_runs.shape == (runs, len(sequence_lengths), 2**len(qubits))
+    print('test_probabilities_a_samples successfull!')
+
+
 
 
 # test_generators()
 # test_retrieve_experiment()
-test_exectute_and_save()
+# test_execute_and_save()
+test_probabilities_a_samples()
 
