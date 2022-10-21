@@ -19,7 +19,7 @@ def get_data_subfolders(folder):
     return subfolders
 
 
-# Resonator and qubit spectroscopies - TO BE tested
+# Resonator and qubit spectroscopies - tested
 def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
 
     fig = make_subplots(
@@ -127,7 +127,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
             fig.add_annotation(
                 dict(
                     font=dict(color="black", size=12),
-                    x=0,
+                    x=i*0.13,
                     y=-0.25,
                     showarrow=False,
                     text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} Hz.",
@@ -140,7 +140,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
             fig.add_annotation(
                 dict(
                     font=dict(color="black", size=12),
-                    x=0,
+                    x=i*0.13,
                     y=-0.30,
                     showarrow=False,
                     text=f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f} uV.",
@@ -1093,7 +1093,7 @@ def prob_gate(folder, routine, qubit, format):
     return fig
 
 
-# allXY - TO BE tested
+# allXY iteration - TO BE tested
 def prob_gate_iteration(folder, routine, qubit, format):
 
     import numpy as np
