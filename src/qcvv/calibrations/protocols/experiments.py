@@ -7,6 +7,7 @@ import numpy as np
 from os.path import isdir
 from os.path import isfile
 from os import mkdir
+from ast import literal_eval
 import pdb
 from  qcvv.calibrations.protocols.generators import *
 from typing import Union
@@ -83,11 +84,27 @@ class Experiment():
         data_samples = Data(
             'samples', quantities=list(self.sequence_lengths))
         if len(self.outcome_samples[0]) != 0:
-            # Go through every run and this way store the whole list of samples.
-            for count in range (self.runs):
-                # Add the samples to the data structure.
-                data_samples.add(
-                    {self.sequence_lengths[i]:self.outcome_samples[count][i] \
+            # Store the data in a pandas dataframe.
+            # FIXME There are versions not supporting writing arrays to data frames.
+            try:
+                # The columns are indexed by the different sequence lengths.
+                # The rows are indexing the different runs.
+                for count in range(self.runs):
+                    # The data object takes dictionaries.
+                    data_samples.add({
+                        self.sequence_lengths[i]:
+                        self.outcome_samples[count][i] \
+                        for i in range(len(self.sequence_lengths))})
+            # This error: ValueError: Must have equal len keys and value when 
+            # setting with an iterable
+            # is caught by this.
+            except ValueError:
+                # FIXME Make the lists to strings.
+                for count in range(self.runs):
+                    # The data object takes dictionaries.
+                    data_samples.add({
+                        self.sequence_lengths[i]:str(
+                            self.outcome_samples[count][i]) \
                         for i in range(len(self.sequence_lengths))})
         return data_samples
     
@@ -100,6 +117,10 @@ class Experiment():
         # Put them in a list, first axis is the different runs, second axis
         # the sequence lengths.
         samples_list = dataframe.values.tolist()
+        # FIXME 
+        if samples_list and type(samples_list[0][0]) == str :
+            samples_list = [
+                [literal_eval(x) for x in a] for a in samples_list]
         # Check if the attribute does not exist yet.
         if not hasattr(self, 'sequence_lengths') or \
             self.sequence_lengths is None:
@@ -117,13 +138,28 @@ class Experiment():
         # Initiate the data structure where the outcomes will be stored.
         data_probs = Data(
             'probabilities', quantities=list(self.sequence_lengths))
-        # Go through every run and this way store the whole list
-        # of probabilites.
-        for count in range (self.runs):
-            # Put the probabilities into the data object.
-            data_probs.add(
-                {self.sequence_lengths[i]:self.outcome_probabilities[count][i] \
-                for i in range(len(self.sequence_lengths))})
+        # Store the data in a pandas dataframe.
+        # FIXME There are versions not supporting writing arrays to data frames.
+        try:
+            # The columns are indexed by the different sequence lengths.
+            # The rows are indexing the different runs.
+            for count in range(self.runs):
+                # The data object takes dictionaries.
+                data_probs.add({
+                    self.sequence_lengths[i]:
+                    self.outcome_probabilities[count][i] \
+                    for i in range(len(self.sequence_lengths))})
+        # This error: ValueError: Must have equal len keys and value when 
+        # setting with an iterable
+        # is caught by this.
+        except ValueError:
+            # FIXME Make the lists to strings.
+            for count in range(self.runs):
+                # The data object takes dictionaries.
+                data_probs.add({
+                    self.sequence_lengths[i]:str(
+                        self.outcome_probabilities[count][i]) \
+                    for i in range(len(self.sequence_lengths))})
         return data_probs
     
     @data_probabilities.setter
@@ -135,6 +171,10 @@ class Experiment():
         # Put them in a list, first axis is the different runs, second axis
         # the sequence lengths.
         probabilities_list = dataframe.values.tolist()
+        # FIXME 
+        if type(probabilities_list[0][0]) == str:
+            probabilities_list = [
+                [literal_eval(x) for x in a] for a in probabilities_list]
         # Check if the attribute does not exist yet.
         if not hasattr(self, 'sequence_lengths') or \
             self.sequence_lengths is None:
@@ -504,6 +544,13 @@ class Experiment():
         return probs
 
     def postprocess(self, **kwargs):
+        """
+        """
+        pass
+
+    ############################ Filter functions ############################
+
+    def filter_single_qubit(self, **kwargs):
         """
         """
         pass
