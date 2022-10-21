@@ -32,30 +32,19 @@ poetry install
 pre-commit install
 ```
 
-## Development
-- The documentation is available here: [![Documentation Status](https://readthedocs.org/projects/qibocal/badge/?version=latest)](https://qibocal.readthedocs.io/en/latest/)
-- To build the documentation from source run
-```sh
-cd qibocal
-poe docs
-cd doc/build/html
-open index.html
-```
 ## Minimal working example
-
-In order to test the installation, check the qibocal version
-
-```python
-import qibocal
-
-print(qibocal.__version__)
-```
-## Tests and benchmarks
-
-To run the unit test you can use the command
+### Calibrate with a runcard
+To run all the calibration routines specified in the ```runcard```, Qibocal uses the command 
 ```sh
-poe test
+qq <runcard> -o <output_folder>
 ```
+if ```<output_folder>``` is specified, the results will be saved in it, otherwise ```qq``` will automatically create a default folder containing the current date and the username.
+
+
+### Uploading reports to server
+
+In order to upload the report to a centralized server, send to the server administrators your public ssh key (from the machine(s) you are planning to upload the report) and then use the `qq-upload <output_folder>` command. This program will upload your report to the server and generate an unique URL.
+
 ## Contributing
 
 Contribution, issues and feature request are welcome!
