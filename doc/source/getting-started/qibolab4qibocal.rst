@@ -11,7 +11,7 @@ In order to install appropriately the lab package please clone its GitHub reposi
 .. code-block::
 
       git clone https://github.com/qiboteam/qibolab.git
-      cd qibocal
+      cd qibolab
       pip install .[tiiq]
 
 
