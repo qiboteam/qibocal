@@ -1153,20 +1153,33 @@ def standard_rb_plot(folder, routine, qubit, format):
 
 
 def rb_plot(folder, routine, qubit, format):
+    """
+    """
     from scipy.optimize import curve_fit
+    from qcvv.calibrations.protocols.experiments import Experiment
+    # Define the function for the fitting process.
     def exp_func(x,A,f,B):
         """
         """
         return A*f**x+B
-    data = Dataset.load_data(
-        folder, routine, 'pickle', 'standardrb')
-    dataframe = data.df
-    # Extract the data.
-    xdata = np.array(dataframe.columns)
-    # Multiple runs means multiple rows. 
-    ydata = dataframe.to_numpy()
-    runs = ydata.shape[0]
-    pm = np.sum(ydata, axis=0)/runs
+    # Load the data into Dataset object. 
+    data_circs = Dataset.load_data(
+        folder, routine, 'pickle', 'circuits')
+    data_probs = Dataset.load_data(
+        folder, routine, 'pickle', 'probabilities')
+    data_samples = Dataset.load_data(
+        folder, routine, 'pickle', 'samples')
+    # Build an Experiment object out of it.
+    experiment = Experiment.retrieve_from_dataobjects(
+        data_circs, data_samples, data_probs)
+    # The xaxis is defined by the sequence lengths of the applied circuits.
+    xdata = experiment.sequence_lengths
+    if routine == 'standard_rb':
+        # The yaxis shows the survival probability, short pm.
+        pm = experiment.probabilities(averaged=True)
+    elif routine == 'filtered_rb':
+        # Not implemented yet.
+        pass 
     # Calculate an exponential fit to the given data pm dependent on m.
     # 'popt' stores the optimized parameters and pcov the covariance of popt.
     try:
