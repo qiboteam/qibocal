@@ -34,7 +34,7 @@ pre-commit install
 
 ## Minimal working example
 ### Calibrate with a runcard
-To run all the calibration routines specified in the ```runcard```, Qibocal uses the command 
+To run all the calibration routines specified in the ```runcard```, Qibocal uses the command
 ```sh
 qq <runcard> -o <output_folder>
 ```
