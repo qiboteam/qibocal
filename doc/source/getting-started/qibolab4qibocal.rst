@@ -1,5 +1,5 @@
 Qibocal needs Qibolab!
-==============================
+==================
 
 The ``qibocal`` package works closely with ``qibolab``.
 Indeed, in order to carry out calibrations appropriately, it is essential to be able
