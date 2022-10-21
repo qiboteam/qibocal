@@ -163,16 +163,26 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
     return fig
 
 
-# Resonator and qubit spectroscopies - TO BE tested
+# Resonator and qubit spectroscopies - tested
 def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
 
-    fig = go.Figure()
-    plot1d_attenuation = 30  # attenuation value to use for 1D frequency vs MSR plot
+    plot1d_attenuation = 56  # attenuation value to use for 1D frequency vs MSR plot
+
+    fig = make_subplots(
+        rows=1,
+        cols=1,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        subplot_titles=(
+            "MSR (V)",
+        ),
+    )
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
     i = 0
     for subfolder in subfolders:
+        #print(subfolder)
         data = DataUnits.load_data(folder, subfolder, routine, format, f"data_q{qubit}")
         # index data on a specific attenuation value
         smalldf = data.df[
@@ -193,7 +203,7 @@ def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
         i += 1
 
     fig.update_layout(
-        showlegend=False,
+        showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting,
         xaxis_title="Frequency (GHz)",
         yaxis_title="MSR (V)",
@@ -686,7 +696,7 @@ def time_msr(folder, routine, qubit, format):
     return fig
 
 
-# T1 - TO BE tested
+# T1 - tested
 def t1_time_msr_phase(folder, routine, qubit, format):
 
     fig = make_subplots(
@@ -764,7 +774,7 @@ def t1_time_msr_phase(folder, routine, qubit, format):
             fig.add_annotation(
                 dict(
                     font=dict(color="black", size=12),
-                    x=i * 0.12,
+                    x=i * 0.07,
                     y=-0.20,
                     showarrow=False,
                     text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} ns.",
@@ -788,7 +798,7 @@ def t1_time_msr_phase(folder, routine, qubit, format):
     return fig
 
 
-# Flipping - TO BE tested
+# Flipping - tested
 def flips_msr_phase(folder, routine, qubit, format):
 
     fig = make_subplots(
@@ -867,7 +877,7 @@ def flips_msr_phase(folder, routine, qubit, format):
             fig.add_annotation(
                 dict(
                     font=dict(color="black", size=12),
-                    x=0,
+                    x=i * 0.11,
                     y=-0.25,
                     showarrow=False,
                     text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.4f}",
@@ -880,7 +890,7 @@ def flips_msr_phase(folder, routine, qubit, format):
             fig.add_annotation(
                 dict(
                     font=dict(color="black", size=12),
-                    x=0,
+                    x=i * 0.11,
                     y=-0.30,
                     showarrow=False,
                     text=f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f}",
@@ -890,7 +900,7 @@ def flips_msr_phase(folder, routine, qubit, format):
                     yref="paper",
                 )
             )
-        i = +1
+        i += 1
 
     # last part
     fig.update_layout(
@@ -1093,7 +1103,7 @@ def prob_gate(folder, routine, qubit, format):
     return fig
 
 
-# allXY iteration - TO BE tested
+# allXY iteration - tested
 def prob_gate_iteration(folder, routine, qubit, format):
 
     import numpy as np
@@ -1252,7 +1262,7 @@ def msr_beta(folder, routine, qubit, format):
     return fig
 
 
-# Dispersive shift - TO BE tested
+# Dispersive shift - tested
 def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
 
     fig = make_subplots(
@@ -1384,7 +1394,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
             fig.add_annotation(
                 dict(
                     font=dict(color="black", size=12),
-                    x=0,
+                    x=i * 0.15,
                     y=-0.25,
                     showarrow=False,
                     text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} Hz.",
@@ -1422,7 +1432,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
             fig.add_annotation(
                 dict(
                     font=dict(color="black", size=12),
-                    x=0,
+                    x=i * 0.15,
                     y=-0.30,
                     showarrow=False,
                     text=f"q{qubit}/r{i} shifted {params[0]}: {data_fit_shifted.df[params[0]][0]:.1f} Hz.",

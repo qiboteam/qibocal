@@ -1,19 +1,19 @@
 platform: tii5q
 
-qubits: [2, 3]
+qubits: [2]
 
 format: csv
 
 actions:
-  resonator_spectroscopy:
-    lowres_width: 5_000_000
-    lowres_step: 2_000_000
-    highres_width: 1_500_000
-    highres_step: 200_000
-    precision_width: 1_500_000
-    precision_step: 100_000
-    software_averages: 1
-    points: 1
+  # resonator_spectroscopy:
+  #   lowres_width: 5_000_000
+  #   lowres_step: 2_000_000
+  #   highres_width: 1_500_000
+  #   highres_step: 200_000
+  #   precision_width: 1_500_000
+  #   precision_step: 100_000
+  #   software_averages: 1
+  #   points: 1
 
   # resonator_spectroscopy_flux:
   #   freq_width: 3_000_000
