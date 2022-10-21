@@ -43,7 +43,7 @@ open index.html
 ```
 ## Minimal working example
 
-In order to test the installation check the qibocal version
+In order to test the installation, check the qibocal version
 
 ```python
 import qibocal
@@ -60,4 +60,4 @@ poe test
 
 Contribution, issues and feature request are welcome!
 Feel free to check
-![issues](https://img.shields.io/github/issues-closed/qiboteam/qibocal)
+<a href="https://github.com/qiboteam/qibocal/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues-closed/qiboteam/qibocal"/></a>
