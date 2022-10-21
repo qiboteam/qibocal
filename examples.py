@@ -1,9 +1,10 @@
 from qcvv.data import Data
 from qcvv.calibrations.protocols.generators import *
 from qcvv.calibrations.protocols.experiments import Experiment
+from shutil import rmtree
+from pandas import read_pickle
 import pdb
 import numpy as np
-import pandas as pd
 
 def test_generators():
     """ There are different generators for random circuits from a 
@@ -92,7 +93,7 @@ def test_experiments():
     myexperiment.execute(nshots=10, paulierror_noisparams=[0.01,0.03,0.1])
     print('test_experiment successfull!')
 
-def test_retrieve_experiment():
+def test_retrieve_from_path():
     """
     """
     # Define the parameters.
@@ -108,7 +109,7 @@ def test_retrieve_experiment():
     # Get the directory.
     directory = oldexperiment.directory
     # Load the circuits and attributes back to a new experiment object.
-    recexperiment = Experiment.retrieve_experiment(directory)
+    recexperiment = Experiment.retrieve_from_path(directory)
     # Compare the circuits. They should be the same.
     for countruns in range(runs):
         for countm in range(len(sequence_lengths)): 
@@ -139,7 +140,7 @@ def test_retrieve_experiment():
 def test_execute_and_save():
     """
     """
-    from shutil import rmtree
+
     # Set the parameters
     sequence_lengths = [1,3]
     runs = 2
@@ -154,7 +155,7 @@ def test_execute_and_save():
     # Get the directory where the circuits were stored.
     directory1 = myexperiment.directory
     # Load the experiment from the files.
-    recexperiment = Experiment.retrieve_experiment(directory1)
+    recexperiment = Experiment.retrieve_from_path(directory1)
     # Also, load the outcome.
     recexperiment.load_probabilities(directory1)
     recprobs = recexperiment.outcome_probabilities
@@ -173,7 +174,7 @@ def test_execute_and_save():
     myexperiment.execute_a_save(paulierror_noiseparams=noiseparams)
     directory2 = myexperiment.directory
     # Load into new object.
-    recexperiment = Experiment.retrieve_experiment(directory2)
+    recexperiment = Experiment.retrieve_from_path(directory2)
     # There is a new attribute!
     assert not hasattr(myexperiment, 'paulierror_noiseparams') \
         and hasattr(recexperiment, 'paulierror_noiseparams')
@@ -222,11 +223,69 @@ def test_probabilities_a_samples():
     assert probs_runs.shape == (runs, len(sequence_lengths), 2**len(qubits))
     print('test_probabilities_a_samples successfull!')
 
+def test_retrieve_from_dataobjects():
+    """
+    """
+     # Set the parameters
+    sequence_lengths = [1, 2, 5]
+    runs = 2
+    # Set two qubits
+    qubits = [0, 1]
+    nshots = None
+    # Initiate the circuit generator abd the experiment.
+    mygenerator = GeneratorOnequbitcliffords(qubits)
+    oldexperiment = Experiment(
+        mygenerator, sequence_lengths, qubits, runs, nshots=nshots)
+    # Build the cirucuits, the yare stored as attribute in the object.
+    oldexperiment.build_a_save()
+    # Execute the experiment, e.g. the single circuits, store the outcomes
+    # as attributes and in a file.
+    oldexperiment.execute_a_save()
+    directory = oldexperiment.directory
+    data_samples = Data(
+            'samples', quantities=list(sequence_lengths))
+    data_samples.df = read_pickle(f'{directory}samples.pkl')
+    data_probs = Data(
+            'probabilities', quantities=list(sequence_lengths))
+    data_probs.df = read_pickle(f'{directory}probabilities.pkl')
+    data_circs = Data(
+            'circuits', quantities=list(sequence_lengths))
+    data_circs.df = read_pickle(f'{directory}circuits.pkl')
+    recexperiment = Experiment.retrieve_from_dataobjects(
+        data_circs, data_samples, data_probs)
+    # Compare the circuits. They should be the same.
+    for countruns in range(runs):
+        for countm in range(len(sequence_lengths)): 
+            circuit = oldexperiment.circuits_list[countruns][countm]
+            reccircuit = recexperiment.circuits_list[countruns][countm]
+            assert np.array_equal(circuit.unitary(), reccircuit.unitary())
+            assert len(circuit.queue) == len(reccircuit.queue)
+    # Also the attributes.
+    olddict = oldexperiment.__dict__
+    newdict = recexperiment.__dict__
+    for key in olddict:
+        # The attribute circuits_list was checked above.
+        if key not in ('circuits_list', 'inverse', 'directory'):
+            oldvalue = olddict[key]
+            newvalue = newdict[key]
+            if type(oldvalue) in (str, int, float, bool):
+                assert oldvalue == newvalue
+            elif type(oldvalue) == list:
+                np.array_equal(oldvalue, newvalue)
+            elif issubclass(oldvalue.__class__, Generator):
+                # Did not figure out yet how to retrieve the random
+                # circuit generator.
+                pass
+            elif oldvalue is None:
+                assert oldvalue is oldvalue
+            else:
+                raise TypeError(f'Type {type(oldvalue)} not checked!')
+    print('test_retrieve_experiment successfull')
+    rmtree(directory)
 
 
-
-test_generators()
-# test_retrieve_experiment()
+# test_generators()
+# test_retrieve_from_path()
 # test_execute_and_save()
 # test_probabilities_a_samples()
-
+test_retrieve_from_dataobjects()
