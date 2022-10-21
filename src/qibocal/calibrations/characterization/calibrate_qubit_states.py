@@ -18,12 +18,7 @@ def calibrate_qubit_states(
     """
     Method which implements the state's calibration of a chosen qubit. Two analogous tests are performed for calibrate the ground state and the excited state of the oscillator.
     The subscripts `exc` and `gnd` will represent the excited state |1> and the ground state |0>.
-    In case the qubit belows to the 5-qubits chip, the index notation is the following:
-          1
-          |
-     2 -- 0 -- 3
-          |
-          4
+   
     Args:
         platform (:class:`qibolab.platforms.abstract.AbstractPlatform`): custom abstract platform on which we perform the calibration.
         qubit (int): index representing the target qubit into the chip.
