@@ -120,6 +120,7 @@ def dict_from_comments_txt(filename:str):
                 comments_dict[key] = value
             else:
                 return comments_dict
+        return comments_dict
 
 def pkl_to_list(filename:str, **kwargs):
         """
