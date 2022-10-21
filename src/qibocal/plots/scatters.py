@@ -19,31 +19,8 @@ def get_data_subfolders(folder):
     return subfolders
 
 
-# For resonator and qubit spectroscopies
+# Resonator and qubit spectroscopies - TO BE tested
 def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
-    try:
-        data_fast = DataUnits.load_data(folder, routine, format, f"fast_sweep_q{qubit}")
-    except:
-        data_fast = DataUnits(quantities={"frequency": "Hz"})
-    try:
-        data_precision = DataUnits.load_data(
-            folder, routine, format, f"precision_sweep_q{qubit}"
-        )
-    except:
-        data_precision = DataUnits(quantities={"frequency": "Hz"})
-    try:
-        data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
-    except:
-        data_fit = Data(
-            quantities=[
-                "popt0",
-                "popt1",
-                "popt2",
-                "popt3",
-                "label1",
-                "label2",
-            ]
-        )
 
     fig = make_subplots(
         rows=1,
@@ -56,91 +33,125 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
         ),
     )
 
-    fig.add_trace(
-        go.Scatter(
-            x=data_fast.get_values("frequency", "GHz"),
-            y=data_fast.get_values("MSR", "uV"),
-            name="Fast",
-        ),
-        row=1,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=data_fast.get_values("frequency", "GHz"),
-            y=data_fast.get_values("phase", "rad"),
-            name="Fast",
-        ),
-        row=1,
-        col=2,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=data_precision.get_values("frequency", "GHz"),
-            y=data_precision.get_values("MSR", "uV"),
-            name="Precision",
-        ),
-        row=1,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=data_precision.get_values("frequency", "GHz"),
-            y=data_precision.get_values("phase", "rad"),
-            name="Precision",
-        ),
-        row=1,
-        col=2,
-    )
-    if len(data_fast) > 0 and len(data_fit) > 0:
-        freqrange = np.linspace(
-            min(data_fast.get_values("frequency", "GHz")),
-            max(data_fast.get_values("frequency", "GHz")),
-            2 * len(data_fast),
-        )
-        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+    # iterate over multiple data folders
+    subfolders = get_data_subfolders(folder)
+    i = 0
+    for subfolder in subfolders:
+        try:
+            data_fast = DataUnits.load_data(
+                folder, subfolder, routine, format, f"fast_sweep_q{qubit}"
+            )
+        except:
+            data_fast = DataUnits(quantities={"frequency": "Hz"})
+        try:
+            data_precision = DataUnits.load_data(
+                folder, subfolder, routine, format, f"precision_sweep_q{qubit}"
+            )
+        except:
+            data_precision = DataUnits(quantities={"frequency": "Hz"})
+        try:
+            data_fit = Data.load_data(
+                folder, subfolder, routine, format, f"fit_q{qubit}"
+            )
+        except:
+            data_fit = Data(
+                quantities=[
+                    "popt0",
+                    "popt1",
+                    "popt2",
+                    "popt3",
+                    "label1",
+                    "label2",
+                ]
+            )
+
         fig.add_trace(
             go.Scatter(
-                x=freqrange,
-                y=lorenzian(
-                    freqrange,
-                    data_fit.get_values("popt0"),
-                    data_fit.get_values("popt1"),
-                    data_fit.get_values("popt2"),
-                    data_fit.get_values("popt3"),
-                ),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
+                x=data_fast.get_values("frequency", "GHz"),
+                y=data_fast.get_values("MSR", "uV"),
+                name=f"q{qubit}/r{i} Fast",
             ),
             row=1,
             col=1,
         )
-        fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=0,
-                y=-0.25,
-                showarrow=False,
-                text=f"The estimated {params[0]} is {data_fit.df[params[0]][0]:.1f} Hz.",
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
-            )
+        fig.add_trace(
+            go.Scatter(
+                x=data_fast.get_values("frequency", "GHz"),
+                y=data_fast.get_values("phase", "rad"),
+                name=f"q{qubit}/r{i} Fast",
+            ),
+            row=1,
+            col=2,
         )
-        fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=0,
-                y=-0.30,
-                showarrow=False,
-                text=f"The estimated {params[1]} is {data_fit.df[params[1]][0]:.3f} uV.",
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
-            )
+        fig.add_trace(
+            go.Scatter(
+                x=data_precision.get_values("frequency", "GHz"),
+                y=data_precision.get_values("MSR", "uV"),
+                name=f"q{qubit}/r{i}Precision",
+            ),
+            row=1,
+            col=1,
         )
+        fig.add_trace(
+            go.Scatter(
+                x=data_precision.get_values("frequency", "GHz"),
+                y=data_precision.get_values("phase", "rad"),
+                name=f"q{qubit}/r{i} Precision",
+            ),
+            row=1,
+            col=2,
+        )
+        if len(data_fast) > 0 and len(data_fit) > 0:
+            freqrange = np.linspace(
+                min(data_fast.get_values("frequency", "GHz")),
+                max(data_fast.get_values("frequency", "GHz")),
+                2 * len(data_fast),
+            )
+            params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+            fig.add_trace(
+                go.Scatter(
+                    x=freqrange,
+                    y=lorenzian(
+                        freqrange,
+                        data_fit.get_values("popt0"),
+                        data_fit.get_values("popt1"),
+                        data_fit.get_values("popt2"),
+                        data_fit.get_values("popt3"),
+                    ),
+                    name=f"q{qubit}/r{i} Fit",
+                    line=go.scatter.Line(dash="dot"),
+                ),
+                row=1,
+                col=1,
+            )
+            fig.add_annotation(
+                dict(
+                    font=dict(color="black", size=12),
+                    x=0,
+                    y=-0.25,
+                    showarrow=False,
+                    text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} Hz.",
+                    textangle=0,
+                    xanchor="left",
+                    xref="paper",
+                    yref="paper",
+                )
+            )
+            fig.add_annotation(
+                dict(
+                    font=dict(color="black", size=12),
+                    x=0,
+                    y=-0.30,
+                    showarrow=False,
+                    text=f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f} uV.",
+                    textangle=0,
+                    xanchor="left",
+                    xref="paper",
+                    yref="paper",
+                )
+            )
+        i += 1
+
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
@@ -152,25 +163,34 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
     return fig
 
 
-# For resonator and qubit spectroscopies
+# Resonator and qubit spectroscopies - TO BE tested
 def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
-    data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
-    plot1d_attenuation = 30  # attenuation value to use for 1D frequency vs MSR plot
 
     fig = go.Figure()
-    # index data on a specific attenuation value
-    smalldf = data.df[data.get_values("attenuation", "dB") == plot1d_attenuation].copy()
-    # split multiple software averages to different datasets
-    datasets = []
-    while len(smalldf):
-        datasets.append(smalldf.drop_duplicates("frequency"))
-        smalldf.drop(datasets[-1].index, inplace=True)
-        fig.add_trace(
-            go.Scatter(
-                x=datasets[-1]["frequency"].pint.to("GHz").pint.magnitude,
-                y=datasets[-1]["MSR"].pint.to("V").pint.magnitude,
-            ),
-        )
+    plot1d_attenuation = 30  # attenuation value to use for 1D frequency vs MSR plot
+
+    # iterate over multiple data folders
+    subfolders = get_data_subfolders(folder)
+    i = 0
+    for subfolder in subfolders:
+        data = DataUnits.load_data(folder, subfolder, routine, format, f"data_q{qubit}")
+        # index data on a specific attenuation value
+        smalldf = data.df[
+            data.get_values("attenuation", "dB") == plot1d_attenuation
+        ].copy()
+        # split multiple software averages to different datasets
+        datasets = []
+        while len(smalldf):
+            datasets.append(smalldf.drop_duplicates("frequency"))
+            smalldf.drop(datasets[-1].index, inplace=True)
+            fig.add_trace(
+                go.Scatter(
+                    x=datasets[-1]["frequency"].pint.to("GHz").pint.magnitude,
+                    y=datasets[-1]["MSR"].pint.to("V").pint.magnitude,
+                    name=f"q{qubit}/r{i}",
+                ),
+            )
+        i += 1
 
     fig.update_layout(
         showlegend=False,
@@ -181,8 +201,8 @@ def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
     return fig
 
 
-# For Rabi oscillations pulse length - tested
-def time_msr_phase(folder, routine, qubit, fformat):
+# Rabi oscillations pulse length - tested
+def time_msr_phase(folder, routine, qubit, format):
 
     fig = make_subplots(
         rows=1,
@@ -201,14 +221,14 @@ def time_msr_phase(folder, routine, qubit, fformat):
     for subfolder in subfolders:
         try:
             data = DataUnits.load_data(
-                folder, subfolder, routine, fformat, f"data_q{qubit}"
+                folder, subfolder, routine, format, f"data_q{qubit}"
             )
         except:
             data = DataUnits(quantities={"Time": "ns"})
 
         try:
             data_fit = Data.load_data(
-                folder, subfolder, routine, fformat, f"fit_q{qubit}"
+                folder, subfolder, routine, format, f"fit_q{qubit}"
             )
         except:
             data_fit = Data(
@@ -309,7 +329,7 @@ def time_msr_phase(folder, routine, qubit, fformat):
     return fig
 
 
-# For Rabi oscillations pulse gain - tested
+# Rabi oscillations pulse gain - tested
 def gain_msr_phase(folder, routine, qubit, format):
 
     fig = make_subplots(
@@ -434,7 +454,7 @@ def gain_msr_phase(folder, routine, qubit, format):
     return fig
 
 
-# For Rabi oscillations pulse amplitude - tested
+# Rabi oscillations pulse amplitude - tested
 def amplitude_msr_phase(folder, routine, qubit, format):
 
     fig = make_subplots(
@@ -549,7 +569,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
     return fig
 
 
-# For Ramsey oscillations - tested
+# Ramsey oscillations - tested
 def time_msr(folder, routine, qubit, format):
     fig = make_subplots(
         rows=1,
@@ -666,17 +686,8 @@ def time_msr(folder, routine, qubit, format):
     return fig
 
 
-# T1
+# T1 - TO BE tested
 def t1_time_msr_phase(folder, routine, qubit, format):
-    try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
-    except:
-        data = DataUnits(quantities={"Time": "ns"})
-
-    try:
-        data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
-    except:
-        data_fit = DataUnits()
 
     fig = make_subplots(
         rows=1,
@@ -689,62 +700,81 @@ def t1_time_msr_phase(folder, routine, qubit, format):
         ),
     )
 
-    fig.add_trace(
-        go.Scatter(
-            x=data.get_values("Time", "ns"),
-            y=data.get_values("MSR", "uV"),
-            name="T1",
-        ),
-        row=1,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=data.get_values("Time", "ns"),
-            y=data.get_values("phase", "rad"),
-            name="T1",
-        ),
-        row=1,
-        col=2,
-    )
+    # iterate over multiple data folders
+    subfolders = get_data_subfolders(folder)
+    i = 0
+    for subfolder in subfolders:
+        try:
+            data = DataUnits.load_data(
+                folder, subfolder, routine, format, f"data_q{qubit}"
+            )
+        except:
+            data = DataUnits(quantities={"Time": "ns"})
 
-    # add fitting trace
-    if len(data) > 0 and len(data_fit) > 0:
-        timerange = np.linspace(
-            min(data.get_values("Time", "ns")),
-            max(data.get_values("Time", "ns")),
-            2 * len(data),
-        )
-        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+        try:
+            data_fit = Data.load_data(
+                folder, subfolder, routine, format, f"fit_q{qubit}"
+            )
+        except:
+            data_fit = DataUnits()
+
         fig.add_trace(
             go.Scatter(
-                x=timerange,
-                y=exp(
-                    timerange,
-                    data_fit.get_values("popt0"),
-                    data_fit.get_values("popt1"),
-                    data_fit.get_values("popt2"),
-                ),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
+                x=data.get_values("Time", "ns"),
+                y=data.get_values("MSR", "uV"),
+                name=f"T1 q{qubit}/r{i}",
             ),
             row=1,
             col=1,
         )
-
-        fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=0,
-                y=-0.20,
-                showarrow=False,
-                text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.1f} ns.",
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
-            )
+        fig.add_trace(
+            go.Scatter(
+                x=data.get_values("Time", "ns"),
+                y=data.get_values("phase", "rad"),
+                name=f"T1 q{qubit}/r{i}",
+            ),
+            row=1,
+            col=2,
         )
+
+        # add fitting trace
+        if len(data) > 0 and len(data_fit) > 0:
+            timerange = np.linspace(
+                min(data.get_values("Time", "ns")),
+                max(data.get_values("Time", "ns")),
+                2 * len(data),
+            )
+            params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+            fig.add_trace(
+                go.Scatter(
+                    x=timerange,
+                    y=exp(
+                        timerange,
+                        data_fit.get_values("popt0"),
+                        data_fit.get_values("popt1"),
+                        data_fit.get_values("popt2"),
+                    ),
+                    name=f"Fit q{qubit}/r{i}",
+                    line=go.scatter.Line(dash="dot"),
+                ),
+                row=1,
+                col=1,
+            )
+
+            fig.add_annotation(
+                dict(
+                    font=dict(color="black", size=12),
+                    x=i * 0.12,
+                    y=-0.20,
+                    showarrow=False,
+                    text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} ns.",
+                    textangle=0,
+                    xanchor="left",
+                    xref="paper",
+                    yref="paper",
+                )
+            )
+        i += 1
 
     # last part
     fig.update_layout(
@@ -758,17 +788,8 @@ def t1_time_msr_phase(folder, routine, qubit, format):
     return fig
 
 
-# Flipping
+# Flipping - TO BE tested
 def flips_msr_phase(folder, routine, qubit, format):
-    try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
-    except:
-        data = DataUnits(quantities={"flips": "dimensionless"})
-
-    try:
-        data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
-    except:
-        data_fit = DataUnits()
 
     fig = make_subplots(
         rows=1,
@@ -781,76 +802,95 @@ def flips_msr_phase(folder, routine, qubit, format):
         ),
     )
 
-    fig.add_trace(
-        go.Scatter(
-            x=data.get_values("flips", "dimensionless"),
-            y=data.get_values("MSR", "uV"),
-            name="Flipping MSR",
-        ),
-        row=1,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=data.get_values("flips", "dimensionless"),
-            y=data.get_values("phase", "rad"),
-            name="Flipping Phase",
-        ),
-        row=1,
-        col=2,
-    )
+    # iterate over multiple data folders
+    subfolders = get_data_subfolders(folder)
+    i = 0
+    for subfolder in subfolders:
+        try:
+            data = DataUnits.load_data(
+                folder, subfolder, routine, format, f"data_q{qubit}"
+            )
+        except:
+            data = DataUnits(quantities={"flips": "dimensionless"})
 
-    # add fitting trace
-    if len(data) > 0 and len(data_fit) > 0:
-        flipsrange = np.linspace(
-            min(data.get_values("flips", "dimensionless")),
-            max(data.get_values("flips", "dimensionless")),
-            2 * len(data),
-        )
-        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+        try:
+            data_fit = Data.load_data(
+                folder, subfolder, routine, format, f"fit_q{qubit}"
+            )
+        except:
+            data_fit = DataUnits()
+
         fig.add_trace(
             go.Scatter(
-                x=flipsrange,
-                y=flipping(
-                    flipsrange,
-                    data_fit.get_values("popt0"),
-                    data_fit.get_values("popt1"),
-                    data_fit.get_values("popt2"),
-                    data_fit.get_values("popt3"),
-                ),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
+                x=data.get_values("flips", "dimensionless"),
+                y=data.get_values("MSR", "uV"),
+                name=f"Flipping MSR q{qubit}/r{i}",
             ),
             row=1,
             col=1,
         )
+        fig.add_trace(
+            go.Scatter(
+                x=data.get_values("flips", "dimensionless"),
+                y=data.get_values("phase", "rad"),
+                name=f"Flipping Phase q{qubit}/r{i}",
+            ),
+            row=1,
+            col=2,
+        )
 
-        fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=0,
-                y=-0.25,
-                showarrow=False,
-                text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.4f}",
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
+        # add fitting trace
+        if len(data) > 0 and len(data_fit) > 0:
+            flipsrange = np.linspace(
+                min(data.get_values("flips", "dimensionless")),
+                max(data.get_values("flips", "dimensionless")),
+                2 * len(data),
             )
-        )
-        fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=0,
-                y=-0.30,
-                showarrow=False,
-                text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.3f}",
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
+            params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+            fig.add_trace(
+                go.Scatter(
+                    x=flipsrange,
+                    y=flipping(
+                        flipsrange,
+                        data_fit.get_values("popt0"),
+                        data_fit.get_values("popt1"),
+                        data_fit.get_values("popt2"),
+                        data_fit.get_values("popt3"),
+                    ),
+                    name=f"Fit q{qubit}/r{i}",
+                    line=go.scatter.Line(dash="dot"),
+                ),
+                row=1,
+                col=1,
             )
-        )
+
+            fig.add_annotation(
+                dict(
+                    font=dict(color="black", size=12),
+                    x=0,
+                    y=-0.25,
+                    showarrow=False,
+                    text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.4f}",
+                    textangle=0,
+                    xanchor="left",
+                    xref="paper",
+                    yref="paper",
+                )
+            )
+            fig.add_annotation(
+                dict(
+                    font=dict(color="black", size=12),
+                    x=0,
+                    y=-0.30,
+                    showarrow=False,
+                    text=f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f}",
+                    textangle=0,
+                    xanchor="left",
+                    xref="paper",
+                    yref="paper",
+                )
+            )
+        i = +1
 
     # last part
     fig.update_layout(
@@ -864,7 +904,7 @@ def flips_msr_phase(folder, routine, qubit, format):
     return fig
 
 
-# For calibrate qubit states - tested
+# Calibrate qubit states - tested
 def exc_gnd(folder, routine, qubit, format):
 
     fig = make_subplots(
@@ -1121,7 +1161,7 @@ def prob_gate_iteration(folder, routine, qubit, format):
     return fig
 
 
-# beta param tuning - tested
+# Beta param tuning - tested
 def msr_beta(folder, routine, qubit, format):
 
     fig = make_subplots(
@@ -1212,52 +1252,8 @@ def msr_beta(folder, routine, qubit, format):
     return fig
 
 
-# dispersive shift
+# Dispersive shift - TO BE tested
 def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
-
-    try:
-        data_spec = DataUnits.load_data(folder, routine, formato, f"data_q{qubit}")
-    except:
-        data_spec = DataUnits(name=f"data_q{qubit}", quantities={"frequency": "Hz"})
-
-    try:
-        data_shifted = DataUnits.load_data(
-            folder, routine, formato, f"data_shifted_q{qubit}"
-        )
-    except:
-        data_shifted = DataUnits(
-            name=f"data_shifted_q{qubit}", quantities={"frequency": "Hz"}
-        )
-
-    try:
-        data_fit = Data.load_data(folder, routine, formato, f"fit_q{qubit}")
-    except:
-        data_fit = Data(
-            quantities=[
-                "popt0",
-                "popt1",
-                "popt2",
-                "popt3",
-                "label1",
-                "label2",
-            ]
-        )
-
-    try:
-        data_fit_shifted = Data.load_data(
-            folder, routine, formato, f"fit_shifted_q{qubit}"
-        )
-    except:
-        data_fit_shifted = Data(
-            quantities=[
-                "popt0",
-                "popt1",
-                "popt2",
-                "popt3",
-                "label1",
-                "label2",
-            ]
-        )
 
     fig = make_subplots(
         rows=1,
@@ -1270,120 +1266,173 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
         ),
     )
 
-    fig.add_trace(
-        go.Scatter(
-            x=data_spec.get_values("frequency", "GHz"),
-            y=data_spec.get_values("MSR", "uV"),
-            name="Spectroscopy",
-        ),
-        row=1,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=data_spec.get_values("frequency", "GHz"),
-            y=data_spec.get_values("phase", "rad"),
-            name="Spectroscopy",
-        ),
-        row=1,
-        col=2,
-    )
+    # iterate over multiple data folders
+    subfolders = get_data_subfolders(folder)
+    i = 0
+    for subfolder in subfolders:
+        try:
+            data_spec = DataUnits.load_data(
+                folder, subfolder, routine, formato, f"data_q{qubit}"
+            )
+        except:
+            data_spec = DataUnits(name=f"data_q{qubit}", quantities={"frequency": "Hz"})
 
-    fig.add_trace(
-        go.Scatter(
-            x=data_shifted.get_values("frequency", "GHz"),
-            y=data_shifted.get_values("MSR", "uV"),
-            name="Shifted Spectroscopy",
-        ),
-        row=1,
-        col=1,
-    )
+        try:
+            data_shifted = DataUnits.load_data(
+                folder, subfolder, routine, formato, f"data_shifted_q{qubit}"
+            )
+        except:
+            data_shifted = DataUnits(
+                name=f"data_shifted_q{qubit}", quantities={"frequency": "Hz"}
+            )
 
-    fig.add_trace(
-        go.Scatter(
-            x=data_shifted.get_values("frequency", "GHz"),
-            y=data_shifted.get_values("phase", "rad"),
-            name="Shifted Spectroscopy",
-        ),
-        row=1,
-        col=2,
-    )
+        try:
+            data_fit = Data.load_data(
+                folder, subfolder, routine, formato, f"fit_q{qubit}"
+            )
+        except:
+            data_fit = Data(
+                quantities=[
+                    "popt0",
+                    "popt1",
+                    "popt2",
+                    "popt3",
+                    "label1",
+                    "label2",
+                ]
+            )
 
-    # fitting traces
-    if len(data_spec) > 0 and len(data_fit) > 0:
-        freqrange = np.linspace(
-            min(data_spec.get_values("frequency", "GHz")),
-            max(data_spec.get_values("frequency", "GHz")),
-            2 * len(data_spec),
-        )
-        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+        try:
+            data_fit_shifted = Data.load_data(
+                folder, subfolder, routine, formato, f"fit_shifted_q{qubit}"
+            )
+        except:
+            data_fit_shifted = Data(
+                quantities=[
+                    "popt0",
+                    "popt1",
+                    "popt2",
+                    "popt3",
+                    "label1",
+                    "label2",
+                ]
+            )
+
         fig.add_trace(
             go.Scatter(
-                x=freqrange,
-                y=lorenzian(
-                    freqrange,
-                    data_fit.get_values("popt0"),
-                    data_fit.get_values("popt1"),
-                    data_fit.get_values("popt2"),
-                    data_fit.get_values("popt3"),
-                ),
-                name="Fit spectroscopy",
-                line=go.scatter.Line(dash="dot"),
+                x=data_spec.get_values("frequency", "GHz"),
+                y=data_spec.get_values("MSR", "uV"),
+                name=f"q{qubit}/r{i} Spectroscopy",
             ),
             row=1,
             col=1,
         )
-        fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=0,
-                y=-0.25,
-                showarrow=False,
-                text=f"The estimated {params[0]} is {data_fit.df[params[0]][0]:.1f} Hz.",
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
-            )
-        )
-
-    # fitting shifted  traces
-    if len(data_shifted) > 0 and len(data_fit_shifted) > 0:
-        freqrange = np.linspace(
-            min(data_shifted.get_values("frequency", "GHz")),
-            max(data_shifted.get_values("frequency", "GHz")),
-            2 * len(data_shifted),
-        )
-        params = [i for i in list(data_fit_shifted.df.keys()) if "popt" not in i]
         fig.add_trace(
             go.Scatter(
-                x=freqrange,
-                y=lorenzian(
-                    freqrange,
-                    data_fit_shifted.get_values("popt0"),
-                    data_fit_shifted.get_values("popt1"),
-                    data_fit_shifted.get_values("popt2"),
-                    data_fit_shifted.get_values("popt3"),
-                ),
-                name="Fit shifted spectroscopy",
-                line=go.scatter.Line(dash="dot"),
+                x=data_spec.get_values("frequency", "GHz"),
+                y=data_spec.get_values("phase", "rad"),
+                name=f"q{qubit}/r{i} Spectroscopy",
+            ),
+            row=1,
+            col=2,
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=data_shifted.get_values("frequency", "GHz"),
+                y=data_shifted.get_values("MSR", "uV"),
+                name=f"q{qubit}/r{i} Shifted Spectroscopy",
             ),
             row=1,
             col=1,
         )
-        fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=0,
-                y=-0.30,
-                showarrow=False,
-                text=f"The estimated shifted {params[0]} is {data_fit_shifted.df[params[0]][0]:.1f} Hz.",
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
-            )
+
+        fig.add_trace(
+            go.Scatter(
+                x=data_shifted.get_values("frequency", "GHz"),
+                y=data_shifted.get_values("phase", "rad"),
+                name=f"q{qubit}/r{i} Shifted Spectroscopy",
+            ),
+            row=1,
+            col=2,
         )
+
+        # fitting traces
+        if len(data_spec) > 0 and len(data_fit) > 0:
+            freqrange = np.linspace(
+                min(data_spec.get_values("frequency", "GHz")),
+                max(data_spec.get_values("frequency", "GHz")),
+                2 * len(data_spec),
+            )
+            params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+            fig.add_trace(
+                go.Scatter(
+                    x=freqrange,
+                    y=lorenzian(
+                        freqrange,
+                        data_fit.get_values("popt0"),
+                        data_fit.get_values("popt1"),
+                        data_fit.get_values("popt2"),
+                        data_fit.get_values("popt3"),
+                    ),
+                    name=f"q{qubit}/r{i} Fit spectroscopy",
+                    line=go.scatter.Line(dash="dot"),
+                ),
+                row=1,
+                col=1,
+            )
+            fig.add_annotation(
+                dict(
+                    font=dict(color="black", size=12),
+                    x=0,
+                    y=-0.25,
+                    showarrow=False,
+                    text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} Hz.",
+                    textangle=0,
+                    xanchor="left",
+                    xref="paper",
+                    yref="paper",
+                )
+            )
+
+        # fitting shifted  traces
+        if len(data_shifted) > 0 and len(data_fit_shifted) > 0:
+            freqrange = np.linspace(
+                min(data_shifted.get_values("frequency", "GHz")),
+                max(data_shifted.get_values("frequency", "GHz")),
+                2 * len(data_shifted),
+            )
+            params = [i for i in list(data_fit_shifted.df.keys()) if "popt" not in i]
+            fig.add_trace(
+                go.Scatter(
+                    x=freqrange,
+                    y=lorenzian(
+                        freqrange,
+                        data_fit_shifted.get_values("popt0"),
+                        data_fit_shifted.get_values("popt1"),
+                        data_fit_shifted.get_values("popt2"),
+                        data_fit_shifted.get_values("popt3"),
+                    ),
+                    name=f"q{qubit}/r{i} Fit shifted spectroscopy",
+                    line=go.scatter.Line(dash="dot"),
+                ),
+                row=1,
+                col=1,
+            )
+            fig.add_annotation(
+                dict(
+                    font=dict(color="black", size=12),
+                    x=0,
+                    y=-0.30,
+                    showarrow=False,
+                    text=f"q{qubit}/r{i} shifted {params[0]}: {data_fit_shifted.df[params[0]][0]:.1f} Hz.",
+                    textangle=0,
+                    xanchor="left",
+                    xref="paper",
+                    yref="paper",
+                )
+            )
+        i += 1
 
     fig.update_layout(
         showlegend=True,
