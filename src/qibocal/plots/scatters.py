@@ -16,7 +16,7 @@ def get_data_subfolders(folder):
         d = os.path.join(folder, file)
         if os.path.isdir(d):
             subfolders.append(os.path.basename(d))
-    return subfolders
+    return subfolders[::-1]
 
 
 # Resonator and qubit spectroscopies - tested
