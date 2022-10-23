@@ -1218,7 +1218,7 @@ def msr_beta(folder, routine, qubit, format):
             beta_param = np.linspace(
                 min(data.get_values("beta_param", "dimensionless")),
                 max(data.get_values("beta_param", "dimensionless")),
-                20,
+                2 * len(data),
             )
             params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
             fig.add_trace(
