@@ -9,7 +9,7 @@ from qibocal.data import Data
 from qibocal.fitting.utils import cos, exp, flipping, lorenzian, parse, rabi, ramsey
 
 
-def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None):
+def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None, qrm_lo=None):
     """Fitting routine for resonator spectroscopy"""
     if fit_file_name == None:
         data_fit = Data(
@@ -19,8 +19,9 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None):
                 "popt1",
                 "popt2",
                 "popt3",
-                labels[1],
                 labels[0],
+                labels[1],
+                labels[2],
             ],
         )
     else:
@@ -31,8 +32,9 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None):
                 "popt1",
                 "popt2",
                 "popt3",
-                labels[1],
                 labels[0],
+                labels[1],
+                labels[2],
             ],
         )
 
@@ -92,10 +94,15 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None):
 
     freq = f0 * 1e9
 
+    MZ_freq = 0
+    if (qrm_lo != None):
+        MZ_freq = freq - qrm_lo 
+
     data_fit.add(
         {
-            labels[1]: peak_voltage,
             labels[0]: freq,
+            labels[1]: peak_voltage,
+            labels[2]: MZ_freq,
             "popt0": fit_res.best_values["amplitude"],
             "popt1": fit_res.best_values["center"],
             "popt2": fit_res.best_values["sigma"],

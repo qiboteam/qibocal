@@ -55,7 +55,7 @@ def qubit_spectroscopy(
                     y="MSR[uV]",
                     qubit=qubit,
                     nqubits=platform.settings["nqubits"],
-                    labels=["qubit_freq", "peak_voltage"],
+                    labels=["qubit_freq", "peak_voltage", "MZ_freq"],
                 )
 
             platform.qd_port[qubit].lo_frequency = freq - qd_pulse.frequency
@@ -111,7 +111,7 @@ def qubit_spectroscopy(
                     y="MSR[uV]",
                     qubit=qubit,
                     nqubits=platform.settings["nqubits"],
-                    labels=["qubit_freq", "peak_voltage"],
+                    labels=["qubit_freq", "peak_voltage", "MZ_freq"],
                 )
             platform.qd_port[qubit].lo_frequency = freq - qd_pulse.frequency
             msr, phase, i, q = platform.execute_pulse_sequence(sequence)[

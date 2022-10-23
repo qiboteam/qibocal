@@ -33,6 +33,8 @@ def resonator_spectroscopy(
         "resonator_freq"
     ]
 
+    qrm_LO=platform.qrm[qubit].ports["o1"].lo_frequency
+
     frequency_range = (
         variable_resolution_scanrange(
             lowres_width, lowres_step, highres_width, highres_step
@@ -53,7 +55,8 @@ def resonator_spectroscopy(
                     y="MSR[uV]",
                     qubit=qubit,
                     nqubits=platform.settings["nqubits"],
-                    labels=["resonator_freq", "peak_voltage"],
+                    labels=["resonator_freq", "peak_voltage", "MZ_freq"],
+                    qrm_lo=qrm_LO,
                 )
 
             platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
@@ -111,7 +114,8 @@ def resonator_spectroscopy(
                     y="MSR[uV]",
                     qubit=qubit,
                     nqubits=platform.settings["nqubits"],
-                    labels=["resonator_freq", "peak_voltage"],
+                    labels=["resonator_freq", "peak_voltage", "MZ_freq"],
+                    qrm_lo=qrm_LO,
                 )
 
             platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
@@ -337,6 +341,8 @@ def dispersive_shift(
         "resonator_freq"
     ]
 
+    qrm_LO=platform.qrm[qubit].ports["o1"].lo_frequency
+
     frequency_range = (
         np.arange(-freq_width, freq_width, freq_step) + resonator_frequency
     )
@@ -353,7 +359,8 @@ def dispersive_shift(
                     y="MSR[uV]",
                     qubit=qubit,
                     nqubits=platform.settings["nqubits"],
-                    labels=["resonator_freq", "peak_voltage"],
+                    labels=["resonator_freq", "peak_voltage", "MZ_freq"],
+                    qrm_lo=qrm_LO,
                 )
             platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
             msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
@@ -391,8 +398,9 @@ def dispersive_shift(
                     y="MSR[uV]",
                     qubit=qubit,
                     nqubits=platform.settings["nqubits"],
-                    labels=["resonator_freq", "peak_voltage"],
+                    labels=["resonator_freq", "peak_voltage", "MZ_freq"],
                     fit_file_name="fit_shifted",
+                    qrm_lo=qrm_LO,
                 )
             platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
             msr, phase, i, q = platform.execute_pulse_sequence(sequence)[

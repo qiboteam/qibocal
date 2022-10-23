@@ -62,6 +62,8 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
                     "popt3",
                     "label1",
                     "label2",
+                    "label3",
+
                 ]
             )
 
@@ -124,13 +126,14 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
                 row=1,
                 col=1,
             )
+
             fig.add_annotation(
                 dict(
                     font=dict(color="black", size=12),
                     x=i * 0.13,
                     y=-0.25,
                     showarrow=False,
-                    text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} Hz.",
+                    text=f"q{qubit}/r{i} {params[2]}: {data_fit.df[params[2]][0]:.1f} Hz.",
                     textangle=0,
                     xanchor="left",
                     xref="paper",
@@ -150,6 +153,21 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
                     yref="paper",
                 )
             )
+            if (data_fit.df[params[0]][0] != 0):
+                fig.add_annotation(
+                    dict(
+                        font=dict(color="black", size=12),
+                        x=i * 0.13,
+                        y=-0.20,
+                        showarrow=False,
+                        text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.0f} Hz.",
+                        textangle=0,
+                        xanchor="left",
+                        xref="paper",
+                        yref="paper",
+                    )
+                )
+
         i += 1
 
     fig.update_layout(
@@ -1307,6 +1325,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
                     "popt3",
                     "label1",
                     "label2",
+                    "label3",
                 ]
             )
 
@@ -1323,6 +1342,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
                     "popt3",
                     "label1",
                     "label2",
+                    "label3",
                 ]
             )
 
@@ -1395,7 +1415,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
                     x=i * 0.15,
                     y=-0.25,
                     showarrow=False,
-                    text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} Hz.",
+                    text=f"q{qubit}/r{i} {params[2]}: {data_fit.df[params[2]][0]:.1f} Hz.",
                     textangle=0,
                     xanchor="left",
                     xref="paper",
@@ -1433,7 +1453,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
                     x=i * 0.15,
                     y=-0.30,
                     showarrow=False,
-                    text=f"q{qubit}/r{i} shifted {params[0]}: {data_fit_shifted.df[params[0]][0]:.1f} Hz.",
+                    text=f"q{qubit}/r{i} shifted {params[2]}: {data_fit_shifted.df[params[2]][0]:.1f} Hz.",
                     textangle=0,
                     xanchor="left",
                     xref="paper",
