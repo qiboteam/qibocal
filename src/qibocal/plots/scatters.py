@@ -127,7 +127,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
             fig.add_annotation(
                 dict(
                     font=dict(color="black", size=12),
-                    x=i*0.13,
+                    x=i * 0.13,
                     y=-0.25,
                     showarrow=False,
                     text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} Hz.",
@@ -140,7 +140,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
             fig.add_annotation(
                 dict(
                     font=dict(color="black", size=12),
-                    x=i*0.13,
+                    x=i * 0.13,
                     y=-0.30,
                     showarrow=False,
                     text=f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f} uV.",
@@ -173,16 +173,14 @@ def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
         cols=1,
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
-        subplot_titles=(
-            "MSR (V)",
-        ),
+        subplot_titles=("MSR (V)",),
     )
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
     i = 0
     for subfolder in subfolders:
-        #print(subfolder)
+        # print(subfolder)
         data = DataUnits.load_data(folder, subfolder, routine, format, f"data_q{qubit}")
         # index data on a specific attenuation value
         smalldf = data.df[
