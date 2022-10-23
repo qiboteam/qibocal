@@ -95,8 +95,8 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None, qrm_l
     freq = f0 * 1e9
 
     MZ_freq = 0
-    if (qrm_lo != None):
-        MZ_freq = freq - qrm_lo 
+    if qrm_lo != None:
+        MZ_freq = freq - qrm_lo
 
     data_fit.add(
         {

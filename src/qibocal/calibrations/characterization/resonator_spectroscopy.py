@@ -33,7 +33,7 @@ def resonator_spectroscopy(
         "resonator_freq"
     ]
 
-    qrm_LO=platform.qrm[qubit].ports["o1"].lo_frequency
+    qrm_LO = platform.qrm[qubit].ports["o1"].lo_frequency
 
     frequency_range = (
         variable_resolution_scanrange(
@@ -341,7 +341,7 @@ def dispersive_shift(
         "resonator_freq"
     ]
 
-    qrm_LO=platform.qrm[qubit].ports["o1"].lo_frequency
+    qrm_LO = platform.qrm[qubit].ports["o1"].lo_frequency
 
     frequency_range = (
         np.arange(-freq_width, freq_width, freq_step) + resonator_frequency

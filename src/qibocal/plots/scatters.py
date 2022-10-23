@@ -63,7 +63,6 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
                     "label1",
                     "label2",
                     "label3",
-
                 ]
             )
 
@@ -153,7 +152,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
                     yref="paper",
                 )
             )
-            if (data_fit.df[params[0]][0] != 0):
+            if data_fit.df[params[0]][0] != 0:
                 fig.add_annotation(
                     dict(
                         font=dict(color="black", size=12),
