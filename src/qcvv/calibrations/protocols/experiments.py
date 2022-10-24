@@ -80,13 +80,14 @@ class Experiment():
     def data_samples(self):
         """
         """
-        # Initiate the data structure where the outcomes will be stored.
-        data_samples = Data(
-            'samples', quantities=list(self.sequence_lengths))
         if len(self.outcome_samples[0]) != 0:
             # Store the data in a pandas dataframe.
             # FIXME There are versions not supporting writing arrays to data frames.
             try:
+                raise ValueError
+                # Initiate the data structure where the outcomes will be stored.
+                data_samples = Data(
+                    'samples', quantities=list(self.sequence_lengths))
                 # The columns are indexed by the different sequence lengths.
                 # The rows are indexing the different runs.
                 for count in range(self.runs):
@@ -99,12 +100,21 @@ class Experiment():
             # setting with an iterable
             # is caught by this.
             except ValueError:
+                # Initiate the data structure where the outcomes will be stored.
+                # If the initialization of the data objext is not overwritten
+                # here, the first row will be filled with Nan's (because it
+                # tried to fill the data frame but failed) breaking the code.
+                data_samples = Data(
+                    'samples', quantities=list(self.sequence_lengths))
+                # FIXME Make the lists to strings.
+                list_of_lists = [
+                    [[list(x) for x in a] for a in b] for b in self.outcome_samples]
                 # FIXME Make the lists to strings.
                 for count in range(self.runs):
                     # The data object takes dictionaries.
                     data_samples.add({
                         self.sequence_lengths[i]:str(
-                            self.outcome_samples[count][i]) \
+                            list_of_lists[count][i]) \
                         for i in range(len(self.sequence_lengths))})
         return data_samples
     
@@ -135,12 +145,12 @@ class Experiment():
     def data_probabilities(self):
         """
         """
-        # Initiate the data structure where the outcomes will be stored.
-        data_probs = Data(
-            'probabilities', quantities=list(self.sequence_lengths))
         # Store the data in a pandas dataframe.
         # FIXME There are versions not supporting writing arrays to data frames.
         try:
+            # Initiate the data structure where the outcomes will be stored.
+            data_probs = Data(
+                'probabilities', quantities=list(self.sequence_lengths))
             # The columns are indexed by the different sequence lengths.
             # The rows are indexing the different runs.
             for count in range(self.runs):
@@ -153,6 +163,12 @@ class Experiment():
         # setting with an iterable
         # is caught by this.
         except ValueError:
+            # Initiate the data structure where the outcomes will be stored.
+            # If the initialization of the data objext is not overwritten here,
+            # the first row will be filled with Nan's (because it tried to fill
+            # the data frame but failed) breaking the code.
+            data_probs = Data(
+                'probabilities', quantities=list(self.sequence_lengths))
             # FIXME Make the lists to strings.
             for count in range(self.runs):
                 # The data object takes dictionaries.
