@@ -37,7 +37,7 @@ pre-commit install
 This section shows the steps to perform a resonator spectroscopy with Qibocal.
 ### Write a runcard
 A runcard contains all the essential information to run a specific task.
-For our purposes, we can use the following :
+For our purposes, we can use the following:
 ```yml
 platform: tii1q
 
@@ -57,7 +57,7 @@ actions:
      points: 5
 ```
 ### Run the routine
-To run all the calibration routines specified in the ```runcard```, Qibocal uses the command
+To run all the calibration routines specified in the ```runcard```, Qibocal uses the `qq` command
 ```sh
 qq <runcard> -o <output_folder>
 ```
@@ -65,7 +65,7 @@ if ```<output_folder>``` is specified, the results will be saved in it, otherwis
 
 ### Visualize the data
 
-Qibocal gives the possibility to live-plotting with the command
+Qibocal gives the possibility to live-plotting with the `qq-live` command
 ```sh
 qq-live <output_folder>
 ```
@@ -75,6 +75,6 @@ In order to upload the report to a centralized server, send to the server admini
 
 ## Contributing
 
-Contribution, issues and feature request are welcome!
+Contributions, issues and feature requests are welcome!
 Feel free to check
 <a href="https://github.com/qiboteam/qibocal/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues-closed/qiboteam/qibocal"/></a>
