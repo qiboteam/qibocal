@@ -2,7 +2,6 @@
 """Some tests for the Data and DataUnits class"""
 import os
 import shutil
-from turtle import clear
 
 import numpy as np
 import pytest
