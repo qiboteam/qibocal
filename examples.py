@@ -1,3 +1,4 @@
+from cmath import exp
 from qcvv.data import Data
 from qcvv.calibrations.protocols.generators import *
 from qcvv.calibrations.protocols.experiments import Experiment
@@ -226,12 +227,12 @@ def test_probabilities_a_samples():
 def test_retrieve_from_dataobjects():
     """
     """
-     # Set the parameters
+    # Set the parameters
     sequence_lengths = [1, 2, 5]
     runs = 2
     # Set two qubits
     qubits = [0, 1]
-    nshots = None
+    nshots = 10
     # Initiate the circuit generator abd the experiment.
     mygenerator = GeneratorOnequbitcliffords(qubits)
     oldexperiment = Experiment(
@@ -250,6 +251,7 @@ def test_retrieve_from_dataobjects():
     data_probs.df = read_pickle(f'{directory}probabilities.pkl')
     data_circs = Data(
             'circuits', quantities=list(sequence_lengths))
+    
     data_circs.df = read_pickle(f'{directory}circuits.pkl')
     recexperiment = Experiment.retrieve_from_dataobjects(
         data_circs, data_samples, data_probs)
@@ -283,9 +285,30 @@ def test_retrieve_from_dataobjects():
     print('test_retrieve_experiment successfull')
     rmtree(directory)
 
+def test_filter_single_qubit():
+    """
+    """
+    # Define the parameters.
+    sequence_lengths = [1,2,5,10]
+    runs = 1
+    nshots= None
+    qubits = [0]
+    # Initiate the circuit generator.
+    mygenerator = GeneratorOnequbitcliffords(qubits, invert=False)
+    # Initiate the experiment object.
+    experiment = Experiment(
+        mygenerator, sequence_lengths, qubits, runs, nshots)
+    # Build the circuits.
+    experiment.build()
+    # Execute the experiment.
+    experiment.execute_experiment(paulierror_noiseparams=[0.1,0.1,0.1])
+    # Get the filter array.
+    filters = np.average(experiment.filter_single_qubit(), axis=0)
+
 
 # test_generators()
 # test_retrieve_from_path()
 # test_execute_and_save()
 # test_probabilities_a_samples()
-test_retrieve_from_dataobjects()
+# test_retrieve_from_dataobjects()
+test_filter_single_qubit()
