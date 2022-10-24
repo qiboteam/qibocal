@@ -87,6 +87,7 @@ class Experiment():
             # Store the data in a pandas dataframe.
             # FIXME There are versions not supporting writing arrays to data frames.
             try:
+                raise ValueError
                 # The columns are indexed by the different sequence lengths.
                 # The rows are indexing the different runs.
                 for count in range(self.runs):
@@ -99,12 +100,14 @@ class Experiment():
             # setting with an iterable
             # is caught by this.
             except ValueError:
+                list_of_lists = [
+                    [[list(x) for x in a] for a in b] for b in self.outcome_samples]
                 # FIXME Make the lists to strings.
                 for count in range(self.runs):
                     # The data object takes dictionaries.
                     data_samples.add({
                         self.sequence_lengths[i]:str(
-                            self.outcome_samples[count][i]) \
+                            list_of_lists[count][i]) \
                         for i in range(len(self.sequence_lengths))})
         return data_samples
     
@@ -548,9 +551,83 @@ class Experiment():
         """
         pass
 
+    def fit_exponential(self, ydata:Union[list,np.ndarray]=None, **kwargs):
+        """ 
+        """
+        from scipy.optimize import curve_fit
+        # Define the exponential function used for the fitting process.
+        def exp_func(x:np.ndarray,A:float,f:float,B:float) -> np.ndarray:
+            """
+            """
+            return A*f**x+B
+        # The xaxis is defined by the sequence lengths of the applied circuits.
+        xdata = self.sequence_lengths
+        if ydata is None:
+            # Get the plotting/fitting data.
+            ydata = self.probabilities(averaged=True)
+        # Calculate an exponential fit to the given data pm dependent on m.
+        # 'popt' stores the optimized parameters and pcov the covariance of popt.
+        try:
+            popt, pcov = curve_fit(exp_func, xdata, ydata, p0=[0.5, 0.5, 0.5])
+        except:
+            popt, pcov = (1,1,0), (None)
+        # Build a finer spaces xdata array for plotting the fit.
+        x_fit = np.linspace(
+            np.sort(xdata)[0], np.sort(xdata)[-1], num=len(xdata)*20)
+        # Get the ydata for the fit with the calculated parameters.
+        y_fit = exp_func(x_fit, *popt)
+        return x_fit, y_fit, popt
+
     ############################ Filter functions ############################
 
     def filter_single_qubit(self, **kwargs):
         """
         """
-        pass
+        d=2
+        amount_sequences = len(self.sequence_lengths)
+        # Initiate the list were the filter values will be stored.
+        filterslist=[]
+        # If shots are available, use this way of calculating the filters.
+        if len(self.outcome_samples[0]) != 0:
+            # Go through all the runs one by one.
+            for count in range(self.runs):
+                # Go through each sequence length
+                for m in range(amount_sequences):
+                    # Get the circuit which was used to produce the data.
+                    mycircuit = self.circuits_list[count][m]
+                    # Execute it (of course without noise).
+                    executed_circuit = mycircuit(nshots=self.nshots)
+                    # Initiate the variable to average.
+                    filterf = 0 
+                    # Go throught each shot outcome.
+                    for count_shot in range(self.nshots):
+                        # This is 0 or 1.
+                        outcome = self.outcome_samples[count][m][count_shot]
+                        # Take the probability that the ideal circuit has that
+                        # outcome too.
+                        prob = executed_circuit.probabilities()[int(outcome)]
+                        # Average over it with a renormalization.
+                        filterf += (d+1)*(prob - 1/d)
+                    # Divide by number of shots and append.
+                    filterslist.append(filterf/self.nshots)
+            # Reshape such that each run again is an array filled with filter
+            # values corresponding to each sequence length.
+            filtersarray = np.array(filterslist).reshape(
+                self.runs, amount_sequences)
+        # If not shots are available, use the probabilities.
+        else:
+            probs = self.probabilities(averaged=False)
+            for count in range(self.runs):
+                for m in range(amount_sequences):
+                    mycircuit = self.circuits_list[count][m]
+                    executed_circuit = mycircuit(nshots=self.nshots)
+                    filterf = 0 
+                    talpha, tbeta = executed_circuit.probabilities()
+                    alpha = np.sqrt(probs[count,m,0])
+                    beta = np.sqrt(probs[count,m,1])
+                    talpha, tbeta = np.sqrt(executed_circuit.probabilities()[0])
+                    filterf = (d+1)*(np.abs(alpha*talpha + beta*tbeta)**2 - 1/d)
+                    filterslist.append(filterf)
+            filtersarray = np.array(filterslist).reshape(
+                self.runs, amount_sequences)
+        return filtersarray
