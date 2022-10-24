@@ -199,7 +199,6 @@ class DataUnits(AbstractData):
             options_df = obj.df[obj.options]
             options_df.columns = options_df.columns.droplevel(1)
             obj.df = pd.concat([quantities_df, options_df], axis=1)
-
         elif format == "pickle":
             file = f"{folder}/data/{routine}/{name}.pkl"
             obj.df = pd.read_pickle(file)
