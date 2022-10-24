@@ -19,7 +19,7 @@ def get_data_subfolders(folder):
     return subfolders[::-1]
 
 
-# Resonator and qubit spectroscopies - tested
+# Resonator and qubit spectroscopies
 def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
 
     fig = make_subplots(
@@ -180,7 +180,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
     return fig
 
 
-# Resonator and qubit spectroscopies - tested
+# Resonator and qubit spectroscopies
 def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
 
     plot1d_attenuation = 56  # attenuation value to use for 1D frequency vs MSR plot
@@ -226,7 +226,7 @@ def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
     return fig
 
 
-# Rabi oscillations pulse length - tested
+# Rabi oscillations pulse length
 def time_msr_phase(folder, routine, qubit, format):
 
     fig = make_subplots(
@@ -354,7 +354,7 @@ def time_msr_phase(folder, routine, qubit, format):
     return fig
 
 
-# Rabi oscillations pulse gain - tested
+# Rabi oscillations pulse gain
 def gain_msr_phase(folder, routine, qubit, format):
 
     fig = make_subplots(
@@ -479,7 +479,7 @@ def gain_msr_phase(folder, routine, qubit, format):
     return fig
 
 
-# Rabi oscillations pulse amplitude - tested
+# Rabi oscillations pulse amplitude
 def amplitude_msr_phase(folder, routine, qubit, format):
 
     fig = make_subplots(
@@ -594,7 +594,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
     return fig
 
 
-# Ramsey oscillations - tested
+# Ramsey oscillations
 def time_msr(folder, routine, qubit, format):
     fig = make_subplots(
         rows=1,
@@ -711,7 +711,7 @@ def time_msr(folder, routine, qubit, format):
     return fig
 
 
-# T1 - tested
+# T1
 def t1_time_msr_phase(folder, routine, qubit, format):
 
     fig = make_subplots(
@@ -813,7 +813,7 @@ def t1_time_msr_phase(folder, routine, qubit, format):
     return fig
 
 
-# Flipping - tested
+# Flipping
 def flips_msr_phase(folder, routine, qubit, format):
 
     fig = make_subplots(
@@ -929,7 +929,7 @@ def flips_msr_phase(folder, routine, qubit, format):
     return fig
 
 
-# Calibrate qubit states - tested
+# Calibrate qubit states
 def exc_gnd(folder, routine, qubit, format):
 
     fig = make_subplots(
@@ -1070,7 +1070,7 @@ def exc_gnd(folder, routine, qubit, format):
     return fig
 
 
-# allXY - tested
+# allXY
 def prob_gate(folder, routine, qubit, format):
 
     fig = make_subplots(
@@ -1118,7 +1118,7 @@ def prob_gate(folder, routine, qubit, format):
     return fig
 
 
-# allXY iteration - tested
+# allXY iteration
 def prob_gate_iteration(folder, routine, qubit, format):
 
     import numpy as np
@@ -1186,7 +1186,7 @@ def prob_gate_iteration(folder, routine, qubit, format):
     return fig
 
 
-# Beta param tuning - tested
+# Beta param tuning
 def msr_beta(folder, routine, qubit, format):
 
     fig = make_subplots(
@@ -1210,7 +1210,7 @@ def msr_beta(folder, routine, qubit, format):
                 name=f"data_q{qubit}", quantities={"beta_param": "dimensionless"}
             )
         try:
-            data_fit = Data.load_data(
+            data_fit = DataUnits.load_data(
                 folder, subfolder, routine, format, f"fit_q{qubit}"
             )
         except:
@@ -1277,7 +1277,7 @@ def msr_beta(folder, routine, qubit, format):
     return fig
 
 
-# Dispersive shift - tested
+# Dispersive shift
 def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
 
     fig = make_subplots(
@@ -1467,6 +1467,111 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
         xaxis_title="Frequency (GHz)",
         yaxis_title="MSR (uV)",
         xaxis2_title="Frequency (GHz)",
+        yaxis2_title="Phase (rad)",
+    )
+    return fig
+
+# Spin echos
+def spin_echo_time_msr_phase(folder, routine, qubit, format):
+
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        subplot_titles=(
+            "MSR (V)",
+            "phase (rad)",
+        ),
+    )
+
+    # iterate over multiple data folders
+    subfolders = get_data_subfolders(folder)
+    i = 0
+    for subfolder in subfolders:
+        try:
+            data = DataUnits.load_data(folder, subfolder, routine, format, f"data_q{qubit}")
+        except:
+            data = DataUnits(quantities={"Time": "ns"})
+
+        try:
+            data_fit = Data.load_data(folder, subfolder, routine, format, f"fit_q{qubit}")
+        except:
+            data_fit = Data(
+                quantities=[
+                    "popt0",
+                    "popt1",
+                    "popt2",
+                    "label1",
+                ]
+            )
+
+
+        fig.add_trace(
+            go.Scatter(
+                x=data.get_values("Time", "ns"),
+                y=data.get_values("MSR", "uV"),
+                name=f"q{qubit}/r{i}: spin echo",
+            ),
+            row=1,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=data.get_values("Time", "ns"),
+                y=data.get_values("phase", "rad"),
+                name=f"q{qubit}/r{i}: spin echo",
+            ),
+            row=1,
+            col=2,
+        )
+
+        # add fitting trace
+        if len(data) > 0 and len(data_fit) > 0:
+            timerange = np.linspace(
+                min(data.get_values("Time", "ns")),
+                max(data.get_values("Time", "ns")),
+                2 * len(data),
+            )
+            params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+            fig.add_trace(
+                go.Scatter(
+                    x=timerange,
+                    y=exp(
+                        timerange,
+                        data_fit.df["popt0"][0],
+                        data_fit.df["popt1"][0],
+                        data_fit.df["popt2"][0],
+                    ),
+                    name=f"Fit q{qubit}/r{i}:",
+                    line=go.scatter.Line(dash="dot"),
+                ),
+                row=1,
+                col=1,
+            )
+
+            fig.add_annotation(
+                dict(
+                    font=dict(color="black", size=12),
+                    x=i * 0.09,
+                    y=-0.25,
+                    showarrow=False,
+                    text=f"q{qubit}/r{i}: {params[0]}: {data_fit.df[params[0]][0]:.1f} ns.",
+                    textangle=0,
+                    xanchor="left",
+                    xref="paper",
+                    yref="paper",
+                )
+            )
+        i += 1
+
+    # last part
+    fig.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Time (ns)",
+        yaxis_title="MSR (uV)",
+        xaxis2_title="Time (ns)",
         yaxis2_title="Phase (rad)",
     )
     return fig
