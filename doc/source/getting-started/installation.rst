@@ -59,7 +59,7 @@ The ``qibocal`` package works closely with ``qibolab``.
 Indeed, in order to carry out calibrations appropriately, it is essential to be able
 to translate appropriate theoretical tests into the corresponding pulse sequences that interpret them in hardware.
 In this section we explain how to perform calibration of a device belonging to the `tii platform`.
-To do this, it is necessary to have ``qibolab`` properly installed. 
+To do this, it is necessary to have ``qibolab`` properly installed.
 To do this procedure correctly, visit the `Qibolab installation page`_, where it is explained how to install the appropriate `extra_dependencies`.
 
 

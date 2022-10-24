@@ -11,4 +11,3 @@ your quantum hardware.
     installation
     interface
     runcard
-    
