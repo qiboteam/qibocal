@@ -1174,9 +1174,11 @@ def rb_plot(folder, routine, qubit, format):
         data_circs, data_samples, data_probs)
     # The xaxis is defined by the sequence lengths of the applied circuits.
     xdata = experiment.sequence_lengths
-    if routine == 'standard_rb':
+    if routine == 'standard_rb' or 'dummyrb':
         # The yaxis shows the survival probability, short pm.
-        pm = experiment.probabilities(averaged=True)
+        ydata = experiment.probabilities(averaged=True)
+        # The ground state probability is used as survival probability.
+        pm = np.array(ydata)[:,0]
     elif routine == 'filtered_rb':
         # Not implemented yet.
         pass 
@@ -1186,6 +1188,8 @@ def rb_plot(folder, routine, qubit, format):
         popt, pcov = curve_fit(exp_func, xdata, pm, p0=[0.5, 0.5, 0.5])
     except:
         popt, pcov = (1,1,0), (None)
+    print(xdata)
+    print(pm)
     # The variance of the variables in 'popt' are calculated with 'pcov'.
     # perr = np.sqrt(np.diag(pcov))
     # Plot the data and the fit.
