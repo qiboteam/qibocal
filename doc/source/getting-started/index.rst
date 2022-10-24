@@ -11,4 +11,4 @@ your quantum hardware.
     installation
     interface
     runcard
-    qibolab4qibocal
+    
