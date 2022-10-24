@@ -1,6 +1,17 @@
 # Qibocal
+![Tests](https://github.com/qiboteam/qibocal/workflows/Tests/badge.svg)
+[![codecov](https://codecov.io/gh/qiboteam/qibocal/branch/main/graph/badge.svg?token=1EKZKVEVX0)](https://codecov.io/gh/qiboteam/qibo)
+[![Documentation Status](https://readthedocs.org/projects/qibocal/badge/?version=latest)](https://qibocal.readthedocs.io/en/latest/)
 
-This package provides Quantum Characterization Validation and Verification protocols using [Qibo](https://github.com/qiboteam/qibo) and [Qibolab](https://github.com/qiboteam/qibolab).
+Qibocal provides Quantum Characterization Validation and Verification protocols using [Qibo](https://github.com/qiboteam/qibo) and [Qibolab](https://github.com/qiboteam/qibolab).
+
+Qibocal key features:
+
+- Automatization of calibration routines.
+
+- Declarative inputs using runcard.
+
+- Generation of a report.
 
 ## Installation
 
@@ -21,28 +32,49 @@ poetry install
 pre-commit install
 ```
 
-When installing qibocal poetry will also install [Qibolab](https://github.com/qiboteam/qibolab). Make sure to setup SSH authentication for your GitHub account
-to avoid errors during installation. Here are the instructions on how to [generate](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent) a new SSH key and to [add](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account) it to your GitHub account.
-
-If you are looking to test new features in Qibolab make sure to reinstall Qibolab in the same environment where qibocal is installed.
-
-```sh
-git clone git@github.com:qiboteam/qibolab.git
-cd qibolab
-git checkout <your_branch>
-pip install -e .[tiiq]
-```
-
-
-
 ## Minimal working example
-The command for executing calibration routines is the following:
-```sh
-qq <runcard>
-```
-where:
-- `<runcard>`: yaml file containing the calibration routines to be performed. For more information see the documentation or the runcard examples in the `runcards` folder.
 
+This section shows the steps to perform a resonator spectroscopy with Qibocal.
+### Write a runcard
+A runcard contains all the essential information to run a specific task.
+For our purposes, we can use the following:
+```yml
+platform: tii1q
+
+qubits: [0]
+
+format: csv
+
+actions:
+   resonator_spectroscopy:
+     lowres_width: 5_000_000
+     lowres_step: 2_000_000
+     highres_width: 1_500_000
+     highres_step: 200_000
+     precision_width: 1_500_000
+     precision_step: 100_000
+     software_averages: 1
+     points: 5
+```
+### Run the routine
+To run all the calibration routines specified in the ```runcard```, Qibocal uses the `qq` command
+```sh
+qq <runcard> -o <output_folder>
+```
+if ```<output_folder>``` is specified, the results will be saved in it, otherwise ```qq``` will automatically create a default folder containing the current date and the username.
+
+### Visualize the data
+
+Qibocal gives the possibility to live-plotting with the `qq-live` command
+```sh
+qq-live <output_folder>
+```
 ### Uploading reports to server
 
 In order to upload the report to a centralized server, send to the server administrators your public ssh key (from the machine(s) you are planning to upload the report) and then use the `qq-upload <output_folder>` command. This program will upload your report to the server and generate an unique URL.
+
+## Contributing
+
+Contributions, issues and feature requests are welcome!
+Feel free to check
+<a href="https://github.com/qiboteam/qibocal/issues"><img alt="GitHub issues" src="https://img.shields.io/github/issues-closed/qiboteam/qibocal"/></a>
