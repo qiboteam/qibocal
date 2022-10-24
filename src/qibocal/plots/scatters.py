@@ -1471,6 +1471,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
     )
     return fig
 
+
 # Spin echos
 def spin_echo_time_msr_phase(folder, routine, qubit, format):
 
@@ -1490,12 +1491,16 @@ def spin_echo_time_msr_phase(folder, routine, qubit, format):
     i = 0
     for subfolder in subfolders:
         try:
-            data = DataUnits.load_data(folder, subfolder, routine, format, f"data_q{qubit}")
+            data = DataUnits.load_data(
+                folder, subfolder, routine, format, f"data_q{qubit}"
+            )
         except:
             data = DataUnits(quantities={"Time": "ns"})
 
         try:
-            data_fit = Data.load_data(folder, subfolder, routine, format, f"fit_q{qubit}")
+            data_fit = Data.load_data(
+                folder, subfolder, routine, format, f"fit_q{qubit}"
+            )
         except:
             data_fit = Data(
                 quantities=[
@@ -1505,7 +1510,6 @@ def spin_echo_time_msr_phase(folder, routine, qubit, format):
                     "label1",
                 ]
             )
-
 
         fig.add_trace(
             go.Scatter(

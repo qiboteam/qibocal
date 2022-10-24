@@ -364,6 +364,7 @@ def drag_tunning_fit(data, x, y, qubit, nqubits, labels):
     )
     return data_fit
 
+
 def spin_echo_fit(data, x, y, qubit, nqubits, labels):
 
     data_fit = Data(
