@@ -32,7 +32,7 @@ def dummyrb(
     # Build the circuits.
     experiment.build()
     # Execute the circuits.
-    experiment.execute(paulierror_noisparams=inject_noise)
+    experiment.execute_experiment(paulierror_noisparams=inject_noise)
     # Get the data objects.
     data_probs = experiment.data_probabilities
     data_samples = experiment.data_samples
