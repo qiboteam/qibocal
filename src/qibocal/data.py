@@ -178,8 +178,8 @@ class DataUnits(AbstractData):
         Args:
             folder (path): path to the output folder from which the data will be loaded
             routine (str): calibration routine data to be loaded
-            format (str): data format. Possible choices are 'csv' and 'pickle'.
-
+            format (str): data format. Possible choices are 'csv' and 'pickle'
+            name (str): file's name without extension
         Returns:
             data (``DataUnits``): dataset object with the loaded data.
         """
@@ -199,6 +199,7 @@ class DataUnits(AbstractData):
             options_df = obj.df[obj.options]
             options_df.columns = options_df.columns.droplevel(1)
             obj.df = pd.concat([quantities_df, options_df], axis=1)
+
         elif format == "pickle":
             file = f"{folder}/data/{routine}/{name}.pkl"
             obj.df = pd.read_pickle(file)
@@ -216,6 +217,13 @@ class DataUnits(AbstractData):
         firsts = data.index.get_level_values(None)
         data[self.options] = self.df[self.options].loc[firsts].values
         data.to_csv(f"{path}/{self.name}.csv")
+
+    def to_pickle(self, path):
+        """Save data in pickel file.
+
+        Args:
+            path (str): Path containing output folder."""
+        self.df.to_pickle(f"{path}/{self.name}.pkl")
 
 
 class Data(AbstractData):
@@ -290,7 +298,8 @@ class Data(AbstractData):
         Args:
             folder (path): path to the output folder from which the data will be loaded
             routine (str): calibration routine data to be loaded
-            format (str): data format. Possible choices are 'csv' and 'pickle'.
+            format (str): data format. Possible choices are 'csv' and 'pickle'
+            name (str): file's name without extension
 
         Returns:
             data (``Data``): data object with the loaded data.

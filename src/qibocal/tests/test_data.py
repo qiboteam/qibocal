@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 """Some tests for the Data and DataUnits class"""
+import os
+import shutil
+from turtle import clear
+
 import numpy as np
 import pytest
 from pint import DimensionalityError, UndefinedUnitError
@@ -29,7 +33,14 @@ def random_data_units(length, options=None):
 def random_data(length):
     data = Data()
     for i in range(length):
-        data.add({"int": int(i), "float": float(i), "string": str(i), "bool": bool(i)})
+        data.add(
+            {
+                "int": int(i),
+                "float": float(i),
+                "string": str(f"hello{i}"),
+                "bool": bool(i),
+            }
+        )
     return data
 
 
@@ -183,3 +194,68 @@ def test_get_values_data():
     """Test get_values method of Data class"""
     data = random_data(5)
     assert (data.get_values("int") == data.df["int"]).all()
+
+
+def test_save_open_data_units_csv():
+    """Test to_csv and load_data methods of DataUnits"""
+    folder = "test_folder/data/test_routine"
+    if not os.path.isdir("test_older"):
+        os.mkdir("test_folder")
+        os.mkdir("test_folder/data")
+        os.mkdir(folder)
+    data_units = random_data_units(5)
+    data_units.to_csv(folder)
+    data_upload = DataUnits().load_data("test_folder", "test_routine", "csv", "data")
+    columns = data_units.df.columns
+    shutil.rmtree("test_folder")
+    for i in columns:
+        assert data_units.get_values(i).all() == data_upload.get_values(i).all()
+
+
+def test_save_open_data_units_pickle():
+    """Test to_csv and load_data methods of DataUnits"""
+    folder = "test_folder/data/test_routine"
+    if not os.path.isdir("test_older"):
+        os.mkdir("test_folder")
+        os.mkdir("test_folder/data")
+        os.mkdir(folder)
+    data_units = random_data_units(5)
+    data_units.to_pickle(folder)
+    data_upload = DataUnits().load_data("test_folder", "test_routine", "pickle", "data")
+    columns = data_units.df.columns
+    shutil.rmtree("test_folder")
+    for i in columns:
+        assert data_units.get_values(i).all() == data_upload.get_values(i).all()
+
+
+def test_save_open_data_csv():
+    """Test to_csv and load_data methods of Data"""
+    folder = "test_folder/data/test_routine"
+    if not os.path.isdir("test_older"):
+        os.mkdir("test_folder")
+        os.mkdir("test_folder/data")
+        os.mkdir(folder)
+    data = random_data(5)
+    # csv
+    data.to_csv(folder)
+    data_upload = Data().load_data("test_folder", "test_routine", "csv", "data")
+    columns = data.df.columns
+    shutil.rmtree("test_folder")
+    for i in columns:
+        assert data.get_values(i).all() == data_upload.get_values(i).all()
+
+
+def test_save_open_data_pickle():
+    """Test to_pickle and load_data methods of Data"""
+    folder = "test_folder/data/test_routine"
+    if not os.path.isdir("test_older"):
+        os.mkdir("test_folder")
+        os.mkdir("test_folder/data")
+        os.mkdir(folder)
+    data = random_data(5)
+    data.to_pickle(folder)
+    data_upload = Data().load_data("test_folder", "test_routine", "pickle", "data")
+    columns = data.df.columns
+    shutil.rmtree("test_folder")
+    for i in columns:
+        assert data.get_values(i).all() == data_upload.get_values(i).all()
