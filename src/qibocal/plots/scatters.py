@@ -1003,27 +1003,28 @@ def prob_gate_iteration(folder, routine, qubit, format):
     )
     return fig
 
+
 def standard_rb_plot(folder, routine, qubit, format):
     from scipy.optimize import curve_fit
-    def exp_func(x,A,f,B):
-        """
-        """
-        return A*f**x+B
-    data = Dataset.load_data(
-        folder, routine, 'pickle', 'standardrb')
+
+    def exp_func(x, A, f, B):
+        """ """
+        return A * f**x + B
+
+    data = Dataset.load_data(folder, routine, "pickle", "standardrb")
     dataframe = data.df
     # Extract the data.
     xdata = np.array(dataframe.columns)
-    # Multiple runs means multiple rows. 
+    # Multiple runs means multiple rows.
     ydata = dataframe.to_numpy()
     runs = ydata.shape[0]
-    pm = np.sum(ydata, axis=0)/runs
+    pm = np.sum(ydata, axis=0) / runs
     # Calculate an exponential fit to the given data pm dependent on m.
     # 'popt' stores the optimized parameters and pcov the covariance of popt.
     try:
         popt, pcov = curve_fit(exp_func, xdata, pm, p0=[0.5, 0.5, 0.5])
     except:
-        popt, pcov = (1,1,0), (None)
+        popt, pcov = (1, 1, 0), (None)
     # The variance of the variables in 'popt' are calculated with 'pcov'.
     # perr = np.sqrt(np.diag(pcov))
     # Plot the data and the fit.
@@ -1034,7 +1035,7 @@ def standard_rb_plot(folder, routine, qubit, format):
         horizontal_spacing=0.01,
         vertical_spacing=0.01,
         subplot_titles=(f"standard rb",),
-        )
+    )
     c = "#6597aa"
     fig.add_trace(
         go.Scatter(
@@ -1051,68 +1052,66 @@ def standard_rb_plot(folder, routine, qubit, format):
         go.Scatter(
             x=x_fit,
             y=exp_func(x_fit, *popt),
-            name='A: %f, f: %f, B: %f'%(popt[0], popt[1], popt[2]) ,
+            name="A: {:f}, f: {:f}, B: {:f}".format(popt[0], popt[1], popt[2]),
             line=go.scatter.Line(dash="dot"),
         ),
         row=1,
         col=1,
     )
-    data = Dataset.load_data(
-        folder, routine, 'pickle', 'effectivedepol')
-    depol = data.df.to_numpy()[0,0]
+    data = Dataset.load_data(folder, routine, "pickle", "effectivedepol")
+    depol = data.df.to_numpy()[0, 0]
     fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=0,
-                y=-0.20,
-                showarrow=False,
-                text=f"Effective depol param: {depol}",
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
-            )
+        dict(
+            font=dict(color="black", size=12),
+            x=0,
+            y=-0.20,
+            showarrow=False,
+            text=f"Effective depol param: {depol}",
+            textangle=0,
+            xanchor="left",
+            xref="paper",
+            yref="paper",
         )
-    
+    )
+
     return fig
 
 
 def rb_plot(folder, routine, qubit, format):
-    """
-    """
+    """ """
     from scipy.optimize import curve_fit
+
     from qcvv.calibrations.protocols.experiments import Experiment
+
     # Define the function for the fitting process.
-    def exp_func(x,A,f,B):
-        """
-        """
-        return A*f**x+B
-    # Load the data into Dataset object. 
-    data_circs = Dataset.load_data(
-        folder, routine, 'pickle', 'circuits')
-    data_probs = Dataset.load_data(
-        folder, routine, 'pickle', 'probabilities')
-    data_samples = Dataset.load_data(
-        folder, routine, 'pickle', 'samples')
+    def exp_func(x, A, f, B):
+        """ """
+        return A * f**x + B
+
+    # Load the data into Dataset object.
+    data_circs = Dataset.load_data(folder, routine, "pickle", "circuits")
+    data_probs = Dataset.load_data(folder, routine, "pickle", "probabilities")
+    data_samples = Dataset.load_data(folder, routine, "pickle", "samples")
     # Build an Experiment object out of it.
     experiment = Experiment.retrieve_from_dataobjects(
-        data_circs, data_samples, data_probs)
+        data_circs, data_samples, data_probs
+    )
     # The xaxis is defined by the sequence lengths of the applied circuits.
     xdata = experiment.sequence_lengths
-    if routine == 'standard_rb':
+    if routine == "standard_rb":
         # The yaxis shows the survival probability, short pm.
         ydata = experiment.probabilities(averaged=True)
         # The ground state probability is used as survival probability.
-        pm = np.array(ydata)[:,0]
-    elif routine == 'filtered_rb':
+        pm = np.array(ydata)[:, 0]
+    elif routine == "filtered_rb":
         # Not implemented yet.
-        pass 
+        pass
     # Calculate an exponential fit to the given data pm dependent on m.
     # 'popt' stores the optimized parameters and pcov the covariance of popt.
     try:
         popt, pcov = curve_fit(exp_func, xdata, pm, p0=[0.5, 0.5, 0.5])
     except:
-        popt, pcov = (1,1,0), (None)
+        popt, pcov = (1, 1, 0), (None)
     # The variance of the variables in 'popt' are calculated with 'pcov'.
     # perr = np.sqrt(np.diag(pcov))
     # Plot the data and the fit.
@@ -1123,7 +1122,7 @@ def rb_plot(folder, routine, qubit, format):
         horizontal_spacing=0.01,
         vertical_spacing=0.01,
         subplot_titles=(f"standard rb",),
-        )
+    )
     c = "#6597aa"
     fig.add_trace(
         go.Scatter(
@@ -1140,29 +1139,28 @@ def rb_plot(folder, routine, qubit, format):
         go.Scatter(
             x=x_fit,
             y=exp_func(x_fit, *popt),
-            name='A: %f, f: %f, B: %f'%(popt[0], popt[1], popt[2]) ,
+            name="A: {:f}, f: {:f}, B: {:f}".format(popt[0], popt[1], popt[2]),
             line=go.scatter.Line(dash="dot"),
         ),
         row=1,
         col=1,
     )
-    data = Dataset.load_data(
-        folder, routine, 'pickle', 'effectivedepol')
-    depol = data.df.to_numpy()[0,0]
+    data = Dataset.load_data(folder, routine, "pickle", "effectivedepol")
+    depol = data.df.to_numpy()[0, 0]
     fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=0,
-                y=-0.20,
-                showarrow=False,
-                text=f"Effective depol param: {depol}",
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
-            )
+        dict(
+            font=dict(color="black", size=12),
+            x=0,
+            y=-0.20,
+            showarrow=False,
+            text=f"Effective depol param: {depol}",
+            textangle=0,
+            xanchor="left",
+            xref="paper",
+            yref="paper",
         )
-    
+    )
+
     return fig
 
 

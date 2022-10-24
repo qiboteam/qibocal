@@ -8,7 +8,7 @@ format: pickle
 #   test:
 #     nshots: 1024
 #     points: 1
-# 
+#
 actions:
     filtered_rb:
       generator_name: 'UIRSOnequbitcliffords'
