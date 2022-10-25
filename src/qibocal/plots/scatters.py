@@ -1347,7 +1347,7 @@ def rb_plot(folder, routine, qubit, format):
     """ """
     from scipy.optimize import curve_fit
 
-    from qcvv.calibrations.protocols.experiments import Experiment
+    from qibocal.calibrations.protocols.experiments import Experiment
 
     # Define the function for the fitting process.
     def exp_func(x, A, f, B):
@@ -1355,27 +1355,34 @@ def rb_plot(folder, routine, qubit, format):
         return A * f**x + B
 
     # Load the data into Dataset object.
-    data_circs = Dataset.load_data(folder, routine, "pickle", "circuits")
-    data_probs = Dataset.load_data(folder, routine, "pickle", "probabilities")
-    data_samples = Dataset.load_data(folder, routine, "pickle", "samples")
+    data_circs = Data.load_data(folder, routine, "pickle", "circuits")
+    data_probs = Data.load_data(folder, routine, "pickle", "probabilities")
+    data_samples = Data.load_data(folder, routine, "pickle", "samples")
     # Build an Experiment object out of it.
     experiment = Experiment.retrieve_from_dataobjects(
         data_circs, data_samples, data_probs
     )
     # The xaxis is defined by the sequence lengths of the applied circuits.
     xdata = experiment.sequence_lengths
-    if routine == "standard_rb":
+    if experiment.inverse:
+        # For each run calculate the probabilities.
+        ydata_spread = experiment.probabilities(
+            averaged=False)[:,:,0].flatten()
+        xdata_spread = np.tile(xdata, experiment.runs)
         # The yaxis shows the survival probability, short pm.
         ydata = experiment.probabilities(averaged=True)
         # The ground state probability is used as survival probability.
         pm = np.array(ydata)[:, 0]
-    elif routine == "filtered_rb":
-        # Not implemented yet.
-        pass
+    else:
+        ydata_spread = experiment.filter_single_qubit(averaged=False)
+        xdata_spread = np.tile(xdata, experiment.runs)
+        pm = np.average(ydata_spread, axis=0)
+        ydata_spread = ydata_spread.flatten()
     # Calculate an exponential fit to the given data pm dependent on m.
     # 'popt' stores the optimized parameters and pcov the covariance of popt.
     try:
-        popt, pcov = curve_fit(exp_func, xdata, pm, p0=[0.5, 0.5, 0.5])
+        popt, pcov = curve_fit(
+            exp_func, xdata, pm, p0=[0.5, 0.5, 0.5], max_nfev=10000)
     except:
         popt, pcov = (1, 1, 0), (None)
     # The variance of the variables in 'popt' are calculated with 'pcov'.
@@ -1387,14 +1394,29 @@ def rb_plot(folder, routine, qubit, format):
         cols=1,
         horizontal_spacing=0.01,
         vertical_spacing=0.01,
-        subplot_titles=(f"standard rb",),
+        subplot_titles=(
+            f"Randomized benchmarking, inverse: {experiment.inverse}",
+        ),
     )
-    c = "#6597aa"
+    c1 = "#6597aa"
+    fig.add_trace(
+        go.Scatter(
+            x=xdata_spread,
+            y=ydata_spread,
+            line=dict(color=c1),
+            mode="markers",
+            marker={'opacity':0.2, 'symbol':'square'},
+            name="",
+        ),
+        row=1,
+        col=1,
+    )
+    c2 = "#aa6464"
     fig.add_trace(
         go.Scatter(
             x=xdata,
             y=pm,
-            line=dict(color=c),
+            line=dict(color=c2),
             mode="markers",
             name="pm",
         ),
@@ -1411,7 +1433,7 @@ def rb_plot(folder, routine, qubit, format):
         row=1,
         col=1,
     )
-    data = Dataset.load_data(folder, routine, "pickle", "effectivedepol")
+    data = Data.load_data(folder, routine, "pickle", "effectivedepol")
     depol = data.df.to_numpy()[0, 0]
     fig.add_annotation(
         dict(
