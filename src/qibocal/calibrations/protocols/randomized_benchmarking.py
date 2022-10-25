@@ -46,8 +46,9 @@ def dummyrb(
     # Yield the circuits and outcome data objects.
     yield data_probs
     yield data_samples
-    # Store the effective depol parameter.
-    if not inject_noise or inject_noise is None or inject_noise == "None":
+    # Store the effective depol parameter. If there is no noise to inject (
+    # because it is run on hardware), make it zero.
+    if not inject_noise:
         inject_noise = [0, 0, 0]
     pauli = PauliError(*inject_noise)
     noise = NoiseModel()
