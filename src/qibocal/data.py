@@ -182,6 +182,12 @@ class DataUnits(AbstractData):
             name (str): file's name without extension
         Returns:
             data (``DataUnits``): dataset object with the loaded data.
+        Example:
+            .. code-block:: python
+
+                from qibocal.data import DataUnits
+                format = "pickle" # or "csv"
+                loaded_data = DataUnits().load_data("folder", "routine_folder", format, "file_name")
         """
         obj = cls()
         if format == "csv":
@@ -211,7 +217,30 @@ class DataUnits(AbstractData):
         """Save data in csv file.
 
         Args:
-            path (str): Path containing output folder."""
+            path (str): Path containing output folder.
+        Example:
+            .. code-block:: python
+                from qibocal.data import DataUnits
+                import numpy as np
+                import os
+                data = DataUnits()
+                length = 3
+                folder = "foo"
+                # create directory
+                if not os.path.isdir(folder):
+                    os.mkdir(folder)
+                # generate random dataset
+                for l in range(length):
+                    msr, i, q, phase = np.random.rand(4)
+                    pulse_sequence_result = {
+                        "MSR[V]": msr,
+                        "i[V]": i,
+                        "q[V]": q,
+                        "phase[deg]": phase,
+                    }
+                    data.add({**pulse_sequence_result})
+                data.to_csv(folder)
+        """
         data = self.df[list(self.quantities)].pint.dequantify()
         firsts = data.index.get_level_values(None)
         data[self.options] = self.df[self.options].loc[firsts].values
@@ -261,6 +290,23 @@ class Data(AbstractData):
 
         Args:
             df (dict): dictionary containing the data to be added.
+        Example:
+            .. code-block:: python
+            from qibocal.data import Data
+            data = Data()
+            test = {
+                "int": [1, 2, 3],
+                "float": [3.0, 4.0, 5.0],
+                "string": ["one", "two", "three"],
+                "bool": [True, False, True],
+            }
+            data.load_data_from_dict(test)
+            print(data.df)
+            # it should print:
+            #  int float string   bool
+            # 0   1   3.0    one   True
+            # 1   2   4.0    two  False
+            # 2   3   5.0  three   True
         """
         processed_data = {}
         for key, values in data.items():
@@ -280,7 +326,7 @@ class Data(AbstractData):
             self.df.loc[l, key] = value
 
     def get_values(self, quantity):
-        """Get values of a quantity in specified units.
+        """Get values of a quantity.
 
         Args:
             quantity (str): Quantity to get the values of.
@@ -302,6 +348,13 @@ class Data(AbstractData):
 
         Returns:
             data (``Data``): data object with the loaded data.
+
+        Example:
+            .. code-block:: python
+
+                from qibocal.data import Data
+                format = "pickle" # or "csv"
+                loaded_data = Data().load_data("folder", "routine_folder", format, "file_name")
         """
         obj = cls()
         if format == "csv":
@@ -320,7 +373,31 @@ class Data(AbstractData):
         """Save data in csv file.
 
         Args:
-            path (str): Path containing output folder."""
+            path (str): Path containing output folder.
+        Example:
+            .. code-block:: python
+            from qibocal.data import Data
+            import numpy as np
+            import os
+            data = Data()
+            length = 3
+            folder = "foo"
+            # create directory
+            if not os.path.isdir(folder):
+                os.mkdir(folder)
+            # generate random dataset
+            data = Data()
+            for i in range(length):
+                data.add(
+                    {
+                        "int": int(i),
+                        "float": float(i),
+                        "string": str(f"hello{i}"),
+                        "bool": bool(i),
+                    }
+                )
+            data.to_csv(folder)
+        """
         self.df.to_csv(f"{path}/{self.name}.csv")
 
     def to_pickle(self, path):
