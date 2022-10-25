@@ -247,12 +247,6 @@ class DataUnits(AbstractData):
         data[self.options] = self.df[self.options].loc[firsts].values
         data.to_csv(f"{path}/{self.name}.csv")
 
-    def to_pickle(self, path):
-        """Save data in pickel file.
-
-        Args:
-            path (str): Path containing output folder."""
-        self.df.to_pickle(f"{path}/{self.name}.pkl")
 
 
 class Data(AbstractData):
@@ -402,10 +396,3 @@ class Data(AbstractData):
                 data.to_csv(folder)
         """
         self.df.to_csv(f"{path}/{self.name}.csv")
-
-    def to_pickle(self, path):
-        """Save data in pickel file.
-
-        Args:
-            path (str): Path containing output folder."""
-        self.df.to_pickle(f"{path}/{self.name}.pkl")
