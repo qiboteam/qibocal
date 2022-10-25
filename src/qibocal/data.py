@@ -220,6 +220,7 @@ class DataUnits(AbstractData):
             path (str): Path containing output folder.
         Example:
             .. code-block:: python
+
                 from qibocal.data import DataUnits
                 import numpy as np
                 import os
@@ -292,21 +293,22 @@ class Data(AbstractData):
             df (dict): dictionary containing the data to be added.
         Example:
             .. code-block:: python
-            from qibocal.data import Data
-            data = Data()
-            test = {
-                "int": [1, 2, 3],
-                "float": [3.0, 4.0, 5.0],
-                "string": ["one", "two", "three"],
-                "bool": [True, False, True],
-            }
-            data.load_data_from_dict(test)
-            print(data.df)
-            # it should print:
-            #  int float string   bool
-            # 0   1   3.0    one   True
-            # 1   2   4.0    two  False
-            # 2   3   5.0  three   True
+
+                from qibocal.data import Data
+                data = Data()
+                test = {
+                    "int": [1, 2, 3],
+                    "float": [3.0, 4.0, 5.0],
+                    "string": ["one", "two", "three"],
+                    "bool": [True, False, True],
+                }
+                data.load_data_from_dict(test)
+                print(data.df)
+                # it should print:
+                #  int float string   bool
+                # 0   1   3.0    one   True
+                # 1   2   4.0    two  False
+                # 2   3   5.0  three   True
         """
         processed_data = {}
         for key, values in data.items():
@@ -376,27 +378,28 @@ class Data(AbstractData):
             path (str): Path containing output folder.
         Example:
             .. code-block:: python
-            from qibocal.data import Data
-            import numpy as np
-            import os
-            data = Data()
-            length = 3
-            folder = "foo"
-            # create directory
-            if not os.path.isdir(folder):
-                os.mkdir(folder)
-            # generate random dataset
-            data = Data()
-            for i in range(length):
-                data.add(
-                    {
-                        "int": int(i),
-                        "float": float(i),
-                        "string": str(f"hello{i}"),
-                        "bool": bool(i),
-                    }
-                )
-            data.to_csv(folder)
+
+                from qibocal.data import Data
+                import numpy as np
+                import os
+                data = Data()
+                length = 3
+                folder = "foo"
+                # create directory
+                if not os.path.isdir(folder):
+                    os.mkdir(folder)
+                # generate random dataset
+                data = Data()
+                for i in range(length):
+                    data.add(
+                        {
+                            "int": int(i),
+                            "float": float(i),
+                            "string": str(f"hello{i}"),
+                            "bool": bool(i),
+                        }
+                    )
+                data.to_csv(folder)
         """
         self.df.to_csv(f"{path}/{self.name}.csv")
 
