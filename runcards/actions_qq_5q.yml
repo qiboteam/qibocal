@@ -1,10 +1,20 @@
 platform: tii5q
 
-qubits: [2]
+qubits: [0,1,2,3,4]
 
-format: csv
+format: pickle
 
 actions:
+
+  dummyrb:
+    circuit_generator_class: 'GeneratorOnequbitcliffords'
+    invert: True
+    sequence_lengths: [1,2,5,10]
+    runs: 10
+    nshots: 1024
+    inject_noise: False
+    active_qubit: 2
+
   # resonator_spectroscopy:
   #   lowres_width: 5_000_000
   #   lowres_step: 2_000_000
