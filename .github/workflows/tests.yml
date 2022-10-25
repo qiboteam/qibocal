@@ -49,6 +49,7 @@ jobs:
           poe test
       - name: Test documentation examples
         run: |
+          source $VENV
           make -C doc doctest
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v2
