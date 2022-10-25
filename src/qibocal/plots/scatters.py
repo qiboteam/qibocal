@@ -1269,7 +1269,6 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
     return fig
 
 
-
 def standard_rb_plot(folder, routine, qubit, format):
     from scipy.optimize import curve_fit
 
@@ -1366,8 +1365,7 @@ def rb_plot(folder, routine, qubit, format):
     xdata = experiment.sequence_lengths
     if experiment.inverse:
         # For each run calculate the probabilities.
-        ydata_spread = experiment.probabilities(
-            averaged=False)[:,:,0].flatten()
+        ydata_spread = experiment.probabilities(averaged=False)[:, :, 0].flatten()
         xdata_spread = np.tile(xdata, experiment.runs)
         # The yaxis shows the survival probability, short pm.
         ydata = experiment.probabilities(averaged=True)
@@ -1381,8 +1379,7 @@ def rb_plot(folder, routine, qubit, format):
     # Calculate an exponential fit to the given data pm dependent on m.
     # 'popt' stores the optimized parameters and pcov the covariance of popt.
     try:
-        popt, pcov = curve_fit(
-            exp_func, xdata, pm, p0=[0.5, 0.5, 0.5], max_nfev=10000)
+        popt, pcov = curve_fit(exp_func, xdata, pm, p0=[0.5, 0.5, 0.5], max_nfev=10000)
     except:
         popt, pcov = (1, 1, 0), (None)
     # The variance of the variables in 'popt' are calculated with 'pcov'.
@@ -1394,9 +1391,7 @@ def rb_plot(folder, routine, qubit, format):
         cols=1,
         horizontal_spacing=0.01,
         vertical_spacing=0.01,
-        subplot_titles=(
-            f"Randomized benchmarking, inverse: {experiment.inverse}",
-        ),
+        subplot_titles=(f"Randomized benchmarking, inverse: {experiment.inverse}",),
     )
     c1 = "#6597aa"
     fig.add_trace(
@@ -1405,7 +1400,7 @@ def rb_plot(folder, routine, qubit, format):
             y=ydata_spread,
             line=dict(color=c1),
             mode="markers",
-            marker={'opacity':0.2, 'symbol':'square'},
+            marker={"opacity": 0.2, "symbol": "square"},
             name="",
         ),
         row=1,
@@ -1450,6 +1445,3 @@ def rb_plot(folder, routine, qubit, format):
     )
 
     return fig
-
-
-
