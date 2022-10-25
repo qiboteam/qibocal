@@ -198,10 +198,8 @@ def test_get_values_data():
 def test_save_open_data_units_csv():
     """Test to_csv and load_data methods of DataUnits"""
     folder = "test_folder/data/test_routine"
-    if not os.path.isdir("test_older"):
-        os.mkdir("test_folder")
-        os.mkdir("test_folder/data")
-        os.mkdir(folder)
+    if not os.path.isdir(folder):
+        os.makedirs(folder)
     data_units = random_data_units(5)
     data_units.to_csv(folder)
     data_upload = DataUnits().load_data("test_folder", "test_routine", "csv", "data")
@@ -214,10 +212,8 @@ def test_save_open_data_units_csv():
 def test_save_open_data_units_pickle():
     """Test to_csv and load_data methods of DataUnits"""
     folder = "test_folder/data/test_routine"
-    if not os.path.isdir("test_older"):
-        os.mkdir("test_folder")
-        os.mkdir("test_folder/data")
-        os.mkdir(folder)
+    if not os.path.isdir(folder):
+        os.makedirs(folder)
     data_units = random_data_units(5)
     data_units.to_pickle(folder)
     data_upload = DataUnits().load_data("test_folder", "test_routine", "pickle", "data")
@@ -230,10 +226,8 @@ def test_save_open_data_units_pickle():
 def test_save_open_data_csv():
     """Test to_csv and load_data methods of Data"""
     folder = "test_folder/data/test_routine"
-    if not os.path.isdir("test_older"):
-        os.mkdir("test_folder")
-        os.mkdir("test_folder/data")
-        os.mkdir(folder)
+    if not os.path.isdir(folder):
+        os.makedirs(folder)
     data = random_data(5)
     # csv
     data.to_csv(folder)
@@ -247,10 +241,8 @@ def test_save_open_data_csv():
 def test_save_open_data_pickle():
     """Test to_pickle and load_data methods of Data"""
     folder = "test_folder/data/test_routine"
-    if not os.path.isdir("test_older"):
-        os.mkdir("test_folder")
-        os.mkdir("test_folder/data")
-        os.mkdir(folder)
+    if not os.path.isdir(folder):
+        os.makedirs(folder)
     data = random_data(5)
     data.to_pickle(folder)
     data_upload = Data().load_data("test_folder", "test_routine", "pickle", "data")
