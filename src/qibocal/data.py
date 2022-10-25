@@ -248,7 +248,6 @@ class DataUnits(AbstractData):
         data.to_csv(f"{path}/{self.name}.csv")
 
 
-
 class Data(AbstractData):
     """Class to store the data obtained from calibration routines.
     It is a wrapper to a pandas DataFrame.
