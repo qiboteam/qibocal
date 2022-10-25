@@ -388,7 +388,7 @@ class Data(AbstractData):
                 # create directory
                 if not os.path.isdir(folder):
                     os.mkdir(folder)
-                # generate random dataset
+                # generate a dataset
                 data = Data()
                 for i in range(length):
                     data.add(
