@@ -502,7 +502,8 @@ class Experiment():
         """
         # Check if the samples attribute is not empty e.g. the first entry is
         # not just an empty list.
-        if len(self.outcome_samples[0]) != 0 and from_samples:
+        if len(self.outcome_samples[0]) != 0 \
+            and from_samples and self.nshots is not None:
             # Create all possible state vectors.
             allstates = np.array(list(product([0,1], repeat=len(self.qubits))))
             # The attribute should be lists out of lists out of lists out
@@ -588,7 +589,7 @@ class Experiment():
         # Initiate the list were the filter values will be stored.
         filterslist=[]
         # If shots are available, use this way of calculating the filters.
-        if len(self.outcome_samples[0]) != 0:
+        if len(self.outcome_samples[0]) != 0 and self.nshots is not None:
             # Go through all the runs one by one.
             for count in range(self.runs):
                 # Go through each sequence length
@@ -631,3 +632,4 @@ class Experiment():
             filtersarray = np.array(filterslist).reshape(
                 self.runs, amount_sequences)
         return filtersarray
+

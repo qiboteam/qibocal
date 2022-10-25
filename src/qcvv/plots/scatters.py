@@ -1176,7 +1176,9 @@ def rb_plot(folder, routine, qubit, format):
     xdata = experiment.sequence_lengths
     if routine == 'standard_rb':
         # The yaxis shows the survival probability, short pm.
-        pm = experiment.probabilities(averaged=True)
+        ydata = experiment.probabilities(averaged=True)
+        # The ground state probability is used as survival probability.
+        pm = np.array(ydata)[:,0]
     elif routine == 'filtered_rb':
         # Not implemented yet.
         pass 
