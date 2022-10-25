@@ -6,13 +6,13 @@ from itertools import product
 
 import matplotlib.pyplot as plt
 import numpy as np
-from qcvv.data import Data, Dataset
-from qcvv.decorators import plot
+from qibocal.data import Data
+from qibocal.decorators import plot
 from qibo import gates, get_backend, models
 from qibo.noise import NoiseModel, PauliError, ResetError, ThermalRelaxationError
 from scipy.optimize import curve_fit
 
-from qcvv import plots
+from qibocal import plots
 
 
 def gellmann(j, k, d):
