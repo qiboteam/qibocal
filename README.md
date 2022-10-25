@@ -1,4 +1,4 @@
-# QCVV
+# Qibocal
 
 This package provides Quantum Characterization Validation and Verification protocols using [Qibo](https://github.com/qiboteam/qibo) and [Qibolab](https://github.com/qiboteam/qibolab).
 
@@ -6,8 +6,8 @@ This package provides Quantum Characterization Validation and Verification proto
 
 The package can be installed by source:
 ```sh
-git clone https://github.com/qiboteam/qcvv.git
-cd qcvv
+git clone https://github.com/qiboteam/qibocal.git
+cd qibocal
 pip install .
 ```
 
@@ -15,16 +15,16 @@ pip install .
 ### Developer instructions
 For development make sure to install the package using [`poetry`](https://python-poetry.org/) and to install the pre-commit hooks:
 ```sh
-git clone https://github.com/qiboteam/qcvv.git
-cd qcvv
+git clone https://github.com/qiboteam/qibocal.git
+cd qibocal
 poetry install
 pre-commit install
 ```
 
-When installing QCVV poetry will also install [Qibolab](https://github.com/qiboteam/qibolab). Make sure to setup SSH authentication for your GitHub account
+When installing qibocal poetry will also install [Qibolab](https://github.com/qiboteam/qibolab). Make sure to setup SSH authentication for your GitHub account
 to avoid errors during installation. Here are the instructions on how to [generate](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent) a new SSH key and to [add](https://docs.github.com/en/authentication/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account) it to your GitHub account.
 
-If you are looking to test new features in Qibolab make sure to reinstall Qibolab in the same environment where qcvv is installed.
+If you are looking to test new features in Qibolab make sure to reinstall Qibolab in the same environment where qibocal is installed.
 
 ```sh
 git clone git@github.com:qiboteam/qibolab.git

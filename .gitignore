@@ -136,7 +136,9 @@ dmypy.json
 
 # Jadwiga testing files
 datareading_test.py
-run_standardrb.sh
+testing.py
+run.sh
+run_quantumhardware.sh
 mytest.py
-experiments/
+experiments/*
 .vscode/

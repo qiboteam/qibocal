@@ -1,14 +1,17 @@
-from cmath import exp
-from qcvv.data import Data
-from qcvv.calibrations.protocols.generators import *
-from qcvv.calibrations.protocols.experiments import Experiment
-from shutil import rmtree
-from pandas import read_pickle
+# -*- coding: utf-8 -*-
 import pdb
+from cmath import exp
+from shutil import rmtree
+
 import numpy as np
+from pandas import read_pickle
+from qcvv.calibrations.protocols.experiments import Experiment
+from qcvv.calibrations.protocols.generators import *
+from qcvv.data import Data
+
 
 def test_generators():
-    """ There are different generators for random circuits from a 
+    """There are different generators for random circuits from a
     specific distribution. Here there are tested and shown how to use.
     """
     ############### One qubit Clifford circuits for N qubits ##################
@@ -27,9 +30,11 @@ def test_generators():
     # Check if two randomly generated circuits are not the same, three times.
     assert not np.array_equal(
         next(onequbit_circuitgenerator(1)).unitary(),
-        next(onequbit_circuitgenerator(1)).unitary()) or not np.array_equal(
-        next(onequbit_circuitgenerator(1)).unitary(), 
-        next(onequbit_circuitgenerator(1)).unitary())
+        next(onequbit_circuitgenerator(1)).unitary(),
+    ) or not np.array_equal(
+        next(onequbit_circuitgenerator(1)).unitary(),
+        next(onequbit_circuitgenerator(1)).unitary(),
+    )
     # Check the inverse.
     onequbit_circuitgenerator_i = GeneratorOnequbitcliffords([0], invert=True)
     circuit12_i = next(onequbit_circuitgenerator_i(2))
@@ -37,39 +42,41 @@ def test_generators():
     # inverse gate.
     assert len(circuit12_i.queue) == 3
     # And also the unitary of the circuit should be the identity.
-    assert np.allclose(circuit12_i.unitary(), np.eye(2)) 
+    assert np.allclose(circuit12_i.unitary(), np.eye(2))
     # TODO ask Andrea what also can be tested. If the measurement is correct?
     # 5 qubits case.
     # Either give a list of qubits:
-    fivequbit_circuitgenerator = GeneratorOnequbitcliffords([0,1,2,3,4])
+    fivequbit_circuitgenerator = GeneratorOnequbitcliffords([0, 1, 2, 3, 4])
     # Or just a number, both works.
     fivequbit_circuitgenerator1 = GeneratorOnequbitcliffords(5)
     # The qubit attribute should be the same.
     assert np.array_equal(
-        fivequbit_circuitgenerator.qubits, fivequbit_circuitgenerator1.qubits)
+        fivequbit_circuitgenerator.qubits, fivequbit_circuitgenerator1.qubits
+    )
     # Generate a radom circuit for 5 qubits with 1 Clifford gate each.
     circuit51 = next(fivequbit_circuitgenerator(1))
     # Generate a radom circuit for 5 qubits with 4 Clifford gate each.
-    circuit54 = next(fivequbit_circuitgenerator(4)) 
+    circuit54 = next(fivequbit_circuitgenerator(4))
     assert len(circuit51.queue) == 1
     assert len(circuit54.queue) == 4
     # Check the inverse.
-    twoqubit_circuitgenerator_i = GeneratorOnequbitcliffords([0,1], invert=True)
+    twoqubit_circuitgenerator_i = GeneratorOnequbitcliffords([0, 1], invert=True)
     circuit22_i = next(twoqubit_circuitgenerator_i(2))
     assert np.allclose(circuit22_i.unitary(), np.eye(2**2))
     # Try the act_on variabl.
     fourqubit_circuitgenerator = GeneratorOnequbitcliffords(
-        [0,1,2,3], act_on=2, invert=True)
+        [0, 1, 2, 3], act_on=2, invert=True
+    )
     circuit41 = next(fourqubit_circuitgenerator(2))
-    print('This circuit should only act on the third qubit!')
+    print("This circuit should only act on the third qubit!")
     print(circuit41.draw())
-    print('test_generators successfull!')
+    print("test_generators successfull!")
+
 
 def test_experiments():
-    """
-    """
+    """ """
     # Just some parameters.
-    sequence_lengths = [1,2]
+    sequence_lengths = [1, 2]
     runs = 3
     qubits = [0]
     mygenerator = GeneratorOnequbitcliffords(qubits)
@@ -77,28 +84,28 @@ def test_experiments():
     myexperiment.build()
     myexperiment.execute(nshots=5)
     # Different experiment.
-    sequence_lengths = [1,2]
+    sequence_lengths = [1, 2]
     runs = 3
-    qubits = [0,1,2]
+    qubits = [0, 1, 2]
     mygenerator = GeneratorOnequbitcliffords(qubits, invert=True)
     myexperiment = Experiment(mygenerator, sequence_lengths, qubits, runs)
     myexperiment.build()
     myexperiment.execute(nshots=5)
     # Again different experiment.
-    sequence_lengths = [1,2]
+    sequence_lengths = [1, 2]
     runs = 3
-    qubits = [0,1,2]
+    qubits = [0, 1, 2]
     mygenerator = GeneratorOnequbitcliffords(qubits, invert=True)
     myexperiment = Experiment(mygenerator, sequence_lengths, qubits, runs)
     myexperiment.build()
-    myexperiment.execute(nshots=10, paulierror_noisparams=[0.01,0.03,0.1])
-    print('test_experiment successfull!')
+    myexperiment.execute(nshots=10, paulierror_noisparams=[0.01, 0.03, 0.1])
+    print("test_experiment successfull!")
+
 
 def test_retrieve_from_path():
-    """
-    """
+    """ """
     # Define the parameters.
-    sequence_lengths = [1,2]
+    sequence_lengths = [1, 2]
     runs = 3
     qubits = [0]
     # Initiate the circuit generator.
@@ -113,7 +120,7 @@ def test_retrieve_from_path():
     recexperiment = Experiment.retrieve_from_path(directory)
     # Compare the circuits. They should be the same.
     for countruns in range(runs):
-        for countm in range(len(sequence_lengths)): 
+        for countm in range(len(sequence_lengths)):
             circuit = oldexperiment.circuits_list[countruns][countm]
             reccircuit = recexperiment.circuits_list[countruns][countm]
             assert np.array_equal(circuit.unitary(), reccircuit.unitary())
@@ -123,7 +130,7 @@ def test_retrieve_from_path():
     newdict = recexperiment.__dict__
     for key in olddict:
         # The attribute circuits_list was checked above.
-        if key != 'circuits_list':
+        if key != "circuits_list":
             oldvalue = olddict[key]
             newvalue = newdict[key]
             assert type(oldvalue) == type(newvalue)
@@ -132,18 +139,17 @@ def test_retrieve_from_path():
             elif type(oldvalue) == list:
                 np.array_equal(oldvalue, newvalue)
             elif issubclass(oldvalue.__class__, Generator):
-                assert oldvalue.__class__.__name__ \
-                    ==  newvalue.__class__.__name__
+                assert oldvalue.__class__.__name__ == newvalue.__class__.__name__
             else:
-                raise TypeError(f'Type {type(oldvalue)} not checked!')
-    print('test_retrieve_experiment successfull')
+                raise TypeError(f"Type {type(oldvalue)} not checked!")
+    print("test_retrieve_experiment successfull")
+
 
 def test_execute_and_save():
-    """
-    """
+    """ """
 
     # Set the parameters
-    sequence_lengths = [1,3]
+    sequence_lengths = [1, 3]
     runs = 2
     qubits = [0]
     mygenerator = GeneratorOnequbitcliffords(qubits)
@@ -166,8 +172,7 @@ def test_execute_and_save():
     rmtree(directory1)
     # Make a new experiment, this time with some injected noise!
     mygenerator = GeneratorOnequbitcliffords(qubits, invert=True)
-    myexperiment = Experiment(
-        mygenerator, sequence_lengths, qubits, runs, nshots=10240)
+    myexperiment = Experiment(mygenerator, sequence_lengths, qubits, runs, nshots=10240)
     myexperiment.build_a_save()
     # Pauli noise paramters.
     noiseparams = [0.1, 0.1, 0.05]
@@ -177,8 +182,9 @@ def test_execute_and_save():
     # Load into new object.
     recexperiment = Experiment.retrieve_from_path(directory2)
     # There is a new attribute!
-    assert not hasattr(myexperiment, 'paulierror_noiseparams') \
-        and hasattr(recexperiment, 'paulierror_noiseparams')
+    assert not hasattr(myexperiment, "paulierror_noiseparams") and hasattr(
+        recexperiment, "paulierror_noiseparams"
+    )
     assert recexperiment.paulierror_noiseparams == noiseparams
     # Also, the natural probabilities should differ from the one calculated
     # with the samples!
@@ -187,12 +193,11 @@ def test_execute_and_save():
     assert recprobs.shape == recprobs_fromsamples.shape
     assert not np.allclose(recprobs, recprobs_fromsamples, atol=1e-1)
     rmtree(directory2)
-    print('test_execute_and_save successfull!')
+    print("test_execute_and_save successfull!")
 
 
 def test_probabilities_a_samples():
-    """
-    """
+    """ """
     # Set the parameters
     sequence_lengths = [1, 2, 5]
     runs = 2
@@ -203,14 +208,19 @@ def test_probabilities_a_samples():
     # Initiate the circuit generator abd the experiment.
     mygenerator = GeneratorOnequbitcliffords(qubits)
     myexperiment = Experiment(
-        mygenerator, sequence_lengths, qubits, runs, nshots=nshots)
+        mygenerator, sequence_lengths, qubits, runs, nshots=nshots
+    )
     # Build the cirucuits, the yare stored as attribute in the object.
     myexperiment.build()
     # Execute the experiment, e.g. the single circuits, store the outcomes
     # as attributes.
     myexperiment.execute_experiment()
     assert myexperiment.samples().shape == (
-        runs, len(sequence_lengths), nshots, len(qubits))
+        runs,
+        len(sequence_lengths),
+        nshots,
+        len(qubits),
+    )
     # Get the probabilities calculated with the outcome samples.
     probs_fromsamples = myexperiment.probabilities(averaged=True)
     # Get the probabilities return from the executed circuit itself,
@@ -221,12 +231,12 @@ def test_probabilities_a_samples():
     # For fitting and error bar estimation the probabilities of every run
     # are needed, meaning that there is no average over the runs.
     probs_runs = myexperiment.probabilities(averaged=False)
-    assert probs_runs.shape == (runs, len(sequence_lengths), 2**len(qubits))
-    print('test_probabilities_a_samples successfull!')
+    assert probs_runs.shape == (runs, len(sequence_lengths), 2 ** len(qubits))
+    print("test_probabilities_a_samples successfull!")
+
 
 def test_retrieve_from_dataobjects():
-    """
-    """
+    """ """
     # Set the parameters
     sequence_lengths = [1, 2, 5]
     runs = 2
@@ -236,28 +246,27 @@ def test_retrieve_from_dataobjects():
     # Initiate the circuit generator abd the experiment.
     mygenerator = GeneratorOnequbitcliffords(qubits)
     oldexperiment = Experiment(
-        mygenerator, sequence_lengths, qubits, runs, nshots=nshots)
+        mygenerator, sequence_lengths, qubits, runs, nshots=nshots
+    )
     # Build the cirucuits, the yare stored as attribute in the object.
     oldexperiment.build_a_save()
     # Execute the experiment, e.g. the single circuits, store the outcomes
     # as attributes and in a file.
     oldexperiment.execute_a_save()
     directory = oldexperiment.directory
-    data_samples = Data(
-            'samples', quantities=list(sequence_lengths))
-    data_samples.df = read_pickle(f'{directory}samples.pkl')
-    data_probs = Data(
-            'probabilities', quantities=list(sequence_lengths))
-    data_probs.df = read_pickle(f'{directory}probabilities.pkl')
-    data_circs = Data(
-            'circuits', quantities=list(sequence_lengths))
-    
-    data_circs.df = read_pickle(f'{directory}circuits.pkl')
+    data_samples = Data("samples", quantities=list(sequence_lengths))
+    data_samples.df = read_pickle(f"{directory}samples.pkl")
+    data_probs = Data("probabilities", quantities=list(sequence_lengths))
+    data_probs.df = read_pickle(f"{directory}probabilities.pkl")
+    data_circs = Data("circuits", quantities=list(sequence_lengths))
+
+    data_circs.df = read_pickle(f"{directory}circuits.pkl")
     recexperiment = Experiment.retrieve_from_dataobjects(
-        data_circs, data_samples, data_probs)
+        data_circs, data_samples, data_probs
+    )
     # Compare the circuits. They should be the same.
     for countruns in range(runs):
-        for countm in range(len(sequence_lengths)): 
+        for countm in range(len(sequence_lengths)):
             circuit = oldexperiment.circuits_list[countruns][countm]
             reccircuit = recexperiment.circuits_list[countruns][countm]
             assert np.array_equal(circuit.unitary(), reccircuit.unitary())
@@ -267,7 +276,7 @@ def test_retrieve_from_dataobjects():
     newdict = recexperiment.__dict__
     for key in olddict:
         # The attribute circuits_list was checked above.
-        if key not in ('circuits_list', 'inverse', 'directory'):
+        if key not in ("circuits_list", "inverse", "directory"):
             oldvalue = olddict[key]
             newvalue = newdict[key]
             if type(oldvalue) in (str, int, float, bool):
@@ -281,27 +290,26 @@ def test_retrieve_from_dataobjects():
             elif oldvalue is None:
                 assert oldvalue is oldvalue
             else:
-                raise TypeError(f'Type {type(oldvalue)} not checked!')
-    print('test_retrieve_experiment successfull')
+                raise TypeError(f"Type {type(oldvalue)} not checked!")
+    print("test_retrieve_experiment successfull")
     rmtree(directory)
 
+
 def test_filter_single_qubit():
-    """
-    """
+    """ """
     # Define the parameters.
-    sequence_lengths = [1,2,5,10]
+    sequence_lengths = [1, 2, 5, 10]
     runs = 1
     nshots= 10
     qubits = [0]
     # Initiate the circuit generator.
     mygenerator = GeneratorOnequbitcliffords(qubits, invert=False)
     # Initiate the experiment object.
-    experiment = Experiment(
-        mygenerator, sequence_lengths, qubits, runs, nshots)
+    experiment = Experiment(mygenerator, sequence_lengths, qubits, runs, nshots)
     # Build the circuits.
     experiment.build()
     # Execute the experiment.
-    experiment.execute_experiment(paulierror_noiseparams=[0.1,0.1,0.1])
+    experiment.execute_experiment(paulierror_noiseparams=[0.1, 0.1, 0.1])
     # Get the filter array.
     filters = np.average(experiment.filter_single_qubit(), axis=0)
     pdb.set_trace()

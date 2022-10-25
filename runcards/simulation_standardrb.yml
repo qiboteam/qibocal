@@ -8,11 +8,19 @@ format: pickle
 #   test:
 #     nshots: 1024
 #     points: 1
-# 
+#
 actions:
-    filtered_rb:
-      generator_name: 'UIRSOnequbitcliffords'
-      sequence_lengths: [5,10,15,20,25,30, 40, 17,3,6,14]
-      runs: 100
-      nshots: 1024
-      inject_noise: [0.1, 0.1, 0.1]
+  dummyrb:
+    circuit_generator_class: 'GeneratorOnequbitcliffords'
+    invert: True
+    sequence_lengths: [1,2,5,10]
+    runs: 10
+    nshots: 1024
+    inject_noise: [0.1, 0.1, 0.1]
+    active_qubit: False
+    # filtered_rb:
+      # generator_name: 'UIRSOnequbitcliffords'
+      # sequence_lengths: [5,10,15,20,25,30, 40, 17,3,6,14]
+      # runs: 100
+      # nshots: 1024
+      # inject_noise: [0.1, 0.1, 0.1]

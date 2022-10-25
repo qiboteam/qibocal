@@ -18,16 +18,16 @@ from recommonmark.transform import AutoStructify
 
 sys.path.insert(0, os.path.abspath(".."))
 
-import qcvv
+import qibocal
 
 # -- Project information -----------------------------------------------------
 
-project = "qcvv"
+project = "qibocal"
 copyright = "2022, The Qibo team"
 author = "The Qibo team"
 
 # The full version, including alpha/beta/rc tags
-release = qcvv.__version__
+release = qibocal.__version__
 
 
 # -- General configuration ---------------------------------------------------
@@ -79,7 +79,7 @@ html_theme = "sphinx_rtd_theme"
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = []
+html_static_path = ["_static"]
 
 # -- Intersphinx  -------------------------------------------------------------
 
@@ -95,3 +95,4 @@ autodoc_member_order = "bysource"
 def setup(app):
     app.add_config_value("recommonmark_config", {"enable_eval_rst": True}, True)
     app.add_transform(AutoStructify)
+    app.add_css_file("css/style.css")
