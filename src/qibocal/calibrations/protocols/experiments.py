@@ -4,15 +4,15 @@ from ast import literal_eval
 from itertools import product
 from os import mkdir
 from os.path import isdir, isfile
-from typing import Union
+# from typing import Union
 
 import numpy as np
-from qcvv.data import Data
+from qibocal.data import Data
 from qibo import gates
 from qibo.noise import NoiseModel, PauliError
 
-from qcvv.calibrations.protocols.generators import *
-from qcvv.calibrations.protocols.utils import dict_to_txt, pkl_to_list
+from qibocal.calibrations.protocols.generators import *
+from qibocal.calibrations.protocols.utils import dict_to_txt, pkl_to_list
 
 
 class Experiment:
@@ -77,10 +77,21 @@ class Experiment:
         if not hasattr(self, "sequence_lengths") or self.sequence_lengths is None:
             # Get the sequence lengths.
             sequence_lenghts = dataframe.columns.tolist()
-            # The pickeling process reverses the order, reoder ot.
+            # The pickeling process reverses the order, reoder it.
             self.sequence_lengths = np.array(sequence_lenghts[::-1])
         # Store the outcome as an attribute to further work with its.
         self.circuits_list = [x[::-1] for x in circuits_list]
+        # Check how many gates there are in a single circuit. If it is one more
+        # then the supposed sequence length, there is an inverse.
+        # Since there is a measurement gate, actually its two more.
+        first_sl = self.sequence_lengths[0]
+        first_cl = len(self.circuits_list[0][0].queue)
+        if first_sl + 2 == first_cl:
+            self.inverse = True
+        elif first_sl + 1 == first_cl:
+            self.inverse = False
+        else:
+            raise ValueError("circuits don't match sequence length!")
 
     @property
     def data_samples(self):
@@ -213,7 +224,7 @@ class Experiment:
     @classmethod
     def retrieve_from_path(cls, path: str, **kwargs):
         """ """
-        from qcvv.calibrations.protocols.utils import dict_from_comments_txt
+        from qibocal.calibrations.protocols.utils import dict_from_comments_txt
 
         # Initiate an instance of the experiment class.
         obj = cls()
@@ -511,7 +522,7 @@ class Experiment:
     def probabilities(
         self,
         averaged: bool = True,
-        run: Union[int, list] = None,
+        run: int = None,
         from_samples: bool = True,
         **kwargs,
     ) -> np.ndarray:
@@ -577,7 +588,7 @@ class Experiment:
         """ """
         pass
 
-    def fit_exponential(self, ydata: Union[list, np.ndarray] = None, **kwargs):
+    def fit_exponential(self, ydata: list = None, **kwargs):
         """ """
         from scipy.optimize import curve_fit
 
@@ -605,8 +616,9 @@ class Experiment:
 
     ############################ Filter functions ############################
 
-    def filter_single_qubit(self, **kwargs):
-        """ """
+    def filter_single_qubit(self, averaged:bool=True, **kwargs):
+        """
+        """
         d = 2
         amount_sequences = len(self.sequence_lengths)
         # Initiate the list were the filter values will be stored.
@@ -626,7 +638,7 @@ class Experiment:
                     # Go throught each shot outcome.
                     for count_shot in range(self.nshots):
                         # This is 0 or 1.
-                        outcome = self.outcome_samples[count][m][count_shot]
+                        outcome = self.outcome_samples[count][m][count_shot][0]
                         # Take the probability that the ideal circuit has that
                         # outcome too.
                         prob = executed_circuit.probabilities()[int(outcome)]
@@ -636,7 +648,8 @@ class Experiment:
                     filterslist.append(filterf / self.nshots)
             # Reshape such that each run again is an array filled with filter
             # values corresponding to each sequence length.
-            filtersarray = np.array(filterslist).reshape(self.runs, amount_sequences)
+            filtersarray = np.array(filterslist).reshape(
+                self.runs, amount_sequences)
         # If not shots are available, use the probabilities.
         else:
             probs = self.probabilities(averaged=False)
@@ -653,5 +666,8 @@ class Experiment:
                         np.abs(alpha * talpha + beta * tbeta) ** 2 - 1 / d
                     )
                     filterslist.append(filterf)
-            filtersarray = np.array(filterslist).reshape(self.runs, amount_sequences)
+            filtersarray = np.array(filterslist).reshape(
+                self.runs, amount_sequences)
+        if averaged:
+            filtersarray = np.average(filtersarray, axis=0)
         return filtersarray
