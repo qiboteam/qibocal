@@ -1382,7 +1382,7 @@ def rb_plot(folder, routine, qubit, format):
     # 'popt' stores the optimized parameters and pcov the covariance of popt.
     try:
         popt, pcov = curve_fit(
-            exp_func, xdata, pm, p0=[0.5, 0.5, 0.5], max_nfev=10000)
+            exp_func, xdata, pm, p0=[0.5, 0.5, 0.5], maxfev=10000)
     except:
         popt, pcov = (1, 1, 0), (None)
     # The variance of the variables in 'popt' are calculated with 'pcov'.
