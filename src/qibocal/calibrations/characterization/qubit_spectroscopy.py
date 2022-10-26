@@ -295,7 +295,9 @@ def qubit_attenuation(
     if isinstance(attenuation_list, str):
         if "range" in attenuation_list:
             attenuation_list = tuple(attenuation_list.replace("range", ""))
-            attenuation_list = range(attenuation_list[0], attenuation_list[1], attenuation_list[2])
+            attenuation_list = range(
+                attenuation_list[0], attenuation_list[1], attenuation_list[2]
+            )
 
     count = 0
     attenuation_list = np.array(attenuation_list)
