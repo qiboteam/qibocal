@@ -183,7 +183,7 @@ class DataUnits(AbstractData):
         Returns:
             data (``DataUnits``): dataset object with the loaded data.
         Example:
-            .. testcode
+            .. testcode::
 
                 from qibocal.data import DataUnits
                 format = "pickle" # or "csv"
@@ -219,7 +219,7 @@ class DataUnits(AbstractData):
         Args:
             path (str): Path containing output folder.
         Example:
-            .. testcode
+            .. testcode::
 
                 from qibocal.data import DataUnits
                 import numpy as np
@@ -286,7 +286,7 @@ class Data(AbstractData):
         Args:
             df (dict): dictionary containing the data to be added.
         Example:
-            .. testcode
+            .. testcode::
 
                 from qibocal.data import Data
                 data = Data()
@@ -298,11 +298,12 @@ class Data(AbstractData):
                 }
                 data.load_data_from_dict(test)
                 print(data.df)
-                # it should print:
-                #  int float string   bool
-                # 0   1   3.0    one   True
-                # 1   2   4.0    two  False
-                # 2   3   5.0  three   True
+            .. testoutput::
+
+                  int float string   bool
+                0   1   3.0    one   True
+                1   2   4.0    two  False
+                2   3   5.0  three   True
         """
         processed_data = {}
         for key, values in data.items():
@@ -346,7 +347,7 @@ class Data(AbstractData):
             data (``Data``): data object with the loaded data.
 
         Example:
-            .. testcode
+            .. testcode::
 
                 from qibocal.data import Data
                 format = "pickle" # or "csv"
@@ -371,7 +372,7 @@ class Data(AbstractData):
         Args:
             path (str): Path containing output folder.
         Example:
-            .. testcode
+            .. testcode::
 
                 from qibocal.data import Data
                 import numpy as np
