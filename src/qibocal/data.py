@@ -183,11 +183,7 @@ class DataUnits(AbstractData):
         Returns:
             data (``DataUnits``): dataset object with the loaded data.
         Example:
-            .. testcode::
-
-                from qibocal.data import DataUnits
-                format = "pickle" # or "csv"
-                loaded_data = DataUnits().load_data("folder", "routine_folder", format, "file_name")
+            see the method ``load_data`` in class ``Data`` 
         """
         obj = cls()
         if format == "csv":
@@ -221,9 +217,9 @@ class DataUnits(AbstractData):
         Example:
             .. testcode::
 
+                import os
                 from qibocal.data import DataUnits
                 import numpy as np
-                import os
                 data = DataUnits()
                 length = 3
                 folder = "foo"
@@ -241,6 +237,12 @@ class DataUnits(AbstractData):
                     }
                     data.add({**pulse_sequence_result})
                 data.to_csv(folder)
+
+            .. testcleanup::
+
+                import shutil
+                if os.path.isdir("foo"):
+                    shutil.rmtree("foo")
         """
         data = self.df[list(self.quantities)].pint.dequantify()
         firsts = data.index.get_level_values(None)
@@ -349,8 +351,32 @@ class Data(AbstractData):
             .. testcode::
 
                 from qibocal.data import Data
-                format = "pickle" # or "csv"
-                loaded_data = Data().load_data("folder", "routine_folder", format, "file_name")
+                import os
+                folder = "test_folder/data/test_routine"
+                length = 3
+                if not os.path.isdir(folder):
+                    os.makedirs(folder)
+                # create a dataset
+                data = Data()
+                for i in range(length):
+                    data.add(
+                        {
+                            "int": int(i),
+                            "float": float(i),
+                            "string": str(f"hello{i}"),
+                            "bool": bool(i),
+                        }
+                    )
+                # save the dataset in csv format
+                data.to_csv(folder)
+                # upload the dataset 
+                data_upload = Data().load_data("test_folder", "test_routine", "csv", "data")
+                
+            .. testcleanup::
+
+                import shutil
+                shutil.rmtree("test_folder")
+                
         """
         obj = cls()
         if format == "csv":
@@ -372,7 +398,8 @@ class Data(AbstractData):
             path (str): Path containing output folder.
         Example:
             .. testcode::
-
+            
+                import shutil
                 from qibocal.data import Data
                 import numpy as np
                 import os
@@ -394,5 +421,11 @@ class Data(AbstractData):
                         }
                     )
                 data.to_csv(folder)
+            
+            .. testcleanup::
+
+                import shutil
+                if os.path.isdir("foo"):
+                    shutil.rmtree("foo")
         """
         self.df.to_csv(f"{path}/{self.name}.csv")
