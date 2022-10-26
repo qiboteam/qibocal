@@ -293,7 +293,9 @@ def qubit_attenuation(
     freqrange = np.arange(freq_start, freq_end, freq_step) + lo_qcm_frequency
 
     if isinstance(attenuation_list, str):
-        attenuation_list = eval(attenuation_list)
+        if "range" in attenuation_list:
+            attenuation_list = tuple(attenuation_list.replace("range", ""))
+            attenuation_list = range(attenuation_list[0], attenuation_list[1], attenuation_list[2])
 
     count = 0
     attenuation_list = np.array(attenuation_list)
