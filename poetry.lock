@@ -838,11 +838,12 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "qibo"
-version = "0.1.8"
+version = "0.1.9.dev0"
 description = "A framework for quantum computing with hardware acceleration."
 category = "main"
 optional = false
 python-versions = ">=3.7.0"
+develop = false
 
 [package.dependencies]
 cma = "*"
@@ -859,6 +860,12 @@ tabulate = "*"
 docs = ["IPython", "nbsphinx", "recommonmark", "sphinx", "sphinx-markdown-tables", "sphinx-rtd-theme", "sphinxcontrib-bibtex"]
 tests = ["cirq", "dill", "ply", "pre-commit", "pytest", "sklearn"]
 
+[package.source]
+type = "git"
+url = "https://github.com/qiboteam/qibo.git"
+reference = "master"
+resolved_reference = "8b0e0d49cbab6eae7d550ae55081af9c0c0f448e"
+
 [[package]]
 name = "qibolab"
 version = "0.0.1.dev6"
@@ -872,7 +879,7 @@ develop = false
 qibo = ">=0.1.8"
 
 [package.extras]
-docs = ["IPython", "nbsphinx", "recommonmark", "sphinx", "sphinx-markdown-tables", "sphinx-rtd-theme", "sphinxcontrib-bibtex"]
+docs = ["IPython", "nbsphinx", "recommonmark", "sphinx", "sphinx_markdown_tables", "sphinx_rtd_theme", "sphinxcontrib-bibtex"]
 tiiq = ["qblox-instruments (==0.6.1)", "qcodes"]
 
 [package.source]
@@ -1246,7 +1253,7 @@ docs = []
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8, <4"
-content-hash = "58e0eab4c496260000ebf3cf08abff893e8d0a11d9d393fb61c8eae3e8eb553a"
+content-hash = "22718091d26225b0c473aa017570ad53fee81c2d86ca17f1ab0f2d9c8cbf76cc"
 
 [metadata.files]
 alabaster = [
@@ -2058,10 +2065,7 @@ pyyaml = [
     {file = "PyYAML-6.0-cp39-cp39-win_amd64.whl", hash = "sha256:b3d267842bf12586ba6c734f89d1f5b871df0273157918b0ccefa29deb05c21c"},
     {file = "PyYAML-6.0.tar.gz", hash = "sha256:68fb519c14306fec9720a2a5b45bc9f0c8d1b9c72adf45c37baedfcd949c35a2"},
 ]
-qibo = [
-    {file = "qibo-0.1.8-py3-none-any.whl", hash = "sha256:a637bf5ef062328b2416159435c7bc33ddb161a553d2e0ad8727a14c8f86b68c"},
-    {file = "qibo-0.1.8.tar.gz", hash = "sha256:aff77c6b0d519c0849495435decd1d91c94ba8ab618a5cb2f017b5f4073be4f5"},
-]
+qibo = []
 qibolab = []
 recommonmark = [
     {file = "recommonmark-0.7.1-py2.py3-none-any.whl", hash = "sha256:1b1db69af0231efce3fa21b94ff627ea33dee7079a01dd0a7f8482c3da148b3f"},
