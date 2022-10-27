@@ -45,7 +45,8 @@ def random_data(length):
 
 def test_data_initialization():
     """Test DataUnits constructor"""
-    data = DataUnits()
+    data = DataUnits(name="data")
+    assert data.name == "data"
     assert len(data.df.columns) == 4
     assert list(data.df.columns) == [  # pylint: disable=E1101
         "MSR",
@@ -135,6 +136,39 @@ def test_data_add():
     assert len(data) == 5
     data.add({"int": 123, "float": 123.456, "string": "123", "bool": True})
     assert len(data) == 6
+
+    data0 = Data()
+    data0.add(
+        {
+            "int": 0,
+            "float": 0.0,
+            "string": "0",
+            "bool": 0,
+        }
+    )
+    data1 = Data()
+    data1.add(
+        {
+            "int": 1,
+            "float": 1.0,
+            "string": "1",
+            "bool": 1,
+        }
+    )
+    data0.__add__(data1)
+    data_results = Data()
+    for i in [0, 1]:
+        data_results.add(
+            {
+                "int": int(i),
+                "float": float(i),
+                "string": str(f"{i}"),
+                "bool": bool(i),
+            }
+        )
+    columns = data.df.columns
+    for i in columns:
+        assert data0.get_values(i).all() == data_results.get_values(i).all()
 
 
 def test_data_units_load_data_from_dict():
