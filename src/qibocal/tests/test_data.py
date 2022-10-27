@@ -2,6 +2,7 @@
 """Some tests for the Data and DataUnits class"""
 import os
 import shutil
+from operator import length_hint
 
 import numpy as np
 import pytest
@@ -29,6 +30,25 @@ def random_data_units(length, options=None):
     return data
 
 
+def data_units_dummy(length, options=None):
+    data = DataUnits(options=options)
+    for l in range(length):
+
+        pulse_sequence_result = {
+            "MSR[V]": float(l),
+            "i[V]": float(l),
+            "q[V]": float(l),
+            "phase[deg]": float(l),
+        }
+        add_options = {}
+        if options is not None:
+            for option in options:
+                add_options[option] = float(l)
+        data.add({**pulse_sequence_result, **add_options})
+
+    return data
+
+
 def random_data(length):
     data = Data()
     for i in range(length):
@@ -38,6 +58,19 @@ def random_data(length):
                 "float": float(i),
                 "string": str(f"hello{i}"),
                 "bool": bool(i),
+            }
+        )
+    return data
+
+
+def data_dummy(length):
+
+    data = Data()
+    for i in range(length):
+        data.add(
+            {
+                "num1": 0.0,
+                "num2": 1.0,
             }
         )
     return data
@@ -271,7 +304,7 @@ def test_save_open_data_units_csv():
     path = "test_folder/data/test_routine"
     if not os.path.isdir(path):
         os.makedirs(path)
-    data_units = random_data_units(5, options=["Unnamed"])
+    data_units = data_units_dummy(5, options=["Unnamed"])
     data_units.to_csv(path)
     isExist = os.path.exists(f"{path}/{data_units.name}.csv")
     assert isExist is True
@@ -283,7 +316,7 @@ def test_save_open_data_units_csv():
     columns = data_units.df.columns
     shutil.rmtree("test_folder")
     for i in columns:
-        assert data_units.get_values(i).all() == data_upload.get_values(i).all()
+        assert (data_units.get_values(i).to_numpy() == data_upload.get_values(i)).all()
 
 
 def test_save_open_data_units_pickle():
@@ -294,10 +327,8 @@ def test_save_open_data_units_pickle():
     data_units = random_data_units(5)
     data_units.to_pickle(folder)
     data_upload = DataUnits().load_data("test_folder", "test_routine", "pickle", "data")
-    columns = data_units.df.columns
     shutil.rmtree("test_folder")
-    for i in columns:
-        assert data_units.get_values(i).all() == data_upload.get_values(i).all()
+    assert data_units.df.equals(data_upload.df)
 
 
 def test_save_open_data_csv():
@@ -305,17 +336,14 @@ def test_save_open_data_csv():
     path = "test_folder/data/test_routine"
     if not os.path.isdir(path):
         os.makedirs(path)
-    data = random_data(5)
-    # csv
+    data = data_dummy(5)
     data.to_csv(path)
     isExist = os.path.exists(f"{path}/{data.name}.csv")
     assert isExist is True
     with pytest.raises(ValueError):
         data_upload = Data().load_data("test_folder", "test_routine", "txt", "data")
     data_upload = Data().load_data("test_folder", "test_routine", "csv", "data")
-    columns = data.df.columns
-    for i in columns:
-        assert data.get_values(i).all() == data_upload.get_values(i).all()
+    assert data.df.equals(data_upload.df)
 
 
 def test_save_open_data_pickle():
