@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 from pint import DimensionalityError, UndefinedUnitError
 
-from qibocal.data import Data, DataUnits
+from qibocal.data import AbstractData, Data, DataUnits
 
 
 def random_data_units(length, options=None):
@@ -171,6 +171,23 @@ def test_data_add():
         assert data0.get_values(i).all() == data_results.get_values(i).all()
 
 
+def test_abstract_data_NotImplementedErrors():
+    data = AbstractData()
+    with pytest.raises(NotImplementedError):
+        data.add(
+            {
+                "int": 1,
+                "float": 1.0,
+                "string": "1",
+                "bool": 1,
+            }
+        )
+
+    folder, routine, format, name = "folder", "routine", "csv", "name"
+    with pytest.raises(NotImplementedError):
+        data.load_data(folder, routine, format, name)
+
+
 def test_data_units_load_data_from_dict():
     """Test set method of DataUnits class"""
     data_units = DataUnits()
@@ -231,11 +248,13 @@ def test_get_values_data():
 
 def test_save_open_data_units_csv():
     """Test to_csv and load_data methods of DataUnits"""
-    folder = "test_folder/data/test_routine"
-    if not os.path.isdir(folder):
-        os.makedirs(folder)
+    path = "test_folder/data/test_routine"
+    if not os.path.isdir(path):
+        os.makedirs(path)
     data_units = random_data_units(5)
-    data_units.to_csv(folder)
+    data_units.to_csv(path)
+    isExist = os.path.exists(f"{path}/{data_units.name}.csv")
+    assert isExist == True
     data_upload = DataUnits().load_data("test_folder", "test_routine", "csv", "data")
     columns = data_units.df.columns
     shutil.rmtree("test_folder")
@@ -257,14 +276,24 @@ def test_save_open_data_units_pickle():
         assert data_units.get_values(i).all() == data_upload.get_values(i).all()
 
 
+def test_data_df():
+    data = Data()
+    with pytest.raises(TypeError):
+        data.df(0)
+
+
 def test_save_open_data_csv():
     """Test to_csv and load_data methods of Data"""
-    folder = "test_folder/data/test_routine"
-    if not os.path.isdir(folder):
-        os.makedirs(folder)
+    path = "test_folder/data/test_routine"
+    if not os.path.isdir(path):
+        os.makedirs(path)
     data = random_data(5)
     # csv
-    data.to_csv(folder)
+    data.to_csv(path)
+    isExist = os.path.exists(f"{path}/{data.name}.csv")
+    assert isExist == True
+    with pytest.raises(ValueError):
+        data_upload = Data().load_data("test_folder", "test_routine", "txt", "data")
     data_upload = Data().load_data("test_folder", "test_routine", "csv", "data")
     columns = data.df.columns
     shutil.rmtree("test_folder")
