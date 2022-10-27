@@ -252,7 +252,7 @@ class Data(AbstractData):
     It is a wrapper to a pandas DataFrame.
 
     Args:
-        quantities (dict): dictionary quantities to be saved.
+        quantities (list): list of quantities to be saved.
     """
 
     def __init__(self, name=None, quantities=None):

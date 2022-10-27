@@ -23,7 +23,7 @@ def random_data_units(length, options=None):
         add_options = {}
         if options is not None:
             for option in options:
-                add_options[option] = str(l)
+                add_options[option] = l
         data.add({**pulse_sequence_result, **add_options})
 
     return data
@@ -43,7 +43,7 @@ def random_data(length):
     return data
 
 
-def test_data_initialization():
+def test_data_units_initialization():
     """Test DataUnits constructor"""
     data = DataUnits(name="data")
     assert data.name == "data"
@@ -75,6 +75,18 @@ def test_data_initialization():
         "q",
         "phase",
     ]
+
+
+def test_data_initialization():
+    """Test initialization of class Data"""
+    quantities_test = ["test"]
+    data = Data(quantities=quantities_test)
+    data.add(
+        {
+            "test": 0,
+        }
+    )
+    assert data.quantities == quantities_test
 
 
 def test_data_units_units():
@@ -172,6 +184,7 @@ def test_data_add():
 
 
 def test_abstract_data_NotImplementedErrors():
+    """Test methods of AbstractData class with NotImplementedError"""
     data = AbstractData()
     with pytest.raises(NotImplementedError):
         data.add(
@@ -210,6 +223,13 @@ def test_data_units_load_data_from_dict():
     assert len(data_units1) == 3
     assert (data_units1.get_values("option1") == ["one", "two", "three"]).all()
     assert (data_units1.get_values("option2") == [1, 2, 3]).all()
+
+
+def test_df_data_units():
+    """Test the method df in DataUnit class"""
+    data = DataUnits()
+    with pytest.raises(TypeError):
+        data.df(0)
 
 
 def test_data_load_data_from_dict():
@@ -251,10 +271,14 @@ def test_save_open_data_units_csv():
     path = "test_folder/data/test_routine"
     if not os.path.isdir(path):
         os.makedirs(path)
-    data_units = random_data_units(5)
+    data_units = random_data_units(5, options=["Unnamed"])
     data_units.to_csv(path)
     isExist = os.path.exists(f"{path}/{data_units.name}.csv")
-    assert isExist == True
+    assert isExist is True
+    with pytest.raises(ValueError):
+        data_upload = DataUnits().load_data(
+            "test_folder", "test_routine", "txt", "data"
+        )
     data_upload = DataUnits().load_data("test_folder", "test_routine", "csv", "data")
     columns = data_units.df.columns
     shutil.rmtree("test_folder")
@@ -285,12 +309,11 @@ def test_save_open_data_csv():
     # csv
     data.to_csv(path)
     isExist = os.path.exists(f"{path}/{data.name}.csv")
-    assert isExist == True
+    assert isExist is True
     with pytest.raises(ValueError):
         data_upload = Data().load_data("test_folder", "test_routine", "txt", "data")
     data_upload = Data().load_data("test_folder", "test_routine", "csv", "data")
     columns = data.df.columns
-    shutil.rmtree("test_folder")
     for i in columns:
         assert data.get_values(i).all() == data_upload.get_values(i).all()
 
@@ -303,13 +326,12 @@ def test_save_open_data_pickle():
     data = random_data(5)
     data.to_pickle(folder)
     data_upload = Data().load_data("test_folder", "test_routine", "pickle", "data")
-    columns = data.df.columns
     shutil.rmtree("test_folder")
-    for i in columns:
-        assert data.get_values(i).all() == data_upload.get_values(i).all()
+    assert data.df.equals(data_upload.df)
 
 
 def test_save_abstract_data_csv():
+    """Test the to_csv method in AbstractData"""
     data = AbstractData()
     with pytest.raises(NotImplementedError):
         data.to_csv("path")
