@@ -229,7 +229,7 @@ def test_df_data_units():
     """Test the method df in DataUnit class"""
     data = DataUnits()
     with pytest.raises(TypeError):
-        data.df(0)
+        data.df = 0
 
 
 def test_data_load_data_from_dict():

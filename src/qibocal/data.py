@@ -112,7 +112,7 @@ class DataUnits(AbstractData):
         if isinstance(df, pd.DataFrame):
             self._df = df
         else:
-            raise_error(TypeError, f"{df.type} is not a pd.DataFrame.")
+            raise_error(TypeError, f"{type(df)} is not a pd.DataFrame.")
 
     def load_data_from_dict(self, data: dict):
         """Set df attribute.
