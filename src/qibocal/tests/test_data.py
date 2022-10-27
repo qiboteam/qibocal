@@ -307,3 +307,9 @@ def test_save_open_data_pickle():
     shutil.rmtree("test_folder")
     for i in columns:
         assert data.get_values(i).all() == data_upload.get_values(i).all()
+
+
+def test_save_abstract_data_csv():
+    data = AbstractData()
+    with pytest.raises(NotImplementedError):
+        data.to_csv("path")

@@ -44,10 +44,7 @@ class AbstractData:
 
         Args:
             path (str): Path containing output folder."""
-        if self.quantities == None:
-            self.df.to_csv(f"{path}/{self.name}.csv")
-        else:
-            self.df.pint.dequantify().to_csv(f"{path}/{self.name}.csv")
+        raise_error(NotImplementedError)
 
     def to_pickle(self, path):
         """Save data in pickel file.
