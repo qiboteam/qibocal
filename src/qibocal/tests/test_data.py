@@ -276,12 +276,6 @@ def test_save_open_data_units_pickle():
         assert data_units.get_values(i).all() == data_upload.get_values(i).all()
 
 
-def test_data_df():
-    data = Data()
-    with pytest.raises(TypeError):
-        data.df(0)
-
-
 def test_save_open_data_csv():
     """Test to_csv and load_data methods of Data"""
     path = "test_folder/data/test_routine"
