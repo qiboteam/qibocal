@@ -182,22 +182,21 @@ def test_data_add():
     data.add({"int": 123, "float": 123.456, "string": "123", "bool": True})
     assert len(data) == 6
 
+
+def test_data__add__():
+
     data0 = Data()
     data0.add(
         {
-            "int": 0,
-            "float": 0.0,
-            "string": "0",
-            "bool": 0,
+            "col1": 0,
+            "col2": 0,
         }
     )
     data1 = Data()
     data1.add(
         {
-            "int": 1,
-            "float": 1.0,
-            "string": "1",
-            "bool": 1,
+            "col1": 1,
+            "col2": 1,
         }
     )
     data0.__add__(data1)
@@ -205,15 +204,11 @@ def test_data_add():
     for i in [0, 1]:
         data_results.add(
             {
-                "int": int(i),
-                "float": float(i),
-                "string": str(f"{i}"),
-                "bool": bool(i),
+                "col1": int(i),
+                "col2": int(i),
             }
         )
-    columns = data.df.columns
-    for i in columns:
-        assert data0.get_values(i).all() == data_results.get_values(i).all()
+    assert data0.df.equals(data_results.df)
 
 
 def test_abstract_data_NotImplementedErrors():
