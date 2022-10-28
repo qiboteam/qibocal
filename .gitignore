@@ -142,3 +142,4 @@ run_quantumhardware.sh
 mytest.py
 experiments/*
 .vscode/
+.vscode/settings.json
