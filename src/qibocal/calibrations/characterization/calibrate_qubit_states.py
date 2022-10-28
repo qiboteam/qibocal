@@ -23,7 +23,7 @@ def calibrate_qubit_states(
         platform (:class:`qibolab.platforms.abstract.AbstractPlatform`): custom abstract platform on which we perform the calibration.
         qubit (int): index representing the target qubit into the chip.
         niter (int): number of times the pulse sequence will be reproduced.
-        points (int): every points step data are saved.  
+        points (int): every points step data are saved.
     """
 
     # create exc sequence
