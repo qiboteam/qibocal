@@ -5,8 +5,8 @@ from qibolab.pulses import PulseSequence
 from qibocal.calibrations.characterization.utils import snr, choose_freq, get_noise, update_f, plot_punchout, plot_flux
 
 
-def scan_level(best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit):
-    for _ in max_runs:
+def scan_level(best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit, sequence):
+    for _ in range(max_runs):
         if _ == 0:
             freq = best_f
         else:
@@ -27,7 +27,7 @@ def scan_level(best_f, best_msr, max_runs, thr, span, resolution, noise, platfor
     return best_f, best_msr
 
 
-def scan_small(best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit):
+def scan_small(best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit, sequence):
     start_f = best_f
     scan = np.linspace(-span/2, span/2, resolution)
     for s in scan:
@@ -76,9 +76,9 @@ def resonator_punchout_sample(
         noise = get_noise(background, platform, ro_pulse, qubit, sequence)
         best_msr = noise
         for span in spans:
-            best_f, best_msr = scan_level(best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit)
+            best_f, best_msr = scan_level(best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit, sequence)
         for span in small_spans:
-            best_f, best_msr = scan_small(best_f, best_msr, max_runs, thr, span, 10, noise, platform, ro_pulse, qubit)
+            best_f, best_msr = scan_small(best_f, best_msr, max_runs, thr, span, 10, noise, platform, ro_pulse, qubit, sequence)
         freqs.append(best_f)
         if att >= 30:
             if abs(snr(best_msr, noise)) > opt_snr:
