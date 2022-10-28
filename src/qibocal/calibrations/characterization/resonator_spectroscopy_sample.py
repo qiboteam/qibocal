@@ -121,7 +121,8 @@ def resonator_flux_sample(
     
     current_range = np.arange(current_min, current_max, current_step)
     
-    start = np.argwhere(current_range==np.around(qubit_biasing_current, 2))[0][0]
+    #start = np.argwhere(current_range==np.around(qubit_biasing_current, 4))[0][0]
+    start = len(current_range)//2
     
     start_f = resonator_frequency
     
@@ -136,9 +137,9 @@ def resonator_flux_sample(
         best_msr = noise
         platform.qf_port[fluxline].current = curr
         for span in spans:
-            best_f, best_msr = scan_level(best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit)
+            best_f, best_msr = scan_level(best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit, sequence)
         for span in small_spans:
-            best_f, best_msr = scan_small(best_f, best_msr, max_runs, thr, span, 10, noise, platform, ro_pulse, qubit)
+            best_f, best_msr = scan_small(best_f, best_msr, max_runs, thr, span, 10, noise, platform, ro_pulse, qubit, sequence)
         freqs1.append(best_f)
         
     freqs2 = []
@@ -147,9 +148,9 @@ def resonator_flux_sample(
         best_msr = noise
         platform.qf_port[fluxline].current = curr
         for span in spans:
-            best_f, best_msr = scan_level(best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit)
+            best_f, best_msr = scan_level(best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit, sequence)
         for span in small_spans:
-            best_f, best_msr = scan_small(best_f, best_msr, max_runs, thr, span, 10, noise, platform, ro_pulse, qubit)
+            best_f, best_msr = scan_small(best_f, best_msr, max_runs, thr, span, 10, noise, platform, ro_pulse, qubit, sequence)
         freqs2.append(best_f)
         
     freqs = np.array(list(reversed(freqs2))+freqs1)
