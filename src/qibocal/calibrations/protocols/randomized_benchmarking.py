@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 
-from qibocal.data import Data
-from qibocal.decorators import plot
-from qibocal.plots.scatters import rb_plot
 from qibo.noise import NoiseModel, PauliError
 
 from qibocal import plots
 from qibocal.calibrations.protocols.experiments import Experiment
 from qibocal.calibrations.protocols.generators import *
 from qibocal.calibrations.protocols.utils import effective_depol
+from qibocal.data import Data
+from qibocal.decorators import plot
+from qibocal.plots.scatters import rb_plot
 from datetime import datetime
 
 
@@ -32,9 +32,7 @@ def dummyrb(
         qubit, invert=invert, act_on=active_qubit
     )
     # Initiate the Experiment object, not filled with circuits yet.
-    experiment = Experiment(
-        circuit_generator, sequence_lengths, qubit, runs, nshots
-    )
+    experiment = Experiment(circuit_generator, sequence_lengths, qubit, runs, nshots)
     # Build the circuits.
     experiment.build()
     # Get the circuits object. To avoid the
@@ -61,4 +59,4 @@ def dummyrb(
     data_depol.add({"effective_depol": effective_depol(pauli)})
     yield data_depol
     print('end: ', datetime.now().strftime("%d.%b %y %H:%M:%S"))
-
+    

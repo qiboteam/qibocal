@@ -7,5 +7,5 @@ from qibocal.calibrations.characterization.rabi_oscillations import *
 from qibocal.calibrations.characterization.ramsey import *
 from qibocal.calibrations.characterization.resonator_spectroscopy import *
 from qibocal.calibrations.characterization.t1 import *
-from qibocal.calibrations.protocols.test import *
 from qibocal.calibrations.protocols.randomized_benchmarking import *
+from qibocal.calibrations.protocols.test import *

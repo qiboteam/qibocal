@@ -4,15 +4,18 @@ from ast import literal_eval
 from itertools import product
 from os import mkdir
 from os.path import isdir, isfile
-# from typing import Union
 
 import numpy as np
-from qibocal.data import Data
 from qibo import gates
 from qibo.noise import NoiseModel, PauliError
 
 from qibocal.calibrations.protocols.generators import *
 from qibocal.calibrations.protocols.utils import dict_to_txt, pkl_to_list
+from qibocal.data import Data
+
+# from typing import Union
+
+
 
 
 class Experiment:
@@ -616,9 +619,8 @@ class Experiment:
 
     ############################ Filter functions ############################
 
-    def filter_single_qubit(self, averaged:bool=True, **kwargs):
-        """
-        """
+    def filter_single_qubit(self, averaged: bool = True, **kwargs):
+        """ """
         d = 2
         amount_sequences = len(self.sequence_lengths)
         # Initiate the list were the filter values will be stored.
@@ -648,8 +650,7 @@ class Experiment:
                     filterslist.append(filterf / self.nshots)
             # Reshape such that each run again is an array filled with filter
             # values corresponding to each sequence length.
-            filtersarray = np.array(filterslist).reshape(
-                self.runs, amount_sequences)
+            filtersarray = np.array(filterslist).reshape(self.runs, amount_sequences)
         # If not shots are available, use the probabilities.
         else:
             probs = self.probabilities(averaged=False)
@@ -666,8 +667,7 @@ class Experiment:
                         np.abs(alpha * talpha + beta * tbeta) ** 2 - 1 / d
                     )
                     filterslist.append(filterf)
-            filtersarray = np.array(filterslist).reshape(
-                self.runs, amount_sequences)
+            filtersarray = np.array(filterslist).reshape(self.runs, amount_sequences)
         if averaged:
             filtersarray = np.average(filtersarray, axis=0)
         return filtersarray

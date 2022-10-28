@@ -5,10 +5,9 @@ from shutil import rmtree
 
 import numpy as np
 from pandas import read_pickle
-from qcvv.data import Data
-
 from qcvv.calibrations.protocols.experiments import Experiment
 from qcvv.calibrations.protocols.generators import *
+from qcvv.data import Data
 
 
 def test_generators():
