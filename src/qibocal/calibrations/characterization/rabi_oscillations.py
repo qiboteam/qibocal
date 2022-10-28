@@ -19,6 +19,9 @@ def rabi_pulse_length(
     software_averages,
     points=10,
 ):
+    """
+    Rabi oscillator doc's test
+    """
     platform.reload_settings()
 
     data = DataUnits(name=f"data_q{qubit}", quantities={"Time": "ns"})
