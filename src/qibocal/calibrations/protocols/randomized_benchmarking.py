@@ -9,6 +9,7 @@ from qibocal import plots
 from qibocal.calibrations.protocols.experiments import Experiment
 from qibocal.calibrations.protocols.generators import *
 from qibocal.calibrations.protocols.utils import effective_depol
+from datetime import datetime
 
 
 @plot("Randomized benchmarking", plots.rb_plot)
@@ -23,6 +24,7 @@ def dummyrb(
     inject_noise: list = None,
     active_qubit: int = None,
 ):
+    print('start: ', datetime.now().strftime("%d.%b %y %H:%M:%S"))
     # Make the generator class out of the name.
     circuit_generator_class = eval(circuit_generator_class)
     # Make a generator object out of the generator class.
@@ -58,4 +60,5 @@ def dummyrb(
     data_depol = Data("effectivedepol", quantities=["effective_depol"])
     data_depol.add({"effective_depol": effective_depol(pauli)})
     yield data_depol
+    print('end: ', datetime.now().strftime("%d.%b %y %H:%M:%S"))
 
