@@ -5,11 +5,10 @@ qubits: [0,1,2,3,4]
 format: pickle
 
 actions:
-
   dummyrb:
     circuit_generator_class: 'GeneratorOnequbitcliffords'
     invert: True
-    sequence_lengths: [1,2,5,10]
+    sequence_lengths: [1,5,10,15,20,25,30,40]
     runs: 10
     nshots: 1024
     inject_noise: False
