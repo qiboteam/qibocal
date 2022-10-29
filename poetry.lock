@@ -350,7 +350,7 @@ python-versions = ">=2.6, !=3.0.*, !=3.1.*, !=3.2.*"
 
 [[package]]
 name = "identify"
-version = "2.5.7"
+version = "2.5.8"
 description = "File identification library for Python"
 category = "dev"
 optional = false
@@ -633,29 +633,33 @@ tests = ["check-manifest", "coverage", "defusedxml", "markdown2", "olefile", "pa
 
 [[package]]
 name = "pint"
-version = "0.19.2"
+version = "0.20.1"
 description = "Physical quantities module"
 category = "main"
 optional = false
 python-versions = ">=3.8"
 
 [package.extras]
+babel = ["babel (<=2.8)"]
+dask = ["dask"]
 numpy = ["numpy (>=1.19.5)"]
+pandas = ["pint-pandas (>=0.3)"]
 test = ["pytest", "pytest-cov", "pytest-mpl", "pytest-subtests"]
 uncertainties = ["uncertainties (>=3.1.6)"]
+xarray = ["xarray"]
 
 [[package]]
 name = "Pint-Pandas"
-version = "0.3.dev70+ge42e95f"
+version = "0.3.dev121+ge7584d5"
 description = "Physical quantities module"
 category = "main"
 optional = false
-python-versions = ">=3.6"
+python-versions = ">=3.8"
 develop = false
 
 [package.dependencies]
-pandas = ">=1.2"
-pint = ">=0.17"
+pandas = ">=1.5"
+pint = ">=0.20.1"
 
 [package.extras]
 test = ["codecov", "coveralls", "nbval", "pyarrow", "pytest", "pytest-cov", "pytest-mpl", "pytest-subtests"]
@@ -664,7 +668,7 @@ test = ["codecov", "coveralls", "nbval", "pyarrow", "pytest", "pytest-cov", "pyt
 type = "git"
 url = "https://github.com/hgrecco/pint-pandas.git"
 reference = "master"
-resolved_reference = "3d22e90cd195f5626536fb4804f8423d44d175ac"
+resolved_reference = "e7584d5bbdeb1e87a8b4c3b60386c95e9da38bc2"
 
 [[package]]
 name = "platformdirs"
@@ -680,7 +684,7 @@ test = ["appdirs (==1.4.4)", "pytest (>=6)", "pytest-cov (>=2.7)", "pytest-mock 
 
 [[package]]
 name = "plotly"
-version = "5.10.0"
+version = "5.11.0"
 description = "An open-source, interactive data visualization library for Python"
 category = "main"
 optional = false
@@ -915,7 +919,7 @@ develop = false
 qibo = ">=0.1.8"
 
 [package.extras]
-docs = ["IPython", "nbsphinx", "recommonmark", "sphinx", "sphinx_markdown_tables", "sphinx_rtd_theme", "sphinxcontrib-bibtex"]
+docs = ["IPython", "nbsphinx", "recommonmark", "sphinx", "sphinx-markdown-tables", "sphinx-rtd-theme", "sphinxcontrib-bibtex"]
 tiiq = ["qblox-instruments (==0.6.1)", "qcodes"]
 
 [package.source]
@@ -1306,7 +1310,7 @@ docs = []
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8, <4"
-content-hash = "affb500171c66acf334960d65d7c3195ed679135701dc324fb8c92a5b7a3be60"
+content-hash = "c9c09f124fc8476a03c374661152de555c589d59c09746ffa7822bff0b1c52d8"
 
 [metadata.files]
 alabaster = [
@@ -1619,8 +1623,8 @@ future = [
     {file = "future-0.18.2.tar.gz", hash = "sha256:b1bead90b70cf6ec3f0710ae53a525360fa360d306a86583adc6bf83a4db537d"},
 ]
 identify = [
-    {file = "identify-2.5.7-py2.py3-none-any.whl", hash = "sha256:7a67b2a6208d390fd86fd04fb3def94a3a8b7f0bcbd1d1fcd6736f4defe26390"},
-    {file = "identify-2.5.7.tar.gz", hash = "sha256:5b8fd1e843a6d4bf10685dd31f4520a7f1c7d0e14e9bc5d34b1d6f111cabc011"},
+    {file = "identify-2.5.8-py2.py3-none-any.whl", hash = "sha256:48b7925fe122720088aeb7a6c34f17b27e706b72c61070f27fe3789094233440"},
+    {file = "identify-2.5.8.tar.gz", hash = "sha256:7a214a10313b9489a0d61467db2856ae8d0b8306fc923e03a9effa53d8aedc58"},
 ]
 idna = [
     {file = "idna-3.4-py3-none-any.whl", hash = "sha256:90b77e79eaa3eba6de819a0c442c0b4ceefc341a7a2ab77d7562bf49f425c5c2"},
@@ -1989,7 +1993,8 @@ pillow = [
     {file = "Pillow-9.2.0.tar.gz", hash = "sha256:75e636fd3e0fb872693f23ccb8a5ff2cd578801251f3a4f6854c6a5d437d3c04"},
 ]
 pint = [
-    {file = "Pint-0.19.2.tar.gz", hash = "sha256:e1d4989ff510b378dad64f91711e7bdabe5ca78d75b06a18569ac454678c4baf"},
+    {file = "Pint-0.20.1-py3-none-any.whl", hash = "sha256:68afe65665542ee3ec99f69f043b1d39bfe7c6d61b786940157138fd08b838fb"},
+    {file = "Pint-0.20.1.tar.gz", hash = "sha256:387cf04078dc7dfe4a708033baad54ab61d82ab06c4ee3d4922b1e45d5626067"},
 ]
 Pint-Pandas = []
 platformdirs = [
@@ -1997,8 +2002,8 @@ platformdirs = [
     {file = "platformdirs-2.5.2.tar.gz", hash = "sha256:58c8abb07dcb441e6ee4b11d8df0ac856038f944ab98b7be6b27b2a3c7feef19"},
 ]
 plotly = [
-    {file = "plotly-5.10.0-py2.py3-none-any.whl", hash = "sha256:989b13825cc974390aa0169479485d9257d37848a47bc63957251f8e1a7046ba"},
-    {file = "plotly-5.10.0.tar.gz", hash = "sha256:4d36d9859b7a153b273562deeed8c292587a472eb1fd57cd4158ec89d9defadb"},
+    {file = "plotly-5.11.0-py2.py3-none-any.whl", hash = "sha256:52fd74b08aa4fd5a55b9d3034a30dbb746e572d7ed84897422f927fdf687ea5f"},
+    {file = "plotly-5.11.0.tar.gz", hash = "sha256:4efef479c2ec1d86dcdac8405b6ca70ca65649a77408e39a7e84a1ea2db6c787"},
 ]
 pluggy = [
     {file = "pluggy-1.0.0-py2.py3-none-any.whl", hash = "sha256:74134bbf457f031a36d68416e1509f34bd5ccc019f0bcc952c7b909d06b37bd3"},
