@@ -7,22 +7,22 @@ format: csv
 actions:
    resonator_punchout_sample:
      min_att: 10
-     max_att: 40
+     max_att: 46
      step_att: 2 
      max_runs: 40
      thr: 5
-     spans: [10000000, 1000000]
-     small_spans: [100000, 10000]
+     spans: [10000000, 5000000]
+     small_spans: [1000000, 100000, 10000]
      resolution: 100000
 
    resonator_flux_sample:
      current_min: -20.e-3 
      current_max: +20.e-3 
-     current_step: 2.e-3
+     current_step: 1.e-3
      fluxline: 'qubit'
      max_runs: 40
      thr: 5
      spans: [10000000, 5000000]
-     small_spans: [1000000, 100000]
+     small_spans: [1000000, 100000, 10000]
      resolution: 100000
 
