@@ -2,10 +2,31 @@ import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
-from qibocal.calibrations.characterization.utils import snr, choose_freq, get_noise, update_f, plot_punchout, plot_flux
+from qibocal.calibrations.characterization.utils import snr, choose_freq, get_noise, plot_punchout, plot_flux
 from qibocal.data import DataUnits
 
 def scan_level(best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit, sequence):
+    """Scans for the feature by sampling a gaussian near the previously found best point. Decides if the freature
+    is found by checking if the snr against background noise is above a threshold.
+    
+    Args:
+        best_f (int): Best found frequency in previous scan. Used as starting point.
+        best_msr (float): MSR found for the previous best frequency. Used to check if a better value is found.
+        max_runs (int): Maximum amount of tries before stopping if feature is not found.
+        thr (float): SNR value used as threshold for detection of the feature.
+        span (int): Search space around previous best value where the next frequency is sampled.
+        resolution (int): How many points are taken in the span.
+        noise (float): MSR value for the background noise.
+        platform ():
+        ro_pulse (): Used in order to execute the pulse sequence with the right parameters in the right qubit.
+        qubit (int): TODO: might be useful to make this parameters implicit and not given.
+        sequence ():
+        
+    Returns:
+        best_f (int): New best frequency found for the feature.
+        best_msr (float): MSR found for the feature.
+    
+    """
     for _ in range(max_runs):
         if _ == 0:
             freq = best_f
@@ -13,7 +34,6 @@ def scan_level(best_f, best_msr, max_runs, thr, span, resolution, noise, platfor
             freq = choose_freq(best_f, span, resolution)
         platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
         msr, phase, i, q = platform.execute_pulse_sequence(sequence)[ro_pulse.serial]
-        
         if platform.resonator_type == "3D":
             if msr > best_msr:
                 if abs(snr(msr, noise)) >= thr:
@@ -27,7 +47,24 @@ def scan_level(best_f, best_msr, max_runs, thr, span, resolution, noise, platfor
     return best_f, best_msr
 
 
-def scan_small(best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit, sequence):
+def scan_small(best_f, best_msr, thr, span, resolution, noise, platform, ro_pulse, qubit, sequence):
+    """Small scan around the found feature to fine-tune the measurement up to given precision.
+    
+    Args:
+        best_f (int): Best found frequency in previous scan. Used as starting point.
+        best_msr (float): MSR found for the previous best frequency. Used to check if a better value is found.
+        span (int): Search space around previous best value where the next frequency is sampled.
+        resolution (int): How many points are taken in the span. Taken as 10 for the small scan.
+        platform ():
+        ro_pulse (): Used in order to execute the pulse sequence with the right parameters in the right qubit.
+        qubit (int): TODO: might be useful to make this parameters implicit and not given.
+        sequence ():
+        
+    Returns:
+        best_f (int): New best frequency found for the feature.
+        best_msr (float): MSR found for the feature.
+    
+    """
     start_f = best_f
     scan = np.linspace(-span/2, span/2, resolution)
     for s in scan:
@@ -55,6 +92,24 @@ def resonator_punchout_sample(
     small_spans,
     resolution
     ):
+    """Use gaussian samples to extract the punchout of the resonator for different values of attenuation.
+    
+    Args:
+        platform (AbstractPlatform): Platform the experiment is executed on.
+        qubit (int): qubit coupled to the resonator that we are probing.
+        min_att (int): minimum attenuation value where the experiment starts. Less attenuation -> more power.
+        max_att (int): maximum attenuation reached in the scan.
+        step_att (int): change in attenuation after every step.
+        max_runs (int): Maximum amount of tries before stopping if feature is not found.
+        thr (float): SNR value used as threshold for detection of the feature.
+        spans (list): Different spans to search for the feature at different precisions.
+        small_spans (list): Different spans for the small sweeps to fine-tune the feature.
+        resolution (int): How many points are taken in the span for the scan_level() function.
+        
+    Returns:
+        data (Data): Data file with information on the feature response at each attenuation point.
+        
+    """
     
     data = DataUnits(
         name=f"data_q{qubit}", quantities={"frequency": "Hz", "attenuation": "dB"}
@@ -82,8 +137,8 @@ def resonator_punchout_sample(
         for span in spans:
             best_f, best_msr = scan_level(best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit, sequence)
         for span in small_spans:
-            best_f, best_msr = scan_small(best_f, best_msr, max_runs, thr, span, 11, noise, platform, ro_pulse, qubit, sequence)
-        freqs.append(best_f)
+            best_f, best_msr = scan_small(best_f, best_msr, span, 11, platform, ro_pulse, qubit, sequence)
+        #freqs.append(best_f)
         results = {
                     "MSR[V]": best_msr,
                     "i[V]": 455,
@@ -120,6 +175,25 @@ def resonator_flux_sample(
     small_spans,
     resolution,
     ):
+    """Use gaussian samples to extract the flux-frequency response of the resonator for different values of current.
+    
+    Args:
+        platform (AbstractPlatform): Platform the experiment is executed on.
+        qubit (int): qubit coupled to the resonator that we are probing.
+        current_min (float): minimum current value where the experiment starts.
+        current_max (float): maximum current reached in the scan.
+        current_step (float): change in current after every step.
+        fluxline (int or "qubit"): id of the current line to use for the experiment. Use qubit if matching the qubit id.
+        max_runs (int): Maximum amount of tries before stopping if feature is not found.
+        thr (float): SNR value used as threshold for detection of the feature.
+        spans (list): Different spans to search for the feature at different precisions.
+        small_spans (list): Different spans for the small sweeps to fine-tune the feature.
+        resolution (int): How many points are taken in the span for the scan_level() function.
+        
+    Returns:
+        data (Data): Data file with information on the feature response at each current point.
+        
+    """
     
     data = DataUnits(
         name=f"data_q{qubit}", quantities={"frequency": "Hz", "current": "A"}
@@ -147,12 +221,11 @@ def resonator_flux_sample(
             break
     
     start_f = resonator_frequency
-    
-    #platform.ro_port[qubit].attenuation = att
-    
+        
     background = [start_f+1e7, start_f-1e7]
     noise = get_noise(background, platform, ro_pulse, qubit, sequence)
     
+    # We scan starting from the sweet spot to higher currents
     freqs1 = []
     best_f = start_f
     for curr in current_range[start:]:
@@ -161,9 +234,10 @@ def resonator_flux_sample(
         for span in spans:
             best_f, best_msr = scan_level(best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit, sequence)
         for span in small_spans:
-            best_f, best_msr = scan_small(best_f, best_msr, max_runs, thr, span, 11, noise, platform, ro_pulse, qubit, sequence)
+            best_f, best_msr = scan_small(best_f, best_msr, span, 11, platform, ro_pulse, qubit, sequence)
         freqs1.append(best_f)
         
+    # and continue starting from the sweet spot to lower currents.
     freqs2 = []
     best_f = start_f
     for curr in reversed(current_range[:start]):
@@ -172,7 +246,7 @@ def resonator_flux_sample(
         for span in spans:
             best_f, best_msr = scan_level(best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit, sequence)
         for span in small_spans:
-            best_f, best_msr = scan_small(best_f, best_msr, max_runs, thr, span, 11, noise, platform, ro_pulse, qubit, sequence)
+            best_f, best_msr = scan_small(best_f, best_msr, span, 11, platform, ro_pulse, qubit, sequence)
         freqs2.append(best_f)
         
     freqs = np.array(list(reversed(freqs2))+freqs1)
