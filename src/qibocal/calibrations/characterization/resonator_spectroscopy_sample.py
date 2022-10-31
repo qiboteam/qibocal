@@ -3,7 +3,7 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
 from qibocal.calibrations.characterization.utils import snr, choose_freq, get_noise, update_f, plot_punchout, plot_flux
-
+from qibocal.data import DataUnits
 
 def scan_level(best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit, sequence):
     for _ in range(max_runs):
@@ -55,6 +55,10 @@ def resonator_punchout_sample(
     small_spans,
     resolution
     ):
+    
+    data = DataUnits(
+        name=f"data_q{qubit}", quantities={"frequency": "Hz", "attenuation": "dB"}
+    )
         
     platform.reload_settings()
     sequence = PulseSequence()
@@ -66,7 +70,7 @@ def resonator_punchout_sample(
     attenuation_range = np.arange(min_att, max_att, step_att)
     best_f = resonator_frequency
     
-    opt_att = 0
+    opt_att = 30
     opt_snr = 0
     freqs = []
     for att in attenuation_range:
@@ -78,12 +82,21 @@ def resonator_punchout_sample(
         for span in spans:
             best_f, best_msr = scan_level(best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit, sequence)
         for span in small_spans:
-            best_f, best_msr = scan_small(best_f, best_msr, max_runs, thr, span, 10, noise, platform, ro_pulse, qubit, sequence)
+            best_f, best_msr = scan_small(best_f, best_msr, max_runs, thr, span, 11, noise, platform, ro_pulse, qubit, sequence)
         freqs.append(best_f)
+        results = {
+                    "MSR[V]": best_msr,
+                    "i[V]": 455,
+                    "q[V]": 455,
+                    "phase[rad]": 455,
+                    "frequency[Hz]": best_f,
+                    "attenuation[dB]": att,
+                }
+        data.add(results)
         if att >= 30:
             if abs(snr(best_msr, noise)) > opt_snr:
                 opt_snr = abs(snr(best_msr, noise))
-                opt_att = 0
+                opt_att = att
                 opt_f = best_f
                 
     plot_punchout(attenuation_range, freqs, qubit)
@@ -91,7 +104,7 @@ def resonator_punchout_sample(
     print(f'For qubit {qubit}:')
     print(f'Best response found at frequency {opt_f} Hz for attenuation value of {opt_att} dB.\n')
     
-    return freqs, attenuation_range, opt_f, opt_att
+    yield data
 
 
 def resonator_flux_sample(
@@ -107,6 +120,13 @@ def resonator_flux_sample(
     small_spans,
     resolution,
     ):
+    
+    data = DataUnits(
+        name=f"data_q{qubit}", quantities={"frequency": "Hz", "current": "A"}
+    )
+    
+    if fluxline == "qubit":
+        fluxline = qubit
         
     platform.reload_settings()
     
@@ -121,8 +141,10 @@ def resonator_flux_sample(
     
     current_range = np.arange(current_min, current_max, current_step)
     
-    #start = np.argwhere(current_range==np.around(qubit_biasing_current, 4))[0][0]
-    start = len(current_range)//2
+    for i in range(len(current_range)):
+        if qubit_biasing_current >= current_range[i]:
+            start = i
+            break
     
     start_f = resonator_frequency
     
@@ -139,7 +161,7 @@ def resonator_flux_sample(
         for span in spans:
             best_f, best_msr = scan_level(best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit, sequence)
         for span in small_spans:
-            best_f, best_msr = scan_small(best_f, best_msr, max_runs, thr, span, 10, noise, platform, ro_pulse, qubit, sequence)
+            best_f, best_msr = scan_small(best_f, best_msr, max_runs, thr, span, 11, noise, platform, ro_pulse, qubit, sequence)
         freqs1.append(best_f)
         
     freqs2 = []
@@ -150,10 +172,21 @@ def resonator_flux_sample(
         for span in spans:
             best_f, best_msr = scan_level(best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit, sequence)
         for span in small_spans:
-            best_f, best_msr = scan_small(best_f, best_msr, max_runs, thr, span, 10, noise, platform, ro_pulse, qubit, sequence)
+            best_f, best_msr = scan_small(best_f, best_msr, max_runs, thr, span, 11, noise, platform, ro_pulse, qubit, sequence)
         freqs2.append(best_f)
         
     freqs = np.array(list(reversed(freqs2))+freqs1)
+    
+    for i in range(len(freqs)):
+        results = {
+                    "MSR[V]": 455,
+                    "i[V]": 455,
+                    "q[V]": 455,
+                    "phase[rad]": 455,
+                    "frequency[Hz]": freqs[i],
+                    "current[A]": current_range[i],
+                }
+        data.add(results)
     
     sweet_freq = np.max(freqs)
     sweet_curr = current_range[np.argmax(freqs)]
@@ -161,9 +194,9 @@ def resonator_flux_sample(
     plot_flux(current_range, freqs, qubit)
     
     print(f'For qubit {qubit}:')
-    print(f'Sweet spot found at frequency {sweet_f} Hz at current value of {sweet_curr} A.\n')
+    print(f'Sweet spot found at frequency {sweet_freq} Hz at current value of {sweet_curr} A.\n')
     
-    return freqs, current_range, sweet_freq, sweet_curr
+    yield data
                          
         
     

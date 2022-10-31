@@ -22,7 +22,7 @@ def snr(signal, noise):
 
 def choose_freq(freq, span, resolution):
     """Choose a new frequency gaussianly distributed around initial one."""
-    g = np.random.normal(0, span/5, 1)
+    g = np.random.normal(0, span/10, 1)
     f = np.linspace(-span/2, span/2, resolution)
     for ff in f:
         if g <= ff:
