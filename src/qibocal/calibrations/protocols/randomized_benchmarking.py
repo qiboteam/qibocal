@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from datetime import datetime
+
 from qibo.noise import NoiseModel, PauliError
 
 from qibocal import plots
@@ -9,7 +11,6 @@ from qibocal.calibrations.protocols.utils import effective_depol
 from qibocal.data import Data
 from qibocal.decorators import plot
 from qibocal.plots.scatters import rb_plot
-from datetime import datetime
 
 
 @plot("Randomized benchmarking", plots.rb_plot)
@@ -24,7 +25,7 @@ def dummyrb(
     inject_noise: list = None,
     active_qubit: int = None,
 ):
-    print('start: ', datetime.now().strftime("%d.%b %y %H:%M:%S"))
+    print("start: ", datetime.now().strftime("%d.%b %y %H:%M:%S"))
     # Make the generator class out of the name.
     circuit_generator_class = eval(circuit_generator_class)
     # Make a generator object out of the generator class.
@@ -58,5 +59,4 @@ def dummyrb(
     data_depol = Data("effectivedepol", quantities=["effective_depol"])
     data_depol.add({"effective_depol": effective_depol(pauli)})
     yield data_depol
-    print('end: ', datetime.now().strftime("%d.%b %y %H:%M:%S"))
-    
+    print("end: ", datetime.now().strftime("%d.%b %y %H:%M:%S"))
