@@ -16,8 +16,6 @@ from qibocal.data import Data
 # from typing import Union
 
 
-
-
 class Experiment:
     """The experiment class has methods to build, save, load and execute
     circuits with different depth with a given generator for random circuits.
@@ -529,10 +527,14 @@ class Experiment:
         from_samples: bool = True,
         **kwargs,
     ) -> np.ndarray:
-        """ """
+        """TODO this is exactly what resutl.frequencies() is doing!"""
         # Check if the samples attribute is not empty e.g. the first entry is
         # not just an empty list.
-        if len(self.outcome_samples[0]) != 0 and from_samples:
+        if (
+            len(self.outcome_samples[0]) != 0
+            and from_samples
+            and self.nshots is not None
+        ):
             # Create all possible state vectors.
             allstates = np.array(list(product([0, 1], repeat=len(self.qubits))))
             # The attribute should be lists out of lists out of lists out
@@ -608,7 +610,9 @@ class Experiment:
         # Calculate an exponential fit to the given data pm dependent on m.
         # 'popt' stores the optimized parameters and pcov the covariance of popt.
         try:
-            popt, pcov = curve_fit(exp_func, xdata, ydata, p0=[0.5, 0.5, 0.5])
+            popt, pcov = curve_fit(
+                exp_func, xdata, ydata, p0=[0.5, 1, 0.8], method="lm"
+            )
         except:
             popt, pcov = (1, 1, 0), (None)
         # Build a finer spaces xdata array for plotting the fit.
@@ -643,9 +647,9 @@ class Experiment:
                         outcome = self.outcome_samples[count][m][count_shot][0]
                         # Take the probability that the ideal circuit has that
                         # outcome too.
-                        prob = executed_circuit.probabilities()[int(outcome)]
+                        prob = executed_circuit.execution_result[int(outcome)]
                         # Average over it with a renormalization.
-                        filterf += (d + 1) * (prob - 1 / d)
+                        filterf += (d + 1) * (np.abs(prob) - 1 / d)
                     # Divide by number of shots and append.
                     filterslist.append(filterf / self.nshots)
             # Reshape such that each run again is an array filled with filter
@@ -653,16 +657,17 @@ class Experiment:
             filtersarray = np.array(filterslist).reshape(self.runs, amount_sequences)
         # If not shots are available, use the probabilities.
         else:
+            # Get the probabilities from the faulty circuits execution.
             probs = self.probabilities(averaged=False)
+            # Go through every run and sequence length.
             for count in range(self.runs):
                 for m in range(amount_sequences):
+                    # Retrieve the ideal circuit.
                     mycircuit = self.circuits_list[count][m]
-                    executed_circuit = mycircuit(nshots=self.nshots)
-                    filterf = 0
-                    talpha, tbeta = executed_circuit.probabilities()
+                    # Get the probability for ground state and excited state.
+                    talpha, tbeta = mycircuit().probabilities()
                     alpha = np.sqrt(probs[count, m, 0])
                     beta = np.sqrt(probs[count, m, 1])
-                    talpha, tbeta = np.sqrt(executed_circuit.probabilities()[0])
                     filterf = (d + 1) * (
                         np.abs(alpha * talpha + beta * tbeta) ** 2 - 1 / d
                     )
@@ -671,3 +676,37 @@ class Experiment:
         if averaged:
             filtersarray = np.average(filtersarray, axis=0)
         return filtersarray
+
+    def plot_scatterruns(self, **kwargs):
+        """ """
+        import matplotlib.pyplot as plt
+
+        colorfunc = plt.get_cmap("inferno")
+        xdata = self.sequence_lengths
+        xdata_scattered = np.tile(xdata, self.runs)
+        if self.inverse:
+            ydata_scattered = self.probabilities(averaged=False)[:, :, 0]
+        else:
+            ydata_scattered = self.filter_single_qubit(averaged=False)
+        plt.scatter(
+            xdata_scattered,
+            ydata_scattered.flatten(),
+            marker="_",
+            linewidths=5,
+            s=100,
+            color=colorfunc(100),
+            alpha=0.4,
+            label="each run",
+        )
+        ydata = np.average(ydata_scattered, axis=0)
+        # pdb.set_trace()
+        plt.scatter(xdata, ydata, marker=5, label="averaged")
+        xfitted, yfitted, popt = self.fit_exponential(ydata)
+        fitlegend = "fit A: {:.3f}, f: {:.3f}, B: {:.3f}".format(
+            popt[0], popt[1], popt[2]
+        )
+        plt.plot(xfitted, yfitted, "--", color=colorfunc(50), label=fitlegend)
+        plt.ylabel("survival probability")
+        plt.xlabel("sequence length")
+        plt.legend()
+        plt.show()

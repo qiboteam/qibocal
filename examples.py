@@ -298,9 +298,9 @@ def test_retrieve_from_dataobjects():
 def test_filter_single_qubit():
     """ """
     # Define the parameters.
-    sequence_lengths = [1, 2, 5, 10]
-    runs = 1
-    nshots = None
+    sequence_lengths = [1, 2, 5]
+    runs = 2
+    nshots = 5
     qubits = [0]
     # Initiate the circuit generator.
     mygenerator = GeneratorOnequbitcliffords(qubits, invert=False)
@@ -312,6 +312,7 @@ def test_filter_single_qubit():
     experiment.execute_experiment(paulierror_noiseparams=[0.1, 0.1, 0.1])
     # Get the filter array.
     filters = np.average(experiment.filter_single_qubit(), axis=0)
+    experiment.plot_scatterruns(use_probs=True)
 
 
 # test_generators()
