@@ -66,10 +66,10 @@ class Generator:
         if self.invert:
             # FIXME changed fusion gate calculation by hand since the
             # inbuilt function does not work.
-            # Calculate the inversion matrix.
-            inversion_unitary = circuit.invert().fuse().queue[0].matrix
-            # Add it as a unitary gate to the circuit.
-            circuit.add(gates.Unitary(inversion_unitary, *self.used_qubits))
+            # Build a gate out of the unitary of the whole circuit and
+            # take the daggered version of that.
+            circuit.add(
+                gates.Unitary(circuit.unitary(), *self.used_qubits).dagger())
         circuit.add(self.measurement)
         # No noise model added, for a simulation either the platform
         # introduces the errors or the error gates will be added
