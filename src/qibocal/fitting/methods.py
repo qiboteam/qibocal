@@ -7,6 +7,7 @@ from scipy.optimize import curve_fit
 from qibocal.config import log
 from qibocal.data import Data
 from qibocal.fitting.utils import cos, exp, flipping, lorenzian, parse, rabi, ramsey
+from qibocal.calibrations.protocols.experiments import Experiment
 
 
 def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None):
@@ -353,6 +354,30 @@ def drag_tunning_fit(data, x, y, qubit, nqubits, labels):
             "popt2": popt[2],
             "popt3": popt[3],
             labels[0]: beta_optimal,
+        }
+    )
+    return data_fit
+
+def rb_exponential_fit(experiment:Experiment, active_qubits):
+    """ Takes randomized benchamrking data and fits an exponential.
+    """
+    # Create the data object to store the fitting paramters.
+    data_fit = Data(
+        name=f"fitrb_q{active_qubits}",
+        quantities=["A","f","B",],)
+    # Get the averaged rb data.
+    if experiment.inverse:
+        ydata = experiment.probabilities(averaged=True)[:,0]
+    else:
+        ydata = experiment.filter_single_qubit(averaged=True)
+    # Fit an exponenial.
+    _, _, popt = experiment.fit_exponential(ydata=ydata)
+    # Store the fitting parameters.
+    data_fit.add(
+        {
+            "A":popt[0],
+            "f":popt[1],
+            "B":popt[2]
         }
     )
     return data_fit
