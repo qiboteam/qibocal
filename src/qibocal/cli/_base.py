@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Adds global CLI options."""
 import base64
 import pathlib
