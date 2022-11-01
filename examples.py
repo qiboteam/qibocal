@@ -5,6 +5,7 @@ from shutil import rmtree
 
 import numpy as np
 from pandas import read_pickle
+
 from qibocal.calibrations.protocols.experiments import Experiment
 from qibocal.calibrations.protocols.generators import *
 from qibocal.data import Data
@@ -300,7 +301,7 @@ def test_filter_single_qubit():
     # Define the parameters.
     sequence_lengths = [1, 2, 5]
     runs = 2
-    nshots= 5
+    nshots = 5
     qubits = [0]
     # Initiate the circuit generator.
     mygenerator = GeneratorOnequbitcliffords(qubits, invert=False)
