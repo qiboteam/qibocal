@@ -30,7 +30,8 @@ def dummyrb(
         qubit, invert=invert, act_on=active_qubit
     )
     # Initiate the Experiment object, not filled with circuits yet.
-    experiment = Experiment(circuit_generator, sequence_lengths, qubit, runs, nshots)
+    experiment = Experiment(
+        circuit_generator, sequence_lengths, qubit, runs, nshots)
     # Build the circuits.
     experiment.build()
     # Get the circuits object. To avoid the
