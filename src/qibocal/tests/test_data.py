@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Some tests for the Data and DataUnits class"""
 import numpy as np
 import pytest
