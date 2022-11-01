@@ -16,11 +16,12 @@ classifiers=[
 
 [tool.poetry.dependencies]
 python = ">=3.8, <4"
-qibo = ">=0.1.8"
+qibo = {git = "https://github.com/qiboteam/qibo.git", rev = "master"}
 qibolab = {git = "https://github.com/qiboteam/qibolab.git", rev = "main"}
 pandas = "^1.4.3"
 Pint-Pandas = {git = "https://github.com/hgrecco/pint-pandas.git", rev = "master"}
 dash = "^2.6.0"
+lmfit = "^1.0.3"
 
 [tool.poetry.dev-dependencies]
 black = "^22.6.0"
