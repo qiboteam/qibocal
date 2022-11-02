@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
 """Some tests for the Data and DataUnits class"""
+import os
+import shutil
+from operator import length_hint
+
 import numpy as np
 import pytest
 from pint import DimensionalityError, UndefinedUnitError
 
-from qibocal.data import Data, DataUnits
+from qibocal.data import AbstractData, Data, DataUnits
 
 
 def random_data_units(length, options=None):
@@ -20,7 +24,26 @@ def random_data_units(length, options=None):
         add_options = {}
         if options is not None:
             for option in options:
-                add_options[option] = str(l)
+                add_options[option] = l
+        data.add({**pulse_sequence_result, **add_options})
+
+    return data
+
+
+def data_units_dummy(length, options=None):
+    data = DataUnits(options=options)
+    for l in range(length):
+
+        pulse_sequence_result = {
+            "MSR[V]": float(l),
+            "i[V]": float(l),
+            "q[V]": float(l),
+            "phase[deg]": float(l),
+        }
+        add_options = {}
+        if options is not None:
+            for option in options:
+                add_options[option] = float(l)
         data.add({**pulse_sequence_result, **add_options})
 
     return data
@@ -29,13 +52,34 @@ def random_data_units(length, options=None):
 def random_data(length):
     data = Data()
     for i in range(length):
-        data.add({"int": int(i), "float": float(i), "string": str(i), "bool": bool(i)})
+        data.add(
+            {
+                "int": int(i),
+                "float": float(i),
+                "string": str(f"hello{i}"),
+                "bool": bool(i),
+            }
+        )
     return data
 
 
-def test_data_initialization():
+def data_dummy(length):
+
+    data = Data()
+    for i in range(length):
+        data.add(
+            {
+                "num1": 0.0,
+                "num2": 1.0,
+            }
+        )
+    return data
+
+
+def test_data_units_initialization():
     """Test DataUnits constructor"""
-    data = DataUnits()
+    data = DataUnits(name="data")
+    assert data.name == "data"
     assert len(data.df.columns) == 4
     assert list(data.df.columns) == [  # pylint: disable=E1101
         "MSR",
@@ -64,6 +108,18 @@ def test_data_initialization():
         "q",
         "phase",
     ]
+
+
+def test_data_initialization():
+    """Test initialization of class Data"""
+    quantities_test = ["test"]
+    data = Data(quantities=quantities_test)
+    data.add(
+        {
+            "test": 0,
+        }
+    )
+    assert data.quantities == quantities_test
 
 
 def test_data_units_units():
@@ -127,6 +183,52 @@ def test_data_add():
     assert len(data) == 6
 
 
+def test_data__add__():
+
+    data0 = Data()
+    data0.add(
+        {
+            "col1": 0,
+            "col2": 0,
+        }
+    )
+    data1 = Data()
+    data1.add(
+        {
+            "col1": 1,
+            "col2": 1,
+        }
+    )
+    data0.__add__(data1)
+    data_results = Data()
+    for i in [0, 1]:
+        data_results.add(
+            {
+                "col1": int(i),
+                "col2": int(i),
+            }
+        )
+    assert data0.df.equals(data_results.df)
+
+
+def test_abstract_data_NotImplementedErrors():
+    """Test methods of AbstractData class with NotImplementedError"""
+    data = AbstractData()
+    with pytest.raises(NotImplementedError):
+        data.add(
+            {
+                "int": 1,
+                "float": 1.0,
+                "string": "1",
+                "bool": 1,
+            }
+        )
+
+    folder, routine, format, name = "folder", "routine", "csv", "name"
+    with pytest.raises(NotImplementedError):
+        data.load_data(folder, routine, format, name)
+
+
 def test_data_units_load_data_from_dict():
     """Test set method of DataUnits class"""
     data_units = DataUnits()
@@ -149,6 +251,13 @@ def test_data_units_load_data_from_dict():
     assert len(data_units1) == 3
     assert (data_units1.get_values("option1") == ["one", "two", "three"]).all()
     assert (data_units1.get_values("option2") == [1, 2, 3]).all()
+
+
+def test_df_data_units():
+    """Test the method df in DataUnit class"""
+    data = DataUnits()
+    with pytest.raises(TypeError):
+        data.df = 0
 
 
 def test_data_load_data_from_dict():
@@ -183,3 +292,69 @@ def test_get_values_data():
     """Test get_values method of Data class"""
     data = random_data(5)
     assert (data.get_values("int") == data.df["int"]).all()
+
+
+def test_save_open_data_units_csv():
+    """Test to_csv and load_data methods of DataUnits"""
+    path = "test_folder/data/test_routine"
+    if not os.path.isdir(path):
+        os.makedirs(path)
+    data_units = data_units_dummy(5, options=["Unnamed"])
+    data_units.to_csv(path)
+    isExist = os.path.exists(f"{path}/{data_units.name}.csv")
+    assert isExist is True
+    with pytest.raises(ValueError):
+        data_upload = DataUnits().load_data(
+            "test_folder", "test_routine", "txt", "data"
+        )
+    data_upload = DataUnits().load_data("test_folder", "test_routine", "csv", "data")
+    columns = data_units.df.columns
+    shutil.rmtree("test_folder")
+    for i in columns:
+        assert (data_units.get_values(i).to_numpy() == data_upload.get_values(i)).all()
+
+
+def test_save_open_data_units_pickle():
+    """Test to_csv and load_data methods of DataUnits"""
+    folder = "test_folder/data/test_routine"
+    if not os.path.isdir(folder):
+        os.makedirs(folder)
+    data_units = random_data_units(5)
+    data_units.to_pickle(folder)
+    data_upload = DataUnits().load_data("test_folder", "test_routine", "pickle", "data")
+    shutil.rmtree("test_folder")
+    assert data_units.df.equals(data_upload.df)
+
+
+def test_save_open_data_csv():
+    """Test to_csv and load_data methods of Data"""
+    path = "test_folder/data/test_routine"
+    if not os.path.isdir(path):
+        os.makedirs(path)
+    data = data_dummy(5)
+    data.to_csv(path)
+    isExist = os.path.exists(f"{path}/{data.name}.csv")
+    assert isExist is True
+    with pytest.raises(ValueError):
+        data_upload = Data().load_data("test_folder", "test_routine", "txt", "data")
+    data_upload = Data().load_data("test_folder", "test_routine", "csv", "data")
+    assert data.df.equals(data_upload.df)
+
+
+def test_save_open_data_pickle():
+    """Test to_pickle and load_data methods of Data"""
+    folder = "test_folder/data/test_routine"
+    if not os.path.isdir(folder):
+        os.makedirs(folder)
+    data = random_data(5)
+    data.to_pickle(folder)
+    data_upload = Data().load_data("test_folder", "test_routine", "pickle", "data")
+    shutil.rmtree("test_folder")
+    assert data.df.equals(data_upload.df)
+
+
+def test_save_abstract_data_csv():
+    """Test the to_csv method in AbstractData"""
+    data = AbstractData()
+    with pytest.raises(NotImplementedError):
+        data.to_csv("path")
