@@ -66,3 +66,13 @@ and `csv <https://docs.python.org/3/library/csv.html>`_.
 .. autoclass:: qibocal.data.Dataset
     :members:
     :member-order: bysource
+
+Fitting functions 
+-----------------
+
+Routine-specific method for post-processing data acquired.
+
+.. automodule:: qibocal.fitting.methods
+   :members:
+   :undoc-members:
+   :show-inheritance:

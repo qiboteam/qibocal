@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-"""Routine-specific method for post-processing data acquired."""
 import lmfit
 import numpy as np
 from scipy.optimize import curve_fit
@@ -10,7 +9,24 @@ from qibocal.fitting.utils import cos, exp, flipping, lorenzian, parse, rabi, ra
 
 
 def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None):
-    """Fitting routine for resonator spectroscopy"""
+    """
+    Fitting routine for resonator/qubit spectroscopy.
+
+    Args: 
+        data (`DataUnits`): dataset for the fit
+        x (str): name of the input values for the Lorentzian model 
+        y (str): name of the output values for the Lorentzian model
+        qubit (int): ID qubit number 
+        nqubits (int): total number of qubits 
+        labels (list of str): list containing the lables of the quantities computed by this fitting method.
+        When using `qibocal.calibration.characterization.resonator_spectroscopy` the expacted labels are ["resonator_freq", "peak voltage"], where "resonator_freq"
+            is the estimated frequency of the resonator, and peak voltage ...
+            - when using qubit the  
+        fit_file_name (str):
+    
+    Returns: 
+
+    """
     if fit_file_name == None:
         data_fit = Data(
             name=f"fit_q{qubit}",
