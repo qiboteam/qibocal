@@ -12,19 +12,19 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None):
     """
     Fitting routine for resonator/qubit spectroscopy.
 
-    Args: 
+    Args:
         data (`DataUnits`): dataset for the fit
-        x (str): name of the input values for the Lorentzian model 
+        x (str): name of the input values for the Lorentzian model
         y (str): name of the output values for the Lorentzian model
-        qubit (int): ID qubit number 
-        nqubits (int): total number of qubits 
+        qubit (int): ID qubit number
+        nqubits (int): total number of qubits
         labels (list of str): list containing the lables of the quantities computed by this fitting method.
         When using `qibocal.calibration.characterization.resonator_spectroscopy` the expacted labels are ["resonator_freq", "peak voltage"], where "resonator_freq"
             is the estimated frequency of the resonator, and peak voltage ...
-            - when using qubit the  
+            - when using qubit the
         fit_file_name (str):
-    
-    Returns: 
+
+    Returns:
 
     """
     if fit_file_name == None:
