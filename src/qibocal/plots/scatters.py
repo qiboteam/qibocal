@@ -1379,7 +1379,7 @@ def rb_plot(folder, routine, qubit, format):
     # Calculate an exponential fit to the given data pm dependent on m.
     # 'popt' stores the optimized parameters and pcov the covariance of popt.
     try:
-        popt, pcov = curve_fit(exp_func, xdata, pm, p0=[0.5, 0.5, 0.5], max_nfev=10000)
+        popt, pcov = curve_fit(exp_func, xdata, pm, p0=[0.5, 0.5, 0.5])
     except:
         popt, pcov = (1, 1, 0), (None)
     # The variance of the variables in 'popt' are calculated with 'pcov'.

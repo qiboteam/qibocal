@@ -10,14 +10,18 @@ from qibocal.calibrations.protocols.utils import onequbit_clifford_params
 
 
 class Generator:
-    """
-    Uniform Independent Random Sequence
+    """ Build a circuit generator when if called generates a random circuit
+    from a given distribution.
+    
+    Used in the ``experiments.Experiment`` class to build the circuits which
+    will be executed during the randomized benchmarking experiment.
+    Holds the methods to build a random circuit, along with the qubit to act
+    on out of the given qubits.
+    Inverting the whole gate sequence of one circuit is possible.
     """
 
     def __init__(self, qubits: list, act_on: int = None, **kwargs) -> None:
-        """ """
-        # Check the type of the variable 'qubits', different versions of
-        # qibocal require different types in the WIP version.
+        # Check the type of the variable 'qubits', it has to be an iterator.
         if type(qubits) == int:
             # Make it list out of the interger given.
             self.qubits = [x for x in range(qubits)]
@@ -35,7 +39,8 @@ class Generator:
         else:
             self.used_qubits = self.qubits
         # Every used qubit should be measured in the end (basis measurement).
-        self.measurement = kwargs.get("measurement", gates.M(*self.used_qubits))
+        self.measurement = kwargs.get(
+            "measurement", gates.M(*self.used_qubits))
 
     def __call__(self, sequence_length: list):
         """For generating a sequence of circuits the object itself
@@ -67,10 +72,10 @@ class Generator:
         if self.invert:
             # FIXME changed fusion gate calculation by hand since the
             # inbuilt function does not work.
-            # Calculate the inversion matrix.
-            inversion_unitary = circuit.invert().fuse().queue[0].matrix
-            # Add it as a unitary gate to the circuit.
-            circuit.add(gates.Unitary(inversion_unitary, *self.used_qubits))
+            # Build a gate out of the unitary of the whole circuit and
+            # take the daggered version of that.
+            circuit.add(
+                gates.Unitary(circuit.unitary(), *self.used_qubits).dagger())
         circuit.add(self.measurement)
         # No noise model added, for a simulation either the platform
         # introduces the errors or the error gates will be added
@@ -84,7 +89,6 @@ class GeneratorOnequbitcliffords(Generator):
     """
 
     def __init__(self, qubits, **kwargs):
-        """ """
         super().__init__(qubits, **kwargs)
         # Overwrite the gate generator attribute from the motherclass with
         # the class specific generator.

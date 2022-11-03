@@ -12,10 +12,9 @@ from qibo.noise import NoiseModel, PauliError
 from qibocal.calibrations.protocols.generators import *
 from qibocal.calibrations.protocols.utils import dict_to_txt, pkl_to_list
 from qibocal.data import Data
+from copy import deepcopy
 
 # from typing import Union
-
-
 
 
 class Experiment:
@@ -256,8 +255,7 @@ class Experiment:
         return obj
 
     @classmethod
-    def retrieve_from_dataobjects(
-            cls, data_circs, data_samples, data_probs, **kwargs):
+    def retrieve_from_dataobjects(cls, data_circs, data_samples, data_probs, **kwargs):
         """ """
         # Initiate an instance of the experiment class.
         obj = cls()
@@ -319,6 +317,7 @@ class Experiment:
         """FIXME the circuits have to be build already (or loaded),
         add something to check that and if they were not build yet build or
         load them.
+        TODO execute run by run and yield the data inbetween?
 
         Args:
             kwargs (dict):
@@ -343,8 +342,9 @@ class Experiment:
             probs_list, samples_list = [], []
             # Go through every sequence in the protocol.
             for count_m in range(amount_m):
-                # Get the circuit.
-                circuit = self.circuits_list[count_runs][count_m]
+                # Get the circuit. Deepcopy it to not alter the
+                # the original circuit.
+                circuit = deepcopy(self.circuits_list[count_runs][count_m])
                 # For the simulation the noise has to be added to the circuit.
                 if kwargs.get("paulierror_noiseparams"):
                     # Add the noise to the circuit (more like the other way
@@ -530,12 +530,14 @@ class Experiment:
         from_samples: bool = True,
         **kwargs,
     ) -> np.ndarray:
-        """ TODO this is exactly what resutl.frequencies() is doing!  
-        """
+        """TODO this is exactly what resutl.frequencies() is doing!"""
         # Check if the samples attribute is not empty e.g. the first entry is
         # not just an empty list.
-        if len(self.outcome_samples[0]) != 0 \
-            and from_samples and self.nshots is not None:
+        if (
+            len(self.outcome_samples[0]) != 0
+            and from_samples
+            and self.nshots is not None
+        ):
             # Create all possible state vectors.
             allstates = np.array(list(product([0, 1], repeat=len(self.qubits))))
             # The attribute should be lists out of lists out of lists out
@@ -602,6 +604,7 @@ class Experiment:
         def exp_func(x: np.ndarray, A: float, f: float, B: float) -> np.ndarray:
             """ """
             return A * f**x + B
+
         # The xaxis is defined by the sequence lengths of the applied circuits.
         xdata = self.sequence_lengths
         if ydata is None:
@@ -611,7 +614,8 @@ class Experiment:
         # 'popt' stores the optimized parameters and pcov the covariance of popt.
         try:
             popt, pcov = curve_fit(
-                exp_func, xdata, ydata, p0=[0.5, 1, 0.8], method='lm')
+                exp_func, xdata, ydata, p0=[0.5, 1, 0.8], method="lm"
+            )
         except:
             popt, pcov = (1, 1, 0), (None)
         # Build a finer spaces xdata array for plotting the fit.
@@ -677,30 +681,36 @@ class Experiment:
             filtersarray = np.average(filtersarray, axis=0)
         return filtersarray
 
-        
     def plot_scatterruns(self, **kwargs):
-        """
-        """
+        """ """
         import matplotlib.pyplot as plt
+
         colorfunc = plt.get_cmap("inferno")
         xdata = self.sequence_lengths
         xdata_scattered = np.tile(xdata, self.runs)
         if self.inverse:
-            ydata_scattered = self.probabilities(averaged=False)[:,:,0]
+            ydata_scattered = self.probabilities(averaged=False)[:, :, 0]
         else:
             ydata_scattered = self.filter_single_qubit(averaged=False)
-        plt.scatter(xdata_scattered, ydata_scattered.flatten(), marker='_',
-                    linewidths=5, s=100, color=colorfunc(100),
-                    alpha=.4, label='each run')
+        plt.scatter(
+            xdata_scattered,
+            ydata_scattered.flatten(),
+            marker="_",
+            linewidths=5,
+            s=100,
+            color=colorfunc(100),
+            alpha=0.4,
+            label="each run",
+        )
         ydata = np.average(ydata_scattered, axis=0)
         # pdb.set_trace()
-        plt.scatter(xdata, ydata, marker=5, label='averaged')
+        plt.scatter(xdata, ydata, marker=5, label="averaged")
         xfitted, yfitted, popt = self.fit_exponential(ydata)
         fitlegend = "fit A: {:.3f}, f: {:.3f}, B: {:.3f}".format(
-            popt[0], popt[1], popt[2])
-        plt.plot(xfitted, yfitted, '--', color=colorfunc(50), label=fitlegend)
-        plt.ylabel('survival probability')
-        plt.xlabel('sequence length')
+            popt[0], popt[1], popt[2]
+        )
+        plt.plot(xfitted, yfitted, "--", color=colorfunc(50), label=fitlegend)
+        plt.ylabel("survival probability")
+        plt.xlabel("sequence length")
         plt.legend()
         plt.show()
-
