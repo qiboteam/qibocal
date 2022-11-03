@@ -314,7 +314,9 @@ def time_msr_phase(folder, routine, qubit, format):
                 col=1,
             )
 
-            fitting_report = fitting_report + (f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f} ns<br>q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} uV.<br><br>")
+            fitting_report = fitting_report + (
+                f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f} ns<br>q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} uV.<br><br>"
+            )
 
             # fig.add_annotation(
             #     dict(
@@ -337,7 +339,7 @@ def time_msr_phase(folder, routine, qubit, format):
                 x=0,
                 y=1.2,
                 showarrow=False,
-                #text="<a href='https://benasque.org'>FITTING REPORT</a>",
+                # text="<a href='https://benasque.org'>FITTING REPORT</a>",
                 text="<b>FITTING DATA</b>",
                 font_family="Arial",
                 font_size=20,
