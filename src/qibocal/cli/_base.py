@@ -1,19 +1,21 @@
 # -*- coding: utf-8 -*-
 """Adds global CLI options."""
 import base64
+import os
 import pathlib
 import shutil
 import socket
 import subprocess
 import uuid
+import yaml
+from qibocal.cli.builders import load_yaml
 from datetime import date, datetime
+from glob import glob
 from importlib import import_module
 from urllib.parse import urljoin
 
 import click
-import yaml
 from qibo.config import log, raise_error
-
 from qibocal.cli.builders import ActionBuilder
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
@@ -178,11 +180,7 @@ def compare(folders):
         log.info(f"Folders are comparable.")
 
     # move old compare folder and remove
-    import datetime
-    import glob
-    import os
-
-    tmp_folder = "qq-compare_" + str(datetime.datetime.now())
+    tmp_folder = "qq-compare_" + str(datetime.now())
     if os.path.isdir(TARGET_COMPARE_DIR):
         os.rename(TARGET_COMPARE_DIR, tmp_folder)
 
@@ -197,9 +195,9 @@ def compare(folders):
         log.info(f"Copying ({folder}) into {newdir}")
         try:
             shutil.copytree(f"{folder}/data", newdir)
-            for file in glob.glob(os.path.join(folder, "*.html")):
+            for file in glob(os.path.join(folder, "*.html")):
                 shutil.copy2(file, newdir)
-            for file in glob.glob(os.path.join(folder, "*.yml")):
+            for file in glob(os.path.join(folder, "*.yml")):
                 shutil.copy2(file, newdir)
         except subprocess.CalledProcessError as e:
             msg = f"Failed to upload output: {e}"
@@ -218,10 +216,7 @@ def compare(folders):
         log.info(f"Upload completed")
         i += 1
 
-
 def folders_exists(folders):
-    from glob import glob
-
     foldernames = []
     for foldername in folders:
         expanded = list(glob(foldername))
@@ -233,8 +228,6 @@ def folders_exists(folders):
 
 
 def check_folder_structure(folderList):
-    import os
-
     all_subdirList = []
     for folder in folderList:
         folder_subdirList = []
@@ -243,22 +236,6 @@ def check_folder_structure(folderList):
         all_subdirList.append(folder_subdirList)
 
     return all(x == all_subdirList[0] for x in all_subdirList)
-
-
-def get_data_subdirectory_name(folder):
-    import os
-
-    folder_subdirList = []
-    for dirName, subdirList, fileList in os.walk(folder):
-        folder_subdirList.append(subdirList)
-    return "".join(folder_subdirList[1])
-
-
-def load_yaml(path):
-    """Load yaml file from disk."""
-    with open(path) as file:
-        data = yaml.safe_load(file)
-    return data
 
 
 def update_meta(metadata, metadata_new):
@@ -287,8 +264,6 @@ def update_meta(metadata, metadata_new):
 def update_runcard(rundata, rundata_new):
     rundata["platform"] = rundata["platform"] + " , " + rundata_new["platform"]
     unique = list(set(rundata["qubits"] + rundata_new["qubits"]))
-    # unique_str = ','.join([str(i) for i in unique])
-    # rundata["qubits"] = "[" + unique_str + "]"
     rundata["qubits"] = unique
     with open(f"{TARGET_COMPARE_DIR}/runcard.yml", "w") as file:
         yaml.safe_dump(

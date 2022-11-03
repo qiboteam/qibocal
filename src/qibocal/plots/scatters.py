@@ -243,6 +243,7 @@ def time_msr_phase(folder, routine, qubit, format):
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
     i = 0
+    fitting_report = ""
     for subfolder in subfolders:
         try:
             data = DataUnits.load_data(
@@ -313,34 +314,41 @@ def time_msr_phase(folder, routine, qubit, format):
                 col=1,
             )
 
-            fig.add_annotation(
-                dict(
-                    font=dict(color="black", size=12),
-                    x=i * 0.13,
-                    y=-0.25,
-                    showarrow=False,
-                    text=f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f} ns.",
-                    textangle=0,
-                    xanchor="left",
-                    xref="paper",
-                    yref="paper",
-                )
-            )
+            fitting_report = fitting_report + (f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f} ns<br>q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} uV.<br><br>")
 
-            fig.add_annotation(
-                dict(
-                    font=dict(color="black", size=12),
-                    x=i * 0.13,
-                    y=-0.30,
-                    showarrow=False,
-                    text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} uV.",
-                    textangle=0,
-                    xanchor="left",
-                    xref="paper",
-                    yref="paper",
-                )
-            )
+            # fig.add_annotation(
+            #     dict(
+            #         font=dict(color="black", size=12),
+            #         x=i * 0.13,
+            #         y=-0.30,
+            #         showarrow=False,
+            #         text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} uV.",
+            #         textangle=0,
+            #         xanchor="left",
+            #         xref="paper",
+            #         yref="paper",
+            #     )
+            # )
         i += 1
+
+        fig.add_annotation(
+            dict(
+                font=dict(color="black", size=12),
+                x=0,
+                y=1.2,
+                showarrow=False,
+                #text="<a href='https://benasque.org'>FITTING REPORT</a>",
+                text="<b>FITTING DATA</b>",
+                font_family="Arial",
+                font_size=20,
+                textangle=0,
+                xanchor="left",
+                xref="paper",
+                yref="paper",
+                font_color="#5e9af1",
+                hovertext=fitting_report,
+            )
+        )
 
     # last part
     fig.update_layout(
