@@ -6,7 +6,7 @@ Calibration routines
 The calibration routines are techniques used to reduce execution errors in quantum circuits. To perform calibrations, the expected theoretical results of an experiment are compared with readouts obtained by running that same experiment using quantum devices. There are at least two objectives in calibration:
 
 - To derive the exact values of the signals to be supplied to the hardware in order to obtain the best possible implementation of a theoretical operation;
-- Derive the system relaxation time, which is the threshold time interval beyond which executions of operations on the hardware are no longer reliable due to machine overload. 
+- Derive the system relaxation time, which is the threshold time interval beyond which executions of operations on the hardware are no longer reliable due to machine overload.
 
 In ``qibocal`` we provide the following calibration routines:
 
