@@ -79,10 +79,10 @@ and `csv <https://docs.python.org/3/library/csv.html>`_.
     :members:
     :member-order: bysource
 
-Fitting functions 
+Fitting functions
 -----------------
 
-Routine-specific method for post-processing data acquired.
+Routine-specific method for post-processing acquired data.
 
 .. automodule:: qibocal.fitting.methods
    :members:

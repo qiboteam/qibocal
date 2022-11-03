@@ -9,23 +9,39 @@ from qibocal.fitting.utils import cos, exp, flipping, lorenzian, parse, rabi, ra
 
 
 def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None):
-    """
+    r"""
     Fitting routine for resonator/qubit spectroscopy.
+    The used model is
 
-    Args: 
+    .. math::
+
+        y = \frac{A}{\pi} \Big[ \frac{\sigma}{(f-f_0)^2 + \sigma^2} \Big] + y_0.
+
+    Args:
+
         data (`DataUnits`): dataset for the fit
-        x (str): name of the input values for the Lorentzian model 
+        x (str): name of the input values for the Lorentzian model
         y (str): name of the output values for the Lorentzian model
-        qubit (int): ID qubit number 
-        nqubits (int): total number of qubits 
+        qubit (int): ID qubit number
+        nqubits (int): total number of qubits
         labels (list of str): list containing the lables of the quantities computed by this fitting method.
-        When using `qibocal.calibration.characterization.resonator_spectroscopy` the expacted labels are ["resonator_freq", "peak voltage"], where "resonator_freq"
-            is the estimated frequency of the resonator, and peak voltage ...
-            - when using qubit the  
-        fit_file_name (str):
-    
-    Returns: 
 
+            -   When using ``resonator_spectroscopy`` the expected labels are [`resonator_freq`, `peak voltage`], where `resonator_freq` is the estimated frequency of the resonator, and peak voltage ...
+
+            -   when using ``qubit_spectroscopy`` the expected labels are [`qubit_freq`, `peak voltage`], where `qubit_freq` is the estimated frequency of the qubit
+
+        fit_file_name (str): file name, ``None`` is the default value.
+
+    Returns:
+
+        A ``Data`` object with the following keys
+
+            - *labels[0]*: peak voltage
+            - *labels[1]*: frequency
+            - *popt0*: Lorentzian's amplitude
+            - *popt1*: Lorentzian's center
+            - *popt2*: Lorentzian's sigma
+            - *popt3*: Lorentzian's offset
     """
     if fit_file_name == None:
         data_fit = Data(
@@ -122,6 +138,35 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None):
 
 
 def rabi_fit(data, x, y, qubit, nqubits, labels):
+    r"""
+    Fitting routine for Rabi experiment. The used model is
+
+    .. math::
+
+        y = p_0 + p_1 sin(2 \pi p_2 x + p_3) e^{-x p_4}.
+
+    Args:
+
+        data (`DataUnits`): dataset for the fit
+        x (str): name of the input values for the Rabi model
+        y (str): name of the output values for the Rabi model
+        qubit (int): ID qubit number
+        nqubits (int): total number of qubits
+        labels (list of str): list containing the lables of the quantities computed by this fitting method.
+
+    Returns:
+
+        A ``Data`` object with the following keys
+
+            - *popt0*: offset
+            - *popt1*: oscillation amplitude
+            - *popt2*: frequency
+            - *popt3*: phase
+            - *popt4*: T2
+            - *labels[0]*: pulse duration
+            - *labels[1]*: pulse maximum voltage
+    """
+
     data_fit = Data(
         name=f"fit_q{qubit}",
         quantities=[
@@ -181,7 +226,37 @@ def rabi_fit(data, x, y, qubit, nqubits, labels):
 
 
 def ramsey_fit(data, x, y, qubit, qubit_freq, sampling_rate, offset_freq, labels):
+    r"""
+    Fitting routine for Ramsey experiment. The used model is
 
+    .. math::
+
+        y = p_0 + p_1 sin \Big(2 \pi p_2 x + p_3 \Big) e^{-x p_4}.
+
+    Args:
+
+        data (`DataUnits`): dataset for the fit
+        x (str): name of the input values for the Ramsey model
+        y (str): name of the output values for the Ramsey model
+        qubit (int): ID qubit number
+        qubits_freq (float):
+        sampling_rate (float):
+        offset_freq (float):
+        labels (list of str): list containing the lables of the quantities computed by this fitting method.
+
+    Returns:
+
+        A ``Data`` object with the following keys
+
+            - *popt0*: offset
+            - *popt1*: oscillation amplitude
+            - *popt2*: frequency
+            - *popt3*: phase
+            - *popt4*: T2
+            - *labels[0]*: physical delta
+            - *labels[1]*: corrected qubit frequency
+            - *labels[2]*: T2
+    """
     data_fit = Data(
         name=f"fit_q{qubit}",
         quantities=[
@@ -236,6 +311,35 @@ def ramsey_fit(data, x, y, qubit, qubit_freq, sampling_rate, offset_freq, labels
 
 def t1_fit(data, x, y, qubit, nqubits, labels):
 
+    """
+    Fitting routine for T1 experiment. The used model is
+
+        .. math::
+
+            p_0-p_1 e^{-x p_2}.
+
+    Args:
+
+        data (`DataUnits`): dataset for the fit
+        x (str): name of the input values for the T1 model
+        y (str): name of the output values for the T1 model
+        qubit (int): ID qubit number
+        nqubits (int): total number of qubits
+        labels (list of str): list containing the lables of the quantities computed by this fitting method.
+
+    Returns:
+
+        A ``Data`` object with the following keys
+
+            - *popt0*: p0
+            - *popt1*: p1
+            - *popt2*: p2
+            - *labels[0]*: T1.
+
+
+
+    """
+
     data_fit = Data(
         name=f"fit_q{qubit}",
         quantities=[
@@ -284,6 +388,37 @@ def t1_fit(data, x, y, qubit, nqubits, labels):
 
 
 def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
+    r"""
+    Fitting routine for T1 experiment. The used model is
+
+    .. math::
+
+        p_0 sin\Big(\frac{2 \pi x}{p_2} + p_3\Big).
+
+    Args:
+
+        data (`DataUnits`): dataset for the fit
+        x (str): name of the input values for the flipping model
+        y (str): name of the output values for the flipping model
+        qubit (int): ID qubit number
+        nqubits (int): total number of qubits
+        niter(int): ...
+        pi_pulse_amplitude(float): ...
+        labels (list of str): list containing the lables of the quantities computed by this fitting method.
+
+    Returns:
+
+        A ``Data`` object with the following keys
+
+            - *popt0*: p0
+            - *popt1*: p1
+            - *popt2*: p2
+            - *popt3*: p3
+            - *labels[0]*: delta amplitude
+            - *labels[1]*: corrected amplitude
+
+
+    """
 
     data_fit = Data(
         name=f"fit_q{qubit}",
@@ -330,6 +465,34 @@ def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
 
 
 def drag_tunning_fit(data, x, y, qubit, nqubits, labels):
+    r"""
+    Fitting routine for drag tunning. The used model is
+
+        .. math::
+
+            p_1 cos \Big(\frac{2 \pi x}{p_2} + p_3 \Big) + p_0.
+
+    Args:
+
+        data (`DataUnits`): dataset for the fit
+        x (str): name of the input values for the model
+        y (str): name of the output values for the model
+        qubit (int): ID qubit number
+        nqubits (int): total number of qubits
+        labels (list of str): list containing the lables of the quantities computed by this fitting method.
+
+    Returns:
+
+        A ``Data`` object with the following keys
+
+            - *popt0*: offset
+            - *popt1*: oscillation amplitude
+            - *popt2*: period
+            - *popt3*: phase
+            - *labels[0]*: optimal beta.
+
+
+    """
 
     data_fit = Data(
         name=f"fit_q{qubit}",
