@@ -63,7 +63,7 @@ def get_noise(background, platform, ro_pulse, qubit, sequence):
     return noise / len(background)
 
 
-def plot_flux(currs, freqs, qubit):
+def plot_flux(currs, freqs, qubit, fluxline):
     """Quick plot for the flux vs. current calibration.
     TODO: Move to plots with the new qq_live architecture.
 
@@ -72,7 +72,7 @@ def plot_flux(currs, freqs, qubit):
 
     fig = plt.figure(figsize=(8, 8))
     plt.plot(currs, freqs)
-    plt.savefig(f"qubit_{qubit}_flux.png", bbox_inches="tight")
+    plt.savefig(f"flux_q{qubit}_f{fluxline}.png", bbox_inches="tight")
 
 
 def plot_punchout(atts, freqs, qubit):
