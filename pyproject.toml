@@ -16,11 +16,18 @@ classifiers=[
 
 [tool.poetry.dependencies]
 python = ">=3.8, <4"
-qibo = ">=0.1.8"
+qibo = {git = "https://github.com/qiboteam/qibo.git", rev = "master"}
 qibolab = {git = "https://github.com/qiboteam/qibolab.git", rev = "main"}
 pandas = "^1.4.3"
 Pint-Pandas = {git = "https://github.com/hgrecco/pint-pandas.git", rev = "master"}
 dash = "^2.6.0"
+lmfit = "^1.0.3"
+# docs dependencies (for readthedocs, https://github.com/readthedocs/readthedocs.org/issues/4912#issuecomment-664002569)
+Sphinx = { version = "^4.3.2", optional = true }
+sphinx-rtd-theme = { version = "^1.0.0", optional = true }
+sphinxcontrib-bibtex = { version = "^2.4.1", optional = true }
+recommonmark = { version = "^0.7.1", optional = true }
+sphinx_markdown_tables = { version = "^0.0.17", optional = true }
 
 [tool.poetry.dev-dependencies]
 black = "^22.6.0"
@@ -33,10 +40,10 @@ Sphinx = "^4.3.2"
 sphinx-rtd-theme = "^1.0.0"
 sphinxcontrib-bibtex = "^2.4.1"
 recommonmark = "^0.7.1"
-sphinx-markdown-tables = "^0.0.17"
+sphinx_markdown_tables = "^0.0.17"
 
 [tool.poetry.extras]
-docs = ["sphinx", "sphinx-rtd-theme", "sphinxcontrib-bibtex", "recommonmark", "sphinx-markdown-tables"]
+docs = ["sphinx", "sphinx-rtd-theme", "sphinxcontrib-bibtex", "recommonmark", "sphinx_markdown_tables"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

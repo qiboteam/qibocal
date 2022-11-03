@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """qibocal-index-reports.py
 Generates a JSON index with reports information.
 """
