@@ -1,3 +1,5 @@
+.. _calibration_routines:
+
 Calibration routines
 --------------------
 
@@ -82,7 +84,7 @@ and `csv <https://docs.python.org/3/library/csv.html>`_.
 Fitting functions
 -----------------
 
-Routine-specific method for post-processing acquired data.
+``Qibocal`` offers routine-specific method for post-processing acquired data with the :ref:`calibration_routines`.
 
 .. automodule:: qibocal.fitting.methods
    :members:
