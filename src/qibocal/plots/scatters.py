@@ -743,19 +743,6 @@ def t1_time_msr_phase(folder, routine, qubit, format):
                 f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} ns.<br><br>"
             )
 
-            # fig.add_annotation(
-            #     dict(
-            #         font=dict(color="black", size=12),
-            #         x=i * 0.07,
-            #         y=-0.20,
-            #         showarrow=False,
-            #         text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} ns.",
-            #         textangle=0,
-            #         xanchor="left",
-            #         xref="paper",
-            #         yref="paper",
-            #     )
-            # )
         i += 1
 
     fig.add_annotation(
