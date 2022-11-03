@@ -5,6 +5,7 @@ from shutil import rmtree
 
 import numpy as np
 from pandas import read_pickle
+
 from qibocal.calibrations.protocols.experiments import Experiment
 from qibocal.calibrations.protocols.generators import *
 from qibocal.data import Data
