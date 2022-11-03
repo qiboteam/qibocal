@@ -7,16 +7,16 @@ import shutil
 import socket
 import subprocess
 import uuid
-import yaml
-from qibocal.cli.builders import load_yaml
 from datetime import date, datetime
 from glob import glob
 from importlib import import_module
 from urllib.parse import urljoin
 
 import click
+import yaml
 from qibo.config import log, raise_error
-from qibocal.cli.builders import ActionBuilder
+
+from qibocal.cli.builders import ActionBuilder, load_yaml
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -215,6 +215,7 @@ def compare(folders):
 
         log.info(f"Upload completed")
         i += 1
+
 
 def folders_exists(folders):
     foldernames = []
