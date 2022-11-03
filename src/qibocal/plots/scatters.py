@@ -127,8 +127,10 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
                 col=1,
             )
 
-            fitting_report = fitting_report + (f"q{qubit}/r{i} {params[2]}: {data_fit.df[params[2]][0]:.1f} Hz.<br>q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f} uV.<br>q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.0f} Hz.<br><br>")
-        
+            fitting_report = fitting_report + (
+                f"q{qubit}/r{i} {params[2]}: {data_fit.df[params[2]][0]:.1f} Hz.<br>q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f} uV.<br>q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.0f} Hz.<br><br>"
+            )
+
         i += 1
 
     fig.add_annotation(
@@ -294,8 +296,10 @@ def time_msr_phase(folder, routine, qubit, format):
                 col=1,
             )
 
-            fitting_report = fitting_report + (f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f} ns<br>q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} uV.<br><br>")
-        
+            fitting_report = fitting_report + (
+                f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f} ns<br>q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} uV.<br><br>"
+            )
+
         i += 1
 
     fig.add_annotation(
@@ -416,8 +420,10 @@ def gain_msr_phase(folder, routine, qubit, format):
                 col=1,
             )
 
-            fitting_report = fitting_report + (f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f}<br>q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.4f} uV<br><br>")
-        
+            fitting_report = fitting_report + (
+                f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f}<br>q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.4f} uV<br><br>"
+            )
+
         i += 1
 
     fig.add_annotation(
@@ -525,7 +531,9 @@ def amplitude_msr_phase(folder, routine, qubit, format):
                 col=1,
             )
 
-            fitting_report = fitting_report + (f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.3f} uV.<br>q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.4f}<br><br>")
+            fitting_report = fitting_report + (
+                f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.3f} uV.<br>q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.4f}<br><br>"
+            )
 
         i += 1
 
@@ -622,7 +630,9 @@ def time_msr(folder, routine, qubit, format):
                 col=1,
             )
 
-            fitting_report = fitting_report + (f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f} Hz.<br>q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} ns<br>q{qubit}/r{i} {params[2]}: {data_fit.df[params[2]][0]:.3f} Hz<br><br>")
+            fitting_report = fitting_report + (
+                f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f} Hz.<br>q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} ns<br>q{qubit}/r{i} {params[2]}: {data_fit.df[params[2]][0]:.3f} Hz<br><br>"
+            )
 
         i += 1
 
@@ -729,7 +739,9 @@ def t1_time_msr_phase(folder, routine, qubit, format):
                 col=1,
             )
 
-            fitting_report = fitting_report + (f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} ns.<br><br>")
+            fitting_report = fitting_report + (
+                f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} ns.<br><br>"
+            )
 
             # fig.add_annotation(
             #     dict(
@@ -763,7 +775,7 @@ def t1_time_msr_phase(folder, routine, qubit, format):
             hovertext=fitting_report,
         )
     )
-    
+
     # last part
     fig.update_layout(
         showlegend=True,
@@ -853,7 +865,9 @@ def flips_msr_phase(folder, routine, qubit, format):
                 col=1,
             )
 
-            fitting_report = fitting_report + (f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.4f}<br>q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f}<br><br>")
+            fitting_report = fitting_report + (
+                f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.4f}<br>q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f}<br><br>"
+            )
 
         i += 1
 
@@ -1035,7 +1049,7 @@ def exc_gnd(folder, routine, qubit, format):
     return fig
 
 
-# allXY - tested 
+# allXY - tested
 def prob_gate(folder, routine, qubit, format):
 
     fig = make_subplots(
@@ -1219,7 +1233,9 @@ def msr_beta(folder, routine, qubit, format):
                 col=1,
             )
 
-            fitting_report = fitting_report + (f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.4f}<br><br>")
+            fitting_report = fitting_report + (
+                f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.4f}<br><br>"
+            )
 
             i += 1
 
@@ -1383,8 +1399,10 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
                 col=1,
             )
 
-            fitting_report = fitting_report + (f"q{qubit}/r{i} {params[2]}: {data_fit.df[params[2]][0]:.1f} Hz.<br>")
- 
+            fitting_report = fitting_report + (
+                f"q{qubit}/r{i} {params[2]}: {data_fit.df[params[2]][0]:.1f} Hz.<br>"
+            )
+
         # fitting shifted  traces
         if len(data_shifted) > 0 and len(data_fit_shifted) > 0:
             freqrange = np.linspace(
@@ -1410,7 +1428,9 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
                 col=1,
             )
 
-            fitting_report = fitting_report + (f"q{qubit}/r{i} shifted {params[2]}: {data_fit_shifted.df[params[2]][0]:.1f} Hz.<br><br>")
+            fitting_report = fitting_report + (
+                f"q{qubit}/r{i} shifted {params[2]}: {data_fit_shifted.df[params[2]][0]:.1f} Hz.<br><br>"
+            )
 
         i += 1
 
