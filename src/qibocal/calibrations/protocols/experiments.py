@@ -12,6 +12,7 @@ from qibo.noise import NoiseModel, PauliError
 from qibocal.calibrations.protocols.generators import *
 from qibocal.calibrations.protocols.utils import dict_to_txt, pkl_to_list
 from qibocal.data import Data
+from copy import deepcopy
 
 # from typing import Union
 
@@ -316,6 +317,7 @@ class Experiment:
         """FIXME the circuits have to be build already (or loaded),
         add something to check that and if they were not build yet build or
         load them.
+        TODO execute run by run and yield the data inbetween?
 
         Args:
             kwargs (dict):
@@ -340,8 +342,9 @@ class Experiment:
             probs_list, samples_list = [], []
             # Go through every sequence in the protocol.
             for count_m in range(amount_m):
-                # Get the circuit.
-                circuit = self.circuits_list[count_runs][count_m]
+                # Get the circuit. Deepcopy it to not alter the
+                # the original circuit.
+                circuit = deepcopy(self.circuits_list[count_runs][count_m])
                 # For the simulation the noise has to be added to the circuit.
                 if kwargs.get("paulierror_noiseparams"):
                     # Add the noise to the circuit (more like the other way
