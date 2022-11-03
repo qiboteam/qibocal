@@ -19,7 +19,7 @@ def get_data_subfolders(folder):
     return subfolders[::-1]
 
 
-# Resonator and qubit spectroscopies - tested
+# Resonator and qubit spectroscopies
 def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
 
     fig = make_subplots(
@@ -36,6 +36,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
     i = 0
+    fitting_report = ""
     for subfolder in subfolders:
         try:
             data_fast = DataUnits.load_data(
@@ -126,48 +127,27 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
                 col=1,
             )
 
-            fig.add_annotation(
-                dict(
-                    font=dict(color="black", size=12),
-                    x=i * 0.13,
-                    y=-0.25,
-                    showarrow=False,
-                    text=f"q{qubit}/r{i} {params[2]}: {data_fit.df[params[2]][0]:.1f} Hz.",
-                    textangle=0,
-                    xanchor="left",
-                    xref="paper",
-                    yref="paper",
-                )
-            )
-            fig.add_annotation(
-                dict(
-                    font=dict(color="black", size=12),
-                    x=i * 0.13,
-                    y=-0.30,
-                    showarrow=False,
-                    text=f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f} uV.",
-                    textangle=0,
-                    xanchor="left",
-                    xref="paper",
-                    yref="paper",
-                )
-            )
-            if data_fit.df[params[0]][0] != 0:
-                fig.add_annotation(
-                    dict(
-                        font=dict(color="black", size=12),
-                        x=i * 0.13,
-                        y=-0.20,
-                        showarrow=False,
-                        text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.0f} Hz.",
-                        textangle=0,
-                        xanchor="left",
-                        xref="paper",
-                        yref="paper",
-                    )
-                )
-
+            fitting_report = fitting_report + (f"q{qubit}/r{i} {params[2]}: {data_fit.df[params[2]][0]:.1f} Hz.<br>q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f} uV.<br>q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.0f} Hz.<br><br>")
+        
         i += 1
+
+    fig.add_annotation(
+        dict(
+            font=dict(color="black", size=12),
+            x=0,
+            y=1.2,
+            showarrow=False,
+            text="<b>FITTING DATA</b>",
+            font_family="Arial",
+            font_size=20,
+            textangle=0,
+            xanchor="left",
+            xref="paper",
+            yref="paper",
+            font_color="#5e9af1",
+            hovertext=fitting_report,
+        )
+    )
 
     fig.update_layout(
         showlegend=True,
@@ -180,7 +160,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
     return fig
 
 
-# Resonator and qubit spectroscopies - tested
+# Resonator and qubit spectroscopies
 def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
 
     plot1d_attenuation = 56  # attenuation value to use for 1D frequency vs MSR plot
@@ -226,7 +206,7 @@ def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
     return fig
 
 
-# Rabi oscillations pulse length - tested
+# Rabi oscillations pulse length
 def time_msr_phase(folder, routine, qubit, format):
 
     fig = make_subplots(
@@ -315,40 +295,26 @@ def time_msr_phase(folder, routine, qubit, format):
             )
 
             fitting_report = fitting_report + (f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f} ns<br>q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} uV.<br><br>")
-
-            # fig.add_annotation(
-            #     dict(
-            #         font=dict(color="black", size=12),
-            #         x=i * 0.13,
-            #         y=-0.30,
-            #         showarrow=False,
-            #         text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} uV.",
-            #         textangle=0,
-            #         xanchor="left",
-            #         xref="paper",
-            #         yref="paper",
-            #     )
-            # )
+        
         i += 1
 
-        fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=0,
-                y=1.2,
-                showarrow=False,
-                #text="<a href='https://benasque.org'>FITTING REPORT</a>",
-                text="<b>FITTING DATA</b>",
-                font_family="Arial",
-                font_size=20,
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
-                font_color="#5e9af1",
-                hovertext=fitting_report,
-            )
+    fig.add_annotation(
+        dict(
+            font=dict(color="black", size=12),
+            x=0,
+            y=1.2,
+            showarrow=False,
+            text="<b>FITTING DATA</b>",
+            font_family="Arial",
+            font_size=20,
+            textangle=0,
+            xanchor="left",
+            xref="paper",
+            yref="paper",
+            font_color="#5e9af1",
+            hovertext=fitting_report,
         )
+    )
 
     # last part
     fig.update_layout(
@@ -362,7 +328,7 @@ def time_msr_phase(folder, routine, qubit, format):
     return fig
 
 
-# Rabi oscillations pulse gain - tested
+# Rabi oscillations pulse gain
 def gain_msr_phase(folder, routine, qubit, format):
 
     fig = make_subplots(
@@ -379,6 +345,7 @@ def gain_msr_phase(folder, routine, qubit, format):
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
     i = 0
+    fitting_report = ""
     for subfolder in subfolders:
         try:
             data = DataUnits.load_data(
@@ -449,34 +416,27 @@ def gain_msr_phase(folder, routine, qubit, format):
                 col=1,
             )
 
-            fig.add_annotation(
-                dict(
-                    font=dict(color="black", size=12),
-                    x=i * 0.15,
-                    y=-0.25,
-                    showarrow=False,
-                    text=f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f}",
-                    textangle=0,
-                    xanchor="left",
-                    xref="paper",
-                    yref="paper",
-                )
-            )
-
-            fig.add_annotation(
-                dict(
-                    font=dict(color="black", size=12),
-                    x=i * 0.15,
-                    y=-0.30,
-                    showarrow=False,
-                    text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.4f} uV",
-                    textangle=0,
-                    xanchor="left",
-                    xref="paper",
-                    yref="paper",
-                )
-            )
+            fitting_report = fitting_report + (f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f}<br>q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.4f} uV<br><br>")
+        
         i += 1
+
+    fig.add_annotation(
+        dict(
+            font=dict(color="black", size=12),
+            x=0,
+            y=1.2,
+            showarrow=False,
+            text="<b>FITTING DATA</b>",
+            font_family="Arial",
+            font_size=20,
+            textangle=0,
+            xanchor="left",
+            xref="paper",
+            yref="paper",
+            font_color="#5e9af1",
+            hovertext=fitting_report,
+        )
+    )
 
     fig.update_layout(
         showlegend=True,
@@ -487,7 +447,7 @@ def gain_msr_phase(folder, routine, qubit, format):
     return fig
 
 
-# Rabi oscillations pulse amplitude - tested
+# Rabi oscillations pulse amplitude
 def amplitude_msr_phase(folder, routine, qubit, format):
 
     fig = make_subplots(
@@ -504,6 +464,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
     i = 0
+    fitting_report = ""
     for subfolder in subfolders:
 
         try:
@@ -564,34 +525,27 @@ def amplitude_msr_phase(folder, routine, qubit, format):
                 col=1,
             )
 
-            fig.add_annotation(
-                dict(
-                    font=dict(color="black", size=12),
-                    x=i * 0.15,
-                    y=-0.30,
-                    showarrow=False,
-                    text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.3f} uV.",
-                    textangle=0,
-                    xanchor="left",
-                    xref="paper",
-                    yref="paper",
-                )
-            )
+            fitting_report = fitting_report + (f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.3f} uV.<br>q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.4f}<br><br>")
 
-            fig.add_annotation(
-                dict(
-                    font=dict(color="black", size=12),
-                    x=i * 0.15,
-                    y=-0.25,
-                    showarrow=False,
-                    text=f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.4f}",
-                    textangle=0,
-                    xanchor="left",
-                    xref="paper",
-                    yref="paper",
-                )
-            )
         i += 1
+
+    fig.add_annotation(
+        dict(
+            font=dict(color="black", size=12),
+            x=0,
+            y=1.2,
+            showarrow=False,
+            text="<b>FITTING DATA</b>",
+            font_family="Arial",
+            font_size=20,
+            textangle=0,
+            xanchor="left",
+            xref="paper",
+            yref="paper",
+            font_color="#5e9af1",
+            hovertext=fitting_report,
+        )
+    )
 
     fig.update_layout(
         showlegend=True,
@@ -602,7 +556,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
     return fig
 
 
-# Ramsey oscillations - tested
+# Ramsey oscillations
 def time_msr(folder, routine, qubit, format):
     fig = make_subplots(
         rows=1,
@@ -615,6 +569,7 @@ def time_msr(folder, routine, qubit, format):
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
     i = 0
+    fitting_report = ""
     for subfolder in subfolders:
         try:
             data = DataUnits.load_data(
@@ -667,48 +622,27 @@ def time_msr(folder, routine, qubit, format):
                 col=1,
             )
 
-            fig.add_annotation(
-                dict(
-                    font=dict(color="black", size=12),
-                    x=i * 0.18,
-                    y=-0.30,
-                    showarrow=False,
-                    text=f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f} Hz.",
-                    textangle=0,
-                    xanchor="left",
-                    xref="paper",
-                    yref="paper",
-                )
-            )
+            fitting_report = fitting_report + (f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f} Hz.<br>q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} ns<br>q{qubit}/r{i} {params[2]}: {data_fit.df[params[2]][0]:.3f} Hz<br><br>")
 
-            fig.add_annotation(
-                dict(
-                    font=dict(color="black", size=12),
-                    x=i * 0.18,
-                    y=-0.20,
-                    showarrow=False,
-                    text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} ns",
-                    textangle=0,
-                    xanchor="left",
-                    xref="paper",
-                    yref="paper",
-                )
-            )
-
-            fig.add_annotation(
-                dict(
-                    font=dict(color="black", size=12),
-                    x=i * 0.18,
-                    y=-0.25,
-                    showarrow=False,
-                    text=f"q{qubit}/r{i} {params[2]}: {data_fit.df[params[2]][0]:.3f} Hz",
-                    textangle=0,
-                    xanchor="left",
-                    xref="paper",
-                    yref="paper",
-                )
-            )
         i += 1
+
+    fig.add_annotation(
+        dict(
+            font=dict(color="black", size=12),
+            x=0,
+            y=1.2,
+            showarrow=False,
+            text="<b>FITTING DATA</b>",
+            font_family="Arial",
+            font_size=20,
+            textangle=0,
+            xanchor="left",
+            xref="paper",
+            yref="paper",
+            font_color="#5e9af1",
+            hovertext=fitting_report,
+        )
+    )
 
     fig.update_layout(
         showlegend=True,
@@ -719,7 +653,7 @@ def time_msr(folder, routine, qubit, format):
     return fig
 
 
-# T1 - tested
+# T1
 def t1_time_msr_phase(folder, routine, qubit, format):
 
     fig = make_subplots(
@@ -736,6 +670,7 @@ def t1_time_msr_phase(folder, routine, qubit, format):
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
     i = 0
+    fitting_report = ""
     for subfolder in subfolders:
         try:
             data = DataUnits.load_data(
@@ -794,21 +729,41 @@ def t1_time_msr_phase(folder, routine, qubit, format):
                 col=1,
             )
 
-            fig.add_annotation(
-                dict(
-                    font=dict(color="black", size=12),
-                    x=i * 0.07,
-                    y=-0.20,
-                    showarrow=False,
-                    text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} ns.",
-                    textangle=0,
-                    xanchor="left",
-                    xref="paper",
-                    yref="paper",
-                )
-            )
+            fitting_report = fitting_report + (f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} ns.<br><br>")
+
+            # fig.add_annotation(
+            #     dict(
+            #         font=dict(color="black", size=12),
+            #         x=i * 0.07,
+            #         y=-0.20,
+            #         showarrow=False,
+            #         text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} ns.",
+            #         textangle=0,
+            #         xanchor="left",
+            #         xref="paper",
+            #         yref="paper",
+            #     )
+            # )
         i += 1
 
+    fig.add_annotation(
+        dict(
+            font=dict(color="black", size=12),
+            x=0,
+            y=1.2,
+            showarrow=False,
+            text="<b>FITTING DATA</b>",
+            font_family="Arial",
+            font_size=20,
+            textangle=0,
+            xanchor="left",
+            xref="paper",
+            yref="paper",
+            font_color="#5e9af1",
+            hovertext=fitting_report,
+        )
+    )
+    
     # last part
     fig.update_layout(
         showlegend=True,
@@ -821,7 +776,7 @@ def t1_time_msr_phase(folder, routine, qubit, format):
     return fig
 
 
-# Flipping - tested
+# Flipping
 def flips_msr_phase(folder, routine, qubit, format):
 
     fig = make_subplots(
@@ -838,6 +793,7 @@ def flips_msr_phase(folder, routine, qubit, format):
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
     i = 0
+    fitting_report = ""
     for subfolder in subfolders:
         try:
             data = DataUnits.load_data(
@@ -897,33 +853,27 @@ def flips_msr_phase(folder, routine, qubit, format):
                 col=1,
             )
 
-            fig.add_annotation(
-                dict(
-                    font=dict(color="black", size=12),
-                    x=i * 0.11,
-                    y=-0.25,
-                    showarrow=False,
-                    text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.4f}",
-                    textangle=0,
-                    xanchor="left",
-                    xref="paper",
-                    yref="paper",
-                )
-            )
-            fig.add_annotation(
-                dict(
-                    font=dict(color="black", size=12),
-                    x=i * 0.11,
-                    y=-0.30,
-                    showarrow=False,
-                    text=f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f}",
-                    textangle=0,
-                    xanchor="left",
-                    xref="paper",
-                    yref="paper",
-                )
-            )
+            fitting_report = fitting_report + (f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.4f}<br>q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f}<br><br>")
+
         i += 1
+
+    fig.add_annotation(
+        dict(
+            font=dict(color="black", size=12),
+            x=0,
+            y=1.2,
+            showarrow=False,
+            text="<b>FITTING DATA</b>",
+            font_family="Arial",
+            font_size=20,
+            textangle=0,
+            xanchor="left",
+            xref="paper",
+            yref="paper",
+            font_color="#5e9af1",
+            hovertext=fitting_report,
+        )
+    )
 
     # last part
     fig.update_layout(
@@ -937,7 +887,7 @@ def flips_msr_phase(folder, routine, qubit, format):
     return fig
 
 
-# Calibrate qubit states - tested
+# Calibrate qubit states
 def exc_gnd(folder, routine, qubit, format):
 
     fig = make_subplots(
@@ -951,6 +901,7 @@ def exc_gnd(folder, routine, qubit, format):
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
     i = 0
+    fitting_report = ""
     for subfolder in subfolders:
         try:
             parameters = DataUnits.load_data(
@@ -1051,21 +1002,27 @@ def exc_gnd(folder, routine, qubit, format):
             col=1,
         )
 
-        title_text = f"q{qubit}/r{i}: r_angle = {rotation_angle:.3f} / thrld = {threshold:.3f}<br>q{qubit}/r{i}: fidelity = {fidelity:.3f} / ass_fidelity = {assignment_fidelity:.3f}"
-        fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=i * 0.55,
-                y=-0.25,
-                showarrow=False,
-                text=f"{title_text}",
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
-            )
-        )
+        title_text = f"q{qubit}/r{i}: r_angle = {rotation_angle:.3f} / thrld = {threshold:.3f}<br>q{qubit}/r{i}: fidelity = {fidelity:.3f} / ass_fidelity = {assignment_fidelity:.3f}<br><br>"
+        fitting_report = fitting_report + title_text
         i += 1
+
+    fig.add_annotation(
+        dict(
+            font=dict(color="black", size=12),
+            x=0,
+            y=1.2,
+            showarrow=False,
+            text="<b>FITTING DATA</b>",
+            font_family="Arial",
+            font_size=13,
+            textangle=0,
+            xanchor="left",
+            xref="paper",
+            yref="paper",
+            font_color="#5e9af1",
+            hovertext=fitting_report,
+        )
+    )
 
     # fig.update_xaxes(title_text=title_text, row=1, col=1)
     fig.update_layout(
@@ -1078,7 +1035,7 @@ def exc_gnd(folder, routine, qubit, format):
     return fig
 
 
-# allXY - tested
+# allXY - tested 
 def prob_gate(folder, routine, qubit, format):
 
     fig = make_subplots(
@@ -1126,7 +1083,7 @@ def prob_gate(folder, routine, qubit, format):
     return fig
 
 
-# allXY iteration - tested
+# allXY iteration
 def prob_gate_iteration(folder, routine, qubit, format):
 
     import numpy as np
@@ -1194,7 +1151,7 @@ def prob_gate_iteration(folder, routine, qubit, format):
     return fig
 
 
-# Beta param tuning - tested
+# Beta param tuning
 def msr_beta(folder, routine, qubit, format):
 
     fig = make_subplots(
@@ -1208,6 +1165,7 @@ def msr_beta(folder, routine, qubit, format):
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
     i = 0
+    fitting_report = ""
     for subfolder in subfolders:
         try:
             data = DataUnits.load_data(
@@ -1261,20 +1219,27 @@ def msr_beta(folder, routine, qubit, format):
                 col=1,
             )
 
-            fig.add_annotation(
-                dict(
-                    font=dict(color="black", size=12),
-                    x=0,
-                    y=-0.13 + (-i * 0.05),
-                    showarrow=False,
-                    text=f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.4f}",
-                    textangle=0,
-                    xanchor="left",
-                    xref="paper",
-                    yref="paper",
-                )
-            )
+            fitting_report = fitting_report + (f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.4f}<br><br>")
+
             i += 1
+
+    fig.add_annotation(
+        dict(
+            font=dict(color="black", size=12),
+            x=0,
+            y=1.2,
+            showarrow=False,
+            text="<b>FITTING DATA</b>",
+            font_family="Arial",
+            font_size=20,
+            textangle=0,
+            xanchor="left",
+            xref="paper",
+            yref="paper",
+            font_color="#5e9af1",
+            hovertext=fitting_report,
+        )
+    )
 
     fig.update_layout(
         showlegend=True,
@@ -1285,7 +1250,7 @@ def msr_beta(folder, routine, qubit, format):
     return fig
 
 
-# Dispersive shift - tested
+# Dispersive shift
 def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
 
     fig = make_subplots(
@@ -1302,6 +1267,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
     i = 0
+    fitting_report = ""
     for subfolder in subfolders:
         try:
             data_spec = DataUnits.load_data(
@@ -1416,20 +1382,9 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
                 row=1,
                 col=1,
             )
-            fig.add_annotation(
-                dict(
-                    font=dict(color="black", size=12),
-                    x=i * 0.15,
-                    y=-0.25,
-                    showarrow=False,
-                    text=f"q{qubit}/r{i} {params[2]}: {data_fit.df[params[2]][0]:.1f} Hz.",
-                    textangle=0,
-                    xanchor="left",
-                    xref="paper",
-                    yref="paper",
-                )
-            )
 
+            fitting_report = fitting_report + (f"q{qubit}/r{i} {params[2]}: {data_fit.df[params[2]][0]:.1f} Hz.<br>")
+ 
         # fitting shifted  traces
         if len(data_shifted) > 0 and len(data_fit_shifted) > 0:
             freqrange = np.linspace(
@@ -1454,20 +1409,28 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
                 row=1,
                 col=1,
             )
-            fig.add_annotation(
-                dict(
-                    font=dict(color="black", size=12),
-                    x=i * 0.15,
-                    y=-0.30,
-                    showarrow=False,
-                    text=f"q{qubit}/r{i} shifted {params[2]}: {data_fit_shifted.df[params[2]][0]:.1f} Hz.",
-                    textangle=0,
-                    xanchor="left",
-                    xref="paper",
-                    yref="paper",
-                )
-            )
+
+            fitting_report = fitting_report + (f"q{qubit}/r{i} shifted {params[2]}: {data_fit_shifted.df[params[2]][0]:.1f} Hz.<br><br>")
+
         i += 1
+
+    fig.add_annotation(
+        dict(
+            font=dict(color="black", size=12),
+            x=0,
+            y=1.2,
+            showarrow=False,
+            text="<b>FITTING DATA</b>",
+            font_family="Arial",
+            font_size=20,
+            textangle=0,
+            xanchor="left",
+            xref="paper",
+            yref="paper",
+            font_color="#5e9af1",
+            hovertext=fitting_report,
+        )
+    )
 
     fig.update_layout(
         showlegend=True,
