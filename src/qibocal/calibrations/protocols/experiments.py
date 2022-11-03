@@ -615,7 +615,8 @@ class Experiment:
         except:
             popt, pcov = (1, 1, 0), (None)
         # Build a finer spaces xdata array for plotting the fit.
-        x_fit = np.linspace(np.sort(xdata)[0], np.sort(xdata)[-1], num=len(xdata) * 20)
+        x_fit = np.linspace(
+            np.sort(xdata)[0], np.sort(xdata)[-1], num=len(xdata) * 20)
         # Get the ydata for the fit with the calculated parameters.
         y_fit = exp_func(x_fit, *popt)
         return x_fit, y_fit, popt

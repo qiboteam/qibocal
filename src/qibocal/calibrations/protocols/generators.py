@@ -5,6 +5,7 @@ from ctypes import Union
 import numpy as np
 from qibo import gates, get_backend, models
 
+
 from qibocal.calibrations.protocols.utils import onequbit_clifford_params
 
 
