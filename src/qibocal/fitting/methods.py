@@ -10,51 +10,39 @@ from qibocal.fitting.utils import cos, exp, flipping, lorenzian, parse, rabi, ra
 
 def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None):
     r"""
-        Fitting routine for resonator/qubit spectroscopy.
-        The used model is
+    Fitting routine for resonator/qubit spectroscopy.
+    The used model is
 
-        .. math::
+    .. math::
 
-            y = \frac{A}{\pi} \Big[ \frac{\sigma}{(f-f_0)^2 + \sigma^2} \Big] + y_0.
+        y = \frac{A}{\pi} \Big[ \frac{\sigma}{(f-f_0)^2 + \sigma^2} \Big] + y_0.
 
-        Args:
+    Args:
 
-    <<<<<<< HEAD
-    =======
-        Args:
-    >>>>>>> 5573572635e1c6f79503d81e74bd7ece8222b3e2
-            data (`DataUnits`): dataset for the fit
-            x (str): name of the input values for the Lorentzian model
-            y (str): name of the output values for the Lorentzian model
-            qubit (int): ID qubit number
-            nqubits (int): total number of qubits
-            labels (list of str): list containing the lables of the quantities computed by this fitting method.
-    <<<<<<< HEAD
-    =======
-            When using `qibocal.calibration.characterization.resonator_spectroscopy` the expacted labels are ["resonator_freq", "peak voltage"], where "resonator_freq"
-                is the estimated frequency of the resonator, and peak voltage ...
-                - when using qubit the
-            fit_file_name (str):
+    Args:
+        data (`DataUnits`): dataset for the fit
+        x (str): name of the input values for the Lorentzian model
+        y (str): name of the output values for the Lorentzian model
+        qubit (int): ID qubit number
+        nqubits (int): total number of qubits
+        labels (list of str): list containing the lables of the quantities computed by this fitting method.
 
-        Returns:
-    >>>>>>> 5573572635e1c6f79503d81e74bd7ece8222b3e2
+            -   When using ``resonator_spectroscopy`` the expected labels are [`resonator_freq`, `peak voltage`], where `resonator_freq` is the estimated frequency of the resonator, and peak voltage ...
 
-                -   When using ``resonator_spectroscopy`` the expected labels are [`resonator_freq`, `peak voltage`], where `resonator_freq` is the estimated frequency of the resonator, and peak voltage ...
+            -   when using ``qubit_spectroscopy`` the expected labels are [`qubit_freq`, `peak voltage`], where `qubit_freq` is the estimated frequency of the qubit
 
-                -   when using ``qubit_spectroscopy`` the expected labels are [`qubit_freq`, `peak voltage`], where `qubit_freq` is the estimated frequency of the qubit
+        fit_file_name (str): file name, ``None`` is the default value.
 
-            fit_file_name (str): file name, ``None`` is the default value.
+    Returns:
 
-        Returns:
+        A ``Data`` object with the following keys
 
-            A ``Data`` object with the following keys
-
-                - *labels[0]*: peak voltage
-                - *labels[1]*: frequency
-                - *popt0*: Lorentzian's amplitude
-                - *popt1*: Lorentzian's center
-                - *popt2*: Lorentzian's sigma
-                - *popt3*: Lorentzian's offset
+            - *labels[0]*: peak voltage
+            - *labels[1]*: frequency
+            - *popt0*: Lorentzian's amplitude
+            - *popt1*: Lorentzian's center
+            - *popt2*: Lorentzian's sigma
+            - *popt3*: Lorentzian's offset
     """
     if fit_file_name == None:
         data_fit = Data(
@@ -415,7 +403,7 @@ def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
         y (str): name of the output values for the flipping model
         qubit (int): ID qubit number
         nqubits (int): total number of qubits
-        niter(int): ....
+        niter(int): ...
         pi_pulse_amplitude(float): ...
         labels (list of str): list containing the lables of the quantities computed by this fitting method.
 
