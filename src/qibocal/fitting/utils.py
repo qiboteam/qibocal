@@ -51,6 +51,11 @@ def cos(x, p0, p1, p2, p3):
     # Phase                   : p[3]
     return p0 + p1 * np.cos(2 * np.pi * x / p2 + p3)
 
+def line(x, p0, p1):
+    # Slope                   : p[0]
+    # Intercept               : p[1]
+    return p0 * x + p1
+
 
 def parse(key):
     name = key.split("[")[0]
