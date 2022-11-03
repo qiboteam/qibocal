@@ -9,6 +9,7 @@ from qibocal.calibrations.protocols.utils import effective_depol
 from qibocal.data import Data
 from qibocal.decorators import plot
 from qibocal.plots.scatters import rb_plot
+from qibocal.fitting.methods import rb_exponential_fit
 from datetime import datetime
 
 
@@ -48,6 +49,9 @@ def dummyrb(
     # Yield the circuits and outcome data objects.
     yield data_probs
     yield data_samples
+    if not active_qubit:
+        active_qubit = qubit
+    yield rb_exponential_fit(experiment, active_qubit)
     # Store the effective depol parameter. If there is no noise to inject (
     # because it is run on hardware), make it zero.
     if not inject_noise:
