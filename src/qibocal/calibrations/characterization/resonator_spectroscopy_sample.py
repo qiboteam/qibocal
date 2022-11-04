@@ -364,7 +364,7 @@ def resonator_flux_sample(
 
     yield data
 
-
+@plot("Frequency vs Current", plots.frequency_current_flux)
 def resonator_flux_sample_matrix(
     platform: AbstractPlatform,
     qubit: int,
@@ -501,160 +501,9 @@ def resonator_flux_sample_matrix(
                 "current[A]": current_range[i],
             }
             data.add(results)
-
-        sweet_freq = np.max(freqs)
-        sweet_curr = current_range[np.argmax(freqs)]
-
-        plot_flux(current_range, freqs, qubit, fluxline)
-
-        print(f"For qubit {qubit}:")
-        print(
-            f"Sweet spot found at frequency {sweet_freq} Hz at current value of {sweet_curr} A.\n"
-        )
-
-        yield data
-
-
-
-@plot("Frequency vs Current", plots.frequency_current_flux)
-def resonator_flux_sample_matrix1(
-    platform: AbstractPlatform,
-    qubit: int,
-    current_min,
-    current_max,
-    current_step,
-    fluxlines,
-    max_runs,
-    thr,
-    spans,
-    small_spans,
-    resolution,
-    software_averages
-):  
-    """Use gaussian samples to extract the flux-frequency response of the resonator for different values of current.
-
-    Args:
-        platform (AbstractPlatform): Platform the experiment is executed on.
-        qubit (int): qubit coupled to the resonator that we are probing.
-        current_min (float): minimum current value where the experiment starts.
-        current_max (float): maximum current reached in the scan.
-        current_step (float): change in current after every step.
-        fluxlines (list): ids of the current lines to use for the experiment.
-        max_runs (int): Maximum amount of tries before stopping if feature is not found.
-        thr (float): SNR value used as threshold for detection of the feature.
-        spans (list): Different spans to search for the feature at different precisions.
-        small_spans (list): Different spans for the small sweeps to fine-tune the feature.
-        resolution (int): How many points are taken in the span for the scan_level() function.
-        software_averages (int):
-
-    Returns:
-        data (Data): Data file with information on the feature response at each current point.
-
-    """
-    for fluxline in fluxlines:
-        fluxline=int(fluxline)
-        data = DataUnits(
-        name=f"data_q{qubit}_f{fluxline}", quantities={"frequency": "Hz", "current": "A"}
-        )
-
-        if fluxline == "qubit":
-            fluxline = qubit
-
-        platform.reload_settings()
-
-        sequence = PulseSequence()
-        ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
-        sequence.add(ro_pulse)
-
-        resonator_frequency = platform.characterization["single_qubit"][qubit][
-            "resonator_freq"
-        ]
-        qubit_biasing_current = platform.characterization["single_qubit"][qubit][
-            "sweetspot"
-        ]
-
-        platform.qf_port[fluxline].current = qubit_biasing_current
-
-        current_range = np.arange(current_min, current_max, current_step)
-
-        for i in range(len(current_range)):
-            if qubit_biasing_current >= current_range[i]:
-                start = i
-                break
-
-        start_f = resonator_frequency
-
-        background = [start_f + 1e7, start_f - 1e7]
-        noise = get_noise(background, platform, ro_pulse, qubit, sequence)
-
-        # We scan starting from the sweet spot to higher currents
-        freqs1 = []
-        best_f = start_f
-        for curr in current_range[start:]:
-            best_msr = noise
-            platform.qf_port[fluxline].current = curr
-            for span in spans:
-                best_f, best_msr = scan_level(
-                    best_f,
-                    best_msr,
-                    max_runs,
-                    thr,
-                    span,
-                    resolution,
-                    noise,
-                    platform,
-                    ro_pulse,
-                    qubit,
-                    sequence,
-                    software_averages
-                )
-            for span in small_spans:
-                best_f, best_msr = scan_small(
-                    best_f, best_msr, span, 11, platform, ro_pulse, qubit, sequence, software_averages
-                )
-            freqs1.append(best_f)
-
-        # and continue starting from the sweet spot to lower currents.
-        freqs2 = []
-        best_f = start_f
-        for curr in reversed(current_range[:start]):
-            best_msr = noise
-            platform.qf_port[fluxline].current = curr
-            for span in spans:
-                best_f, best_msr = scan_level(
-                    best_f,
-                    best_msr,
-                    max_runs,
-                    thr,
-                    span,
-                    resolution,
-                    noise,
-                    platform,
-                    ro_pulse,
-                    qubit,
-                    sequence,
-                    software_averages
-                )
-            for span in small_spans:
-                best_f, best_msr = scan_small(
-                    best_f, best_msr, span, 11, platform, ro_pulse, qubit, sequence, software_averages
-                )
-            freqs2.append(best_f)
-
-        freqs = np.array(list(reversed(freqs2)) + freqs1)
-
-        for i in range(len(freqs)):
-            results = {
-                "MSR[V]": 455,
-                "i[V]": 455,
-                "q[V]": 455,
-                "phase[rad]": 455,
-                "frequency[Hz]": freqs[i],
-                "current[A]": current_range[i],
-            }
-            data.add(results)
         
-
+        yield data
+        
         if qubit==fluxline:
             labels=["sweet_curr", "sweet_curr_err", "sweet_freq", "sweet_freq_err", "C_ii", "C_ii_err", "freq_offset", "freq_offset_err"]
         else:
@@ -666,7 +515,6 @@ def resonator_flux_sample_matrix1(
                     y="frequency[Hz]",
                     qubit=qubit,
                     fluxline=fluxline,
-                    nqubits=platform.settings["nqubits"],
                     labels=labels,
                 )
 

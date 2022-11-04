@@ -1271,6 +1271,17 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
 
 
 def frequency_current_flux(folder, routine, qubit, format):
+    """ Plot of the experimental data for the flux resonator spectroscopy and its corresponding fit.
+        Args:
+        folder (str): Folder where the data files with the experimental and fit data are.
+        routine (str): Routine name (resonator_flux_sample_matrix)
+        qubit (int): qubit coupled to the resonator for which we want to plot the data.
+        format (str): format of the data files.
+
+    Returns:
+        fig (Figure): Figure associated to data.
+
+    """
     fluxes = []
     fluxes_fit = []
     for i in range(5):  # FIXME: 5 is hardcoded
@@ -1337,18 +1348,6 @@ def frequency_current_flux(folder, routine, qubit, format):
                         col=j,
                     )
 
-                    # fig.add_annotation(
-                    #     dict(
-                    #         font=dict(color="black", size=12),
-                    #         x=0,
-                    #         y=-0.25-0.05*j,
-                    #         showarrow=False,
-                    #         text=f"Qubit: {qubit} Fluxline: {j} {params[5]} = {data_fit.df[params[5]][0]:.3} +- {data_fit.df[params[4]][0]:.1f} A. {params[3]} = {data_fit.df[params[3]][0]:.3f} +- {data_fit.df[params[2]][0]:.1f} Hz. C_{qubit}{j} = {data_fit.df[params[1]][0]:.3f} +- {data_fit.df[params[0]][0]:.1f} Hz/A. ",
-                    #         xanchor="left",
-                    #         xref="paper",
-                    #         yref="paper",
-                    #     )
-                    # )
                 else:
                     fig.add_trace(
                         go.Scatter(
@@ -1364,18 +1363,7 @@ def frequency_current_flux(folder, routine, qubit, format):
                         row=1,
                         col=j,
                     )
-                    # fig.add_annotation(
-                    #     dict(
-                    #         font=dict(color="black", size=12),
-                    #         x=0,
-                    #         y=-0.25-0.05*j,
-                    #         showarrow=False,
-                    #         text=f"Qubit: {qubit} Fluxline: {j} C_{qubit}{j} = {data_fit.df[params[1]][0]:.3f} +- {data_fit.df[params[0]][0]:.1f} A.",
-                    #         xanchor="left",
-                    #         xref="paper",
-                    #         yref="paper",
-                    #     )
-                    # )
+
                 fig.update_layout(margin=dict(l=20, r=20, t=20, b=170))
                 if j==qubit:
                     fig.add_annotation(
