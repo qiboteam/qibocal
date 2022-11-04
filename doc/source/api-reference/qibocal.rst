@@ -3,20 +3,60 @@
 Calibration routines
 --------------------
 
+.. contents:: Table of contents:
+   :local:
+
+Introduction
+^^^^^^^^^^^^
+
 The calibration routines are techniques used to reduce execution errors in quantum circuits. To perform calibrations, the expected theoretical results of an experiment are compared with readouts obtained by running that same experiment using quantum devices. There are at least two objectives in calibration:
 
 - To derive the exact values of the signals to be supplied to the hardware in order to obtain the best possible implementation of a theoretical operation;
 - Derive the system relaxation time, which is the threshold time interval beyond which executions of operations on the hardware are no longer reliable due to machine overload.
 
-In ``qibocal`` we provide the following calibration routines:
+Current and future ``qibocal`` routines are listed in the following table:
 
++------------------------+-------------+------------------+---------------+
+|       Methods          |     Code    | Tested on device |   Automated   |
++========================+=============+==================+===============+
+| Resonator Punchout     |     Yes     |       Yes        |  In progress  |
++------------------------+-------------+------------------+---------------+
+| Resonator-Flux         |     Yes     |       Yes        |  In progress  |
++------------------------+-------------+------------------+---------------+
+| Qubit spectroscopy     |     Yes     |       Yes        |  In progress  |
++------------------------+-------------+------------------+---------------+
+| Qubit Flux             |     Yes     |       Yes        |  In progress  |
++------------------------+-------------+------------------+---------------+
+| Rabi (T1)              |     Yes     |       Yes        |       No      |
++------------------------+-------------+------------------+---------------+
+| Ramsey (T2)            |     Yes     |       Yes        |       No      |
++------------------------+-------------+------------------+---------------+
+| Single shot readouts   |     Yes     |       Yes        |       No      |
++------------------------+-------------+------------------+---------------+
+| All-XY (drag)          |     Yes     |       Yes        |       No      |
++------------------------+-------------+------------------+---------------+
+| RB & co (1 qubit)      |     Yes     |        No        |       No      |
++------------------------+-------------+------------------+---------------+
+| Cryoscope              | In progress |    In progress   |       No      |
++------------------------+-------------+------------------+---------------+
+| CZ gate                |      No     |        No        |       No      |
++------------------------+-------------+------------------+---------------+
+| RB & co (multi qubits) |      No     |        No        |       No      |
++------------------------+-------------+------------------+---------------+
+| Circuit transpilation  |     Yes     |        No        |       No      |
++------------------------+-------------+------------------+---------------+
+
+
+Resonator
+^^^^^^^^^
 
 .. automodule:: qibocal.calibrations.characterization.resonator_spectroscopy
    :members:
    :undoc-members:
    :show-inheritance:
 
-
+One Qubit
+^^^^^^^^^
 .. automodule:: qibocal.calibrations.characterization.qubit_spectroscopy
    :members:
    :undoc-members:
