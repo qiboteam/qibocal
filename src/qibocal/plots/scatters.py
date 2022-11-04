@@ -1321,7 +1321,7 @@ def frequency_current_flux(folder, routine, qubit, format):
         )
 
         if j in fluxes_fit:   
-            print(j,qubit)
+
             data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}_f{j}")
             if len(data_spec) > 0 and len(data_fit) > 0:
                 curr_range = np.linspace(
