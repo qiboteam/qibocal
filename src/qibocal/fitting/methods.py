@@ -379,7 +379,6 @@ def res_spectrocopy_flux_fit(data, x, y, qubit, fluxline, labels):
     freq_max1=np.max(freq)
     freq_norm=(freq-freq_min1)/(freq_max1-freq_min1)
 
-    I_array=np.linspace(curr[0],curr[-1],200)
     small_span=100000/10**9
     resolution=11
     freq_err=small_span/(resolution-1)
