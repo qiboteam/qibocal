@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 from datetime import datetime
 
 from qibo.noise import NoiseModel, PauliError
@@ -10,9 +8,8 @@ from qibocal.calibrations.protocols.generators import *
 from qibocal.calibrations.protocols.utils import effective_depol
 from qibocal.data import Data
 from qibocal.decorators import plot
-from qibocal.plots.scatters import rb_plot
 from qibocal.fitting.methods import rb_exponential_fit
-from datetime import datetime
+from qibocal.plots.scatters import rb_plot
 
 
 @plot("Randomized benchmarking", plots.rb_plot)

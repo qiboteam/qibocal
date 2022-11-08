@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import pdb
 from cmath import exp
 from shutil import rmtree
