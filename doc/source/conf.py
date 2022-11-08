@@ -46,7 +46,6 @@ extensions = [
     "sphinx.ext.intersphinx",
     "recommonmark",
     "sphinx_markdown_tables",
-    "sphinx.ext.imgmath",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
