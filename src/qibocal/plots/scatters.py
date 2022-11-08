@@ -1448,9 +1448,9 @@ def rb_plot(folder, routine, qubit, format):
 
     return fig
 
+
 def rb_statistics(folder, routine, qubit, format):
-    """
-    """
+    """ """
     from scipy.optimize import curve_fit
 
     from qibocal.calibrations.protocols.experiments import Experiment
@@ -1461,15 +1461,15 @@ def rb_statistics(folder, routine, qubit, format):
     data_samples = Data.load_data(folder, routine, "pickle", "samples1")
     # Build an Experiment object out of it.
     experiment = Experiment.retrieve_from_dataobjects(
-        data_circs, data_samples, data_probs)
+        data_circs, data_samples, data_probs
+    )
     file_exists, count_iterations = True, 0
     data_list = []
     while file_exists:
         count_iterations += 1
-        try: 
+        try:
             data_fits = Data.load_data(
-                folder, routine, 
-                "pickle", f"fits_crossvalidation{count_iterations}"
+                folder, routine, "pickle", f"fits_crossvalidation{count_iterations}"
             )
             data_list.append(data_fits)
         except FileNotFoundError:
@@ -1480,7 +1480,8 @@ def rb_statistics(folder, routine, qubit, format):
         horizontal_spacing=1,
         vertical_spacing=1,
         subplot_titles=(
-            f"Randomized benchmarking Cross Validation, inverse: {experiment.inverse}",),
+            f"Randomized benchmarking Cross Validation, inverse: {experiment.inverse}",
+        ),
     )
 
     c1 = "#6597aa"
@@ -1504,9 +1505,7 @@ def rb_statistics(folder, routine, qubit, format):
         )
 
         fig.add_trace(
-            go.Histogram(
-                x=fitparams
-            ),
+            go.Histogram(x=fitparams),
             row=count,
             col=2,
         )

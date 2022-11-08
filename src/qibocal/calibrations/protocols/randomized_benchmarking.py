@@ -1,5 +1,6 @@
 from datetime import datetime
 
+from numpy import random
 from qibo.noise import NoiseModel, PauliError
 
 from qibocal import plots
@@ -8,10 +9,8 @@ from qibocal.calibrations.protocols.generators import *
 from qibocal.calibrations.protocols.utils import effective_depol
 from qibocal.data import Data
 from qibocal.decorators import plot
-from qibocal.plots.scatters import rb_plot
 from qibocal.fitting.methods import rb_exponential_fit, rb_statistics
-from datetime import datetime
-from numpy import random
+from qibocal.plots.scatters import rb_plot
 
 
 @plot("Randomized benchmarking", plots.rb_plot)
@@ -65,6 +64,7 @@ def dummyrb(
     yield data_depol
     print("end: ", datetime.now().strftime("%d.%b %y %H:%M:%S"))
 
+
 @plot("Randomized Benchmarking Statistical Analyzes", plots.rb_statistics)
 def statistical_analyses_rb(
     platform,
@@ -74,8 +74,8 @@ def statistical_analyses_rb(
     sequence_lengths: list,
     amount: int,
     runs: int,
-    iterations:int,
-    k:int,
+    iterations: int,
+    k: int,
     nshots: int = 1024,
     active_qubit: int = None,
 ):
@@ -111,7 +111,6 @@ def statistical_analyses_rb(
         pauli = PauliError(*rand_noise)
         noise = NoiseModel()
         noise.add(pauli, gates.Unitary)
-        data_depol = Data(
-            f"effectivedepol{count+1}", quantities=["effective_depol"])
+        data_depol = Data(f"effectivedepol{count+1}", quantities=["effective_depol"])
         data_depol.add({"effective_depol": effective_depol(pauli)})
         yield data_depol

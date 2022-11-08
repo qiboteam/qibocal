@@ -53,7 +53,7 @@ class Experiment:
     @property
     def number_simulations(self):
         return self.__number_simulations
-    
+
     @property
     def data_circuits(self):
         """ """
@@ -110,7 +110,8 @@ class Experiment:
                 # Initiate the data structure where the outcomes will be stored.
                 data_samples = Data(
                     f"samples{self.__number_simulations}",
-                    quantities=list(self.sequence_lengths))
+                    quantities=list(self.sequence_lengths),
+                )
                 # The columns are indexed by the different sequence lengths.
                 # The rows are indexing the different runs.
                 for count in range(self.runs):
@@ -131,7 +132,8 @@ class Experiment:
                 # tried to fill the data frame but failed) breaking the code.
                 data_samples = Data(
                     f"samples{self.__number_simulations}",
-                    quantities=list(self.sequence_lengths))
+                    quantities=list(self.sequence_lengths),
+                )
                 # FIXME Make the lists to strings.
                 list_of_lists = [
                     [[list(x) for x in a] for a in b] for b in self.outcome_samples
@@ -176,7 +178,8 @@ class Experiment:
             # Initiate the data structure where the outcomes will be stored.
             data_probs = Data(
                 f"probabilities{self.__number_simulations}",
-                quantities=list(self.sequence_lengths))
+                quantities=list(self.sequence_lengths),
+            )
             # The columns are indexed by the different sequence lengths.
             # The rows are indexing the different runs.
             for count in range(self.runs):
@@ -197,7 +200,8 @@ class Experiment:
             # the data frame but failed) breaking the code.
             data_probs = Data(
                 f"probabilities{self.__number_simulations}",
-                quantities=list(self.sequence_lengths))
+                quantities=list(self.sequence_lengths),
+            )
             # FIXME Make the lists to strings.
             for count in range(self.runs):
                 # The data object takes dictionaries.
