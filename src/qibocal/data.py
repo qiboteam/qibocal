@@ -295,7 +295,7 @@ class Data(AbstractData):
         Returns:
             data (``Data``): data object with the loaded data.
         """
-        
+
         obj = cls()
         if format == "csv":
             file = f"{folder}/{subfolder}/{routine}/{name}.csv"
