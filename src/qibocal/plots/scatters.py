@@ -269,7 +269,6 @@ def time_msr_phase(folder, routine, qubit, format):
             row=1,
             col=2,
         )
-
         # add fitting trace
         if len(data) > 0 and len(data_fit) > 0:
             timerange = np.linspace(
