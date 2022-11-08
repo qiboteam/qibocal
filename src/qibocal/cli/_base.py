@@ -180,7 +180,8 @@ def compare(folders):
         log.info(f"Folders are comparable.")
 
     # move old compare folder and remove
-    tmp_folder = "qq-compare_" + str(datetime.now())
+    now = str(datetime.today())
+    tmp_folder = "qq-compare_" + now
     if os.path.isdir(TARGET_COMPARE_DIR):
         os.rename(TARGET_COMPARE_DIR, tmp_folder)
 
