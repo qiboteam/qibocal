@@ -1,0 +1,15 @@
+backend: numpy
+
+qubits: [0]
+
+format: pickle
+
+actions:
+  dummyrb:
+    circuit_generator_class: 'GeneratorOnequbitcliffords'
+    invert: False
+    sequence_lengths: [1,5,10,15,20,25,30]
+    runs: 1000
+    nshots: 10240
+    inject_noise: [0.1, 0.1, 0.1]
+    active_qubit: False

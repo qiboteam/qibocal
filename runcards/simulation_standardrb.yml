@@ -1,15 +1,26 @@
-# backend: numpy
+backend: numpy
 
 qubits: [0]
 
 format: pickle
 
 actions:
-  dummyrb:
+  # dummyrb:
+  #   circuit_generator_class: 'GeneratorOnequbitcliffords'
+  #   invert: True
+  #   sequence_lengths: [1,2,3,5,7,10,15,20,25,30]
+  #   runs: 1000
+  #   nshots: 1024
+  #   inject_noise: [0.05, 0.05, 0.5]
+  #   active_qubit: False
+
+  statistical_analyses_rb:
     circuit_generator_class: 'GeneratorOnequbitcliffords'
     invert: True
-    sequence_lengths: [1,2,3,5,10,15,20,25,30]
-    runs: 200
+    sequence_lengths: [1,3,5,10,15,20,25]
+    amount: 2
+    runs: 10
+    iterations: 5
+    k: 9
     nshots: 1024
-    inject_noise: [0.1, 0.1, 0.1]
     active_qubit: False

@@ -46,6 +46,11 @@ In ``qibocal`` we provide the following calibration routines:
    :undoc-members:
    :show-inheritance:
 
+.. automodule:: qibocal.calibrations.protocols.randomized_benchmarking
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 
 Utils
 ^^^^^
