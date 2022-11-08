@@ -43,6 +43,73 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None):
             - *popt1*: Lorentzian's center
             - *popt2*: Lorentzian's sigma
             - *popt3*: Lorentzian's offset
+
+    Example:
+
+        In the code below, a noisy Lorentzian dataset is implemented and then the ``lorentzian_fit`` method is applied.
+
+            .. testcode::
+
+                import numpy as np
+                from qibocal.data import DataUnits
+                from qibocal.fitting.methods import lorentzian_fit
+                from qibocal.fitting.utils import lorenzian
+                import matplotlib.pyplot as plt
+
+                name = "test"
+                nqubits = 1
+                label = "qubit_freq"
+                amplitude = -1
+                center = 2
+                sigma = 3
+                offset = 4
+
+                # generate noisy Lorentzian
+
+                x = np.linspace(center - 10, center + 10, 100)
+                noisy_lorentzian = (
+                    lorenzian(x, amplitude, center, sigma, offset)
+                    + amplitude * np.random.randn(100) * 0.5e-2
+                )
+
+                # Initialize data and evaluate the fit
+
+                data = DataUnits(quantities={"frequency": "Hz"})
+
+                mydict = {"frequency[Hz]": x, "MSR[V]": noisy_lorentzian}
+
+                data.load_data_from_dict(mydict)
+
+                fit = lorentzian_fit(
+                    data,
+                    "frequency[Hz]",
+                    "MSR[V]",
+                    0,
+                    nqubits,
+                    labels=[label, "peak_voltage"],
+                    fit_file_name=name,
+                )
+
+                fit_params = [fit.get_values(f"popt{i}") for i in range(4)]
+                fit_data = lorenzian(x,*fit_params)
+
+                # Plot
+
+                fig = plt.figure(figsize = (10,5))
+                plt.scatter(x,noisy_lorentzian,label="data",s=10,color = 'darkblue',alpha = 0.9)
+                plt.plot(x,fit_data, label = "fit", color = 'violet', linewidth = 3, alpha = 0.4)
+                plt.xlabel('frequency (Hz)')
+                plt.ylabel('MSR (Volt)')
+                plt.legend()
+                plt.title("Data fit")
+                plt.grid()
+                plt.show()
+
+            The following plot shows the resulting output:
+
+            .. image:: lorentzian_fit_result.png
+                :align: center
+
     """
     if fit_file_name == None:
         data_fit = Data(
