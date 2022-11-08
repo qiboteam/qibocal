@@ -2,7 +2,7 @@
 Minimal working example
 =======================
 
-This section shows the steps to perform a resonator spectroscopy with Qibocal. 
+This section shows the steps to perform a resonator spectroscopy with Qibocal.
 
 Write a runcard
 ^^^^^^^^^^^^^^^
@@ -46,11 +46,10 @@ Visualize the data
 Qibocal gives the possibility to live-plotting with the `qq-live` command
 
 .. code-block::
-    
+
     qq-live <output_folder>
 
 
 Uploading reports to server
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 In order to upload the report to a centralized server, send to the server administrators your public ssh key (from the machine(s) you are planning to upload the report) and then use the `qq-upload <output_folder>` command. This program will upload your report to the server and generate an unique URL.
-
