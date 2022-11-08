@@ -165,7 +165,13 @@ def upload(output_folder):
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.argument("folders", metavar="FOLDER", type=click.Path(exists=True), nargs=-1)
 def compare(folders):
-    """Uploads list of folders to be compared into server"""
+    """Creates a comparision folder given N different data folders following qq-live data structure to be visualized
+    
+    Args:
+        folder1 (string): absolute or relative path of data folder 1 to be compared
+        ...
+        folderN (string): absolute or relative path of data folder N to be compared
+    """
 
     # check list of folders exists.
     foldernames = folders_exists(folders)
@@ -219,6 +225,11 @@ def compare(folders):
 
 
 def folders_exists(folders):
+    """ Check if a list of folders exists
+    
+    Args:
+        folders (list): list of absolute or relative path to folders
+    """
     foldernames = []
     for foldername in folders:
         expanded = list(glob(foldername))
@@ -230,6 +241,11 @@ def folders_exists(folders):
 
 
 def check_folder_structure(folderList):
+    """ Check if a list of folders share structure between them
+
+    Args:
+        folders (list): list of absolute or relative path to folders
+    """
     all_subdirList = []
     for folder in folderList:
         folder_subdirList = []
@@ -241,6 +257,13 @@ def check_folder_structure(folderList):
 
 
 def update_meta(metadata, metadata_new):
+    """ Update meta.yml file
+
+    Args:
+        metadata (dict): dictionary with the meta.yml actual parameters and values
+        metadata_new (dict): dictionary with the new parameters and values to update in the actual meta.yml
+    """
+
     metadata["backend"] = metadata["backend"] + " , " + metadata_new["backend"]
     metadata["date"] = metadata["date"] + " , " + metadata_new["date"]
     metadata["end-time"] = metadata["end-time"] + " , " + metadata_new["end-time"]
@@ -264,6 +287,13 @@ def update_meta(metadata, metadata_new):
 
 
 def update_runcard(rundata, rundata_new):
+    """ Update runcard.yml file
+
+    Args:
+        rundata (dict): dictionary with the runcard.yml actual parameters and values
+        rundata_new (dict): dictionary with the new parameters and values to update in the actual runcard.yml
+    """
+
     rundata["platform"] = rundata["platform"] + " , " + rundata_new["platform"]
     unique = list(set(rundata["qubits"] + rundata_new["qubits"]))
     rundata["qubits"] = unique
