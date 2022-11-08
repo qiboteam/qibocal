@@ -1474,6 +1474,17 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
 
 # Spin echos
 def spin_echo_time_msr_phase(folder, routine, qubit, format):
+    
+    """Spin echo plotting routine: 
+    The routine plots the results of a modified Ramsey sequence with an additional Rx(pi) pulse placed symmetrically between the two Rx(pi/2) pulses. 
+    An exponential fit to this data gives a spin echo decay time T2.
+
+    Args:
+        folder (string): Folder name where the data and fitted data is located
+        routine (string): Name of the calibration routine that calls this plotting method
+        qubit (int): Target qubit to characterize
+        format (string): Data file format. Supported formats are .csv and .pkl
+    """
 
     fig = make_subplots(
         rows=1,
