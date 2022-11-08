@@ -302,7 +302,7 @@ class Data(AbstractData):
             obj.df = pd.read_csv(file)
             obj.df.pop("Unnamed: 0")
         elif format == "pickle":
-            file = f"{folder}/data/{routine}/{name}.pkl"
+            file = f"{folder}/{subfolder}/{routine}/{name}.pkl"
             obj.df = pd.read_pickle(file)
         else:
             raise_error(ValueError, f"Cannot load data using {format} format.")
