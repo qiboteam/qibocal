@@ -94,15 +94,6 @@ One Qubit
    :show-inheritance:
 
 
-Utils
-^^^^^
-
-.. automodule:: qibocal.calibrations.characterization.utils
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-
 Data structure
 --------------
 

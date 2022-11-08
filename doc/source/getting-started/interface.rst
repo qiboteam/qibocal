@@ -65,6 +65,12 @@ For example in order to start the server on the port 8055 you can type.
 
 It is possible to start the flask server in debug mode using the option ``-d``.
 
+The following picture shows an example of the generated web page:
+
+.. image:: qq-live_screenshot.png
+    :align: center
+
+
 ``qq-upload``
 ^^^^^^^^^^^^^
 

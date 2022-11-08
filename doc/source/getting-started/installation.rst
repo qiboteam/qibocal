@@ -27,9 +27,11 @@ Qibocal
 
 Installing with pip
 """""""""""""""""""
+``Qibocal`` can be installed with ``pip`` :
 
-Installing with conda
-"""""""""""""""""""""
+.. code-block::
+
+      pip install qibocal
 
 Installing from source
 """"""""""""""""""""""
