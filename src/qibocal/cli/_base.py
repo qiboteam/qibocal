@@ -166,7 +166,7 @@ def upload(output_folder):
 @click.argument("folders", metavar="FOLDER", type=click.Path(exists=True), nargs=-1)
 def compare(folders):
     """Creates a comparision folder given N different data folders following qq-live data structure to be visualized
-    
+
     Args:
         folder1 (string): absolute or relative path of data folder 1 to be compared
         ...
@@ -225,8 +225,8 @@ def compare(folders):
 
 
 def folders_exists(folders):
-    """ Check if a list of folders exists
-    
+    """Check if a list of folders exists
+
     Args:
         folders (list): list of absolute or relative path to folders
     """
@@ -241,7 +241,7 @@ def folders_exists(folders):
 
 
 def check_folder_structure(folderList):
-    """ Check if a list of folders share structure between them
+    """Check if a list of folders share structure between them
 
     Args:
         folders (list): list of absolute or relative path to folders
@@ -257,7 +257,7 @@ def check_folder_structure(folderList):
 
 
 def update_meta(metadata, metadata_new):
-    """ Update meta.yml file
+    """Update meta.yml file
 
     Args:
         metadata (dict): dictionary with the meta.yml actual parameters and values
@@ -287,7 +287,7 @@ def update_meta(metadata, metadata_new):
 
 
 def update_runcard(rundata, rundata_new):
-    """ Update runcard.yml file
+    """Update runcard.yml file
 
     Args:
         rundata (dict): dictionary with the runcard.yml actual parameters and values
