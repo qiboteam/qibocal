@@ -20,10 +20,10 @@ def spin_echo_3pulses(
     points=10,
 ):
 
-    """Spin echo calibration routine: 
-    The two routines are a modified Ramsey sequence with an additional Rx(pi) pulse placed symmetrically between the two Rx(pi/2) pulses. 
-    The random phases accumulated before and after the pi pulse compensate exactly if the frequency does not change during the sequence. 
-    After the additional pi rotation the qubit is expected to go always (ideally) to the ground state. An exponential fit to this data 
+    """Spin echo calibration routine:
+    The two routines are a modified Ramsey sequence with an additional Rx(pi) pulse placed symmetrically between the two Rx(pi/2) pulses.
+    The random phases accumulated before and after the pi pulse compensate exactly if the frequency does not change during the sequence.
+    After the additional pi rotation the qubit is expected to go always (ideally) to the ground state. An exponential fit to this data
     gives a spin echo decay time T2.
 
     Args:
