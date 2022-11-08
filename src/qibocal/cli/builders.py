@@ -165,8 +165,8 @@ class ActionBuilder:
             for data in results:
                 getattr(data, f"to_{self.format}")(path)
 
-            if self.platform is not None:
-                self.update_platform_runcard(qubit, routine.__name__)
+            # if self.platform is not None:
+            #     self.update_platform_runcard(qubit, routine.__name__)
 
     def update_platform_runcard(self, qubit, routine):
 
