@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -1361,6 +1360,9 @@ def rb_plot(folder, routine, qubit, format):
     experiment = Experiment.retrieve_from_dataobjects(
         data_circs, data_samples, data_probs
     )
+    # Get the fitting parameters.
+    data_fit = Data.load_data(folder, routine, "pickle", f"fitrb_q{qubit}").df
+    popt = data_fit["A"], data_fit["f"], data_fit["B"]
     # The xaxis is defined by the sequence lengths of the applied circuits.
     xdata = experiment.sequence_lengths
     if experiment.inverse:

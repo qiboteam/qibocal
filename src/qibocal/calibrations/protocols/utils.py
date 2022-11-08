@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import pdb
 
 import numpy as np
@@ -118,7 +117,7 @@ def dict_from_comments_txt(filename: str):
 
     # Initiate the dictionary in which the values are stored.
     comments_dict = {}
-    with open(filename, "r") as fh:
+    with open(filename) as fh:
         for curline in fh:
             # Check if the current line starts with "#"
             if curline.startswith("#"):

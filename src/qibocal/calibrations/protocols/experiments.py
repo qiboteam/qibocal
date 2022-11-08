@@ -1,6 +1,6 @@
-# -*- coding: utf-8 -*-
 import pdb
 from ast import literal_eval
+from copy import deepcopy
 from itertools import product
 from os import mkdir
 from os.path import isdir, isfile
@@ -12,7 +12,6 @@ from qibo.noise import NoiseModel, PauliError
 from qibocal.calibrations.protocols.generators import *
 from qibocal.calibrations.protocols.utils import dict_to_txt, pkl_to_list
 from qibocal.data import Data
-from copy import deepcopy
 
 # from typing import Union
 
@@ -627,9 +626,8 @@ class Experiment:
         # Calculate an exponential fit to the given data pm dependent on m.
         # 'popt' stores the optimized parameters and pcov the covariance of popt.
         try:
-            popt, pcov = curve_fit(
-                exp_func, xdata, ydata, p0=[0.5, 1, 0.8], method="lm"
-            )
+            guess = kwargs.get("p0", [0.5, 0.9, 0.8])
+            popt, pcov = curve_fit(exp_func, xdata, ydata, p0=guess, method="lm")
         except:
             popt, pcov = (1, 1, 0), (None)
         # Build a finer spaces xdata array for plotting the fit.
@@ -725,5 +723,55 @@ class Experiment:
         plt.plot(xfitted, yfitted, "--", color=colorfunc(50), label=fitlegend)
         plt.ylabel("survival probability")
         plt.xlabel("sequence length")
+        plt.legend()
+        plt.show()
+
+    def crossvalidation(self, k: int, iterations: int, **kwargs):
+        """Repeated random sub-sampling validation without the training,
+        only testing.
+
+        """
+        import matplotlib.pyplot as plt
+
+        colorfunc = plt.get_cmap("inferno")
+        # Retrieve the single survival probabilities for each run.
+        if self.inverse:
+            ydata_scattered = self.probabilities(averaged=False)[:, :, 0]
+        else:
+            ydata_scattered = self.filter_single_qubit(averaged=False)
+        # Store the sequence lengths for fitting purposes.
+        xdata = self.sequence_lengths
+        fittingparam = kwargs.get("fittingparam", 1)
+        params_list = []
+        # Loop over the amount of wanted iterations and draw k many samples
+        # such that each time a random set of different runs is used to
+        # calculate the decay parameters of the average of the given data.
+        for _ in range(iterations):
+            # Draw the random indices and get the belonging data.
+            rand_data = ydata_scattered[np.random.randint(0, self.runs, size=k)]
+            # Calculate the average and get the fitting parameters.
+            xfit, yfit, popt = self.fit_exponential(np.average(rand_data, axis=0))
+            # In popt three fitting parameters are stored for A*f^x+B, in this
+            # order. Make the tuple a list and store them.
+            params_list.append(popt[fittingparam])
+        # Plot the calculated fitting parameters.
+        # Make two plots. A scatter plot and an histogram.
+        plt.subplots(2, 1, figsize=(7, 7))
+        plt.subplot(2, 1, 1)
+        plt.scatter(
+            params_list,
+            np.zeros(iterations),
+            marker="|",
+            linewidths=5,
+            s=150,
+            color=colorfunc(50),
+            alpha=0.4,
+            label=f"{iterations} subsampling group of size {k}",
+        )
+        plt.plot(
+            np.average(params_list),
+        )
+        plt.subplot(2, 1, 2)
+        plt.hist(params_list)
         plt.legend()
         plt.show()

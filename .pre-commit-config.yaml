@@ -10,7 +10,6 @@ repos:
       - id: check-toml
       - id: check-merge-conflict
       - id: debug-statements
-      - id: fix-encoding-pragma
   - repo: https://github.com/psf/black
     rev: 22.10.0
     hooks:
@@ -21,6 +20,6 @@ repos:
       - id: isort
         args: ["--profile", "black"]
   - repo: https://github.com/asottile/pyupgrade
-    rev: v2.38.4
+    rev: v3.2.0
     hooks:
       - id: pyupgrade

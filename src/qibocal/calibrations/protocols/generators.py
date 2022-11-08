@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import pdb
 from ctypes import Union
 
@@ -9,9 +8,9 @@ from qibocal.calibrations.protocols.utils import onequbit_clifford_params
 
 
 class Generator:
-    """ Build a circuit generator when if called generates a random circuit
+    """Build a circuit generator when if called generates a random circuit
     from a given distribution.
-    
+
     Used in the ``experiments.Experiment`` class to build the circuits which
     will be executed during the randomized benchmarking experiment.
     Holds the methods to build a random circuit, along with the qubit to act
@@ -38,8 +37,7 @@ class Generator:
         else:
             self.used_qubits = self.qubits
         # Every used qubit should be measured in the end (basis measurement).
-        self.measurement = kwargs.get(
-            "measurement", gates.M(*self.used_qubits))
+        self.measurement = kwargs.get("measurement", gates.M(*self.used_qubits))
 
     def __call__(self, sequence_length: list):
         """For generating a sequence of circuits the object itself
@@ -73,8 +71,7 @@ class Generator:
             # inbuilt function does not work.
             # Build a gate out of the unitary of the whole circuit and
             # take the daggered version of that.
-            circuit.add(
-                gates.Unitary(circuit.unitary(), *self.used_qubits).dagger())
+            circuit.add(gates.Unitary(circuit.unitary(), *self.used_qubits).dagger())
         circuit.add(self.measurement)
         # No noise model added, for a simulation either the platform
         # introduces the errors or the error gates will be added
