@@ -181,7 +181,7 @@ def compare(folders):
 
     # move old compare folder and remove
     now = str(datetime.today())
-    tmp_folder = "qq-compare_" + now
+    tmp_folder = "qq-compare_" + now.replace(" ", "_")
     if os.path.isdir(TARGET_COMPARE_DIR):
         os.rename(TARGET_COMPARE_DIR, tmp_folder)
 
