@@ -95,15 +95,15 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None):
 
                 # Plot
 
-                fig = plt.figure(figsize = (10,5))
-                plt.scatter(x,noisy_lorentzian,label="data",s=10,color = 'darkblue',alpha = 0.9)
-                plt.plot(x,fit_data, label = "fit", color = 'violet', linewidth = 3, alpha = 0.4)
-                plt.xlabel('frequency (Hz)')
-                plt.ylabel('MSR (Volt)')
-                plt.legend()
-                plt.title("Data fit")
-                plt.grid()
-                plt.show()
+                #fig = plt.figure(figsize = (10,5))
+                #plt.scatter(x,noisy_lorentzian,label="data",s=10,color = 'darkblue',alpha = 0.9)
+                #plt.plot(x,fit_data, label = "fit", color = 'violet', linewidth = 3, alpha = 0.4)
+                #plt.xlabel('frequency (Hz)')
+                #plt.ylabel('MSR (Volt)')
+                #plt.legend()
+                #plt.title("Data fit")
+                #plt.grid()
+                #plt.show()
 
             The following plot shows the resulting output:
 
