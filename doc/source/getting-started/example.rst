@@ -9,7 +9,7 @@ Write a runcard
 ^^^^^^^^^^^^^^^
 
 A runcard contains all the essential information to run a specific task.
-For our purposes, we can use the following:
+For our purposes, we can use the following runcard and save it as ``example.yml`` :
 
 .. code-block:: yaml
 
@@ -34,24 +34,31 @@ More examples of runcards are available on `Github <https://github.com/qiboteam/
 
 Run the routine
 ^^^^^^^^^^^^^^^
-To run all the calibration routines specified in the ```runcard```, Qibocal uses the `qq` command
+To run all the calibration routines specified in the ``runcard``, Qibocal uses the ``qq`` command
 
 .. code-block::
 
     qq <runcard> -o <output_folder>
 
-if ```<output_folder>``` is specified, the results will be saved in it, otherwise ```qq``` will automatically create a default folder containing the current date and the username.
+if ``<output_folder>`` is specified, the results will be saved in it, otherwise ``qq`` will automatically create a default folder containing the current date and the username.
+
+In our case we can use the command:
+
+.. code-block::
+
+    qq example.yml -o resonator_spectroscopy_routine
+
 
 Visualize the data
 ^^^^^^^^^^^^^^^^^^
 
-Qibocal gives the possibility to live-plotting with the `qq-live` command
+Qibocal gives the possibility to live-plotting with the ``qq-live`` command. Opening the output link in the browser, it will look like the following image.
 
-.. code-block::
+.. image:: resonator_spectr_qqlive.png
+    :align: center
 
-    qq-live <output_folder>
 
 
 Uploading reports to server
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-In order to upload the report to a centralized server, send to the server administrators your public ssh key (from the machine(s) you are planning to upload the report) and then use the `qq-upload <output_folder>` command. This program will upload your report to the server and generate an unique URL.
+In order to upload the report to a centralized server, send to the server administrators your public ssh key (from the machine(s) you are planning to upload the report) and then use the ``qq-upload <output_folder>`` command. This program will upload your report to the server and generate an unique URL.
