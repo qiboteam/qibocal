@@ -2,8 +2,9 @@
 import os
 import pathlib
 import subprocess
+
 import yaml
-from flask import Flask, request, render_template, redirect
+from flask import Flask, redirect, render_template, request
 
 from qibocal import __version__
 from qibocal.cli.builders import ReportBuilder
@@ -34,21 +35,22 @@ def page(path=None):
         report=report,
     )
 
-@server.route("/", methods =["GET", "POST"])
+
+@server.route("/", methods=["GET", "POST"])
 def qq_compare():
     if request.method == "POST":
-        list_of_folders="" 
-        success=""
-        selected_folders = request.form.getlist('list_of_folders')    
+        list_of_folders = ""
+        success = ""
+        selected_folders = request.form.getlist("list_of_folders")
         for folder in selected_folders:
-            list_of_folders = list_of_folders + folder +" "
+            list_of_folders = list_of_folders + folder + " "
 
-        #execute shell command qq-compare
+        # execute shell command qq-compare
         command = "qq-compare " + list_of_folders
         try:
             command_output = subprocess.check_output([command], shell=True)
-            
+
         except subprocess.CalledProcessError as e:
             return "An error occurred while trying to generate qq-report.<br>Please check folder compatility."
-        
+
         return redirect("/data/qq-compare", code=302)
