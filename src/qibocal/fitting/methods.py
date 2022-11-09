@@ -384,7 +384,7 @@ def t1_fit(data, x, y, qubit, nqubits, labels):
 
         .. math::
 
-            p_0-p_1 e^{-x p_2}.
+            y = p_0-p_1 e^{-x p_2}.
 
     Args:
 
@@ -461,7 +461,7 @@ def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
 
     .. math::
 
-        p_0 sin\Big(\frac{2 \pi x}{p_2} + p_3\Big).
+        y = p_0 sin\Big(\frac{2 \pi x}{p_2} + p_3\Big).
 
     Args:
 
@@ -538,7 +538,7 @@ def drag_tunning_fit(data, x, y, qubit, nqubits, labels):
 
         .. math::
 
-            p_1 cos \Big(\frac{2 \pi x}{p_2} + p_3 \Big) + p_0.
+            y = p_1 cos \Big(\frac{2 \pi x}{p_2} + p_3 \Big) + p_0.
 
     Args:
 
