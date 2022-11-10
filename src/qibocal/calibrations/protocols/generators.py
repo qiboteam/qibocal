@@ -153,3 +153,45 @@ class GeneratorOnequbitcliffords(Generator):
             )
         # Make a unitary gate out of 'unitary' for the qubits.
         return gates.Unitary(unitary, *self.used_qubits)
+
+class GeneratorXId(Generator):
+    """ Only produces Xs gates and identity gates in a sequence.
+    """
+
+    def __init__(self, qubits, **kwargs):
+        super().__init__(qubits, **kwargs)
+        # Overwrite the gate generator attribute from the motherclass with
+        # the class specific generator.
+        self.gate_generator = None
+
+    def __call__(self, sequence_length: list):
+        """For generating a sequence of circuits the object itself
+        has to be called and the length of the sequence specified.
+
+        Args:
+            length (int) : How many circuits are created and put
+                           together for the sequence.
+
+        Returns:
+        (list): with the minimal representation of the circuit.
+        ``qibo.models.Circuit``: object which is executable as a
+                                 simulation or on hardware
+        """
+        # Initiate the empty circuit from qibo with 'self.nqubits'
+        # many qubits.
+        circuit = models.Circuit(len(self.qubits))
+        # Draw sequence length many zeros and ones.
+        random_ints = np.random.randint(0,2,size=sequence_length)
+        # There are only two gates to choose from.
+        a = [gates.I(0), gates.X(0)]
+        # Get the Xs and Ids with random_ints as indices.
+        gate_lists = np.take(a, random_ints)
+        # Add gates to circuit.
+        circuit.add(gate_lists)
+        circuit.add(self.measurement)
+        # No noise model added, for a simulation either the platform
+        # introduces the errors or the error gates will be added
+        # before execution.
+        yield circuit
+
+

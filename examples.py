@@ -9,6 +9,8 @@ from pandas import read_pickle
 from qibocal.calibrations.protocols.experiments import Experiment
 from qibocal.calibrations.protocols.generators import *
 from qibocal.data import Data
+from qibocal.calibrations.protocols.fitting_methods import *
+import matplotlib.pyplot as plt
 
 
 def test_generators():
@@ -69,10 +71,9 @@ def test_generators():
         [0, 1, 2, 3], act_on=2, invert=True
     )
     circuit41 = next(fourqubit_circuitgenerator(2))
-    print("This circuit should only act on the third qubit!")
-    print(circuit41.draw())
-    print("test_generators successfull!")
-
+    draw_string = circuit41.draw()
+    compare_string = 'q0: ─────────\nq1: ─────────\nq2: ─U─U─U─M─\nq3: ─────────'
+    assert draw_string == compare_string
 
 def test_experiments():
     """ """
@@ -115,6 +116,7 @@ def test_retrieve_from_path():
     oldexperiment = Experiment(mygenerator, sequence_lengths, qubits, runs)
     # Build the circuits and save them.
     oldexperiment.build_a_save()
+    oldexperiment.execute_a_save()
     # Get the directory.
     directory = oldexperiment.directory
     # Load the circuits and attributes back to a new experiment object.
@@ -168,7 +170,9 @@ def test_execute_and_save():
     recexperiment.load_probabilities(directory1)
     recprobs = recexperiment.outcome_probabilities
     for count_runs in range(runs):
-        assert np.array_equal(probs[count_runs], recprobs[count_runs])
+        print(probs[count_runs])
+        print(recprobs[count_runs])
+        assert np.allclose(probs[count_runs], recprobs[count_runs])
     # Remove the directory.
     rmtree(directory1)
     # Make a new experiment, this time with some injected noise!
@@ -316,9 +320,32 @@ def test_filter_single_qubit():
     experiment.plot_scatterruns(use_probs=True)
 
 
+def test_generatorXIds():
+    def lizafunction(px, py, pz):
+        return 1-px-pz, 1-px-py
+    qubits = [0]
+    sequence_lengths = list(np.arange(1,30,1))
+    runs = 2
+    generator = GeneratorXId(qubits)
+    experiment = Experiment(generator, sequence_lengths, qubits, runs=runs)
+    experiment.build_a_save()
+    # Pauli noise paramters.
+    noiseparams = [0.01, 0.05, 0.2]
+    print(lizafunction(*noiseparams))
+    # Inject the noise while executing.
+    experiment.execute_a_save(paulierror_noiseparams=noiseparams)
+    experiment.plot_scatterruns(sign=True)
+
+# directory = 'experiments/GeneratorXId/experiment22Nov10_132047/'
+# # Load the circuits and attributes back to a new experiment object.
+# recexperiment = Experiment.retrieve_from_path(directory)
+# recexperiment.plot_scatterruns(sign=True)
+
+
+test_generatorXIds()
 # test_generators()
 # test_retrieve_from_path()
 # test_execute_and_save()
 # test_probabilities_a_samples()
 # test_retrieve_from_dataobjects()
-test_filter_single_qubit()
+# test_filter_single_qubit()

@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-import pdb
+from qibocal.calibrations.protocols import fitting_methods
 from ast import literal_eval
 from itertools import product
 from os import mkdir
 from os.path import isdir, isfile
+from copy import deepcopy
 
 import numpy as np
 from qibo import gates
@@ -12,7 +13,6 @@ from qibo.noise import NoiseModel, PauliError
 from qibocal.calibrations.protocols.generators import *
 from qibocal.calibrations.protocols.utils import dict_to_txt, pkl_to_list
 from qibocal.data import Data
-from copy import deepcopy
 
 # from typing import Union
 
@@ -102,7 +102,7 @@ class Experiment:
             # Store the data in a pandas dataframe.
             # FIXME There are versions not supporting writing arrays to data frames.
             try:
-                raise ValueError
+                # raise ValueError
                 # Initiate the data structure where the outcomes will be stored.
                 data_samples = Data("samples", quantities=list(self.sequence_lengths))
                 # The columns are indexed by the different sequence lengths.
@@ -333,7 +333,8 @@ class Experiment:
             pauli = PauliError(*kwargs.get("paulierror_noiseparams"))
             noise = NoiseModel()
             # The noise should be applied with each unitary in the circuit.
-            noise.add(pauli, gates.Unitary)
+            # noise.add(pauli, gates.Unitary)
+            noise.add(pauli, gates.X)
         # Makes code easier to read.
         amount_m = len(self.sequence_lengths)
         # Loop 'runs' many times over the whole protocol.
@@ -351,10 +352,12 @@ class Experiment:
                     # around, the circuit to the noise).
                     noisy_circuit = noise.apply(circuit)
                     # Execute the noisy circuit.
-                    executed = noisy_circuit(nshots=self.nshots)
+                    executed = noisy_circuit(
+                        kwargs.get('init_state'), nshots=self.nshots)
                 else:
                     # Execute the qibo circuit without artificial noise.
-                    executed = circuit(nshots=self.nshots)
+                    executed = circuit(
+                        kwargs.get('init_state'), nshots=self.nshots)
                 # FIXME The samples (zeros and ones per shot) acquisition does
                 # not work for quantum hardware yet.
                 try:
@@ -481,7 +484,7 @@ class Experiment:
             # Check if the attribute does not exist yet.
             if not hasattr(self, "sequence_lengths"):
                 # The pickeling process reverses the order, reoder ot.
-                self.sequence_lengths = np.array(sequences_frompkl)[::-1]
+                self.sequence_lengths = list(np.array(sequences_frompkl)[::-1])
             # Store the outcome as an attribute to further work with its.
             self.circuits_list = [x[::-1] for x in circuits_list]
             return self.circuits_list
@@ -498,7 +501,13 @@ class Experiment:
                 np.array(sequences_frompkl)[::-1], self.sequence_lengths
             ), "The order of the restored outcome is not the same as when build"
             # Store the outcome as an attribute to further work with its.
-            self.outcome_samples = [x[::-1] for x in samples_list]
+            self.outcome_samples = np.array(
+                [x[::-1] for x in samples_list]).reshape(
+                    self.runs,
+                    len(self.sequence_lengths),
+                    self.nshots,
+                    len(self.qubits)
+                )
             return self.outcome_samples
         else:
             raise FileNotFoundError("There is no file for samples.")
@@ -592,40 +601,6 @@ class Experiment:
                 probs = probs[run]
         return probs
 
-    def postprocess(self, **kwargs):
-        """ """
-        pass
-
-    def fit_exponential(self, ydata: list = None, **kwargs):
-        """ """
-        from scipy.optimize import curve_fit
-
-        # Define the exponential function used for the fitting process.
-        def exp_func(x: np.ndarray, A: float, f: float, B: float) -> np.ndarray:
-            """ """
-            return A * f**x + B
-
-        # The xaxis is defined by the sequence lengths of the applied circuits.
-        xdata = self.sequence_lengths
-        if ydata is None:
-            # Get the plotting/fitting data.
-            ydata = self.probabilities(averaged=True)
-        # Calculate an exponential fit to the given data pm dependent on m.
-        # 'popt' stores the optimized parameters and pcov the covariance of popt.
-        try:
-            guess = kwargs.get('p0',[0.5, 0.9, 0.8])
-            popt, pcov = curve_fit(
-                exp_func, xdata, ydata, p0=guess, method="lm"
-            )
-        except:
-            popt, pcov = (1, 1, 0), (None)
-        # Build a finer spaces xdata array for plotting the fit.
-        x_fit = np.linspace(
-            np.sort(xdata)[0], np.sort(xdata)[-1], num=len(xdata) * 20)
-        # Get the ydata for the fit with the calculated parameters.
-        y_fit = exp_func(x_fit, *popt)
-        return x_fit, y_fit, popt
-
     ############################ Filter functions ############################
 
     def filter_single_qubit(self, averaged: bool = True, **kwargs):
@@ -691,8 +666,13 @@ class Experiment:
         xdata_scattered = np.tile(xdata, self.runs)
         if self.inverse:
             ydata_scattered = self.probabilities(averaged=False)[:, :, 0]
+            fitting_func = fitting_methods.fit_exp1_func
+        elif kwargs.get('sign'):
+            ydata_scattered = self.filter_sign()
+            fitting_func = fitting_methods.fit_exp2_func
         else:
             ydata_scattered = self.filter_single_qubit(averaged=False)
+            fitting_func = fitting_methods.fit_exp2_func
         plt.scatter(
             xdata_scattered,
             ydata_scattered.flatten(),
@@ -706,10 +686,8 @@ class Experiment:
         ydata = np.average(ydata_scattered, axis=0)
         # pdb.set_trace()
         plt.scatter(xdata, ydata, marker=5, label="averaged")
-        xfitted, yfitted, popt = self.fit_exponential(ydata)
-        fitlegend = "fit A: {:.3f}, f: {:.3f}, B: {:.3f}".format(
-            popt[0], popt[1], popt[2]
-        )
+        xfitted, yfitted, popt = fitting_func(xdata, ydata)
+        fitlegend =  ', '.join(format(f, '.3f') for f in popt)
         plt.plot(xfitted, yfitted, "--", color=colorfunc(50), label=fitlegend)
         plt.ylabel("survival probability")
         plt.xlabel("sequence length")
@@ -740,7 +718,8 @@ class Experiment:
             rand_data = ydata_scattered[
                 np.random.randint(0, self.runs, size=k)]
             # Calculate the average and get the fitting parameters.
-            xfit, yfit, popt = self.fit_exponential(np.average(rand_data, axis=0))
+            xfit, yfit, popt = fitting_methods.fit_exponential(
+                xdata, np.average(rand_data, axis=0))
             # In popt three fitting parameters are stored for A*f^x+B, in this
             # order. Make the tuple a list and store them.
             params_list.append(popt[fittingparam])
@@ -756,4 +735,32 @@ class Experiment:
         plt.hist(params_list)
         plt.legend()
         plt.show()
+
+    def filter_sign(self):
+        """
+        """
+        amount_sequences = len(self.sequence_lengths)
+        # Initiate list for filter for each sequence length and all runs.
+        avg_filterlist = []
+        # Go through all the runs one by one.
+        for count in range(self.runs):
+            # Go through each sequence length
+            for m in range(amount_sequences):
+                # Get the circuit which was used to produce the data.
+                mycircuit = self.circuits_list[count][m]
+                # Count amount of X gates in the queue. TODO temporary!
+                m_X = mycircuit.draw().count("X")
+                filtersign = 0
+                # Go throught each shot outcome.
+                for count_shot in range(self.nshots):
+                    # This is 0 or 1.
+                    outcome = self.outcome_samples[count][m][count_shot][0]
+                    filtersign += (-1)**(m_X%2+outcome)/2.
+                avg_filterlist.append(filtersign/self.nshots)
+        final = np.array(avg_filterlist).reshape(self.runs, amount_sequences)
+        return final
+
+                
+
+
 
