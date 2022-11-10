@@ -172,7 +172,7 @@ class ActionBuilder:
 
         try:
             data_fit = Data.load_data(
-                self.folder, routine, self.format, f"fit_q{qubit}"
+                self.folder, "data", routine, self.format, f"fit_q{qubit}"
             )
         except:
             data_fit = Data()

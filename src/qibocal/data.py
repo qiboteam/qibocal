@@ -35,7 +35,7 @@ class AbstractData:
         return len(self.df)
 
     @classmethod
-    def load_data(cls, folder, routine, format, name):
+    def load_data(cls, folder, subfolder, routine, format, name):
         raise_error(NotImplementedError)
 
     @abstractmethod
