@@ -57,10 +57,10 @@ class ActionBuilder:
             folder = f"{date}-{'000'}-{user}"
             num = 0
             while os.path.exists(folder):
-                log.warning(f"Directory {folder} already exists.")
+                log.info(f"Directory {folder} already exists.")
                 num += 1
                 folder = f"{date}-{str(num).rjust(3, '0')}-{user}"
-                log.warning(f"Trying to create directory {folder}")
+                log.info(f"Trying to create directory {folder}")
         elif os.path.exists(folder) and not force:
             raise_error(RuntimeError, f"Directory {folder} already exists.")
         elif os.path.exists(folder) and force:
