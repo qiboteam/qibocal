@@ -1275,7 +1275,7 @@ def standard_rb_plot(folder, routine, qubit, format):
         """ """
         return A * f**x + B
 
-    data = Dataset.load_data(folder, routine, "pickle", "standardrb")
+    data = DataUnits.load_data(folder, routine, "pickle", "standardrb")
     dataframe = data.df
     # Extract the data.
     xdata = np.array(dataframe.columns)
@@ -1322,7 +1322,7 @@ def standard_rb_plot(folder, routine, qubit, format):
         row=1,
         col=1,
     )
-    data = Dataset.load_data(folder, routine, "pickle", "effectivedepol")
+    data = DataUnits.load_data(folder, routine, "pickle", "effectivedepol")
     depol = data.df.to_numpy()[0, 0]
     fig.add_annotation(
         dict(
@@ -1352,7 +1352,7 @@ def rb_plot(folder, routine, qubit, format):
         """ """
         return A * f**x + B
 
-    # Load the data into Dataset object.
+    # Load the data into DataUnits.object.
     data_circs = Data.load_data(folder, routine, "pickle", "circuits")
     data_probs = Data.load_data(folder, routine, "pickle", "probabilities")
     data_samples = Data.load_data(folder, routine, "pickle", "samples")
@@ -1378,12 +1378,6 @@ def rb_plot(folder, routine, qubit, format):
         xdata_spread = np.tile(xdata, experiment.runs)
         pm = np.average(ydata_spread, axis=0)
         ydata_spread = ydata_spread.flatten()
-    # Calculate an exponential fit to the given data pm dependent on m.
-    # 'popt' stores the optimized parameters and pcov the covariance of popt.
-    try:
-        popt, pcov = curve_fit(exp_func, xdata, pm, p0=[0.5, 0.5, 0.5])
-    except:
-        popt, pcov = (1, 1, 0), (None)
     # The variance of the variables in 'popt' are calculated with 'pcov'.
     # perr = np.sqrt(np.diag(pcov))
     # Plot the data and the fit.
@@ -1455,7 +1449,7 @@ def rb_statistics(folder, routine, qubit, format):
 
     from qibocal.calibrations.protocols.experiments import Experiment
 
-    # Load the data into Dataset object.
+    # Load the data into DataUnits.object.
     data_circs = Data.load_data(folder, routine, "pickle", "circuits")
     data_probs = Data.load_data(folder, routine, "pickle", "probabilities1")
     data_samples = Data.load_data(folder, routine, "pickle", "samples1")
