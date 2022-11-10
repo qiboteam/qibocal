@@ -309,8 +309,8 @@ def ramsey_fit(data, x, y, qubit, qubit_freq, sampling_rate, offset_freq, labels
         y (str): name of the output values for the Ramsey model
         qubit (int): ID qubit number
         qubits_freq (float): frequency of the qubit
-        sampling_rate (float): #TODO:missing description
-        offset_freq (float): #TODO:missing description
+        sampling_rate (float): #TODO:missing description, remember to drop this
+        offset_freq (float): #TODO:missing description, remember to drop this
         labels (list of str): list containing the lables of the quantities computed by this fitting method.
 
     Returns:
@@ -322,8 +322,8 @@ def ramsey_fit(data, x, y, qubit, qubit_freq, sampling_rate, offset_freq, labels
             - *popt2*: frequency
             - *popt3*: phase
             - *popt4*: T2
-            - *labels[0]*: #TODO: what is delta_phys ?
-            - *labels[1]*: corrected qubit frequency #TODO what is it ?
+            - *labels[0]*: #TODO: missing description, remember to drop this
+            - *labels[1]*: corrected qubit frequency #TODO write better description, remember to drop this
             - *labels[2]*: T2
     """
     data_fit = Data(
@@ -471,7 +471,7 @@ def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
         y (str): name of the output values for the flipping model
         qubit (int): ID qubit number
         nqubits (int): total number of qubits
-        niter(int): #TODO: missing description
+        niter(int): #TODO: missing description, remember to drop this
         pi_pulse_amplitude(float): corrected pi pulse amplitude
         labels (list of str): list containing the lables of the quantities computed by this fitting method.
 
