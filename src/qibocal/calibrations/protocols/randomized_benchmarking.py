@@ -1,23 +1,20 @@
 # -*- coding: utf-8 -*-
 
-from datetime import datetime
-
 from qibo.noise import NoiseModel, PauliError
-
 from qibocal import plots
 from qibocal.calibrations.protocols.experiments import Experiment
-from qibocal.calibrations.protocols.generators import *
+from qibocal.calibrations.protocols import generators
 from qibocal.calibrations.protocols.utils import effective_depol
 from qibocal.data import Data
 from qibocal.decorators import plot
-from qibocal.plots.scatters import rb_plot
 from qibocal.fitting.methods import rb_exponential_fit
-from datetime import datetime
+from qibo import gates
+from qibolab.platforms.abstract import AbstractPlatform
 
 
 @plot("Randomized benchmarking", plots.rb_plot)
 def dummyrb(
-    platform,
+    platform: AbstractPlatform,
     qubit: list,
     circuit_generator_class: str,
     invert: bool,
@@ -27,11 +24,8 @@ def dummyrb(
     inject_noise: list = None,
     active_qubit: int = None,
 ):
-    print("start: ", datetime.now().strftime("%d.%b %y %H:%M:%S"))
-    # Make the generator class out of the name.
-    circuit_generator_class = eval(circuit_generator_class)
     # Make a generator object out of the generator class.
-    circuit_generator = circuit_generator_class(
+    circuit_generator = getattr(generators, circuit_generator_class)(
         qubit, invert=invert, act_on=active_qubit
     )
     # Initiate the Experiment object, not filled with circuits yet.
@@ -64,4 +58,3 @@ def dummyrb(
     data_depol = Data("effectivedepol", quantities=["effective_depol"])
     data_depol.add({"effective_depol": effective_depol(pauli)})
     yield data_depol
-    print("end: ", datetime.now().strftime("%d.%b %y %H:%M:%S"))
