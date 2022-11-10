@@ -13,22 +13,21 @@ For our purposes, we can use the following runcard and save it as ``example.yml`
 
 .. code-block:: yaml
 
-    platform: tii1q
+    platform: tii5q
 
-    qubits: [0]
+    qubits: [2]
 
     format: csv
 
     actions:
-    resonator_spectroscopy:
-        lowres_width: 5_000_000
-        lowres_step: 2_000_000
-        highres_width: 1_500_000
-        highres_step: 200_000
-        precision_width: 1_500_000
-        precision_step: 100_000
-        software_averages: 1
-        points: 5
+        resonator_spectroscopy:
+            lowres_width: 5_000_000
+            lowres_step: 2_000_000
+            highres_width: 1_500_000
+            highres_step: 200_000
+            precision_width: 1_500_000
+            precision_step: 100_000
+            software_averages: 1
 
 More examples of runcards are available on `Github <https://github.com/qiboteam/qibocal/tree/main/runcards>`_ .
 
