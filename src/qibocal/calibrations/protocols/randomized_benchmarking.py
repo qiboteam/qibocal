@@ -1,16 +1,16 @@
 from datetime import datetime
 
 from numpy import random
+from qibo import gates
 from qibo.noise import NoiseModel, PauliError
+from qibolab.platforms.abstract import AbstractPlatform
+
 from qibocal import plots
-from qibocal.calibrations.protocols.experiments import Experiment
 from qibocal.calibrations.protocols import generators
+from qibocal.calibrations.protocols.experiments import Experiment
 from qibocal.calibrations.protocols.utils import effective_depol
 from qibocal.data import Data
 from qibocal.decorators import plot
-from qibocal.fitting.methods import rb_exponential_fit
-from qibo import gates
-from qibolab.platforms.abstract import AbstractPlatform
 from qibocal.fitting.methods import rb_exponential_fit, rb_statistics
 
 

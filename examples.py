@@ -1,13 +1,13 @@
 from shutil import rmtree
 
+import matplotlib.pyplot as plt
 import numpy as np
 from pandas import read_pickle
 
 from qibocal.calibrations.protocols.experiments import Experiment
+from qibocal.calibrations.protocols.fitting_methods import *
 from qibocal.calibrations.protocols.generators import *
 from qibocal.data import Data
-from qibocal.calibrations.protocols.fitting_methods import *
-import matplotlib.pyplot as plt
 
 
 def test_generators():
@@ -319,9 +319,10 @@ def test_filter_single_qubit():
 
 def test_generatorXIds():
     def lizafunction(px, py, pz):
-        return 1-px-pz, 1-px-py
+        return 1 - px - pz, 1 - px - py
+
     qubits = [0]
-    sequence_lengths = list(np.arange(1,30,1))
+    sequence_lengths = list(np.arange(1, 30, 1))
     runs = 2
     generator = GeneratorXId(qubits)
     experiment = Experiment(generator, sequence_lengths, qubits, runs=runs)
@@ -332,6 +333,7 @@ def test_generatorXIds():
     # Inject the noise while executing.
     experiment.execute_a_save(paulierror_noiseparams=noiseparams)
     experiment.plot_scatterruns(sign=True)
+
 
 # directory = 'experiments/GeneratorXId/experiment22Nov10_132047/'
 # # Load the circuits and attributes back to a new experiment object.

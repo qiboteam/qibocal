@@ -1,16 +1,14 @@
-# -*- coding: utf-8 -*-
-from qibocal.calibrations.protocols import fitting_methods
 from ast import literal_eval
 from copy import deepcopy
 from itertools import product
 from os import mkdir
 from os.path import isdir, isfile
-from copy import deepcopy
 
 import numpy as np
 from qibo import gates
 from qibo.noise import NoiseModel, PauliError
 
+from qibocal.calibrations.protocols import fitting_methods
 from qibocal.calibrations.protocols.generators import *
 from qibocal.calibrations.protocols.utils import dict_to_txt, pkl_to_list
 from qibocal.data import Data
@@ -371,11 +369,11 @@ class Experiment:
                     noisy_circuit = noise.apply(circuit)
                     # Execute the noisy circuit.
                     executed = noisy_circuit(
-                        kwargs.get('init_state'), nshots=self.nshots)
+                        kwargs.get("init_state"), nshots=self.nshots
+                    )
                 else:
                     # Execute the qibo circuit without artificial noise.
-                    executed = circuit(
-                        kwargs.get('init_state'), nshots=self.nshots)
+                    executed = circuit(kwargs.get("init_state"), nshots=self.nshots)
                 # FIXME The samples (zeros and ones per shot) acquisition does
                 # not work for quantum hardware yet.
                 try:
@@ -520,13 +518,9 @@ class Experiment:
                 np.array(sequences_frompkl)[::-1], self.sequence_lengths
             ), "The order of the restored outcome is not the same as when build"
             # Store the outcome as an attribute to further work with its.
-            self.outcome_samples = np.array(
-                [x[::-1] for x in samples_list]).reshape(
-                    self.runs,
-                    len(self.sequence_lengths),
-                    self.nshots,
-                    len(self.qubits)
-                )
+            self.outcome_samples = np.array([x[::-1] for x in samples_list]).reshape(
+                self.runs, len(self.sequence_lengths), self.nshots, len(self.qubits)
+            )
             return self.outcome_samples
         else:
             raise FileNotFoundError("There is no file for samples.")
@@ -686,7 +680,7 @@ class Experiment:
         if self.inverse:
             ydata_scattered = self.probabilities(averaged=False)[:, :, 0]
             fitting_func = fitting_methods.fit_exp1_func
-        elif kwargs.get('sign'):
+        elif kwargs.get("sign"):
             ydata_scattered = self.filter_sign()
             fitting_func = fitting_methods.fit_exp2_func
         else:
@@ -706,7 +700,7 @@ class Experiment:
         # pdb.set_trace()
         plt.scatter(xdata, ydata, marker=5, label="averaged")
         xfitted, yfitted, popt = fitting_func(xdata, ydata)
-        fitlegend =  ', '.join(format(f, '.3f') for f in popt)
+        fitlegend = ", ".join(format(f, ".3f") for f in popt)
         plt.plot(xfitted, yfitted, "--", color=colorfunc(50), label=fitlegend)
         plt.ylabel("survival probability")
         plt.xlabel("sequence length")
@@ -738,7 +732,8 @@ class Experiment:
             rand_data = ydata_scattered[np.random.randint(0, self.runs, size=k)]
             # Calculate the average and get the fitting parameters.
             xfit, yfit, popt = fitting_methods.fit_exponential(
-                xdata, np.average(rand_data, axis=0))
+                xdata, np.average(rand_data, axis=0)
+            )
             # In popt three fitting parameters are stored for A*f^x+B, in this
             # order. Make the tuple a list and store them.
             params_list.append(popt[fittingparam])
@@ -765,8 +760,7 @@ class Experiment:
         plt.show()
 
     def filter_sign(self):
-        """
-        """
+        """ """
         amount_sequences = len(self.sequence_lengths)
         # Initiate list for filter for each sequence length and all runs.
         avg_filterlist = []
@@ -783,12 +777,7 @@ class Experiment:
                 for count_shot in range(self.nshots):
                     # This is 0 or 1.
                     outcome = self.outcome_samples[count][m][count_shot][0]
-                    filtersign += (-1)**(m_X%2+outcome)/2.
-                avg_filterlist.append(filtersign/self.nshots)
+                    filtersign += (-1) ** (m_X % 2 + outcome) / 2.0
+                avg_filterlist.append(filtersign / self.nshots)
         final = np.array(avg_filterlist).reshape(self.runs, amount_sequences)
         return final
-
-                
-
-
-
