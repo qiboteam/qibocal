@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Custom logger implemenation."""
 import logging
 import os

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from qibocal.plots.allXY import *
 from qibocal.plots.calibrate_qubit_states import *
 from qibocal.plots.flipping import *
