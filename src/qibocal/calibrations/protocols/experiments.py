@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from qibocal.calibrations.protocols import fitting_methods
 from ast import literal_eval
+from copy import deepcopy
 from itertools import product
 from os import mkdir
 from os.path import isdir, isfile
@@ -47,8 +48,13 @@ class Experiment:
         self.nshots = nshots
         if hasattr(circuit_generator, "invert"):
             self.inverse = circuit_generator.invert
+        self.__number_simulations = 0
 
     ############################ PROPERTIES/SETTER ############################
+
+    @property
+    def number_simulations(self):
+        return self.__number_simulations
 
     @property
     def data_circuits(self):
@@ -104,7 +110,10 @@ class Experiment:
             try:
                 # raise ValueError
                 # Initiate the data structure where the outcomes will be stored.
-                data_samples = Data("samples", quantities=list(self.sequence_lengths))
+                data_samples = Data(
+                    f"samples{self.__number_simulations}",
+                    quantities=list(self.sequence_lengths),
+                )
                 # The columns are indexed by the different sequence lengths.
                 # The rows are indexing the different runs.
                 for count in range(self.runs):
@@ -123,7 +132,10 @@ class Experiment:
                 # If the initialization of the data objext is not overwritten
                 # here, the first row will be filled with Nan's (because it
                 # tried to fill the data frame but failed) breaking the code.
-                data_samples = Data("samples", quantities=list(self.sequence_lengths))
+                data_samples = Data(
+                    f"samples{self.__number_simulations}",
+                    quantities=list(self.sequence_lengths),
+                )
                 # FIXME Make the lists to strings.
                 list_of_lists = [
                     [[list(x) for x in a] for a in b] for b in self.outcome_samples
@@ -166,7 +178,10 @@ class Experiment:
         # FIXME There are versions not supporting writing arrays to data frames.
         try:
             # Initiate the data structure where the outcomes will be stored.
-            data_probs = Data("probabilities", quantities=list(self.sequence_lengths))
+            data_probs = Data(
+                f"probabilities{self.__number_simulations}",
+                quantities=list(self.sequence_lengths),
+            )
             # The columns are indexed by the different sequence lengths.
             # The rows are indexing the different runs.
             for count in range(self.runs):
@@ -185,7 +200,10 @@ class Experiment:
             # If the initialization of the data objext is not overwritten here,
             # the first row will be filled with Nan's (because it tried to fill
             # the data frame but failed) breaking the code.
-            data_probs = Data("probabilities", quantities=list(self.sequence_lengths))
+            data_probs = Data(
+                f"probabilities{self.__number_simulations}",
+                quantities=list(self.sequence_lengths),
+            )
             # FIXME Make the lists to strings.
             for count in range(self.runs):
                 # The data object takes dictionaries.
@@ -378,6 +396,7 @@ class Experiment:
             # cannot be retrieved.
             self.outcome_samples.append(samples_list)
             self.outcome_probabilities.append(probs_list)
+        self.__number_simulations += 1
 
     def execute_a_save(self, **kwargs):
         """ """
@@ -694,12 +713,13 @@ class Experiment:
         plt.legend()
         plt.show()
 
-    def crossvalidation(self, k:int, iterations:int, **kwargs):
-        """ Repeated random sub-sampling validation without the training,
+    def crossvalidation(self, k: int, iterations: int, **kwargs):
+        """Repeated random sub-sampling validation without the training,
         only testing.
 
         """
         import matplotlib.pyplot as plt
+
         colorfunc = plt.get_cmap("inferno")
         # Retrieve the single survival probabilities for each run.
         if self.inverse:
@@ -708,15 +728,14 @@ class Experiment:
             ydata_scattered = self.filter_single_qubit(averaged=False)
         # Store the sequence lengths for fitting purposes.
         xdata = self.sequence_lengths
-        fittingparam = kwargs.get('fittingparam', 1)
+        fittingparam = kwargs.get("fittingparam", 1)
         params_list = []
         # Loop over the amount of wanted iterations and draw k many samples
         # such that each time a random set of different runs is used to
         # calculate the decay parameters of the average of the given data.
         for _ in range(iterations):
             # Draw the random indices and get the belonging data.
-            rand_data = ydata_scattered[
-                np.random.randint(0, self.runs, size=k)]
+            rand_data = ydata_scattered[np.random.randint(0, self.runs, size=k)]
             # Calculate the average and get the fitting parameters.
             xfit, yfit, popt = fitting_methods.fit_exponential(
                 xdata, np.average(rand_data, axis=0))
@@ -725,12 +744,21 @@ class Experiment:
             params_list.append(popt[fittingparam])
         # Plot the calculated fitting parameters.
         # Make two plots. A scatter plot and an histogram.
-        plt.subplots(2,1,figsize=(7,7))
+        plt.subplots(2, 1, figsize=(7, 7))
         plt.subplot(2, 1, 1)
-        plt.scatter(params_list,np.zeros(iterations), marker='|',
-                    linewidths=5, s=150, color=colorfunc(50), alpha=.4, 
-                    label=f'{iterations} subsampling group of size {k}')
-        plt.plot(np.average(params_list),)
+        plt.scatter(
+            params_list,
+            np.zeros(iterations),
+            marker="|",
+            linewidths=5,
+            s=150,
+            color=colorfunc(50),
+            alpha=0.4,
+            label=f"{iterations} subsampling group of size {k}",
+        )
+        plt.plot(
+            np.average(params_list),
+        )
         plt.subplot(2, 1, 2)
         plt.hist(params_list)
         plt.legend()

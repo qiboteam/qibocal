@@ -379,3 +379,37 @@ def rb_exponential_fit(experiment: Experiment, active_qubits):
     # Store the fitting parameters.
     data_fit.add({"A": popt[0], "f": popt[1], "B": popt[2]})
     return data_fit
+
+
+def rb_statistics(
+    experiment: Experiment,
+    iterations: int,
+    k: int,
+):
+    """ """
+    # Create the data object to store the fitting paramters.
+    data_fit = Data(
+        name=f"fits_crossvalidation{experiment.number_simulations}",
+        quantities=list(range(iterations)),
+    )
+    # Retrieve the single survival probabilities for each run.
+    if experiment.inverse:
+        ydata_scattered = experiment.probabilities(averaged=False)[:, :, 0]
+    else:
+        ydata_scattered = experiment.filter_single_qubit(averaged=False)
+    # Store the sequence lengths for fitting purposes.
+    xdata = experiment.sequence_lengths
+    params_list = []
+    # Loop over the amount of wanted iterations and draw k many samples
+    # such that each time a random set of different runs is used to
+    # calculate the decay parameters of the average of the given data.
+    for _ in range(iterations):
+        # Draw the random indices and get the belonging data.
+        rand_data = ydata_scattered[np.random.randint(0, experiment.runs, size=k)]
+        # Calculate the average and get the fitting parameters.
+        _, _, popt = experiment.fit_exponential(np.average(rand_data, axis=0))
+        # In popt three fitting parameters are stored for A*f^x+B, in this
+        # order.
+        params_list.append(popt)
+    data_fit.add({i: params_list[i][1] for i in range(iterations)})
+    return data_fit

@@ -1275,7 +1275,7 @@ def standard_rb_plot(folder, routine, qubit, format):
         """ """
         return A * f**x + B
 
-    data = Dataset.load_data(folder, routine, "pickle", "standardrb")
+    data = DataUnits.load_data(folder, routine, "pickle", "standardrb")
     dataframe = data.df
     # Extract the data.
     xdata = np.array(dataframe.columns)
@@ -1322,7 +1322,7 @@ def standard_rb_plot(folder, routine, qubit, format):
         row=1,
         col=1,
     )
-    data = Dataset.load_data(folder, routine, "pickle", "effectivedepol")
+    data = DataUnits.load_data(folder, routine, "pickle", "effectivedepol")
     depol = data.df.to_numpy()[0, 0]
     fig.add_annotation(
         dict(
@@ -1352,7 +1352,7 @@ def rb_plot(folder, routine, qubit, format):
         """ """
         return A * f**x + B
 
-    # Load the data into Dataset object.
+    # Load the data into DataUnits.object.
     data_circs = Data.load_data(folder, routine, "pickle", "circuits")
     data_probs = Data.load_data(folder, routine, "pickle", "probabilities")
     data_samples = Data.load_data(folder, routine, "pickle", "samples")
@@ -1378,12 +1378,6 @@ def rb_plot(folder, routine, qubit, format):
         xdata_spread = np.tile(xdata, experiment.runs)
         pm = np.average(ydata_spread, axis=0)
         ydata_spread = ydata_spread.flatten()
-    # Calculate an exponential fit to the given data pm dependent on m.
-    # 'popt' stores the optimized parameters and pcov the covariance of popt.
-    try:
-        popt, pcov = curve_fit(exp_func, xdata, pm, p0=[0.5, 0.5, 0.5])
-    except:
-        popt, pcov = (1, 1, 0), (None)
     # The variance of the variables in 'popt' are calculated with 'pcov'.
     # perr = np.sqrt(np.diag(pcov))
     # Plot the data and the fit.
@@ -1445,5 +1439,69 @@ def rb_plot(folder, routine, qubit, format):
             yref="paper",
         )
     )
+
+    return fig
+
+
+def rb_statistics(folder, routine, qubit, format):
+    """ """
+    from scipy.optimize import curve_fit
+
+    from qibocal.calibrations.protocols.experiments import Experiment
+
+    # Load the data into DataUnits.object.
+    data_circs = Data.load_data(folder, routine, "pickle", "circuits")
+    data_probs = Data.load_data(folder, routine, "pickle", "probabilities1")
+    data_samples = Data.load_data(folder, routine, "pickle", "samples1")
+    # Build an Experiment object out of it.
+    experiment = Experiment.retrieve_from_dataobjects(
+        data_circs, data_samples, data_probs
+    )
+    file_exists, count_iterations = True, 0
+    data_list = []
+    while file_exists:
+        count_iterations += 1
+        try:
+            data_fits = Data.load_data(
+                folder, routine, "pickle", f"fits_crossvalidation{count_iterations}"
+            )
+            data_list.append(data_fits)
+        except FileNotFoundError:
+            file_exists = False
+    fig = make_subplots(
+        rows=count_iterations,
+        cols=2,
+        horizontal_spacing=1,
+        vertical_spacing=1,
+        subplot_titles=(
+            f"Randomized benchmarking Cross Validation, inverse: {experiment.inverse}",
+        ),
+    )
+
+    c1 = "#6597aa"
+    # c2 = "#aa6464"
+
+    for count in range(1, count_iterations):
+        fitparams = np.array(data_fits.df.values.tolist()).flatten()
+        data_depol = Data.load_data(folder, routine, "pickle", f"effectivedepol{count}")
+        depol = data_depol.df.to_numpy()[0, 0]
+        fig.add_trace(
+            go.Scatter(
+                x=fitparams,
+                y=np.zeros(len(fitparams)),
+                line=dict(color=c1),
+                mode="markers",
+                marker={"opacity": 0.2, "symbol": "diamond"},
+                name=f"effective depol:{depol}",
+            ),
+            row=count,
+            col=1,
+        )
+
+        fig.add_trace(
+            go.Histogram(x=fitparams),
+            row=count,
+            col=2,
+        )
 
     return fig
