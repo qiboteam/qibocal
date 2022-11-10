@@ -28,7 +28,7 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None):
         nqubits (int): total number of qubits
         labels (list of str): list containing the lables of the quantities computed by this fitting method.
 
-            -   When using ``resonator_spectroscopy`` the expected labels are [`resonator_freq`, `peak voltage`], where `resonator_freq` is the estimated frequency of the resonator, and peak voltage ...
+            -   When using ``resonator_spectroscopy`` the expected labels are [`resonator_freq`, `peak voltage`], where `resonator_freq` is the estimated frequency of the resonator, and `peak_voltage` the peak of the Lorentzian
 
             -   when using ``qubit_spectroscopy`` the expected labels are [`qubit_freq`, `peak voltage`], where `qubit_freq` is the estimated frequency of the qubit
 
@@ -233,7 +233,7 @@ def rabi_fit(data, x, y, qubit, nqubits, labels):
             - *popt3*: phase
             - *popt4*: T2
             - *labels[0]*: pulse duration
-            - *labels[1]*: pulse maximum voltage
+            - *labels[1]*: pulse's maximum voltage
     """
 
     data_fit = Data(
@@ -308,9 +308,9 @@ def ramsey_fit(data, x, y, qubit, qubit_freq, sampling_rate, offset_freq, labels
         x (str): name of the input values for the Ramsey model
         y (str): name of the output values for the Ramsey model
         qubit (int): ID qubit number
-        qubits_freq (float):
-        sampling_rate (float):
-        offset_freq (float):
+        qubits_freq (float): frequency of the qubit
+        sampling_rate (float): #TODO:missing description
+        offset_freq (float): #TODO:missing description
         labels (list of str): list containing the lables of the quantities computed by this fitting method.
 
     Returns:
@@ -322,8 +322,8 @@ def ramsey_fit(data, x, y, qubit, qubit_freq, sampling_rate, offset_freq, labels
             - *popt2*: frequency
             - *popt3*: phase
             - *popt4*: T2
-            - *labels[0]*: physical delta
-            - *labels[1]*: corrected qubit frequency
+            - *labels[0]*: #TODO: what is delta_phys ?
+            - *labels[1]*: corrected qubit frequency #TODO what is it ?
             - *labels[2]*: T2
     """
     data_fit = Data(
@@ -471,8 +471,8 @@ def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
         y (str): name of the output values for the flipping model
         qubit (int): ID qubit number
         nqubits (int): total number of qubits
-        niter(int): ...
-        pi_pulse_amplitude(float): ...
+        niter(int): #TODO: missing description
+        pi_pulse_amplitude(float): corrected pi pulse amplitude
         labels (list of str): list containing the lables of the quantities computed by this fitting method.
 
     Returns:
