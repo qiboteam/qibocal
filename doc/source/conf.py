@@ -16,20 +16,21 @@ import sys
 from recommonmark.transform import AutoStructify
 
 sys.path.insert(0, os.path.abspath(".."))
-import qibo
+
+import qibocal
 
 # -- Project information -----------------------------------------------------
 
-project = "Qibo"
-copyright = "2020-2022 by the Qibo team"
+project = "qibocal"
+copyright = "2022, The Qibo team"
 author = "The Qibo team"
 
 # The full version, including alpha/beta/rc tags
-# release = qibo.__version__
+release = qibocal.__version__
 
 
 # -- General configuration ---------------------------------------------------
-#
+
 # https://stackoverflow.com/questions/56336234/build-fail-sphinx-error-contents-rst-not-found
 master_doc = "index"
 
@@ -43,7 +44,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.intersphinx",
     "recommonmark",
-    "nbsphinx",
+    "sphinx_markdown_tables",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -60,6 +61,7 @@ autosectionlabel_prefix_document = True
 # Allow to embed rst syntax in  markdown files.
 enable_eval_rst = True
 
+
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
@@ -73,6 +75,7 @@ exclude_patterns = []
 #
 html_theme = "furo"
 
+
 html_theme_options = {
     "light_css_variables": {
         "color-brand-primary": "#6400FF",
@@ -84,18 +87,12 @@ html_theme_options = {
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ["_static"]
 
+html_static_path = ["_static"]
 
 # -- Intersphinx  -------------------------------------------------------------
 
 intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
-
-
-# -- Doctest ------------------------------------------------------------------
-#
-
-doctest_path = [os.path.abspath("../examples")]
 
 # -- Autodoc ------------------------------------------------------------------
 #
