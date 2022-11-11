@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Configuration file for the Sphinx documentation builder.
 #
 # This file only contains a selection of the most common options. For a full
@@ -16,21 +17,20 @@ import sys
 from recommonmark.transform import AutoStructify
 
 sys.path.insert(0, os.path.abspath(".."))
-
-import qibocal
+import qibo
 
 # -- Project information -----------------------------------------------------
 
-project = "qibocal"
-copyright = "2022, The Qibo team"
+project = "Qibo"
+copyright = "2020-2022 by the Qibo team"
 author = "The Qibo team"
 
 # The full version, including alpha/beta/rc tags
-release = qibocal.__version__
+#release = qibo.__version__
 
 
 # -- General configuration ---------------------------------------------------
-
+#
 # https://stackoverflow.com/questions/56336234/build-fail-sphinx-error-contents-rst-not-found
 master_doc = "index"
 
@@ -44,7 +44,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.intersphinx",
     "recommonmark",
-    "sphinx_markdown_tables",
+    "nbsphinx",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -61,7 +61,6 @@ autosectionlabel_prefix_document = True
 # Allow to embed rst syntax in  markdown files.
 enable_eval_rst = True
 
-
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
@@ -73,16 +72,31 @@ exclude_patterns = []
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "sphinx_rtd_theme"
+html_theme = "furo"
+
+html_theme_options = {
+    "light_css_variables": {
+        "color-brand-primary": "#6400FF",
+        "color-brand-secondary": "#6400FF",
+        "color-brand-content": "#6400FF",
+    }
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
 
+
 # -- Intersphinx  -------------------------------------------------------------
 
 intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
+
+
+# -- Doctest ------------------------------------------------------------------
+#
+
+doctest_path = [os.path.abspath("../examples")]
 
 # -- Autodoc ------------------------------------------------------------------
 #
@@ -95,3 +109,9 @@ def setup(app):
     app.add_config_value("recommonmark_config", {"enable_eval_rst": True}, True)
     app.add_transform(AutoStructify)
     app.add_css_file("css/style.css")
+
+
+#html_logo = "logo.png"
+
+html_show_sourcelink = False
+
