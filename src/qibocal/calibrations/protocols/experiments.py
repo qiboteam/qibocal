@@ -36,7 +36,7 @@ class Experiment:
         sequence_lengths: list = None,
         qubits: list = None,
         runs: int = None,
-        nshots: int = 1024,
+        nshots: int = None,
         **kwargs,
     ) -> None:
         self.circuit_generator = circuit_generator
@@ -82,9 +82,9 @@ class Experiment:
         # Check if the attribute does not exist yet.
         if not hasattr(self, "sequence_lengths") or self.sequence_lengths is None:
             # Get the sequence lengths.
-            sequence_lenghts = dataframe.columns.tolist()
+            sequence_lengths = dataframe.columns.tolist()
             # The pickeling process reverses the order, reoder it.
-            self.sequence_lengths = np.array(sequence_lenghts[::-1])
+            self.sequence_lengths = np.array(sequence_lengths[::-1])
         # Store the outcome as an attribute to further work with its.
         self.circuits_list = [x[::-1] for x in circuits_list]
         # Check how many gates there are in a single circuit. If it is one more
@@ -152,6 +152,7 @@ class Experiment:
     @data_samples.setter
     def data_samples(self, gdata):
         """ """
+
         # Extract the data frame.
         dataframe = gdata.df
         # Put them in a list, first axis is the different runs, second axis
@@ -163,11 +164,14 @@ class Experiment:
         # Check if the attribute does not exist yet.
         if not hasattr(self, "sequence_lengths") or self.sequence_lengths is None:
             # Get the sequence lengths.
-            sequence_lenghts = dataframe.columns.tolist()
+            sequence_lengths = dataframe.columns.tolist()
             # The pickeling process reverses the order, reoder ot.
-            self.sequence_lengths = np.array(sequence_lenghts[::-1])
+            self.sequence_lengths = np.array(sequence_lengths[::-1])
         # Store the outcome as an attribute to further work with its.
-        self.outcome_samples = [x[::-1] for x in samples_list]
+        self.outcome_samples = np.array([x[::-1] for x in samples_list]).reshape(
+            self.runs, len(self.sequence_lengths), -1, len(self.qubits)
+        )
+        self.nshots = len(self.outcome_samples[0, 0])
 
     @property
     def data_probabilities(self):
@@ -231,9 +235,9 @@ class Experiment:
         # Check if the attribute does not exist yet.
         if not hasattr(self, "sequence_lengths") or self.sequence_lengths is None:
             # Get the sequence lengths.
-            sequence_lenghts = dataframe.columns.tolist()
+            sequence_lengths = dataframe.columns.tolist()
             # The pickeling process reverses the order, reoder ot.
-            self.sequence_lengths = np.array(sequence_lenghts[::-1])
+            self.sequence_lengths = np.array(sequence_lengths[::-1])
         # Store the outcome as an attribute to further work with its.
         self.outcome_probabilities = [x[::-1] for x in probabilities_list]
 
@@ -277,19 +281,13 @@ class Experiment:
         obj = cls()
         # Put the three different data objects.
         obj.data_circuits = data_circs
+        # Retrieve the meta data which can be extracted from the data frames.
+        obj.runs = len(obj.circuits_list)
+        obj.qubits = list(range(obj.circuits_list[0][0].nqubits))
         # If there were no samples this data structure is empty but that
         # should be no problem.
         obj.data_samples = data_samples
         obj.data_probabilities = data_probs
-        # Retrieve the meta data which can be extracted from the data frames.
-        obj.runs = len(obj.circuits_list)
-        if obj.outcome_samples:
-            obj.nshots = len(obj.outcome_samples[0][0])
-        else:
-            obj.nshots = None
-        if obj.outcome_probabilities:
-            amount_qubits = int(np.log2(len(obj.outcome_probabilities[0][0])))
-            obj.qubits = list(range(amount_qubits))
         return obj
 
     ################################# METHODS #################################
@@ -589,7 +587,7 @@ class Experiment:
             else:
                 # If only a specific run (runs) is requested, choose that one.
                 if run:
-                    # Since the concatination in the next step only works when
+                    # Since the concatenation in the next step only works when
                     # there are 4 dimensions, reshape it to 4 dimensions.
                     samples = samples[run].reshape(
                         -1, len(self.sequence_lengths), self.nshots, len(self.qubits)
@@ -704,7 +702,6 @@ class Experiment:
             label="each run",
         )
         ydata = np.average(ydata_scattered, axis=0)
-        # pdb.set_trace()
         plt.scatter(xdata, ydata, marker=5, label="averaged")
         xfitted, yfitted, popt = fitting_func(xdata, ydata)
         fitlegend = ", ".join(format(f, ".3f") for f in popt)
