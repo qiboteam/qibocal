@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-import os
+#import os
 
 import numpy as np
 import plotly.graph_objects as go
@@ -7,16 +7,7 @@ from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import cos, exp, flipping, lorenzian, rabi, ramsey
-
-
-def get_data_subfolders(folder):
-    # iterate over multiple data folders
-    subfolders = []
-    for file in os.listdir(folder):
-        d = os.path.join(folder, file)
-        if os.path.isdir(d):
-            subfolders.append(os.path.basename(d))
-    return subfolders[::-1]
+from qibocal.plots.utils import get_data_subfolders
 
 
 # Resonator and qubit spectroscopies

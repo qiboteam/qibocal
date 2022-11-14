@@ -196,8 +196,7 @@ def compare(folders):
     shutil.copy(f"{foldernames[0]}/meta.yml", TARGET_COMPARE_DIR)
     shutil.copy(f"{foldernames[0]}/runcard.yml", TARGET_COMPARE_DIR)
 
-    i = 0
-    for folder in foldernames:
+    for i, folder in enumerate(foldernames):
         newdir = TARGET_COMPARE_DIR + f"data{i}"
         log.info(f"Copying ({folder}) into {newdir}")
         try:
@@ -221,7 +220,10 @@ def compare(folders):
             update_runcard(rundata, rundata_new)
 
         log.info(f"Upload completed")
-        i += 1
+
+        from qibocal.web.report import create_report
+        create_report(TARGET_COMPARE_DIR)
+        log.info(f"HTML report generated")
 
 
 def folders_exists(folders):
