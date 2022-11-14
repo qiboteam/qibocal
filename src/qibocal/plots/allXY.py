@@ -24,16 +24,25 @@ def prob_gate(folder, routine, qubit, format):
         subplot_titles=(f"allXY",),
     )
 
-    fig.add_trace(
-        go.Scatter(
-            x=data.get_values("gateNumber", "dimensionless"),
-            y=data.get_values("probability", "dimensionless"),
-            mode="markers",
-            name="Probabilities",
-        ),
-        row=1,
-        col=1,
-    )
+    datasets = []
+    copy = data.df.copy()
+    for i in range(len(copy)):
+        datasets.append(copy.drop_duplicates("gateNumber"))
+        copy.drop(datasets[-1].index, inplace=True)
+        fig.add_trace(
+            go.Scatter(
+                x=datasets[-1]["gateNumber"].pint.to("dimensionless").pint.magnitude,
+                y=datasets[-1]["probability"].pint.to("dimensionless").pint.magnitude,
+                marker_color="rgb(100, 0, 255)",
+                opacity=0.3,
+                name="Probability",
+                showlegend=not bool(i),
+                legendgroup="group1",
+            ),
+            row=1,
+            col=1,
+        )
+
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
@@ -43,7 +52,7 @@ def prob_gate(folder, routine, qubit, format):
     return fig
 
 
-# allXY
+# allXY TODO
 def prob_gate_iteration(folder, routine, qubit, format):
 
     try:
@@ -104,7 +113,7 @@ def prob_gate_iteration(folder, routine, qubit, format):
     return fig
 
 
-# beta param tuning
+# beta param tuning TO DO
 def msr_beta(folder, routine, qubit, format):
 
     try:
