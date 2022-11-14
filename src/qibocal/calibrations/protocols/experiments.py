@@ -349,7 +349,7 @@ class Experiment:
             pauli = PauliError(*kwargs.get("paulierror_noiseparams"))
             noise = NoiseModel()
             # The noise should be applied with each unitary in the circuit.
-            noise.add(pauli, kwargs.get('noise_acton', gates.Unitary))
+            noise.add(pauli, kwargs.get("noise_acton", gates.Unitary))
         # Makes code easier to read.
         amount_m = len(self.sequence_lengths)
         # Loop 'runs' many times over the whole protocol.
@@ -458,7 +458,7 @@ class Experiment:
             "nshots": self.nshots,
             "runs": self.runs,
             "inverse": self.inverse,
-            "circuit_generator": self.circuit_generator.__class__.__name__
+            "circuit_generator": self.circuit_generator.__class__.__name__,
         }
         # One file in the directory stores the meta data.
         metadata_filename = f"{self.directory}metadata.txt"
@@ -512,7 +512,7 @@ class Experiment:
         if isfile(f"{path}samples1.pkl"):
             # Get the pandas data frame from the pikle file.
             sequences_frompkl, samples_list = pkl_to_list(f"{path}samples1.pkl")
-            # FIXME 
+            # FIXME
             if samples_list and type(samples_list[0][0]) == str:
                 samples_list = [[literal_eval(x) for x in a] for a in samples_list]
             # Make sure that the order is the same.
@@ -534,9 +534,11 @@ class Experiment:
             sequences_frompkl, probabilities_list = pkl_to_list(
                 f"{path}probabilities1.pkl"
             )
-            # FIXME 
+            # FIXME
             if probabilities_list and type(probabilities_list[0][0]) == str:
-                probabilities_list = [[literal_eval(x) for x in a] for a in probabilities_list]
+                probabilities_list = [
+                    [literal_eval(x) for x in a] for a in probabilities_list
+                ]
             # Make sure that the order is the same, right now the
             # order is reversed.
             assert np.array_equal(

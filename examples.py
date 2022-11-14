@@ -3,11 +3,11 @@ from shutil import rmtree
 import matplotlib.pyplot as plt
 import numpy as np
 from pandas import read_pickle
+from qibo.models import Circuit
 
 from qibocal.calibrations.protocols.experiments import Experiment
 from qibocal.calibrations.protocols.fitting_methods import *
 from qibocal.calibrations.protocols.generators import *
-from qibo.models import Circuit
 from qibocal.data import Data
 
 
@@ -72,6 +72,7 @@ def test_generators_cliffords_qibomaster():
     draw_string = circuit41.draw()
     compare_string = "q0: ─────────\nq1: ─────────\nq2: ─U─U─U─M─\nq3: ─────────"
     assert draw_string == compare_string
+
 
 def test_generators_cliffords_qibomeasurement():
     """There are different generators for random circuits from a
@@ -141,15 +142,16 @@ def test_generators_cliffords_qibomeasurement():
     compare_string = "q0: ─────────\nq1: ─────────\nq2: ─U─U─U─M─\nq3: ─────────"
     assert draw_string == compare_string
 
+
 def test_generators_XIDs():
-    """
-    """
+    """ """
     qubits = [0]
     mygenerator = GeneratorXId(qubits)
     circuit11 = next(mygenerator(1))
     circuit15 = next(mygenerator(5))
     assert type(circuit11) == Circuit
     assert type(circuit15) == Circuit
+
 
 def test_experiments():
     """ """
@@ -372,8 +374,7 @@ def test_retrieve_from_dataobjects():
     newdict = recexperiment.__dict__
     for key in olddict:
         # The attribute circuits_list was checked above.
-        if key not in (
-            "circuits_list", "directory", "_Experiment__number_simulations"):
+        if key not in ("circuits_list", "directory", "_Experiment__number_simulations"):
             oldvalue = olddict[key]
             newvalue = newdict[key]
             if type(oldvalue) in (str, int, float, bool):
@@ -416,7 +417,7 @@ def test_generatorXIds():
         return 1 - px - pz, 1 - px - py
 
     qubits = [0]
-    sequence_lengths = list(np.arange(1,5,1))
+    sequence_lengths = list(np.arange(1, 5, 1))
     runs = 2
     generator = GeneratorXId(qubits)
     experiment = Experiment(generator, sequence_lengths, qubits, runs=runs)
@@ -425,8 +426,7 @@ def test_generatorXIds():
     noiseparams = [0.01, 0.05, 0.2]
     # print(lizafunction(*noiseparams))
     # Inject the noise while executing.
-    experiment.execute_a_save(
-        paulierror_noiseparams=noiseparams, noise_acton = gates.X)
+    experiment.execute_a_save(paulierror_noiseparams=noiseparams, noise_acton=gates.X)
     experiment.plot_scatterruns(sign=True)
 
 
