@@ -48,11 +48,11 @@ def time_msr_phase(folder, routine, qubit, format):
             go.Scatter(
                 x=datasets[-1]["time"].pint.to("ns").pint.magnitude,
                 y=datasets[-1]["MSR"].pint.to("uV").pint.magnitude,
-                marker_color='rgb(100, 0, 255)',
+                marker_color="rgb(100, 0, 255)",
                 opacity=0.3,
-                name = 'MSR',
-                showlegend = not bool(i),
-                legendgroup='group1'
+                name="MSR",
+                showlegend=not bool(i),
+                legendgroup="group1",
             ),
             row=1,
             col=1,
@@ -61,52 +61,32 @@ def time_msr_phase(folder, routine, qubit, format):
             go.Scatter(
                 x=datasets[-1]["time"].pint.to("ns").pint.magnitude,
                 y=datasets[-1]["phase"].pint.to("rad").pint.magnitude,
-                marker_color='rgb(102, 180, 71)',
-                name = 'phase',
+                marker_color="rgb(102, 180, 71)",
+                name="phase",
                 opacity=0.5,
-                showlegend = not bool(i),
-                legendgroup='group2'
+                showlegend=not bool(i),
+                legendgroup="group2",
             ),
             row=1,
             col=2,
         )
 
     fig.add_trace(
-            go.Scatter(
-                x=data.df.time.drop_duplicates().pint.magnitude,
-                y=data.df.groupby('time')['MSR'].mean().pint.magnitude,
-                name="average MSR",
-                marker_color='rgb(100, 0, 255)',
-                
-            ),
-            row=1,
-            col=1,
-        )
-    fig.add_trace(
-            go.Scatter(
-                x=data.df.time.drop_duplicates().pint.magnitude,
-                y=data.df.groupby('time')['phase'].mean().pint.magnitude,
-                name="average phase",
-                marker_color='rgb(102, 180, 71)',
-                
-            ),
-            row=1,
-            col=2,
-        )
-    fig.add_trace(
         go.Scatter(
-            x=data.get_values("Time", "ns"),
-            y=data.get_values("MSR", "uV"),
-            name="Rabi Oscillations",
+            x=data.df.time.drop_duplicates().pint.magnitude,
+            y=data.df.groupby("time")["MSR"].mean().pint.magnitude,
+            name="average MSR",
+            marker_color="rgb(100, 0, 255)",
         ),
         row=1,
         col=1,
     )
     fig.add_trace(
         go.Scatter(
-            x=data.get_values("Time", "ns"),
-            y=data.get_values("phase", "rad"),
-            name="Rabi Oscillations",
+            x=data.df.time.drop_duplicates().pint.magnitude,
+            y=data.df.groupby("time")["phase"].mean().pint.magnitude,
+            name="average phase",
+            marker_color="rgb(102, 180, 71)",
         ),
         row=1,
         col=2,
@@ -133,7 +113,7 @@ def time_msr_phase(folder, routine, qubit, format):
                 ),
                 name="Fitted MSR",
                 line=go.scatter.Line(dash="dot"),
-                marker_color='rgb(255, 130, 67)',
+                marker_color="rgb(255, 130, 67)",
             ),
             row=1,
             col=1,
@@ -221,11 +201,11 @@ def gain_msr_phase(folder, routine, qubit, format):
             go.Scatter(
                 x=datasets[-1]["gain"].pint.to("dimensionless").pint.magnitude,
                 y=datasets[-1]["MSR"].pint.to("uV").pint.magnitude,
-                marker_color='rgb(100, 0, 255)',
+                marker_color="rgb(100, 0, 255)",
                 opacity=0.3,
-                name = 'MSR',
-                showlegend = not bool(i),
-                legendgroup='group1'
+                name="MSR",
+                showlegend=not bool(i),
+                legendgroup="group1",
             ),
             row=1,
             col=1,
@@ -234,39 +214,36 @@ def gain_msr_phase(folder, routine, qubit, format):
             go.Scatter(
                 x=datasets[-1]["gain"].pint.to("dimensionless").pint.magnitude,
                 y=datasets[-1]["phase"].pint.to("rad").pint.magnitude,
-                marker_color='rgb(102, 180, 71)',
-                name = 'phase',
+                marker_color="rgb(102, 180, 71)",
+                name="phase",
                 opacity=0.5,
-                showlegend = not bool(i),
-                legendgroup='group2'
+                showlegend=not bool(i),
+                legendgroup="group2",
             ),
             row=1,
             col=2,
         )
 
     fig.add_trace(
-            go.Scatter(
-                x=data.df.gain.drop_duplicates().pint.magnitude,
-                y=data.df.groupby('gain')['MSR'].mean().pint.magnitude,
-                name="average MSR",
-                marker_color='rgb(100, 0, 255)',
-                
-            ),
-            row=1,
-            col=1,
-        )
+        go.Scatter(
+            x=data.df.gain.drop_duplicates().pint.magnitude,
+            y=data.df.groupby("gain")["MSR"].mean().pint.magnitude,
+            name="average MSR",
+            marker_color="rgb(100, 0, 255)",
+        ),
+        row=1,
+        col=1,
+    )
     fig.add_trace(
-            go.Scatter(
-                x=data.df.gain.drop_duplicates().pint.magnitude,
-                y=data.df.groupby('gain')['phase'].mean().pint.magnitude,
-                name="average phase",
-                marker_color='rgb(102, 180, 71)',
-                
-            ),
-            row=1,
-            col=2,
-        )
-
+        go.Scatter(
+            x=data.df.gain.drop_duplicates().pint.magnitude,
+            y=data.df.groupby("gain")["phase"].mean().pint.magnitude,
+            name="average phase",
+            marker_color="rgb(102, 180, 71)",
+        ),
+        row=1,
+        col=2,
+    )
 
     # add fitting trace
     if len(data) > 0 and len(data_fit) > 0:
@@ -289,7 +266,7 @@ def gain_msr_phase(folder, routine, qubit, format):
                 ),
                 name="Fitted MSR",
                 line=go.scatter.Line(dash="dot"),
-                marker_color='rgb(255, 130, 67)',
+                marker_color="rgb(255, 130, 67)",
             ),
             row=1,
             col=1,
@@ -362,11 +339,11 @@ def amplitude_msr_phase(folder, routine, qubit, format):
             go.Scatter(
                 x=datasets[-1]["amplitude"].pint.to("dimensionless").pint.magnitude,
                 y=datasets[-1]["MSR"].pint.to("uV").pint.magnitude,
-                marker_color='rgb(100, 0, 255)',
+                marker_color="rgb(100, 0, 255)",
                 opacity=0.3,
-                name = 'MSR',
-                showlegend = not bool(i),
-                legendgroup='group1'
+                name="MSR",
+                showlegend=not bool(i),
+                legendgroup="group1",
             ),
             row=1,
             col=1,
@@ -375,38 +352,36 @@ def amplitude_msr_phase(folder, routine, qubit, format):
             go.Scatter(
                 x=datasets[-1]["amplitude"].pint.to("dimensionless").pint.magnitude,
                 y=datasets[-1]["phase"].pint.to("rad").pint.magnitude,
-                marker_color='rgb(102, 180, 71)',
-                name = 'phase',
+                marker_color="rgb(102, 180, 71)",
+                name="phase",
                 opacity=0.5,
-                showlegend = not bool(i),
-                legendgroup='group2'
+                showlegend=not bool(i),
+                legendgroup="group2",
             ),
             row=1,
             col=2,
         )
 
     fig.add_trace(
-            go.Scatter(
-                x=data.df.amplitude.drop_duplicates().pint.magnitude,
-                y=data.df.groupby('amplitude')['MSR'].mean().pint.magnitude,
-                name="average MSR",
-                marker_color='rgb(100, 0, 255)',
-                
-            ),
-            row=1,
-            col=1,
-        )
+        go.Scatter(
+            x=data.df.amplitude.drop_duplicates().pint.magnitude,
+            y=data.df.groupby("amplitude")["MSR"].mean().pint.magnitude,
+            name="average MSR",
+            marker_color="rgb(100, 0, 255)",
+        ),
+        row=1,
+        col=1,
+    )
     fig.add_trace(
-            go.Scatter(
-                x=data.df.amplitude.drop_duplicates().pint.magnitude,
-                y=data.df.groupby('amplitude')['phase'].mean().pint.magnitude,
-                name="average phase",
-                marker_color='rgb(102, 180, 71)',
-                
-            ),
-            row=1,
-            col=2,
-        )
+        go.Scatter(
+            x=data.df.amplitude.drop_duplicates().pint.magnitude,
+            y=data.df.groupby("amplitude")["phase"].mean().pint.magnitude,
+            name="average phase",
+            marker_color="rgb(102, 180, 71)",
+        ),
+        row=1,
+        col=2,
+    )
 
     # add fitting trace
     if len(data) > 0 and len(data_fit) > 0:
@@ -429,7 +404,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
                 ),
                 name="Fitted MSR",
                 line=go.scatter.Line(dash="dot"),
-                marker_color='rgb(255, 130, 67)',
+                marker_color="rgb(255, 130, 67)",
             ),
             row=1,
             col=1,

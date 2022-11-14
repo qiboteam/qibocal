@@ -1,6 +1,7 @@
 import os
 
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -44,42 +45,118 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
         ),
     )
 
+    datasets_fast = []
+    copy = data_fast.df.copy()
+    for i in range(len(copy)):
+        datasets_fast.append(copy.drop_duplicates("frequency"))
+        copy.drop(datasets_fast[-1].index, inplace=True)
+        fig.add_trace(
+            go.Scatter(
+                x=datasets_fast[-1]["frequency"].pint.to("GHz").pint.magnitude,
+                y=datasets_fast[-1]["MSR"].pint.to("uV").pint.magnitude,
+                marker_color="rgb(100, 0, 255)",
+                opacity=0.3,
+                name="Fast sweep MSR",
+                showlegend=not bool(i),
+                legendgroup="group1",
+            ),
+            row=1,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=datasets_fast[-1]["frequency"].pint.to("GHz").pint.magnitude,
+                y=datasets_fast[-1]["phase"].pint.to("rad").pint.magnitude,
+                marker_color="rgb(204, 102, 102)",
+                name="Fast sweep phase",
+                opacity=0.3,
+                showlegend=not bool(i),
+                legendgroup="group2",
+            ),
+            row=1,
+            col=2,
+        )
+
+    datasets_precision = []
+    copy = data_precision.df.copy()
+    for i in range(len(copy)):
+        datasets_precision.append(copy.drop_duplicates("frequency"))
+        copy.drop(datasets_precision[-1].index, inplace=True)
+        fig.add_trace(
+            go.Scatter(
+                x=datasets_precision[-1]["frequency"].pint.to("GHz").pint.magnitude,
+                y=datasets_precision[-1]["MSR"].pint.to("uV").pint.magnitude,
+                marker_color="rgb(255, 130, 67)",
+                opacity=0.3,
+                name="Precision sweep MSR",
+                showlegend=not bool(i),
+                legendgroup="group3",
+            ),
+            row=1,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=datasets_precision[-1]["frequency"].pint.to("GHz").pint.magnitude,
+                y=datasets_precision[-1]["phase"].pint.to("rad").pint.magnitude,
+                marker_color="rgb(104,40,96)",
+                name="Precision sweep phase",
+                opacity=0.3,
+                showlegend=not bool(i),
+                legendgroup="group4",
+            ),
+            row=1,
+            col=2,
+        )
+
     fig.add_trace(
         go.Scatter(
-            x=data_fast.get_values("frequency", "GHz"),
-            y=data_fast.get_values("MSR", "uV"),
-            name="Fast",
+            x=data_fast.df.frequency.drop_duplicates().pint.to("GHz").pint.magnitude,
+            y=data_fast.df.groupby("frequency")["MSR"]
+            .mean()
+            .pint.magnitude,  # CHANGE THIS TO
+            name="average MSR fast sweep",
+            marker_color="rgb(100, 0, 255)",
         ),
         row=1,
         col=1,
     )
     fig.add_trace(
         go.Scatter(
-            x=data_fast.get_values("frequency", "GHz"),
-            y=data_fast.get_values("phase", "rad"),
-            name="Fast",
+            x=data_fast.df.frequency.drop_duplicates().pint.to("GHz").pint.magnitude,
+            y=data_fast.df.groupby("frequency")["phase"].mean().pint.magnitude,
+            name="average phase fast sweep",
+            marker_color="rgb(204, 102, 102)",
         ),
         row=1,
         col=2,
     )
+
     fig.add_trace(
         go.Scatter(
-            x=data_precision.get_values("frequency", "GHz"),
-            y=data_precision.get_values("MSR", "uV"),
-            name="Precision",
+            x=data_precision.df.frequency.drop_duplicates()
+            .pint.to("GHz")
+            .pint.magnitude,
+            y=data_precision.df.groupby("frequency")["MSR"].mean().pint.magnitude,
+            name="average MSR precision sweep",
+            marker_color="rgb(255, 130, 67)",
         ),
         row=1,
         col=1,
     )
     fig.add_trace(
         go.Scatter(
-            x=data_precision.get_values("frequency", "GHz"),
-            y=data_precision.get_values("phase", "rad"),
-            name="Precision",
+            x=data_precision.df.frequency.drop_duplicates()
+            .pint.to("GHz")
+            .pint.magnitude,
+            y=data_precision.df.groupby("frequency")["phase"].mean().pint.magnitude,
+            name="average phase precision sweep",
+            marker_color="rgb(104,40,96)",
         ),
         row=1,
         col=2,
     )
+
     if len(data_fast) > 0 and len(data_fit) > 0:
         freqrange = np.linspace(
             min(data_fast.get_values("frequency", "GHz")),
@@ -97,8 +174,9 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
                     data_fit.get_values("popt2"),
                     data_fit.get_values("popt3"),
                 ),
-                name="Fit",
+                name="Fitted MSR",
                 line=go.scatter.Line(dash="dot"),
+                marker_color="rgb(102, 180, 71)",
             ),
             row=1,
             col=1,
@@ -158,9 +236,21 @@ def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
                 y=datasets[-1]["MSR"].pint.to("V").pint.magnitude,
             ),
         )
+    print(smalldf.index)
+    test = pd.concat(datasets)
+    X, Y = [], []
+    for i in smalldf.index:
+        print(i)
+        X.append(test["MSR"][i].mean().magnitude)
+        Y.append(test["phase"][i].mean().magnitude)
+
+    print(X, Y)
+    fig.add_trace(
+        go.Scatter(x=X, y=Y, name="mean"),
+    )
 
     fig.update_layout(
-        showlegend=False,
+        showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting,
         xaxis_title="Frequency (GHz)",
         yaxis_title="MSR (V)",
