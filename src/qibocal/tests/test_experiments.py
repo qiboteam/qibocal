@@ -1,9 +1,10 @@
 from shutil import rmtree
-import pytest
 
 import numpy as np
+import pytest
 from pandas import read_pickle
 from qibo.models import Circuit
+
 from qibocal.calibrations.protocols.experiments import Experiment
 from qibocal.calibrations.protocols.fitting_methods import *
 from qibocal.calibrations.protocols.generators import *

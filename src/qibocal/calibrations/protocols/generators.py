@@ -1,5 +1,6 @@
 import numpy as np
 from qibo import gates, get_backend, models
+
 from qibocal.calibrations.protocols.utils import ONEQUBIT_CLIFFORD_PARAMS
 
 
@@ -33,10 +34,10 @@ class Generator:
             self.used_qubits = self.qubits
         # Every used qubit should be measured in the end (basis measurement).
         self.measurement = kwargs.get("measurement", gates.M(*self.used_qubits))
-    
+
     @classmethod
     def gate_generator(self):
-        raise(NotImplementedError)
+        raise (NotImplementedError)
 
     def __call__(self, sequence_length: list):
         """For generating a sequence of circuits the object itself

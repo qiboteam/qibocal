@@ -1,8 +1,12 @@
 import numpy as np
-from qibo.models import Circuit
 import pytest
+from qibo.models import Circuit
 
-from qibocal.calibrations.protocols.generators import GeneratorOnequbitcliffords, GeneratorXId
+from qibocal.calibrations.protocols.generators import (
+    GeneratorOnequbitcliffords,
+    GeneratorXId,
+)
+
 
 def test_generators_cliffords_qibomaster():
     """There are different generators for random circuits from a
@@ -65,6 +69,7 @@ def test_generators_cliffords_qibomaster():
     draw_string = circuit41.draw()
     compare_string = "q0: ─────────\nq1: ─────────\nq2: ─U─U─U─M─\nq3: ─────────"
     assert draw_string == compare_string
+
 
 @pytest.mark.xfail
 def test_generators_cliffords_qibomeasurement():
@@ -145,6 +150,7 @@ def test_generators_XIDs():
     assert type(circuit11) == Circuit
     assert type(circuit15) == Circuit
 
+
 def test_generators_onequbitcliffords():
     """ """
     qubits = [0]
@@ -153,10 +159,8 @@ def test_generators_onequbitcliffords():
     circuit15 = next(mygenerator(5))
     assert type(circuit11) == Circuit
     assert type(circuit15) == Circuit
-    qubits = [0,1,2]
+    qubits = [0, 1, 2]
     mygenerator = GeneratorXId(qubits)
     circuit15 = next(mygenerator(5))
     assert type(circuit15) == Circuit
     assert circuit15.nqubits == 3
-
-

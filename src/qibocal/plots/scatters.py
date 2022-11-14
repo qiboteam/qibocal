@@ -1267,6 +1267,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
     )
     return fig
 
+
 def rb_plot(folder, routine, qubit, format):
     """ """
     from scipy.optimize import curve_fit
