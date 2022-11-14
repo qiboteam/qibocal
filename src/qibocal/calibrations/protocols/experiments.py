@@ -7,14 +7,10 @@ from os.path import isdir, isfile
 import numpy as np
 from qibo import gates
 from qibo.noise import NoiseModel, PauliError
-
 from qibocal.calibrations.protocols import fitting_methods
 from qibocal.calibrations.protocols.generators import *
 from qibocal.calibrations.protocols.utils import dict_to_txt, pkl_to_list
 from qibocal.data import Data
-
-# from typing import Union
-
 
 class Experiment:
     """The experiment class has methods to build, save, load and execute

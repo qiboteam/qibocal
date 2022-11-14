@@ -1,10 +1,6 @@
-import pdb
-from ctypes import Union
-
 import numpy as np
 from qibo import gates, get_backend, models
-
-from qibocal.calibrations.protocols.utils import onequbit_clifford_params
+from qibocal.calibrations.protocols.utils import ONEQUBIT_CLIFFORD_PARAMS
 
 
 class Generator:
@@ -27,7 +23,6 @@ class Generator:
             self.qubits = qubits
         else:
             raise ValueError("Wrong type of qubits given.")
-        self.gate_generator = None
         # For standard RB the inverse is needed, but it can be costly to
         # calculate hence filtered RB and other protocols don't need it.
         self.invert = kwargs.get("invert", False)
@@ -38,6 +33,10 @@ class Generator:
             self.used_qubits = self.qubits
         # Every used qubit should be measured in the end (basis measurement).
         self.measurement = kwargs.get("measurement", gates.M(*self.used_qubits))
+    
+    @classmethod
+    def gate_generator(self):
+        raise(NotImplementedError)
 
     def __call__(self, sequence_length: list):
         """For generating a sequence of circuits the object itself
@@ -81,14 +80,13 @@ class Generator:
 
 class GeneratorOnequbitcliffords(Generator):
     """
-    TODO optimize the Clifford drawing
+    TODO use Renatos random array factory
+    # Overwrite the gate generator attribute from the motherclass with
+    # the class specific generator.
     """
 
     def __init__(self, qubits, **kwargs):
         super().__init__(qubits, **kwargs)
-        # Overwrite the gate generator attribute from the motherclass with
-        # the class specific generator.
-        self.gate_generator = self.nqubit_clifford
 
     def clifford_unitary(
         self, theta: float = 0, nx: float = 0, ny: float = 0, nz: float = 0
@@ -118,7 +116,7 @@ class GeneratorOnequbitcliffords(Generator):
         )
         return matrix
 
-    def nqubit_clifford(self, seed: int = None) -> gates.Unitary:
+    def gate_generator(self, seed: int = None) -> gates.Unitary:
         """Draws the parameters and builds the gate.
 
         Args:
@@ -133,10 +131,10 @@ class GeneratorOnequbitcliffords(Generator):
             backend = get_backend()
             backend.set_seed(seed)
         # There are this many different Clifford matrices.
-        amount = len(onequbit_clifford_params)
+        amount = len(ONEQUBIT_CLIFFORD_PARAMS)
         # Initiate the matrix to start the kronecker (tensor) product.
         unitary = self.clifford_unitary(
-            *onequbit_clifford_params[np.random.randint(amount)]
+            *ONEQUBIT_CLIFFORD_PARAMS[np.random.randint(amount)]
         )
         # Choose as many random integers between 0 and 23 as there are
         # used qubits.
@@ -145,7 +143,7 @@ class GeneratorOnequbitcliffords(Generator):
             # Build the random Clifford matrix and take the tensor product
             # with the matrix before.
             unitary = np.kron(
-                self.clifford_unitary(*onequbit_clifford_params[rint]), unitary
+                self.clifford_unitary(*ONEQUBIT_CLIFFORD_PARAMS[rint]), unitary
             )
         # Make a unitary gate out of 'unitary' for the qubits.
         return gates.Unitary(unitary, *self.used_qubits)

@@ -1,36 +1,34 @@
-import pdb
-
 import numpy as np
-from numpy import pi, sqrt
+from pandas import read_pickle
 
 # To not define the parameters for one qubit Cliffords every time a
 # new qubits is drawn define the parameters as global variable.
 # This are parameters for all 24 one qubit clifford gates.
-onequbit_clifford_params = [
+ONEQUBIT_CLIFFORD_PARAMS = [
     (0, 0, 0, 0),
-    (pi, 1, 0, 0),
-    (pi, 0, 1, 0),
-    (pi, 0, 0, 1),
-    (pi / 2, 1, 0, 0),
-    (-pi / 2, 1, 0, 0),
-    (pi / 2, 0, 1, 0),
-    (-pi / 2, 0, 1, 0),
-    (pi / 2, 0, 0, 1),
-    (-pi / 2, 0, 0, 1),
-    (pi, 1 / sqrt(2), 1 / sqrt(2), 0),
-    (pi, 1 / sqrt(2), 0, 1 / sqrt(2)),
-    (pi, 0, 1 / sqrt(2), 1 / sqrt(2)),
-    (pi, -1 / sqrt(2), 1 / sqrt(2), 0),
-    (pi, 1 / sqrt(2), 0, -1 / sqrt(2)),
-    (pi, 0, -1 / sqrt(2), 1 / sqrt(2)),
-    (2 * pi / 3, 1 / sqrt(3), 1 / sqrt(3), 1 / sqrt(3)),
-    (-2 * pi / 3, 1 / sqrt(3), 1 / sqrt(3), 1 / sqrt(3)),
-    (2 * pi / 3, -1 / sqrt(3), 1 / sqrt(3), 1 / sqrt(3)),
-    (-2 * pi / 3, -1 / sqrt(3), 1 / sqrt(3), 1 / sqrt(3)),
-    (2 * pi / 3, 1 / sqrt(3), -1 / sqrt(3), 1 / sqrt(3)),
-    (-2 * pi / 3, 1 / sqrt(3), -1 / sqrt(3), 1 / sqrt(3)),
-    (2 * pi / 3, 1 / sqrt(3), 1 / sqrt(3), -1 / sqrt(3)),
-    (-2 * pi / 3, 1 / sqrt(3), 1 / sqrt(3), -1 / sqrt(3)),
+    (np.pi, 1, 0, 0),
+    (np.pi, 0, 1, 0),
+    (np.pi, 0, 0, 1),
+    (np.pi / 2, 1, 0, 0),
+    (-np.pi / 2, 1, 0, 0),
+    (np.pi / 2, 0, 1, 0),
+    (-np.pi / 2, 0, 1, 0),
+    (np.pi / 2, 0, 0, 1),
+    (-np.pi / 2, 0, 0, 1),
+    (np.pi, 1 / np.sqrt(2), 1 / np.sqrt(2), 0),
+    (np.pi, 1 / np.sqrt(2), 0, 1 / np.sqrt(2)),
+    (np.pi, 0, 1 / np.sqrt(2), 1 / np.sqrt(2)),
+    (np.pi, -1 / np.sqrt(2), 1 / np.sqrt(2), 0),
+    (np.pi, 1 / np.sqrt(2), 0, -1 / np.sqrt(2)),
+    (np.pi, 0, -1 / np.sqrt(2), 1 / np.sqrt(2)),
+    (2 * np.pi / 3, 1 / np.sqrt(3), 1 / np.sqrt(3), 1 / np.sqrt(3)),
+    (-2 * np.pi / 3, 1 / np.sqrt(3), 1 / np.sqrt(3), 1 / np.sqrt(3)),
+    (2 * np.pi / 3, -1 / np.sqrt(3), 1 / np.sqrt(3), 1 / np.sqrt(3)),
+    (-2 * np.pi / 3, -1 / np.sqrt(3), 1 / np.sqrt(3), 1 / np.sqrt(3)),
+    (2 * np.pi / 3, 1 / np.sqrt(3), -1 / np.sqrt(3), 1 / np.sqrt(3)),
+    (-2 * np.pi / 3, 1 / np.sqrt(3), -1 / np.sqrt(3), 1 / np.sqrt(3)),
+    (2 * np.pi / 3, 1 / np.sqrt(3), 1 / np.sqrt(3), -1 / np.sqrt(3)),
+    (-2 * np.pi / 3, 1 / np.sqrt(3), 1 / np.sqrt(3), -1 / np.sqrt(3)),
 ]
 
 X = np.array([[0, 1], [1, 0]])
@@ -42,7 +40,6 @@ pauli = [np.eye(2) / np.sqrt(2), X / np.sqrt(2), Y / np.sqrt(2), Z / np.sqrt(2)]
 def liouville_representation_errorchannel(error_channel, **kwargs):
     """For single qubit error channels only."""
     # For single qubit the dimension is two.
-    dim = 2
     if error_channel.channel.__name__ == "PauliNoiseChannel":
         flipprobs = error_channel.options
 
@@ -140,7 +137,6 @@ def dict_from_comments_txt(filename: str):
 
 def pkl_to_list(filename: str, **kwargs):
     """ """
-    from pandas import read_pickle
 
     # Load the pickeled object.
     dataframe = read_pickle(filename)
