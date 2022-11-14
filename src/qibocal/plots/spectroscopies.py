@@ -219,34 +219,43 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
 
 
 def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
-    data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
+
+    try:
+        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
+    except:
+        data = DataUnits(quantities={"frequency": "Hz"})
+
     plot1d_attenuation = 30  # attenuation value to use for 1D frequency vs MSR plot
 
     fig = go.Figure()
     # index data on a specific attenuation value
     smalldf = data.df[data.get_values("attenuation", "dB") == plot1d_attenuation].copy()
+    smalldf1 = smalldf.copy()
     # split multiple software averages to different datasets
     datasets = []
-    while len(smalldf):
+    for i in range(len(smalldf)):
         datasets.append(smalldf.drop_duplicates("frequency"))
         smalldf.drop(datasets[-1].index, inplace=True)
+
         fig.add_trace(
             go.Scatter(
                 x=datasets[-1]["frequency"].pint.to("GHz").pint.magnitude,
                 y=datasets[-1]["MSR"].pint.to("V").pint.magnitude,
+                marker_color="rgb(100, 0, 255)",
+                opacity=0.3,
+                name="MSR",
+                showlegend=not bool(i),
+                legendgroup="group1",
             ),
         )
-    print(smalldf.index)
-    test = pd.concat(datasets)
-    X, Y = [], []
-    for i in smalldf.index:
-        print(i)
-        X.append(test["MSR"][i].mean().magnitude)
-        Y.append(test["phase"][i].mean().magnitude)
 
-    print(X, Y)
     fig.add_trace(
-        go.Scatter(x=X, y=Y, name="mean"),
+        go.Scatter(
+            x=smalldf1.frequency.drop_duplicates().pint.to("GHz").pint.magnitude,
+            y=smalldf1.groupby("frequency")["MSR"].mean().pint.magnitude,
+            name="average MSR",
+            marker_color="rgb(100, 0, 255)",
+        ),
     )
 
     fig.update_layout(
@@ -458,30 +467,90 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
         ),
     )
 
+    datasets_spec = []
+    copy = data_spec.df.copy()
+    for i in range(len(copy)):
+        datasets_spec.append(copy.drop_duplicates("frequency"))
+        copy.drop(datasets_spec[-1].index, inplace=True)
+        fig.add_trace(
+            go.Scatter(
+                x=datasets_spec[-1]["frequency"].pint.to("GHz").pint.magnitude,
+                y=datasets_spec[-1]["MSR"].pint.to("uV").pint.magnitude,
+                marker_color="rgb(100, 0, 255)",
+                opacity=0.3,
+                name="MSR",
+                showlegend=not bool(i),
+                legendgroup="group1",
+            ),
+            row=1,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=datasets_spec[-1]["frequency"].pint.to("GHz").pint.magnitude,
+                y=datasets_spec[-1]["phase"].pint.to("rad").pint.magnitude,
+                marker_color="rgb(102, 180, 71)",
+                name="phase",
+                opacity=0.3,
+                showlegend=not bool(i),
+                legendgroup="group2",
+            ),
+            row=1,
+            col=2,
+        )
+
+    datasets_shifted = []
+    copy = data_shifted.df.copy()
+    for i in range(len(copy)):
+        datasets_shifted.append(copy.drop_duplicates("frequency"))
+        copy.drop(datasets_shifted[-1].index, inplace=True)
+        fig.add_trace(
+            go.Scatter(
+                x=datasets_shifted[-1]["frequency"].pint.to("GHz").pint.magnitude,
+                y=datasets_shifted[-1]["MSR"].pint.to("uV").pint.magnitude,
+                marker_color="rgb(255, 130, 67)",
+                opacity=0.3,
+                name="Shifted MSR",
+                showlegend=not bool(i),
+                legendgroup="group3",
+            ),
+            row=1,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=datasets_shifted[-1]["frequency"].pint.to("GHz").pint.magnitude,
+                y=datasets_shifted[-1]["phase"].pint.to("rad").pint.magnitude,
+                marker_color="rgb(181, 101, 29)",
+                name="Shifted phase",
+                opacity=0.3,
+                showlegend=not bool(i),
+                legendgroup="group4",
+            ),
+            row=1,
+            col=2,
+        )
+
     fig.add_trace(
         go.Scatter(
-            x=data_spec.get_values("frequency", "GHz"),
-            y=data_spec.get_values("MSR", "uV"),
-            name="Spectroscopy",
+            x=data_spec.df.frequency.drop_duplicates().pint.to("GHz").pint.magnitude,
+            y=data_spec.df.groupby("frequency")["MSR"]
+            .mean()
+            .pint.magnitude,  # CHANGE THIS TO
+            name="average MSR",
+            marker_color="rgb(100, 0, 255)",
         ),
         row=1,
         col=1,
     )
     fig.add_trace(
         go.Scatter(
-            x=data_spec.get_values("frequency", "GHz"),
-            y=data_spec.get_values("phase", "rad"),
-            name="Spectroscopy",
-        ),
-        row=1,
-        col=2,
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=data_shifted.get_values("frequency", "GHz"),
-            y=data_shifted.get_values("MSR", "uV"),
-            name="Shifted Spectroscopy",
+            x=data_shifted.df.frequency.drop_duplicates().pint.to("GHz").pint.magnitude,
+            y=data_shifted.df.groupby("frequency")["MSR"]
+            .mean()
+            .pint.magnitude,  # CHANGE THIS TO
+            name="average MSR shifted",
+            marker_color="rgb(255, 130, 67)",
         ),
         row=1,
         col=1,
@@ -489,9 +558,20 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
 
     fig.add_trace(
         go.Scatter(
-            x=data_shifted.get_values("frequency", "GHz"),
-            y=data_shifted.get_values("phase", "rad"),
-            name="Shifted Spectroscopy",
+            x=data_spec.df.frequency.drop_duplicates().pint.to("GHz").pint.magnitude,
+            y=data_spec.df.groupby("frequency")["phase"].mean().pint.magnitude,
+            name="average phase",
+            marker_color="rgb(104, 40, 96)",
+        ),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=data_shifted.df.frequency.drop_duplicates().pint.to("GHz").pint.magnitude,
+            y=data_shifted.df.groupby("frequency")["phase"].mean().pint.magnitude,
+            name="average shifted phase",
+            marker_color="rgb(181, 101, 29)",
         ),
         row=1,
         col=2,
@@ -515,8 +595,9 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
                     data_fit.get_values("popt2"),
                     data_fit.get_values("popt3"),
                 ),
-                name="Fit spectroscopy",
+                name="Fit MSR",
                 line=go.scatter.Line(dash="dot"),
+                marker_color="rgb(102, 180, 71)",
             ),
             row=1,
             col=1,
@@ -553,8 +634,9 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
                     data_fit_shifted.get_values("popt2"),
                     data_fit_shifted.get_values("popt3"),
                 ),
-                name="Fit shifted spectroscopy",
+                name="Fit shifted MSR",
                 line=go.scatter.Line(dash="dot"),
+                marker_color="rgb(204, 102, 102)",
             ),
             row=1,
             col=1,
