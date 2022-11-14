@@ -150,9 +150,9 @@ class GeneratorOnequbitcliffords(Generator):
         # Make a unitary gate out of 'unitary' for the qubits.
         return gates.Unitary(unitary, *self.used_qubits)
 
+
 class GeneratorXId(Generator):
-    """ Only produces Xs gates and identity gates in a sequence.
-    """
+    """Only produces Xs gates and identity gates in a sequence."""
 
     def __init__(self, qubits, **kwargs):
         super().__init__(qubits, **kwargs)
@@ -177,7 +177,7 @@ class GeneratorXId(Generator):
         # many qubits.
         circuit = models.Circuit(len(self.qubits))
         # Draw sequence length many zeros and ones.
-        random_ints = np.random.randint(0,2,size=sequence_length)
+        random_ints = np.random.randint(0, 2, size=sequence_length)
         # There are only two gates to choose from.
         a = [gates.I(0), gates.X(0)]
         # Get the Xs and Ids with random_ints as indices.
@@ -189,5 +189,3 @@ class GeneratorXId(Generator):
         # introduces the errors or the error gates will be added
         # before execution.
         yield circuit
-
-

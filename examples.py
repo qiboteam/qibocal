@@ -1,14 +1,14 @@
 from shutil import rmtree
 
+import matplotlib.pyplot as plt
 import numpy as np
 from pandas import read_pickle
 
 from qibocal.calibrations.protocols.experiments import Experiment
+from qibocal.calibrations.protocols.fitting_methods import *
 from qibocal.calibrations.protocols.generators import *
 from qibo.models import Circuit
 from qibocal.data import Data
-from qibocal.calibrations.protocols.fitting_methods import *
-import matplotlib.pyplot as plt
 
 
 def test_generators_cliffords_qibomaster():
@@ -413,7 +413,8 @@ def test_filter_single_qubit():
 
 def test_generatorXIds():
     def lizafunction(px, py, pz):
-        return 1-px-pz, 1-px-py
+        return 1 - px - pz, 1 - px - py
+
     qubits = [0]
     sequence_lengths = list(np.arange(1,5,1))
     runs = 2
