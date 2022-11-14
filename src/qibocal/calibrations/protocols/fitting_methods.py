@@ -69,6 +69,7 @@ def fit_exp2_func(
         **kwargs) -> Tuple[np.ndarray, np.ndarray, tuple]:
     """Calculate 2 exponentials on top of each other fit to the given ydata."""
 
+    # TODO the data has to have a sufficiently big size, check that.
     decays = esprit(xdata, ydata, 2)
     vandermonde = np.vander(decays, N=xdata[-1]+1, increasing=True)
     vandermonde = np.take(vandermonde, xdata, axis=1)

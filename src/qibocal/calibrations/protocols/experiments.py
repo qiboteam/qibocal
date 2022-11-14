@@ -129,7 +129,7 @@ class Experiment:
             # is caught by this.
             except ValueError:
                 # Initiate the data structure where the outcomes will be stored.
-                # If the initialization of the data objext is not overwritten
+                # If the initialization of the data object is not overwritten
                 # here, the first row will be filled with Nan's (because it
                 # tried to fill the data frame but failed) breaking the code.
                 data_samples = Data(
@@ -351,8 +351,7 @@ class Experiment:
             pauli = PauliError(*kwargs.get("paulierror_noiseparams"))
             noise = NoiseModel()
             # The noise should be applied with each unitary in the circuit.
-            # noise.add(pauli, gates.Unitary)
-            noise.add(pauli, gates.X)
+            noise.add(pauli, kwargs.get('noise_acton', gates.Unitary))
         # Makes code easier to read.
         amount_m = len(self.sequence_lengths)
         # Loop 'runs' many times over the whole protocol.
@@ -461,7 +460,7 @@ class Experiment:
             "nshots": self.nshots,
             "runs": self.runs,
             "inverse": self.inverse,
-            "circuit_generator": self.circuit_generator.__class__.__name__,
+            "circuit_generator": self.circuit_generator.__class__.__name__
         }
         # One file in the directory stores the meta data.
         metadata_filename = f"{self.directory}metadata.txt"
@@ -512,9 +511,12 @@ class Experiment:
 
     def load_samples(self, path: str, **kwargs):
         """ """
-        if isfile(f"{path}samples.pkl"):
+        if isfile(f"{path}samples1.pkl"):
             # Get the pandas data frame from the pikle file.
-            sequences_frompkl, samples_list = pkl_to_list(f"{path}samples.pkl")
+            sequences_frompkl, samples_list = pkl_to_list(f"{path}samples1.pkl")
+            # FIXME 
+            if samples_list and type(samples_list[0][0]) == str:
+                samples_list = [[literal_eval(x) for x in a] for a in samples_list]
             # Make sure that the order is the same.
             assert np.array_equal(
                 np.array(sequences_frompkl)[::-1], self.sequence_lengths
@@ -533,11 +535,14 @@ class Experiment:
 
     def load_probabilities(self, path: str, **kwargs):
         """ """
-        if isfile(f"{path}probabilities.pkl"):
+        if isfile(f"{path}probabilities1.pkl"):
             # Get the pandas data frame from the pikle file.
             sequences_frompkl, probabilities_list = pkl_to_list(
-                f"{path}probabilities.pkl"
+                f"{path}probabilities1.pkl"
             )
+            # FIXME 
+            if probabilities_list and type(probabilities_list[0][0]) == str:
+                probabilities_list = [[literal_eval(x) for x in a] for a in probabilities_list]
             # Make sure that the order is the same, right now the
             # order is reversed.
             assert np.array_equal(
@@ -691,7 +696,7 @@ class Experiment:
             fitting_func = fitting_methods.fit_exp2_func
         else:
             ydata_scattered = self.filter_single_qubit(averaged=False)
-            fitting_func = fitting_methods.fit_exp2_func
+            fitting_func = fitting_methods.fit_exp1_func
         plt.scatter(
             xdata_scattered,
             ydata_scattered.flatten(),
