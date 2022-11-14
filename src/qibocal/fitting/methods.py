@@ -4,6 +4,7 @@ import numpy as np
 from scipy.optimize import curve_fit
 
 from qibocal.calibrations.protocols.experiments import Experiment
+from qibocal.calibrations.protocols.fitting_methods import fit_exp1_func
 from qibocal.config import log
 from qibocal.data import Data
 from qibocal.fitting.utils import cos, exp, flipping, lorenzian, parse, rabi, ramsey
@@ -362,7 +363,7 @@ def rb_exponential_fit(experiment: Experiment, active_qubits):
     """Takes randomized benchamrking data and fits an exponential."""
     # Create the data object to store the fitting paramters.
     data_fit = Data(
-        name=f"fitrb_q{active_qubits}",
+        name=f"fitrb",
         quantities=[
             "A",
             "f",
@@ -375,7 +376,7 @@ def rb_exponential_fit(experiment: Experiment, active_qubits):
     else:
         ydata = experiment.filter_single_qubit(averaged=True)
     # Fit an exponenial.
-    _, _, popt = experiment.fit_exponential(ydata=ydata)
+    _, _, popt = fit_exp1_func(experiment.sequence_lengths, ydata)
     # Store the fitting parameters.
     data_fit.add({"A": popt[0], "f": popt[1], "B": popt[2]})
     return data_fit
@@ -407,7 +408,7 @@ def rb_statistics(
         # Draw the random indices and get the belonging data.
         rand_data = ydata_scattered[np.random.randint(0, experiment.runs, size=k)]
         # Calculate the average and get the fitting parameters.
-        _, _, popt = experiment.fit_exponential(np.average(rand_data, axis=0))
+        _, _, popt = fit_exp1_func(experiment.sequence_lengths, ydata)
         # In popt three fitting parameters are stored for A*f^x+B, in this
         # order.
         params_list.append(popt)
