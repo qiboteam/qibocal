@@ -310,7 +310,7 @@ def ramsey_fit(data, x, y, qubit, qubit_freq, sampling_rate, offset_freq, labels
         qubit (int): ID qubit number
         qubits_freq (float): frequency of the qubit
         sampling_rate (float): Platform sampling rate
-        offset_freq (float): Total qubit frequency offset. It contains teh artificial detunning applied 
+        offset_freq (float): Total qubit frequency offset. It contains teh artificial detunning applied
                              by the experimentalist + the inherent offset in the actual qubit frequency stored in the runcard.
         labels (list of str): list containing the lables of the quantities computed by this fitting method.
 
