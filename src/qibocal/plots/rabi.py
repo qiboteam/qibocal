@@ -39,6 +39,60 @@ def time_msr_phase(folder, routine, qubit, format):
         ),
     )
 
+    datasets = []
+    copy = data.df.copy()
+    for i in range(len(copy)):
+        datasets.append(copy.drop_duplicates("time"))
+        copy.drop(datasets[-1].index, inplace=True)
+        fig.add_trace(
+            go.Scatter(
+                x=datasets[-1]["time"].pint.to("ns").pint.magnitude,
+                y=datasets[-1]["MSR"].pint.to("uV").pint.magnitude,
+                marker_color='rgb(100, 0, 255)',
+                opacity=0.3,
+                name = 'MSR',
+                showlegend = not bool(i),
+                legendgroup='group1'
+            ),
+            row=1,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=datasets[-1]["time"].pint.to("ns").pint.magnitude,
+                y=datasets[-1]["phase"].pint.to("rad").pint.magnitude,
+                marker_color='rgb(102, 180, 71)',
+                name = 'phase',
+                opacity=0.5,
+                showlegend = not bool(i),
+                legendgroup='group2'
+            ),
+            row=1,
+            col=2,
+        )
+
+    fig.add_trace(
+            go.Scatter(
+                x=data.df.time.drop_duplicates().pint.magnitude,
+                y=data.df.groupby('time')['MSR'].mean().pint.magnitude,
+                name="average MSR",
+                marker_color='rgb(100, 0, 255)',
+                
+            ),
+            row=1,
+            col=1,
+        )
+    fig.add_trace(
+            go.Scatter(
+                x=data.df.time.drop_duplicates().pint.magnitude,
+                y=data.df.groupby('time')['phase'].mean().pint.magnitude,
+                name="average phase",
+                marker_color='rgb(102, 180, 71)',
+                
+            ),
+            row=1,
+            col=2,
+        )
     fig.add_trace(
         go.Scatter(
             x=data.get_values("Time", "ns"),
@@ -61,8 +115,8 @@ def time_msr_phase(folder, routine, qubit, format):
     # add fitting trace
     if len(data) > 0 and len(data_fit) > 0:
         timerange = np.linspace(
-            min(data.get_values("Time", "ns")),
-            max(data.get_values("Time", "ns")),
+            min(data.get_values("time", "ns")),
+            max(data.get_values("time", "ns")),
             2 * len(data),
         )
         params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
@@ -77,8 +131,9 @@ def time_msr_phase(folder, routine, qubit, format):
                     data_fit.get_values("popt3"),
                     data_fit.get_values("popt4"),
                 ),
-                name="Fit",
+                name="Fitted MSR",
                 line=go.scatter.Line(dash="dot"),
+                marker_color='rgb(255, 130, 67)',
             ),
             row=1,
             col=1,
@@ -157,24 +212,61 @@ def gain_msr_phase(folder, routine, qubit, format):
         ),
     )
 
+    datasets = []
+    copy = data.df.copy()
+    for i in range(len(copy)):
+        datasets.append(copy.drop_duplicates("gain"))
+        copy.drop(datasets[-1].index, inplace=True)
+        fig.add_trace(
+            go.Scatter(
+                x=datasets[-1]["gain"].pint.to("dimensionless").pint.magnitude,
+                y=datasets[-1]["MSR"].pint.to("uV").pint.magnitude,
+                marker_color='rgb(100, 0, 255)',
+                opacity=0.3,
+                name = 'MSR',
+                showlegend = not bool(i),
+                legendgroup='group1'
+            ),
+            row=1,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=datasets[-1]["gain"].pint.to("dimensionless").pint.magnitude,
+                y=datasets[-1]["phase"].pint.to("rad").pint.magnitude,
+                marker_color='rgb(102, 180, 71)',
+                name = 'phase',
+                opacity=0.5,
+                showlegend = not bool(i),
+                legendgroup='group2'
+            ),
+            row=1,
+            col=2,
+        )
+
     fig.add_trace(
-        go.Scatter(
-            x=data.get_values("gain", "dimensionless"),
-            y=data.get_values("MSR", "uV"),
-            name="Rabi Oscillations",
-        ),
-        row=1,
-        col=1,
-    )
+            go.Scatter(
+                x=data.df.gain.drop_duplicates().pint.magnitude,
+                y=data.df.groupby('gain')['MSR'].mean().pint.magnitude,
+                name="average MSR",
+                marker_color='rgb(100, 0, 255)',
+                
+            ),
+            row=1,
+            col=1,
+        )
     fig.add_trace(
-        go.Scatter(
-            x=data.get_values("gain", "dimensionless"),
-            y=data.get_values("phase", "rad"),
-            name="Rabi Oscillations",
-        ),
-        row=1,
-        col=2,
-    )
+            go.Scatter(
+                x=data.df.gain.drop_duplicates().pint.magnitude,
+                y=data.df.groupby('gain')['phase'].mean().pint.magnitude,
+                name="average phase",
+                marker_color='rgb(102, 180, 71)',
+                
+            ),
+            row=1,
+            col=2,
+        )
+
 
     # add fitting trace
     if len(data) > 0 and len(data_fit) > 0:
@@ -195,8 +287,9 @@ def gain_msr_phase(folder, routine, qubit, format):
                     data_fit.get_values("popt3"),
                     data_fit.get_values("popt4"),
                 ),
-                name="Fit",
+                name="Fitted MSR",
                 line=go.scatter.Line(dash="dot"),
+                marker_color='rgb(255, 130, 67)',
             ),
             row=1,
             col=1,
@@ -260,25 +353,60 @@ def amplitude_msr_phase(folder, routine, qubit, format):
             "phase (rad)",
         ),
     )
+    datasets = []
+    copy = data.df.copy()
+    for i in range(len(copy)):
+        datasets.append(copy.drop_duplicates("amplitude"))
+        copy.drop(datasets[-1].index, inplace=True)
+        fig.add_trace(
+            go.Scatter(
+                x=datasets[-1]["amplitude"].pint.to("dimensionless").pint.magnitude,
+                y=datasets[-1]["MSR"].pint.to("uV").pint.magnitude,
+                marker_color='rgb(100, 0, 255)',
+                opacity=0.3,
+                name = 'MSR',
+                showlegend = not bool(i),
+                legendgroup='group1'
+            ),
+            row=1,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=datasets[-1]["amplitude"].pint.to("dimensionless").pint.magnitude,
+                y=datasets[-1]["phase"].pint.to("rad").pint.magnitude,
+                marker_color='rgb(102, 180, 71)',
+                name = 'phase',
+                opacity=0.5,
+                showlegend = not bool(i),
+                legendgroup='group2'
+            ),
+            row=1,
+            col=2,
+        )
 
     fig.add_trace(
-        go.Scatter(
-            x=data.get_values("amplitude", "dimensionless"),
-            y=data.get_values("MSR", "uV"),
-            name="Rabi Oscillations",
-        ),
-        row=1,
-        col=1,
-    )
+            go.Scatter(
+                x=data.df.amplitude.drop_duplicates().pint.magnitude,
+                y=data.df.groupby('amplitude')['MSR'].mean().pint.magnitude,
+                name="average MSR",
+                marker_color='rgb(100, 0, 255)',
+                
+            ),
+            row=1,
+            col=1,
+        )
     fig.add_trace(
-        go.Scatter(
-            x=data.get_values("amplitude", "dimensionless"),
-            y=data.get_values("phase", "rad"),
-            name="Rabi Oscillations",
-        ),
-        row=1,
-        col=2,
-    )
+            go.Scatter(
+                x=data.df.amplitude.drop_duplicates().pint.magnitude,
+                y=data.df.groupby('amplitude')['phase'].mean().pint.magnitude,
+                name="average phase",
+                marker_color='rgb(102, 180, 71)',
+                
+            ),
+            row=1,
+            col=2,
+        )
 
     # add fitting trace
     if len(data) > 0 and len(data_fit) > 0:
@@ -299,8 +427,9 @@ def amplitude_msr_phase(folder, routine, qubit, format):
                     data_fit.get_values("popt3"),
                     data_fit.get_values("popt4"),
                 ),
-                name="Fit",
+                name="Fitted MSR",
                 line=go.scatter.Line(dash="dot"),
+                marker_color='rgb(255, 130, 67)',
             ),
             row=1,
             col=1,
