@@ -25,14 +25,6 @@ distributed with pypi* for the packages listed above.
 Qibocal
 ^^^^^^^
 
-Installing with pip
-"""""""""""""""""""
-``Qibocal`` can be installed with ``pip`` :
-
-.. code-block::
-
-      pip install qibocal
-
 Installing from source
 """"""""""""""""""""""
 
