@@ -55,39 +55,53 @@ Resonator
    :undoc-members:
    :show-inheritance:
 
-One Qubit
-^^^^^^^^^
+Single Qubit
+^^^^^^^^^^^^
+
+Qubit spectroscopy
+""""""""""""""""""
 .. automodule:: qibocal.calibrations.characterization.qubit_spectroscopy
    :members:
    :undoc-members:
    :show-inheritance:
 
-
+Rabi oscillations
+"""""""""""""""""
 .. automodule:: qibocal.calibrations.characterization.rabi_oscillations
    :members:
    :undoc-members:
    :show-inheritance:
 
+Ramsey
+""""""
 .. automodule:: qibocal.calibrations.characterization.ramsey
    :members:
    :undoc-members:
    :show-inheritance:
 
+T1
+""
 .. automodule:: qibocal.calibrations.characterization.t1
    :members:
    :undoc-members:
    :show-inheritance:
 
+Flipping
+""""""""
 .. automodule:: qibocal.calibrations.characterization.flipping
    :members:
    :undoc-members:
    :show-inheritance:
 
+All-XY
+""""""
 .. automodule:: qibocal.calibrations.characterization.allXY
    :members:
    :undoc-members:
    :show-inheritance:
 
+State calibration
+"""""""""""""""""
 .. automodule:: qibocal.calibrations.characterization.calibrate_qubit_states
    :members:
    :undoc-members:
