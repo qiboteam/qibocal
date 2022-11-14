@@ -1354,15 +1354,17 @@ def rb_plot(folder, routine, qubit, format):
 
     # Load the data into DataUnits.object.
     data_circs = Data.load_data(folder, routine, "pickle", "circuits")
-    data_probs = Data.load_data(folder, routine, "pickle", "probabilities")
-    data_samples = Data.load_data(folder, routine, "pickle", "samples")
+    data_probs = Data.load_data(folder, routine, "pickle", "probabilities1")
+    data_samples = Data.load_data(folder, routine, "pickle", "samples1")
     # Build an Experiment object out of it.
     experiment = Experiment.retrieve_from_dataobjects(
         data_circs, data_samples, data_probs
     )
     # Get the fitting parameters.
-    data_fit = Data.load_data(folder, routine, "pickle", f"fitrb_q{qubit}").df
-    popt = data_fit["A"], data_fit["f"], data_fit["B"]
+
+    data_fit = Data.load_data(folder, routine, "pickle", f"fitrb").df
+    popt = data_fit["A"].values[0], data_fit["f"].values[0], data_fit["B"].values[0]
+
     # The xaxis is defined by the sequence lengths of the applied circuits.
     xdata = experiment.sequence_lengths
     if experiment.inverse:
