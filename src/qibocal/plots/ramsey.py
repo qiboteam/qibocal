@@ -27,11 +27,31 @@ def time_msr(folder, routine, qubit, format):
         subplot_titles=("MSR (V)",),
     )
 
+    datasets = []
+    copy = data.df.copy()
+    for i in range(len(copy)):
+        datasets.append(copy.drop_duplicates("wait"))
+        copy.drop(datasets[-1].index, inplace=True)
+        fig.add_trace(
+            go.Scatter(
+                x=datasets[-1]["wait"].pint.to("ns").pint.magnitude,
+                y=datasets[-1]["MSR"].pint.to("uV").pint.magnitude,
+                marker_color="rgb(100, 0, 255)",
+                opacity=0.3,
+                name="Time",
+                showlegend=not bool(i),
+                legendgroup="group1",
+            ),
+            row=1,
+            col=1,
+        )
+
     fig.add_trace(
         go.Scatter(
-            x=data.get_values("wait", "ns"),
-            y=data.get_values("MSR", "uV"),
-            name="Ramsey",
+            x=data.df.wait.drop_duplicates().pint.to("ns").pint.magnitude,
+            y=data.df.groupby("wait")["MSR"].mean().pint.magnitude,  # CHANGE THIS TO
+            name="average time",
+            marker_color="rgb(100, 0, 255)",
         ),
         row=1,
         col=1,
@@ -56,8 +76,9 @@ def time_msr(folder, routine, qubit, format):
                     data_fit.get_values("popt3"),
                     data_fit.get_values("popt4"),
                 ),
-                name="Fit",
+                name="Time fit",
                 line=go.scatter.Line(dash="dot"),
+                marker_color="rgb(255, 130, 67)",
             ),
             row=1,
             col=1,
