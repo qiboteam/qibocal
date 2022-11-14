@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import os.path
 
+
 def get_data_subfolders(folder):
     # iterate over multiple data folders
     subfolders = []
