@@ -222,6 +222,7 @@ def compare(folders):
     log.info(f"Upload completed")
 
     from qibocal.web.report import create_report
+
     create_report(TARGET_COMPARE_DIR)
     log.info(f"HTML report generated")
 
