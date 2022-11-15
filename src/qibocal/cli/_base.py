@@ -219,11 +219,11 @@ def compare(folders):
             rundata = load_yaml(os.path.join(TARGET_COMPARE_DIR, "runcard.yml"))
             update_runcard(rundata, rundata_new)
 
-        log.info(f"Upload completed")
+    log.info(f"Upload completed")
 
-        from qibocal.web.report import create_report
-        create_report(TARGET_COMPARE_DIR)
-        log.info(f"HTML report generated")
+    from qibocal.web.report import create_report
+    create_report(TARGET_COMPARE_DIR)
+    log.info(f"HTML report generated")
 
 
 def folders_exists(folders):

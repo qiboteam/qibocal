@@ -117,9 +117,13 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
                 row=1,
                 col=1,
             )
-
+            if(data_fit.df[params[2]][0] == 0):
+                param2 = ""
+            else:
+                param2 = f"q{qubit}/r{i} {params[2]}: {data_fit.df[params[2]][0]:.1f} Hz.<br>"
+                
             fitting_report = fitting_report + (
-                f"q{qubit}/r{i} {params[2]}: {data_fit.df[params[2]][0]:.1f} Hz.<br>q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f} uV.<br>q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.0f} Hz.<br><br>"
+                f"{param2}q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f} uV.<br>q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.0f} Hz.<br><br>"
             )
 
         i += 1
