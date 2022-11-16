@@ -1,3 +1,6 @@
+from os import mkdir
+from os.path import isdir, isfile
+
 import numpy as np
 from pandas import read_pickle
 
@@ -35,6 +38,27 @@ X = np.array([[0, 1], [1, 0]])
 Y = np.array([[0, -1j], [1j, 0]])
 Z = np.array([[1, 0], [0, -1]])
 pauli = [np.eye(2) / np.sqrt(2), X / np.sqrt(2), Y / np.sqrt(2), Z / np.sqrt(2)]
+
+
+def experiment_directory(name: str):
+    """Make the directory where the experiment will be stored."""
+    from datetime import datetime
+
+    overall_dir = "experiments/"
+    # Check if the overall directory exists. If not create it.
+    if not isdir(overall_dir):
+        mkdir(overall_dir)
+    # Get the current date and time.
+    dt_string = datetime.now().strftime("%y%b%d_%H%M%S")
+    # Every script name ``name`` gets its own directory.
+    subdirectory = f"{overall_dir}{name}/"
+    if not isdir(subdirectory):
+        mkdir(subdirectory)
+    # Name the final directory for this experiment.
+    final_directory = f"{subdirectory}experiment{dt_string}/"
+    if not isdir(final_directory):
+        mkdir(final_directory)
+    return final_directory
 
 
 def liouville_representation_errorchannel(error_channel, **kwargs):
