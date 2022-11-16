@@ -63,11 +63,13 @@ def flips_msr_phase(folder, routine, qubit, format):
 
     fig.add_trace(
         go.Scatter(
-            x=data.df.flips.drop_duplicates().pint.to("dimensionless").pint.magnitude,
-            y=data.df.groupby("flips")["MSR"]
+            x=data.df.flips.drop_duplicates()  # pylint: disable=E1101
+            .pint.to("dimensionless")
+            .pint.magnitude,
+            y=data.df.groupby("flips")["MSR"]  # pylint: disable=E1101
             .pint.to("uV")
             .mean()
-            .pint.magnitude,  # CHANGE THIS TO
+            .pint.magnitude,
             name="average MSR",
             marker_color="rgb(100, 0, 255)",
         ),
@@ -76,8 +78,12 @@ def flips_msr_phase(folder, routine, qubit, format):
     )
     fig.add_trace(
         go.Scatter(
-            x=data.df.flips.drop_duplicates().pint.to("dimensionless").pint.magnitude,
-            y=data.df.groupby("flips")["phase"].mean().pint.magnitude,
+            x=data.df.flips.drop_duplicates()  # pylint: disable=E1101
+            .pint.to("dimensionless")
+            .pint.magnitude,
+            y=data.df.groupby("flips")["phase"]  # pylint: disable=E1101
+            .mean()
+            .pint.magnitude,
             name="average phase",
             marker_color="rgb(102, 180, 71)",
         ),

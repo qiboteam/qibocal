@@ -111,8 +111,10 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
 
     fig.add_trace(
         go.Scatter(
-            x=data_fast.df.frequency.drop_duplicates().pint.to("GHz").pint.magnitude,
-            y=data_fast.df.groupby("frequency")["MSR"]
+            x=data_fast.df.frequency.drop_duplicates()  # pylint: disable=E1101
+            .pint.to("GHz")
+            .pint.magnitude,
+            y=data_fast.df.groupby("frequency")["MSR"]  # pylint: disable=E1101
             .mean()
             .pint.to("uV")
             .pint.magnitude,
@@ -124,8 +126,12 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
     )
     fig.add_trace(
         go.Scatter(
-            x=data_fast.df.frequency.drop_duplicates().pint.to("GHz").pint.magnitude,
-            y=data_fast.df.groupby("frequency")["phase"].mean().pint.magnitude,
+            x=data_fast.df.frequency.drop_duplicates()  # pylint: disable=E1101
+            .pint.to("GHz")
+            .pint.magnitude,
+            y=data_fast.df.groupby("frequency")["phase"]  # pylint: disable=E1101
+            .mean()
+            .pint.magnitude,
             name="average phase fast sweep",
             marker_color="rgb(204, 102, 102)",
         ),
@@ -135,10 +141,10 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
 
     fig.add_trace(
         go.Scatter(
-            x=data_precision.df.frequency.drop_duplicates()
+            x=data_precision.df.frequency.drop_duplicates()  # pylint: disable=E1101
             .pint.to("GHz")
             .pint.magnitude,
-            y=data_precision.df.groupby("frequency")["MSR"]
+            y=data_precision.df.groupby("frequency")["MSR"]  # pylint: disable=E1101
             .mean()
             .pint.to("uV")
             .pint.magnitude,
@@ -150,10 +156,12 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
     )
     fig.add_trace(
         go.Scatter(
-            x=data_precision.df.frequency.drop_duplicates()
+            x=data_precision.df.frequency.drop_duplicates()  # pylint: disable=E1101
             .pint.to("GHz")
             .pint.magnitude,
-            y=data_precision.df.groupby("frequency")["phase"].mean().pint.magnitude,
+            y=data_precision.df.groupby("frequency")["phase"]  # pylint: disable=E1101
+            .mean()
+            .pint.magnitude,
             name="average phase precision sweep",
             marker_color="rgb(104,40,96)",
         ),
@@ -537,8 +545,10 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
 
     fig.add_trace(
         go.Scatter(
-            x=data_spec.df.frequency.drop_duplicates().pint.to("GHz").pint.magnitude,
-            y=data_spec.df.groupby("frequency")["MSR"]
+            x=data_spec.df.frequency.drop_duplicates()  # pylint: disable=E1101
+            .pint.to("GHz")
+            .pint.magnitude,
+            y=data_spec.df.groupby("frequency")["MSR"]  # pylint: disable=E1101
             .pint.to("uV")
             .mean()
             .pint.magnitude,
@@ -550,8 +560,10 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
     )
     fig.add_trace(
         go.Scatter(
-            x=data_shifted.df.frequency.drop_duplicates().pint.to("GHz").pint.magnitude,
-            y=data_shifted.df.groupby("frequency")["MSR"]
+            x=data_shifted.df.frequency.drop_duplicates()  # pylint: disable=E1101
+            .pint.to("GHz")
+            .pint.magnitude,
+            y=data_shifted.df.groupby("frequency")["MSR"]  # pylint: disable=E1101
             .pint.to("uV")
             .mean()
             .pint.magnitude,
@@ -564,8 +576,12 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
 
     fig.add_trace(
         go.Scatter(
-            x=data_spec.df.frequency.drop_duplicates().pint.to("GHz").pint.magnitude,
-            y=data_spec.df.groupby("frequency")["phase"].mean().pint.magnitude,
+            x=data_spec.df.frequency.drop_duplicates()  # pylint: disable=E1101
+            .pint.to("GHz")
+            .pint.magnitude,
+            y=data_spec.df.groupby("frequency")["phase"]  # pylint: disable=E1101
+            .mean()
+            .pint.magnitude,
             name="average phase",
             marker_color="rgb(104, 40, 96)",
         ),
@@ -574,8 +590,12 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
     )
     fig.add_trace(
         go.Scatter(
-            x=data_shifted.df.frequency.drop_duplicates().pint.to("GHz").pint.magnitude,
-            y=data_shifted.df.groupby("frequency")["phase"].mean().pint.magnitude,
+            x=data_shifted.df.frequency.drop_duplicates()  # pylint: disable=E1101
+            .pint.to("GHz")
+            .pint.magnitude,
+            y=data_shifted.df.groupby("frequency")["phase"]  # pylint: disable=E1101
+            .mean()
+            .pint.magnitude,
             name="average shifted phase",
             marker_color="rgb(181, 101, 29)",
         ),

@@ -46,8 +46,10 @@ def prob_gate(folder, routine, qubit, format):
 
     fig.add_trace(
         go.Scatter(
-            x=data.df.gateNumber.drop_duplicates().pint.magnitude,
-            y=data.df.groupby("gateNumber")["probability"].mean().pint.magnitude,
+            x=data.df.gateNumber.drop_duplicates().pint.magnitude,  # pylint: disable=E1101
+            y=data.df.groupby("gateNumber")["probability"]  # pylint: disable=E1101
+            .mean()
+            .pint.magnitude,
             name="Average Probability",
             marker_color="rgb(100, 0, 255)",
             mode="markers",
@@ -179,8 +181,10 @@ def msr_beta(folder, routine, qubit, format):
 
     fig.add_trace(
         go.Scatter(
-            x=data.df.beta_param.drop_duplicates().pint.magnitude,
-            y=data.df.groupby("beta_param")["MSR"].mean().pint.magnitude,
+            x=data.df.beta_param.drop_duplicates().pint.magnitude,  # pylint: disable=E1101
+            y=data.df.groupby("beta_param")["MSR"]  # pylint: disable=E1101
+            .mean()
+            .pint.magnitude,
             name="Average MSR",
             marker_color="rgb(100, 0, 255)",
             mode="markers",

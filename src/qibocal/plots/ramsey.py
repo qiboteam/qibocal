@@ -48,8 +48,13 @@ def time_msr(folder, routine, qubit, format):
 
     fig.add_trace(
         go.Scatter(
-            x=data.df.wait.drop_duplicates().pint.to("ns").pint.magnitude,
-            y=data.df.groupby("wait")["MSR"].pint.to("uV").mean().pint.magnitude,
+            x=data.df.wait.drop_duplicates()  # pylint: disable=E1101
+            .pint.to("ns")
+            .pint.magnitude,
+            y=data.df.groupby("wait")["MSR"]  # pylint: disable=E1101
+            .pint.to("uV")
+            .mean()
+            .pint.magnitude,
             name="average time",
             marker_color="rgb(100, 0, 255)",
         ),

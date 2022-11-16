@@ -63,11 +63,13 @@ def t1_time_msr_phase(folder, routine, qubit, format):
 
     fig.add_trace(
         go.Scatter(
-            x=data.df.Time.drop_duplicates().pint.to("ns").pint.magnitude,
-            y=data.df.groupby("Time")["MSR"]
+            x=data.df.Time.drop_duplicates()  # pylint: disable=E1101
+            .pint.to("ns")
+            .pint.magnitude,
+            y=data.df.groupby("Time")["MSR"]  # pylint: disable=E1101
             .pint.to("uV")
             .mean()
-            .pint.magnitude,  # CHANGE THIS TO
+            .pint.magnitude,
             name="average MSR",
             marker_color="rgb(100, 0, 255)",
         ),
@@ -76,8 +78,12 @@ def t1_time_msr_phase(folder, routine, qubit, format):
     )
     fig.add_trace(
         go.Scatter(
-            x=data.df.Time.drop_duplicates().pint.to("ns").pint.magnitude,
-            y=data.df.groupby("Time")["phase"].mean().pint.magnitude,
+            x=data.df.Time.drop_duplicates()  # pylint: disable=E1101
+            .pint.to("ns")
+            .pint.magnitude,
+            y=data.df.groupby("Time")["phase"]  # pylint: disable=E1101
+            .mean()
+            .pint.magnitude,
             name="average phase",
             marker_color="rgb(204, 102, 102)",
         ),
