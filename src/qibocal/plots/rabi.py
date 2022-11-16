@@ -73,7 +73,7 @@ def time_msr_phase(folder, routine, qubit, format):
 
     fig.add_trace(
         go.Scatter(
-            x=data.df.time.drop_duplicates().pint.magnitude,
+            x=data.df.time.drop_duplicates().pint.magnitude,  # pylint: disable=E1101
             y=data.df.groupby("time")["MSR"]  # pylint: disable=E1101
             .pint.to("uV")
             .mean()
@@ -374,7 +374,9 @@ def amplitude_msr_phase(folder, routine, qubit, format):
 
     fig.add_trace(
         go.Scatter(
-            x=data.df.amplitude.drop_duplicates().pint.magnitude,  # pylint: disable=E1101
+            x=data.df.amplitude.drop_duplicates()  # pylint: disable=E1101
+            .pint.to("dimensionless")
+            .pint.magnitude,
             y=data.df.groupby("amplitude")["MSR"]  # pylint: disable=E1101
             .pint.to("uV")
             .mean()
@@ -387,7 +389,9 @@ def amplitude_msr_phase(folder, routine, qubit, format):
     )
     fig.add_trace(
         go.Scatter(
-            x=data.df.amplitude.drop_duplicates().pint.magnitude,  # pylint: disable=E1101
+            x=data.df.amplitude.drop_duplicates()  # pylint: disable=E1101
+            .pint.to("dimensionless")
+            .pint.magnitude,
             y=data.df.groupby("amplitude")["phase"]  # pylint: disable=E1101
             .mean()
             .pint.magnitude,

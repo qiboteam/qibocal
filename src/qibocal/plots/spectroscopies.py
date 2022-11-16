@@ -131,6 +131,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
             .pint.magnitude,
             y=data_fast.df.groupby("frequency")["phase"]  # pylint: disable=E1101
             .mean()
+            .pint.to("rad")
             .pint.magnitude,
             name="average phase fast sweep",
             marker_color="rgb(204, 102, 102)",
@@ -161,6 +162,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
             .pint.magnitude,
             y=data_precision.df.groupby("frequency")["phase"]  # pylint: disable=E1101
             .mean()
+            .pint.to("rad")
             .pint.magnitude,
             name="average phase precision sweep",
             marker_color="rgb(104,40,96)",
