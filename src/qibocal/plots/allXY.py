@@ -34,6 +34,7 @@ def prob_gate(folder, routine, qubit, format):
                 x=datasets[-1]["gateNumber"].pint.to("dimensionless").pint.magnitude,
                 y=datasets[-1]["probability"].pint.to("dimensionless").pint.magnitude,
                 marker_color="rgb(100, 0, 255)",
+                mode="markers",
                 opacity=0.3,
                 name="Probability",
                 showlegend=not bool(i),
@@ -43,6 +44,17 @@ def prob_gate(folder, routine, qubit, format):
             col=1,
         )
 
+    fig.add_trace(
+        go.Scatter(
+            x=data.df.gateNumber.drop_duplicates().pint.magnitude,
+            y=data.df.groupby("gateNumber")["probability"].mean().pint.magnitude,
+            name="Average Probability",
+            marker_color="rgb(100, 0, 255)",
+            mode="markers",
+        ),
+        row=1,
+        col=1,
+    )
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
@@ -52,7 +64,7 @@ def prob_gate(folder, routine, qubit, format):
     return fig
 
 
-# allXY TODO
+# allXY
 def prob_gate_iteration(folder, routine, qubit, format):
 
     try:
@@ -75,35 +87,45 @@ def prob_gate_iteration(folder, routine, qubit, format):
         subplot_titles=(f"allXY",),
     )
 
-    gates = len(data.get_values("gateNumber", "dimensionless"))
-    # print(gates)
-    import numpy as np
+    copy = data.df.copy()
 
-    for n in range(gates // 21):
-        data_start = n * 21
-        data_end = data_start + 21
-        beta_param = np.array(data.get_values("beta_param", "dimensionless"))[
-            data_start
-        ]
-        gates = np.array(data.get_values("gateNumber", "dimensionless"))[
-            data_start:data_end
-        ]
-        probabilities = np.array(data.get_values("probability", "dimensionless"))[
-            data_start:data_end
-        ]
-        c = "#" + "{:06x}".format(n * 99999)
-        fig.add_trace(
-            go.Scatter(
-                x=gates,
-                y=probabilities,
-                mode="markers+lines",
-                line=dict(color=c),
-                name=f"beta_parameter = {beta_param}",
-                marker_size=16,
-            ),
-            row=1,
-            col=1,
-        )
+    beta_params = (
+        copy.drop_duplicates("beta_param")["beta_param"]
+        .pint.to("dimensionless")
+        .pint.magnitude
+    )
+    gateNumber = (
+        copy.drop_duplicates("gateNumber")["gateNumber"]
+        .pint.to("dimensionless")
+        .pint.magnitude
+    )
+    size = len(copy.drop_duplicates("gateNumber")) * len(
+        copy.drop_duplicates("beta_param")
+    )
+    software_averages = len(copy) // size
+
+    for i in range(software_averages):
+        test = data.df[size * i : size * i + size]
+
+        for j, beta_param in enumerate(beta_params):
+
+            fig.add_trace(
+                go.Scatter(
+                    x=gateNumber,
+                    y=test[test["beta_param"] == beta_param]["probability"]
+                    .pint.to("dimensionless")
+                    .pint.magnitude,
+                    marker_color="#" + "{:06x}".format(j * 99999),
+                    mode="markers+lines",
+                    opacity=0.5,
+                    name=f"beta {beta_param}",
+                    showlegend=not bool(i),
+                    legendgroup=f"group{j}",
+                ),
+                row=1,
+                col=1,
+            )
+
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
@@ -135,18 +157,38 @@ def msr_beta(folder, routine, qubit, format):
         subplot_titles=(f"beta_param_tuning",),
     )
 
-    c = "#6597aa"
+    datasets = []
+    copy = data.df.copy()
+    for i in range(len(copy)):
+        datasets.append(copy.drop_duplicates("beta_param"))
+        copy.drop(datasets[-1].index, inplace=True)
+        fig.add_trace(
+            go.Scatter(
+                x=datasets[-1]["beta_param"].pint.to("dimensionless").pint.magnitude,
+                y=datasets[-1]["MSR"].pint.to("uV").pint.magnitude,
+                marker_color="rgb(100, 0, 255)",
+                mode="markers",
+                opacity=0.3,
+                name="Probability",
+                showlegend=not bool(i),
+                legendgroup="group1",
+            ),
+            row=1,
+            col=1,
+        )
+
     fig.add_trace(
         go.Scatter(
-            x=data.get_values("beta_param", "dimensionless"),
-            y=data.get_values("MSR", "uV"),
-            line=dict(color=c),
+            x=data.df.beta_param.drop_duplicates().pint.magnitude,
+            y=data.df.groupby("beta_param")["MSR"].mean().pint.magnitude,
+            name="Average MSR",
+            marker_color="rgb(100, 0, 255)",
             mode="markers",
-            name="[Rx(pi/2) - Ry(pi)] - [Ry(pi/2) - Rx(pi)]",
         ),
         row=1,
         col=1,
     )
+
     # add fitting traces
     if len(data) > 0 and len(data_fit) > 0:
         beta_param = np.linspace(
@@ -167,6 +209,7 @@ def msr_beta(folder, routine, qubit, format):
                 ),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
+                marker_color="rgb(255, 130, 67)",
             ),
             row=1,
             col=1,
