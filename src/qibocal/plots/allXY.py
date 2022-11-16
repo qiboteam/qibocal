@@ -135,7 +135,7 @@ def prob_gate_iteration(folder, routine, qubit, format):
     return fig
 
 
-# beta param tuning TO DO
+# beta param tuning
 def msr_beta(folder, routine, qubit, format):
 
     try:

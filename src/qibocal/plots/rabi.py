@@ -74,7 +74,7 @@ def time_msr_phase(folder, routine, qubit, format):
     fig.add_trace(
         go.Scatter(
             x=data.df.time.drop_duplicates().pint.magnitude,
-            y=data.df.groupby("time")["MSR"].mean().pint.magnitude,
+            y=data.df.groupby("time")["MSR"].pint.to("uV").mean().pint.magnitude,
             name="average MSR",
             marker_color="rgb(100, 0, 255)",
         ),
@@ -227,7 +227,7 @@ def gain_msr_phase(folder, routine, qubit, format):
     fig.add_trace(
         go.Scatter(
             x=data.df.gain.drop_duplicates().pint.magnitude,
-            y=data.df.groupby("gain")["MSR"].mean().pint.magnitude,
+            y=data.df.groupby("gain")["MSR"].pint.to("uV").mean().pint.magnitude,
             name="average MSR",
             marker_color="rgb(100, 0, 255)",
         ),
@@ -365,7 +365,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
     fig.add_trace(
         go.Scatter(
             x=data.df.amplitude.drop_duplicates().pint.magnitude,
-            y=data.df.groupby("amplitude")["MSR"].mean().pint.magnitude,
+            y=data.df.groupby("amplitude")["MSR"].pint.to("uV").mean().pint.magnitude,
             name="average MSR",
             marker_color="rgb(100, 0, 255)",
         ),

@@ -114,7 +114,8 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
             x=data_fast.df.frequency.drop_duplicates().pint.to("GHz").pint.magnitude,
             y=data_fast.df.groupby("frequency")["MSR"]
             .mean()
-            .pint.magnitude,  # CHANGE THIS TO
+            .pint.to("uV")
+            .pint.magnitude,
             name="average MSR fast sweep",
             marker_color="rgb(100, 0, 255)",
         ),
@@ -137,7 +138,10 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
             x=data_precision.df.frequency.drop_duplicates()
             .pint.to("GHz")
             .pint.magnitude,
-            y=data_precision.df.groupby("frequency")["MSR"].mean().pint.magnitude,
+            y=data_precision.df.groupby("frequency")["MSR"]
+            .mean()
+            .pint.to("uV")
+            .pint.magnitude,
             name="average MSR precision sweep",
             marker_color="rgb(255, 130, 67)",
         ),
@@ -535,8 +539,9 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
         go.Scatter(
             x=data_spec.df.frequency.drop_duplicates().pint.to("GHz").pint.magnitude,
             y=data_spec.df.groupby("frequency")["MSR"]
+            .pint.to("uV")
             .mean()
-            .pint.magnitude,  # CHANGE THIS TO
+            .pint.magnitude,
             name="average MSR",
             marker_color="rgb(100, 0, 255)",
         ),
@@ -547,8 +552,9 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
         go.Scatter(
             x=data_shifted.df.frequency.drop_duplicates().pint.to("GHz").pint.magnitude,
             y=data_shifted.df.groupby("frequency")["MSR"]
+            .pint.to("uV")
             .mean()
-            .pint.magnitude,  # CHANGE THIS TO
+            .pint.magnitude,
             name="average MSR shifted",
             marker_color="rgb(255, 130, 67)",
         ),

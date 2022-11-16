@@ -64,7 +64,10 @@ def t1_time_msr_phase(folder, routine, qubit, format):
     fig.add_trace(
         go.Scatter(
             x=data.df.Time.drop_duplicates().pint.to("ns").pint.magnitude,
-            y=data.df.groupby("Time")["MSR"].mean().pint.magnitude,  # CHANGE THIS TO
+            y=data.df.groupby("Time")["MSR"]
+            .pint.to("uV")
+            .mean()
+            .pint.magnitude,  # CHANGE THIS TO
             name="average MSR",
             marker_color="rgb(100, 0, 255)",
         ),

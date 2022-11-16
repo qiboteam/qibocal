@@ -64,7 +64,10 @@ def flips_msr_phase(folder, routine, qubit, format):
     fig.add_trace(
         go.Scatter(
             x=data.df.flips.drop_duplicates().pint.to("dimensionless").pint.magnitude,
-            y=data.df.groupby("flips")["MSR"].mean().pint.magnitude,  # CHANGE THIS TO
+            y=data.df.groupby("flips")["MSR"]
+            .pint.to("uV")
+            .mean()
+            .pint.magnitude,  # CHANGE THIS TO
             name="average MSR",
             marker_color="rgb(100, 0, 255)",
         ),
