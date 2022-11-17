@@ -40,7 +40,7 @@ def page(path=None):
 @server.route("/data/<path>", methods=["GET", "POST"])
 def qq_compare():
     if request.method == "POST":
-        if request.form['qq-compare'] == 'compare':
+        if request.form["qq-compare"] == "compare":
             list_of_folders = ""
             selected_folders = request.form.getlist("list_of_folders")
             for folder in selected_folders:
@@ -56,16 +56,16 @@ def qq_compare():
 
             return redirect("/data/qq-compare", code=302)
 
-        if request.form['qq-compare'] == 'combine':
+        if request.form["qq-compare"] == "combine":
             folders = [
-               folder
+                folder
                 for folder in reversed(sorted(os.listdir(os.getcwd())))
                 if os.path.isdir(folder) and "meta.yml" in os.listdir(folder)
             ]
 
             list_of_reports = []
             selected_folders = request.form.getlist("list_of_folders")
-            for folder in selected_folders:                   
+            for folder in selected_folders:
                 try:
                     list_of_reports.append(ReportBuilder(folder))
                 except (FileNotFoundError, TypeError):
