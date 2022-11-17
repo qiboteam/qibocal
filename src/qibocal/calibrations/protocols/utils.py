@@ -3,6 +3,7 @@ from os.path import isdir, isfile
 
 import numpy as np
 from pandas import read_pickle
+from qibo.noise import PauliError
 
 # To not define the parameters for one qubit Cliffords every time a
 # new qubits is drawn define the parameters as global variable.
@@ -58,13 +59,22 @@ def experiment_directory(name: str):
     final_directory = f"{subdirectory}experiment{dt_string}/"
     if not isdir(final_directory):
         mkdir(final_directory)
+    else:
+        already_file, count = True, 1
+        while already_file:
+            final_directory = f"{subdirectory}experiment{dt_string}_{count}/"
+            if not isdir(final_directory):
+                mkdir(final_directory)
+                already_file = False
+            else:
+                count += 1
     return final_directory
 
 
 def liouville_representation_errorchannel(error_channel, **kwargs):
     """For single qubit error channels only."""
     # For single qubit the dimension is two.
-    if error_channel.channel.__name__ == "PauliNoiseChannel":
+    if isinstance(error_channel, PauliError):
         flipprobs = error_channel.options
 
         def acts(gmatrix):

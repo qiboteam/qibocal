@@ -1,4 +1,3 @@
-import pdb
 from typing import Tuple, Union
 
 import numpy as np
@@ -55,22 +54,26 @@ def esprit(xdata, ydata, num_decays, hankel_dim=None):
 
 def fit_exp1_func(
     xdata: Union[np.ndarray, list], ydata: Union[np.ndarray, list], **kwargs
-) -> Tuple[np.ndarray, np.ndarray, tuple]:
-    """Calculate an single exponential fit to the given ydata."""
+) -> Tuple[tuple, tuple]:
+    """Calculate an single exponential fit to the given ydata.
+
+    Args:
+        xdata (Union[np.ndarray, list]): _description_
+        ydata (Union[np.ndarray, list]): _description_
+
+    Returns:
+        Tuple[tuple, tuple]: _description_
+    """
 
     # Get a guess for the exponential function.
     guess = kwargs.get("p0", [0.5, 0.9, 0.8])
     # If the search for fitting parameters does not work just return
     # fixed parameters where one can see that the fit did not work
     try:
-        popt, _ = curve_fit(exp1_func, xdata, ydata, p0=guess, method="lm")
+        popt, pcov = curve_fit(exp1_func, xdata, ydata, p0=guess, method="lm")
     except:
-        popt = (0, 0, 0)
-    # Build a finer spaces xdata array for plotting the fit.
-    x_fit = np.linspace(np.sort(xdata)[0], np.sort(xdata)[-1], num=len(xdata) * 20)
-    # Get the ydata for the fit with the calculated parameters.
-    y_fit = exp1_func(x_fit, *popt)
-    return x_fit, y_fit, popt
+        popt, pcov = (0, 0, 0), (1, 1, 1)
+    return popt, pcov
 
 
 def fit_exp2_func(

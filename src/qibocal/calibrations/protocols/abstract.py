@@ -3,11 +3,14 @@ from __future__ import annotations
 import pickle
 from collections.abc import Iterable
 from copy import deepcopy
+from itertools import product
 from os.path import isfile
 
 import numpy as np
+import pandas as pd
 from qibo import gates
 from qibo.models import Circuit
+from qibo.noise import NoiseModel
 
 from qibocal.calibrations.protocols.utils import (
     ONEQUBIT_CLIFFORD_PARAMS,
@@ -18,9 +21,9 @@ from qibocal.calibrations.protocols.utils import (
 class Circuitfactory:
     """ """
 
-    def __init__(self, qubits: list, sequences: list, runs: int) -> None:
+    def __init__(self, qubits: list, depths: list, runs: int) -> None:
         self.qubits = qubits
-        self.sequences = sequences
+        self.depths = depths
         self.runs = runs
 
     def __iter__(self) -> None:
@@ -28,10 +31,10 @@ class Circuitfactory:
         return self
 
     def __next__(self) -> None:
-        if self.n > self.runs * len(self.sequences):
+        if self.n >= self.runs * len(self.depths):
             raise StopIteration
         else:
-            circuit = self.build_circuit(self.sequences[self.n % len(self.sequences)])
+            circuit = self.build_circuit(self.depths[self.n % len(self.depths)])
             self.n += 1
             return circuit
 
@@ -40,12 +43,12 @@ class Circuitfactory:
 
 
 class SingleCliffordsFactory(Circuitfactory):
-    def __init__(self, qubits: list, sequences: list, runs: int) -> None:
-        super().__init__(qubits, sequences, runs)
+    def __init__(self, qubits: list, depths: list, runs: int) -> None:
+        super().__init__(qubits, depths, runs)
 
     def circuit_generator(self):
         for _ in range(self.runs):
-            for depth in self.sequences:
+            for depth in self.depths:
                 yield self.build_circuit(depth)
 
     def build_circuit(self, depth: int):
@@ -134,6 +137,9 @@ class Experiment:
     def load(cls, path: str) -> Experiment:
         """Creates an object with data and if possible with circuits.
 
+        FIXME should the circuitfactory be None or an iterable when no
+        circuits were stored?
+
         Args:
             path (str): The directory from where the object should be restored.
 
@@ -143,15 +149,18 @@ class Experiment:
         datapath = f"{path}data.pkl"
         circuitspath = f"{path}circuits.pkl"
         if isfile(datapath):
-            with open(datapath) as f:
+            with open(datapath, "rb") as f:
                 data = pickle.load(f)
+            nshots = len(data[0]["samples"])
         else:
             data = None
         if isfile(circuitspath):
-            with open(circuitspath) as f:
+            with open(circuitspath, "rb") as f:
                 circuitfactory = pickle.load(f)
+        else:
+            circuitfactory = None
         # Initiate an instance of the experiment class.
-        obj = cls(circuitfactory, data=data)
+        obj = cls(circuitfactory, data=data, nshots=nshots)
         return obj
 
     def prebuild(self) -> None:
@@ -167,6 +176,10 @@ class Experiment:
         Collects data given the already set data and overwrites
         attribute ``data``.
         """
+        # FIXME In load method ``circuitfactory`` is set to None right no
+        # if there were no circuits to load.
+        if self.circuitfactory is None:
+            raise NotImplementedError("There are no circuits to execute.")
         newdata = []
         for circuit in self.circuitfactory:
             try:
@@ -177,7 +190,8 @@ class Experiment:
         self.data = newdata
 
     def single_task(self, circuit: Circuit, datarow: dict) -> None:
-        """Executes a circuit, returns the single shot results
+        """Executes a circuit, returns the single shot results.
+
         Args:
             circuit (Circuit): Will be executed, has to return samples.
             datarow (dict): Dictionary with parameters for execution and
@@ -192,7 +206,66 @@ class Experiment:
         """
         self.path = experiment_directory("standardrb")
         if isinstance(self.circuitfactory, list):
-            with open(f"{self.path}circuits.pkl", "wb"):
-                pickle.dump(self.circuitfactory)
-        with open(f"{self.path}data.pkl", "wb"):
-            pickle.dump(self.data)
+            with open(f"{self.path}circuits.pkl", "wb") as f:
+                pickle.dump(self.circuitfactory, f)
+        with open(f"{self.path}data.pkl", "wb") as f:
+            pickle.dump(self.data, f)
+
+    @property
+    def dataframe(self) -> pd.DataFrame:
+        return pd.DataFrame(self.data)
+
+    @property
+    def samples(self) -> np.ndarray:
+        """Returns the samples from ``self.data`` in a 2d array.
+
+        Returns:
+            np.ndarray: 2d array of samples.
+        """
+
+        try:
+            return np.array(self.dataframe["samples"].tolist())
+        except KeyError:
+            print("No samples here. Execute experiment first.")
+            return None
+
+    @property
+    def probabilities(self) -> np.ndarray:
+        """Takes the stored samples and returns probabilities for each
+        possible state to occure.
+
+        Returns:
+            np.ndarray: Probability array of 2 dimension.
+        """
+
+        allsamples = self.samples
+        if allsamples is None:
+            print("No probabilities either.")
+            return None
+        # Create all possible state vectors.
+        allstates = list(product([0, 1], repeat=len(allsamples[0][0])))
+        # Iterate over all the samples and count the different states.
+        probs = [
+            [np.sum(np.product(samples == state, axis=1)) for state in allstates]
+            for samples in allsamples
+        ]
+        probs = np.array(probs) / (self.nshots)
+        return probs
+
+
+class NoisyExperiment(Experiment):
+    def __init__(
+        self,
+        circuitfactory: Iterable,
+        nshots: int = None,
+        data: list = None,
+        noisemodel: NoiseModel = None,
+    ) -> None:
+        super().__init__(circuitfactory, nshots, data)
+        self.__noise_model = noisemodel
+
+    def single_task(self, circuit: Circuit, datarow: dict) -> None:
+        if self.__noise_model is not None:
+            circuit = self.__noise_model.apply(circuit)
+        samples = circuit(nshots=self.nshots).samples()
+        return {"samples": samples}
