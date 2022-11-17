@@ -38,6 +38,9 @@ app.layout = html.Div(
     Input("url", "pathname"),
 )
 def get_graph(n, current_figure, url):
+    if ("data" not in url):
+        url = f"/data{url}"
+    
     method, folder, routine, qubit, format = url.split(os.sep)[2:]
     try:
         # data = DataUnits.load_data(folder, routine, format, "precision_sweep")
