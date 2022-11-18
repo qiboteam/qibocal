@@ -4,7 +4,7 @@ from qibolab.pulses import PulseSequence
 from scipy.optimize import minimize
 
 from qibocal import plots
-from qibocal.data import Dataset
+from qibocal.data import DataUnits
 from qibocal.decorators import plot
 
 
@@ -54,9 +54,10 @@ def rabi_ef(
     """
     platform.reload_settings()
 
-    data = Dataset(
+    data = DataUnits(
         name=f"data_q{qubit}", quantities={"offset": "Hz", "amplitude": "dimensionless"}
     )
+    qubit_frequency = platform.characterization["single_qubit"][qubit]["qubit_freq"]
 
     sequence = PulseSequence()
     RX_pulse = platform.create_RX_pulse(qubit, start=0)
@@ -100,16 +101,51 @@ def rabi_ef(
                 }
                 data.add(results)
                 count += 1
-
+    idx = np.argmax(abs(data.get_values("MSR", "V") - data.get_values("MSR", "V")[0]))
+    qubit_12frequency = qubit_frequency - data.get_values("offset", "Hz")[idx]
+    ec_ej_res = minimize(
+        lambda x: fit_score(
+            x[0], x[1], qubit_frequency * 1e-9, qubit_12frequency * 1e-9
+        ),
+        [0.4, 4.8],
+    )
+    print(
+        f"EC = {ec_ej_res['x'][0]}, Ej = {ec_ej_res['x'][1]} for an unharmonicity of {qubit_frequency - qubit_12frequency}"
+    )
     yield data
+
+
+def fit_score(ec, ej, w01, w12):
+    r = calculate_transmon_transitions(ec, ej)
+    return (r[0] - w01) ** 2 + (r[1] - w12) ** 2
 
 
 def calculate_transmon_transitions(
     EC, EJ, asym=0, reduced_flux=0, no_transitions=2, dim=None, ng=0, return_injs=False
 ):
-    """
+    r"""
     Calculates transmon energy levels from the full transmon qubit Hamiltonian.
 
+    Creds to Ramiro for the script
+
+    Parameters
+    ----------
+    EC:
+        Charging energy of the transmon
+    EJ:
+        Inductive energy
+    asym:
+        Asymetry between the two junctions
+    reduced_flux:
+        Reduced flux
+    no_transitions:
+        Number of transitions
+    dim:
+        Number of dimensions
+    ng:
+        Not so sure
+    return_injs:
+        Not so sure
 
     """
     if dim is None:

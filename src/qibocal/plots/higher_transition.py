@@ -2,11 +2,11 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from qibocal.data import Dataset
+from qibocal.data import DataUnits
 
 
 def offset_amplitude_msr_phase(folder, routine, qubit, format):
-    data = Dataset.load_data(folder, routine, format, f"data_q{qubit}")
+    data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     fig = make_subplots(
         rows=1,
         cols=2,
