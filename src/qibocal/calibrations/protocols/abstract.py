@@ -19,12 +19,15 @@ from qibocal.calibrations.protocols.utils import (
 
 
 class Circuitfactory:
-    """ """
+    """TODO write documentation
+    TODO make the embedding into lager qubit space possible"""
 
     def __init__(self, qubits: list, depths: list, runs: int) -> None:
         self.qubits = qubits
         self.depths = depths
         self.runs = runs
+        self.embed_func = None
+        # TODO implement a test for that function?
 
     def __iter__(self) -> None:
         self.n = 0
@@ -36,7 +39,10 @@ class Circuitfactory:
         else:
             circuit = self.build_circuit(self.depths[self.n % len(self.depths)])
             self.n += 1
-            return circuit
+            if self.embed_func is not None:
+                return self.embed_func(circuit)
+            else:
+                return circuit
 
     def build_circuit(self, depth: int):
         pass
@@ -126,19 +132,21 @@ class Experiment:
     """
 
     def __init__(
-        self, circuitfactory: Iterable, nshots: int = None, data: list = None
+        self,
+        circuitfactory: Iterable,
+        nshots: int = None,
+        data: list = None,
+        noisemodel: NoiseModel = None,
     ) -> None:
         """ """
         self.circuitfactory = circuitfactory
         self.nshots = nshots
         self.data = data
+        self.__noise_model = noisemodel
 
     @classmethod
     def load(cls, path: str) -> Experiment:
         """Creates an object with data and if possible with circuits.
-
-        FIXME should the circuitfactory be None or an iterable when no
-        circuits were stored?
 
         Args:
             path (str): The directory from where the object should be restored.
@@ -176,8 +184,6 @@ class Experiment:
         Collects data given the already set data and overwrites
         attribute ``data``.
         """
-        # FIXME In load method ``circuitfactory`` is set to None right no
-        # if there were no circuits to load.
         if self.circuitfactory is None:
             raise NotImplementedError("There are no circuits to execute.")
         newdata = []
@@ -197,6 +203,8 @@ class Experiment:
             datarow (dict): Dictionary with parameters for execution and
                 immediate postprocessing information.
         """
+        if self.__noise_model is not None:
+            circuit = self.__noise_model.apply(circuit)
         samples = circuit(nshots=self.nshots).samples()
         return {"samples": samples}
 
@@ -214,6 +222,19 @@ class Experiment:
     @property
     def dataframe(self) -> pd.DataFrame:
         return pd.DataFrame(self.data)
+
+    def _append_data(self, name: str, datacolumn: list) -> None:
+        """Adds data column to ``data`` attribute.
+
+        Args:
+            name (str): Name of data column.
+            datacolumn (list): A list of the right shape
+        """
+        if len(datacolumn) != len(self.data):
+            raise ValueError("Given data column doesn't have the right length.")
+        df = self.dataframe
+        df[name] = datacolumn
+        self.data = df.to_dict("records")
 
     @property
     def samples(self) -> np.ndarray:
@@ -252,20 +273,33 @@ class Experiment:
         probs = np.array(probs) / (self.nshots)
         return probs
 
+    def apply_task(self, gtask):
+        self = gtask(self)
 
-class NoisyExperiment(Experiment):
-    def __init__(
-        self,
-        circuitfactory: Iterable,
-        nshots: int = None,
-        data: list = None,
-        noisemodel: NoiseModel = None,
-    ) -> None:
-        super().__init__(circuitfactory, nshots, data)
-        self.__noise_model = noisemodel
 
-    def single_task(self, circuit: Circuit, datarow: dict) -> None:
-        if self.__noise_model is not None:
-            circuit = self.__noise_model.apply(circuit)
-        samples = circuit(nshots=self.nshots).samples()
-        return {"samples": samples}
+class Result:
+    """Once initialized with the correct parameters an Result object can build
+    reports to display results of an randomized benchmarking experiment.
+    """
+
+    def __init__(self, dataframe: pd.DataFrame) -> None:
+        self.df = dataframe
+        self.all_figures = []
+
+    def extract(self, group_by: str, output: str, agg_type: str):
+        """Aggregates the dataframe, extracts the data by which the frame was
+        grouped, what was calculated given the ``agg_type`` parameters.
+
+        Args:
+            group_by (str): _description_
+            output (str): _description_
+            agg_type (str): _description_
+        """
+        grouped_df = self.df.groupby(group_by)[output].apply(agg_type)
+        return np.array(grouped_df.index), np.array(grouped_df.values)
+
+    def scatter_plot(self):
+        pass
+
+    def report(self):
+        pass

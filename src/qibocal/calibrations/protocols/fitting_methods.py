@@ -54,7 +54,7 @@ def esprit(xdata, ydata, num_decays, hankel_dim=None):
 
 def fit_exp1_func(
     xdata: Union[np.ndarray, list], ydata: Union[np.ndarray, list], **kwargs
-) -> Tuple[tuple, tuple]:
+) -> Tuple[tuple, tuple, np.ndarray, np.ndarray]:
     """Calculate an single exponential fit to the given ydata.
 
     Args:
@@ -73,7 +73,9 @@ def fit_exp1_func(
         popt, pcov = curve_fit(exp1_func, xdata, ydata, p0=guess, method="lm")
     except:
         popt, pcov = (0, 0, 0), (1, 1, 1)
-    return popt, pcov
+    x_fit = np.linspace(np.sort(xdata)[0], np.sort(xdata)[-1], num=len(xdata) * 20)
+    y_fit = exp1_func(x_fit, *popt)
+    return popt, pcov, x_fit, y_fit
 
 
 def fit_exp2_func(
