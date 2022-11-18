@@ -34,6 +34,16 @@ actions:
   #   software_averages: 1
   #   points: 10
 
+  rabi_ef:
+    pulse_offset_frequency_start: 220.e+6 # minimum 4ns
+    pulse_offset_frequency_end: 500.e+6
+    pulse_offset_frequency_step: 10.e+6
+    pulse_amplitude_start: 0 # -1.0<=g<=1.0
+    pulse_amplitude_end: 1
+    pulse_amplitude_step: 0.05
+    software_averages: 1
+    points: 1
+
   # rabi_pulse_amplitude:
   #   pulse_amplitude_start: 0 # 0<=a<=1
   #   pulse_amplitude_end: 1
