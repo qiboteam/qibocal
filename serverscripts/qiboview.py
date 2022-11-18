@@ -1,14 +1,26 @@
 # -*- coding: utf-8 -*-
-import click
+#import click
 import json
 from qibolab import Platform
+import argparse
 import sys
 
 # insertion of platform name and path to *json file
-@click.command()
-@click.option('--platform_name', prompt='Chosen platform', help='The platform you choose.')
-@click.option('--json_path', prompt='*.json path', help='Where you want to save the *.json')
+#@click.command()
+#@click.option('--platform_name', prompt='Chosen platform', help='The platform you choose.')
+#@click.option('--json_path', prompt='*.json path', help='Where you want to save the *.json')
 
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--platform_name", 
+    help="chose one platform name", 
+    type=str
+)
+parser.add_argument(
+    "--json_path",
+    help="monitor/monitor_platform_name",
+    type=str
+)
 
 def main(platform_name, json_path):
 
@@ -33,4 +45,5 @@ def main(platform_name, json_path):
 
 
 if __name__ == "__main__":
-    main()
+    args = vars(parser.parse_args())
+    main(**args)
