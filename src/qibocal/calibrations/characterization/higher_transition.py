@@ -1,6 +1,7 @@
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
+from scipy.optimize import minimize
 
 from qibocal import plots
 from qibocal.data import Dataset
@@ -20,12 +21,14 @@ def rabi_ef(
     software_averages,
     points=10,
 ):
-    """
+    r"""
     Calibration routine to excite the |1> to |2>
+
     Sequence run is: RX - Pulse - RX - M
     The Pulse is the pulse that is being changed to excite the |1> - |2> transition.
     One needs to be mindfull of the IF used for the RX pulse. The offset frequency is removed from it.
     Rabi oscillations should be observed if the |1> - |2> frequency is hit because the amplitude is varied.
+
     Parameters
     ----------
     platform : AbstractPlatform
@@ -99,3 +102,41 @@ def rabi_ef(
                 count += 1
 
     yield data
+
+
+def calculate_transmon_transitions(
+    EC, EJ, asym=0, reduced_flux=0, no_transitions=2, dim=None, ng=0, return_injs=False
+):
+    """
+    Calculates transmon energy levels from the full transmon qubit Hamiltonian.
+
+
+    """
+    if dim is None:
+        dim = no_transitions * 10
+
+    EJphi = EJ * np.sqrt(
+        asym**2 + (1 - asym**2) * np.cos(np.pi * reduced_flux) ** 2
+    )
+    Ham = 4 * EC * np.diag(np.arange(-dim - ng, dim - ng + 1) ** 2) - EJphi / 2 * (
+        np.eye(2 * dim + 1, k=+1) + np.eye(2 * dim + 1, k=-1)
+    )
+
+    if return_injs:
+        HamEigs, HamEigVs = np.linalg.eigh(Ham)
+        # HamEigs.sort()
+        transitions = HamEigs[1:] - HamEigs[:-1]
+        charge_number_operator = np.diag(np.arange(-dim - ng, dim - ng + 1))
+        injs = np.zeros([dim, dim])
+        for i in range(dim):
+            for j in range(dim):
+                vect_i = np.matrix(HamEigVs[:, i])
+                vect_j = np.matrix(HamEigVs[:, j])
+                injs[i, j] = vect_i * (charge_number_operator * vect_j.getH())
+        return transitions[:no_transitions], injs
+
+    else:
+        HamEigs = np.linalg.eigvalsh(Ham)
+        HamEigs.sort()
+        transitions = HamEigs[1:] - HamEigs[:-1]
+        return transitions[:no_transitions]
