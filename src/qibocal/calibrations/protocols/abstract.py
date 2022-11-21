@@ -22,13 +22,13 @@ class Circuitfactory:
     """TODO write documentation
     TODO make the embedding into lager qubit space possible"""
 
-    def __init__(self, qubits: list, depths: list, runs: int) -> None:
-        self.qubits = qubits
+    def __init__(
+        self, nqubits: int, depths: list, runs: int, qubits: list = None
+    ) -> None:
+        self.nqubits = nqubits if nqubits is not None else len(qubits)
+        self.qubits = qubits if qubits is not None else [x for x in range(nqubits)]
         self.depths = depths
         self.runs = runs
-        self.embed_func = None
-        self.embed_params = None
-        # TODO implement a test for that function?
 
     def __iter__(self) -> None:
         self.n = 0
@@ -40,18 +40,17 @@ class Circuitfactory:
         else:
             circuit = self.build_circuit(self.depths[self.n % len(self.depths)])
             self.n += 1
-            if self.embed_func is not None:
-                return self.embed_func(circuit, *self.embed_params)
-            else:
-                return circuit
+            return circuit
 
     def build_circuit(self, depth: int):
         pass
 
 
 class SingleCliffordsFactory(Circuitfactory):
-    def __init__(self, qubits: list, depths: list, runs: int) -> None:
-        super().__init__(qubits, depths, runs)
+    def __init__(
+        self, nqubits: list, depths: list, runs: int, qubits: list = None
+    ) -> None:
+        super().__init__(nqubits, depths, runs, qubits)
 
     def circuit_generator(self):
         for _ in range(self.runs):
@@ -59,10 +58,10 @@ class SingleCliffordsFactory(Circuitfactory):
                 yield self.build_circuit(depth)
 
     def build_circuit(self, depth: int):
-        circuit = Circuit(len(self.qubits))
+        circuit = Circuit(self.nqubits)
         for _ in range(depth):
             circuit.add(self.gate())
-        circuit.add(gates.M(*self.qubits))
+        circuit.add(gates.M(*[x for x in range(self.nqubits)]))
         return circuit
 
     def clifford_unitary(

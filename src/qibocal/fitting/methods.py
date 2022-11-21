@@ -3,8 +3,6 @@ import lmfit
 import numpy as np
 from scipy.optimize import curve_fit
 
-from qibocal.calibrations.protocols.experiments import Experiment
-from qibocal.calibrations.protocols.fitting_methods import fit_exp1_func
 from qibocal.config import log
 from qibocal.data import Data
 from qibocal.fitting.utils import cos, exp, flipping, lorenzian, parse, rabi, ramsey

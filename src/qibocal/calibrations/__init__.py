@@ -6,7 +6,4 @@ from qibocal.calibrations.characterization.rabi_oscillations import *
 from qibocal.calibrations.characterization.ramsey import *
 from qibocal.calibrations.characterization.resonator_spectroscopy import *
 from qibocal.calibrations.characterization.t1 import *
-from qibocal.calibrations.protocols.standardrb import (
-    qqperform_qhardware,
-    qqperform_simulation,
-)
+from qibocal.calibrations.protocols.standardrb import *

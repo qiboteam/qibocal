@@ -1290,6 +1290,6 @@ def standardrb_plot(folder, routine, qubit, format):
                 yref="paper",
             )
         )
-    except FileExistsError:
+    except FileNotFoundError:
         pass
     return fig

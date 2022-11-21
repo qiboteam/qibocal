@@ -1,3 +1,7 @@
+"""
+"""
+
+
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -14,6 +18,7 @@ from qibocal.calibrations.protocols.abstract import (
     Experiment,
     Result,
     SingleCliffordsFactory,
+    embed_unitary_circuit,
 )
 from qibocal.calibrations.protocols.fitting_methods import fit_exp1_func
 from qibocal.calibrations.protocols.utils import effective_depol
@@ -23,11 +28,13 @@ from qibocal.plots.scatters import standardrb_plot
 
 
 class SingleCliffordsInvFactory(SingleCliffordsFactory):
-    def __init__(self, qubits: list, depths: list, runs: int) -> None:
-        super().__init__(qubits, depths, runs)
+    def __init__(
+        self, nqubits: list, depths: list, runs: int, qubits: list = None
+    ) -> None:
+        super().__init__(nqubits, depths, runs, qubits)
 
     def build_circuit(self, depth: int):
-        circuit = Circuit(len(self.qubits))
+        circuit = Circuit(self.nqubits)
         for _ in range(depth):
             circuit.add(self.gate())
         # If there is at least one gate in the circuit, add an inverse.
@@ -35,7 +42,7 @@ class SingleCliffordsInvFactory(SingleCliffordsFactory):
             # Build a gate out of the unitary of the whole circuit and
             # take the daggered version of that.
             circuit.add(gates.Unitary(circuit.unitary(), *self.qubits).dagger())
-        circuit.add(gates.M(*self.qubits))
+        circuit.add(gates.M(*[x for x in range(self.nqubits)]))
         return circuit
 
 
@@ -57,10 +64,10 @@ class StandardRBExperiment(Experiment):
                 immediate postprocessing information.
         """
         datadict = super().single_task(circuit, datarow)
-        # Substract 1 for sequence length to not count the inverse gate.
+        # Substract 1 for sequence length to not count the inverse gate
         # FIXME and on the measurement branch of qibo the measurement is
         # counted as one gate.
-        datadict["depth"] = len(circuit.queue) - 2
+        datadict["depth"] = len(circuit.queue) - 2 if len(circuit.queue) > 1 else 0
         return datadict
 
     @property
@@ -123,7 +130,7 @@ def groundstate_probability(experiment: Experiment):
     experiment._append_data("groundstate_probabilities", list(probs))
 
 
-def analyze(experiment: Experiment, **kwargs) -> None:
+def analyze(experiment: Experiment, noisemodel: NoiseModel = None, **kwargs) -> None:
     # Compute and add the ground state probabilities.
     experiment.apply_task(groundstate_probability)
     result = StandardRBResult(experiment.dataframe, fit_exp1_func)
@@ -132,64 +139,55 @@ def analyze(experiment: Experiment, **kwargs) -> None:
     return report
 
 
-def perform_qhardware(qubits: list, depths: list, runs: int, nshots: int):
-    # Initiate the circuit factory and the Experiment object.
-    factory = SingleCliffordsInvFactory(qubits, depths, runs)
-    experiment = StandardRBExperiment(factory, nshots)
-    # Execute the experiment.
-    experiment.execute()
-    analyze(experiment).show()
-
-
-def perform_simulation(
-    qubits: list, depths: list, runs: int, nshots: int, noise_params: list
+def perform(
+    nqubits: int,
+    depths: list,
+    runs: int,
+    nshots: int,
+    qubits: list = None,
+    noise_params: list = None,
 ):
-    # Define the noise model.
-    paulinoise = PauliError(*noise_params)
-    noise = NoiseModel()
-    noise.add(paulinoise, gates.Unitary)
+    if noise_params is not None:
+        # Define the noise model.
+        paulinoise = PauliError(*noise_params)
+        noise = NoiseModel()
+        noise.add(paulinoise, gates.Unitary)
+    else:
+        noise = None
     # Initiate the circuit factory and the faulty Experiment object.
-    factory = SingleCliffordsInvFactory(qubits, depths, runs)
-    faultyexperiment = StandardRBExperiment(factory, nshots, noisemodel=noise)
-    # Execute the experiment.
-    faultyexperiment.execute()
-    analyze(faultyexperiment).show()
-
-
-@plot("Hardware Randomized benchmarking", standardrb_plot)
-def qqperform_qhardware(
-    platform: AbstractPlatform, qubit: list, depths: list, runs: int, nshots: int
-):
-    # Initiate the circuit factory and the Experiment object.
-    factory = SingleCliffordsInvFactory(qubit, depths, runs)
-    experiment = StandardRBExperiment(factory, nshots)
+    factory = SingleCliffordsInvFactory(nqubits, depths, runs, qubits=qubits)
+    experiment = StandardRBExperiment(factory, nshots, noisemodel=noise)
     # Execute the experiment.
     experiment.execute()
-    data = Data("data", quantities=["dataframe"])
-    data.add({"dataframe": experiment.dataframe})
-    yield data
+    analyze(experiment, noisemodel=noise).show()
 
 
-@plot("Simulation Randomized benchmarking", standardrb_plot)
-def qqperform_simulation(
+@plot("Randomized benchmarking", standardrb_plot)
+def qqperform(
     platform: AbstractPlatform,
     qubit: list,
     depths: list,
     runs: int,
     nshots: int,
-    noise_params: list,
+    nqubit: int = None,
+    noise_params: list = None,
 ):
-    # Define the noise model.
-    paulinoise = PauliError(*noise_params)
-    noise = NoiseModel()
-    noise.add(paulinoise, gates.Unitary)
+    # Check if noise should artificially be added.
+    if noise_params is not None:
+        # Define the noise model.
+        paulinoise = PauliError(*noise_params)
+        noise = NoiseModel()
+        noise.add(paulinoise, gates.Unitary)
+        data_depol = Data("effectivedepol", quantities=["effective_depol"])
+        data_depol.add({"effective_depol": effective_depol(paulinoise)})
+        yield data_depol
+    else:
+        noise = None
     # Initiate the circuit factory and the Experiment object.
-    factory = SingleCliffordsInvFactory(qubit, depths, runs)
+    factory = SingleCliffordsInvFactory(nqubit, depths, runs, qubits=qubit)
     experiment = StandardRBExperiment(factory, nshots, noisemodel=noise)
     # Execute the experiment.
     experiment.execute()
-    data = Data("data", quantities=["dataframe"])
-    data.add({"dataframe": experiment.dataframe})
+    data = Data()
+    data.df = experiment.dataframe
     yield data
-    data_depol = Data("effectivedepol", quantities=["effective_depol"])
-    data_depol.add({"effective_depol": effective_depol(paulinoise)})
