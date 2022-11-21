@@ -34,7 +34,7 @@ class SingleCliffordsInvFactory(SingleCliffordsFactory):
         super().__init__(nqubits, depths, runs, qubits)
 
     def build_circuit(self, depth: int):
-        circuit = Circuit(self.nqubits)
+        circuit = Circuit(len(self.qubits))
         for _ in range(depth):
             circuit.add(self.gate())
         # If there is at least one gate in the circuit, add an inverse.
@@ -42,7 +42,10 @@ class SingleCliffordsInvFactory(SingleCliffordsFactory):
             # Build a gate out of the unitary of the whole circuit and
             # take the daggered version of that.
             circuit.add(gates.Unitary(circuit.unitary(), *self.qubits).dagger())
-        circuit.add(gates.M(*[x for x in range(self.nqubits)]))
+            # circuit.add(gates.Unitary(circuit.fuse().queue[0].dagger().matrix())
+        circuit.add(gates.M(*[x for x in range(len(self.qubits))]))
+        bigcircuit = Circuit(self.nqubits)
+        bigcircuit.add(circuit.on_qubits(*self.qubits))
         return circuit
 
 

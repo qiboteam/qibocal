@@ -3,7 +3,8 @@ from shutil import rmtree
 
 import numpy as np
 import pandas as pd
-import pytest
+
+# import pytest
 from qibo import gates, models
 from qibo.noise import NoiseModel, PauliError
 
@@ -13,10 +14,10 @@ from qibocal.calibrations.protocols import abstract, standardrb
 """
 
 
-@pytest.mark.parametrize(
-    "qubits,depths,runs", [([0], [0, 1, 2], 2), ([0, 1, 2], [5, 50], 10)]
-)
-def test_factory(qubits: list, depths: list, runs: int):
+# @pytest.mark.parametrize(
+#     "qubits,depths,runs", [([0], [0, 1, 2], 2), ([0, 1, 2], [5, 50], 10)]
+# )
+def test_factory(nqubits: int, depths: list, runs: int):
     """Check for how random circuits are produced and if the lengths, shape
     and randomness works.
 
@@ -27,35 +28,38 @@ def test_factory(qubits: list, depths: list, runs: int):
         depths (list): list of depths for circuits
         runs (int): How many randomly drawn cirucit for one depth value
     """
-    myfactory1 = standardrb.SingleCliffordsInvFactory(qubits, depths, runs)
+    myfactory1 = standardrb.SingleCliffordsInvFactory(nqubits, depths, runs)
     assert isinstance(myfactory1, Iterable)
     circuits_list = list(myfactory1)
     assert len(circuits_list) == len(depths) * runs
     for count, circuit in enumerate(myfactory1):
         assert isinstance(circuit, models.Circuit)
-        assert np.allclose(circuit.unitary(), np.eye(2 ** len(qubits)))
+        assert np.allclose(circuit.unitary(), np.eye(2**nqubits))
         # There will be an inverse and measurement gate, + 2.
-        assert len(circuit.queue) == depths[count % len(depths)] + 2
+        if len(circuit.queue) == 1:
+            assert isinstance(circuit.queue[0], gates.measurements.M)
+        else:
+            assert circuit.ngates == depths[count % len(depths)] + 2
     randomnesscount = 0
     depth = depths[-1]
-    circuits_list = list(standardrb.SingleCliffordsInvFactory(qubits, [depth], runs))
+    circuits_list = list(standardrb.SingleCliffordsInvFactory(nqubits, [depth], runs))
     for count in range(runs - 1):
         circuit1q = circuits_list[count].queue[:depth]
         circuit2q = circuits_list[count + 1].queue[:depth]
-        circuit1 = models.Circuit(len(qubits))
+        circuit1 = models.Circuit(nqubits)
         circuit1.add(circuit1q)
-        circuit2 = models.Circuit(len(qubits))
+        circuit2 = models.Circuit(nqubits)
         circuit2.add(circuit2q)
         equal = np.array_equal(circuit1.unitary(), circuit2.unitary())
         randomnesscount += equal
     assert randomnesscount < runs / 2.0
 
 
-@pytest.mark.parametrize(
-    "qubits,depths,runs,nshots",
-    [([0], [0, 1, 2], 2, 10), ([0, 1, 2], [5, 50], 10, 100)],
-)
-def test_experiment(qubits: list, depths: list, runs: int, nshots: int):
+# @pytest.mark.parametrize(
+#     "qubits,depths,runs,nshots",
+#     [([0], [0, 1, 2], 2, 10), ([0, 1, 2], [5, 50], 10, 100)],
+# )
+def test_experiment(nqubits: int, depths: list, runs: int, nshots: int):
     """_summary_
 
     Args:
@@ -64,7 +68,7 @@ def test_experiment(qubits: list, depths: list, runs: int, nshots: int):
         runs (int): _description_
     """
     # Test exectue an experiment.
-    myfactory1 = standardrb.SingleCliffordsInvFactory(qubits, depths, runs)
+    myfactory1 = standardrb.SingleCliffordsInvFactory(nqubits, depths, runs)
     myexperiment1 = standardrb.StandardRBExperiment(myfactory1, nshots)
     myexperiment1.execute()
     assert isinstance(myexperiment1.data, list)
@@ -76,9 +80,9 @@ def test_experiment(qubits: list, depths: list, runs: int, nshots: int):
         assert isinstance(datarow["depth"], int)
         assert datarow["depth"] == depths[count % len(depths)]
     assert isinstance(myexperiment1.dataframe, pd.DataFrame)
-    check_samples = np.zeros((len(depths) * runs, nshots, len(qubits)), dtype=int)
+    check_samples = np.zeros((len(depths) * runs, nshots, nqubits), dtype=int)
     assert np.array_equal(myexperiment1.samples, check_samples)
-    check_probs = np.zeros((len(depths) * runs, 2 ** len(qubits)))
+    check_probs = np.zeros((len(depths) * runs, 2**nqubits))
     check_probs[:, 0] = 1.0
     assert np.array_equal(myexperiment1.probabilities, check_probs)
     assert np.array_equal(myexperiment1.depths, np.tile(depths, runs))
@@ -92,7 +96,7 @@ def test_experiment(qubits: list, depths: list, runs: int, nshots: int):
         assert datarow["depth"] == datarow_load["depth"]
     assert myexperiment1_loaded.circuitfactory is None
 
-    myfactory2 = standardrb.SingleCliffordsInvFactory(qubits, depths, runs)
+    myfactory2 = standardrb.SingleCliffordsInvFactory(nqubits, depths, runs)
     myexperiment2 = standardrb.StandardRBExperiment(myfactory2, nshots)
     assert myexperiment2.circuitfactory == myfactory2
     myexperiment2.prebuild()
@@ -122,22 +126,22 @@ def test_experiment(qubits: list, depths: list, runs: int, nshots: int):
     rmtree(path3)
 
 
-@pytest.mark.parametrize(
-    "qubits,depths,runs,noise_params",
-    [
-        ([0], [0, 1, 2], 2, 10, [0.1, 0.1, 0.1]),
-        ([0, 1, 2], [5, 50], 10, 20, [0.01, 0.05, 0.04]),
-    ],
-)
+# @pytest.mark.parametrize(
+#     "qubits,depths,runs,noise_params",
+#     [
+#         ([0], [0, 1, 2], 2, 10, [0.1, 0.1, 0.1]),
+#         ([0, 1, 2], [5, 50], 10, 20, [0.01, 0.05, 0.04]),
+#     ],
+# )
 def test_experiment_withnoise(
-    qubits: list, depths: list, runs: int, nshots: int, noise_params: list
+    nqubits: int, depths: list, runs: int, nshots: int, noise_params: list
 ):
     # Build the noise model.
     paulinoise = PauliError(*noise_params)
     noise = NoiseModel()
     noise.add(paulinoise, gates.Unitary)
     # Test exectue an experiment.
-    myfactory1 = standardrb.SingleCliffordsInvFactory(qubits, depths, runs)
+    myfactory1 = standardrb.SingleCliffordsInvFactory(nqubits, depths, runs)
     myfaultyexperiment = standardrb.StandardRBExperiment(
         myfactory1, nshots, noisemodel=noise
     )
@@ -151,39 +155,39 @@ def test_experiment_withnoise(
         assert isinstance(datarow["depth"], int)
         assert datarow["depth"] == depths[count % len(depths)]
     assert isinstance(myfaultyexperiment.dataframe, pd.DataFrame)
-    check_samples = np.zeros((len(depths) * runs, nshots, len(qubits)), dtype=int)
+    check_samples = np.zeros((len(depths) * runs, nshots, nqubits), dtype=int)
     assert not np.array_equal(myfaultyexperiment.samples, check_samples)
-    check_probs = np.zeros((len(depths) * runs, 2 ** len(qubits)))
+    check_probs = np.zeros((len(depths) * runs, 2**nqubits))
     check_probs[:, 0] = 1.0
     assert not np.array_equal(myfaultyexperiment.probabilities, check_probs)
     assert np.array_equal(myfaultyexperiment.depths, np.tile(depths, runs))
 
 
-@pytest.mark.parametrize(
-    "qubits,depths,runs,nshots",
-    [([0], [0, 1, 2], 2, 10), ([0, 1, 2], [5, 50], 10, 100)],
-)
-def test_embed_circuit(qubits: list, depths: list, runs: int):
+# @pytest.mark.parametrize(
+#     "qubits,depths,runs,nshots",
+#     [([0], [0, 1, 2], 2, 10), ([0, 1, 2], [5, 50], 10, 100)],
+# )
+def test_embed_circuit(nqubits: int, depths: list, runs: int, qubits: list):
     nshots = 2
-    myfactory1 = standardrb.SingleCliffordsInvFactory(qubits, depths, runs)
-    more_qubits = len(qubits) + 3
-    support = np.random.choice(more_qubits, len(qubits), replace=False)
-    myfactory1.embed_func = abstract.embed_unitary_circuit
-    myfactory1.embed_params = (more_qubits, support)
+    myfactory1 = standardrb.SingleCliffordsInvFactory(
+        nqubits, depths, runs, qubits=qubits
+    )
     for circuit in myfactory1:
-        assert circuit.nqubits == more_qubits
+        assert circuit.nqubits == nqubits
         for gate in circuit.queue:
-            assert gate._target_qubits == tuple(support)
+            # import pdb
+            # pdb.set_trace()
+            assert gate._target_qubits == tuple(qubits)
     myexperiment1 = standardrb.StandardRBExperiment(myfactory1, nshots)
     myexperiment1.execute()
     for samples in myexperiment1.samples:
-        assert samples.shape == (nshots, len(qubits))
+        assert samples.shape == (nshots, nqubits)
 
 
-@pytest.mark.parametrize(
-    "qubits,depths,runs,nshots",
-    [([0], [0, 1, 2], 2, 10), ([0, 1, 2], [5, 50], 10, 100)],
-)
+# @pytest.mark.parametrize(
+#     "qubits,depths,runs,nshots",
+#     [([0], [0, 1, 2], 2, 10), ([0, 1, 2], [5, 50], 10, 100)],
+# )
 def test_analyze(qubits: list, depths: list, runs: int, nshots: int):
     # Build the noise model.
     noise_params = [0.1, 0.1, 0.1]
@@ -199,3 +203,30 @@ def test_analyze(qubits: list, depths: list, runs: int, nshots: int):
 
     figure = standardrb.analyze(myfaultyexperiment)
     figure.show()
+
+
+nqubits = 1
+depths = [0, 1, 5]
+runs = 2
+# test_factory(nqubits, depths, runs)
+nshots = 7
+# test_experiment(nqubits, depths, runs, nshots)
+noise_params = [0.1, 0.1, 0.1]
+# test_experiment_withnoise(nqubits, depths, runs, nshots, noise_params)
+
+nqubits = 3
+active_qubits = [1, 2]
+# test_embed_circuit(nqubits, depths, runs, active_qubits)
+myfactory = standardrb.SingleCliffordsInvFactory(2, [2], 1)
+for circuit in myfactory:
+    circuit1 = abstract.embed_unitary_circuit(circuit, nqubits, active_qubits)
+    for gate in circuit1.queue:
+        print(gate.init_args[0])
+    print(circuit1(nshots=nshots))
+
+myfactory = standardrb.SingleCliffordsInvFactory(nqubits, [2], 1, active_qubits)
+for circuit1 in myfactory:
+    print(circuit1.draw())
+    for gate in circuit1.queue:
+        print(gate.init_args[0])
+    print(circuit1(nshots=nshots).samples())

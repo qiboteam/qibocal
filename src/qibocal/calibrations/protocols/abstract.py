@@ -30,6 +30,9 @@ class Circuitfactory:
         self.depths = depths
         self.runs = runs
 
+    def __len__(self):
+        return self.runs * len(self.depths)
+
     def __iter__(self) -> None:
         self.n = 0
         return self
@@ -40,7 +43,9 @@ class Circuitfactory:
         else:
             circuit = self.build_circuit(self.depths[self.n % len(self.depths)])
             self.n += 1
-            return circuit
+            bigcircuit = Circuit(self.nqubits)
+            bigcircuit.add(circuit.on_qubits(*self.qubits))
+            return bigcircuit
 
     def build_circuit(self, depth: int):
         pass
@@ -52,16 +57,11 @@ class SingleCliffordsFactory(Circuitfactory):
     ) -> None:
         super().__init__(nqubits, depths, runs, qubits)
 
-    def circuit_generator(self):
-        for _ in range(self.runs):
-            for depth in self.depths:
-                yield self.build_circuit(depth)
-
     def build_circuit(self, depth: int):
-        circuit = Circuit(self.nqubits)
+        circuit = Circuit(len(self.qubits))
         for _ in range(depth):
             circuit.add(self.gate())
-        circuit.add(gates.M(*[x for x in range(self.nqubits)]))
+        circuit.add(gates.M(*[x for x in range(len(self.qubits))]))
         return circuit
 
     def clifford_unitary(
@@ -116,7 +116,7 @@ class SingleCliffordsFactory(Circuitfactory):
                 self.clifford_unitary(*ONEQUBIT_CLIFFORD_PARAMS[rint]), unitary
             )
         # Make a unitary gate out of 'unitary' for the qubits.
-        return gates.Unitary(unitary, *self.qubits)
+        return gates.Unitary(unitary, *[x for x in range(len(self.qubits))])
 
 
 class Experiment:
