@@ -27,6 +27,7 @@ class Circuitfactory:
         self.depths = depths
         self.runs = runs
         self.embed_func = None
+        self.embed_params = None
         # TODO implement a test for that function?
 
     def __iter__(self) -> None:
@@ -40,7 +41,7 @@ class Circuitfactory:
             circuit = self.build_circuit(self.depths[self.n % len(self.depths)])
             self.n += 1
             if self.embed_func is not None:
-                return self.embed_func(circuit)
+                return self.embed_func(circuit, *self.embed_params)
             else:
                 return circuit
 
@@ -159,6 +160,8 @@ class Experiment:
         if isfile(datapath):
             with open(datapath, "rb") as f:
                 data = pickle.load(f)
+                if isinstance(data, pd.DataFrame):
+                    data = data.to_dict("records")
             nshots = len(data[0]["samples"])
         else:
             data = None
@@ -298,8 +301,48 @@ class Result:
         grouped_df = self.df.groupby(group_by)[output].apply(agg_type)
         return np.array(grouped_df.index), np.array(grouped_df.values)
 
-    def scatter_plot(self):
-        pass
-
     def report(self):
-        pass
+        from plotly.subplots import make_subplots
+
+        l = len(self.all_figures)
+        fig = make_subplots(rows=l, cols=1)
+        for count, plot_list in enumerate(self.all_figures):
+            for plot in plot_list:
+                fig.add_trace(plot, row=count + 1, col=1)
+        fig.update_xaxes(title_font_size=18, tickfont_size=16)
+        fig.update_yaxes(title_font_size=18, tickfont_size=16)
+        fig.update_layout(
+            font_family="Averta",
+            hoverlabel_font_family="Averta",
+            title_text="Report",
+            hoverlabel_font_size=16,
+            showlegend=True,
+            height=800,
+            width=1000,
+        )
+        return fig
+
+
+def embed_unitary_circuit(circuit: Circuit, nqubits: int, support: list) -> Circuit:
+    """Takes a circuit and redistributes the gates to the support of
+    a new circuit with ``nqubits`` qubits.
+
+    Args:
+        circuit (Circuit): The circuit with len(``support``) many qubits.
+        nqubits (int): Qubits of new circuit.
+        support (list): The qubits were the gates should be places.
+
+    Returns:
+        Circuit: Circuit with redistributed gates.
+    """
+
+    idxmap = np.vectorize(lambda idx: support[idx])
+    newcircuit = Circuit(nqubits)
+    for gate in circuit.queue:
+        if not isinstance(gate, gates.measurements.M):
+            newcircuit.add(
+                gate.__class__(gate.init_args[0], *idxmap(np.array(gate.init_args[1:])))
+            )
+        else:
+            newcircuit.add(gates.M(*idxmap(np.array(gate.init_args[0:]))))
+    return newcircuit

@@ -1268,169 +1268,28 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
     return fig
 
 
-def rb_plot(folder, routine, qubit, format):
-    """ """
-    from scipy.optimize import curve_fit
+def standardrb_plot(folder, routine, qubit, format):
+    from qibocal.calibrations.protocols.standardrb import StandardRBExperiment, analyze
 
-    from qibocal.calibrations.protocols.experiments import Experiment
-
-    # Define the function for the fitting process.
-    def exp_func(x, A, f, B):
-        """ """
-        return A * f**x + B
-
-    # Load the data into DataUnits.object.
-    data_circs = Data.load_data(folder, routine, "pickle", "circuits")
-    data_probs = Data.load_data(folder, routine, "pickle", "probabilities1")
-    data_samples = Data.load_data(folder, routine, "pickle", "samples1")
-    # Build an Experiment object out of it.
-    experiment = Experiment.retrieve_from_dataobjects(
-        data_circs, data_samples, data_probs
-    )
-    # Get the fitting parameters.
-
-    data_fit = Data.load_data(folder, routine, "pickle", f"fitrb").df
-    popt = data_fit["A"].values[0], data_fit["f"].values[0], data_fit["B"].values[0]
-
-    # The xaxis is defined by the sequence lengths of the applied circuits.
-    xdata = experiment.sequence_lengths
-    if experiment.inverse:
-        # For each run calculate the probabilities.
-        ydata_spread = experiment.probabilities(averaged=False)[:, :, 0].flatten()
-        xdata_spread = np.tile(xdata, experiment.runs)
-        # The yaxis shows the survival probability, short pm.
-        ydata = experiment.probabilities(averaged=True)
-        # The ground state probability is used as survival probability.
-        pm = np.array(ydata)[:, 0]
-    else:
-        ydata_spread = experiment.filter_single_qubit(averaged=False)
-        xdata_spread = np.tile(xdata, experiment.runs)
-        pm = np.average(ydata_spread, axis=0)
-        ydata_spread = ydata_spread.flatten()
-    # The variance of the variables in 'popt' are calculated with 'pcov'.
-    # perr = np.sqrt(np.diag(pcov))
-    # Plot the data and the fit.
-    x_fit = np.linspace(np.sort(xdata)[0], np.sort(xdata)[-1], num=100)
-    fig = make_subplots(
-        rows=1,
-        cols=1,
-        horizontal_spacing=0.01,
-        vertical_spacing=0.01,
-        subplot_titles=(f"Randomized benchmarking, inverse: {experiment.inverse}",),
-    )
-    c1 = "#6597aa"
-    fig.add_trace(
-        go.Scatter(
-            x=xdata_spread,
-            y=ydata_spread,
-            line=dict(color=c1),
-            mode="markers",
-            marker={"opacity": 0.2, "symbol": "square"},
-            name="",
-        ),
-        row=1,
-        col=1,
-    )
-    c2 = "#aa6464"
-    fig.add_trace(
-        go.Scatter(
-            x=xdata,
-            y=pm,
-            line=dict(color=c2),
-            mode="markers",
-            name="pm",
-        ),
-        row=1,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=x_fit,
-            y=exp_func(x_fit, *popt),
-            name="A: {:f}, f: {:f}, B: {:f}".format(popt[0], popt[1], popt[2]),
-            line=go.scatter.Line(dash="dot"),
-        ),
-        row=1,
-        col=1,
-    )
-    data = Data.load_data(folder, routine, "pickle", "effectivedepol")
-    depol = data.df.to_numpy()[0, 0]
-    fig.add_annotation(
-        dict(
-            font=dict(color="black", size=12),
-            x=0,
-            y=-0.20,
-            showarrow=False,
-            text=f"Effective depol param: {depol}",
-            textangle=0,
-            xanchor="left",
-            xref="paper",
-            yref="paper",
-        )
-    )
-
-    return fig
-
-
-def rb_statistics(folder, routine, qubit, format):
-    """ """
-    from scipy.optimize import curve_fit
-
-    from qibocal.calibrations.protocols.experiments import Experiment
-
-    # Load the data into DataUnits.object.
-    data_circs = Data.load_data(folder, routine, "pickle", "circuits")
-    data_probs = Data.load_data(folder, routine, "pickle", "probabilities1")
-    data_samples = Data.load_data(folder, routine, "pickle", "samples1")
-    # Build an Experiment object out of it.
-    experiment = Experiment.retrieve_from_dataobjects(
-        data_circs, data_samples, data_probs
-    )
-    file_exists, count_iterations = True, 0
-    data_list = []
-    while file_exists:
-        count_iterations += 1
-        try:
-            data_fits = Data.load_data(
-                folder, routine, "pickle", f"fits_crossvalidation{count_iterations}"
+    experimentpath = f"{folder}/data/{routine}/"
+    experiment = StandardRBExperiment.load(experimentpath)
+    fig = analyze(experiment)
+    try:
+        data = Data.load_data(folder, routine, "pickle", "effectivedepol")
+        depol = data.df.to_numpy()[0, 0]
+        fig.add_annotation(
+            dict(
+                font=dict(color="black", size=12),
+                x=0,
+                y=-0.20,
+                showarrow=False,
+                text="Effective depol param: {:.3f}".format(depol),
+                textangle=0,
+                xanchor="left",
+                xref="paper",
+                yref="paper",
             )
-            data_list.append(data_fits)
-        except FileNotFoundError:
-            file_exists = False
-    fig = make_subplots(
-        rows=count_iterations,
-        cols=2,
-        horizontal_spacing=1,
-        vertical_spacing=1,
-        subplot_titles=(
-            f"Randomized benchmarking Cross Validation, inverse: {experiment.inverse}",
-        ),
-    )
-
-    c1 = "#6597aa"
-    # c2 = "#aa6464"
-
-    for count in range(1, count_iterations):
-        fitparams = np.array(data_fits.df.values.tolist()).flatten()
-        data_depol = Data.load_data(folder, routine, "pickle", f"effectivedepol{count}")
-        depol = data_depol.df.to_numpy()[0, 0]
-        fig.add_trace(
-            go.Scatter(
-                x=fitparams,
-                y=np.zeros(len(fitparams)),
-                line=dict(color=c1),
-                mode="markers",
-                marker={"opacity": 0.2, "symbol": "diamond"},
-                name=f"effective depol:{depol}",
-            ),
-            row=count,
-            col=1,
         )
-
-        fig.add_trace(
-            go.Histogram(x=fitparams),
-            row=count,
-            col=2,
-        )
-
+    except FileExistsError:
+        pass
     return fig

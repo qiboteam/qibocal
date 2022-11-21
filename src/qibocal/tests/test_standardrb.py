@@ -3,15 +3,19 @@ from shutil import rmtree
 
 import numpy as np
 import pandas as pd
+import pytest
 from qibo import gates, models
 from qibo.noise import NoiseModel, PauliError
 
-from qibocal.calibrations.protocols import standardrb
+from qibocal.calibrations.protocols import abstract, standardrb
 
 """ FIXME the measurement branch treates measurements gates.M different
 """
 
 
+@pytest.mark.parametrize(
+    "qubits,depths,runs", [([0], [0, 1, 2], 2), ([0, 1, 2], [5, 50], 10)]
+)
 def test_factory(qubits: list, depths: list, runs: int):
     """Check for how random circuits are produced and if the lengths, shape
     and randomness works.
@@ -33,9 +37,8 @@ def test_factory(qubits: list, depths: list, runs: int):
         # There will be an inverse and measurement gate, + 2.
         assert len(circuit.queue) == depths[count % len(depths)] + 2
     randomnesscount = 0
-    runs = 10
-    depth = 2
-    circuits_list = list(standardrb.SingleCliffordsInvFactory(qubits, [depth], runs=10))
+    depth = depths[-1]
+    circuits_list = list(standardrb.SingleCliffordsInvFactory(qubits, [depth], runs))
     for count in range(runs - 1):
         circuit1q = circuits_list[count].queue[:depth]
         circuit2q = circuits_list[count + 1].queue[:depth]
@@ -48,7 +51,11 @@ def test_factory(qubits: list, depths: list, runs: int):
     assert randomnesscount < runs / 2.0
 
 
-def test_experiment(qubits: list, depths: list, runs: int):
+@pytest.mark.parametrize(
+    "qubits,depths,runs,nshots",
+    [([0], [0, 1, 2], 2, 10), ([0, 1, 2], [5, 50], 10, 100)],
+)
+def test_experiment(qubits: list, depths: list, runs: int, nshots: int):
     """_summary_
 
     Args:
@@ -56,7 +63,6 @@ def test_experiment(qubits: list, depths: list, runs: int):
         depths (list): _description_
         runs (int): _description_
     """
-    nshots = 10
     # Test exectue an experiment.
     myfactory1 = standardrb.SingleCliffordsInvFactory(qubits, depths, runs)
     myexperiment1 = standardrb.StandardRBExperiment(myfactory1, nshots)
@@ -116,10 +122,17 @@ def test_experiment(qubits: list, depths: list, runs: int):
     rmtree(path3)
 
 
-def test_experiment_withnoise(qubits: list, depths: list, runs: int):
-    nshots = 100
+@pytest.mark.parametrize(
+    "qubits,depths,runs,noise_params",
+    [
+        ([0], [0, 1, 2], 2, 10, [0.1, 0.1, 0.1]),
+        ([0, 1, 2], [5, 50], 10, 20, [0.01, 0.05, 0.04]),
+    ],
+)
+def test_experiment_withnoise(
+    qubits: list, depths: list, runs: int, nshots: int, noise_params: list
+):
     # Build the noise model.
-    noise_params = [0.1, 0.1, 0.1]
     paulinoise = PauliError(*noise_params)
     noise = NoiseModel()
     noise.add(paulinoise, gates.Unitary)
@@ -146,8 +159,32 @@ def test_experiment_withnoise(qubits: list, depths: list, runs: int):
     assert np.array_equal(myfaultyexperiment.depths, np.tile(depths, runs))
 
 
-def test_analyze(qubits, depths, runs):
-    nshots = 100
+@pytest.mark.parametrize(
+    "qubits,depths,runs,nshots",
+    [([0], [0, 1, 2], 2, 10), ([0, 1, 2], [5, 50], 10, 100)],
+)
+def test_embed_circuit(qubits: list, depths: list, runs: int):
+    nshots = 2
+    myfactory1 = standardrb.SingleCliffordsInvFactory(qubits, depths, runs)
+    more_qubits = len(qubits) + 3
+    support = np.random.choice(more_qubits, len(qubits), replace=False)
+    myfactory1.embed_func = abstract.embed_unitary_circuit
+    myfactory1.embed_params = (more_qubits, support)
+    for circuit in myfactory1:
+        assert circuit.nqubits == more_qubits
+        for gate in circuit.queue:
+            assert gate._target_qubits == tuple(support)
+    myexperiment1 = standardrb.StandardRBExperiment(myfactory1, nshots)
+    myexperiment1.execute()
+    for samples in myexperiment1.samples:
+        assert samples.shape == (nshots, len(qubits))
+
+
+@pytest.mark.parametrize(
+    "qubits,depths,runs,nshots",
+    [([0], [0, 1, 2], 2, 10), ([0, 1, 2], [5, 50], 10, 100)],
+)
+def test_analyze(qubits: list, depths: list, runs: int, nshots: int):
     # Build the noise model.
     noise_params = [0.1, 0.1, 0.1]
     paulinoise = PauliError(*noise_params)
@@ -160,13 +197,5 @@ def test_analyze(qubits, depths, runs):
     )
     myfaultyexperiment.execute()
 
-    standardrb.analyze(myfaultyexperiment)
-
-
-qubits = [0]
-depths, runs = [1, 3, 4], 2
-
-test_factory(qubits, depths, runs)
-test_experiment(qubits, depths, runs)
-test_experiment_withnoise(qubits, depths, runs)
-test_analyze(qubits, depths, runs)
+    figure = standardrb.analyze(myfaultyexperiment)
+    figure.show()

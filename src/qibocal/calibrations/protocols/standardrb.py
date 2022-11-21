@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from copy import deepcopy
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from qibo import gates
 from qibo.models import Circuit
 from qibo.noise import NoiseModel, PauliError
+from qibolab.platforms.abstract import AbstractPlatform
 
 from qibocal.calibrations.protocols.abstract import (
     Experiment,
@@ -17,6 +16,10 @@ from qibocal.calibrations.protocols.abstract import (
     SingleCliffordsFactory,
 )
 from qibocal.calibrations.protocols.fitting_methods import fit_exp1_func
+from qibocal.calibrations.protocols.utils import effective_depol
+from qibocal.data import Data
+from qibocal.decorators import plot
+from qibocal.plots.scatters import standardrb_plot
 
 
 class SingleCliffordsInvFactory(SingleCliffordsFactory):
@@ -91,7 +94,7 @@ class StandardRBResult(Result):
             line=dict(color="#6597aa"),
             mode="markers",
             marker={"opacity": 0.2, "symbol": "square"},
-            name="",
+            name="runs",
         )
         myfigs.append(fig)
         fig = go.Scatter(
@@ -101,31 +104,11 @@ class StandardRBResult(Result):
         fig = go.Scatter(
             x=x_fit,
             y=y_fit,
-            name="A: {:.3f}, f: {:.3f}, B: {:.3f}".format(popt[0], popt[1], popt[2]),
+            name="A: {:.3f}, p: {:.3f}, B: {:.3f}".format(popt[0], popt[1], popt[2]),
             line=go.scatter.Line(dash="dot"),
         )
         myfigs.append(fig)
         self.all_figures.append(myfigs)
-
-
-def embed_circuit(circuit: Circuit, nqubits: list, support: list) -> Circuit:
-    """Takes a circuit and redistributes the gates to the support of
-    a new circuit with ``nqubits`` qubits.
-
-    Args:
-        circuit (Circuit): The circuit with len(``support``) many qubits.
-        nqubits (list): Qubits of new circuit.
-        support (list): The qubits were the gates should be places.
-
-    Returns:
-        Circuit: Circuit with redistributed gates.
-    """
-
-    idxmap = np.vectorize(lambda idx: support[idx])
-    newcircuit = Circuit(nqubits)
-    for gate in circuit.queue:
-        newcircuit.add(gate._class_(*idxmap(np.array(gate.init_args))))
-    return newcircuit
 
 
 def groundstate_probability(experiment: Experiment):
@@ -140,80 +123,73 @@ def groundstate_probability(experiment: Experiment):
     experiment._append_data("groundstate_probabilities", list(probs))
 
 
-def analyze(experiment: Experiment, **kwargs) -> Result:
+def analyze(experiment: Experiment, **kwargs) -> None:
     # Compute and add the ground state probabilities.
     experiment.apply_task(groundstate_probability)
-    result = Result(experiment.dataframe, fit_exp1_func)
+    result = StandardRBResult(experiment.dataframe, fit_exp1_func)
+    result.single_fig()
+    report = result.report()
+    return report
 
 
 def perform_qhardware(qubits: list, depths: list, runs: int, nshots: int):
-    pass
+    # Initiate the circuit factory and the Experiment object.
+    factory = SingleCliffordsInvFactory(qubits, depths, runs)
+    experiment = StandardRBExperiment(factory, nshots)
+    # Execute the experiment.
+    experiment.execute()
+    analyze(experiment).show()
 
 
 def perform_simulation(
-    qubits: list, depths: list, runs: int, nshots: int, noise_params: tuple
+    qubits: list, depths: list, runs: int, nshots: int, noise_params: list
 ):
-    pass
+    # Define the noise model.
+    paulinoise = PauliError(*noise_params)
+    noise = NoiseModel()
+    noise.add(paulinoise, gates.Unitary)
+    # Initiate the circuit factory and the faulty Experiment object.
+    factory = SingleCliffordsInvFactory(qubits, depths, runs)
+    faultyexperiment = StandardRBExperiment(factory, nshots, noisemodel=noise)
+    # Execute the experiment.
+    faultyexperiment.execute()
+    analyze(faultyexperiment).show()
 
 
-def plot(experiment: StandardRBExperiment):
-
-    import matplotlib.pyplot as plt
-
-    from qibocal.calibrations.protocols.fitting_methods import exp1_func, fit_exp1_func
-
-    colorfunc = plt.get_cmap("inferno")
-
-    experiment.postprocess()
-
-    # Take the ground state population.
-    ydata_scattered = experiment.probabilities[:, 0]
-    xdata_scattered = experiment.depths
-    plt.scatter(
-        xdata_scattered,
-        ydata_scattered,
-        marker="_",
-        linewidths=5,
-        s=100,
-        color=colorfunc(100),
-        alpha=0.4,
-        label="each run",
-    )
-    gdf = experiment.dataframe.groupby("depth")["probabilities"].agg("mean")
-    xdata = np.array(gdf.index)
-    ydata = gdf.values
-    plt.scatter(xdata, ydata, marker=5, label="averaged")
-    xfit, yfit, popt = fit_exp1_func(xdata, ydata)
-    # import pdb
-    # pdb.set_trace()
-    # ydata_scattered =
+@plot("Hardware Randomized benchmarking", standardrb_plot)
+def qqperform_qhardware(
+    platform: AbstractPlatform, qubit: list, depths: list, runs: int, nshots: int
+):
+    # Initiate the circuit factory and the Experiment object.
+    factory = SingleCliffordsInvFactory(qubit, depths, runs)
+    experiment = StandardRBExperiment(factory, nshots)
+    # Execute the experiment.
+    experiment.execute()
+    data = Data("data", quantities=["dataframe"])
+    data.add({"dataframe": experiment.dataframe})
+    yield data
 
 
-def postprocess(experiment: StandardRBExperiment) -> dict:
-    """Takes an experiment object, calculates the probabilities from the
-    samples, fits an exponential to the probabilities and returns the parameters.
-
-    Args:
-        experiment (StandardRBExperiment): _description_
-
-    """
-    from qibocal.calibrations.protocols.fitting_methods import fit_exp1_func
-    from qibocal.calibrations.protocols.utils import effective_depol
-
-    df = experiment.dataframe
-    probs = experiment.probabilities
-    df["probabilities"] = list(probs)
-
-    gdf = df.groupby("depth")["probabilities"].agg("mean")
-    xdata = np.array(gdf.index)
-    ydata = gdf.values
-    popt, pcov = fit_exp1_func(xdata, ydata)
-
-    pauli = PauliError(*df["noise_params"][0])
-    depol = effective_depol(pauli)
-    result = {
-        "effective_depol": depol,
-        "fitting_params": (popt, pcov),
-        "mean_probabilities": ydata,
-    }
-    return result
+@plot("Simulation Randomized benchmarking", standardrb_plot)
+def qqperform_simulation(
+    platform: AbstractPlatform,
+    qubit: list,
+    depths: list,
+    runs: int,
+    nshots: int,
+    noise_params: list,
+):
+    # Define the noise model.
+    paulinoise = PauliError(*noise_params)
+    noise = NoiseModel()
+    noise.add(paulinoise, gates.Unitary)
+    # Initiate the circuit factory and the Experiment object.
+    factory = SingleCliffordsInvFactory(qubit, depths, runs)
+    experiment = StandardRBExperiment(factory, nshots, noisemodel=noise)
+    # Execute the experiment.
+    experiment.execute()
+    data = Data("data", quantities=["dataframe"])
+    data.add({"dataframe": experiment.dataframe})
+    yield data
+    data_depol = Data("effectivedepol", quantities=["effective_depol"])
+    data_depol.add({"effective_depol": effective_depol(paulinoise)})
