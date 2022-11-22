@@ -57,8 +57,7 @@ def get_noise(background, platform, ro_pulse, qubit, sequence):
     noise = 0
     for b_freq in background:
         platform.ro_port[qubit].lo_frequency = b_freq - ro_pulse.frequency
-        res = platform.execute_pulse_sequence(sequence, 1024)
-        msr, phase, i, q = platform.execute_pulse_sequence(sequence)[ro_pulse.serial]
+        msr = platform.execute_pulse_sequence(sequence)[ro_pulse.serial][0]
         noise += msr
     return noise / len(background)
 
