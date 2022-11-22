@@ -35,7 +35,7 @@ class AbstractData:
         return len(self.df)
 
     @classmethod
-    def load_data(cls, folder, routine, format, name):
+    def load_data(cls, folder, subfolder, routine, format, name):
         raise_error(NotImplementedError)
 
     @abstractmethod
@@ -172,7 +172,7 @@ class DataUnits(AbstractData):
             return self.df[key].pint.to(unit).pint.magnitude
 
     @classmethod
-    def load_data(cls, folder, routine, format, name):
+    def load_data(cls, folder, subfolder, routine, format, name):
         """Load data from specific format.
 
         Args:
@@ -185,7 +185,7 @@ class DataUnits(AbstractData):
         """
         obj = cls()
         if format == "csv":
-            file = f"{folder}/data/{routine}/{name}.csv"
+            file = f"{folder}/{subfolder}/{routine}/{name}.csv"
             obj.df = pd.read_csv(file, header=[0, 1])
             obj.df.pop("Unnamed: 0_level_0")
             quantities_label = []
@@ -284,7 +284,7 @@ class Data(AbstractData):
         return self.df[quantity].values
 
     @classmethod
-    def load_data(cls, folder, routine, format, name):
+    def load_data(cls, folder, subfolder, routine, format, name):
         """Load data from specific format.
 
         Args:
@@ -295,13 +295,14 @@ class Data(AbstractData):
         Returns:
             data (``Data``): data object with the loaded data.
         """
+
         obj = cls()
         if format == "csv":
-            file = f"{folder}/data/{routine}/{name}.csv"
+            file = f"{folder}/{subfolder}/{routine}/{name}.csv"
             obj.df = pd.read_csv(file)
             obj.df.pop("Unnamed: 0")
         elif format == "pickle":
-            file = f"{folder}/data/{routine}/{name}.pkl"
+            file = f"{folder}/{subfolder}/{routine}/{name}.pkl"
             obj.df = pd.read_pickle(file)
         else:
             raise_error(ValueError, f"Cannot load data using {format} format.")
