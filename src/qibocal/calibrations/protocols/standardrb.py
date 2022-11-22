@@ -41,11 +41,12 @@ class SingleCliffordsInvFactory(SingleCliffordsFactory):
         if depth > 0:
             # Build a gate out of the unitary of the whole circuit and
             # take the daggered version of that.
-            circuit.add(gates.Unitary(circuit.unitary(), *self.qubits).dagger())
-            # circuit.add(gates.Unitary(circuit.fuse().queue[0].dagger().matrix())
-        circuit.add(gates.M(*[x for x in range(len(self.qubits))]))
-        bigcircuit = Circuit(self.nqubits)
-        bigcircuit.add(circuit.on_qubits(*self.qubits))
+            circuit.add(
+                gates.Unitary(
+                    circuit.unitary(), *range(len(self.qubits))
+                    ).dagger()
+                )
+        circuit.add(gates.M(*range(len(self.qubits))))
         return circuit
 
 
@@ -69,8 +70,8 @@ class StandardRBExperiment(Experiment):
         datadict = super().single_task(circuit, datarow)
         # Substract 1 for sequence length to not count the inverse gate
         # FIXME and on the measurement branch of qibo the measurement is
-        # counted as one gate.
-        datadict["depth"] = len(circuit.queue) - 2 if len(circuit.queue) > 1 else 0
+        # counted as one gate on the master branch not.
+        datadict["depth"] = circuit.ngates - 2 if circuit.ngates > 1 else 0
         return datadict
 
     @property
@@ -155,6 +156,7 @@ def perform(
         paulinoise = PauliError(*noise_params)
         noise = NoiseModel()
         noise.add(paulinoise, gates.Unitary)
+        depol = effective_depol(paulinoise)
     else:
         noise = None
     # Initiate the circuit factory and the faulty Experiment object.

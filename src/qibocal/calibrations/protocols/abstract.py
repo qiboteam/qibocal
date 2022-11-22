@@ -43,12 +43,13 @@ class Circuitfactory:
         else:
             circuit = self.build_circuit(self.depths[self.n % len(self.depths)])
             self.n += 1
+            # Distribute the circuit onto the given support.
             bigcircuit = Circuit(self.nqubits)
             bigcircuit.add(circuit.on_qubits(*self.qubits))
             return bigcircuit
 
     def build_circuit(self, depth: int):
-        pass
+        raise NotImplementedError
 
 
 class SingleCliffordsFactory(Circuitfactory):
@@ -61,7 +62,7 @@ class SingleCliffordsFactory(Circuitfactory):
         circuit = Circuit(len(self.qubits))
         for _ in range(depth):
             circuit.add(self.gate())
-        circuit.add(gates.M(*[x for x in range(len(self.qubits))]))
+        circuit.add(gates.M(*range(len(self.qubits))))
         return circuit
 
     def clifford_unitary(
@@ -93,7 +94,8 @@ class SingleCliffordsFactory(Circuitfactory):
         return matrix
 
     def gate(self) -> gates.Unitary:
-        """Draws the parameters and builds the gate.
+        """Draws the parameters and builds the gate for a circuit with as many
+        qubits as support is needed.
 
         Args:
             seed (int): optional, set the starting seed for random
@@ -116,7 +118,7 @@ class SingleCliffordsFactory(Circuitfactory):
                 self.clifford_unitary(*ONEQUBIT_CLIFFORD_PARAMS[rint]), unitary
             )
         # Make a unitary gate out of 'unitary' for the qubits.
-        return gates.Unitary(unitary, *[x for x in range(len(self.qubits))])
+        return gates.Unitary(unitary, *range(len(self.qubits)))
 
 
 class Experiment:
