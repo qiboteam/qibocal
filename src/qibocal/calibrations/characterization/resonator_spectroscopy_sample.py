@@ -51,31 +51,34 @@ def scan_level(
         best_msr (float): MSR found for the feature.
 
     """
+    freq = best_f
     for _ in range(max_runs):
-        if _ == 0:
-            freq = best_f
-        else:
-            freq = choose_freq(best_f, span, resolution)
         platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
         avg=np.zeros(software_averages)
         for j in range(len(avg)):
-            avg[j], phase, i, q = platform.execute_pulse_sequence(sequence)[ro_pulse.serial]
+            avg[j] = platform.execute_pulse_sequence(sequence)[ro_pulse.serial][0]
         msr=np.mean(avg)
-        if platform.resonator_type == "3D":
-            if msr > best_msr:
-                if abs(snr(msr, noise)) >= thr:
-                    best_f, best_msr = freq, msr
-                    return best_f, best_msr
-        else:
+        if abs(snr(msr, noise)) >= thr >= thr:
+            if platform.resonator_type == "3D":
+                msr = -msr
+                best_msr = -best_msr
             if msr < best_msr:
-                if abs(snr(msr, noise)) >= thr:
-                    best_f, best_msr = freq, msr
-                    return best_f, best_msr
+               best_f, best_msr = freq, msr
+               return best_f, best_msr
+        freq = choose_freq(best_f, span, resolution)
     return best_f, best_msr
 
 
 def scan_small(
-    best_f, best_msr, span, resolution, platform, ro_pulse, qubit, sequence, software_averages
+    best_f,
+    best_msr, 
+    span, 
+    resolution, 
+    platform, 
+    ro_pulse, 
+    qubit, 
+    sequence, 
+    software_averages
 ):
     """Small scan around the found feature to fine-tune the measurement up to given precision.
 
@@ -102,17 +105,17 @@ def scan_small(
         platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
         avg=np.zeros(software_averages)
         for j in range(len(avg)):
-            avg[j], phase, i, q = platform.execute_pulse_sequence(sequence)[ro_pulse.serial]
+            avg[j] = platform.execute_pulse_sequence(sequence)[ro_pulse.serial][0]
         msr=np.mean(avg)
         if platform.resonator_type == "3D":
-            if msr > best_msr:
-                best_f, best_msr = freq, msr
-        else:
-            if msr < best_msr:
-                best_f, best_msr = freq, msr
+            msr = -msr
+            best_msr = -best_msr
+        if msr < best_msr:
+            best_f, best_msr = freq, msr
+            return best_f, best_msr
     return best_f, best_msr
 
-
+@plot("Frequency vs Attenuation", plots.frequency_attenuation)
 def resonator_punchout_sample(
     platform: AbstractPlatform,
     qubit: int,
@@ -173,34 +176,20 @@ def resonator_punchout_sample(
         best_msr = noise
         for span in spans:
             best_f, best_msr = scan_level(
-                best_f,
-                best_msr,
-                max_runs,
-                thr,
-                span,
-                resolution,
-                noise,
-                platform,
-                ro_pulse,
-                qubit,
-                sequence,
-                software_averages
+                best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit, sequence, software_averages
             )
         for span in small_spans:
             best_f, best_msr = scan_small(
                 best_f, best_msr, span, 11, platform, ro_pulse, qubit, sequence, software_averages
             )
-        # freqs.append(best_f)
+        freqs.append(best_f)
         results = {
             "MSR[V]": best_msr,
-            "i[V]": 455,
-            "q[V]": 455,
-            "phase[rad]": 455,
             "frequency[Hz]": best_f,
             "attenuation[dB]": att,
         }
         data.add(results)
-        if att >= 30:
+        if att >= opt_att:
             if abs(snr(best_msr, noise)) > opt_snr:
                 opt_snr = abs(snr(best_msr, noise))
                 opt_att = att
@@ -213,6 +202,17 @@ def resonator_punchout_sample(
         f"Best response found at frequency {opt_f} Hz for attenuation value of {opt_att} dB.\n"
     )
 
+    data1 = DataUnits(
+        name=f"results_q{qubit}", quantities={"snr": "dimensionless" ,"frequency": "Hz", "attenuation": "dB"}
+    )
+    results = {
+    "snr[dimensionless]": opt_snr,
+    "frequency[Hz]": opt_f,
+    "attenuation[dB]": opt_att,
+    }
+    data1.add(results)
+
+    yield data1
     yield data
 
 
@@ -319,19 +319,7 @@ def resonator_flux_sample(
         best_msr = noise
         platform.qf_port[fluxline].current = curr
         for span in spans:
-            best_f, best_msr = scan_level(
-                best_f,
-                best_msr,
-                max_runs,
-                thr,
-                span,
-                resolution,
-                noise,
-                platform,
-                ro_pulse,
-                qubit,
-                sequence,
-                software_averages
+            best_f, best_msr = scan_level( best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit, sequence, software_averages
             )
         for span in small_spans:
             best_f, best_msr = scan_small(
