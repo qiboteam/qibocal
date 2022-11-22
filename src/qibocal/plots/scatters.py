@@ -1401,4 +1401,59 @@ def frequency_current_flux(folder, routine, qubit, format):
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
     )
     
+    #fig.write_image(f"fig_{q}.png")
+    return fig
+
+def frequency_attenuation(folder, routine, qubit, format):
+    try:
+        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
+    except:
+        data = DataUnits(quantities={"frequency": "Hz", "attenuation": "dB"})
+
+    try:
+        data1 = DataUnits.load_data(folder, routine, format, f"results_q{qubit}")
+    except:
+        data1 = DataUnits(quantities={"snr": "none" ,"frequency": "Hz", "attenuation": "dB"})
+
+    opt_f = data1.get_values("frequency", "GHz")[0]
+    opt_att = data1.get_values("attenuation", "dB")[0]
+    opt_snr = data1.get_values("snr", "dimensionless")[0]
+
+    fig = make_subplots(
+        rows=1,
+        cols=1,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        x_title="Attenuation (db)",
+        y_title="Frequency (GHz)",
+        )
+
+    fig.add_trace(
+        go.Scatter(
+            x=data.get_values("attenuation", "dB"),
+            y=data.get_values("frequency", "Hz")/10**9,
+            name="Punchout",
+        ),
+        row=1,
+        col=1,
+    )
+
+    fig.add_annotation(
+        dict(
+            font=dict(color="black", size=12),
+            x=0,
+            y=-0.30,
+            showarrow=False,
+            text=f"Best response found at frequency {opt_f} Hz for attenuation value of {opt_att} dB with snr {opt_snr}.\n",
+            textangle=0,
+            xanchor="left",
+            xref="paper",
+            yref="paper",
+        )
+    )
+
+    # last part
+    fig.update_layout(
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+    )
     return fig
