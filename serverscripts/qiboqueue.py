@@ -30,8 +30,8 @@ def get_platform_status(platform_name):
 
 current_time = subprocess.getoutput('''date +"%A %d %B %T" ''')
 
-data_platform_1 = get_platform_status("qpu1q")
-data_platform_2 = get_platform_status("qpu5q")
+data_platform_1 = get_platform_status("tii1q")
+data_platform_2 = get_platform_status("tii5q")
 
 time = ["Last status check:  " + current_time]
 
