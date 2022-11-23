@@ -18,7 +18,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--json_path",
-    help="monitor/monitor_platform_name",
+    help="monitor/monitor_platform_name.json",
     type=str
 )
 
