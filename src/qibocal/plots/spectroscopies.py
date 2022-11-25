@@ -11,13 +11,19 @@ from qibocal.fitting.utils import lorenzian
 
 def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
     try:
-        data_fast = DataUnits.load_data(folder, routine, format, f"fast_sweep_q{qubit}")
+        data_fast = DataUnits.load_data(folder, routine, format, f"fast_sweep")
+        data_fast.df = data_fast.df[data_fast.df["qubit"] == qubit].reset_index(
+            drop=True
+        )
     except:
         data_fast = DataUnits(quantities={"frequency": "Hz"})
     try:
         data_precision = DataUnits.load_data(
-            folder, routine, format, f"precision_sweep_q{qubit}"
+            folder, routine, format, f"precision_sweep"
         )
+        data_precision.df = data_precision.df[
+            data_precision.df["qubit"] == qubit
+        ].reset_index(drop=True)
     except:
         data_precision = DataUnits(quantities={"frequency": "Hz"})
     try:
@@ -44,7 +50,6 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
             "phase (rad)",
         ),
     )
-
     datasets_fast = []
     copy = data_fast.df.copy()
     for i in range(len(copy)):
