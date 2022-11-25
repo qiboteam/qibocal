@@ -18,7 +18,6 @@ from qibocal.calibrations.protocols.abstract import (
     Experiment,
     Result,
     SingleCliffordsFactory,
-    embed_unitary_circuit,
 )
 from qibocal.calibrations.protocols.fitting_methods import fit_exp1_func
 from qibocal.calibrations.protocols.utils import effective_depol
