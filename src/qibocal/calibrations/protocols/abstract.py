@@ -61,7 +61,7 @@ class SingleCliffordsFactory(Circuitfactory):
     def build_circuit(self, depth: int):
         circuit = Circuit(len(self.qubits))
         for _ in range(depth):
-            circuit.add(self.gate())
+            circuit.add(self.gates())
         circuit.add(gates.M(*range(len(self.qubits))))
         return circuit
 
@@ -93,33 +93,29 @@ class SingleCliffordsFactory(Circuitfactory):
         )
         return matrix
 
-    def gate(self) -> gates.Unitary:
-        """Draws the parameters and builds the gate for a circuit with as many
-        qubits as support is needed.
+    def gates(self) -> list(gates.Unitary):
+        """Draws the parameters and builds the unitary Clifford gates for
+        a circuit layer.
 
-        Args:
-            seed (int): optional, set the starting seed for random
-                        number generator.
         Returns:
-            ``qibo.gates.Unitary``: the simulatanous Clifford gates
+            list filled with ``qibo.gates.Unitary``:
+                the simulatanous Clifford gates.
         """
         # There are this many different Clifford matrices.
         amount = len(ONEQUBIT_CLIFFORD_PARAMS)
-        # Initiate the matrix to start the kronecker (tensor) product.
-        unitary = self.clifford_unitary(
-            *ONEQUBIT_CLIFFORD_PARAMS[np.random.randint(amount)]
-        )
+        gates_list = []
         # Choose as many random integers between 0 and 23 as there are used
-        # qubits. Get the clifford parameters and build the unitary.
-        for rint in np.random.randint(0, amount, size=len(self.qubits) - 1):
-            # Build the random Clifford matrix and take the tensor product
-            # with the matrix before.
-            unitary = np.kron(
-                self.clifford_unitary(*ONEQUBIT_CLIFFORD_PARAMS[rint]), unitary
+        # qubits. Get the clifford parameters and build the unitares.
+        for count, rint in enumerate(np.random.randint(0, amount, size=len(self.qubits))):
+            # Build the random Clifford matrices append them
+            gates_list.append(
+                gates.Unitary(
+                    self.clifford_unitary(*ONEQUBIT_CLIFFORD_PARAMS[rint]), count
+                )
             )
         # Make a unitary gate out of 'unitary' for the qubits.
-        return gates.Unitary(unitary, *range(len(self.qubits)))
-
+        return gates_list
+    
 
 class Experiment:
     """Experiment objects which holds an iterable circuit factory along with
