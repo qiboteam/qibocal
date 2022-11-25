@@ -188,7 +188,7 @@ def test_embed_circuit(nqubits: int, depths: list, runs: int, qubits: list):
 
 @pytest.mark.parametrize("nqubits", [2, 3])
 @pytest.mark.parametrize("runs", [1, 3])
-def test_analyze(qubits: list, depths: list, runs: int, nshots: int):
+def test_analyze(nqubits: int, depths: list, runs: int, nshots: int):
     # Build the noise model.
     noise_params = [0.1, 0.1, 0.1]
     paulinoise = PauliError(*noise_params)
