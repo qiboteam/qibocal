@@ -40,10 +40,8 @@ class SingleCliffordsInvFactory(SingleCliffordsFactory):
             # Build a gate out of the unitary of the whole circuit and
             # take the daggered version of that.
             circuit.add(
-                gates.Unitary(
-                    circuit.unitary(), *range(len(self.qubits))
-                    ).dagger()
-                )
+                gates.Unitary(circuit.unitary(), *range(len(self.qubits))).dagger()
+            )
         circuit.add(gates.M(*range(len(self.qubits))))
         return circuit
 
@@ -96,7 +94,6 @@ class StandardRBResult(Result):
         ydata_scatter = self.df["groundstate_probabilities"].to_numpy()
         xdata, ydata = self.extract("depth", "groundstate_probabilities", "mean")
         self.scatter_fit_fig(xdata_scatter, ydata_scatter, xdata, ydata)
-        
 
 
 def groundstate_probability(experiment: Experiment):

@@ -3,7 +3,6 @@ from shutil import rmtree
 
 import numpy as np
 import pandas as pd
-
 import pytest
 from qibo import gates, models
 from qibo.noise import NoiseModel, PauliError
@@ -13,9 +12,11 @@ from qibocal.calibrations.protocols import abstract, standardrb
 """ FIXME the measurement branch treates measurements gates.M different
 """
 
+
 @pytest.fixture
 def depths():
-    return [0,1,5,10,30]
+    return [0, 1, 5, 10, 30]
+
 
 @pytest.fixture
 def nshots():
@@ -166,7 +167,7 @@ def test_experiment_withnoise(
 
 @pytest.mark.parametrize("nqubits", [2, 3])
 @pytest.mark.parametrize("runs", [1, 3])
-@pytest.mark.parametrize("qubits", [[0], [0,1]])
+@pytest.mark.parametrize("qubits", [[0], [0, 1]])
 def test_embed_circuit(nqubits: int, depths: list, runs: int, qubits: list):
     nshots = 2
     myfactory1 = standardrb.SingleCliffordsInvFactory(
