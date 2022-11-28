@@ -22,7 +22,7 @@ from qibocal.calibrations.protocols.fitting_methods import fit_exp1_func
 from qibocal.calibrations.protocols.utils import effective_depol
 from qibocal.data import Data
 from qibocal.decorators import plot
-from qibocal.plots.scatters import standardrb_plot
+from qibocal.plots.rb import standardrb_plot
 
 
 class SingleCliffordsInvFactory(SingleCliffordsFactory):
@@ -34,7 +34,7 @@ class SingleCliffordsInvFactory(SingleCliffordsFactory):
     def build_circuit(self, depth: int):
         circuit = Circuit(len(self.qubits))
         for _ in range(depth):
-            circuit.add(self.gate())
+            circuit.add(self.gates())
         # If there is at least one gate in the circuit, add an inverse.
         if depth > 0:
             # Build a gate out of the unitary of the whole circuit and
