@@ -182,6 +182,7 @@ def drag_pulse_tunning(
     beta_start,
     beta_end,
     beta_step,
+    software_averages=1,
     points=10,
 ):
 
@@ -203,66 +204,71 @@ def drag_pulse_tunning(
     data = DataUnits(name=f"data_q{qubit}", quantities={"beta_param": "dimensionless"})
 
     count = 0
-    for beta_param in np.arange(beta_start, beta_end, beta_step).round(4):
-        if count % points == 0 and count > 0:
-            yield data
-            yield drag_tunning_fit(
-                data,
-                x="beta_param[dimensionless]",
-                y="MSR[uV]",
-                qubit=qubit,
-                nqubits=platform.settings["nqubits"],
-                labels=[
-                    "optimal_beta_param",
-                ],
+    for _ in range(software_averages):
+        for beta_param in np.arange(beta_start, beta_end, beta_step).round(4):
+            if count % points == 0 and count > 0:
+                yield data
+                yield drag_tunning_fit(
+                    data,
+                    x="beta_param[dimensionless]",
+                    y="MSR[uV]",
+                    qubit=qubit,
+                    nqubits=platform.settings["nqubits"],
+                    labels=[
+                        "optimal_beta_param",
+                    ],
+                )
+            # drag pulse RX(pi/2)
+            RX90_drag_pulse = platform.create_RX90_drag_pulse(
+                qubit, start=0, beta=beta_param
             )
-        # drag pulse RX(pi/2)
-        RX90_drag_pulse = platform.create_RX90_drag_pulse(
-            qubit, start=0, beta=beta_param
-        )
-        # drag pulse RY(pi)
-        RY_drag_pulse = platform.create_RX_drag_pulse(
-            qubit,
-            start=RX90_drag_pulse.finish,
-            relative_phase=+np.pi / 2,
-            beta=beta_param,
-        )
-        # RO pulse
-        ro_pulse = platform.create_qubit_readout_pulse(
-            qubit, start=RY_drag_pulse.finish
-        )
+            # drag pulse RY(pi)
+            RY_drag_pulse = platform.create_RX_drag_pulse(
+                qubit,
+                start=RX90_drag_pulse.finish,
+                relative_phase=+np.pi / 2,
+                beta=beta_param,
+            )
+            # RO pulse
+            ro_pulse = platform.create_qubit_readout_pulse(
+                qubit, start=RY_drag_pulse.finish
+            )
 
-        # Rx(pi/2) - Ry(pi) - Ro
-        seq1 = PulseSequence()
-        seq1.add(RX90_drag_pulse)
-        seq1.add(RY_drag_pulse)
-        seq1.add(ro_pulse)
-        msr1, i1, q1, phase1 = platform.execute_pulse_sequence(seq1)[ro_pulse.serial]
+            # Rx(pi/2) - Ry(pi) - Ro
+            seq1 = PulseSequence()
+            seq1.add(RX90_drag_pulse)
+            seq1.add(RY_drag_pulse)
+            seq1.add(ro_pulse)
+            msr1, i1, q1, phase1 = platform.execute_pulse_sequence(seq1)[
+                ro_pulse.serial
+            ]
 
-        # drag pulse RY(pi/2)
-        RY90_drag_pulse = platform.create_RX90_drag_pulse(
-            qubit, start=0, relative_phase=np.pi / 2, beta=beta_param
-        )
-        # drag pulse RX(pi)
-        RX_drag_pulse = platform.create_RX_drag_pulse(
-            qubit, start=RY90_drag_pulse.finish, beta=beta_param
-        )
+            # drag pulse RY(pi/2)
+            RY90_drag_pulse = platform.create_RX90_drag_pulse(
+                qubit, start=0, relative_phase=np.pi / 2, beta=beta_param
+            )
+            # drag pulse RX(pi)
+            RX_drag_pulse = platform.create_RX_drag_pulse(
+                qubit, start=RY90_drag_pulse.finish, beta=beta_param
+            )
 
-        # Ry(pi/2) - Rx(pi) - Ro
-        seq2 = PulseSequence()
-        seq2.add(RY90_drag_pulse)
-        seq2.add(RX_drag_pulse)
-        seq2.add(ro_pulse)
-        msr2, phase2, i2, q2 = platform.execute_pulse_sequence(seq2)[ro_pulse.serial]
-        results = {
-            "MSR[V]": msr1 - msr2,
-            "i[V]": i1 - i2,
-            "q[V]": q1 - q2,
-            "phase[deg]": phase1 - phase2,
-            "beta_param[dimensionless]": beta_param,
-        }
-        data.add(results)
-        count += 1
+            # Ry(pi/2) - Rx(pi) - Ro
+            seq2 = PulseSequence()
+            seq2.add(RY90_drag_pulse)
+            seq2.add(RX_drag_pulse)
+            seq2.add(ro_pulse)
+            msr2, phase2, i2, q2 = platform.execute_pulse_sequence(seq2)[
+                ro_pulse.serial
+            ]
+            results = {
+                "MSR[V]": msr1 - msr2,
+                "i[V]": i1 - i2,
+                "q[V]": q1 - q2,
+                "phase[deg]": phase1 - phase2,
+                "beta_param[dimensionless]": beta_param,
+            }
+            data.add(results)
+            count += 1
 
     yield data
 
