@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from itertools import product
+from copy import deepcopy
 
 import numpy as np
 import pandas as pd
@@ -33,6 +34,9 @@ class CrosstalkRBExperiment(Experiment):
             datarow (dict): Dictionary with parameters for execution and
                 immediate postprocessing information.
         """
+        # First save the unexecuted circuit. Else there will be a
+        # pickle conflict.
+        justcircuitdict = {'circuit': deepcopy(circuit)}
         datadict = super().single_task(circuit, datarow)
         # FIXME and on the measurement branch of qibo the measurement is
         # counted as one gate on the master branch not.
@@ -41,8 +45,7 @@ class CrosstalkRBExperiment(Experiment):
                 circuit.ngates - 1 if circuit.ngates > 1 else 0
             )/len(datadict['samples'][0])
         )
-        datadict['circuit'] = circuit
-        return datadict
+        return {**datadict, **justcircuitdict}
 
     @property
     def depths(self) -> np.ndarray:
@@ -162,9 +165,6 @@ def perform(
     # Initiate the circuit factory and the (faulty) Experiment object.
     factory = SingleCliffordsFactory(nqubits, depths, runs, qubits=qubits)
     experiment = CrosstalkRBExperiment(factory, nshots, noisemodel=noise)
-    # The circuits have to be stored, build the experiment first to make a list
-    # (out of the factory) which will be stored when saving the experiment.
-    experiment.prebuild()
     # Execute the experiment.
     experiment.execute()
     analyze(experiment, noisemodel=noise).show()
@@ -193,7 +193,6 @@ def qqperform_crosstalkrb(
     # Initiate the circuit factory and the Experiment object.
     factory = SingleCliffordsFactory(nqubit, depths, runs, qubits=qubit)
     experiment = CrosstalkRBExperiment(factory, nshots, noisemodel=noise)
-    experiment.prebuild()
     # Execute the experiment.
     experiment.execute()
     data = Data()
