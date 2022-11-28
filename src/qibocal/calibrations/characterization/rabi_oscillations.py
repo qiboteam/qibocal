@@ -20,7 +20,7 @@ def rabi_pulse_length(
 ):
     platform.reload_settings()
 
-    data = DataUnits(name=f"data_q{qubit}", quantities={"Time": "ns"})
+    data = DataUnits(name=f"data_q{qubit}", quantities={"time": "ns"})
 
     sequence = PulseSequence()
     qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
@@ -51,7 +51,7 @@ def rabi_pulse_length(
                 yield data
                 yield rabi_fit(
                     data,
-                    x="Time[ns]",
+                    x="time[ns]",
                     y="MSR[uV]",
                     qubit=qubit,
                     nqubits=platform.settings["nqubits"],
@@ -68,7 +68,7 @@ def rabi_pulse_length(
                 "i[V]": i,
                 "q[V]": q,
                 "phase[rad]": phase,
-                "Time[ns]": duration,
+                "time[ns]": duration,
             }
             data.add(results)
             count += 1

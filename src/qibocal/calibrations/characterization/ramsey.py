@@ -16,6 +16,7 @@ def ramsey_frequency_detuned(
     t_end,
     t_step,
     n_osc,
+    software_averages=1,
     points=10,
 ):
     platform.reload_settings()
@@ -52,78 +53,81 @@ def ramsey_frequency_detuned(
     )
 
     t_end = np.array(t_end)
-    for t_max in t_end:
-        count = 0
-        platform.qd_port[qubit].lo_frequency = current_qubit_freq - intermediate_freq
-        offset_freq = n_osc / t_max * sampling_rate  # Hz
-        t_range = np.arange(t_start, t_max, t_step)
-        for wait in t_range:
-            if count % points == 0 and count > 0:
-                yield data
-                yield ramsey_fit(
-                    data,
-                    x="wait[ns]",
-                    y="MSR[uV]",
-                    qubit=qubit,
-                    qubit_freq=current_qubit_freq,
-                    sampling_rate=sampling_rate,
-                    offset_freq=offset_freq,
-                    labels=[
-                        "delta_frequency",
-                        "corrected_qubit_frequency",
-                        "t2",
-                    ],
+    for _ in range(software_averages):
+        for t_max in t_end:
+            count = 0
+            platform.qd_port[qubit].lo_frequency = (
+                current_qubit_freq - intermediate_freq
+            )
+            offset_freq = n_osc / t_max * sampling_rate  # Hz
+            t_range = np.arange(t_start, t_max, t_step)
+            for wait in t_range:
+                if count % points == 0 and count > 0:
+                    yield data
+                    yield ramsey_fit(
+                        data,
+                        x="wait[ns]",
+                        y="MSR[uV]",
+                        qubit=qubit,
+                        qubit_freq=current_qubit_freq,
+                        sampling_rate=sampling_rate,
+                        offset_freq=offset_freq,
+                        labels=[
+                            "delta_frequency",
+                            "corrected_qubit_frequency",
+                            "t2",
+                        ],
+                    )
+                RX90_pulse2.start = RX90_pulse1.finish + wait
+                RX90_pulse2.relative_phase = (
+                    (RX90_pulse2.start / sampling_rate) * (2 * np.pi) * (-offset_freq)
                 )
-            RX90_pulse2.start = RX90_pulse1.finish + wait
-            RX90_pulse2.relative_phase = (
-                (RX90_pulse2.start / sampling_rate) * (2 * np.pi) * (-offset_freq)
+                ro_pulse.start = RX90_pulse2.finish
+
+                msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
+                    ro_pulse.serial
+                ]
+                results = {
+                    "MSR[V]": msr,
+                    "i[V]": i,
+                    "q[V]": q,
+                    "phase[rad]": phase,
+                    "wait[ns]": wait,
+                    "t_max[ns]": t_max,
+                }
+                data.add(results)
+                count += 1
+
+            # # Fitting
+            data_fit = ramsey_fit(
+                data,
+                x="wait[ns]",
+                y="MSR[uV]",
+                qubit=qubit,
+                qubit_freq=current_qubit_freq,
+                sampling_rate=sampling_rate,
+                offset_freq=offset_freq,
+                labels=[
+                    "delta_frequency",
+                    "corrected_qubit_frequency",
+                    "t2",
+                ],
             )
-            ro_pulse.start = RX90_pulse2.finish
 
-            msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
-                ro_pulse.serial
-            ]
-            results = {
-                "MSR[V]": msr,
-                "i[V]": i,
-                "q[V]": q,
-                "phase[rad]": phase,
-                "wait[ns]": wait,
-                "t_max[ns]": t_max,
-            }
-            data.add(results)
-            count += 1
+            new_t2 = data_fit.get_values("t2")
+            corrected_qubit_freq = data_fit.get_values("corrected_qubit_frequency")
 
-        # # Fitting
-        data_fit = ramsey_fit(
-            data,
-            x="wait[ns]",
-            y="MSR[uV]",
-            qubit=qubit,
-            qubit_freq=current_qubit_freq,
-            sampling_rate=sampling_rate,
-            offset_freq=offset_freq,
-            labels=[
-                "delta_frequency",
-                "corrected_qubit_frequency",
-                "t2",
-            ],
-        )
-
-        new_t2 = data_fit.get_values("t2")
-        corrected_qubit_freq = data_fit.get_values("corrected_qubit_frequency")
-
-        # if ((new_t2 * 3.5) > t_max):
-        if (new_t2 > current_T2).bool() and len(t_end) > 1:
-            current_qubit_freq = int(corrected_qubit_freq)
-            current_T2 = new_t2
-            data = DataUnits(
-                name=f"data_q{qubit}", quantities={"wait": "ns", "t_max": "ns"}
-            )
-        else:
-            corrected_qubit_freq = int(current_qubit_freq)
-            new_t2 = current_T2
-            break
+            # if ((new_t2 * 3.5) > t_max):
+            if (new_t2 > current_T2).all() and len(t_end) > 1:
+                current_qubit_freq = int(corrected_qubit_freq)
+                current_T2 = new_t2
+                data = DataUnits(
+                    name=f"data_q{qubit}", quantities={"wait": "ns", "t_max": "ns"}
+                )
+            else:
+                corrected_qubit_freq = int(current_qubit_freq)
+                new_t2 = current_T2
+                break
 
     yield data
 

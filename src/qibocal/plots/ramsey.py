@@ -52,8 +52,8 @@ def time_msr(folder, routine, qubit, format):
             .pint.to("ns")
             .pint.magnitude,
             y=data.df.groupby("wait")["MSR"]  # pylint: disable=E1101
-            .pint.to("uV")
             .mean()
+            .pint.to("uV")
             .pint.magnitude,
             name="average time",
             marker_color="rgb(100, 0, 255)",

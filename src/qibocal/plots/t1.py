@@ -67,8 +67,8 @@ def t1_time_msr_phase(folder, routine, qubit, format):
             .pint.to("ns")
             .pint.magnitude,
             y=data.df.groupby("Time")["MSR"]  # pylint: disable=E1101
-            .pint.to("uV")
             .mean()
+            .pint.to("uV")
             .pint.magnitude,
             name="average MSR",
             marker_color="rgb(100, 0, 255)",
@@ -83,6 +83,7 @@ def t1_time_msr_phase(folder, routine, qubit, format):
             .pint.magnitude,
             y=data.df.groupby("Time")["phase"]  # pylint: disable=E1101
             .mean()
+            .pint.to("rad")
             .pint.magnitude,
             name="average phase",
             marker_color="rgb(204, 102, 102)",
