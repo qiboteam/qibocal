@@ -145,7 +145,7 @@ def perform(
 
 
 @plot("Randomized benchmarking", standardrb_plot)
-def qqperform(
+def qqperform_standardrb(
     platform: AbstractPlatform,
     qubit: list,
     depths: list,

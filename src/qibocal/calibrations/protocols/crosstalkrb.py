@@ -170,7 +170,7 @@ def perform(
     analyze(experiment, noisemodel=noise).show()
 
 @plot("Randomized benchmarking", crosstalkrb_plot)
-def qqperform(
+def qqperform_crosstalkrb(
     platform: AbstractPlatform,
     qubit: list,
     depths: list,
