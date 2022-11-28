@@ -330,7 +330,7 @@ class Result:
         l = len(self.all_figures)
         subplot_titles = [figdict.get('subplot_title') for figdict in self.all_figures]
         fig = make_subplots(
-            rows=l, cols=1 if len == 1 else 2,
+            rows = l, cols = 1 if l == 1 else 2,
             subplot_titles = subplot_titles)
         for count, fig_dict in enumerate(self.all_figures):
             plot_list = fig_dict['figs']
@@ -344,7 +344,7 @@ class Result:
             title_text="Report",
             hoverlabel_font_size=16,
             showlegend=True,
-            height=500 * int(l/2),
+            height=500 * int(l/2) if l > 1 else 500,
             width=1000,
         )
         return fig
