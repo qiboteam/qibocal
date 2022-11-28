@@ -8,7 +8,6 @@ from collections.abc import Iterable
 
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 from qibo import gates
 from qibo.models import Circuit
 from qibo.noise import NoiseModel, PauliError
@@ -93,32 +92,11 @@ class StandardRBResult(Result):
         self.fitting_func = fitting_func
 
     def single_fig(self):
-        myfigs = []
         xdata_scatter = self.df["depth"].to_numpy()
         ydata_scatter = self.df["groundstate_probabilities"].to_numpy()
         xdata, ydata = self.extract("depth", "groundstate_probabilities", "mean")
-        popt, pcov, x_fit, y_fit = self.fitting_func(xdata, ydata)
-        fig = go.Scatter(
-            x=xdata_scatter,
-            y=ydata_scatter,
-            line=dict(color="#6597aa"),
-            mode="markers",
-            marker={"opacity": 0.2, "symbol": "square"},
-            name="runs",
-        )
-        myfigs.append(fig)
-        fig = go.Scatter(
-            x=xdata, y=ydata, line=dict(color="#aa6464"), mode="markers", name="average"
-        )
-        myfigs.append(fig)
-        fig = go.Scatter(
-            x=x_fit,
-            y=y_fit,
-            name="A: {:.3f}, p: {:.3f}, B: {:.3f}".format(popt[0], popt[1], popt[2]),
-            line=go.scatter.Line(dash="dot"),
-        )
-        myfigs.append(fig)
-        self.all_figures.append(myfigs)
+        self.scatter_fit_fig(xdata_scatter, ydata_scatter, xdata, ydata)
+        
 
 
 def groundstate_probability(experiment: Experiment):

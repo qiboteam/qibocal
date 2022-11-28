@@ -5,6 +5,7 @@ from collections.abc import Iterable
 from copy import deepcopy
 from itertools import product
 from os.path import isfile
+import plotly.graph_objects as go
 
 import numpy as np
 import pandas as pd
@@ -296,16 +297,45 @@ class Result:
             agg_type (str): _description_
         """
         grouped_df = self.df.groupby(group_by)[output].apply(agg_type)
-        return np.array(grouped_df.index), np.array(grouped_df.values)
+        return np.array(grouped_df.index), np.array(grouped_df.values.tolist())
+    
+    def scatter_fit_fig(self, xdata_scatter, ydata_scatter, xdata, ydata):
+        myfigs = []
+        popt, pcov, x_fit, y_fit = self.fitting_func(xdata, ydata)
+        fig = go.Scatter(
+            x=xdata_scatter,
+            y=ydata_scatter,
+            line=dict(color="#6597aa"),
+            mode="markers",
+            marker={"opacity": 0.2, "symbol": "square"},
+            name="runs",
+        )
+        myfigs.append(fig)
+        fig = go.Scatter(
+            x=xdata, y=ydata, line=dict(color="#aa6464"), mode="markers", name="average"
+        )
+        myfigs.append(fig)
+        fig = go.Scatter(
+            x=x_fit,
+            y=y_fit,
+            name="A: {:.3f}, p: {:.3f}, B: {:.3f}".format(popt[0], popt[1], popt[2]),
+            line=go.scatter.Line(dash="dot"),
+        )
+        myfigs.append(fig)
+        self.all_figures.append({'figs' : myfigs})
 
     def report(self):
         from plotly.subplots import make_subplots
 
         l = len(self.all_figures)
-        fig = make_subplots(rows=l, cols=1)
-        for count, plot_list in enumerate(self.all_figures):
+        subplot_titles = [figdict.get('subplot_title') for figdict in self.all_figures]
+        fig = make_subplots(
+            rows=l, cols=1 if len == 1 else 2,
+            subplot_titles = subplot_titles)
+        for count, fig_dict in enumerate(self.all_figures):
+            plot_list = fig_dict['figs']
             for plot in plot_list:
-                fig.add_trace(plot, row=count + 1, col=1)
+                fig.add_trace(plot, row=count//2 + 1, col = count%2+1)
         fig.update_xaxes(title_font_size=18, tickfont_size=16)
         fig.update_yaxes(title_font_size=18, tickfont_size=16)
         fig.update_layout(
@@ -314,7 +344,7 @@ class Result:
             title_text="Report",
             hoverlabel_font_size=16,
             showlegend=True,
-            height=800,
+            height=500 * int(l/2),
             width=1000,
         )
         return fig
