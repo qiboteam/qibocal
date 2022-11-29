@@ -354,7 +354,7 @@ class Result:
                 fig.add_trace(plot, row=count // 2 + 1, col=count % 2 + 1)
         fig.add_annotation(
             dict(
-                font=dict(color="black", size=12),
+                font=dict(color="black", size=16),
                 x=1.1,
                 y=0.0,
                 showarrow=False,
@@ -371,6 +371,8 @@ class Result:
             font_family="Averta",
             hoverlabel_font_family="Averta",
             title_text=self.title,
+            title_font_size = 24,
+            legend_font_size = 16,
             hoverlabel_font_size=16,
             showlegend=True,
             height=500 * int(l / 2) if l > 1 else 500,
