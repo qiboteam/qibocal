@@ -206,7 +206,7 @@ def qubit_spectroscopy_flux_track(
     sequence.add(qd_pulse)
     sequence.add(ro_pulse)
 
-    data = Dataset(
+    data = DataUnits(
         name=f"data_q{qubit}", quantities={"frequency": "Hz", "current": "A"}
     )
 
