@@ -12,7 +12,7 @@ from qibocal.fitting.utils import lorenzian
 def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
     try:
         data_fast = DataUnits.load_data(folder, routine, format, f"fast_sweep")
-        data_fast.df = data_fast.df[data_fast.df["qubit"] == qubit].reset_index(
+        data_fast.df = data_fast.df[data_fast.df["qubit"] == int(qubit)].reset_index(
             drop=True
         )
     except:
@@ -22,7 +22,7 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
             folder, routine, format, f"precision_sweep"
         )
         data_precision.df = data_precision.df[
-            data_precision.df["qubit"] == qubit
+            data_precision.df["qubit"] == int(qubit)
         ].reset_index(drop=True)
     except:
         data_precision = DataUnits(quantities={"frequency": "Hz"})
@@ -39,7 +39,6 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
                 "label2",
             ]
         )
-
     fig = make_subplots(
         rows=1,
         cols=2,

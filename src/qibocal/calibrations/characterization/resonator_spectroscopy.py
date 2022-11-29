@@ -12,7 +12,7 @@ from qibocal.fitting.methods import lorentzian_fit
 @plot("MSR and Phase vs Frequency", plots.frequency_msr_phase__fast_precision)
 def resonator_spectroscopy(
     platform: AbstractPlatform,
-    qubit: list,
+    qubits: list,
     lowres_width,
     lowres_step,
     highres_width,
@@ -27,18 +27,17 @@ def resonator_spectroscopy(
 
     # create pulse sequence
     sequence = PulseSequence()
+
+    # collect readout pulses and resonator frequencies for all qubits
     resonator_frequencies = {}
     frequency_ranges = {}
     ro_pulses = {}
-    qubits = qubit
-    resonator_frequencies[0] = 7e9
-    resonator_frequencies[1] = 8e9
     for qubit in qubits:
-        # ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
-        # sequence.add(ro_pulses[qubit])
-        # resonator_frequencies[qubit] = platform.characterization["single_qubit"][qubit][
-        # "resonator_freq"
-        # ]
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
+        sequence.add(ro_pulses[qubit])
+        resonator_frequencies[qubit] = platform.characterization["single_qubit"][qubit][
+            "resonator_freq"
+        ]
         frequency_ranges[qubit] = (
             variable_resolution_scanrange(
                 lowres_width, lowres_step, highres_width, highres_step
@@ -46,28 +45,16 @@ def resonator_spectroscopy(
             + resonator_frequencies[qubit]
         )
 
-    # resonator_frequency = platform.characterization["single_qubit"][qubit][
-    #     "resonator_freq"
-    # ]
-
-    # resonator_frequency = 8e9
-    # frequency_range = (
-    #     variable_resolution_scanrange(
-    #         lowres_width, lowres_step, highres_width, highres_step
-    #     )
-    #     + resonator_frequency
-    # )
     fast_sweep_data = DataUnits(
         name=f"fast_sweep", quantities={"frequency": "Hz"}, options=["qubit"]
     )
+
     count = 0
     for _ in range(software_averages):
-        for freq in range(len(frequency_ranges[0])):
+        for freq in range(len(frequency_ranges[qubit])):  # FIXME: remove hardcoding
             if count % points == 0 and count > 0:
-                # print(fast_sweep_data.df)
                 yield fast_sweep_data
                 for qubit in qubits:
-                    # print(f"Fitting qubit {qubit}")
                     yield lorentzian_fit(
                         fast_sweep_data.get_column("qubit", qubit),
                         x="frequency[GHz]",
@@ -78,57 +65,62 @@ def resonator_spectroscopy(
                     )
 
             for qubit in qubits:
-                # platform.ro_port[qubit].lo_frequency = frequency_ranges[qubit] - sequence[qubit]
-                # msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
-                #     ro_pulses[qubit].serial
-                # ]
+                platform.ro_port[qubit].lo_frequency = (
+                    frequency_ranges[qubit][freq] - ro_pulses[qubit].frequency
+                )
+                msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
+                    ro_pulses[qubit].serial
+                ]
 
-                msr, phase, i, q = np.random.rand(4) + qubit
                 results = {
                     "MSR[V]": msr,
                     "i[V]": i,
                     "q[V]": q,
                     "phase[rad]": phase,
-                    "frequency[Hz]": freq,
+                    "frequency[Hz]": frequency_ranges[qubit][freq],
                     "qubit": qubit,
                 }
                 fast_sweep_data.add(results)
             count += 1
     yield fast_sweep_data
 
-    # if platform.resonator_type == "3D":
-    #     resonator_frequency = fast_sweep_data.get_values("frequency", "Hz")[
-    #         np.argmax(fast_sweep_data.get_values("MSR", "V"))
-    #     ]
-    #     avg_voltage = (
-    #         np.mean(
-    #             fast_sweep_data.get_values("MSR", "V")[: (lowres_width // lowres_step)]
-    #         )
-    #         * 1e6
-    #     )
-    # else:
-    #     resonator_frequency = fast_sweep_data.get_values("frequency", "Hz")[
-    #         np.argmin(fast_sweep_data.get_values("MSR", "V"))
-    #     ]
-    #     avg_voltage = (
-    #         np.mean(
-    #             fast_sweep_data.get_values("MSR", "V")[: (lowres_width // lowres_step)]
-    #         )
-    #         * 1e6
-    #     )
+    avg_voltages = {}
+    freqranges = {}
+    for qubit in qubits:
+        if platform.resonator_type == "3D":
+            resonator_frequencies[qubit] = fast_sweep_data.get_values(
+                "frequency", "Hz"
+            )[np.argmax(fast_sweep_data.get_values("MSR", "V"))]
+            avg_voltages[qubit] = (
+                np.mean(
+                    fast_sweep_data.get_values("MSR", "V")[
+                        : (lowres_width // lowres_step)
+                    ]
+                )
+                * 1e6
+            )
+        else:
+            resonator_frequencies[qubit] = fast_sweep_data.get_values(
+                "frequency", "Hz"
+            )[np.argmin(fast_sweep_data.get_values("MSR", "V"))]
+            avg_voltages[qubit] = (
+                np.mean(
+                    fast_sweep_data.get_values("MSR", "V")[
+                        : (lowres_width // lowres_step)
+                    ]
+                )
+                * 1e6
+            )
+        freqranges[qubit] = np.arange(-precision_width, precision_width, precision_step)
+        +resonator_frequencies[qubit]
 
     precision_sweep__data = DataUnits(
         name=f"precision_sweep", quantities={"frequency": "Hz"}, options=["qubit"]
     )
 
-    freqranges = {}
-    for qubit in qubits:
-        freqranges[qubit] = np.arange(-precision_width, precision_width, precision_step)
-        +resonator_frequencies[qubit]
-
     count = 0
     for _ in range(software_averages):
-        for freq in range(len(freqranges)):
+        for freq in range(len(freqranges[qubit])):  # FIXME: remove hardcoding
             if count % points == 0 and count > 0:
                 yield precision_sweep__data
                 for qubit in qubits:
@@ -143,18 +135,19 @@ def resonator_spectroscopy(
                         labels=["resonator_freq", "peak_voltage"],
                     )
 
-            # platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
-            # msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
-            #     ro_pulse.serial
-            # ]
             for qubit in qubits:
-                msr, phase, i, q = np.random.rand(4) + qubit
+                platform.ro_port[qubit].lo_frequency = (
+                    freqranges[qubit][freq] - ro_pulses[qubit].frequency
+                )
+                msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
+                    ro_pulses[qubit].serial
+                ]
                 results = {
                     "MSR[V]": msr,
                     "i[V]": i,
                     "q[V]": q,
                     "phase[rad]": phase,
-                    "frequency[Hz]": freq,
+                    "frequency[Hz]": freqranges[qubit][freq],
                     "qubit": qubit,
                 }
                 precision_sweep__data.add(results)
