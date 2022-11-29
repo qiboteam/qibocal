@@ -26,7 +26,7 @@ of the applied gates :math:`m` is modulated with the following exponential funct
     y_{\text{fit}}(m) = Ap^m+B,
 
 where :math:`A, B` are SPAM-constants absorbing the state preparation and measurement error.
-The base of the exponent :math:`p` is used to calculate the average gate fidelity :math:`F` as 
+The base of the exponent :math:`p` is used to calculate the average gate fidelity :math:`F` as
 
 .. math::
     F = 1-\frac{d-1}{d}(1-p),
@@ -34,7 +34,7 @@ The base of the exponent :math:`p` is used to calculate the average gate fidelit
 which in the end is the reported value for the quantum device which is being benchmarked.
 
 In the Figure below on the left a Block sphere is shown with two gates (in green) acting on the initial state
-depicted as a grey bullet on top of the sphere. A final inverse gate (in blue) redoes the sequence and 
+depicted as a grey bullet on top of the sphere. A final inverse gate (in blue) redoes the sequence and
 in an ideal case should bring the state back to the inital state.
 Standard RB normally is performed with Clifford gates :math:`\mathcal{C}`.
 On the very right a schematic explanation of different sequence lengths is shown.
@@ -48,7 +48,7 @@ is shown. Since there are no error gates the survival probability stays at one.
   :width: 700
   :alt: Error less Bloch sphere next to an image depicting the survival probability vs sequence length next to an image of state preparation + unitary manipulation + measurements
 
-A gate independent error :math:`\Lambda` acting with every applied gate on the quantum state 
+A gate independent error :math:`\Lambda` acting with every applied gate on the quantum state
 is a good first approximation as error model.
 There are more general models, they will be explored in a different tutorial.
 In the Figure below general depolarizing channels are linked between the Clifford gates making
@@ -170,8 +170,8 @@ It has to be predefined and passed when initiating the experiment object.
     from qibocal.calibrations.protocols.fitting_methods import fit_exp1_func
     from qibo.noise import NoiseModel, PauliError
     from qibo import gates
-    nqubits = 1 
-    depths = [0,1,5] 
+    nqubits = 1
+    depths = [0,1,5]
     runs = 50
     nshots = 128
     # Define the noise model used in the simulation.
