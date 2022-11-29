@@ -5,10 +5,10 @@ from collections.abc import Iterable
 from copy import deepcopy
 from itertools import product
 from os.path import isfile
-import plotly.graph_objects as go
 
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 from qibo import gates
 from qibo.models import Circuit
 from qibo.noise import NoiseModel
@@ -107,7 +107,9 @@ class SingleCliffordsFactory(Circuitfactory):
         gates_list = []
         # Choose as many random integers between 0 and 23 as there are used
         # qubits. Get the clifford parameters and build the unitares.
-        for count, rint in enumerate(np.random.randint(0, amount, size=len(self.qubits))):
+        for count, rint in enumerate(
+            np.random.randint(0, amount, size=len(self.qubits))
+        ):
             # Build the random Clifford matrices append them
             gates_list.append(
                 gates.Unitary(
@@ -116,7 +118,7 @@ class SingleCliffordsFactory(Circuitfactory):
             )
         # Make a unitary gate out of 'unitary' for the qubits.
         return gates_list
-    
+
 
 class Experiment:
     """Experiment objects which holds an iterable circuit factory along with
@@ -142,7 +144,7 @@ class Experiment:
         self.nshots = nshots
         self.data = data
         self.__noise_model = noisemodel
-    
+
     @property
     def noise_model(self):
         return self.__noise_model
@@ -291,7 +293,7 @@ class Result:
         self.df = dataframe
         self.all_figures = []
         self.fitting_func = None
-        self.title = 'Report'
+        self.title = "Report"
 
     def extract(self, group_by: str, output: str, agg_type: str):
         """Aggregates the dataframe, extracts the data by which the frame was
@@ -304,16 +306,15 @@ class Result:
         """
         grouped_df = self.df.groupby(group_by)[output].apply(agg_type)
         return np.array(grouped_df.index), np.array(grouped_df.values.tolist())
-    
+
     def get_info(self):
-        """ Extract information from the dataframe and return it as string.
-        """
+        """Extract information from the dataframe and return it as string."""
         mydict = {
-            'nqubits': len(self.df['samples'].to_numpy()[0][0]),
-            'nshots': len(self.df['samples'].to_numpy()[0])
+            "nqubits": len(self.df["samples"].to_numpy()[0][0]),
+            "nshots": len(self.df["samples"].to_numpy()[0]),
         }
-        return '<br>'.join([f'{key} : {value}\n' for key, value in mydict.items()])
-        
+        return "<br>".join([f"{key} : {value}\n" for key, value in mydict.items()])
+
     def scatter_fit_fig(self, xdata_scatter, ydata_scatter, xdata, ydata):
         myfigs = []
         popt, pcov, x_fit, y_fit = self.fitting_func(xdata, ydata)
@@ -337,20 +338,20 @@ class Result:
             line=go.scatter.Line(dash="dot"),
         )
         myfigs.append(fig)
-        self.all_figures.append({'figs' : myfigs})
+        self.all_figures.append({"figs": myfigs})
 
     def report(self):
         from plotly.subplots import make_subplots
 
         l = len(self.all_figures)
-        subplot_titles = [figdict.get('subplot_title') for figdict in self.all_figures]
+        subplot_titles = [figdict.get("subplot_title") for figdict in self.all_figures]
         fig = make_subplots(
-            rows = l, cols = 1 if l == 1 else 2,
-            subplot_titles = subplot_titles)
+            rows=l, cols=1 if l == 1 else 2, subplot_titles=subplot_titles
+        )
         for count, fig_dict in enumerate(self.all_figures):
-            plot_list = fig_dict['figs']
+            plot_list = fig_dict["figs"]
             for plot in plot_list:
-                fig.add_trace(plot, row=count//2 + 1, col = count%2+1)
+                fig.add_trace(plot, row=count // 2 + 1, col=count % 2 + 1)
         fig.add_annotation(
             dict(
                 font=dict(color="black", size=12),
@@ -372,7 +373,7 @@ class Result:
             title_text=self.title,
             hoverlabel_font_size=16,
             showlegend=True,
-            height=500 * int(l/2) if l > 1 else 500,
+            height=500 * int(l / 2) if l > 1 else 500,
             width=1000,
         )
         return fig

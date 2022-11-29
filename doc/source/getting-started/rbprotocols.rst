@@ -9,10 +9,10 @@ The foundation is three classes:
     2. The Experiment class (INSERT LINK) which takes an iterable object producing circuits, optional some parameters. It is able to execute the circuits and to overwrite/store/process the necessary data.
     3. A class (INSERT LINK) storing and displaying the results of a randomized benchmarking scheme.
 
-Standard Randomized Benchmarking 
+Standard Randomized Benchmarking
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-First define the necessary variables which will be used when initiating the 
+First define the necessary variables which will be used when initiating the
 circuit factory and the experiment object.
 
 .. code-block:: python
@@ -61,7 +61,7 @@ The experiment
 .. code-block:: python
 
     # Initiate the standard RB experiment. To make it simpler
-    # first without simulated noise on the circuits. 
+    # first without simulated noise on the circuits.
     experiment = standardrb.StandardRBExperiment(factory, nshots)
     # Nothing happened yet. The experiment has to be executed
     # to execute the single circuits and store the samples along
@@ -83,7 +83,7 @@ The postprocessing
 
 The standard randomized benchmarking protocol aims at analyzing the probability
 of the state coming back to the inital state when inversing all the gates applied gates.
-Since normally the initial state is the grounds state :math:`\ket{0}` the survival 
+Since normally the initial state is the grounds state :math:`\ket{0}` the survival
 of the ground state probability has to be analyzed.
 And with analyzed it is meant to extract the probabilities for every sequence (or depth)
 of each run, average over the runs, fit an exponential decay to the signal and use the
