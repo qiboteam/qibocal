@@ -1,5 +1,7 @@
-from qibocal.data import Data
 import plotly.graph_objects as go
+
+from qibocal.data import Data
+
 
 def standardrb_plot(folder, routine, qubit, format):
     from qibocal.calibrations.protocols.standardrb import StandardRBExperiment, analyze
@@ -27,11 +29,13 @@ def standardrb_plot(folder, routine, qubit, format):
         pass
     return fig
 
+
 def crosstalkrb_plot(folder, routine, qubit, format):
     from qibocal.calibrations.protocols.crosstalkrb import (
         CrosstalkRBExperiment,
-        analyze
-    )   
+        analyze,
+    )
+
     experimentpath = f"{folder}/data/{routine}/"
     experiment = CrosstalkRBExperiment.load(experimentpath)
     fig = analyze(experiment)

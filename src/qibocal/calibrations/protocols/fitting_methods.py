@@ -67,7 +67,7 @@ def fit_exp1_func(
     # Check if all the values in ``ydata``are the same. That would make the
     # exponential fit unnecessary.
     if np.all(ydata == ydata[0]):
-        popt, pcov = (ydata[0], 1., 0), (0, 0, 0)
+        popt, pcov = (ydata[0], 1.0, 0), (0, 0, 0)
     else:
         # Get a guess for the exponential function.
         guess = kwargs.get("p0", [0.5, 0.9, 0.8])
