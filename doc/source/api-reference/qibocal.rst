@@ -66,3 +66,30 @@ and `csv <https://docs.python.org/3/library/csv.html>`_.
 .. autoclass:: qibocal.data.Dataset
     :members:
     :member-order: bysource
+
+Randomized Benchmarking Protocols
+---------------------------------
+
+
+Abstract
+^^^^^^^^
+.. automodule:: qibocal.calibrations.protocols.abstract
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Standard RB
+^^^^^^^^^^^
+.. automodule:: qibocal.calibrations.protocols.standardrb
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Crosstalk RB
+^^^^^^^^^^^
+.. automodule:: qibocal.calibrations.protocols.crosstalkrb
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+

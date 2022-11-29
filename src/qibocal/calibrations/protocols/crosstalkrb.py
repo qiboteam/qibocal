@@ -86,9 +86,10 @@ def filter_function(experiment: Experiment):
     number of qubits. 
     The experimental outcome for each qubit is denoted as
     :math:`\\ket{i_k}` with :math:`i_k=0, 1` with :math:`d=2`.
-    .. math:
+    
+    .. math::
         f_{\\boldsymbol{\\lambda}}(i,g) = \\frac{1}{2^{N-|\\boldsymbol{\\lambda}|}}\\sum_{\\mathbf b\\in\\mathbb F_2^N}(-1)^{|\\boldsymbol{\\lambda}\\wedge\\mathbf b|}\\frac{1}{d^N}\\left(\\prod_{k=1}^N(d|\\bra{i_k} U_{g_{(k)}} \\ket{0}|^2)^{\\lambda_k-\\lambda_kb_k}\\right)
-        
+    
     Args:
         experiment (Experiment): The executed crosstalk experiment.
     """

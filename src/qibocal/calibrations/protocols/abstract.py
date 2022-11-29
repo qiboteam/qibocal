@@ -55,7 +55,7 @@ class Circuitfactory:
 
 class SingleCliffordsFactory(Circuitfactory):
     def __init__(
-        self, nqubits: list, depths: list, runs: int, qubits: list = None
+        self, nqubits: int, depths: list, runs: int, qubits: list = None
     ) -> None:
         super().__init__(nqubits, depths, runs, qubits)
 

@@ -27,7 +27,7 @@ from qibocal.plots.rb import standardrb_plot
 
 class SingleCliffordsInvFactory(SingleCliffordsFactory):
     def __init__(
-        self, nqubits: list, depths: list, runs: int, qubits: list = None
+        self, nqubits: int, depths: list, runs: int, qubits: list = None
     ) -> None:
         super().__init__(nqubits, depths, runs, qubits)
 
