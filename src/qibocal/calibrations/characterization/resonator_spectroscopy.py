@@ -368,7 +368,7 @@ def resonator_spectroscopy_flux_matrix(
 @plot("MSR and Phase vs Frequency", plots.dispersive_frequency_msr_phase)
 def dispersive_shift(
     platform: AbstractPlatform,
-    qubit: int,
+    qubits: list,
     freq_width,
     freq_step,
     software_averages,
@@ -377,82 +377,110 @@ def dispersive_shift(
 
     platform.reload_settings()
 
+    # create pulse sequence
     sequence = PulseSequence()
-    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
-    sequence.add(ro_pulse)
 
-    resonator_frequency = platform.characterization["single_qubit"][qubit][
-        "resonator_freq"
-    ]
+    # collect readout pulses and resonator frequencies for all qubits
+    resonator_frequencies = {}
+    frequency_ranges = {}
+    ro_pulses = {}
+    for qubit in qubits:
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
+        sequence.add(ro_pulses[qubit])
+        resonator_frequencies[qubit] = platform.characterization["single_qubit"][qubit][
+            "resonator_freq"
+        ]
+        frequency_ranges[qubit] = (
+            np.arange(-freq_width, freq_width, freq_step) + resonator_frequencies[qubit]
+        )
 
-    frequency_range = (
-        np.arange(-freq_width, freq_width, freq_step) + resonator_frequency
+    data_spec = DataUnits(
+        name=f"data", quantities={"frequency": "Hz"}, options=["qubit"]
     )
-
-    data_spec = DataUnits(name=f"data_q{qubit}", quantities={"frequency": "Hz"})
     count = 0
     for _ in range(software_averages):
-        for freq in frequency_range:
+        for freq in range(len(frequency_ranges[qubit])):
             if count % points == 0 and count > 0:
                 yield data_spec
-                yield lorentzian_fit(
-                    data_spec,
-                    x="frequency[GHz]",
-                    y="MSR[uV]",
-                    qubit=qubit,
-                    nqubits=platform.settings["nqubits"],
-                    labels=["resonator_freq", "peak_voltage"],
+                for qubit in qubits:
+                    yield lorentzian_fit(
+                        data_spec.get_column("qubit", qubit),
+                        x="frequency[GHz]",
+                        y="MSR[uV]",
+                        qubit=qubit,
+                        nqubits=platform.settings["nqubits"],
+                        labels=["resonator_freq", "peak_voltage"],
+                    )
+
+            for qubit in qubits:
+                platform.ro_port[qubit].lo_frequency = (
+                    frequency_ranges[qubit][freq] - ro_pulses[qubit].frequency
                 )
-            platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
-            msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
-                ro_pulse.serial
-            ]
-            results = {
-                "MSR[V]": msr,
-                "i[V]": i,
-                "q[V]": q,
-                "phase[rad]": phase,
-                "frequency[Hz]": freq,
-            }
-            data_spec.add(results)
-            count += 1
+
+            result = platform.execute_pulse_sequence(sequence)
+
+            for qubit in qubits:
+                msr, phase, i, q = result[ro_pulses[qubit].serial]
+                results = {
+                    "MSR[V]": msr,
+                    "i[V]": i,
+                    "q[V]": q,
+                    "phase[rad]": phase,
+                    "frequency[Hz]": frequency_ranges[qubit][freq],
+                    "qubit": qubit,
+                }
+                data_spec.add(results)
+                count += 1
     yield data_spec
 
     # Shifted Spectroscopy
     sequence = PulseSequence()
-    RX_pulse = platform.create_RX_pulse(qubit, start=0)
-    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=RX_pulse.finish)
-    sequence.add(RX_pulse)
-    sequence.add(ro_pulse)
+    ro_pulses = {}
+    for qubit in qubits:
+        print("ERROR")
+        RX_pulse = platform.create_RX_pulse(qubit, start=0)
+        print("DONE")
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+            qubit, start=RX_pulse.finish
+        )
+        sequence.add(RX_pulse)
+        sequence.add(ro_pulses[qubit])
 
     data_shifted = DataUnits(
-        name=f"data_shifted_q{qubit}", quantities={"frequency": "Hz"}
+        name=f"data_shifted", quantities={"frequency": "Hz"}, options=["qubit"]
     )
     count = 0
     for _ in range(software_averages):
-        for freq in frequency_range:
+        for freq in range(len(frequency_ranges[qubit])):
             if count % points == 0 and count > 0:
                 yield data_shifted
-                yield lorentzian_fit(
-                    data_shifted,
-                    x="frequency[GHz]",
-                    y="MSR[uV]",
-                    qubit=qubit,
-                    nqubits=platform.settings["nqubits"],
-                    labels=["resonator_freq", "peak_voltage"],
-                    fit_file_name="fit_shifted",
+                for qubit in qubits:
+                    yield lorentzian_fit(
+                        data_shifted.get_column("qubit", qubit),
+                        x="frequency[GHz]",
+                        y="MSR[uV]",
+                        qubit=qubit,
+                        nqubits=platform.settings["nqubits"],
+                        labels=["resonator_freq", "peak_voltage"],
+                        fit_file_name="fit_shifted",
+                    )
+            for qubit in qubits:
+                platform.ro_port[qubit].lo_frequency = (
+                    frequency_ranges[qubit][freq] - ro_pulses[qubit].frequency
                 )
-            platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
-            msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
-                ro_pulse.serial
-            ]
-            results = {
-                "MSR[V]": msr,
-                "i[V]": i,
-                "q[V]": q,
-                "phase[rad]": phase,
-                "frequency[Hz]": freq,
-            }
-            data_shifted.add(results)
-            count += 1
+
+            result = platform.execute_pulse_sequence(sequence)
+
+            for qubit in qubits:
+                msr, phase, i, q = result[ro_pulses[qubit].serial]
+                results = {
+                    "MSR[V]": msr,
+                    "i[V]": i,
+                    "q[V]": q,
+                    "phase[rad]": phase,
+                    "frequency[Hz]": frequency_ranges[qubit][freq],
+                    "qubit": qubit,
+                }
+                data_shifted.add(results)
+                count += 1
     yield data_shifted

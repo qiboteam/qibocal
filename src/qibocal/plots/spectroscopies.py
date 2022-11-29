@@ -434,24 +434,26 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
     return fig
 
 
-def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
+def dispersive_frequency_msr_phase(folder, routine, qubit, format):
 
     try:
-        data_spec = DataUnits.load_data(folder, routine, formato, f"data_q{qubit}")
-    except:
-        data_spec = DataUnits(name=f"data_q{qubit}", quantities={"frequency": "Hz"})
-
-    try:
-        data_shifted = DataUnits.load_data(
-            folder, routine, formato, f"data_shifted_q{qubit}"
+        data_spec = DataUnits.load_data(folder, routine, format, f"data")
+        data_spec.df = data_spec.df[data_spec.df["qubit"] == int(qubit)].reset_index(
+            drop=True
         )
     except:
-        data_shifted = DataUnits(
-            name=f"data_shifted_q{qubit}", quantities={"frequency": "Hz"}
-        )
+        data_spec = DataUnits(name=f"data", quantities={"frequency": "Hz"})
 
     try:
-        data_fit = Data.load_data(folder, routine, formato, f"fit_q{qubit}")
+        data_shifted = DataUnits.load_data(folder, routine, format, f"data_shifted")
+        data_shifted.df = data_shifted.df[
+            data_shifted.df["qubit"] == int(qubit)
+        ].reset_index(drop=True)
+    except:
+        data_shifted = DataUnits(name=f"data_shifted", quantities={"frequency": "Hz"})
+
+    try:
+        data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
     except:
         data_fit = Data(
             quantities=[
@@ -466,7 +468,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
 
     try:
         data_fit_shifted = Data.load_data(
-            folder, routine, formato, f"fit_shifted_q{qubit}"
+            folder, routine, format, f"fit_shifted_q{qubit}"
         )
     except:
         data_fit_shifted = Data(
