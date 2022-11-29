@@ -64,13 +64,16 @@ def resonator_spectroscopy(
                         labels=["resonator_freq", "peak_voltage"],
                     )
 
+            # TODO: move to qibolab platform.set_lo_frequencies(qubits, frequencies)
             for qubit in qubits:
                 platform.ro_port[qubit].lo_frequency = (
                     frequency_ranges[qubit][freq] - ro_pulses[qubit].frequency
                 )
-                msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
-                    ro_pulses[qubit].serial
-                ]
+
+            result = platform.execute_pulse_sequence(sequence)
+
+            for qubit in qubits:
+                msr, phase, i, q = result[ro_pulses[qubit].serial]
 
                 results = {
                     "MSR[V]": msr,
@@ -139,9 +142,11 @@ def resonator_spectroscopy(
                 platform.ro_port[qubit].lo_frequency = (
                     freqranges[qubit][freq] - ro_pulses[qubit].frequency
                 )
-                msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
-                    ro_pulses[qubit].serial
-                ]
+
+            result = platform.execute_pulse_sequence(sequence)
+
+            for qubit in qubits:
+                msr, phase, i, q = result[ro_pulses[qubit].serial]
                 results = {
                     "MSR[V]": msr,
                     "i[V]": i,
@@ -159,7 +164,7 @@ def resonator_spectroscopy(
 @plot("MSR vs Frequency", plots.frequency_attenuation_msr_phase__cut)
 def resonator_punchout(
     platform: AbstractPlatform,
-    qubit: int,
+    qubits: list,
     freq_width,
     freq_step,
     min_att,
@@ -171,44 +176,57 @@ def resonator_punchout(
     platform.reload_settings()
 
     data = DataUnits(
-        name=f"data_q{qubit}", quantities={"frequency": "Hz", "attenuation": "dB"}
+        name=f"data",
+        quantities={"frequency": "Hz", "attenuation": "dB"},
+        options=["qubit"],
     )
-    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
+
     sequence = PulseSequence()
-    sequence.add(ro_pulse)
+    ro_pulses = {}
+    resonator_frequencies = {}
+    frequency_ranges = {}
+    for qubit in qubits:
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
+        sequence.add(ro_pulses[qubit])
+        resonator_frequencies[qubit] = platform.characterization["single_qubit"][qubit][
+            "resonator_freq"
+        ]
+        frequency_ranges[qubit] = (
+            np.arange(-freq_width, freq_width, freq_step)
+            + resonator_frequencies[qubit]
+            - (freq_width / 4)
+        )
 
     # TODO: move this explicit instruction to the platform
-    resonator_frequency = platform.characterization["single_qubit"][qubit][
-        "resonator_freq"
-    ]
-    frequency_range = (
-        np.arange(-freq_width, freq_width, freq_step)
-        + resonator_frequency
-        - (freq_width / 4)
-    )
+
     attenuation_range = np.flip(np.arange(min_att, max_att, step_att))
     count = 0
     for _ in range(software_averages):
         for att in attenuation_range:
-            for freq in frequency_range:
+            for freq in range(len(frequency_ranges[qubit])):
                 if count % points == 0:
                     yield data
                 # TODO: move these explicit instructions to the platform
-                platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
-                platform.ro_port[qubit].attenuation = att
-                msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
-                    ro_pulse.serial
-                ]
-                results = {
-                    "MSR[V]": msr * (np.exp(att / 10)),
-                    "i[V]": i,
-                    "q[V]": q,
-                    "phase[rad]": phase,
-                    "frequency[Hz]": freq,
-                    "attenuation[dB]": att,
-                }
-                # TODO: implement normalization
-                data.add(results)
+                for qubit in qubits:
+                    platform.ro_port[qubit].lo_frequency = (
+                        freq - ro_pulses[qubit].frequency
+                    )
+                    platform.ro_port[qubit].attenuation = att
+
+                result = platform.execute_pulse_sequence(sequence)
+
+                for qubit in qubits:
+                    msr, phase, i, q = result[ro_pulses[qubit].serial]
+                    results = {
+                        "MSR[V]": msr * (np.exp(att / 10)),
+                        "i[V]": i,
+                        "q[V]": q,
+                        "phase[rad]": phase,
+                        "frequency[Hz]": frequency_ranges[qubit][freq],
+                        "attenuation[dB]": att,
+                    }
+                    # TODO: implement normalization
+                    data.add(results)
                 count += 1
 
     yield data
