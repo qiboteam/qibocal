@@ -193,7 +193,7 @@ def test_analyze(nqubits: int, depths: list, runs: int, nshots: int):
     noise = NoiseModel()
     noise.add(paulinoise, gates.Unitary)
     # Test exectue an experiment.
-    myfactory1 = standardrb.SingleCliffordsInvFactory(qubits, depths, runs)
+    myfactory1 = standardrb.SingleCliffordsInvFactory(nqubits, depths, runs)
     myfaultyexperiment = standardrb.StandardRBExperiment(
         myfactory1, nshots, noisemodel=noise
     )

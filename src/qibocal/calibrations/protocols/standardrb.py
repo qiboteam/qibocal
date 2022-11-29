@@ -12,6 +12,7 @@ from qibo import gates
 from qibo.models import Circuit
 from qibo.noise import NoiseModel, PauliError
 from qibolab.platforms.abstract import AbstractPlatform
+import plotly.graph_objects as go
 
 from qibocal.calibrations.protocols.abstract import (
     Experiment,
@@ -90,6 +91,7 @@ class StandardRBResult(Result):
     def __init__(self, dataframe: pd.DataFrame, fitting_func) -> None:
         super().__init__(dataframe)
         self.fitting_func = fitting_func
+        self.title = 'Standard Randomized Benchmarking'
 
     def single_fig(self):
         xdata_scatter = self.df["depth"].to_numpy()
@@ -110,8 +112,17 @@ def groundstate_probability(experiment: Experiment):
     probs = experiment.probabilities[:, 0]
     experiment._append_data("groundstate_probabilities", list(probs))
 
+def validate_simulation(experiment: Experiment):
+    """ Take the used noise model in the simulation and calculates
+    the desired outcome.
 
-def analyze(experiment: Experiment, noisemodel: NoiseModel = None, **kwargs) -> None:
+    Args:
+        experiment (Experiment): Experiment which executed the simulation.
+    """
+    pass
+
+def analyze(experiment: Experiment, noisemodel: NoiseModel = None, **kwargs
+    ) -> go._figure.Figure:
     # Compute and add the ground state probabilities.
     experiment.apply_task(groundstate_probability)
     result = StandardRBResult(experiment.dataframe, fit_exp1_func)

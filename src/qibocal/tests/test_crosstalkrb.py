@@ -67,7 +67,7 @@ def test_experiment(nqubits: int, depths: list, runs: int, nshots: int):
         runs (int): _description_
     """
     # Test execute an experiment.
-    myfactory1 = crosstalkrb.SingleCliffordsInvFactory(nqubits, depths, runs)
+    myfactory1 = crosstalkrb.SingleCliffordsFactory(nqubits, depths, runs)
     myexperiment1 = crosstalkrb.CrosstalkRBExperiment(myfactory1, nshots)
     myexperiment1.execute()
     assert isinstance(myexperiment1.data, list)
@@ -95,7 +95,7 @@ def test_experiment(nqubits: int, depths: list, runs: int, nshots: int):
         assert datarow["depth"] == datarow_load["depth"]
     assert myexperiment1_loaded.circuitfactory is None
 
-    myfactory2 = crosstalkrb.SingleCliffordsInvFactory(nqubits, depths, runs)
+    myfactory2 = crosstalkrb.SingleCliffordsFactory(nqubits, depths, runs)
     myexperiment2 = crosstalkrb.CrosstalkRBExperiment(myfactory2, nshots)
     assert myexperiment2.circuitfactory == myfactory2
     myexperiment2.prebuild()

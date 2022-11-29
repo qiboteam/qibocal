@@ -64,15 +64,19 @@ def fit_exp1_func(
     Returns:
         Tuple[tuple, tuple]: _description_
     """
-
-    # Get a guess for the exponential function.
-    guess = kwargs.get("p0", [0.5, 0.9, 0.8])
-    # If the search for fitting parameters does not work just return
-    # fixed parameters where one can see that the fit did not work
-    try:
-        popt, pcov = curve_fit(exp1_func, xdata, ydata, p0=guess, method="lm")
-    except:
-        popt, pcov = (0, 0, 0), (1, 1, 1)
+    # Check if all the values in ``ydata``are the same. That would make the
+    # exponential fit unnecessary.
+    if np.all(ydata == ydata[0]):
+        popt, pcov = (ydata[0], 1., 0), (0, 0, 0)
+    else:
+        # Get a guess for the exponential function.
+        guess = kwargs.get("p0", [0.5, 0.9, 0.8])
+        # If the search for fitting parameters does not work just return
+        # fixed parameters where one can see that the fit did not work
+        try:
+            popt, pcov = curve_fit(exp1_func, xdata, ydata, p0=guess, method="lm")
+        except:
+            popt, pcov = (0, 0, 0), (1, 1, 1)
     x_fit = np.linspace(np.sort(xdata)[0], np.sort(xdata)[-1], num=len(xdata) * 20)
     y_fit = exp1_func(x_fit, *popt)
     return popt, pcov, x_fit, y_fit
