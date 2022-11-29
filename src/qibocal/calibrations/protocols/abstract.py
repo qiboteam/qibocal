@@ -142,6 +142,10 @@ class Experiment:
         self.nshots = nshots
         self.data = data
         self.__noise_model = noisemodel
+    
+    @property
+    def noise_model(self):
+        return self.__noise_model
 
     @classmethod
     def load(cls, path: str) -> Experiment:
@@ -286,6 +290,8 @@ class Result:
     def __init__(self, dataframe: pd.DataFrame) -> None:
         self.df = dataframe
         self.all_figures = []
+        self.fitting_func = None
+        self.title = 'Report'
 
     def extract(self, group_by: str, output: str, agg_type: str):
         """Aggregates the dataframe, extracts the data by which the frame was
@@ -299,6 +305,15 @@ class Result:
         grouped_df = self.df.groupby(group_by)[output].apply(agg_type)
         return np.array(grouped_df.index), np.array(grouped_df.values.tolist())
     
+    def get_info(self):
+        """ Extract information from the dataframe and return it as string.
+        """
+        mydict = {
+            'nqubits': len(self.df['samples'].to_numpy()[0][0]),
+            'nshots': len(self.df['samples'].to_numpy()[0])
+        }
+        return '<br>'.join([f'{key} : {value}\n' for key, value in mydict.items()])
+        
     def scatter_fit_fig(self, xdata_scatter, ydata_scatter, xdata, ydata):
         myfigs = []
         popt, pcov, x_fit, y_fit = self.fitting_func(xdata, ydata)
@@ -336,12 +351,25 @@ class Result:
             plot_list = fig_dict['figs']
             for plot in plot_list:
                 fig.add_trace(plot, row=count//2 + 1, col = count%2+1)
+        fig.add_annotation(
+            dict(
+                font=dict(color="black", size=12),
+                x=1.1,
+                y=0.0,
+                showarrow=False,
+                text=self.get_info(),
+                textangle=0,
+                xanchor="left",
+                xref="paper",
+                yref="paper",
+            )
+        )
         fig.update_xaxes(title_font_size=18, tickfont_size=16)
         fig.update_yaxes(title_font_size=18, tickfont_size=16)
         fig.update_layout(
             font_family="Averta",
             hoverlabel_font_family="Averta",
-            title_text="Report",
+            title_text=self.title,
             hoverlabel_font_size=16,
             showlegend=True,
             height=500 * int(l/2) if l > 1 else 500,

@@ -64,6 +64,7 @@ class CrosstalkRBResult(Result):
     def __init__(self, dataframe: pd.DataFrame, fitting_func) -> None:
         super().__init__(dataframe)
         self.fitting_func = fitting_func
+        self.title = 'Crosstalk Filtered Randomized Benchmarking'
     
     def cross_figs(self):
         xdata_scatter = self.df["depth"].to_numpy()
