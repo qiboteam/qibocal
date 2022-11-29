@@ -237,9 +237,9 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
 
 
 def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
-
     try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, f"data")
+        data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
     except:
         data = DataUnits(quantities={"frequency": "Hz"})
 
@@ -385,7 +385,13 @@ def frequency_flux_msr_phase__matrix(folder, routine, qubit, format):
 
 
 def frequency_attenuation_msr_phase(folder, routine, qubit, format):
-    data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
+
+    try:
+        data = DataUnits.load_data(folder, routine, format, f"data")
+        data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
+    except:
+        data = DataUnits(quantities={"frequency": "Hz", "attenuation": "dB"})
+
     fig = make_subplots(
         rows=1,
         cols=2,

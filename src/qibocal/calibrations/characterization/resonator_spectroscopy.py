@@ -209,7 +209,7 @@ def resonator_punchout(
                 # TODO: move these explicit instructions to the platform
                 for qubit in qubits:
                     platform.ro_port[qubit].lo_frequency = (
-                        freq - ro_pulses[qubit].frequency
+                        frequency_ranges[qubit][freq] - ro_pulses[qubit].frequency
                     )
                     platform.ro_port[qubit].attenuation = att
 
@@ -224,6 +224,7 @@ def resonator_punchout(
                         "phase[rad]": phase,
                         "frequency[Hz]": frequency_ranges[qubit][freq],
                         "attenuation[dB]": att,
+                        "qubit": qubit,
                     }
                     # TODO: implement normalization
                     data.add(results)
