@@ -87,77 +87,81 @@ def resonator_spectroscopy(
             count += 1
     yield fast_sweep_data
 
-    avg_voltages = {}
-    freqranges = {}
-    for qubit in qubits:
-        if platform.resonator_type == "3D":
-            resonator_frequencies[qubit] = fast_sweep_data.get_values(
-                "frequency", "Hz"
-            )[np.argmax(fast_sweep_data.get_values("MSR", "V"))]
-            avg_voltages[qubit] = (
-                np.mean(
-                    fast_sweep_data.get_values("MSR", "V")[
-                        : (lowres_width // lowres_step)
-                    ]
-                )
-                * 1e6
-            )
-        else:
-            resonator_frequencies[qubit] = fast_sweep_data.get_values(
-                "frequency", "Hz"
-            )[np.argmin(fast_sweep_data.get_values("MSR", "V"))]
-            avg_voltages[qubit] = (
-                np.mean(
-                    fast_sweep_data.get_values("MSR", "V")[
-                        : (lowres_width // lowres_step)
-                    ]
-                )
-                * 1e6
-            )
-        freqranges[qubit] = np.arange(-precision_width, precision_width, precision_step)
-        +resonator_frequencies[qubit]
+    # avg_voltages = {}
+    # freqranges = {}
+    # for qubit in qubits:
+    #     if platform.resonator_type == "3D":
+    #         # resonator_frequencies[qubit] = fast_sweep_data.get_column("qubit", qubit)
+    #         resonator_frequencies[qubit] = fast_sweep_data.get_column("qubit", qubit)["frequency"].pint.to("Hz").pint.magnitude[np.argmax(fast_sweep_data.get_column("qubit", qubit)["MSR"].pint.to("V").pint.magnitude)]
+    #         avg_voltages[qubit] = np.mean(fast_sweep_data.get_column("qubit", qubit)["MSR"].pint.to("V").pint.magnitude[: (lowres_width // lowres_step)]) * 1e6
+    #         print(resonator_frequencies[qubit])
+    #         print(avg_voltages[qubit])
+    #         # avg_voltages[qubit] = (
+    #         #     np.mean(
+    #         #         fast_sweep_data.get_values("MSR", "V")[
+    #         #             : (lowres_width // lowres_step)
+    #         #         ]
+    #         #     )
+    #         #     * 1e6
+    #         # )
+    #     else:
+    #         # resonator_frequencies[qubit] = fast_sweep_data.get_values(
+    #         #     "frequency", "Hz"
+    #         # )[np.argmin(fast_sweep_data.get_values("MSR", "V"))]
+    #         # avg_voltages[qubit] = (
+    #         #     np.mean(
+    #         #         fast_sweep_data.get_values("MSR", "V")[
+    #         #             : (lowres_width // lowres_step)
+    #         #         ]
+    #         #     )
+    #         #     * 1e6
+    #         # )
+    #         resonator_frequencies[qubit] = fast_sweep_data.get_column("qubit", qubit)["frequency"].pint.to("Hz").pint.magnitude[np.argmin(fast_sweep_data.get_column("qubit", qubit)["MSR"].pint.to("V").pint.magnitude)]
+    #         avg_voltages[qubit] = np.mean(fast_sweep_data.get_column("qubit", qubit)["MSR"].pint.to("V").pint.magnitude[: (lowres_width // lowres_step)]) * 1e6
+    #     freqranges[qubit] = np.arange(-precision_width, precision_width, precision_step)
+    #     +resonator_frequencies[qubit]
 
-    precision_sweep__data = DataUnits(
-        name=f"precision_sweep", quantities={"frequency": "Hz"}, options=["qubit"]
-    )
+    # precision_sweep__data = DataUnits(
+    #     name=f"precision_sweep", quantities={"frequency": "Hz"}, options=["qubit"]
+    # )
 
-    count = 0
-    for _ in range(software_averages):
-        for freq in range(len(freqranges[qubit])):  # FIXME: remove hardcoding
-            if count % points == 0 and count > 0:
-                yield precision_sweep__data
-                for qubit in qubits:
-                    yield lorentzian_fit(
-                        (fast_sweep_data + precision_sweep__data).get_column(
-                            "qubit", qubit
-                        ),
-                        x="frequency[GHz]",
-                        y="MSR[uV]",
-                        qubit=qubit,
-                        nqubits=platform.settings["nqubits"],
-                        labels=["resonator_freq", "peak_voltage"],
-                    )
+    # count = 0
+    # for _ in range(software_averages):
+    #     for freq in range(len(freqranges[qubit])):  # FIXME: remove hardcoding
+    #         if count % points == 0 and count > 0:
+    #             yield precision_sweep__data
+    #             for qubit in qubits:
+    #                 yield lorentzian_fit(
+    #                     (fast_sweep_data + precision_sweep__data).get_column(
+    #                         "qubit", qubit
+    #                     ),
+    #                     x="frequency[GHz]",
+    #                     y="MSR[uV]",
+    #                     qubit=qubit,
+    #                     nqubits=platform.settings["nqubits"],
+    #                     labels=["resonator_freq", "peak_voltage"],
+    #                 )
 
-            for qubit in qubits:
-                platform.ro_port[qubit].lo_frequency = (
-                    freqranges[qubit][freq] - ro_pulses[qubit].frequency
-                )
+    #         for qubit in qubits:
+    #             platform.ro_port[qubit].lo_frequency = (
+    #                 freqranges[qubit][freq] - ro_pulses[qubit].frequency
+    #             )
 
-            result = platform.execute_pulse_sequence(sequence)
+    #         result = platform.execute_pulse_sequence(sequence)
 
-            for qubit in qubits:
-                msr, phase, i, q = result[ro_pulses[qubit].serial]
-                results = {
-                    "MSR[V]": msr,
-                    "i[V]": i,
-                    "q[V]": q,
-                    "phase[rad]": phase,
-                    "frequency[Hz]": freqranges[qubit][freq],
-                    "qubit": qubit,
-                }
-                precision_sweep__data.add(results)
-            count += 1
-    yield precision_sweep__data
+    #         for qubit in qubits:
+    #             msr, phase, i, q = result[ro_pulses[qubit].serial]
+    #             results = {
+    #                 "MSR[V]": msr,
+    #                 "i[V]": i,
+    #                 "q[V]": q,
+    #                 "phase[rad]": phase,
+    #                 "frequency[Hz]": freqranges[qubit][freq],
+    #                 "qubit": qubit,
+    #             }
+    #             precision_sweep__data.add(results)
+    #         count += 1
+    # yield precision_sweep__data
 
 
 @plot("Frequency vs Attenuation", plots.frequency_attenuation_msr_phase)
