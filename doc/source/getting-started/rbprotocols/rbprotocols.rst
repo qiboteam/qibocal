@@ -4,16 +4,16 @@ Randomized Benchmarking Protocols
 =================================
 
 ``qibocal`` provides a convenient infrastructure to implement randomized benchmarking protocols
-easily and fast. In ``abstract.py`` the overall structure is set up.
+easily and fast. In ``abstract.py``, see section :ref:`abstract-module-label` of the APIs documentation,
+the overall structure is set up.
 The foundation is three classes:
-    1. The circuit factory (INSERT LINK), an iterator which produces circuits when called.
-    2. The Experiment class (INSERT LINK) which takes an iterable object producing circuits, optional some parameters. It is able to execute the circuits and to overwrite/store/process the necessary data.
-    3. A class (INSERT LINK) storing and displaying the results of a randomized benchmarking scheme.
+
+    1. The circuit factory, an iterator which produces circuits when called.
+    2. The Experiment class which takes an iterable object producing circuits, optional some parameters. It is able to execute the circuits and to overwrite/store/process the necessary data.
+    3. A class storing and displaying the results of a randomized benchmarking scheme.
 
 Standard Randomized Benchmarking
-=================================
-
-TODO cite papers
+================================
 
 In general, the idea of a standard RB protocol is to quantify the performance of a quantum device
 regarding the implementation of gates.

@@ -16,11 +16,12 @@ from qibocal.calibrations.protocols.abstract import (
     Result,
     SingleCliffordsFactory,
 )
-from qibocal.calibrations.protocols.fitting_methods import fit_exp1_func
+from qibocal.fitting.rb_methods import fit_exp1_func
 from qibocal.calibrations.protocols.utils import effective_depol
 from qibocal.data import Data
 from qibocal.decorators import plot
 from qibocal.plots.rb import crosstalkrb_plot
+from qibocal.config import raise_error
 
 
 class CrosstalkRBExperiment(Experiment):
@@ -33,8 +34,9 @@ class CrosstalkRBExperiment(Experiment):
     ) -> None:
         super().__init__(circuitfactory, nshots, data, noisemodel)
 
-    def single_task(self, circuit: Circuit, datarow: dict) -> None:
+    def single_task(self, circuit: Circuit, datarow: dict) -> dict:
         """Executes a circuit, returns the single shot results
+        
         Args:
             circuit (Circuit): Will be executed, has to return samples.
             datarow (dict): Dictionary with parameters for execution and
@@ -62,8 +64,7 @@ class CrosstalkRBExperiment(Experiment):
         try:
             return self.dataframe["depth"].to_numpy()
         except KeyError:
-            print("No depths. Execute experiment first.")
-            return None
+            raise_error(KeyError, "No depths. Execute experiment first.")
 
 
 class CrosstalkRBResult(Result):
@@ -84,7 +85,7 @@ class CrosstalkRBResult(Result):
             self.all_figures[-1]["subplot_title"] = f"Irrep {next(lambdas)}"
 
 
-def filter_function(experiment: Experiment):
+def filter_function(experiment: CrosstalkRBExperiment):
     """Calculates the filtered signal for every cross talk irrep.
 
     Every irrep has a projector charactarized with a bit string
@@ -97,7 +98,8 @@ def filter_function(experiment: Experiment):
         f_{\\boldsymbol{\\lambda}}(i,g) = \\frac{1}{2^{N-|\\boldsymbol{\\lambda}|}}\\sum_{\\mathbf b\\in\\mathbb F_2^N}(-1)^{|\\boldsymbol{\\lambda}\\wedge\\mathbf b|}\\frac{1}{d^N}\\left(\\prod_{k=1}^N(d|\\bra{i_k} U_{g_{(k)}} \\ket{0}|^2)^{\\lambda_k-\\lambda_kb_k}\\right)
 
     Args:
-        experiment (Experiment): The executed crosstalk experiment.
+        experiment (CrosstalkRBExperiment): The executed (crosstalk) experiment. 
+            The circuits must be stored in the experiment object.
     """
     # Extract amount of used qubits and used shots.
     nqubits = len(experiment.data[0]["samples"][0])
@@ -147,7 +149,7 @@ def filter_function(experiment: Experiment):
     experiment._append_data("crosstalk", biglist)
 
 
-def analyze(experiment: Experiment, noisemodel: NoiseModel = None, **kwargs):
+def analyze(experiment: CrosstalkRBExperiment, noisemodel: NoiseModel = None, **kwargs):
     experiment.apply_task(filter_function)
     result = CrosstalkRBResult(experiment.dataframe, fit_exp1_func)
     result.cross_figs()
@@ -168,7 +170,7 @@ def perform(
         paulinoise = PauliError(*noise_params)
         noise = NoiseModel()
         noise.add(paulinoise, gates.Unitary)
-        depol = effective_depol(paulinoise)
+        # depol = effective_depol(paulinoise)
     else:
         noise = None
     # Initiate the circuit factory and the (faulty) Experiment object.

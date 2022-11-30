@@ -12,6 +12,7 @@ import plotly.graph_objects as go
 from qibo import gates
 from qibo.models import Circuit
 from qibo.noise import NoiseModel
+from qibocal.config import raise_error
 
 from qibocal.calibrations.protocols.utils import (
     ONEQUBIT_CLIFFORD_PARAMS,
@@ -21,7 +22,7 @@ from qibocal.calibrations.protocols.utils import (
 
 class Circuitfactory:
     """TODO write documentation
-    TODO make the embedding into lager qubit space possible"""
+    """
 
     def __init__(
         self, nqubits: int, depths: list, runs: int, qubits: list = None
@@ -34,11 +35,11 @@ class Circuitfactory:
     def __len__(self):
         return self.runs * len(self.depths)
 
-    def __iter__(self) -> None:
+    def __iter__(self) -> Circuitfactory:
         self.n = 0
         return self
 
-    def __next__(self) -> None:
+    def __next__(self) -> Circuit:
         if self.n >= self.runs * len(self.depths):
             raise StopIteration
         else:
@@ -50,7 +51,7 @@ class Circuitfactory:
             return bigcircuit
 
     def build_circuit(self, depth: int):
-        raise NotImplementedError
+        raise_error(NotImplementedError)
 
 
 class SingleCliffordsFactory(Circuitfactory):
@@ -94,7 +95,7 @@ class SingleCliffordsFactory(Circuitfactory):
         )
         return matrix
 
-    def gates(self) -> list(gates.Unitary):
+    def gates(self) -> list:
         """Draws the parameters and builds the unitary Clifford gates for
         a circuit layer.
 
@@ -192,7 +193,7 @@ class Experiment:
         attribute ``data``.
         """
         if self.circuitfactory is None:
-            raise NotImplementedError("There are no circuits to execute.")
+            raise_error(NotImplementedError, "There are no circuits to execute.")
         newdata = []
         for circuit in self.circuitfactory:
             try:
@@ -202,7 +203,7 @@ class Experiment:
             newdata.append(self.single_task(deepcopy(circuit), datarow))
         self.data = newdata
 
-    def single_task(self, circuit: Circuit, datarow: dict) -> None:
+    def single_task(self, circuit: Circuit, datarow: dict) -> dict:
         """Executes a circuit, returns the single shot results.
 
         Args:
@@ -254,8 +255,7 @@ class Experiment:
         try:
             return np.array(self.dataframe["samples"].tolist())
         except KeyError:
-            print("No samples here. Execute experiment first.")
-            return None
+            raise_error(KeyError, "No samples here. Execute experiment first.")
 
     @property
     def probabilities(self) -> np.ndarray:
@@ -267,9 +267,6 @@ class Experiment:
         """
 
         allsamples = self.samples
-        if allsamples is None:
-            print("No probabilities either.")
-            return None
         # Create all possible state vectors.
         allstates = list(product([0, 1], repeat=len(allsamples[0][0])))
         # Iterate over all the samples and count the different states.
@@ -292,7 +289,7 @@ class Result:
     def __init__(self, dataframe: pd.DataFrame) -> None:
         self.df = dataframe
         self.all_figures = []
-        self.fitting_func = lambda x, y: (x, y)
+        self.fitting_func = lambda x, y: (None, None, x, y)
         self.title = "Report"
 
     def extract(self, group_by: str, output: str, agg_type: str):
@@ -379,28 +376,3 @@ class Result:
             width=1000,
         )
         return fig
-
-
-def embed_unitary_circuit(circuit: Circuit, nqubits: int, support: list) -> Circuit:
-    """Takes a circuit and redistributes the gates to the support of
-    a new circuit with ``nqubits`` qubits.
-
-    Args:
-        circuit (Circuit): The circuit with len(``support``) many qubits.
-        nqubits (int): Qubits of new circuit.
-        support (list): The qubits were the gates should be places.
-
-    Returns:
-        Circuit: Circuit with redistributed gates.
-    """
-
-    idxmap = np.vectorize(lambda idx: support[idx])
-    newcircuit = Circuit(nqubits)
-    for gate in circuit.queue:
-        if not isinstance(gate, gates.measurements.M):
-            newcircuit.add(
-                gate.__class__(gate.init_args[0], *idxmap(np.array(gate.init_args[1:])))
-            )
-        else:
-            newcircuit.add(gates.M(*idxmap(np.array(gate.init_args[0:]))))
-    return newcircuit

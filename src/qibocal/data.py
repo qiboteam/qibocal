@@ -180,7 +180,7 @@ class DataUnits(AbstractData):
             format (str): data format. Possible choices are 'csv' and 'pickle'.
 
         Returns:
-            data (``DataUnits``): dataset object with the loaded data.
+            data (``DataUnits``): dataunits object with the loaded data.
         """
         obj = cls()
         if format == "csv":

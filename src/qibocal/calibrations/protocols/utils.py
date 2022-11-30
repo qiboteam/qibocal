@@ -1,8 +1,8 @@
 from os import mkdir
-from os.path import isdir, isfile
+from os.path import isdir
 
 import numpy as np
-from pandas import read_pickle
+from qibo.models import Circuit
 from qibo.noise import PauliError
 
 # To not define the parameters for one qubit Cliffords every time a
@@ -96,3 +96,27 @@ def effective_depol(error_channel, **kwargs):
     d = int(np.sqrt(len(liouvillerep)))
     depolp = ((np.trace(liouvillerep) + d) / (d + 1) - 1) / (d - 1)
     return depolp
+
+def embed_unitary_circuit(circuit: Circuit, nqubits: int, support: list) -> Circuit:
+    """Takes a circuit and redistributes the gates to the support of
+    a new circuit with ``nqubits`` qubits.
+
+    Args:
+        circuit (Circuit): The circuit with len(``support``) many qubits.
+        nqubits (int): Qubits of new circuit.
+        support (list): The qubits were the gates should be places.
+
+    Returns:
+        Circuit: Circuit with redistributed gates.
+    """
+
+    idxmap = np.vectorize(lambda idx: support[idx])
+    newcircuit = Circuit(nqubits)
+    for gate in circuit.queue:
+        if not isinstance(gate, gates.measurements.M):
+            newcircuit.add(
+                gate.__class__(gate.init_args[0], *idxmap(np.array(gate.init_args[1:])))
+            )
+        else:
+            newcircuit.add(gates.M(*idxmap(np.array(gate.init_args[0:]))))
+    return newcircuit

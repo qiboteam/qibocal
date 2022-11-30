@@ -19,11 +19,12 @@ from qibocal.calibrations.protocols.abstract import (
     Result,
     SingleCliffordsFactory,
 )
-from qibocal.calibrations.protocols.fitting_methods import fit_exp1_func
+from qibocal.fitting.rb_methods import fit_exp1_func
 from qibocal.calibrations.protocols.utils import effective_depol
 from qibocal.data import Data
 from qibocal.decorators import plot
 from qibocal.plots.rb import standardrb_plot
+from qibocal.config import raise_error
 
 
 class SingleCliffordsInvFactory(SingleCliffordsFactory):
@@ -59,6 +60,7 @@ class StandardRBExperiment(Experiment):
 
     def single_task(self, circuit: Circuit, datarow: dict) -> None:
         """Executes a circuit, returns the single shot results
+        
         Args:
             circuit (Circuit): Will be executed, has to return samples.
             datarow (dict): Dictionary with parameters for execution and
@@ -81,8 +83,7 @@ class StandardRBExperiment(Experiment):
         try:
             return self.dataframe["depth"].to_numpy()
         except KeyError:
-            print("No depths. Execute experiment first.")
-            return None
+            raise_error(KeyError, "No depths. Execute experiment first.")
 
 
 class StandardRBResult(Result):

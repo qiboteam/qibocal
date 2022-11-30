@@ -59,17 +59,19 @@ Utils
 Data structure
 --------------
 
-In ``qibocal`` all the data are stored using the :class:`qibocal.data.Dataset` which provide
+In ``qibocal`` all the data are stored using the :class:`qibocal.data.DataUnits` which provide
 different formats for storing the data including `pickle <https://docs.python.org/3/library/pickle.html>`_
 and `csv <https://docs.python.org/3/library/csv.html>`_.
 
-.. autoclass:: qibocal.data.Dataset
+.. autoclass:: qibocal.data.DataUnits
     :members:
     :member-order: bysource
 
 Randomized Benchmarking Protocols
 ---------------------------------
 
+
+.. _abstract-module-label:
 
 Abstract
 ^^^^^^^^
@@ -86,7 +88,7 @@ Standard RB
    :show-inheritance:
 
 Crosstalk RB
-^^^^^^^^^^^
+^^^^^^^^^^^^
 .. automodule:: qibocal.calibrations.protocols.crosstalkrb
    :members:
    :undoc-members:
