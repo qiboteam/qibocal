@@ -12,17 +12,16 @@ import plotly.graph_objects as go
 from qibo import gates
 from qibo.models import Circuit
 from qibo.noise import NoiseModel
-from qibocal.config import raise_error
 
 from qibocal.calibrations.protocols.utils import (
     ONEQUBIT_CLIFFORD_PARAMS,
     experiment_directory,
 )
+from qibocal.config import raise_error
 
 
 class Circuitfactory:
-    """TODO write documentation
-    """
+    """TODO write documentation"""
 
     def __init__(
         self, nqubits: int, depths: list, runs: int, qubits: list = None
