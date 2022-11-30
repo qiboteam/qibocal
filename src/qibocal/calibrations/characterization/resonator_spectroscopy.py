@@ -135,7 +135,7 @@ def resonator_spectroscopy(
 
 
 @plot("Frequency vs Attenuation", plots.frequency_attenuation_msr_phase)
-#@plot("MSR vs Frequency", plots.frequency_attenuation_msr_phase__cut)
+# @plot("MSR vs Frequency", plots.frequency_attenuation_msr_phase__cut)
 def resonator_punchout(
     platform: AbstractPlatform,
     qubit: int,
@@ -228,9 +228,9 @@ def resonator_spectroscopy_flux(
     frequency_range = (
         np.arange(-freq_width, freq_width, freq_step) + resonator_frequency
     )
-    current_range = (
-        np.arange(current_min, current_max, current_step) #+ qubit_biasing_current
-    )
+    current_range = np.arange(
+        current_min, current_max, current_step
+    )  # + qubit_biasing_current
 
     count = 0
     for _ in range(software_averages):
