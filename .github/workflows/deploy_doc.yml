@@ -3,12 +3,12 @@ name: Deploy docs
 on:
   workflow_dispatch:
   push:
-      branches: [master,deploy_workflow] # TODO: remove "deploy_workflow"
+      branches: [main,deploy_workflow] # TODO: remove "deploy_workflow"
 
 jobs:
 
   deploy-docs:
-  
+
     uses: qibogang/workflows/.github/workflows/deploy-sphinx-docs-to-ghpages.yml@documentation
     with:
       python-version: 3.9
