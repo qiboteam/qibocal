@@ -61,3 +61,11 @@ def parse(key):
     name = key.split("[")[0]
     unit = re.search(r"\[([A-Za-z0-9_]+)\]", key).group(1)
     return name, unit
+
+def G_f_d(x, p0, p1, p2):
+    G = np.sqrt(np.cos(np.pi*(x-p0)*p1)**2+p2**2*np.sin(np.pi*(x-p0)*p1)**2)
+    return np.sqrt(G)
+
+def freq_r_transmon(x, p0, p1, p2, p3, p4, p5):
+    return p5 + p4**2*G_f_d(x, p0, p1, p2)/(p5-p3*p5*G_f_d(x, p0, p1, p2))
+
