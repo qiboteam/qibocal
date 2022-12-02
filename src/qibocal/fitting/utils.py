@@ -69,3 +69,26 @@ def G_f_d(x, p0, p1, p2):
 def freq_r_transmon(x, p0, p1, p2, p3, p4, p5):
     return p5 + p4**2*G_f_d(x, p0, p1, p2)/(p5-p3*p5*G_f_d(x, p0, p1, p2))
 
+def kordering(m,ng=0.4999):
+    a1 = (round(2*ng+1/2)%2)*(round(ng)+1*(-1)**m *divmod(m+1,2)[0])
+    a2 = (round(2*ng-1/2)%2)*(round(ng)-1*(-1)**m *divmod(m+1,2)[0])
+    return a1 + a2
+
+def mathieu(index,x):    
+    if index < 0:
+        dummy =  mathieu_b(-index,x)
+    else:
+        dummy =  mathieu_a(index,x)
+    return dummy
+
+def freq_q_mathieu(curr, curr0, xi, d, Ec, Ej, ng=0.499):
+    index1 = int(2*(ng + kordering(1,ng)))
+    index0 = int(2*(ng + kordering(0,ng)))         
+    Ej = Ej*G_f_d(curr, curr0, xi ,d)
+    return Ec * (mathieu(index1,-Ej/(2*Ec)) - mathieu(index0,-Ej/(2*Ec)))
+
+def freq_r_mathieu(curr, f_h, g, curr0, xi, d, Ec, Ej, ng=0.499):
+    G = G_f_d(curr, curr0, xi ,d)     
+    f_q = freq_q_mathieu(curr, curr0, xi, d, Ec, Ej, ng)
+    f_r = f_h + g**2*np.sqrt(G)/(f_h-f_q)
+    return f_r
