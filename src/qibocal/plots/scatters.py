@@ -1279,7 +1279,7 @@ def frequency_current(folder, routine, qubit, format):
     try:
         data1 = DataUnits.load_data(folder, routine, format, f"results_q{qubit}")
     except:
-        data1 = DataUnits(quantities={"snr": "none" ,"frequency": "Hz", "attenuation": "dB"})
+        data1 = DataUnits(quantities={"snr": "dimensionless" ,"frequency": "Hz", "attenuation": "dB"})
 
     opt_f = data1.get_values("frequency", "GHz")[0]
     opt_att = data1.get_values("attenuation", "dB")[0]
@@ -1334,11 +1334,8 @@ def frequency_attenuation(folder, routine, qubit, format):
     try:
         data1 = DataUnits.load_data(folder, routine, format, f"results_q{qubit}")
     except:
-        data1 = DataUnits(quantities={"snr": "none" ,"frequency": "Hz", "attenuation": "dB"})
+        data1 = DataUnits(quantities={"snr": "dimensionless" ,"frequency": "Hz", "attenuation": "dB"})
 
-    opt_f = data1.get_values("frequency", "GHz")[0]
-    opt_att = data1.get_values("attenuation", "dB")[0]
-    opt_snr = data1.get_values("snr", "dimensionless")[0]
 
     fig = make_subplots(
         rows=1,
@@ -1359,19 +1356,24 @@ def frequency_attenuation(folder, routine, qubit, format):
         col=1,
     )
 
-    fig.add_annotation(
-        dict(
-            font=dict(color="black", size=12),
-            x=0,
-            y=-0.30,
-            showarrow=False,
-            text=f"Best response found at frequency {round(opt_f,len(str(opt_f))-3)} GHz <br> for attenuation value of {opt_att} dB with snr {round(opt_snr,3)}.\n",
-            textangle=0,
-            xanchor="left",
-            xref="paper",
-            yref="paper",
+    if len(data1) > 0:
+        opt_f = data1.get_values("frequency", "GHz")[0]
+        opt_att = data1.get_values("attenuation", "dB")[0]
+        opt_snr = data1.get_values("snr", "dimensionless")[0]
+
+        fig.add_annotation(
+            dict(
+                font=dict(color="black", size=12),
+                x=0,
+                y=-0.30,
+                showarrow=False,
+                text=f"Best response found at frequency {round(opt_f,len(str(opt_f))-3)} GHz <br> for attenuation value of {opt_att} dB with snr {opt_snr :.3e}.\n",
+                textangle=0,
+                xanchor="left",
+                xref="paper",
+                yref="paper",
+            )
         )
-    )
 
     # last part
     fig.update_layout(
@@ -1429,7 +1431,8 @@ def frequency_current_flux(folder, routine, qubit, format):
             go.Scatter(
                 x=data_spec.get_values("current", "A"),
                 y=data_spec.get_values("frequency", "GHz"),
-                name=f"fluxline: {j}"
+                name=f"fluxline: {j}",
+                mode="markers"
             ),
             row=1,
             col=k+1,
@@ -1444,7 +1447,7 @@ def frequency_current_flux(folder, routine, qubit, format):
                     max(data_spec.get_values("current", "A")),
                     100,
                 )
-                params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+
                 if int(j)==int(qubit):
                     if len(data_fit.df.keys()) == 10:
                         y = freq_r_transmon(
@@ -1538,7 +1541,7 @@ def frequency_current_flux(folder, routine, qubit, format):
         margin=dict(l=20, r=20, t=20, b=230),
         showlegend=False,
         autosize=False,
-        width=500*len(fluxes),
+        width=500*max(1,len(fluxes)),
         height=500,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
     )

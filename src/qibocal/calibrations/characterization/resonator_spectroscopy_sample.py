@@ -4,7 +4,7 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
 from qibocal.plots import frequency_attenuation, frequency_current_flux
-from qibocal.calibrations.characterization.utils import choose_freq, get_noise, plot_punchout, snr
+from qibocal.calibrations.characterization.utils import choose_freq, get_noise, snr
 from qibocal.data import DataUnits
 from qibocal.fitting.methods import res_spectrocopy_flux_fit
 from qibocal.decorators import plot
@@ -122,7 +122,8 @@ def resonator_punchout_sample(
     spans,
     small_spans,
     resolution,
-    software_averages
+    software_averages,
+    points
 ):
     """Use gaussian samples to extract the punchout of the resonator for different values of attenuation.
 
@@ -162,8 +163,7 @@ def resonator_punchout_sample(
 
     opt_att = 30
     opt_snr = 0
-    freqs = []
-    for att in attenuation_range:
+    for k, att in enumerate(attenuation_range):
         platform.ro_port[qubit].attenuation = att
 
         background = [best_f + 1e7, best_f - 1e7]
@@ -177,25 +177,23 @@ def resonator_punchout_sample(
             best_f, best_msr = scan_small(
                 best_f, best_msr, span, 11, platform, ro_pulse, qubit, sequence, software_averages
             )
-        freqs.append(best_f)
+
         results = {
             "MSR[V]": best_msr,
             "frequency[Hz]": best_f,
             "attenuation[dB]": att,
         }
         data.add(results)
+
+        if k % points == 0:
+            yield data
+
         if att >= opt_att:
             if abs(snr(best_msr, noise)) > opt_snr:
                 opt_snr = abs(snr(best_msr, noise))
                 opt_att = att
                 opt_f = best_f
 
-    plot_punchout(attenuation_range, freqs, qubit)
-
-    print(f"For qubit {qubit}:")
-    print(
-        f"Best response found at frequency {opt_f} Hz for attenuation value of {opt_att} dB.\n"
-    )
 
     data1 = DataUnits(
         name=f"results_q{qubit}", quantities={"snr": "dimensionless" ,"frequency": "Hz", "attenuation": "dB"}
@@ -226,7 +224,8 @@ def resonator_flux_sample(
     small_spans,
     resolution,
     params_fit, #[freq_rh,g]
-    software_averages
+    software_averages,
+    points
 ):
     """Use gaussian samples to extract the flux-frequency response of the resonator for different values of current.
 
@@ -274,7 +273,7 @@ def resonator_flux_sample(
     current_range = np.arange(current_min, current_max, current_step) + qubit_biasing_current
 
     for i in range(len(current_range)):
-        if qubit_biasing_current >= current_range[i]:
+        if qubit_biasing_current <= current_range[i]:
             start = i
             break
 
@@ -284,61 +283,31 @@ def resonator_flux_sample(
     noise = get_noise(background, platform, ro_pulse, qubit, sequence)
 
     # We scan starting from the sweet spot to higher currents
-    freqs1 = []
+    current_range = np.concatenate((current_range[start:],current_range[:start][::-1]))
+
+    index = len(current_range[start:])
     best_f = start_f
-    for curr in current_range[start:]:
+    for k, curr in enumerate(current_range):
+        if k == index:
+            best_f = start_f
         best_msr = noise
         platform.qf_port[fluxline].current = curr
         for span in spans:
             best_f, best_msr = scan_level(
-                best_f,
-                best_msr,
-                max_runs,
-                thr,
-                span,
-                resolution,
-                noise,
-                platform,
-                ro_pulse,
-                qubit,
-                sequence,
-                software_averages
-            )
+                best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit, sequence, software_averages
+                )
         for span in small_spans:
             best_f, best_msr = scan_small(
                 best_f, best_msr, span, 11, platform, ro_pulse, qubit, sequence, software_averages
             )
-        freqs1.append(best_f)
-
-    # and continue starting from the sweet spot to lower currents.
-    freqs2 = []
-    best_f = start_f
-    for curr in reversed(current_range[:start]):
-        best_msr = noise
-        platform.qf_port[fluxline].current = curr
-        for span in spans:
-            best_f, best_msr = scan_level( best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit, sequence, software_averages
-            )
-        for span in small_spans:
-            best_f, best_msr = scan_small(
-                best_f, best_msr, span, 11, platform, ro_pulse, qubit, sequence, software_averages
-            )
-        freqs2.append(best_f)
-
-    freqs = np.array(list(reversed(freqs2)) + freqs1)
-
-    for i in range(len(freqs)):
         results = {
             "MSR[V]": 455,
-            "i[V]": 455,
-            "q[V]": 455,
-            "phase[rad]": 455,
-            "frequency[Hz]": freqs[i],
-            "current[A]": current_range[i],
+            "frequency[Hz]": best_f,
+            "current[A]": curr,
         }
         data.add(results)
-
-    yield data
+        if k % points == 0:
+            yield data
 
     yield res_spectrocopy_flux_fit(
             data,
