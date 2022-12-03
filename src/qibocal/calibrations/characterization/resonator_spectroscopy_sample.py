@@ -48,10 +48,8 @@ def scan_level(
     freq = best_f
     for _ in range(max_runs):
         platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
-        avg=np.zeros(software_averages)
-        for j in range(len(avg)):
-            avg[j] = platform.execute_pulse_sequence(sequence)[ro_pulse.serial][0]
-        msr=np.mean(avg)
+        data=[platform.execute_pulse_sequence(sequence)[ro_pulse.serial] for _ in range(software_averages)]
+        msr, phase, i, q = np.mean(data,axis=0)
         if abs(snr(msr, noise)) >= thr:
             msr1 = msr
             if platform.resonator_type == "3D":
@@ -59,9 +57,9 @@ def scan_level(
                 best_msr = -best_msr
             if msr < best_msr:
                best_f, best_msr = freq, msr1
-               return best_f, best_msr
+               return best_f, best_msr, phase, i, q
         freq = choose_freq(best_f, span, resolution)
-    return best_f, best_msr
+    return best_f, best_msr, phase, i ,q
 
 
 def scan_small(
@@ -98,17 +96,15 @@ def scan_small(
     for s in scan:
         freq = start_f + s
         platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
-        avg=np.zeros(software_averages)
-        for j in range(len(avg)):
-            avg[j] = platform.execute_pulse_sequence(sequence)[ro_pulse.serial][0]
-        msr=np.mean(avg)
+        data=[platform.execute_pulse_sequence(sequence)[ro_pulse.serial] for _ in range(software_averages)]
+        msr, phase, i, q = np.mean(data,axis=0)
         msr1=msr
         if platform.resonator_type == "3D":
             msr = -msr
             best_msr = -best_msr
         if msr < best_msr:
             best_f, best_msr = freq, msr1
-    return best_f, best_msr
+    return best_f, best_msr, phase, i, q
 
 @plot("Frequency vs Attenuation", frequency_attenuation)
 def resonator_punchout_sample(
@@ -170,16 +166,19 @@ def resonator_punchout_sample(
         noise = get_noise(background, platform, ro_pulse, qubit, sequence)
         best_msr = noise
         for span in spans:
-            best_f, best_msr = scan_level(
+            best_f, best_msr, phase, i ,q = scan_level(
                 best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit, sequence, software_averages
             )
         for span in small_spans:
-            best_f, best_msr = scan_small(
+            best_f, best_msr, phase, i, q = scan_small(
                 best_f, best_msr, span, 11, platform, ro_pulse, qubit, sequence, software_averages
             )
 
         results = {
             "MSR[V]": best_msr,
+            "i[V]": i,
+            "q[V]": q,
+            "phase[rad]": phase,
             "frequency[Hz]": best_f,
             "attenuation[dB]": att,
         }
@@ -271,11 +270,8 @@ def resonator_flux_sample(
     platform.qf_port[fluxline].current = qubit_biasing_current
 
     current_range = np.arange(current_min, current_max, current_step) + qubit_biasing_current
-
-    for i in range(len(current_range)):
-        if qubit_biasing_current <= current_range[i]:
-            start = i
-            break
+    
+    start = next((index for index, curr in enumerate(current_range) if curr >= qubit_biasing_current))
 
     start_f = resonator_frequency
 
@@ -293,15 +289,18 @@ def resonator_flux_sample(
         best_msr = noise
         platform.qf_port[fluxline].current = curr
         for span in spans:
-            best_f, best_msr = scan_level(
+            best_f, best_msr, phase, i, q = scan_level(
                 best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit, sequence, software_averages
                 )
         for span in small_spans:
-            best_f, best_msr = scan_small(
+            best_f, best_msr, phase, i, q = scan_small(
                 best_f, best_msr, span, 11, platform, ro_pulse, qubit, sequence, software_averages
             )
         results = {
-            "MSR[V]": 455,
+            "MSR[V]": best_msr,
+            "i[V]": i,
+            "q[V]": q,
+            "phase[rad]": phase,
             "frequency[Hz]": best_f,
             "current[A]": curr,
         }
