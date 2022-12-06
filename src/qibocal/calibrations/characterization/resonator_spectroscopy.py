@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import numpy as np
+from qibo.config import log
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
@@ -8,8 +9,6 @@ from qibocal.calibrations.characterization.utils import variable_resolution_scan
 from qibocal.data import DataUnits
 from qibocal.decorators import plot
 from qibocal.fitting.methods import lorentzian_fit
-from qibo.config import log
-
 
 
 @plot("MSR and Phase vs Frequency", plots.frequency_msr_phase__fast_precision)
@@ -230,9 +229,9 @@ def resonator_spectroscopy_flux(
     frequency_range = (
         np.arange(-freq_width, freq_width, freq_step) + resonator_frequency
     )
-    current_range = np.arange(
-        current_min, current_max, current_step
-    )   + qubit_biasing_current
+    current_range = (
+        np.arange(current_min, current_max, current_step) + qubit_biasing_current
+    )
 
     resonator_polycoef_flux = {}
     count = 0
@@ -259,13 +258,13 @@ def resonator_spectroscopy_flux(
                     min_msr = msr
                     resonance_freq = freq
                     resonance_current = curr
-                    #log.info(f"Init: {min_msr}, {resonance_freq}, {round(resonance_current, 5)}")
-                
-                if (msr < min_msr):
+                    # log.info(f"Init: {min_msr}, {resonance_freq}, {round(resonance_current, 5)}")
+
+                if msr < min_msr:
                     min_msr = msr
                     resonance_freq = freq
                     resonance_current = curr
-                    #log.info(f"New min found: {min_msr}, {resonance_freq}, {round(resonance_current, 5)}")
+                    # log.info(f"New min found: {min_msr}, {resonance_freq}, {round(resonance_current, 5)}")
 
                 # TODO: implement normalization
                 data.add(results)
