@@ -668,7 +668,7 @@ test = ["codecov", "coveralls", "nbval", "pyarrow", "pytest", "pytest-cov", "pyt
 type = "git"
 url = "https://github.com/hgrecco/pint-pandas.git"
 reference = "master"
-resolved_reference = "e7584d5bbdeb1e87a8b4c3b60386c95e9da38bc2"
+resolved_reference = "c58a7fcf9123eb65f5e78845077b205e20279b9d"
 
 [[package]]
 name = "platformdirs"
@@ -878,16 +878,15 @@ python-versions = ">=3.6"
 
 [[package]]
 name = "qibo"
-version = "0.1.9.dev0"
+version = "0.1.9"
 description = "A framework for quantum computing with hardware acceleration."
 category = "main"
 optional = false
 python-versions = ">=3.7.0"
-develop = false
 
 [package.dependencies]
 cma = "*"
-importlib_metadata = "*"
+importlib-metadata = "*"
 joblib = "*"
 matplotlib = "*"
 psutil = "*"
@@ -897,14 +896,8 @@ sympy = "*"
 tabulate = "*"
 
 [package.extras]
-docs = ["IPython", "nbsphinx", "recommonmark", "sphinx", "sphinx_markdown_tables", "sphinx_rtd_theme", "sphinxcontrib-bibtex"]
-tests = ["cirq", "dill", "ply", "pre-commit", "pytest", "sklearn"]
-
-[package.source]
-type = "git"
-url = "https://github.com/qiboteam/qibo.git"
-reference = "master"
-resolved_reference = "833ab405986536e67f124cdbf3bb876e7203e501"
+docs = ["IPython", "nbsphinx", "recommonmark", "sphinx", "sphinx-markdown-tables", "sphinx-rtd-theme", "sphinxcontrib-bibtex"]
+tests = ["cirq", "dill", "ply", "pre-commit", "pytest", "scikit-learn"]
 
 [[package]]
 name = "qibolab"
@@ -926,7 +919,7 @@ tiiq = ["qblox-instruments (==0.6.1)", "qcodes"]
 type = "git"
 url = "https://github.com/qiboteam/qibolab.git"
 reference = "main"
-resolved_reference = "a2f2e2012bba450b4fb5c0dbbd8e2f3fba4279d0"
+resolved_reference = "d6fc4230113efc4f573a5b4ff61f3c00c9d74f39"
 
 [[package]]
 name = "recommonmark"
@@ -1310,7 +1303,7 @@ docs = ["Sphinx", "sphinx-rtd-theme", "sphinxcontrib-bibtex", "recommonmark", "s
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.8, <4"
-content-hash = "340000a2abf2e0ac4f5215872243f1462229c79e6c7f7a368bed574ee35988e8"
+content-hash = "ca0c1fa7ef0d62ac71fbb02fcefde0d7498f213db9206db7984147c7f0ba1ac0"
 
 [metadata.files]
 alabaster = [
@@ -2134,7 +2127,10 @@ pyyaml = [
     {file = "PyYAML-6.0-cp39-cp39-win_amd64.whl", hash = "sha256:b3d267842bf12586ba6c734f89d1f5b871df0273157918b0ccefa29deb05c21c"},
     {file = "PyYAML-6.0.tar.gz", hash = "sha256:68fb519c14306fec9720a2a5b45bc9f0c8d1b9c72adf45c37baedfcd949c35a2"},
 ]
-qibo = []
+qibo = [
+    {file = "qibo-0.1.9-py3-none-any.whl", hash = "sha256:b2f6fbb644a84eb51d216afe3a1ae5b0cb8bd5cffb031daeadf12a687bac3dd3"},
+    {file = "qibo-0.1.9.tar.gz", hash = "sha256:b07f652397305b77ea7564046bbf943f042677cb2acc7ec0e85ff0d11cc6db78"},
+]
 qibolab = []
 recommonmark = [
     {file = "recommonmark-0.7.1-py2.py3-none-any.whl", hash = "sha256:1b1db69af0231efce3fa21b94ff627ea33dee7079a01dd0a7f8482c3da148b3f"},
