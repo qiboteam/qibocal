@@ -51,7 +51,7 @@ In our case we can use the command:
 Visualize the data
 ^^^^^^^^^^^^^^^^^^
 
-Qibocal gives the possibility to live-plotting with the ``qq-live`` command. Opening the output link in the browser, the web page will look like the following image.
+Qibocal gives the possibility to live-plotting with the :ref:`qqlive` command. Opening the output link in the browser, the web page will look like the following image.
 
 .. image:: resonator_spectr_qqlive.png
     :align: center
