@@ -8,6 +8,8 @@ from qibocal.calibrations.characterization.utils import variable_resolution_scan
 from qibocal.data import DataUnits
 from qibocal.decorators import plot
 from qibocal.fitting.methods import lorentzian_fit
+from qibo.config import log
+
 
 
 @plot("MSR and Phase vs Frequency", plots.frequency_msr_phase__fast_precision)
@@ -230,11 +232,13 @@ def resonator_spectroscopy_flux(
     )
     current_range = np.arange(
         current_min, current_max, current_step
-    )  # + qubit_biasing_current
+    )   + qubit_biasing_current
 
+    resonator_polycoef_flux = {}
     count = 0
     for _ in range(software_averages):
         for curr in current_range:
+            k = 0
             for freq in frequency_range:
                 if count % points == 0:
                     yield data
@@ -251,11 +255,27 @@ def resonator_spectroscopy_flux(
                     "frequency[Hz]": freq,
                     "current[A]": curr,
                 }
+                if k == 0:
+                    min_msr = msr
+                    resonance_freq = freq
+                    resonance_current = curr
+                    #log.info(f"Init: {min_msr}, {resonance_freq}, {round(resonance_current, 5)}")
+                
+                if (msr < min_msr):
+                    min_msr = msr
+                    resonance_freq = freq
+                    resonance_current = curr
+                    #log.info(f"New min found: {min_msr}, {resonance_freq}, {round(resonance_current, 5)}")
+
                 # TODO: implement normalization
                 data.add(results)
                 count += 1
+                k += 1
+
+            resonator_polycoef_flux[round(resonance_current, 5)] = resonance_freq
 
     yield data
+    log.info(f"Polycoef dict: {resonator_polycoef_flux}")
     # TODO: automatically extract the sweet spot current
     # TODO: add a method to generate the matrix
 
