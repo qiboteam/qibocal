@@ -22,9 +22,6 @@ distributed with pypi* for the packages listed above.
 
 .. _installing-qibocal:
 
-Qibocal
-^^^^^^^
-
 Installing from source
 """"""""""""""""""""""
 
