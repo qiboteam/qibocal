@@ -289,7 +289,8 @@ class Result:
     def __init__(self, dataframe: pd.DataFrame) -> None:
         self.df = dataframe
         self.all_figures = []
-        self.fitting_func = lambda x, y: (0, 0, x, y)
+        # The fitting function should return two tuples and two np.ndarrays.
+        self.fitting_func = lambda x, y: ((0,0,0), (1,1,1), x, y)
         self.title = "Report"
 
     def extract(self, group_by: str, output: str, agg_type: str):
