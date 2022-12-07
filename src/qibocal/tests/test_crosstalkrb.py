@@ -228,6 +228,73 @@ def test_filterfunction():
     assert np.isclose(a2, list_crosstalk[2])
     assert np.isclose(a3, list_crosstalk[3])
 
+# def test_filterfunction():
+#     """Test if the filter function works, without noise."""
+#     from qibocal.calibrations.protocols.utils import ONEQUBIT_CLIFFORD_PARAMS
+
+#     nqubits = 2
+#     nshots = 3
+#     d = 2
+#     # Steal the class method for calculating clifford unitaries.
+#     clifford_unitary = crosstalkrb.SingleCliffordsFactory.clifford_unitary
+#     # The first parameter is self, set it to None since it is not needed.
+#     g1_matrix = clifford_unitary(None, *ONEQUBIT_CLIFFORD_PARAMS[8])
+#     g1 = gates.Unitary(g1_matrix, 0)
+#     g2_matrix = clifford_unitary(None, *ONEQUBIT_CLIFFORD_PARAMS[6])
+#     g2 = gates.Unitary(g2_matrix, 0)
+#     g3_matrix = clifford_unitary(None, *ONEQUBIT_CLIFFORD_PARAMS[2])
+#     g3 = gates.Unitary(g3_matrix, 1)
+#     g4_matrix = clifford_unitary(None, *ONEQUBIT_CLIFFORD_PARAMS[23])
+#     g4 = gates.Unitary(g4_matrix, 1)
+#     # Calculate the ideal unitary and the ideal outcomes.
+#     g21 = g2_matrix @ g1_matrix
+#     g43 = g4_matrix @ g3_matrix
+#     ideal1 = g21 @ np.array([[1], [0]])
+#     ideal2 = g43 @ np.array([[1], [0]])
+#     # Build the circuit with the ideal unitaries.
+#     c = models.Circuit(nqubits)
+#     c.add([g1, g3, g2, g4])
+#     c.add(gates.M(0, 1))
+#     # Execute the circuit and get the samples.
+#     samples = c(nshots=nshots).samples()
+#     # Initiate the variables to store the four irrep signals.
+#     a0, a1, a2, a3 = 0, 0, 0, 0
+#     for s in samples:
+#         # lambda = (0,0)
+#         a0 += 1
+#         # lambda = (1,0)
+#         a1 += d * np.abs(ideal1[s[0]]) - 1
+#         # lambda = (0,1)
+#         a2 += d * np.abs(ideal2[s[1]]) - 1
+#         # lambda = (1,1)
+#         a3 += (
+#             d**2 * np.abs(ideal1[s[0]]) * np.abs(ideal2[s[1]])
+#             - d * np.abs(ideal1[s[0]])
+#             - d * np.abs(ideal2[s[1]])
+#             + 1
+#         )
+#     a0 *= (d + 1) / (d**2 * nshots)
+#     a1 *= (d + 1) / (d**2 * nshots)
+#     a2 *= (d + 1) / (d**2 * nshots)
+#     a3 *= (d + 1) / (d**2 * nshots)
+#     # Now do the same but with an experiment, use a list with only
+#     # the prebuild circuit (build it again because it was already executed).
+#     # No noise.
+#     c = models.Circuit(nqubits)
+#     c.add([g1, g3, g2, g4])
+#     c.add(gates.M(0, 1))
+#     experiment = crosstalkrb.CrosstalkRBExperiment([c], nshots)
+#     experiment.execute()
+#     # Compute and get the filtered signals.
+#     experiment.apply_task(crosstalkrb.filter_function)
+#     list_crosstalk = experiment.data[0]["crosstalk"]
+#     # Compare the above calculated filtered signals and the signals
+#     # computed with the crosstalkrb method.
+#     assert np.isclose(a0, list_crosstalk[0])
+#     assert np.isclose(a1, list_crosstalk[1])
+#     assert np.isclose(a2, list_crosstalk[2])
+#     assert np.isclose(a3, list_crosstalk[3])
+
 
 @pytest.mark.parametrize("nqubits", [2, 3])
 @pytest.mark.parametrize("runs", [1, 3])

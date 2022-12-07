@@ -2,7 +2,7 @@ from os import mkdir
 from os.path import isdir
 
 import numpy as np
-from qibo.models import Circuit, gates
+from qibo import gates, models
 from qibo.noise import PauliError
 
 # To not define the parameters for one qubit Cliffords every time a
@@ -98,7 +98,7 @@ def effective_depol(error_channel, **kwargs):
     return depolp
 
 
-def embed_unitary_circuit(circuit: Circuit, nqubits: int, support: list) -> Circuit:
+def embed_unitary_circuit(circuit: models.Circuit, nqubits: int, support: list) -> models.Circuit:
     """Takes a circuit and redistributes the gates to the support of
     a new circuit with ``nqubits`` qubits.
 
@@ -112,7 +112,7 @@ def embed_unitary_circuit(circuit: Circuit, nqubits: int, support: list) -> Circ
     """
 
     idxmap = np.vectorize(lambda idx: support[idx])
-    newcircuit = Circuit(nqubits)
+    newcircuit = models.Circuit(nqubits)
     for gate in circuit.queue:
         if not isinstance(gate, gates.measurements.M):
             newcircuit.add(
