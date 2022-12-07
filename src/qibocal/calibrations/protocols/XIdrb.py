@@ -7,8 +7,8 @@
 # 3. step:
 #   Write the result class which uses the modified data (modified by the analyze function)
 #   from the experiment object and displays the results module specific.
-# 4. step: 
-# 
+# 4. step:
+#
 # Load to __init__.py file in calibrations/
 # Make a jupyter notebook with the single steps with 'checks'
 # -> create a factory, check the factory
@@ -20,24 +20,22 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from qibocal.calibrations.protocols.abstract import (
-    Experiment,
-    Result,
-    Circuitfactory,
-)
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
 from qibo import gates, models
 from qibo.noise import NoiseModel, PauliError
-from qibocal.calibrations.protocols.utils import effective_depol
-from qibocal.fitting.rb_methods import fit_exp1_func
-import pandas as pd
-import numpy as np
-import plotly.graph_objects as go
-from qibocal.data import Data
 from qibolab.platforms.abstract import AbstractPlatform
+
+from qibocal.calibrations.protocols.abstract import Circuitfactory, Experiment, Result
+from qibocal.calibrations.protocols.utils import effective_depol
+from qibocal.data import Data
 from qibocal.decorators import plot
+from qibocal.fitting.rb_methods import fit_exp1_func
 
 # This has to be implemented in the plots folder of qibocal
 from qibocal.plots.rb import XIdrb_plot
+
 
 # Define the circuit factory class for this specific module.
 class XIdFactory(Circuitfactory):
@@ -45,15 +43,15 @@ class XIdFactory(Circuitfactory):
         self, nqubits: int, depths: list, runs: int, qubits: list = None
     ) -> None:
         super().__init__(nqubits, depths, runs, qubits)
-    
+
     def build_circuit(self, depth: int):
         # Initiate the empty circuit from qibo with 'self.nqubits'
         # many qubits.
-        circuit = models.Circuit(len(self.qubits), density_matrix = True)
+        circuit = models.Circuit(len(self.qubits), density_matrix=True)
         # There are only two gates to choose from.
         a = [gates.I(0), gates.X(0)]
         # Draw sequence length many zeros and ones.
-        random_ints = np.random.randint(0, 2, size = depth)
+        random_ints = np.random.randint(0, 2, size=depth)
         # Get the Xs and Ids with random_ints as indices.
         gate_lists = np.take(a, random_ints)
         # Add gates to circuit.
@@ -61,18 +59,21 @@ class XIdFactory(Circuitfactory):
         circuit.add(gates.M(*range(len(self.qubits))))
         return circuit
 
+
 class XIdRandMeasurementFactory(Circuitfactory):
-    def __init__(self, nqubits: int, depths: list, runs: int, qubits: list = None) -> None:
+    def __init__(
+        self, nqubits: int, depths: list, runs: int, qubits: list = None
+    ) -> None:
         super().__init__(nqubits, depths, runs, qubits)
-    
+
     def build_circuit(self, depth: int):
         # Initiate the empty circuit from qibo with 'self.nqubits'
         # many qubits.
-        circuit = models.Circuit(len(self.qubits), density_matrix = True)
+        circuit = models.Circuit(len(self.qubits), density_matrix=True)
         # There are only two gates to choose from.
         a = [gates.I(0), gates.X(0)]
         # Draw sequence length many zeros and ones.
-        random_ints = np.random.randint(0, 2, size = depth)
+        random_ints = np.random.randint(0, 2, size=depth)
         # Get the Xs and Ids with random_ints as indices.
         gate_lists = np.take(a, random_ints)
         # Add gates to circuit.
@@ -84,18 +85,22 @@ class XIdRandMeasurementFactory(Circuitfactory):
         circuit.add(gates.M(*range(len(self.qubits))))
         return circuit
 
+
 # Define the experiment class for this specific module.
 class XIdExperiment(Experiment):
     def __init__(
-        self, circuitfactory: Iterable, nshots: int = None,
-        data: list = None, noisemodel: NoiseModel = None
+        self,
+        circuitfactory: Iterable,
+        nshots: int = None,
+        data: list = None,
+        noisemodel: NoiseModel = None,
     ) -> None:
         super().__init__(circuitfactory, nshots, data, noisemodel)
-    
+
     def single_task(self, circuit: models.Circuit, datarow: dict) -> dict:
         datadict = super().single_task(circuit, datarow)
         datadict["depth"] = circuit.ngates - 1 if circuit.ngates > 1 else 0
-        datadict['countX'] = circuit.draw().count("X")
+        datadict["countX"] = circuit.draw().count("X")
         return datadict
 
 
@@ -105,23 +110,25 @@ class XIdResult(Result):
         super().__init__(dataframe)
         self.fitting_func = fitting_func
         self.title = "X-Id Benchmarking"
-    
+
     def single_fig(self):
         xdata_scatter = self.df["depth"].to_numpy()
         ydata_scatter = self.df["filters"].to_numpy()
         xdata, ydata = self.extract("depth", "filters", "mean")
         self.scatter_fit_fig(xdata_scatter, ydata_scatter, xdata, ydata)
 
+
 def filter_sign(experiment: Experiment):
     filtersing_list = []
     for datarow in experiment.data:
         samples = datarow["samples"]
-        countX = datarow['countX']
+        countX = datarow["countX"]
         filtersign = 0
         for s in samples:
-            filtersign += (-1) ** (countX % 2 + s[0]) / 2.
+            filtersign += (-1) ** (countX % 2 + s[0]) / 2.0
         filtersing_list.append(filtersign / len(samples))
     experiment._append_data("filters", filtersing_list)
+
 
 def analyze(
     experiment: Experiment, noisemodel: NoiseModel = None, **kwargs
@@ -131,6 +138,7 @@ def analyze(
     result.single_fig()
     report = result.report()
     return report
+
 
 # Make perform take a whole noisemodel already.
 def perform(

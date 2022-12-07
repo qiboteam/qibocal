@@ -59,11 +59,9 @@ def crosstalkrb_plot(folder, routine, qubit, format):
         pass
     return fig
 
+
 def XIdrb_plot(folder, routine, qubit, format):
-    from qibocal.calibrations.protocols.XIdrb import (
-        XIdExperiment,
-        analyze,
-    )
+    from qibocal.calibrations.protocols.XIdrb import XIdExperiment, analyze
 
     experimentpath = f"{folder}/data/{routine}/"
     experiment = XIdExperiment.load(experimentpath)

@@ -110,12 +110,10 @@ def filter_function(experiment: CrosstalkRBExperiment):
     for datarow in experiment.data:
         samples = datarow["samples"]
         # Fuse the gates for each qubit.
-        fused_circuit = datarow["circuit"].fuse(max_qubits = 1)
+        fused_circuit = datarow["circuit"].fuse(max_qubits=1)
         # Extract for each qubit the ideal state.
         ideal_states = np.array(
-            [
-                fused_circuit.queue[k].matrix[:, 0] for k in range(nqubits)
-            ]
+            [fused_circuit.queue[k].matrix[:, 0] for k in range(nqubits)]
         )
         # Go through every irrep.
         f_list = []
@@ -140,12 +138,14 @@ def filter_function(experiment: CrosstalkRBExperiment):
                         # Take the product of all probabilities chosen by the experimental
                         # outcome which are supported by the inverse of b.
                         a += (-1) ** sum(b) * np.prod(
-                            d * np.abs(suppl[~b][np.eye(2, dtype=bool)[s[~b]]]) ** 2)
+                            d * np.abs(suppl[~b][np.eye(2, dtype=bool)[s[~b]]]) ** 2
+                        )
             # Normalize with inverse of effective measuremetn.
-            a_norm = a * (d + 1) ** sum(l) / d ** nqubits
+            a_norm = a * (d + 1) ** sum(l) / d**nqubits
             f_list.append(a_norm)
         biglist.append(np.array(f_list) / nshots)
     experiment._append_data("crosstalk", biglist)
+
 
 def analyze(experiment: CrosstalkRBExperiment, noisemodel: NoiseModel = None, **kwargs):
     experiment.apply_task(filter_function)
