@@ -228,6 +228,7 @@ def test_filterfunction():
     assert np.isclose(a2, list_crosstalk[2])
     assert np.isclose(a3, list_crosstalk[3])
 
+
 # def test_filterfunction():
 #     """Test if the filter function works, without noise."""
 #     from qibocal.calibrations.protocols.utils import ONEQUBIT_CLIFFORD_PARAMS

@@ -98,7 +98,9 @@ def effective_depol(error_channel, **kwargs):
     return depolp
 
 
-def embed_unitary_circuit(circuit: models.Circuit, nqubits: int, support: list) -> models.Circuit:
+def embed_unitary_circuit(
+    circuit: models.Circuit, nqubits: int, support: list
+) -> models.Circuit:
     """Takes a circuit and redistributes the gates to the support of
     a new circuit with ``nqubits`` qubits.
 
