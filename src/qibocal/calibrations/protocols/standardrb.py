@@ -19,12 +19,11 @@ from qibocal.calibrations.protocols.abstract import (
     Result,
     SingleCliffordsFactory,
 )
-from qibocal.fitting.rb_methods import fit_exp1B_func
 from qibocal.calibrations.protocols.utils import effective_depol
 from qibocal.config import raise_error
 from qibocal.data import Data
 from qibocal.decorators import plot
-from qibocal.fitting.rb_methods import fit_exp1_func
+from qibocal.fitting.rb_methods import fit_exp1_func, fit_exp1B_func
 from qibocal.plots.rb import standardrb_plot
 
 
