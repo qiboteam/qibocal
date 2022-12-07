@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+import abc
 import pickle
 from collections.abc import Iterable
 from copy import deepcopy
@@ -49,6 +49,7 @@ class Circuitfactory:
             bigcircuit.add(circuit.on_qubits(*self.qubits))
             return bigcircuit
 
+    @abc.abstractmethod
     def build_circuit(self, depth: int):
         raise_error(NotImplementedError)
 
@@ -288,7 +289,7 @@ class Result:
     def __init__(self, dataframe: pd.DataFrame) -> None:
         self.df = dataframe
         self.all_figures = []
-        self.fitting_func = lambda x, y: (None, None, x, y)
+        self.fitting_func = lambda x, y: (0, 0, x, y)
         self.title = "Report"
 
     def extract(self, group_by: str, output: str, agg_type: str):

@@ -2,7 +2,7 @@ from os import mkdir
 from os.path import isdir
 
 import numpy as np
-from qibo.models import Circuit
+from qibo.models import Circuit, gates
 from qibo.noise import PauliError
 
 # To not define the parameters for one qubit Cliffords every time a
