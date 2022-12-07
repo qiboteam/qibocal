@@ -16,12 +16,12 @@ from qibocal.calibrations.protocols.abstract import (
     Result,
     SingleCliffordsFactory,
 )
-from qibocal.fitting.rb_methods import fit_exp1_func
 from qibocal.calibrations.protocols.utils import effective_depol
+from qibocal.config import raise_error
 from qibocal.data import Data
 from qibocal.decorators import plot
+from qibocal.fitting.rb_methods import fit_exp1_func
 from qibocal.plots.rb import crosstalkrb_plot
-from qibocal.config import raise_error
 
 
 class CrosstalkRBExperiment(Experiment):
@@ -36,7 +36,7 @@ class CrosstalkRBExperiment(Experiment):
 
     def single_task(self, circuit: Circuit, datarow: dict) -> dict:
         """Executes a circuit, returns the single shot results
-        
+
         Args:
             circuit (Circuit): Will be executed, has to return samples.
             datarow (dict): Dictionary with parameters for execution and
@@ -98,7 +98,7 @@ def filter_function(experiment: CrosstalkRBExperiment):
         f_{\\boldsymbol{\\lambda}}(i,g) = \\frac{1}{2^{N-|\\boldsymbol{\\lambda}|}}\\sum_{\\mathbf b\\in\\mathbb F_2^N}(-1)^{|\\boldsymbol{\\lambda}\\wedge\\mathbf b|}\\frac{1}{d^N}\\left(\\prod_{k=1}^N(d|\\bra{i_k} U_{g_{(k)}} \\ket{0}|^2)^{\\lambda_k-\\lambda_kb_k}\\right)
 
     Args:
-        experiment (CrosstalkRBExperiment): The executed (crosstalk) experiment. 
+        experiment (CrosstalkRBExperiment): The executed (crosstalk) experiment.
             The circuits must be stored in the experiment object.
     """
     # Extract amount of used qubits and used shots.

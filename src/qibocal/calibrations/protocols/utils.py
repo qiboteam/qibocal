@@ -97,6 +97,7 @@ def effective_depol(error_channel, **kwargs):
     depolp = ((np.trace(liouvillerep) + d) / (d + 1) - 1) / (d - 1)
     return depolp
 
+
 def embed_unitary_circuit(circuit: Circuit, nqubits: int, support: list) -> Circuit:
     """Takes a circuit and redistributes the gates to the support of
     a new circuit with ``nqubits`` qubits.
