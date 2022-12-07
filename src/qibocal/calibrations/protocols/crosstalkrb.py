@@ -109,18 +109,14 @@ def filter_function(experiment: CrosstalkRBExperiment):
     biglist = []
     for datarow in experiment.data:
         samples = datarow["samples"]
-        # Extract the ideal unitaries which acted on each qubit.
-        idealoutcome_list = []
-        for count in range(nqubits):
-            unitary = np.eye(2, dtype=complex)
-            # Don't take into account the measurement gate.
-            # The queue is ordered, go through it to get each qubit.
-            for gate in np.array(datarow["circuit"].queue[count:-1:nqubits]):
-                unitary = gate.matrix @ unitary
-            # Calculate the ideal outcome.
-            idealoutcome_list.append(unitary @ np.array([[1], [0]]))
-        # Every term carries a ``d`` factor.
-        idealoutcomes = d * np.array(idealoutcome_list)
+        # Fuse the gates for each qubit.
+        fused_circuit = datarow["circuit"].fuse(max_qubits = 1)
+        # Extract for each qubit the ideal state.
+        ideal_states = np.array(
+            [
+                fused_circuit.queue[k].matrix[:, 0] for k in range(nqubits)
+            ]
+        )
         # Go through every irrep.
         f_list = []
         for l in np.array(list(product([False, True], repeat=nqubits))):
@@ -131,11 +127,11 @@ def filter_function(experiment: CrosstalkRBExperiment):
             else:
                 # Get the supported ideal outcomes and samples
                 # for this irreps projector.
-                supl = idealoutcomes[l][0]
-                supsamples = samples[:, l]
+                suppl = ideal_states[l]
+                suppsamples = samples[:, l]
                 a = 0
                 # Go through all ``nshots`` samples
-                for s in supsamples:
+                for s in suppsamples:
                     # Go through all combinations of (0,1) on the support
                     # of lambda ``l``.
                     for b in np.array(list(product([False, True], repeat=sum(l)))):
@@ -143,11 +139,13 @@ def filter_function(experiment: CrosstalkRBExperiment):
                         # projector was used.
                         # Take the product of all probabilities chosen by the experimental
                         # outcome which are supported by the inverse of b.
-                        a += (-1) ** sum(b) * np.prod(np.abs(supl[s[~b]]))
-            f_list.append(a)
-        biglist.append(np.array(f_list) * (d + 1) / (d**2 * nshots))
+                        a += (-1) ** sum(b) * np.prod(
+                            d * np.abs(suppl[~b][np.eye(2, dtype=bool)[s[~b]]]) ** 2)
+            # Normalize with inverse of effective measuremetn.
+            a_norm = a * (d + 1) ** sum(l) / d ** nqubits
+            f_list.append(a_norm)
+        biglist.append(np.array(f_list) / nshots)
     experiment._append_data("crosstalk", biglist)
-
 
 def analyze(experiment: CrosstalkRBExperiment, noisemodel: NoiseModel = None, **kwargs):
     experiment.apply_task(filter_function)

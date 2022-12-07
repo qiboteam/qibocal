@@ -211,8 +211,8 @@ class Experiment:
             datarow (dict): Dictionary with parameters for execution and
                 immediate postprocessing information.
         """
-        if self.__noise_model is not None:
-            circuit = self.__noise_model.apply(circuit)
+        if self.noise_model is not None:
+            circuit = self.noise_model.apply(circuit)
         samples = circuit(nshots=self.nshots).samples()
         return {"samples": samples}
 
@@ -220,7 +220,7 @@ class Experiment:
         """Creates a path and pickles relevent data from ``self.data`` and
         if ``self.circuitfactory`` is a list that one too.
         """
-        self.path = experiment_directory("standardrb")
+        self.path = experiment_directory("rb")
         if isinstance(self.circuitfactory, list):
             with open(f"{self.path}circuits.pkl", "wb") as f:
                 pickle.dump(self.circuitfactory, f)

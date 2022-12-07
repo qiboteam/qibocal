@@ -19,7 +19,7 @@ from qibocal.calibrations.protocols.abstract import (
     Result,
     SingleCliffordsFactory,
 )
-from qibocal.fitting.rb_methods import fit_exp1_func
+from qibocal.fitting.rb_methods import fit_exp1B_func
 from qibocal.calibrations.protocols.utils import effective_depol
 from qibocal.data import Data
 from qibocal.decorators import plot
@@ -126,7 +126,7 @@ def analyze(
 ) -> go._figure.Figure:
     # Compute and add the ground state probabilities.
     experiment.apply_task(groundstate_probability)
-    result = StandardRBResult(experiment.dataframe, fit_exp1_func)
+    result = StandardRBResult(experiment.dataframe, fit_exp1B_func)
     result.single_fig()
     report = result.report()
     return report

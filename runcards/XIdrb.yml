@@ -5,9 +5,9 @@ qubits: [0]
 format: pickle
 
 actions:
-  qqperform_standardrb:
+  qqperform_XIdrb:
     nqubit: 1
-    depths: [0,1, 3,5,7,10,15,20]
+    depths: [1,3,5,7,10,15,20]
     runs: 5
     nshots: 1024
-    noise_params: [0.01, 0.01, 0.01]
+    noise_params: [0.05, 0.01, 0.01]
