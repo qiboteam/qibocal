@@ -10,8 +10,6 @@ from qibocal.fitting.utils import cos, exp, flipping, lorenzian, parse, rabi, ra
 
 from functools import partial
 
-from pandas import DataFrame
-
 def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None):
     """Fitting routine for resonator spectroscopy"""
     if fit_file_name == None:
@@ -493,32 +491,3 @@ def res_spectrocopy_flux_fit(data, x, y, qubit, fluxline, params_fit):
         }
         )  
     return data_fit
-
-def res_spectrocopy_flux_matrix(fluxlines):
-    folder = "reports"
-    fits = []
-    for q in fluxlines:
-        for f in fluxlines:
-            file = f"{folder}/data/resonator_flux_sample/fit1_q{q}_f{f}.csv"
-            if os.path.exists(file):
-                fits += [f]
-    if len(fits) == len(fluxlines)**2:
-        mat = np.zeros((len(fluxlines),len(fluxlines)))
-        offset = np.zeros(len(fluxlines))
-        for i, q in enumerate(fluxlines):
-            for j, f in enumerate(fluxlines):
-                data_fit = Data.load_data(folder, "resonator_flux_sample", "csv", f"fit1_q{q}_f{f}")
-                if q==f:
-                    element = "C_ii"
-                    offset[i] = data_fit.get_values("f_offset")[0]
-                else:
-                    element = "popt0"
-                mat[i,j]=data_fit.get_values(element)[0]
-        m = np.linalg.inv(mat)
-        data = Data(name=f"flux_matrix")
-        data.df = DataFrame(m)
-        data.df.insert(len(fluxlines), 'offset_c', offset, True)
-        #[m, offset_c] freq = M*curr + offset --> curr = m*freq + offset_c  m = M^-1, offset_c = -M^-1 * offset
-    else:
-        data = Data(name=f"flux_matrix")
-    return data

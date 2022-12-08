@@ -6,7 +6,7 @@ from qibolab.pulses import PulseSequence
 from qibocal.plots import frequency_attenuation, frequency_current_flux
 from qibocal.calibrations.characterization.utils import choose_freq, get_noise, snr
 from qibocal.data import DataUnits
-from qibocal.fitting.methods import res_spectrocopy_flux_fit, res_spectrocopy_flux_matrix
+from qibocal.fitting.methods import res_spectrocopy_flux_fit
 from qibocal.decorators import plot
 
 def scan_level(
@@ -216,7 +216,7 @@ def resonator_flux_sample(
     current_min,
     current_max,
     current_step,
-    fluxlines,
+    fluxline,
     max_runs,
     thr,
     spans,
@@ -224,8 +224,7 @@ def resonator_flux_sample(
     resolution,
     params_fit, #[freq_rh,g]
     software_averages,
-    points,
-    matrix = False
+    points
 ):
     """Use gaussian samples to extract the flux-frequency response of the resonator for different values of current.
 
@@ -247,79 +246,75 @@ def resonator_flux_sample(
         data (Data): Data file with information on the feature response at each current point.
 
     """
-    params_fit = params_fit[qubit]
-    for fluxline in fluxlines:
-        data = DataUnits(
-            name=f"data_q{qubit}_f{fluxline}", quantities={"frequency": "Hz", "current": "A"}
+
+    data = DataUnits(
+        name=f"data_q{qubit}_f{fluxline}", quantities={"frequency": "Hz", "current": "A"}
+    )
+
+    if fluxline == "qubit":
+        fluxline = qubit
+
+    platform.reload_settings()
+
+    sequence = PulseSequence()
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
+    sequence.add(ro_pulse)
+
+    resonator_frequency = platform.characterization["single_qubit"][qubit][
+        "resonator_freq"
+    ]
+    qubit_biasing_current = platform.characterization["single_qubit"][qubit][
+        "sweetspot"
+    ]
+
+    platform.qf_port[fluxline].current = qubit_biasing_current
+
+    current_range = np.arange(current_min, current_max, current_step) + qubit_biasing_current
+    
+    start = next((index for index, curr in enumerate(current_range) if curr >= qubit_biasing_current))
+
+    start_f = resonator_frequency
+
+    background = [start_f + 1e7, start_f - 1e7]
+    noise = get_noise(background, platform, ro_pulse, qubit, sequence)
+
+    # We scan starting from the sweet spot to higher currents
+    current_range = np.concatenate((current_range[start:],current_range[:start][::-1]))
+
+    index = len(current_range[start:])
+    best_f = start_f
+    for k, curr in enumerate(current_range):
+        if k == index:
+            best_f = start_f
+        best_msr = noise
+        platform.qf_port[fluxline].current = curr
+        for span in spans:
+            best_f, best_msr, phase, i, q = scan_level(
+                best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit, sequence, software_averages
+                )
+        for span in small_spans:
+            best_f, best_msr, phase, i, q = scan_small(
+                best_f, best_msr, span, 11, platform, ro_pulse, qubit, sequence, software_averages
+            )
+        results = {
+            "MSR[V]": best_msr,
+            "i[V]": i,
+            "q[V]": q,
+            "phase[rad]": phase,
+            "frequency[Hz]": best_f,
+            "current[A]": curr,
+        }
+        data.add(results)
+        if k % points == 0:
+            yield data
+
+    yield res_spectrocopy_flux_fit(
+            data,
+            x="current[A]",
+            y="frequency[Hz]",
+            qubit=qubit,
+            fluxline=fluxline,
+            params_fit=params_fit,
         )
 
-        if fluxline == "qubit":
-            fluxline = qubit
-
-        platform.reload_settings()
-
-        sequence = PulseSequence()
-        ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
-        sequence.add(ro_pulse)
-
-        resonator_frequency = platform.characterization["single_qubit"][qubit][
-            "resonator_freq"
-        ]
-        qubit_biasing_current = platform.characterization["single_qubit"][qubit][
-            "sweetspot"
-        ]
-
-        platform.qf_port[fluxline].current = qubit_biasing_current
-
-        current_range = np.arange(current_min, current_max, current_step) + qubit_biasing_current
-        
-        start = next((index for index, curr in enumerate(current_range) if curr >= qubit_biasing_current))
-
-        start_f = resonator_frequency
-
-        background = [start_f + 1e7, start_f - 1e7]
-        noise = get_noise(background, platform, ro_pulse, qubit, sequence)
-
-        # We scan starting from the sweet spot to higher currents
-        current_range = np.concatenate((current_range[start:],current_range[:start][::-1]))
-
-        index = len(current_range[start:])
-        best_f = start_f
-        for k, curr in enumerate(current_range):
-            if k == index:
-                best_f = start_f
-            best_msr = noise
-            platform.qf_port[fluxline].current = curr
-            for span in spans:
-                best_f, best_msr, phase, i, q = scan_level(
-                    best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit, sequence, software_averages
-                    )
-            for span in small_spans:
-                best_f, best_msr, phase, i, q = scan_small(
-                    best_f, best_msr, span, 11, platform, ro_pulse, qubit, sequence, software_averages
-                )
-            results = {
-                "MSR[V]": best_msr,
-                "i[V]": i,
-                "q[V]": q,
-                "phase[rad]": phase,
-                "frequency[Hz]": best_f,
-                "current[A]": curr,
-            }
-            data.add(results)
-            if k % points == 0:
-                yield data
-
-        yield res_spectrocopy_flux_fit(
-                data,
-                x="current[A]",
-                y="frequency[Hz]",
-                qubit=qubit,
-                fluxline=fluxline,
-                params_fit=params_fit,
-            )
-        
-        if matrix == True:
-            yield res_spectrocopy_flux_matrix(fluxlines)
-
-        yield data
+    yield data
