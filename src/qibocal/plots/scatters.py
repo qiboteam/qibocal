@@ -1266,3 +1266,71 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
         yaxis2_title="Phase (rad)",
     )
     return fig
+
+
+def landscape_2q_gate(folder, routine, qubit, format):
+    
+    highfreq = 2
+    lowfreq = qubit
+    if qubit > 2:
+        highfreq = qubit
+        lowfreq = 2
+    
+    data = DataUnits.load_data(folder, routine, format, f"data_q{lowfreq}{highfreq}")
+    
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        subplot_titles=(
+            "MSR (V) - High Frequency",
+            "MSR (V) - Low Frequency", #TODO: change this to <Z>
+        ),
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=data.get_values("phase", "rad")[data.df["q_freq"] == "high"][data.df["setup"] == "I"].to_numpy(),
+            y=data.get_values("MSR", "V")[data.df["q_freq"] == "high"][data.df["setup"] == "I"].to_numpy(),
+        ),
+        row=1,
+        col=1,
+    )
+    
+    fig.add_trace(
+        go.Scatter(
+            x=data.get_values("phase", "rad")[data.df["q_freq"] == "high"][data.df["setup"] == "X"].to_numpy(),
+            y=data.get_values("MSR", "V")[data.df["q_freq"] == "high"][data.df["setup"] == "X"].to_numpy(),
+        ),
+        row=1,
+        col=1,
+    )
+    
+    fig.add_trace(
+        go.Scatter(
+            x=data.get_values("phase", "rad")[data.df["q_freq"] == "low"][data.df["setup"] == "I"].to_numpy(),
+            y=data.get_values("MSR", "V")[data.df["q_freq"] == "low"][data.df["setup"] == "I"].to_numpy(),
+        ),
+        row=1,
+        col=2,
+    )
+    
+    fig.add_trace(
+        go.Scatter(
+            x=data.get_values("phase", "rad")[data.df["q_freq"] == "low"][data.df["setup"] == "X"].to_numpy(),
+            y=data.get_values("MSR", "V")[data.df["q_freq"] == "low"][data.df["setup"] == "X"].to_numpy(),
+        ),
+        row=1,
+        col=2,
+    )
+    
+    fig.update_layout(
+        showlegend=False,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="phase (rad)",
+        yaxis_title="MSR (V)",
+        xaxis2_title="phase (rad)",
+        yaxis2_title="MSR (V)",
+    )
+    return fig
