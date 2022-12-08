@@ -15,13 +15,38 @@ def tune_transition(
     flux_pulse_amplitude_end,
     flux_pulse_amplitude_step,
     single_flux = True
+    dt = 1
 ):
+    """Perform a Chevron-style plot for the flux pulse designed to apply a CZ (CPhase) gate.
+    This experiment probes the |11> to i|02> transition by preparing the |11> state with 
+    pi-pulses, applying a flux pulse to the high frequency qubit to engage its 1 -> 2 transition 
+    with varying interaction duration and amplitude. We then measure both the high and low frequency qubit.
+    
+    We aim to find the spot where the transition goes from |11> -> i|02> -> -|11>.
+    
+    Args:
+        platform: platform where the experiment is meant to be run.
+        qubit (int): qubit that will interact with center qubit 2.
+        flux_pulse_duration_start (int): minimum flux pulse duration in nanoseconds.
+        flux_pulse_duration_end (int): maximum flux pulse duration in nanoseconds.
+        flux_pulse_duration_step (int): step for the duration sweep in nanoseconds.
+        flux_pulse_amplitude_start (float): minimum flux pulse amplitude.
+        flux_pulse_amplitude_end (float): maximum flux pulse amplitude.
+        flux_pulse_amplitude_step (float): step for the amplitude sweep.
+        single_flux (bool): use a single pulse or two flux pulses with half duration and opposite amplitude.
+        dt (int): time delay between the two flux pulses if enabled.
+        
+    Returns:
+        data (DataSet): Measurement data for both the high and low frequency qubits.
+    
+    """
     
     platform.reload_settings()
     
     initialize_1 = platform.create_RX_pulse(qubit, start=0, relative_phase=0)
     initialize_2 = platform.create_RX_pulse(2, start=0, relative_phase=0)
     
+    # TODO: generalize this to take any two qubits that are connected to the chip.
     highfreq = 2
     lowfreq = qubit
     if qubit > 2:
@@ -52,7 +77,7 @@ def tune_transition(
             qubit=highfreq,
         )
         flux_pulse_minus = FluxPulse(
-            start=flux_pulse_plus.se_finish,
+            start=flux_pulse_plus.se_finish+dt,
             duration=flux_pulse_duration_start,  
             amplitude=-flux_pulse_amplitude_start,  
             relative_phase=0,
@@ -142,7 +167,37 @@ def tune_landscape(
     flux_pulse_duration,
     flux_pulse_amplitude,
     single_flux = True
+    dt = 1
 ):
+    """Check the two-qubit landscape created by a flux pulse of a given duration
+    and amplitude.
+    The system is initialized with a Y90 pulse on the low frequency qubit and either
+    an Id or an X gate on the high frequency qubit. Then the flux pulse is applied to
+    the high frequency qubit in order to perform a two-qubit interaction. The Id/X gate 
+    is undone in the high frequency qubit and a theta90 pulse is applied to the low
+    frequency qubit before measurement. That is, a pi-half pulse around the relative phase
+    parametereized by the angle theta. 
+    
+    Measurements on the low frequency qubit yield the the 2Q-phase of the gate and the
+    remnant single qubit Z phase aquired during the execution to be corrected.
+    Population of the high frequency qubit yield the leakage to the non-computational states
+    during the execution of the flux pulse.
+    
+    Args:
+        platform: platform where the experiment is meant to be run.
+        qubit (int): qubit that will interact with center qubit 2.
+        theta_start (float): initial angle for the low frequency qubit measurement in radians.
+        theta_end (float): final angle for the low frequency qubit measurement in radians.
+        theta_step, (float): step size for the theta sweep in radians.
+        flux_pulse_duration (int): fixed duration for the flux pulse sent to the high frequency qubit.
+        flux_pulse_amplitude (float): fixed amplitude for the flux pulse sent to the high frequency qubit.
+        single_flux (bool): use a single pulse or two flux pulses with half duration and opposite amplitude.
+        dt (int): time delay between the two flux pulses if enabled.
+        
+    Returns:
+        data (DataSet): Measurement data for both the high and low frequency qubits for the two setups of Id/X.
+    
+    """
     
     platform.reload_settings()
     
@@ -179,7 +234,7 @@ def tune_landscape(
             qubit=highfreq,
         )
         flux_pulse_minus = FluxPulse(
-            start=flux_pulse_plus.se_finish,
+            start=flux_pulse_plus.se_finish+dt,
             duration=flux_pulse_duration_start,  
             amplitude=-flux_pulse_amplitude_start,  
             relative_phase=0,
