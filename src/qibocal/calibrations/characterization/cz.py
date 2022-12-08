@@ -4,7 +4,7 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import FluxPulse, Pulse, PulseSequence, PulseType, Rectangular
 from qibocal.data import DataUnits
 
-
+@plot("Chevron CZ", plots.duration_amplitude_msr_flux_pulse)
 def tune_transition(
     platform: AbstractPlatform,
     qubit: int,
@@ -64,20 +64,13 @@ def tune_transition(
         measure_highfreq = platform.create_qubit_readout_pulse(highfreq, start=flux_pulse_minus.se_finish)
 
     
-    data_low = DataUnits(
-        name=f"data_q{lowfreq}{highfreq}_low",
+    data = DataUnits(
+        name=f"data_q{lowfreq}{highfreq}",
         quantities={
             "flux_pulse_duration": "ns",
             "flux_pulse_amplitude": "dimensionless",
         },
-    )
-    
-    data_high = DataUnits(
-        name=f"data_q{lowfreq}{highfreq}_high",
-        quantities={
-            "flux_pulse_duration": "ns",
-            "flux_pulse_amplitude": "dimensionless",
-        },
+        options=["q_freq"]
     )
 
     amplitudes = np.arange(
@@ -93,6 +86,7 @@ def tune_transition(
         seq = initialize_1 + initialize_2 + flux_pulse_plus + flux_pulse_minus + measure_lowfreq + measure_highfreq
 
     # Might want to fix duration to expected time for 2 qubit gate.
+    live = 0
     for amplitude in amplitudes:
         for duration in durations:
             if single_flux:
@@ -106,32 +100,39 @@ def tune_transition(
             
             res = platform.execute_pulse_sequence(seq)[measure_lowfreq.serial]
             
-            res_low = res[measure_lowfreq.serial]
-            results_low = {
-                "MSR[V]": res_low[0],
-                "i[V]": res_low[2],
-                "q[V]": res_low[3],
-                "phase[rad]": res_low[1],
+            res_temp = res[measure_lowfreq.serial]
+            results = {
+                "MSR[V]": res_temp[0],
+                "i[V]": res_temp[2],
+                "q[V]": res_temp[3],
+                "phase[rad]": res_temp[1],
                 "flux_pulse_duration[ns]": duration,
                 "flux_pulse_amplitude[dimensionless]": amplitude,
+                "q_freq": "low",
             }
+            data.add(results)
             
-            res_high = res[measure_highfreq.serial]
-            results_high = {
-                "MSR[V]": res_high[0],
-                "i[V]": res_high[2],
-                "q[V]": res_high[3],
-                "phase[rad]": res_high[1],
+            res_temp = res[measure_highfreq.serial]
+            results = {
+                "MSR[V]": res_temp[0],
+                "i[V]": res_temp[2],
+                "q[V]": res_temp[3],
+                "phase[rad]": res_temp[1],
                 "flux_pulse_duration[ns]": duration,
                 "flux_pulse_amplitude[dimensionless]": amplitude,
+                "q_freq": "high",
             }
+            data.add(results)
             
-            data_low.add(results_low)
-            data_high.add(results_high)
+            if live%10 = 0:
+                yield data
             
-    yield data_low, data_high
+            live += 1
+            
+    yield data
     
 
+@plot("Landscape 2-qubit gate", plots.landscape_2q_gate)
 def tune_landscape(
     platform: AbstractPlatform,
     qubit: int,
@@ -192,40 +193,14 @@ def tune_landscape(
     measure_lowfreq = platform.create_qubit_readout_pulse(lowfreq, start=theta_pulse.se_finish)
     measure_highfreq = platform.create_qubit_readout_pulse(highfreq, start=theta_pulse.se_finish)
         
-    data_low_I = DataUnits(
-        name=f"data_q{lowfreq}{highfreq}_low_I",
+    data = DataUnits(
+        name=f"data_q{lowfreq}{highfreq}",
         quantities={
             "theta": "ns",
             "flux_pulse_duration": "ns",
             "flux_pulse_amplitude": "dimensionless",
         },
-    )
-    
-    data_high_I = DataUnits(
-        name=f"data_q{lowfreq}{highfreq}_high_I",
-        quantities={
-            "theta": "ns",
-            "flux_pulse_duration": "ns",
-            "flux_pulse_amplitude": "dimensionless",
-        },
-    )
-    
-    data_low_X = DataUnits(
-        name=f"data_q{lowfreq}{highfreq}_low_X",
-        quantities={
-            "theta": "ns",
-            "flux_pulse_duration": "ns",
-            "flux_pulse_amplitude": "dimensionless",
-        },
-    )
-    
-    data_high_X = DataUnits(
-        name=f"data_q{lowfreq}{highfreq}_high_X",
-        quantities={
-            "theta": "ns",
-            "flux_pulse_duration": "ns",
-            "flux_pulse_amplitude": "dimensionless",
-        },
+        options=["q_freq", "setup"]
     )
 
     thetas = np.arange(
@@ -245,36 +220,42 @@ def tune_landscape(
                 seq = x_pulse_start + y90_pulse + flux_pulse + theta_pulse + x_pulse_end + measure_lowfreq + measure_highfreq
             else:
                 seq = x_pulse_start + y90_pulse + flux_pulse_plus + flux_pulse_minus + theta_pulse + x_pulse_end + measure_lowfreq + measure_highfreq
-
+        
+        live = 0
         for theta in thetas:
+            
             theta_pulse.relative_phase = theta
             
             res = platform.execute_pulse_sequence(seq)[measure_lowfreq.serial]
-            res_low = res[measure_lowfreq.serial]
-            results_low = {
-                "MSR[V]": res_low[0],
-                "i[V]": res_low[2],
-                "q[V]": res_low[3],
-                "phase[rad]": res_low[1],
+            res_temp = res[measure_lowfreq.serial]
+            results = {
+                "MSR[V]": res_temp[0],
+                "i[V]": res_temp[2],
+                "q[V]": res_temp[3],
+                "phase[rad]": res_temp[1],
                 "flux_pulse_duration[ns]": duration,
                 "flux_pulse_amplitude[dimensionless]": amplitude,
+                "q_freq": "low",
+                "setup": setup,
             }
+            data.add(results)
             
-            res_high = res[measure_highfreq.serial]
-            results_high = {
-                "MSR[V]": res_high[0],
-                "i[V]": res_high[2],
-                "q[V]": res_high[3],
-                "phase[rad]": res_high[1],
+            res_temp = res[measure_highfreq.serial]
+            results = {
+                "MSR[V]": res_temp[0],
+                "i[V]": res_temp[2],
+                "q[V]": res_temp[3],
+                "phase[rad]": res_temp[1],
                 "flux_pulse_duration[ns]": duration,
                 "flux_pulse_amplitude[dimensionless]": amplitude,
+                "q_freq": "high",
+                "setup": setup,
             }
+            data.add(results)
             
-            if setup = 'I':
-                data_low_I.add(results_low)
-                data_high_I.add(results_high)
-            elif setup = 'X':
-                data_low_X.add(results_low)
-                data_high_X.add(results_high)
+            if live%10 = 0:
+                yield data
             
-    yield data_low_I, data_high_I, data_low_X, data_high_X
+            live += 1
+            
+    yield data
