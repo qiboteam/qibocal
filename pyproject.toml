@@ -16,8 +16,8 @@ classifiers=[
 
 [tool.poetry.dependencies]
 python = ">=3.8, <4"
-qibo = {git = "https://github.com/qiboteam/qibo.git", rev = "master"}
 qibolab = {git = "https://github.com/qiboteam/qibolab.git", rev = "main"}
+qibo = "^0.1.9"
 pandas = "^1.4.3"
 Pint-Pandas = {git = "https://github.com/hgrecco/pint-pandas.git", rev = "master"}
 dash = "^2.6.0"
@@ -30,9 +30,7 @@ recommonmark = { version = "^0.7.1", optional = true }
 sphinx_markdown_tables = { version = "^0.0.17", optional = true }
 
 [tool.poetry.dev-dependencies]
-black = "^22.6.0"
 pylint = "2.12.2"
-pre-commit = "^2.20.0"
 pytest = "^7.1.2"
 pytest-cov = "^3.0.0"
 poethepoet = "^0.16.0"
