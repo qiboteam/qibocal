@@ -680,19 +680,20 @@ def frequency_current_flux(folder, routine, qubit, format):
                     d = data_fit.get_values("d")[0]
                     xi = data_fit.get_values("xi")[0]
                     C_ii = data_fit.get_values("C_ii")[0]
-                    text = f"Fluxline: {j} <br> freq_r{qubit}_sp = {f_rs :.4e} Hz <br> freq_q{qubit}_sp = {f_qs :.4e} Hz <br> curr_{qubit}_sp = {curr_qs :.2e} A <br> g = {g :.2e} Hz <br> d = {d :.2e} <br> xi = {xi :.2e} 1/A <br> C_{qubit}{j} = {C_ii :.4e} Hz/A"
+                    text_data = f"Fluxline: {j} <br> freq_r{qubit}_sp = {f_rs :.4e} Hz <br> freq_q{qubit}_sp = {f_qs :.4e} Hz <br> curr_{qubit}_sp = {curr_qs :.2e} A <br> g = {g :.2e} Hz <br> d = {d :.2e} <br> xi = {xi :.2e} 1/A <br> C_{qubit}{j} = {C_ii :.4e} Hz/A"
                     if len(data_fit.df.keys()) != 10:
                         Ec = data_fit.get_values("Ec")[0]
                         Ej = data_fit.get_values("Ej")[0]
-                        text += f" <br> Ec = {Ec :.3e} Hz <br> Ej = {Ej :.3e} Hz"
+                        text_data += f" <br> Ec = {Ec :.3e} Hz <br> Ej = {Ej :.3e} Hz"
                     fig.add_annotation(
                         dict(
                             font=dict(color="black", size=12),
                             x=0,
                             y=-0.9,
                             showarrow=False,
-                            text=text,
-                            # xanchor="left",
+                            text=text_data,
+                            textangle=0,
+                            xanchor="left",
                             xref=f"x{k+1}",
                             yref="paper",  # "y1",
                         )
@@ -706,7 +707,8 @@ def frequency_current_flux(folder, routine, qubit, format):
                             y=-0.3,
                             showarrow=False,
                             text=f"Fluxline: {j} <br> C_{qubit}{j} = {C_ij :.4e} Hz/A.",
-                            # xanchor="left",
+                            textangle=0,
+                            xanchor="left",
                             xref=f"x{k+1}",
                             yref="paper",  # "y1",
                         )
