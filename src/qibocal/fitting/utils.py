@@ -5,6 +5,7 @@ import numpy as np
 
 from scipy.special import mathieu_a, mathieu_b
 
+
 def lorenzian(frequency, amplitude, center, sigma, offset):
     # http://openafox.com/science/peak-function-derivations.html
     return (amplitude / np.pi) * (
@@ -52,6 +53,7 @@ def cos(x, p0, p1, p2, p3):
     # Phase                   : p[3]
     return p0 + p1 * np.cos(2 * np.pi * x / p2 + p3)
 
+
 def line(x, p0, p1):
     # Slope                   : p[0]
     # Intercept               : p[1]
@@ -65,37 +67,63 @@ def parse(key):
 
 
 def G_f_d(x, p0, p1, p2):
+    # Current offset:          : p[0]
+    # 1/I_0, Phi0=Xi*I_0       : p[1]
+    # Junction asymmetry d     : p[2]
     G = np.sqrt(np.cos(np.pi*(x-p0)*p1)**2+p2**2*np.sin(np.pi*(x-p0)*p1)**2)
     return np.sqrt(G)
 
 
 def freq_r_transmon(x, p0, p1, p2, p3, p4, p5):
+    # Current offset:                                      : p[0]
+    # 1/I_0, Phi0=Xi*I_0                                   : p[1]
+    # Junction asymmetry d                                 : p[2]
+    # f_q0/f_rh, f_q0 = Qubit frequency at zero flux       : p[3]
+    # Qubit-resonator coupling at zero magnetic flux, g_0  : p[4]
+    # High power resonator frequency, f_rh                 : p[5]
     return p5 + p4**2*G_f_d(x, p0, p1, p2)/(p5-p3*p5*G_f_d(x, p0, p1, p2))
 
 
-def kordering(m,ng=0.4999):
-    a1 = (round(2*ng+1/2)%2)*(round(ng)+1*(-1)**m *divmod(m+1,2)[0])
-    a2 = (round(2*ng-1/2)%2)*(round(ng)-1*(-1)**m *divmod(m+1,2)[0])
+def kordering(m, ng=0.4999):
+    # Ordering function sorting the eigenvalues |m,ng> for the Schrodinger equation for the
+    # Cooper pair box circuit in the phase basis.
+    a1 = (round(2*ng+1/2) % 2)*(round(ng)+1*(-1)**m * divmod(m+1, 2)[0])
+    a2 = (round(2*ng-1/2) % 2)*(round(ng)-1*(-1)**m * divmod(m+1, 2)[0])
     return a1 + a2
 
 
-def mathieu(index,x):    
+def mathieu(index, x):
+    # Mathieu's characteristic value a_index(x).
     if index < 0:
-        dummy =  mathieu_b(-index,x)
+        dummy = mathieu_b(-index, x)
     else:
-        dummy =  mathieu_a(index,x)
+        dummy = mathieu_a(index, x)
     return dummy
 
 
-def freq_q_mathieu(curr, curr0, xi, d, Ec, Ej, ng=0.499):
-    index1 = int(2*(ng + kordering(1,ng)))
-    index0 = int(2*(ng + kordering(0,ng)))         
-    Ej = Ej*G_f_d(curr, curr0, xi ,d)
-    return Ec * (mathieu(index1,-Ej/(2*Ec)) - mathieu(index0,-Ej/(2*Ec)))
+def freq_q_mathieu(x, p0, p1, p2, p3, p4, p5=0.499):
+    # Current offset:                                      : p[0]
+    # 1/I_0, Phi0=Xi*I_0                                   : p[1]
+    # Junction asymmetry d                                 : p[2]
+    # Charging energy E_C                                  : p[3]
+    # Josephson energy E_J                                 : p[4]
+    # Effective offset charge ng                           : p[5]
+    index1 = int(2*(p5 + kordering(1, p5)))
+    index0 = int(2*(p5 + kordering(0, p5)))
+    p4 = p4*G_f_d(x, p0, p1, p2)
+    return p3 * (mathieu(index1, -p4/(2*p3)) - mathieu(index0, -p4/(2*p3)))
 
 
-def freq_r_mathieu(curr, f_h, g, curr0, xi, d, Ec, Ej, ng=0.499):
-    G = G_f_d(curr, curr0, xi ,d)     
-    f_q = freq_q_mathieu(curr, curr0, xi, d, Ec, Ej, ng)
-    f_r = f_h + g**2*np.sqrt(G)/(f_h-f_q)
+def freq_r_mathieu(x, p0, p1, p2, p3, p4, p5, p6, p7=0.499):
+    # High power resonator frequency, f_rh                 : p[0]
+    # Qubit-resonator coupling at zero magnetic flux, g_0  : p[1]
+    # Current offset:                                      : p[2]
+    # 1/I_0, Phi0=Xi*I_0                                   : p[3]
+    # Junction asymmetry d                                 : p[4]
+    # Charging energy E_C                                  : p[5]
+    # Josephson energy E_J                                 : p[6]
+    # Effective offset charge ng                           : p[7]
+    G = G_f_d(x, p2, p3, p4)
+    f_q = freq_q_mathieu(x, p2, p3, p4, p5, p6, p7)
+    f_r = p0 + p1**2*np.sqrt(G)/(p0-f_q)
     return f_r
