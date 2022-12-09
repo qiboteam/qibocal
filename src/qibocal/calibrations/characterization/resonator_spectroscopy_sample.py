@@ -1,13 +1,12 @@
-# -*- coding: utf-8 -*-
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
-from qibocal.plots import frequency_attenuation, frequency_current_flux
 from qibocal.calibrations.characterization.utils import choose_freq, get_noise, snr
 from qibocal.data import DataUnits
-from qibocal.fitting.methods import res_spectrocopy_flux_fit
 from qibocal.decorators import plot
+from qibocal.fitting.methods import res_spectrocopy_flux_fit
+from qibocal.plots import frequency_attenuation, frequency_current_flux
 
 
 def scan_level(
@@ -21,7 +20,7 @@ def scan_level(
     platform,
     ro_pulse,
     qubit,
-    sequence
+    sequence,
 ):
     """Scans for the feature by sampling a gaussian near the previously found best point. Decides if the freature
     is found by checking if the snr against background noise is above a threshold.
@@ -50,8 +49,7 @@ def scan_level(
     freq = best_f
     for _ in range(max_runs):
         platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
-        msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
-            ro_pulse.serial]
+        msr, phase, i, q = platform.execute_pulse_sequence(sequence)[ro_pulse.serial]
         if abs(snr(msr, noise)) >= thr:
             msr1 = msr
             if platform.resonator_type == "3D":
@@ -64,16 +62,7 @@ def scan_level(
     return best_f, best_msr, phase, i, q
 
 
-def scan_small(
-    best_f,
-    best_msr,
-    span,
-    resolution,
-    platform,
-    ro_pulse,
-    qubit,
-    sequence
-):
+def scan_small(best_f, best_msr, span, resolution, platform, ro_pulse, qubit, sequence):
     """Small scan around the found feature to fine-tune the measurement up to given precision.
 
     Args:
@@ -99,8 +88,7 @@ def scan_small(
     for s in scan:
         freq = start_f + s
         platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
-        msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
-            ro_pulse.serial]
+        msr, phase, i, q = platform.execute_pulse_sequence(sequence)[ro_pulse.serial]
         msr1 = msr
         if platform.resonator_type == "3D":
             msr = -msr
@@ -122,7 +110,7 @@ def resonator_punchout_sample(
     spans,
     small_spans,
     resolution,
-    points
+    points,
 ):
     """Use gaussian samples to extract the punchout of the resonator for different values of attenuation.
 
@@ -170,7 +158,17 @@ def resonator_punchout_sample(
         best_msr = noise
         for span in spans:
             best_f, best_msr, phase, i, q = scan_level(
-                best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit, sequence
+                best_f,
+                best_msr,
+                max_runs,
+                thr,
+                span,
+                resolution,
+                noise,
+                platform,
+                ro_pulse,
+                qubit,
+                sequence,
             )
         for span in small_spans:
             best_f, best_msr, phase, i, q = scan_small(
@@ -193,9 +191,10 @@ def resonator_punchout_sample(
                 opt_att = att
                 opt_f = best_f
     data1 = DataUnits(
-        name=f"results_q{qubit}", quantities={"snr": "dimensionless", "frequency": "Hz", "attenuation": "dB"}
+        name=f"results_q{qubit}",
+        quantities={"snr": "dimensionless", "frequency": "Hz", "attenuation": "dB"},
     )
-    f_err = len(str(int(small_spans[-1]/10)))
+    f_err = len(str(int(small_spans[-1] / 10)))
     results = {
         "snr[dimensionless]": opt_snr,
         "frequency[Hz]": round(opt_f, -f_err),
@@ -220,7 +219,7 @@ def resonator_flux_sample(
     small_spans,
     resolution,
     params_fit,
-    points
+    points,
 ):
     """Use gaussian samples to extract the flux-frequency response of the resonator for different values of current.
 
@@ -250,7 +249,8 @@ def resonator_flux_sample(
     params_fit = params_fit[qubit]
     for fluxline in fluxlines:
         data = DataUnits(
-            name=f"data_q{qubit}_f{fluxline}", quantities={"frequency": "Hz", "current": "A"}
+            name=f"data_q{qubit}_f{fluxline}",
+            quantities={"frequency": "Hz", "current": "A"},
         )
 
         if fluxline == "qubit":
@@ -262,18 +262,29 @@ def resonator_flux_sample(
         ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
         sequence.add(ro_pulse)
 
-        resonator_frequency = platform.characterization["single_qubit"][qubit]["resonator_freq"]
-        qubit_biasing_current = platform.characterization["single_qubit"][qubit]["sweetspot"]
+        resonator_frequency = platform.characterization["single_qubit"][qubit][
+            "resonator_freq"
+        ]
+        qubit_biasing_current = platform.characterization["single_qubit"][qubit][
+            "sweetspot"
+        ]
         platform.qf_port[fluxline].current = qubit_biasing_current
-        current_range = np.arange(
-            current_min, current_max, current_step) + qubit_biasing_current
-        start = next((index for index, curr in enumerate(
-            current_range) if curr >= qubit_biasing_current))
+        current_range = (
+            np.arange(current_min, current_max, current_step) + qubit_biasing_current
+        )
+        start = next(
+            (
+                index
+                for index, curr in enumerate(current_range)
+                if curr >= qubit_biasing_current
+            )
+        )
         start_f = resonator_frequency
         background = [start_f + 1e7, start_f - 1e7]
         noise = get_noise(background, platform, ro_pulse, qubit, sequence)
         current_range = np.concatenate(
-            (current_range[start:], current_range[:start][::-1]))
+            (current_range[start:], current_range[:start][::-1])
+        )
         index = len(current_range[start:])
         best_f = start_f
         for k, curr in enumerate(current_range):
@@ -283,7 +294,17 @@ def resonator_flux_sample(
             platform.qf_port[fluxline].current = curr
             for span in spans:
                 best_f, best_msr, phase, i, q = scan_level(
-                    best_f, best_msr, max_runs, thr, span, resolution, noise, platform, ro_pulse, qubit, sequence
+                    best_f,
+                    best_msr,
+                    max_runs,
+                    thr,
+                    span,
+                    resolution,
+                    noise,
+                    platform,
+                    ro_pulse,
+                    qubit,
+                    sequence,
                 )
             for span in small_spans:
                 best_f, best_msr, phase, i, q = scan_small(

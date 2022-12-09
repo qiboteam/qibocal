@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
-from qibocal.fitting.utils import lorenzian, line, freq_r_transmon, freq_r_mathieu
+from qibocal.fitting.utils import freq_r_mathieu, freq_r_transmon, line, lorenzian
 
 
 def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
@@ -495,7 +495,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
 
 
 def frequency_attenuation(folder, routine, qubit, format):
-    """ Plot of the experimental data for the flux resonator flux spectroscopy and its corresponding fit.
+    """Plot of the experimental data for the flux resonator flux spectroscopy and its corresponding fit.
         Args:
         folder (str): Folder where the data files with the experimental and fit data are.
         routine (str): Routine name (resonator_flux_sample_matrix)
@@ -512,11 +512,11 @@ def frequency_attenuation(folder, routine, qubit, format):
         data = DataUnits(quantities={"frequency": "Hz", "attenuation": "dB"})
 
     try:
-        data1 = DataUnits.load_data(
-            folder, routine, format, f"results_q{qubit}")
+        data1 = DataUnits.load_data(folder, routine, format, f"results_q{qubit}")
     except:
         data1 = DataUnits(
-            quantities={"snr": "dimensionless", "frequency": "Hz", "attenuation": "dB"})
+            quantities={"snr": "dimensionless", "frequency": "Hz", "attenuation": "dB"}
+        )
 
     fig = make_subplots(
         rows=1,
@@ -563,7 +563,7 @@ def frequency_attenuation(folder, routine, qubit, format):
 
 
 def frequency_current_flux(folder, routine, qubit, format):
-    """ Plot of the experimental data of the punchout.
+    """Plot of the experimental data of the punchout.
         Args:
         folder (str): Folder where the data files with the experimental and fit data are.
         routine (str): Routine name (resonator_flux_sample_matrix)
@@ -598,22 +598,20 @@ def frequency_current_flux(folder, routine, qubit, format):
         shared_yaxes=True,
     )
     for k, j in enumerate(fluxes):
-        data_spec = DataUnits.load_data(
-            folder, routine, format, f"data_q{qubit}_f{j}")
+        data_spec = DataUnits.load_data(folder, routine, format, f"data_q{qubit}_f{j}")
         fig.add_trace(
             go.Scatter(
                 x=data_spec.get_values("current", "A"),
                 y=data_spec.get_values("frequency", "GHz"),
                 name=f"fluxline: {j}",
-                mode="markers"
+                mode="markers",
             ),
             row=1,
-            col=k+1,
+            col=k + 1,
         )
 
         if j in fluxes_fit:
-            data_fit = Data.load_data(
-                folder, routine, format, f"fit1_q{qubit}_f{j}")
+            data_fit = Data.load_data(folder, routine, format, f"fit1_q{qubit}_f{j}")
             if len(data_spec) > 0 and len(data_fit) > 0:
                 curr_range = np.linspace(
                     min(data_spec.get_values("current", "A")),
@@ -622,26 +620,32 @@ def frequency_current_flux(folder, routine, qubit, format):
                 )
                 if int(j) == int(qubit):
                     if len(data_fit.df.keys()) == 10:
-                        y = freq_r_transmon(
-                            curr_range,
-                            data_fit.get_values("curr_sp"),
-                            data_fit.get_values("xi"),
-                            data_fit.get_values("d"),
-                            data_fit.get_values("f_q/f_rh"),
-                            data_fit.get_values("g"),
-                            data_fit.get_values("f_rh")
-                        )/10**9
+                        y = (
+                            freq_r_transmon(
+                                curr_range,
+                                data_fit.get_values("curr_sp"),
+                                data_fit.get_values("xi"),
+                                data_fit.get_values("d"),
+                                data_fit.get_values("f_q/f_rh"),
+                                data_fit.get_values("g"),
+                                data_fit.get_values("f_rh"),
+                            )
+                            / 10**9
+                        )
                     else:
-                        y = freq_r_mathieu(
-                            curr_range,
-                            data_fit.get_values("f_rh"),
-                            data_fit.get_values("g"),
-                            data_fit.get_values("curr_sp"),
-                            data_fit.get_values("xi"),
-                            data_fit.get_values("d"),
-                            data_fit.get_values("Ec"),
-                            data_fit.get_values("Ej")
-                        )/10**9
+                        y = (
+                            freq_r_mathieu(
+                                curr_range,
+                                data_fit.get_values("f_rh"),
+                                data_fit.get_values("g"),
+                                data_fit.get_values("curr_sp"),
+                                data_fit.get_values("xi"),
+                                data_fit.get_values("d"),
+                                data_fit.get_values("Ec"),
+                                data_fit.get_values("Ej"),
+                            )
+                            / 10**9
+                        )
                     fig.add_trace(
                         go.Scatter(
                             x=curr_range,
@@ -650,7 +654,7 @@ def frequency_current_flux(folder, routine, qubit, format):
                             line=go.scatter.Line(dash="dot"),
                         ),
                         row=1,
-                        col=k+1,
+                        col=k + 1,
                     )
                 else:
                     fig.add_trace(
@@ -660,12 +664,13 @@ def frequency_current_flux(folder, routine, qubit, format):
                                 curr_range,
                                 data_fit.get_values("popt0"),
                                 data_fit.get_values("popt1"),
-                            )/10**9,
+                            )
+                            / 10**9,
                             name=f"Fit fluxline {j}",
                             line=go.scatter.Line(dash="dot"),
                         ),
                         row=1,
-                        col=k+1,
+                        col=k + 1,
                     )
                 if int(j) == int(qubit):
                     f_qs = data_fit.get_values("f_qs")[0]
@@ -689,7 +694,7 @@ def frequency_current_flux(folder, routine, qubit, format):
                             text=text,
                             # xanchor="left",
                             xref=f"x{k+1}",
-                            yref="paper"  # "y1",
+                            yref="paper",  # "y1",
                         )
                     )
                 else:
@@ -703,14 +708,14 @@ def frequency_current_flux(folder, routine, qubit, format):
                             text=f"Fluxline: {j} <br> C_{qubit}{j} = {C_ij :.4e} Hz/A.",
                             # xanchor="left",
                             xref=f"x{k+1}",
-                            yref="paper"  # "y1",
+                            yref="paper",  # "y1",
                         )
                     )
     fig.update_layout(
         margin=dict(l=20, r=20, t=20, b=230),
         showlegend=False,
         autosize=False,
-        width=500*max(1, len(fluxes)),
+        width=500 * max(1, len(fluxes)),
         height=500,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
     )
