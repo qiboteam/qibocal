@@ -3,6 +3,8 @@ import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import FluxPulse, Pulse, PulseSequence, PulseType, Rectangular
 from qibocal.data import DataUnits
+from qibocal.decorators import plot
+from qibocal import plots
 
 @plot("Chevron CZ", plots.duration_amplitude_msr_flux_pulse)
 def tune_transition(
@@ -14,7 +16,7 @@ def tune_transition(
     flux_pulse_amplitude_start,
     flux_pulse_amplitude_end,
     flux_pulse_amplitude_step,
-    single_flux = True
+    single_flux = True,
     dt = 1
 ):
     """Perform a Chevron-style plot for the flux pulse designed to apply a CZ (CPhase) gate.
@@ -123,7 +125,7 @@ def tune_transition(
                 flux_pulse_plus.duration = duration
                 flux_pulse_minus.duration = duration
             
-            res = platform.execute_pulse_sequence(seq)[measure_lowfreq.serial]
+            res = platform.execute_pulse_sequence(seq)
             
             res_temp = res[measure_lowfreq.serial]
             results = {
@@ -149,7 +151,7 @@ def tune_transition(
             }
             data.add(results)
             
-            if live%10 = 0:
+            if live%10 == 0:
                 yield data
             
             live += 1
@@ -214,13 +216,13 @@ def tune_landscape(
         flux_pulse = FluxPulse(
             start=y90_pulse.se_finish,
             duration=flux_pulse_duration,  
-            amplitude=flux_pulse_amplitudet,  
+            amplitude=flux_pulse_amplitude,  
             relative_phase=0,
             shape=Rectangular(), 
             channel=platform.qubit_channel_map[highfreq][2],
             qubit=highfreq,
         )
-        theta_pulse = self.create_RX90_pulse(lowfreq, flux_pulse.se_finish, relative_phase=theta_start)
+        theta_pulse = platform.create_RX90_pulse(lowfreq, flux_pulse.se_finish, relative_phase=theta_start)
         x_pulse_end = platform.create_RX_pulse(highfreq, start=flux_pulse.se_finish, relative_phase=0)
         
     else:
@@ -235,14 +237,14 @@ def tune_landscape(
         )
         flux_pulse_minus = FluxPulse(
             start=flux_pulse_plus.se_finish+dt,
-            duration=flux_pulse_duration_start,  
-            amplitude=-flux_pulse_amplitude_start,  
+            duration=flux_pulse_duration,  
+            amplitude=-flux_pulse_amplitude,  
             relative_phase=0,
             shape=Rectangular(), 
             channel=platform.qubit_channel_map[highfreq][2],
             qubit=highfreq,
         )
-        theta_pulse = self.create_RX90_pulse(lowfreq, flux_pulse_minus.se_finish, relative_phase=theta_start)
+        theta_pulse = platform.create_RX90_pulse(lowfreq, flux_pulse_minus.se_finish, relative_phase=theta_start)
         x_pulse_end = platform.create_RX_pulse(highfreq, start=flux_pulse_minus.se_finish, relative_phase=0)
         
     measure_lowfreq = platform.create_qubit_readout_pulse(lowfreq, start=theta_pulse.se_finish)
@@ -265,12 +267,12 @@ def tune_landscape(
     setups = ['I', 'X']
     
     for setup in setups:
-        if setup = 'I':
+        if setup == 'I':
             if single_flux:
                 seq = y90_pulse + flux_pulse + theta_pulse + measure_lowfreq + measure_highfreq
             else:
-                seq = y90_pulse + flux_pulse_pulse + flux_pulse_minus + theta_pulse + measure_lowfreq + measure_highfreq
-        elif setup = 'X':
+                seq = y90_pulse + flux_pulse_plus + flux_pulse_minus + theta_pulse + measure_lowfreq + measure_highfreq
+        elif setup == 'X':
             if single_flux:
                 seq = x_pulse_start + y90_pulse + flux_pulse + theta_pulse + x_pulse_end + measure_lowfreq + measure_highfreq
             else:
@@ -281,15 +283,15 @@ def tune_landscape(
             
             theta_pulse.relative_phase = theta
             
-            res = platform.execute_pulse_sequence(seq)[measure_lowfreq.serial]
+            res = platform.execute_pulse_sequence(seq)
             res_temp = res[measure_lowfreq.serial]
             results = {
                 "MSR[V]": res_temp[0],
                 "i[V]": res_temp[2],
                 "q[V]": res_temp[3],
                 "phase[rad]": res_temp[1],
-                "flux_pulse_duration[ns]": duration,
-                "flux_pulse_amplitude[dimensionless]": amplitude,
+                "flux_pulse_duration[ns]": flux_pulse_duration,
+                "flux_pulse_amplitude[dimensionless]": flux_pulse_amplitude,
                 "q_freq": "low",
                 "setup": setup,
             }
@@ -301,14 +303,14 @@ def tune_landscape(
                 "i[V]": res_temp[2],
                 "q[V]": res_temp[3],
                 "phase[rad]": res_temp[1],
-                "flux_pulse_duration[ns]": duration,
-                "flux_pulse_amplitude[dimensionless]": amplitude,
+                "flux_pulse_duration[ns]": flux_pulse_duration,
+                "flux_pulse_amplitude[dimensionless]": flux_pulse_amplitude,
                 "q_freq": "high",
                 "setup": setup,
             }
             data.add(results)
             
-            if live%10 = 0:
+            if live%10 == 0:
                 yield data
             
             live += 1
