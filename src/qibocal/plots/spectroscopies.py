@@ -612,7 +612,9 @@ def frequency_current_flux(folder, routine, qubit, format):
 
         if j in fluxes_fit:
             try:
-                data_fit = Data.load_data(folder, routine, format, f"fit1_q{qubit}_f{j}")
+                data_fit = Data.load_data(
+                    folder, routine, format, f"fit1_q{qubit}_f{j}"
+                )
             except:
                 data_fit = Data(quantities=[])
             if len(data_spec) > 0 and len(data_fit) > 0:
