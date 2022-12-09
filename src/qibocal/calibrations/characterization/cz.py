@@ -17,8 +17,8 @@ def tune_transition(
     flux_pulse_amplitude_start,
     flux_pulse_amplitude_end,
     flux_pulse_amplitude_step,
-    single_flux = True,
-    dt = 1
+    single_flux=True,
+    dt=1,
 ):
     """Perform a Chevron-style plot for the flux pulse designed to apply a CZ (CPhase) gate.
     This experiment probes the |11> to i|02> transition by preparing the |11> state with
@@ -66,8 +66,12 @@ def tune_transition(
             channel=platform.qubit_channel_map[highfreq][2],
             qubit=highfreq,
         )
-        measure_lowfreq = platform.create_qubit_readout_pulse(lowfreq, start=flux_pulse.se_finish)
-        measure_highfreq = platform.create_qubit_readout_pulse(highfreq, start=flux_pulse.se_finish)
+        measure_lowfreq = platform.create_qubit_readout_pulse(
+            lowfreq, start=flux_pulse.se_finish
+        )
+        measure_highfreq = platform.create_qubit_readout_pulse(
+            highfreq, start=flux_pulse.se_finish
+        )
 
     else:
         flux_pulse_plus = FluxPulse(
@@ -80,7 +84,7 @@ def tune_transition(
             qubit=highfreq,
         )
         flux_pulse_minus = FluxPulse(
-            start=flux_pulse_plus.se_finish+dt,
+            start=flux_pulse_plus.se_finish + dt,
             duration=flux_pulse_duration_start,
             amplitude=-flux_pulse_amplitude_start,
             relative_phase=0,
@@ -88,9 +92,12 @@ def tune_transition(
             channel=platform.qubit_channel_map[highfreq][2],
             qubit=highfreq,
         )
-        measure_lowfreq = platform.create_qubit_readout_pulse(lowfreq, start=flux_pulse_minus.se_finish)
-        measure_highfreq = platform.create_qubit_readout_pulse(highfreq, start=flux_pulse_minus.se_finish)
-
+        measure_lowfreq = platform.create_qubit_readout_pulse(
+            lowfreq, start=flux_pulse_minus.se_finish
+        )
+        measure_highfreq = platform.create_qubit_readout_pulse(
+            highfreq, start=flux_pulse_minus.se_finish
+        )
 
     data = DataUnits(
         name=f"data_q{lowfreq}{highfreq}",
@@ -98,7 +105,7 @@ def tune_transition(
             "flux_pulse_duration": "ns",
             "flux_pulse_amplitude": "dimensionless",
         },
-        options=["q_freq"]
+        options=["q_freq"],
     )
 
     amplitudes = np.arange(
@@ -109,9 +116,22 @@ def tune_transition(
     )
 
     if single_flux:
-        seq = initialize_1 + initialize_2 + flux_pulse + measure_lowfreq + measure_highfreq
+        seq = (
+            initialize_1
+            + initialize_2
+            + flux_pulse
+            + measure_lowfreq
+            + measure_highfreq
+        )
     else:
-        seq = initialize_1 + initialize_2 + flux_pulse_plus + flux_pulse_minus + measure_lowfreq + measure_highfreq
+        seq = (
+            initialize_1
+            + initialize_2
+            + flux_pulse_plus
+            + flux_pulse_minus
+            + measure_lowfreq
+            + measure_highfreq
+        )
 
     # Might want to fix duration to expected time for 2 qubit gate.
     live = 0
@@ -152,7 +172,7 @@ def tune_transition(
             }
             data.add(results)
 
-            if live%10 == 0:
+            if live % 10 == 0:
                 yield data
 
             live += 1
@@ -169,8 +189,8 @@ def tune_landscape(
     theta_step,
     flux_pulse_duration,
     flux_pulse_amplitude,
-    single_flux = True,
-    dt = 1
+    single_flux=True,
+    dt=1,
 ):
     """Check the two-qubit landscape created by a flux pulse of a given duration
     and amplitude.
@@ -211,7 +231,7 @@ def tune_landscape(
         lowfreq = 2
 
     x_pulse_start = platform.create_RX_pulse(highfreq, start=0, relative_phase=0)
-    y90_pulse = platform.create_RX90_pulse(lowfreq, start=0, relative_phase=np.pi/2)
+    y90_pulse = platform.create_RX90_pulse(lowfreq, start=0, relative_phase=np.pi / 2)
 
     if single_flux:
         flux_pulse = FluxPulse(
@@ -223,8 +243,12 @@ def tune_landscape(
             channel=platform.qubit_channel_map[highfreq][2],
             qubit=highfreq,
         )
-        theta_pulse = platform.create_RX90_pulse(lowfreq, flux_pulse.se_finish, relative_phase=theta_start)
-        x_pulse_end = platform.create_RX_pulse(highfreq, start=flux_pulse.se_finish, relative_phase=0)
+        theta_pulse = platform.create_RX90_pulse(
+            lowfreq, flux_pulse.se_finish, relative_phase=theta_start
+        )
+        x_pulse_end = platform.create_RX_pulse(
+            highfreq, start=flux_pulse.se_finish, relative_phase=0
+        )
 
     else:
         flux_pulse_plus = FluxPulse(
@@ -237,7 +261,7 @@ def tune_landscape(
             qubit=highfreq,
         )
         flux_pulse_minus = FluxPulse(
-            start=flux_pulse_plus.se_finish+dt,
+            start=flux_pulse_plus.se_finish + dt,
             duration=flux_pulse_duration,
             amplitude=-flux_pulse_amplitude,
             relative_phase=0,
@@ -245,11 +269,19 @@ def tune_landscape(
             channel=platform.qubit_channel_map[highfreq][2],
             qubit=highfreq,
         )
-        theta_pulse = platform.create_RX90_pulse(lowfreq, flux_pulse_minus.se_finish, relative_phase=theta_start)
-        x_pulse_end = platform.create_RX_pulse(highfreq, start=flux_pulse_minus.se_finish, relative_phase=0)
+        theta_pulse = platform.create_RX90_pulse(
+            lowfreq, flux_pulse_minus.se_finish, relative_phase=theta_start
+        )
+        x_pulse_end = platform.create_RX_pulse(
+            highfreq, start=flux_pulse_minus.se_finish, relative_phase=0
+        )
 
-    measure_lowfreq = platform.create_qubit_readout_pulse(lowfreq, start=theta_pulse.se_finish)
-    measure_highfreq = platform.create_qubit_readout_pulse(highfreq, start=theta_pulse.se_finish)
+    measure_lowfreq = platform.create_qubit_readout_pulse(
+        lowfreq, start=theta_pulse.se_finish
+    )
+    measure_highfreq = platform.create_qubit_readout_pulse(
+        highfreq, start=theta_pulse.se_finish
+    )
 
     data = DataUnits(
         name=f"data_q{lowfreq}{highfreq}",
@@ -258,26 +290,54 @@ def tune_landscape(
             "flux_pulse_duration": "ns",
             "flux_pulse_amplitude": "dimensionless",
         },
-        options=["q_freq", "setup"]
+        options=["q_freq", "setup"],
     )
 
-    thetas = np.arange(
-        theta_start, theta_end, theta_step
-    )
+    thetas = np.arange(theta_start, theta_end, theta_step)
 
-    setups = ['I', 'X']
+    setups = ["I", "X"]
 
     for setup in setups:
-        if setup == 'I':
+        if setup == "I":
             if single_flux:
-                seq = y90_pulse + flux_pulse + theta_pulse + measure_lowfreq + measure_highfreq
+                seq = (
+                    y90_pulse
+                    + flux_pulse
+                    + theta_pulse
+                    + measure_lowfreq
+                    + measure_highfreq
+                )
             else:
-                seq = y90_pulse + flux_pulse_plus + flux_pulse_minus + theta_pulse + measure_lowfreq + measure_highfreq
-        elif setup == 'X':
+                seq = (
+                    y90_pulse
+                    + flux_pulse_plus
+                    + flux_pulse_minus
+                    + theta_pulse
+                    + measure_lowfreq
+                    + measure_highfreq
+                )
+        elif setup == "X":
             if single_flux:
-                seq = x_pulse_start + y90_pulse + flux_pulse + theta_pulse + x_pulse_end + measure_lowfreq + measure_highfreq
+                seq = (
+                    x_pulse_start
+                    + y90_pulse
+                    + flux_pulse
+                    + theta_pulse
+                    + x_pulse_end
+                    + measure_lowfreq
+                    + measure_highfreq
+                )
             else:
-                seq = x_pulse_start + y90_pulse + flux_pulse_plus + flux_pulse_minus + theta_pulse + x_pulse_end + measure_lowfreq + measure_highfreq
+                seq = (
+                    x_pulse_start
+                    + y90_pulse
+                    + flux_pulse_plus
+                    + flux_pulse_minus
+                    + theta_pulse
+                    + x_pulse_end
+                    + measure_lowfreq
+                    + measure_highfreq
+                )
 
         live = 0
         for theta in thetas:
@@ -311,7 +371,7 @@ def tune_landscape(
             }
             data.add(results)
 
-            if live%10 == 0:
+            if live % 10 == 0:
                 yield data
 
             live += 1
