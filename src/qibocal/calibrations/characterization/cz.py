@@ -168,7 +168,7 @@ def tune_landscape(
     theta_step,
     flux_pulse_duration,
     flux_pulse_amplitude,
-    single_flux = True
+    single_flux = True,
     dt = 1
 ):
     """Check the two-qubit landscape created by a flux pulse of a given duration
