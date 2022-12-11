@@ -99,7 +99,8 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None):
     BW = fit_res.best_values["sigma"] * 2
     Q = abs(f0 / BW)
     peak_voltage = (
-        fit_res.best_values["amplitude"] / (fit_res.best_values["sigma"] * np.pi)
+        fit_res.best_values["amplitude"] /
+        (fit_res.best_values["sigma"] * np.pi)
         + fit_res.best_values["offset"]
     )
 
@@ -303,7 +304,8 @@ def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
         pguess = [0.0003, np.mean(voltages), 18, 0]  # epsilon guess parameter
 
     try:
-        popt, pcov = curve_fit(flipping, flips, voltages, p0=pguess, maxfev=2000000)
+        popt, pcov = curve_fit(flipping, flips, voltages,
+                               p0=pguess, maxfev=2000000)
         epsilon = -np.pi / popt[2]
         amplitude_delta = np.pi / (np.pi + epsilon)
         corrected_amplitude = amplitude_delta * pi_pulse_amplitude
@@ -352,7 +354,8 @@ def drag_tunning_fit(data, x, y, qubit, nqubits, labels):
 
     try:
         popt, pcov = curve_fit(cos, beta_params.values, voltages.values)
-        smooth_dataset = cos(beta_params.values, popt[0], popt[1], popt[2], popt[3])
+        smooth_dataset = cos(beta_params.values,
+                             popt[0], popt[1], popt[2], popt[3])
         beta_optimal = beta_params.values[np.argmin(smooth_dataset)]
 
     except:
@@ -516,3 +519,49 @@ def res_spectrocopy_flux_fit(data, x, y, qubit, fluxline, params_fit):
             }
         )
     return data_fit
+
+
+def res_spectrocopy_flux_matrix(folder, fluxlines):
+    """Calculation of the resonator flux matrix, Mf.
+       curr = Mf*freq + offset_c.
+       Mf = Mc^-1, offset_c = -Mc^-1 * offset_f
+       freq = Mc*curr + offset_f
+        Args:
+        folder (str): Folder where the data files with the experimental and fit data are.
+        fluxlines (list): ids of the current line used for the experiment.
+
+    Returns:
+        data (Data): Data file with len(fluxlines)+1 columns that contains the flux matrix (Mf) and
+                     offset (offset_c) in the last column.
+
+    """
+    import os
+    from pandas import DataFrame
+    fits = []
+    for q in fluxlines:
+        for f in fluxlines:
+            file = f"{folder}/data/resonator_flux_sample/fit1_q{q}_f{f}.csv"
+            if os.path.exists(file):
+                fits += [f]
+    if len(fits) == len(fluxlines)**2:
+        mat = np.zeros((len(fluxlines), len(fluxlines)))
+        offset = np.zeros(len(fluxlines))
+        for i, q in enumerate(fluxlines):
+            for j, f in enumerate(fluxlines):
+                data_fit = Data.load_data(
+                    folder, "resonator_flux_sample", "csv", f"fit1_q{q}_f{f}")
+                if q == f:
+                    element = "C_ii"
+                    offset[i] = data_fit.get_values("f_offset")[0]
+                else:
+                    element = "popt0"
+                mat[i, j] = data_fit.get_values(element)[0]
+        m = np.linalg.inv(mat)
+        offset_c = -m@offset
+        data = Data(name=f"flux_matrix")
+        data.df = DataFrame(m)
+        data.df.insert(len(fluxlines), 'offset_c', offset_c, True)
+        # [m, offset_c] freq = M*curr + offset --> curr = m*freq + offset_c  m = M^-1, offset_c = -M^-1 * offset
+    else:
+        data = Data(name=f"flux_matrix")
+    return data
