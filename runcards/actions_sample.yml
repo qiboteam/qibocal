@@ -12,16 +12,19 @@ actions:
      max_runs: 40
      thr: 5
      spans: [10000000, 5000000]
-     small_spans: [1000000, 100000, 10000]
+     small_spans: [1000000, 100000]
      resolution: 100000
 
    resonator_flux_sample:
-     current_min: -20.e-3
-     current_max: +20.e-3
-     current_step: 1.e-3
-     fluxline: 'qubit'
+     current_min: -12.e-3
+     current_max: +12.e-3
+     current_step: 2.e-3
+     fluxlines: [3]
      max_runs: 40
      thr: 5
      spans: [10000000, 5000000]
-     small_spans: [1000000, 100000, 10000]
+     small_spans: [1000000, 100000]
      resolution: 100000
+     params_fit: {1 : [7450787376, 1.14e8, 2.7e8, 1.23e10], 2 : [7652459959, 8.36e7, 2.7e8, 1.77e10], 3 : [7799748303, 5.43e7, 2.7e8, 2.42e10], 4 : [8055207722, 6.27e7, 2.7e8, 2.34e10]}
+     points: 1
+     matrix: False
