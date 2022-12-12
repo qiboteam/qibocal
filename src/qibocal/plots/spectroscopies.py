@@ -315,7 +315,7 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
             .pint.magnitude,
             z=data.df.groupby(data.df.index % size)
             .MSR.mean()
-            .pint.to("uV")
+            .pint.to("V")
             .pint.magnitude,
             colorbar_x=0.45,
         ),
@@ -381,27 +381,56 @@ def frequency_flux_msr_phase__matrix(folder, routine, qubit, format):
             showscale = True
         else:
             showscale = False
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}_f{j}")
+
+        try:
+            data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}_f{j}")
+        except:
+            data = DataUnits(quantities={"frequency": "Hz", "current": "A"})
+
+        size = len(data.df.current.drop_duplicates()) * len(
+            data.df.frequency.drop_duplicates()
+        )
+
         fig.add_trace(
             go.Heatmap(
-                x=data.get_values("frequency", "GHz"),
-                y=data.get_values("current", "A"),
-                z=data.get_values("MSR", "V"),
+                x=data.df.groupby(data.df.index % size)
+                .frequency.mean()
+                .pint.to("GHz")
+                .pint.magnitude,
+                y=data.df.groupby(data.df.index % size)
+                .current.mean()
+                .pint.to("A")
+                .pint.magnitude,
+                z=data.df.groupby(data.df.index % size)
+                .MSR.mean()
+                .pint.to("V")
+                .pint.magnitude,
                 showscale=showscale,
             ),
             row=1,
             col=j,
         )
+
         fig.add_trace(
             go.Heatmap(
-                x=data.get_values("frequency", "GHz"),
-                y=data.get_values("current", "A"),
-                z=data.get_values("phase", "rad"),
+                x=data.df.groupby(data.df.index % size)
+                .frequency.mean()
+                .pint.to("GHz")
+                .pint.magnitude,
+                y=data.df.groupby(data.df.index % size)
+                .current.mean()
+                .pint.to("A")
+                .pint.magnitude,
+                z=data.df.groupby(data.df.index % size)
+                .phase.mean()
+                .pint.to("rad")
+                .pint.magnitude,
                 showscale=showscale,
             ),
-            row=2,
+            row=1,
             col=j,
         )
+
     fig.update_layout(
         showlegend=False,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
@@ -410,7 +439,12 @@ def frequency_flux_msr_phase__matrix(folder, routine, qubit, format):
 
 
 def frequency_attenuation_msr_phase(folder, routine, qubit, format):
-    data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
+
+    try:
+        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
+    except:
+        data = DataUnits(quantities={"frequency": "Hz", "attenuation": "dB"})
+
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -422,26 +456,50 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
         ),
     )
 
+    size = len(data.df.attenuation.drop_duplicates()) * len(
+        data.df.frequency.drop_duplicates()
+    )
+
     fig.add_trace(
         go.Heatmap(
-            x=data.get_values("frequency", "GHz"),
-            y=data.get_values("attenuation", "dB"),
-            z=data.get_values("MSR", "V"),
+            x=data.df.groupby(data.df.index % size)
+            .frequency.mean()
+            .pint.to("GHz")
+            .pint.magnitude,
+            y=data.df.groupby(data.df.index % size)
+            .attenuation.mean()
+            .pint.to("dB")
+            .pint.magnitude,
+            z=data.df.groupby(data.df.index % size)
+            .MSR.mean()
+            .pint.to("V")
+            .pint.magnitude,
             colorbar_x=0.45,
         ),
         row=1,
         col=1,
     )
+
     fig.add_trace(
         go.Heatmap(
-            x=data.get_values("frequency", "GHz"),
-            y=data.get_values("attenuation", "dB"),
-            z=data.get_values("phase", "rad"),
-            colorbar_x=1.0,
+            x=data.df.groupby(data.df.index % size)
+            .frequency.mean()
+            .pint.to("GHz")
+            .pint.magnitude,
+            y=data.df.groupby(data.df.index % size)
+            .attenuation.mean()
+            .pint.to("dB")
+            .pint.magnitude,
+            z=data.df.groupby(data.df.index % size)
+            .phase.mean()
+            .pint.to("rad")
+            .pint.magnitude,
+            colorbar_x=0.45,
         ),
         row=1,
         col=2,
     )
+
     fig.update_layout(
         showlegend=False,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
