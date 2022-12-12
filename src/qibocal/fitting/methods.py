@@ -126,8 +126,13 @@ def rabi_fit(data, x, y, qubit, nqubits, labels):
         ],
     )
 
-    time = data.get_values(*parse(x))
-    voltages = data.get_values(*parse(y))
+    # time = data.get_values(*parse(x))
+    # voltages = data.get_values(*parse(y))
+
+    time_keys = parse(x)
+    voltages_keys = parse(y)
+    time = data[time_keys[0]].pint.to(time_keys[1]).pint.magnitude
+    voltages = data[voltages_keys[0]].pint.to(voltages_keys[1]).pint.magnitude
 
     if nqubits == 1:
         pguess = [

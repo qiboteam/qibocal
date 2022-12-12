@@ -9,7 +9,8 @@ from qibocal.fitting.utils import rabi
 # For Rabi oscillations
 def time_msr_phase(folder, routine, qubit, format):
     try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, "data")
+        data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
     except:
         data = DataUnits(quantities={"Time": "ns"})
 
@@ -168,7 +169,8 @@ def time_msr_phase(folder, routine, qubit, format):
 def gain_msr_phase(folder, routine, qubit, format):
 
     try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, "data")
+        data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
     except:
         data = DataUnits(quantities={"gain", "dimensionless"})
 
@@ -324,7 +326,8 @@ def gain_msr_phase(folder, routine, qubit, format):
 def amplitude_msr_phase(folder, routine, qubit, format):
 
     try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, "data")
+        data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
     except:
         data = DataUnits(quantities={"amplitude", "dimensionless"})
     try:
@@ -470,7 +473,8 @@ def amplitude_msr_phase(folder, routine, qubit, format):
 
 
 def duration_gain_msr_phase(folder, routine, qubit, format):
-    data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
+    data = DataUnits.load_data(folder, routine, format, "data")
+    data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -514,7 +518,8 @@ def duration_gain_msr_phase(folder, routine, qubit, format):
 
 
 def duration_amplitude_msr_phase(folder, routine, qubit, format):
-    data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
+    data = DataUnits.load_data(folder, routine, format, "data")
+    data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
     fig = make_subplots(
         rows=1,
         cols=2,
