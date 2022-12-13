@@ -3,9 +3,6 @@
 Calibration routines
 --------------------
 
-.. contents:: Table of contents:
-   :local:
-
 Introduction
 ^^^^^^^^^^^^
 
