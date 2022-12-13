@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import numpy as np
+from qibo.config import log
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
@@ -164,9 +165,9 @@ def qubit_spectroscopy_flux(
         "sweetspot"
     ]
     frequency_range = np.arange(-freq_width, freq_width, freq_step) + qubit_frequency
-    current_range = (
-        np.arange(current_min, current_max, current_step) #+ qubit_biasing_current
-    )
+    current_range = np.arange(
+        current_min, current_max, current_step
+    )  # + qubit_biasing_current
 
     count = 0
     for _ in range(software_averages):
@@ -207,7 +208,7 @@ def qubit_spectroscopy_flux_track(
 ):
     platform.reload_settings()
 
-    #qd_pulse.frequency = 1.0e6
+    # qd_pulse.frequency = 1.0e6
     sequence = PulseSequence()
     qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=5000)
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=5000)
@@ -225,22 +226,24 @@ def qubit_spectroscopy_flux_track(
     current_range = np.append(current_range, -current_range) + sweetspot
     log.info(f"current Range: {current_range}")
 
-
-    #Tracking the qubit: Find the respose of the qubit in the qubit frequencies range while modifying the flux current.
+    # Tracking the qubit: Find the respose of the qubit in the qubit frequencies range while modifying the flux current.
     # When the flux is modified, the qubit freq is moved and the resonator is also affected.
-    # We need to modify the resonator LO_frequency and the MX puls frequency accordingly for each flux. 
-    # For that, we construct a dictionary = {flux_current: LO_freq, MZ_freq} 
-
+    # We need to modify the resonator LO_frequency and the MX puls frequency accordingly for each flux.
+    # For that, we construct a dictionary = {flux_current: LO_freq, MZ_freq}
 
     #!!!Execute first resonator_spectroscopy_flux with the same current range
     # to save the polycoef flux dictionary before using the qubit spec track!!!
-    polycoef_flux =  platform.characterization["single_qubit"][qubit]["resonator_polycoef_flux"]
-    
+    polycoef_flux = platform.characterization["single_qubit"][qubit][
+        "resonator_polycoef_flux"
+    ]
+
     count = 0
     for _ in range(software_averages):
         for curr in current_range:
-            #set RO LO frequency to the mesured value i polycoef_flux dictionary 
-            platform.ro_port[qubit].lo_frequency = polycoef_flux[round(curr, 5)] - ro_pulse.frequency
+            # set RO LO frequency to the mesured value i polycoef_flux dictionary
+            platform.ro_port[qubit].lo_frequency = (
+                polycoef_flux[round(curr, 5)] - ro_pulse.frequency
+            )
 
             if curr == sweetspot:
                 center = qubit_frequency
@@ -253,7 +256,7 @@ def qubit_spectroscopy_flux_track(
 
             log.info(f"current: {curr}")
             log.info(f"center: {center}")
-            
+
             frequency_range = frequency_array + center
             log.info(f"freq range: {frequency_range}")
 
