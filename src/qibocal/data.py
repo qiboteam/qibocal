@@ -43,10 +43,7 @@ class AbstractData:
 
         Args:
             path (str): Path containing output folder."""
-        if self.quantities == None:
-            self.df.to_csv(f"{path}/{self.name}.csv")
-        else:
-            self.df.pint.dequantify().to_csv(f"{path}/{self.name}.csv")
+        raise_error(NotImplementedError)
 
     def to_pickle(self, path):
         """Save data in pickel file.
@@ -114,7 +111,7 @@ class DataUnits(AbstractData):
         if isinstance(df, pd.DataFrame):
             self._df = df
         else:
-            raise_error(TypeError, f"{df.type} is not a pd.DataFrame.")
+            raise_error(TypeError, f"{type(df)} is not a pd.DataFrame.")
 
     def load_data_from_dict(self, data: dict):
         """Set df attribute.
@@ -177,10 +174,12 @@ class DataUnits(AbstractData):
         Args:
             folder (path): path to the output folder from which the data will be loaded
             routine (str): calibration routine data to be loaded
-            format (str): data format. Possible choices are 'csv' and 'pickle'.
-
+            format (str): data format. Possible choices are 'csv' and 'pickle'
+            name (str): file's name without extension
         Returns:
             data (``DataUnits``): dataset object with the loaded data.
+        Example:
+            see the method ``load_data`` in class ``Data``
         """
         obj = cls()
         if format == "csv":
@@ -210,7 +209,37 @@ class DataUnits(AbstractData):
         """Save data in csv file.
 
         Args:
-            path (str): Path containing output folder."""
+            path (str): Path containing output folder.
+        Example:
+            .. testcode::
+
+                import os
+                from qibocal.data import DataUnits
+                import numpy as np
+                data = DataUnits()
+                length = 3
+                folder = "foo"
+                # create directory
+                if not os.path.isdir(folder):
+                    os.mkdir(folder)
+                # generate random dataset
+                for l in range(length):
+                    msr, i, q, phase = np.random.rand(4)
+                    pulse_sequence_result = {
+                        "MSR[V]": msr,
+                        "i[V]": i,
+                        "q[V]": q,
+                        "phase[deg]": phase,
+                    }
+                    data.add({**pulse_sequence_result})
+                data.to_csv(folder)
+
+            .. testcleanup::
+
+                import shutil
+                if os.path.isdir("foo"):
+                    shutil.rmtree("foo")
+        """
         data = self.df[list(self.quantities)].pint.dequantify()
         firsts = data.index.get_level_values(None)
         data[self.options] = self.df[self.options].loc[firsts].values
@@ -222,7 +251,7 @@ class Data(AbstractData):
     It is a wrapper to a pandas DataFrame.
 
     Args:
-        quantities (dict): dictionary quantities to be saved.
+        quantities (list): list of quantities to be saved.
     """
 
     def __init__(self, name=None, quantities=None):
@@ -253,6 +282,25 @@ class Data(AbstractData):
 
         Args:
             df (dict): dictionary containing the data to be added.
+        Example:
+            .. testcode::
+
+                from qibocal.data import Data
+                data = Data()
+                test = {
+                    "int": [1, 2, 3],
+                    "float": [3.0, 4.0, 5.0],
+                    "string": ["one", "two", "three"],
+                    "bool": [True, False, True],
+                }
+                data.load_data_from_dict(test)
+                print(data.df)
+            .. testoutput::
+
+                  int float string   bool
+                0   1   3.0    one   True
+                1   2   4.0    two  False
+                2   3   5.0  three   True
         """
         processed_data = {}
         for key, values in data.items():
@@ -272,7 +320,7 @@ class Data(AbstractData):
             self.df.loc[l, key] = value
 
     def get_values(self, quantity):
-        """Get values of a quantity in specified units.
+        """Get values of a quantity.
 
         Args:
             quantity (str): Quantity to get the values of.
@@ -289,10 +337,42 @@ class Data(AbstractData):
         Args:
             folder (path): path to the output folder from which the data will be loaded
             routine (str): calibration routine data to be loaded
-            format (str): data format. Possible choices are 'csv' and 'pickle'.
+            format (str): data format. Possible choices are 'csv' and 'pickle'
+            name (str): file's name without extension
 
         Returns:
             data (``Data``): data object with the loaded data.
+
+        Example:
+            .. testcode::
+
+                from qibocal.data import Data
+                import os
+                folder = "test_folder/data/test_routine"
+                length = 3
+                if not os.path.isdir(folder):
+                    os.makedirs(folder)
+                # create a dataset
+                data = Data()
+                for i in range(length):
+                    data.add(
+                        {
+                            "int": int(i),
+                            "float": float(i),
+                            "string": str(f"hello{i}"),
+                            "bool": bool(i),
+                        }
+                    )
+                # save the dataset in csv format
+                data.to_csv(folder)
+                # upload the dataset
+                data_upload = Data().load_data("test_folder", "test_routine", "csv", "data")
+
+            .. testcleanup::
+
+                import shutil
+                shutil.rmtree("test_folder")
+
         """
         obj = cls()
         if format == "csv":
@@ -311,12 +391,37 @@ class Data(AbstractData):
         """Save data in csv file.
 
         Args:
-            path (str): Path containing output folder."""
+            path (str): Path containing output folder.
+        Example:
+            .. testcode::
+
+                import shutil
+                from qibocal.data import Data
+                import numpy as np
+                import os
+                data = Data()
+                length = 3
+                folder = "foo"
+                # create directory
+                if not os.path.isdir(folder):
+                    os.mkdir(folder)
+                # generate a dataset
+                data = Data()
+                for i in range(length):
+                    data.add(
+                        {
+                            "int": int(i),
+                            "float": float(i),
+                            "string": str(f"hello{i}"),
+                            "bool": bool(i),
+                        }
+                    )
+                data.to_csv(folder)
+
+            .. testcleanup::
+
+                import shutil
+                if os.path.isdir("foo"):
+                    shutil.rmtree("foo")
+        """
         self.df.to_csv(f"{path}/{self.name}.csv")
-
-    def to_pickle(self, path):
-        """Save data in pickel file.
-
-        Args:
-            path (str): Path containing output folder."""
-        self.df.to_pickle(f"{path}/{self.name}.pkl")
