@@ -10,10 +10,12 @@ from qibocal.fitting.utils import cos
 def prob_gate(folder, routine, qubit, format):
 
     try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, "data")
+        data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
     except:
         data = DataUnits(
-            quantities={"probability": "dimensionless", "gateNumber": "dimensionless"}
+            quantities={"probability": "dimensionless", "gateNumber": "dimensionless"},
+            options=["qubit"],
         )
 
     fig = make_subplots(
@@ -71,14 +73,16 @@ def prob_gate(folder, routine, qubit, format):
 def prob_gate_iteration(folder, routine, qubit, format):
 
     try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, "data")
+        data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
     except:
         data = DataUnits(
             quantities={
                 "probability": "dimensionless",
                 "gateNumber": "dimensionless",
                 "beta_param": "dimensionless",
-            }
+            },
+            options=["qubit"],
         )
 
     data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
@@ -142,10 +146,11 @@ def prob_gate_iteration(folder, routine, qubit, format):
 def msr_beta(folder, routine, qubit, format):
 
     try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, "data")
+        data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
     except:
         data = DataUnits(
-            name=f"data_q{qubit}", quantities={"beta_param": "dimensionless"}
+            name="data", quantities={"beta_param": "dimensionless"}, options=["qubit"]
         )
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
