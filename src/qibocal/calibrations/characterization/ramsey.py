@@ -78,7 +78,7 @@ def ramsey_frequency_detuned(
             count = 0
             for qubit in qubits:
                 platform.qd_port[qubit].lo_frequency = (
-                    current_qubit_freq - intermediate_freqs["qubit"]
+                    current_qubit_freqs["qubit"] - intermediate_freqs["qubit"]
                 )
             offset_freq = n_osc / t_max * sampling_rate  # Hz
             t_range = np.arange(t_start, t_max, t_step)
@@ -91,7 +91,7 @@ def ramsey_frequency_detuned(
                             x="wait[ns]",
                             y="MSR[uV]",
                             qubit=qubit,
-                            qubit_freq=current_qubit_freq,
+                            qubit_freq=current_qubit_freqs["qubit"],
                             sampling_rate=sampling_rate,
                             offset_freq=offset_freq,
                             labels=[
@@ -222,11 +222,11 @@ def ramsey(
 
                 for qubit in qubits:
                     yield ramsey_fit(
-                        data.get_column("qubit"),
+                        data.get_column("qubit", qubit),
                         x="wait[ns]",
                         y="MSR[uV]",
                         qubit=qubit,
-                        qubit_freq=qubit_freq,
+                        qubit_freq=qubit_freqs["qubit"],
                         sampling_rate=sampling_rate,
                         offset_freq=0,
                         labels=[
@@ -244,6 +244,7 @@ def ramsey(
 
             for qubit in qubits:
 
+                msr, phase, i, q = result[ro_pulses["qubit"].serial]
                 results = {
                     "MSR[V]": msr,
                     "i[V]": i,

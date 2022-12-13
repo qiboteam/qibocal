@@ -72,6 +72,7 @@ def allXY(
         options=["qubit"],
     )
 
+    seq = PulseSequence()
     count = 0
     ro_pulses = {}
     for _ in range(software_averages):
@@ -82,7 +83,7 @@ def allXY(
 
             for qubit in qubits:
                 seq, ro_pulses["qubit"] = _get_sequence_from_gate_pair(
-                    platform, gates, qubit, beta_param, sequence
+                    platform, gates, qubit, beta_param, seq
                 )
                 seq.add(ro_pulses["qubit"])
 

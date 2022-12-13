@@ -30,7 +30,7 @@ def calibrate_qubit_states(
         # FIXME: Waiting to be able to pass qpucard to qibolab
         platform.ro_port[qubit].lo_frequency = (
             platform.characterization["single_qubit"][qubit]["resonator_freq"]
-            - ro_pulse.frequency
+            - ro_pulses["qubit"].frequency
         )
         platform.qd_port[qubit].lo_frequency = (
             platform.characterization["single_qubit"][qubit]["qubit_freq"]

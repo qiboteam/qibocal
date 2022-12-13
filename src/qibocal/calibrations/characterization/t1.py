@@ -25,7 +25,7 @@ def t1(
     for qubit in qubits:
         qd_pulses["qubit"] = platform.create_RX_pulse(qubit, start=0)
         ro_pulses["qubit"] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulse.duration
+            qubit, start=qd_pulses["qubit"].duration
         )
         sequence.add(qd_pulses["qubit"])
         sequence.add(ro_pulses["qubit"])
