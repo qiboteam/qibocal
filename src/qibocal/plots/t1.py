@@ -9,9 +9,10 @@ from qibocal.fitting.utils import exp
 # T1
 def t1_time_msr_phase(folder, routine, qubit, format):
     try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, "data")
+        data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
     except:
-        data = DataUnits(quantities={"Time": "ns"})
+        data = DataUnits(quantities={"Time": "ns"}, options=["qubit"])
 
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")

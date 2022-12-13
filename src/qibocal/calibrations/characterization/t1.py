@@ -11,7 +11,7 @@ from qibocal.fitting.methods import t1_fit
 @plot("MSR vs Time", plots.t1_time_msr_phase)
 def t1(
     platform: AbstractPlatform,
-    qubit: int,
+    qubits: list,
     delay_before_readout_start,
     delay_before_readout_end,
     delay_before_readout_step,
@@ -19,51 +19,63 @@ def t1(
     points=10,
 ):
     sequence = PulseSequence()
-    qd_pulse = platform.create_RX_pulse(qubit, start=0)
-    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=qd_pulse.duration)
-    sequence.add(qd_pulse)
-    sequence.add(ro_pulse)
+
+    qd_pulses = {}
+    ro_pulses = {}
+    for qubit in qubits:
+        qd_pulses["qubit"] = platform.create_RX_pulse(qubit, start=0)
+        ro_pulses["qubit"] = platform.create_qubit_readout_pulse(
+            qubit, start=qd_pulse.duration
+        )
+        sequence.add(qd_pulses["qubit"])
+        sequence.add(ro_pulses["qubit"])
+
+        # FIXME: Waiting to be able to pass qpucard to qibolab
+        platform.ro_port[qubit].lo_frequency = (
+            platform.characterization["single_qubit"][qubit]["resonator_freq"]
+            - ro_pulses["qubit"].frequency
+        )
+        platform.qd_port[qubit].lo_frequency = (
+            platform.characterization["single_qubit"][qubit]["qubit_freq"]
+            - qd_pulses["qubit"].frequency
+        )
 
     ro_wait_range = np.arange(
         delay_before_readout_start, delay_before_readout_end, delay_before_readout_step
     )
 
-    # FIXME: Waiting to be able to pass qpucard to qibolab
-    platform.ro_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["resonator_freq"]
-        - ro_pulse.frequency
-    )
-    platform.qd_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["qubit_freq"]
-        - qd_pulse.frequency
-    )
-
-    data = DataUnits(name=f"data_q{qubit}", quantities={"Time": "ns"})
+    data = DataUnits(name="data", quantities={"Time": "ns"}, options=["qubit"])
 
     count = 0
     for _ in range(software_averages):
         for wait in ro_wait_range:
             if count % points == 0 and count > 0:
                 yield data
-                yield t1_fit(
-                    data,
-                    x="Time[ns]",
-                    y="MSR[uV]",
-                    qubit=qubit,
-                    nqubits=platform.settings["nqubits"],
-                    labels=["t1"],
-                )
-            ro_pulse.start = qd_pulse.duration + wait
-            msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
-                ro_pulse.serial
-            ]
-            results = {
-                "MSR[V]": msr,
-                "i[V]": i,
-                "q[V]": q,
-                "phase[rad]": phase,
-                "Time[ns]": wait,
-            }
-            data.add(results)
+
+                for qubit in qubits:
+                    yield t1_fit(
+                        data.get_column("qubit", qubit),
+                        x="Time[ns]",
+                        y="MSR[uV]",
+                        qubit=qubit,
+                        nqubits=platform.settings["nqubits"],
+                        labels=["t1"],
+                    )
+
+            for qubit in qubits:
+                ro_pulses["qubit"].start = qd_pulses["qubit"].duration + wait
+
+            result = platform.execute_pulse_sequence(sequence)
+
+            for qubit in qubits:
+                msr, phase, i, q = result[ro_pulses["qubit"].serial]
+                results = {
+                    "MSR[V]": msr,
+                    "i[V]": i,
+                    "q[V]": q,
+                    "phase[rad]": phase,
+                    "Time[ns]": wait,
+                }
+                data.add(results)
             count += 1
     yield data
