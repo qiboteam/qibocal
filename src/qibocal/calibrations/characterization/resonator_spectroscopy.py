@@ -47,11 +47,11 @@ def resonator_spectroscopy(
             - "i[V]": Resonator signal voltage mesurement for the component I in volts
             - "q[V]": Resonator signal voltage mesurement for the component Q in volts
             - "phase[rad]": Resonator signal phase mesurement in radians
-            - "frequency[Hz]": Resonator frequency value in Hz during this execution 
+            - "frequency[Hz]": Resonator frequency value in Hz 
 
         A DataUnits object with the fitted data obtained with the following keys:
-            - *labels[0]*: peak voltage
-            - *labels[1]*: frequency
+            - resonator_freq: frequency
+            - peak_voltage: peak voltage
             - *popt0*: Lorentzian's amplitude
             - *popt1*: Lorentzian's center
             - *popt2*: Lorentzian's sigma
@@ -200,8 +200,8 @@ def resonator_punchout(
             - "i[V]": Resonator signal voltage mesurement for the component I in volts
             - "q[V]": Resonator signal voltage mesurement for the component Q in volts
             - "phase[rad]": Resonator signal phase mesurement in radians
-            - "frequency[Hz]": Resonator frequency value in Hz during for the current execution 
-            - "attenuation[dB]": attenuation value in db applied to the flux line during this execution 
+            - "frequency[Hz]": Resonator frequency value in Hz 
+            - "attenuation[dB]": attenuation value in db applied to the flux line
 
     """
 
@@ -288,8 +288,8 @@ def resonator_spectroscopy_flux(
             - "i[V]": Resonator signal voltage mesurement for the component I in volts
             - "q[V]": Resonator signal voltage mesurement for the component Q in volts
             - "phase[rad]": Resonator signal phase mesurement in radians
-            - "frequency[Hz]": Resonator frequency value in Hz during for the current execution 
-            - "current[A]": Current value in mA applied to the flux line during this execution 
+            - "frequency[Hz]": Resonator frequency value in Hz
+            - "current[A]": Current value in mA applied to the flux line
 
     """
 
@@ -384,8 +384,8 @@ def resonator_spectroscopy_flux_matrix(
             - "i[V]": Resonator signal voltage mesurement for the component I in volts
             - "q[V]": Resonator signal voltage mesurement for the component Q in volts
             - "phase[rad]": Resonator signal phase mesurement in radians
-            - "frequency[Hz]": Resonator frequency value in Hz during for the current execution 
-            - "current[A]": Current value in mA applied to the flux line during this execution 
+            - "frequency[Hz]": Resonator frequency value in Hz
+            - "current[A]": Current value in mA applied to the flux line
 
     """
 
@@ -466,7 +466,7 @@ def dispersive_shift(
             - "i[V]": Resonator signal voltage mesurement for the component I in volts
             - "q[V]": Resonator signal voltage mesurement for the component Q in volts
             - "phase[rad]": Resonator signal phase mesurement in radians
-            - "frequency[Hz]": Resonator frequency value in Hz during for the current execution 
+            - "frequency[Hz]": Resonator frequency value in Hz
 
     """
 
