@@ -473,8 +473,14 @@ def amplitude_msr_phase(folder, routine, qubit, format):
 
 
 def duration_gain_msr_phase(folder, routine, qubit, format):
-    data = DataUnits.load_data(folder, routine, format, "data")
-    data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
+    try:
+        data = DataUnits.load_data(folder, routine, format, "data")
+        data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
+    except:
+        data = DataUnits(
+            quantities={"duration": "ns", "gain": "dimensionless"}, options=["qubit"]
+        )
+
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -486,11 +492,24 @@ def duration_gain_msr_phase(folder, routine, qubit, format):
         ),
     )
 
+    size = len(data.df.duration.drop_duplicates()) * len(
+        data.df.gain.drop_duplicates()  # pylint: disable=E1101
+    )
+
     fig.add_trace(
         go.Heatmap(
-            x=data.get_values("duration", "ns"),
-            y=data.get_values("gain", "dimensionless"),
-            z=data.get_values("MSR", "V"),
+            x=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
+            .duration.mean()
+            .pint.to("ns")
+            .pint.magnitude,
+            y=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
+            .gain.mean()
+            .pint.to("dimensionless")
+            .pint.magnitude,
+            z=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
+            .MSR.mean()
+            .pint.to("V")
+            .pint.magnitude,
             colorbar_x=0.45,
         ),
         row=1,
@@ -498,9 +517,18 @@ def duration_gain_msr_phase(folder, routine, qubit, format):
     )
     fig.add_trace(
         go.Heatmap(
-            x=data.get_values("duration", "ns"),
-            y=data.get_values("gain", "dimensionless"),
-            z=data.get_values("phase", "rad"),
+            x=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
+            .duration.mean()
+            .pint.to("ns")
+            .pint.magnitude,
+            y=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
+            .gain.mean()
+            .pint.to("dimensionless")
+            .pint.magnitude,
+            z=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
+            .phase.mean()
+            .pint.to("rad")
+            .pint.magnitude,
             colorbar_x=1.0,
         ),
         row=1,
@@ -518,8 +546,15 @@ def duration_gain_msr_phase(folder, routine, qubit, format):
 
 
 def duration_amplitude_msr_phase(folder, routine, qubit, format):
-    data = DataUnits.load_data(folder, routine, format, "data")
-    data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
+    try:
+        data = DataUnits.load_data(folder, routine, format, "data")
+        data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
+    except:
+        data = DataUnits(
+            quantities={"duration": "ns", "amplitude": "dimensionless"},
+            options=["qubit"],
+        )
+
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -531,11 +566,24 @@ def duration_amplitude_msr_phase(folder, routine, qubit, format):
         ),
     )
 
+    size = len(data.df.duration.drop_duplicates()) * len(
+        data.df.amplitude.drop_duplicates()  # pylint: disable=E1101
+    )
+
     fig.add_trace(
         go.Heatmap(
-            x=data.get_values("duration", "ns"),
-            y=data.get_values("amplitude", "dimensionless"),
-            z=data.get_values("MSR", "V"),
+            x=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
+            .duration.mean()
+            .pint.to("ns")
+            .pint.magnitude,
+            y=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
+            .amplitude.mean()
+            .pint.to("dimensionless")
+            .pint.magnitude,
+            z=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
+            .MSR.mean()
+            .pint.to("V")
+            .pint.magnitude,
             colorbar_x=0.45,
         ),
         row=1,
@@ -543,9 +591,18 @@ def duration_amplitude_msr_phase(folder, routine, qubit, format):
     )
     fig.add_trace(
         go.Heatmap(
-            x=data.get_values("duration", "ns"),
-            y=data.get_values("amplitude", "dimensionless"),
-            z=data.get_values("phase", "rad"),
+            x=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
+            .duration.mean()
+            .pint.to("ns")
+            .pint.magnitude,
+            y=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
+            .amplitude.mean()
+            .pint.to("dimensionless")
+            .pint.magnitude,
+            z=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
+            .phase.mean()
+            .pint.to("rad")
+            .pint.magnitude,
             colorbar_x=1.0,
         ),
         row=1,
