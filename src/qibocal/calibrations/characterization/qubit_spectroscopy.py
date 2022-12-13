@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import numpy as np
-from qibo.config import log
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
@@ -8,7 +7,6 @@ from qibocal import plots
 from qibocal.data import DataUnits
 from qibocal.decorators import plot
 from qibocal.fitting.methods import lorentzian_fit
-from qibo.config import log
 
 
 @plot("MSR and Phase vs Frequency", plots.frequency_msr_phase__fast_precision)
@@ -224,7 +222,6 @@ def qubit_spectroscopy_flux_track(
     sweetspot = platform.characterization["single_qubit"][qubit]["sweetspot"]
     current_range = np.arange(0, current_offset, current_step)
     current_range = np.append(current_range, -current_range) + sweetspot
-    log.info(f"current Range: {current_range}")
 
     # Tracking the qubit: Find the respose of the qubit in the qubit frequencies range while modifying the flux current.
     # When the flux is modified, the qubit freq is moved and the resonator is also affected.
@@ -254,11 +251,7 @@ def qubit_spectroscopy_flux_track(
                 center = np.mean(frequency_range[idx])
                 msrs = []
 
-            log.info(f"current: {curr}")
-            log.info(f"center: {center}")
-
             frequency_range = frequency_array + center
-            log.info(f"freq range: {frequency_range}")
 
             for freq in frequency_range:
                 if count % points == 0:

@@ -258,13 +258,11 @@ def resonator_spectroscopy_flux(
                     min_msr = msr
                     resonance_freq = freq
                     resonance_current = curr
-                    # log.info(f"Init: {min_msr}, {resonance_freq}, {round(resonance_current, 5)}")
 
                 if msr < min_msr:
                     min_msr = msr
                     resonance_freq = freq
                     resonance_current = curr
-                    # log.info(f"New min found: {min_msr}, {resonance_freq}, {round(resonance_current, 5)}")
 
                 # TODO: implement normalization
                 data.add(results)
