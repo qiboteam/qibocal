@@ -52,8 +52,8 @@ def qq_compare():
                 command_output = subprocess.check_output([command], shell=True)
 
             except subprocess.CalledProcessError as e:
-                #return "An error occurred while trying to generate qq-report.<br>Please check folder compatility."
-                #return redirect("/", code=302)
+                # return "An error occurred while trying to generate qq-report.<br>Please check folder compatility."
+                # return redirect("/", code=302)
                 folders = [
                     folder
                     for folder in reversed(sorted(os.listdir(os.getcwd())))
@@ -65,7 +65,7 @@ def qq_compare():
                     version=__version__,
                     folders=folders,
                     reports=report,
-                    error="An error occurred while trying to generate qq-report. Please check folder compatility."
+                    error="An error occurred while trying to generate qq-report. Please check folder compatility.",
                 )
 
             return redirect("/data/qq-compare", code=302)
