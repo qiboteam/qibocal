@@ -8,9 +8,14 @@ from qibocal.data import DataUnits
 def exc_gnd(folder, routine, qubit, format):
 
     try:
-        data_exc = DataUnits.load_data(folder, routine, format, f"data_exc_q{qubit}")
+        data_exc = DataUnits.load_data(folder, routine, format, f"data_exc")
+        data_exc.df = data_exc.df[data_exc.df["qubit"] == int(qubit)].reset_index(
+            drop=True
+        )
     except:
-        data_exc = DataUnits(quantities={"iteration": "dimensionless"})
+        data_exc = DataUnits(
+            quantities={"iteration": "dimensionless"}, options=["qubit"]
+        )
 
     fig = make_subplots(
         rows=1,
@@ -33,9 +38,14 @@ def exc_gnd(folder, routine, qubit, format):
     )
 
     try:
-        data_gnd = DataUnits.load_data(folder, routine, format, f"data_gnd_q{qubit}")
+        data_gnd = DataUnits.load_data(folder, routine, format, "data_gnd")
+        data_gnd.df = data_gnd.df[data_gnd.df["qubit"] == int(qubit)].reset_index(
+            drop=True
+        )
     except:
-        data_gnd = DataUnits(quantities={"iteration": "dimensionless"})
+        data_gnd = DataUnits(
+            quantities={"iteration": "dimensionless"}, options=["qubit"]
+        )
 
     fig.add_trace(
         go.Scatter(
