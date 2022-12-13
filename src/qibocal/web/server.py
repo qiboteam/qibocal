@@ -52,11 +52,25 @@ def qq_compare():
                 command_output = subprocess.check_output([command], shell=True)
 
             except subprocess.CalledProcessError as e:
-                return "An error occurred while trying to generate qq-report.<br>Please check folder compatility."
+                #return "An error occurred while trying to generate qq-report.<br>Please check folder compatility."
+                #return redirect("/", code=302)
+                folders = [
+                    folder
+                    for folder in reversed(sorted(os.listdir(os.getcwd())))
+                    if os.path.isdir(folder) and "meta.yml" in os.listdir(folder)
+                ]
+                report = []
+                return render_template(
+                    "template.html",
+                    version=__version__,
+                    folders=folders,
+                    reports=report,
+                    error="An error occurred while trying to generate qq-report. Please check folder compatility."
+                )
 
             return redirect("/data/qq-compare", code=302)
 
-        if request.form["qq-compare"] == "combine":
+        elif request.form["qq-compare"] == "combine":
             folders = [
                 folder
                 for folder in reversed(sorted(os.listdir(os.getcwd())))

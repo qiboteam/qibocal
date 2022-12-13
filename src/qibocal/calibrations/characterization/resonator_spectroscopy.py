@@ -137,7 +137,7 @@ def resonator_spectroscopy(
 
 
 @plot("Frequency vs Attenuation", plots.frequency_attenuation_msr_phase)
-# @plot("MSR vs Frequency", plots.frequency_attenuation_msr_phase__cut)
+@plot("MSR vs Frequency", plots.frequency_attenuation_msr_phase__cut)
 def resonator_punchout(
     platform: AbstractPlatform,
     qubit: int,

@@ -9,8 +9,6 @@ from qibocal.decorators import plot
 from qibocal.fitting.methods import lorentzian_fit
 from qibo.config import log
 
-#from qibocal.calibrations.characterization.utils import get_polycoef_flux
-
 
 @plot("MSR and Phase vs Frequency", plots.frequency_msr_phase__fast_precision)
 def qubit_spectroscopy(

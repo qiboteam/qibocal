@@ -199,15 +199,24 @@
         {% endfor %}
 
       {% else %}
-      <div
-        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-        <h2>Welcome to Qibocal live!</h2>
-      </div>
-      <p>
-        Please select a report from the <mark>Saved reports</mark> in the sidebar .
-      </p>
+          {% if error %}
+            <div
+              class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+              <h2>Qibocal Error</h2>
+            </div>
+            <p>
+            {{error}}
+          </p>
+          {% else %}
+            <div
+              class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+              <h2>Welcome to Qibocal live!</h2>
+            </div>
+            <p>
+              Please select a report from the <mark>Saved reports</mark> in the sidebar .
+            </p>
+          {% endif %}
       {% endif %}
-
       </main>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js"
