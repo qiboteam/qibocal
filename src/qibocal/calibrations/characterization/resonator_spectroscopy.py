@@ -24,8 +24,8 @@ def resonator_spectroscopy(
 ):
 
     r"""
-    Perform spectroscopy on the 2D or 3D readout resonator. 
-    This routine executes a variable resolution scan around the expected resonator frequency indicated 
+    Perform spectroscopy on the 2D or 3D readout resonator.
+    This routine executes a variable resolution scan around the expected resonator frequency indicated
     in the platform runcard. Afterthat, a final sweep with more precision is executed centered in the new
     resonator frequency found.
 
@@ -47,7 +47,7 @@ def resonator_spectroscopy(
             - "i[V]": Resonator signal voltage mesurement for the component I in volts
             - "q[V]": Resonator signal voltage mesurement for the component Q in volts
             - "phase[rad]": Resonator signal phase mesurement in radians
-            - "frequency[Hz]": Resonator frequency value in Hz 
+            - "frequency[Hz]": Resonator frequency value in Hz
 
         A DataUnits object with the fitted data obtained with the following keys:
             - resonator_freq: frequency
@@ -179,8 +179,8 @@ def resonator_punchout(
 ):
 
     r"""
-    Perform spectroscopy on the readout resonator decreasing the attenuation applied to 
-    the read-out pulse, producing an increment of the power sent to the resonator. 
+    Perform spectroscopy on the readout resonator decreasing the attenuation applied to
+    the read-out pulse, producing an increment of the power sent to the resonator.
     That shows the two regimes of a given resonator, low and high-power regimes.
 
     Args:
@@ -200,7 +200,7 @@ def resonator_punchout(
             - "i[V]": Resonator signal voltage mesurement for the component I in volts
             - "q[V]": Resonator signal voltage mesurement for the component Q in volts
             - "phase[rad]": Resonator signal phase mesurement in radians
-            - "frequency[Hz]": Resonator frequency value in Hz 
+            - "frequency[Hz]": Resonator frequency value in Hz
             - "attenuation[dB]": attenuation value in db applied to the flux line
 
     """
@@ -267,7 +267,7 @@ def resonator_spectroscopy_flux(
 
     r"""
     Perform spectroscopy on the readout resonator modifying the current applied in the flux control line.
-    This routine works for quantum devices flux controlled. 
+    This routine works for quantum devices flux controlled.
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
@@ -362,9 +362,9 @@ def resonator_spectroscopy_flux_matrix(
 ):
 
     r"""
-    Perform spectroscopy on the readout resonator modifying the current applied in the given flux control lines associated 
+    Perform spectroscopy on the readout resonator modifying the current applied in the given flux control lines associated
     to a different qubits. As a result we obtain a matrix of plots where the flux dependence is shown for a list of qubits.
-    This routine works for quantum devices flux controlled. 
+    This routine works for quantum devices flux controlled.
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
@@ -448,8 +448,8 @@ def dispersive_shift(
 ):
 
     r"""
-    Perform spectroscopy on the readout resonator, with the qubit in ground and excited state, showing 
-    the resonator shift produced by the coupling between the resonator and the qubit. 
+    Perform spectroscopy on the readout resonator, with the qubit in ground and excited state, showing
+    the resonator shift produced by the coupling between the resonator and the qubit.
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
