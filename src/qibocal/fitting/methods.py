@@ -297,8 +297,10 @@ def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
         ],
     )
 
-    flips = data.get_values(*parse(x))  # Check X data stores. N flips or i?
-    voltages = data.get_values(*parse(y))
+    flips_keys = parse(x)
+    voltages_keys = parse(y)
+    flips = data[flips_keys[0]].pint.to(flips_keys[1]).pint.magnitude
+    voltages = data[voltages_keys[0]].pint.to(voltages_keys[1]).pint.magnitude
 
     if nqubits == 1:
         pguess = [0.0003, np.mean(voltages), -18, 0]  # epsilon guess parameter
