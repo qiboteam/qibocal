@@ -8,7 +8,6 @@ from qibocal import plots
 from qibocal.data import DataUnits
 from qibocal.decorators import plot
 from qibocal.fitting.methods import lorentzian_fit
-from qibo.config import log
 
 
 @plot("MSR and Phase vs Frequency", plots.frequency_msr_phase__fast_precision)
