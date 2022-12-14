@@ -313,7 +313,7 @@ def rabi_pulse_length_and_gain(
 ):
 
     r"""
-    In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse 
+    In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse
     combination of duration and gain to find the drive pulse amplitude that creates a rotation of a desired angle.
 
     Args:
@@ -406,7 +406,7 @@ def rabi_pulse_length_and_amplitude(
 ):
 
     r"""
-    In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse 
+    In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse
     combination of duration and amplitude to find the drive pulse amplitude that creates a rotation of a desired angle.
 
     Args:
@@ -428,7 +428,7 @@ def rabi_pulse_length_and_amplitude(
             - "phase[rad]": Resonator signal phase mesurement in radians
             - "duration[ns]": Drive pulse duration in ns
             - "amplitude[dimensionless]": Drive pulse amplitude
-            
+
     """
 
     platform.reload_settings()

@@ -23,8 +23,8 @@ def qubit_spectroscopy(
 ):
 
     r"""
-    Perform spectroscopy on the qubit. 
-    This routine executes a fast scan around the expected qubit frequency indicated in the platform runcard. 
+    Perform spectroscopy on the qubit.
+    This routine executes a fast scan around the expected qubit frequency indicated in the platform runcard.
     Afterthat, a final sweep with more precision is executed centered in the new qubit frequency found.
 
     Args:
@@ -45,7 +45,7 @@ def qubit_spectroscopy(
             - "i[V]": Resonator signal voltage mesurement for the component I in volts
             - "q[V]": Resonator signal voltage mesurement for the component Q in volts
             - "phase[rad]": Resonator signal phase mesurement in radians
-            - "frequency[Hz]": Resonator frequency value in Hz 
+            - "frequency[Hz]": Resonator frequency value in Hz
 
         A DataUnits object with the fitted data obtained with the following keys:
             - qubit_freq: frequency
