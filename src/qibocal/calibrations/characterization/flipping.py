@@ -16,6 +16,35 @@ def flipping(
     step,
     points=10,
 ):
+
+    r"""
+    The flipping experiment correct the delta amplitude in the qubit drive pulse. We measure a qubit after applying 
+    a Rx(pi/2) and N flips (Rx(pi) rotations). After fitting we can obtain the delta amplitude to refine pi pulses.
+
+    Args:
+        platform (AbstractPlatform): Qibolab platform object
+        qubit (int): Target qubit to perform the action
+        niter (int): Maximum number of flips introduced in each sequence
+        step (int): Scan range step for the number of flippings
+        points (int): Save data results in a file every number of points
+
+    Returns:
+        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys:
+            - "MSR[V]": Resonator signal voltage mesurement in volts
+            - "i[V]": Resonator signal voltage mesurement for the component I in volts
+            - "q[V]": Resonator signal voltage mesurement for the component Q in volts
+            - "phase[rad]": Resonator signal phase mesurement in radians
+            - "flips[dimensionless]": Number of flips applied in the current execution
+
+        A DataUnits object with the fitted data obtained with the following keys:
+            - amplitude_delta: Pi pulse delta amplitude 
+            - corrected_amplitude: Corrected pi pulse amplitude
+            - *popt0*: p0
+            - *popt1*: p1
+            - *popt2*: p2
+            - *popt3*: p3
+    """
+
     platform.reload_settings()
     pi_pulse_amplitude = platform.settings["native_gates"]["single_qubit"][qubit]["RX"][
         "amplitude"
