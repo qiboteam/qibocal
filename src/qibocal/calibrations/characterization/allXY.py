@@ -43,10 +43,10 @@ def allXY(
 ):
 
     r"""
-    The AllXY experiment is a simple test of the calibration of single qubit gatesThe qubit (initialized in the |0> state) 
-    is subjected to two back-to-back single-qubit gates and measured. In each round, we run 21 different gate pairs: 
+    The AllXY experiment is a simple test of the calibration of single qubit gatesThe qubit (initialized in the |0> state)
+    is subjected to two back-to-back single-qubit gates and measured. In each round, we run 21 different gate pairs:
     ideally, the first 5 return the qubit to |0>, the next 12 drive it to superposition state, and the last 4 put the
-    qubit in |1> state. 
+    qubit in |1> state.
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
@@ -134,12 +134,11 @@ def allXY_iteration(
     points=10,
 ):
 
-
     r"""
-    The AllXY experiment is a simple test of the calibration of single qubit gatesThe qubit (initialized in the |0> state) 
-    is subjected to two back-to-back single-qubit gates and measured. In each round, we run 21 different gate pairs: 
+    The AllXY experiment is a simple test of the calibration of single qubit gatesThe qubit (initialized in the |0> state)
+    is subjected to two back-to-back single-qubit gates and measured. In each round, we run 21 different gate pairs:
     ideally, the first 5 return the qubit to |0>, the next 12 drive it to superposition state, and the last 4 put the
-    qubit in |1> state. 
+    qubit in |1> state.
 
     The AllXY iteration method allows the user to execute iteratively the list of gates playing with the drag pulse shape
     in order to find the optimal drag pulse coefficient for pi pulses.
@@ -239,8 +238,8 @@ def drag_pulse_tunning(
 ):
 
     r"""
-    In this experiment, we apply two sequences in a given qubit: Rx(pi/2) - Ry(pi) and Ry(pi) - Rx(pi/2) for a range 
-    of different beta parameter values. After fitting, we obtain the best coefficient value for a pi pulse with drag shape. 
+    In this experiment, we apply two sequences in a given qubit: Rx(pi/2) - Ry(pi) and Ry(pi) - Rx(pi/2) for a range
+    of different beta parameter values. After fitting, we obtain the best coefficient value for a pi pulse with drag shape.
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
@@ -259,13 +258,12 @@ def drag_pulse_tunning(
             - "beta_param[dimensionless]": Optimal drag coefficient
 
         A DataUnits object with the fitted data obtained with the following keys:
-            - optimal_beta_param: Best drag pulse coefficent  
+            - optimal_beta_param: Best drag pulse coefficent
             - *popt0*: offset
             - *popt1*: oscillation amplitude
             - *popt2*: period
             - *popt3*: phase
     """
-
 
     # platform.reload_settings()
 
