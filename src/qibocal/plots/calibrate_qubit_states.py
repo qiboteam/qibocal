@@ -1,7 +1,7 @@
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from qibocal.data import DataUnits
+from qibocal.data import Data, DataUnits
 from qibocal.plots.utils import get_data_subfolders
 
 
@@ -22,24 +22,22 @@ def exc_gnd(folder, routine, qubit, format):
     fitting_report = ""
     for subfolder in subfolders:
         try:
-            parameters = DataUnits.load_data(
+            parameters = Data.load_data(
                 folder, subfolder, routine, format, f"parameters_q{qubit}"
             )
-            rotation_angle = parameters.get_values("rotation_angle", "dimensionless")[0]
-            threshold = parameters.get_values("threshold", "V")[0]
-            fidelity = parameters.get_values("fidelity", "dimensionless")[0]
-            assignment_fidelity = parameters.get_values(
-                "assignment_fidelity", "dimensionless"
-            )[0]
+            rotation_angle = parameters.get_values("rotation_angle")[0]
+            threshold = parameters.get_values("threshold")[0]
+            fidelity = parameters.get_values("fidelity")[0]
+            assignment_fidelity = parameters.get_values("assignment_fidelity")[0]
         except:
-            parameters = DataUnits(
+            parameters = Data(
                 name=f"parameters_q{qubit}",
-                quantities={
-                    "rotation_angle": "dimensionless",  # in degrees
-                    "threshold": "V",
-                    "fidelity": "dimensionless",
-                    "assignment_fidelity": "dimensionless",
-                },
+                quantities=[
+                    "rotation_angle",  # in degrees
+                    "threshold",
+                    "fidelity",
+                    "assignment_fidelity",
+                ],
             )
 
         try:

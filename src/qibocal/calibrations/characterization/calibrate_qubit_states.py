@@ -5,6 +5,7 @@ from qibolab.pulses import PulseSequence
 from qibocal import plots
 from qibocal.data import DataUnits
 from qibocal.decorators import plot
+from qibocal.fitting.methods import calibrate_qubit_state_fit
 
 
 @plot("exc vs gnd", plots.exc_gnd)
@@ -25,7 +26,6 @@ def calibrate_qubit_states(
     data_exc = DataUnits(
         name=f"data_exc_q{qubit}", quantities={"iteration": "dimensionless"}
     )
-    iq_exc = []
     count = 0
     for n in np.arange(nshots):
         if count % points == 0:
@@ -33,7 +33,6 @@ def calibrate_qubit_states(
         msr, phase, i, q = platform.execute_pulse_sequence(exc_sequence, nshots=1)[
             ro_pulse.serial
         ]
-        iq_exc += [i + 1j * q]
         results = {
             "MSR[V]": msr,
             "i[V]": i,
@@ -51,7 +50,6 @@ def calibrate_qubit_states(
     data_gnd = DataUnits(
         name=f"data_gnd_q{qubit}", quantities={"iteration": "dimensionless"}
     )
-    iq_gnd = []
     count = 0
     for n in np.arange(nshots):
         if count % points == 0:
@@ -59,7 +57,6 @@ def calibrate_qubit_states(
         msr, phase, i, q = platform.execute_pulse_sequence(gnd_sequence, nshots=1)[
             ro_pulse.serial
         ]
-        iq_gnd += [i + 1j * q]
         results = {
             "MSR[V]": msr,
             "i[V]": i,
@@ -70,65 +67,9 @@ def calibrate_qubit_states(
         data_gnd.add(results)
         count += 1
     yield data_gnd
-    parameters = DataUnits(
-        name=f"parameters_q{qubit}",
-        quantities={
-            "rotation_angle": "dimensionless",  # in degrees
-            "threshold": "V",
-            "fidelity": "dimensionless",
-            "assignment_fidelity": "dimensionless",
-        },
+    yield calibrate_qubit_state_fit(
+        data_gnd, data_exc, x="i[V]", y="q[V]", nshots=nshots, qubit=qubit
     )
-
-    iq_exc = np.array(iq_exc)
-    iq_gnd = np.array(iq_gnd)
-
-    iq_mean_exc = np.mean(iq_exc)
-    iq_mean_gnd = np.mean(iq_gnd)
-    origin = iq_mean_gnd
-
-    iq_gnd_translated = iq_gnd - origin
-    iq_exc_translated = iq_exc - origin
-    rotation_angle = np.angle(np.mean(iq_exc_translated))
-
-    iq_exc_rotated = iq_exc * np.exp(-1j * rotation_angle)
-    iq_gnd_rotated = iq_gnd * np.exp(-1j * rotation_angle)
-
-    real_values_exc = iq_exc_rotated.real
-    real_values_gnd = iq_gnd_rotated.real
-
-    real_values_combined = np.concatenate((real_values_exc, real_values_gnd))
-    real_values_combined.sort()
-
-    cum_distribution_exc = [
-        sum(map(lambda x: x.real >= real_value, real_values_exc))
-        for real_value in real_values_combined
-    ]
-    cum_distribution_gnd = [
-        sum(map(lambda x: x.real >= real_value, real_values_gnd))
-        for real_value in real_values_combined
-    ]
-
-    cum_distribution_diff = np.abs(
-        np.array(cum_distribution_exc) - np.array(cum_distribution_gnd)
-    )
-    argmax = np.argmax(cum_distribution_diff)
-    threshold = real_values_combined[argmax]
-    errors_exc = nshots - cum_distribution_exc[argmax]
-    errors_gnd = cum_distribution_gnd[argmax]
-    fidelity = cum_distribution_diff[argmax] / nshots
-    assignment_fidelity = 1 - (errors_exc + errors_gnd) / nshots / 2
-    # assignment_fidelity = 1/2 + (cum_distribution_exc[argmax] - cum_distribution_gnd[argmax])/nshots/2
-
-    results = {
-        "rotation_angle[dimensionless]": (-rotation_angle * 360 / (2 * np.pi))
-        % 360,  # in degrees
-        "threshold[V]": threshold,
-        "fidelity[dimensionless]": fidelity,
-        "assignment_fidelity[dimensionless]": assignment_fidelity,
-    }
-    parameters.add(results)
-    yield (parameters)
 
 
 @plot("exc vs gnd", plots.exc_gnd)
@@ -155,7 +96,6 @@ def calibrate_qubit_states_binning(
         "binned_integrated"
     ][ro_pulse.serial]
 
-    iq_exc = i + 1j * q
     results = {
         "MSR[V]": msr,
         "i[V]": i,
@@ -176,7 +116,6 @@ def calibrate_qubit_states_binning(
         "binned_integrated"
     ][ro_pulse.serial]
 
-    iq_gnd = i + 1j * q
     results = {
         "MSR[V]": msr,
         "i[V]": i,
@@ -186,60 +125,6 @@ def calibrate_qubit_states_binning(
     }
     data_gnd.load_data_from_dict(results)
     yield data_gnd
-
-    parameters = DataUnits(
-        name=f"parameters_q{qubit}",
-        quantities={
-            "rotation_angle": "dimensionless",  # in degrees
-            "threshold": "V",
-            "fidelity": "dimensionless",
-            "assignment_fidelity": "dimensionless",
-        },
+    yield calibrate_qubit_state_fit(
+        data_gnd, data_exc, x="i[V]", y="q[V]", nshots=nshots, qubit=qubit
     )
-
-    iq_mean_exc = np.mean(iq_exc)
-    iq_mean_gnd = np.mean(iq_gnd)
-    origin = iq_mean_gnd
-
-    iq_gnd_translated = iq_gnd - origin
-    iq_exc_translated = iq_exc - origin
-    rotation_angle = np.angle(np.mean(iq_exc_translated))
-
-    iq_exc_rotated = iq_exc * np.exp(-1j * rotation_angle)
-    iq_gnd_rotated = iq_gnd * np.exp(-1j * rotation_angle)
-
-    real_values_exc = iq_exc_rotated.real
-    real_values_gnd = iq_gnd_rotated.real
-
-    real_values_combined = np.concatenate((real_values_exc, real_values_gnd))
-    real_values_combined.sort()
-
-    cum_distribution_exc = [
-        sum(map(lambda x: x.real >= real_value, real_values_exc))
-        for real_value in real_values_combined
-    ]
-    cum_distribution_gnd = [
-        sum(map(lambda x: x.real >= real_value, real_values_gnd))
-        for real_value in real_values_combined
-    ]
-
-    cum_distribution_diff = np.abs(
-        np.array(cum_distribution_exc) - np.array(cum_distribution_gnd)
-    )
-    argmax = np.argmax(cum_distribution_diff)
-    threshold = real_values_combined[argmax]
-    errors_exc = nshots - cum_distribution_exc[argmax]
-    errors_gnd = cum_distribution_gnd[argmax]
-    fidelity = cum_distribution_diff[argmax] / nshots
-    assignment_fidelity = 1 - (errors_exc + errors_gnd) / nshots / 2
-    # assignment_fidelity = 1/2 + (cum_distribution_exc[argmax] - cum_distribution_gnd[argmax])/nshots/2
-
-    results = {
-        "rotation_angle[dimensionless]": (-rotation_angle * 360 / (2 * np.pi))
-        % 360,  # in degrees
-        "threshold[V]": threshold,
-        "fidelity[dimensionless]": fidelity,
-        "assignment_fidelity[dimensionless]": assignment_fidelity,
-    }
-    parameters.add(results)
-    yield (parameters)

@@ -411,3 +411,68 @@ def spin_echo_fit(data, x, y, qubit, nqubits, labels):
         }
     )
     return data_fit
+
+
+def calibrate_qubit_state_fit(data_gnd, data_exc, x, y, nshots, qubit):
+
+    parameters = Data(
+        name=f"parameters_q{qubit}",
+        quantities=[
+            "rotation_angle",  # in degrees
+            "threshold",
+            "fidelity",
+            "assignment_fidelity",
+        ],
+    )
+
+    iq_exc = data_exc.get_values(*parse(x)) + 1.0j * data_exc.get_values(*parse(y))
+    iq_gnd = data_gnd.get_values(*parse(x)) + 1.0j * data_gnd.get_values(*parse(y))
+
+    iq_exc = np.array(iq_exc)
+    iq_gnd = np.array(iq_gnd)
+
+    iq_mean_exc = np.mean(iq_exc)
+    iq_mean_gnd = np.mean(iq_gnd)
+    origin = iq_mean_gnd
+
+    iq_gnd_translated = iq_gnd - origin
+    iq_exc_translated = iq_exc - origin
+    rotation_angle = np.angle(np.mean(iq_exc_translated))
+
+    iq_exc_rotated = iq_exc * np.exp(-1j * rotation_angle)
+    iq_gnd_rotated = iq_gnd * np.exp(-1j * rotation_angle)
+
+    real_values_exc = iq_exc_rotated.real
+    real_values_gnd = iq_gnd_rotated.real
+
+    real_values_combined = np.concatenate((real_values_exc, real_values_gnd))
+    real_values_combined.sort()
+
+    cum_distribution_exc = [
+        sum(map(lambda x: x.real >= real_value, real_values_exc))
+        for real_value in real_values_combined
+    ]
+    cum_distribution_gnd = [
+        sum(map(lambda x: x.real >= real_value, real_values_gnd))
+        for real_value in real_values_combined
+    ]
+
+    cum_distribution_diff = np.abs(
+        np.array(cum_distribution_exc) - np.array(cum_distribution_gnd)
+    )
+    argmax = np.argmax(cum_distribution_diff)
+    threshold = real_values_combined[argmax]
+    errors_exc = nshots - cum_distribution_exc[argmax]
+    errors_gnd = cum_distribution_gnd[argmax]
+    fidelity = cum_distribution_diff[argmax] / nshots
+    assignment_fidelity = 1 - (errors_exc + errors_gnd) / nshots / 2
+    # assignment_fidelity = 1/2 + (cum_distribution_exc[argmax] - cum_distribution_gnd[argmax])/nshots/2
+
+    results = {
+        "rotation_angle": (-rotation_angle * 360 / (2 * np.pi)) % 360,  # in degrees
+        "threshold": threshold,
+        "fidelity": fidelity,
+        "assignment_fidelity": assignment_fidelity,
+    }
+    parameters.add(results)
+    return parameters
