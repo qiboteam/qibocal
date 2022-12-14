@@ -18,7 +18,7 @@ def flipping(
 ):
 
     r"""
-    The flipping experiment correct the delta amplitude in the qubit drive pulse. We measure a qubit after applying 
+    The flipping experiment correct the delta amplitude in the qubit drive pulse. We measure a qubit after applying
     a Rx(pi/2) and N flips (Rx(pi) rotations). After fitting we can obtain the delta amplitude to refine pi pulses.
 
     Args:
@@ -37,7 +37,7 @@ def flipping(
             - "flips[dimensionless]": Number of flips applied in the current execution
 
         A DataUnits object with the fitted data obtained with the following keys:
-            - amplitude_delta: Pi pulse delta amplitude 
+            - amplitude_delta: Pi pulse delta amplitude
             - corrected_amplitude: Corrected pi pulse amplitude
             - *popt0*: p0
             - *popt1*: p1
