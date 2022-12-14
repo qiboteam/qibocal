@@ -20,12 +20,12 @@ def t1(
 ):
 
     r"""
-    In a T1 experiment, we measure an excited qubit after a delay. Due to decoherence processes 
-    (e.g. amplitude damping channel), it is possible that, at the time of measurement, after the delay, 
+    In a T1 experiment, we measure an excited qubit after a delay. Due to decoherence processes
+    (e.g. amplitude damping channel), it is possible that, at the time of measurement, after the delay,
     the qubit will not be excited anymore. The larger the delay time is, the more likely is the qubit to
-    fall to the ground state. The goal of the experiment is to characterize the decay rate of the qubit 
+    fall to the ground state. The goal of the experiment is to characterize the decay rate of the qubit
     towards the ground state.
-    
+
     Args:
         platform (AbstractPlatform): Qibolab platform object
         qubit (int): Target qubit to perform the action
@@ -40,7 +40,7 @@ def t1(
             - "i[V]": Resonator signal voltage mesurement for the component I in volts
             - "q[V]": Resonator signal voltage mesurement for the component Q in volts
             - "phase[rad]": Resonator signal phase mesurement in radians
-            - "wait[ns]": Delay before ReadOut used in the current execution 
+            - "wait[ns]": Delay before ReadOut used in the current execution
 
         A DataUnits object with the fitted data obtained with the following keys:
             - *labels[0]*: T1
