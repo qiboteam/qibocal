@@ -4,6 +4,7 @@ from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import ramsey
+from qibocal.plots.utils import get_data_subfolders
 
 
 # Ramsey oscillations

@@ -7,7 +7,7 @@ from qibocal.fitting.utils import rabi
 from qibocal.plots.utils import get_data_subfolders
 
 
-# For Rabi oscillations
+# Rabi oscillations pulse length
 def time_msr_phase(folder, routine, qubit, format):
 
     fig = make_subplots(
@@ -27,12 +27,16 @@ def time_msr_phase(folder, routine, qubit, format):
     fitting_report = ""
     for subfolder in subfolders:
         try:
-            data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
+            data = DataUnits.load_data(
+                folder, subfolder, routine, format, f"data_q{qubit}"
+            )
         except:
             data = DataUnits(quantities={"Time": "ns"})
 
         try:
-            data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
+            data_fit = Data.load_data(
+                folder, subfolder, routine, format, f"fit_q{qubit}"
+            )
         except:
             data_fit = Data(
                 quantities=[
@@ -50,7 +54,7 @@ def time_msr_phase(folder, routine, qubit, format):
             go.Scatter(
                 x=data.get_values("Time", "ns"),
                 y=data.get_values("MSR", "uV"),
-                name="Rabi q{qubit}/r{i}",
+                name=f"Rabi q{qubit}/r{i}",
             ),
             row=1,
             col=1,
@@ -59,12 +63,11 @@ def time_msr_phase(folder, routine, qubit, format):
             go.Scatter(
                 x=data.get_values("Time", "ns"),
                 y=data.get_values("phase", "rad"),
-                name="Rabi q{qubit}/r{i}",
+                name=f"Rabi q{qubit}/r{i}",
             ),
             row=1,
             col=2,
         )
-
         # add fitting trace
         if len(data) > 0 and len(data_fit) > 0:
             timerange = np.linspace(
@@ -84,7 +87,7 @@ def time_msr_phase(folder, routine, qubit, format):
                         data_fit.get_values("popt3"),
                         data_fit.get_values("popt4"),
                     ),
-                    name="Fit q{qubit}/r{i}",
+                    name=f"Fit q{qubit}/r{i}",
                     line=go.scatter.Line(dash="dot"),
                 ),
                 row=1,
