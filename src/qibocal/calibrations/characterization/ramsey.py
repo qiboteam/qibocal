@@ -18,6 +18,46 @@ def ramsey_frequency_detuned(
     n_osc,
     points=10,
 ):
+
+    r"""
+    We introduce an artificial detune over the drive pulse frequency to be off-resonance and, after fitting, 
+    determine two of the qubit's properties: Ramsey or detuning frequency and T2. If our drive pulse is well 
+    calibrated, the Ramsey experiment without artificial detuning results in an exponential that describes T2, 
+    but we can not refine the detuning frequency.
+
+    In this method we iterate over diferent maximum time delays between the drive pulses of the ramsey sequence
+    in order to refine the fitted detuning frequency and T2.
+
+    Ramsey sequence: Rx(pi/2) - wait time - Rx(pi/2) - ReadOut
+
+    Args:
+        platform (AbstractPlatform): Qibolab platform object
+        qubit (int): Target qubit to perform the action
+        t_start (int): Initial time delay between drive pulses in the Ramsey sequence
+        t_end (list): List of maximum time delays between drive pulses in the Ramsey sequence
+        t_step (int): Scan range step for the time delay between drive pulses in the Ramsey sequence
+        points (int): Save data results in a file every number of points
+
+    Returns:
+        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys:
+            - "MSR[V]": Resonator signal voltage mesurement in volts
+            - "i[V]": Resonator signal voltage mesurement for the component I in volts
+            - "q[V]": Resonator signal voltage mesurement for the component Q in volts
+            - "phase[rad]": Resonator signal phase mesurement in radians
+            - "wait[ns]": Wait time used in the current Ramsey execution 
+            - "t_max[ns]": Maximum time delay between drive pulses in the Ramsey sequence
+
+        A DataUnits object with the fitted data obtained with the following keys:
+            - delta_frequency: Physical detunning of the actual qubit frequency
+            - corrected_qubit_frequency: 
+            - t2: New qubit frequency after correcting the actual qubit frequency with the detunning calculated
+            - *popt0*: offset
+            - *popt1*: oscillation amplitude
+            - *popt2*: frequency
+            - *popt3*: phase
+            - *popt4*: T2
+    """
+
     platform.reload_settings()
     sampling_rate = platform.sampling_rate
 
@@ -138,6 +178,40 @@ def ramsey(
     software_averages,
     points=10,
 ):
+
+    r"""
+    The purpose of the Ramsey experiment is to determine two of the qubit's properties: Ramsey or detuning frequency and T2.
+
+    Ramsey sequence: Rx(pi/2) - wait time - Rx(pi/2) - ReadOut
+    
+    Args:
+        platform (AbstractPlatform): Qibolab platform object
+        qubit (int): Target qubit to perform the action
+        delay_between_pulses_start (int): Initial time delay between drive pulses in the Ramsey sequence
+        delay_between_pulses_end (list): Maximum time delay between drive pulses in the Ramsey sequence
+        delay_between_pulses_step (int): Scan range step for the time delay between drive pulses in the Ramsey sequence
+        points (int): Save data results in a file every number of points
+
+    Returns:
+        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys:
+            - "MSR[V]": Resonator signal voltage mesurement in volts
+            - "i[V]": Resonator signal voltage mesurement for the component I in volts
+            - "q[V]": Resonator signal voltage mesurement for the component Q in volts
+            - "phase[rad]": Resonator signal phase mesurement in radians
+            - "wait[ns]": Wait time used in the current Ramsey execution 
+            - "t_max[ns]": Maximum time delay between drive pulses in the Ramsey sequence
+
+        A DataUnits object with the fitted data obtained with the following keys:
+            - delta_frequency: Physical detunning of the actual qubit frequency
+            - corrected_qubit_frequency: 
+            - t2: New qubit frequency after correcting the actual qubit frequency with the detunning calculated
+            - *popt0*: offset
+            - *popt1*: oscillation amplitude
+            - *popt2*: frequency
+            - *popt3*: phase
+            - *popt4*: T2
+    """
+
     platform.reload_settings()
     sampling_rate = platform.sampling_rate
     qubit_freq = platform.characterization["single_qubit"][qubit]["qubit_freq"]
