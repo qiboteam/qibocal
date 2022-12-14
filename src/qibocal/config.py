@@ -1,10 +1,9 @@
-# -*- coding: utf-8 -*-
 """Custom logger implemenation."""
 import logging
 import os
 
-# Logging level from 0 (all) to 4 (errors) (see https://docs.python.org/3/library/logging.html#logging-levels)
-QIBOCAL_LOG_LEVEL = 1
+# Logging levels available here https://docs.python.org/3/library/logging.html#logging-levels
+QIBOCAL_LOG_LEVEL = 30
 if "QIBOCAL_LOG_LEVEL" in os.environ:  # pragma: no cover
     QIBOCAL_LOG_LEVEL = 10 * int(os.environ.get("QIBOCAL_LOG_LEVEL"))
 
@@ -32,7 +31,23 @@ class CustomHandler(logging.StreamHandler):
         from qibocal import __version__
 
         fmt = f"[Qibocal {__version__}|%(levelname)s|%(asctime)s]: %(message)s"
-        return logging.Formatter(fmt, datefmt="%Y-%m-%d %H:%M:%S").format(record)
+
+        grey = "\x1b[38;20m"
+        green = "\x1b[92m"
+        yellow = "\x1b[33;20m"
+        red = "\x1b[31;20m"
+        bold_red = "\x1b[31;1m"
+        reset = "\x1b[0m"
+
+        self.FORMATS = {
+            logging.DEBUG: green + fmt + reset,
+            logging.INFO: grey + fmt + reset,
+            logging.WARNING: yellow + fmt + reset,
+            logging.ERROR: red + fmt + reset,
+            logging.CRITICAL: bold_red + fmt + reset,
+        }
+        log_fmt = self.FORMATS.get(record.levelno)
+        return logging.Formatter(log_fmt, datefmt="%Y-%m-%d %H:%M:%S").format(record)
 
 
 # allocate logger object

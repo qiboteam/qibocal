@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """Implementation of DataUnits and Data class to store calibration routines outputs."""
 
 import re
