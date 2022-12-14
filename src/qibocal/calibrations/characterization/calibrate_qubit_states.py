@@ -15,7 +15,7 @@ def calibrate_qubit_states(
     points=10,
 ):
     """
-    Method which implements the state's calibration of a chosen qubit. Two analogous tests are performed 
+    Method which implements the state's calibration of a chosen qubit. Two analogous tests are performed
     for calibrate the ground state and the excited state of the oscillator.
     The subscripts `exc` and `gnd` will represent the excited state |1> and the ground state |0>.
 
@@ -31,8 +31,8 @@ def calibrate_qubit_states(
             - "i[V]": Resonator signal voltage mesurement for the component I in volts
             - "q[V]": Resonator signal voltage mesurement for the component Q in volts
             - "phase[rad]": Resonator signal phase mesurement in radians
-            - "iteration[dimensionless]": Execution number 
-            
+            - "iteration[dimensionless]": Execution number
+
     """
 
     # create exc sequence
