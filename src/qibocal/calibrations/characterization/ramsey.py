@@ -20,9 +20,9 @@ def ramsey_frequency_detuned(
 ):
 
     r"""
-    We introduce an artificial detune over the drive pulse frequency to be off-resonance and, after fitting, 
-    determine two of the qubit's properties: Ramsey or detuning frequency and T2. If our drive pulse is well 
-    calibrated, the Ramsey experiment without artificial detuning results in an exponential that describes T2, 
+    We introduce an artificial detune over the drive pulse frequency to be off-resonance and, after fitting,
+    determine two of the qubit's properties: Ramsey or detuning frequency and T2. If our drive pulse is well
+    calibrated, the Ramsey experiment without artificial detuning results in an exponential that describes T2,
     but we can not refine the detuning frequency.
 
     In this method we iterate over diferent maximum time delays between the drive pulses of the ramsey sequence
@@ -44,12 +44,12 @@ def ramsey_frequency_detuned(
             - "i[V]": Resonator signal voltage mesurement for the component I in volts
             - "q[V]": Resonator signal voltage mesurement for the component Q in volts
             - "phase[rad]": Resonator signal phase mesurement in radians
-            - "wait[ns]": Wait time used in the current Ramsey execution 
+            - "wait[ns]": Wait time used in the current Ramsey execution
             - "t_max[ns]": Maximum time delay between drive pulses in the Ramsey sequence
 
         A DataUnits object with the fitted data obtained with the following keys:
             - delta_frequency: Physical detunning of the actual qubit frequency
-            - corrected_qubit_frequency: 
+            - corrected_qubit_frequency:
             - t2: New qubit frequency after correcting the actual qubit frequency with the detunning calculated
             - *popt0*: offset
             - *popt1*: oscillation amplitude
@@ -183,7 +183,7 @@ def ramsey(
     The purpose of the Ramsey experiment is to determine two of the qubit's properties: Ramsey or detuning frequency and T2.
 
     Ramsey sequence: Rx(pi/2) - wait time - Rx(pi/2) - ReadOut
-    
+
     Args:
         platform (AbstractPlatform): Qibolab platform object
         qubit (int): Target qubit to perform the action
@@ -198,12 +198,12 @@ def ramsey(
             - "i[V]": Resonator signal voltage mesurement for the component I in volts
             - "q[V]": Resonator signal voltage mesurement for the component Q in volts
             - "phase[rad]": Resonator signal phase mesurement in radians
-            - "wait[ns]": Wait time used in the current Ramsey execution 
+            - "wait[ns]": Wait time used in the current Ramsey execution
             - "t_max[ns]": Maximum time delay between drive pulses in the Ramsey sequence
 
         A DataUnits object with the fitted data obtained with the following keys:
             - delta_frequency: Physical detunning of the actual qubit frequency
-            - corrected_qubit_frequency: 
+            - corrected_qubit_frequency:
             - t2: New qubit frequency after correcting the actual qubit frequency with the detunning calculated
             - *popt0*: offset
             - *popt1*: oscillation amplitude
