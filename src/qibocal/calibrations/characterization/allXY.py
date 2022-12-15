@@ -148,6 +148,10 @@ def allXY_iteration(
             platform.characterization["single_qubit"][qubit]["state1_voltage"]
         )
 
+    for qubit in qubits:
+        state0_voltages["qubit"] = 10 + 10.0j
+        state1_voltages["qubit"] = 2 + 2.0j
+
     data = DataUnits(
         name="data",
         quantities={
@@ -211,7 +215,7 @@ def drag_pulse_tuning(
     points=10,
 ):
 
-    # platform.reload_settings()
+    platform.reload_settings()
 
     # FIXME: Waiting to be able to pass qpucard to qibolab
 

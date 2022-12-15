@@ -85,7 +85,6 @@ def prob_gate_iteration(folder, routine, qubit, format):
             options=["qubit"],
         )
 
-    data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     fig = make_subplots(
         rows=1,
         cols=1,

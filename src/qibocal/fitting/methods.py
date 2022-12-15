@@ -35,12 +35,6 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None):
             ],
         )
 
-    # data.df =  data.df[data.df['qubit'] == qubit].reset_index(drop=True)
-    # data.df = data.df.where(data.df['qubit'] == qubit).dropna().reset_index(drop=True)
-    # print(data.df)
-    # frequencies = data.get_values(*parse(x))
-    # voltages = data.get_values(*parse(y))
-
     frequencies_keys = parse(x)
     voltages_keys = parse(y)
     frequencies = data[frequencies_keys[0]].pint.to(frequencies_keys[1]).pint.magnitude

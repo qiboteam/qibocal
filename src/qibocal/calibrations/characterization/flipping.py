@@ -77,6 +77,7 @@ def flipping(
                     "q[V]": q,
                     "phase[rad]": phase,
                     "flips[dimensionless]": n,
+                    "qubit": qubit,
                 }
                 data.add(results)
             count += 1
