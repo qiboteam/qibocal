@@ -12,7 +12,7 @@ def t1_time_msr_phase(folder, routine, qubit, format):
         data = DataUnits.load_data(folder, routine, format, "data")
         data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
     except:
-        data = DataUnits(quantities={"Time": "ns"}, options=["qubit"])
+        data = DataUnits(quantities={"time": "ns"}, options=["qubit"])
 
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
@@ -33,11 +33,11 @@ def t1_time_msr_phase(folder, routine, qubit, format):
     datasets = []
     copy = data.df.copy()
     for i in range(len(copy)):
-        datasets.append(copy.drop_duplicates("Time"))
+        datasets.append(copy.drop_duplicates("time"))
         copy.drop(datasets[-1].index, inplace=True)
         fig.add_trace(
             go.Scatter(
-                x=datasets[-1]["Time"].pint.to("ns").pint.magnitude,
+                x=datasets[-1]["time"].pint.to("ns").pint.magnitude,
                 y=datasets[-1]["MSR"].pint.to("uV").pint.magnitude,
                 marker_color="rgb(100, 0, 255)",
                 opacity=0.3,
@@ -50,7 +50,7 @@ def t1_time_msr_phase(folder, routine, qubit, format):
         )
         fig.add_trace(
             go.Scatter(
-                x=datasets[-1]["Time"].pint.to("ns").pint.magnitude,
+                x=datasets[-1]["time"].pint.to("ns").pint.magnitude,
                 y=datasets[-1]["phase"].pint.to("rad").pint.magnitude,
                 marker_color="rgb(102, 180, 71)",
                 name="phase",
@@ -64,10 +64,10 @@ def t1_time_msr_phase(folder, routine, qubit, format):
 
     fig.add_trace(
         go.Scatter(
-            x=data.df.Time.drop_duplicates()  # pylint: disable=E1101
+            x=data.df.time.drop_duplicates()  # pylint: disable=E1101
             .pint.to("ns")
             .pint.magnitude,
-            y=data.df.groupby("Time")["MSR"]  # pylint: disable=E1101
+            y=data.df.groupby("time")["MSR"]  # pylint: disable=E1101
             .mean()
             .pint.to("uV")
             .pint.magnitude,
@@ -79,10 +79,10 @@ def t1_time_msr_phase(folder, routine, qubit, format):
     )
     fig.add_trace(
         go.Scatter(
-            x=data.df.Time.drop_duplicates()  # pylint: disable=E1101
+            x=data.df.time.drop_duplicates()  # pylint: disable=E1101
             .pint.to("ns")
             .pint.magnitude,
-            y=data.df.groupby("Time")["phase"]  # pylint: disable=E1101
+            y=data.df.groupby("time")["phase"]  # pylint: disable=E1101
             .mean()
             .pint.to("rad")
             .pint.magnitude,
@@ -96,8 +96,8 @@ def t1_time_msr_phase(folder, routine, qubit, format):
     # add fitting trace
     if len(data) > 0 and len(data_fit) > 0:
         timerange = np.linspace(
-            min(data.get_values("Time", "ns")),
-            max(data.get_values("Time", "ns")),
+            min(data.get_values("time", "ns")),
+            max(data.get_values("time", "ns")),
             2 * len(data),
         )
         params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
@@ -136,9 +136,9 @@ def t1_time_msr_phase(folder, routine, qubit, format):
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Time (ns)",
+        xaxis_title="time (ns)",
         yaxis_title="MSR (uV)",
-        xaxis2_title="Time (ns)",
+        xaxis2_title="time (ns)",
         yaxis2_title="Phase (rad)",
     )
     return fig

@@ -8,7 +8,7 @@ from qibocal.decorators import plot
 from qibocal.fitting.methods import t1_fit
 
 
-@plot("MSR vs Time", plots.t1_time_msr_phase)
+@plot("MSR vs time", plots.t1_time_msr_phase)
 def t1(
     platform: AbstractPlatform,
     qubits: list,
@@ -44,18 +44,17 @@ def t1(
         delay_before_readout_start, delay_before_readout_end, delay_before_readout_step
     )
 
-    data = DataUnits(name="data", quantities={"Time": "ns"}, options=["qubit"])
+    data = DataUnits(name="data", quantities={"time": "ns"}, options=["qubit"])
 
     count = 0
     for _ in range(software_averages):
         for wait in ro_wait_range:
             if count % points == 0 and count > 0:
                 yield data
-
                 for qubit in qubits:
                     yield t1_fit(
                         data.get_column("qubit", qubit),
-                        x="Time[ns]",
+                        x="time[ns]",
                         y="MSR[uV]",
                         qubit=qubit,
                         nqubits=platform.settings["nqubits"],
@@ -74,7 +73,8 @@ def t1(
                     "i[V]": i,
                     "q[V]": q,
                     "phase[rad]": phase,
-                    "Time[ns]": wait,
+                    "time[ns]": wait,
+                    "qubit": qubit,
                 }
                 data.add(results)
             count += 1

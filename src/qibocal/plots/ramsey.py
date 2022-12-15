@@ -14,7 +14,7 @@ def time_msr(folder, routine, qubit, format):
 
     except:
         data = DataUnits(
-            name=f"data_q{qubit}",
+            name="data",
             quantities={"wait": "ns", "t_max": "ns"},
             options=["qubit"],
         )

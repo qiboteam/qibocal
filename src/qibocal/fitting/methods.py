@@ -238,29 +238,29 @@ def t1_fit(data, x, y, qubit, nqubits, labels):
             labels[0],
         ],
     )
+    print(data)
+    x_keys = parse(x)
+    y_keys = parse(y)
+    xs = data[x_keys[0]].pint.to(x_keys[1]).pint.magnitude
+    ys = data[y_keys[0]].pint.to(y_keys[1]).pint.magnitude
 
-    time_keys = parse(x)
-    voltages_keys = parse(y)
-    time = data[time_keys[0]].pint.to(time_keys[1]).pint.magnitude
-    voltages = data[voltages_keys[0]].pint.to(voltages_keys[1]).pint.magnitude
+    print(ys)
 
     if nqubits == 1:
         pguess = [
-            max(voltages.values),
-            (max(voltages.values) - min(voltages.values)),
+            max(ys.values),
+            (max(ys.values) - min(ys.values)),
             1 / 250,
         ]
     else:
         pguess = [
-            min(voltages.values),
-            (max(voltages.values) - min(voltages.values)),
+            min(ys.values),
+            (max(ys.values) - min(ys.values)),
             1 / 250,
         ]
 
     try:
-        popt, pcov = curve_fit(
-            exp, time.values, voltages.values, p0=pguess, maxfev=2000000
-        )
+        popt, pcov = curve_fit(exp, xs.values, ys.values, p0=pguess, maxfev=2000000)
         t1 = abs(1 / popt[2])
 
     except:

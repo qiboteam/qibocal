@@ -124,7 +124,6 @@ def ramsey_frequency_detuned(
                         "qubit": qubit,
                     }
                     data.add(results)
-                # count += 1
 
                 # # Fitting
                 data_fit = ramsey_fit(
@@ -145,7 +144,6 @@ def ramsey_frequency_detuned(
                 new_t2 = data_fit.get_values("t2")
                 corrected_qubit_freq = data_fit.get_values("corrected_qubit_frequency")
 
-                # if ((new_t2 * 3.5) > t_max):
                 if (new_t2 > current_T2s["qubit"]).all() and len(t_end) > 1:
                     current_qubit_freqs["qubit"] = int(corrected_qubit_freq)
                     current_T2s["qubit"] = new_t2
@@ -212,7 +210,7 @@ def ramsey(
     )
 
     data = DataUnits(
-        name=f"data", quantities={"wait": "ns", "t_max": "ns"}, options=["qubit"]
+        name="data", quantities={"wait": "ns", "t_max": "ns"}, options=["qubit"]
     )
     count = 0
     for _ in range(software_averages):
@@ -243,7 +241,6 @@ def ramsey(
             result = platform.execute_pulse_sequence(sequence)
 
             for qubit in qubits:
-
                 msr, phase, i, q = result[ro_pulses["qubit"].serial]
                 results = {
                     "MSR[V]": msr,
