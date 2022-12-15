@@ -126,35 +126,30 @@ def rabi_fit(data, x, y, qubit, nqubits, labels):
         ],
     )
 
-    # time = data.get_values(*parse(x))
-    # voltages = data.get_values(*parse(y))
-
-    time_keys = parse(x)
-    voltages_keys = parse(y)
-    time = data[time_keys[0]].pint.to(time_keys[1]).pint.magnitude
-    voltages = data[voltages_keys[0]].pint.to(voltages_keys[1]).pint.magnitude
+    x_keys = parse(x)
+    y_keys = parse(y)
+    xs = data[x_keys[0]].pint.to(x_keys[1]).pint.magnitude
+    ys = data[y_keys[0]].pint.to(y_keys[1]).pint.magnitude
 
     if nqubits == 1:
         pguess = [
-            np.mean(voltages.values),
-            np.max(voltages.values) - np.min(voltages.values),
-            0.5 / time.values[np.argmin(voltages.values)],
+            np.mean(ys.values),
+            np.max(ys.values) - np.min(ys.values),
+            0.5 / xs.values[np.argmin(ys.values)],
             np.pi / 2,
             0.1e-6,
         ]
     else:
         pguess = [
-            np.mean(voltages.values),
-            np.max(voltages.values) - np.min(voltages.values),
-            0.5 / time.values[np.argmax(voltages.values)],
+            np.mean(ys.values),
+            np.max(ys.values) - np.min(ys.values),
+            0.5 / xs.values[np.argmax(ys.values)],
             np.pi / 2,
             0.1e-6,
         ]
     try:
-        popt, pcov = curve_fit(
-            rabi, time.values, voltages.values, p0=pguess, maxfev=10000
-        )
-        smooth_dataset = rabi(time.values, *popt)
+        popt, pcov = curve_fit(rabi, xs.values, ys.values, p0=pguess, maxfev=10000)
+        smooth_dataset = rabi(xs.values, *popt)
         pi_pulse_duration = np.abs((1.0 / popt[2]) / 2)
         pi_pulse_max_voltage = smooth_dataset.max()
         t2 = 1.0 / popt[4]  # double check T1

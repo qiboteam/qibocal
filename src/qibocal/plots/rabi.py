@@ -12,7 +12,7 @@ def time_msr_phase(folder, routine, qubit, format):
         data = DataUnits.load_data(folder, routine, format, "data")
         data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
     except:
-        data = DataUnits(quantities={"Time": "ns"})
+        data = DataUnits(quantities={"time": "ns"})
 
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")

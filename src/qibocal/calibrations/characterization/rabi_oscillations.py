@@ -25,7 +25,6 @@ def rabi_pulse_length(
     sequence = PulseSequence()
     qd_pulses = {}
     ro_pulses = {}
-    # qd_pulse_duration_ranges = {}
 
     for qubit in qubits:
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
@@ -98,7 +97,7 @@ def rabi_pulse_gain(
     platform.reload_settings()
 
     data = DataUnits(
-        name=f"data", quantities={"gain": "dimensionless"}, options=["qubit"]
+        name="data", quantities={"gain": "dimensionless"}, options=["qubit"]
     )
 
     sequence = PulseSequence()
@@ -130,7 +129,6 @@ def rabi_pulse_gain(
         for gain in qd_pulse_gain_range:
             for qubit in qubits:
                 platform.qd_port[qubit].gain = gain
-
             if count % points == 0 and count > 0:
                 yield data
                 for qubit in qubits:
@@ -151,16 +149,16 @@ def rabi_pulse_gain(
             for qubit in qubits:
                 msr, phase, i, q = result[ro_pulses[qubit].serial]
 
-            results = {
-                "MSR[V]": msr,
-                "i[V]": i,
-                "q[V]": q,
-                "phase[rad]": phase,
-                "gain[dimensionless]": gain,
-                "qubit": qubit,
-            }
-            data.add(results)
-        count += 1
+                results = {
+                    "MSR[V]": msr,
+                    "i[V]": i,
+                    "q[V]": q,
+                    "phase[rad]": phase,
+                    "gain[dimensionless]": gain,
+                    "qubit": qubit,
+                }
+                data.add(results)
+            count += 1
     yield data
 
 
@@ -230,17 +228,16 @@ def rabi_pulse_amplitude(
 
             for qubit in qubits:
                 msr, phase, i, q = result[ro_pulses[qubit].serial]
-
-            results = {
-                "MSR[V]": msr,
-                "i[V]": i,
-                "q[V]": q,
-                "phase[rad]": phase,
-                "amplitude[dimensionless]": amplitude,
-                "qubit": qubit,
-            }
-            data.add(results)
-        count += 1
+                results = {
+                    "MSR[V]": msr,
+                    "i[V]": i,
+                    "q[V]": q,
+                    "phase[rad]": phase,
+                    "amplitude[dimensionless]": amplitude,
+                    "qubit": qubit,
+                }
+                data.add(results)
+            count += 1
     yield data
 
 
