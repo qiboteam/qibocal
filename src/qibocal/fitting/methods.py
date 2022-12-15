@@ -99,8 +99,7 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None):
     BW = fit_res.best_values["sigma"] * 2
     Q = abs(f0 / BW)
     peak_voltage = (
-        fit_res.best_values["amplitude"] /
-        (fit_res.best_values["sigma"] * np.pi)
+        fit_res.best_values["amplitude"] / (fit_res.best_values["sigma"] * np.pi)
         + fit_res.best_values["offset"]
     )
 
@@ -304,8 +303,7 @@ def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
         pguess = [0.0003, np.mean(voltages), 18, 0]  # epsilon guess parameter
 
     try:
-        popt, pcov = curve_fit(flipping, flips, voltages,
-                               p0=pguess, maxfev=2000000)
+        popt, pcov = curve_fit(flipping, flips, voltages, p0=pguess, maxfev=2000000)
         epsilon = -np.pi / popt[2]
         amplitude_delta = np.pi / (np.pi + epsilon)
         corrected_amplitude = amplitude_delta * pi_pulse_amplitude
@@ -354,8 +352,7 @@ def drag_tunning_fit(data, x, y, qubit, nqubits, labels):
 
     try:
         popt, pcov = curve_fit(cos, beta_params.values, voltages.values)
-        smooth_dataset = cos(beta_params.values,
-                             popt[0], popt[1], popt[2], popt[3])
+        smooth_dataset = cos(beta_params.values, popt[0], popt[1], popt[2], popt[3])
         beta_optimal = beta_params.values[np.argmin(smooth_dataset)]
 
     except:

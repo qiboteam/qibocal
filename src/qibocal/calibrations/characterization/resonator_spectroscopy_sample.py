@@ -52,8 +52,7 @@ def scan_level(
     freq = best_f
     for _ in range(max_runs):
         platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
-        msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
-            ro_pulse.serial]
+        msr, phase, i, q = platform.execute_pulse_sequence(sequence)[ro_pulse.serial]
         if abs(snr(msr, noise)) >= thr:
             msr1 = msr
             if platform.resonator_type == "3D":
@@ -92,8 +91,7 @@ def scan_small(best_f, best_msr, span, resolution, platform, ro_pulse, qubit, se
     for s in scan:
         freq = start_f + s
         platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
-        msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
-            ro_pulse.serial]
+        msr, phase, i, q = platform.execute_pulse_sequence(sequence)[ro_pulse.serial]
         msr1 = msr
         if platform.resonator_type == "3D":
             msr = -msr
@@ -197,8 +195,7 @@ def resonator_punchout_sample(
                 opt_f = best_f
     data1 = DataUnits(
         name=f"results_q{qubit}",
-        quantities={"snr": "dimensionless",
-                    "frequency": "Hz", "attenuation": "dB"},
+        quantities={"snr": "dimensionless", "frequency": "Hz", "attenuation": "dB"},
     )
     f_err = len(str(int(small_spans[-1] / 10)))
     results = {
@@ -278,8 +275,7 @@ def resonator_flux_sample(
         ]
         platform.qf_port[fluxline].current = qubit_biasing_current
         current_range = (
-            np.arange(current_min, current_max, current_step) +
-            qubit_biasing_current
+            np.arange(current_min, current_max, current_step) + qubit_biasing_current
         )
         start = next(
             (

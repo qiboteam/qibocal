@@ -10,8 +10,7 @@ from qibocal.fitting.utils import freq_r_mathieu, freq_r_transmon, line, lorenzi
 
 def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
     try:
-        data_fast = DataUnits.load_data(
-            folder, routine, format, f"fast_sweep_q{qubit}")
+        data_fast = DataUnits.load_data(folder, routine, format, f"fast_sweep_q{qubit}")
     except:
         data_fast = DataUnits(quantities={"frequency": "Hz"})
     try:
@@ -147,8 +146,7 @@ def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
 
     fig = go.Figure()
     # index data on a specific attenuation value
-    smalldf = data.df[data.get_values(
-        "attenuation", "dB") == plot1d_attenuation].copy()
+    smalldf = data.df[data.get_values("attenuation", "dB") == plot1d_attenuation].copy()
     # split multiple software averages to different datasets
     datasets = []
     while len(smalldf):
@@ -241,8 +239,7 @@ def frequency_flux_msr_phase__matrix(folder, routine, qubit, format):
             showscale = True
         else:
             showscale = False
-        data = DataUnits.load_data(
-            folder, routine, format, f"data_q{qubit}_f{j}")
+        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}_f{j}")
         fig.add_trace(
             go.Heatmap(
                 x=data.get_values("frequency", "GHz"),
@@ -317,11 +314,9 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
 def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
 
     try:
-        data_spec = DataUnits.load_data(
-            folder, routine, formato, f"data_q{qubit}")
+        data_spec = DataUnits.load_data(folder, routine, formato, f"data_q{qubit}")
     except:
-        data_spec = DataUnits(
-            name=f"data_q{qubit}", quantities={"frequency": "Hz"})
+        data_spec = DataUnits(name=f"data_q{qubit}", quantities={"frequency": "Hz"})
 
     try:
         data_shifted = DataUnits.load_data(
@@ -457,8 +452,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
             max(data_shifted.get_values("frequency", "GHz")),
             2 * len(data_shifted),
         )
-        params = [i for i in list(
-            data_fit_shifted.df.keys()) if "popt" not in i]
+        params = [i for i in list(data_fit_shifted.df.keys()) if "popt" not in i]
         fig.add_trace(
             go.Scatter(
                 x=freqrange,
@@ -518,12 +512,10 @@ def frequency_attenuation(folder, routine, qubit, format):
         data = DataUnits(quantities={"frequency": "Hz", "attenuation": "dB"})
 
     try:
-        data1 = DataUnits.load_data(
-            folder, routine, format, f"results_q{qubit}")
+        data1 = DataUnits.load_data(folder, routine, format, f"results_q{qubit}")
     except:
         data1 = DataUnits(
-            quantities={"snr": "dimensionless",
-                        "frequency": "Hz", "attenuation": "dB"}
+            quantities={"snr": "dimensionless", "frequency": "Hz", "attenuation": "dB"}
         )
 
     fig = make_subplots(
@@ -606,8 +598,7 @@ def frequency_current_flux(folder, routine, qubit, format):
         shared_yaxes=True,
     )
     for k, j in enumerate(fluxes):
-        data_spec = DataUnits.load_data(
-            folder, routine, format, f"data_q{qubit}_f{j}")
+        data_spec = DataUnits.load_data(folder, routine, format, f"data_q{qubit}_f{j}")
         fig.add_trace(
             go.Scatter(
                 x=data_spec.get_values("current", "A"),
