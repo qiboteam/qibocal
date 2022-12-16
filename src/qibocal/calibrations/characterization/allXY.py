@@ -42,14 +42,16 @@ def allXY(
     points=10,
 ):
 
+    platform.reload_settings()
+
     state0_voltages = {}
     state1_voltages = {}
     for qubit in qubits:
 
-        state0_voltages["qubit"] = complex(
+        state0_voltages[qubit] = complex(
             platform.characterization["single_qubit"][qubit]["state0_voltage"]
         )
-        state1_voltages["qubit"] = complex(
+        state1_voltages[qubit] = complex(
             platform.characterization["single_qubit"][qubit]["state1_voltage"]
         )
 
@@ -72,7 +74,6 @@ def allXY(
         options=["qubit"],
     )
 
-    seq = PulseSequence()
     count = 0
     ro_pulses = {}
     for _ in range(software_averages):
@@ -81,19 +82,20 @@ def allXY(
             if count % points == 0 and count > 0:
                 yield data
 
+            seq = PulseSequence()
             for qubit in qubits:
-                seq, ro_pulses["qubit"] = _get_sequence_from_gate_pair(
+                seq, ro_pulses[qubit] = _get_sequence_from_gate_pair(
                     platform, gates, qubit, beta_param, seq
                 )
-                seq.add(ro_pulses["qubit"])
+                seq.add(ro_pulses[qubit])
 
             result = platform.execute_pulse_sequence(seq, nshots=2048)
 
             for qubit in qubits:
-                msr, phase, i, q = result[ro_pulses["qubit"].serial]
+                msr, phase, i, q = result[ro_pulses[qubit].serial]
 
-                prob = np.abs(msr * 1e6 - state1_voltages["qubit"]) / np.abs(
-                    state1_voltages["qubit"] - state0_voltages["qubit"]
+                prob = np.abs(msr * 1e6 - state1_voltages[qubit]) / np.abs(
+                    state1_voltages[qubit] - state0_voltages[qubit]
                 )
                 prob = (2 * prob) - 1
 
@@ -141,16 +143,12 @@ def allXY_iteration(
             - qd_pulse_test.frequency
         )
 
-        state0_voltages["qubit"] = complex(
+        state0_voltages[qubit] = complex(
             platform.characterization["single_qubit"][qubit]["state0_voltage"]
         )
-        state1_voltages["qubit"] = complex(
+        state1_voltages[qubit] = complex(
             platform.characterization["single_qubit"][qubit]["state1_voltage"]
         )
-
-    for qubit in qubits:
-        state0_voltages["qubit"] = 10 + 10.0j
-        state1_voltages["qubit"] = 2 + 2.0j
 
     data = DataUnits(
         name="data",
@@ -171,20 +169,21 @@ def allXY_iteration(
                     yield data
 
                 ro_pulses = {}
+                sequence = PulseSequence()
                 for qubit in qubits:
                     # TODO: check if this is working
-                    sequence, ro_pulses["qubit"] = _get_sequence_from_gate_pair(
+                    sequence, ro_pulses[qubit] = _get_sequence_from_gate_pair(
                         platform, gates, qubit, beta_param, sequence
                     )
-                    sequence.add(ro_pulses["qubit"])
+                    sequence.add(ro_pulses[qubit])
 
                 result = platform.execute_pulse_sequence(sequence, nshots=1024)
 
                 for qubit in qubits:
-                    msr, phase, i, q = result[ro_pulses["qubit"].serial]
+                    msr, phase, i, q = result[ro_pulses[qubit].serial]
 
-                    prob = np.abs(msr * 1e6 - state1_voltages["qubit"]) / np.abs(
-                        state1_voltages["qubit"] - state0_voltages["qubit"]
+                    prob = np.abs(msr * 1e6 - state1_voltages[qubit]) / np.abs(
+                        state1_voltages[qubit] - state0_voltages[qubit]
                     )
                     prob = (2 * prob) - 1
 
@@ -269,14 +268,14 @@ def drag_pulse_tuning(
                     beta=beta_param,
                 )
                 # RO pulse
-                ro_pulses["qubit"] = platform.create_qubit_readout_pulse(
+                ro_pulses[qubit] = platform.create_qubit_readout_pulse(
                     qubit, start=RY_drag_pulse.finish
                 )
 
                 # Rx(pi/2) - Ry(pi) - Ro
                 seq1.add(RX90_drag_pulse)
                 seq1.add(RY_drag_pulse)
-                seq1.add(ro_pulses["qubit"])
+                seq1.add(ro_pulses[qubit])
 
                 # drag pulse RY(pi/2)
                 RY90_drag_pulse = platform.create_RX90_drag_pulse(
@@ -289,14 +288,14 @@ def drag_pulse_tuning(
 
                 seq2.add(RY90_drag_pulse)
                 seq2.add(RX_drag_pulse)
-                seq2.add(ro_pulses["qubit"])
+                seq2.add(ro_pulses[qubit])
 
             result1 = platform.execute_pulse_sequence(seq1)
             result2 = platform.execute_pulse_sequence(seq2)
 
             for qubit in qubits:
-                msr1, phase1, i1, q1 = result1[ro_pulses["qubit"].serial]
-                msr2, phase2, i2, q2 = result2[ro_pulses["qubit"].serial]
+                msr1, phase1, i1, q1 = result1[ro_pulses[qubit].serial]
+                msr2, phase2, i2, q2 = result2[ro_pulses[qubit].serial]
 
                 results = {
                     "MSR[V]": msr1 - msr2,
