@@ -487,19 +487,21 @@ def duration_gain_msr_phase(folder, routine, qubit, format):
         ),
     )
 
-    size = len(data.df.duration.drop_duplicates()) * len(data.df.gain.drop_duplicates())
+    size = len(data.df.duration.drop_duplicates()) * len(
+        data.df.gain.drop_duplicates()  # pylint: disable=E1101
+    )
 
     fig.add_trace(
         go.Heatmap(
-            x=data.df.groupby(data.df.index % size)
+            x=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
             .duration.mean()
             .pint.to("ns")
             .pint.magnitude,
-            y=data.df.groupby(data.df.index % size)
+            y=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
             .gain.mean()
             .pint.to("dimensionless")
             .pint.magnitude,
-            z=data.df.groupby(data.df.index % size)
+            z=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
             .MSR.mean()
             .pint.to("V")
             .pint.magnitude,
@@ -510,15 +512,15 @@ def duration_gain_msr_phase(folder, routine, qubit, format):
     )
     fig.add_trace(
         go.Heatmap(
-            x=data.df.groupby(data.df.index % size)
+            x=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
             .duration.mean()
             .pint.to("ns")
             .pint.magnitude,
-            y=data.df.groupby(data.df.index % size)
+            y=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
             .gain.mean()
             .pint.to("dimensionless")
             .pint.magnitude,
-            z=data.df.groupby(data.df.index % size)
+            z=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
             .phase.mean()
             .pint.to("rad")
             .pint.magnitude,
@@ -556,20 +558,20 @@ def duration_amplitude_msr_phase(folder, routine, qubit, format):
     )
 
     size = len(data.df.duration.drop_duplicates()) * len(
-        data.df.amplitude.drop_duplicates()
+        data.df.amplitude.drop_duplicates()  # pylint: disable=E1101
     )
 
     fig.add_trace(
         go.Heatmap(
-            x=data.df.groupby(data.df.index % size)
+            x=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
             .duration.mean()
             .pint.to("ns")
             .pint.magnitude,
-            y=data.df.groupby(data.df.index % size)
+            y=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
             .amplitude.mean()
             .pint.to("dimensionless")
             .pint.magnitude,
-            z=data.df.groupby(data.df.index % size)
+            z=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
             .MSR.mean()
             .pint.to("V")
             .pint.magnitude,
@@ -580,15 +582,15 @@ def duration_amplitude_msr_phase(folder, routine, qubit, format):
     )
     fig.add_trace(
         go.Heatmap(
-            x=data.df.groupby(data.df.index % size)
+            x=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
             .duration.mean()
             .pint.to("ns")
             .pint.magnitude,
-            y=data.df.groupby(data.df.index % size)
+            y=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
             .amplitude.mean()
             .pint.to("dimensionless")
             .pint.magnitude,
-            z=data.df.groupby(data.df.index % size)
+            z=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
             .phase.mean()
             .pint.to("rad")
             .pint.magnitude,

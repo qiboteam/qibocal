@@ -300,20 +300,20 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
     )
 
     size = len(data.df.current.drop_duplicates()) * len(
-        data.df.frequency.drop_duplicates()
+        data.df.frequency.drop_duplicates()  # pylint: disable=E1101
     )
 
     fig.add_trace(
         go.Heatmap(
-            x=data.df.groupby(data.df.index % size)
+            x=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
             .frequency.mean()
             .pint.to("GHz")
             .pint.magnitude,
-            y=data.df.groupby(data.df.index % size)
+            y=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
             .current.mean()
             .pint.to("A")
             .pint.magnitude,
-            z=data.df.groupby(data.df.index % size)
+            z=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
             .MSR.mean()
             .pint.to("V")
             .pint.magnitude,
@@ -325,15 +325,15 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
 
     fig.add_trace(
         go.Heatmap(
-            x=data.df.groupby(data.df.index % size)
+            x=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
             .frequency.mean()
             .pint.to("GHz")
             .pint.magnitude,
-            y=data.df.groupby(data.df.index % size)
+            y=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
             .current.mean()
             .pint.to("A")
             .pint.magnitude,
-            z=data.df.groupby(data.df.index % size)
+            z=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
             .phase.mean()
             .pint.to("rad")
             .pint.magnitude,
@@ -388,20 +388,20 @@ def frequency_flux_msr_phase__matrix(folder, routine, qubit, format):
             data = DataUnits(quantities={"frequency": "Hz", "current": "A"})
 
         size = len(data.df.current.drop_duplicates()) * len(
-            data.df.frequency.drop_duplicates()
+            data.df.frequency.drop_duplicates()  # pylint: disable=E1101
         )
 
         fig.add_trace(
             go.Heatmap(
-                x=data.df.groupby(data.df.index % size)
+                x=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
                 .frequency.mean()
                 .pint.to("GHz")
                 .pint.magnitude,
-                y=data.df.groupby(data.df.index % size)
+                y=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
                 .current.mean()
                 .pint.to("A")
                 .pint.magnitude,
-                z=data.df.groupby(data.df.index % size)
+                z=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
                 .MSR.mean()
                 .pint.to("V")
                 .pint.magnitude,
@@ -413,15 +413,14 @@ def frequency_flux_msr_phase__matrix(folder, routine, qubit, format):
 
         fig.add_trace(
             go.Heatmap(
-                x=data.df.groupby(data.df.index % size)
-                .frequency.mean()
+                x=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
                 .pint.to("GHz")
                 .pint.magnitude,
-                y=data.df.groupby(data.df.index % size)
+                y=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
                 .current.mean()
                 .pint.to("A")
                 .pint.magnitude,
-                z=data.df.groupby(data.df.index % size)
+                z=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
                 .phase.mean()
                 .pint.to("rad")
                 .pint.magnitude,
@@ -457,20 +456,20 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
     )
 
     size = len(data.df.attenuation.drop_duplicates()) * len(
-        data.df.frequency.drop_duplicates()
+        data.df.frequency.drop_duplicates()  # pylint: disable=E1101
     )
 
     fig.add_trace(
         go.Heatmap(
-            x=data.df.groupby(data.df.index % size)
+            x=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
             .frequency.mean()
             .pint.to("GHz")
             .pint.magnitude,
-            y=data.df.groupby(data.df.index % size)
+            y=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
             .attenuation.mean()
             .pint.to("dB")
             .pint.magnitude,
-            z=data.df.groupby(data.df.index % size)
+            z=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
             .MSR.mean()
             .pint.to("V")
             .pint.magnitude,
@@ -482,15 +481,15 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
 
     fig.add_trace(
         go.Heatmap(
-            x=data.df.groupby(data.df.index % size)
+            x=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
             .frequency.mean()
             .pint.to("GHz")
             .pint.magnitude,
-            y=data.df.groupby(data.df.index % size)
+            y=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
             .attenuation.mean()
             .pint.to("dB")
             .pint.magnitude,
-            z=data.df.groupby(data.df.index % size)
+            z=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
             .phase.mean()
             .pint.to("rad")
             .pint.magnitude,
