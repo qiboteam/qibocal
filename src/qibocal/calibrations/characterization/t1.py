@@ -23,21 +23,21 @@ def t1(
     qd_pulses = {}
     ro_pulses = {}
     for qubit in qubits:
-        qd_pulses["qubit"] = platform.create_RX_pulse(qubit, start=0)
-        ro_pulses["qubit"] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulses["qubit"].duration
+        qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+            qubit, start=qd_pulses[qubit].duration
         )
-        sequence.add(qd_pulses["qubit"])
-        sequence.add(ro_pulses["qubit"])
+        sequence.add(qd_pulses[qubit])
+        sequence.add(ro_pulses[qubit])
 
         # FIXME: Waiting to be able to pass qpucard to qibolab
         platform.ro_port[qubit].lo_frequency = (
             platform.characterization["single_qubit"][qubit]["resonator_freq"]
-            - ro_pulses["qubit"].frequency
+            - ro_pulses[qubit].frequency
         )
         platform.qd_port[qubit].lo_frequency = (
             platform.characterization["single_qubit"][qubit]["qubit_freq"]
-            - qd_pulses["qubit"].frequency
+            - qd_pulses[qubit].frequency
         )
 
     ro_wait_range = np.arange(
@@ -62,12 +62,12 @@ def t1(
                     )
 
             for qubit in qubits:
-                ro_pulses["qubit"].start = qd_pulses["qubit"].duration + wait
+                ro_pulses[qubit].start = qd_pulses[qubit].duration + wait
 
             result = platform.execute_pulse_sequence(sequence)
 
             for qubit in qubits:
-                msr, phase, i, q = result[ro_pulses["qubit"].serial]
+                msr, phase, i, q = result[ro_pulses[qubit].serial]
                 results = {
                     "MSR[V]": msr,
                     "i[V]": i,

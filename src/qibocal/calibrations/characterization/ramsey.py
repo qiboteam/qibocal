@@ -38,38 +38,38 @@ def ramsey_frequency_detuned(
     sequence = PulseSequence()
     for qubit in qubits:
 
-        RX90_pulses1["qubit"] = platform.create_RX90_pulse(qubit, start=0)
-        RX90_pulses2["qubit"] = platform.create_RX90_pulse(
-            qubit, start=RX90_pulses1["qubit"].finish
+        RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
+        RX90_pulses2[qubit] = platform.create_RX90_pulse(
+            qubit, start=RX90_pulses1[qubit].finish
         )
-        ro_pulses["qubit"] = platform.create_qubit_readout_pulse(
-            qubit, start=RX90_pulses2["qubit"].finish
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+            qubit, start=RX90_pulses2[qubit].finish
         )
 
-        sequence.add(RX90_pulses1["qubit"])
-        sequence.add(RX90_pulses2["qubit"])
-        sequence.add(ro_pulses["qubit"])
+        sequence.add(RX90_pulses1[qubit])
+        sequence.add(RX90_pulses2[qubit])
+        sequence.add(ro_pulses[qubit])
 
-        runcard_qubit_freqs["qubit"] = platform.characterization["single_qubit"][qubit][
+        runcard_qubit_freqs[qubit] = platform.characterization["single_qubit"][qubit][
             "qubit_freq"
         ]
-        runcard_T2s["qubit"] = platform.characterization["single_qubit"][qubit]["T2"]
-        intermediate_freqs["qubit"] = platform.settings["native_gates"]["single_qubit"][
+        runcard_T2s[qubit] = platform.characterization["single_qubit"][qubit]["T2"]
+        intermediate_freqs[qubit] = platform.settings["native_gates"]["single_qubit"][
             qubit
         ]["RX"]["frequency"]
 
         # TODO: fix this
-        current_qubit_freqs["qubit"] = runcard_qubit_freqs["qubit"]
-        current_T2s["qubit"] = runcard_T2s["qubit"]
+        current_qubit_freqs[qubit] = runcard_qubit_freqs[qubit]
+        current_T2s[qubit] = runcard_T2s[qubit]
 
         # FIXME: Waiting to be able to pass qpucard to qibolab
         platform.ro_port[qubit].lo_frequency = (
             platform.characterization["single_qubit"][qubit]["resonator_freq"]
-            - ro_pulses["qubit"].frequency
+            - ro_pulses[qubit].frequency
         )
         platform.qd_port[qubit].lo_frequency = (
             platform.characterization["single_qubit"][qubit]["qubit_freq"]
-            - RX90_pulses1["qubit"].frequency
+            - RX90_pulses1[qubit].frequency
         )
 
     t_end = np.array(t_end)
@@ -78,7 +78,7 @@ def ramsey_frequency_detuned(
             count = 0
             for qubit in qubits:
                 platform.qd_port[qubit].lo_frequency = (
-                    current_qubit_freqs["qubit"] - intermediate_freqs["qubit"]
+                    current_qubit_freqs[qubit] - intermediate_freqs[qubit]
                 )
             offset_freq = n_osc / t_max * sampling_rate  # Hz
             t_range = np.arange(t_start, t_max, t_step)
@@ -91,7 +91,7 @@ def ramsey_frequency_detuned(
                             x="wait[ns]",
                             y="MSR[uV]",
                             qubit=qubit,
-                            qubit_freq=current_qubit_freqs["qubit"],
+                            qubit_freq=current_qubit_freqs[qubit],
                             sampling_rate=sampling_rate,
                             offset_freq=offset_freq,
                             labels=[
@@ -102,18 +102,18 @@ def ramsey_frequency_detuned(
                         )
 
                 for qubit in qubits:
-                    RX90_pulses2["qubit"].start = RX90_pulses1["qubit"].finish + wait
-                    RX90_pulses2["qubit"].relative_phase = (
-                        (RX90_pulses2["qubit"].start / sampling_rate)
+                    RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
+                    RX90_pulses2[qubit].relative_phase = (
+                        (RX90_pulses2[qubit].start / sampling_rate)
                         * (2 * np.pi)
                         * (-offset_freq)
                     )
-                    ro_pulses["start"].start = RX90_pulses2["start"].finish
+                    ro_pulses[qubit].start = RX90_pulses2[qubit].finish
 
                 result = platform.execute_pulse_sequence(sequence)
 
                 for qubit in qubits:
-                    msr, phase, i, q = result[ro_pulses["qubit"].serial]
+                    msr, phase, i, q = result[ro_pulses[qubit].serial]
                     results = {
                         "MSR[V]": msr,
                         "i[V]": i,
@@ -124,14 +124,16 @@ def ramsey_frequency_detuned(
                         "qubit": qubit,
                     }
                     data.add(results)
+                    count += 1
 
+            for qubit in qubits:
                 # # Fitting
                 data_fit = ramsey_fit(
                     data.get_column("qubit", qubit),
                     x="wait[ns]",
                     y="MSR[uV]",
                     qubit=qubit,
-                    qubit_freq=current_qubit_freqs["qubit"],
+                    qubit_freq=current_qubit_freqs[qubit],
                     sampling_rate=sampling_rate,
                     offset_freq=offset_freq,
                     labels=[
@@ -144,15 +146,15 @@ def ramsey_frequency_detuned(
                 new_t2 = data_fit.get_values("t2")
                 corrected_qubit_freq = data_fit.get_values("corrected_qubit_frequency")
 
-                if (new_t2 > current_T2s["qubit"]).all() and len(t_end) > 1:
-                    current_qubit_freqs["qubit"] = int(corrected_qubit_freq)
-                    current_T2s["qubit"] = new_t2
+                if (new_t2 > current_T2s[qubit]).all() and len(t_end) > 1:
+                    current_qubit_freqs[qubit] = int(corrected_qubit_freq)
+                    current_T2s[qubit] = new_t2
                     data = DataUnits(
                         name=f"data_q{qubit}", quantities={"wait": "ns", "t_max": "ns"}
                     )
                 else:
-                    corrected_qubit_freq = int(current_qubit_freqs["qubit"])
-                    new_t2 = current_T2s["qubit"]
+                    corrected_qubit_freq = int(current_qubit_freqs[qubit])
+                    new_t2 = current_T2s[qubit]
                     break
             count += 1
     yield data
@@ -178,29 +180,29 @@ def ramsey(
     sequence = PulseSequence()
     for qubit in qubits:
 
-        qubit_freqs["qubit"] = platform.characterization["single_qubit"][qubit][
+        qubit_freqs[qubit] = platform.characterization["single_qubit"][qubit][
             "qubit_freq"
         ]
-        RX90_pulses1["qubit"] = platform.create_RX90_pulse(qubit, start=0)
-        RX90_pulses2["qubit"] = platform.create_RX90_pulse(
-            qubit, start=RX90_pulses1["qubit"].finish
+        RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
+        RX90_pulses2[qubit] = platform.create_RX90_pulse(
+            qubit, start=RX90_pulses1[qubit].finish
         )
-        ro_pulses["qubit"] = platform.create_qubit_readout_pulse(
-            qubit, start=RX90_pulses2["qubit"].finish
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+            qubit, start=RX90_pulses2[qubit].finish
         )
 
-        sequence.add(RX90_pulses1["qubit"])
-        sequence.add(RX90_pulses2["qubit"])
-        sequence.add(ro_pulses["qubit"])
+        sequence.add(RX90_pulses1[qubit])
+        sequence.add(RX90_pulses2[qubit])
+        sequence.add(ro_pulses[qubit])
 
         # FIXME: Waiting to be able to pass qpucard to qibolab
         platform.ro_port[qubit].lo_frequency = (
             platform.characterization["single_qubit"][qubit]["resonator_freq"]
-            - ro_pulses["qubit"].frequency
+            - ro_pulses[qubit].frequency
         )
         platform.qd_port[qubit].lo_frequency = (
             platform.characterization["single_qubit"][qubit]["qubit_freq"]
-            - RX90_pulses1["qubit"].frequency
+            - RX90_pulses1[qubit].frequency
         )
 
     waits = np.arange(
@@ -224,7 +226,7 @@ def ramsey(
                         x="wait[ns]",
                         y="MSR[uV]",
                         qubit=qubit,
-                        qubit_freq=qubit_freqs["qubit"],
+                        qubit_freq=qubit_freqs[qubit],
                         sampling_rate=sampling_rate,
                         offset_freq=0,
                         labels=[
@@ -235,13 +237,13 @@ def ramsey(
                     )
 
             for qubit in qubits:
-                RX90_pulses2["qubit"].start = RX90_pulses1["qubit"].finish + wait
-                ro_pulses["qubit"].start = RX90_pulses2["qubit"].finish
+                RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
+                ro_pulses[qubit].start = RX90_pulses2[qubit].finish
 
             result = platform.execute_pulse_sequence(sequence)
 
             for qubit in qubits:
-                msr, phase, i, q = result[ro_pulses["qubit"].serial]
+                msr, phase, i, q = result[ro_pulses[qubit].serial]
                 results = {
                     "MSR[V]": msr,
                     "i[V]": i,
