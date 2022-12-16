@@ -1,13 +1,14 @@
-
 import logging
 
 import numpy as np
-#import pytest
 
 from qibocal.config import log
 from qibocal.data import DataUnits
 from qibocal.fitting.methods import res_spectrocopy_flux_fit
-from qibocal.fitting.utils import line, freq_r_mathieu, freq_r_transmon
+from qibocal.fitting.utils import freq_r_mathieu, freq_r_transmon, line
+
+# import pytest
+
 
 
 @pytest.mark.parametrize("name", [None, "test"])
@@ -20,8 +21,6 @@ from qibocal.fitting.utils import line, freq_r_mathieu, freq_r_transmon
         ("qubit_freq", 5, 1),
     ],
 )
-
-
 @pytest.mark.parametrize("name", [None, "test"])
 @pytest.mark.parametrize(
     "qubit, fluxline, num_params",
@@ -45,13 +44,13 @@ def test_res_spectrocopy_flux_fit(name, qubit, fluxline, num_params, caplog):
         noisy_flux = freq_r_transmon(x, *params) + np.random.randn(100) * 1e-3
         params_fit = [p5, p4]
         labels = [
-                "curr_sp",
-                "xi",
-                "d",
-                "f_q/f_rh",
-                "g",
-                "f_rh",
-            ]
+            "curr_sp",
+            "xi",
+            "d",
+            "f_q/f_rh",
+            "g",
+            "f_rh",
+        ]
     elif num_params == 7:
         p0 = 7651970152
         p1 = 78847979
@@ -64,32 +63,34 @@ def test_res_spectrocopy_flux_fit(name, qubit, fluxline, num_params, caplog):
         noisy_flux = freq_r_mathieu(x, *params) + np.random.randn(100) * 1e-3
         params_fit = [p0, p1, p5, p6]
         labels = [
-                "f_rh",
-                "g",
-                "curr_sp",
-                "xi",
-                "d",
-                "Ec",
-                "Ej",
-            ]
+            "f_rh",
+            "g",
+            "curr_sp",
+            "xi",
+            "d",
+            "Ec",
+            "Ej",
+        ]
     else:
         p0 = -4366377
         p1 = 7655179288
         params = [p0, p1]
-        noisy_flux = line(x, p0 , p1) + np.random.randn(100) * 1e-3
+        noisy_flux = line(x, p0, p1) + np.random.randn(100) * 1e-3
         params_fit = []
         labels = [
-                "popt0",
-                "popt1",
-            ]
-    
+            "popt0",
+            "popt1",
+        ]
+
     data = DataUnits(quantities={"frequency": "Hz", "current": "A"})
 
     mydict = {"frequency[Hz]": noisy_flux, "current[A]": x}
 
     data.load_data_from_dict(mydict)
 
-    fit = res_spectrocopy_flux_fit(data, "current[A]", "frequency[Hz]", qubit, fluxline, params_fit)
+    fit = res_spectrocopy_flux_fit(
+        data, "current[A]", "frequency[Hz]", qubit, fluxline, params_fit
+    )
 
     for j in range(num_params):
         np.testing.assert_allclose(fit.get_values(labels[j])[0], params[j], rtol=0.1)
@@ -101,5 +102,7 @@ def test_res_spectrocopy_flux_fit(name, qubit, fluxline, num_params, caplog):
 
     data.load_data_from_dict(mydict)
 
-    fit = res_spectrocopy_flux_fit(data, "current[A]", "frequency[Hz]", qubit, fluxline, params_fit)
+    fit = res_spectrocopy_flux_fit(
+        data, "current[A]", "frequency[Hz]", qubit, fluxline, params_fit
+    )
     assert "The fitting was not successful" in caplog.text
