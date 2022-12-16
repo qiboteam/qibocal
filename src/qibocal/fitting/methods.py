@@ -447,7 +447,7 @@ def res_spectrocopy_flux_fit(data, x, y, qubit, fluxline, params_fit):
                     {
                         "curr_sp": popt[0],
                         "xi": popt[1],
-                        "d": popt[2],
+                        "d": abs(popt[2]),
                         "f_q/f_rh": popt[3],
                         "g": popt[4],
                         "f_rh": popt[5],
@@ -476,7 +476,7 @@ def res_spectrocopy_flux_fit(data, x, y, qubit, fluxline, params_fit):
                     {
                         "curr_sp": popt[2],
                         "xi": popt[3],
-                        "d": popt[4],
+                        "d": abs(popt[4]),
                         "g": popt[1],
                         "Ec": popt[5],
                         "Ej": popt[6],
