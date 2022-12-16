@@ -1,14 +1,12 @@
 import logging
 
 import numpy as np
+import pytest
 
 from qibocal.config import log
 from qibocal.data import DataUnits
 from qibocal.fitting.methods import res_spectrocopy_flux_fit
 from qibocal.fitting.utils import freq_r_mathieu, freq_r_transmon, line
-
-# import pytest
-
 
 
 @pytest.mark.parametrize("name", [None, "test"])
