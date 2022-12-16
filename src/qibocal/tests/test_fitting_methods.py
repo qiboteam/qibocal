@@ -11,16 +11,6 @@ from qibocal.fitting.utils import freq_r_mathieu, freq_r_transmon, line
 
 @pytest.mark.parametrize("name", [None, "test"])
 @pytest.mark.parametrize(
-    "label, nqubits, amplitude_sign",
-    [
-        ("resonator_freq", 1, 1),
-        ("resonator_freq", 5, -1),
-        ("qubit_freq", 1, -1),
-        ("qubit_freq", 5, 1),
-    ],
-)
-@pytest.mark.parametrize("name", [None, "test"])
-@pytest.mark.parametrize(
     "qubit, fluxline, num_params",
     [
         (1, 1, 6),
