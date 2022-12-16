@@ -548,7 +548,6 @@ def duration_gain_msr_phase(folder, routine, qubit, format):
 def duration_amplitude_msr_phase(folder, routine, qubit, format):
     try:
         data = DataUnits.load_data(folder, routine, format, "data")
-        print(data)
         data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
     except:
         data = DataUnits(
@@ -556,7 +555,6 @@ def duration_amplitude_msr_phase(folder, routine, qubit, format):
             options=["qubit"],
         )
 
-    print(data.df)
     fig = make_subplots(
         rows=1,
         cols=2,

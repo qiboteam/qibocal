@@ -390,6 +390,7 @@ def rabi_pulse_length_and_amplitude(
                         "phase[rad]": phase,
                         "duration[ns]": duration,
                         "amplitude[dimensionless]": amplitude,
+                        "qubit": qubit,
                     }
                     data.add(results)
                 count += 1

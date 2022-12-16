@@ -242,7 +242,7 @@ def drag_pulse_tuning(
                 yield data
                 for qubit in qubits:
                     yield drag_tuning_fit(
-                        data,
+                        data.get_column("qubit", qubit),
                         x="beta_param[dimensionless]",
                         y="MSR[uV]",
                         qubit=qubit,
