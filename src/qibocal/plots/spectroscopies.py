@@ -418,7 +418,6 @@ def frequency_flux_msr_phase__matrix(folder, routine, qubit, format):
         fig.add_trace(
             go.Heatmap(
                 x=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-                .frequency.mean()
                 .pint.to("GHz")
                 .pint.magnitude,
                 y=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
