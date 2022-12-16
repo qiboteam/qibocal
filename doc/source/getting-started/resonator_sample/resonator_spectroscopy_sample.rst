@@ -31,10 +31,10 @@ The "sample" methods will contain the following entries:
     small_spans: [1000000, 100000]
     resolution: 100000
 
-**max_runs**: sets the maximum number of gaussianly distributed samples to extract before the algorithm decides the feature 
+**max_runs**: sets the maximum number of gaussianly distributed samples to extract before the algorithm decides the feature
 is not within the given range.
 
-**thr**: minimum threshold in signal to noise ratio where the algorithm will decide that the feature has been detected and 
+**thr**: minimum threshold in signal to noise ratio where the algorithm will decide that the feature has been detected and
 will move on to the next step.
 
 **spans**: list with the spans where the new parameters will be sampled around. A list with a deacreasing span will find the
