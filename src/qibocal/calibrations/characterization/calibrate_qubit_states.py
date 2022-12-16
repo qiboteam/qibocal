@@ -21,16 +21,16 @@ def calibrate_qubit_states(
     ro_pulses = {}
     for qubit in qubits:
         RX_pulse = platform.create_RX_pulse(qubit, start=0)
-        ro_pulses["qubit"] = platform.create_qubit_readout_pulse(
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=RX_pulse.duration
         )
         exc_sequence.add(RX_pulse)
-        exc_sequence.add(ro_pulses["qubit"])
+        exc_sequence.add(ro_pulses[qubit])
 
         # FIXME: Waiting to be able to pass qpucard to qibolab
         platform.ro_port[qubit].lo_frequency = (
             platform.characterization["single_qubit"][qubit]["resonator_freq"]
-            - ro_pulses["qubit"].frequency
+            - ro_pulses[qubit].frequency
         )
         platform.qd_port[qubit].lo_frequency = (
             platform.characterization["single_qubit"][qubit]["qubit_freq"]
@@ -49,7 +49,7 @@ def calibrate_qubit_states(
         result = platform.execute_pulse_sequence(exc_sequence, nshots=1)
 
         for qubit in qubits:
-            msr, phase, i, q = result[ro_pulses["qubit"].serial]
+            msr, phase, i, q = result[ro_pulses[qubit].serial]
             results = {
                 "MSR[V]": msr,
                 "i[V]": i,
@@ -66,8 +66,8 @@ def calibrate_qubit_states(
 
     ro_pulses_gnd = {}
     for qubit in qubits:
-        ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
-        gnd_sequence.add(ro_pulse)
+        ro_pulses_gnd[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
+        gnd_sequence.add(ro_pulses_gnd[qubit])
 
     data_gnd = DataUnits(
         name="data_gnd", quantities={"iteration": "s"}, options=["qubit"]
@@ -80,7 +80,7 @@ def calibrate_qubit_states(
         result = platform.execute_pulse_sequence(gnd_sequence, nshots=1)
 
         for qubit in qubits:
-            msr, phase, i, q = result[ro_pulses_gnd["qubit"].serial]
+            msr, phase, i, q = result[ro_pulses_gnd[qubit].serial]
             results = {
                 "MSR[V]": msr,
                 "i[V]": i,
@@ -89,5 +89,6 @@ def calibrate_qubit_states(
                 "iteration[s]": n,
                 "qubit": qubit,
             }
+            data_gnd.add(results)
         count += 1
     yield data_gnd

@@ -24,9 +24,9 @@ def flipping(
     )
     pi_pulse_amplitudes = {}
     for qubit in qubits:
-        pi_pulse_amplitudes["qubit"] = platform.settings["native_gates"][
-            "single_qubit"
-        ][qubit]["RX"]["amplitude"]
+        pi_pulse_amplitudes[qubit] = platform.settings["native_gates"]["single_qubit"][
+            qubit
+        ]["RX"]["amplitude"]
 
     count = 0
     # repeat N iter times
@@ -42,7 +42,7 @@ def flipping(
                         qubit=qubit,
                         nqubits=platform.settings["nqubits"],
                         niter=niter,
-                        pi_pulse_amplitude=pi_pulse_amplitudes["qubit"],
+                        pi_pulse_amplitude=pi_pulse_amplitudes[qubit],
                         labels=["amplitude_delta", "corrected_amplitude"],
                     )
 
@@ -61,16 +61,16 @@ def flipping(
                     sequence.add(RX_pulse2)
                     start1 = start2 + RX_pulse2.duration
 
-                    # add ro pulse at the end of the sequence
-                    ro_pulses["qubit"] = platform.create_qubit_readout_pulse(
-                        qubit, start=start1
-                    )
-                    sequence.add(ro_pulses["qubit"])
+                # add ro pulse at the end of the sequence
+                ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+                    qubit, start=start1
+                )
+                sequence.add(ro_pulses[qubit])
 
             result = platform.execute_pulse_sequence(sequence)
 
             for qubit in qubits:
-                msr, phase, i, q = result[ro_pulses["qubit"].serial]
+                msr, phase, i, q = result[ro_pulses[qubit].serial]
                 results = {
                     "MSR[V]": msr,
                     "i[V]": i,

@@ -17,9 +17,8 @@ def flips_msr_phase(folder, routine, qubit, format):
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
     except:
-        data_fit = DataUnits()
+        data_fit = Data()
 
-    print(data_fit)
     fig = make_subplots(
         rows=1,
         cols=2,

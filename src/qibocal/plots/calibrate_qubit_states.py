@@ -8,7 +8,7 @@ from qibocal.data import DataUnits
 def exc_gnd(folder, routine, qubit, format):
 
     try:
-        data_exc = DataUnits.load_data(folder, routine, format, f"data_exc")
+        data_exc = DataUnits.load_data(folder, routine, format, "data_exc")
         data_exc.df = data_exc.df[data_exc.df["qubit"] == int(qubit)].reset_index(
             drop=True
         )
