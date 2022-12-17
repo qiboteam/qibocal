@@ -5,24 +5,22 @@ from qibocal.data import DataUnits
 
 
 # For calibrate qubit states
-def exc_gnd(folder, routine, qubit, format):
+def qubit_states(folder, routine, qubit, format):
 
     try:
-        data_exc = DataUnits.load_data(folder, routine, format, "data_exc")
+        data_exc = DataUnits.load_data(folder, routine, format, "data")
         data_exc.df = data_exc.df[data_exc.df["qubit"] == int(qubit)].reset_index(
             drop=True
         )
     except:
-        data_exc = DataUnits(
-            quantities={"iteration": "dimensionless"}, options=["qubit"]
-        )
+        data_exc = DataUnits(options=["qubit", "iteration", "state"])
 
     fig = make_subplots(
         rows=1,
         cols=1,
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
-        subplot_titles=("Calibrate qubit states",),
+        subplot_titles=("Calibrate qubit states"),
     )
 
     fig.add_trace(
