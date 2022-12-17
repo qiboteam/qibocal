@@ -6,7 +6,7 @@ from qibocal.plots.utils import get_data_subfolders
 
 
 # For calibrate qubit states
-def exc_gnd(folder, routine, qubit, format):
+def qubit_states(folder, routine, qubit, format):
 
     fig = make_subplots(
         rows=1,

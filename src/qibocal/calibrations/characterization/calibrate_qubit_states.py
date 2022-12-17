@@ -8,7 +8,7 @@ from qibocal.decorators import plot
 from qibocal.fitting.methods import calibrate_qubit_states_fit
 
 
-@plot("exc vs gnd", plots.exc_gnd)
+@plot("Qubit states", plots.qubit_states)
 def calibrate_qubit_states(
     platform: AbstractPlatform,
     qubit: int,
@@ -72,7 +72,7 @@ def calibrate_qubit_states(
     )
 
 
-@plot("exc vs gnd", plots.exc_gnd)
+@plot("Qubit states", plots.qubit_states)
 def calibrate_qubit_states_binning(
     platform: AbstractPlatform,
     qubit: int,
