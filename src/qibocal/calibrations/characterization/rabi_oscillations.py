@@ -20,8 +20,6 @@ def rabi_pulse_length(
 ):
     platform.reload_settings()
 
-    data = DataUnits(name=f"data_q{qubit}", quantities={"Time": "ns"})
-
     sequence = PulseSequence()
     qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=4)
@@ -31,6 +29,8 @@ def rabi_pulse_length(
     qd_pulse_duration_range = np.arange(
         pulse_duration_start, pulse_duration_end, pulse_duration_step
     )
+
+    data = DataUnits(name=f"data_q{qubit}", quantities={"Time": "ns"})
 
     count = 0
     for _ in range(software_averages):
@@ -77,8 +77,6 @@ def rabi_pulse_gain(
 ):
     platform.reload_settings()
 
-    data = DataUnits(name=f"data_q{qubit}", quantities={"gain": "dimensionless"})
-
     sequence = PulseSequence()
     qd_pulse = platform.create_RX_pulse(qubit, start=0)
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=qd_pulse.finish)
@@ -86,6 +84,8 @@ def rabi_pulse_gain(
     sequence.add(ro_pulse)
 
     qd_pulse_gain_range = np.arange(pulse_gain_start, pulse_gain_end, pulse_gain_step)
+
+    data = DataUnits(name=f"data_q{qubit}", quantities={"gain": "dimensionless"})
 
     count = 0
     for _ in range(software_averages):
@@ -131,8 +131,6 @@ def rabi_pulse_amplitude(
 ):
     platform.reload_settings()
 
-    data = DataUnits(name=f"data_q{qubit}", quantities={"amplitude": "dimensionless"})
-
     sequence = PulseSequence()
     qd_pulse = platform.create_RX_pulse(qubit, start=0)
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=qd_pulse.duration)
@@ -142,6 +140,8 @@ def rabi_pulse_amplitude(
     qd_pulse_amplitude_range = np.arange(
         pulse_amplitude_start, pulse_amplitude_end, pulse_amplitude_step
     )
+
+    data = DataUnits(name=f"data_q{qubit}", quantities={"amplitude": "dimensionless"})
 
     count = 0
     for _ in range(software_averages):
@@ -190,10 +190,6 @@ def rabi_pulse_length_and_gain(
 ):
     platform.reload_settings()
 
-    data = DataUnits(
-        name=f"data_q{qubit}", quantities={"duration": "ns", "gain": "dimensionless"}
-    )
-
     sequence = PulseSequence()
     qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=4)
@@ -204,6 +200,10 @@ def rabi_pulse_length_and_gain(
         pulse_duration_start, pulse_duration_end, pulse_duration_step
     )
     qd_pulse_gain_range = np.arange(pulse_gain_start, pulse_gain_end, pulse_gain_step)
+
+    data = DataUnits(
+        name=f"data_q{qubit}", quantities={"duration": "ns", "gain": "dimensionless"}
+    )
 
     count = 0
     for _ in range(software_averages):
@@ -246,11 +246,6 @@ def rabi_pulse_length_and_amplitude(
 ):
     platform.reload_settings()
 
-    data = DataUnits(
-        name=f"data_q{qubit}",
-        quantities={"duration": "ns", "amplitude": "dimensionless"},
-    )
-
     sequence = PulseSequence()
     qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=4)
@@ -262,6 +257,11 @@ def rabi_pulse_length_and_amplitude(
     )
     qd_pulse_amplitude_range = np.arange(
         pulse_amplitude_start, pulse_amplitude_end, pulse_amplitude_step
+    )
+
+    data = DataUnits(
+        name=f"data_q{qubit}",
+        quantities={"duration": "ns", "amplitude": "dimensionless"},
     )
 
     count = 0
