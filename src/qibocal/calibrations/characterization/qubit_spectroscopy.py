@@ -21,23 +21,17 @@ def qubit_spectroscopy(
     software_averages,
     points=10,
 ):
-
     platform.reload_settings()
 
     sequence = PulseSequence()
 
     qubit_frequencies = {}
-    frequency_ranges = {}
     ro_pulses = {}
     qd_pulses = {}
     for qubit in qubits:
-
         qubit_frequencies[qubit] = platform.characterization["single_qubit"][qubit][
             "qubit_freq"
         ]
-        frequency_ranges[qubit] = (
-            np.arange(fast_start, fast_end, fast_step) + qubit_frequencies[qubit]
-        )
 
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=5000
@@ -46,24 +40,15 @@ def qubit_spectroscopy(
         sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
 
-        # FIXME: Waiting for Qblox platform to take care of that
-        platform.ro_port[qubit].lo_frequency = (
-            platform.characterization["single_qubit"][qubit]["resonator_freq"]
-            - ro_pulses[qubit].frequency
-        )
+    delta_frequency_range = np.arange(fast_start, fast_end, fast_step)
 
     data = DataUnits(
         name="fast_sweep", quantities={"frequency": "Hz"}, options=["qubit"]
     )
 
-    # # FIXME: Waiting for Qblox platform to take care of that
-    # platform.ro_port[qubit].lo_frequency = (
-    #     platform.characterization["single_qubit"][qubit]["resonator_freq"]
-    #     - ro_pulse.frequency
-    # )
     count = 0
     for _ in range(software_averages):
-        for freq in range(len(frequency_ranges[qubit])):  # FIXME: remove hardcoding
+        for delta_freq in delta_frequency_range:
             if count % points == 0 and count > 0:
                 yield data
                 for qubit in qubits:
@@ -78,7 +63,7 @@ def qubit_spectroscopy(
 
             for qubit in qubits:
                 platform.qd_port[qubit].lo_frequency = (
-                    frequency_ranges[qubit][freq] - qd_pulses[qubit].frequency
+                    delta_freq + qubit_frequencies[qubit] - qd_pulses[qubit].frequency
                 )
 
             result = platform.execute_pulse_sequence(sequence)
@@ -91,7 +76,7 @@ def qubit_spectroscopy(
                     "i[V]": i,
                     "q[V]": q,
                     "phase[rad]": phase,
-                    "frequency[Hz]": frequency_ranges[qubit][freq],
+                    "frequency[Hz]": delta_freq + qubit_frequencies[qubit],
                     "qubit": qubit,
                 }
                 data.add(results)
@@ -222,13 +207,15 @@ def qubit_spectroscopy_flux(
         for fluxline in fluxlines:
             for curr in current_ranges[fluxline]:
                 platform.qf_port[fluxline].current = curr
-                for freq in delta_frequency_ranges:
+                for delta_freq in delta_frequency_ranges:
                     if count % points == 0:
                         yield data
 
                     for qubit in qubits:
                         platform.qd_port[qubit].lo_frequency = (
-                            freq + qubit_frequencies[qubit] - qd_pulses[qubit].frequency
+                            delta_freq
+                            + qubit_frequencies[qubit]
+                            - qd_pulses[qubit].frequency
                         )
                     result = platform.execute_pulse_sequence(sequence)
 
@@ -240,7 +227,7 @@ def qubit_spectroscopy_flux(
                             "i[V]": i,
                             "q[V]": q,
                             "phase[rad]": phase,
-                            "frequency[Hz]": freq + qubit_frequencies[qubit],
+                            "frequency[Hz]": delta_freq + qubit_frequencies[qubit],
                             "current[A]": curr,
                             "qubit": qubit,
                             "fluxline": fluxline,

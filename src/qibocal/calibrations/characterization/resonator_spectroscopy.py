@@ -30,7 +30,6 @@ def resonator_spectroscopy(
 
     # collect readout pulses and resonator frequencies for all qubits
     resonator_frequencies = {}
-    frequency_ranges = {}
     ro_pulses = {}
     for qubit in qubits:
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
@@ -38,12 +37,9 @@ def resonator_spectroscopy(
         resonator_frequencies[qubit] = platform.characterization["single_qubit"][qubit][
             "resonator_freq"
         ]
-        frequency_ranges[qubit] = (
-            variable_resolution_scanrange(
-                lowres_width, lowres_step, highres_width, highres_step
-            )
-            + resonator_frequencies[qubit]
-        )
+    delta_frequency_range = variable_resolution_scanrange(
+        lowres_width, lowres_step, highres_width, highres_step
+    )
 
     fast_sweep_data = DataUnits(
         name=f"fast_sweep", quantities={"frequency": "Hz"}, options=["qubit"]
@@ -51,7 +47,7 @@ def resonator_spectroscopy(
 
     count = 0
     for _ in range(software_averages):
-        for freq in range(len(frequency_ranges[qubit])):  # FIXME: remove hardcoding
+        for delta_freq in delta_frequency_range:
             if count % points == 0 and count > 0:
                 yield fast_sweep_data
                 for qubit in qubits:
@@ -67,7 +63,9 @@ def resonator_spectroscopy(
             # TODO: move to qibolab platform.set_lo_frequencies(qubits, frequencies)
             for qubit in qubits:
                 platform.ro_port[qubit].lo_frequency = (
-                    frequency_ranges[qubit][freq] - ro_pulses[qubit].frequency
+                    delta_freq
+                    + resonator_frequencies[qubit]
+                    - ro_pulses[qubit].frequency
                 )
 
             result = platform.execute_pulse_sequence(sequence)
@@ -80,7 +78,7 @@ def resonator_spectroscopy(
                     "i[V]": i,
                     "q[V]": q,
                     "phase[rad]": phase,
-                    "frequency[Hz]": frequency_ranges[qubit][freq],
+                    "frequency[Hz]": delta_freq + resonator_frequencies[qubit],
                     "qubit": qubit,
                 }
                 fast_sweep_data.add(results)
@@ -113,18 +111,16 @@ def resonator_punchout(
     sequence = PulseSequence()
     ro_pulses = {}
     resonator_frequencies = {}
-    frequency_ranges = {}
+
     for qubit in qubits:
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
         sequence.add(ro_pulses[qubit])
         resonator_frequencies[qubit] = platform.characterization["single_qubit"][qubit][
             "resonator_freq"
         ]
-        frequency_ranges[qubit] = (
-            np.arange(-freq_width, freq_width, freq_step)
-            + resonator_frequencies[qubit]
-            - (freq_width / 4)
-        )
+    delta_frequency_range = np.arange(-freq_width, freq_width, freq_step) - (
+        freq_width / 4
+    )
 
     # TODO: move this explicit instruction to the platform
 
@@ -132,13 +128,15 @@ def resonator_punchout(
     count = 0
     for _ in range(software_averages):
         for att in attenuation_range:
-            for freq in range(len(frequency_ranges[qubit])):
+            for delta_freq in delta_frequency_range:
                 if count % points == 0:
                     yield data
                 # TODO: move these explicit instructions to the platform
                 for qubit in qubits:
                     platform.ro_port[qubit].lo_frequency = (
-                        frequency_ranges[qubit][freq] - ro_pulses[qubit].frequency
+                        delta_freq
+                        + resonator_frequencies[qubit]
+                        - ro_pulses[qubit].frequency
                     )
                     platform.ro_port[qubit].attenuation = att
 
@@ -151,7 +149,7 @@ def resonator_punchout(
                         "i[V]": i,
                         "q[V]": q,
                         "phase[rad]": phase,
-                        "frequency[Hz]": frequency_ranges[qubit][freq],
+                        "frequency[Hz]": delta_freq + resonator_frequencies[qubit],
                         "attenuation[dB]": att,
                         "qubit": qubit,
                     }
@@ -181,7 +179,6 @@ def resonator_spectroscopy_flux(
 
     # collect readout pulses and resonator frequencies for all qubits
     resonator_frequencies = {}
-    delta_frequency_ranges = {}
     sweetspot_currents = {}
     current_ranges = {}
     current_min = {}
@@ -197,7 +194,7 @@ def resonator_spectroscopy_flux(
         resonator_frequencies[qubit] = platform.characterization["single_qubit"][qubit][
             "resonator_freq"
         ]
-    delta_frequency_ranges = np.arange(-freq_width, freq_width, freq_step)
+    delta_frequency_range = np.arange(-freq_width, freq_width, freq_step)
 
     for fluxline in fluxlines:
         sweetspot_currents[fluxline] = platform.characterization["single_qubit"][qubit][
@@ -224,13 +221,13 @@ def resonator_spectroscopy_flux(
         for fluxline in fluxlines:
             for curr in current_ranges[fluxline]:
                 platform.qf_port[fluxline].current = curr
-                for freq in delta_frequency_ranges:
+                for delta_freq in delta_frequency_range:
                     if count % points == 0:
                         yield data
 
                     for qubit in qubits:
                         platform.ro_port[qubit].lo_frequency = (
-                            freq
+                            delta_freq
                             + resonator_frequencies[qubit]
                             - ro_pulses[qubit].frequency
                         )
@@ -244,7 +241,7 @@ def resonator_spectroscopy_flux(
                             "i[V]": i,
                             "q[V]": q,
                             "phase[rad]": phase,
-                            "frequency[Hz]": freq + resonator_frequencies[qubit],
+                            "frequency[Hz]": delta_freq + resonator_frequencies[qubit],
                             "current[A]": curr,
                             "qubit": qubit,
                             "fluxline": fluxline,
@@ -252,6 +249,9 @@ def resonator_spectroscopy_flux(
                         data.add(results)
                     count += 1
     yield data
+
+
+# resonator_polycoef_flux[round(resonance_current, 5)] = resonance_freq
 
 
 @plot("MSR and Phase vs Frequency", plots.dispersive_frequency_msr_phase)
