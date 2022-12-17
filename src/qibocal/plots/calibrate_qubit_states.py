@@ -117,15 +117,21 @@ def qubit_states(folder, routine, qubit, format):
                 legendgroup=f"q{qubit}/r{i}: state 0",
                 showlegend=False,
                 mode="markers",
-                marker=dict(size=10,  color="blue"),
+                marker=dict(size=10, color="blue"),
             ),
             row=1,
             col=1,
         )
-        title_text = f'q{qubit}/r{i}<br>'
-        title_text += f"state 0 voltage: {mod_iq_gnd:.6f} <br>mean state 0: {iq_mean_gnd:.6f}<br>"
-        title_text += f"state 1 voltage: {mod_iq_exc:.6f} <br>mean state 1: {iq_mean_exc:.6f}<br>"
-        title_text += f"rotation angle = {rotation_angle:.3f} / threshold = {threshold:.6f}<br>"
+        title_text = f"q{qubit}/r{i}<br>"
+        title_text += (
+            f"state 0 voltage: {mod_iq_gnd:.6f} <br>mean state 0: {iq_mean_gnd:.6f}<br>"
+        )
+        title_text += (
+            f"state 1 voltage: {mod_iq_exc:.6f} <br>mean state 1: {iq_mean_exc:.6f}<br>"
+        )
+        title_text += (
+            f"rotation angle = {rotation_angle:.3f} / threshold = {threshold:.6f}<br>"
+        )
         title_text += f"fidelity = {fidelity:.3f} / assignment fidelity = {assignment_fidelity:.3f}<br><br>"
         fitting_report = fitting_report + title_text
         i += 1
@@ -157,7 +163,7 @@ def qubit_states(folder, routine, qubit, format):
         width=1000,
     )
     fig.update_yaxes(
-        scaleanchor = "x",
-        scaleratio = 1,
+        scaleanchor="x",
+        scaleratio=1,
     )
     return fig
