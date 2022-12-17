@@ -9,7 +9,7 @@ from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import lorenzian
 
 
-def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
+def frequency_msr_phase(folder, routine, qubit, format):
     try:
         data_fast = DataUnits.load_data(folder, routine, format, f"fast_sweep")
         data_fast.df = data_fast.df[data_fast.df["qubit"] == int(qubit)].reset_index(

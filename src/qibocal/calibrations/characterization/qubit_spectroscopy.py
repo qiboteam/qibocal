@@ -8,7 +8,7 @@ from qibocal.decorators import plot
 from qibocal.fitting.methods import lorentzian_fit
 
 
-@plot("MSR and Phase vs Frequency", plots.frequency_msr_phase__fast_precision)
+@plot("MSR and Phase vs Frequency", plots.frequency_msr_phase)
 def qubit_spectroscopy(
     platform: AbstractPlatform,
     qubits: list,
