@@ -17,15 +17,6 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
         )
     except:
         data_fast = DataUnits(quantities={"frequency": "Hz"})
-    # try:
-    #     data_precision = DataUnits.load_data(
-    #         folder, routine, format, f"precision_sweep"
-    #     )
-    #     data_precision.df = data_precision.df[
-    #         data_precision.df["qubit"] == int(qubit)
-    #     ].reset_index(drop=True)
-    # except:
-    #     data_precision = DataUnits(quantities={"frequency": "Hz"})
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
     except:
@@ -81,38 +72,6 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
             col=2,
         )
 
-    # datasets_precision = []
-    # copy = data_precision.df.copy()
-    # for i in range(len(copy)):
-    #     datasets_precision.append(copy.drop_duplicates("frequency"))
-    #     copy.drop(datasets_precision[-1].index, inplace=True)
-    #     fig.add_trace(
-    #         go.Scatter(
-    #             x=datasets_precision[-1]["frequency"].pint.to("GHz").pint.magnitude,
-    #             y=datasets_precision[-1]["MSR"].pint.to("uV").pint.magnitude,
-    #             marker_color="rgb(255, 130, 67)",
-    #             opacity=0.3,
-    #             name="Precision sweep MSR",
-    #             showlegend=not bool(i),
-    #             legendgroup="group3",
-    #         ),
-    #         row=1,
-    #         col=1,
-    #     )
-    #     fig.add_trace(
-    #         go.Scatter(
-    #             x=datasets_precision[-1]["frequency"].pint.to("GHz").pint.magnitude,
-    #             y=datasets_precision[-1]["phase"].pint.to("rad").pint.magnitude,
-    #             marker_color="rgb(104,40,96)",
-    #             name="Precision sweep phase",
-    #             opacity=0.3,
-    #             showlegend=not bool(i),
-    #             legendgroup="group4",
-    #         ),
-    #         row=1,
-    #         col=2,
-    #     )
-
     fig.add_trace(
         go.Scatter(
             x=data_fast.df.frequency.drop_duplicates()  # pylint: disable=E1101
@@ -143,37 +102,6 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
         row=1,
         col=2,
     )
-
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x=data_precision.df.frequency.drop_duplicates()  # pylint: disable=E1101
-    #         .pint.to("GHz")
-    #         .pint.magnitude,
-    #         y=data_precision.df.groupby("frequency")["MSR"]  # pylint: disable=E1101
-    #         .mean()
-    #         .pint.to("uV")
-    #         .pint.magnitude,
-    #         name="average MSR precision sweep",
-    #         marker_color="rgb(255, 130, 67)",
-    #     ),
-    #     row=1,
-    #     col=1,
-    # )
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x=data_precision.df.frequency.drop_duplicates()  # pylint: disable=E1101
-    #         .pint.to("GHz")
-    #         .pint.magnitude,
-    #         y=data_precision.df.groupby("frequency")["phase"]  # pylint: disable=E1101
-    #         .mean()
-    #         .pint.to("rad")
-    #         .pint.magnitude,
-    #         name="average phase precision sweep",
-    #         marker_color="rgb(104,40,96)",
-    #     ),
-    #     row=1,
-    #     col=2,
-    # )
 
     if len(data_fast) > 0 and len(data_fit) > 0:
         freqrange = np.linspace(
@@ -321,7 +249,7 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
             .MSR.mean()
             .pint.to("V")
             .pint.magnitude,
-            colorbar_x=0.45,
+            colorbar_x=0.46,
         ),
         row=1,
         col=1,
@@ -341,7 +269,7 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
             .phase.mean()
             .pint.to("rad")
             .pint.magnitude,
-            colorbar_x=0.45,
+            colorbar_x=1.01,
         ),
         row=1,
         col=2,
@@ -478,7 +406,7 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
             .MSR.mean()
             .pint.to("V")
             .pint.magnitude,
-            colorbar_x=0.45,
+            colorbar_x=0.46,
         ),
         row=1,
         col=1,
@@ -498,7 +426,7 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
             .phase.mean()
             .pint.to("rad")
             .pint.magnitude,
-            colorbar_x=0.45,
+            colorbar_x=1.01,
         ),
         row=1,
         col=2,

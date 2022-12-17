@@ -510,7 +510,7 @@ def duration_gain_msr_phase(folder, routine, qubit, format):
             .MSR.mean()
             .pint.to("V")
             .pint.magnitude,
-            colorbar_x=0.45,
+            colorbar_x=0.46,
         ),
         row=1,
         col=1,
@@ -529,7 +529,7 @@ def duration_gain_msr_phase(folder, routine, qubit, format):
             .phase.mean()
             .pint.to("rad")
             .pint.magnitude,
-            colorbar_x=1.0,
+            colorbar_x=1.01,
         ),
         row=1,
         col=2,
@@ -584,7 +584,7 @@ def duration_amplitude_msr_phase(folder, routine, qubit, format):
             .MSR.mean()
             .pint.to("V")
             .pint.magnitude,
-            colorbar_x=0.45,
+            colorbar_x=0.46,
         ),
         row=1,
         col=1,
@@ -603,7 +603,7 @@ def duration_amplitude_msr_phase(folder, routine, qubit, format):
             .phase.mean()
             .pint.to("rad")
             .pint.magnitude,
-            colorbar_x=1.0,
+            colorbar_x=1.01,
         ),
         row=1,
         col=2,
