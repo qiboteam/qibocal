@@ -6,16 +6,15 @@ from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import cos
 
 
-# allXY
-def prob_gate(folder, routine, qubit, format):
+def allXY(folder, routine, qubit, format):
 
     try:
-        data = DataUnits.load_data(folder, routine, format, "data")
+        data = Data.load_data(folder, routine, format, "data")
         data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
     except:
-        data = DataUnits(
-            quantities={"probability": "dimensionless", "gateNumber": "dimensionless"},
-            options=["qubit"],
+        data = Data(
+            name="data",
+            quantities={"probability", "gateNumber", "qubit"},
         )
 
     fig = make_subplots(
@@ -33,8 +32,8 @@ def prob_gate(folder, routine, qubit, format):
         copy.drop(datasets[-1].index, inplace=True)
         fig.add_trace(
             go.Scatter(
-                x=datasets[-1]["gateNumber"].pint.to("dimensionless").pint.magnitude,
-                y=datasets[-1]["probability"].pint.to("dimensionless").pint.magnitude,
+                x=datasets[-1]["gateNumber"],
+                y=datasets[-1]["probability"],
                 marker_color="rgb(100, 0, 255)",
                 mode="markers",
                 opacity=0.3,
@@ -48,11 +47,10 @@ def prob_gate(folder, routine, qubit, format):
 
     fig.add_trace(
         go.Scatter(
-            x=data.df.gateNumber.drop_duplicates().pint.magnitude,  # pylint: disable=E1101
-            y=data.df.groupby("gateNumber")["probability"]  # pylint: disable=E1101
-            .mean()
-            .pint.to("dimensionless")
-            .pint.magnitude,
+            x=data.df.gateNumber.drop_duplicates(),  # pylint: disable=E1101
+            y=data.df.groupby("gateNumber")[
+                "probability"
+            ].mean(),  # pylint: disable=E1101
             name="Average Probability",
             marker_color="rgb(100, 0, 255)",
             mode="markers",
@@ -60,6 +58,32 @@ def prob_gate(folder, routine, qubit, format):
         row=1,
         col=1,
     )
+
+    fig.add_hline(
+        y=-1,
+        line_width=2,
+        line_dash="dash",
+        line_color="grey",
+        row=1,
+        col=1,
+    )
+    fig.add_hline(
+        y=0,
+        line_width=2,
+        line_dash="dash",
+        line_color="grey",
+        row=1,
+        col=1,
+    )
+    fig.add_hline(
+        y=1,
+        line_width=2,
+        line_dash="dash",
+        line_color="grey",
+        row=1,
+        col=1,
+    )
+
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting

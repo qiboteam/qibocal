@@ -3,7 +3,7 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
 from qibocal import plots
-from qibocal.data import DataUnits
+from qibocal.data import Data, DataUnits
 from qibocal.decorators import plot
 from qibocal.fitting.methods import drag_tuning_fit
 
@@ -33,10 +33,11 @@ gatelist = [
 ]
 
 
-@plot("Prob vs gate sequence", plots.prob_gate)
+@plot("Prob vs gate sequence", plots.allXY)
 def allXY(
     platform: AbstractPlatform,
     qubits: list,
+    nshots,
     beta_param=None,
     software_averages=1,
     points=10,
@@ -44,34 +45,9 @@ def allXY(
 
     platform.reload_settings()
 
-    state0_voltages = {}
-    state1_voltages = {}
-    for qubit in qubits:
-
-        state0_voltages[qubit] = complex(
-            platform.characterization["single_qubit"][qubit]["state0_voltage"]
-        )
-        state1_voltages[qubit] = complex(
-            platform.characterization["single_qubit"][qubit]["state1_voltage"]
-        )
-
-        # FIXME: Waiting to be able to pass qpucard to qibolab
-        ro_pulse_test = platform.create_qubit_readout_pulse(qubit, start=4)
-        platform.ro_port[qubit].lo_frequency = (
-            platform.characterization["single_qubit"][qubit]["resonator_freq"]
-            - ro_pulse_test.frequency
-        )
-
-        qd_pulse_test = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
-        platform.qd_port[qubit].lo_frequency = (
-            platform.characterization["single_qubit"][qubit]["qubit_freq"]
-            - qd_pulse_test.frequency
-        )
-
-    data = DataUnits(
+    data = Data(
         name="data",
-        quantities={"probability": "dimensionless", "gateNumber": "dimensionless"},
-        options=["qubit"],
+        quantities={"probability", "gateNumber", "qubit"},
     )
 
     count = 0
@@ -89,26 +65,16 @@ def allXY(
                 )
                 seq.add(ro_pulses[qubit])
 
-            result = platform.execute_pulse_sequence(seq, nshots=2048)
-
+            results = platform.execute_pulse_sequence(seq, nshots=nshots)
             for qubit in qubits:
-                msr, phase, i, q = result[ro_pulses[qubit].serial]
+                prob = 1 - 2 * results["probability"][ro_pulses[qubit].serial]
 
-                prob = np.abs(msr * 1e6 - state1_voltages[qubit]) / np.abs(
-                    state1_voltages[qubit] - state0_voltages[qubit]
-                )
-                prob = (2 * prob) - 1
-
-                results = {
-                    "MSR[V]": msr,
-                    "i[V]": i,
-                    "q[V]": q,
-                    "phase[rad]": phase,
-                    "probability[dimensionless]": prob,
-                    "gateNumber[dimensionless]": gateNumber,
+                r = {
+                    "probability": prob,
+                    "gateNumber": gateNumber,
                     "qubit": qubit,
                 }
-                data.add(results)
+                data.add(r)
             count += 1
             gateNumber += 1
     yield data
