@@ -5,6 +5,30 @@ from plotly.subplots import make_subplots
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import cos
 
+gatelist = [
+    ["I", "I"],
+    ["RX(pi)", "RX(pi)"],
+    ["RY(pi)", "RY(pi)"],
+    ["RX(pi)", "RY(pi)"],
+    ["RY(pi)", "RX(pi)"],
+    ["RX(pi/2)", "I"],
+    ["RY(pi/2)", "I"],
+    ["RX(pi/2)", "RY(pi/2)"],
+    ["RY(pi/2)", "RX(pi/2)"],
+    ["RX(pi/2)", "RY(pi)"],
+    ["RY(pi/2)", "RX(pi)"],
+    ["RX(pi)", "RY(pi/2)"],
+    ["RY(pi)", "RX(pi/2)"],
+    ["RX(pi/2)", "RX(pi)"],
+    ["RX(pi)", "RX(pi/2)"],
+    ["RY(pi/2)", "RY(pi)"],
+    ["RY(pi)", "RY(pi/2)"],
+    ["RX(pi)", "I"],
+    ["RY(pi)", "I"],
+    ["RX(pi/2)", "RX(pi/2)"],
+    ["RY(pi/2)", "RY(pi/2)"],
+]
+
 
 def allXY(folder, routine, qubit, format):
 
@@ -36,6 +60,8 @@ def allXY(folder, routine, qubit, format):
                 y=datasets[-1]["probability"],
                 marker_color="rgb(100, 0, 255)",
                 mode="markers",
+                text=gatelist,
+                textposition="bottom center",
                 opacity=0.3,
                 name="Probability",
                 showlegend=not bool(i),
@@ -54,6 +80,8 @@ def allXY(folder, routine, qubit, format):
             name="Average Probability",
             marker_color="rgb(100, 0, 255)",
             mode="markers",
+            text=gatelist,
+            textposition="bottom center",
         ),
         row=1,
         col=1,
@@ -151,10 +179,37 @@ def prob_gate_iteration(folder, routine, qubit, format):
                     name=f"beta {beta_param}",
                     showlegend=not bool(i),
                     legendgroup=f"group{j}",
+                    text=gatelist,
+                    textposition="bottom center",
                 ),
                 row=1,
                 col=1,
             )
+
+    fig.add_hline(
+        y=-1,
+        line_width=2,
+        line_dash="dash",
+        line_color="grey",
+        row=1,
+        col=1,
+    )
+    fig.add_hline(
+        y=0,
+        line_width=2,
+        line_dash="dash",
+        line_color="grey",
+        row=1,
+        col=1,
+    )
+    fig.add_hline(
+        y=1,
+        line_width=2,
+        line_dash="dash",
+        line_color="grey",
+        row=1,
+        col=1,
+    )
 
     fig.update_layout(
         showlegend=True,
