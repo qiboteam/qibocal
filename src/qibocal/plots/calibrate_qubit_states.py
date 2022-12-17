@@ -140,7 +140,7 @@ def qubit_states(folder, routine, qubit, format):
             showarrow=False,
             text="<b>FITTING DATA</b>",
             font_family="Arial",
-            font_size=13,
+            font_size=20,
             textangle=0,
             xanchor="left",
             xref="paper",
