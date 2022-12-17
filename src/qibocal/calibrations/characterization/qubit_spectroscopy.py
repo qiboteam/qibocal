@@ -155,64 +155,96 @@ def qubit_spectroscopy(
     # TODO: Estimate avg_voltage correctly
 
 
-@plot("MSR and Phase vs Frequency", plots.frequency_flux_msr_phase)
+@plot("Qubit Flux Dependance", plots.frequency_flux_msr_phase)
 def qubit_spectroscopy_flux(
     platform: AbstractPlatform,
-    qubit: int,
+    qubits: list,
     freq_width,
     freq_step,
-    current_max,
-    current_min,
+    current_width,
     current_step,
     software_averages,
-    fluxline,
+    fluxlines,
     points=10,
 ):
     platform.reload_settings()
 
-    if fluxline == "qubit":
-        fluxline = qubit
-
+    # create pulse sequence
     sequence = PulseSequence()
-    qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=5000)
-    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=5000)
-    sequence.add(qd_pulse)
-    sequence.add(ro_pulse)
+
+    # collect readout pulses and resonator frequencies for all qubits
+    qubit_frequencies = {}
+    delta_frequency_ranges = {}
+    sweetspot_currents = {}
+    current_ranges = {}
+    current_min = {}
+    current_max = {}
+    ro_pulses = {}
+    qd_pulses = {}
+
+    if fluxlines == "qubits":
+        fluxlines = qubits
+
+    for qubit in qubits:
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
+        qd_pulses[qubit] = platform.create_qubit_drive_pulse(
+            qubit, start=0, duration=5000
+        )
+        sequence.add(ro_pulses[qubit])
+        sequence.add(qd_pulses[qubit])
+        qubit_frequencies[qubit] = platform.characterization["single_qubit"][qubit][
+            "qubit_freq"
+        ]
+    delta_frequency_ranges = np.arange(-freq_width, freq_width, freq_step)
+
+    for fluxline in fluxlines:
+        sweetspot_currents[fluxline] = platform.characterization["single_qubit"][qubit][
+            "sweetspot"
+        ]
+        current_min[fluxline] = max(
+            -current_width + sweetspot_currents[fluxline], -0.03
+        )
+        current_max[fluxline] = min(
+            +current_width + sweetspot_currents[fluxline], +0.03
+        )
+        current_ranges[fluxline] = np.arange(
+            current_min[fluxline], current_max[fluxline], current_step
+        )
 
     data = DataUnits(
-        name=f"data_q{qubit}", quantities={"frequency": "Hz", "current": "A"}
-    )
-
-    qubit_frequency = platform.characterization["single_qubit"][qubit]["qubit_freq"]
-    qubit_biasing_current = platform.characterization["single_qubit"][qubit][
-        "sweetspot"
-    ]
-    frequency_range = np.arange(-freq_width, freq_width, freq_step) + qubit_frequency
-    current_range = (
-        np.arange(current_min, current_max, current_step) + qubit_biasing_current
+        name=f"data",
+        quantities={"frequency": "Hz", "current": "A"},
+        options=["qubit", "fluxline"],
     )
 
     count = 0
     for _ in range(software_averages):
-        for curr in current_range:
-            for freq in frequency_range:
-                if count % points == 0:
-                    yield data
-                platform.qd_port[qubit].lo_frequency = freq - qd_pulse.frequency
+        for fluxline in fluxlines:
+            for curr in current_ranges[fluxline]:
                 platform.qf_port[fluxline].current = curr
-                msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
-                    ro_pulse.serial
-                ]
-                results = {
-                    "MSR[V]": msr,
-                    "i[V]": i,
-                    "q[V]": q,
-                    "phase[rad]": phase,
-                    "frequency[Hz]": freq,
-                    "current[A]": curr,
-                }
-                # TODO: implement normalization
-                data.add(results)
-                count += 1
+                for freq in delta_frequency_ranges:
+                    if count % points == 0:
+                        yield data
 
+                    for qubit in qubits:
+                        platform.qd_port[qubit].lo_frequency = (
+                            freq + qubit_frequencies[qubit] - qd_pulses[qubit].frequency
+                        )
+                    result = platform.execute_pulse_sequence(sequence)
+
+                    for qubit in qubits:
+                        msr, phase, i, q = result[ro_pulses[qubit].serial]
+
+                        results = {
+                            "MSR[V]": msr,
+                            "i[V]": i,
+                            "q[V]": q,
+                            "phase[rad]": phase,
+                            "frequency[Hz]": freq + qubit_frequencies[qubit],
+                            "current[A]": curr,
+                            "qubit": qubit,
+                            "fluxline": fluxline,
+                        }
+                        data.add(results)
+                    count += 1
     yield data

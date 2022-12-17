@@ -162,7 +162,7 @@ def resonator_punchout(
     yield data
 
 
-@plot("Flux Dependance", plots.frequency_flux_msr_phase)
+@plot("Resonator Flux Dependance", plots.frequency_flux_msr_phase)
 def resonator_spectroscopy_flux(
     platform: AbstractPlatform,
     qubits: list,
@@ -171,7 +171,7 @@ def resonator_spectroscopy_flux(
     current_width,
     current_step,
     software_averages,
-    fluxlines=None,
+    fluxlines,
     points=10,
 ):
     platform.reload_settings()
@@ -188,7 +188,7 @@ def resonator_spectroscopy_flux(
     current_max = {}
     ro_pulses = {}
 
-    if not fluxlines:
+    if fluxlines == "qubits":
         fluxlines = qubits
 
     for qubit in qubits:
