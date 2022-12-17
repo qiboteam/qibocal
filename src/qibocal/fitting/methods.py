@@ -488,7 +488,7 @@ def res_spectrocopy_flux_fit(data, x, y, qubit, fluxline, params_fit):
                     }
                 )
         except:
-            log.warning("The fitting was not succesful")
+            log.warning("The fitting was not successful")
             return data_fit
     else:
         data_fit = Data(
@@ -506,7 +506,7 @@ def res_spectrocopy_flux_fit(data, x, y, qubit, fluxline, params_fit):
             popt[0] = popt[0] * (freq_max - freq_min)
             popt[1] = popt[1] * (freq_max - freq_min) + freq_min
         except:
-            log.warning("The fitting was not succesful")
+            log.warning("The fitting was not successful")
             return data_fit
 
         data_fit.add(
