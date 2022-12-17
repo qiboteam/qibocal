@@ -118,7 +118,7 @@ def exc_gnd(folder, routine, qubit, format):
             col=1,
         )
 
-        title_text = f"q{qubit}/r{i}: r_angle = {rotation_angle:.3f} / thrld = {threshold:.3f}<br>q{qubit}/r{i}: fidelity = {fidelity:.3f} / ass_fidelity = {assignment_fidelity:.3f}<br><br>"
+        title_text = f"q{qubit}/r{i}: rotation angle = {rotation_angle:.3f} / threshold = {threshold:.6f}<br>q{qubit}/r{i}: fidelity = {fidelity:.3f} / assignment fidelity = {assignment_fidelity:.3f}<br><br>"
         fitting_report = fitting_report + title_text
         i += 1
 
@@ -147,5 +147,9 @@ def exc_gnd(folder, routine, qubit, format):
         xaxis_title="i (V)",
         yaxis_title="q (V)",
         width=1000,
+    )
+    fig.update_yaxes(
+        scaleanchor = "x",
+        scaleratio = 1,
     )
     return fig
