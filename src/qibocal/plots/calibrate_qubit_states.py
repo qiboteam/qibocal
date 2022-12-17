@@ -40,26 +40,6 @@ def qubit_states(folder, routine, qubit, format):
             )
 
         try:
-            data_exc = DataUnits.load_data(
-                folder, subfolder, routine, format, f"data_exc_q{qubit}"
-            )
-        except:
-            data_exc = DataUnits(quantities={"iteration": "dimensionless"})
-
-        fig.add_trace(
-            go.Scatter(
-                x=data_exc.get_values("i", "V"),
-                y=data_exc.get_values("q", "V"),
-                name=f"q{qubit}/r{i}: state 1",
-                legendgroup=f"q{qubit}/r{i}: state 1",
-                mode="markers",
-                marker=dict(size=3, color="lightcoral"),
-            ),
-            row=1,
-            col=1,
-        )
-
-        try:
             data_gnd = DataUnits.load_data(
                 folder, subfolder, routine, format, f"data_gnd_q{qubit}"
             )
@@ -79,23 +59,21 @@ def qubit_states(folder, routine, qubit, format):
             col=1,
         )
 
-        i_exc = data_exc.get_values("i", "V")
-        q_exc = data_exc.get_values("q", "V")
-
-        i_mean_exc = i_exc.mean()
-        q_mean_exc = q_exc.mean()
-        iq_mean_exc = complex(i_mean_exc, q_mean_exc)
-        mod_iq_exc = abs(iq_mean_exc) * 1e6
+        try:
+            data_exc = DataUnits.load_data(
+                folder, subfolder, routine, format, f"data_exc_q{qubit}"
+            )
+        except:
+            data_exc = DataUnits(quantities={"iteration": "dimensionless"})
 
         fig.add_trace(
             go.Scatter(
-                x=[i_mean_exc],
-                y=[q_mean_exc],
+                x=data_exc.get_values("i", "V"),
+                y=data_exc.get_values("q", "V"),
                 name=f"q{qubit}/r{i}: state 1",
                 legendgroup=f"q{qubit}/r{i}: state 1",
-                showlegend=False,
                 mode="markers",
-                marker=dict(size=10, color="red"),
+                marker=dict(size=3, color="lightcoral"),
             ),
             row=1,
             col=1,
@@ -122,9 +100,31 @@ def qubit_states(folder, routine, qubit, format):
             row=1,
             col=1,
         )
+
+        i_exc = data_exc.get_values("i", "V")
+        q_exc = data_exc.get_values("q", "V")
+
+        i_mean_exc = i_exc.mean()
+        q_mean_exc = q_exc.mean()
+        iq_mean_exc = complex(i_mean_exc, q_mean_exc)
+        mod_iq_exc = abs(iq_mean_exc) * 1e6
+
+        fig.add_trace(
+            go.Scatter(
+                x=[i_mean_exc],
+                y=[q_mean_exc],
+                name=f"q{qubit}/r{i}: state 1",
+                legendgroup=f"q{qubit}/r{i}: state 1",
+                showlegend=False,
+                mode="markers",
+                marker=dict(size=10, color="red"),
+            ),
+            row=1,
+            col=1,
+        )
         title_text = f'q{qubit}/r{i}<br>'
-        title_text += f"state 0 voltage: {mod_iq_gnd:.6f} <br>mean state 0: {iq_mean_gnd:.6f}<br>"
-        title_text += f"state 1 voltage: {mod_iq_exc:.6f} <br>mean state 1: {iq_mean_exc:.6f}<br>"
+        title_text += f"average state 0: ({iq_mean_gnd:.6f})<br>"
+        title_text += f"average state 1: ({iq_mean_exc:.6f})<br>"
         title_text += f"rotation angle = {rotation_angle:.3f} / threshold = {threshold:.6f}<br>"
         title_text += f"fidelity = {fidelity:.3f} / assignment fidelity = {assignment_fidelity:.3f}<br><br>"
         fitting_report = fitting_report + title_text
