@@ -121,10 +121,10 @@ class DataUnits(AbstractData):
             raise_error(TypeError, f"{df.type} is not a pd.DataFrame.")
 
     def load_data_from_dict(self, data: dict):
-        """Set df attribute.
+        """Load dataframe from dictionary.
 
         Args:
-            data (dict): dictionary containing the data to be added.
+            data (dict): dictionary containing the data to be loaded.
                         Every key should have the following form:
                         ``<name>[<unit>]``.
         """
@@ -139,6 +139,16 @@ class DataUnits(AbstractData):
             else:
                 processed_data[key] = pd.Series(data=(values), dtype=object)
         self._df = pd.DataFrame(processed_data)
+
+    def add_data_from_dict(self, data: dict):
+        """Add the contents of a dictionary to the data of the dataframe.
+        Args:
+            df (dict): dictionary containing the data to be added.
+        """
+        processed_data = {}
+        for key, values in data.items():
+            processed_data[key] = pd.Series(data=(values), dtype=object)
+        self._df = pd.concat([self._df, pd.DataFrame(processed_data)])
 
     def add(self, data):
         """Add a row to `DataUnits`.
