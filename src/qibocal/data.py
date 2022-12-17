@@ -81,7 +81,7 @@ class DataUnits(AbstractData):
                 "MSR": pd.Series(dtype="pint[V]"),
                 "i": pd.Series(dtype="pint[V]"),
                 "q": pd.Series(dtype="pint[V]"),
-                "phase": pd.Series(dtype="pint[deg]"),
+                "phase": pd.Series(dtype="pint[rad]"),
             }
         )
         self.quantities = {"MSR": "V", "i": "V", "q": "V", "phase": "rad"}
