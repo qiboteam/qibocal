@@ -5,6 +5,7 @@ from qibolab.pulses import PulseSequence
 from qibocal import plots
 from qibocal.data import DataUnits
 from qibocal.decorators import plot
+from qibocal.fitting.methods import calibrate_qubit_states_fit
 
 
 @plot("Qubit States", plots.qubit_states)
@@ -67,3 +68,4 @@ def calibrate_qubit_states(
         data.add_data_from_dict(results)
 
     yield data
+    yield calibrate_qubit_states_fit(data, nshots=nshots, qubits=qubits)

@@ -365,3 +365,84 @@ def drag_tuning_fit(data, x, y, qubit, nqubits, labels):
         }
     )
     return data_fit
+
+
+def calibrate_qubit_states_fit(data, nshots, qubits):
+
+    parameters = Data(
+        name=f"parameters",
+        quantities={
+            "rotation_angle",  # in degrees
+            "threshold",
+            "fidelity",
+            "assignment_fidelity",
+            "average_state0",
+            "average_state1",
+            "qubit",
+        },
+    )
+    for qubit in qubits:
+        qubit_data = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
+
+        iq_state0 = (
+            qubit_data[qubit_data["state"] == 0]["i"].pint.to("V").pint.magnitude
+            + 1.0j
+            * qubit_data[qubit_data["state"] == 0]["q"].pint.to("V").pint.magnitude
+        )
+        iq_state1 = (
+            qubit_data[qubit_data["state"] == 1]["i"].pint.to("V").pint.magnitude
+            + 1.0j
+            * qubit_data[qubit_data["state"] == 1]["q"].pint.to("V").pint.magnitude
+        )
+
+        iq_state1 = np.array(iq_state1)
+        iq_state0 = np.array(iq_state0)
+
+        iq_mean_state1 = np.mean(iq_state1)
+        iq_mean_state0 = np.mean(iq_state0)
+        origin = iq_mean_state0
+
+        iq_state0_translated = iq_state0 - origin
+        iq_state1_translated = iq_state1 - origin
+        rotation_angle = np.angle(np.mean(iq_state1_translated))
+
+        iq_state1_rotated = iq_state1 * np.exp(-1j * rotation_angle)
+        iq_state0_rotated = iq_state0 * np.exp(-1j * rotation_angle)
+
+        real_values_state1 = iq_state1_rotated.real
+        real_values_state0 = iq_state0_rotated.real
+
+        real_values_combined = np.concatenate((real_values_state1, real_values_state0))
+        real_values_combined.sort()
+
+        cum_distribution_state1 = [
+            sum(map(lambda x: x.real >= real_value, real_values_state1))
+            for real_value in real_values_combined
+        ]
+        cum_distribution_state0 = [
+            sum(map(lambda x: x.real >= real_value, real_values_state0))
+            for real_value in real_values_combined
+        ]
+
+        cum_distribution_diff = np.abs(
+            np.array(cum_distribution_state1) - np.array(cum_distribution_state0)
+        )
+        argmax = np.argmax(cum_distribution_diff)
+        threshold = real_values_combined[argmax]
+        errors_state1 = nshots - cum_distribution_state1[argmax]
+        errors_state0 = cum_distribution_state0[argmax]
+        fidelity = cum_distribution_diff[argmax] / nshots
+        assignment_fidelity = 1 - (errors_state1 + errors_state0) / nshots / 2
+        # assignment_fidelity = 1/2 + (cum_distribution_state1[argmax] - cum_distribution_state0[argmax])/nshots/2
+
+        results = {
+            "rotation_angle": (-rotation_angle * 360 / (2 * np.pi)) % 360,  # in degrees
+            "threshold": threshold,
+            "fidelity": fidelity,
+            "assignment_fidelity": assignment_fidelity,
+            "average_state0": iq_mean_state0,
+            "average_state1": iq_mean_state1,
+            "qubit": qubit,
+        }
+        parameters.add(results)
+    return parameters
