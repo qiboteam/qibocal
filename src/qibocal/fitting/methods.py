@@ -413,7 +413,7 @@ def spin_echo_fit(data, x, y, qubit, nqubits, labels):
     return data_fit
 
 
-def calibrate_qubit_state_fit(data_gnd, data_exc, x, y, nshots, qubit):
+def calibrate_qubit_states_fit(data_gnd, data_exc, x, y, nshots, qubit):
 
     parameters = Data(
         name=f"parameters_q{qubit}",

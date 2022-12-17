@@ -5,7 +5,7 @@ from qibolab.pulses import PulseSequence
 from qibocal import plots
 from qibocal.data import DataUnits
 from qibocal.decorators import plot
-from qibocal.fitting.methods import calibrate_qubit_state_fit
+from qibocal.fitting.methods import calibrate_qubit_states_fit
 
 
 @plot("exc vs gnd", plots.exc_gnd)
@@ -67,7 +67,7 @@ def calibrate_qubit_states(
         data_gnd.add(results)
         count += 1
     yield data_gnd
-    yield calibrate_qubit_state_fit(
+    yield calibrate_qubit_states_fit(
         data_gnd, data_exc, x="i[V]", y="q[V]", nshots=nshots, qubit=qubit
     )
 
@@ -125,6 +125,6 @@ def calibrate_qubit_states_binning(
     }
     data_gnd.load_data_from_dict(results)
     yield data_gnd
-    yield calibrate_qubit_state_fit(
+    yield calibrate_qubit_states_fit(
         data_gnd, data_exc, x="i[V]", y="q[V]", nshots=nshots, qubit=qubit
     )
