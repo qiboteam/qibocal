@@ -36,12 +36,6 @@ def qubit_spectroscopy(
 
     data = DataUnits(quantities={"frequency": "Hz", "attenuation": "dB"})
 
-    # FIXME: Waiting for Qblox platform to take care of that
-    platform.ro_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["resonator_freq"]
-        - ro_pulse.frequency
-    )
-
     data = DataUnits(name=f"fast_sweep_q{qubit}", quantities={"frequency": "Hz"})
     count = 0
     for _ in range(software_averages):
