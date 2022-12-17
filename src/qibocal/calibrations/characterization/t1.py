@@ -18,6 +18,8 @@ def t1(
     software_averages,
     points=10,
 ):
+    platform.reload_settings()
+
     sequence = PulseSequence()
 
     qd_pulses = {}
@@ -29,16 +31,6 @@ def t1(
         )
         sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
-
-        # FIXME: Waiting to be able to pass qpucard to qibolab
-        platform.ro_port[qubit].lo_frequency = (
-            platform.characterization["single_qubit"][qubit]["resonator_freq"]
-            - ro_pulses[qubit].frequency
-        )
-        platform.qd_port[qubit].lo_frequency = (
-            platform.characterization["single_qubit"][qubit]["qubit_freq"]
-            - qd_pulses[qubit].frequency
-        )
 
     ro_wait_range = np.arange(
         delay_before_readout_start, delay_before_readout_end, delay_before_readout_step
