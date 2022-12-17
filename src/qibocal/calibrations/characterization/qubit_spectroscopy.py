@@ -162,9 +162,9 @@ def qubit_spectroscopy_flux(
         "sweetspot"
     ]
     frequency_range = np.arange(-freq_width, freq_width, freq_step) + qubit_frequency
-    current_range = np.arange(
-        current_min, current_max, current_step
-    )  # + qubit_biasing_current
+    current_range = (
+        np.arange(current_min, current_max, current_step) + qubit_biasing_current
+    )
 
     count = 0
     for _ in range(software_averages):
