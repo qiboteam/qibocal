@@ -319,7 +319,7 @@ def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
     return data_fit
 
 
-def drag_tunning_fit(data, x, y, qubit, nqubits, labels):
+def drag_tuning_fit(data, x, y, qubit, nqubits, labels):
 
     data_fit = Data(
         name=f"fit_q{qubit}",
@@ -332,8 +332,10 @@ def drag_tunning_fit(data, x, y, qubit, nqubits, labels):
         ],
     )
 
-    beta_params = data.get_values(*parse(x))
-    voltages = data.get_values(*parse(y))
+    beta_params_keys = parse(x)
+    voltages_keys = parse(y)
+    beta_params = data[beta_params_keys[0]].pint.to(beta_params_keys[1]).pint.magnitude
+    voltages = data[voltages_keys[0]].pint.to(voltages_keys[1]).pint.magnitude
 
     pguess = [
         0,  # Offset:    p[0]

@@ -153,23 +153,24 @@ actions:
   #   nshots: 1024
   #   points: 1
 
-  # allXY_iteration:
-  #   beta_start: -0.09
-  #   beta_end: 0.2
-  #   beta_step: 0.09
-  #   software_averages: 1
-  #   points: 1
+  # allXY_drag_pulse_tuning:
+  #   beta_start: -1
+  #   beta_end: 1
+  #   beta_step: 0.5
+  #   software_averages: 2
+  #   points: 5
 
   # allXY:
   #   beta_param: Null
-  #   software_averages: 1
-  #   points: 1
+  #   software_averages: 2
+  #   points: 5
 
-  # drag_pulse_tunning:
-  #   beta_start: -1
-  #   beta_end: 1
-  #   beta_step: 0.01
-  #   points: 1
+  # drag_pulse_tuning:
+  #   beta_start: -0.1
+  #   beta_end: 0.1
+  #   beta_step: 0.05
+  #   software_averages: 2
+  #   points: 5
 
   # spin_echo_3pulses:
   #   delay_between_pulses_start: 4
