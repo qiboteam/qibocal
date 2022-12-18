@@ -146,17 +146,13 @@ def drag_pulse_tuning(
         for beta_param in np.arange(beta_start, beta_end, beta_step).round(4):
             if count % points == 0 and count > 0:
                 yield data
-                for qubit in qubits:
-                    yield drag_tuning_fit(
-                        data.get_column("qubit", qubit),
-                        x="beta_param[dimensionless]",
-                        y="MSR[uV]",
-                        qubit=qubit,
-                        nqubits=platform.settings["nqubits"],
-                        labels=[
-                            "optimal_beta_param",
-                        ],
-                    )
+                yield drag_tuning_fit(
+                    data,
+                    x="beta_param[dimensionless]",
+                    y="MSR[uV]",
+                    qubits=qubits,
+                    labels=["optimal_beta_param"],
+                )
 
             ro_pulses = {}
             seq1 = PulseSequence()
@@ -217,6 +213,13 @@ def drag_pulse_tuning(
             count += 1
 
     yield data
+    yield drag_tuning_fit(
+        data,
+        x="beta_param[dimensionless]",
+        y="MSR[uV]",
+        qubits=qubits,
+        labels=["optimal_beta_param"],
+    )
 
 
 def _add_gate_pair_pulses_to_sequence(

@@ -262,11 +262,12 @@ def msr_beta(folder, routine, qubit, format):
                 options=["qubit"],
             )
         try:
-            data_fit = Data.load_data(
-                folder, subfolder, routine, format, f"fit_q{qubit}"
+            data_fit = Data.load_data(folder, subfolder, routine, format, "fits")
+            data_fit.df = data_fit.df[data_fit.df["qubit"] == int(qubit)].reset_index(
+                drop=True
             )
         except:
-            data_fit = DataUnits()
+            data_fit = Data()
 
         datasets = []
         copy = data.df.copy()
@@ -330,9 +331,9 @@ def msr_beta(folder, routine, qubit, format):
                 row=1,
                 col=1,
             )
-
+            params.remove("qubit")
             fitting_report = fitting_report + (
-                f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.4f}<br><br>"
+                f"q{qubit}/r{report_n} {params[0]}: {data_fit.df[params[0]][0]:.4f}<br><br>"
             )
 
             report_n += 1
