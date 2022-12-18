@@ -45,11 +45,11 @@ def allXY(
 
     data = Data(
         name="data",
-        quantities={"probability", "gateNumber", "qubit"},
+        quantities={"probability", "gateNumber", "qubit", "iteration"},
     )
 
     count = 0
-    for _ in range(software_averages):
+    for iteration in range(software_averages):
         gateNumber = 1
         for gates in gatelist:
             if count % points == 0 and count > 0:
@@ -70,6 +70,7 @@ def allXY(
                     "probability": prob,
                     "gateNumber": gateNumber,
                     "qubit": qubit,
+                    "iteration": iteration,
                 }
                 data.add(r)
             count += 1
@@ -91,11 +92,11 @@ def allXY_drag_pulse_tuning(
 
     data = Data(
         name="data",
-        quantities={"probability", "gateNumber", "beta_param", "qubit"},
+        quantities={"probability", "gateNumber", "beta_param", "qubit", "iteration"},
     )
 
     count = 0
-    for _ in range(software_averages):
+    for iteration in range(software_averages):
         for beta_param in np.arange(beta_start, beta_end, beta_step).round(4):
             gateNumber = 1
             for gates in gatelist:
@@ -118,6 +119,7 @@ def allXY_drag_pulse_tuning(
                         "gateNumber": gateNumber,
                         "beta_param": beta_param,
                         "qubit": qubit,
+                        "iteration": iteration,
                     }
                     data.add(r)
                 count += 1
@@ -125,7 +127,7 @@ def allXY_drag_pulse_tuning(
     yield data
 
 
-@plot("MSR vs beta parameter", plots.msr_beta)
+@plot("MSR vs beta parameter", plots.drag_pulse_tuning)
 def drag_pulse_tuning(
     platform: AbstractPlatform,
     qubits: list,
@@ -138,11 +140,13 @@ def drag_pulse_tuning(
     platform.reload_settings()
 
     data = DataUnits(
-        name="data", quantities={"beta_param": "dimensionless"}, options=["qubit"]
+        name="data",
+        quantities={"beta_param": "dimensionless"},
+        options=["qubit", "iteration"],
     )
 
     count = 0
-    for _ in range(software_averages):
+    for iteration in range(software_averages):
         for beta_param in np.arange(beta_start, beta_end, beta_step).round(4):
             if count % points == 0 and count > 0:
                 yield data
@@ -208,6 +212,7 @@ def drag_pulse_tuning(
                     "phase[rad]": phase1 - phase2,
                     "beta_param[dimensionless]": beta_param,
                     "qubit": qubit,
+                    "iteration": iteration,
                 }
                 data.add(results)
             count += 1

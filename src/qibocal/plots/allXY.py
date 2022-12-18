@@ -6,6 +6,7 @@ from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import cos
 from qibocal.plots.utils import get_data_subfolders
 
+# allXY rotations
 gatelist = [
     ["I", "I"],
     ["RX(pi)", "RX(pi)"],
@@ -54,23 +55,21 @@ def allXY(folder, routine, qubit, format):
     for subfolder in subfolders:
         try:
             data = Data.load_data(folder, subfolder, routine, format, "data")
-            data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
+            data.df = data.df[data.df["qubit"] == int(qubit)]
         except:
             data = Data(
                 name="data",
-                quantities={"probability", "gateNumber", "qubit"},
+                quantities={"probability", "gateNumber", "qubit", "iteration"},
             )
+        iterations = data.df["iteration"].unique()
+        gate_numbers = data.df["gateNumber"].unique()
 
-        datasets = []
-        copy = data.df.copy()
-        software_averages = len(copy)
-        for iteration in range(software_averages):
-            datasets.append(copy.drop_duplicates("gateNumber"))
-            copy.drop(datasets[-1].index, inplace=True)
+        for iteration in iterations:
+            iteration_data = data.df[data.df["iteration"] == iteration]
             fig.add_trace(
                 go.Scatter(
-                    x=datasets[-1]["gateNumber"],
-                    y=datasets[-1]["probability"],
+                    x=iteration_data["gateNumber"],
+                    y=iteration_data["probability"],
                     marker_color=_get_color(report_n),
                     mode="markers",
                     text=gatelist,
@@ -86,7 +85,7 @@ def allXY(folder, routine, qubit, format):
 
         fig.add_trace(
             go.Scatter(
-                x=data.df.gateNumber.drop_duplicates(),  # pylint: disable=E1101
+                x=gate_numbers,  # pylint: disable=E1101
                 y=data.df.groupby("gateNumber")[
                     "probability"
                 ].mean(),  # pylint: disable=E1101
@@ -153,7 +152,7 @@ def allXY_drag_pulse_tuning(folder, routine, qubit, format):
 
         try:
             data = Data.load_data(folder, subfolder, routine, format, "data")
-            data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
+            data.df = data.df[data.df["qubit"] == int(qubit)]
         except:
             data = Data(
                 quantities={
@@ -161,34 +160,24 @@ def allXY_drag_pulse_tuning(folder, routine, qubit, format):
                     "gateNumber",
                     "beta_param",
                     "qubit",
+                    "iteration",
                 },
             )
 
-        beta_params = data.df.drop_duplicates("beta_param")["beta_param"].to_numpy()
+        iterations = data.df["iteration"].unique()
+        beta_params = data.df["beta_param"].unique()
+        gate_numbers = data.df["gateNumber"].unique()
 
-        total_size = len(data.df)
-        software_averages = (
-            total_size // (21 * len(beta_params))
-        ) + 1  # num software averages (last incomplete)
-        software_average_size = 21 * len(beta_params)
-
-        for iteration in range(software_averages):
-            iteration_data = data.df[
-                software_average_size
-                * iteration : min(
-                    total_size,
-                    software_average_size * iteration + software_average_size,
-                )
-            ]
+        for iteration in iterations:
+            iteration_data = data.df[data.df["iteration"] == iteration]
             for j, beta_param in enumerate(beta_params):
                 beta_param_data = iteration_data[
                     iteration_data["beta_param"] == beta_param
                 ]
-
                 fig.add_trace(
                     go.Scatter(
-                        x=beta_param_data["gateNumber"].to_numpy(),
-                        y=beta_param_data["probability"].to_numpy(),
+                        x=beta_param_data["gateNumber"],
+                        y=beta_param_data["probability"],
                         marker_color=_get_color(report_n * len(beta_params) + j),
                         mode="markers+lines",
                         opacity=0.5,
@@ -238,7 +227,7 @@ def allXY_drag_pulse_tuning(folder, routine, qubit, format):
 
 
 # beta param tuning
-def msr_beta(folder, routine, qubit, format):
+def drag_pulse_tuning(folder, routine, qubit, format):
 
     fig = make_subplots(
         rows=1,
@@ -254,37 +243,33 @@ def msr_beta(folder, routine, qubit, format):
     for subfolder in subfolders:
         try:
             data = DataUnits.load_data(folder, subfolder, routine, format, "data")
-            data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
+            data.df = data.df[data.df["qubit"] == int(qubit)]
         except:
             data = DataUnits(
                 name="data",
                 quantities={"beta_param": "dimensionless"},
-                options=["qubit"],
+                options=["qubit", "iteration"],
             )
         try:
             data_fit = Data.load_data(folder, subfolder, routine, format, "fits")
-            data_fit.df = data_fit.df[data_fit.df["qubit"] == int(qubit)].reset_index(
-                drop=True
-            )
+            data_fit.df = data_fit.df[data_fit.df["qubit"] == int(qubit)]
         except:
             data_fit = Data()
 
-        datasets = []
-        copy = data.df.copy()
-        for i in range(len(copy)):
-            datasets.append(copy.drop_duplicates("beta_param"))
-            copy.drop(datasets[-1].index, inplace=True)
+        iterations = data.df["iteration"].unique()
+        beta_params = data.df["beta_param"].pint.magnitude.unique()
+
+        for iteration in iterations:
+            iteration_data = data.df[data.df["iteration"] == iteration]
             fig.add_trace(
                 go.Scatter(
-                    x=datasets[-1]["beta_param"]
-                    .pint.to("dimensionless")
-                    .pint.magnitude,
-                    y=datasets[-1]["MSR"].pint.to("uV").pint.magnitude,
+                    x=iteration_data["beta_param"].pint.magnitude,
+                    y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
                     marker_color=_get_color(report_n),
                     mode="markers",
                     opacity=0.3,
-                    name="Probability",
-                    showlegend=not bool(i),
+                    name=f"q{qubit}/r{report_n}: Probability",
+                    showlegend=not bool(iteration),
                     legendgroup="group1",
                 ),
                 row=1,
@@ -293,12 +278,12 @@ def msr_beta(folder, routine, qubit, format):
 
         fig.add_trace(
             go.Scatter(
-                x=data.df.beta_param.drop_duplicates().pint.magnitude,  # pylint: disable=E1101
+                x=beta_params,  # pylint: disable=E1101
                 y=data.df.groupby("beta_param")["MSR"]  # pylint: disable=E1101
                 .mean()
                 .pint.to("uV")
                 .pint.magnitude,
-                name=f"Average MSR q{qubit}/r{report_n}",
+                name=f"q{qubit}/r{report_n}: Average MSR",
                 marker_color=_get_color(report_n),
                 mode="markers",
             ),
@@ -307,33 +292,34 @@ def msr_beta(folder, routine, qubit, format):
         )
 
         # add fitting traces
-        if len(data) > 0 and len(data_fit) > 0:
-            beta_param = np.linspace(
+        if len(data) > 0 and (int(qubit) in data_fit.df["qubit"].values):
+            beta_range = np.linspace(
                 min(data.get_values("beta_param", "dimensionless")),
                 max(data.get_values("beta_param", "dimensionless")),
                 20,
             )
-            params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+            params = data_fit.df[data_fit.df["qubit"] == int(qubit)].to_dict(
+                orient="records"
+            )[0]
             fig.add_trace(
                 go.Scatter(
-                    x=beta_param,
+                    x=beta_range,
                     y=cos(
-                        beta_param,
+                        beta_range,
                         data_fit.get_values("popt0"),
                         data_fit.get_values("popt1"),
                         data_fit.get_values("popt2"),
                         data_fit.get_values("popt3"),
                     ),
-                    name=f"Fit q{qubit}/r{report_n}",
+                    name=f"q{qubit}/r{report_n}: Fit",
                     line=go.scatter.Line(dash="dot"),
                     marker_color="rgb(255, 130, 67)",
                 ),
                 row=1,
                 col=1,
             )
-            params.remove("qubit")
             fitting_report = fitting_report + (
-                f"q{qubit}/r{report_n} {params[0]}: {data_fit.df[params[0]][0]:.4f}<br><br>"
+                f"q{qubit}/r{report_n} optimal_beta_param: {params['optimal_beta_param']:.4f}<br><br>"
             )
 
             report_n += 1
