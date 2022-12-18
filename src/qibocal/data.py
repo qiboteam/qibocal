@@ -33,6 +33,10 @@ class AbstractData:
         """Computes the length of the data."""
         return len(self.df)
 
+    def __getitem__(self, key):
+        if isinstance(key, (str, slice)):
+            return self.df[key]
+
     @classmethod
     def load_data(cls, folder, subfolder, routine, format, name):
         raise_error(NotImplementedError)
@@ -77,7 +81,7 @@ class DataUnits(AbstractData):
                 "MSR": pd.Series(dtype="pint[V]"),
                 "i": pd.Series(dtype="pint[V]"),
                 "q": pd.Series(dtype="pint[V]"),
-                "phase": pd.Series(dtype="pint[deg]"),
+                "phase": pd.Series(dtype="pint[rad]"),
             }
         )
         self.quantities = {"MSR": "V", "i": "V", "q": "V", "phase": "rad"}
@@ -117,10 +121,10 @@ class DataUnits(AbstractData):
             raise_error(TypeError, f"{df.type} is not a pd.DataFrame.")
 
     def load_data_from_dict(self, data: dict):
-        """Set df attribute.
+        """Load dataframe from dictionary.
 
         Args:
-            data (dict): dictionary containing the data to be added.
+            data (dict): dictionary containing the data to be loaded.
                         Every key should have the following form:
                         ``<name>[<unit>]``.
         """
@@ -135,6 +139,25 @@ class DataUnits(AbstractData):
             else:
                 processed_data[key] = pd.Series(data=(values), dtype=object)
         self._df = pd.DataFrame(processed_data)
+
+    def add_data_from_dict(self, data: dict):
+        """Add the contents of a dictionary to the data of the dataframe.
+        Args:
+            df (dict): dictionary containing the data to be added.
+        """
+        processed_data = {}
+        for key, values in data.items():
+            if "[" in key:
+                name = key.split("[")[0]
+                unit = re.search(r"\[([A-Za-z0-9_]+)\]", key).group(1)
+                processed_data[name] = pd.Series(
+                    data=(np.array(values) * self.ureg(unit)), dtype=f"pint[{unit}]"
+                )
+            else:
+                processed_data[key] = pd.Series(data=(values), dtype=object)
+        self._df = pd.concat(
+            [self._df, pd.DataFrame(processed_data)], ignore_index=True
+        )
 
     def add(self, data):
         """Add a row to `DataUnits`.
@@ -169,6 +192,15 @@ class DataUnits(AbstractData):
             return self.df[key]
         else:
             return self.df[key].pint.to(unit).pint.magnitude
+
+    def get_column(self, column, value):
+        # TODO: raise error if value is not contained0
+        try:
+            return (
+                self.df.where(self.df[column] == value).dropna().reset_index(drop=True)
+            )
+        except:
+            raise_error(ValueError, "Error")
 
     @classmethod
     def load_data(cls, folder, subfolder, routine, format, name):
