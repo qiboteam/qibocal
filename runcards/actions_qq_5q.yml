@@ -149,10 +149,6 @@ actions:
   #   nshots: 1024
   #   points: 1
 
-  # calibrate_qubit_states_binning:
-  #   nshots: 1024
-  #   points: 1
-
   # allXY_drag_pulse_tuning:
   #   beta_start: -1
   #   beta_end: 1

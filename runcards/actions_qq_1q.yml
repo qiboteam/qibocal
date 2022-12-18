@@ -98,10 +98,6 @@ actions:
   #   nshots: 1024
   #   points: 1
 
-  # calibrate_qubit_states_binning:
-  #   nshots: 1024
-  #   points: 1
-
   # dispersive_shift:
   #   freq_width: 5_000_000
   #   freq_step: 200_000
