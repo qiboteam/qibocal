@@ -273,10 +273,10 @@ def t1_fit(data, x, y, qubit, nqubits, labels):
     return data_fit
 
 
-def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
+def flipping_fit(data, x, y, qubits, nqubits, pi_pulse_amplitude, labels):
 
     data_fit = Data(
-        name=f"fit_q{qubit}",
+        name="fits",
         quantities=[
             "popt0",
             "popt1",
@@ -284,85 +284,95 @@ def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
             "popt3",
             labels[0],
             labels[1],
+            "qubit",
         ],
     )
+    for qubit in qubits:
+        qubit_data = data.df[data.df["qubit"] == int(qubit)].groupby("iteration").mean()
+        flips_keys = parse(x)
+        voltages_keys = parse(y)
+        flips = qubit_data[flips_keys[0]].pint.to(flips_keys[1]).pint.magnitude
+        voltages = qubit_data[voltages_keys[0]].pint.to(voltages_keys[1]).pint.magnitude
 
-    flips = data.get_values(*parse(x))  # Check X data stores. N flips or i?
-    voltages = data.get_values(*parse(y))
+        if nqubits == 1:
+            pguess = [0.0003, np.mean(voltages), -18, 0]  # epsilon guess parameter
+        else:
+            pguess = [0.0003, np.mean(voltages), 18, 0]  # epsilon guess parameter
 
-    if nqubits == 1:
-        pguess = [0.0003, np.mean(voltages), -18, 0]  # epsilon guess parameter
-    else:
-        pguess = [0.0003, np.mean(voltages), 18, 0]  # epsilon guess parameter
+        try:
+            popt, pcov = curve_fit(flipping, flips, voltages, p0=pguess, maxfev=2000000)
+            epsilon = -np.pi / popt[2]
+            amplitude_delta = np.pi / (np.pi + epsilon)
+            corrected_amplitude = amplitude_delta * pi_pulse_amplitude
+            # angle = (niter * 2 * np.pi / popt[2] + popt[3]) / (1 + 4 * niter)
+            # amplitude_delta = angle * 2 / np.pi * pi_pulse_amplitude
+        except:
+            log.warning("flipping_fit: the fitting was not succesful")
+            return data_fit
 
-    try:
-        popt, pcov = curve_fit(flipping, flips, voltages, p0=pguess, maxfev=2000000)
-        epsilon = -np.pi / popt[2]
-        amplitude_delta = np.pi / (np.pi + epsilon)
-        corrected_amplitude = amplitude_delta * pi_pulse_amplitude
-        # angle = (niter * 2 * np.pi / popt[2] + popt[3]) / (1 + 4 * niter)
-        # amplitude_delta = angle * 2 / np.pi * pi_pulse_amplitude
-    except:
-        log.warning("The fitting was not succesful")
-        return data_fit
-
-    data_fit.add(
-        {
-            "popt0": popt[0],
-            "popt1": popt[1],
-            "popt2": popt[2],
-            "popt3": popt[3],
-            labels[0]: amplitude_delta,
-            labels[1]: corrected_amplitude,
-        }
-    )
+        data_fit.add(
+            {
+                "popt0": popt[0],
+                "popt1": popt[1],
+                "popt2": popt[2],
+                "popt3": popt[3],
+                labels[0]: amplitude_delta,
+                labels[1]: corrected_amplitude,
+                "qubit": qubit,
+            }
+        )
     return data_fit
 
 
-def drag_tuning_fit(data, x, y, qubit, nqubits, labels):
+def drag_tuning_fit(data: Data, x, y, qubits, labels):
 
     data_fit = Data(
-        name=f"fit_q{qubit}",
+        name=f"fits",
         quantities=[
             "popt0",
             "popt1",
             "popt2",
             "popt3",
             labels[0],
+            "qubit",
         ],
     )
+    for qubit in qubits:
+        qubit_data = data.df[data.df["qubit"] == int(qubit)].groupby("iteration").mean()
+        beta_params_keys = parse(x)
+        voltages_keys = parse(y)
+        beta_params = (
+            qubit_data[beta_params_keys[0]].pint.to(beta_params_keys[1]).pint.magnitude
+        )
+        voltages = qubit_data[voltages_keys[0]].pint.to(voltages_keys[1]).pint.magnitude
 
-    beta_params_keys = parse(x)
-    voltages_keys = parse(y)
-    beta_params = data[beta_params_keys[0]].pint.to(beta_params_keys[1]).pint.magnitude
-    voltages = data[voltages_keys[0]].pint.to(voltages_keys[1]).pint.magnitude
+        pguess = [
+            0,  # Offset:    p[0]
+            beta_params.values[np.argmax(voltages)]
+            - beta_params.values[np.argmin(voltages)],  # Amplitude: p[1]
+            4,  # Period:    p[2]
+            0.3,  # Phase:     p[3]
+        ]
 
-    pguess = [
-        0,  # Offset:    p[0]
-        beta_params.values[np.argmax(voltages)]
-        - beta_params.values[np.argmin(voltages)],  # Amplitude: p[1]
-        4,  # Period:    p[2]
-        0.3,  # Phase:     p[3]
-    ]
+        try:
+            popt, pcov = curve_fit(cos, beta_params.values, voltages.values)
+            smooth_dataset = cos(beta_params.values, popt[0], popt[1], popt[2], popt[3])
+            beta_optimal = beta_params.values[np.argmin(smooth_dataset)]
 
-    try:
-        popt, pcov = curve_fit(cos, beta_params.values, voltages.values)
-        smooth_dataset = cos(beta_params.values, popt[0], popt[1], popt[2], popt[3])
-        beta_optimal = beta_params.values[np.argmin(smooth_dataset)]
+        except:
+            log.warning("drag_tuning_fit: the fitting was not succesful")
+            return data_fit
 
-    except:
-        log.warning("The fitting was not succesful")
-        return data_fit
-
-    data_fit.add(
-        {
-            "popt0": popt[0],
-            "popt1": popt[1],
-            "popt2": popt[2],
-            "popt3": popt[3],
-            labels[0]: beta_optimal,
-        }
-    )
+        data_fit.add(
+            {
+                "popt0": popt[0],
+                "popt1": popt[1],
+                "popt2": popt[2],
+                "popt3": popt[3],
+                labels[0]: beta_optimal,
+                "qubit": qubit,
+            }
+        )
     return data_fit
 
 
@@ -434,7 +444,7 @@ def calibrate_qubit_states_fit(data, x, y, nshots, qubits):
     q_keys = parse(y)
 
     for qubit in qubits:
-        qubit_data = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
+        qubit_data = data.df[data.df["qubit"] == int(qubit)]
 
         iq_state0 = (
             qubit_data[qubit_data["state"] == 0][i_keys[0]]
