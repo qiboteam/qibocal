@@ -165,20 +165,30 @@ def allXY_drag_pulse_tuning(folder, routine, qubit, format):
             )
 
         beta_params = data.df.drop_duplicates("beta_param")["beta_param"].to_numpy()
-        gate_numbers = data.df.drop_duplicates("gateNumber")["gateNumber"].to_numpy()
 
-        size = len(beta_params) * len(gate_numbers)
-        software_averages = len(data.df) // size
+        total_size = len(data.df)
+        software_averages = (
+            total_size // (21 * len(beta_params))
+        ) + 1  # num software averages (last incomplete)
+        software_average_size = 21 * len(beta_params)
 
         for iteration in range(software_averages):
-            iteration_data = data.df[size * iteration : size * iteration + size]
+            iteration_data = data.df[
+                software_average_size
+                * iteration : min(
+                    total_size,
+                    software_average_size * iteration + software_average_size,
+                )
+            ]
             for j, beta_param in enumerate(beta_params):
+                beta_param_data = iteration_data[
+                    iteration_data["beta_param"] == beta_param
+                ]
+
                 fig.add_trace(
                     go.Scatter(
-                        x=gate_numbers,
-                        y=iteration_data[iteration_data["beta_param"] == beta_param][
-                            "probability"
-                        ].to_numpy(),
+                        x=beta_param_data["gateNumber"].to_numpy(),
+                        y=beta_param_data["probability"].to_numpy(),
                         marker_color=_get_color(report_n * len(beta_params) + j),
                         mode="markers+lines",
                         opacity=0.5,
