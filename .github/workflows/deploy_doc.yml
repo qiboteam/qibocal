@@ -31,9 +31,10 @@ jobs:
 
   deploy-docs:
     needs: [evaluate-label]
-    uses: qibogang/workflows/.github/workflows/deploy-ghpages-latest-stable.yml@versions
+    uses: qibogang/workflows/.github/workflows/deploy-ghpages-latest-stable.yml@build
     with:
       python-version: 3.9
       package-manager: "poetry"
       dependency-path: "**/poetry.lock"
       trigger-label: '${{needs.evaluate-label.outputs.label}}'
+      docs-folder: qibocal
