@@ -7,8 +7,18 @@ from qibocal.fitting.utils import exp
 from qibocal.plots.utils import get_data_subfolders
 
 
-# T1
-def t1_time_msr_phase(folder, routine, qubit, format):
+# Spin echos
+def spin_echo_time_msr_phase(folder, routine, qubit, format):
+
+    """Spin echo plotting routine:
+    The routine plots the results of a modified Ramsey sequence with an additional Rx(pi) pulse placed symmetrically between the two Rx(pi/2) pulses.
+    An exponential fit to this data gives a spin echo decay time T2.
+    Args:
+        folder (string): Folder name where the data and fitted data is located
+        routine (string): Name of the calibration routine that calls this plotting method
+        qubit (int): Target qubit to characterize
+        format (string): Data file format. Supported formats are .csv and .pkl
+    """
 
     fig = make_subplots(
         rows=1,
@@ -24,7 +34,6 @@ def t1_time_msr_phase(folder, routine, qubit, format):
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
     i = 0
-    fitting_report = ""
     for subfolder in subfolders:
         try:
             data = DataUnits.load_data(
@@ -38,13 +47,20 @@ def t1_time_msr_phase(folder, routine, qubit, format):
                 folder, subfolder, routine, format, f"fit_q{qubit}"
             )
         except:
-            data_fit = DataUnits()
+            data_fit = Data(
+                quantities=[
+                    "popt0",
+                    "popt1",
+                    "popt2",
+                    "label1",
+                ]
+            )
 
         fig.add_trace(
             go.Scatter(
                 x=data.get_values("Time", "ns"),
                 y=data.get_values("MSR", "uV"),
-                name=f"T1 q{qubit}/r{i}",
+                name=f"q{qubit}/r{i}: spin echo",
             ),
             row=1,
             col=1,
@@ -53,7 +69,7 @@ def t1_time_msr_phase(folder, routine, qubit, format):
             go.Scatter(
                 x=data.get_values("Time", "ns"),
                 y=data.get_values("phase", "rad"),
-                name=f"T1 q{qubit}/r{i}",
+                name=f"q{qubit}/r{i}: spin echo",
             ),
             row=1,
             col=2,
@@ -72,40 +88,31 @@ def t1_time_msr_phase(folder, routine, qubit, format):
                     x=timerange,
                     y=exp(
                         timerange,
-                        data_fit.get_values("popt0"),
-                        data_fit.get_values("popt1"),
-                        data_fit.get_values("popt2"),
+                        data_fit.df["popt0"][0],
+                        data_fit.df["popt1"][0],
+                        data_fit.df["popt2"][0],
                     ),
-                    name=f"Fit q{qubit}/r{i}",
+                    name=f"Fit q{qubit}/r{i}:",
                     line=go.scatter.Line(dash="dot"),
                 ),
                 row=1,
                 col=1,
             )
 
-            fitting_report = fitting_report + (
-                f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} ns.<br><br>"
+            fig.add_annotation(
+                dict(
+                    font=dict(color="black", size=12),
+                    x=i * 0.09,
+                    y=-0.25,
+                    showarrow=False,
+                    text=f"q{qubit}/r{i}: {params[0]}: {data_fit.df[params[0]][0]:.1f} ns.",
+                    textangle=0,
+                    xanchor="left",
+                    xref="paper",
+                    yref="paper",
+                )
             )
-
         i += 1
-
-    fig.add_annotation(
-        dict(
-            font=dict(color="black", size=12),
-            x=0,
-            y=1.2,
-            showarrow=False,
-            text="<b>FITTING DATA</b>",
-            font_family="Arial",
-            font_size=20,
-            textangle=0,
-            xanchor="left",
-            xref="paper",
-            yref="paper",
-            font_color="#5e9af1",
-            hovertext=fitting_report,
-        )
-    )
 
     # last part
     fig.update_layout(

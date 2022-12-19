@@ -51,6 +51,7 @@ build-backend = "poetry.core.masonry.api"
 qq = "qibocal:command"
 qq-live = "qibocal:live_plot"
 qq-upload = "qibocal:upload"
+qq-compare = "qibocal:compare"
 
 [tool.poe.tasks]
 test = "pytest src/qibocal/tests"
