@@ -41,16 +41,6 @@ def ramsey_frequency_detuned(
     current_qubit_freq = runcard_qubit_freq
     current_T2 = runcard_T2
 
-    # FIXME: Waiting to be able to pass qpucard to qibolab
-    platform.ro_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["resonator_freq"]
-        - ro_pulse.frequency
-    )
-    platform.qd_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["qubit_freq"]
-        - RX90_pulse1.frequency
-    )
-
     t_end = np.array(t_end)
     for t_max in t_end:
         count = 0
@@ -114,7 +104,7 @@ def ramsey_frequency_detuned(
         corrected_qubit_freq = data_fit.get_values("corrected_qubit_frequency")
 
         # if ((new_t2 * 3.5) > t_max):
-        if (new_t2 > current_T2).bool() and len(t_end) > 1:
+        if (new_t2 > current_T2) and len(t_end) > 1:
             current_qubit_freq = int(corrected_qubit_freq)
             current_T2 = new_t2
             data = DataUnits(
@@ -155,16 +145,6 @@ def ramsey(
         delay_between_pulses_start,
         delay_between_pulses_end,
         delay_between_pulses_step,
-    )
-
-    # FIXME: Waiting to be able to pass qpucard to qibolab
-    platform.ro_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["resonator_freq"]
-        - ro_pulse.frequency
-    )
-    platform.qd_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["qubit_freq"]
-        - RX90_pulse1.frequency
     )
 
     data = DataUnits(name=f"data_q{qubit}", quantities={"wait": "ns", "t_max": "ns"})

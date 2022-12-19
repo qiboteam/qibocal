@@ -8,7 +8,7 @@ from qibocal.data import Data
 from qibocal.fitting.utils import cos, exp, flipping, lorenzian, parse, rabi, ramsey
 
 
-def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None):
+def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None, qrm_lo=None):
     """Fitting routine for resonator spectroscopy"""
     if fit_file_name == None:
         data_fit = Data(
@@ -18,8 +18,9 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None):
                 "popt1",
                 "popt2",
                 "popt3",
-                labels[1],
                 labels[0],
+                labels[1],
+                labels[2],
             ],
         )
     else:
@@ -30,8 +31,9 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None):
                 "popt1",
                 "popt2",
                 "popt3",
-                labels[1],
                 labels[0],
+                labels[1],
+                labels[2],
             ],
         )
 
@@ -91,10 +93,15 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None):
 
     freq = f0 * 1e9
 
+    MZ_freq = 0
+    if qrm_lo != None:
+        MZ_freq = freq - qrm_lo
+
     data_fit.add(
         {
-            labels[1]: peak_voltage,
             labels[0]: freq,
+            labels[1]: peak_voltage,
+            labels[2]: MZ_freq,
             "popt0": fit_res.best_values["amplitude"],
             "popt1": fit_res.best_values["center"],
             "popt2": fit_res.best_values["sigma"],
@@ -355,3 +362,117 @@ def drag_tunning_fit(data, x, y, qubit, nqubits, labels):
         }
     )
     return data_fit
+
+
+def spin_echo_fit(data, x, y, qubit, nqubits, labels):
+
+    data_fit = Data(
+        name=f"fit_q{qubit}",
+        quantities=[
+            "popt0",
+            "popt1",
+            "popt2",
+            labels[0],
+        ],
+    )
+
+    time = data.get_values(*parse(x))
+    voltages = data.get_values(*parse(y))
+
+    if nqubits == 1:
+        pguess = [
+            max(voltages.values),
+            (max(voltages.values) - min(voltages.values)),
+            1 / 250,
+        ]
+    else:
+        pguess = [
+            min(voltages.values),
+            (max(voltages.values) - min(voltages.values)),
+            1 / 250,
+        ]
+
+    try:
+        popt, pcov = curve_fit(
+            exp, time.values, voltages.values, p0=pguess, maxfev=2000000
+        )
+        t2 = abs(1 / popt[2])
+
+    except:
+        log.warning("The fitting was not succesful")
+        return data_fit
+
+    data_fit.add(
+        {
+            "popt0": popt[0],
+            "popt1": popt[1],
+            "popt2": popt[2],
+            labels[0]: t2,
+        }
+    )
+    return data_fit
+
+
+def calibrate_qubit_states_fit(data_gnd, data_exc, x, y, nshots, qubit):
+
+    parameters = Data(
+        name=f"parameters_q{qubit}",
+        quantities=[
+            "rotation_angle",  # in degrees
+            "threshold",
+            "fidelity",
+            "assignment_fidelity",
+        ],
+    )
+
+    iq_exc = data_exc.get_values(*parse(x)) + 1.0j * data_exc.get_values(*parse(y))
+    iq_gnd = data_gnd.get_values(*parse(x)) + 1.0j * data_gnd.get_values(*parse(y))
+
+    iq_exc = np.array(iq_exc)
+    iq_gnd = np.array(iq_gnd)
+
+    iq_mean_exc = np.mean(iq_exc)
+    iq_mean_gnd = np.mean(iq_gnd)
+    origin = iq_mean_gnd
+
+    iq_gnd_translated = iq_gnd - origin
+    iq_exc_translated = iq_exc - origin
+    rotation_angle = np.angle(np.mean(iq_exc_translated))
+
+    iq_exc_rotated = iq_exc * np.exp(-1j * rotation_angle)
+    iq_gnd_rotated = iq_gnd * np.exp(-1j * rotation_angle)
+
+    real_values_exc = iq_exc_rotated.real
+    real_values_gnd = iq_gnd_rotated.real
+
+    real_values_combined = np.concatenate((real_values_exc, real_values_gnd))
+    real_values_combined.sort()
+
+    cum_distribution_exc = [
+        sum(map(lambda x: x.real >= real_value, real_values_exc))
+        for real_value in real_values_combined
+    ]
+    cum_distribution_gnd = [
+        sum(map(lambda x: x.real >= real_value, real_values_gnd))
+        for real_value in real_values_combined
+    ]
+
+    cum_distribution_diff = np.abs(
+        np.array(cum_distribution_exc) - np.array(cum_distribution_gnd)
+    )
+    argmax = np.argmax(cum_distribution_diff)
+    threshold = real_values_combined[argmax]
+    errors_exc = nshots - cum_distribution_exc[argmax]
+    errors_gnd = cum_distribution_gnd[argmax]
+    fidelity = cum_distribution_diff[argmax] / nshots
+    assignment_fidelity = 1 - (errors_exc + errors_gnd) / nshots / 2
+    # assignment_fidelity = 1/2 + (cum_distribution_exc[argmax] - cum_distribution_gnd[argmax])/nshots/2
+
+    results = {
+        "rotation_angle": (-rotation_angle * 360 / (2 * np.pi)) % 360,  # in degrees
+        "threshold": threshold,
+        "fidelity": fidelity,
+        "assignment_fidelity": assignment_fidelity,
+    }
+    parameters.add(results)
+    return parameters
