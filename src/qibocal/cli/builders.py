@@ -123,7 +123,7 @@ class ActionBuilder:
         for param in list(sig.parameters)[2:-1]:
             if param not in params:
                 raise_error(AttributeError, f"Missing parameter {param} in runcard.")
-        if f.__annotations__["qubit"] == int:
+        if f.__annotations__["qubits"] == int:
             single_qubit_action = True
         else:
             single_qubit_action = False
@@ -164,8 +164,8 @@ class ActionBuilder:
             for data in results:
                 getattr(data, f"to_{self.format}")(path)
 
-            if self.platform is not None:
-                self.update_platform_runcard(qubit, routine.__name__)
+            # if self.platform is not None:
+            #     self.update_platform_runcard(qubit, routine.__name__)
 
     def update_platform_runcard(self, qubit, routine):
 

@@ -9,9 +9,10 @@ from qibocal.fitting.utils import rabi
 # For Rabi oscillations
 def time_msr_phase(folder, routine, qubit, format):
     try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, "data")
+        data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
     except:
-        data = DataUnits(quantities={"Time": "ns"})
+        data = DataUnits(quantities={"time": "ns"})
 
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
@@ -168,7 +169,8 @@ def time_msr_phase(folder, routine, qubit, format):
 def gain_msr_phase(folder, routine, qubit, format):
 
     try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, "data")
+        data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
     except:
         data = DataUnits(quantities={"gain", "dimensionless"})
 
@@ -324,7 +326,8 @@ def gain_msr_phase(folder, routine, qubit, format):
 def amplitude_msr_phase(folder, routine, qubit, format):
 
     try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, "data")
+        data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
     except:
         data = DataUnits(quantities={"amplitude", "dimensionless"})
     try:
@@ -470,11 +473,13 @@ def amplitude_msr_phase(folder, routine, qubit, format):
 
 
 def duration_gain_msr_phase(folder, routine, qubit, format):
-
     try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, "data")
+        data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
     except:
-        data = DataUnits(quantities={"duration": "ns", "gain": "dimensionless"})
+        data = DataUnits(
+            quantities={"duration": "ns", "gain": "dimensionless"}, options=["qubit"]
+        )
 
     fig = make_subplots(
         rows=1,
@@ -505,7 +510,7 @@ def duration_gain_msr_phase(folder, routine, qubit, format):
             .MSR.mean()
             .pint.to("V")
             .pint.magnitude,
-            colorbar_x=0.45,
+            colorbar_x=0.46,
         ),
         row=1,
         col=1,
@@ -524,7 +529,7 @@ def duration_gain_msr_phase(folder, routine, qubit, format):
             .phase.mean()
             .pint.to("rad")
             .pint.magnitude,
-            colorbar_x=1.0,
+            colorbar_x=1.01,
         ),
         row=1,
         col=2,
@@ -542,9 +547,13 @@ def duration_gain_msr_phase(folder, routine, qubit, format):
 
 def duration_amplitude_msr_phase(folder, routine, qubit, format):
     try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, "data")
+        data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
     except:
-        data = DataUnits(quantities={"duration": "ns", "amplitude": "dimensionless"})
+        data = DataUnits(
+            quantities={"duration": "ns", "amplitude": "dimensionless"},
+            options=["qubit"],
+        )
 
     fig = make_subplots(
         rows=1,
@@ -575,7 +584,7 @@ def duration_amplitude_msr_phase(folder, routine, qubit, format):
             .MSR.mean()
             .pint.to("V")
             .pint.magnitude,
-            colorbar_x=0.45,
+            colorbar_x=0.46,
         ),
         row=1,
         col=1,
@@ -594,7 +603,7 @@ def duration_amplitude_msr_phase(folder, routine, qubit, format):
             .phase.mean()
             .pint.to("rad")
             .pint.magnitude,
-            colorbar_x=1.0,
+            colorbar_x=1.01,
         ),
         row=1,
         col=2,

@@ -9,17 +9,14 @@ from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import lorenzian
 
 
-def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
+def frequency_msr_phase(folder, routine, qubit, format):
     try:
-        data_fast = DataUnits.load_data(folder, routine, format, f"fast_sweep_q{qubit}")
-    except:
-        data_fast = DataUnits(quantities={"frequency": "Hz"})
-    try:
-        data_precision = DataUnits.load_data(
-            folder, routine, format, f"precision_sweep_q{qubit}"
+        data_fast = DataUnits.load_data(folder, routine, format, f"fast_sweep")
+        data_fast.df = data_fast.df[data_fast.df["qubit"] == int(qubit)].reset_index(
+            drop=True
         )
     except:
-        data_precision = DataUnits(quantities={"frequency": "Hz"})
+        data_fast = DataUnits(quantities={"frequency": "Hz"})
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
     except:
@@ -33,7 +30,6 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
                 "label2",
             ]
         )
-
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -44,7 +40,6 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
             "phase (rad)",
         ),
     )
-
     datasets_fast = []
     copy = data_fast.df.copy()
     for i in range(len(copy)):
@@ -77,38 +72,6 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
             col=2,
         )
 
-    datasets_precision = []
-    copy = data_precision.df.copy()
-    for i in range(len(copy)):
-        datasets_precision.append(copy.drop_duplicates("frequency"))
-        copy.drop(datasets_precision[-1].index, inplace=True)
-        fig.add_trace(
-            go.Scatter(
-                x=datasets_precision[-1]["frequency"].pint.to("GHz").pint.magnitude,
-                y=datasets_precision[-1]["MSR"].pint.to("uV").pint.magnitude,
-                marker_color="rgb(255, 130, 67)",
-                opacity=0.3,
-                name="Precision sweep MSR",
-                showlegend=not bool(i),
-                legendgroup="group3",
-            ),
-            row=1,
-            col=1,
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=datasets_precision[-1]["frequency"].pint.to("GHz").pint.magnitude,
-                y=datasets_precision[-1]["phase"].pint.to("rad").pint.magnitude,
-                marker_color="rgb(104,40,96)",
-                name="Precision sweep phase",
-                opacity=0.3,
-                showlegend=not bool(i),
-                legendgroup="group4",
-            ),
-            row=1,
-            col=2,
-        )
-
     fig.add_trace(
         go.Scatter(
             x=data_fast.df.frequency.drop_duplicates()  # pylint: disable=E1101
@@ -135,37 +98,6 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
             .pint.magnitude,
             name="average phase fast sweep",
             marker_color="rgb(204, 102, 102)",
-        ),
-        row=1,
-        col=2,
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=data_precision.df.frequency.drop_duplicates()  # pylint: disable=E1101
-            .pint.to("GHz")
-            .pint.magnitude,
-            y=data_precision.df.groupby("frequency")["MSR"]  # pylint: disable=E1101
-            .mean()
-            .pint.to("uV")
-            .pint.magnitude,
-            name="average MSR precision sweep",
-            marker_color="rgb(255, 130, 67)",
-        ),
-        row=1,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=data_precision.df.frequency.drop_duplicates()  # pylint: disable=E1101
-            .pint.to("GHz")
-            .pint.magnitude,
-            y=data_precision.df.groupby("frequency")["phase"]  # pylint: disable=E1101
-            .mean()
-            .pint.to("rad")
-            .pint.magnitude,
-            name="average phase precision sweep",
-            marker_color="rgb(104,40,96)",
         ),
         row=1,
         col=2,
@@ -232,10 +164,84 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
     return fig
 
 
-def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
+def frequency_attenuation_msr_phase(folder, routine, qubit, format):
 
     try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, f"data")
+        data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
+    except:
+        data = DataUnits(quantities={"frequency": "Hz", "attenuation": "dB"})
+
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        subplot_titles=(
+            "MSR (V)",
+            "phase (rad)",
+        ),
+    )
+
+    size = len(data.df.attenuation.drop_duplicates()) * len(
+        data.df.frequency.drop_duplicates()  # pylint: disable=E1101
+    )
+
+    fig.add_trace(
+        go.Heatmap(
+            x=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
+            .frequency.mean()
+            .pint.to("GHz")
+            .pint.magnitude,
+            y=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
+            .attenuation.mean()
+            .pint.to("dB")
+            .pint.magnitude,
+            z=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
+            .MSR.mean()
+            .pint.to("V")
+            .pint.magnitude,
+            colorbar_x=0.46,
+        ),
+        row=1,
+        col=1,
+    )
+
+    fig.add_trace(
+        go.Heatmap(
+            x=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
+            .frequency.mean()
+            .pint.to("GHz")
+            .pint.magnitude,
+            y=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
+            .attenuation.mean()
+            .pint.to("dB")
+            .pint.magnitude,
+            z=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
+            .phase.mean()
+            .pint.to("rad")
+            .pint.magnitude,
+            colorbar_x=1.01,
+        ),
+        row=1,
+        col=2,
+    )
+
+    fig.update_layout(
+        showlegend=False,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Frequency (GHz)",
+        yaxis_title="Attenuation (dB)",
+        xaxis2_title="Frequency (GHz)",
+        yaxis2_title="Attenuation (dB)",
+    )
+    return fig
+
+
+def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
+    try:
+        data = DataUnits.load_data(folder, routine, format, f"data")
+        data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
     except:
         data = DataUnits(quantities={"frequency": "Hz"})
 
@@ -284,250 +290,167 @@ def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
 def frequency_flux_msr_phase(folder, routine, qubit, format):
 
     try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, f"data")
+        data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
     except:
-        data = DataUnits(quantities={"frequency": "Hz", "current": "A"})
+        data = DataUnits(
+            quantities={"frequency": "Hz", "current": "A"},
+            options=["qubit", "fluxline"],
+        )
 
-    fig = make_subplots(
-        rows=1,
-        cols=2,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
-        subplot_titles=(
-            "MSR (V)",
-            "phase (rad)",
-        ),
-    )
+    fluxlines = data.df.fluxline.drop_duplicates().to_list()
 
-    size = len(data.df.current.drop_duplicates()) * len(
-        data.df.frequency.drop_duplicates()  # pylint: disable=E1101
-    )
+    if len(fluxlines) > 1:
 
-    fig.add_trace(
-        go.Heatmap(
-            x=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-            .frequency.mean()
-            .pint.to("GHz")
-            .pint.magnitude,
-            y=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-            .current.mean()
-            .pint.to("A")
-            .pint.magnitude,
-            z=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-            .MSR.mean()
-            .pint.to("V")
-            .pint.magnitude,
-            colorbar_x=0.45,
-        ),
-        row=1,
-        col=1,
-    )
+        fig = make_subplots(
+            rows=1,
+            cols=len(fluxlines),
+            horizontal_spacing=0.1,
+            vertical_spacing=0.1,
+            subplot_titles=tuple(
+                [f"MSR [V] - fluxline {fluxline}" for fluxline in fluxlines]
+            ),
+        )
+        for fluxline_n, fluxline in enumerate(fluxlines):
+            fluxline_df = data.df[data.df["fluxline"] == fluxline].reset_index(
+                drop=True
+            )
 
-    fig.add_trace(
-        go.Heatmap(
-            x=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-            .frequency.mean()
-            .pint.to("GHz")
-            .pint.magnitude,
-            y=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-            .current.mean()
-            .pint.to("A")
-            .pint.magnitude,
-            z=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-            .phase.mean()
-            .pint.to("rad")
-            .pint.magnitude,
-            colorbar_x=0.45,
-        ),
-        row=1,
-        col=2,
-    )
+            size = len(fluxline_df.current.drop_duplicates()) * len(
+                fluxline_df.frequency.drop_duplicates()  # pylint: disable=E1101
+            )
 
-    fig.update_layout(
-        showlegend=False,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Frequency (GHz)",
-        yaxis_title="Current (A)",
-        xaxis2_title="Frequency (GHz)",
-        yaxis2_title="Current (A)",
-    )
-    return fig
+            fig.add_trace(
+                go.Heatmap(
+                    x=fluxline_df.groupby(
+                        fluxline_df.index % size
+                    )  # pylint: disable=E1101
+                    .frequency.mean()
+                    .pint.to("GHz")
+                    .pint.magnitude,
+                    y=fluxline_df.groupby(
+                        fluxline_df.index % size
+                    )  # pylint: disable=E1101
+                    .current.mean()
+                    .pint.to("A")
+                    .pint.magnitude,
+                    z=fluxline_df.groupby(
+                        fluxline_df.index % size
+                    )  # pylint: disable=E1101
+                    .MSR.mean()
+                    .pint.to("V")
+                    .pint.magnitude,
+                    showscale=False,
+                ),
+                row=1,
+                col=1 + fluxline_n,
+            )
+            fig.update_xaxes(title_text="Frequency (GHz)", row=1, col=1 + fluxline_n)
 
-
-def frequency_flux_msr_phase__matrix(folder, routine, qubit, format):
-    fluxes = []
-    for i in range(25):  # FIXME: 25 is hardcoded
-        file = f"{folder}/data/{routine}/data_q{qubit}_f{i}.csv"
-        if os.path.exists(file):
-            fluxes += [i]
-
-    if len(fluxes) < 1:
-        nb = 1
     else:
-        nb = len(fluxes)
-    fig = make_subplots(
-        rows=2,
-        cols=nb,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
-        x_title="Frequency (Hz)",
-        y_title="Current (A)",
-        shared_xaxes=True,
-        shared_yaxes=True,
-    )
 
-    for j in fluxes:
-        if j == fluxes[-1]:
-            showscale = True
-        else:
-            showscale = False
-
-        try:
-            data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}_f{j}")
-        except:
-            data = DataUnits(quantities={"frequency": "Hz", "current": "A"})
-
-        size = len(data.df.current.drop_duplicates()) * len(
-            data.df.frequency.drop_duplicates()  # pylint: disable=E1101
-        )
-
-        fig.add_trace(
-            go.Heatmap(
-                x=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-                .frequency.mean()
-                .pint.to("GHz")
-                .pint.magnitude,
-                y=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-                .current.mean()
-                .pint.to("A")
-                .pint.magnitude,
-                z=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-                .MSR.mean()
-                .pint.to("V")
-                .pint.magnitude,
-                showscale=showscale,
+        fig = make_subplots(
+            rows=1,
+            cols=2,
+            horizontal_spacing=0.1,
+            vertical_spacing=0.1,
+            subplot_titles=(
+                f"MSR [V] - fluxline {fluxlines[0]}",
+                f"Phase [rad] - fluxline {fluxlines[0]}",
             ),
-            row=1,
-            col=j,
         )
+        for fluxline_n, fluxline in enumerate(fluxlines):
+            fluxline_df = data.df[data.df["fluxline"] == fluxline].reset_index(
+                drop=True
+            )
 
-        fig.add_trace(
-            go.Heatmap(
-                x=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-                .pint.to("GHz")
-                .pint.magnitude,
-                y=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-                .current.mean()
-                .pint.to("A")
-                .pint.magnitude,
-                z=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-                .phase.mean()
-                .pint.to("rad")
-                .pint.magnitude,
-                showscale=showscale,
-            ),
-            row=1,
-            col=j,
+            size = len(fluxline_df.current.drop_duplicates()) * len(
+                fluxline_df.frequency.drop_duplicates()  # pylint: disable=E1101
+            )
+
+            fig.add_trace(
+                go.Heatmap(
+                    x=fluxline_df.groupby(
+                        fluxline_df.index % size
+                    )  # pylint: disable=E1101
+                    .frequency.mean()
+                    .pint.to("GHz")
+                    .pint.magnitude,
+                    y=fluxline_df.groupby(
+                        fluxline_df.index % size
+                    )  # pylint: disable=E1101
+                    .current.mean()
+                    .pint.to("A")
+                    .pint.magnitude,
+                    z=fluxline_df.groupby(
+                        fluxline_df.index % size
+                    )  # pylint: disable=E1101
+                    .MSR.mean()
+                    .pint.to("V")
+                    .pint.magnitude,
+                    colorbar_x=0.46,
+                ),
+                row=1,
+                col=1,
+            )
+            fig.update_xaxes(title_text="Frequency (GHz)", row=1, col=1)
+
+            fig.add_trace(
+                go.Heatmap(
+                    x=fluxline_df.groupby(
+                        fluxline_df.index % size
+                    )  # pylint: disable=E1101
+                    .frequency.mean()
+                    .pint.to("GHz")
+                    .pint.magnitude,
+                    y=fluxline_df.groupby(
+                        fluxline_df.index % size
+                    )  # pylint: disable=E1101
+                    .current.mean()
+                    .pint.to("A")
+                    .pint.magnitude,
+                    z=fluxline_df.groupby(
+                        fluxline_df.index % size
+                    )  # pylint: disable=E1101
+                    .phase.mean()
+                    .pint.to("rad")
+                    .pint.magnitude,
+                    colorbar_x=1.01,
+                ),
+                row=1,
+                col=2,
+            )
+            fig.update_xaxes(title_text="Frequency (GHz)", row=1, col=2)
+            fig.update_yaxes(title_text="Current (A)", row=1, col=2)
+
+        fig.update_yaxes(title_text="Current (A)", row=1, col=1)
+        fig.update_layout(
+            showlegend=False,
+            uirevision="0",  # ``uirevision`` allows zooming while live plotting
         )
-
-    fig.update_layout(
-        showlegend=False,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
-    )
     return fig
 
 
-def frequency_attenuation_msr_phase(folder, routine, qubit, format):
+def dispersive_frequency_msr_phase(folder, routine, qubit, format):
 
     try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
-    except:
-        data = DataUnits(quantities={"frequency": "Hz", "attenuation": "dB"})
-
-    fig = make_subplots(
-        rows=1,
-        cols=2,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
-        subplot_titles=(
-            "MSR (V)",
-            "phase (rad)",
-        ),
-    )
-
-    size = len(data.df.attenuation.drop_duplicates()) * len(
-        data.df.frequency.drop_duplicates()  # pylint: disable=E1101
-    )
-
-    fig.add_trace(
-        go.Heatmap(
-            x=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-            .frequency.mean()
-            .pint.to("GHz")
-            .pint.magnitude,
-            y=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-            .attenuation.mean()
-            .pint.to("dB")
-            .pint.magnitude,
-            z=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-            .MSR.mean()
-            .pint.to("V")
-            .pint.magnitude,
-            colorbar_x=0.45,
-        ),
-        row=1,
-        col=1,
-    )
-
-    fig.add_trace(
-        go.Heatmap(
-            x=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-            .frequency.mean()
-            .pint.to("GHz")
-            .pint.magnitude,
-            y=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-            .attenuation.mean()
-            .pint.to("dB")
-            .pint.magnitude,
-            z=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-            .phase.mean()
-            .pint.to("rad")
-            .pint.magnitude,
-            colorbar_x=0.45,
-        ),
-        row=1,
-        col=2,
-    )
-
-    fig.update_layout(
-        showlegend=False,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Frequency (GHz)",
-        yaxis_title="Attenuation (dB)",
-        xaxis2_title="Frequency (GHz)",
-        yaxis2_title="Attenuation (dB)",
-    )
-    return fig
-
-
-def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
-
-    try:
-        data_spec = DataUnits.load_data(folder, routine, formato, f"data_q{qubit}")
-    except:
-        data_spec = DataUnits(name=f"data_q{qubit}", quantities={"frequency": "Hz"})
-
-    try:
-        data_shifted = DataUnits.load_data(
-            folder, routine, formato, f"data_shifted_q{qubit}"
+        data_spec = DataUnits.load_data(folder, routine, format, f"data")
+        data_spec.df = data_spec.df[data_spec.df["qubit"] == int(qubit)].reset_index(
+            drop=True
         )
     except:
-        data_shifted = DataUnits(
-            name=f"data_shifted_q{qubit}", quantities={"frequency": "Hz"}
-        )
+        data_spec = DataUnits(name=f"data", quantities={"frequency": "Hz"})
 
     try:
-        data_fit = Data.load_data(folder, routine, formato, f"fit_q{qubit}")
+        data_shifted = DataUnits.load_data(folder, routine, format, f"data_shifted")
+        data_shifted.df = data_shifted.df[
+            data_shifted.df["qubit"] == int(qubit)
+        ].reset_index(drop=True)
+    except:
+        data_shifted = DataUnits(name=f"data_shifted", quantities={"frequency": "Hz"})
+
+    try:
+        data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
     except:
         data_fit = Data(
             quantities=[
@@ -542,7 +465,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
 
     try:
         data_fit_shifted = Data.load_data(
-            folder, routine, formato, f"fit_shifted_q{qubit}"
+            folder, routine, format, f"fit_shifted_q{qubit}"
         )
     except:
         data_fit_shifted = Data(

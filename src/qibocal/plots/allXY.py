@@ -5,15 +5,40 @@ from plotly.subplots import make_subplots
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import cos
 
+gatelist = [
+    ["I", "I"],
+    ["RX(pi)", "RX(pi)"],
+    ["RY(pi)", "RY(pi)"],
+    ["RX(pi)", "RY(pi)"],
+    ["RY(pi)", "RX(pi)"],
+    ["RX(pi/2)", "I"],
+    ["RY(pi/2)", "I"],
+    ["RX(pi/2)", "RY(pi/2)"],
+    ["RY(pi/2)", "RX(pi/2)"],
+    ["RX(pi/2)", "RY(pi)"],
+    ["RY(pi/2)", "RX(pi)"],
+    ["RX(pi)", "RY(pi/2)"],
+    ["RY(pi)", "RX(pi/2)"],
+    ["RX(pi/2)", "RX(pi)"],
+    ["RX(pi)", "RX(pi/2)"],
+    ["RY(pi/2)", "RY(pi)"],
+    ["RY(pi)", "RY(pi/2)"],
+    ["RX(pi)", "I"],
+    ["RY(pi)", "I"],
+    ["RX(pi/2)", "RX(pi/2)"],
+    ["RY(pi/2)", "RY(pi/2)"],
+]
 
-# allXY
-def prob_gate(folder, routine, qubit, format):
+
+def allXY(folder, routine, qubit, format):
 
     try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
+        data = Data.load_data(folder, routine, format, "data")
+        data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
     except:
-        data = DataUnits(
-            quantities={"probability": "dimensionless", "gateNumber": "dimensionless"}
+        data = Data(
+            name="data",
+            quantities={"probability", "gateNumber", "qubit"},
         )
 
     fig = make_subplots(
@@ -31,10 +56,12 @@ def prob_gate(folder, routine, qubit, format):
         copy.drop(datasets[-1].index, inplace=True)
         fig.add_trace(
             go.Scatter(
-                x=datasets[-1]["gateNumber"].pint.to("dimensionless").pint.magnitude,
-                y=datasets[-1]["probability"].pint.to("dimensionless").pint.magnitude,
+                x=datasets[-1]["gateNumber"],
+                y=datasets[-1]["probability"],
                 marker_color="rgb(100, 0, 255)",
                 mode="markers",
+                text=gatelist,
+                textposition="bottom center",
                 opacity=0.3,
                 name="Probability",
                 showlegend=not bool(i),
@@ -46,18 +73,45 @@ def prob_gate(folder, routine, qubit, format):
 
     fig.add_trace(
         go.Scatter(
-            x=data.df.gateNumber.drop_duplicates().pint.magnitude,  # pylint: disable=E1101
-            y=data.df.groupby("gateNumber")["probability"]  # pylint: disable=E1101
-            .mean()
-            .pint.to("dimensionless")
-            .pint.magnitude,
+            x=data.df.gateNumber.drop_duplicates(),  # pylint: disable=E1101
+            y=data.df.groupby("gateNumber")[
+                "probability"
+            ].mean(),  # pylint: disable=E1101
             name="Average Probability",
             marker_color="rgb(100, 0, 255)",
             mode="markers",
+            text=gatelist,
+            textposition="bottom center",
         ),
         row=1,
         col=1,
     )
+
+    fig.add_hline(
+        y=-1,
+        line_width=2,
+        line_dash="dash",
+        line_color="grey",
+        row=1,
+        col=1,
+    )
+    fig.add_hline(
+        y=0,
+        line_width=2,
+        line_dash="dash",
+        line_color="grey",
+        row=1,
+        col=1,
+    )
+    fig.add_hline(
+        y=1,
+        line_width=2,
+        line_dash="dash",
+        line_color="grey",
+        row=1,
+        col=1,
+    )
+
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
@@ -71,17 +125,18 @@ def prob_gate(folder, routine, qubit, format):
 def prob_gate_iteration(folder, routine, qubit, format):
 
     try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, "data")
+        data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
     except:
         data = DataUnits(
             quantities={
                 "probability": "dimensionless",
                 "gateNumber": "dimensionless",
                 "beta_param": "dimensionless",
-            }
+            },
+            options=["qubit"],
         )
 
-    data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
     fig = make_subplots(
         rows=1,
         cols=1,
@@ -124,10 +179,37 @@ def prob_gate_iteration(folder, routine, qubit, format):
                     name=f"beta {beta_param}",
                     showlegend=not bool(i),
                     legendgroup=f"group{j}",
+                    text=gatelist,
+                    textposition="bottom center",
                 ),
                 row=1,
                 col=1,
             )
+
+    fig.add_hline(
+        y=-1,
+        line_width=2,
+        line_dash="dash",
+        line_color="grey",
+        row=1,
+        col=1,
+    )
+    fig.add_hline(
+        y=0,
+        line_width=2,
+        line_dash="dash",
+        line_color="grey",
+        row=1,
+        col=1,
+    )
+    fig.add_hline(
+        y=1,
+        line_width=2,
+        line_dash="dash",
+        line_color="grey",
+        row=1,
+        col=1,
+    )
 
     fig.update_layout(
         showlegend=True,
@@ -142,10 +224,11 @@ def prob_gate_iteration(folder, routine, qubit, format):
 def msr_beta(folder, routine, qubit, format):
 
     try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
+        data = DataUnits.load_data(folder, routine, format, "data")
+        data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
     except:
         data = DataUnits(
-            name=f"data_q{qubit}", quantities={"beta_param": "dimensionless"}
+            name="data", quantities={"beta_param": "dimensionless"}, options=["qubit"]
         )
     try:
         data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")

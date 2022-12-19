@@ -35,8 +35,10 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None):
             ],
         )
 
-    frequencies = data.get_values(*parse(x))
-    voltages = data.get_values(*parse(y))
+    frequencies_keys = parse(x)
+    voltages_keys = parse(y)
+    frequencies = data[frequencies_keys[0]].pint.to(frequencies_keys[1]).pint.magnitude
+    voltages = data[voltages_keys[0]].pint.to(voltages_keys[1]).pint.magnitude
 
     # Create a lmfit model for fitting equation defined in resonator_peak
     model_Q = lmfit.Model(lorenzian)
@@ -118,30 +120,30 @@ def rabi_fit(data, x, y, qubit, nqubits, labels):
         ],
     )
 
-    time = data.get_values(*parse(x))
-    voltages = data.get_values(*parse(y))
+    x_keys = parse(x)
+    y_keys = parse(y)
+    xs = data[x_keys[0]].pint.to(x_keys[1]).pint.magnitude
+    ys = data[y_keys[0]].pint.to(y_keys[1]).pint.magnitude
 
     if nqubits == 1:
         pguess = [
-            np.mean(voltages.values),
-            np.max(voltages.values) - np.min(voltages.values),
-            0.5 / time.values[np.argmin(voltages.values)],
+            np.mean(ys.values),
+            np.max(ys.values) - np.min(ys.values),
+            0.5 / xs.values[np.argmin(ys.values)],
             np.pi / 2,
             0.1e-6,
         ]
     else:
         pguess = [
-            np.mean(voltages.values),
-            np.max(voltages.values) - np.min(voltages.values),
-            0.5 / time.values[np.argmax(voltages.values)],
+            np.mean(ys.values),
+            np.max(ys.values) - np.min(ys.values),
+            0.5 / xs.values[np.argmax(ys.values)],
             np.pi / 2,
             0.1e-6,
         ]
     try:
-        popt, pcov = curve_fit(
-            rabi, time.values, voltages.values, p0=pguess, maxfev=10000
-        )
-        smooth_dataset = rabi(time.values, *popt)
+        popt, pcov = curve_fit(rabi, xs.values, ys.values, p0=pguess, maxfev=10000)
+        smooth_dataset = rabi(xs.values, *popt)
         pi_pulse_duration = np.abs((1.0 / popt[2]) / 2)
         pi_pulse_max_voltage = smooth_dataset.max()
         t2 = 1.0 / popt[4]  # double check T1
@@ -179,8 +181,10 @@ def ramsey_fit(data, x, y, qubit, qubit_freq, sampling_rate, offset_freq, labels
         ],
     )
 
-    time = data.get_values(*parse(x))
-    voltages = data.get_values(*parse(y))
+    time_keys = parse(x)
+    voltages_keys = parse(y)
+    time = data[time_keys[0]].pint.to(time_keys[1]).pint.magnitude
+    voltages = data[voltages_keys[0]].pint.to(voltages_keys[1]).pint.magnitude
 
     pguess = [
         np.mean(voltages.values),
@@ -228,27 +232,29 @@ def t1_fit(data, x, y, qubit, nqubits, labels):
             labels[0],
         ],
     )
+    print(data)
+    x_keys = parse(x)
+    y_keys = parse(y)
+    xs = data[x_keys[0]].pint.to(x_keys[1]).pint.magnitude
+    ys = data[y_keys[0]].pint.to(y_keys[1]).pint.magnitude
 
-    time = data.get_values(*parse(x))
-    voltages = data.get_values(*parse(y))
+    print(ys)
 
     if nqubits == 1:
         pguess = [
-            max(voltages.values),
-            (max(voltages.values) - min(voltages.values)),
+            max(ys.values),
+            (max(ys.values) - min(ys.values)),
             1 / 250,
         ]
     else:
         pguess = [
-            min(voltages.values),
-            (max(voltages.values) - min(voltages.values)),
+            min(ys.values),
+            (max(ys.values) - min(ys.values)),
             1 / 250,
         ]
 
     try:
-        popt, pcov = curve_fit(
-            exp, time.values, voltages.values, p0=pguess, maxfev=2000000
-        )
+        popt, pcov = curve_fit(exp, xs.values, ys.values, p0=pguess, maxfev=2000000)
         t1 = abs(1 / popt[2])
 
     except:
@@ -280,8 +286,10 @@ def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
         ],
     )
 
-    flips = data.get_values(*parse(x))  # Check X data stores. N flips or i?
-    voltages = data.get_values(*parse(y))
+    flips_keys = parse(x)
+    voltages_keys = parse(y)
+    flips = data[flips_keys[0]].pint.to(flips_keys[1]).pint.magnitude
+    voltages = data[voltages_keys[0]].pint.to(voltages_keys[1]).pint.magnitude
 
     if nqubits == 1:
         pguess = [0.0003, np.mean(voltages), -18, 0]  # epsilon guess parameter
@@ -312,7 +320,7 @@ def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
     return data_fit
 
 
-def drag_tunning_fit(data, x, y, qubit, nqubits, labels):
+def drag_tuning_fit(data, x, y, qubit, nqubits, labels):
 
     data_fit = Data(
         name=f"fit_q{qubit}",
@@ -325,8 +333,10 @@ def drag_tunning_fit(data, x, y, qubit, nqubits, labels):
         ],
     )
 
-    beta_params = data.get_values(*parse(x))
-    voltages = data.get_values(*parse(y))
+    beta_params_keys = parse(x)
+    voltages_keys = parse(y)
+    beta_params = data[beta_params_keys[0]].pint.to(beta_params_keys[1]).pint.magnitude
+    voltages = data[voltages_keys[0]].pint.to(voltages_keys[1]).pint.magnitude
 
     pguess = [
         0,  # Offset:    p[0]
@@ -355,3 +365,84 @@ def drag_tunning_fit(data, x, y, qubit, nqubits, labels):
         }
     )
     return data_fit
+
+
+def calibrate_qubit_states_fit(data, nshots, qubits):
+
+    parameters = Data(
+        name=f"parameters",
+        quantities={
+            "rotation_angle",  # in degrees
+            "threshold",
+            "fidelity",
+            "assignment_fidelity",
+            "average_state0",
+            "average_state1",
+            "qubit",
+        },
+    )
+    for qubit in qubits:
+        qubit_data = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
+
+        iq_state0 = (
+            qubit_data[qubit_data["state"] == 0]["i"].pint.to("V").pint.magnitude
+            + 1.0j
+            * qubit_data[qubit_data["state"] == 0]["q"].pint.to("V").pint.magnitude
+        )
+        iq_state1 = (
+            qubit_data[qubit_data["state"] == 1]["i"].pint.to("V").pint.magnitude
+            + 1.0j
+            * qubit_data[qubit_data["state"] == 1]["q"].pint.to("V").pint.magnitude
+        )
+
+        iq_state1 = np.array(iq_state1)
+        iq_state0 = np.array(iq_state0)
+
+        iq_mean_state1 = np.mean(iq_state1)
+        iq_mean_state0 = np.mean(iq_state0)
+        origin = iq_mean_state0
+
+        iq_state0_translated = iq_state0 - origin
+        iq_state1_translated = iq_state1 - origin
+        rotation_angle = np.angle(np.mean(iq_state1_translated))
+
+        iq_state1_rotated = iq_state1 * np.exp(-1j * rotation_angle)
+        iq_state0_rotated = iq_state0 * np.exp(-1j * rotation_angle)
+
+        real_values_state1 = iq_state1_rotated.real
+        real_values_state0 = iq_state0_rotated.real
+
+        real_values_combined = np.concatenate((real_values_state1, real_values_state0))
+        real_values_combined.sort()
+
+        cum_distribution_state1 = [
+            sum(map(lambda x: x.real >= real_value, real_values_state1))
+            for real_value in real_values_combined
+        ]
+        cum_distribution_state0 = [
+            sum(map(lambda x: x.real >= real_value, real_values_state0))
+            for real_value in real_values_combined
+        ]
+
+        cum_distribution_diff = np.abs(
+            np.array(cum_distribution_state1) - np.array(cum_distribution_state0)
+        )
+        argmax = np.argmax(cum_distribution_diff)
+        threshold = real_values_combined[argmax]
+        errors_state1 = nshots - cum_distribution_state1[argmax]
+        errors_state0 = cum_distribution_state0[argmax]
+        fidelity = cum_distribution_diff[argmax] / nshots
+        assignment_fidelity = 1 - (errors_state1 + errors_state0) / nshots / 2
+        # assignment_fidelity = 1/2 + (cum_distribution_state1[argmax] - cum_distribution_state0[argmax])/nshots/2
+
+        results = {
+            "rotation_angle": (-rotation_angle * 360 / (2 * np.pi)) % 360,  # in degrees
+            "threshold": threshold,
+            "fidelity": fidelity,
+            "assignment_fidelity": assignment_fidelity,
+            "average_state0": iq_mean_state0,
+            "average_state1": iq_mean_state1,
+            "qubit": qubit,
+        }
+        parameters.add(results)
+    return parameters
