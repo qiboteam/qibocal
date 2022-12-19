@@ -6,7 +6,6 @@ from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import freq_r_mathieu, freq_r_transmon, line, lorenzian
-from qibocal.fitting.utils import lorenzian
 from qibocal.plots.utils import get_data_subfolders
 
 
