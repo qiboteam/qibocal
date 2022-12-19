@@ -1,3 +1,5 @@
+from colorsys import hls_to_rgb
+
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -5,6 +7,10 @@ from plotly.subplots import make_subplots
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import flipping
 from qibocal.plots.utils import get_data_subfolders
+
+
+def _get_color(number):
+    return "rgb" + str(hls_to_rgb((0.75 - number * 3 / 20) % 1, 0.4, 0.75))
 
 
 # Flipping
@@ -45,7 +51,7 @@ def flips_msr_phase(folder, routine, qubit, format):
                 go.Scatter(
                     x=iteration_data["flips"].pint.magnitude,
                     y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
-                    marker_color="rgb(100, 0, 255)",
+                    marker_color=_get_color(report_n),
                     opacity=0.3,
                     name=f"q{qubit}/r{report_n}: MSR",
                     showlegend=not bool(iteration),
@@ -58,7 +64,7 @@ def flips_msr_phase(folder, routine, qubit, format):
                 go.Scatter(
                     x=iteration_data["flips"].pint.magnitude,
                     y=iteration_data["phase"].pint.to("rad").pint.magnitude,
-                    marker_color="rgb(102, 180, 71)",
+                    marker_color=_get_color(report_n),
                     name=f"q{qubit}/r{report_n}: phase",
                     opacity=0.3,
                     showlegend=not bool(iteration),
@@ -76,7 +82,7 @@ def flips_msr_phase(folder, routine, qubit, format):
                 .pint.to("uV")
                 .pint.magnitude,
                 name=f"q{qubit}/r{report_n}: Average MSR",
-                marker_color="rgb(100, 0, 255)",
+                marker_color=_get_color(report_n),
             ),
             row=1,
             col=1,
@@ -89,7 +95,7 @@ def flips_msr_phase(folder, routine, qubit, format):
                 .pint.to("rad")
                 .pint.magnitude,
                 name=f"q{qubit}/r{report_n}: Average phase",
-                marker_color="rgb(102, 180, 71)",
+                marker_color=_get_color(report_n),
             ),
             row=1,
             col=2,
