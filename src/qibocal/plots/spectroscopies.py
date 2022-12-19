@@ -664,7 +664,9 @@ def frequency_attenuation(folder, routine, qubit, format):
         data = DataUnits(quantities={"frequency": "Hz", "attenuation": "dB"})
 
     try:
-        data1 = DataUnits.load_data(folder, "data", routine, format, f"results_q{qubit}")
+        data1 = DataUnits.load_data(
+            folder, "data", routine, format, f"results_q{qubit}"
+        )
     except:
         data1 = DataUnits(
             quantities={"snr": "dimensionless", "frequency": "Hz", "attenuation": "dB"}
@@ -750,7 +752,9 @@ def frequency_current_flux(folder, routine, qubit, format):
         shared_yaxes=True,
     )
     for k, j in enumerate(fluxes):
-        data_spec = DataUnits.load_data(folder, "data", routine, format, f"data_q{qubit}_f{j}")
+        data_spec = DataUnits.load_data(
+            folder, "data", routine, format, f"data_q{qubit}_f{j}"
+        )
         fig.add_trace(
             go.Scatter(
                 x=data_spec.get_values("current", "A"),
