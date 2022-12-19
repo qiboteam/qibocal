@@ -22,6 +22,40 @@ def qubit_spectroscopy(
     points=10,
 ):
 
+    r"""
+    Perform spectroscopy on the qubit.
+    This routine executes a fast scan around the expected qubit frequency indicated in the platform runcard.
+    Afterthat, a final sweep with more precision is executed centered in the new qubit frequency found.
+
+    Args:
+        platform (AbstractPlatform): Qibolab platform object
+        qubit (int): Target qubit to perform the action
+        fast_start (int): Initial frequenecy in HZ to perform the qubit fast sweep
+        fast_end (int): End frequenecy in HZ to perform the qubit fast sweep
+        fast_step (int): Step frequenecy in HZ for the qubit fast sweep
+        precision_start (int): Initial frequenecy in HZ to perform the qubit precision sweep
+        precision_end (int): End frequenecy in HZ to perform the qubit precision sweep
+        precision_step (int): Step frequenecy in HZ for the qubit precision sweep
+        software_averages (int): Number of executions of the routine for averaging results
+        points (int): Save data results in a file every number of points
+
+    Returns:
+        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys:
+            - "MSR[V]": Resonator signal voltage mesurement in volts
+            - "i[V]": Resonator signal voltage mesurement for the component I in volts
+            - "q[V]": Resonator signal voltage mesurement for the component Q in volts
+            - "phase[rad]": Resonator signal phase mesurement in radians
+            - "frequency[Hz]": Resonator frequency value in Hz
+
+        A DataUnits object with the fitted data obtained with the following keys:
+            - qubit_freq: frequency
+            - peak_voltage: peak voltage
+            - *popt0*: Lorentzian's amplitude
+            - *popt1*: Lorentzian's center
+            - *popt2*: Lorentzian's sigma
+            - *popt3*: Lorentzian's offset
+    """
+
     platform.reload_settings()
 
     sequence = PulseSequence()
@@ -142,6 +176,41 @@ def qubit_spectroscopy_flux(
     fluxline,
     points=10,
 ):
+
+    r"""
+    Perform spectroscopy on the qubit modifying the current applied in the flux control line.
+    This routine works for multiqubit devices flux controlled.
+
+    Args:
+        platform (AbstractPlatform): Qibolab platform object
+        qubit (int): Target qubit to perform the action
+        freq_width (int): Width frequenecy in HZ to perform the spectroscopy sweep
+        freq_step (int): Step frequenecy in HZ for the spectroscopy sweep
+        current_max (int): Minimum value in mV for the flux current sweep
+        current_min (int): Minimum value in mV for the flux current sweep
+        current_step (int): Step attenuation in mV for the flux current sweep
+        software_averages (int): Number of executions of the routine for averaging results
+        fluxline (int): Flux line associated to the target qubit. If it is set to "qubit", the platform
+                automatically obtain the flux line number of the target qubit.
+        points (int): Save data results in a file every number of points
+
+    Returns:
+        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys:
+            - "MSR[V]": Resonator signal voltage mesurement in volts
+            - "i[V]": Resonator signal voltage mesurement for the component I in volts
+            - "q[V]": Resonator signal voltage mesurement for the component Q in volts
+            - "phase[rad]": Resonator signal phase mesurement in radians
+            - "frequency[Hz]": Resonator frequency value in Hz
+
+        A DataUnits object with the fitted data obtained with the following keys:
+            - qubit_freq: frequency
+            - peak_voltage: peak voltage
+            - *popt0*: Lorentzian's amplitude
+            - *popt1*: Lorentzian's center
+            - *popt2*: Lorentzian's sigma
+            - *popt3*: Lorentzian's offset
+    """
+
     platform.reload_settings()
 
     if fluxline == "qubit":

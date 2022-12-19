@@ -42,6 +42,29 @@ def allXY(
     points=10,
 ):
 
+    r"""
+    The AllXY experiment is a simple test of the calibration of single qubit gatesThe qubit (initialized in the |0> state)
+    is subjected to two back-to-back single-qubit gates and measured. In each round, we run 21 different gate pairs:
+    ideally, the first 5 return the qubit to |0>, the next 12 drive it to superposition state, and the last 4 put the
+    qubit in |1> state.
+
+    Args:
+        platform (AbstractPlatform): Qibolab platform object
+        qubit (int): Target qubit to perform the action
+        beta_param (float): Drag pi pulse coefficient. If none, teh default shape defined in the runcard will be used.
+        points (int): Save data results in a file every number of points
+
+    Returns:
+        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys:
+            - "MSR[V]": Difference between resonator signal voltage mesurement in volts from sequence 1 and 2
+            - "i[V]": Difference between resonator signal voltage mesurement for the component I in volts from sequence 1 and 2
+            - "q[V]": Difference between resonator signal voltage mesurement for the component Q in volts from sequence 1 and 2
+            - "phase[rad]": Difference between resonator signal phase mesurement in radians from sequence 1 and 2
+            - "probability[dimensionless]": Probability of being in |0> state
+            - "gateNumber[dimensionless]": Gate number applied from the list of gates
+
+    """
+
     state0_voltage = complex(
         platform.characterization["single_qubit"][qubit]["state0_voltage"]
     )
@@ -110,6 +133,35 @@ def allXY_iteration(
     software_averages=1,
     points=10,
 ):
+
+    r"""
+    The AllXY experiment is a simple test of the calibration of single qubit gatesThe qubit (initialized in the |0> state)
+    is subjected to two back-to-back single-qubit gates and measured. In each round, we run 21 different gate pairs:
+    ideally, the first 5 return the qubit to |0>, the next 12 drive it to superposition state, and the last 4 put the
+    qubit in |1> state.
+
+    The AllXY iteration method allows the user to execute iteratively the list of gates playing with the drag pulse shape
+    in order to find the optimal drag pulse coefficient for pi pulses.
+
+    Args:
+        platform (AbstractPlatform): Qibolab platform object
+        qubit (int): Target qubit to perform the action
+        beta_start (float): Initial drag pulse beta parameter
+        beta_end (float): Maximum drag pulse beta parameter
+        beta_step (float): Scan range step for the drag pulse beta parameter
+        points (int): Save data results in a file every number of points
+
+    Returns:
+        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys:
+            - "MSR[V]": Difference between resonator signal voltage mesurement in volts from sequence 1 and 2
+            - "i[V]": Difference between resonator signal voltage mesurement for the component I in volts from sequence 1 and 2
+            - "q[V]": Difference between resonator signal voltage mesurement for the component Q in volts from sequence 1 and 2
+            - "phase[rad]": Difference between resonator signal phase mesurement in radians from sequence 1 and 2
+            - "probability[dimensionless]": Probability of being in |0> state
+            - "gateNumber[dimensionless]": Gate number applied from the list of gates
+            - "beta_param[dimensionless]": Beta paramter applied in the current execution
+
+    """
 
     # FIXME: Waiting to be able to pass qpucard to qibolab
     ro_pulse_test = platform.create_qubit_readout_pulse(qubit, start=4)
@@ -184,6 +236,34 @@ def drag_pulse_tunning(
     beta_step,
     points=10,
 ):
+
+    r"""
+    In this experiment, we apply two sequences in a given qubit: Rx(pi/2) - Ry(pi) and Ry(pi) - Rx(pi/2) for a range
+    of different beta parameter values. After fitting, we obtain the best coefficient value for a pi pulse with drag shape.
+
+    Args:
+        platform (AbstractPlatform): Qibolab platform object
+        qubit (int): Target qubit to perform the action
+        beta_start (float): Initial drag pulse beta parameter
+        beta_end (float): Maximum drag pulse beta parameter
+        beta_step (float): Scan range step for the drag pulse beta parameter
+        points (int): Save data results in a file every number of points
+
+    Returns:
+        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys:
+            - "MSR[V]": Difference between resonator signal voltage mesurement in volts from sequence 1 and 2
+            - "i[V]": Difference between resonator signal voltage mesurement for the component I in volts from sequence 1 and 2
+            - "q[V]": Difference between resonator signal voltage mesurement for the component Q in volts from sequence 1 and 2
+            - "phase[rad]": Difference between resonator signal phase mesurement in radians from sequence 1 and 2
+            - "beta_param[dimensionless]": Optimal drag coefficient
+
+        A DataUnits object with the fitted data obtained with the following keys:
+            - optimal_beta_param: Best drag pulse coefficent
+            - *popt0*: offset
+            - *popt1*: oscillation amplitude
+            - *popt2*: period
+            - *popt3*: phase
+    """
 
     # platform.reload_settings()
 
