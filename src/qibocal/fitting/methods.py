@@ -555,7 +555,7 @@ def res_spectrocopy_flux_matrix(folder, fluxlines):
         for i, q in enumerate(fluxlines):
             for j, f in enumerate(fluxlines):
                 data_fit = Data.load_data(
-                    folder, "resonator_flux_sample", "csv", f"fit1_q{q}_f{f}"
+                    folder, "data", "resonator_flux_sample", "csv", f"fit1_q{q}_f{f}"
                 )
                 if q == f:
                     element = "C_ii"
