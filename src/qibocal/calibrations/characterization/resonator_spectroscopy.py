@@ -1,4 +1,5 @@
 import numpy as np
+from qibo.config import log
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
@@ -67,6 +68,8 @@ def resonator_spectroscopy(
         "resonator_freq"
     ]
 
+    qrm_LO = platform.qrm[qubit].ports["o1"].lo_frequency
+
     frequency_range = (
         variable_resolution_scanrange(
             lowres_width, lowres_step, highres_width, highres_step
@@ -87,7 +90,8 @@ def resonator_spectroscopy(
                     y="MSR[uV]",
                     qubit=qubit,
                     nqubits=platform.settings["nqubits"],
-                    labels=["resonator_freq", "peak_voltage"],
+                    labels=["resonator_freq", "peak_voltage", "MZ_freq"],
+                    qrm_lo=qrm_LO,
                 )
 
             platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
@@ -145,7 +149,8 @@ def resonator_spectroscopy(
                     y="MSR[uV]",
                     qubit=qubit,
                     nqubits=platform.settings["nqubits"],
-                    labels=["resonator_freq", "peak_voltage"],
+                    labels=["resonator_freq", "peak_voltage", "MZ_freq"],
+                    qrm_lo=qrm_LO,
                 )
 
             platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
@@ -319,9 +324,11 @@ def resonator_spectroscopy_flux(
         np.arange(current_min, current_max, current_step) + qubit_biasing_current
     )
 
+    resonator_polycoef_flux = {}
     count = 0
     for _ in range(software_averages):
         for curr in current_range:
+            k = 0
             for freq in frequency_range:
                 if count % points == 0:
                     yield data
@@ -338,11 +345,25 @@ def resonator_spectroscopy_flux(
                     "frequency[Hz]": freq,
                     "current[A]": curr,
                 }
+                if k == 0:
+                    min_msr = msr
+                    resonance_freq = freq
+                    resonance_current = curr
+
+                if msr < min_msr:
+                    min_msr = msr
+                    resonance_freq = freq
+                    resonance_current = curr
+
                 # TODO: implement normalization
                 data.add(results)
                 count += 1
+                k += 1
+
+            resonator_polycoef_flux[round(resonance_current, 5)] = resonance_freq
 
     yield data
+    log.info(f"Polycoef dict: {resonator_polycoef_flux}")
     # TODO: automatically extract the sweet spot current
     # TODO: add a method to generate the matrix
 
@@ -480,6 +501,8 @@ def dispersive_shift(
         "resonator_freq"
     ]
 
+    qrm_LO = platform.qrm[qubit].ports["o1"].lo_frequency
+
     frequency_range = (
         np.arange(-freq_width, freq_width, freq_step) + resonator_frequency
     )
@@ -496,7 +519,8 @@ def dispersive_shift(
                     y="MSR[uV]",
                     qubit=qubit,
                     nqubits=platform.settings["nqubits"],
-                    labels=["resonator_freq", "peak_voltage"],
+                    labels=["resonator_freq", "peak_voltage", "MZ_freq"],
+                    qrm_lo=qrm_LO,
                 )
             platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
             msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
@@ -534,8 +558,9 @@ def dispersive_shift(
                     y="MSR[uV]",
                     qubit=qubit,
                     nqubits=platform.settings["nqubits"],
-                    labels=["resonator_freq", "peak_voltage"],
+                    labels=["resonator_freq", "peak_voltage", "MZ_freq"],
                     fit_file_name="fit_shifted",
+                    qrm_lo=qrm_LO,
                 )
             platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
             msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
