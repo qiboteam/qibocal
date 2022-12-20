@@ -25,12 +25,13 @@ class ActionBuilder:
         force (bool): option to overwrite the output folder if it exists already.
     """
 
-    def __init__(self, runcard, folder=None, force=False, platform_runcard=None):
+    def __init__(self, runcard, folder=None, force=False):
         path, self.folder = self._generate_output_folder(folder, force)
         self.runcard = load_yaml(runcard)
         # Qibolab default backend if not provided in runcard.
         backend_name = self.runcard.get("backend", "qibolab")
         platform_name = self.runcard.get("platform", "dummy")
+        platform_runcard = self.runcard.get("runcard", None)
         self.backend, self.platform = self._allocate_backend(
             backend_name, platform_name, path, platform_runcard
         )

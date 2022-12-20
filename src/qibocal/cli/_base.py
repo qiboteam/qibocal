@@ -33,12 +33,6 @@ TARGET_COMPARE_DIR = "qq-compare/"
 
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.argument("runcard", metavar="RUNCARD", type=click.Path(exists=True))
-@click.argument(
-    "platform_runcard",
-    metavar="PLATFORM_RUNCARD",
-    type=click.Path(exists=True),
-    required=False,
-)
 @click.option(
     "folder",
     "-o",
@@ -51,7 +45,7 @@ TARGET_COMPARE_DIR = "qq-compare/"
     is_flag=True,
     help="Use --force option to overwrite the output folder.",
 )
-def command(runcard, folder, force=None, platform_runcard=None):
+def command(runcard, folder, force=None):
 
     """qibocal: Quantum Calibration Verification and Validation using Qibo.
 
@@ -62,7 +56,7 @@ def command(runcard, folder, force=None, platform_runcard=None):
      - PLATFORM_RUNCARD: Qibolab's platform runcard. If not provided Qibocal will use the runcard available in Qibolab for the platform chosen.
     """
 
-    builder = ActionBuilder(runcard, folder, force, platform_runcard)
+    builder = ActionBuilder(runcard, folder, force)
     builder.execute()
     builder.dump_report()
 
