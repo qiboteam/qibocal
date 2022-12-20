@@ -25,14 +25,14 @@ class ActionBuilder:
         force (bool): option to overwrite the output folder if it exists already.
     """
 
-    def __init__(self, runcard, folder=None, force=False):
+    def __init__(self, runcard, folder=None, force=False, platform_runcard=None):
         path, self.folder = self._generate_output_folder(folder, force)
         self.runcard = load_yaml(runcard)
         # Qibolab default backend if not provided in runcard.
         backend_name = self.runcard.get("backend", "qibolab")
         platform_name = self.runcard.get("platform", "dummy")
         self.backend, self.platform = self._allocate_backend(
-            backend_name, platform_name, path
+            backend_name, platform_name, path, platform_runcard
         )
         self.qubits = self.runcard["qubits"]
         self.format = self.runcard["format"]
@@ -72,14 +72,17 @@ class ActionBuilder:
         os.makedirs(path)
         return path, folder
 
-    def _allocate_backend(self, backend_name, platform_name, path):
+    def _allocate_backend(self, backend_name, platform_name, path, platform_runcard):
         """Allocate the platform using Qibolab."""
         from qibo.backends import GlobalBackend, set_backend
 
         if backend_name == "qibolab":
-            from qibolab.paths import qibolab_folder
+            if platform_runcard is None:
+                from qibolab.paths import qibolab_folder
 
-            original_runcard = qibolab_folder / "runcards" / f"{platform_name}.yml"
+                original_runcard = qibolab_folder / "runcards" / f"{platform_name}.yml"
+            else:
+                original_runcard = platform_runcard
             # copy of the original runcard that will stay unmodified
             shutil.copy(original_runcard, f"{path}/platform.yml")
             # copy of the original runcard that will be modified during calibration
