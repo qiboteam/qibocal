@@ -9,3 +9,4 @@ In this section we present the basic aspects of the Qibocal design and provide i
     installation
     interface
     runcard
+    resonator_sample/resonator_spectroscopy_sample

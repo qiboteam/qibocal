@@ -20,11 +20,12 @@ protocol, with changed parameters.
 This algorithm closely follows a feature as the experimental parameters are slowly shifted.
 
 We allow for input on the precision and range the samples are taken around the initial guess. As well as the precision on the
-fast sweep used to fine tune the result.
+fast sweep used to fine tune the result (see `runcard <https://github.com/qiboteam/qibocal/blob/main/runcards/actions_sample.yml/>`_).
 
 The "sample" methods will contain the following entries:
 
-.. code-block:: python
+.. code-block:: yaml
+
     max_runs: 40
     thr: 5
     spans: [10000000, 5000000]
