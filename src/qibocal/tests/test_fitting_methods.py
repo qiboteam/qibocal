@@ -5,7 +5,7 @@ import pytest
 
 from qibocal.config import log
 from qibocal.data import DataUnits
-from qibocal.fitting.methods import res_spectrocopy_flux_fit
+from qibocal.fitting.methods import res_spectroscopy_flux_fit
 from qibocal.fitting.utils import freq_r_mathieu, freq_r_transmon, line
 
 
@@ -18,7 +18,7 @@ from qibocal.fitting.utils import freq_r_mathieu, freq_r_transmon, line
         (1, 2, 2),
     ],
 )
-def test_res_spectrocopy_flux_fit(name, qubit, fluxline, num_params, caplog):
+def test_res_spectroscopy_flux_fit(name, qubit, fluxline, num_params, caplog):
     """Test the *res_spectrocopy_flux_fit* function"""
     x = np.linspace(-0.01, 0.03, 100)
     if num_params == 6:
@@ -76,7 +76,7 @@ def test_res_spectrocopy_flux_fit(name, qubit, fluxline, num_params, caplog):
 
     data.load_data_from_dict(mydict)
 
-    fit = res_spectrocopy_flux_fit(
+    fit = res_spectroscopy_flux_fit(
         data, "current[A]", "frequency[Hz]", qubit, fluxline, params_fit
     )
 
@@ -90,7 +90,7 @@ def test_res_spectrocopy_flux_fit(name, qubit, fluxline, num_params, caplog):
 
     data.load_data_from_dict(mydict)
 
-    fit = res_spectrocopy_flux_fit(
+    fit = res_spectroscopy_flux_fit(
         data, "current[A]", "frequency[Hz]", qubit, fluxline, params_fit
     )
     assert "The fitting was not successful" in caplog.text
