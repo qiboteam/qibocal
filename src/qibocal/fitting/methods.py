@@ -378,8 +378,8 @@ def drag_tunning_fit(data, x, y, qubit, nqubits, labels):
     return data_fit
 
 
-def res_spectrocopy_flux_fit(data, x, y, qubit, fluxline, params_fit):
-    """Fit frequency as a funcition of current for the flux resonator spectroscopy
+def res_spectroscopy_flux_fit(data, x, y, qubit, fluxline, params_fit):
+    """Fit frequency as a function of current for the flux resonator spectroscopy
         Args:
         data (DataUnits): Data file with information on the feature response at each current point.
         x (str): Column of the data file associated to x-axis.
@@ -525,7 +525,7 @@ def res_spectrocopy_flux_fit(data, x, y, qubit, fluxline, params_fit):
     return data_fit
 
 
-def res_spectrocopy_flux_matrix(folder, fluxlines):
+def res_spectroscopy_flux_matrix(folder, fluxlines):
     """Calculation of the resonator flux matrix, Mf.
        curr = Mf*freq + offset_c.
        Mf = Mc^-1, offset_c = -Mc^-1 * offset_f

@@ -59,27 +59,3 @@ def get_noise(background, platform, ro_pulse, qubit, sequence):
         msr = platform.execute_pulse_sequence(sequence)[ro_pulse.serial][0]
         noise += msr
     return noise / len(background)
-
-
-def plot_flux(currs, freqs, qubit, fluxline):
-    """Quick plot for the flux vs. current calibration.
-    TODO: Move to plots with the new qq_live architecture.
-
-    """
-    import matplotlib.pyplot as plt
-
-    fig = plt.figure(figsize=(8, 8))
-    plt.plot(currs, freqs)
-    plt.savefig(f"flux_q{qubit}_f{fluxline}.png", bbox_inches="tight")
-
-
-def plot_punchout(atts, freqs, qubit):
-    """Quick plot for the atts vs. freqs calibration.
-    TODO: Move to plots with the new qq_live architecture.
-
-    """
-    import matplotlib.pyplot as plt
-
-    fig = plt.figure(figsize=(8, 8))
-    plt.plot(freqs, atts)
-    plt.savefig(f"qubit_{qubit}_punchout.png", bbox_inches="tight")

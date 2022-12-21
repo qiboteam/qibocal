@@ -5,10 +5,7 @@ from qibolab.pulses import PulseSequence
 from qibocal.calibrations.characterization.utils import choose_freq, get_noise, snr
 from qibocal.data import DataUnits
 from qibocal.decorators import plot
-from qibocal.fitting.methods import (
-    res_spectrocopy_flux_fit,
-    res_spectrocopy_flux_matrix,
-)
+from qibocal.fitting.methods import res_spectroscopy_flux_fit
 from qibocal.plots import frequency_attenuation, frequency_current_flux
 
 
@@ -326,7 +323,7 @@ def resonator_flux_sample(
             data.add(results)
             if k % points == 0:
                 yield data
-        yield res_spectrocopy_flux_fit(
+        yield res_spectroscopy_flux_fit(
             data,
             x="current[A]",
             y="frequency[Hz]",
