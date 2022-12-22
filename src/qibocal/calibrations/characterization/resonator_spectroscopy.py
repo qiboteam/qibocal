@@ -29,10 +29,9 @@ def resonator_spectroscopy(
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
     sequence.add(ro_pulse)
 
-    resonator_frequency = platform.characterization["single_qubit"][qubit][
-        "resonator_freq"
-    ]
+    resonator_frequency = platform.get_resonator_frequency(qubit)
 
+    # TODO: is this parameter necessary
     qrm_LO = platform.qrm[qubit].ports["o1"].lo_frequency
 
     frequency_range = (
@@ -59,7 +58,7 @@ def resonator_spectroscopy(
                     qrm_lo=qrm_LO,
                 )
 
-            platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
+            platform.set_lo_frequency(qubit, freq - ro_pulse.frequency)
             msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
                 ro_pulse.serial
             ]
@@ -118,7 +117,8 @@ def resonator_spectroscopy(
                     qrm_lo=qrm_LO,
                 )
 
-            platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
+            # platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
+            platform.set_lo_frequency(qubit, freq - ro_pulse.frequency)
             msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
                 ro_pulse.serial
             ]
