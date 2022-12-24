@@ -45,7 +45,7 @@ def get_graph(n, current_figure, url):
         qubit = int(qubit)
     except:
         pass
-    
+
     try:
         # data = DataUnits.load_data(folder, routine, format, "precision_sweep")
         # with open(f"{folder}/platform.yml", "r") as f:
