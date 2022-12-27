@@ -37,12 +37,12 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None, qrm_l
 
         A ``Data`` object with the following keys
 
-            - *labels[0]*: peak voltage
-            - *labels[1]*: frequency
-            - *popt0*: Lorentzian's amplitude
-            - *popt1*: Lorentzian's center
-            - *popt2*: Lorentzian's sigma
-            - *popt3*: Lorentzian's offset
+            - **labels[0]**: peak voltage
+            - **labels[1]**: frequency
+            - **popt0**: Lorentzian's amplitude
+            - **popt1**: Lorentzian's center
+            - **popt2**: Lorentzian's sigma
+            - **popt3**: Lorentzian's offset
 
     Example:
 
@@ -233,13 +233,13 @@ def rabi_fit(data, x, y, qubit, nqubits, labels):
 
         A ``Data`` object with the following keys
 
-            - *popt0*: offset
-            - *popt1*: oscillation amplitude
-            - *popt2*: frequency
-            - *popt3*: phase
-            - *popt4*: T2
-            - *labels[0]*: pulse duration
-            - *labels[1]*: pulse's maximum voltage
+            - **popt0**: offset
+            - **popt1**: oscillation amplitude
+            - **popt2**: frequency
+            - **popt3**: phase
+            - **popt4**: T2
+            - **labels[0]**: pulse duration
+            - **labels[1]**: pulse's maximum voltage
     """
 
     data_fit = Data(
@@ -324,14 +324,14 @@ def ramsey_fit(data, x, y, qubit, qubit_freq, sampling_rate, offset_freq, labels
 
         A ``Data`` object with the following keys
 
-            - *popt0*: offset
-            - *popt1*: oscillation amplitude
-            - *popt2*: frequency
-            - *popt3*: phase
-            - *popt4*: T2
-            - *labels[0]*: Physical detunning of the actual qubit frequency
-            - *labels[1]*: New qubit frequency after correcting the actual qubit frequency with the detunning calculated (labels[0])
-            - *labels[2]*: T2
+            - **popt0**: offset
+            - **popt1**: oscillation amplitude
+            - **popt2**: frequency
+            - **popt3**: phase
+            - **popt4**: T2
+            - **labels[0]**: Physical detunning of the actual qubit frequency
+            - **labels[1]**: New qubit frequency after correcting the actual qubit frequency with the detunning calculated (labels[0])
+            - **labels[2]**: T2
     """
     data_fit = Data(
         name=f"fit_q{qubit}",
@@ -407,10 +407,10 @@ def t1_fit(data, x, y, qubit, nqubits, labels):
 
         A ``Data`` object with the following keys
 
-            - *popt0*: p0
-            - *popt1*: p1
-            - *popt2*: p2
-            - *labels[0]*: T1.
+            - **popt0**: p0
+            - **popt1**: p1
+            - **popt2**: p2
+            - **labels[0]**: T1.
 
 
 
@@ -486,12 +486,12 @@ def flipping_fit(data, x, y, qubit, nqubits, niter, pi_pulse_amplitude, labels):
 
         A ``Data`` object with the following keys
 
-            - *popt0*: p0
-            - *popt1*: p1
-            - *popt2*: p2
-            - *popt3*: p3
-            - *labels[0]*: delta amplitude
-            - *labels[1]*: corrected amplitude
+            - **popt0**: p0
+            - **popt1**: p1
+            - **popt2**: p2
+            - **popt3**: p3
+            - **labels[0]**: delta amplitude
+            - **labels[1]**: corrected amplitude
 
 
     """
@@ -561,11 +561,11 @@ def drag_tunning_fit(data, x, y, qubit, nqubits, labels):
 
         A ``Data`` object with the following keys
 
-            - *popt0*: offset
-            - *popt1*: oscillation amplitude
-            - *popt2*: period
-            - *popt3*: phase
-            - *labels[0]*: optimal beta.
+            - **popt0**: offset
+            - **popt1**: oscillation amplitude
+            - **popt2**: period
+            - **popt3**: phase
+            - **labels[0]**: optimal beta.
 
 
     """

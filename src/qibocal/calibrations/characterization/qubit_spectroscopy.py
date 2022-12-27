@@ -40,20 +40,22 @@ def qubit_spectroscopy(
         points (int): Save data results in a file every number of points
 
     Returns:
-        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys:
-            - "MSR[V]": Resonator signal voltage mesurement in volts
-            - "i[V]": Resonator signal voltage mesurement for the component I in volts
-            - "q[V]": Resonator signal voltage mesurement for the component Q in volts
-            - "phase[rad]": Resonator signal phase mesurement in radians
-            - "frequency[Hz]": Resonator frequency value in Hz
+        - A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
 
-        A DataUnits object with the fitted data obtained with the following keys:
-            - qubit_freq: frequency
-            - peak_voltage: peak voltage
-            - *popt0*: Lorentzian's amplitude
-            - *popt1*: Lorentzian's center
-            - *popt2*: Lorentzian's sigma
-            - *popt3*: Lorentzian's offset
+            - **MSR[V]**: Resonator signal voltage mesurement in volts
+            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
+            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
+            - **phase[rad]**: Resonator signal phase mesurement in radians
+            - **frequency[Hz]**: Resonator frequency value in Hz
+
+        - A DataUnits object with the fitted data obtained with the following keys
+
+            - **qubit_freq**: frequency
+            - **peak_voltage**: peak voltage
+            - **popt0**: Lorentzian's amplitude
+            - **popt1**: Lorentzian's center
+            - **popt2**: Lorentzian's sigma
+            - **popt3**: Lorentzian's offset
     """
 
     platform.reload_settings()
@@ -189,20 +191,22 @@ def qubit_spectroscopy_flux(
         points (int): Save data results in a file every number of points
 
     Returns:
-        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys:
-            - "MSR[V]": Resonator signal voltage mesurement in volts
-            - "i[V]": Resonator signal voltage mesurement for the component I in volts
-            - "q[V]": Resonator signal voltage mesurement for the component Q in volts
-            - "phase[rad]": Resonator signal phase mesurement in radians
-            - "frequency[Hz]": Resonator frequency value in Hz
+        - A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
 
-        A DataUnits object with the fitted data obtained with the following keys:
-            - qubit_freq: frequency
-            - peak_voltage: peak voltage
-            - *popt0*: Lorentzian's amplitude
-            - *popt1*: Lorentzian's center
-            - *popt2*: Lorentzian's sigma
-            - *popt3*: Lorentzian's offset
+            - **MSR[V]**: Resonator signal voltage mesurement in volts
+            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
+            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
+            - **phase[rad]**: Resonator signal phase mesurement in radians
+            - **frequency[Hz]**: Resonator frequency value in Hz
+
+        - A DataUnits object with the fitted data obtained with the following keys
+
+            - **qubit_freq**: frequency
+            - **peak_voltage**: peak voltage
+            - **popt0**: Lorentzian's amplitude
+            - **popt1**: Lorentzian's center
+            - **popt2**: Lorentzian's sigma
+            - **popt3**: Lorentzian's offset
     """
 
     platform.reload_settings()
