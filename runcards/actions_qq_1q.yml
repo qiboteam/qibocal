@@ -1,5 +1,7 @@
 platform: tii1q_b1
 
+runcard: tii1q_b1.yml
+
 qubits: [0]
 
 format: csv
@@ -94,6 +96,10 @@ actions:
   # calibrate_qubit_states_binning:
   #   nshots: 1024
   #   points: 1
+
+  # calibrate_qubit_states_binning:
+  #   niter: 1024
+  #   points: 10
 
   # dispersive_shift:
   #   freq_width: 5_000_000
