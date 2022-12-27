@@ -59,7 +59,6 @@ def resonator_spectroscopy(
                 )
 
             platform.set_lo_frequency(qubit, freq - ro_pulse.frequency)
-            log.debug(platform.execute_pulse_sequence(sequence))
             msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
                 ro_pulse.serial
             ]
@@ -245,14 +244,7 @@ def resonator_spectroscopy_flux(
                 results = {
                     "MSR[V]": msr,
                     "i[V]": i,
-                    "q[V]": q,  # resonator_punchout:
-                    #   freq_width: 10_000_000
-                    #   freq_step: 200_000
-                    #   min_att: 0
-                    #   max_att: 60
-                    #   step_att: 2 # attenuation must be a multiple of 2
-                    #   software_averages: 1
-                    #   points: 1
+                    "q[V]": q,
                     "phase[rad]": phase,
                     "frequency[Hz]": freq,
                     "current[A]": curr,
