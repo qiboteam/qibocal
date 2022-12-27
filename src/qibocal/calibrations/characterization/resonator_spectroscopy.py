@@ -32,7 +32,7 @@ def resonator_spectroscopy(
     resonator_frequency = platform.get_resonator_frequency(qubit)
 
     # TODO: is this parameter necessary
-    qrm_LO = platform.qrm[qubit].ports["o1"].lo_frequency
+    qrm_LO = None  # platform.qrm[qubit].ports["o1"].lo_frequency
 
     frequency_range = (
         variable_resolution_scanrange(
@@ -53,12 +53,13 @@ def resonator_spectroscopy(
                     x="frequency[GHz]",
                     y="MSR[uV]",
                     qubit=qubit,
-                    nqubits=platform.settings["nqubits"],
+                    nqubits=platform.nqubits,
                     labels=["resonator_freq", "peak_voltage", "MZ_freq"],
                     qrm_lo=qrm_LO,
                 )
 
             platform.set_lo_frequency(qubit, freq - ro_pulse.frequency)
+            log.debug(platform.execute_pulse_sequence(sequence))
             msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
                 ro_pulse.serial
             ]
@@ -112,12 +113,11 @@ def resonator_spectroscopy(
                     x="frequency[GHz]",
                     y="MSR[uV]",
                     qubit=qubit,
-                    nqubits=platform.settings["nqubits"],
+                    nqubits=platform.nqubits,
                     labels=["resonator_freq", "peak_voltage", "MZ_freq"],
                     qrm_lo=qrm_LO,
                 )
 
-            # platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
             platform.set_lo_frequency(qubit, freq - ro_pulse.frequency)
             msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
                 ro_pulse.serial
@@ -156,10 +156,8 @@ def resonator_punchout(
     sequence = PulseSequence()
     sequence.add(ro_pulse)
 
-    # TODO: move this explicit instruction to the platform
-    resonator_frequency = platform.characterization["single_qubit"][qubit][
-        "resonator_freq"
-    ]
+    resonator_frequency = platform.get_resonator_frequency(qubit)
+
     frequency_range = (
         np.arange(-freq_width, freq_width, freq_step)
         + resonator_frequency
@@ -172,9 +170,8 @@ def resonator_punchout(
             for freq in frequency_range:
                 if count % points == 0:
                     yield data
-                # TODO: move these explicit instructions to the platform
-                platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
-                platform.ro_port[qubit].attenuation = att
+                platform.set_lo_frequency(qubit, freq - ro_pulse.frequency)
+                platform.set_attenuation(qubit, att)
                 msr, phase, i, q = platform.execute_pulse_sequence(sequence)[
                     ro_pulse.serial
                 ]
@@ -248,7 +245,14 @@ def resonator_spectroscopy_flux(
                 results = {
                     "MSR[V]": msr,
                     "i[V]": i,
-                    "q[V]": q,
+                    "q[V]": q,  # resonator_punchout:
+                    #   freq_width: 10_000_000
+                    #   freq_step: 200_000
+                    #   min_att: 0
+                    #   max_att: 60
+                    #   step_att: 2 # attenuation must be a multiple of 2
+                    #   software_averages: 1
+                    #   points: 1
                     "phase[rad]": phase,
                     "frequency[Hz]": freq,
                     "current[A]": curr,
