@@ -13,7 +13,6 @@ Qibocal key features:
 * Declarative inputs using runcard.
 * Generation of a report.
 
-This documentation refers to qibocal |release|.
 
 Contents
 ========
