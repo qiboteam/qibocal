@@ -17,15 +17,16 @@ from recommonmark.transform import AutoStructify
 
 sys.path.insert(0, os.path.abspath(".."))
 
+import qibocal
 
 # -- Project information -----------------------------------------------------
 
-project = " "
+project = "qibocal"
 copyright = "2022, The Qibo team"
 author = "The Qibo team"
 
 # The full version, including alpha/beta/rc tags
-release = " "
+release = qibocal.__version__
 
 
 # -- General configuration ---------------------------------------------------
@@ -74,6 +75,10 @@ exclude_patterns = []
 #
 html_theme = "furo"
 
+# custom title
+html_title = "Version " + release
+
+# custom html theme options (colors and font)
 html_theme_options = {
     "light_css_variables": {
         "color-brand-primary": "#6400FF",
@@ -85,6 +90,7 @@ html_theme_options = {
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
+
 html_static_path = ["_static"]
 
 # -- Intersphinx  -------------------------------------------------------------
@@ -102,3 +108,8 @@ def setup(app):
     app.add_config_value("recommonmark_config", {"enable_eval_rst": True}, True)
     app.add_transform(AutoStructify)
     app.add_css_file("css/style.css")
+
+
+# html_logo = "logo.png"
+
+html_show_sourcelink = False
