@@ -11,6 +11,8 @@ from qibocal.config import raise_error
 
 
 class AbstractData:
+    """Base class for the implementation of `DataUnits` and `Data`."""
+
     def __init__(self, name=None):
 
         if name is None:
@@ -27,6 +29,7 @@ class AbstractData:
 
     @abstractmethod
     def add(self, data):
+        """Add row to `AbstractData` dataframe."""
         raise_error(NotImplementedError)
 
     def __len__(self):
@@ -34,7 +37,8 @@ class AbstractData:
         return len(self.df)
 
     @classmethod
-    def load_data(cls, folder, subfolder, routine, format, name):
+    def load_data(cls, folder, subfolder, routine, data_format, name):
+        """Load data from specific format."""
         raise_error(NotImplementedError)
 
     @abstractmethod
@@ -168,13 +172,14 @@ class DataUnits(AbstractData):
             return self.df[key].pint.to(unit).pint.magnitude
 
     @classmethod
-    def load_data(cls, folder, subfolder, routine, format, name):
+    def load_data(cls, folder, subfolder, routine, data_format, name):
         """Load data from specific format.
 
         Args:
             folder (path): path to the output folder from which the data will be loaded
+            subfolder (path): subfolder name
             routine (str): calibration routine data to be loaded
-            format (str): data format. Possible choices are 'csv' and 'pickle'
+            data_format (str): data format. Possible choices are 'csv' and 'pickle'
             name (str): file's name without extension
         Returns:
             data (``DataUnits``): dataset object with the loaded data.
@@ -182,7 +187,7 @@ class DataUnits(AbstractData):
             see the method ``load_data`` in class ``Data``
         """
         obj = cls()
-        if format == "csv":
+        if data_format == "csv":
             file = f"{folder}/{subfolder}/{routine}/{name}.csv"
             obj.df = pd.read_csv(file, header=[0, 1])
             obj.df.pop("Unnamed: 0_level_0")
@@ -197,11 +202,11 @@ class DataUnits(AbstractData):
             options_df = obj.df[obj.options]
             options_df.columns = options_df.columns.droplevel(1)
             obj.df = pd.concat([quantities_df, options_df], axis=1)
-        elif format == "pickle":
+        elif data_format == "pickle":
             file = f"{folder}/data/{routine}/{name}.pkl"
             obj.df = pd.read_pickle(file)
         else:
-            raise_error(ValueError, f"Cannot load data using {format} format.")
+            raise_error(ValueError, f"Cannot load data using {data_format} format.")
 
         return obj
 
@@ -331,13 +336,13 @@ class Data(AbstractData):
         return self.df[quantity].values
 
     @classmethod
-    def load_data(cls, folder, subfolder, routine, format, name):
+    def load_data(cls, folder, subfolder, routine, data_format, name):
         """Load data from specific format.
 
         Args:
             folder (path): path to the output folder from which the data will be loaded
             routine (str): calibration routine data to be loaded
-            format (str): data format. Possible choices are 'csv' and 'pickle'
+            data_format (str): data format. Possible choices are 'csv' and 'pickle'
             name (str): file's name without extension
 
         Returns:
@@ -376,15 +381,15 @@ class Data(AbstractData):
         """
 
         obj = cls()
-        if format == "csv":
+        if data_format == "csv":
             file = f"{folder}/{subfolder}/{routine}/{name}.csv"
             obj.df = pd.read_csv(file)
             obj.df.pop("Unnamed: 0")
-        elif format == "pickle":
+        elif data_format == "pickle":
             file = f"{folder}/{subfolder}/{routine}/{name}.pkl"
             obj.df = pd.read_pickle(file)
         else:
-            raise_error(ValueError, f"Cannot load data using {format} format.")
+            raise_error(ValueError, f"Cannot load data using {data_format} format.")
 
         return obj
 

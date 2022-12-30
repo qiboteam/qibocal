@@ -223,9 +223,10 @@ def test_abstract_data_NotImplementedErrors():
             }
         )
 
-    folder, routine, format, name = "folder", "routine", "csv", "name"
     with pytest.raises(NotImplementedError):
-        data.load_data(folder, routine, format, name)
+        data.load_data(
+            "test_folder", "test_subolder", "test_routine", "test_format", "test_name"
+        )
 
 
 def test_data_units_load_data_from_dict():
@@ -295,7 +296,7 @@ def test_get_values_data():
 
 def test_save_open_data_units_csv():
     """Test to_csv and load_data methods of DataUnits"""
-    path = "test_folder/data/test_routine"
+    path = "test_folder/test_subfolder/test_routine"
     if not os.path.isdir(path):
         os.makedirs(path)
     data_units = data_units_dummy(5, options=["Unnamed"])
@@ -304,9 +305,11 @@ def test_save_open_data_units_csv():
     assert isExist is True
     with pytest.raises(ValueError):
         data_upload = DataUnits().load_data(
-            "test_folder", "test_routine", "txt", "data"
+            "test_folder", "test_subfolder", "test_routine", "txt", "data"
         )
-    data_upload = DataUnits().load_data("test_folder", "test_routine", "csv", "data")
+    data_upload = DataUnits().load_data(
+        "test_folder", "test_subfolder", "test_routine", "csv", "data"
+    )
     columns = data_units.df.columns
     shutil.rmtree("test_folder")
     for i in columns:
@@ -320,7 +323,9 @@ def test_save_open_data_units_pickle():
         os.makedirs(folder)
     data_units = random_data_units(5)
     data_units.to_pickle(folder)
-    data_upload = DataUnits().load_data("test_folder", "test_routine", "pickle", "data")
+    data_upload = DataUnits().load_data(
+        "test_folder", "data", "test_routine", "pickle", "data"
+    )
     shutil.rmtree("test_folder")
     assert data_units.df.equals(data_upload.df)
 
@@ -335,8 +340,10 @@ def test_save_open_data_csv():
     isExist = os.path.exists(f"{path}/{data.name}.csv")
     assert isExist is True
     with pytest.raises(ValueError):
-        data_upload = Data().load_data("test_folder", "test_routine", "txt", "data")
-    data_upload = Data().load_data("test_folder", "test_routine", "csv", "data")
+        data_upload = Data().load_data(
+            "test_folder", "data", "test_routine", "txt", "data"
+        )
+    data_upload = Data().load_data("test_folder", "data", "test_routine", "csv", "data")
     assert data.df.equals(data_upload.df)
 
 
@@ -347,7 +354,9 @@ def test_save_open_data_pickle():
         os.makedirs(folder)
     data = random_data(5)
     data.to_pickle(folder)
-    data_upload = Data().load_data("test_folder", "test_routine", "pickle", "data")
+    data_upload = Data().load_data(
+        "test_folder", "data", "test_routine", "pickle", "data"
+    )
     shutil.rmtree("test_folder")
     assert data.df.equals(data_upload.df)
 
