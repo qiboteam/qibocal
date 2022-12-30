@@ -21,7 +21,7 @@ def rabi_pulse_length(
 
     r"""
     In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse duration
-     to find the drive pulse length that creates a rotation of a desired angle.
+    to find the drive pulse length that creates a rotation of a desired angle.
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
@@ -32,21 +32,23 @@ def rabi_pulse_length(
         points (int): Save data results in a file every number of points
 
     Returns:
-        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys:
-            - "MSR[V]": Resonator signal voltage mesurement in volts
-            - "i[V]": Resonator signal voltage mesurement for the component I in volts
-            - "q[V]": Resonator signal voltage mesurement for the component Q in volts
-            - "phase[rad]": Resonator signal phase mesurement in radians
-            - "Time[ns]": Drive pulse duration in ns
+        - A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
 
-        A DataUnits object with the fitted data obtained with the following keys:
-            - pi_pulse_duration: pi pulse duration
-            - pi_pulse_max_voltage: pi pulse's maximum voltage
-            - *popt0*: offset
-            - *popt1*: oscillation amplitude
-            - *popt2*: frequency
-            - *popt3*: phase
-            - *popt4*: T2
+            - **MSR[V]**: Resonator signal voltage mesurement in volts
+            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
+            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
+            - **phase[rad]**: Resonator signal phase mesurement in radians
+            - **Time[ns]**: Drive pulse duration in ns
+
+        - A DataUnits object with the fitted data obtained with the following keys
+
+            - **pi_pulse_duration**: pi pulse duration
+            - **pi_pulse_max_voltage**: pi pulse's maximum voltage
+            - **popt0**: offset
+            - **popt1**: oscillation amplitude
+            - **popt2**: frequency
+            - **popt3**: phase
+            - **popt4**: T2
     """
 
     platform.reload_settings()
@@ -109,7 +111,7 @@ def rabi_pulse_gain(
 
     r"""
     In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse gain
-     to find the drive pulse gain that creates a rotation of a desired angle.
+    to find the drive pulse gain that creates a rotation of a desired angle.
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
@@ -120,21 +122,23 @@ def rabi_pulse_gain(
         points (int): Save data results in a file every number of points
 
     Returns:
-        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys:
-            - "MSR[V]": Resonator signal voltage mesurement in volts
-            - "i[V]": Resonator signal voltage mesurement for the component I in volts
-            - "q[V]": Resonator signal voltage mesurement for the component Q in volts
-            - "phase[rad]": Resonator signal phase mesurement in radians
-            - "gain[dimensionless]": Drive pulse gain
+        - A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
 
-        A DataUnits object with the fitted data obtained with the following keys:
-            - pi_pulse_duration: pi pulse duration
-            - pi_pulse_max_voltage: pi pulse's maximum voltage
-            - *popt0*: offset
-            - *popt1*: oscillation amplitude
-            - *popt2*: frequency
-            - *popt3*: phase
-            - *popt4*: T2
+            - **MSR[V]**: Resonator signal voltage mesurement in volts
+            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
+            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
+            - **phase[rad]**: Resonator signal phase mesurement in radians
+            - **gain[dimensionless]**: Drive pulse gain
+
+        - A DataUnits object with the fitted data obtained with the following keys
+
+            - **pi_pulse_duration**: pi pulse duration
+            - **pi_pulse_max_voltage**: pi pulse's maximum voltage
+            - **popt0**: offset
+            - **popt1**: oscillation amplitude
+            - **popt2**: frequency
+            - **popt3**: phase
+            - **popt4**: T2
     """
 
     platform.reload_settings()
@@ -194,7 +198,7 @@ def rabi_pulse_amplitude(
 
     r"""
     In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse amplitude
-     to find the drive pulse amplitude that creates a rotation of a desired angle.
+    to find the drive pulse amplitude that creates a rotation of a desired angle.
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
@@ -205,21 +209,23 @@ def rabi_pulse_amplitude(
         points (int): Save data results in a file every number of points
 
     Returns:
-        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys:
-            - "MSR[V]": Resonator signal voltage mesurement in volts
-            - "i[V]": Resonator signal voltage mesurement for the component I in volts
-            - "q[V]": Resonator signal voltage mesurement for the component Q in volts
-            - "phase[rad]": Resonator signal phase mesurement in radians
-            - "amplitude[dimensionless]": Drive pulse amplitude
+        - A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
 
-        A DataUnits object with the fitted data obtained with the following keys:
-            - pi_pulse_amplitude: pi pulse amplitude
-            - pi_pulse_max_voltage: pi pulse's maximum voltage
-            - *popt0*: offset
-            - *popt1*: oscillation amplitude
-            - *popt2*: frequency
-            - *popt3*: phase
-            - *popt4*: T2
+            - **MSR[V]**: Resonator signal voltage mesurement in volts
+            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
+            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
+            - **phase[rad]**: Resonator signal phase mesurement in radians
+            - **amplitude[dimensionless]**: Drive pulse amplitude
+
+        - A DataUnits object with the fitted data obtained with the following keys
+
+            - **pi_pulse_amplitude**: pi pulse amplitude
+            - **pi_pulse_max_voltage**: pi pulse's maximum voltage
+            - **popt0**: offset
+            - **popt1**: oscillation amplitude
+            - **popt2**: frequency
+            - **popt3**: phase
+            - **popt4**: T2
     """
 
     platform.reload_settings()
@@ -298,13 +304,14 @@ def rabi_pulse_length_and_gain(
         points (int): Save data results in a file every number of points
 
     Returns:
-        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys:
-            - "MSR[V]": Resonator signal voltage mesurement in volts
-            - "i[V]": Resonator signal voltage mesurement for the component I in volts
-            - "q[V]": Resonator signal voltage mesurement for the component Q in volts
-            - "phase[rad]": Resonator signal phase mesurement in radians
-            - "duration[ns]": Drive pulse duration in ns
-            - "gain[dimensionless]": Drive pulse gain
+        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
+
+            - **MSR[V]**: Resonator signal voltage mesurement in volts
+            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
+            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
+            - **phase[rad]**: Resonator signal phase mesurement in radians
+            - **duration[ns]**: Drive pulse duration in ns
+            - **gain[dimensionless]**: Drive pulse gain
 
     """
 
@@ -381,13 +388,14 @@ def rabi_pulse_length_and_amplitude(
         points (int): Save data results in a file every number of points
 
     Returns:
-        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys:
-            - "MSR[V]": Resonator signal voltage mesurement in volts
-            - "i[V]": Resonator signal voltage mesurement for the component I in volts
-            - "q[V]": Resonator signal voltage mesurement for the component Q in volts
-            - "phase[rad]": Resonator signal phase mesurement in radians
-            - "duration[ns]": Drive pulse duration in ns
-            - "amplitude[dimensionless]": Drive pulse amplitude
+        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
+
+            - **MSR[V]**: Resonator signal voltage mesurement in volts
+            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
+            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
+            - **phase[rad]**: Resonator signal phase mesurement in radians
+            - **duration[ns]**: Drive pulse duration in ns
+            - **amplitude[dimensionless]**: Drive pulse amplitude
 
     """
 

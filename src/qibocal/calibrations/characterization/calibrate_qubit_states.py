@@ -27,12 +27,13 @@ def calibrate_qubit_states(
         points (int): every points step data are saved.
 
     Returns:
-        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys:
-            - "MSR[V]": Resonator signal voltage mesurement in volts
-            - "i[V]": Resonator signal voltage mesurement for the component I in volts
-            - "q[V]": Resonator signal voltage mesurement for the component Q in volts
-            - "phase[rad]": Resonator signal phase mesurement in radians
-            - "iteration[dimensionless]": Execution number
+        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
+
+            - **MSR[V]**: Resonator signal voltage mesurement in volts
+            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
+            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
+            - **phase[rad]**: Resonator signal phase mesurement in radians
+            - **iteration[dimensionless]**: Execution number
 
     """
 

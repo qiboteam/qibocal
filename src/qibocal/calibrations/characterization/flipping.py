@@ -29,20 +29,22 @@ def flipping(
         points (int): Save data results in a file every number of points
 
     Returns:
-        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys:
-            - "MSR[V]": Resonator signal voltage mesurement in volts
-            - "i[V]": Resonator signal voltage mesurement for the component I in volts
-            - "q[V]": Resonator signal voltage mesurement for the component Q in volts
-            - "phase[rad]": Resonator signal phase mesurement in radians
-            - "flips[dimensionless]": Number of flips applied in the current execution
+        - A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
 
-        A DataUnits object with the fitted data obtained with the following keys:
-            - amplitude_delta: Pi pulse delta amplitude
-            - corrected_amplitude: Corrected pi pulse amplitude
-            - *popt0*: p0
-            - *popt1*: p1
-            - *popt2*: p2
-            - *popt3*: p3
+            - **MSR[V]**: Resonator signal voltage mesurement in volts
+            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
+            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
+            - **phase[rad]**: Resonator signal phase mesurement in radians
+            - **flips[dimensionless]**: Number of flips applied in the current execution
+
+        - A DataUnits object with the fitted data obtained with the following keys
+
+            - **amplitude_delta**: Pi pulse delta amplitude
+            - **corrected_amplitude**: Corrected pi pulse amplitude
+            - **popt0**: p0
+            - **popt1**: p1
+            - **popt2**: p2
+            - **popt3**: p3
     """
 
     platform.reload_settings()

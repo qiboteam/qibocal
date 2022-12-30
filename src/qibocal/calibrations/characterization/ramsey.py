@@ -39,23 +39,25 @@ def ramsey_frequency_detuned(
         points (int): Save data results in a file every number of points
 
     Returns:
-        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys:
-            - "MSR[V]": Resonator signal voltage mesurement in volts
-            - "i[V]": Resonator signal voltage mesurement for the component I in volts
-            - "q[V]": Resonator signal voltage mesurement for the component Q in volts
-            - "phase[rad]": Resonator signal phase mesurement in radians
-            - "wait[ns]": Wait time used in the current Ramsey execution
-            - "t_max[ns]": Maximum time delay between drive pulses in the Ramsey sequence
+        - A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
 
-        A DataUnits object with the fitted data obtained with the following keys:
-            - delta_frequency: Physical detunning of the actual qubit frequency
-            - corrected_qubit_frequency:
-            - t2: New qubit frequency after correcting the actual qubit frequency with the detunning calculated
-            - *popt0*: offset
-            - *popt1*: oscillation amplitude
-            - *popt2*: frequency
-            - *popt3*: phase
-            - *popt4*: T2
+            - **MSR[V]**: Resonator signal voltage mesurement in volts
+            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
+            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
+            - **phase[rad]**: Resonator signal phase mesurement in radians
+            - **wait[ns]**: Wait time used in the current Ramsey execution
+            - **t_max[ns]**: Maximum time delay between drive pulses in the Ramsey sequence
+
+        - A DataUnits object with the fitted data obtained with the following keys
+
+            - **delta_frequency**: Physical detunning of the actual qubit frequency
+            - **corrected_qubit_frequency**:
+            - **t2**: New qubit frequency after correcting the actual qubit frequency with the detunning calculated
+            - **popt0**: offset
+            - **popt1**: oscillation amplitude
+            - **popt2**: frequency
+            - **popt3**: phase
+            - **popt4**: T2
     """
 
     platform.reload_settings()
@@ -183,23 +185,25 @@ def ramsey(
         points (int): Save data results in a file every number of points
 
     Returns:
-        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys:
-            - "MSR[V]": Resonator signal voltage mesurement in volts
-            - "i[V]": Resonator signal voltage mesurement for the component I in volts
-            - "q[V]": Resonator signal voltage mesurement for the component Q in volts
-            - "phase[rad]": Resonator signal phase mesurement in radians
-            - "wait[ns]": Wait time used in the current Ramsey execution
-            - "t_max[ns]": Maximum time delay between drive pulses in the Ramsey sequence
+        - A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
 
-        A DataUnits object with the fitted data obtained with the following keys:
-            - delta_frequency: Physical detunning of the actual qubit frequency
-            - corrected_qubit_frequency:
-            - t2: New qubit frequency after correcting the actual qubit frequency with the detunning calculated
-            - *popt0*: offset
-            - *popt1*: oscillation amplitude
-            - *popt2*: frequency
-            - *popt3*: phase
-            - *popt4*: T2
+            - **MSR[V]**: Resonator signal voltage mesurement in volts
+            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
+            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
+            - **phase[rad]**: Resonator signal phase mesurement in radians
+            - **wait[ns]**: Wait time used in the current Ramsey execution
+            - **t_max[ns]**: Maximum time delay between drive pulses in the Ramsey sequence
+
+        - A DataUnits object with the fitted data obtained with the following keys
+
+            - **delta_frequency**: Physical detunning of the actual qubit frequency
+            - **corrected_qubit_frequency**:
+            - **t2**: New qubit frequency after correcting the actual qubit frequency with the detunning calculated
+            - **popt0**: offset
+            - **popt1**: oscillation amplitude
+            - **popt2**: frequency
+            - **popt3**: phase
+            - **popt4**: T2
     """
 
     platform.reload_settings()

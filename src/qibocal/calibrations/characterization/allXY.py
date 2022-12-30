@@ -55,13 +55,14 @@ def allXY(
         points (int): Save data results in a file every number of points
 
     Returns:
-        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys:
-            - "MSR[V]": Difference between resonator signal voltage mesurement in volts from sequence 1 and 2
-            - "i[V]": Difference between resonator signal voltage mesurement for the component I in volts from sequence 1 and 2
-            - "q[V]": Difference between resonator signal voltage mesurement for the component Q in volts from sequence 1 and 2
-            - "phase[rad]": Difference between resonator signal phase mesurement in radians from sequence 1 and 2
-            - "probability[dimensionless]": Probability of being in |0> state
-            - "gateNumber[dimensionless]": Gate number applied from the list of gates
+        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
+
+            - **MSR[V]**: Difference between resonator signal voltage mesurement in volts from sequence 1 and 2
+            - **i[V]**: Difference between resonator signal voltage mesurement for the component I in volts from sequence 1 and 2
+            - **q[V]**: Difference between resonator signal voltage mesurement for the component Q in volts from sequence 1 and 2
+            - **phase[rad]**: Difference between resonator signal phase mesurement in radians from sequence 1 and 2
+            - **probability[dimensionless]**: Probability of being in |0> state
+            - **gateNumber[dimensionless]**: Gate number applied from the list of gates
 
     """
     platform.reload_settings()
@@ -140,14 +141,15 @@ def allXY_iteration(
         points (int): Save data results in a file every number of points
 
     Returns:
-        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys:
-            - "MSR[V]": Difference between resonator signal voltage mesurement in volts from sequence 1 and 2
-            - "i[V]": Difference between resonator signal voltage mesurement for the component I in volts from sequence 1 and 2
-            - "q[V]": Difference between resonator signal voltage mesurement for the component Q in volts from sequence 1 and 2
-            - "phase[rad]": Difference between resonator signal phase mesurement in radians from sequence 1 and 2
-            - "probability[dimensionless]": Probability of being in |0> state
-            - "gateNumber[dimensionless]": Gate number applied from the list of gates
-            - "beta_param[dimensionless]": Beta paramter applied in the current execution
+        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
+
+            - **MSR[V]**: Difference between resonator signal voltage mesurement in volts from sequence 1 and 2
+            - **i[V]**: Difference between resonator signal voltage mesurement for the component I in volts from sequence 1 and 2
+            - **q[V]**: Difference between resonator signal voltage mesurement for the component Q in volts from sequence 1 and 2
+            - **phase[rad]**: Difference between resonator signal phase mesurement in radians from sequence 1 and 2
+            - **probability[dimensionless]**: Probability of being in |0> state
+            - **gateNumber[dimensionless]**: Gate number applied from the list of gates
+            - **beta_param[dimensionless]**: Beta paramter applied in the current execution
 
     """
 
@@ -239,19 +241,21 @@ def drag_pulse_tunning(
         points (int): Save data results in a file every number of points
 
     Returns:
-        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys:
-            - "MSR[V]": Difference between resonator signal voltage mesurement in volts from sequence 1 and 2
-            - "i[V]": Difference between resonator signal voltage mesurement for the component I in volts from sequence 1 and 2
-            - "q[V]": Difference between resonator signal voltage mesurement for the component Q in volts from sequence 1 and 2
-            - "phase[rad]": Difference between resonator signal phase mesurement in radians from sequence 1 and 2
-            - "beta_param[dimensionless]": Optimal drag coefficient
+        - A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
 
-        A DataUnits object with the fitted data obtained with the following keys:
-            - optimal_beta_param: Best drag pulse coefficent
-            - *popt0*: offset
-            - *popt1*: oscillation amplitude
-            - *popt2*: period
-            - *popt3*: phase
+            - **MSR[V]**: Difference between resonator signal voltage mesurement in volts from sequence 1 and 2
+            - **i[V]**: Difference between resonator signal voltage mesurement for the component I in volts from sequence 1 and 2
+            - **q[V]**: Difference between resonator signal voltage mesurement for the component Q in volts from sequence 1 and 2
+            - **phase[rad]**: Difference between resonator signal phase mesurement in radians from sequence 1 and 2
+            - **beta_param[dimensionless]**: Optimal drag coefficient
+
+        - A DataUnits object with the fitted data obtained with the following keys
+
+            - **optimal_beta_param**: Best drag pulse coefficent
+            - **popt0**: offset
+            - **popt1**: oscillation amplitude
+            - **popt2**: period
+            - **popt3**: phase
     """
 
     # platform.reload_settings()
