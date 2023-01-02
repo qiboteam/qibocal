@@ -86,8 +86,8 @@ class DataUnits(AbstractData):
 
         if quantities is not None:
             self.quantities.update(quantities)
-            for name, unit in quantities.items():
-                self.df.insert(0, name, pd.Series(dtype=f"pint[{unit}]"))
+            for quantity, unit in quantities.items():
+                self.df.insert(0, quantity, pd.Series(dtype=f"pint[{unit}]"))
 
         if options is not None:
             self.options = options
@@ -102,6 +102,7 @@ class DataUnits(AbstractData):
 
     @property
     def df(self):
+        """Dataframe attribute."""
         return self._df
 
     @df.setter
@@ -168,8 +169,8 @@ class DataUnits(AbstractData):
         """
         if unit is None:
             return self.df[key]
-        else:
-            return self.df[key].pint.to(unit).pint.magnitude
+
+        return self.df[key].pint.to(unit).pint.magnitude
 
     @classmethod
     def load_data(cls, folder, subfolder, routine, data_format, name):
@@ -265,11 +266,12 @@ class Data(AbstractData):
 
         if quantities is not None:
             self.quantities = quantities
-            for name in quantities:
-                self.df.insert(0, name, pd.Series(dtype=object))
+            for quantity in quantities:
+                self.df.insert(0, quantity, pd.Series(dtype=object))
 
     @property
     def df(self):
+        """Dataframe attribute."""
         return self._df
 
     @df.setter

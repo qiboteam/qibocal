@@ -39,6 +39,7 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None, qrm_l
 
             - **labels[0]**: peak voltage
             - **labels[1]**: frequency
+            - **labels[2]**: readout frequency
             - **popt0**: Lorentzian's amplitude
             - **popt1**: Lorentzian's center
             - **popt2**: Lorentzian's sigma
@@ -86,7 +87,7 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None, qrm_l
                     "MSR[V]",
                     0,
                     nqubits,
-                    labels=[label, "peak_voltage"],
+                    labels=[label, "peak_voltage", "MZ_freq"],
                     fit_file_name=name,
                 )
 

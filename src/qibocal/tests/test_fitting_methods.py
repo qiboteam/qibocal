@@ -1,3 +1,5 @@
+"""Testing fitting functions"""
+
 import logging
 
 import numpy as np
@@ -51,12 +53,11 @@ def test_lorentzian_fit(name, label, nqubits, amplitude_sign, caplog):
         "MSR[V]",
         0,
         nqubits,
-        labels=[label, "peak_voltage"],
+        labels=[label, "peak_voltage", "MZ_freq"],
         fit_file_name=name,
     )
     # Given the couople (amplitude, sigma) as a solution of lorentzian_fit method
     # also (-amplitude,-sigma) is a possible solution.
-
     np.testing.assert_allclose(
         abs(fit.get_values("popt0")[0]), abs(amplitude), rtol=0.1
     )
@@ -78,7 +79,7 @@ def test_lorentzian_fit(name, label, nqubits, amplitude_sign, caplog):
         "MSR[V]",
         0,
         nqubits,
-        labels=[label, "peak_voltage"],
+        labels=[label, "peak_voltage", "MZ_freq"],
         fit_file_name=name,
     )
     assert "The fitting was not successful" in caplog.text
