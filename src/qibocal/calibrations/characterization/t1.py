@@ -18,6 +18,38 @@ def t1(
     software_averages,
     points=10,
 ):
+
+    r"""
+    In a T1 experiment, we measure an excited qubit after a delay. Due to decoherence processes
+    (e.g. amplitude damping channel), it is possible that, at the time of measurement, after the delay,
+    the qubit will not be excited anymore. The larger the delay time is, the more likely is the qubit to
+    fall to the ground state. The goal of the experiment is to characterize the decay rate of the qubit
+    towards the ground state.
+
+    Args:
+        platform (AbstractPlatform): Qibolab platform object
+        qubit (int): Target qubit to perform the action
+        delay_before_readout_start (int): Initial time delay before ReadOut
+        delay_before_readout_end (list): Maximum time delay before ReadOut
+        delay_before_readout_step (int): Scan range step for the delay before ReadOut
+        points (int): Save data results in a file every number of points
+
+    Returns:
+        - A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
+
+            - **MSR[V]**: Resonator signal voltage mesurement in volts
+            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
+            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
+            - **phase[rad]**: Resonator signal phase mesurement in radians
+            - **wait[ns]**: Delay before ReadOut used in the current execution
+
+        - A DataUnits object with the fitted data obtained with the following keys
+
+            - **labels[0]**: T1
+            - **popt0**: p0
+            - **popt1**: p1
+            - **popt2**: p2
+    """
     platform.reload_settings()
 
     sequence = PulseSequence()
