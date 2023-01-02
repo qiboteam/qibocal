@@ -343,6 +343,7 @@ class Data(AbstractData):
 
         Args:
             folder (path): path to the output folder from which the data will be loaded
+            subfolder (path): subfolder name
             routine (str): calibration routine data to be loaded
             data_format (str): data format. Possible choices are 'csv' and 'pickle'
             name (str): file's name without extension
@@ -355,7 +356,7 @@ class Data(AbstractData):
 
                 from qibocal.data import Data
                 import os
-                folder = "test_folder/data/test_routine"
+                folder = "test_folder/test_subfolder/test_routine"
                 length = 3
                 if not os.path.isdir(folder):
                     os.makedirs(folder)
@@ -373,7 +374,7 @@ class Data(AbstractData):
                 # save the dataset in csv format
                 data.to_csv(folder)
                 # upload the dataset
-                data_upload = Data().load_data("test_folder", "test_routine", "csv", "data")
+                data_upload = Data().load_data("test_folder", "test_subfolder", "test_routine", "csv", "data")
 
             .. testcleanup::
 
