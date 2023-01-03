@@ -18,9 +18,40 @@ def rabi_pulse_length(
     software_averages,
     points=10,
 ):
-    platform.reload_settings()
 
-    data = DataUnits(name=f"data_q{qubit}", quantities={"Time": "ns"})
+    r"""
+    In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse duration
+    to find the drive pulse length that creates a rotation of a desired angle.
+
+    Args:
+        platform (AbstractPlatform): Qibolab platform object
+        qubit (int): Target qubit to perform the action
+        pulse_duration_start (int): Initial drive pulse duration for the Rabi experiment
+        pulse_duration_end (int): Maximum drive pulse duration for the Rabi experiment
+        pulse_duration_step (int): Scan range step for the drive pulse duration for the Rabi experiment
+        points (int): Save data results in a file every number of points
+
+    Returns:
+        - A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
+
+            - **MSR[V]**: Resonator signal voltage mesurement in volts
+            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
+            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
+            - **phase[rad]**: Resonator signal phase mesurement in radians
+            - **Time[ns]**: Drive pulse duration in ns
+
+        - A DataUnits object with the fitted data obtained with the following keys
+
+            - **pi_pulse_duration**: pi pulse duration
+            - **pi_pulse_max_voltage**: pi pulse's maximum voltage
+            - **popt0**: offset
+            - **popt1**: oscillation amplitude
+            - **popt2**: frequency
+            - **popt3**: phase
+            - **popt4**: T2
+    """
+
+    platform.reload_settings()
 
     sequence = PulseSequence()
     qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
@@ -32,15 +63,7 @@ def rabi_pulse_length(
         pulse_duration_start, pulse_duration_end, pulse_duration_step
     )
 
-    # FIXME: Waiting to be able to pass qpucard to qibolab
-    platform.ro_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["resonator_freq"]
-        - ro_pulse.frequency
-    )
-    platform.qd_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["qubit_freq"]
-        - qd_pulse.frequency
-    )
+    data = DataUnits(name=f"data_q{qubit}", quantities={"Time": "ns"})
 
     count = 0
     for _ in range(software_averages):
@@ -85,9 +108,40 @@ def rabi_pulse_gain(
     software_averages,
     points=10,
 ):
-    platform.reload_settings()
 
-    data = DataUnits(name=f"data_q{qubit}", quantities={"gain": "dimensionless"})
+    r"""
+    In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse gain
+    to find the drive pulse gain that creates a rotation of a desired angle.
+
+    Args:
+        platform (AbstractPlatform): Qibolab platform object
+        qubit (int): Target qubit to perform the action
+        pulse_gain_start (int): Initial drive pulse gain for the Rabi experiment
+        pulse_gain_end (int): Maximum drive pulse gain for the Rabi experiment
+        pulse_gain_step (int): Scan range step for the drive pulse gain for the Rabi experiment
+        points (int): Save data results in a file every number of points
+
+    Returns:
+        - A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
+
+            - **MSR[V]**: Resonator signal voltage mesurement in volts
+            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
+            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
+            - **phase[rad]**: Resonator signal phase mesurement in radians
+            - **gain[dimensionless]**: Drive pulse gain
+
+        - A DataUnits object with the fitted data obtained with the following keys
+
+            - **pi_pulse_duration**: pi pulse duration
+            - **pi_pulse_max_voltage**: pi pulse's maximum voltage
+            - **popt0**: offset
+            - **popt1**: oscillation amplitude
+            - **popt2**: frequency
+            - **popt3**: phase
+            - **popt4**: T2
+    """
+
+    platform.reload_settings()
 
     sequence = PulseSequence()
     qd_pulse = platform.create_RX_pulse(qubit, start=0)
@@ -97,15 +151,7 @@ def rabi_pulse_gain(
 
     qd_pulse_gain_range = np.arange(pulse_gain_start, pulse_gain_end, pulse_gain_step)
 
-    # FIXME: Waiting to be able to pass qpucard to qibolab
-    platform.ro_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["resonator_freq"]
-        - ro_pulse.frequency
-    )
-    platform.qd_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["qubit_freq"]
-        - qd_pulse.frequency
-    )
+    data = DataUnits(name=f"data_q{qubit}", quantities={"gain": "dimensionless"})
 
     count = 0
     for _ in range(software_averages):
@@ -149,9 +195,40 @@ def rabi_pulse_amplitude(
     software_averages,
     points=10,
 ):
-    platform.reload_settings()
 
-    data = DataUnits(name=f"data_q{qubit}", quantities={"amplitude": "dimensionless"})
+    r"""
+    In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse amplitude
+    to find the drive pulse amplitude that creates a rotation of a desired angle.
+
+    Args:
+        platform (AbstractPlatform): Qibolab platform object
+        qubit (int): Target qubit to perform the action
+        pulse_amplitude_start (int): Initial drive pulse amplitude for the Rabi experiment
+        pulse_amplitude_end (int): Maximum drive pulse amplitude for the Rabi experiment
+        pulse_amplitude_step (int): Scan range step for the drive pulse amplitude for the Rabi experiment
+        points (int): Save data results in a file every number of points
+
+    Returns:
+        - A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
+
+            - **MSR[V]**: Resonator signal voltage mesurement in volts
+            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
+            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
+            - **phase[rad]**: Resonator signal phase mesurement in radians
+            - **amplitude[dimensionless]**: Drive pulse amplitude
+
+        - A DataUnits object with the fitted data obtained with the following keys
+
+            - **pi_pulse_amplitude**: pi pulse amplitude
+            - **pi_pulse_max_voltage**: pi pulse's maximum voltage
+            - **popt0**: offset
+            - **popt1**: oscillation amplitude
+            - **popt2**: frequency
+            - **popt3**: phase
+            - **popt4**: T2
+    """
+
+    platform.reload_settings()
 
     sequence = PulseSequence()
     qd_pulse = platform.create_RX_pulse(qubit, start=0)
@@ -163,15 +240,7 @@ def rabi_pulse_amplitude(
         pulse_amplitude_start, pulse_amplitude_end, pulse_amplitude_step
     )
 
-    # FIXME: Waiting to be able to pass qpucard to qibolab
-    platform.ro_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["resonator_freq"]
-        - ro_pulse.frequency
-    )
-    platform.qd_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["qubit_freq"]
-        - qd_pulse.frequency
-    )
+    data = DataUnits(name=f"data_q{qubit}", quantities={"amplitude": "dimensionless"})
 
     count = 0
     for _ in range(software_averages):
@@ -218,11 +287,35 @@ def rabi_pulse_length_and_gain(
     software_averages,
     points=10,
 ):
-    platform.reload_settings()
 
-    data = DataUnits(
-        name=f"data_q{qubit}", quantities={"duration": "ns", "gain": "dimensionless"}
-    )
+    r"""
+    In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse
+    combination of duration and gain to find the drive pulse amplitude that creates a rotation of a desired angle.
+
+    Args:
+        platform (AbstractPlatform): Qibolab platform object
+        qubit (int): Target qubit to perform the action
+        pulse_duration_start (int): Initial drive pulse duration for the Rabi experiment
+        pulse_duration_end (int): Maximum drive pulse duration for the Rabi experiment
+        pulse_duration_step (int): Scan range step for the drive pulse duration for the Rabi experiment
+        pulse_gain_start (int): Initial drive pulse gain for the Rabi experiment
+        pulse_gain_end (int): Maximum drive pulse gain for the Rabi experiment
+        pulse_gain_step (int): Scan range step for the drive pulse gain for the Rabi experiment
+        points (int): Save data results in a file every number of points
+
+    Returns:
+        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
+
+            - **MSR[V]**: Resonator signal voltage mesurement in volts
+            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
+            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
+            - **phase[rad]**: Resonator signal phase mesurement in radians
+            - **duration[ns]**: Drive pulse duration in ns
+            - **gain[dimensionless]**: Drive pulse gain
+
+    """
+
+    platform.reload_settings()
 
     sequence = PulseSequence()
     qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
@@ -235,14 +328,8 @@ def rabi_pulse_length_and_gain(
     )
     qd_pulse_gain_range = np.arange(pulse_gain_start, pulse_gain_end, pulse_gain_step)
 
-    # FIXME: Waiting to be able to pass qpucard to qibolab
-    platform.ro_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["resonator_freq"]
-        - ro_pulse.frequency
-    )
-    platform.qd_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["qubit_freq"]
-        - qd_pulse.frequency
+    data = DataUnits(
+        name=f"data_q{qubit}", quantities={"duration": "ns", "gain": "dimensionless"}
     )
 
     count = 0
@@ -284,12 +371,35 @@ def rabi_pulse_length_and_amplitude(
     software_averages,
     points=10,
 ):
-    platform.reload_settings()
 
-    data = DataUnits(
-        name=f"data_q{qubit}",
-        quantities={"duration": "ns", "amplitude": "dimensionless"},
-    )
+    r"""
+    In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse
+    combination of duration and amplitude to find the drive pulse amplitude that creates a rotation of a desired angle.
+
+    Args:
+        platform (AbstractPlatform): Qibolab platform object
+        qubit (int): Target qubit to perform the action
+        pulse_duration_start (int): Initial drive pulse duration for the Rabi experiment
+        pulse_duration_end (int): Maximum drive pulse duration for the Rabi experiment
+        pulse_duration_step (int): Scan range step for the drive pulse duration for the Rabi experiment
+        pulse_amplitude_start (int): Initial drive pulse amplitude for the Rabi experiment
+        pulse_amplitude_end (int): Maximum drive pulse amplitude for the Rabi experiment
+        pulse_amplitude_step (int): Scan range step for the drive pulse amplitude for the Rabi experiment
+        points (int): Save data results in a file every number of points
+
+    Returns:
+        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
+
+            - **MSR[V]**: Resonator signal voltage mesurement in volts
+            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
+            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
+            - **phase[rad]**: Resonator signal phase mesurement in radians
+            - **duration[ns]**: Drive pulse duration in ns
+            - **amplitude[dimensionless]**: Drive pulse amplitude
+
+    """
+
+    platform.reload_settings()
 
     sequence = PulseSequence()
     qd_pulse = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
@@ -304,14 +414,9 @@ def rabi_pulse_length_and_amplitude(
         pulse_amplitude_start, pulse_amplitude_end, pulse_amplitude_step
     )
 
-    # FIXME: Waiting to be able to pass qpucard to qibolab
-    platform.ro_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["resonator_freq"]
-        - ro_pulse.frequency
-    )
-    platform.qd_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["qubit_freq"]
-        - qd_pulse.frequency
+    data = DataUnits(
+        name=f"data_q{qubit}",
+        quantities={"duration": "ns", "amplitude": "dimensionless"},
     )
 
     count = 0

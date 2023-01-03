@@ -1,7 +1,4 @@
 """Decorators implementation."""
-import os
-
-from qibocal.config import raise_error
 
 
 def plot(header, method):

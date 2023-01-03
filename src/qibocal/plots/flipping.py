@@ -4,19 +4,11 @@ from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import flipping
+from qibocal.plots.utils import get_data_subfolders
 
 
 # Flipping
 def flips_msr_phase(folder, routine, qubit, format):
-    try:
-        data = DataUnits.load_data(folder, routine, format, f"data_q{qubit}")
-    except:
-        data = DataUnits(quantities={"flips": "dimensionless"})
-
-    try:
-        data_fit = Data.load_data(folder, routine, format, f"fit_q{qubit}")
-    except:
-        data_fit = DataUnits()
 
     fig = make_subplots(
         rows=1,
@@ -29,76 +21,92 @@ def flips_msr_phase(folder, routine, qubit, format):
         ),
     )
 
-    fig.add_trace(
-        go.Scatter(
-            x=data.get_values("flips", "dimensionless"),
-            y=data.get_values("MSR", "uV"),
-            name="Flipping MSR",
-        ),
-        row=1,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=data.get_values("flips", "dimensionless"),
-            y=data.get_values("phase", "rad"),
-            name="Flipping Phase",
-        ),
-        row=1,
-        col=2,
-    )
+    # iterate over multiple data folders
+    subfolders = get_data_subfolders(folder)
+    i = 0
+    fitting_report = ""
+    for subfolder in subfolders:
+        try:
+            data = DataUnits.load_data(
+                folder, subfolder, routine, format, f"data_q{qubit}"
+            )
+        except:
+            data = DataUnits(quantities={"flips": "dimensionless"})
 
-    # add fitting trace
-    if len(data) > 0 and len(data_fit) > 0:
-        flipsrange = np.linspace(
-            min(data.get_values("flips", "dimensionless")),
-            max(data.get_values("flips", "dimensionless")),
-            2 * len(data),
-        )
-        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+        try:
+            data_fit = Data.load_data(
+                folder, subfolder, routine, format, f"fit_q{qubit}"
+            )
+        except:
+            data_fit = DataUnits()
+
         fig.add_trace(
             go.Scatter(
-                x=flipsrange,
-                y=flipping(
-                    flipsrange,
-                    data_fit.get_values("popt0"),
-                    data_fit.get_values("popt1"),
-                    data_fit.get_values("popt2"),
-                    data_fit.get_values("popt3"),
-                ),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
+                x=data.get_values("flips", "dimensionless"),
+                y=data.get_values("MSR", "uV"),
+                name=f"Flipping MSR q{qubit}/r{i}",
             ),
             row=1,
             col=1,
         )
+        fig.add_trace(
+            go.Scatter(
+                x=data.get_values("flips", "dimensionless"),
+                y=data.get_values("phase", "rad"),
+                name=f"Flipping Phase q{qubit}/r{i}",
+            ),
+            row=1,
+            col=2,
+        )
 
-        fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=0,
-                y=-0.25,
-                showarrow=False,
-                text=f"Estimated {params[0]} is {data_fit.df[params[0]][0]:.4f}",
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
+        # add fitting trace
+        if len(data) > 0 and len(data_fit) > 0:
+            flipsrange = np.linspace(
+                min(data.get_values("flips", "dimensionless")),
+                max(data.get_values("flips", "dimensionless")),
+                2 * len(data),
             )
-        )
-        fig.add_annotation(
-            dict(
-                font=dict(color="black", size=12),
-                x=0,
-                y=-0.30,
-                showarrow=False,
-                text=f"Estimated {params[1]} is {data_fit.df[params[1]][0]:.3f}",
-                textangle=0,
-                xanchor="left",
-                xref="paper",
-                yref="paper",
+            params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+            fig.add_trace(
+                go.Scatter(
+                    x=flipsrange,
+                    y=flipping(
+                        flipsrange,
+                        data_fit.get_values("popt0"),
+                        data_fit.get_values("popt1"),
+                        data_fit.get_values("popt2"),
+                        data_fit.get_values("popt3"),
+                    ),
+                    name=f"Fit q{qubit}/r{i}",
+                    line=go.scatter.Line(dash="dot"),
+                ),
+                row=1,
+                col=1,
             )
+
+            fitting_report = fitting_report + (
+                f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.4f}<br>q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f}<br><br>"
+            )
+
+        i += 1
+
+    fig.add_annotation(
+        dict(
+            font=dict(color="black", size=12),
+            x=0,
+            y=1.2,
+            showarrow=False,
+            text="<b>FITTING DATA</b>",
+            font_family="Arial",
+            font_size=20,
+            textangle=0,
+            xanchor="left",
+            xref="paper",
+            yref="paper",
+            font_color="#5e9af1",
+            hovertext=fitting_report,
         )
+    )
 
     # last part
     fig.update_layout(
