@@ -7,7 +7,7 @@ def standardrb_plot(folder, routine, qubit, format):
     from qibocal.calibrations.protocols.standardrb import StandardRBExperiment, analyze
 
     experimentpath = f"{folder}/data/{routine}/"
-    experiment = StandardRBExperiment.load(experimentpath)
+    experiment = Experiment.load(experimentpath)
     fig = analyze(experiment)
     try:
         data = Data.load_data(folder, routine, "pickle", "effectivedepol")

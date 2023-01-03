@@ -1,4 +1,5 @@
 import datetime
+import importlib
 import inspect
 import os
 import shutil
@@ -15,6 +16,120 @@ def load_yaml(path):
     with open(path) as file:
         data = yaml.safe_load(file)
     return data
+
+
+class singleActionParser:
+    def __init__(self, runcard, folder, name, qubits):
+        self.runcard = runcard
+        self.folder = folder
+        self.func = None
+        self.single_qubit = None
+        self.params = None
+        self.name = name
+        self.path = os.path.join(self.folder, f"data/{self.name}/")
+        os.makedirs(self.path)
+
+    def build(self, name):
+
+        # collect function from module
+        self.func = getattr(calibrations, name)
+
+        sig = inspect.signature(self.func)
+        self.params = self.runcard["actions"][name]
+        for param in list(sig.parameters)[2:-1]:
+            if param not in self.params:
+                raise_error(AttributeError, f"Missing parameter {param} in runcard.")
+        if self.func.__annotations__["qubit"] == int:
+            self.single_qubit = True
+        else:
+            self.single_qubit = False
+
+    def execute(self, data_format, platform):
+        """Method to execute a single action and retrieving the results."""
+        if data_format is None:
+            raise_error(ValueError, f"Cannot store data using {data_format} format.")
+        if self.single_qubit:
+            for qubit in self.runcard["qubits"]:
+                results = self.func(platform, qubit, **self.params)
+
+                for data in results:
+                    getattr(data, f"to_{data_format}")(self.path)
+
+                # if platform is not None:
+                #     self.update_platform_runcard(qubit, routine.__name__)
+        else:
+            results = self.func(platform, self.runcard["qubits"], **self.params)
+
+            for data in results:
+                getattr(data, f"to_{data_format}")(self.path)
+
+
+class RBsingleActionParser(singleActionParser):
+    def __init__(self, runcard, folder, name, qubits):
+        super().__init__(runcard, folder, name)
+
+        self.qubits = qubits
+        self.nqubits = self.runcard["actions"][self.name]["nqubits"]
+        self.depths = self.runcard["actions"][self.name]["depths"]
+        self.runs = self.runcard["actions"][self.name]["runs"]
+        self.nshots = self.runcard["actions"][self.name]["nshots"]
+        self.noise_params = self.runcard["actions"][self.name]["noise_params"]
+
+    def build(self, name):
+
+        self.module = importlib.import_module(
+            f"qibocal.calibrations.characaterization.{name}"
+        )
+        self.factory = getattr(self.module, "Factory")(
+            self.nqubits, self.detphs, self.runs, self.qubits
+        )
+        self.experiment = getattr(self.module, "Experiment")(self.factory, self.nshots)
+        self.func = self.experiment.execute
+
+    def execute(self, data_format, noise_params=None):
+
+        data = Data()
+        if data_format is None:
+            raise_error(ValueError, f"Cannot store data using {data_format} format.")
+        if self.single_qubit:
+            for qubit in self.runcard["qubits"]:
+                results = self.func()
+                data.df = self.experiment.dataframe
+
+                for data in results:
+                    getattr(data, f"to_{data_format}")(self.path)
+
+                # if platform is not None:
+                #     self.update_platform_runcard(qubit, routine.__name__)
+        # else:
+        #     results = self.func(platform, self.runcard["qubits"], **self.params)
+
+        #     for data in results:
+        #         getattr(data, f"to_{data_format}")(self.path)
+
+        # if platform is not None:
+        #     self.update_platform_runcard(qubit, routine.__name__)
+
+
+# class Protocol:
+#     """Class to encapsulate the execution of a generic protocol"""
+
+#     def __init__(self, module, noise=None) -> None:
+#         self.module = importlib.import_module(f'qibocal.calibrations.characaterization.{module}')
+#         self.noise = noise
+
+#     def execute(self, qubits : list, depths : list, runs : int, nshots : int, nqubits : int = None) -> None:
+#          # Initiate the circuit factory and the Experiment object.
+#         factory = self.module.Factory(nqubits, depths, runs, qubits=qubits)
+#         experiment = getattr(self.module, 'Experiment')(factory, nshots, noisemodel=self.noise)
+#         # Execute the experiment.
+#         experiment.execute()
+#         data = Data()
+#         data.df = experiment.dataframe
+#         yield data
+#         data_validation = Data("validate_simulation", quantities=["validation"])
+#         data_validation.add({"validation": self.module.validation_function(experiment)})
+#         yield data_validation
 
 
 class ActionBuilder:
@@ -138,8 +253,9 @@ class ActionBuilder:
             self.platform.start()
 
         for action in self.runcard["actions"]:
-            routine, args, path, single_qubit_action = self._build_single_action(action)
-            self._execute_single_action(routine, args, path, single_qubit_action)
+            parser = RBsingleActionParser(self.runcard, self.folder, action)
+            parser.build(self.qubits)
+            parser.execute(self.format, self.platform)
 
         if self.platform is not None:
             self.platform.stop()

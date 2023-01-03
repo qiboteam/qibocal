@@ -1,19 +1,19 @@
-platform: tii1q
+platform: tii1q_b1
 
 qubits: [0]
 
 format: csv
 
 actions:
-  # resonator_spectroscopy:
-  #   lowres_width: 5_000_000
-  #   lowres_step: 2_000_000
-  #   highres_width: 1_500_000
-  #   highres_step: 200_000
-  #   precision_width: 1_500_000
-  #   precision_step: 100_000
-  #   software_averages: 1
-  #   points: 5
+  resonator_spectroscopy:
+    lowres_width: 5_000_000
+    lowres_step: 2_000_000
+    highres_width: 1_500_000
+    highres_step: 200_000
+    precision_width: 1_500_000
+    precision_step: 100_000
+    software_averages: 1
+    points: 5
 
   # resonator_punchout:
   #   freq_width: 10_000_000
@@ -82,10 +82,10 @@ actions:
   #   software_averages: 1
   #   points: 1
 
-  allXY:
-    beta_param: Null
-    software_averages: 1
-    points: 1
+  # allXY:
+  #   beta_param: Null
+  #   software_averages: 1
+  #   points: 1
 
   # calibrate_qubit_states:
   #   niter: 1024

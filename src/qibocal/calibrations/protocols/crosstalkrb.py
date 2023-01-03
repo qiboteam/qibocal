@@ -12,7 +12,7 @@ from qibo.noise import NoiseModel, PauliError
 from qibolab.platforms.abstract import AbstractPlatform
 
 from qibocal.calibrations.protocols.abstract import (
-    Experiment,
+    AbstractExperiment,
     Result,
     SingleCliffordsFactory,
 )
@@ -24,7 +24,7 @@ from qibocal.fitting.rb_methods import fit_exp1_func
 from qibocal.plots.rb import crosstalkrb_plot
 
 
-class CrosstalkRBExperiment(Experiment):
+class CrosstalkRBExperiment(AbstractExperiment):
     def __init__(
         self,
         circuitfactory: Iterable,

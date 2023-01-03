@@ -99,30 +99,30 @@ class StandardRBResult(Result):
         self.scatter_fit_fig(xdata_scatter, ydata_scatter, xdata, ydata)
 
 
-def groundstate_probability(experiment: Experiment):
+def groundstate_probability(experiment: StandardRBExperiment):
     """Computes sequential the ground state probabilities of an executed
     experiment and stores them in the experiment.
 
     Args:
-        experiment (Experiment): Executed experiment for which the ground state
+        experiment (StandardRBExperiment): Executed experiment for which the ground state
         probabilities for each data row are calculated.
     """
     probs = experiment.probabilities[:, 0]
     experiment._append_data("groundstate_probabilities", list(probs))
 
 
-def validate_simulation(experiment: Experiment):
+def validate_simulation(experiment: StandardRBExperiment):
     """Take the used noise model in the simulation and calculates
     the desired outcome.
 
     Args:
-        experiment (Experiment): Experiment which executed the simulation.
+        experiment (StandardRBExperiment): StandardRBExperiment which executed the simulation.
     """
     pass
 
 
 def analyze(
-    experiment: Experiment, noisemodel: NoiseModel = None, **kwargs
+    experiment: StandardRBExperiment, noisemodel: NoiseModel = None, **kwargs
 ) -> go._figure.Figure:
     # Compute and add the ground state probabilities.
     experiment.apply_task(groundstate_probability)
@@ -148,7 +148,7 @@ def perform(
         depol = effective_depol(paulinoise)
     else:
         noise = None
-    # Initiate the circuit factory and the faulty Experiment object.
+    # Initiate the circuit factory and the faulty StandardRBExperiment object.
     factory = SingleCliffordsInvFactory(nqubits, depths, runs, qubits=qubits)
     experiment = StandardRBExperiment(factory, nshots, noisemodel=noise)
     # Execute the experiment.
@@ -177,7 +177,7 @@ def qqperform_standardrb(
         yield data_depol
     else:
         noise = None
-    # Initiate the circuit factory and the Experiment object.
+    # Initiate the circuit factory and the StandardRBExperiment object.
     factory = SingleCliffordsInvFactory(nqubit, depths, runs, qubits=qubit)
     experiment = StandardRBExperiment(factory, nshots, noisemodel=noise)
     # Execute the experiment.
@@ -185,3 +185,7 @@ def qqperform_standardrb(
     data = Data()
     data.df = experiment.dataframe
     yield data
+
+
+Factory = SingleCliffordsFactory
+Experiment = StandardRBExperiment
