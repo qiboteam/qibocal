@@ -55,7 +55,7 @@ def allXY(folder, routine, qubit, format):
     for subfolder in subfolders:
         try:
             data = Data.load_data(folder, subfolder, routine, format, "data")
-            data.df = data.df[data.df["qubit"] == int(qubit)]
+            data.df = data.df[data.df["qubit"] == qubit]
         except:
             data = Data(
                 name="data",
@@ -86,7 +86,7 @@ def allXY(folder, routine, qubit, format):
         fig.add_trace(
             go.Scatter(
                 x=gate_numbers,  # pylint: disable=E1101
-                y=data.df.groupby("gateNumber")[
+                y=data.df.groupby("gateNumber", as_index=False)[
                     "probability"
                 ].mean(),  # pylint: disable=E1101
                 name=f"q{qubit}/r{report_n}: Average Probability",
@@ -152,7 +152,7 @@ def allXY_drag_pulse_tuning(folder, routine, qubit, format):
 
         try:
             data = Data.load_data(folder, subfolder, routine, format, "data")
-            data.df = data.df[data.df["qubit"] == int(qubit)]
+            data.df = data.df[data.df["qubit"] == qubit]
         except:
             data = Data(
                 quantities={
@@ -243,7 +243,7 @@ def drag_pulse_tuning(folder, routine, qubit, format):
     for subfolder in subfolders:
         try:
             data = DataUnits.load_data(folder, subfolder, routine, format, "data")
-            data.df = data.df[data.df["qubit"] == int(qubit)]
+            data.df = data.df[data.df["qubit"] == qubit]
         except:
             data = DataUnits(
                 name="data",
@@ -252,9 +252,29 @@ def drag_pulse_tuning(folder, routine, qubit, format):
             )
         try:
             data_fit = Data.load_data(folder, subfolder, routine, format, "fits")
-            data_fit.df = data_fit.df[data_fit.df["qubit"] == int(qubit)]
+            data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
         except:
             data_fit = Data()
+
+        iterations = data.df["iteration"].unique()
+        beta_params = data.df["beta_param"].pint.magnitude.unique()
+
+        for iteration in iterations:
+            iteration_data = data.df[data.df["iteration"] == iteration]
+            fig.add_trace(
+                go.Scatter(
+                    x=iteration_data["beta_param"].pint.magnitude,
+                    y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
+                    marker_color=_get_color(report_n),
+                    mode="markers",
+                    opacity=0.3,
+                    name=f"q{qubit}/r{report_n}: Probability",
+                    showlegend=not bool(iteration),
+                    legendgroup="group1",
+                ),
+                row=1,
+                col=1,
+            )
 
         iterations = data.df["iteration"].unique()
         beta_params = data.df["beta_param"].pint.magnitude.unique()
@@ -279,7 +299,9 @@ def drag_pulse_tuning(folder, routine, qubit, format):
         fig.add_trace(
             go.Scatter(
                 x=beta_params,  # pylint: disable=E1101
-                y=data.df.groupby("beta_param")["MSR"]  # pylint: disable=E1101
+                y=data.df.groupby("beta_param", as_index=False)[
+                    "MSR"
+                ]  # pylint: disable=E1101
                 .mean()
                 .pint.to("uV")
                 .pint.magnitude,
@@ -292,13 +314,15 @@ def drag_pulse_tuning(folder, routine, qubit, format):
         )
 
         # add fitting traces
-        if len(data) > 0 and (int(qubit) in data_fit.df["qubit"].values):
+
+        if len(data) > 0 and (qubit in data_fit.df["qubit"].values):
             beta_range = np.linspace(
                 min(data.get_values("beta_param", "dimensionless")),
                 max(data.get_values("beta_param", "dimensionless")),
                 20,
             )
-            params = data_fit.df[data_fit.df["qubit"] == int(qubit)].to_dict(
+
+            params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(
                 orient="records"
             )[0]
             fig.add_trace(
