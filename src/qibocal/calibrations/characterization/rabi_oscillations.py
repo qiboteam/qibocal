@@ -44,7 +44,7 @@ def rabi_pulse_length(
                     x="Time[ns]",
                     y="MSR[uV]",
                     qubit=qubit,
-                    nqubits=platform.settings["nqubits"],
+                    resonator_type=platform.resonator_type,
                     labels=[
                         "pi_pulse_duration",
                         "pi_pulse_max_voltage",
@@ -98,7 +98,7 @@ def rabi_pulse_gain(
                     x="gain[dimensionless]",
                     y="MSR[uV]",
                     qubit=qubit,
-                    nqubits=platform.settings["nqubits"],
+                    resonator_type=platform.resonator_type,
                     labels=[
                         "pi_pulse_gain",
                         "pi_pulse_max_voltage",
@@ -154,7 +154,7 @@ def rabi_pulse_amplitude(
                     x="amplitude[dimensionless]",
                     y="MSR[uV]",
                     qubit=qubit,
-                    nqubits=platform.settings["nqubits"],
+                    resonator_type=platform.resonator_type,
                     labels=[
                         "pi_pulse_amplitude",
                         "pi_pulse_max_voltage",

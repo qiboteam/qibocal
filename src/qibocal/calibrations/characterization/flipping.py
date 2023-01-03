@@ -8,7 +8,7 @@ from qibocal.decorators import plot
 from qibocal.fitting.methods import flipping_fit
 
 
-@plot("MSR vs Flips", plots.flips_msr_phase)
+# @plot("MSR vs Flips", plots.flips_msr_phase)
 def flipping(
     platform: AbstractPlatform,
     qubits: list,
@@ -32,6 +32,7 @@ def flipping(
 
     count = 0
     # repeat N iter times
+
     for iteration in range(software_averages):
         for n in range(0, niter, step):
             if count % points == 0 and count > 0:
@@ -41,7 +42,7 @@ def flipping(
                     x="flips[dimensionless]",
                     y="MSR[uV]",
                     qubits=qubits,
-                    nqubits=platform.settings["nqubits"],
+                    resonator_type=platform.resonator_type,
                     pi_pulse_amplitude=pi_pulse_amplitudes[qubit],
                     labels=["amplitude_delta", "corrected_amplitude"],
                 )
@@ -83,12 +84,13 @@ def flipping(
                 data.add(results)
             count += 1
     yield data
+
     yield flipping_fit(
         data,
         x="flips[dimensionless]",
         y="MSR[uV]",
         qubits=qubits,
-        nqubits=platform.settings["nqubits"],
+        resonator_type=platform.resonator_type,
         pi_pulse_amplitude=pi_pulse_amplitudes[qubit],
         labels=["amplitude_delta", "corrected_amplitude"],
     )

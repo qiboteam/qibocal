@@ -65,7 +65,7 @@ def spin_echo_3pulses(
                     x="Time[ns]",
                     y="MSR[uV]",
                     qubit=qubit,
-                    nqubits=platform.settings["nqubits"],
+                    resonator_type=platform.resonator_type,
                     labels=["t2"],
                 )
             RX_pulse.start = RX_pulse.duration + wait

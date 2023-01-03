@@ -42,7 +42,7 @@ def t1(
                     x="Time[ns]",
                     y="MSR[uV]",
                     qubit=qubit,
-                    nqubits=platform.settings["nqubits"],
+                    resonator_type=platform.resonator_type,
                     labels=["t1"],
                 )
             ro_pulse.start = qd_pulse.duration + wait
