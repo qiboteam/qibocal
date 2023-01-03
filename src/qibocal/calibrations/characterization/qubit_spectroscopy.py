@@ -26,27 +26,29 @@ def qubit_spectroscopy(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubit (int): Target qubit to perform the action
-        fast_start (int): Initial frequenecy in HZ to perform the qubit fast sweep
-        fast_end (int): End frequenecy in HZ to perform the qubit fast sweep
-        fast_step (int): Step frequenecy in HZ for the qubit fast sweep
-        precision_start (int): Initial frequenecy in HZ to perform the qubit precision sweep
-        precision_end (int): End frequenecy in HZ to perform the qubit precision sweep
-        precision_step (int): Step frequenecy in HZ for the qubit precision sweep
+        qubits (list): List of target qubits to perform the action
+        fast_start (int): Initial frequency in HZ to perform the qubit fast sweep
+        fast_width (int): Width frequency in HZ to perform the high resolution sweep
+        fast_step (int): Step frequency in HZ for the high resolution sweep
+        precision_width (int): Width frequency in HZ to perform the precision resolution sweep
+        precision_step (int): Step frequency in HZ for the precission resolution sweep
         software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
 
     Returns:
-        - A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
+        - Two DataUnits objects with the raw data obtained for the fast and precision sweeps with the following keys
 
             - **MSR[V]**: Resonator signal voltage mesurement in volts
             - **i[V]**: Resonator signal voltage mesurement for the component I in volts
             - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
             - **phase[rad]**: Resonator signal phase mesurement in radians
-            - **frequency[Hz]**: Resonator frequency value in Hz
+            - **frequency[Hz]**: Qubit drive frequency value in Hz
+            - **qubit**: The qubit being tested
+            - **iteration**: The iteration number of the many determined by software_averages
 
         - A DataUnits object with the fitted data obtained with the following keys
 
+            - **qubit**: The qubit being tested
             - **qubit_freq**: frequency
             - **peak_voltage**: peak voltage
             - **popt0**: Lorentzian's amplitude
@@ -266,15 +268,14 @@ def qubit_spectroscopy_flux(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubit (int): Target qubit to perform the action
-        freq_width (int): Width frequenecy in HZ to perform the spectroscopy sweep
-        freq_step (int): Step frequenecy in HZ for the spectroscopy sweep
-        current_max (int): Minimum value in mV for the flux current sweep
-        current_min (int): Minimum value in mV for the flux current sweep
-        current_step (int): Step attenuation in mV for the flux current sweep
+        qubits (list): List of target qubits to perform the action
+        freq_width (int): Width frequency in HZ to perform the spectroscopy sweep
+        freq_step (int): Step frequency in HZ for the spectroscopy sweep
+        current_width (float): Width current in A for the flux current sweep
+        current_step (float): Step current in A for the flux current sweep
         software_averages (int): Number of executions of the routine for averaging results
-        fluxline (int): Flux line associated to the target qubit. If it is set to "qubit", the platform
-                automatically obtain the flux line number of the target qubit.
+        fluxlines (list): List of flux lines to use to perform the experiment. If it is set to "qubits", it uses each of
+                        flux lines associated with the target qubits.
         points (int): Save data results in a file every number of points
 
     Returns:
@@ -284,7 +285,11 @@ def qubit_spectroscopy_flux(
             - **i[V]**: Resonator signal voltage mesurement for the component I in volts
             - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
             - **phase[rad]**: Resonator signal phase mesurement in radians
-            - **frequency[Hz]**: Resonator frequency value in Hz
+            - **frequency[Hz]**: Qubit drive frequency value in Hz
+            - **current[A]**: Current value in A applied to the flux line
+            - **qubit**: The qubit being tested
+            - **fluxline**: The fluxline being tested
+            - **iteration**: The iteration number of the many determined by software_averages
 
         - A DataUnits object with the fitted data obtained with the following keys
 

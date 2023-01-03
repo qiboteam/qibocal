@@ -25,8 +25,8 @@ def lorentzian_fit(
         data (`DataUnits`): dataset for the fit
         x (str): name of the input values for the Lorentzian model
         y (str): name of the output values for the Lorentzian model
-        qubit (int): ID qubit number
-        nqubits (int): total number of qubits
+        qubits (list): A list with the IDs of the qubits
+        resonator_type (str): the type of readout resonator ['3D', '2D']
         labels (list of str): list containing the lables of the quantities computed by this fitting method.
 
             -   When using ``resonator_spectroscopy`` the expected labels are [`resonator_freq`, `peak voltage`], where `resonator_freq` is the estimated frequency of the resonator, and `peak_voltage` the peak of the Lorentzian
@@ -87,9 +87,9 @@ def lorentzian_fit(
                     data,
                     "frequency[Hz]",
                     "MSR[V]",
-                    0,
-                    nqubits,
-                    labels=[label, "peak_voltage", "MZ_freq"],
+                    qubits = [0],
+                    resonator_type='3D',
+                    labels=[label, "peak_voltage", "intermediate_freq"],
                     fit_file_name=name,
                 )
 

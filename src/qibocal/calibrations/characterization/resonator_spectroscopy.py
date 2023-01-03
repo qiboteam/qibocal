@@ -21,34 +21,35 @@ def resonator_spectroscopy(
     points=10,
 ):
     r"""
-    Perform spectroscopy on the 2D or 3D readout resonator.
-    This routine executes a variable resolution scan around the expected resonator frequency indicated
-    in the platform runcard. Afterthat, a final sweep with more precision is executed centered in the new
+    Perform spectroscopies on the qubits' readout resonators.
+    This routine executes an initial scan around the expected resonator frequency indicated
+    in the platform runcard. After that, a final sweep with more precision is executed centered in the new
     resonator frequency found.
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubit (int): Target qubit to perform the action
-        lowres_width (int): Width frequenecy in HZ to perform the low resolution sweep
-        lowres_step (int): Step frequenecy in HZ for the low resolution sweep
-        highres_width (int): Width frequenecy in HZ to perform the high resolution sweep
-        highres_step (int): Step frequenecy in HZ for the high resolution sweep
-        precision_width (int): Width frequenecy in HZ to perform the precision resolution sweep
-        precision_step (int): Step frequenecy in HZ for the precission resolution sweep
+        qubits (list): List of target qubits to perform the action
+        fast_width (int): Width frequency in HZ to perform the high resolution sweep
+        fast_step (int): Step frequency in HZ for the high resolution sweep
+        precision_width (int): Width frequency in HZ to perform the precision resolution sweep
+        precision_step (int): Step frequency in HZ for the precission resolution sweep
         software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
 
     Returns:
-        - A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
+        - Two DataUnits objects with the raw data obtained for the fast and precision sweeps with the following keys
 
             - **MSR[V]**: Resonator signal voltage mesurement in volts
             - **i[V]**: Resonator signal voltage mesurement for the component I in volts
             - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
             - **phase[rad]**: Resonator signal phase mesurement in radians
             - **frequency[Hz]**: Resonator frequency value in Hz
+            - **qubit**: The qubit being tested
+            - **iteration**: The iteration number of the many determined by software_averages
 
         - A DataUnits object with the fitted data obtained with the following keys
 
+            - **qubit**: The qubit being tested
             - **resonator_freq**: frequency
             - **peak_voltage**: peak voltage
             - **popt0**: Lorentzian's amplitude
@@ -298,15 +299,15 @@ def resonator_punchout(
     points=10,
 ):
     r"""
-    Perform spectroscopy on the readout resonator decreasing the attenuation applied to
+    Perform spectroscopies on the qubits' readout resonators, decreasing the attenuation applied to
     the read-out pulse, producing an increment of the power sent to the resonator.
     That shows the two regimes of a given resonator, low and high-power regimes.
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubit (int): Target qubit to perform the action
-        freq_width (int): Width frequenecy in HZ to perform the spectroscopy sweep
-        freq_step (int): Step frequenecy in HZ for the spectroscopy sweep
+        qubits (list): List of target qubits to perform the action
+        freq_width (int): Width frequency in HZ to perform the spectroscopy sweep
+        freq_step (int): Step frequency in HZ for the spectroscopy sweep
         min_att (int): Minimum value in db for the attenuation sweep
         max_att (int): Minimum value in db for the attenuation sweep
         step_att (int): Step attenuation in db for the attenuation sweep
@@ -322,7 +323,8 @@ def resonator_punchout(
             - **phase[rad]**: Resonator signal phase mesurement in radians
             - **frequency[Hz]**: Resonator frequency value in Hz
             - **attenuation[dB]**: attenuation value in db applied to the flux line
-
+            - **qubit**: The qubit being tested
+            - **iteration**: The iteration number of the many determined by software_averages
     """
 
     # reload instrument settings from runcard
@@ -429,15 +431,14 @@ def resonator_spectroscopy_flux(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubit (int): Target qubit to perform the action
-        freq_width (int): Width frequenecy in HZ to perform the spectroscopy sweep
-        freq_step (int): Step frequenecy in HZ for the spectroscopy sweep
-        current_max (int): Minimum value in mV for the flux current sweep
-        current_min (int): Minimum value in mV for the flux current sweep
-        current_step (int): Step attenuation in mV for the flux current sweep
+        qubits (list): List of target qubits to perform the action
+        freq_width (int): Width frequency in HZ to perform the spectroscopy sweep
+        freq_step (int): Step frequency in HZ for the spectroscopy sweep
+        current_width (float): Width current in A for the flux current sweep
+        current_step (float): Step current in A for the flux current sweep
         software_averages (int): Number of executions of the routine for averaging results
-        fluxline (int): Flux line associated to the target qubit. If it is set to "qubit", the platform
-                        automatically obtain the flux line number of the target qubit.
+        fluxlines (list): List of flux lines to use to perform the experiment. If it is set to "qubits", it uses each of
+                        flux lines associated with the target qubits.
         points (int): Save data results in a file every number of points
 
     Returns:
@@ -448,8 +449,10 @@ def resonator_spectroscopy_flux(
             - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
             - **phase[rad]**: Resonator signal phase mesurement in radians
             - **frequency[Hz]**: Resonator frequency value in Hz
-            - **current[A]**: Current value in mA applied to the flux line
-
+            - **current[A]**: Current value in A applied to the flux line
+            - **qubit**: The qubit being tested
+            - **fluxline**: The fluxline being tested
+            - **iteration**: The iteration number of the many determined by software_averages
     """
 
     # reload instrument settings from runcard
@@ -569,9 +572,9 @@ def dispersive_shift(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubit (int): Target qubit to perform the action
-        freq_width (int): Width frequenecy in HZ to perform the spectroscopy sweep
-        freq_step (int): Step frequenecy in HZ for the spectroscopy sweep
+        qubits (list): List of target qubits to perform the action
+        freq_width (int): Width frequency in HZ to perform the spectroscopy sweep
+        freq_step (int): Step frequency in HZ for the spectroscopy sweep
         software_averages (int): Number of executions of the routine for averaging results
         fluxlines (list): List of flux control lines associated to different qubits to sweep current
         points (int): Save data results in a file every number of points
@@ -584,7 +587,8 @@ def dispersive_shift(
             - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
             - **phase[rad]**: Resonator signal phase mesurement in radians
             - **frequency[Hz]**: Resonator frequency value in Hz
-
+            - **qubit**: The qubit being tested
+            - **iteration**: The iteration number of the many determined by software_averages
     """
 
     # reload instrument settings from runcard
