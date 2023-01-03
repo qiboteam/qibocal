@@ -20,6 +20,15 @@ from qibocal.calibrations.protocols.utils import (
 )
 from qibocal.config import raise_error
 
+""" TODO
+- Make row by row execution nicer -> ask Ingo
+- Don't load the whole experiment into the results class
+- Write validation functions
+- Make function names in each module generic
+- qubits_active, qubits_passive ?
+- Noise model integration
+"""
+
 
 class Circuitfactory:
     """TODO write documentation"""
@@ -28,7 +37,7 @@ class Circuitfactory:
         self, nqubits: int, depths: list, runs: int, qubits: list = None
     ) -> None:
         self.nqubits = nqubits if nqubits is not None else len(qubits)
-        self.qubits = qubits if qubits is not None else [x for x in range(nqubits)]
+        self.qubits = qubits if qubits is not None else list(range(nqubits))
         self.depths = depths
         self.runs = runs
 
@@ -151,99 +160,9 @@ class Experiment:
     def noise_model(self):
         return self.__noise_model
 
-    @classmethod
-    def load(cls, path: str) -> Experiment:
-        """Creates an object with data and if possible with circuits.
-
-        Args:
-            path (str): The directory from where the object should be restored.
-
-        Returns:
-            Experiment: The object with data (and circuitfactory).
-        """
-        datapath = f"{path}data.pkl"
-        circuitspath = f"{path}circuits.pkl"
-        if isfile(datapath):
-            with open(datapath, "rb") as f:
-                data = pickle.load(f)
-                if isinstance(data, pd.DataFrame):
-                    data = data.to_dict("records")
-            nshots = len(data[0]["samples"])
-        else:
-            data = None
-        if isfile(circuitspath):
-            with open(circuitspath, "rb") as f:
-                circuitfactory = pickle.load(f)
-        else:
-            circuitfactory = None
-        # Initiate an instance of the experiment class.
-        obj = cls(circuitfactory, data=data, nshots=nshots)
-        return obj
-
-    def prebuild(self) -> None:
-        """Converts the attribute ``circuitfactory`` which is in general
-        an iterable into a list.
-        """
-        self.circuitfactory = list(self.circuitfactory)
-
-    def execute(self) -> None:
-        """Calls method ``single_task`` while iterating over attribute
-        ``circuitfactory```.
-
-        Collects data given the already set data and overwrites
-        attribute ``data``.
-        """
-        if self.circuitfactory is None:
-            raise_error(NotImplementedError, "There are no circuits to execute.")
-        newdata = []
-        for circuit in self.circuitfactory:
-            try:
-                datarow = next(self.data)
-            except TypeError:
-                datarow = {}
-            newdata.append(self.single_task(deepcopy(circuit), datarow))
-        self.data = newdata
-
-    def single_task(self, circuit: Circuit, datarow: dict) -> dict:
-        """Executes a circuit, returns the single shot results.
-
-        Args:
-            circuit (Circuit): Will be executed, has to return samples.
-            datarow (dict): Dictionary with parameters for execution and
-                immediate postprocessing information.
-        """
-        if self.noise_model is not None:
-            circuit = self.noise_model.apply(circuit)
-        samples = circuit(nshots=self.nshots).samples()
-        return {"samples": samples}
-
-    def save(self) -> None:
-        """Creates a path and pickles relevent data from ``self.data`` and
-        if ``self.circuitfactory`` is a list that one too.
-        """
-        self.path = experiment_directory("rb")
-        if isinstance(self.circuitfactory, list):
-            with open(f"{self.path}circuits.pkl", "wb") as f:
-                pickle.dump(self.circuitfactory, f)
-        with open(f"{self.path}data.pkl", "wb") as f:
-            pickle.dump(self.data, f)
-
     @property
     def dataframe(self) -> pd.DataFrame:
         return pd.DataFrame(self.data)
-
-    def _append_data(self, name: str, datacolumn: list) -> None:
-        """Adds data column to ``data`` attribute.
-
-        Args:
-            name (str): Name of data column.
-            datacolumn (list): A list of the right shape
-        """
-        if len(datacolumn) != len(self.data):
-            raise ValueError("Given data column doesn't have the right length.")
-        df = self.dataframe
-        df[name] = datacolumn
-        self.data = df.to_dict("records")
 
     @property
     def samples(self) -> np.ndarray:
@@ -277,6 +196,96 @@ class Experiment:
         ]
         probs = np.array(probs) / (self.nshots)
         return probs
+
+    @classmethod
+    def load(cls, path: str) -> Experiment:
+        """Creates an experiment object with data and if possible with circuits.
+
+        Args:
+            path (str): The directory from where the object should be restored.
+
+        Returns:
+            Experiment: The object with data (and circuitfactory).
+        """
+        datapath = f"{path}data.pkl"
+        circuitspath = f"{path}circuits.pkl"
+        if isfile(datapath):
+            with open(datapath, "rb") as f:
+                data = pickle.load(f)
+                if isinstance(data, pd.DataFrame):
+                    data = data.to_dict("records")
+            nshots = len(data[0]["samples"])
+        else:
+            data = None
+        if isfile(circuitspath):
+            with open(circuitspath, "rb") as f:
+                circuitfactory = pickle.load(f)
+        else:
+            circuitfactory = None
+        # Initiate an instance of the experiment class.
+        obj = cls(circuitfactory, data=data, nshots=nshots)
+        return obj
+
+    def save(self) -> None:
+        """Creates a path and pickles relevent data from ``self.data`` and
+        if ``self.circuitfactory`` is a list that one too.
+        """
+        self.path = experiment_directory("rb")
+        if isinstance(self.circuitfactory, list):
+            with open(f"{self.path}circuits.pkl", "wb") as f:
+                pickle.dump(self.circuitfactory, f)
+        with open(f"{self.path}data.pkl", "wb") as f:
+            pickle.dump(self.data, f)
+
+    def prebuild(self) -> None:
+        """Converts the attribute ``circuitfactory`` which is in general
+        an iterable into a list.
+        """
+        self.circuitfactory = list(self.circuitfactory)
+
+    def execute(self) -> None:
+        """Calls method ``single_task`` while iterating over attribute
+        ``circuitfactory`` and ``data``.
+
+        Collects data given the already set data rows and overwrites
+        attribute ``data``.
+        """
+        if self.circuitfactory is None:
+            raise_error(NotImplementedError, "There are no circuits to execute.")
+        newdata = []
+        for circuit in self.circuitfactory:
+            try:
+                datarow = next(self.data)
+            except TypeError:
+                datarow = {}
+            newdata.append(self.single_task(deepcopy(circuit), datarow))
+        self.data = newdata
+
+    def single_task(self, circuit: Circuit, datarow: dict) -> dict:
+        """Executes a circuit, returns the single shot results.
+
+        Args:
+            circuit (Circuit): Will be executed, has to return samples.
+            datarow (dict): Dictionary with parameters for execution and
+                immediate postprocessing information.
+        """
+        if self.noise_model is not None:
+            circuit = self.noise_model.apply(circuit)
+        samples = circuit(nshots=self.nshots).samples()
+        return {"samples": samples}
+
+    def _append_data(self, name: str, datacolumn: list) -> None:
+        """Adds data column to ``data`` attribute.
+
+        Args:
+            name (str): Name of data column.
+            datacolumn (list): A list of the right shape
+        """
+        if len(datacolumn) != len(self.data):
+            raise ValueError("Given data column doesn't have the right length.")
+        df = self.dataframe
+        df[name] = datacolumn
+        self.data = df.to_dict("records")
 
     def apply_task(self, gtask):
         self = gtask(self)

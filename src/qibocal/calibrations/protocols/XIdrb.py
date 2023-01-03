@@ -60,32 +60,6 @@ class XIdFactory(Circuitfactory):
         return circuit
 
 
-class XIdRandMeasurementFactory(Circuitfactory):
-    def __init__(
-        self, nqubits: int, depths: list, runs: int, qubits: list = None
-    ) -> None:
-        super().__init__(nqubits, depths, runs, qubits)
-
-    def build_circuit(self, depth: int):
-        # Initiate the empty circuit from qibo with 'self.nqubits'
-        # many qubits.
-        circuit = models.Circuit(len(self.qubits), density_matrix=True)
-        # There are only two gates to choose from.
-        a = [gates.I(0), gates.X(0)]
-        # Draw sequence length many zeros and ones.
-        random_ints = np.random.randint(0, 2, size=depth)
-        # Get the Xs and Ids with random_ints as indices.
-        gate_lists = np.take(a, random_ints)
-        # Add gates to circuit.
-        circuit.add(gate_lists)
-        # For Y-basis we need Sdag*H <- before measurement
-        # For X-basis we need H before measurement
-        # if X: circuit.add(gates.H)
-        # if Y: circuit.add(gates.S.dag(), gates.H)
-        circuit.add(gates.M(*range(len(self.qubits))))
-        return circuit
-
-
 # Define the experiment class for this specific module.
 class XIdExperiment(Experiment):
     def __init__(
@@ -140,7 +114,11 @@ def analyze(
     return report
 
 
-# Make perform take a whole noisemodel already.
+def theoretical_outcome(experiment: Experiment, noisemodel: NoiseModel) -> float:
+    pass
+
+
+# Make ``perform`` take a whole noisemodel already.
 def perform(
     nqubits: int,
     depths: list,

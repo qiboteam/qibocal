@@ -25,6 +25,13 @@ from qibocal.plots.rb import crosstalkrb_plot
 
 
 class CrosstalkRBExperiment(Experiment):
+    """Inherits from abstract ``Experiment`` class.
+
+    Store ``circuitfactory`` as list such that after executing the used
+    circuitsare still there.
+
+    """
+
     def __init__(
         self,
         circuitfactory: Iterable,
@@ -32,27 +39,20 @@ class CrosstalkRBExperiment(Experiment):
         data: list = None,
         noisemodel: NoiseModel = None,
     ) -> None:
-        super().__init__(circuitfactory, nshots, data, noisemodel)
-
-    def single_task(self, circuit: Circuit, datarow: dict) -> dict:
-        """Executes a circuit, returns the single shot results
+        """Calles the parent ``__init__`` method and additionally prebuilds
+        the circuit factory making it a list stored in memory.
 
         Args:
-            circuit (Circuit): Will be executed, has to return samples.
-            datarow (dict): Dictionary with parameters for execution and
-                immediate postprocessing information.
+            circuitfactory (Iterable): _description_
+            nshots (int, optional): _description_. Defaults to None.
+            data (list, optional): _description_. Defaults to None.
+            noisemodel (NoiseModel, optional): _description_. Defaults to None.
         """
-        # First save the unexecuted circuit. Else there will be a
-        # pickle conflict.
-        justcircuitdict = {"circuit": deepcopy(circuit)}
-        datadict = super().single_task(circuit, datarow)
-        # FIXME and on the measurement branch of qibo the measurement is
-        # counted as one gate on the master branch not.
-        datadict["depth"] = int(
-            (circuit.ngates - 1 if circuit.ngates > 1 else 0)
-            / len(datadict["samples"][0])
-        )
-        return {**datadict, **justcircuitdict}
+
+        super().__init__(circuitfactory, nshots, data, noisemodel)
+        # Make the circuitfactory a list. That way they will be stored when
+        # calling the save method and the circuits are not lost once executed.
+        self.prebuild()
 
     @property
     def depths(self) -> np.ndarray:
@@ -65,6 +65,21 @@ class CrosstalkRBExperiment(Experiment):
             return self.dataframe["depth"].to_numpy()
         except KeyError:
             raise_error(KeyError, "No depths. Execute experiment first.")
+
+    def single_task(self, circuit: Circuit, datarow: dict) -> dict:
+        """Executes a circuit, returns the single shot results and depth.
+
+        Args:
+            circuit (Circuit): Will be executed, has to return samples.
+            datarow (dict): Dictionary with parameters for execution and
+                immediate postprocessing information.
+        """
+
+        datadict = super().single_task(circuit, datarow)
+        # Measurement gate should not contribute to depth, therefore -1.
+        # Take the amount of qubits into account.
+        datadict["depth"] = int((circuit.ngates - 1) / len(datadict["samples"][0]))
+        return datadict
 
 
 class CrosstalkRBResult(Result):
@@ -95,7 +110,12 @@ def filter_function(experiment: CrosstalkRBExperiment):
     :math:`\\ket{i_k}` with :math:`i_k=0, 1` with :math:`d=2`.
 
     .. math::
-        f_{\\boldsymbol{\\lambda}}(i,g) = \\frac{1}{2^{N-|\\boldsymbol{\\lambda}|}}\\sum_{\\mathbf b\\in\\mathbb F_2^N}(-1)^{|\\boldsymbol{\\lambda}\\wedge\\mathbf b|}\\frac{1}{d^N}\\left(\\prod_{k=1}^N(d|\\bra{i_k} U_{g_{(k)}} \\ket{0}|^2)^{\\lambda_k-\\lambda_kb_k}\\right)
+        f_{\\boldsymbol{\\lambda}}(i,g)
+        = \\frac{1}{2^{N-|\\boldsymbol{\\lambda}|}}
+            \\sum_{\\mathbf b\\in\\mathbb F_2^N}
+            (-1)^{|\\boldsymbol{\\lambda}\\wedge\\mathbf b|}
+            \\frac{1}{d^N}\\left(\\prod_{k=1}^N(d|\\bra{i_k} U_{g_{(k)}}
+            \\ket{0}|^2)^{\\lambda_k-\\lambda_kb_k}\\right)
 
     Args:
         experiment (CrosstalkRBExperiment): The executed (crosstalk) experiment.
@@ -107,10 +127,10 @@ def filter_function(experiment: CrosstalkRBExperiment):
     d = 2
     # For each data row calculate the filtered signals.
     biglist = []
-    for datarow in experiment.data:
+    for datarow, circuit in zip(experiment.data, experiment.circuitfactory):
         samples = datarow["samples"]
         # Fuse the gates for each qubit.
-        fused_circuit = datarow["circuit"].fuse(max_qubits=1)
+        fused_circuit = circuit.fuse(max_qubits=1)
         # Extract for each qubit the ideal state.
         ideal_states = np.array(
             [fused_circuit.queue[k].matrix[:, 0] for k in range(nqubits)]
@@ -133,10 +153,11 @@ def filter_function(experiment: CrosstalkRBExperiment):
                     # Go through all combinations of (0,1) on the support
                     # of lambda ``l``.
                     for b in np.array(list(product([False, True], repeat=sum(l)))):
-                        # Calculate the sign depending on how many times the nontrivial
-                        # projector was used.
-                        # Take the product of all probabilities chosen by the experimental
-                        # outcome which are supported by the inverse of b.
+                        # Calculate the sign depending on how many times the
+                        # nontrivial projector was used.
+                        # Take the product of all probabilities chosen by the
+                        # experimental outcome which are supported by the
+                        # inverse of b.
                         a += (-1) ** sum(b) * np.prod(
                             d * np.abs(suppl[~b][np.eye(2, dtype=bool)[s[~b]]]) ** 2
                         )
@@ -147,7 +168,11 @@ def filter_function(experiment: CrosstalkRBExperiment):
     experiment._append_data("crosstalk", biglist)
 
 
-def analyze(experiment: CrosstalkRBExperiment, noisemodel: NoiseModel = None, **kwargs):
+def theoretical_outcome(experiment: Experiment, noisemodel: NoiseModel) -> float:
+    pass
+
+
+def analyze(experiment: CrosstalkRBExperiment, noisemodel: NoiseModel = None):
     experiment.apply_task(filter_function)
     result = CrosstalkRBResult(experiment.dataframe, fit_exp1_func)
     result.cross_figs()

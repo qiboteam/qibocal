@@ -111,14 +111,22 @@ def groundstate_probability(experiment: Experiment):
     experiment._append_data("groundstate_probabilities", list(probs))
 
 
-def validate_simulation(experiment: Experiment):
-    """Take the used noise model in the simulation and calculates
-    the desired outcome.
+def theoretical_outcome(experiment: Experiment, noisemodel: NoiseModel) -> float:
+    """Take the used noise model acting on unitaries and calculates the
+    effective depolarizing parameter.
 
     Args:
         experiment (Experiment): Experiment which executed the simulation.
+        noisemddel (NoiseModel): Applied noise model.
+
+    Returns:
+        (float): The effective depolarizing parameter of given error.
     """
-    pass
+
+    # Extract the noise acting on unitaries.
+    errorchannel = noisemodel.errors[gates.Unitary][0]
+    # Calculate the effective depolarizing parameter.
+    return effective_depol(errorchannel)
 
 
 def analyze(
