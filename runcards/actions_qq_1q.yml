@@ -1,52 +1,120 @@
-platform: tii1q_b1
+platform: qblox
 
-runcard: tii1q_b1.yml
-
-qubits: [0]
+runcard: qibolab/src/qibolab/runcards/iqm5q.yml
+qubits: [1, 2, 3, 4, 5]
 
 format: csv
 
 actions:
-  resonator_spectroscopy:
-    lowres_width: 5_000_000
-    lowres_step: 2_000_000
-    highres_width: 1_500_000
-    highres_step: 200_000
-    precision_width: 1_500_000
+
+  resonator_spectroscopy: # wide
+    fast_width: 30_000_000
+    fast_step: 1_000_000
+    precision_width: 2_000_000
     precision_step: 100_000
     software_averages: 2
     points: 5
 
+  # resonator_spectroscopy: # narrow
+  #   fast_width: 10_000_000
+  #   fast_step: 500_000
+  #   precision_width: 1_000_000
+  #   precision_step: 50_000
+  #   software_averages: 2
+  #   points: 5
+
   # resonator_punchout:
   #   freq_width: 10_000_000
   #   freq_step: 200_000
-  #   min_att: 0
-  #   max_att: 60
-  #   step_att: 2 # attenuation must be a multiple of 2
-  #   software_averages: 1
-  #   points: 10
+  #   min_att: 2
+  #   max_att: 50
+  #   step_att: 2
+  #   software_averages: 2
+  #   points: 5
 
-  # qubit_spectroscopy:
-  #   fast_start: -5_000_000
-  #   fast_end: 5_000_000
-  #   fast_step: 200_000
-  #   precision_start: -500_000
-  #   precision_end: 500_000
+  # resonator_spectroscopy_flux: # wide
+  #   freq_width: 2_000_000
+  #   freq_step: 200_000
+  #   current_width: 0.03 # absolute min is -40 mA
+  #   current_step:  0.003
+  #   fluxlines: qubits
+  #   software_averages: 2
+  #   points: 1
+
+  # resonator_spectroscopy_flux: # narrow
+  #   freq_width: 2_000_000
+  #   freq_step: 200_000
+  #   current_width: 0.005 # absolute min is -40 mA
+  #   current_step:  0.0002
+  #   fluxlines: [2, 3]
+  #   software_averages: 1
+  #   points: 1
+
+
+
+  # qubit_spectroscopy: # wide
+  #   fast_width: 500_000_000
+  #   fast_step: 2_000_000
+  #   precision_width: 2_000_000
+  #   precision_step: 100_000
+  #   software_averages: 1
+  #   points: 5
+
+  # qubit_spectroscopy: # narrow
+  #   fast_width: 5_000_000
+  #   fast_step: 500_000
+  #   precision_width: 400_000
   #   precision_step: 20_000
-  #   software_averages: 1
-  #   points: 10
+  #   software_averages: 2
+  #   points: 5
 
-  # rabi_pulse_amplitude:
-  #   pulse_amplitude_start: 0 # 0<=a<=1
-  #   pulse_amplitude_end: 1
-  #   pulse_amplitude_step: 0.02
+  # qubit_spectroscopy_flux: # precission
+  #   freq_width: 5_000_000
+  #   freq_step: 100_000
+  #   current_width: 0.0005 # absolute min is -40 mA
+  #   current_step:  0.00002
+  #   fluxlines: qubits
   #   software_averages: 1
-  #   points: 10
+  #   points: 1
+
+  # qubit_spectroscopy_flux: # narrow
+  #   freq_width: 4_500_000
+  #   freq_step: 300_000
+  #   current_width: 0.0010 # absolute min is -40 mA
+  #   current_step:  0.0001
+  #   fluxlines: qubits
+  #   software_averages: 1
+  #   points: 1
+
+  # qubit_spectroscopy_flux: # wide
+  #   freq_width: 20_000_000
+  #   freq_step: 200_000
+  #   current_width: 0.03 # absolute min is -40 mA
+  #   current_step:  0.003
+  #   fluxlines: qubits
+  #   software_averages: 1
+  #   points: 1
+
+
+
+  # rabi_pulse_length:
+  #   pulse_duration_start: 4 # minimum 4ns
+  #   pulse_duration_end: 200
+  #   pulse_duration_step: 4
+  #   software_averages: 1
+  #   points: 4
 
   # rabi_pulse_gain:
   #   pulse_gain_start: 0 # -1.0<=g<=1.0
   #   pulse_gain_end: 1
   #   pulse_gain_step: 0.02
+  #   software_averages: 1
+  #   points: 1
+
+  # rabi_pulse_amplitude:
+  #   pulse_amplitude_start: 0 # 0<=a<=1
+  #   pulse_amplitude_end: 1
+  #   pulse_amplitude_step: 0.02
   #   software_averages: 1
   #   points: 10
 
@@ -63,71 +131,80 @@ actions:
   # rabi_pulse_length_and_gain:
   #   pulse_duration_start: 4 # minimum 4ns
   #   pulse_duration_end: 200
-  #   pulse_duration_step: 4
+  #   pulse_duration_step: 16
   #   pulse_gain_start: 0 # -1.0<=g<=1.0
   #   pulse_gain_end: 1
-  #   pulse_gain_step: 0.02
+  #   pulse_gain_step: 0.1
   #   software_averages: 1
   #   points: 10
 
-  # rabi_pulse_length:
-  #   pulse_duration_start: 4 # minimum 4ns
-  #   pulse_duration_end: 200
-  #   pulse_duration_step: 4
-  #   software_averages: 1
-  #   points: 10
 
-  # allXY_drag_pulse_tuning:
-  #   beta_start: -1
-  #   beta_end: 1
-  #   beta_step: 0.5
+
+  # ramsey:
+  #   delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
+  #   delay_between_pulses_end: 400
+  #   delay_between_pulses_step: 4 # must be a multiple of 4
+  #   software_averages: 1
+  #   points: 1
+
+  # ramsey_frequency_detuned:
+  #   t_start: 4
+  #   t_end: [2000] #t_end (optimal) = 3.5 * T2 (limited by HW to 8000ns)
+  #   t_step: 32
+  #   n_osc: 4
+  #   software_averages: 1
+  #   points: 1
+
+
+
+  # t1:
+  #   delay_before_readout_start: 4
+  #   delay_before_readout_end: 40_000
+  #   delay_before_readout_step: 200
+  #   software_averages: 1
+  #   points: 5
+
+
+
+  # dispersive_shift:
+  #   freq_width: 10_000_000
+  #   freq_step: 400_000
   #   software_averages: 2
   #   points: 5
+
+
+  # calibrate_qubit_states:
+  #   nshots: 2048
+  #   points: 1
+
+
 
   # allXY:
   #   beta_param: Null
   #   software_averages: 2
   #   points: 5
 
+  # allXY_drag_pulse_tuning:
+  #   beta_start: -1
+  #   beta_end: 1
+  #   beta_step: 0.5
+  #   software_averages: 2
+  #   points: 3
+
   # drag_pulse_tuning:
   #   beta_start: -0.1
   #   beta_end: 0.1
-  #   beta_step: 0.05
-  #   software_averages: 2
-  #   points: 5
+  #   beta_step: 0.01
+  #   software_averages: 5
+  #   points: 2
 
-  # calibrate_qubit_states:
-  #   nshots: 1024
-  #   points: 1
 
-  # dispersive_shift:
-  #   freq_width: 5_000_000
-  #   freq_step: 200_000
-  #   software_averages: 1
-  #   points: 5
 
-  # flipping:
-  #   niter: 10
-  #   step: 2
-  #   points: 1
 
-  # ramsey_frequency_detuned:
-  #   t_start: 4
-  #   t_end: [2000] #t_end (optimal) = 3.5 * T2 (limited by HW to 8000ns)
-  #   t_step: 16
-  #   n_osc: 4
-  #   software_averages: 1
-  #   points: 1
 
-  # ramsey:
-  #   delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
-  #   delay_between_pulses_end: 4000
-  #   delay_between_pulses_step: 16 # must be a multiple of 4
-  #   software_averages: 1
-  #   points: 1
 
-  # RO_matrix:
-  #   niter: 10 # set niter = 1024 to collect good statistics
+
+
 
   # ro_pulse_phase:
   #   pulse_phase_start: 0
@@ -136,12 +213,12 @@ actions:
   #   software_averages: 1
   #   points: 10
 
-  # t1:
-  #   delay_before_readout_start: 4
-  #   delay_before_readout_end: 50_000
-  #   delay_before_readout_step: 500
-  #   software_averages: 1
-  #   points: 5
+
+
+
+  # RO_matrix:
+  #   niter: 10 # set niter = 1024 to collect good statistics
+
 
   # spin_echo:
   #   delay_between_pulses_start: 4
@@ -150,16 +227,132 @@ actions:
   #   software_averages: 1
   #   points: 5
 
+
   # spin_echo_3pulses:
   #   delay_between_pulses_start: 4
-  #   delay_between_pulses_end: 30000
+  #   delay_between_pulses_end: 4000
   #   delay_between_pulses_step: 20
   #   software_averages: 1
   #   points: 5
 
-  # spin_echo_3pulses:
-  #   delay_between_pulses_start: 4
-  #   delay_between_pulses_end: 20000
-  #   delay_between_pulses_step: 20
+
+  # flipping:
+  #   niter: 100
+  #   step: 25
+  #   software_averages: 2
+  #   points: 1
+
+
+  # qubit_spectroscopy_flux_pulse:
+  #   freq_width: 20_000_000
+  #   freq_step: 400_000
+  #   amplitude_min: -0.5
+  #   amplitude_max: 0.5
+  #   amplitude_step: 0.1
   #   software_averages: 1
+  #   points: 1
+
+
+  # rabi_pulse_length:
+  #   pulse_duration_start: 4 # minimum 4ns
+  #   pulse_duration_end: 120
+  #   pulse_duration_step: 4
+  #   software_averages: 1
+  #   points: 4
+
+  # rabi_pulse_length_probability:
+  #   pulse_duration_start: 4 # minimum 4ns
+  #   pulse_duration_end: 200
+  #   pulse_duration_step: 4
+  #   software_averages: 1
+  #   points: 4
+
+  # chevron:
+  #   flux_pulse_duration_start: 4
+  #   flux_pulse_duration_end: 20
+  #   flux_pulse_duration_step: 1
+  #   flux_pulse_amplitude_start: 0.1278
+  #   flux_pulse_amplitude_end: 0.1284
+  #   flux_pulse_amplitude_step: 0.0001
+  #   flux_buffer: 40 #flux pulse tail buffer to not overlap with next pulse (extracted from cryoscope delays analysis)
+  #   # flux_pulse_shape: IIR([1, -0.8843962034104796], [4.545454545454546, -4.429850748865025],Rectangular())
+  #   # flux_pulse_shape: IIR([1, -0.8843962034104796], [4.545454545454546, -4.429850748865025],IIR([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.1], [1],Rectangular()))
+  #   # flux_pulse_shape: IIR([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.03], [1],Rectangular())
+  #   flux_pulse_shape: IIR([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.1], [1],Rectangular())
+  #   # flux_pulse_shape: IIR([4.545454545454546, -4.429850748865025], [1, -0.8843962034104796], IIR([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.1], [1],Rectangular()))
+  #   single_flux: True
+  #   dt: 1
+  #   points: 10
+
+  # cryoscope:
+  #   flux_pulse_duration_start: 4
+  #   flux_pulse_duration_end: 250
+  #   flux_pulse_duration_step: 1
+  #   flux_pulse_amplitude_start: 0.065
+  #   flux_pulse_amplitude_end: 0.0651
+  #   flux_pulse_amplitude_step: 0.01
+  #   flux_buffer: 40 #flux pulse tail buffer to not overlap with next pulse (extracted from cryoscope delays analysis)
+  #   flux_pulse_shape: IIR([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.1], [1],Rectangular())
+  #   points: 1
+
+  # cryoscope_delays:
+  #   flux_pulse_start: -160
+  #   flux_pulse_end:  240
+  #   flux_pulse_step: 20
+  #   flux_pulse_duration: 20
+  #   flux_pulse_amplitude_start: 0.1
+  #   flux_pulse_amplitude_end: 0.2
+  #   flux_pulse_amplitude_step: 0.1
+  #   buffer: 100 #flux pulse time of flight
+
+
+  # CHSH_iswap:
+  #   flux_pulse_amplitude: 0.1282
+  #   flux_pulse_duration: 15
+  #   phi_steps: 20
+  #   flux_buffer: 40
+  #   flux_pulse_shape: IIR([1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.1], [1],Rectangular())
   #   points: 5
+
+
+
+  #  performance:
+  #     nexecutions: 50
+  #     nshots: 10_000
+  #     repetition_duration: 5_000
+  #     points: 10
+
+
+
+
+  # resonator_spectroscopy_optimize:
+  #   width: 4_000_000
+  #   maxiter: 500
+  #   points: 10
+
+  # twpa_calibration:
+  #   res_freq_width: 3_000_000
+  #   res_freq_step: 500_000
+  #   twpa_freq_min: 4_000_000_000 # [0 - 12.75GHz]
+  #   twpa_freq_max: 8_000_000_000 # [0 - 12.75GHz]
+  #   twpa_freq_step: 10_000_000
+  #   twpa_power_min: -20 # [-120dBm to 25dBm]
+  #   twpa_power_max: 0   # [-120dBm to 25dBm]
+  #   twpa_power_step: 1
+  #   software_averages: 1
+  #   points: 1
+
+
+
+  # qubit_spectroscopy_optimize:
+  #   width: 250_000_000
+  #   # width: 800_000_000
+  #   maxiter: 500
+  #   points: 10
+
+
+  # calibrate_qubit_states_binning_rotation:
+  #   nshots: 1024
+
+  # calibrate_qubit_states_rotation:
+  # #   nshots: 100
