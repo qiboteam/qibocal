@@ -1,4 +1,5 @@
 import os
+from colorsys import hls_to_rgb
 
 import numpy as np
 import plotly.graph_objects as go
@@ -9,8 +10,12 @@ from qibocal.fitting.utils import lorenzian
 from qibocal.plots.utils import get_data_subfolders
 
 
+def _get_color(number):
+    return "rgb" + str(hls_to_rgb((0.75 - number * 3 / 20) % 1, 0.4, 0.75))
+
+
 # Resonator and qubit spectroscopies
-def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
+def frequency_msr_phase(folder, routine, qubit, format):
 
     fig = make_subplots(
         rows=1,
@@ -25,25 +30,30 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
-    i = 0
+    report_n = 0
     fitting_report = ""
     for subfolder in subfolders:
         try:
             data_fast = DataUnits.load_data(
-                folder, subfolder, routine, format, f"fast_sweep_q{qubit}"
+                folder, subfolder, routine, format, "fast_sweep_data"
             )
+            data_fast.df = data_fast.df[data_fast.df["qubit"] == qubit]
         except:
-            data_fast = DataUnits(quantities={"frequency": "Hz"})
+            data_fast = DataUnits(
+                quantities={"frequency": "Hz"}, options=["qubit", "iteration"]
+            )
         try:
             data_precision = DataUnits.load_data(
-                folder, subfolder, routine, format, f"precision_sweep_q{qubit}"
+                folder, subfolder, routine, format, f"precision_sweep_data"
             )
+            data_precision.df = data_precision.df[data_precision.df["qubit"] == qubit]
         except:
-            data_precision = DataUnits(quantities={"frequency": "Hz"})
-        try:
-            data_fit = Data.load_data(
-                folder, subfolder, routine, format, f"fit_q{qubit}"
+            data_precision = DataUnits(
+                quantities={"frequency": "Hz"}, options=["qubit", "iteration"]
             )
+        try:
+            data_fit = Data.load_data(folder, subfolder, routine, format, f"fits")
+            data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
         except:
             data_fit = Data(
                 quantities=[
@@ -54,52 +64,86 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
                     "label1",
                     "label2",
                     "label3",
+                    "qubit",
                 ]
             )
 
-        fig.add_trace(
-            go.Scatter(
-                x=data_fast.get_values("frequency", "GHz"),
-                y=data_fast.get_values("MSR", "uV"),
-                name=f"q{qubit}/r{i} Fast",
-            ),
-            row=1,
-            col=1,
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=data_fast.get_values("frequency", "GHz"),
-                y=data_fast.get_values("phase", "rad"),
-                name=f"q{qubit}/r{i} Fast",
-            ),
-            row=1,
-            col=2,
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=data_precision.get_values("frequency", "GHz"),
-                y=data_precision.get_values("MSR", "uV"),
-                name=f"q{qubit}/r{i}Precision",
-            ),
-            row=1,
-            col=1,
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=data_precision.get_values("frequency", "GHz"),
-                y=data_precision.get_values("phase", "rad"),
-                name=f"q{qubit}/r{i} Precision",
-            ),
-            row=1,
-            col=2,
-        )
-        if len(data_fast) > 0 and len(data_fit) > 0:
+        for i, label, data in list(
+            zip((0, 1), ("Fast", "Precision"), (data_fast, data_precision))
+        ):
+            iterations = data.df["iteration"].unique()
+            frequencies = data.df["frequency"].pint.to("Hz").pint.magnitude.unique()
+            if len(iterations) > 1:
+                opacity = 0.3
+            else:
+                opacity = 1
+            for iteration in iterations:
+                iteration_data = data.df[data.df["iteration"] == iteration]
+                fig.add_trace(
+                    go.Scatter(
+                        x=iteration_data["frequency"].pint.to("Hz").pint.magnitude,
+                        y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
+                        marker_color=_get_color(2 * report_n + i),
+                        opacity=opacity,
+                        name=f"q{qubit}/r{report_n}: {label}",
+                        showlegend=not bool(iteration),
+                        legendgroup=f"q{qubit}/r{report_n}: {label}",
+                    ),
+                    row=1,
+                    col=1,
+                )
+                fig.add_trace(
+                    go.Scatter(
+                        x=iteration_data["frequency"].pint.to("Hz").pint.magnitude,
+                        y=iteration_data["phase"].pint.to("rad").pint.magnitude,
+                        marker_color=_get_color(2 * report_n + i),
+                        opacity=opacity,
+                        showlegend=False,
+                        legendgroup=f"q{qubit}/r{report_n}: {label}",
+                    ),
+                    row=1,
+                    col=2,
+                )
+            if len(iterations) > 1:
+                fig.add_trace(
+                    go.Scatter(
+                        x=frequencies,
+                        y=data.df.groupby("frequency")["MSR"]
+                        .mean()
+                        .pint.to("uV")
+                        .pint.magnitude,
+                        marker_color=_get_color(2 * report_n + i),
+                        name=f"q{qubit}/r{report_n}: {label} Average",
+                        showlegend=True,
+                        legendgroup=f"q{qubit}/r{report_n}: {label} Average",
+                    ),
+                    row=1,
+                    col=1,
+                )
+                fig.add_trace(
+                    go.Scatter(
+                        x=frequencies,
+                        y=data.df.groupby("frequency")["phase"]
+                        .mean()
+                        .pint.to("rad")
+                        .pint.magnitude,
+                        marker_color=_get_color(2 * report_n + i),
+                        showlegend=False,
+                        legendgroup=f"q{qubit}/r{report_n}: {label} Average",
+                    ),
+                    row=1,
+                    col=2,
+                )
+
+        if len(data_fast) > 0 and (qubit in data_fit.df["qubit"].values):
             freqrange = np.linspace(
-                min(data_fast.get_values("frequency", "GHz")),
-                max(data_fast.get_values("frequency", "GHz")),
+                min(data_fast.get_values("frequency", "Hz")),
+                max(data_fast.get_values("frequency", "Hz")),
                 2 * len(data_fast),
             )
-            params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+            params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(
+                orient="records"
+            )[0]
             fig.add_trace(
                 go.Scatter(
                     x=freqrange,
@@ -110,22 +154,25 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
                         data_fit.get_values("popt2"),
                         data_fit.get_values("popt3"),
                     ),
-                    name=f"q{qubit}/r{i} Fit",
+                    name=f"q{qubit}/r{report_n} Fit",
                     line=go.scatter.Line(dash="dot"),
+                    marker_color="rgb(255, 130, 67)",
                 ),
                 row=1,
                 col=1,
             )
-            if data_fit.df[params[2]][0] == 0:
-                param2 = ""
-            else:
-                param2 = f"q{qubit}/r{i} {params[2]}: {data_fit.df[params[2]][0]:.1f} Hz.<br>"
 
-            fitting_report = fitting_report + (
-                f"{param2}q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f} uV.<br>q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.0f} Hz.<br><br>"
-            )
-
-        i += 1
+            for param, value in params.items():
+                if "freq" in param:
+                    fitting_report = fitting_report + (
+                        f"q{qubit}/r{report_n} {param}: {value:,.0f} Hz.<br>"
+                    )
+                elif "voltage" in param:
+                    fitting_report = fitting_report + (
+                        f"q{qubit}/r{report_n} {param}: {value:,.0f} uV.<br>"
+                    )
+            fitting_report += "<br>"
+        report_n += 1
 
     fig.add_annotation(
         dict(
@@ -148,233 +195,10 @@ def frequency_msr_phase__fast_precision(folder, routine, qubit, format):
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Frequency (GHz)",
+        xaxis_title="Frequency (Hz)",
         yaxis_title="MSR (uV)",
-        xaxis2_title="Frequency (GHz)",
+        xaxis2_title="Frequency (Hz)",
         yaxis2_title="Phase (rad)",
-    )
-    return fig
-
-
-# Resonator and qubit spectroscopies
-def frequency_attenuation_msr_phase__cut(folder, routine, qubit, format):
-
-    plot1d_attenuation = 56  # attenuation value to use for 1D frequency vs MSR plot
-
-    fig = make_subplots(
-        rows=1,
-        cols=1,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
-        subplot_titles=("MSR (V)",),
-    )
-
-    # iterate over multiple data folders
-    subfolders = get_data_subfolders(folder)
-    i = 0
-    for subfolder in subfolders:
-        # print(subfolder)
-        data = DataUnits.load_data(folder, subfolder, routine, format, f"data_q{qubit}")
-        # index data on a specific attenuation value
-        smalldf = data.df[
-            data.get_values("attenuation", "dB") == plot1d_attenuation
-        ].copy()
-        # split multiple software averages to different datasets
-        datasets = []
-        while len(smalldf):
-            datasets.append(smalldf.drop_duplicates("frequency"))
-            smalldf.drop(datasets[-1].index, inplace=True)
-            fig.add_trace(
-                go.Scatter(
-                    x=datasets[-1]["frequency"].pint.to("GHz").pint.magnitude,
-                    y=datasets[-1]["MSR"].pint.to("V").pint.magnitude,
-                    name=f"q{qubit}/r{i}",
-                ),
-            )
-        i += 1
-
-    fig.update_layout(
-        showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting,
-        xaxis_title="Frequency (GHz)",
-        yaxis_title="MSR (V)",
-    )
-    return fig
-
-
-# Resonator spectroscopy flux
-def frequency_flux_msr_phase(folder, routine, qubit, format):
-
-    # iterate over multiple data folders
-    subfolders = get_data_subfolders(folder)
-
-    fig = make_subplots(
-        rows=len(subfolders),
-        cols=2,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.2,
-        subplot_titles=(
-            "MSR (V)",
-            "phase (rad)",
-        ),
-    )
-
-    i = 1
-    for subfolder in subfolders:
-
-        data = DataUnits.load_data(folder, subfolder, routine, format, f"data_q{qubit}")
-
-        fig.add_trace(
-            go.Heatmap(
-                x=data.get_values("frequency", "GHz"),
-                y=data.get_values("current", "A"),
-                z=data.get_values("MSR", "V"),
-                colorbar_x=0.45,
-            ),
-            row=i,
-            col=1,
-        )
-        fig.add_trace(
-            go.Heatmap(
-                x=data.get_values("frequency", "GHz"),
-                y=data.get_values("current", "A"),
-                z=data.get_values("phase", "rad"),
-                colorbar_x=1.0,
-            ),
-            row=i,
-            col=2,
-        )
-
-        fig.update_layout(
-            showlegend=False,
-            uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        )
-
-        if i == 1:
-            fig["layout"]["xaxis"]["title"] = f"q{qubit}/r{i-1}: Frequency (GHz)"
-            fig["layout"]["yaxis"]["title"] = "Current (A)"
-            xaxis = f"xaxis{i+1}"
-            yaxis = f"yaxis{i+1}"
-            fig["layout"][xaxis]["title"] = f"q{qubit}/r{i-1}: Frequency (GHz)"
-            fig["layout"][yaxis]["title"] = "Current (A)"
-
-        else:
-            xaxis = f"xaxis{2*i-1}"
-            yaxis = f"yaxis{2*i-1}"
-            fig["layout"][xaxis]["title"] = f"q{qubit}/r{i-1}: Frequency (GHz)"
-            fig["layout"][yaxis]["title"] = "Current (A)"
-            xaxis = f"xaxis{2*i}"
-            yaxis = f"yaxis{2*i}"
-            fig["layout"][xaxis]["title"] = f"q{qubit}/r{i-1}: Frequency (GHz)"
-            fig["layout"][yaxis]["title"] = "Current (A)"
-
-        i += 1
-
-    return fig
-
-
-# Resonator spectroscopy flux matrix
-def frequency_flux_msr_phase__matrix(folder, routine, qubit, format):
-
-    # iterate over multiple data folders
-    subfolders = get_data_subfolders(folder)
-
-    k = 1
-    last_axis_index = 1
-    for subfolder in subfolders:
-
-        fluxes = []
-        for i in range(25):  # FIXME: 25 is hardcoded
-            file = f"{folder}/{subfolder}/{routine}/data_q{qubit}_f{i}.csv"
-            if os.path.exists(file):
-                fluxes += [i]
-
-        if len(fluxes) < 1:
-            nb = 1
-        else:
-            nb = len(fluxes)
-
-        if k == 1:
-            fig = make_subplots(
-                rows=len(subfolders) * 2,
-                cols=nb,
-                horizontal_spacing=0.1,
-                vertical_spacing=0.2,
-                shared_xaxes=True,
-                shared_yaxes=True,
-            )
-
-        for j in fluxes:
-
-            if j == fluxes[-1]:
-                showscale = True
-            else:
-                showscale = False
-
-            data = DataUnits.load_data(
-                folder, subfolder, routine, format, f"data_q{qubit}_f{j}"
-            )
-
-            fig.add_trace(
-                go.Heatmap(
-                    x=data.get_values("frequency", "GHz"),
-                    y=data.get_values("current", "A"),
-                    z=data.get_values("MSR", "V"),
-                    showscale=showscale,
-                ),
-                row=k,
-                col=j,
-            )
-            fig.add_trace(
-                go.Heatmap(
-                    x=data.get_values("frequency", "GHz"),
-                    y=data.get_values("current", "A"),
-                    z=data.get_values("phase", "rad"),
-                    showscale=showscale,
-                ),
-                row=k + 1,
-                col=j,
-            )
-
-        if k == 1:
-            fig["layout"]["xaxis"]["title"] = f"q{qubit}/r{k-1}: Frequency (GHz)"
-            fig["layout"]["yaxis"]["title"] = "current (A)"
-            xaxis = f"xaxis{k+1}"
-            yaxis = f"yaxis{k+1}"
-            fig["layout"][xaxis]["title"] = f"q{qubit}/r{k-1}: Frequency (GHz)"
-            fig["layout"][yaxis]["title"] = "current (A)"
-            xaxis = f"xaxis{k+2}"
-            yaxis = f"yaxis{k+2}"
-            fig["layout"][xaxis]["title"] = f"q{qubit}/r{k-1}: Frequency (GHz)"
-            fig["layout"][yaxis]["title"] = "current (A)"
-            xaxis = f"xaxis{k+3}"
-            yaxis = f"yaxis{k+3}"
-            fig["layout"][xaxis]["title"] = f"q{qubit}/r{k-1}: Frequency (GHz)"
-            fig["layout"][yaxis]["title"] = "current (A)"
-
-        else:
-            xaxis = f"xaxis{2*k-1}"
-            yaxis = f"yaxis{2*k-1}"
-            fig["layout"][xaxis]["title"] = f"q{qubit}/r{k-1}: Frequency (GHz)"
-            fig["layout"][yaxis]["title"] = "current (A)"
-            xaxis = f"xaxis{2*k}"
-            yaxis = f"yaxis{2*k}"
-            fig["layout"][xaxis]["title"] = f"q{qubit}/r{k-1}: Frequency (GHz)"
-            fig["layout"][yaxis]["title"] = "current (A)"
-            xaxis = f"xaxis{2*k+1}"
-            yaxis = f"yaxis{2*k+1}"
-            fig["layout"][xaxis]["title"] = f"q{qubit}/r{k-1}: Frequency (GHz)"
-            fig["layout"][yaxis]["title"] = "current (A)"
-            xaxis = f"xaxis{2*k+2}"
-            yaxis = f"yaxis{2*k+2}"
-            fig["layout"][xaxis]["title"] = f"q{qubit}/r{k-1}: Frequency (GHz)"
-            fig["layout"][yaxis]["title"] = "current (A)"
-
-        k += 2
-
-    fig.update_layout(
-        showlegend=False,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
     )
     return fig
 
@@ -391,66 +215,310 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
         horizontal_spacing=0.1,
         vertical_spacing=0.2,
         subplot_titles=(
+            "Normalised MSR",
+            "phase (rad)",
+        ),
+    )
+
+    report_n = 0
+    for subfolder in subfolders:
+        try:
+            data = DataUnits.load_data(folder, subfolder, routine, format, f"data")
+            data.df = data.df[data.df["qubit"] == qubit]
+        except:
+            data = DataUnits(
+                name=f"data",
+                quantities={"frequency": "Hz", "attenuation": "dB"},
+                options=["qubit", "iteration"],
+            )
+
+        iterations = data.df["iteration"].unique()
+        frequencies = data.df["frequency"].pint.to("Hz").pint.magnitude.unique()
+        attenuations = data.df["attenuation"].pint.to("dB").pint.magnitude.unique()
+        averaged_data = (
+            data.df.drop(columns=["qubit", "iteration"])
+            .groupby(["frequency", "attenuation"], as_index=False)
+            .mean()
+        )
+
+        def norm(x):
+            x_mags = x.pint.to("V").pint.magnitude
+            return (x_mags - np.min(x_mags)) / (np.max(x_mags) - np.min(x_mags))
+
+        normalised_data = averaged_data.groupby(["attenuation"], as_index=False)[
+            ["MSR"]
+        ].transform(norm)
+
+        fig.add_trace(
+            go.Heatmap(
+                x=averaged_data["frequency"].pint.to("Hz").pint.magnitude,
+                y=averaged_data["attenuation"].pint.to("dB").pint.magnitude,
+                z=normalised_data["MSR"],
+                # z=averaged_data["MSR"].pint.to("V").pint.magnitude,
+                colorbar_x=0.46,
+            ),
+            row=1 + report_n,
+            col=1,
+        )
+        fig.update_xaxes(
+            title_text=f"q{qubit}/r{report_n}: Frequency (Hz)", row=1 + report_n, col=1
+        )
+        fig.update_yaxes(title_text="Attenuation (dB)", row=1 + report_n, col=1)
+        fig.add_trace(
+            go.Heatmap(
+                x=averaged_data["frequency"].pint.to("Hz").pint.magnitude,
+                y=averaged_data["attenuation"].pint.to("dB").pint.magnitude,
+                z=averaged_data["phase"].pint.to("rad").pint.magnitude,
+                colorbar_x=1.01,
+            ),
+            row=1 + report_n,
+            col=2,
+        )
+        fig.update_xaxes(
+            title_text=f"q{qubit}/r{report_n}: Frequency (Hz)", row=1 + report_n, col=2
+        )
+        fig.update_yaxes(title_text="Attenuation (dB)", row=1 + report_n, col=2)
+        fig.update_layout(
+            showlegend=False,
+            uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        )
+        report_n += 1
+
+    return fig
+
+
+# Resonator and qubit spectroscopies
+def frequency_attenuation_msr_phase_cut(folder, routine, qubit, format):
+
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        subplot_titles=(
             "MSR (V)",
             "phase (rad)",
         ),
     )
 
-    i = 1
+    subfolders = get_data_subfolders(folder)
+    report_n = 0
     for subfolder in subfolders:
-        data = DataUnits.load_data(folder, subfolder, routine, format, f"data_q{qubit}")
+        try:
+            data = DataUnits.load_data(folder, subfolder, routine, format, f"data")
+            data.df = data.df[data.df["qubit"] == qubit]
+        except:
+            data = DataUnits(
+                name=f"data",
+                quantities={"frequency": "Hz", "attenuation": "dB"},
+                options=["qubit", "iteration"],
+            )
+        attenuations = data.df["attenuation"].unique()
+        middle_attenuation = attenuations[len(attenuations) // 2]
+        data.df = data.df[data.df["qubit"] == qubit][
+            data.df["attenuation"] == middle_attenuation
+        ].drop(columns=["attenuation"])
 
-        fig.add_trace(
-            go.Heatmap(
-                x=data.get_values("frequency", "GHz"),
-                y=data.get_values("attenuation", "dB"),
-                z=data.get_values("MSR", "V"),
-                colorbar_x=0.45,
-            ),
-            row=i,
-            col=1,
-        )
-        fig.add_trace(
-            go.Heatmap(
-                x=data.get_values("frequency", "GHz"),
-                y=data.get_values("attenuation", "dB"),
-                z=data.get_values("phase", "rad"),
-                colorbar_x=1.0,
-            ),
-            row=i,
-            col=2,
-        )
+        iterations = data.df["iteration"].unique()
+        frequencies = data.df["frequency"].pint.to("Hz").pint.magnitude.unique()
+        if len(iterations) > 1:
+            opacity = 0.3
+        else:
+            opacity = 1
+        for iteration in iterations:
+            iteration_data = data.df[data.df["iteration"] == iteration]
+            fig.add_trace(
+                go.Scatter(
+                    x=iteration_data["frequency"].pint.to("Hz").pint.magnitude,
+                    y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
+                    marker_color=_get_color(report_n),
+                    opacity=opacity,
+                    name=f"q{qubit}/r{report_n} Attenuation: {middle_attenuation.to('dB').magnitude} dB",
+                    showlegend=not bool(iteration),
+                    legendgroup=f"q{qubit}/r{report_n}",
+                ),
+                row=1,
+                col=1,
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=iteration_data["frequency"].pint.to("Hz").pint.magnitude,
+                    y=iteration_data["phase"].pint.to("rad").pint.magnitude,
+                    marker_color=_get_color(report_n),
+                    opacity=opacity,
+                    showlegend=False,
+                    legendgroup=f"q{qubit}/r{report_n}",
+                ),
+                row=1,
+                col=2,
+            )
+        if len(iterations) > 1:
+            fig.add_trace(
+                go.Scatter(
+                    x=frequencies,
+                    y=data.df.groupby("frequency")["MSR"]
+                    .mean()
+                    .pint.to("uV")
+                    .pint.magnitude,
+                    marker_color=_get_color(report_n),
+                    name=f"q{qubit}/r{report_n}: Average",
+                    showlegend=True,
+                    legendgroup=f"q{qubit}/r{report_n}: Average",
+                ),
+                row=1,
+                col=1,
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=frequencies,
+                    y=data.df.groupby("frequency")["phase"]
+                    .mean()
+                    .pint.to("rad")
+                    .pint.magnitude,
+                    marker_color=_get_color(report_n),
+                    showlegend=False,
+                    legendgroup=f"q{qubit}/r{report_n}: Average",
+                ),
+                row=1,
+                col=2,
+            )
 
+        report_n += 1
+
+    fig.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Frequency (Hz)",
+        yaxis_title="MSR (uV)",
+        xaxis2_title="Frequency (Hz)",
+        yaxis2_title="Phase (rad)",
+    )
+    return fig
+
+
+# Resonator spectroscopy flux
+def frequency_flux_msr_phase(folder, routine, qubit, format):
+
+    # iterate over multiple data folders
+    subfolders = get_data_subfolders(folder)
+
+    report_n = 0
+    for subfolder in subfolders:
+        try:
+            data = DataUnits.load_data(folder, subfolder, routine, format, f"data")
+            data.df = data.df[data.df["qubit"] == qubit]
+        except:
+            data = DataUnits(
+                name=f"data",
+                quantities={"frequency": "Hz", "current": "A"},
+                options=["qubit", "fluxline", "iteration"],
+            )
+
+        iterations = data.df["iteration"].unique()
+        fluxlines = data.df["fluxline"].unique()
+        frequencies = data.df["frequency"].pint.to("Hz").pint.magnitude.unique()
+        currents = data.df["current"].pint.to("A").pint.magnitude.unique()
+
+        if len(fluxlines) > 1:
+            fig = make_subplots(
+                rows=len(subfolders),
+                cols=len(fluxlines),
+                horizontal_spacing=0.1,
+                vertical_spacing=0.1,
+                subplot_titles=tuple(
+                    [f"MSR [V] - fluxline {fluxline}" for fluxline in fluxlines]
+                ),
+            )
+
+            for fluxline_n, fluxline in enumerate(fluxlines):
+                fluxline_df = data.df[data.df["fluxline"] == fluxline]
+                fluxline_df = (
+                    fluxline_df.drop(columns=["qubit", "fluxline", "iteration"])
+                    .groupby(["frequency", "current"], as_index=False)
+                    .mean()
+                )
+
+                fig.add_trace(
+                    go.Heatmap(
+                        x=fluxline_df["frequency"].pint.to("Hz").pint.magnitude,
+                        y=fluxline_df["current"].pint.to("A").pint.magnitude,
+                        z=fluxline_df["MSR"].pint.to("V").pint.magnitude,
+                        showscale=False,
+                    ),
+                    row=1 + report_n,
+                    col=1 + fluxline_n,
+                )
+                fig.update_xaxes(
+                    title_text=f"q{qubit}/r{report_n}: Frequency (GHz)",
+                    row=1 + report_n,
+                    col=1 + fluxline_n,
+                )
+
+        elif len(fluxlines) == 1:
+            fig = make_subplots(
+                rows=len(subfolders),
+                cols=2,
+                horizontal_spacing=0.1,
+                vertical_spacing=0.1,
+                subplot_titles=(
+                    f"MSR [V] - fluxline {fluxlines[0]}",
+                    f"Phase [rad] - fluxline {fluxlines[0]}",
+                ),
+            )
+
+            fluxline_df = data.df[data.df["fluxline"] == fluxlines[0]]
+            fluxline_df = (
+                fluxline_df.drop(columns=["qubit", "fluxline", "iteration"])
+                .groupby(["frequency", "current"], as_index=False)
+                .mean()
+            )
+
+            fig.add_trace(
+                go.Heatmap(
+                    x=fluxline_df["frequency"].pint.to("Hz").pint.magnitude,
+                    y=fluxline_df["current"].pint.to("A").pint.magnitude,
+                    z=fluxline_df["MSR"].pint.to("V").pint.magnitude,
+                    colorbar_x=0.46,
+                ),
+                row=1 + report_n,
+                col=1,
+            )
+            fig.update_xaxes(
+                title_text=f"q{qubit}/r{report_n}: Frequency (Hz)",
+                row=1 + report_n,
+                col=1,
+            )
+
+            fig.add_trace(
+                go.Heatmap(
+                    x=fluxline_df["frequency"].pint.to("Hz").pint.magnitude,
+                    y=fluxline_df["current"].pint.to("A").pint.magnitude,
+                    z=fluxline_df["phase"].pint.to("rad").pint.magnitude,
+                    colorbar_x=1.01,
+                ),
+                row=1 + report_n,
+                col=2,
+            )
+            fig.update_xaxes(
+                title_text=f"q{qubit}/r{report_n}: Frequency (Hz)",
+                row=1 + report_n,
+                col=2,
+            )
+            fig.update_yaxes(title_text="Current (A)", row=1 + report_n, col=2)
+
+        fig.update_yaxes(title_text="Current (A)", row=1 + report_n, col=1)
         fig.update_layout(
             showlegend=False,
             uirevision="0",  # ``uirevision`` allows zooming while live plotting
         )
 
-        if i == 1:
-            fig["layout"]["xaxis"]["title"] = f"q{qubit}/r{i-1}: Frequency (GHz)"
-            fig["layout"]["yaxis"]["title"] = "Attenuation (dB)"
-            xaxis = f"xaxis{i+1}"
-            yaxis = f"yaxis{i+1}"
-            fig["layout"][xaxis]["title"] = f"q{qubit}/r{i-1}: Frequency (GHz)"
-            fig["layout"][yaxis]["title"] = "Attenuation (dB)"
-
-        else:
-            xaxis = f"xaxis{2*i-1}"
-            yaxis = f"yaxis{2*i-1}"
-            fig["layout"][xaxis]["title"] = f"q{qubit}/r{i-1}: Frequency (GHz)"
-            fig["layout"][yaxis]["title"] = "Attenuation (dB)"
-            xaxis = f"xaxis{2*i}"
-            yaxis = f"yaxis{2*i}"
-            fig["layout"][xaxis]["title"] = f"q{qubit}/r{i-1}: Frequency (GHz)"
-            fig["layout"][yaxis]["title"] = "Attenuation (dB)"
-
-        i += 1
+        report_n += 1
 
     return fig
 
 
 # Dispersive shift
-def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
+def dispersive_frequency_msr_phase(folder, routine, qubit, format):
 
     fig = make_subplots(
         rows=1,
@@ -465,31 +533,34 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
-    i = 0
+    report_n = 0
     fitting_report = ""
     for subfolder in subfolders:
         try:
-            data_spec = DataUnits.load_data(
-                folder, subfolder, routine, formato, f"data_q{qubit}"
-            )
+            data_0 = DataUnits.load_data(folder, subfolder, routine, format, f"data_0")
+            data_0.df = data_0.df[data_0.df["qubit"] == qubit]
         except:
-            data_spec = DataUnits(name=f"data_q{qubit}", quantities={"frequency": "Hz"})
+            data_0 = DataUnits(
+                name=f"data_0",
+                quantities={"frequency": "Hz"},
+                options=["qubit", "shifted", "iteration"],
+            )
+        try:
+            data_1 = DataUnits.load_data(folder, subfolder, routine, format, f"data_1")
+            data_1.df = data_1.df[data_1.df["qubit"] == qubit]
+        except:
+            data_1 = DataUnits(
+                name=f"data_1",
+                quantities={"frequency": "Hz"},
+                options=["qubit", "shifted", "iteration"],
+            )
 
         try:
-            data_shifted = DataUnits.load_data(
-                folder, subfolder, routine, formato, f"data_shifted_q{qubit}"
+            fit_data_0 = Data.load_data(
+                folder, subfolder, routine, format, f"fit_data_0"
             )
         except:
-            data_shifted = DataUnits(
-                name=f"data_shifted_q{qubit}", quantities={"frequency": "Hz"}
-            )
-
-        try:
-            data_fit = Data.load_data(
-                folder, subfolder, routine, formato, f"fit_q{qubit}"
-            )
-        except:
-            data_fit = Data(
+            fit_data_0 = Data(
                 quantities=[
                     "popt0",
                     "popt1",
@@ -502,11 +573,11 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
             )
 
         try:
-            data_fit_shifted = Data.load_data(
-                folder, subfolder, routine, formato, f"fit_shifted_q{qubit}"
+            fit_data_1 = Data.load_data(
+                folder, subfolder, routine, format, f"fit_data_1"
             )
         except:
-            data_fit_shifted = Data(
+            fit_data_1 = Data(
                 quantities=[
                     "popt0",
                     "popt1",
@@ -517,105 +588,130 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
                     "label3",
                 ]
             )
-
-        fig.add_trace(
-            go.Scatter(
-                x=data_spec.get_values("frequency", "GHz"),
-                y=data_spec.get_values("MSR", "uV"),
-                name=f"q{qubit}/r{i} Spectroscopy",
-            ),
-            row=1,
-            col=1,
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=data_spec.get_values("frequency", "GHz"),
-                y=data_spec.get_values("phase", "rad"),
-                name=f"q{qubit}/r{i} Spectroscopy",
-            ),
-            row=1,
-            col=2,
-        )
-
-        fig.add_trace(
-            go.Scatter(
-                x=data_shifted.get_values("frequency", "GHz"),
-                y=data_shifted.get_values("MSR", "uV"),
-                name=f"q{qubit}/r{i} Shifted Spectroscopy",
-            ),
-            row=1,
-            col=1,
-        )
-
-        fig.add_trace(
-            go.Scatter(
-                x=data_shifted.get_values("frequency", "GHz"),
-                y=data_shifted.get_values("phase", "rad"),
-                name=f"q{qubit}/r{i} Shifted Spectroscopy",
-            ),
-            row=1,
-            col=2,
-        )
-
-        # fitting traces
-        if len(data_spec) > 0 and len(data_fit) > 0:
-            freqrange = np.linspace(
-                min(data_spec.get_values("frequency", "GHz")),
-                max(data_spec.get_values("frequency", "GHz")),
-                2 * len(data_spec),
+        resonator_freqs = {}
+        for i, label, data, data_fit in list(
+            zip(
+                (0, 1),
+                ("Spectroscopy", "Shifted spectroscopy"),
+                (data_0, data_1),
+                (fit_data_0, fit_data_1),
             )
-            params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
-            fig.add_trace(
-                go.Scatter(
-                    x=freqrange,
-                    y=lorenzian(
-                        freqrange,
-                        data_fit.get_values("popt0"),
-                        data_fit.get_values("popt1"),
-                        data_fit.get_values("popt2"),
-                        data_fit.get_values("popt3"),
+        ):
+            iterations = data.df["iteration"].unique()
+            frequencies = data.df["frequency"].pint.to("Hz").pint.magnitude.unique()
+            if len(iterations) > 1:
+                opacity = 0.3
+            else:
+                opacity = 1
+            for iteration in iterations:
+                iteration_data = data.df[data.df["iteration"] == iteration]
+                fig.add_trace(
+                    go.Scatter(
+                        x=iteration_data["frequency"].pint.to("Hz").pint.magnitude,
+                        y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
+                        marker_color=_get_color(2 * report_n + i),
+                        opacity=opacity,
+                        name=f"q{qubit}/r{report_n}: {label}",
+                        showlegend=not bool(iteration),
+                        legendgroup=f"q{qubit}/r{report_n}: {label}",
                     ),
-                    name=f"q{qubit}/r{i} Fit spectroscopy",
-                    line=go.scatter.Line(dash="dot"),
-                ),
-                row=1,
-                col=1,
-            )
-
-            fitting_report = fitting_report + (
-                f"q{qubit}/r{i} {params[2]}: {data_fit.df[params[2]][0]:.1f} Hz.<br>"
-            )
-
-        # fitting shifted  traces
-        if len(data_shifted) > 0 and len(data_fit_shifted) > 0:
-            freqrange = np.linspace(
-                min(data_shifted.get_values("frequency", "GHz")),
-                max(data_shifted.get_values("frequency", "GHz")),
-                2 * len(data_shifted),
-            )
-            params = [i for i in list(data_fit_shifted.df.keys()) if "popt" not in i]
-            fig.add_trace(
-                go.Scatter(
-                    x=freqrange,
-                    y=lorenzian(
-                        freqrange,
-                        data_fit_shifted.get_values("popt0"),
-                        data_fit_shifted.get_values("popt1"),
-                        data_fit_shifted.get_values("popt2"),
-                        data_fit_shifted.get_values("popt3"),
+                    row=1,
+                    col=1,
+                )
+                fig.add_trace(
+                    go.Scatter(
+                        x=iteration_data["frequency"].pint.to("Hz").pint.magnitude,
+                        y=iteration_data["phase"].pint.to("rad").pint.magnitude,
+                        marker_color=_get_color(2 * report_n + i),
+                        opacity=opacity,
+                        showlegend=False,
+                        legendgroup=f"q{qubit}/r{report_n}: {label}",
                     ),
-                    name=f"q{qubit}/r{i} Fit shifted spectroscopy",
-                    line=go.scatter.Line(dash="dot"),
-                ),
-                row=1,
-                col=1,
-            )
+                    row=1,
+                    col=2,
+                )
+            if len(iterations) > 1:
+                fig.add_trace(
+                    go.Scatter(
+                        x=frequencies,
+                        y=data.df.groupby("frequency")["MSR"]
+                        .mean()
+                        .pint.to("uV")
+                        .pint.magnitude,
+                        marker_color=_get_color(2 * report_n + i),
+                        name=f"q{qubit}/r{report_n}: {label} Average",
+                        showlegend=True,
+                        legendgroup=f"q{qubit}/r{report_n}: {label} Average",
+                    ),
+                    row=1,
+                    col=1,
+                )
+                fig.add_trace(
+                    go.Scatter(
+                        x=frequencies,
+                        y=data.df.groupby("frequency")["phase"]
+                        .mean()
+                        .pint.to("rad")
+                        .pint.magnitude,
+                        marker_color=_get_color(2 * report_n + i),
+                        showlegend=False,
+                        legendgroup=f"q{qubit}/r{report_n}: {label} Average",
+                    ),
+                    row=1,
+                    col=2,
+                )
 
+            if len(data) > 0 and (qubit in data_fit.df["qubit"].values):
+                freqrange = np.linspace(
+                    min(data.get_values("frequency", "Hz")),
+                    max(data.get_values("frequency", "Hz")),
+                    2 * len(data),
+                )
+                params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(
+                    orient="records"
+                )[0]
+                fig.add_trace(
+                    go.Scatter(
+                        x=freqrange,
+                        y=lorenzian(
+                            freqrange,
+                            data_fit.get_values("popt0"),
+                            data_fit.get_values("popt1"),
+                            data_fit.get_values("popt2"),
+                            data_fit.get_values("popt3"),
+                        ),
+                        name=f"q{qubit}/r{report_n}: {label} Fit",
+                        line=go.scatter.Line(dash="dot"),
+                        marker_color="rgb(255, 130, 67)",
+                    ),
+                    row=1,
+                    col=1,
+                )
+
+                if "resonator_freq" in params:
+                    resonator_freqs[label] = params["resonator_freq"]
+
+                for param, value in params.items():
+                    if "freq" in param:
+                        fitting_report = fitting_report + (
+                            f"q{qubit}/r{report_n} {label} {param}: {value:,.0f} Hz.<br>"
+                        )
+                    elif "voltage" in param:
+                        fitting_report = fitting_report + (
+                            f"q{qubit}/r{report_n} {label} {param}: {value:,.0f} uV.<br>"
+                        )
+        if ("Spectroscopy" in resonator_freqs) and (
+            "Shifted spectroscopy" in resonator_freqs
+        ):
+            frequency_shift = (
+                resonator_freqs["Shifted spectroscopy"]
+                - resonator_freqs["Spectroscopy"]
+            )
             fitting_report = fitting_report + (
-                f"q{qubit}/r{i} shifted {params[2]}: {data_fit_shifted.df[params[2]][0]:.1f} Hz.<br><br>"
+                f"q{qubit}/r{report_n} Frequency shift: {frequency_shift:,.0f} Hz.<br>"
             )
-
-        i += 1
+        fitting_report += "<br>"
+        report_n += 1
 
     fig.add_annotation(
         dict(
@@ -638,9 +734,9 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, formato):
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Frequency (GHz)",
+        xaxis_title="Frequency (Hz)",
         yaxis_title="MSR (uV)",
-        xaxis2_title="Frequency (GHz)",
+        xaxis2_title="Frequency (Hz)",
         yaxis2_title="Phase (rad)",
     )
     return fig
