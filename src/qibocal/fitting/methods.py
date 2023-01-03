@@ -8,11 +8,13 @@ from qibocal.data import Data
 from qibocal.fitting.utils import cos, exp, flipping, lorenzian, parse, rabi, ramsey
 
 
-def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None, qrm_lo=None):
-    """Fitting routine for resonator spectroscopy"""
+def lorentzian_fit(
+    data, x, y, qubits, resonator_type, labels, fit_file_name=None, lo_freqs=None
+):
+    """Fitting routine for resonator and qubit spectroscopies"""
     if fit_file_name == None:
         data_fit = Data(
-            name=f"fit_q{qubit}",
+            name=f"fits",
             quantities=[
                 "popt0",
                 "popt1",
@@ -21,11 +23,12 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None, qrm_l
                 labels[0],
                 labels[1],
                 labels[2],
+                "qubit",
             ],
         )
     else:
         data_fit = Data(
-            name=fit_file_name + f"_q{qubit}",
+            name=fit_file_name,
             quantities=[
                 "popt0",
                 "popt1",
@@ -34,84 +37,96 @@ def lorentzian_fit(data, x, y, qubit, nqubits, labels, fit_file_name=None, qrm_l
                 labels[0],
                 labels[1],
                 labels[2],
+                "qubit",
             ],
         )
-
-    frequencies = data.get_values(*parse(x))
-    voltages = data.get_values(*parse(y))
-
-    # Create a lmfit model for fitting equation defined in resonator_peak
-    model_Q = lmfit.Model(lorenzian)
-
-    # Guess parameters for Lorentzian max or min
-    if (nqubits == 1 and labels[0] == "resonator_freq") or (
-        nqubits != 1 and labels[0] == "qubit_freq"
-    ):
-        guess_center = frequencies[
-            np.argmax(voltages)
-        ]  # Argmax = Returns the indices of the maximum values along an axis.
-        guess_offset = np.mean(
-            voltages[np.abs(voltages - np.mean(voltages) < np.std(voltages))]
+    for qubit in qubits:
+        qubit_data = (
+            data.df[data.df["qubit"] == qubit]
+            .drop(columns=["qubit", "iteration"])
+            .groupby("frequency", as_index=False)
+            .mean()
         )
-        guess_sigma = abs(frequencies[np.argmin(voltages)] - guess_center)
-        guess_amp = (np.max(voltages) - guess_offset) * guess_sigma * np.pi
-
-    else:
-        guess_center = frequencies[
-            np.argmin(voltages)
-        ]  # Argmin = Returns the indices of the minimum values along an axis.
-        guess_offset = np.mean(
-            voltages[np.abs(voltages - np.mean(voltages) < np.std(voltages))]
+        frequencies_keys = parse(x)
+        voltages_keys = parse(y)
+        frequencies = (
+            qubit_data[frequencies_keys[0]].pint.to(frequencies_keys[1]).pint.magnitude
         )
-        guess_sigma = abs(frequencies[np.argmax(voltages)] - guess_center)
-        guess_amp = (np.min(voltages) - guess_offset) * guess_sigma * np.pi
+        voltages = qubit_data[voltages_keys[0]].pint.to(voltages_keys[1]).pint.magnitude
 
-    # Add guessed parameters to the model
-    model_Q.set_param_hint("center", value=guess_center, vary=True)
-    model_Q.set_param_hint("sigma", value=guess_sigma, vary=True)
-    model_Q.set_param_hint("amplitude", value=guess_amp, vary=True)
-    model_Q.set_param_hint("offset", value=guess_offset, vary=True)
-    guess_parameters = model_Q.make_params()
+        # Create a lmfit model for fitting equation defined in resonator_peak
+        model_Q = lmfit.Model(lorenzian)
 
-    # fit the model with the data and guessed parameters
-    try:
-        fit_res = model_Q.fit(
-            data=voltages, frequency=frequencies, params=guess_parameters
+        # Guess parameters for Lorentzian max or min
+        if (resonator_type == "3D" and labels[0] == "resonator_freq") or (
+            resonator_type != "3D" and labels[0] == "qubit_freq"
+        ):
+            guess_center = frequencies[
+                np.argmax(voltages)
+            ]  # Argmax = Returns the indices of the maximum values along an axis.
+            guess_offset = np.mean(
+                voltages[np.abs(voltages - np.mean(voltages) < np.std(voltages))]
+            )
+            guess_sigma = abs(frequencies[np.argmin(voltages)] - guess_center)
+            guess_amp = (np.max(voltages) - guess_offset) * guess_sigma * np.pi
+
+        else:
+            guess_center = frequencies[
+                np.argmin(voltages)
+            ]  # Argmin = Returns the indices of the minimum values along an axis.
+            guess_offset = np.mean(
+                voltages[np.abs(voltages - np.mean(voltages) < np.std(voltages))]
+            )
+            guess_sigma = abs(frequencies[np.argmax(voltages)] - guess_center)
+            guess_amp = (np.min(voltages) - guess_offset) * guess_sigma * np.pi
+
+        # Add guessed parameters to the model
+        model_Q.set_param_hint("center", value=guess_center, vary=True)
+        model_Q.set_param_hint("sigma", value=guess_sigma, vary=True)
+        model_Q.set_param_hint("amplitude", value=guess_amp, vary=True)
+        model_Q.set_param_hint("offset", value=guess_offset, vary=True)
+        guess_parameters = model_Q.make_params()
+
+        # fit the model with the data and guessed parameters
+        try:
+            fit_res = model_Q.fit(
+                data=voltages, frequency=frequencies, params=guess_parameters
+            )
+        except:
+            log.warning("lorentzian_fit: the fitting was not successful")
+            return data_fit
+
+        # get the values for postprocessing and for legend.
+        f0 = fit_res.best_values["center"]
+        BW = fit_res.best_values["sigma"] * 2
+        Q = abs(f0 / BW)
+        peak_voltage = (
+            fit_res.best_values["amplitude"] / (fit_res.best_values["sigma"] * np.pi)
+            + fit_res.best_values["offset"]
         )
-    except:
-        log.warning("The fitting was not successful")
-        return data_fit
 
-    # get the values for postprocessing and for legend.
-    f0 = fit_res.best_values["center"]
-    BW = fit_res.best_values["sigma"] * 2
-    Q = abs(f0 / BW)
-    peak_voltage = (
-        fit_res.best_values["amplitude"] / (fit_res.best_values["sigma"] * np.pi)
-        + fit_res.best_values["offset"]
-    )
+        freq = f0
 
-    freq = f0 * 1e9
+        intermediate_freq = 0
+        if lo_freqs != None:
+            intermediate_freq = freq - lo_freqs[qubit]
 
-    MZ_freq = 0
-    if qrm_lo != None:
-        MZ_freq = freq - qrm_lo
-
-    data_fit.add(
-        {
-            labels[0]: freq,
-            labels[1]: peak_voltage,
-            labels[2]: MZ_freq,
-            "popt0": fit_res.best_values["amplitude"],
-            "popt1": fit_res.best_values["center"],
-            "popt2": fit_res.best_values["sigma"],
-            "popt3": fit_res.best_values["offset"],
-        }
-    )
+        data_fit.add(
+            {
+                labels[0]: freq,
+                labels[1]: peak_voltage,
+                labels[2]: intermediate_freq,
+                "popt0": fit_res.best_values["amplitude"],
+                "popt1": fit_res.best_values["center"],
+                "popt2": fit_res.best_values["sigma"],
+                "popt3": fit_res.best_values["offset"],
+                "qubit": qubit,
+            }
+        )
     return data_fit
 
 
-def rabi_fit(data, x, y, qubit, nqubits, labels):
+def rabi_fit(data, x, y, qubit, resonator_type, labels):
     data_fit = Data(
         name=f"fit_q{qubit}",
         quantities=[
@@ -128,7 +143,7 @@ def rabi_fit(data, x, y, qubit, nqubits, labels):
     time = data.get_values(*parse(x))
     voltages = data.get_values(*parse(y))
 
-    if nqubits == 1:
+    if resonator_type == "3D":
         pguess = [
             np.mean(voltages.values),
             np.max(voltages.values) - np.min(voltages.values),
@@ -224,7 +239,7 @@ def ramsey_fit(data, x, y, qubit, qubit_freq, sampling_rate, offset_freq, labels
     return data_fit
 
 
-def t1_fit(data, x, y, qubit, nqubits, labels):
+def t1_fit(data, x, y, qubit, resonator_type, labels):
 
     data_fit = Data(
         name=f"fit_q{qubit}",
@@ -239,7 +254,7 @@ def t1_fit(data, x, y, qubit, nqubits, labels):
     time = data.get_values(*parse(x))
     voltages = data.get_values(*parse(y))
 
-    if nqubits == 1:
+    if resonator_type == "3D":
         pguess = [
             max(voltages.values),
             (max(voltages.values) - min(voltages.values)),
@@ -273,7 +288,7 @@ def t1_fit(data, x, y, qubit, nqubits, labels):
     return data_fit
 
 
-def flipping_fit(data, x, y, qubits, nqubits, pi_pulse_amplitude, labels):
+def flipping_fit(data, x, y, qubits, resonator_type, pi_pulse_amplitude, labels):
 
     data_fit = Data(
         name="fits",
@@ -287,14 +302,17 @@ def flipping_fit(data, x, y, qubits, nqubits, pi_pulse_amplitude, labels):
             "qubit",
         ],
     )
+
     for qubit in qubits:
-        qubit_data = data.df[data.df["qubit"] == int(qubit)].groupby("iteration").mean()
+        qubit_data = (
+            data.df[data.df["qubit"] == qubit].groupby("flips", as_index=False).mean()
+        )
         flips_keys = parse(x)
         voltages_keys = parse(y)
         flips = qubit_data[flips_keys[0]].pint.to(flips_keys[1]).pint.magnitude
         voltages = qubit_data[voltages_keys[0]].pint.to(voltages_keys[1]).pint.magnitude
 
-        if nqubits == 1:
+        if resonator_type == "3D":
             pguess = [0.0003, np.mean(voltages), -18, 0]  # epsilon guess parameter
         else:
             pguess = [0.0003, np.mean(voltages), 18, 0]  # epsilon guess parameter
@@ -321,6 +339,7 @@ def flipping_fit(data, x, y, qubits, nqubits, pi_pulse_amplitude, labels):
                 "qubit": qubit,
             }
         )
+
     return data_fit
 
 
@@ -337,8 +356,13 @@ def drag_tuning_fit(data: Data, x, y, qubits, labels):
             "qubit",
         ],
     )
+
     for qubit in qubits:
-        qubit_data = data.df[data.df["qubit"] == int(qubit)].groupby("iteration").mean()
+        qubit_data = (
+            data.df[data.df["qubit"] == qubit]
+            .groupby("beta_param", as_index=False)
+            .mean()
+        )
         beta_params_keys = parse(x)
         voltages_keys = parse(y)
         beta_params = (
@@ -376,7 +400,7 @@ def drag_tuning_fit(data: Data, x, y, qubits, labels):
     return data_fit
 
 
-def spin_echo_fit(data, x, y, qubit, nqubits, labels):
+def spin_echo_fit(data, x, y, qubit, resonator_type, labels):
 
     data_fit = Data(
         name=f"fit_q{qubit}",
@@ -391,7 +415,7 @@ def spin_echo_fit(data, x, y, qubit, nqubits, labels):
     time = data.get_values(*parse(x))
     voltages = data.get_values(*parse(y))
 
-    if nqubits == 1:
+    if resonator_type == "3D":
         pguess = [
             max(voltages.values),
             (max(voltages.values) - min(voltages.values)),
@@ -442,6 +466,28 @@ def calibrate_qubit_states_fit(data, x, y, nshots, qubits):
 
     i_keys = parse(x)
     q_keys = parse(y)
+
+    for qubit in qubits:
+        qubit_data = data.df[data.df["qubit"] == qubit]
+
+        iq_state0 = (
+            qubit_data[qubit_data["state"] == 0][i_keys[0]]
+            .pint.to(i_keys[1])
+            .pint.magnitude
+            + 1.0j
+            * qubit_data[qubit_data["state"] == 0][q_keys[0]]
+            .pint.to(q_keys[1])
+            .pint.magnitude
+        )
+        iq_state1 = (
+            qubit_data[qubit_data["state"] == 1][i_keys[0]]
+            .pint.to(i_keys[1])
+            .pint.magnitude
+            + 1.0j
+            * qubit_data[qubit_data["state"] == 1][q_keys[0]]
+            .pint.to(q_keys[1])
+            .pint.magnitude
+        )
 
     for qubit in qubits:
         qubit_data = data.df[data.df["qubit"] == int(qubit)]
