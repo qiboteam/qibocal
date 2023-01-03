@@ -35,7 +35,7 @@ def qubit_states(folder, routine, qubit, format):
     for subfolder in subfolders:
         try:
             data = DataUnits.load_data(folder, subfolder, routine, format, "data")
-            data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
+            data.df = data.df[data.df["qubit"] == qubit].reset_index(drop=True)
         except:
             data = DataUnits(options=["qubit", "iteration", "state"])
 
@@ -43,9 +43,9 @@ def qubit_states(folder, routine, qubit, format):
             parameters = Data.load_data(
                 folder, subfolder, routine, format, "parameters"
             )
-            parameters.df = parameters.df[
-                parameters.df["qubit"] == int(qubit)
-            ].reset_index(drop=True)
+            parameters.df = parameters.df[parameters.df["qubit"] == qubit].reset_index(
+                drop=True
+            )
             average_state0 = complex(parameters.get_values("average_state0")[0])
             average_state1 = complex(parameters.get_values("average_state1")[0])
             rotation_angle = parameters.get_values("rotation_angle")[0]
