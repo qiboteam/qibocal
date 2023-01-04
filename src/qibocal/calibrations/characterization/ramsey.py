@@ -12,9 +12,9 @@ from qibocal.fitting.methods import ramsey_fit
 def ramsey_frequency_detuned(
     platform: AbstractPlatform,
     qubits: list,
-    t_start,
-    t_end,
-    t_step,
+    delay_between_pulses_start,
+    delay_between_pulses_end,
+    delay_between_pulses_step,
     n_osc,
     software_averages=1,
     points=10,
@@ -34,9 +34,9 @@ def ramsey_frequency_detuned(
     Args:
         platform (AbstractPlatform): Qibolab platform object
         qubits (list): List of target qubits to perform the action
-        t_start (int): Initial time delay between drive pulses in the Ramsey sequence
-        t_end (list): List of maximum time delays between drive pulses in the Ramsey sequence
-        t_step (int): Scan range step for the time delay between drive pulses in the Ramsey sequence
+        delay_between_pulses_start (int): Initial time delay between drive pulses in the Ramsey sequence
+        delay_between_pulses_end (list): List of maximum time delays between drive pulses in the Ramsey sequence
+        delay_between_pulses_step (int): Scan range step for the time delay between drive pulses in the Ramsey sequence
         software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
 
@@ -69,7 +69,7 @@ def ramsey_frequency_detuned(
     platform.reload_settings()
 
     # create a sequence of pulses for the experiment
-    # RX90 - t - RX90 - MZ
+    # RX90 - wait t - RX90 - MZ
     ro_pulses = {}
     RX90_pulses1 = {}
     RX90_pulses2 = {}
@@ -115,10 +115,10 @@ def ramsey_frequency_detuned(
         options=["qubit", "iteration"],
     )
 
-    t_end = np.array(t_end)
+    delay_between_pulses_end = np.array(delay_between_pulses_end)
     # repeat the experiment as many times as defined by software_averages
     count = 0
-    for t_max in t_end:
+    for t_max in delay_between_pulses_end:
         for iteration in range(software_averages):
             count = 0
             for qubit in qubits:
@@ -129,7 +129,9 @@ def ramsey_frequency_detuned(
 
             # define the parameter to sweep and its range:
             # wait time between RX90 pulses
-            t_range = np.arange(t_start, t_max, t_step)
+            t_range = np.arange(
+                delay_between_pulses_start, t_max, delay_between_pulses_step
+            )
 
             # sweep the parameter
             for wait in t_range:
@@ -207,7 +209,7 @@ def ramsey_frequency_detuned(
                 ]
             )
 
-            if new_t2 > current_T2s[qubit] and len(t_end) > 1:
+            if new_t2 > current_T2s[qubit] and len(delay_between_pulses_end) > 1:
                 print(
                     f"t_max: {t_max} -- new t2: {new_t2} > current t2: {current_T2s[qubit]} new iteration!"
                 )
@@ -254,7 +256,7 @@ def ramsey(
     delay_between_pulses_start,
     delay_between_pulses_end,
     delay_between_pulses_step,
-    software_averages,
+    software_averages=1,
     points=10,
 ):
 

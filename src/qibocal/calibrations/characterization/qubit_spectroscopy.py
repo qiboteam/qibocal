@@ -16,7 +16,7 @@ def qubit_spectroscopy(
     fast_step,
     precision_width,
     precision_step,
-    software_averages,
+    software_averages=1,
     points=10,
 ):
     r"""
@@ -258,8 +258,8 @@ def qubit_spectroscopy_flux(
     freq_step,
     current_width,
     current_step,
-    software_averages,
     fluxlines,
+    software_averages=1,
     points=10,
 ):
     r"""
@@ -273,9 +273,9 @@ def qubit_spectroscopy_flux(
         freq_step (int): Step frequency in HZ for the spectroscopy sweep
         current_width (float): Width current in A for the flux current sweep
         current_step (float): Step current in A for the flux current sweep
-        software_averages (int): Number of executions of the routine for averaging results
         fluxlines (list): List of flux lines to use to perform the experiment. If it is set to "qubits", it uses each of
                         flux lines associated with the target qubits.
+        software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
 
     Returns:
@@ -299,6 +299,7 @@ def qubit_spectroscopy_flux(
             - **popt1**: Lorentzian's center
             - **popt2**: Lorentzian's sigma
             - **popt3**: Lorentzian's offset
+            - **qubit**: The qubit being tested
     """
 
     # reload instrument settings from runcard
