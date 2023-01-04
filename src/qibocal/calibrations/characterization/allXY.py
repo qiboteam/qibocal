@@ -50,8 +50,9 @@ def allXY(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubit (int): Target qubit to perform the action
+        qubits (list): List of target qubits to perform the action
         beta_param (float): Drag pi pulse coefficient. If none, teh default shape defined in the runcard will be used.
+        software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
 
     Returns:
@@ -63,22 +64,29 @@ def allXY(
             - **phase[rad]**: Difference between resonator signal phase mesurement in radians from sequence 1 and 2
             - **probability[dimensionless]**: Probability of being in |0> state
             - **gateNumber[dimensionless]**: Gate number applied from the list of gates
-
+            - **qubit**: The qubit being tested
+            - **iteration**: The iteration number of the many determined by software_averages
     """
+    # reload instrument settings from runcard
     platform.reload_settings()
 
+    # create a Data object to store the results
     data = Data(
         name="data",
         quantities={"probability", "gateNumber", "qubit", "iteration"},
     )
 
     count = 0
+    # repeat the experiment as many times as defined by software_averages
     for iteration in range(software_averages):
-        gateNumber = 1
+        # sweep the parameter
         for gates in gatelist:
+            # save data as often as defined by points
             if count % points == 0 and count > 0:
+                # save data
                 yield data
 
+            # create a sequence of pulses
             ro_pulses = {}
             sequence = PulseSequence()
             for qubit in qubits:
@@ -86,10 +94,13 @@ def allXY(
                     platform, gates, qubit, beta_param, sequence
                 )
 
+            # execute the pulse sequence
             results = platform.execute_pulse_sequence(sequence)
+
+            # retrieve the results for every qubit
             for qubit in qubits:
                 prob = 1 - 2 * results["probability"][ro_pulses[qubit].serial]
-
+                # store the results
                 r = {
                     "probability": prob,
                     "gateNumber": gateNumber,
@@ -99,6 +110,7 @@ def allXY(
                 data.add(r)
             count += 1
             gateNumber += 1
+    # finally, save the remaining data
     yield data
 
 
@@ -124,10 +136,11 @@ def allXY_drag_pulse_tuning(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubit (int): Target qubit to perform the action
+        qubits (list): List of target qubits to perform the action
         beta_start (float): Initial drag pulse beta parameter
         beta_end (float): Maximum drag pulse beta parameter
         beta_step (float): Scan range step for the drag pulse beta parameter
+        software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
 
     Returns:
@@ -140,8 +153,12 @@ def allXY_drag_pulse_tuning(
             - **probability[dimensionless]**: Probability of being in |0> state
             - **gateNumber[dimensionless]**: Gate number applied from the list of gates
             - **beta_param[dimensionless]**: Beta paramter applied in the current execution
+            - **qubit**: The qubit being tested
+            - **iteration**: The iteration number of the many determined by software_averages
 
     """
+
+    # reload instrument settings from runcard
     platform.reload_settings()
 
     data = Data(
@@ -149,14 +166,19 @@ def allXY_drag_pulse_tuning(
         quantities={"probability", "gateNumber", "beta_param", "qubit", "iteration"},
     )
 
+    # repeat the experiment as many times as defined by software_averages
     count = 0
     for iteration in range(software_averages):
+        # sweep the parameters
         for beta_param in np.arange(beta_start, beta_end, beta_step).round(4):
             gateNumber = 1
             for gates in gatelist:
+                # save data as often as defined by points
                 if count % points == 0 and count > 0:
+                    # save data
                     yield data
 
+                # create a sequence of pulses
                 ro_pulses = {}
                 sequence = PulseSequence()
                 for qubit in qubits:
@@ -164,10 +186,13 @@ def allXY_drag_pulse_tuning(
                         platform, gates, qubit, beta_param, sequence
                     )
 
+                # execute the pulse sequence
                 results = platform.execute_pulse_sequence(sequence)
+
+                # retrieve the results for every qubit
                 for qubit in qubits:
                     prob = 1 - 2 * results["probability"][ro_pulses[qubit].serial]
-
+                    # store the results
                     r = {
                         "probability": prob,
                         "gateNumber": gateNumber,
@@ -178,6 +203,7 @@ def allXY_drag_pulse_tuning(
                     data.add(r)
                 count += 1
                 gateNumber += 1
+    # finally, save the remaining data
     yield data
 
 
@@ -198,10 +224,11 @@ def drag_pulse_tuning(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubit (int): Target qubit to perform the action
+        qubits (list): List of target qubits to perform the action
         beta_start (float): Initial drag pulse beta parameter
         beta_end (float): Maximum drag pulse beta parameter
         beta_step (float): Scan range step for the drag pulse beta parameter
+        software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
 
     Returns:
@@ -212,6 +239,8 @@ def drag_pulse_tuning(
             - **q[V]**: Difference between resonator signal voltage mesurement for the component Q in volts from sequence 1 and 2
             - **phase[rad]**: Difference between resonator signal phase mesurement in radians from sequence 1 and 2
             - **beta_param[dimensionless]**: Optimal drag coefficient
+            - **qubit**: The qubit being tested
+            - **iteration**: The iteration number of the many determined by software_averages
 
         - A DataUnits object with the fitted data obtained with the following keys
 
@@ -220,9 +249,17 @@ def drag_pulse_tuning(
             - **popt1**: oscillation amplitude
             - **popt2**: period
             - **popt3**: phase
+            - **qubit**: The qubit being tested
     """
+
+    # reload instrument settings from runcard
     platform.reload_settings()
 
+    # define the parameter to sweep and its range:
+    # qubit drive DRAG pulse beta parameter
+    beta_param_range = np.arange(beta_start, beta_end, beta_step).round(4)
+
+    # create a DataUnits object to store the MSR, phase, i, q and the beta parameter
     data = DataUnits(
         name="data",
         quantities={"beta_param": "dimensionless"},
@@ -230,10 +267,14 @@ def drag_pulse_tuning(
     )
 
     count = 0
+    # repeat the experiment as many times as defined by software_averages
     for iteration in range(software_averages):
-        for beta_param in np.arange(beta_start, beta_end, beta_step).round(4):
+        for beta_param in beta_param_range:
+            # save data as often as defined by points
             if count % points == 0 and count > 0:
+                # save data
                 yield data
+                # calculate and save fit
                 yield drag_tuning_fit(
                     data,
                     x="beta_param[dimensionless]",
@@ -241,6 +282,10 @@ def drag_pulse_tuning(
                     qubits=qubits,
                     labels=["optimal_beta_param"],
                 )
+
+            # create two sequences of pulses
+            # seq1: RX(pi/2) - RY(pi) - MZ
+            # seq1: RY(pi/2) - RX(pi) - MZ
 
             ro_pulses = {}
             seq1 = PulseSequence()
@@ -282,14 +327,16 @@ def drag_pulse_tuning(
                 seq2.add(RX_drag_pulse)
                 seq2.add(ro_pulses[qubit])
 
+            # execute the pulse sequences
             result1 = platform.execute_pulse_sequence(seq1)
             result2 = platform.execute_pulse_sequence(seq2)
 
+            # retrieve the results for every qubit
             for qubit in qubits:
                 msr1, phase1, i1, q1 = result1[ro_pulses[qubit].serial]
                 msr2, phase2, i2, q2 = result2[ro_pulses[qubit].serial]
-
-                results = {
+                # store the results
+                r = {
                     "MSR[V]": msr1 - msr2,
                     "i[V]": i1 - i2,
                     "q[V]": q1 - q2,
@@ -298,7 +345,7 @@ def drag_pulse_tuning(
                     "qubit": qubit,
                     "iteration": iteration,
                 }
-                data.add(results)
+                data.add(r)
             count += 1
 
     yield data
