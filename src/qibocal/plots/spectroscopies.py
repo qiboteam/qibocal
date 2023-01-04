@@ -283,7 +283,8 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
             uirevision="0",  # ``uirevision`` allows zooming while live plotting
         )
         report_n += 1
-
+    if report_n > 1:
+        fig.update_traces(showscale=False)
     return fig
 
 
@@ -513,7 +514,8 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
         )
 
         report_n += 1
-
+    if report_n > 1:
+        fig.update_traces(showscale=False)
     return fig
 
 
