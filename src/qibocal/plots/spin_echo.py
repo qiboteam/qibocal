@@ -4,11 +4,11 @@ from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import exp
-from qibocal.plots.utils import get_data_subfolders
+from qibocal.plots.utils import get_color, get_data_subfolders
 
 
 # Spin echos
-def spin_echo_time_msr_phase(folder, routine, qubit, format):
+def spin_echo_time_msr(folder, routine, qubit, format):
 
     """Spin echo plotting routine:
     The routine plots the results of a modified Ramsey sequence with an additional Rx(pi) pulse placed symmetrically between the two Rx(pi/2) pulses.
@@ -25,27 +25,27 @@ def spin_echo_time_msr_phase(folder, routine, qubit, format):
         cols=2,
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
-        subplot_titles=(
-            "MSR (V)",
-            "phase (rad)",
-        ),
+        subplot_titles=("MSR (V)",),
     )
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
-    i = 0
+    report_n = 0
+    fitting_report = ""
     for subfolder in subfolders:
         try:
-            data = DataUnits.load_data(
-                folder, subfolder, routine, format, f"data_q{qubit}"
-            )
+            data = DataUnits.load_data(folder, subfolder, routine, format, f"data")
+            data.df = data.df[data.df["qubit"] == qubit]
         except:
-            data = DataUnits(quantities={"Time": "ns"})
+            data = DataUnits(
+                name=f"data",
+                quantities={"wait": "ns"},
+                options=["qubit", "iteration"],
+            )
 
         try:
-            data_fit = Data.load_data(
-                folder, subfolder, routine, format, f"fit_q{qubit}"
-            )
+            data_fit = Data.load_data(folder, subfolder, routine, format, f"fits")
+            data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
         except:
             data_fit = Data(
                 quantities=[
@@ -56,71 +56,101 @@ def spin_echo_time_msr_phase(folder, routine, qubit, format):
                 ]
             )
 
-        fig.add_trace(
-            go.Scatter(
-                x=data.get_values("Time", "ns"),
-                y=data.get_values("MSR", "uV"),
-                name=f"q{qubit}/r{i}: spin echo",
-            ),
-            row=1,
-            col=1,
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=data.get_values("Time", "ns"),
-                y=data.get_values("phase", "rad"),
-                name=f"q{qubit}/r{i}: spin echo",
-            ),
-            row=1,
-            col=2,
-        )
+        iterations = data.df["iteration"].unique()
+        waits = data.df["wait"].pint.to("ns").pint.magnitude.unique()
 
-        # add fitting trace
-        if len(data) > 0 and len(data_fit) > 0:
-            timerange = np.linspace(
-                min(data.get_values("Time", "ns")),
-                max(data.get_values("Time", "ns")),
-                2 * len(data),
-            )
-            params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+        if len(iterations) > 1:
+            opacity = 0.3
+        else:
+            opacity = 1
+        for iteration in iterations:
+            iteration_data = data.df[data.df["iteration"] == iteration]
             fig.add_trace(
                 go.Scatter(
-                    x=timerange,
-                    y=exp(
-                        timerange,
-                        data_fit.df["popt0"][0],
-                        data_fit.df["popt1"][0],
-                        data_fit.df["popt2"][0],
-                    ),
-                    name=f"Fit q{qubit}/r{i}:",
-                    line=go.scatter.Line(dash="dot"),
+                    x=iteration_data["wait"].pint.to("ns").pint.magnitude,
+                    y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
+                    marker_color=get_color(report_n),
+                    opacity=opacity,
+                    name=f"q{qubit}/r{report_n}",
+                    showlegend=not bool(iteration),
+                    legendgroup=f"q{qubit}/r{report_n}",
                 ),
                 row=1,
                 col=1,
             )
 
-            fig.add_annotation(
-                dict(
-                    font=dict(color="black", size=12),
-                    x=i * 0.09,
-                    y=-0.25,
-                    showarrow=False,
-                    text=f"q{qubit}/r{i}: {params[0]}: {data_fit.df[params[0]][0]:.1f} ns.",
-                    textangle=0,
-                    xanchor="left",
-                    xref="paper",
-                    yref="paper",
-                )
+        if len(iterations) > 1:
+            fig.add_trace(
+                go.Scatter(
+                    x=waits,
+                    y=data.df.groupby("wait")["MSR"]
+                    .mean()
+                    .pint.to("uV")
+                    .pint.magnitude,
+                    marker_color=get_color(report_n),
+                    name=f"q{qubit}/r{report_n}: Average",
+                    showlegend=True,
+                    legendgroup=f"q{qubit}/r{report_n}: Average",
+                ),
+                row=1,
+                col=1,
             )
-        i += 1
 
-    # last part
+        # add fitting trace
+        if len(data) > 0 and (qubit in data_fit.df["qubit"].values):
+            waitrange = np.linspace(
+                min(data.get_values("wait", "ns")),
+                max(data.get_values("wait", "ns")),
+                2 * len(data),
+            )
+            params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(
+                orient="records"
+            )[0]
+
+            fig.add_trace(
+                go.Scatter(
+                    x=waitrange,
+                    y=exp(
+                        waitrange,
+                        data_fit.df["popt0"][0],
+                        data_fit.df["popt1"][0],
+                        data_fit.df["popt2"][0],
+                    ),
+                    name=f"q{qubit}/r{report_n} Fit",
+                    line=go.scatter.Line(dash="dot"),
+                    marker_color="rgb(255, 130, 67)",
+                ),
+                row=1,
+                col=1,
+            )
+
+            fitting_report = fitting_report + (
+                f"q{qubit}/r{report_n} t2: {params['t2']:,.0f} ns.<br><br>"
+            )
+        report_n += 1
+
+    fig.add_annotation(
+        dict(
+            font=dict(color="black", size=12),
+            x=0,
+            y=1.2,
+            showarrow=False,
+            text="<b>FITTING DATA</b>",
+            font_family="Arial",
+            font_size=20,
+            textangle=0,
+            xanchor="left",
+            xref="paper",
+            yref="paper",
+            font_color="#5e9af1",
+            hovertext=fitting_report,
+        )
+    )
+
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Time (ns)",
         yaxis_title="MSR (uV)",
-        xaxis2_title="Time (ns)",
-        yaxis2_title="Phase (rad)",
     )
     return fig

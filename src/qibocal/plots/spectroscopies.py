@@ -1,17 +1,10 @@
-import os
-from colorsys import hls_to_rgb
-
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import lorenzian
-from qibocal.plots.utils import get_data_subfolders
-
-
-def _get_color(number):
-    return "rgb" + str(hls_to_rgb((0.75 - number * 3 / 20) % 1, 0.4, 0.75))
+from qibocal.plots.utils import get_color, get_data_subfolders
 
 
 # Resonator and qubit spectroscopies
@@ -83,7 +76,7 @@ def frequency_msr_phase(folder, routine, qubit, format):
                     go.Scatter(
                         x=iteration_data["frequency"].pint.to("Hz").pint.magnitude,
                         y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
-                        marker_color=_get_color(2 * report_n + i),
+                        marker_color=get_color(2 * report_n + i),
                         opacity=opacity,
                         name=f"q{qubit}/r{report_n}: {label}",
                         showlegend=not bool(iteration),
@@ -96,7 +89,7 @@ def frequency_msr_phase(folder, routine, qubit, format):
                     go.Scatter(
                         x=iteration_data["frequency"].pint.to("Hz").pint.magnitude,
                         y=iteration_data["phase"].pint.to("rad").pint.magnitude,
-                        marker_color=_get_color(2 * report_n + i),
+                        marker_color=get_color(2 * report_n + i),
                         opacity=opacity,
                         showlegend=False,
                         legendgroup=f"q{qubit}/r{report_n}: {label}",
@@ -112,7 +105,7 @@ def frequency_msr_phase(folder, routine, qubit, format):
                         .mean()
                         .pint.to("uV")
                         .pint.magnitude,
-                        marker_color=_get_color(2 * report_n + i),
+                        marker_color=get_color(2 * report_n + i),
                         name=f"q{qubit}/r{report_n}: {label} Average",
                         showlegend=True,
                         legendgroup=f"q{qubit}/r{report_n}: {label} Average",
@@ -127,7 +120,7 @@ def frequency_msr_phase(folder, routine, qubit, format):
                         .mean()
                         .pint.to("rad")
                         .pint.magnitude,
-                        marker_color=_get_color(2 * report_n + i),
+                        marker_color=get_color(2 * report_n + i),
                         showlegend=False,
                         legendgroup=f"q{qubit}/r{report_n}: {label} Average",
                     ),
@@ -332,7 +325,7 @@ def frequency_attenuation_msr_phase_cut(folder, routine, qubit, format):
                 go.Scatter(
                     x=iteration_data["frequency"].pint.to("Hz").pint.magnitude,
                     y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
-                    marker_color=_get_color(report_n),
+                    marker_color=get_color(report_n),
                     opacity=opacity,
                     name=f"q{qubit}/r{report_n} Attenuation: {middle_attenuation.to('dB').magnitude} dB",
                     showlegend=not bool(iteration),
@@ -345,7 +338,7 @@ def frequency_attenuation_msr_phase_cut(folder, routine, qubit, format):
                 go.Scatter(
                     x=iteration_data["frequency"].pint.to("Hz").pint.magnitude,
                     y=iteration_data["phase"].pint.to("rad").pint.magnitude,
-                    marker_color=_get_color(report_n),
+                    marker_color=get_color(report_n),
                     opacity=opacity,
                     showlegend=False,
                     legendgroup=f"q{qubit}/r{report_n}",
@@ -361,7 +354,7 @@ def frequency_attenuation_msr_phase_cut(folder, routine, qubit, format):
                     .mean()
                     .pint.to("uV")
                     .pint.magnitude,
-                    marker_color=_get_color(report_n),
+                    marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,
                     legendgroup=f"q{qubit}/r{report_n}: Average",
@@ -376,7 +369,7 @@ def frequency_attenuation_msr_phase_cut(folder, routine, qubit, format):
                     .mean()
                     .pint.to("rad")
                     .pint.magnitude,
-                    marker_color=_get_color(report_n),
+                    marker_color=get_color(report_n),
                     showlegend=False,
                     legendgroup=f"q{qubit}/r{report_n}: Average",
                 ),
@@ -611,7 +604,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, format):
                     go.Scatter(
                         x=iteration_data["frequency"].pint.to("Hz").pint.magnitude,
                         y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
-                        marker_color=_get_color(2 * report_n + i),
+                        marker_color=get_color(2 * report_n + i),
                         opacity=opacity,
                         name=f"q{qubit}/r{report_n}: {label}",
                         showlegend=not bool(iteration),
@@ -624,7 +617,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, format):
                     go.Scatter(
                         x=iteration_data["frequency"].pint.to("Hz").pint.magnitude,
                         y=iteration_data["phase"].pint.to("rad").pint.magnitude,
-                        marker_color=_get_color(2 * report_n + i),
+                        marker_color=get_color(2 * report_n + i),
                         opacity=opacity,
                         showlegend=False,
                         legendgroup=f"q{qubit}/r{report_n}: {label}",
@@ -640,7 +633,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, format):
                         .mean()
                         .pint.to("uV")
                         .pint.magnitude,
-                        marker_color=_get_color(2 * report_n + i),
+                        marker_color=get_color(2 * report_n + i),
                         name=f"q{qubit}/r{report_n}: {label} Average",
                         showlegend=True,
                         legendgroup=f"q{qubit}/r{report_n}: {label} Average",
@@ -655,7 +648,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, format):
                         .mean()
                         .pint.to("rad")
                         .pint.magnitude,
-                        marker_color=_get_color(2 * report_n + i),
+                        marker_color=get_color(2 * report_n + i),
                         showlegend=False,
                         legendgroup=f"q{qubit}/r{report_n}: {label} Average",
                     ),

@@ -1,17 +1,10 @@
-import os
-from colorsys import hls_to_rgb
-
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import rabi
-from qibocal.plots.utils import get_data_subfolders
-
-
-def _get_color(number):
-    return "rgb" + str(hls_to_rgb((0.75 - number * 3 / 20) % 1, 0.4, 0.75))
+from qibocal.plots.utils import get_color, get_data_subfolders
 
 
 # Rabi oscillations pulse length
@@ -68,7 +61,7 @@ def time_msr_phase(folder, routine, qubit, format):
                 go.Scatter(
                     x=iteration_data["time"].pint.to("ns").pint.magnitude,
                     y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
-                    marker_color=_get_color(report_n),
+                    marker_color=get_color(report_n),
                     opacity=opacity,
                     name=f"q{qubit}/r{report_n}",
                     showlegend=not bool(iteration),
@@ -81,7 +74,7 @@ def time_msr_phase(folder, routine, qubit, format):
                 go.Scatter(
                     x=iteration_data["time"].pint.to("ns").pint.magnitude,
                     y=iteration_data["phase"].pint.to("rad").pint.magnitude,
-                    marker_color=_get_color(report_n),
+                    marker_color=get_color(report_n),
                     opacity=opacity,
                     name=f"q{qubit}/r{report_n}",
                     showlegend=False,
@@ -98,7 +91,7 @@ def time_msr_phase(folder, routine, qubit, format):
                     .mean()
                     .pint.to("uV")
                     .pint.magnitude,
-                    marker_color=_get_color(report_n),
+                    marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,
                     legendgroup=f"q{qubit}/r{report_n}: Average",
@@ -113,7 +106,7 @@ def time_msr_phase(folder, routine, qubit, format):
                     .mean()
                     .pint.to("rad")
                     .pint.magnitude,
-                    marker_color=_get_color(report_n),
+                    marker_color=get_color(report_n),
                     showlegend=False,
                     legendgroup=f"q{qubit}/r{report_n}: Average",
                 ),
@@ -248,7 +241,7 @@ def gain_msr_phase(folder, routine, qubit, format):
                 go.Scatter(
                     x=iteration_data["gain"].pint.to("dimensionless").pint.magnitude,
                     y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
-                    marker_color=_get_color(report_n),
+                    marker_color=get_color(report_n),
                     opacity=opacity,
                     name=f"q{qubit}/r{report_n}",
                     showlegend=not bool(iteration),
@@ -261,7 +254,7 @@ def gain_msr_phase(folder, routine, qubit, format):
                 go.Scatter(
                     x=iteration_data["gain"].pint.to("dimensionless").pint.magnitude,
                     y=iteration_data["phase"].pint.to("rad").pint.magnitude,
-                    marker_color=_get_color(report_n),
+                    marker_color=get_color(report_n),
                     opacity=opacity,
                     name=f"q{qubit}/r{report_n}",
                     showlegend=False,
@@ -278,7 +271,7 @@ def gain_msr_phase(folder, routine, qubit, format):
                     .mean()
                     .pint.to("uV")
                     .pint.magnitude,
-                    marker_color=_get_color(report_n),
+                    marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,
                     legendgroup=f"q{qubit}/r{report_n}: Average",
@@ -293,7 +286,7 @@ def gain_msr_phase(folder, routine, qubit, format):
                     .mean()
                     .pint.to("rad")
                     .pint.magnitude,
-                    marker_color=_get_color(report_n),
+                    marker_color=get_color(report_n),
                     showlegend=False,
                     legendgroup=f"q{qubit}/r{report_n}: Average",
                 ),
@@ -432,7 +425,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
                     .pint.to("dimensionless")
                     .pint.magnitude,
                     y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
-                    marker_color=_get_color(report_n),
+                    marker_color=get_color(report_n),
                     opacity=opacity,
                     name=f"q{qubit}/r{report_n}",
                     showlegend=not bool(iteration),
@@ -447,7 +440,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
                     .pint.to("dimensionless")
                     .pint.magnitude,
                     y=iteration_data["phase"].pint.to("rad").pint.magnitude,
-                    marker_color=_get_color(report_n),
+                    marker_color=get_color(report_n),
                     opacity=opacity,
                     name=f"q{qubit}/r{report_n}",
                     showlegend=False,
@@ -464,7 +457,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
                     .mean()
                     .pint.to("uV")
                     .pint.magnitude,
-                    marker_color=_get_color(report_n),
+                    marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,
                     legendgroup=f"q{qubit}/r{report_n}: Average",
@@ -479,7 +472,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
                     .mean()
                     .pint.to("rad")
                     .pint.magnitude,
-                    marker_color=_get_color(report_n),
+                    marker_color=get_color(report_n),
                     showlegend=False,
                     legendgroup=f"q{qubit}/r{report_n}: Average",
                 ),

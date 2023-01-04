@@ -4,7 +4,7 @@ from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import cos
-from qibocal.plots.utils import get_data_subfolders
+from qibocal.plots.utils import get_color, get_data_subfolders
 
 # allXY rotations
 gatelist = [
@@ -30,13 +30,6 @@ gatelist = [
     ["RX(pi/2)", "RX(pi/2)"],
     ["RY(pi/2)", "RY(pi/2)"],
 ]
-
-
-from colorsys import hls_to_rgb
-
-
-def _get_color(number):
-    return "rgb" + str(hls_to_rgb((0.75 - number * 3 / 20) % 1, 0.4, 0.75))
 
 
 def allXY(folder, routine, qubit, format):
@@ -70,7 +63,7 @@ def allXY(folder, routine, qubit, format):
                 go.Scatter(
                     x=iteration_data["gateNumber"],
                     y=iteration_data["probability"],
-                    marker_color=_get_color(report_n),
+                    marker_color=get_color(report_n),
                     mode="markers",
                     text=gatelist,
                     textposition="bottom center",
@@ -90,7 +83,7 @@ def allXY(folder, routine, qubit, format):
                     "probability"
                 ].mean(),  # pylint: disable=E1101
                 name=f"q{qubit}/r{report_n}: Average Probability",
-                marker_color=_get_color(report_n),
+                marker_color=get_color(report_n),
                 mode="markers",
                 text=gatelist,
                 textposition="bottom center",
@@ -178,7 +171,7 @@ def allXY_drag_pulse_tuning(folder, routine, qubit, format):
                     go.Scatter(
                         x=beta_param_data["gateNumber"],
                         y=beta_param_data["probability"],
-                        marker_color=_get_color(report_n * len(beta_params) + j),
+                        marker_color=get_color(report_n * len(beta_params) + j),
                         mode="markers+lines",
                         opacity=0.5,
                         name=f"q{qubit}/r{report_n}: beta {beta_param}",
@@ -265,7 +258,7 @@ def drag_pulse_tuning(folder, routine, qubit, format):
                 go.Scatter(
                     x=iteration_data["beta_param"].pint.magnitude,
                     y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
-                    marker_color=_get_color(report_n),
+                    marker_color=get_color(report_n),
                     mode="markers",
                     opacity=0.3,
                     name=f"q{qubit}/r{report_n}: Probability",
@@ -285,7 +278,7 @@ def drag_pulse_tuning(folder, routine, qubit, format):
                 go.Scatter(
                     x=iteration_data["beta_param"].pint.magnitude,
                     y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
-                    marker_color=_get_color(report_n),
+                    marker_color=get_color(report_n),
                     mode="markers",
                     opacity=0.3,
                     name=f"q{qubit}/r{report_n}: Probability",
@@ -306,7 +299,7 @@ def drag_pulse_tuning(folder, routine, qubit, format):
                 .pint.to("uV")
                 .pint.magnitude,
                 name=f"q{qubit}/r{report_n}: Average MSR",
-                marker_color=_get_color(report_n),
+                marker_color=get_color(report_n),
                 mode="markers",
             ),
             row=1,

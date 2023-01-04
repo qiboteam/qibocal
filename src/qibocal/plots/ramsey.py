@@ -1,17 +1,10 @@
-import os
-from colorsys import hls_to_rgb
-
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import ramsey
-from qibocal.plots.utils import get_data_subfolders
-
-
-def _get_color(number):
-    return "rgb" + str(hls_to_rgb((0.75 - number * 3 / 20) % 1, 0.4, 0.75))
+from qibocal.plots.utils import get_color, get_data_subfolders
 
 
 # Ramsey oscillations
@@ -59,6 +52,7 @@ def time_msr(folder, routine, qubit, format):
 
         iterations = data.df["iteration"].unique()
         waits = data.df["wait"].pint.to("ns").pint.magnitude.unique()
+
         if len(iterations) > 1:
             opacity = 0.3
         else:
@@ -69,7 +63,7 @@ def time_msr(folder, routine, qubit, format):
                 go.Scatter(
                     x=iteration_data["wait"].pint.to("ns").pint.magnitude,
                     y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
-                    marker_color=_get_color(report_n),
+                    marker_color=get_color(report_n),
                     opacity=opacity,
                     name=f"q{qubit}/r{report_n}",
                     showlegend=not bool(iteration),
@@ -87,7 +81,7 @@ def time_msr(folder, routine, qubit, format):
                     .mean()
                     .pint.to("uV")
                     .pint.magnitude,
-                    marker_color=_get_color(report_n),
+                    marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,
                     legendgroup=f"q{qubit}/r{report_n}: Average",

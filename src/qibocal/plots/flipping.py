@@ -1,30 +1,21 @@
-from colorsys import hls_to_rgb
-
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import flipping
-from qibocal.plots.utils import get_data_subfolders
-
-
-def _get_color(number):
-    return "rgb" + str(hls_to_rgb((0.75 - number * 3 / 20) % 1, 0.4, 0.75))
+from qibocal.plots.utils import get_color, get_data_subfolders
 
 
 # Flipping
-def flips_msr_phase(folder, routine, qubit, format):
+def flips_msr(folder, routine, qubit, format):
 
     fig = make_subplots(
         rows=1,
-        cols=2,
+        cols=1,
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
-        subplot_titles=(
-            "MSR (V)",
-            "phase (rad)",
-        ),
+        subplot_titles=("MSR (V)",),
     )
 
     # iterate over multiple data folders
@@ -34,81 +25,76 @@ def flips_msr_phase(folder, routine, qubit, format):
     for subfolder in subfolders:
         try:
             data = DataUnits.load_data(folder, subfolder, routine, format, "data")
-            data.df = data.df[data.df["qubit"] == int(qubit)]
+            data.df = data.df[data.df["qubit"] == qubit]
         except:
-            data = DataUnits(quantities={"flips": "dimensionless"}, options=["qubit"])
+            data = DataUnits(
+                quantities={"flips": "dimensionless"}, options=["qubit", "iteration"]
+            )
         try:
-            data_fit = Data.load_data(folder, subfolder, routine, format, "fits")
+            data_fit = Data.load_data(folder, subfolder, routine, format, f"fits")
+            data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
         except:
-            data_fit = Data()
+            data_fit = Data(
+                quantities=[
+                    "popt0",
+                    "popt1",
+                    "popt2",
+                    "popt3",
+                    "popt4",
+                    "label1",
+                    "label2",
+                    "qubit",
+                ]
+            )
 
         iterations = data.df["iteration"].unique()
         flips = data.df["flips"].pint.magnitude.unique()
 
+        if len(iterations) > 1:
+            opacity = 0.3
+        else:
+            opacity = 1
         for iteration in iterations:
             iteration_data = data.df[data.df["iteration"] == iteration]
             fig.add_trace(
                 go.Scatter(
                     x=iteration_data["flips"].pint.magnitude,
                     y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
-                    marker_color=_get_color(report_n),
-                    opacity=0.3,
-                    name=f"q{qubit}/r{report_n}: MSR",
+                    marker_color=get_color(report_n),
+                    opacity=opacity,
+                    name=f"q{qubit}/r{report_n}",
                     showlegend=not bool(iteration),
-                    legendgroup="group1",
+                    legendgroup=f"q{qubit}/r{report_n}",
                 ),
                 row=1,
                 col=1,
             )
+
+        if len(iterations) > 1:
             fig.add_trace(
                 go.Scatter(
-                    x=iteration_data["flips"].pint.magnitude,
-                    y=iteration_data["phase"].pint.to("rad").pint.magnitude,
-                    marker_color=_get_color(report_n),
-                    name=f"q{qubit}/r{report_n}: phase",
-                    opacity=0.3,
-                    showlegend=not bool(iteration),
-                    legendgroup="group2",
+                    x=flips,
+                    y=data.df.groupby("flips")["MSR"]
+                    .mean()
+                    .pint.to("uV")
+                    .pint.magnitude,
+                    marker_color=get_color(report_n),
+                    name=f"q{qubit}/r{report_n}: Average",
+                    showlegend=True,
+                    legendgroup=f"q{qubit}/r{report_n}: Average",
                 ),
                 row=1,
-                col=2,
+                col=1,
             )
 
-        fig.add_trace(
-            go.Scatter(
-                x=flips,  # pylint: disable=E1101
-                y=data.df.groupby("flips")["MSR"]  # pylint: disable=E1101
-                .mean()
-                .pint.to("uV")
-                .pint.magnitude,
-                name=f"q{qubit}/r{report_n}: Average MSR",
-                marker_color=_get_color(report_n),
-            ),
-            row=1,
-            col=1,
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=data.df.flips.drop_duplicates().pint.magnitude,  # pylint: disable=E1101
-                y=data.df.groupby("flips")["phase"]  # pylint: disable=E1101
-                .mean()
-                .pint.to("rad")
-                .pint.magnitude,
-                name=f"q{qubit}/r{report_n}: Average phase",
-                marker_color=_get_color(report_n),
-            ),
-            row=1,
-            col=2,
-        )
-
         # add fitting trace
-        if len(data) > 0 and (int(qubit) in data_fit.df["qubit"].values):
+        if len(data) > 0 and (qubit in data_fit.df["qubit"].values):
             flips_range = np.linspace(
                 min(data.get_values("flips", "dimensionless")),
                 max(data.get_values("flips", "dimensionless")),
                 2 * len(data),
             )
-            params = data_fit.df[data_fit.df["qubit"] == int(qubit)].to_dict(
+            params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(
                 orient="records"
             )[0]
             fig.add_trace(
@@ -129,7 +115,7 @@ def flips_msr_phase(folder, routine, qubit, format):
                 col=1,
             )
             fitting_report = fitting_report + (
-                f"q{qubit}/r{report_n} amplitude_delta: {params['amplitude_delta']:.4f}<br>"
+                f"q{qubit}/r{report_n} amplitude_correction_factor: {params['amplitude_correction_factor']:.4f}<br>"
                 + f"q{qubit}/r{report_n} corrected_amplitude: {params['corrected_amplitude']:.4f}<br><br>"
             )
 
@@ -158,7 +144,5 @@ def flips_msr_phase(folder, routine, qubit, format):
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Flips (dimensionless)",
         yaxis_title="MSR (uV)",
-        xaxis2_title="Flips (dimensionless)",
-        yaxis2_title="Phase (rad)",
     )
     return fig

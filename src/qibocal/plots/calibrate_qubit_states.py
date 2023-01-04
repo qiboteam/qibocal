@@ -1,19 +1,9 @@
-from colorsys import hls_to_rgb
-
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
-from qibocal.plots.utils import get_data_subfolders
-
-
-def _get_color_state0(number):
-    return "rgb" + str(hls_to_rgb((-0.35 - number * 9 / 20) % 1, 0.6, 0.75))
-
-
-def _get_color_state1(number):
-    return "rgb" + str(hls_to_rgb((-0.02 - number * 9 / 20) % 1, 0.6, 0.75))
+from qibocal.plots.utils import get_color_state0, get_color_state1, get_data_subfolders
 
 
 # For calibrate qubit states
@@ -35,7 +25,7 @@ def qubit_states(folder, routine, qubit, format):
     for subfolder in subfolders:
         try:
             data = DataUnits.load_data(folder, subfolder, routine, format, "data")
-            data.df = data.df[data.df["qubit"] == qubit].reset_index(drop=True)
+            data.df = data.df[data.df["qubit"] == qubit]
         except:
             data = DataUnits(options=["qubit", "iteration", "state"])
 
@@ -43,9 +33,8 @@ def qubit_states(folder, routine, qubit, format):
             parameters = Data.load_data(
                 folder, subfolder, routine, format, "parameters"
             )
-            parameters.df = parameters.df[parameters.df["qubit"] == qubit].reset_index(
-                drop=True
-            )
+            parameters.df = parameters.df[parameters.df["qubit"] == qubit]
+
             average_state0 = complex(parameters.get_values("average_state0")[0])
             average_state1 = complex(parameters.get_values("average_state1")[0])
             rotation_angle = parameters.get_values("rotation_angle")[0]
@@ -69,6 +58,7 @@ def qubit_states(folder, routine, qubit, format):
 
         state0_data = data.df[data.df["state"] == 0]
         state1_data = data.df[data.df["state"] == 1]
+
         fig.add_trace(
             go.Scatter(
                 x=state0_data["i"].pint.to("V").pint.magnitude,
@@ -78,7 +68,7 @@ def qubit_states(folder, routine, qubit, format):
                 mode="markers",
                 showlegend=False,
                 opacity=0.7,
-                marker=dict(size=3, color=_get_color_state0(report_n)),
+                marker=dict(size=3, color=get_color_state0(report_n)),
             ),
             row=1,
             col=1,
@@ -93,7 +83,7 @@ def qubit_states(folder, routine, qubit, format):
                 mode="markers",
                 showlegend=False,
                 opacity=0.7,
-                marker=dict(size=3, color=_get_color_state1(report_n)),
+                marker=dict(size=3, color=get_color_state1(report_n)),
             ),
             row=1,
             col=1,
@@ -128,7 +118,7 @@ def qubit_states(folder, routine, qubit, format):
                 legendgroup=f"q{qubit}/r{report_n}: state 0",
                 showlegend=True,
                 mode="markers",
-                marker=dict(size=10, color=_get_color_state0(report_n)),
+                marker=dict(size=10, color=get_color_state0(report_n)),
             ),
             row=1,
             col=1,
@@ -142,7 +132,7 @@ def qubit_states(folder, routine, qubit, format):
                 legendgroup=f"q{qubit}/r{report_n}: state 1",
                 showlegend=True,
                 mode="markers",
-                marker=dict(size=10, color=_get_color_state1(report_n)),
+                marker=dict(size=10, color=get_color_state1(report_n)),
             ),
             row=1,
             col=1,
