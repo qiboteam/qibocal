@@ -21,12 +21,12 @@ from qibocal.calibrations.protocols.utils import (
 from qibocal.config import raise_error
 
 """ TODO
-- Make row by row execution nicer -> ask Ingo
-- Don't load the whole experiment into the results class
-- Write validation functions
-- Make function names in each module generic
-- qubits_active, qubits_passive ?
-- Noise model integration
+    - Make row by row execution nicer -> ask Ingo
+    - Don't load the whole experiment into the results class
+    - Write validation functions
+    - Make function names in each module generic
+    - qubits_active, qubits_passive ?
+    - Noise model integration
 """
 
 
@@ -302,6 +302,10 @@ class Result:
         # The fitting function should return two tuples and two np.ndarrays.
         self.fitting_func = lambda x, y: ((0, 0, 0), (1, 1, 1), x, y)
         self.title = "Report"
+        self.info_dict = {
+            "nqubits": len(self.df["samples"].to_numpy()[0][0]),
+            "nshots": len(self.df["samples"].to_numpy()[0]),
+        }
 
     def extract(self, group_by: str, output: str, agg_type: str):
         """Aggregates the dataframe, extracts the data by which the frame was
@@ -316,12 +320,13 @@ class Result:
         return np.array(grouped_df.index), np.array(grouped_df.values.tolist())
 
     def get_info(self):
-        """Extract information from the dataframe and return it as string."""
-        mydict = {
-            "nqubits": len(self.df["samples"].to_numpy()[0][0]),
-            "nshots": len(self.df["samples"].to_numpy()[0]),
-        }
-        return "<br>".join([f"{key} : {value}\n" for key, value in mydict.items()])
+        """Extract information from attribute ``self.info_dict`` and formats
+        it as columns.
+        """
+        info_string = "<br>".join(
+            [f"{key} : {value}\n" for key, value in self.info_dict.items()]
+        )
+        return info_string
 
     def scatter_fit_fig(self, xdata_scatter, ydata_scatter, xdata, ydata):
         myfigs = []

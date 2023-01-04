@@ -14,6 +14,7 @@ from qibo.models import Circuit
 from qibo.noise import NoiseModel, PauliError
 from qibolab.platforms.abstract import AbstractPlatform
 
+import qibocal.calibrations.protocols.noisemodels as noisemodels
 from qibocal.calibrations.protocols.abstract import (
     Experiment,
     Result,
@@ -67,9 +68,8 @@ class StandardRBExperiment(Experiment):
                 immediate postprocessing information.
         """
         datadict = super().single_task(circuit, datarow)
-        # Substract 1 for sequence length to not count the inverse gate
-        # FIXME and on the measurement branch of qibo the measurement is
-        # counted as one gate on the master branch not.
+        # Substract 1 for sequence length to not count the inverse gate and
+        # substract the measurement gate.
         datadict["depth"] = circuit.ngates - 2 if circuit.ngates > 1 else 0
         return datadict
 
@@ -111,7 +111,7 @@ def groundstate_probability(experiment: Experiment):
     experiment._append_data("groundstate_probabilities", list(probs))
 
 
-def theoretical_outcome(experiment: Experiment, noisemodel: NoiseModel) -> float:
+def theoretical_outcome(noisemodel: NoiseModel) -> float:
     """Take the used noise model acting on unitaries and calculates the
     effective depolarizing parameter.
 
@@ -122,9 +122,13 @@ def theoretical_outcome(experiment: Experiment, noisemodel: NoiseModel) -> float
     Returns:
         (float): The effective depolarizing parameter of given error.
     """
-
-    # Extract the noise acting on unitaries.
-    errorchannel = noisemodel.errors[gates.Unitary][0]
+    # Check for correctness of noise model and gate independence.
+    errorkeys = noisemodel.errors.keys()
+    if len(errorkeys) == 1 and list(errorkeys)[0] == gates.Unitary:
+        # Extract the noise acting on unitaries.
+        errorchannel = noisemodel.errors[gates.Unitary][0]
+    else:
+        raise_error(ValueError, "Wrong noisemodel given.")
     # Calculate the effective depolarizing parameter.
     return effective_depol(errorchannel)
 
@@ -136,6 +140,7 @@ def analyze(
     experiment.apply_task(groundstate_probability)
     result = StandardRBResult(experiment.dataframe, fit_exp1B_func)
     result.single_fig()
+    result.info_dict["effective depol"] = np.around(theoretical_outcome(noisemodel), 3)
     report = result.report()
     return report
 
@@ -146,22 +151,14 @@ def perform(
     runs: int,
     nshots: int,
     qubits: list = None,
-    noise_params: list = None,
+    noise_model: NoiseModel = None,
 ):
-    if noise_params is not None:
-        # Define the noise model.
-        paulinoise = PauliError(*noise_params)
-        noise = NoiseModel()
-        noise.add(paulinoise, gates.Unitary)
-        depol = effective_depol(paulinoise)
-    else:
-        noise = None
     # Initiate the circuit factory and the faulty Experiment object.
     factory = SingleCliffordsInvFactory(nqubits, depths, runs, qubits=qubits)
-    experiment = StandardRBExperiment(factory, nshots, noisemodel=noise)
+    experiment = StandardRBExperiment(factory, nshots, noisemodel=noise_model)
     # Execute the experiment.
     experiment.execute()
-    analyze(experiment, noisemodel=noise).show()
+    analyze(experiment, noisemodel=noise_model).show()
 
 
 @plot("Randomized benchmarking", standardrb_plot)
@@ -172,22 +169,19 @@ def qqperform_standardrb(
     runs: int,
     nshots: int,
     nqubit: int = None,
+    noise_model: str = None,
     noise_params: list = None,
 ):
     # Check if noise should artificially be added.
-    if noise_params is not None:
-        # Define the noise model.
-        paulinoise = PauliError(*noise_params)
-        noise = NoiseModel()
-        noise.add(paulinoise, gates.Unitary)
-        data_depol = Data("effectivedepol", quantities=["effective_depol"])
-        data_depol.add({"effective_depol": effective_depol(paulinoise)})
-        yield data_depol
-    else:
-        noise = None
+    if noise_model is not None:
+        # Get the wanted noise model class.
+        noise_model = getattr(noisemodels, noise_model)(noise_params)
+        validation = Data("validation", quantities=["effective_depol"])
+        validation.add({"effective_depol": theoretical_outcome(noise_model)})
+        yield validation
     # Initiate the circuit factory and the Experiment object.
     factory = SingleCliffordsInvFactory(nqubit, depths, runs, qubits=qubit)
-    experiment = StandardRBExperiment(factory, nshots, noisemodel=noise)
+    experiment = StandardRBExperiment(factory, nshots, noisemodel=noise_model)
     # Execute the experiment.
     experiment.execute()
     data = Data()

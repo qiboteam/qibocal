@@ -10,7 +10,7 @@ def standardrb_plot(folder, routine, qubit, format):
     experiment = StandardRBExperiment.load(experimentpath)
     fig = analyze(experiment)
     try:
-        data = Data.load_data(folder, routine, "pickle", "effectivedepol")
+        data = Data.load_data(folder, routine, "pickle", "validation")
         depol = data.df.to_numpy()[0, 0]
         fig.add_annotation(
             dict(
@@ -40,7 +40,7 @@ def crosstalkrb_plot(folder, routine, qubit, format):
     experiment = CrosstalkRBExperiment.load(experimentpath)
     fig = analyze(experiment)
     try:
-        data = Data.load_data(folder, routine, "pickle", "effectivedepol")
+        data = Data.load_data(folder, routine, "pickle", "validation")
         depol = data.df.to_numpy()[0, 0]
         fig.add_annotation(
             dict(
@@ -67,7 +67,7 @@ def XIdrb_plot(folder, routine, qubit, format):
     experiment = XIdExperiment.load(experimentpath)
     fig = analyze(experiment)
     try:
-        data = Data.load_data(folder, routine, "pickle", "effectivedepol")
+        data = Data.load_data(folder, routine, "pickle", "validation")
         depol = data.df.to_numpy()[0, 0]
         fig.add_annotation(
             dict(

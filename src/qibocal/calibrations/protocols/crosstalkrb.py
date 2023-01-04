@@ -11,6 +11,7 @@ from qibo.models import Circuit
 from qibo.noise import NoiseModel, PauliError
 from qibolab.platforms.abstract import AbstractPlatform
 
+import qibocal.calibrations.protocols.noisemodels as noisemodels
 from qibocal.calibrations.protocols.abstract import (
     Experiment,
     Result,
@@ -132,6 +133,8 @@ def filter_function(experiment: CrosstalkRBExperiment):
         # Fuse the gates for each qubit.
         fused_circuit = circuit.fuse(max_qubits=1)
         # Extract for each qubit the ideal state.
+        # TODO if depth = 0 there is only a measurement circuit and it does
+        # not have an implemented matrix. This exception has to be dealt with.
         ideal_states = np.array(
             [fused_circuit.queue[k].matrix[:, 0] for k in range(nqubits)]
         )
@@ -168,14 +171,15 @@ def filter_function(experiment: CrosstalkRBExperiment):
     experiment._append_data("crosstalk", biglist)
 
 
-def theoretical_outcome(experiment: Experiment, noisemodel: NoiseModel) -> float:
-    pass
+def theoretical_outcome(noisemodel: NoiseModel) -> float:
+    return 0
 
 
 def analyze(experiment: CrosstalkRBExperiment, noisemodel: NoiseModel = None):
     experiment.apply_task(filter_function)
     result = CrosstalkRBResult(experiment.dataframe, fit_exp1_func)
     result.cross_figs()
+    result.info_dict["effective depol"] = np.around(theoretical_outcome(noisemodel), 3)
     report = result.report()
     return report
 
@@ -212,22 +216,19 @@ def qqperform_crosstalkrb(
     runs: int,
     nshots: int,
     nqubit: int = None,
+    noise_model: str = None,
     noise_params: list = None,
 ):
     # Check if noise should artificially be added.
-    if noise_params is not None:
-        # Define the noise model.
-        paulinoise = PauliError(*noise_params)
-        noise = NoiseModel()
-        noise.add(paulinoise, gates.Unitary)
-        data_depol = Data("effectivedepol", quantities=["effective_depol"])
-        data_depol.add({"effective_depol": effective_depol(paulinoise)})
-        yield data_depol
-    else:
-        noise = None
+    if noise_model is not None:
+        # Get the wanted noise model class.
+        noise_model = getattr(noisemodels, noise_model)(noise_params)
+        validation = Data("validation", quantities=["effective_depol"])
+        validation.add({"effective_depol": theoretical_outcome(noise_model)})
+        yield validation
     # Initiate the circuit factory and the Experiment object.
     factory = SingleCliffordsFactory(nqubit, depths, runs, qubits=qubit)
-    experiment = CrosstalkRBExperiment(factory, nshots, noisemodel=noise)
+    experiment = CrosstalkRBExperiment(factory, nshots, noisemodel=noise_model)
     # Execute the experiment.
     experiment.execute()
     data = Data()
