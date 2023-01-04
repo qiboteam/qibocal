@@ -94,7 +94,7 @@ def effective_depol(error_channel, **kwargs):
     """ """
     liouvillerep = liouville_representation_errorchannel(error_channel)
     d = int(np.sqrt(len(liouvillerep)))
-    depolp = ((np.trace(liouvillerep) + d) / (d + 1) - 1) / (d - 1)
+    depolp = (np.trace(liouvillerep) - 1) / (d**2 - 1)
     return depolp
 
 

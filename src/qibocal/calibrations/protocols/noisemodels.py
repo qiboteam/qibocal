@@ -15,9 +15,7 @@ class PauliErrorOnUnitary(NoiseModel):
     def __init__(self, *args) -> None:
         super().__init__()
         if len(args) == 0 or (len(args) == 1 and args[0] is None):
-            params = np.random.uniform(0, 1, size=3)
-            if sum(params) > 1.0:
-                params /= sum(params)
+            params = np.random.uniform(0, 0.25, size=3)
         elif len(args) == 3:
             params = args
         else:

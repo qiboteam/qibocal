@@ -28,11 +28,12 @@ from qibocal.fitting.rb_methods import fit_exp1_func, fit_exp1B_func
 from qibocal.plots.rb import standardrb_plot
 
 
-class SingleCliffordsInvFactory(SingleCliffordsFactory):
+class moduleFactory(SingleCliffordsFactory):
     def __init__(
         self, nqubits: int, depths: list, runs: int, qubits: list = None
     ) -> None:
         super().__init__(nqubits, depths, runs, qubits)
+        self.name = "SingleCliffordsInv"
 
     def build_circuit(self, depth: int):
         circuit = Circuit(len(self.qubits))
@@ -49,7 +50,7 @@ class SingleCliffordsInvFactory(SingleCliffordsFactory):
         return circuit
 
 
-class StandardRBExperiment(Experiment):
+class moduleExperiment(Experiment):
     def __init__(
         self,
         circuitfactory: Iterable,
@@ -58,8 +59,9 @@ class StandardRBExperiment(Experiment):
         noisemodel: NoiseModel = None,
     ) -> None:
         super().__init__(circuitfactory, nshots, data, noisemodel)
+        self.name = "StandardRB"
 
-    def single_task(self, circuit: Circuit, datarow: dict) -> None:
+    def execute(self, circuit: Circuit, datarow: dict) -> None:
         """Executes a circuit, returns the single shot results
 
         Args:
@@ -67,7 +69,7 @@ class StandardRBExperiment(Experiment):
             datarow (dict): Dictionary with parameters for execution and
                 immediate postprocessing information.
         """
-        datadict = super().single_task(circuit, datarow)
+        datadict = super().execute(circuit, datarow)
         # Substract 1 for sequence length to not count the inverse gate and
         # substract the measurement gate.
         datadict["depth"] = circuit.ngates - 2 if circuit.ngates > 1 else 0
@@ -86,7 +88,7 @@ class StandardRBExperiment(Experiment):
             raise_error(KeyError, "No depths. Execute experiment first.")
 
 
-class StandardRBResult(Result):
+class moduleResult(Result):
     def __init__(self, dataframe: pd.DataFrame, fitting_func) -> None:
         super().__init__(dataframe)
         self.fitting_func = fitting_func
@@ -109,6 +111,7 @@ def groundstate_probability(experiment: Experiment):
     """
     probs = experiment.probabilities[:, 0]
     experiment._append_data("groundstate_probabilities", list(probs))
+    return experiment
 
 
 def theoretical_outcome(noisemodel: NoiseModel) -> float:
@@ -137,8 +140,8 @@ def analyze(
     experiment: Experiment, noisemodel: NoiseModel = None, **kwargs
 ) -> go._figure.Figure:
     # Compute and add the ground state probabilities.
-    experiment.apply_task(groundstate_probability)
-    result = StandardRBResult(experiment.dataframe, fit_exp1B_func)
+    experiment = groundstate_probability(experiment)
+    result = moduleResult(experiment.dataframe, fit_exp1B_func)
     result.single_fig()
     result.info_dict["effective depol"] = np.around(theoretical_outcome(noisemodel), 3)
     report = result.report()
@@ -154,8 +157,8 @@ def perform(
     noise_model: NoiseModel = None,
 ):
     # Initiate the circuit factory and the faulty Experiment object.
-    factory = SingleCliffordsInvFactory(nqubits, depths, runs, qubits=qubits)
-    experiment = StandardRBExperiment(factory, nshots, noisemodel=noise_model)
+    factory = moduleFactory(nqubits, depths, runs, qubits=qubits)
+    experiment = moduleExperiment(factory, nshots, noisemodel=noise_model)
     # Execute the experiment.
     experiment.execute()
     analyze(experiment, noisemodel=noise_model).show()
@@ -180,8 +183,8 @@ def qqperform_standardrb(
         validation.add({"effective_depol": theoretical_outcome(noise_model)})
         yield validation
     # Initiate the circuit factory and the Experiment object.
-    factory = SingleCliffordsInvFactory(nqubit, depths, runs, qubits=qubit)
-    experiment = StandardRBExperiment(factory, nshots, noisemodel=noise_model)
+    factory = moduleFactory(nqubit, depths, runs, qubits=qubit)
+    experiment = moduleExperiment(factory, nshots, noisemodel=noise_model)
     # Execute the experiment.
     experiment.execute()
     data = Data()

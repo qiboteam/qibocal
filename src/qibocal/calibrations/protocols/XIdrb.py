@@ -23,7 +23,8 @@ from collections.abc import Iterable
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from qibo import gates, models
+from qibo import gates
+from qibo.models import Circuit
 from qibo.noise import NoiseModel, PauliError
 from qibolab.platforms.abstract import AbstractPlatform
 
@@ -38,16 +39,17 @@ from qibocal.plots.rb import XIdrb_plot
 
 
 # Define the circuit factory class for this specific module.
-class XIdFactory(Circuitfactory):
+class moduleFactory(Circuitfactory):
     def __init__(
         self, nqubits: int, depths: list, runs: int, qubits: list = None
     ) -> None:
         super().__init__(nqubits, depths, runs, qubits)
+        self.name = "XId"
 
     def build_circuit(self, depth: int):
         # Initiate the empty circuit from qibo with 'self.nqubits'
         # many qubits.
-        circuit = models.Circuit(len(self.qubits), density_matrix=True)
+        circuit = Circuit(len(self.qubits), density_matrix=True)
         # There are only two gates to choose from.
         a = [gates.I(0), gates.X(0)]
         # Draw sequence length many zeros and ones.
@@ -61,7 +63,7 @@ class XIdFactory(Circuitfactory):
 
 
 # Define the experiment class for this specific module.
-class XIdExperiment(Experiment):
+class moduleExperiment(Experiment):
     def __init__(
         self,
         circuitfactory: Iterable,
@@ -70,16 +72,18 @@ class XIdExperiment(Experiment):
         noisemodel: NoiseModel = None,
     ) -> None:
         super().__init__(circuitfactory, nshots, data, noisemodel)
+        self.name = "XIdRB"
 
-    def single_task(self, circuit: models.Circuit, datarow: dict) -> dict:
-        datadict = super().single_task(circuit, datarow)
-        datadict["depth"] = circuit.ngates - 1 if circuit.ngates > 1 else 0
+    def execute(self, circuit: Circuit, datarow: dict) -> dict:
+        datadict = super().execute(circuit, datarow)
+        datadict["depth"] = circuit.ngates - 1
+        # TODO change that.
         datadict["countX"] = circuit.draw().count("X")
         return datadict
 
 
 # Define the result class for this specific module.
-class XIdResult(Result):
+class moduleResult(Result):
     def __init__(self, dataframe: pd.DataFrame, fitting_func) -> None:
         super().__init__(dataframe)
         self.fitting_func = fitting_func
@@ -92,29 +96,56 @@ class XIdResult(Result):
         self.scatter_fit_fig(xdata_scatter, ydata_scatter, xdata, ydata)
 
 
-def filter_sign(experiment: Experiment):
-    filtersing_list = []
-    for datarow in experiment.data:
-        samples = datarow["samples"]
-        countX = datarow["countX"]
-        filtersign = 0
-        for s in samples:
-            filtersign += (-1) ** (countX % 2 + s[0]) / 2.0
-        filtersing_list.append(filtersign / len(samples))
-    experiment._append_data("filters", filtersing_list)
+def filter_sign(circuit: Circuit, datarow: dict) -> dict:
+    """Calculates the filtered signal for the XId.
+
+    :math:`n_X` denotes the amount of :math:`X` gates in the circuit with gates
+    :math:`g` and :math`i` the outcome which is either ground state :math:`0`
+    or exited state :math:`1`.
+
+    .. math::
+        f_{\\text{sign}}(i,g)
+        = (-1)^{n_X\\%2 + i}/2
+
+
+    Args:
+        circuit (Circuit): _description_
+        datarow (dict): _description_
+
+    Returns:
+        dict: _description_
+    """
+    samples = datarow["samples"]
+    countX = datarow["countX"]
+    filtersign = 0
+    for s in samples:
+        filtersign += (-1) ** (countX % 2 + s[0]) / 2.0
+    datarow["filters"] = filtersign / len(samples)
 
 
 def analyze(
     experiment: Experiment, noisemodel: NoiseModel = None, **kwargs
 ) -> go._figure.Figure:
-    experiment.apply_task(filter_sign)
-    result = XIdResult(experiment.dataframe, fit_exp1_func)
+    experiment @ filter_sign
+    result = moduleResult(experiment.dataframe, fit_exp1_func)
     result.single_fig()
     report = result.report()
     return report
 
 
 def theoretical_outcome(experiment: Experiment, noisemodel: NoiseModel) -> float:
+    """Only for one qubit and Pauli Error noise!
+
+    Args:
+        experiment (Experiment): _description_
+        noisemodel (NoiseModel): _description_
+
+    Returns:
+        float: _description_
+
+    Yields:
+        Iterator[float]: _description_
+    """
     pass
 
 
@@ -136,10 +167,10 @@ def perform(
     else:
         noise = None
     # Initiate the circuit factory and the faulty Experiment object.
-    factory = XIdFactory(nqubits, depths, runs, qubits=qubits)
-    experiment = XIdExperiment(factory, nshots, noisemodel=noise)
+    factory = moduleFactory(nqubits, depths, runs, qubits=qubits)
+    experiment = moduleExperiment(factory, nshots, noisemodel=noise)
     # Execute the experiment.
-    experiment.execute()
+    experiment @ experiment.execute
     analyze(experiment, noisemodel=noise).show()
 
 
@@ -165,10 +196,10 @@ def qqperform_XIdrb(
     else:
         noise = None
     # Initiate the circuit factory and the Experiment object.
-    factory = XIdFactory(nqubit, depths, runs, qubits=qubit)
-    experiment = XIdExperiment(factory, nshots, noisemodel=noise)
+    factory = moduleFactory(nqubit, depths, runs, qubits=qubit)
+    experiment = moduleExperiment(factory, nshots, noisemodel=noise)
     # Execute the experiment.
-    experiment.execute()
+    experiment @ experiment.execute
     data = Data()
     data.df = experiment.dataframe
     yield data

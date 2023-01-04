@@ -40,6 +40,7 @@ class Circuitfactory:
         self.qubits = qubits if qubits is not None else list(range(nqubits))
         self.depths = depths
         self.runs = runs
+        self.name = "Abstract"
 
     def __len__(self):
         return self.runs * len(self.depths)
@@ -69,6 +70,7 @@ class SingleCliffordsFactory(Circuitfactory):
         self, nqubits: int, depths: list, runs: int, qubits: list = None
     ) -> None:
         super().__init__(nqubits, depths, runs, qubits)
+        self.name = "SingleCliffords"
 
     def build_circuit(self, depth: int):
         circuit = Circuit(len(self.qubits))
@@ -155,6 +157,7 @@ class Experiment:
         self.nshots = nshots
         self.data = data
         self.__noise_model = noisemodel
+        self.name = "Abstract"
 
     @property
     def noise_model(self):
@@ -227,7 +230,7 @@ class Experiment:
         return obj
 
     def save(self) -> None:
-        """Creates a path and pickles relevent data from ``self.data`` and
+        """Creates a path and pickles relevant data from ``self.data`` and
         if ``self.circuitfactory`` is a list that one too.
         """
         self.path = experiment_directory("rb")
@@ -243,32 +246,63 @@ class Experiment:
         """
         self.circuitfactory = list(self.circuitfactory)
 
-    def execute(self) -> None:
-        """Calls method ``single_task`` while iterating over attribute
-        ``circuitfactory`` and ``data``.
+    def __matmul__(
+        self, sequential_task: callable[[Circuit, dict], dict]
+    ) -> Experiment:
+        """Overloads the @ operator, when used ``sequential_task`` is executed
+        row by row.
 
-        Collects data given the already set data rows and overwrites
-        attribute ``data``.
+        Args:
+            sequential_task (callable[[Circuit, dict], dict]): A function
+                applied row by row alterting each datarow.
+
+        Returns:
+            Experiment: Itself with altered ``self.data``.
         """
-        if self.circuitfactory is None:
-            raise_error(NotImplementedError, "There are no circuits to execute.")
-        newdata = []
-        for circuit in self.circuitfactory:
-            try:
-                datarow = next(self.data)
-            except TypeError:
-                datarow = {}
-            newdata.append(self.single_task(deepcopy(circuit), datarow))
-        self.data = newdata
+        self.perform(sequential_task)
+        return self
 
-    def single_task(self, circuit: Circuit, datarow: dict) -> dict:
-        """Executes a circuit, returns the single shot results.
+    def perform(self, sequential_task: callable[[Circuit, dict], dict]) -> None:
+        """Takes a given function, checks the status of attribute ``circuitfactory``
+        and ``data`` and executes the sequential function row by row altering the
+        ``self.data`` attribute.
+
+        Either ``self.circuitfactory`` or ``self.data`` cannot be ``None`` and
+        if not ``None`` they have to have the right length.
+
+        Args:
+            sequential_task (callable[[Circuit, dict], dict]): A function applied
+                row by row alterting each datarow.
+        """
+        # Either the circuit factory or the data rows can be empty.
+        # If ``self.data`` is not empty the actual list element is altered without
+        # storing it after alternation.
+        # Both ``circuit`` and ``datarow`` can be provided:
+        if self.circuitfactory is not None and self.data is not None:
+            for circuit, datarow in zip(self.circuitfactory, self.data):
+                datarow = sequential_task(deepcopy(circuit), datarow)
+        # Only``datarow`` can be provided:
+        elif self.circuitfactory is None and self.data is not None:
+            for datarow in self.data:
+                datarow = sequential_task(None, datarow)
+        # Only ``circuit`` can be provided:
+        elif self.circuitfactory is not None and self.data is None:
+            newdata = []
+            for circuit in self.circuitfactory:
+                newdata.append(sequential_task(deepcopy(circuit), {}))
+            self.data = newdata
+        else:
+            raise_error(ValueError, "Both attributes circuitfactory and data are None.")
+
+    def execute(self, circuit: Circuit, datarow: dict) -> dict:
+        """Executes a circuit, returns the single shot results in a dict.
 
         Args:
             circuit (Circuit): Will be executed, has to return samples.
-            datarow (dict): Dictionary with parameters for execution and
-                immediate postprocessing information.
+            datarow (dict): Dictionary with parameters for execution and immediate
+                postprocessing information.
         """
+
         if self.noise_model is not None:
             circuit = self.noise_model.apply(circuit)
         samples = circuit(nshots=self.nshots).samples()
@@ -282,13 +316,10 @@ class Experiment:
             datacolumn (list): A list of the right shape
         """
         if len(datacolumn) != len(self.data):
-            raise ValueError("Given data column doesn't have the right length.")
+            raise_error(ValueError, "Given data column doesn't have the right length.")
         df = self.dataframe
         df[name] = datacolumn
         self.data = df.to_dict("records")
-
-    def apply_task(self, gtask):
-        self = gtask(self)
 
 
 class Result:
