@@ -46,6 +46,7 @@ def lorentzian_fit(
             - **popt1**: Lorentzian's center
             - **popt2**: Lorentzian's sigma
             - **popt3**: Lorentzian's offset
+            - **qubit**: The qubit being tested
 
     Example:
 
@@ -228,7 +229,7 @@ def lorentzian_fit(
     return data_fit
 
 
-def rabi_fit(data, x, y, qubit, resonator_type, labels):
+def rabi_fit(data, x, y, qubits, resonator_type, labels):
     r"""
     Fitting routine for Rabi experiment. The used model is
 
@@ -241,8 +242,8 @@ def rabi_fit(data, x, y, qubit, resonator_type, labels):
         data (`DataUnits`): dataset for the fit
         x (str): name of the input values for the Rabi model
         y (str): name of the output values for the Rabi model
-        qubit (int): ID qubit number
-        nqubits (int): total number of qubits
+        qubits (list): A list with the IDs of the qubits
+        resonator_type (str): the type of readout resonator ['3D', '2D']
         labels (list of str): list containing the lables of the quantities computed by this fitting method.
 
     Returns:
@@ -254,12 +255,13 @@ def rabi_fit(data, x, y, qubit, resonator_type, labels):
             - **popt2**: frequency
             - **popt3**: phase
             - **popt4**: T2
-            - **labels[0]**: pulse duration
+            - **labels[0]**: pulse parameter
             - **labels[1]**: pulse's maximum voltage
+            - **qubit**: The qubit being tested
     """
 
     data_fit = Data(
-        name=f"fit_q{qubit}",
+        name=f"fits",
         quantities=[
             "popt0",
             "popt1",
@@ -268,51 +270,64 @@ def rabi_fit(data, x, y, qubit, resonator_type, labels):
             "popt4",
             labels[0],
             labels[1],
+            "qubit",
         ],
     )
 
-    time = data.get_values(*parse(x))
-    voltages = data.get_values(*parse(y))
-
-    if resonator_type == "3D":
-        pguess = [
-            np.mean(voltages.values),
-            np.max(voltages.values) - np.min(voltages.values),
-            0.5 / time.values[np.argmin(voltages.values)],
-            np.pi / 2,
-            0.1e-6,
-        ]
-    else:
-        pguess = [
-            np.mean(voltages.values),
-            np.max(voltages.values) - np.min(voltages.values),
-            0.5 / time.values[np.argmax(voltages.values)],
-            np.pi / 2,
-            0.1e-6,
-        ]
-    try:
-        popt, pcov = curve_fit(
-            rabi, time.values, voltages.values, p0=pguess, maxfev=10000
+    parameter_keys = parse(x)
+    voltages_keys = parse(y)
+    for qubit in qubits:
+        qubit_data = (
+            data.df[data.df["qubit"] == qubit]
+            .drop(columns=["qubit", "iteration"])
+            .groupby(parameter_keys[0], as_index=False)
+            .mean()
         )
-        smooth_dataset = rabi(time.values, *popt)
-        pi_pulse_duration = np.abs((1.0 / popt[2]) / 2)
-        pi_pulse_max_voltage = smooth_dataset.max()
-        t2 = 1.0 / popt[4]  # double check T1
-    except:
-        log.warning("The fitting was not succesful")
-        return data_fit
+        parameter = (
+            qubit_data[parameter_keys[0]].pint.to(parameter_keys[1]).pint.magnitude
+        )
+        voltages = qubit_data[voltages_keys[0]].pint.to(voltages_keys[1]).pint.magnitude
 
-    data_fit.add(
-        {
-            "popt0": popt[0],
-            "popt1": popt[1],
-            "popt2": popt[2],
-            "popt3": popt[3],
-            "popt4": popt[4],
-            labels[0]: pi_pulse_duration,
-            labels[1]: pi_pulse_max_voltage,
-        }
-    )
+        if resonator_type == "3D":
+            pguess = [
+                np.mean(voltages.values),
+                np.max(voltages.values) - np.min(voltages.values),
+                0.5 / parameter.values[np.argmin(voltages.values)],
+                np.pi / 2,
+                0.1e-6,
+            ]
+        else:
+            pguess = [
+                np.mean(voltages.values),
+                np.max(voltages.values) - np.min(voltages.values),
+                0.5 / parameter.values[np.argmax(voltages.values)],
+                np.pi / 2,
+                0.1e-6,
+            ]
+        try:
+            popt, pcov = curve_fit(
+                rabi, parameter.values, voltages.values, p0=pguess, maxfev=10000
+            )
+            smooth_dataset = rabi(parameter.values, *popt)
+            pi_pulse_parameter = np.abs((1.0 / popt[2]) / 2)
+            pi_pulse_peak_voltage = smooth_dataset.max()
+            t2 = 1.0 / popt[4]  # double check T1
+        except:
+            log.warning("The fitting was not succesful")
+            return data_fit
+
+        data_fit.add(
+            {
+                "popt0": popt[0],
+                "popt1": popt[1],
+                "popt2": popt[2],
+                "popt3": popt[3],
+                "popt4": popt[4],
+                labels[0]: pi_pulse_parameter,
+                labels[1]: pi_pulse_peak_voltage,
+                "qubit": qubit,
+            }
+        )
     return data_fit
 
 
