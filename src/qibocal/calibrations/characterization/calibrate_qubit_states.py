@@ -22,9 +22,10 @@ def calibrate_qubit_states(
 
     Args:
         platform (:class:`qibolab.platforms.abstract.AbstractPlatform`): custom abstract platform on which we perform the calibration.
-        qubit (int): index representing the target qubit into the chip.
-        niter (int): number of times the pulse sequence will be reproduced.
-        points (int): every points step data are saved.
+        qubits (list): List of target qubits to perform the action
+        nshots (int): number of times the pulse sequence will be repeated.
+        software_averages (int): Number of executions of the routine for averaging results
+        points (int): Save data results in a file every number of points
 
     Returns:
         A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
@@ -34,11 +35,19 @@ def calibrate_qubit_states(
             - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
             - **phase[rad]**: Resonator signal phase mesurement in radians
             - **iteration[dimensionless]**: Execution number
+            - **qubit**: The qubit being tested
+            - **iteration**: The iteration number of the many determined by software_averages
 
     """
 
+    # reload instrument settings from runcard
     platform.reload_settings()
-    # create exc sequence
+
+    # create two sequences of pulses:
+    # state0_sequence: I  - MZ
+    # state1_sequence: RX - MZ
+
+    # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     state0_sequence = PulseSequence()
     state1_sequence = PulseSequence()
 
@@ -54,14 +63,18 @@ def calibrate_qubit_states(
         state1_sequence.add(RX_pulses[qubit])
         state1_sequence.add(ro_pulses[qubit])
 
+    # create a DataUnits object to store the results
     data = DataUnits(name="data", options=["qubit", "iteration", "state"])
 
+    # execute the first pulse sequence
     state0_results = platform.execute_pulse_sequence(state0_sequence, nshots=nshots)
+
+    # retrieve and store the results for every qubit
     for qubit in qubits:
         msr, phase, i, q = state0_results["demodulated_integrated_binned"][
             ro_pulses[qubit].serial
         ]
-        results = {
+        r = {
             "MSR[V]": msr,
             "i[V]": i,
             "q[V]": q,
@@ -70,14 +83,17 @@ def calibrate_qubit_states(
             "iteration": np.arange(nshots),
             "state": [0] * nshots,
         }
-        data.add_data_from_dict(results)
+        data.add_data_from_dict(r)
 
+    # execute the second pulse sequence
     state1_results = platform.execute_pulse_sequence(state1_sequence, nshots=nshots)
+
+    # retrieve and store the results for every qubit
     for qubit in qubits:
         msr, phase, i, q = state1_results["demodulated_integrated_binned"][
             ro_pulses[qubit].serial
         ]
-        results = {
+        r = {
             "MSR[V]": msr,
             "i[V]": i,
             "q[V]": q,
@@ -86,7 +102,9 @@ def calibrate_qubit_states(
             "iteration": np.arange(nshots),
             "state": [1] * nshots,
         }
-        data.add_data_from_dict(results)
-
+        data.add_data_from_dict(r)
+    # finally, save the remaining data and the fits
     yield data
-    yield calibrate_qubit_states_fit(data, nshots=nshots, qubits=qubits)
+    yield calibrate_qubit_states_fit(
+        data, x="i[V]", y="q[V]", nshots=nshots, qubits=qubits
+    )
