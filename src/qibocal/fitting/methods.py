@@ -313,7 +313,7 @@ def rabi_fit(data, x, y, qubits, resonator_type, labels):
             pi_pulse_peak_voltage = smooth_dataset.max()
             t2 = 1.0 / popt[4]  # double check T1
         except:
-            log.warning("The fitting was not succesful")
+            log.warning("rabi_fit: the fitting was not succesful")
             return data_fit
 
         data_fit.add(
@@ -331,7 +331,9 @@ def rabi_fit(data, x, y, qubits, resonator_type, labels):
     return data_fit
 
 
-def ramsey_fit(data, x, y, qubit, qubit_freq, sampling_rate, offset_freq, labels):
+def ramsey_fit(
+    data, x, y, qubits, resonator_type, qubit_freqs, sampling_rate, offset_freq, labels
+):
     r"""
     Fitting routine for Ramsey experiment. The used model is
 
@@ -344,7 +346,7 @@ def ramsey_fit(data, x, y, qubit, qubit_freq, sampling_rate, offset_freq, labels
         data (`DataUnits`): dataset for the fit
         x (str): name of the input values for the Ramsey model
         y (str): name of the output values for the Ramsey model
-        qubit (int): ID qubit number
+        qubits (list): A list with the IDs of the qubits
         qubits_freq (float): frequency of the qubit
         sampling_rate (float): Platform sampling rate
         offset_freq (float): Total qubit frequency offset. It contains the artificial detunning applied
@@ -363,9 +365,10 @@ def ramsey_fit(data, x, y, qubit, qubit_freq, sampling_rate, offset_freq, labels
             - **labels[0]**: Physical detunning of the actual qubit frequency
             - **labels[1]**: New qubit frequency after correcting the actual qubit frequency with the detunning calculated (labels[0])
             - **labels[2]**: T2
+            - **qubit**: The qubit being tested
     """
     data_fit = Data(
-        name=f"fit_q{qubit}",
+        name=f"fits",
         quantities=[
             "popt0",
             "popt1",
@@ -375,44 +378,63 @@ def ramsey_fit(data, x, y, qubit, qubit_freq, sampling_rate, offset_freq, labels
             labels[0],
             labels[1],
             labels[2],
+            "qubit",
         ],
     )
 
-    time = data.get_values(*parse(x))
-    voltages = data.get_values(*parse(y))
-
-    pguess = [
-        np.mean(voltages.values),
-        np.max(voltages.values) - np.min(voltages.values),
-        0.5 / time.values[np.argmin(voltages.values)],
-        np.pi / 2,
-        500e-9,
-    ]
-
-    try:
-        popt, pcov = curve_fit(
-            ramsey, time.values, voltages.values, p0=pguess, maxfev=2000000
+    parameter_keys = parse(x)
+    voltages_keys = parse(y)
+    for qubit in qubits:
+        qubit_data = (
+            data.df[data.df["qubit"] == qubit]
+            .drop(columns=["qubit", "iteration"])
+            .groupby(parameter_keys[0], as_index=False)
+            .mean()
         )
-        delta_fitting = popt[2]
-        delta_phys = int((delta_fitting * sampling_rate) - offset_freq)
-        corrected_qubit_frequency = int(qubit_freq + delta_phys)
-        t2 = 1.0 / popt[4]
-    except:
-        log.warning("The fitting was not succesful")
-        return data_fit
+        times = qubit_data[parameter_keys[0]].pint.to(parameter_keys[1]).pint.magnitude
+        voltages = qubit_data[voltages_keys[0]].pint.to(voltages_keys[1]).pint.magnitude
 
-    data_fit.add(
-        {
-            "popt0": popt[0],
-            "popt1": popt[1],
-            "popt2": popt[2],
-            "popt3": popt[3],
-            "popt4": popt[4],
-            labels[0]: delta_phys,
-            labels[1]: corrected_qubit_frequency,
-            labels[2]: t2,
-        }
-    )
+        if resonator_type == "3D":
+            pguess = [
+                np.mean(voltages.values),
+                np.max(voltages.values) - np.min(voltages.values),
+                0.5 / times.values[np.argmin(voltages.values)],
+                np.pi / 2,
+                500e-9,
+            ]
+        else:
+            pguess = [
+                np.mean(voltages.values),
+                np.max(voltages.values) - np.min(voltages.values),
+                0.5 / times.values[np.argmax(voltages.values)],
+                np.pi / 2,
+                500e-9,
+            ]
+        try:
+            popt, pcov = curve_fit(
+                ramsey, times.values, voltages.values, p0=pguess, maxfev=2000000
+            )
+            delta_fitting = popt[2]
+            delta_phys = int((delta_fitting * sampling_rate) - offset_freq)
+            corrected_qubit_frequency = int(qubit_freqs[qubit] + delta_phys)
+            t2 = 1.0 / popt[4]
+        except:
+            log.warning("ramsey_fit: the fitting was not succesful")
+            return data_fit
+
+        data_fit.add(
+            {
+                "popt0": popt[0],
+                "popt1": popt[1],
+                "popt2": popt[2],
+                "popt3": popt[3],
+                "popt4": popt[4],
+                labels[0]: delta_phys,
+                labels[1]: corrected_qubit_frequency,
+                labels[2]: t2,
+                "qubit": qubit,
+            }
+        )
     return data_fit
 
 
