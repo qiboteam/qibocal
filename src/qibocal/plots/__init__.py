@@ -4,4 +4,5 @@ from qibocal.plots.flipping import *
 from qibocal.plots.rabi import *
 from qibocal.plots.ramsey import *
 from qibocal.plots.spectroscopies import *
+from qibocal.plots.spin_echo import *
 from qibocal.plots.t1 import *

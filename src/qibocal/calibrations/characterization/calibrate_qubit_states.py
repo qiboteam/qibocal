@@ -15,8 +15,29 @@ def calibrate_qubit_states(
     nshots,
     points=10,
 ):
-    platform.reload_settings()
+    """
+    Method which implements the state's calibration of a chosen qubit. Two analogous tests are performed
+    for calibrate the ground state and the excited state of the oscillator.
+    The subscripts `exc` and `gnd` will represent the excited state |1> and the ground state |0>.
 
+    Args:
+        platform (:class:`qibolab.platforms.abstract.AbstractPlatform`): custom abstract platform on which we perform the calibration.
+        qubit (int): index representing the target qubit into the chip.
+        niter (int): number of times the pulse sequence will be reproduced.
+        points (int): every points step data are saved.
+
+    Returns:
+        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
+
+            - **MSR[V]**: Resonator signal voltage mesurement in volts
+            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
+            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
+            - **phase[rad]**: Resonator signal phase mesurement in radians
+            - **iteration[dimensionless]**: Execution number
+
+    """
+
+    platform.reload_settings()
     # create exc sequence
     state0_sequence = PulseSequence()
     state1_sequence = PulseSequence()
