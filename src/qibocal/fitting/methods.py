@@ -438,7 +438,7 @@ def ramsey_fit(
     return data_fit
 
 
-def t1_fit(data, x, y, qubit, resonator_type, labels):
+def t1_fit(data, x, y, qubits, resonator_type, labels):
 
     """
     Fitting routine for T1 experiment. The used model is
@@ -465,12 +465,10 @@ def t1_fit(data, x, y, qubit, resonator_type, labels):
             - **popt2**: p2
             - **labels[0]**: T1.
 
-
-
     """
 
     data_fit = Data(
-        name=f"fit_q{qubit}",
+        name=f"fits",
         quantities=[
             "popt0",
             "popt1",
@@ -479,31 +477,40 @@ def t1_fit(data, x, y, qubit, resonator_type, labels):
         ],
     )
 
-    time = data.get_values(*parse(x))
-    voltages = data.get_values(*parse(y))
-
-    if resonator_type == "3D":
-        pguess = [
-            max(voltages.values),
-            (max(voltages.values) - min(voltages.values)),
-            1 / 250,
-        ]
-    else:
-        pguess = [
-            min(voltages.values),
-            (max(voltages.values) - min(voltages.values)),
-            1 / 250,
-        ]
-
-    try:
-        popt, pcov = curve_fit(
-            exp, time.values, voltages.values, p0=pguess, maxfev=2000000
+    parameter_keys = parse(x)
+    voltages_keys = parse(y)
+    for qubit in qubits:
+        qubit_data = (
+            data.df[data.df["qubit"] == qubit]
+            .drop(columns=["qubit", "iteration"])
+            .groupby(parameter_keys[0], as_index=False)
+            .mean()
         )
-        t1 = abs(1 / popt[2])
+        times = qubit_data[parameter_keys[0]].pint.to(parameter_keys[1]).pint.magnitude
+        voltages = qubit_data[voltages_keys[0]].pint.to(voltages_keys[1]).pint.magnitude
 
-    except:
-        log.warning("The fitting was not succesful")
-        return data_fit
+        if resonator_type == "3D":
+            pguess = [
+                max(voltages.values),
+                (max(voltages.values) - min(voltages.values)),
+                1 / 250,
+            ]
+        else:
+            pguess = [
+                min(voltages.values),
+                (max(voltages.values) - min(voltages.values)),
+                1 / 250,
+            ]
+
+        try:
+            popt, pcov = curve_fit(
+                exp, times.values, voltages.values, p0=pguess, maxfev=2000000
+            )
+            t1 = abs(1 / popt[2])
+
+        except:
+            log.warning("t1_fit: the fitting was not succesful")
+            return data_fit
 
     data_fit.add(
         {
@@ -511,6 +518,7 @@ def t1_fit(data, x, y, qubit, resonator_type, labels):
             "popt1": popt[1],
             "popt2": popt[2],
             labels[0]: t1,
+            "qubit": qubit,
         }
     )
     return data_fit
@@ -564,7 +572,10 @@ def flipping_fit(data, x, y, qubits, resonator_type, pi_pulse_amplitude, labels)
 
     for qubit in qubits:
         qubit_data = (
-            data.df[data.df["qubit"] == qubit].groupby("flips", as_index=False).mean()
+            data.df[data.df["qubit"] == qubit]
+            .drop(columns=["qubit", "iteration"])
+            .groupby("flips", as_index=False)
+            .mean()
         )
         flips_keys = parse(x)
         voltages_keys = parse(y)
@@ -579,8 +590,8 @@ def flipping_fit(data, x, y, qubits, resonator_type, pi_pulse_amplitude, labels)
         try:
             popt, pcov = curve_fit(flipping, flips, voltages, p0=pguess, maxfev=2000000)
             epsilon = -np.pi / popt[2]
-            amplitude_delta = np.pi / (np.pi + epsilon)
-            corrected_amplitude = amplitude_delta * pi_pulse_amplitude
+            amplitude_correction_factor = np.pi / (np.pi + epsilon)
+            corrected_amplitude = amplitude_correction_factor * pi_pulse_amplitude
             # angle = (niter * 2 * np.pi / popt[2] + popt[3]) / (1 + 4 * niter)
             # amplitude_delta = angle * 2 / np.pi * pi_pulse_amplitude
         except:
@@ -593,7 +604,7 @@ def flipping_fit(data, x, y, qubits, resonator_type, pi_pulse_amplitude, labels)
                 "popt1": popt[1],
                 "popt2": popt[2],
                 "popt3": popt[3],
-                labels[0]: amplitude_delta,
+                labels[0]: amplitude_correction_factor,
                 labels[1]: corrected_amplitude,
                 "qubit": qubit,
             }
@@ -687,10 +698,10 @@ def drag_tuning_fit(data: Data, x, y, qubits, labels):
     return data_fit
 
 
-def spin_echo_fit(data, x, y, qubit, resonator_type, labels):
+def spin_echo_fit(data, x, y, qubits, resonator_type, labels):
 
     data_fit = Data(
-        name=f"fit_q{qubit}",
+        name=f"fits",
         quantities=[
             "popt0",
             "popt1",
@@ -699,31 +710,40 @@ def spin_echo_fit(data, x, y, qubit, resonator_type, labels):
         ],
     )
 
-    time = data.get_values(*parse(x))
-    voltages = data.get_values(*parse(y))
-
-    if resonator_type == "3D":
-        pguess = [
-            max(voltages.values),
-            (max(voltages.values) - min(voltages.values)),
-            1 / 250,
-        ]
-    else:
-        pguess = [
-            min(voltages.values),
-            (max(voltages.values) - min(voltages.values)),
-            1 / 250,
-        ]
-
-    try:
-        popt, pcov = curve_fit(
-            exp, time.values, voltages.values, p0=pguess, maxfev=2000000
+    parameter_keys = parse(x)
+    voltages_keys = parse(y)
+    for qubit in qubits:
+        qubit_data = (
+            data.df[data.df["qubit"] == qubit]
+            .drop(columns=["qubit", "iteration"])
+            .groupby(parameter_keys[0], as_index=False)
+            .mean()
         )
-        t2 = abs(1 / popt[2])
+        times = qubit_data[parameter_keys[0]].pint.to(parameter_keys[1]).pint.magnitude
+        voltages = qubit_data[voltages_keys[0]].pint.to(voltages_keys[1]).pint.magnitude
 
-    except:
-        log.warning("The fitting was not succesful")
-        return data_fit
+        if resonator_type == "3D":
+            pguess = [
+                max(voltages.values),
+                (max(voltages.values) - min(voltages.values)),
+                1 / 250,
+            ]
+        else:
+            pguess = [
+                min(voltages.values),
+                (max(voltages.values) - min(voltages.values)),
+                1 / 250,
+            ]
+
+        try:
+            popt, pcov = curve_fit(
+                exp, times.values, voltages.values, p0=pguess, maxfev=2000000
+            )
+            t2 = abs(1 / popt[2])
+
+        except:
+            log.warning("spin_echo_fit: the fitting was not succesful")
+            return data_fit
 
     data_fit.add(
         {
@@ -731,6 +751,7 @@ def spin_echo_fit(data, x, y, qubit, resonator_type, labels):
             "popt1": popt[1],
             "popt2": popt[2],
             labels[0]: t2,
+            "qubit": qubit,
         }
     )
     return data_fit
@@ -777,7 +798,7 @@ def calibrate_qubit_states_fit(data, x, y, nshots, qubits):
         )
 
     for qubit in qubits:
-        qubit_data = data.df[data.df["qubit"] == int(qubit)]
+        qubit_data = data.df[data.df["qubit"] == qubit]
 
         iq_state0 = (
             qubit_data[qubit_data["state"] == 0][i_keys[0]]
