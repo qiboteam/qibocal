@@ -15,7 +15,7 @@ def rabi_pulse_length(
     pulse_duration_start,
     pulse_duration_end,
     pulse_duration_step,
-    software_averages,
+    software_averages=1,
     points=10,
 ):
 
@@ -144,7 +144,7 @@ def rabi_pulse_gain(
     pulse_gain_start,
     pulse_gain_end,
     pulse_gain_step,
-    software_averages,
+    software_averages=1,
     points=10,
 ):
 
@@ -271,7 +271,7 @@ def rabi_pulse_amplitude(
     pulse_amplitude_start,
     pulse_amplitude_end,
     pulse_amplitude_step,
-    software_averages,
+    software_averages=1,
     points=10,
 ):
 
@@ -401,7 +401,7 @@ def rabi_pulse_length_and_gain(
     pulse_gain_start,
     pulse_gain_end,
     pulse_gain_step,
-    software_averages,
+    software_averages=1,
     points=10,
 ):
 
@@ -507,7 +507,7 @@ def rabi_pulse_length_and_amplitude(
     pulse_amplitude_start,
     pulse_amplitude_end,
     pulse_amplitude_step,
-    software_averages,
+    software_averages=1,
     points=10,
 ):
 
