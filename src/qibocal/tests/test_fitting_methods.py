@@ -115,7 +115,12 @@ def test_rabi_fit(label, resonator_type, amplitude_sign, caplog):
     data.load_data_from_dict(mydict)
 
     fit = rabi_fit(
-        data, "time[s]", "MSR[V]", [0], resonator_type, labels=[label, "pi_pulse_peak_voltage"]
+        data,
+        "time[s]",
+        "MSR[V]",
+        [0],
+        resonator_type,
+        labels=[label, "pi_pulse_peak_voltage"],
     )
     fit_p0 = fit.get_values("popt0")[0]
     fit_p1 = fit.get_values("popt1")[0]
@@ -137,7 +142,12 @@ def test_rabi_fit(label, resonator_type, amplitude_sign, caplog):
     data.load_data_from_dict(mydict)
 
     fit = rabi_fit(
-        data, "time[s]", "MSR[V]", [0], resonator_type, labels=[label, "pi_pulse_peak_voltage"]
+        data,
+        "time[s]",
+        "MSR[V]",
+        [0],
+        resonator_type,
+        labels=[label, "pi_pulse_peak_voltage"],
     )
     assert "rabi_fit: the fitting was not succesful" in caplog.text
 
@@ -327,7 +337,9 @@ def test_drag_tunning_fit(label, caplog):
 
     data.load_data_from_dict(mydict)
 
-    fit = drag_tuning_fit(data, "beta_param[dimensionless]", "MSR[V]", [0], labels=label)
+    fit = drag_tuning_fit(
+        data, "beta_param[dimensionless]", "MSR[V]", [0], labels=label
+    )
     fit_p = [fit.get_values(f"popt{i}")[0] for i in range(4)]
     fit_drag = flipping(x, *fit_p)
     MSQE = 0
@@ -343,5 +355,7 @@ def test_drag_tunning_fit(label, caplog):
 
     data.load_data_from_dict(mydict)
 
-    fit = drag_tuning_fit(data, "beta_param[dimensionless]", "MSR[V]", [0], labels=label)
+    fit = drag_tuning_fit(
+        data, "beta_param[dimensionless]", "MSR[V]", [0], labels=label
+    )
     assert "drag_tuning_fit: the fitting was not succesful" in caplog.text
