@@ -77,8 +77,8 @@ def test_lorentzian_fit(name, label, resonator_type, amplitude_sign, caplog):
     mydict = {
         "frequency[Hz]": x,
         "MSR[V]": noisy_lorentzian,
-        "qubit": [0] * len(x),
-        "iteration": [0] * len(x),
+        "qubit": 0,
+        "iteration": 0,
     }
 
     data.load_data_from_dict(mydict)

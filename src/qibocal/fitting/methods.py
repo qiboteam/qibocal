@@ -78,9 +78,9 @@ def lorentzian_fit(
 
                 # Initialize data and evaluate the fit
 
-                data = DataUnits(quantities={"frequency": "Hz"})
+                data = DataUnits(quantities={"frequency": "Hz"}, options=["qubit", "iteration"])
 
-                mydict = {"frequency[Hz]": x, "MSR[V]": noisy_lorentzian}
+                mydict = {"frequency[Hz]": x, "MSR[V]": noisy_lorentzian, "qubit": 0, "iteration" : 0}
 
                 data.load_data_from_dict(mydict)
 
@@ -197,6 +197,7 @@ def lorentzian_fit(
             )
         except:
             log.warning("lorentzian_fit: the fitting was not successful")
+            data_fit.add({key: 0 for key in data_fit.df.columns})
             return data_fit
 
         # get the values for postprocessing and for legend.
@@ -314,6 +315,7 @@ def rabi_fit(data, x, y, qubits, resonator_type, labels):
             t2 = 1.0 / popt[4]  # double check T1
         except:
             log.warning("rabi_fit: the fitting was not succesful")
+            data_fit.add({key: 0 for key in data_fit.df.columns})
             return data_fit
 
         data_fit.add(
@@ -420,6 +422,7 @@ def ramsey_fit(
             t2 = 1.0 / popt[4]
         except:
             log.warning("ramsey_fit: the fitting was not succesful")
+            data_fit.add({key: 0 for key in data_fit.df.columns})
             return data_fit
 
         data_fit.add(
@@ -510,6 +513,7 @@ def t1_fit(data, x, y, qubits, resonator_type, labels):
 
         except:
             log.warning("t1_fit: the fitting was not succesful")
+            data_fit.add({key: 0 for key in data_fit.df.columns})
             return data_fit
 
     data_fit.add(
@@ -596,6 +600,7 @@ def flipping_fit(data, x, y, qubits, resonator_type, pi_pulse_amplitude, labels)
             # amplitude_delta = angle * 2 / np.pi * pi_pulse_amplitude
         except:
             log.warning("flipping_fit: the fitting was not succesful")
+            data_fit.add({key: 0 for key in data_fit.df.columns})
             return data_fit
 
         data_fit.add(
@@ -683,6 +688,7 @@ def drag_tuning_fit(data: Data, x, y, qubits, labels):
 
         except:
             log.warning("drag_tuning_fit: the fitting was not succesful")
+            data_fit.add({key: 0 for key in data_fit.df.columns})
             return data_fit
 
         data_fit.add(
