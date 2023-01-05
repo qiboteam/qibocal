@@ -36,10 +36,6 @@ class AbstractData:
         """Computes the length of the data."""
         return len(self.df)
 
-    def __getitem__(self, key):
-        if isinstance(key, (str, slice)):
-            return self.df[key]
-
     @classmethod
     def load_data(cls, folder, subfolder, routine, data_format, name):
         """Load data from specific format."""
@@ -194,15 +190,6 @@ class DataUnits(AbstractData):
             return self.df[key]
 
         return self.df[key].pint.to(unit).pint.magnitude
-
-    def get_column(self, column, value):
-        # TODO: raise error if value is not contained0
-        try:
-            return (
-                self.df.where(self.df[column] == value).dropna().reset_index(drop=True)
-            )
-        except:
-            raise_error(ValueError, "Error")
 
     @classmethod
     def load_data(cls, folder, subfolder, routine, data_format, name):

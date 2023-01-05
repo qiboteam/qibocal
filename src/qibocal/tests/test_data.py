@@ -364,3 +364,24 @@ def test_save_abstract_data_csv():
     data = AbstractData()
     with pytest.raises(NotImplementedError):
         data.to_csv("path")
+
+
+def test_load_data_from_dict_data_units():
+    """Test load_data_from_dict method of DataUnits"""
+    data_units = data_units_dummy(5)
+
+    test_dict = {key: [0, 1, 2, 3] for key in data_units.df.columns}
+    data_units.load_data_from_dict(test_dict)
+
+    for column in data_units.df.columns:  # pylint: disable=E1101
+        assert (data_units.get_values(column).to_numpy() == [0, 1, 2, 3]).all()
+
+
+def test_load_data_from_dict_data():
+    """Test load_data_from_dict method of Data"""
+    data = data_dummy(5)
+    test_dict = {key: [0, 1, 2, 3] for key in data.df.columns}
+    data.load_data_from_dict(test_dict)
+
+    for column in data.df.columns:  # pylint: disable=E1101
+        assert (data.get_values(column) == [0, 1, 2, 3]).all()

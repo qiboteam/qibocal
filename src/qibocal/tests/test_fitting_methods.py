@@ -28,7 +28,8 @@ from qibocal.fitting.utils import cos, exp, flipping, lorenzian, rabi, ramsey
         ("qubit_freq", "2D", 1),
     ],
 )
-def test_lorentzian_fit(name, label, resonator_type, amplitude_sign, caplog):
+@pytest.mark.parametrize("lo_freqs", [None, [0]])
+def test_lorentzian_fit(name, label, resonator_type, amplitude_sign, lo_freqs, caplog):
     """Test the *lorentzian_fit* function"""
     amplitude = 1 * amplitude_sign
     center = 2
@@ -60,6 +61,7 @@ def test_lorentzian_fit(name, label, resonator_type, amplitude_sign, caplog):
         resonator_type,
         labels=[label, "peak_voltage", "intermediate_freq"],
         fit_file_name=name,
+        lo_freqs=lo_freqs,
     )
     # Given the couople (amplitude, sigma) as a solution of lorentzian_fit method
     # also (-amplitude,-sigma) is a possible solution.
