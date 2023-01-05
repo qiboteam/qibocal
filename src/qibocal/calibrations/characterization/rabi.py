@@ -214,7 +214,8 @@ def rabi_pulse_gain(
     for iteration in range(software_averages):
         # sweep the parameter
         for gain in qd_pulse_gain_range:
-            platform.qd_port[qubit].gain = gain
+            for qubit in qubits:
+                platform.qd_port[qubit].gain = gain
             # save data as often as defined by points
             if count % points == 0 and count > 0:
                 # save data
