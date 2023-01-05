@@ -474,7 +474,8 @@ def rabi_pulse_length_and_gain(
                 qd_pulses[qubit].duration = duration
                 ro_pulses[qubit].start = duration
             for gain in qd_pulse_gain_range:
-                platform.qd_port[qubit].gain = gain
+                for qubit in qubits:
+                    platform.qd_port[qubit].gain = gain
                 # save data as often as defined by points
                 if count % points == 0 and count > 0:
                     # save data
