@@ -344,7 +344,8 @@ def rabi_pulse_amplitude(
     for iteration in range(software_averages):
         # sweep the parameter
         for amplitude in qd_pulse_amplitude_range:
-            qd_pulses[qubit].amplitude = amplitude
+            for qubit in qubits:
+                qd_pulses[qubit].amplitude = amplitude
             # save data as often as defined by points
             if count % points == 0 and count > 0:
                 yield data
