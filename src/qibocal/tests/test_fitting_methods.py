@@ -8,7 +8,7 @@ import pytest
 from qibocal.config import log
 from qibocal.data import DataUnits
 from qibocal.fitting.methods import (
-    drag_tunning_fit,
+    drag_tuning_fit,
     flipping_fit,
     lorentzian_fit,
     rabi_fit,
@@ -20,15 +20,15 @@ from qibocal.fitting.utils import cos, exp, flipping, lorenzian, rabi, ramsey
 
 @pytest.mark.parametrize("name", [None, "test"])
 @pytest.mark.parametrize(
-    "label, nqubits, amplitude_sign",
+    "label, resonator_type, amplitude_sign",
     [
-        ("resonator_freq", 1, 1),
-        ("resonator_freq", 5, -1),
-        ("qubit_freq", 1, -1),
-        ("qubit_freq", 5, 1),
+        ("resonator_freq", "3D", 1),
+        ("resonator_freq", "2D", -1),
+        ("qubit_freq", "3D", -1),
+        ("qubit_freq", "2D", 1),
     ],
 )
-def test_lorentzian_fit(name, label, nqubits, amplitude_sign, caplog):
+def test_lorentzian_fit(name, label, resonator_type, amplitude_sign, caplog):
     """Test the *lorentzian_fit* function"""
     amplitude = 1 * amplitude_sign
     center = 2
@@ -51,9 +51,9 @@ def test_lorentzian_fit(name, label, nqubits, amplitude_sign, caplog):
         data,
         "frequency[Hz]",
         "MSR[V]",
-        0,
-        nqubits,
-        labels=[label, "peak_voltage", "MZ_freq"],
+        [0],
+        resonator_type,
+        labels=[label, "peak_voltage", "intermediate_freq"],
         fit_file_name=name,
     )
     # Given the couople (amplitude, sigma) as a solution of lorentzian_fit method
@@ -77,24 +77,26 @@ def test_lorentzian_fit(name, label, nqubits, amplitude_sign, caplog):
         data,
         "frequency[Hz]",
         "MSR[V]",
-        0,
-        nqubits,
-        labels=[label, "peak_voltage", "MZ_freq"],
+        [0],
+        resonator_type,
+        labels=[label, "peak_voltage", "intermediate_freq"],
         fit_file_name=name,
     )
     assert "The fitting was not successful" in caplog.text
 
 
 @pytest.mark.parametrize(
-    "label, nqubits, amplitude_sign",
+    "label, resonator_type, amplitude_sign",
     [
-        ("pulse_duration", 1, 1),
-        ("pulse_duration", 5, 1),
-        ("pulse_duration", 1, -1),
-        ("pulse_duration", 5, -1),
+        ("pi_pulse_duration", "3D", 1),
+        ("pi_pulse_duration", "2D", -1),
+        ("pi_pulse_gain", "3D", 1),
+        ("pi_pulse_gain", "2D", -1),
+        ("pi_pulse_amplitude", "3D", 1),
+        ("pi_pulse_amplitude", "2D", -1),
     ],
 )
-def test_rabi_fit(label, nqubits, amplitude_sign, caplog):
+def test_rabi_fit(label, resonator_type, amplitude_sign, caplog):
     """Test the *rabi_fit* function"""
     p0 = 4
     p1 = 1 * amplitude_sign
@@ -113,7 +115,7 @@ def test_rabi_fit(label, nqubits, amplitude_sign, caplog):
     data.load_data_from_dict(mydict)
 
     fit = rabi_fit(
-        data, "time[s]", "MSR[V]", 0, nqubits, labels=[label, "pulse_max_voltage"]
+        data, "time[s]", "MSR[V]", [0], resonator_type, labels=[label, "pi_pulse_peak_voltage"]
     )
     fit_p0 = fit.get_values("popt0")[0]
     fit_p1 = fit.get_values("popt1")[0]
@@ -135,9 +137,9 @@ def test_rabi_fit(label, nqubits, amplitude_sign, caplog):
     data.load_data_from_dict(mydict)
 
     fit = rabi_fit(
-        data, "time[s]", "MSR[V]", 0, nqubits, labels=[label, "pulse_max_voltage"]
+        data, "time[s]", "MSR[V]", [0], resonator_type, labels=[label, "pi_pulse_peak_voltage"]
     )
-    assert "The fitting was not succesful" in caplog.text
+    assert "rabi_fit: the fitting was not succesful" in caplog.text
 
 
 @pytest.mark.parametrize("amplitude_sign", [-1, 1])
@@ -148,7 +150,7 @@ def test_ramsey_fit(amplitude_sign, caplog):
     p2 = 1
     p3 = 2
     p4 = 1 / 5 * 1e-9
-    qubit_freq = 4
+    qubit_freqs = [4]
     sampling_rate = 10
     offset_freq = 1
     samples = 100
@@ -165,11 +167,11 @@ def test_ramsey_fit(amplitude_sign, caplog):
         data,
         "time[s]",
         "MSR[V]",
-        0,
-        qubit_freq,
+        [0],
+        qubit_freqs,
         sampling_rate,
         offset_freq,
-        labels=["delta_phys", "qubit_freq", "t2"],
+        labels=["delta_frequency", "corrected_qubit_frequency", "t2"],
     )
     fit_p0 = fit.get_values("popt0")[0]
     fit_p1 = fit.get_values("popt1")[0]
@@ -195,25 +197,23 @@ def test_ramsey_fit(amplitude_sign, caplog):
         data,
         "time[s]",
         "MSR[V]",
-        0,
-        qubit_freq,
+        [0],
+        qubit_freqs,
         sampling_rate,
         offset_freq,
-        labels=["delta_phys", "qubit_freq", "t2"],
+        labels=["delta_frequency", "corrected_qubit_frequency", "t2"],
     )
-    assert "The fitting was not succesful" in caplog.text
+    assert "ramsey_fit: the fitting was not succesful" in caplog.text
 
 
 @pytest.mark.parametrize(
-    "label, nqubits, amplitude_sign",
+    "label, resonator_type, amplitude_sign",
     [
-        ("resonator_freq", 1, 1),
-        ("resonator_freq", 5, -1),
-        ("qubit_freq", 1, -1),
-        ("qubit_freq", 5, 1),
+        ("t1", "3D", 1),
+        ("t1", "2D", -1),
     ],
 )
-def test_t1_fit(label, nqubits, amplitude_sign, caplog):
+def test_t1_fit(label, resonator_type, amplitude_sign, caplog):
     """Test the *t1_fit* function"""
     p0 = 0
     p1 = 1 * amplitude_sign
@@ -228,7 +228,7 @@ def test_t1_fit(label, nqubits, amplitude_sign, caplog):
 
     data.load_data_from_dict(mydict)
 
-    fit = t1_fit(data, "time[s]", "MSR[V]", 0, nqubits, labels=[label])
+    fit = t1_fit(data, "time[s]", "MSR[V]", [0], resonator_type, labels=[label])
 
     fit_p = [fit.get_values(f"popt{i}")[0] for i in range(3)]
     fit_t1 = exp(x, *fit_p)
@@ -242,20 +242,18 @@ def test_t1_fit(label, nqubits, amplitude_sign, caplog):
 
     data.load_data_from_dict(mydict)
 
-    fit = t1_fit(data, "time[s]", "MSR[V]", 0, nqubits, labels=[label])
-    assert "The fitting was not succesful" in caplog.text
+    fit = t1_fit(data, "time[s]", "MSR[V]", [0], resonator_type, labels=[label])
+    assert "t1_fit: the fitting was not succesful" in caplog.text
 
 
 @pytest.mark.parametrize(
-    "label, nqubits, amplitude_sign",
+    "label, resonator_type, amplitude_sign",
     [
-        ("resonator_ampl", 1, 1),
-        ("resonator_amp", 5, -1),
-        ("qubit_ampl", 1, -1),
-        ("qubit_ampl", 5, 1),
+        ("amplitude_correction_factor", "3D", 1),
+        ("amplitude_correction_factor", "2D", -1),
     ],
 )
-def test_flipping_fit(label, nqubits, amplitude_sign, caplog):
+def test_flipping_fit(label, resonator_type, amplitude_sign, caplog):
     """Test the *flipping_fit* function"""
     p0 = 0.0001 * amplitude_sign
     p1 = 1
@@ -267,19 +265,18 @@ def test_flipping_fit(label, nqubits, amplitude_sign, caplog):
     x = np.linspace(0, 10, 100)
     noisy_flip = flipping(x, p0, p1, p2, p3) + p0 * np.random.randn(100) * 1e-4
 
-    data = DataUnits(quantities={"flips": "N"})
+    data = DataUnits(quantities={"flips": "dimensionless"})
 
-    mydict = {"flips[N]": x, "MSR[V]": noisy_flip}
+    mydict = {"flips[dimensionless]": x, "MSR[V]": noisy_flip}
 
     data.load_data_from_dict(mydict)
 
     fit = flipping_fit(
         data,
-        "flips[N]",
+        "flips[dimensionless]",
         "MSR[V]",
-        0,
-        nqubits,
-        0,
+        [0],
+        resonator_type,
         pi_pulse_amplituse,
         labels=[label, "corrected_amplitude"],
     )
@@ -290,32 +287,28 @@ def test_flipping_fit(label, nqubits, amplitude_sign, caplog):
     # Dummy fit
     x = [0, 0]
     noisy_flip = [0, 0]
-    data = DataUnits(quantities={"flips": "N"})
+    data = DataUnits(quantities={"flips": "dimensionless"})
 
-    mydict = {"flips[N]": x, "MSR[V]": noisy_flip}
+    mydict = {"flips[dimensionless]": x, "MSR[V]": noisy_flip}
 
     data.load_data_from_dict(mydict)
 
     fit = flipping_fit(
         data,
-        "flips[N]",
+        "flips[dimensionless]",
         "MSR[V]",
-        0,
-        nqubits,
-        0,
+        [0],
+        resonator_type,
         pi_pulse_amplituse,
         labels=[label, "corrected_amplitude"],
     )
-    assert "The fitting was not succesful" in caplog.text
+    assert "flipping_fit: the fitting was not succesful" in caplog.text
 
 
 @pytest.mark.parametrize(
     "label",
     [
-        ("resonator_ampl"),
-        ("resonator_amp"),
-        ("qubit_ampl"),
-        ("qubit_ampl"),
+        ("optimal_beta_param"),
     ],
 )
 def test_drag_tunning_fit(label, caplog):
@@ -328,13 +321,13 @@ def test_drag_tunning_fit(label, caplog):
     x = np.linspace(0, 10, 100)
     noisy_drag = cos(x, p0, p1, p2, p3) + p1 * np.random.randn(100) * 1e-6
 
-    data = DataUnits(quantities={"beta": "N"})
+    data = DataUnits(quantities={"beta_param": "dimensionless"})
 
-    mydict = {"beta[N]": x, "MSR[V]": noisy_drag}
+    mydict = {"beta_param[dimensionless]": x, "MSR[V]": noisy_drag}
 
     data.load_data_from_dict(mydict)
 
-    fit = drag_tunning_fit(data, "beta[N]", "MSR[V]", 0, 1, labels=label)
+    fit = drag_tuning_fit(data, "beta_param[dimensionless]", "MSR[V]", [0], labels=label)
     fit_p = [fit.get_values(f"popt{i}")[0] for i in range(4)]
     fit_drag = flipping(x, *fit_p)
     MSQE = 0
@@ -344,11 +337,11 @@ def test_drag_tunning_fit(label, caplog):
     # Dummy fit
     x = [0, 0]
     noisy_drag = [0, 0]
-    data = DataUnits(quantities={"beta": "N"})
+    data = DataUnits(quantities={"beta_param": "dimensionless"})
 
-    mydict = {"beta[N]": x, "MSR[V]": noisy_drag}
+    mydict = {"beta_param[dimensionless]": x, "MSR[V]": noisy_drag}
 
     data.load_data_from_dict(mydict)
 
-    fit = drag_tunning_fit(data, "beta[N]", "MSR[V]", 0, 1, labels=label)
-    assert "The fitting was not succesful" in caplog.text
+    fit = drag_tuning_fit(data, "beta_param[dimensionless]", "MSR[V]", [0], labels=label)
+    assert "drag_tuning_fit: the fitting was not succesful" in caplog.text
