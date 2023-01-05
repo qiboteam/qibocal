@@ -35,6 +35,7 @@ ONEQUBIT_CLIFFORD_PARAMS = [
     (-2 * np.pi / 3, 1 / np.sqrt(3), 1 / np.sqrt(3), -1 / np.sqrt(3)),
 ]
 
+# TODO use Renatos Pauli basis.
 X = np.array([[0, 1], [1, 0]])
 Y = np.array([[0, -1j], [1j, 0]])
 Z = np.array([[1, 0], [0, -1]])
@@ -71,31 +72,19 @@ def experiment_directory(name: str):
     return final_directory
 
 
-def liouville_representation_errorchannel(error_channel, **kwargs):
-    """For single qubit error channels only."""
-    # For single qubit the dimension is two.
-    if isinstance(error_channel, PauliError):
-        flipprobs = error_channel.options
-
-        def acts(gmatrix):
-            return (
-                (1 - flipprobs[0] - flipprobs[1] - flipprobs[2]) * gmatrix
-                + flipprobs[0] * X @ gmatrix @ X
-                + flipprobs[1] * Y @ gmatrix @ Y
-                + flipprobs[2] * Z @ gmatrix @ Z
-            )
-
-    return np.array(
-        [[np.trace(p2.conj().T @ acts(p1)) for p1 in pauli] for p2 in pauli]
-    )
-
-
 def effective_depol(error_channel, **kwargs):
     """ """
-    liouvillerep = liouville_representation_errorchannel(error_channel)
+    liouvillerep = error_channel.to_pauli_liouville(normalize=True)
     d = int(np.sqrt(len(liouvillerep)))
     depolp = (np.trace(liouvillerep) - 1) / (d**2 - 1)
     return depolp
+
+
+def gate_adjoint_action_to_pauli_liouville(gate: gates.gates) -> np.ndarray:
+    matrix = gate.matrix
+    return np.array(
+        [[np.trace(p2.conj().T @ matrix @ p1 @ matrix) for p1 in pauli] for p2 in pauli]
+    )
 
 
 def embed_unitary_circuit(

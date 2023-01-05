@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from itertools import product
 
 import numpy as np
 import pandas as pd
@@ -94,7 +95,7 @@ class moduleResult(Result):
         self.fitting_func = fitting_func
         self.title = "Standard Randomized Benchmarking"
 
-    def single_fig(self):
+    def single_fig(self, dataframe):
         xdata_scatter = self.df["depth"].to_numpy()
         ydata_scatter = self.df["groundstate_probabilities"].to_numpy()
         xdata, ydata = self.extract("depth", "groundstate_probabilities", "mean")
@@ -114,6 +115,28 @@ def groundstate_probability(experiment: Experiment):
     return experiment
 
 
+def groundstate_probs(circuit: Circuit, datarow: dict) -> dict:
+    """_summary_
+
+    Args:
+        circuit (Circuit): _description_
+        datarow (dict): _description_
+
+    Returns:
+        dict: _description_
+
+    Yields:
+        Iterator[dict]: _description_
+    """
+    samples = datarow["samples"]
+    # This is how
+    ground = np.array([0] * len(samples[0]))
+    datarow["groundstate_probabilities"] = np.sum(
+        np.product(samples == ground, axis=1)
+    ) / len(samples)
+    return datarow
+
+
 def theoretical_outcome(noisemodel: NoiseModel) -> float:
     """Take the used noise model acting on unitaries and calculates the
     effective depolarizing parameter.
@@ -128,8 +151,10 @@ def theoretical_outcome(noisemodel: NoiseModel) -> float:
     # Check for correctness of noise model and gate independence.
     errorkeys = noisemodel.errors.keys()
     if len(errorkeys) == 1 and list(errorkeys)[0] == gates.Unitary:
-        # Extract the noise acting on unitaries.
-        errorchannel = noisemodel.errors[gates.Unitary][0]
+        # Extract the noise acting on unitaries and turn it into the associated
+        # error channel.
+        error = noisemodel.errors[gates.Unitary][0]
+        errorchannel = error.channel(0, *error.options)
     else:
         raise_error(ValueError, "Wrong noisemodel given.")
     # Calculate the effective depolarizing parameter.
@@ -140,7 +165,8 @@ def analyze(
     experiment: Experiment, noisemodel: NoiseModel = None, **kwargs
 ) -> go._figure.Figure:
     # Compute and add the ground state probabilities.
-    experiment = groundstate_probability(experiment)
+    # experiment = groundstate_probability(experiment)
+    experiment.perform(groundstate_probs)
     result = moduleResult(experiment.dataframe, fit_exp1B_func)
     result.single_fig()
     result.info_dict["effective depol"] = np.around(theoretical_outcome(noisemodel), 3)
@@ -160,7 +186,7 @@ def perform(
     factory = moduleFactory(nqubits, depths, runs, qubits=qubits)
     experiment = moduleExperiment(factory, nshots, noisemodel=noise_model)
     # Execute the experiment.
-    experiment.execute()
+    experiment.perform(experiment.execute)
     analyze(experiment, noisemodel=noise_model).show()
 
 
@@ -186,7 +212,7 @@ def qqperform_standardrb(
     factory = moduleFactory(nqubit, depths, runs, qubits=qubit)
     experiment = moduleExperiment(factory, nshots, noisemodel=noise_model)
     # Execute the experiment.
-    experiment.execute()
+    experiment.perform(experiment.execute)
     data = Data()
     data.df = experiment.dataframe
     yield data

@@ -176,7 +176,7 @@ def theoretical_outcome(noisemodel: NoiseModel) -> float:
 
 def analyze(experiment: moduleExperiment, noisemodel: NoiseModel = None):
     # Apply the fiterfunction via matmul operator.
-    experiment @ filter_function
+    experiment.perform(filter_function)
     result = moduleResult(experiment.dataframe, fit_exp1_func)
     result.cross_figs()
     result.info_dict["effective depol"] = np.around(theoretical_outcome(noisemodel), 3)

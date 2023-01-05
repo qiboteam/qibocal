@@ -21,12 +21,13 @@ from qibocal.calibrations.protocols.utils import (
 from qibocal.config import raise_error
 
 """ TODO
-    - Make row by row execution nicer -> ask Ingo
     - Don't load the whole experiment into the results class
     - Write validation functions
-    - Make function names in each module generic
     - qubits_active, qubits_passive ?
     - Noise model integration
+    - Use Renatos functions from quantum_info moduel
+      * Pauli basis
+      * average_gate_fidelity
 """
 
 
@@ -167,38 +168,38 @@ class Experiment:
     def dataframe(self) -> pd.DataFrame:
         return pd.DataFrame(self.data)
 
-    @property
-    def samples(self) -> np.ndarray:
-        """Returns the samples from ``self.data`` in a 2d array.
+    # @property
+    # def samples(self) -> np.ndarray:
+    #     """Returns the samples from ``self.data`` in a 2d array.
 
-        Returns:
-            np.ndarray: 2d array of samples.
-        """
+    #     Returns:
+    #         np.ndarray: 2d array of samples.
+    #     """
 
-        try:
-            return np.array(self.dataframe["samples"].tolist())
-        except KeyError:
-            raise_error(KeyError, "No samples here. Execute experiment first.")
+    #     try:
+    #         return np.array(self.dataframe["samples"].tolist())
+    #     except KeyError:
+    #         raise_error(KeyError, "No samples here. Execute experiment first.")
 
-    @property
-    def probabilities(self) -> np.ndarray:
-        """Takes the stored samples and returns probabilities for each
-        possible state to occure.
+    # @property
+    # def probabilities(self) -> np.ndarray:
+    #     """Takes the stored samples and returns probabilities for each
+    #     possible state to occure.
 
-        Returns:
-            np.ndarray: Probability array of 2 dimension.
-        """
+    #     Returns:
+    #         np.ndarray: Probability array of 2 dimension.
+    #     """
 
-        allsamples = self.samples
-        # Create all possible state vectors.
-        allstates = list(product([0, 1], repeat=len(allsamples[0][0])))
-        # Iterate over all the samples and count the different states.
-        probs = [
-            [np.sum(np.product(samples == state, axis=1)) for state in allstates]
-            for samples in allsamples
-        ]
-        probs = np.array(probs) / (self.nshots)
-        return probs
+    #     allsamples = self.samples
+    #     # Create all possible state vectors.
+    #     allstates = list(product([0, 1], repeat=len(allsamples[0][0])))
+    #     # Iterate over all the samples and count the different states.
+    #     probs = [
+    #         [np.sum(np.product(samples == state, axis=1)) for state in allstates]
+    #         for samples in allsamples
+    #     ]
+    #     probs = np.array(probs) / (self.nshots)
+    #     return probs
 
     @classmethod
     def load(cls, path: str) -> Experiment:
@@ -246,22 +247,6 @@ class Experiment:
         """
         self.circuitfactory = list(self.circuitfactory)
 
-    def __matmul__(
-        self, sequential_task: callable[[Circuit, dict], dict]
-    ) -> Experiment:
-        """Overloads the @ operator, when used ``sequential_task`` is executed
-        row by row.
-
-        Args:
-            sequential_task (callable[[Circuit, dict], dict]): A function
-                applied row by row alterting each datarow.
-
-        Returns:
-            Experiment: Itself with altered ``self.data``.
-        """
-        self.perform(sequential_task)
-        return self
-
     def perform(self, sequential_task: callable[[Circuit, dict], dict]) -> None:
         """Takes a given function, checks the status of attribute ``circuitfactory``
         and ``data`` and executes the sequential function row by row altering the
@@ -307,19 +292,6 @@ class Experiment:
             circuit = self.noise_model.apply(circuit)
         samples = circuit(nshots=self.nshots).samples()
         return {"samples": samples}
-
-    def _append_data(self, name: str, datacolumn: list) -> None:
-        """Adds data column to ``data`` attribute.
-
-        Args:
-            name (str): Name of data column.
-            datacolumn (list): A list of the right shape
-        """
-        if len(datacolumn) != len(self.data):
-            raise_error(ValueError, "Given data column doesn't have the right length.")
-        df = self.dataframe
-        df[name] = datacolumn
-        self.data = df.to_dict("records")
 
 
 class Result:
@@ -390,21 +362,26 @@ class Result:
         l = len(self.all_figures)
         subplot_titles = [figdict.get("subplot_title") for figdict in self.all_figures]
         fig = make_subplots(
-            rows=l, cols=1 if l == 1 else 2, subplot_titles=subplot_titles
+            rows=int(l / 2) + l % 2 + 1,
+            cols=1 if l == 1 else 2,
+            subplot_titles=subplot_titles,
         )
         for count, fig_dict in enumerate(self.all_figures):
             plot_list = fig_dict["figs"]
             for plot in plot_list:
                 fig.add_trace(plot, row=count // 2 + 1, col=count % 2 + 1)
+
         fig.add_annotation(
             dict(
+                bordercolor="black",
                 font=dict(color="black", size=16),
-                x=1.1,
-                y=0.0,
+                x=0.0,
+                y=1.0 / (int(l / 2) + l % 2 + 1) - len(self.info_dict) * 0.005,
                 showarrow=False,
                 text=self.get_info(),
+                align="left",
                 textangle=0,
-                xanchor="left",
+                yanchor="top",
                 xref="paper",
                 yref="paper",
             )
@@ -419,7 +396,8 @@ class Result:
             legend_font_size=16,
             hoverlabel_font_size=16,
             showlegend=True,
-            height=500 * int(l / 2) if l > 1 else 500,
+            height=500 * (int(l / 2) + l % 2) if l > 2 else 1000,
             width=1000,
         )
+
         return fig

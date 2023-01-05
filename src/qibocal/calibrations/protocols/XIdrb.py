@@ -24,12 +24,16 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from qibo import gates
+from qibo.gates import channels
 from qibo.models import Circuit
 from qibo.noise import NoiseModel, PauliError
 from qibolab.platforms.abstract import AbstractPlatform
 
 from qibocal.calibrations.protocols.abstract import Circuitfactory, Experiment, Result
-from qibocal.calibrations.protocols.utils import effective_depol
+from qibocal.calibrations.protocols.utils import (
+    effective_depol,
+    gate_adjoint_action_to_pauli_liouville,
+)
 from qibocal.data import Data
 from qibocal.decorators import plot
 from qibocal.fitting.rb_methods import fit_exp1_func
@@ -126,14 +130,15 @@ def filter_sign(circuit: Circuit, datarow: dict) -> dict:
 def analyze(
     experiment: Experiment, noisemodel: NoiseModel = None, **kwargs
 ) -> go._figure.Figure:
-    experiment @ filter_sign
+    experiment.perform(filter_sign)
     result = moduleResult(experiment.dataframe, fit_exp1_func)
+    result.info_dict["Phi eigvalues"] = np.around(theoretical_outcome(noisemodel), 3)
     result.single_fig()
     report = result.report()
     return report
 
 
-def theoretical_outcome(experiment: Experiment, noisemodel: NoiseModel) -> float:
+def theoretical_outcome(noisemodel: NoiseModel) -> list:
     """Only for one qubit and Pauli Error noise!
 
     Args:
@@ -146,7 +151,23 @@ def theoretical_outcome(experiment: Experiment, noisemodel: NoiseModel) -> float
     Yields:
         Iterator[float]: _description_
     """
-    pass
+    # Check for correctness of noise model and gate independence.
+    errorkeys = noisemodel.errors.keys()
+    if len(errorkeys) == 1 and list(errorkeys)[0] == gates.X:
+        # Extract the noise acting on unitaries and turn it into the associated
+        # error channel.
+        error = noisemodel.errors[gates.X][0]
+        errorchannel = error.channel(0, *error.options)
+        if isinstance(
+            errorchannel, (gates.PauliNoiseChannel, gates.ThermalRelaxationChannel)
+        ):
+            liouvillerep = errorchannel.to_pauli_liouville(normalize=True)
+            phi = (
+                np.eye(4)
+                - liouvillerep @ gate_adjoint_action_to_pauli_liouville(gates.X(0))
+            ) / 2
+            eigvalues, eigvectors = np.linalg.eig(phi)
+    return list(eigvalues)
 
 
 # Make ``perform`` take a whole noisemodel already.
@@ -170,7 +191,7 @@ def perform(
     factory = moduleFactory(nqubits, depths, runs, qubits=qubits)
     experiment = moduleExperiment(factory, nshots, noisemodel=noise)
     # Execute the experiment.
-    experiment @ experiment.execute
+    experiment.perform(experiment.execute)
     analyze(experiment, noisemodel=noise).show()
 
 
@@ -199,7 +220,7 @@ def qqperform_XIdrb(
     factory = moduleFactory(nqubit, depths, runs, qubits=qubit)
     experiment = moduleExperiment(factory, nshots, noisemodel=noise)
     # Execute the experiment.
-    experiment @ experiment.execute
+    experiment.perform(experiment.execute)
     data = Data()
     data.df = experiment.dataframe
     yield data
