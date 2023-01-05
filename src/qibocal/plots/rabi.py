@@ -4,7 +4,7 @@ from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import rabi
-from qibocal.plots.utils import get_data_subfolders
+from qibocal.plots.utils import get_color, get_data_subfolders
 
 
 # Rabi oscillations pulse length
@@ -23,19 +23,18 @@ def time_msr_phase(folder, routine, qubit, format):
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
-    i = 0
+    report_n = 0
     fitting_report = ""
     for subfolder in subfolders:
         try:
             data = DataUnits.load_data(folder, subfolder, routine, format, "data")
-            data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
+            data.df = data.df[data.df["qubit"] == qubit]
         except:
-            data = DataUnits(quantities={"time": "ns"})
+            data = DataUnits(quantities={"time": "ns"}, options=["qubit", "iteration"])
 
         try:
-            data_fit = Data.load_data(
-                folder, subfolder, routine, format, f"fit_q{qubit}"
-            )
+            data_fit = Data.load_data(folder, subfolder, routine, format, f"fits")
+            data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
         except:
             data_fit = Data(
                 quantities=[
@@ -46,75 +45,85 @@ def time_msr_phase(folder, routine, qubit, format):
                     "popt4",
                     "label1",
                     "label2",
+                    "qubit",
                 ]
             )
 
-        datasets = []
-        copy = data.df.copy()
-        for j in range(len(copy)):
-            datasets.append(copy.drop_duplicates("time"))
-            copy.drop(datasets[-1].index, inplace=True)
+        iterations = data.df["iteration"].unique()
+        times = data.df["time"].pint.to("ns").pint.magnitude.unique()
+        if len(iterations) > 1:
+            opacity = 0.3
+        else:
+            opacity = 1
+        for iteration in iterations:
+            iteration_data = data.df[data.df["iteration"] == iteration]
             fig.add_trace(
                 go.Scatter(
-                    x=datasets[-1]["time"].pint.to("ns").pint.magnitude,
-                    y=datasets[-1]["MSR"].pint.to("uV").pint.magnitude,
-                    marker_color="rgb(100, 0, 255)",
-                    opacity=0.3,
-                    name=f"MSR q{qubit}/r{i}",
-                    showlegend=not bool(j),
-                    legendgroup="group1",
+                    x=iteration_data["time"].pint.to("ns").pint.magnitude,
+                    y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
+                    marker_color=get_color(report_n),
+                    opacity=opacity,
+                    name=f"q{qubit}/r{report_n}",
+                    showlegend=not bool(iteration),
+                    legendgroup=f"q{qubit}/r{report_n}",
                 ),
                 row=1,
                 col=1,
             )
             fig.add_trace(
                 go.Scatter(
-                    x=datasets[-1]["time"].pint.to("ns").pint.magnitude,
-                    y=datasets[-1]["phase"].pint.to("rad").pint.magnitude,
-                    marker_color="rgb(102, 180, 71)",
-                    name=f"phase q{qubit}/r{i}",
-                    opacity=0.5,
-                    showlegend=not bool(j),
-                    legendgroup="group2",
+                    x=iteration_data["time"].pint.to("ns").pint.magnitude,
+                    y=iteration_data["phase"].pint.to("rad").pint.magnitude,
+                    marker_color=get_color(report_n),
+                    opacity=opacity,
+                    name=f"q{qubit}/r{report_n}",
+                    showlegend=False,
+                    legendgroup=f"q{qubit}/r{report_n}",
+                ),
+                row=1,
+                col=2,
+            )
+        if len(iterations) > 1:
+            fig.add_trace(
+                go.Scatter(
+                    x=times,
+                    y=data.df.groupby("time")["MSR"]
+                    .mean()
+                    .pint.to("uV")
+                    .pint.magnitude,
+                    marker_color=get_color(report_n),
+                    name=f"q{qubit}/r{report_n}: Average",
+                    showlegend=True,
+                    legendgroup=f"q{qubit}/r{report_n}: Average",
+                ),
+                row=1,
+                col=1,
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=times,
+                    y=data.df.groupby("time")["phase"]  # pylint: disable=E1101
+                    .mean()
+                    .pint.to("rad")
+                    .pint.magnitude,
+                    marker_color=get_color(report_n),
+                    showlegend=False,
+                    legendgroup=f"q{qubit}/r{report_n}: Average",
                 ),
                 row=1,
                 col=2,
             )
 
-        fig.add_trace(
-            go.Scatter(
-                x=data.df.time.drop_duplicates().pint.magnitude,  # pylint: disable=E1101
-                y=data.df.groupby("time")["MSR"]  # pylint: disable=E1101
-                .mean()
-                .pint.to("uV")
-                .pint.magnitude,
-                name=f"avg MSR q{qubit}/r{i}",
-                marker_color="rgb(100, 0, 255)",
-            ),
-            row=1,
-            col=1,
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=data.df.time.drop_duplicates().pint.magnitude,  # pylint: disable=E1101
-                y=data.df.groupby("time")["phase"]  # pylint: disable=E1101
-                .mean()
-                .pint.to("rad")
-                .pint.magnitude,
-                name=f"avg phase q{qubit}/r{i}",
-                marker_color="rgb(102, 180, 71)",
-            ),
-            row=1,
-            col=2,
-        )
         # add fitting trace
-        if len(data) > 0 and len(data_fit) > 0:
+        if len(data) > 0 and (qubit in data_fit.df["qubit"].values):
             timerange = np.linspace(
                 min(data.get_values("time", "ns")),
                 max(data.get_values("time", "ns")),
                 2 * len(data),
             )
-            params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+            params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(
+                orient="records"
+            )[0]
             fig.add_trace(
                 go.Scatter(
                     x=timerange,
@@ -126,18 +135,25 @@ def time_msr_phase(folder, routine, qubit, format):
                         data_fit.get_values("popt3"),
                         data_fit.get_values("popt4"),
                     ),
-                    name=f"Fit q{qubit}/r{i}",
+                    name=f"q{qubit}/r{report_n} Fit",
                     line=go.scatter.Line(dash="dot"),
+                    marker_color=get_color(4 * report_n + 2),
                 ),
                 row=1,
                 col=1,
             )
 
-            fitting_report = fitting_report + (
-                f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f} ns<br>q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} uV.<br><br>"
+            fitting_report = (
+                fitting_report
+                + (
+                    f"q{qubit}/r{report_n} pi_pulse_duration: {params['pi_pulse_duration']:.2f} ns<br>"
+                )
+                + (
+                    f"q{qubit}/r{report_n} pi_pulse_peak_voltage: {params['pi_pulse_peak_voltage']:,.0f} uV.<br><br>"
+                )
             )
 
-        i += 1
+        report_n += 1
 
     fig.add_annotation(
         dict(
@@ -161,9 +177,9 @@ def time_msr_phase(folder, routine, qubit, format):
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="time (ns)",
+        xaxis_title="Time (ns)",
         yaxis_title="MSR (uV)",
-        xaxis2_title="time (ns)",
+        xaxis2_title="Time (ns)",
         yaxis2_title="Phase (rad)",
     )
     return fig
@@ -185,19 +201,20 @@ def gain_msr_phase(folder, routine, qubit, format):
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
-    i = 0
+    report_n = 0
     fitting_report = ""
     for subfolder in subfolders:
         try:
-            data = DataUnits.load_data(folder, subfolder, routine, format, "data")
-            data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
+            data = DataUnits.load_data(folder, subfolder, routine, format, f"data")
+            data.df = data.df[data.df["qubit"] == qubit]
         except:
-            data = DataUnits(quantities={"gain": "dimensionless"})
+            data = DataUnits(
+                quantities={"gain", "dimensionless"}, options=["qubit", "iteration"]
+            )
 
         try:
-            data_fit = Data.load_data(
-                folder, subfolder, routine, format, f"fit_q{qubit}"
-            )
+            data_fit = Data.load_data(folder, subfolder, routine, format, f"fits")
+            data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
         except:
             data_fit = Data(
                 quantities=[
@@ -208,75 +225,85 @@ def gain_msr_phase(folder, routine, qubit, format):
                     "popt4",
                     "label1",
                     "label2",
+                    "qubit",
                 ]
             )
 
-        datasets = []
-        copy = data.df.copy()
-        for j in range(len(copy)):
-            datasets.append(copy.drop_duplicates("gain"))
-            copy.drop(datasets[-1].index, inplace=True)
+        iterations = data.df["iteration"].unique()
+        gains = data.df["gain"].pint.to("dimensionless").pint.magnitude.unique()
+        if len(iterations) > 1:
+            opacity = 0.3
+        else:
+            opacity = 1
+        for iteration in iterations:
+            iteration_data = data.df[data.df["iteration"] == iteration]
             fig.add_trace(
                 go.Scatter(
-                    x=datasets[-1]["gain"].pint.to("dimensionless").pint.magnitude,
-                    y=datasets[-1]["MSR"].pint.to("uV").pint.magnitude,
-                    marker_color="rgb(100, 0, 255)",
-                    opacity=0.3,
-                    name=f"MSR q{qubit}/r{i}",
-                    showlegend=not bool(j),
-                    legendgroup="group1",
+                    x=iteration_data["gain"].pint.to("dimensionless").pint.magnitude,
+                    y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
+                    marker_color=get_color(report_n),
+                    opacity=opacity,
+                    name=f"q{qubit}/r{report_n}",
+                    showlegend=not bool(iteration),
+                    legendgroup=f"q{qubit}/r{report_n}",
                 ),
                 row=1,
                 col=1,
             )
             fig.add_trace(
                 go.Scatter(
-                    x=datasets[-1]["gain"].pint.to("dimensionless").pint.magnitude,
-                    y=datasets[-1]["phase"].pint.to("rad").pint.magnitude,
-                    marker_color="rgb(102, 180, 71)",
-                    name=f"phase q{qubit}/r{i}",
-                    opacity=0.5,
-                    showlegend=not bool(j),
-                    legendgroup="group2",
+                    x=iteration_data["gain"].pint.to("dimensionless").pint.magnitude,
+                    y=iteration_data["phase"].pint.to("rad").pint.magnitude,
+                    marker_color=get_color(report_n),
+                    opacity=opacity,
+                    name=f"q{qubit}/r{report_n}",
+                    showlegend=False,
+                    legendgroup=f"q{qubit}/r{report_n}",
+                ),
+                row=1,
+                col=2,
+            )
+        if len(iterations) > 1:
+            fig.add_trace(
+                go.Scatter(
+                    x=gains,
+                    y=data.df.groupby("gain")["MSR"]
+                    .mean()
+                    .pint.to("uV")
+                    .pint.magnitude,
+                    marker_color=get_color(report_n),
+                    name=f"q{qubit}/r{report_n}: Average",
+                    showlegend=True,
+                    legendgroup=f"q{qubit}/r{report_n}: Average",
+                ),
+                row=1,
+                col=1,
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=gains,
+                    y=data.df.groupby("gain")["phase"]  # pylint: disable=E1101
+                    .mean()
+                    .pint.to("rad")
+                    .pint.magnitude,
+                    marker_color=get_color(report_n),
+                    showlegend=False,
+                    legendgroup=f"q{qubit}/r{report_n}: Average",
                 ),
                 row=1,
                 col=2,
             )
 
-        fig.add_trace(
-            go.Scatter(
-                x=data.df.gain.drop_duplicates().pint.magnitude,  # pylint: disable=E1101
-                y=data.df.groupby("gain")["MSR"]  # pylint: disable=E1101
-                .mean()
-                .pint.to("uV")
-                .pint.magnitude,
-                name=f"avg MSR q{qubit}/r{i}",
-                marker_color="rgb(100, 0, 255)",
-            ),
-            row=1,
-            col=1,
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=data.df.gain.drop_duplicates().pint.magnitude,  # pylint: disable=E1101
-                y=data.df.groupby("gain")["phase"]  # pylint: disable=E1101
-                .mean()
-                .pint.to("rad")
-                .pint.magnitude,
-                name=f"avg phase q{qubit}/r{i}",
-                marker_color="rgb(102, 180, 71)",
-            ),
-            row=1,
-            col=2,
-        )
         # add fitting trace
-        if len(data) > 0 and len(data_fit) > 0:
+        if len(data) > 0 and (qubit in data_fit.df["qubit"].values):
             gainrange = np.linspace(
                 min(data.get_values("gain", "dimensionless")),
                 max(data.get_values("gain", "dimensionless")),
                 2 * len(data),
             )
-            params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+            params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(
+                orient="records"
+            )[0]
             fig.add_trace(
                 go.Scatter(
                     x=gainrange,
@@ -288,18 +315,25 @@ def gain_msr_phase(folder, routine, qubit, format):
                         data_fit.get_values("popt3"),
                         data_fit.get_values("popt4"),
                     ),
-                    name=f"Fit q{qubit}/r{i}",
+                    name=f"q{qubit}/r{report_n} Fit",
                     line=go.scatter.Line(dash="dot"),
+                    marker_color=get_color(4 * report_n + 2),
                 ),
                 row=1,
                 col=1,
             )
 
-            fitting_report = fitting_report + (
-                f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f} <br>q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} uV.<br><br>"
+            fitting_report = (
+                fitting_report
+                + (
+                    f"q{qubit}/r{report_n} pi_pulse_gain: {params['pi_pulse_gain']:.3f}<br>"
+                )
+                + (
+                    f"q{qubit}/r{report_n} pi_pulse_peak_voltage: {params['pi_pulse_peak_voltage']:,.0f} uV.<br><br>"
+                )
             )
 
-        i += 1
+        report_n += 1
 
     fig.add_annotation(
         dict(
@@ -319,13 +353,12 @@ def gain_msr_phase(folder, routine, qubit, format):
         )
     )
 
-    # last part
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="gain (dimensionless)",
+        xaxis_title="Gain (dimensionless)",
         yaxis_title="MSR (uV)",
-        xaxis2_title="gain (dimensionless)",
+        xaxis2_title="Gain (dimensionless)",
         yaxis2_title="Phase (rad)",
     )
     return fig
@@ -347,19 +380,21 @@ def amplitude_msr_phase(folder, routine, qubit, format):
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
-    i = 0
+    report_n = 0
     fitting_report = ""
     for subfolder in subfolders:
-        try:
-            data = DataUnits.load_data(folder, subfolder, routine, format, "data")
-            data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
-        except:
-            data = DataUnits(quantities={"amplitude": "dimensionless"})
 
         try:
-            data_fit = Data.load_data(
-                folder, subfolder, routine, format, f"fit_q{qubit}"
+            data = DataUnits.load_data(folder, subfolder, routine, format, f"data")
+            data.df = data.df[data.df["qubit"] == qubit]
+        except:
+            data = DataUnits(
+                quantities={"amplitude", "dimensionless"},
+                options=["qubit", "iteration"],
             )
+        try:
+            data_fit = Data.load_data(folder, subfolder, routine, format, f"fits")
+            data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
         except:
             data_fit = Data(
                 quantities=[
@@ -370,75 +405,91 @@ def amplitude_msr_phase(folder, routine, qubit, format):
                     "popt4",
                     "label1",
                     "label2",
+                    "qubit",
                 ]
             )
 
-        datasets = []
-        copy = data.df.copy()
-        for j in range(len(copy)):
-            datasets.append(copy.drop_duplicates("amplitude"))
-            copy.drop(datasets[-1].index, inplace=True)
+        iterations = data.df["iteration"].unique()
+        amplitudes = (
+            data.df["amplitude"].pint.to("dimensionless").pint.magnitude.unique()
+        )
+        if len(iterations) > 1:
+            opacity = 0.3
+        else:
+            opacity = 1
+        for iteration in iterations:
+            iteration_data = data.df[data.df["iteration"] == iteration]
             fig.add_trace(
                 go.Scatter(
-                    x=datasets[-1]["amplitude"].pint.to("dimensionless").pint.magnitude,
-                    y=datasets[-1]["MSR"].pint.to("uV").pint.magnitude,
-                    marker_color="rgb(100, 0, 255)",
-                    opacity=0.3,
-                    name=f"MSR q{qubit}/r{i}",
-                    showlegend=not bool(j),
-                    legendgroup="group1",
+                    x=iteration_data["amplitude"]
+                    .pint.to("dimensionless")
+                    .pint.magnitude,
+                    y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
+                    marker_color=get_color(report_n),
+                    opacity=opacity,
+                    name=f"q{qubit}/r{report_n}",
+                    showlegend=not bool(iteration),
+                    legendgroup=f"q{qubit}/r{report_n}",
                 ),
                 row=1,
                 col=1,
             )
             fig.add_trace(
                 go.Scatter(
-                    x=datasets[-1]["amplitude"].pint.to("dimensionless").pint.magnitude,
-                    y=datasets[-1]["phase"].pint.to("rad").pint.magnitude,
-                    marker_color="rgb(102, 180, 71)",
-                    name=f"phase q{qubit}/r{i}",
-                    opacity=0.5,
-                    showlegend=not bool(j),
-                    legendgroup="group2",
+                    x=iteration_data["amplitude"]
+                    .pint.to("dimensionless")
+                    .pint.magnitude,
+                    y=iteration_data["phase"].pint.to("rad").pint.magnitude,
+                    marker_color=get_color(report_n),
+                    opacity=opacity,
+                    name=f"q{qubit}/r{report_n}",
+                    showlegend=False,
+                    legendgroup=f"q{qubit}/r{report_n}",
+                ),
+                row=1,
+                col=2,
+            )
+        if len(iterations) > 1:
+            fig.add_trace(
+                go.Scatter(
+                    x=amplitudes,
+                    y=data.df.groupby("amplitude")["MSR"]
+                    .mean()
+                    .pint.to("uV")
+                    .pint.magnitude,
+                    marker_color=get_color(report_n),
+                    name=f"q{qubit}/r{report_n}: Average",
+                    showlegend=True,
+                    legendgroup=f"q{qubit}/r{report_n}: Average",
+                ),
+                row=1,
+                col=1,
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=amplitudes,
+                    y=data.df.groupby("amplitude")["phase"]  # pylint: disable=E1101
+                    .mean()
+                    .pint.to("rad")
+                    .pint.magnitude,
+                    marker_color=get_color(report_n),
+                    showlegend=False,
+                    legendgroup=f"q{qubit}/r{report_n}: Average",
                 ),
                 row=1,
                 col=2,
             )
 
-        fig.add_trace(
-            go.Scatter(
-                x=data.df.amplitude.drop_duplicates().pint.magnitude,  # pylint: disable=E1101
-                y=data.df.groupby("amplitude")["MSR"]  # pylint: disable=E1101
-                .mean()
-                .pint.to("uV")
-                .pint.magnitude,
-                name=f"avg MSR q{qubit}/r{i}",
-                marker_color="rgb(100, 0, 255)",
-            ),
-            row=1,
-            col=1,
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=data.df.amplitude.drop_duplicates().pint.magnitude,  # pylint: disable=E1101
-                y=data.df.groupby("amplitude")["phase"]  # pylint: disable=E1101
-                .mean()
-                .pint.to("rad")
-                .pint.magnitude,
-                name=f"avg phase q{qubit}/r{i}",
-                marker_color="rgb(102, 180, 71)",
-            ),
-            row=1,
-            col=2,
-        )
         # add fitting trace
-        if len(data) > 0 and len(data_fit) > 0:
+        if len(data) > 0 and (qubit in data_fit.df["qubit"].values):
             amplituderange = np.linspace(
                 min(data.get_values("amplitude", "dimensionless")),
                 max(data.get_values("amplitude", "dimensionless")),
                 2 * len(data),
             )
-            params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+            params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(
+                orient="records"
+            )[0]
             fig.add_trace(
                 go.Scatter(
                     x=amplituderange,
@@ -450,18 +501,25 @@ def amplitude_msr_phase(folder, routine, qubit, format):
                         data_fit.get_values("popt3"),
                         data_fit.get_values("popt4"),
                     ),
-                    name=f"Fit q{qubit}/r{i}",
+                    name=f"q{qubit}/r{report_n} Fit",
                     line=go.scatter.Line(dash="dot"),
+                    marker_color="rgb(255, 130, 67)",
                 ),
                 row=1,
                 col=1,
             )
 
-            fitting_report = fitting_report + (
-                f"q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f} <br>q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.1f} uV.<br><br>"
+            fitting_report = (
+                fitting_report
+                + (
+                    f"q{qubit}/r{report_n} pi_pulse_amplitude: {params['pi_pulse_amplitude']:.3f}<br>"
+                )
+                + (
+                    f"q{qubit}/r{report_n} pi_pulse_peak_voltage: {params['pi_pulse_peak_voltage']:,.0f} uV.<br><br>"
+                )
             )
 
-        i += 1
+        report_n += 1
 
     fig.add_annotation(
         dict(
@@ -481,19 +539,18 @@ def amplitude_msr_phase(folder, routine, qubit, format):
         )
     )
 
-    # last part
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="amplitude (dimensionless)",
+        xaxis_title="Amplitude (dimensionless)",
         yaxis_title="MSR (uV)",
-        xaxis2_title="amplitude (dimensionless)",
+        xaxis2_title="Amplitude (dimensionless)",
         yaxis2_title="Phase (rad)",
     )
     return fig
 
 
-# # Rabi pulse length and gain
+# Rabi pulse length and gain
 def duration_gain_msr_phase(folder, routine, qubit, format):
 
     # iterate over multiple data folders
@@ -509,85 +566,63 @@ def duration_gain_msr_phase(folder, routine, qubit, format):
             "phase (rad)",
         ),
     )
-    i = 1
+
+    report_n = 0
     for subfolder in subfolders:
         try:
-            data = DataUnits.load_data(folder, subfolder, routine, format, "data")
-            data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
+            data = DataUnits.load_data(folder, subfolder, routine, format, f"data")
+            data.df = data.df[data.df["qubit"] == qubit]
         except:
             data = DataUnits(
+                name=f"data",
                 quantities={"duration": "ns", "gain": "dimensionless"},
-                options=["qubit"],
+                options=["qubit", "iteration"],
             )
 
-        size = len(data.df.duration.drop_duplicates()) * len(
-            data.df.gain.drop_duplicates()  # pylint: disable=E1101
+        iterations = data.df["iteration"].unique()
+        durations = data.df["duration"].pint.to("ns").pint.magnitude.unique()
+        gains = data.df["gain"].pint.to("dimensionless").pint.magnitude.unique()
+        averaged_data = (
+            data.df.drop(columns=["qubit", "iteration"])
+            .groupby(["duration", "gain"], as_index=False)
+            .mean()
         )
 
         fig.add_trace(
             go.Heatmap(
-                x=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-                .duration.mean()
-                .pint.to("ns")
-                .pint.magnitude,
-                y=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-                .gain.mean()
-                .pint.to("dimensionless")
-                .pint.magnitude,
-                z=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-                .MSR.mean()
-                .pint.to("V")
-                .pint.magnitude,
+                x=averaged_data["duration"].pint.to("ns").pint.magnitude,
+                y=averaged_data["gain"].pint.to("dimensionless").pint.magnitude,
+                z=averaged_data["MSR"].pint.to("V").pint.magnitude,
                 colorbar_x=0.46,
             ),
-            row=1,
+            row=1 + report_n,
             col=1,
         )
+        fig.update_xaxes(
+            title_text=f"q{qubit}/r{report_n}: Duration (ns)", row=1 + report_n, col=1
+        )
+        fig.update_yaxes(title_text="Gain (dimensionless)", row=1 + report_n, col=1)
         fig.add_trace(
             go.Heatmap(
-                x=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-                .duration.mean()
-                .pint.to("ns")
-                .pint.magnitude,
-                y=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-                .gain.mean()
-                .pint.to("dimensionless")
-                .pint.magnitude,
-                z=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-                .phase.mean()
-                .pint.to("rad")
-                .pint.magnitude,
+                x=averaged_data["duration"].pint.to("ns").pint.magnitude,
+                y=averaged_data["gain"].pint.to("dimensionless").pint.magnitude,
+                z=averaged_data["phase"].pint.to("rad").pint.magnitude,
                 colorbar_x=1.01,
             ),
-            row=1,
+            row=1 + report_n,
             col=2,
         )
-
+        fig.update_xaxes(
+            title_text=f"q{qubit}/r{report_n}: Duration (ns)", row=1 + report_n, col=2
+        )
+        fig.update_yaxes(title_text="Gain (dimensionless)", row=1 + report_n, col=2)
         fig.update_layout(
             showlegend=False,
             uirevision="0",  # ``uirevision`` allows zooming while live plotting
         )
-
-        if i == 1:
-            fig["layout"]["xaxis"]["title"] = f"q{qubit}/r{i-1}: duration (ns)"
-            fig["layout"]["yaxis"]["title"] = "A (dimensionless)"
-            xaxis = f"xaxis{i+1}"
-            yaxis = f"yaxis{i+1}"
-            fig["layout"][xaxis]["title"] = f"q{qubit}/r{i-1}: duration (ns)"
-            fig["layout"][yaxis]["title"] = "A (dimensionless)"
-
-        else:
-            xaxis = f"xaxis{2*i-1}"
-            yaxis = f"yaxis{2*i-1}"
-            fig["layout"][xaxis]["title"] = f"q{qubit}/r{i-1}: duration (ns)"
-            fig["layout"][yaxis]["title"] = "A (dimensionless)"
-            xaxis = f"xaxis{2*i}"
-            yaxis = f"yaxis{2*i}"
-            fig["layout"][xaxis]["title"] = f"q{qubit}/r{i-1}: duration (ns)"
-            fig["layout"][yaxis]["title"] = "A (dimensionless)"
-
-        i += 1
-
+        report_n += 1
+    if report_n > 1:
+        fig.update_traces(showscale=False)
     return fig
 
 
@@ -607,83 +642,67 @@ def duration_amplitude_msr_phase(folder, routine, qubit, format):
             "phase (rad)",
         ),
     )
-    i = 1
+
+    report_n = 0
     for subfolder in subfolders:
         try:
-            data = DataUnits.load_data(folder, subfolder, routine, format, "data")
-            data.df = data.df[data.df["qubit"] == int(qubit)].reset_index(drop=True)
+            data = DataUnits.load_data(folder, subfolder, routine, format, f"data")
+            data.df = data.df[data.df["qubit"] == qubit]
         except:
             data = DataUnits(
+                name=f"data",
                 quantities={"duration": "ns", "amplitude": "dimensionless"},
-                options=["qubit"],
+                options=["qubit", "iteration"],
             )
 
-        size = len(data.df.duration.drop_duplicates()) * len(
-            data.df.amplitude.drop_duplicates()  # pylint: disable=E1101
+        iterations = data.df["iteration"].unique()
+        durations = data.df["duration"].pint.to("ns").pint.magnitude.unique()
+        amplitudes = (
+            data.df["amplitude"].pint.to("dimensionless").pint.magnitude.unique()
+        )
+        averaged_data = (
+            data.df.drop(columns=["qubit", "iteration"])
+            .groupby(["duration", "amplitude"], as_index=False)
+            .mean()
         )
 
         fig.add_trace(
             go.Heatmap(
-                x=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-                .duration.mean()
-                .pint.to("ns")
-                .pint.magnitude,
-                y=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-                .amplitude.mean()
-                .pint.to("dimensionless")
-                .pint.magnitude,
-                z=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-                .MSR.mean()
-                .pint.to("V")
-                .pint.magnitude,
+                x=averaged_data["duration"].pint.to("ns").pint.magnitude,
+                y=averaged_data["amplitude"].pint.to("dimensionless").pint.magnitude,
+                z=averaged_data["MSR"].pint.to("V").pint.magnitude,
                 colorbar_x=0.46,
             ),
-            row=1,
+            row=1 + report_n,
             col=1,
+        )
+        fig.update_xaxes(
+            title_text=f"q{qubit}/r{report_n}: Duration (ns)", row=1 + report_n, col=1
+        )
+        fig.update_yaxes(
+            title_text="Amplitude (dimensionless)", row=1 + report_n, col=1
         )
         fig.add_trace(
             go.Heatmap(
-                x=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-                .duration.mean()
-                .pint.to("ns")
-                .pint.magnitude,
-                y=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-                .amplitude.mean()
-                .pint.to("dimensionless")
-                .pint.magnitude,
-                z=data.df.groupby(data.df.index % size)  # pylint: disable=E1101
-                .phase.mean()
-                .pint.to("rad")
-                .pint.magnitude,
+                x=averaged_data["duration"].pint.to("ns").pint.magnitude,
+                y=averaged_data["amplitude"].pint.to("dimensionless").pint.magnitude,
+                z=averaged_data["phase"].pint.to("rad").pint.magnitude,
                 colorbar_x=1.01,
             ),
-            row=1,
+            row=1 + report_n,
             col=2,
         )
-
+        fig.update_xaxes(
+            title_text=f"q{qubit}/r{report_n}: Duration (ns)", row=1 + report_n, col=2
+        )
+        fig.update_yaxes(
+            title_text="Amplitude (dimensionless)", row=1 + report_n, col=2
+        )
         fig.update_layout(
             showlegend=False,
             uirevision="0",  # ``uirevision`` allows zooming while live plotting
         )
-
-        if i == 1:
-            fig["layout"]["xaxis"]["title"] = f"q{qubit}/r{i-1}: duration (ns)"
-            fig["layout"]["yaxis"]["title"] = "A (dimensionless)"
-            xaxis = f"xaxis{i+1}"
-            yaxis = f"yaxis{i+1}"
-            fig["layout"][xaxis]["title"] = f"q{qubit}/r{i-1}: duration (ns)"
-            fig["layout"][yaxis]["title"] = "A (dimensionless)"
-
-        else:
-            xaxis = f"xaxis{2*i-1}"
-            yaxis = f"yaxis{2*i-1}"
-            fig["layout"][xaxis]["title"] = f"q{qubit}/r{i-1}: duration (ns)"
-            fig["layout"][yaxis]["title"] = "A (dimensionless)"
-            xaxis = f"xaxis{2*i}"
-            yaxis = f"yaxis{2*i}"
-            fig["layout"][xaxis]["title"] = f"q{qubit}/r{i-1}: duration (ns)"
-            fig["layout"][yaxis]["title"] = "A (dimensionless)"
-
-        i += 1
-
+        report_n += 1
+    if report_n > 1:
+        fig.update_traces(showscale=False)
     return fig
