@@ -658,6 +658,7 @@ def drag_tuning_fit(data: Data, x, y, qubits, labels):
     for qubit in qubits:
         qubit_data = (
             data.df[data.df["qubit"] == qubit]
+            .drop(columns=["qubit", "iteration"])
             .groupby("beta_param", as_index=False)
             .mean()
         )

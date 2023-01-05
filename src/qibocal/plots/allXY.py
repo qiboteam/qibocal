@@ -78,7 +78,7 @@ def allXY(folder, routine, qubit, format):
 
         fig.add_trace(
             go.Scatter(
-                x=gate_numbers,  # pylint: disable=E1101
+                x=gate_numbers,
                 y=data.df.groupby("gateNumber", as_index=False)[
                     "probability"
                 ].mean(),  # pylint: disable=E1101
@@ -291,7 +291,7 @@ def drag_pulse_tuning(folder, routine, qubit, format):
 
         fig.add_trace(
             go.Scatter(
-                x=beta_params,  # pylint: disable=E1101
+                x=beta_params,
                 y=data.df.groupby("beta_param", as_index=False)[
                     "MSR"
                 ]  # pylint: disable=E1101
