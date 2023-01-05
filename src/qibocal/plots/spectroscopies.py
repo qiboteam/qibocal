@@ -350,7 +350,7 @@ def frequency_attenuation_msr_phase_cut(folder, routine, qubit, format):
             fig.add_trace(
                 go.Scatter(
                     x=frequencies,
-                    y=data.df.groupby("frequency")["MSR"]
+                    y=data.df.groupby("frequency")["MSR"] # pylint: disable=E1101
                     .mean()
                     .pint.to("uV")
                     .pint.magnitude,
@@ -365,7 +365,7 @@ def frequency_attenuation_msr_phase_cut(folder, routine, qubit, format):
             fig.add_trace(
                 go.Scatter(
                     x=frequencies,
-                    y=data.df.groupby("frequency")["phase"]
+                    y=data.df.groupby("frequency")["phase"] # pylint: disable=E1101
                     .mean()
                     .pint.to("rad")
                     .pint.magnitude,
