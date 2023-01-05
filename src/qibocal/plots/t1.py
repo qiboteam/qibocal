@@ -109,7 +109,7 @@ def t1_time_msr(folder, routine, qubit, format):
                     ),
                     name=f"q{qubit}/r{report_n} Fit",
                     line=go.scatter.Line(dash="dot"),
-                    marker_color=get_color(4*report_n + 2),
+                    marker_color=get_color(4 * report_n + 2),
                 ),
                 row=1,
                 col=1,
