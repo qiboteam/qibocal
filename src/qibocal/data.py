@@ -267,7 +267,7 @@ class DataUnits(AbstractData):
                         "MSR[V]": msr,
                         "i[V]": i,
                         "q[V]": q,
-                        "phase[deg]": phase,
+                        "phase[rad]]": phase,
                     }
                     data.add({**pulse_sequence_result})
                 data.to_csv(folder)
