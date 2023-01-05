@@ -353,7 +353,7 @@ def frequency_attenuation_msr_phase_cut(folder, routine, qubit, format):
                     y=data.df.groupby("frequency")["MSR"] # pylint: disable=E1101
                     .mean()
                     .pint.to("uV")
-                    .pint.magnitude,
+                    .pint.magnitude,  # pylint: disable=E1101
                     marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,
@@ -368,7 +368,7 @@ def frequency_attenuation_msr_phase_cut(folder, routine, qubit, format):
                     y=data.df.groupby("frequency")["phase"] # pylint: disable=E1101
                     .mean()
                     .pint.to("rad")
-                    .pint.magnitude,
+                    .pint.magnitude,  # pylint: disable=E1101
                     marker_color=get_color(report_n),
                     showlegend=False,
                     legendgroup=f"q{qubit}/r{report_n}: Average",
