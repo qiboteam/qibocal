@@ -627,7 +627,6 @@ def drag_tuning_fit(data: Data, x, y, qubits, labels):
         x (str): name of the input values for the model
         y (str): name of the output values for the model
         qubit (int): ID qubit number
-        nqubits (int): total number of qubits
         labels (list of str): list containing the lables of the quantities computed by this fitting method.
 
     Returns:
