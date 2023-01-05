@@ -27,7 +27,7 @@ def time_msr_phase(folder, routine, qubit, format):
     fitting_report = ""
     for subfolder in subfolders:
         try:
-            data = DataUnits.load_data(folder, subfolder, routine, format, f"data")
+            data = DataUnits.load_data(folder, subfolder, routine, format, "data")
             data.df = data.df[data.df["qubit"] == qubit]
         except:
             data = DataUnits(quantities={"time": "ns"}, options=["qubit", "iteration"])
