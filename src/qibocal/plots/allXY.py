@@ -330,7 +330,7 @@ def drag_pulse_tuning(folder, routine, qubit, format):
                     ),
                     name=f"q{qubit}/r{report_n}: Fit",
                     line=go.scatter.Line(dash="dot"),
-                    marker_color="rgb(255, 130, 67)",
+                    marker_color=get_color(4*report_n + 2),
                 ),
                 row=1,
                 col=1,
