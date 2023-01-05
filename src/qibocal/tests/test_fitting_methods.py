@@ -69,7 +69,7 @@ def test_lorentzian_fit(name, label, resonator_type, amplitude_sign, caplog):
     np.testing.assert_allclose(fit.get_values("popt1")[0], center, rtol=0.1)
     np.testing.assert_allclose(abs(fit.get_values("popt2")[0]), abs(sigma), rtol=0.1)
     np.testing.assert_allclose(fit.get_values("popt3")[0], offset, rtol=0.1)
-    # np.testing.assert_allclose(fit.get_values(label)[0], center * 1e9, rtol=0.1) # FIXME
+    np.testing.assert_allclose(fit.get_values(label)[0], center, rtol=0.1)
     # Dummy fit
     x = [0]
     noisy_lorentzian = [0]
