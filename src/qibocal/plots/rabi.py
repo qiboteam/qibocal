@@ -102,7 +102,7 @@ def time_msr_phase(folder, routine, qubit, format):
             fig.add_trace(
                 go.Scatter(
                     x=times,
-                    y=data.df.groupby("time")["phase"] # pylint: disable=E1101
+                    y=data.df.groupby("time")["phase"]  # pylint: disable=E1101
                     .mean()
                     .pint.to("rad")
                     .pint.magnitude,
@@ -282,7 +282,7 @@ def gain_msr_phase(folder, routine, qubit, format):
             fig.add_trace(
                 go.Scatter(
                     x=gains,
-                    y=data.df.groupby("gain")["phase"] # pylint: disable=E1101
+                    y=data.df.groupby("gain")["phase"]  # pylint: disable=E1101
                     .mean()
                     .pint.to("rad")
                     .pint.magnitude,
@@ -468,7 +468,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
             fig.add_trace(
                 go.Scatter(
                     x=amplitudes,
-                    y=data.df.groupby("amplitude")["phase"] # pylint: disable=E1101
+                    y=data.df.groupby("amplitude")["phase"]  # pylint: disable=E1101
                     .mean()
                     .pint.to("rad")
                     .pint.magnitude,
