@@ -470,8 +470,9 @@ def rabi_pulse_length_and_gain(
     for iteration in range(software_averages):
         # sweep the parameters
         for duration in qd_pulse_duration_range:
-            qd_pulses[qubit].duration = duration
-            ro_pulses[qubit].start = duration
+            for qubit in qubits:
+                qd_pulses[qubit].duration = duration
+                ro_pulses[qubit].start = duration
             for gain in qd_pulse_gain_range:
                 platform.qd_port[qubit].gain = gain
                 # save data as often as defined by points
@@ -578,10 +579,12 @@ def rabi_pulse_length_and_amplitude(
     for iteration in range(software_averages):
         # sweep the parameters
         for duration in qd_pulse_duration_range:
-            qd_pulses[qubit].duration = duration
-            ro_pulses[qubit].start = duration
+            for qubit in qubits:
+                qd_pulses[qubit].duration = duration
+                ro_pulses[qubit].start = duration
             for amplitude in qd_pulse_amplitude_range:
-                qd_pulses[qubit].amplitude = amplitude
+                for qubit in qubits:
+                    qd_pulses[qubit].amplitude = amplitude
                 # save data as often as defined by points
                 if count % points == 0 and count > 0:
                     # save data
