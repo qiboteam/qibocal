@@ -1,7 +1,7 @@
 platform: qblox
 
-runcard: qibolab/src/qibolab/runcards/tii1q_b1.yml
-qubits: [q0]
+# runcard: ../qibolab/src/qibolab/runcards/iqm5q.yml
+qubits: [1, 2, 3, 4, 5]
 
 format: csv
 

@@ -1,19 +1,19 @@
 platform: qblox
 
-runcard: qibolab/src/qibolab/runcards/iqm5q.yml
-qubits: [1, 2, 3, 4, 5]
+runcard: tii1q_b1.yml
+qubits: [q0]
 
 format: csv
 
 actions:
 
-  # resonator_spectroscopy: # wide
-  #   fast_width: 30_000_000
-  #   fast_step: 1_000_000
-  #   precision_width: 2_000_000
-  #   precision_step: 100_000
-  #   software_averages: 2
-  #   points: 5
+  resonator_spectroscopy: # wide
+    fast_width: 30_000_000
+    fast_step: 1_000_000
+    precision_width: 2_000_000
+    precision_step: 100_000
+    software_averages: 2
+    points: 5
 
   # resonator_spectroscopy: # narrow
   #   fast_width: 10_000_000
