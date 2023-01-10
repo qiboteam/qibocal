@@ -1,6 +1,7 @@
 platform: qblox
 
-runcard: tii1q_b1.yml
+# runcard: tii1q_b1.yml
+
 qubits: [q0]
 
 format: csv
