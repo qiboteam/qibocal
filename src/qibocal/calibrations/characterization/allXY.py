@@ -3,9 +3,9 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
 from qibocal import plots
-from qibocal.data import DataUnits
+from qibocal.data import Data, DataUnits
 from qibocal.decorators import plot
-from qibocal.fitting.methods import drag_tunning_fit
+from qibocal.fitting.methods import drag_tuning_fit
 
 # allXY rotations
 gatelist = [
@@ -33,10 +33,10 @@ gatelist = [
 ]
 
 
-@plot("Prob vs gate sequence", plots.prob_gate)
+@plot("Probability vs Gate Sequence", plots.allXY)
 def allXY(
     platform: AbstractPlatform,
-    qubit: int,
+    qubits: list,
     beta_param=None,
     software_averages=1,
     points=10,
@@ -50,8 +50,9 @@ def allXY(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubit (int): Target qubit to perform the action
+        qubits (list): List of target qubits to perform the action
         beta_param (float): Drag pi pulse coefficient. If none, teh default shape defined in the runcard will be used.
+        software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
 
     Returns:
@@ -63,59 +64,60 @@ def allXY(
             - **phase[rad]**: Difference between resonator signal phase mesurement in radians from sequence 1 and 2
             - **probability[dimensionless]**: Probability of being in |0> state
             - **gateNumber[dimensionless]**: Gate number applied from the list of gates
-
+            - **qubit**: The qubit being tested
+            - **iteration**: The iteration number of the many determined by software_averages
     """
+    # reload instrument settings from runcard
     platform.reload_settings()
 
-    state0_voltage = complex(
-        platform.characterization["single_qubit"][qubit]["state0_voltage"]
-    )
-    state1_voltage = complex(
-        platform.characterization["single_qubit"][qubit]["state1_voltage"]
-    )
-
-    data = DataUnits(
-        name=f"data_q{qubit}",
-        quantities={"probability": "dimensionless", "gateNumber": "dimensionless"},
+    # create a Data object to store the results
+    data = Data(
+        name="data",
+        quantities={"probability", "gateNumber", "qubit", "iteration"},
     )
 
     count = 0
-    for _ in range(software_averages):
-        gateNumber = 1
+    # repeat the experiment as many times as defined by software_averages
+    for iteration in range(software_averages):
+        # sweep the parameter
         for gates in gatelist:
+            # save data as often as defined by points
             if count % points == 0 and count > 0:
+                # save data
                 yield data
-            seq, ro_pulse = _get_sequence_from_gate_pair(
-                platform, gates, qubit, beta_param
-            )
-            seq.add(ro_pulse)
-            msr, phase, i, q = platform.execute_pulse_sequence(seq, nshots=2048)[
-                ro_pulse.serial
-            ]
 
-            prob = np.abs(msr * 1e6 - state1_voltage) / np.abs(
-                state1_voltage - state0_voltage
-            )
-            prob = (2 * prob) - 1
+            # create a sequence of pulses
+            ro_pulses = {}
+            sequence = PulseSequence()
+            for qubit in qubits:
+                sequence, ro_pulses[qubit] = _add_gate_pair_pulses_to_sequence(
+                    platform, gates, qubit, beta_param, sequence
+                )
 
-            results = {
-                "MSR[V]": msr,
-                "i[V]": i,
-                "q[V]": q,
-                "phase[rad]": phase,
-                "probability[dimensionless]": prob,
-                "gateNumber[dimensionless]": gateNumber,
-            }
-            data.add(results)
+            # execute the pulse sequence
+            results = platform.execute_pulse_sequence(sequence)
+
+            # retrieve the results for every qubit
+            for qubit in qubits:
+                prob = 1 - 2 * results["probability"][ro_pulses[qubit].serial]
+                # store the results
+                r = {
+                    "probability": prob,
+                    "gateNumber": gateNumber,
+                    "qubit": qubit,
+                    "iteration": iteration,
+                }
+                data.add(r)
             count += 1
             gateNumber += 1
+    # finally, save the remaining data
     yield data
 
 
-@plot("Prob vs gate sequence", plots.prob_gate_iteration)
-def allXY_iteration(
+@plot("Probability vs Gate Sequence", plots.allXY_drag_pulse_tuning)
+def allXY_drag_pulse_tuning(
     platform: AbstractPlatform,
-    qubit: int,
+    qubits: list,
     beta_start,
     beta_end,
     beta_step,
@@ -134,10 +136,11 @@ def allXY_iteration(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubit (int): Target qubit to perform the action
+        qubits (list): List of target qubits to perform the action
         beta_start (float): Initial drag pulse beta parameter
         beta_end (float): Maximum drag pulse beta parameter
         beta_step (float): Scan range step for the drag pulse beta parameter
+        software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
 
     Returns:
@@ -150,81 +153,68 @@ def allXY_iteration(
             - **probability[dimensionless]**: Probability of being in |0> state
             - **gateNumber[dimensionless]**: Gate number applied from the list of gates
             - **beta_param[dimensionless]**: Beta paramter applied in the current execution
+            - **qubit**: The qubit being tested
+            - **iteration**: The iteration number of the many determined by software_averages
 
     """
 
-    # FIXME: Waiting to be able to pass qpucard to qibolab
-    ro_pulse_test = platform.create_qubit_readout_pulse(qubit, start=4)
-    platform.ro_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["resonator_freq"]
-        - ro_pulse_test.frequency
-    )
-
-    qd_pulse_test = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
-    platform.qd_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["qubit_freq"]
-        - qd_pulse_test.frequency
-    )
+    # reload instrument settings from runcard
     platform.reload_settings()
 
-    state0_voltage = complex(
-        platform.characterization["single_qubit"][qubit]["state0_voltage"]
-    )
-    state1_voltage = complex(
-        platform.characterization["single_qubit"][qubit]["state1_voltage"]
+    data = Data(
+        name="data",
+        quantities={"probability", "gateNumber", "beta_param", "qubit", "iteration"},
     )
 
-    data = DataUnits(
-        name=f"data_q{qubit}",
-        quantities={
-            "probability": "dimensionless",
-            "gateNumber": "dimensionless",
-            "beta_param": "dimensionless",
-        },
-    )
-
+    # repeat the experiment as many times as defined by software_averages
     count = 0
-    for _ in range(software_averages):
+    for iteration in range(software_averages):
+        # sweep the parameters
         for beta_param in np.arange(beta_start, beta_end, beta_step).round(4):
             gateNumber = 1
             for gates in gatelist:
+                # save data as often as defined by points
                 if count % points == 0 and count > 0:
+                    # save data
                     yield data
-                seq, ro_pulse = _get_sequence_from_gate_pair(
-                    platform, gates, qubit, beta_param
-                )
-                seq.add(ro_pulse)
-                msr, phase, i, q = platform.execute_pulse_sequence(seq, nshots=1024)[
-                    ro_pulse.serial
-                ]
 
-                prob = np.abs(msr * 1e6 - state1_voltage) / np.abs(
-                    state1_voltage - state0_voltage
-                )
-                prob = (2 * prob) - 1
+                # create a sequence of pulses
+                ro_pulses = {}
+                sequence = PulseSequence()
+                for qubit in qubits:
+                    sequence, ro_pulses[qubit] = _add_gate_pair_pulses_to_sequence(
+                        platform, gates, qubit, beta_param, sequence
+                    )
 
-                results = {
-                    "MSR[V]": msr,
-                    "i[V]": i,
-                    "q[V]": q,
-                    "phase[rad]": phase,
-                    "probability[dimensionless]": prob,
-                    "gateNumber[dimensionless]": gateNumber,
-                    "beta_param[dimensionless]": beta_param,
-                }
-                data.add(results)
+                # execute the pulse sequence
+                results = platform.execute_pulse_sequence(sequence)
+
+                # retrieve the results for every qubit
+                for qubit in qubits:
+                    prob = 1 - 2 * results["probability"][ro_pulses[qubit].serial]
+                    # store the results
+                    r = {
+                        "probability": prob,
+                        "gateNumber": gateNumber,
+                        "beta_param": beta_param,
+                        "qubit": qubit,
+                        "iteration": iteration,
+                    }
+                    data.add(r)
                 count += 1
                 gateNumber += 1
+    # finally, save the remaining data
     yield data
 
 
-@plot("MSR vs beta parameter", plots.msr_beta)
-def drag_pulse_tunning(
+@plot("MSR vs beta parameter", plots.drag_pulse_tuning)
+def drag_pulse_tuning(
     platform: AbstractPlatform,
-    qubit: int,
+    qubits: list,
     beta_start,
     beta_end,
     beta_step,
+    software_averages=1,
     points=10,
 ):
 
@@ -234,10 +224,11 @@ def drag_pulse_tunning(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubit (int): Target qubit to perform the action
+        qubits (list): List of target qubits to perform the action
         beta_start (float): Initial drag pulse beta parameter
         beta_end (float): Maximum drag pulse beta parameter
         beta_step (float): Scan range step for the drag pulse beta parameter
+        software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
 
     Returns:
@@ -248,6 +239,8 @@ def drag_pulse_tunning(
             - **q[V]**: Difference between resonator signal voltage mesurement for the component Q in volts from sequence 1 and 2
             - **phase[rad]**: Difference between resonator signal phase mesurement in radians from sequence 1 and 2
             - **beta_param[dimensionless]**: Optimal drag coefficient
+            - **qubit**: The qubit being tested
+            - **iteration**: The iteration number of the many determined by software_averages
 
         - A DataUnits object with the fitted data obtained with the following keys
 
@@ -256,99 +249,123 @@ def drag_pulse_tunning(
             - **popt1**: oscillation amplitude
             - **popt2**: period
             - **popt3**: phase
+            - **qubit**: The qubit being tested
     """
 
-    # platform.reload_settings()
-
-    # FIXME: Waiting to be able to pass qpucard to qibolab
-    ro_pulse_test = platform.create_qubit_readout_pulse(qubit, start=4)
-    platform.ro_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["resonator_freq"]
-        - ro_pulse_test.frequency
-    )
-
-    qd_pulse_test = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
-    platform.qd_port[qubit].lo_frequency = (
-        platform.characterization["single_qubit"][qubit]["qubit_freq"]
-        - qd_pulse_test.frequency
-    )
+    # reload instrument settings from runcard
     platform.reload_settings()
 
-    data = DataUnits(name=f"data_q{qubit}", quantities={"beta_param": "dimensionless"})
+    # define the parameter to sweep and its range:
+    # qubit drive DRAG pulse beta parameter
+    beta_param_range = np.arange(beta_start, beta_end, beta_step).round(4)
+
+    # create a DataUnits object to store the MSR, phase, i, q and the beta parameter
+    data = DataUnits(
+        name="data",
+        quantities={"beta_param": "dimensionless"},
+        options=["qubit", "iteration"],
+    )
 
     count = 0
-    for beta_param in np.arange(beta_start, beta_end, beta_step).round(4):
-        if count % points == 0 and count > 0:
-            yield data
-            yield drag_tunning_fit(
-                data,
-                x="beta_param[dimensionless]",
-                y="MSR[uV]",
-                qubit=qubit,
-                nqubits=platform.settings["nqubits"],
-                labels=[
-                    "optimal_beta_param",
-                ],
-            )
-        # drag pulse RX(pi/2)
-        RX90_drag_pulse = platform.create_RX90_drag_pulse(
-            qubit, start=0, beta=beta_param
-        )
-        # drag pulse RY(pi)
-        RY_drag_pulse = platform.create_RX_drag_pulse(
-            qubit,
-            start=RX90_drag_pulse.finish,
-            relative_phase=+np.pi / 2,
-            beta=beta_param,
-        )
-        # RO pulse
-        ro_pulse = platform.create_qubit_readout_pulse(
-            qubit, start=RY_drag_pulse.finish
-        )
+    # repeat the experiment as many times as defined by software_averages
+    for iteration in range(software_averages):
+        for beta_param in beta_param_range:
+            # save data as often as defined by points
+            if count % points == 0 and count > 0:
+                # save data
+                yield data
+                # calculate and save fit
+                yield drag_tuning_fit(
+                    data,
+                    x="beta_param[dimensionless]",
+                    y="MSR[uV]",
+                    qubits=qubits,
+                    labels=["optimal_beta_param"],
+                )
 
-        # Rx(pi/2) - Ry(pi) - Ro
-        seq1 = PulseSequence()
-        seq1.add(RX90_drag_pulse)
-        seq1.add(RY_drag_pulse)
-        seq1.add(ro_pulse)
-        msr1, i1, q1, phase1 = platform.execute_pulse_sequence(seq1)[ro_pulse.serial]
+            # create two sequences of pulses
+            # seq1: RX(pi/2) - RY(pi) - MZ
+            # seq1: RY(pi/2) - RX(pi) - MZ
 
-        # drag pulse RY(pi/2)
-        RY90_drag_pulse = platform.create_RX90_drag_pulse(
-            qubit, start=0, relative_phase=np.pi / 2, beta=beta_param
-        )
-        # drag pulse RX(pi)
-        RX_drag_pulse = platform.create_RX_drag_pulse(
-            qubit, start=RY90_drag_pulse.finish, beta=beta_param
-        )
+            ro_pulses = {}
+            seq1 = PulseSequence()
+            seq2 = PulseSequence()
+            for qubit in qubits:
+                # drag pulse RX(pi/2)
+                RX90_drag_pulse = platform.create_RX90_drag_pulse(
+                    qubit, start=0, beta=beta_param
+                )
+                # drag pulse RY(pi)
+                RY_drag_pulse = platform.create_RX_drag_pulse(
+                    qubit,
+                    start=RX90_drag_pulse.finish,
+                    relative_phase=+np.pi / 2,
+                    beta=beta_param,
+                )
+                # drag pulse RY(pi/2)
+                RY90_drag_pulse = platform.create_RX90_drag_pulse(
+                    qubit, start=0, relative_phase=np.pi / 2, beta=beta_param
+                )
+                # drag pulse RX(pi)
+                RX_drag_pulse = platform.create_RX_drag_pulse(
+                    qubit, start=RY90_drag_pulse.finish, beta=beta_param
+                )
 
-        # Ry(pi/2) - Rx(pi) - Ro
-        seq2 = PulseSequence()
-        seq2.add(RY90_drag_pulse)
-        seq2.add(RX_drag_pulse)
-        seq2.add(ro_pulse)
-        msr2, phase2, i2, q2 = platform.execute_pulse_sequence(seq2)[ro_pulse.serial]
-        results = {
-            "MSR[V]": msr1 - msr2,
-            "i[V]": i1 - i2,
-            "q[V]": q1 - q2,
-            "phase[deg]": phase1 - phase2,
-            "beta_param[dimensionless]": beta_param,
-        }
-        data.add(results)
-        count += 1
+                # RO pulse
+                ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+                    qubit,
+                    start=2
+                    * RX90_drag_pulse.duration,  # assumes all single-qubit gates have same duration
+                )
+                # RX(pi/2) - RY(pi) - RO
+                seq1.add(RX90_drag_pulse)
+                seq1.add(RY_drag_pulse)
+                seq1.add(ro_pulses[qubit])
+
+                # RX(pi/2) - RY(pi) - RO
+                seq2.add(RY90_drag_pulse)
+                seq2.add(RX_drag_pulse)
+                seq2.add(ro_pulses[qubit])
+
+            # execute the pulse sequences
+            result1 = platform.execute_pulse_sequence(seq1)
+            result2 = platform.execute_pulse_sequence(seq2)
+
+            # retrieve the results for every qubit
+            for qubit in qubits:
+                msr1, phase1, i1, q1 = result1[ro_pulses[qubit].serial]
+                msr2, phase2, i2, q2 = result2[ro_pulses[qubit].serial]
+                # store the results
+                r = {
+                    "MSR[V]": msr1 - msr2,
+                    "i[V]": i1 - i2,
+                    "q[V]": q1 - q2,
+                    "phase[rad]": phase1 - phase2,
+                    "beta_param[dimensionless]": beta_param,
+                    "qubit": qubit,
+                    "iteration": iteration,
+                }
+                data.add(r)
+            count += 1
 
     yield data
+    yield drag_tuning_fit(
+        data,
+        x="beta_param[dimensionless]",
+        y="MSR[uV]",
+        qubits=qubits,
+        labels=["optimal_beta_param"],
+    )
 
 
-def _get_sequence_from_gate_pair(platform: AbstractPlatform, gates, qubit, beta_param):
+def _add_gate_pair_pulses_to_sequence(
+    platform: AbstractPlatform, gates, qubit, beta_param, sequence
+):
 
     pulse_duration = platform.settings["native_gates"]["single_qubit"][qubit]["RX"][
         "duration"
     ]
     # All gates have equal pulse duration
-
-    sequence = PulseSequence()
 
     sequenceDuration = 0
     pulse_start = 0
@@ -427,5 +444,5 @@ def _get_sequence_from_gate_pair(platform: AbstractPlatform, gates, qubit, beta_
 
     # RO pulse starting just after pair of gates
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=sequenceDuration + 4)
-
+    sequence.add(ro_pulse)
     return sequence, ro_pulse

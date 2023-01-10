@@ -41,6 +41,9 @@ def get_graph(n, current_figure, url):
         url = f"/data{url}"
 
     method, folder, routine, qubit, format = url.split(os.sep)[2:]
+    if qubit.isdigit():
+        qubit = int(qubit)
+
     try:
         # data = DataUnits.load_data(folder, routine, format, "precision_sweep")
         # with open(f"{folder}/platform.yml", "r") as f:

@@ -1,9 +1,9 @@
 """Some tests for the Data and DataUnits class"""
 import os
 import shutil
-from operator import length_hint
 
 import numpy as np
+import pandas as pd
 import pytest
 from pint import DimensionalityError, UndefinedUnitError
 
@@ -18,7 +18,7 @@ def random_data_units(length, options=None):
             "MSR[V]": msr,
             "i[V]": i,
             "q[V]": q,
-            "phase[deg]": phase,
+            "phase[rad]": phase,
         }
         add_options = {}
         if options is not None:
@@ -37,7 +37,7 @@ def data_units_dummy(length, options=None):
             "MSR[V]": float(l),
             "i[V]": float(l),
             "q[V]": float(l),
-            "phase[deg]": float(l),
+            "phase[rad]": float(l),
         }
         add_options = {}
         if options is not None:
@@ -145,7 +145,7 @@ def test_data_units_add():
             "MSR[V]": msr,
             "i[V]": i,
             "q[V]": q,
-            "phase[deg]": phase,
+            "phase[rad]": phase,
             "attenuation[dB]": att,
         }
     )
@@ -156,7 +156,7 @@ def test_data_units_add():
             "MSR[V]": 0,
             "i[V]": 0.0,
             "q[V]": 0.0,
-            "phase[deg]": 0,
+            "phase[rad]": 0,
             "attenuation[dB]": 1,
         }
     )
@@ -165,10 +165,10 @@ def test_data_units_add():
     data_units2 = DataUnits()
     msr, i, q, phase = np.random.rand(len(data_units2.df.columns))
     with pytest.raises(DimensionalityError):
-        data_units2.add({"MSR[dB]": msr, "i[V]": i, "q[V]": q, "phase[deg]": phase})
+        data_units2.add({"MSR[dB]": msr, "i[V]": i, "q[V]": q, "phase[rad]": phase})
 
     with pytest.raises(UndefinedUnitError):
-        data_units2.add({"MSR[test]": msr, "i[V]": i, "q[V]": q, "phase[deg]": phase})
+        data_units2.add({"MSR[test]": msr, "i[V]": i, "q[V]": q, "phase[rad]": phase})
 
     data_units3 = random_data_units(10, options=["test"])
     assert len(data_units3) == 10
@@ -236,14 +236,14 @@ def test_data_units_load_data_from_dict():
         "MSR[V]": [1, 2, 3],
         "i[V]": [3.0, 4.0, 5.0],
         "q[V]": np.array([3, 4, 5]),
-        "phase[deg]": [6.0, 7.0, 8.0],
+        "phase[rad]": [6.0, 7.0, 8.0],
     }
     data_units.load_data_from_dict(test)
     assert len(data_units) == 3
     assert (data_units.get_values("MSR", "V") == [1, 2, 3]).all()
     assert (data_units.get_values("i", "V") == [3.0, 4.0, 5.0]).all()
     assert (data_units.get_values("q", "V") == [3, 4, 5]).all()
-    assert (data_units.get_values("phase", "deg") == [6.0, 7.0, 8.0]).all()
+    assert (data_units.get_values("phase", "rad") == [6.0, 7.0, 8.0]).all()
 
     data_units1 = DataUnits(options=["option1", "option2"])
     test = {"option1": ["one", "two", "three"], "option2": [1, 2, 3]}
@@ -299,7 +299,7 @@ def test_save_open_data_units_csv():
     path = "test_folder/test_subfolder/test_routine"
     if not os.path.isdir(path):
         os.makedirs(path)
-    data_units = data_units_dummy(5, options=["Unnamed"])
+    data_units = data_units_dummy(5)
     data_units.to_csv(path)
     isExist = os.path.exists(f"{path}/{data_units.name}.csv")
     assert isExist is True
@@ -310,10 +310,8 @@ def test_save_open_data_units_csv():
     data_upload = DataUnits().load_data(
         "test_folder", "test_subfolder", "test_routine", "csv", "data"
     )
-    columns = data_units.df.columns
     shutil.rmtree("test_folder")
-    for i in columns:
-        assert (data_units.get_values(i).to_numpy() == data_upload.get_values(i)).all()
+    pd.testing.assert_frame_equal(data_upload.df, data_units.df)
 
 
 def test_save_open_data_units_pickle():
@@ -366,3 +364,24 @@ def test_save_abstract_data_csv():
     data = AbstractData()
     with pytest.raises(NotImplementedError):
         data.to_csv("path")
+
+
+def test_load_data_from_dict_data_units():
+    """Test load_data_from_dict method of DataUnits"""
+    data_units = data_units_dummy(5)
+
+    test_dict = {key: [0, 1, 2, 3] for key in data_units.df.columns}
+    data_units.load_data_from_dict(test_dict)
+
+    for column in data_units.df.columns:  # pylint: disable=E1101
+        assert (data_units.get_values(column).to_numpy() == [0, 1, 2, 3]).all()
+
+
+def test_load_data_from_dict_data():
+    """Test load_data_from_dict method of Data"""
+    data = data_dummy(5)
+    test_dict = {key: [0, 1, 2, 3] for key in data.df.columns}
+    data.load_data_from_dict(test_dict)
+
+    for column in data.df.columns:  # pylint: disable=E1101
+        assert (data.get_values(column) == [0, 1, 2, 3]).all()

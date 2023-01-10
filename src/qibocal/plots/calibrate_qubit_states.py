@@ -1,8 +1,9 @@
+import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
-from qibocal.plots.utils import get_data_subfolders
+from qibocal.plots.utils import get_color_state0, get_color_state1, get_data_subfolders
 
 
 # For calibrate qubit states
@@ -13,124 +14,139 @@ def qubit_states(folder, routine, qubit, format):
         cols=1,
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
+        # subplot_titles=("Calibrate qubit states"),
     )
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
-    i = 0
+    report_n = 0
     fitting_report = ""
+    max_x, max_y, min_x, min_y = 0, 0, 0, 0
     for subfolder in subfolders:
         try:
+            data = DataUnits.load_data(folder, subfolder, routine, format, "data")
+            data.df = data.df[data.df["qubit"] == qubit]
+        except:
+            data = DataUnits(options=["qubit", "iteration", "state"])
+
+        try:
             parameters = Data.load_data(
-                folder, subfolder, routine, format, f"parameters_q{qubit}"
+                folder, subfolder, routine, format, "parameters"
             )
+            parameters.df = parameters.df[parameters.df["qubit"] == qubit]
+
+            average_state0 = complex(parameters.get_values("average_state0")[0])
+            average_state1 = complex(parameters.get_values("average_state1")[0])
             rotation_angle = parameters.get_values("rotation_angle")[0]
             threshold = parameters.get_values("threshold")[0]
             fidelity = parameters.get_values("fidelity")[0]
             assignment_fidelity = parameters.get_values("assignment_fidelity")[0]
+
         except:
             parameters = Data(
-                name=f"parameters_q{qubit}",
+                name=f"parameters",
                 quantities=[
                     "rotation_angle",  # in degrees
                     "threshold",
                     "fidelity",
                     "assignment_fidelity",
+                    "average_state0",
+                    "average_state1",
+                    "qubit",
                 ],
             )
 
-        try:
-            data_gnd = DataUnits.load_data(
-                folder, subfolder, routine, format, f"data_gnd_q{qubit}"
-            )
-        except:
-            data_gnd = DataUnits(quantities={"iteration": "dimensionless"})
+        state0_data = data.df[data.df["state"] == 0]
+        state1_data = data.df[data.df["state"] == 1]
 
         fig.add_trace(
             go.Scatter(
-                x=data_gnd.get_values("i", "V"),
-                y=data_gnd.get_values("q", "V"),
-                name=f"q{qubit}/r{i}: state 0",
-                legendgroup=f"q{qubit}/r{i}: state 0",
+                x=state0_data["i"].pint.to("V").pint.magnitude,
+                y=state0_data["q"].pint.to("V").pint.magnitude,
+                name=f"q{qubit}/r{report_n}: state 0",
+                legendgroup=f"q{qubit}/r{report_n}: state 0",
                 mode="markers",
-                marker=dict(size=3, color="skyblue"),
-            ),
-            row=1,
-            col=1,
-        )
-
-        try:
-            data_exc = DataUnits.load_data(
-                folder, subfolder, routine, format, f"data_exc_q{qubit}"
-            )
-        except:
-            data_exc = DataUnits(quantities={"iteration": "dimensionless"})
-
-        fig.add_trace(
-            go.Scatter(
-                x=data_exc.get_values("i", "V"),
-                y=data_exc.get_values("q", "V"),
-                name=f"q{qubit}/r{i}: state 1",
-                legendgroup=f"q{qubit}/r{i}: state 1",
-                mode="markers",
-                marker=dict(size=3, color="lightcoral"),
-            ),
-            row=1,
-            col=1,
-        )
-
-        i_gnd = data_gnd.get_values("i", "V")
-        q_gnd = data_gnd.get_values("q", "V")
-
-        i_mean_gnd = i_gnd.mean()
-        q_mean_gnd = q_gnd.mean()
-        iq_mean_gnd = complex(i_mean_gnd, q_mean_gnd)
-        mod_iq_gnd = abs(iq_mean_gnd) * 1e6
-
-        fig.add_trace(
-            go.Scatter(
-                x=[i_mean_gnd],
-                y=[q_mean_gnd],
-                name=f"q{qubit}/r{i}: state 0",
-                legendgroup=f"q{qubit}/r{i}: state 0",
                 showlegend=False,
-                mode="markers",
-                marker=dict(size=10, color="blue"),
+                opacity=0.7,
+                marker=dict(size=3, color=get_color_state0(report_n)),
             ),
             row=1,
             col=1,
         )
-
-        i_exc = data_exc.get_values("i", "V")
-        q_exc = data_exc.get_values("q", "V")
-
-        i_mean_exc = i_exc.mean()
-        q_mean_exc = q_exc.mean()
-        iq_mean_exc = complex(i_mean_exc, q_mean_exc)
-        mod_iq_exc = abs(iq_mean_exc) * 1e6
 
         fig.add_trace(
             go.Scatter(
-                x=[i_mean_exc],
-                y=[q_mean_exc],
-                name=f"q{qubit}/r{i}: state 1",
-                legendgroup=f"q{qubit}/r{i}: state 1",
-                showlegend=False,
+                x=state1_data["i"].pint.to("V").pint.magnitude,
+                y=state1_data["q"].pint.to("V").pint.magnitude,
+                name=f"q{qubit}/r{report_n}: state 1",
+                legendgroup=f"q{qubit}/r{report_n}: state 1",
                 mode="markers",
-                marker=dict(size=10, color="red"),
+                showlegend=False,
+                opacity=0.7,
+                marker=dict(size=3, color=get_color_state1(report_n)),
             ),
             row=1,
             col=1,
         )
-        title_text = f"q{qubit}/r{i}<br>"
-        title_text += f"average state 0: ({iq_mean_gnd:.6f})<br>"
-        title_text += f"average state 1: ({iq_mean_exc:.6f})<br>"
+
+        max_x = max(
+            max_x,
+            state0_data["i"].pint.to("V").pint.magnitude.max(),
+            state1_data["i"].pint.to("V").pint.magnitude.max(),
+        )
+        max_y = max(
+            max_y,
+            state0_data["q"].pint.to("V").pint.magnitude.max(),
+            state1_data["q"].pint.to("V").pint.magnitude.max(),
+        )
+        min_x = min(
+            min_x,
+            state0_data["i"].pint.to("V").pint.magnitude.min(),
+            state1_data["i"].pint.to("V").pint.magnitude.min(),
+        )
+        min_y = min(
+            min_y,
+            state0_data["q"].pint.to("V").pint.magnitude.min(),
+            state1_data["q"].pint.to("V").pint.magnitude.min(),
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=[average_state0.real],
+                y=[average_state0.imag],
+                name=f"q{qubit}/r{report_n}: state 0",
+                legendgroup=f"q{qubit}/r{report_n}: state 0",
+                showlegend=True,
+                mode="markers",
+                marker=dict(size=10, color=get_color_state0(report_n)),
+            ),
+            row=1,
+            col=1,
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=[average_state1.real],
+                y=[average_state1.imag],
+                name=f"q{qubit}/r{report_n}: state 1",
+                legendgroup=f"q{qubit}/r{report_n}: state 1",
+                showlegend=True,
+                mode="markers",
+                marker=dict(size=10, color=get_color_state1(report_n)),
+            ),
+            row=1,
+            col=1,
+        )
+
+        title_text = f"q{qubit}/r{report_n}<br>"
+        title_text += f"average state 0: ({average_state0:.6f})<br>"
+        title_text += f"average state 1: ({average_state1:.6f})<br>"
         title_text += (
             f"rotation angle = {rotation_angle:.3f} / threshold = {threshold:.6f}<br>"
         )
         title_text += f"fidelity = {fidelity:.3f} / assignment fidelity = {assignment_fidelity:.3f}<br><br>"
         fitting_report = fitting_report + title_text
-        i += 1
+        report_n += 1
 
     fig.add_annotation(
         dict(
@@ -150,13 +166,14 @@ def qubit_states(folder, routine, qubit, format):
         )
     )
 
-    # fig.update_xaxes(title_text=title_text, row=1, col=1)
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="i (V)",
         yaxis_title="q (V)",
         width=1000,
+        xaxis_range=(min_x, max_x),
+        yaxis_range=(min_y, max_y),
     )
     fig.update_yaxes(
         scaleanchor="x",
