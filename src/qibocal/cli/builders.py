@@ -83,9 +83,21 @@ class RBsingleActionParser(singleActionParser):
         self.nshots = self.runcard["actions"][self.name]["nshots"]
         self.noise_params = self.runcard["actions"][self.name]["noise_params"]
 
+        self.noise_model = self._allocate_noise_model(noise_params=self.noise_params)
+
+    def _allocate_noise_model(self, noise_params):
+        from qibo import gates
+        from qibo.noise import NoiseModel, PauliError
+
+        paulinoise = PauliError(*noise_params)
+        noise = NoiseModel()
+        noise.add(paulinoise, gates.Unitary)
+        return noise
+
     def build(self, qubits):
 
-        os.makedirs(self.path)
+        if not os.path.exists(self.path):
+            os.makedirs(self.path)
 
         self.module = importlib.import_module(
             f"qibocal.calibrations.protocols.{self.name}"
@@ -93,7 +105,9 @@ class RBsingleActionParser(singleActionParser):
         self.factory = getattr(self.module, "Factory")(
             self.nqubits, self.depths, self.runs, qubits
         )
-        self.experiment = getattr(self.module, "Experiment")(self.factory, self.nshots)
+        self.experiment = getattr(self.module, "Experiment")(
+            self.factory, self.nshots, noisemodel=self.noise_model
+        )
         self.fitting = getattr(self.module, "Fitting")
         import qibocal
 
