@@ -189,3 +189,4 @@ def qqperform_standardrb(
 
 Factory = SingleCliffordsFactory
 Experiment = StandardRBExperiment
+Fitting = fit_exp1B_func

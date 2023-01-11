@@ -3,6 +3,26 @@ import plotly.graph_objects as go
 from qibocal.data import Data
 
 
+def standardrb(folder, routine, qubit, format):
+    try:
+        data = Data.load_data(folder, routine, format, "data")
+    except:
+        pass
+    try:
+        data_fit = Data.load_data(folder, routine, format, "fit")
+    except:
+        pass
+
+    go.Scatter(
+        x=data.df["depth"],
+        y=data.df["groundstate_probability"],
+        line=dict(color="#6597aa"),
+        mode="markers",
+        marker={"opacity": 0.2, "symbol": "square"},
+        name="runs",
+    )
+
+
 def standardrb_plot(folder, routine, qubit, format):
     from qibocal.calibrations.protocols.standardrb import StandardRBExperiment, analyze
 

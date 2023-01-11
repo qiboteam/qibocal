@@ -19,7 +19,7 @@ def load_yaml(path):
 
 
 class singleActionParser:
-    def __init__(self, runcard, folder, name, qubits):
+    def __init__(self, runcard, folder, name):
         self.runcard = runcard
         self.folder = folder
         self.func = None
@@ -65,71 +65,64 @@ class singleActionParser:
 
 
 class RBsingleActionParser(singleActionParser):
-    def __init__(self, runcard, folder, name, qubits):
+    def __init__(self, runcard, folder, name):
         super().__init__(runcard, folder, name)
 
-        self.qubits = qubits
+        self.module = None
+        self.experiment = None
+        self.factory = None
+        self.func = None
+        self.fitting = None
+
         self.nqubits = self.runcard["actions"][self.name]["nqubits"]
         self.depths = self.runcard["actions"][self.name]["depths"]
         self.runs = self.runcard["actions"][self.name]["runs"]
         self.nshots = self.runcard["actions"][self.name]["nshots"]
         self.noise_params = self.runcard["actions"][self.name]["noise_params"]
 
-    def build(self, name):
+    def build(self, qubits):
 
         self.module = importlib.import_module(
-            f"qibocal.calibrations.characaterization.{name}"
+            f"qibocal.calibrations.protocols.{self.name}"
         )
         self.factory = getattr(self.module, "Factory")(
-            self.nqubits, self.detphs, self.runs, self.qubits
+            self.nqubits, self.depths, self.runs, qubits
         )
         self.experiment = getattr(self.module, "Experiment")(self.factory, self.nshots)
-        self.func = self.experiment.execute
+        self.fitting = getattr(self.module, "Fitting")
 
+    def _execute(self):
+
+        self.experiment.execute()
+        probs = self.experiment.probabilities[:, 0]
+        self.experiment._append_data("groundstate_probability", list(probs))
+
+    # @plot()
     def execute(self, data_format, noise_params=None):
 
         data = Data()
         if data_format is None:
             raise_error(ValueError, f"Cannot store data using {data_format} format.")
-        if self.single_qubit:
-            for qubit in self.runcard["qubits"]:
-                results = self.func()
-                data.df = self.experiment.dataframe
+        for qubit in self.runcard["qubits"]:
+            self._execute()
+            # print(self.experiment.probabilities[:, 0])
+            # print(self.experiment.probabilities.shape)
+            # print(self.experiment.dataframe)
 
-                for data in results:
-                    getattr(data, f"to_{data_format}")(self.path)
+            getattr(data, f"to_{data_format}")(self.path)
+            fit = self._post_processing()
+            getattr(fit, f"to_{data_format}")(self.path)
 
-                # if platform is not None:
-                #     self.update_platform_runcard(qubit, routine.__name__)
-        # else:
-        #     results = self.func(platform, self.runcard["qubits"], **self.params)
+    def _post_processing(self, xlabel="depth", ylabel="groundstate_probability"):
 
-        #     for data in results:
-        #         getattr(data, f"to_{data_format}")(self.path)
+        xdata = self.experiment.dataframe["depth"].to_numpy()
+        ydata = self.experiment.dataframe["groundstate_probability"].to_numpy()
 
-        # if platform is not None:
-        #     self.update_platform_runcard(qubit, routine.__name__)
+        popt, _, _, _ = self.fitting(xdata, ydata)
 
-
-# class Protocol:
-#     """Class to encapsulate the execution of a generic protocol"""
-
-#     def __init__(self, module, noise=None) -> None:
-#         self.module = importlib.import_module(f'qibocal.calibrations.characaterization.{module}')
-#         self.noise = noise
-
-#     def execute(self, qubits : list, depths : list, runs : int, nshots : int, nqubits : int = None) -> None:
-#          # Initiate the circuit factory and the Experiment object.
-#         factory = self.module.Factory(nqubits, depths, runs, qubits=qubits)
-#         experiment = getattr(self.module, 'Experiment')(factory, nshots, noisemodel=self.noise)
-#         # Execute the experiment.
-#         experiment.execute()
-#         data = Data()
-#         data.df = experiment.dataframe
-#         yield data
-#         data_validation = Data("validate_simulation", quantities=["validation"])
-#         data_validation.add({"validation": self.module.validation_function(experiment)})
-#         yield data_validation
+        data = Data(name="fit", quantities=["A", "p", "B"])
+        data.add({"A": popt[0], "p": popt[1], "B": popt[2]})
+        return data
 
 
 class ActionBuilder:
@@ -341,13 +334,24 @@ class ReportBuilder:
         # create calibration routine objects
         # (could be incorporated to :meth:`qibocal.cli.builders.ActionBuilder._build_single_action`)
         self.routines = []
+        import qibocal
+
         for action in self.runcard.get("actions"):
             if hasattr(calibrations, action):
                 routine = getattr(calibrations, action)
+            elif hasattr(qibocal.plots.rb, action):
+                pass
+            #
+            # if hasattr(qibocal.plots.rb, action)
+            # elif:
+            #     parser = RBsingleActionParser(self.runcard, self.path, action)
+            #     parser.build(self.qubits)
+            #     routine = parser.execute()
+
             else:
                 raise_error(ValueError, f"Undefined action {action} in report.")
 
-            if not hasattr(routine, "plots"):
+            if not hasattr(routine, "plots") or routine is None:
                 routine.plots = []
             self.routines.append(routine)
 
