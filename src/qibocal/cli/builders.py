@@ -74,7 +74,6 @@ class RBsingleActionParser(singleActionParser):
         self.module = None
         self.experiment = None
         self.factory = None
-        self.func = None
         self.fitting = None
         self.plots = []
 
@@ -114,6 +113,7 @@ class RBsingleActionParser(singleActionParser):
             raise_error(ValueError, f"Cannot store data using {data_format} format.")
         for qubit in self.runcard["qubits"]:
             self._execute()
+            data.df = self.experiment.dataframe
             # print(self.experiment.probabilities[:, 0])
             # print(self.experiment.probabilities.shape)
             # print(self.experiment.dataframe)
@@ -349,7 +349,7 @@ class ReportBuilder:
                 routine = getattr(calibrations, action)
             elif hasattr(calibrations.protocols, action):
                 routine = RBsingleActionParser(self.runcard, self.path, action)
-                routine.build()
+                routine.build(self.qubits)
                 print(routine.plots)
                 print(hasattr(routine, "plots"))
             else:
