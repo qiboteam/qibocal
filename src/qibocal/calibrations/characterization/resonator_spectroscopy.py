@@ -516,7 +516,7 @@ def resonator_spectroscopy_flux(
         for fluxline in fluxlines:
             for current in current_ranges[fluxline]:
                 # set new flux current
-                platform.qf_port[fluxline].current = current
+                platform.qb_port[fluxline].current = current
                 for delta_freq in delta_frequency_range:
                     # save data as often as defined by points
                     if count % points == 0:
