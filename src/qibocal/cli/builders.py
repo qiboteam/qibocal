@@ -27,10 +27,13 @@ class singleActionParser:
         self.params = None
         self.name = name
         self.path = os.path.join(self.folder, f"data/{self.name}/")
-        os.makedirs(self.path)
+
+        # FIXME: dummy fix
+        self.__name__ = name
 
     def build(self, name):
 
+        os.makedirs(self.path)
         # collect function from module
         self.func = getattr(calibrations, name)
 
@@ -73,6 +76,7 @@ class RBsingleActionParser(singleActionParser):
         self.factory = None
         self.func = None
         self.fitting = None
+        self.plots = []
 
         self.nqubits = self.runcard["actions"][self.name]["nqubits"]
         self.depths = self.runcard["actions"][self.name]["depths"]
@@ -82,6 +86,8 @@ class RBsingleActionParser(singleActionParser):
 
     def build(self, qubits):
 
+        os.makedirs(self.path)
+
         self.module = importlib.import_module(
             f"qibocal.calibrations.protocols.{self.name}"
         )
@@ -90,6 +96,9 @@ class RBsingleActionParser(singleActionParser):
         )
         self.experiment = getattr(self.module, "Experiment")(self.factory, self.nshots)
         self.fitting = getattr(self.module, "Fitting")
+        import qibocal
+
+        self.plots.insert(0, ("test", getattr(qibocal.plots.rb, self.name)))
 
     def _execute(self):
 
@@ -334,24 +343,19 @@ class ReportBuilder:
         # create calibration routine objects
         # (could be incorporated to :meth:`qibocal.cli.builders.ActionBuilder._build_single_action`)
         self.routines = []
-        import qibocal
 
         for action in self.runcard.get("actions"):
             if hasattr(calibrations, action):
                 routine = getattr(calibrations, action)
-            elif hasattr(qibocal.plots.rb, action):
-                pass
-            #
-            # if hasattr(qibocal.plots.rb, action)
-            # elif:
-            #     parser = RBsingleActionParser(self.runcard, self.path, action)
-            #     parser.build(self.qubits)
-            #     routine = parser.execute()
-
+            elif hasattr(calibrations.protocols, action):
+                routine = RBsingleActionParser(self.runcard, self.path, action)
+                routine.build()
+                print(routine.plots)
+                print(hasattr(routine, "plots"))
             else:
                 raise_error(ValueError, f"Undefined action {action} in report.")
 
-            if not hasattr(routine, "plots") or routine is None:
+            if not hasattr(routine, "plots"):
                 routine.plots = []
             self.routines.append(routine)
 
