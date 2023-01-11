@@ -18,13 +18,17 @@ def raise_error(exception, message=None, args=None):
     log.error(message)
     if args:
         raise exception(message, args)
-    else:
-        raise exception(message)
+
+    raise exception(message)
 
 
 # Configuration for logging mechanism
 class CustomHandler(logging.StreamHandler):
     """Custom handler for logging algorithm."""
+
+    def __init__(self):
+        super().__init__()
+        self.FORMATS = None
 
     def format(self, record):
         """Format the record with specific format."""
