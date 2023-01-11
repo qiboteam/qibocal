@@ -368,7 +368,7 @@ def qubit_spectroscopy_flux(
         for fluxline in fluxlines:
             for current in current_ranges[fluxline]:
                 # set new flux current
-                platform.qf_port[fluxline].current = current
+                platform.qb_port[fluxline].current = current
 
                 # TODO: adjust resonator frequency if coefs available in the runcard
                 # coefs should be determined in resonator_spectroscopy_flux
