@@ -21,13 +21,34 @@ from qibocal.calibrations.protocols.utils import (
 from qibocal.config import raise_error
 
 """ TODO
-    - Don't load the whole experiment into the results class
+    - Don't load the whole experiment into the results class -> Its just a copy
+    of the pointer! So it's fine.
     - Write validation functions
     - qubits_active, qubits_passive ?
     - Noise model integration
-    - Use Renatos functions from quantum_info moduel
+    - Use Renatos functions from quantum_info module
       * Pauli basis
       * average_gate_fidelity
+    - Make quantum hardware
+    - Change result class structure
+      * Add used noisemodel with parameters.
+      * Add validation of simulation
+      * Redo the fitting-
+    - Crosstalk -> Correlated?
+    - Wo bricht crosstalk RB wegen Groessenordnungen bei Irreps? -> Theorie frage,
+    - Nor locales depolarizing, 2qubit irreps params should follow from 1 qubit irrpes
+
+    - validation function:
+        * Falls funktion maetichg (generell auf module anwendbar, zB fourier matrix )
+        * Theoretical validation function if too specific into testing function
+            of said module
+
+"""
+""" TODO with Liza
+- Add initial state to abstract Experiment class or to data ??
+   * XId in filter function result times rho
+- Add possiblilty to choose different measurement basis -> watch out
+- Change basic functions from validation in XId
 """
 
 
@@ -294,8 +315,38 @@ class Experiment:
         return {"samples": samples}
 
 
-class Result:
-    """Once initialized with the correct parameters an Result object can build
+class Protocol:
+    def __init__(self, module) -> None:
+        self.module = module
+
+    def execute(
+        self,
+        qubit: list,
+        depths: list,
+        runs: int,
+        nshots: int,
+        nqubit: int = None,
+        noise_model: str = None,
+        noise_params: list = None,
+    ) -> None:
+        # Check if noise should artificially be added.
+        if noise_model is not None:
+            # Get the wanted noise model class.
+            noise_model = getattr(noisemodels, noise_model)(*noise_params)
+        # Initiate the circuit factory and the Experiment object.
+        factory = self.module.moduleFactory(nqubit, depths, runs, qubits=qubit)
+        experiment = self.module.moduleExperiment(
+            factory, nshots, noisemodel=noise_model
+        )
+        # Execute the experiment.
+        experiment.perform(experiment.execute)
+        data = Data()
+        data.df = experiment.dataframe
+        yield data
+
+
+class Report:
+    """Once initialized with the correct parameters an Report object can build
     reports to display results of an randomized benchmarking experiment.
     """
 
@@ -356,7 +407,7 @@ class Result:
         myfigs.append(fig)
         self.all_figures.append({"figs": myfigs})
 
-    def report(self):
+    def build(self):
         from plotly.subplots import make_subplots
 
         l = len(self.all_figures)

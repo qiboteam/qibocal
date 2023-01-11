@@ -12,7 +12,7 @@ from qibo.noise import NoiseModel, PauliError
 from qibolab.platforms.abstract import AbstractPlatform
 
 import qibocal.calibrations.protocols.noisemodels as noisemodels
-from qibocal.calibrations.protocols.abstract import Experiment, Result
+from qibocal.calibrations.protocols.abstract import Experiment, Report
 from qibocal.calibrations.protocols.abstract import (
     SingleCliffordsFactory as moduleFactory,
 )
@@ -83,7 +83,7 @@ class moduleExperiment(Experiment):
         return datadict
 
 
-class moduleResult(Result):
+class moduleReport(Report):
     def __init__(self, dataframe: pd.DataFrame, fitting_func) -> None:
         super().__init__(dataframe)
         self.fitting_func = fitting_func
@@ -177,10 +177,10 @@ def theoretical_outcome(noisemodel: NoiseModel) -> float:
 def analyze(experiment: moduleExperiment, noisemodel: NoiseModel = None):
     # Apply the fiterfunction via matmul operator.
     experiment.perform(filter_function)
-    result = moduleResult(experiment.dataframe, fit_exp1_func)
-    result.cross_figs()
-    result.info_dict["effective depol"] = np.around(theoretical_outcome(noisemodel), 3)
-    report = result.report()
+    report = moduleReport(experiment.dataframe, fit_exp1_func)
+    report.cross_figs()
+    report.info_dict["effective depol"] = np.around(theoretical_outcome(noisemodel), 3)
+    report = report.build()
     return report
 
 

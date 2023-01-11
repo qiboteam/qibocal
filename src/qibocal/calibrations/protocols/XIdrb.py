@@ -1,13 +1,13 @@
-# 1. step:
+# 1. Step:
 #   Define the two module specific classes which are used in defining and executing an experiment,
 #   the circuit factory and experiment class.
 #   They can also just inherit everything from another module.
-# 2. step:
+# 2. Step:
 #   Write the analzye function.
-# 3. step:
+# 3. Step:
 #   Write the result class which uses the modified data (modified by the analyze function)
 #   from the experiment object and displays the results module specific.
-# 4. step:
+# 4. Step:
 #
 # Load to __init__.py file in calibrations/
 # Make a jupyter notebook with the single steps with 'checks'
@@ -24,12 +24,11 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from qibo import gates
-from qibo.gates import channels
 from qibo.models import Circuit
 from qibo.noise import NoiseModel, PauliError
 from qibolab.platforms.abstract import AbstractPlatform
 
-from qibocal.calibrations.protocols.abstract import Circuitfactory, Experiment, Result
+from qibocal.calibrations.protocols.abstract import Circuitfactory, Experiment, Report
 from qibocal.calibrations.protocols.utils import (
     effective_depol,
     gate_adjoint_action_to_pauli_liouville,
@@ -87,7 +86,7 @@ class moduleExperiment(Experiment):
 
 
 # Define the result class for this specific module.
-class moduleResult(Result):
+class moduleReport(Report):
     def __init__(self, dataframe: pd.DataFrame, fitting_func) -> None:
         super().__init__(dataframe)
         self.fitting_func = fitting_func
@@ -100,6 +99,7 @@ class moduleResult(Result):
         self.scatter_fit_fig(xdata_scatter, ydata_scatter, xdata, ydata)
 
 
+# filter functions always dependent on circuit and datarow!
 def filter_sign(circuit: Circuit, datarow: dict) -> dict:
     """Calculates the filtered signal for the XId.
 
@@ -131,10 +131,9 @@ def analyze(
     experiment: Experiment, noisemodel: NoiseModel = None, **kwargs
 ) -> go._figure.Figure:
     experiment.perform(filter_sign)
-    result = moduleResult(experiment.dataframe, fit_exp1_func)
-    result.info_dict["Phi eigvalues"] = np.around(theoretical_outcome(noisemodel), 3)
-    result.single_fig()
-    report = result.report()
+    report = moduleReport(experiment.dataframe, fit_exp1_func)
+    report.single_fig()
+    report = report.build()
     return report
 
 
@@ -151,6 +150,8 @@ def theoretical_outcome(noisemodel: NoiseModel) -> list:
     Yields:
         Iterator[float]: _description_
     """
+    from qibocal.calibrations.protocols import validate_simulations
+
     # Check for correctness of noise model and gate independence.
     errorkeys = noisemodel.errors.keys()
     if len(errorkeys) == 1 and list(errorkeys)[0] == gates.X:
@@ -166,8 +167,7 @@ def theoretical_outcome(noisemodel: NoiseModel) -> list:
                 np.eye(4)
                 - liouvillerep @ gate_adjoint_action_to_pauli_liouville(gates.X(0))
             ) / 2
-            eigvalues, eigvectors = np.linalg.eig(phi)
-    return list(eigvalues)
+    return validate_simulations.validation(phi)
 
 
 # Make ``perform`` take a whole noisemodel already.

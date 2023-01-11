@@ -18,7 +18,7 @@ from qibolab.platforms.abstract import AbstractPlatform
 import qibocal.calibrations.protocols.noisemodels as noisemodels
 from qibocal.calibrations.protocols.abstract import (
     Experiment,
-    Result,
+    Report,
     SingleCliffordsFactory,
 )
 from qibocal.calibrations.protocols.utils import effective_depol
@@ -89,13 +89,15 @@ class moduleExperiment(Experiment):
             raise_error(KeyError, "No depths. Execute experiment first.")
 
 
-class moduleResult(Result):
+class moduleReport(Report):
     def __init__(self, dataframe: pd.DataFrame, fitting_func) -> None:
         super().__init__(dataframe)
         self.fitting_func = fitting_func
         self.title = "Standard Randomized Benchmarking"
 
-    def single_fig(self, dataframe):
+    def single_fig(
+        self,
+    ):
         xdata_scatter = self.df["depth"].to_numpy()
         ydata_scatter = self.df["groundstate_probabilities"].to_numpy()
         xdata, ydata = self.extract("depth", "groundstate_probabilities", "mean")
@@ -167,10 +169,10 @@ def analyze(
     # Compute and add the ground state probabilities.
     # experiment = groundstate_probability(experiment)
     experiment.perform(groundstate_probs)
-    result = moduleResult(experiment.dataframe, fit_exp1B_func)
-    result.single_fig()
-    result.info_dict["effective depol"] = np.around(theoretical_outcome(noisemodel), 3)
-    report = result.report()
+    report = moduleReport(experiment.dataframe, fit_exp1B_func)
+    report.single_fig()
+    report.info_dict["effective depol"] = np.around(theoretical_outcome(noisemodel), 3)
+    report = report.build()
     return report
 
 
