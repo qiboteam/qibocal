@@ -1,6 +1,7 @@
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
+from qibolab.sweeper import Sweeper
 
 from qibocal import plots
 from qibocal.data import DataUnits
@@ -16,8 +17,9 @@ def qubit_spectroscopy(
     fast_step,
     precision_width,
     precision_step,
+    wait_time,
+    nshots=1024,
     software_averages=1,
-    points=10,
 ):
     r"""
     Perform spectroscopy on the qubit.
@@ -69,20 +71,21 @@ def qubit_spectroscopy(
     qd_pulses = {}
     for qubit in qubits:
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
-            qubit, start=0, duration=5000
+            qubit, start=0, duration=500
         )
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=5000)
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+            qubit, start=qd_pulses[qubit].finish
+        )
         sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
 
-    # define the parameter to sweep and its range:
-    # qubit drive frequency
-    qubit_frequencies = {}
-    for qubit in qubits:
-        qubit_frequencies[qubit] = platform.characterization["single_qubit"][qubit][
-            "qubit_freq"
-        ]
     delta_frequency_range = np.arange(-fast_width // 2, fast_width // 2, fast_step)
+    sweeper = Sweeper(
+        "frequency",
+        delta_frequency_range,
+        pulses=[qd_pulses[qubit] for qubit in qubits],
+        wait_time=wait_time,
+    )
 
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
@@ -94,12 +97,31 @@ def qubit_spectroscopy(
     )
 
     # repeat the experiment as many times as defined by software_averages
-    count = 0
     for iteration in range(software_averages):
-        # sweep the parameter
-        for delta_freq in delta_frequency_range:
+        results = platform.sweep(sequence, sweeper, nshots=nshots)
+
+        while (
+            any(result.in_progress for result in results.values())
+            or len(fast_sweep_data) == 0
+        ):
+            # retrieve the results for every qubit
+            for qubit, ro_pulse in ro_pulses.items():
+                # average msr, phase, i and q over the number of shots defined in the runcard
+                result = results[ro_pulse.serial]
+                # store the results
+                r = {
+                    "MSR[V]": result.MSR,
+                    "i[V]": result.I,
+                    "q[V]": result.Q,
+                    "phase[rad]": result.phase,
+                    "frequency[Hz]": delta_frequency_range + ro_pulse.frequency,
+                    "qubit": len(result) * [qubit],
+                    "iteration": len(result) * [iteration],
+                }
+                fast_sweep_data.load_data_from_dict(r)
+
             # save data as often as defined by points
-            if count % points == 0 and count > 0:
+            if len(result) > 0:
                 # save data
                 yield fast_sweep_data
                 # calculate and save fit
@@ -111,33 +133,7 @@ def qubit_spectroscopy(
                     resonator_type=platform.resonator_type,
                     labels=["qubit_freq", "peak_voltage", "intermediate_freq"],
                 )
-            # reconfigure the instruments based on the new resonator frequency
-            # in this case setting the local oscillators
-            # the pulse sequence does not need to be modified or recreated between executions
-            for qubit in qubits:
-                platform.qd_port[qubit].lo_frequency = (
-                    delta_freq + qubit_frequencies[qubit] - qd_pulses[qubit].frequency
-                )
 
-            # execute the pulse sequence
-            results = platform.execute_pulse_sequence(sequence)
-
-            # retrieve the results for every qubit
-            for qubit in qubits:
-                # average msr, phase, i and q over the number of shots defined in the runcard
-                msr, phase, i, q = results[ro_pulses[qubit].serial]
-                # store the results
-                r = {
-                    "MSR[V]": msr,
-                    "i[V]": i,
-                    "q[V]": q,
-                    "phase[rad]": phase,
-                    "frequency[Hz]": delta_freq + qubit_frequencies[qubit],
-                    "qubit": qubit,
-                    "iteration": iteration,
-                }
-                fast_sweep_data.add(r)
-            count += 1
     # finally, save the remaining data and fits
     yield fast_sweep_data
     yield lorentzian_fit(
@@ -150,35 +146,41 @@ def qubit_spectroscopy(
     )
 
     # store max/min peaks as new frequencies
-    new_qubit_frequencies = {}
-    for qubit in qubits:
-        qubit_data = (
-            fast_sweep_data.df[fast_sweep_data.df["qubit"] == qubit]
-            .drop(columns=["qubit", "iteration"])
-            .groupby("frequency", as_index=False)
-            .mean()
-        )
-        if platform.resonator_type == "3D":
-            new_qubit_frequencies[qubit] = (
-                qubit_data["frequency"][
-                    np.argmin(qubit_data["MSR"].pint.to("V").pint.magnitude)
-                ]
-                .to("Hz")
-                .magnitude
-            )
-        else:
-            new_qubit_frequencies[qubit] = (
-                qubit_data["frequency"][
-                    np.argmax(qubit_data["MSR"].pint.to("V").pint.magnitude)
-                ]
-                .to("Hz")
-                .magnitude
-            )
+    # new_qubit_frequencies = {}
+    # for qubit in qubits:
+    #    qubit_data = (
+    #        fast_sweep_data.df[fast_sweep_data.df["qubit"] == qubit]
+    #        .drop(columns=["qubit", "iteration"])
+    #        .groupby("frequency", as_index=False)
+    #        .mean()
+    #    )
+    #    if platform.resonator_type == "3D":
+    #        new_qubit_frequencies[qubit] = (
+    #            qubit_data["frequency"][
+    #                np.argmin(qubit_data["MSR"].pint.to("V").pint.magnitude)
+    #            ]
+    #            .to("Hz")
+    #            .magnitude
+    #        )
+    #    else:
+    #        new_qubit_frequencies[qubit] = (
+    #            qubit_data["frequency"][
+    #                np.argmax(qubit_data["MSR"].pint.to("V").pint.magnitude)
+    #            ]
+    #            .to("Hz")
+    #            .magnitude
+    #        )
 
     # run a precision sweep around the newly detected frequencies
 
     delta_frequency_range = np.arange(
         -precision_width // 2, precision_width // 2, precision_step
+    )
+    sweeper = Sweeper(
+        "frequency",
+        delta_frequency_range,
+        pulses=[qd_pulses[qubit] for qubit in qubits],
+        wait_time=wait_time,
     )
 
     # create a second DataUnits object to store the results,
@@ -189,12 +191,31 @@ def qubit_spectroscopy(
     )
 
     # repeat the experiment as many times as defined by software_averages
-    count = 0
     for iteration in range(software_averages):
-        # sweep the parameter
-        for delta_freq in delta_frequency_range:
+        results = platform.sweep(sequence, sweeper, nshots=nshots)
+
+        while (
+            any(result.in_progress for result in results.values())
+            or len(precision_sweep_data) == 0
+        ):
+            # retrieve the results for every qubit
+            for qubit, ro_pulse in ro_pulses.items():
+                # average msr, phase, i and q over the number of shots defined in the runcard
+                result = results[ro_pulse.serial]
+                # store the results
+                r = {
+                    "MSR[V]": result.MSR,
+                    "i[V]": result.I,
+                    "q[V]": result.Q,
+                    "phase[rad]": result.phase,
+                    "frequency[Hz]": delta_frequency_range + ro_pulse.frequency,
+                    "qubit": len(result) * [qubit],
+                    "iteration": len(result) * [iteration],
+                }
+                precision_sweep_data.load_data_from_dict(r)
+
             # save data as often as defined by points
-            if count % points == 0 and count > 0:
+            if len(result) > 0:
                 # save data
                 yield precision_sweep_data
                 # calculate and save fit
@@ -204,37 +225,9 @@ def qubit_spectroscopy(
                     y="MSR[uV]",
                     qubits=qubits,
                     resonator_type=platform.resonator_type,
-                    labels=["resonator_freq", "peak_voltage", "intermediate_freq"],
-                )
-            # reconfigure the instrument based on the new resonator frequency
-            # in this case setting the local oscillators
-            # the pulse sequence does not need to be modified between executions
-            for qubit in qubits:
-                platform.qd_port[qubit].lo_frequency = (
-                    delta_freq
-                    + new_qubit_frequencies[qubit]
-                    - qd_pulses[qubit].frequency
+                    labels=["qubit_freq", "peak_voltage", "intermediate_freq"],
                 )
 
-            # execute the pulse sequence
-            results = platform.execute_pulse_sequence(sequence)
-
-            # retrieve the results for every qubit
-            for pulse in sequence.ro_pulses:
-                # average msr, phase, i and q over the number of shots defined in the runcard
-                msr, phase, i, q = results[pulse.serial]
-                # store the results
-                r = {
-                    "MSR[V]": msr,
-                    "i[V]": i,
-                    "q[V]": q,
-                    "phase[rad]": phase,
-                    "frequency[Hz]": delta_freq + new_qubit_frequencies[pulse.qubit],
-                    "qubit": pulse.qubit,
-                    "iteration": iteration,
-                }
-                precision_sweep_data.add(r)
-            count += 1
     # finally, save the remaining data and fits
     yield precision_sweep_data
     yield lorentzian_fit(
@@ -243,7 +236,7 @@ def qubit_spectroscopy(
         y="MSR[uV]",
         qubits=qubits,
         resonator_type=platform.resonator_type,
-        labels=["resonator_freq", "peak_voltage", "intermediate_freq"],
+        labels=["qubit_freq", "peak_voltage", "intermediate_freq"],
     )
 
 
@@ -256,11 +249,12 @@ def qubit_spectroscopy_flux(
     qubits: list,
     freq_width,
     freq_step,
-    current_width,
-    current_step,
+    bias_width,
+    bias_step,
     fluxlines,
+    wait_time,
+    nshots=1024,
     software_averages=1,
-    points=10,
 ):
     r"""
     Perform spectroscopy on the qubit modifying the current applied in the flux control line.
@@ -314,43 +308,30 @@ def qubit_spectroscopy_flux(
     qd_pulses = {}
     for qubit in qubits:
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
-            qubit, start=0, duration=5000
+            qubit, start=0, duration=500
         )
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=5000)
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+            qubit, start=qd_pulses[qubit].finish
+        )
         sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:
     # qubit drive frequency
-    qubit_frequencies = {}
-    for qubit in qubits:
-        qubit_frequencies[qubit] = platform.characterization["single_qubit"][qubit][
-            "qubit_freq"
-        ]
     delta_frequency_range = np.arange(-freq_width // 2, freq_width // 2, freq_step)
-
-    # flux current
-    sweetspot_currents = {}
-    current_ranges = {}
-    current_min = {}
-    current_max = {}
+    frequency_sweeper = Sweeper(
+        "frequency",
+        delta_frequency_range,
+        pulses=[qd_pulses[qubit] for qubit in qubits],
+        wait_time=wait_time,
+    )
 
     if fluxlines == "qubits":
         fluxlines = qubits
 
-    for fluxline in fluxlines:
-        sweetspot_currents[fluxline] = platform.characterization["single_qubit"][qubit][
-            "sweetspot"
-        ]
-        current_min[fluxline] = max(
-            -current_width / 2 + sweetspot_currents[fluxline], -0.03
-        )
-        current_max[fluxline] = min(
-            +current_width / 2 + sweetspot_currents[fluxline], +0.03
-        )
-        current_ranges[fluxline] = np.arange(
-            current_min[fluxline], current_max[fluxline], current_step
-        )
+    # flux current
+    delta_bias_range = np.arange(-bias_width / 2, bias_width / 2, bias_step)
+    bias_sweeper = Sweeper("offset", delta_bias_range, qubits=fluxlines, wait_time=0)
 
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
@@ -364,51 +345,36 @@ def qubit_spectroscopy_flux(
     # repeat the experiment as many times as defined by software_averages
     count = 0
     for iteration in range(software_averages):
-        # sweep the parameters
-        for fluxline in fluxlines:
-            for current in current_ranges[fluxline]:
-                # set new flux current
-                platform.qb_port[fluxline].current = current
+        results = platform.sweep(
+            sequence, bias_sweeper, frequency_sweeper, nshots=nshots
+        )
 
-                # TODO: adjust resonator frequency if coefs available in the runcard
-                # coefs should be determined in resonator_spectroscopy_flux
-                # matrix of currents -> magnetic flux -> freq shift
+        while any(result.in_progress for result in results.values()) or len(data) == 0:
+            # retrieve the results for every qubit
+            for qubit, ro_pulse in ro_pulses.items():
+                # TODO: Fix this for multiple fluxlines
+                fluxline = fluxlines[0]
+                # average msr, phase, i and q over the number of shots defined in the runcard
+                result = results[ro_pulse.serial]
+                # store the results
+                r = {
+                    "MSR[V]": result.MSR,
+                    "i[V]": result.I,
+                    "q[V]": result.Q,
+                    "phase[rad]": result.phase,
+                    "frequency[Hz]": delta_frequency_range + ro_pulse.frequency,
+                    "current[A]": delta_bias_range
+                    + platform.qubits[fluxline].flux.offset,
+                    "qubit": len(result) * [qubit],
+                    "fluxline": len(result) * [fluxline],
+                    "iteration": len(result) * [iteration],
+                }
+                data.load_data_from_dict(r)
 
-                for delta_freq in delta_frequency_range:
-                    # save data as often as defined by points
-                    if count % points == 0:
-                        # save data
-                        yield data
-                        # TODO: calculate and save fit
+            # save data as often as defined by points
+            if len(result) > 0:
+                # save data
+                yield data
 
-                    # set new lo frequency
-                    for qubit in qubits:
-                        platform.qd_port[qubit].lo_frequency = (
-                            delta_freq
-                            + qubit_frequencies[qubit]
-                            - qd_pulses[qubit].frequency
-                        )
-
-                    # execute the pulse sequence
-                    result = platform.execute_pulse_sequence(sequence)
-
-                    # retrieve the results for every qubit
-                    for qubit in qubits:
-                        # average msr, phase, i and q over the number of shots defined in the runcard
-                        msr, phase, i, q = result[ro_pulses[qubit].serial]
-                        # store the results
-                        r = {
-                            "MSR[V]": msr,
-                            "i[V]": i,
-                            "q[V]": q,
-                            "phase[rad]": phase,
-                            "frequency[Hz]": delta_freq + qubit_frequencies[qubit],
-                            "current[A]": current,
-                            "qubit": qubit,
-                            "fluxline": fluxline,
-                            "iteration": iteration,
-                        }
-                        data.add(r)
-                    count += 1
     # finally, save the remaining data and fits
     yield data
