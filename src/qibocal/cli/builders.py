@@ -31,14 +31,15 @@ class singleActionParser:
         # FIXME: dummy fix
         self.__name__ = name
 
-    def build(self, name):
+    def build(self):
 
-        os.makedirs(self.path)
+        if not os.path.exists(self.path):
+            os.makedirs(self.path)
         # collect function from module
-        self.func = getattr(calibrations, name)
+        self.func = getattr(calibrations, self.name)
 
         sig = inspect.signature(self.func)
-        self.params = self.runcard["actions"][name]
+        self.params = self.runcard["actions"][self.name]
         for param in list(sig.parameters)[2:-1]:
             if param not in self.params:
                 raise_error(AttributeError, f"Missing parameter {param} in runcard.")
@@ -244,23 +245,6 @@ class ActionBuilder:
         with open(f"{path}/meta.yml", "w") as file:
             yaml.dump(meta, file)
 
-    def _build_single_action(self, name):
-        """Helper method to parse the actions in the runcard."""
-        f = getattr(calibrations, name)
-        path = os.path.join(self.folder, f"data/{name}/")
-        os.makedirs(path)
-        sig = inspect.signature(f)
-        params = self.runcard["actions"][name]
-        for param in list(sig.parameters)[2:-1]:
-            if param not in params:
-                raise_error(AttributeError, f"Missing parameter {param} in runcard.")
-        if f.__annotations__["qubit"] == int:
-            single_qubit_action = True
-        else:
-            single_qubit_action = False
-
-        return f, params, path, single_qubit_action
-
     def execute(self):
         """Method to execute sequentially all the actions in the runcard."""
         if self.platform is not None:
@@ -269,35 +253,19 @@ class ActionBuilder:
             self.platform.start()
 
         for action in self.runcard["actions"]:
-            parser = RBsingleActionParser(self.runcard, self.folder, action)
-            parser.build(self.qubits)
-            parser.execute(self.format, self.platform)
+            try:
+                parser = RBsingleActionParser(self.runcard, self.folder, action)
+                parser.build(self.qubits)
+                parser.execute(self.format, self.platform)
+            # TODO: find a better way to choose between the two parsers
+            except (ModuleNotFoundError, KeyError):
+                parser = singleActionParser(self.runcard, self.folder, action)
+                parser.build()
+                parser.execute(self.format, self.platform)
 
         if self.platform is not None:
             self.platform.stop()
             self.platform.disconnect()
-
-    def _execute_single_action(self, routine, arguments, path, single_qubit):
-        """Method to execute a single action and retrieving the results."""
-        if self.format is None:
-            raise_error(ValueError, f"Cannot store data using {self.format} format.")
-        if single_qubit:
-            for qubit in self.qubits:
-                results = routine(self.platform, qubit, **arguments)
-
-                for data in results:
-                    getattr(data, f"to_{self.format}")(path)
-
-                if self.platform is not None:
-                    self.update_platform_runcard(qubit, routine.__name__)
-        else:
-            results = routine(self.platform, self.qubits, **arguments)
-
-            for data in results:
-                getattr(data, f"to_{self.format}")(path)
-
-            if self.platform is not None:
-                self.update_platform_runcard(qubit, routine.__name__)
 
     def update_platform_runcard(self, qubit, routine):
 
@@ -364,8 +332,6 @@ class ReportBuilder:
             elif hasattr(calibrations.protocols, action):
                 routine = RBsingleActionParser(self.runcard, self.path, action)
                 routine.build(self.qubits)
-                print(routine.plots)
-                print(hasattr(routine, "plots"))
             else:
                 raise_error(ValueError, f"Undefined action {action} in report.")
 
