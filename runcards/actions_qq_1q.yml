@@ -8,13 +8,13 @@ format: csv
 
 actions:
 
-  resonator_spectroscopy: # wide
-    fast_width: 30_000_000
-    fast_step: 1_000_000
-    precision_width: 2_000_000
-    precision_step: 100_000
-    software_averages: 1
-    points: 5
+  # resonator_spectroscopy: # wide
+  #   fast_width: 30_000_000
+  #   fast_step: 1_000_000
+  #   precision_width: 2_000_000
+  #   precision_step: 100_000
+  #   software_averages: 1
+  #   points: 5
 
   # resonator_spectroscopy: # narrow
   #   fast_width: 10_000_000
@@ -24,14 +24,14 @@ actions:
   #   software_averages: 2
   #   points: 5
 
-  # resonator_punchout:
-  #   freq_width: 10_000_000
-  #   freq_step: 200_000
-  #   min_att: 2
-  #   max_att: 50
-  #   step_att: 2
-  #   software_averages: 2
-  #   points: 5
+  resonator_punchout:
+    freq_width: 10_000_000
+    freq_step: 200_000
+    min_att: 2
+    max_att: 50
+    step_att: 2
+    software_averages: 1
+    points: 5
 
   # resonator_spectroscopy_flux: # wide
   #   freq_width: 2_000_000
