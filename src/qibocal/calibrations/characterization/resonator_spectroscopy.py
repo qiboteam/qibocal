@@ -301,7 +301,7 @@ def resonator_punchout(
     )
 
     # repeat the experiment as many times as defined by software_averages
-    count = 0
+    atts = np.repeat(attenuation_range, len(delta_frequency_range))
     for iteration in range(software_averages):
         results = platform.sweep(sequence, att_sweeper, freq_sweeper, nshots=nshots)
 
@@ -315,7 +315,6 @@ def resonator_punchout(
                     len(attenuation_range)
                     * list(delta_frequency_range + ro_pulse.frequency)
                 ).flatten()
-                atts = np.repeat(attenuation_range, len(delta_frequency_range))
                 r = result.to_dict()
                 r.update(
                     {
