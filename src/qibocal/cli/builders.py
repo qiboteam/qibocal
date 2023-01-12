@@ -150,7 +150,7 @@ class ActionBuilder:
         if self.format is None:
             raise_error(ValueError, f"Cannot store data using {self.format} format.")
 
-        results = routine(self.platform, qubit, **arguments)
+        results = routine(self.platform, self.qubits, **arguments)
 
         for data in results:
             getattr(data, f"to_{self.format}")(path)
