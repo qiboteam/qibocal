@@ -71,10 +71,6 @@ def resonator_spectroscopy(
         sequence.add(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:
-    # resonator frequency
-    resonator_frequencies = {}
-    for qubit in qubits.values():
-        resonator_frequencies[qubit] = qubit.readout_frequency
 
     delta_frequency_range = np.arange(-fast_width // 2, fast_width // 2, fast_step)
 

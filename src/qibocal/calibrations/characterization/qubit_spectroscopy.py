@@ -109,15 +109,16 @@ def qubit_spectroscopy(
                     y="MSR[uV]",
                     qubits=qubits,
                     resonator_type=platform.resonator_type,
-                    labels=["qubit_freq", "peak_voltage", "intermediate_freq"],
+                    labels=["qubit_freq", "peak_voltage"],
                 )
             # reconfigure the instruments based on the new resonator frequency
             # in this case setting the local oscillators
             # the pulse sequence does not need to be modified or recreated between executions
             for qubit in qubits:
-                platform.qd_port[qubit].lo_frequency = (
-                    delta_freq + qubit_frequencies[qubit] - qd_pulses[qubit].frequency
-                )
+                qd_pulses[qubit].frequency = delta_freq + qubits[qubit].drive_frequency
+                # platform.qd_port[qubit].lo_frequency = (
+                #     delta_freq + qubit_frequencies[qubit] - qd_pulses[qubit].frequency
+                # )
 
             # execute the pulse sequence
             results = platform.execute_pulse_sequence(sequence)
@@ -125,7 +126,7 @@ def qubit_spectroscopy(
             # retrieve the results for every qubit
             for qubit in qubits:
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                msr, phase, i, q = results[ro_pulses[qubit].serial]
+                msr, phase, i, q = results[qubit]
                 # store the results
                 r = {
                     "MSR[V]": msr,
@@ -146,11 +147,10 @@ def qubit_spectroscopy(
         y="MSR[uV]",
         qubits=qubits,
         resonator_type=platform.resonator_type,
-        labels=["qubit_freq", "peak_voltage", "intermediate_freq"],
+        labels=["qubit_freq", "peak_voltage"],
     )
 
     # store max/min peaks as new frequencies
-    new_qubit_frequencies = {}
     for qubit in qubits:
         qubit_data = (
             fast_sweep_data.df[fast_sweep_data.df["qubit"] == qubit]
@@ -159,7 +159,7 @@ def qubit_spectroscopy(
             .mean()
         )
         if platform.resonator_type == "3D":
-            new_qubit_frequencies[qubit] = (
+            qubits[qubit].drive_frequency = (
                 qubit_data["frequency"][
                     np.argmin(qubit_data["MSR"].pint.to("V").pint.magnitude)
                 ]
@@ -167,7 +167,7 @@ def qubit_spectroscopy(
                 .magnitude
             )
         else:
-            new_qubit_frequencies[qubit] = (
+            qubits[qubit].drive_frequency = (
                 qubit_data["frequency"][
                     np.argmax(qubit_data["MSR"].pint.to("V").pint.magnitude)
                 ]
@@ -204,17 +204,13 @@ def qubit_spectroscopy(
                     y="MSR[uV]",
                     qubits=qubits,
                     resonator_type=platform.resonator_type,
-                    labels=["resonator_freq", "peak_voltage", "intermediate_freq"],
+                    labels=["resonator_freq", "peak_voltage"],
                 )
             # reconfigure the instrument based on the new resonator frequency
             # in this case setting the local oscillators
             # the pulse sequence does not need to be modified between executions
             for qubit in qubits:
-                platform.qd_port[qubit].lo_frequency = (
-                    delta_freq
-                    + new_qubit_frequencies[qubit]
-                    - qd_pulses[qubit].frequency
-                )
+                qd_pulses[qubit].frequency = delta_freq + qubits[qubit].drive_frequency
 
             # execute the pulse sequence
             results = platform.execute_pulse_sequence(sequence)
@@ -222,14 +218,14 @@ def qubit_spectroscopy(
             # retrieve the results for every qubit
             for pulse in sequence.ro_pulses:
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                msr, phase, i, q = results[pulse.serial]
+                msr, phase, i, q = results[pulse.qubit]
                 # store the results
                 r = {
                     "MSR[V]": msr,
                     "i[V]": i,
                     "q[V]": q,
                     "phase[rad]": phase,
-                    "frequency[Hz]": delta_freq + new_qubit_frequencies[pulse.qubit],
+                    "frequency[Hz]": qd_pulses[qubit].frequency,
                     "qubit": pulse.qubit,
                     "iteration": iteration,
                 }
@@ -243,7 +239,7 @@ def qubit_spectroscopy(
         y="MSR[uV]",
         qubits=qubits,
         resonator_type=platform.resonator_type,
-        labels=["resonator_freq", "peak_voltage", "intermediate_freq"],
+        labels=["qubit_freq", "peak_voltage"],
     )
 
 
