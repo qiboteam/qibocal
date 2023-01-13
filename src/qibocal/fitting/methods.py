@@ -8,9 +8,7 @@ from qibocal.data import Data
 from qibocal.fitting.utils import cos, exp, flipping, lorenzian, parse, rabi, ramsey
 
 
-def lorentzian_fit(
-    data, x, y, qubits, resonator_type, labels, fit_file_name=None, lo_freqs=None
-):
+def lorentzian_fit(data, x, y, qubits, resonator_type, labels, fit_file_name=None):
     r"""
     Fitting routine for resonator/qubit spectroscopy.
     The used model is
@@ -125,7 +123,6 @@ def lorentzian_fit(
                 "popt3",
                 labels[0],
                 labels[1],
-                labels[2],
                 "qubit",
             ],
         )
@@ -139,7 +136,6 @@ def lorentzian_fit(
                 "popt3",
                 labels[0],
                 labels[1],
-                labels[2],
                 "qubit",
             ],
         )
@@ -211,15 +207,10 @@ def lorentzian_fit(
 
         freq = f0
 
-        intermediate_freq = 0
-        if lo_freqs != None:
-            intermediate_freq = freq - lo_freqs[qubit]
-
         data_fit.add(
             {
                 labels[0]: freq,
                 labels[1]: peak_voltage,
-                labels[2]: intermediate_freq,
                 "popt0": fit_res.best_values["amplitude"],
                 "popt1": fit_res.best_values["center"],
                 "popt2": fit_res.best_values["sigma"],
