@@ -71,7 +71,7 @@ def qubit_spectroscopy(
     qd_pulses = {}
     for qubit in qubits:
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
-            qubit, start=0, duration=500
+            qubit, start=0, duration=2000
         )
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=qd_pulses[qubit].finish
@@ -114,11 +114,11 @@ def qubit_spectroscopy(
                     "i[V]": result.I,
                     "q[V]": result.Q,
                     "phase[rad]": result.phase,
-                    "frequency[Hz]": delta_frequency_range + ro_pulse.frequency,
+                    "frequency[Hz]": delta_frequency_range + qd_pulses[qubit].frequency,
                     "qubit": len(result) * [qubit],
                     "iteration": len(result) * [iteration],
                 }
-                fast_sweep_data.load_data_from_dict(r)
+                fast_sweep_data.add_data_from_dict(r)
 
             # save data as often as defined by points
             if len(result) > 0:
@@ -208,11 +208,11 @@ def qubit_spectroscopy(
                     "i[V]": result.I,
                     "q[V]": result.Q,
                     "phase[rad]": result.phase,
-                    "frequency[Hz]": delta_frequency_range + ro_pulse.frequency,
+                    "frequency[Hz]": delta_frequency_range + qd_pulses[qubit].frequency,
                     "qubit": len(result) * [qubit],
                     "iteration": len(result) * [iteration],
                 }
-                precision_sweep_data.load_data_from_dict(r)
+                precision_sweep_data.add_data_from_dict(r)
 
             # save data as often as defined by points
             if len(result) > 0:
@@ -308,7 +308,7 @@ def qubit_spectroscopy_flux(
     qd_pulses = {}
     for qubit in qubits:
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
-            qubit, start=0, duration=500
+            qubit, start=0, duration=2000
         )
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=qd_pulses[qubit].finish
@@ -351,25 +351,29 @@ def qubit_spectroscopy_flux(
 
         while any(result.in_progress for result in results.values()) or len(data) == 0:
             # retrieve the results for every qubit
-            for qubit, ro_pulse in ro_pulses.items():
-                # TODO: Fix this for multiple fluxlines
-                fluxline = fluxlines[0]
+            for qubit, fluxline in zip(qubits, fluxlines):
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                result = results[ro_pulse.serial]
+                result = results[ro_pulses[qubit].serial]
                 # store the results
-                r = {
-                    "MSR[V]": result.MSR,
-                    "i[V]": result.I,
-                    "q[V]": result.Q,
-                    "phase[rad]": result.phase,
-                    "frequency[Hz]": delta_frequency_range + ro_pulse.frequency,
-                    "current[A]": delta_bias_range
-                    + platform.qubits[fluxline].flux.offset,
-                    "qubit": len(result) * [qubit],
-                    "fluxline": len(result) * [fluxline],
-                    "iteration": len(result) * [iteration],
-                }
-                data.load_data_from_dict(r)
+                biases = (
+                    np.repeat(delta_bias_range, len(delta_frequency_range))
+                    + platform.qubits[fluxline].flux.offset
+                )
+                freqs = np.array(
+                    len(delta_bias_range)
+                    * list(delta_frequency_range + ro_pulses[qubit].frequency)
+                ).flatten()
+                r = result.to_dict()
+                r.update(
+                    {
+                        "frequency[Hz]": freqs,
+                        "current[A]": biases,
+                        "qubit": len(result) * [qubit],
+                        "fluxline": len(result) * [fluxline],
+                        "iteration": len(result) * [iteration],
+                    }
+                )
+                data.add_data_from_dict(r)
 
             # save data as often as defined by points
             if len(result) > 0:

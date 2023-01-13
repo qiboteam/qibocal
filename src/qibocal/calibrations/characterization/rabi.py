@@ -1,6 +1,7 @@
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
+from qibolab.sweeper import Sweeper
 
 from qibocal import plots
 from qibocal.data import DataUnits
@@ -111,12 +112,12 @@ def rabi_pulse_length(
 
             for qubit in qubits:
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                msr, phase, i, q = results[ro_pulses[qubit].serial]
+                result = results[ro_pulses[qubit].serial]
                 r = {
-                    "MSR[V]": msr,
-                    "i[V]": i,
-                    "q[V]": q,
-                    "phase[rad]": phase,
+                    "MSR[V]": np.mean(result.MSR),
+                    "i[V]": np.mean(result.I),
+                    "q[V]": np.mean(result.Q),
+                    "phase[rad]": np.mean(result.phase),
                     "time[ns]": duration,
                     "qubit": qubit,
                     "iteration": iteration,
@@ -272,8 +273,9 @@ def rabi_pulse_amplitude(
     pulse_amplitude_start,
     pulse_amplitude_end,
     pulse_amplitude_step,
+    wait_time,
+    nshots=1024,
     software_averages=1,
-    points=10,
 ):
 
     r"""
@@ -320,8 +322,10 @@ def rabi_pulse_amplitude(
     qd_pulses = {}
     ro_pulses = {}
     for qubit in qubits:
-        qd_pulses[qubit] = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=4)
+        qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+            qubit, start=qd_pulses[qubit].finish
+        )
         sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
 
@@ -329,6 +333,12 @@ def rabi_pulse_amplitude(
     # qubit drive pulse amplitude
     qd_pulse_amplitude_range = np.arange(
         pulse_amplitude_start, pulse_amplitude_end, pulse_amplitude_step
+    )
+    sweeper = Sweeper(
+        "amplitude",
+        qd_pulse_amplitude_range,
+        [qd_pulses[qubit] for qubit in qubits],
+        wait_time=wait_time,
     )
 
     # create a DataUnits object to store the results,
@@ -343,42 +353,35 @@ def rabi_pulse_amplitude(
     count = 0
     for iteration in range(software_averages):
         # sweep the parameter
-        for amplitude in qd_pulse_amplitude_range:
-            for qubit in qubits:
-                qd_pulses[qubit].amplitude = amplitude
-            # save data as often as defined by points
-            if count % points == 0 and count > 0:
-                yield data
-                # calculate and save fit
-                yield rabi_fit(
-                    data,
-                    x="amplitude[dimensionless]",
-                    y="MSR[uV]",
-                    qubits=qubits,
-                    resonator_type=platform.resonator_type,
-                    labels=[
-                        "pi_pulse_amplitude",
-                        "pi_pulse_peak_voltage",
-                    ],
-                )
-
-            # execute the pulse sequence
-            results = platform.execute_pulse_sequence(sequence)
-
+        results = platform.sweep(sequence, sweeper, nshots=nshots)
+        while any(result.in_progress for result in results.values()) or len(data) == 0:
             for qubit in qubits:
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                msr, phase, i, q = results[ro_pulses[qubit].serial]
-                r = {
-                    "MSR[V]": msr,
-                    "i[V]": i,
-                    "q[V]": q,
-                    "phase[rad]": phase,
-                    "amplitude[dimensionless]": amplitude,
-                    "qubit": qubit,
-                    "iteration": iteration,
-                }
-                data.add(r)
-            count += 1
+                result = results[ro_pulses[qubit].serial]
+                r = result.to_dict()
+                r.update(
+                    {
+                        "amplitude[dimensionless]": qd_pulse_amplitude_range,
+                        "qubit": len(result) * [qubit],
+                        "iteration": len(result) * [iteration],
+                    }
+                )
+                data.add_data_from_dict(r)
+
+            yield data
+            # calculate and save fit
+            yield rabi_fit(
+                data,
+                x="amplitude[dimensionless]",
+                y="MSR[uV]",
+                qubits=qubits,
+                resonator_type=platform.resonator_type,
+                labels=[
+                    "pi_pulse_amplitude",
+                    "pi_pulse_peak_voltage",
+                ],
+            )
+
     yield data
     yield rabi_fit(
         data,
