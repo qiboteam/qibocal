@@ -86,29 +86,21 @@ def gate_adjoint_action_to_pauli_liouville(gate: gates.gates) -> np.ndarray:
         [[np.trace(p2.conj().T @ matrix @ p1 @ matrix) for p1 in pauli] for p2 in pauli]
     )
 
+    # def probabilities(self) -> np.ndarray:
+    #     """Takes the stored samples and returns probabilities for each
+    #     possible state to occure.
 
-def embed_unitary_circuit(
-    circuit: models.Circuit, nqubits: int, support: list
-) -> models.Circuit:
-    """Takes a circuit and redistributes the gates to the support of
-    a new circuit with ``nqubits`` qubits.
+    #     Returns:
+    #         np.ndarray: Probability array of 2 dimension.
+    #     """
 
-    Args:
-        circuit (Circuit): The circuit with len(``support``) many qubits.
-        nqubits (int): Qubits of new circuit.
-        support (list): The qubits were the gates should be places.
-
-    Returns:
-        Circuit: Circuit with redistributed gates.
-    """
-
-    idxmap = np.vectorize(lambda idx: support[idx])
-    newcircuit = models.Circuit(nqubits)
-    for gate in circuit.queue:
-        if not isinstance(gate, gates.measurements.M):
-            newcircuit.add(
-                gate.__class__(gate.init_args[0], *idxmap(np.array(gate.init_args[1:])))
-            )
-        else:
-            newcircuit.add(gates.M(*idxmap(np.array(gate.init_args[0:]))))
-    return newcircuit
+    #     allsamples = self.samples
+    #     # Create all possible state vectors.
+    #     allstates = list(product([0, 1], repeat=len(allsamples[0][0])))
+    #     # Iterate over all the samples and count the different states.
+    #     probs = [
+    #         [np.sum(np.product(samples == state, axis=1)) for state in allstates]
+    #         for samples in allsamples
+    #     ]
+    #     probs = np.array(probs) / (self.nshots)
+    #     return probs

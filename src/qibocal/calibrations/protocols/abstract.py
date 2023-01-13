@@ -4,9 +4,7 @@ import abc
 import pickle
 from collections.abc import Iterable
 from copy import deepcopy
-from itertools import product
 from os.path import isfile
-from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -16,11 +14,13 @@ from qibo.models import Circuit
 from qibo.noise import NoiseModel
 
 import qibocal.fitting.rb_methods as fitting_methods
+from qibocal.calibrations.protocols import noisemodels
 from qibocal.calibrations.protocols.utils import (
     ONEQUBIT_CLIFFORD_PARAMS,
     experiment_directory,
 )
 from qibocal.config import raise_error
+from qibocal.data import Data
 
 """ TODO
     - Don't load the whole experiment into the results class -> Its just a copy
