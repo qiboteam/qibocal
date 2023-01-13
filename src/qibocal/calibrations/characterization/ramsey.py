@@ -330,9 +330,7 @@ def ramsey(
 
     qubit_freqs = {}
     for qubit in qubits:
-        qubit_freqs[qubit] = platform.characterization["single_qubit"][qubit][
-            "qubit_freq"
-        ]
+        qubit_freqs[qubit] = RX90_pulses1[qubit].frequency
 
     sampling_rate = platform.sampling_rate
 
@@ -380,12 +378,13 @@ def ramsey(
 
             for qubit in qubits:
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                msr, phase, i, q = results[ro_pulses[qubit].serial]
+                result = results[ro_pulses[qubit].serial]
+                print(result.I.shape)
                 r = {
-                    "MSR[V]": msr,
-                    "i[V]": i,
-                    "q[V]": q,
-                    "phase[rad]": phase,
+                    "MSR[V]": np.mean(result.MSR),
+                    "i[V]": np.mean(result.I),
+                    "q[V]": np.mean(result.Q),
+                    "phase[rad]": np.mean(result.phase),
                     "wait[ns]": wait,
                     "t_max[ns]": delay_between_pulses_end,
                     "qubit": qubit,

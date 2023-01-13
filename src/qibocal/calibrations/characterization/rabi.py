@@ -16,6 +16,7 @@ def rabi_pulse_length(
     pulse_duration_start,
     pulse_duration_end,
     pulse_duration_step,
+    nshots=1024,
     software_averages=1,
     points=10,
 ):
@@ -108,7 +109,7 @@ def rabi_pulse_length(
                 )
 
             # execute the pulse sequence
-            results = platform.execute_pulse_sequence(sequence)
+            results = platform.execute_pulse_sequence(sequence, nshots=nshots)
 
             for qubit in qubits:
                 # average msr, phase, i and q over the number of shots defined in the runcard
