@@ -306,10 +306,6 @@ def resonator_punchout(
         sequence.add(ro_pulses[qubit])
 
     # define the parameters to sweep and their range:
-    # resonator frequency
-    resonator_frequencies = {}
-    for qubit in qubits:
-        resonator_frequencies[qubit] = platform.get_resonator_frequency(qubit)
 
     delta_frequency_range = np.arange(-freq_width // 2, freq_width // 2, freq_step) - (
         freq_width // 8
@@ -342,17 +338,11 @@ def resonator_punchout(
                 # reconfigure the instrument based on the new parameters
                 # in this case setting the local oscillators and their attenuations
                 # the pulse sequence does not need to be modified between executions
-                for qubit in qubits:
-                    ro_pulses[qubit].frequency = (
-                        delta_freq + resonator_frequencies[qubit]
+                for qubit in qubits.values():
+                    ro_pulses[qubit.name].frequency = (
+                        delta_freq + qubit.readout_frequency
                     )
-                    # platform.set_lo_frequency(
-                    #     qubit,
-                    #     delta_freq
-                    #     + resonator_frequencies[qubit]
-                    #     - ro_pulses[qubit].frequency,
-                    # )
-                    platform.set_attenuation(qubit, att)
+                    qubit.set_attenuation(att)
 
                 # execute the pulse sequence
                 results = platform.execute_pulse_sequence(sequence)
@@ -360,14 +350,14 @@ def resonator_punchout(
                 # retrieve the results for every qubit
                 for qubit in qubits:
                     # average msr, phase, i and q over the number of shots defined in the runcard
-                    msr, phase, i, q = results[ro_pulses[qubit].serial]
+                    msr, phase, i, q = results[ro_pulses[qubit].qubit]
                     # store the results
                     r = {
                         "MSR[V]": msr,  # * (np.exp(att / 20)), # normalise the results
                         "i[V]": i,
                         "q[V]": q,
                         "phase[rad]": phase,
-                        "frequency[Hz]": delta_freq + resonator_frequencies[qubit],
+                        "frequency[Hz]": ro_pulses[qubit].frequency,
                         "attenuation[dB]": att,
                         "qubit": qubit,
                         "iteration": iteration,
