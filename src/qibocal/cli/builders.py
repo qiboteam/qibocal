@@ -142,7 +142,6 @@ class ActionBuilder:
             self._execute_single_action(routine, args, path)
             for qubit in self.qubits:
                 if self.platform is not None:
-                    print(action)
                     self.update_platform_runcard(qubit, action)
 
         if self.platform is not None:
