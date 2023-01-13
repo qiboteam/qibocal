@@ -140,6 +140,10 @@ class ActionBuilder:
         for action in self.runcard["actions"]:
             routine, args, path = self._build_single_action(action)
             self._execute_single_action(routine, args, path)
+            for qubit in self.qubits:
+                if self.platform is not None:
+                    print(action)
+                    self.update_platform_runcard(qubit, action)
 
         if self.platform is not None:
             self.platform.stop()
@@ -155,10 +159,6 @@ class ActionBuilder:
         for data in results:
             getattr(data, f"to_{self.format}")(path)
 
-        for qubit in self.qubits:
-            if self.platform is not None:
-                self.update_platform_runcard(qubit, routine.__name__)
-
     def update_platform_runcard(self, qubit, routine):
         try:
             data_fit = Data.load_data(self.folder, "data", routine, self.format, "fits")
@@ -166,7 +166,9 @@ class ActionBuilder:
         except:
             data_fit = Data()
 
-        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+        params = [
+            i for i in list(data_fit.df.keys()) if "popt" not in i and i != "qubit"
+        ]
         settings = load_yaml(f"{self.folder}/new_platform.yml")
 
         for param in params:
