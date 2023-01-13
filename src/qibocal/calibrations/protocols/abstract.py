@@ -191,39 +191,6 @@ class Experiment:
     def dataframe(self) -> pd.DataFrame:
         return pd.DataFrame(self.data)
 
-    # @property
-    # def samples(self) -> np.ndarray:
-    #     """Returns the samples from ``self.data`` in a 2d array.
-
-    #     Returns:
-    #         np.ndarray: 2d array of samples.
-    #     """
-
-    #     try:
-    #         return np.array(self.dataframe["samples"].tolist())
-    #     except KeyError:
-    #         raise_error(KeyError, "No samples here. Execute experiment first.")
-
-    # @property
-    # def probabilities(self) -> np.ndarray:
-    #     """Takes the stored samples and returns probabilities for each
-    #     possible state to occure.
-
-    #     Returns:
-    #         np.ndarray: Probability array of 2 dimension.
-    #     """
-
-    #     allsamples = self.samples
-    #     # Create all possible state vectors.
-    #     allstates = list(product([0, 1], repeat=len(allsamples[0][0])))
-    #     # Iterate over all the samples and count the different states.
-    #     probs = [
-    #         [np.sum(np.product(samples == state, axis=1)) for state in allstates]
-    #         for samples in allsamples
-    #     ]
-    #     probs = np.array(probs) / (self.nshots)
-    #     return probs
-
     @classmethod
     def load(cls, path: str) -> Experiment:
         """Creates an experiment object with data and if possible with circuits.

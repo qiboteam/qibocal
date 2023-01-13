@@ -1,28 +1,19 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from copy import deepcopy
 from itertools import product
 
 import numpy as np
 import pandas as pd
-from qibo import gates
 from qibo.models import Circuit
-from qibo.noise import NoiseModel, PauliError
-from qibolab.platforms.abstract import AbstractPlatform
+from qibo.noise import NoiseModel
 
-import qibocal.calibrations.protocols.noisemodels as noisemodels
 import qibocal.fitting.rb_methods as fitting_methods
 from qibocal.calibrations.protocols.abstract import Experiment, Report
 from qibocal.calibrations.protocols.abstract import (
     SingleCliffordsFactory as moduleFactory,
 )
 from qibocal.calibrations.protocols.abstract import scatter_fit_fig
-from qibocal.calibrations.protocols.utils import effective_depol
-from qibocal.config import raise_error
-from qibocal.data import Data
-from qibocal.decorators import plot
-from qibocal.plots.rb import crosstalkrb_plot
 
 
 class moduleExperiment(Experiment):

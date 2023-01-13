@@ -5,17 +5,13 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from itertools import product
 
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 from qibo import gates
 from qibo.models import Circuit
-from qibo.noise import NoiseModel, PauliError
-from qibolab.platforms.abstract import AbstractPlatform
+from qibo.noise import NoiseModel
 
-import qibocal.calibrations.protocols.noisemodels as noisemodels
 import qibocal.fitting.rb_methods as fitting_methods
 from qibocal.calibrations.protocols.abstract import (
     Experiment,
@@ -25,9 +21,6 @@ from qibocal.calibrations.protocols.abstract import (
 )
 from qibocal.calibrations.protocols.utils import effective_depol
 from qibocal.config import raise_error
-from qibocal.data import Data
-from qibocal.decorators import plot
-from qibocal.plots.rb import standardrb_plot
 
 
 class moduleFactory(SingleCliffordsFactory):
@@ -144,7 +137,7 @@ def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
         {
             "depth": depths,
             "data": ydata,
-            "groundstate probability 2sigma": 2 * ydata_std,
+            "2sigma": 2 * ydata_std,
             "fit_func": "exp1_func",
             "popt": {"A": popt[0], "p": popt[1], "B": popt[2]},
             "perr": {"A_err": perr[0], "p_err": perr[1], "B_err": perr[2]},
