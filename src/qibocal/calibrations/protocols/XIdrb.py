@@ -14,31 +14,25 @@
 # -> create a factory, check the factory
 # -> create an experiment, check the experiment
 
-# Use this to show XId for two different noise models.
-
+# For typing
 from __future__ import annotations
 
 from collections.abc import Iterable
 
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 from qibo import gates
 from qibo.models import Circuit
-from qibo.noise import NoiseModel, PauliError
-from qibolab.platforms.abstract import AbstractPlatform
+from qibo.noise import NoiseModel
 
-from qibocal.calibrations.protocols.abstract import Circuitfactory, Experiment, Report
-from qibocal.calibrations.protocols.utils import (
-    effective_depol,
-    gate_adjoint_action_to_pauli_liouville,
+import qibocal.fitting.rb_methods as fitting_methods
+from qibocal.calibrations.protocols.abstract import (
+    Circuitfactory,
+    Experiment,
+    Report,
+    scatter_fit_fig,
 )
-from qibocal.data import Data
-from qibocal.decorators import plot
-from qibocal.fitting.rb_methods import fit_exp1_func
-
-# This has to be implemented in the plots folder of qibocal
-from qibocal.plots.rb import XIdrb_plot
+from qibocal.calibrations.protocols.utils import gate_adjoint_action_to_pauli_liouville
 
 
 # Define the circuit factory class for this specific module.
@@ -87,16 +81,9 @@ class moduleExperiment(Experiment):
 
 # Define the result class for this specific module.
 class moduleReport(Report):
-    def __init__(self, dataframe: pd.DataFrame, fitting_func) -> None:
-        super().__init__(dataframe)
-        self.fitting_func = fitting_func
+    def __init__(self) -> None:
+        super().__init__()
         self.title = "X-Id Benchmarking"
-
-    def single_fig(self):
-        xdata_scatter = self.df["depth"].to_numpy()
-        ydata_scatter = self.df["filters"].to_numpy()
-        xdata, ydata = self.extract("depth", "filters", "mean")
-        self.scatter_fit_fig(xdata_scatter, ydata_scatter, xdata, ydata)
 
 
 # filter functions always dependent on circuit and datarow!
@@ -124,103 +111,82 @@ def filter_sign(circuit: Circuit, datarow: dict) -> dict:
     filtersign = 0
     for s in samples:
         filtersign += (-1) ** (countX % 2 + s[0]) / 2.0
-    datarow["filters"] = filtersign / len(samples)
+    datarow["filter"] = filtersign / len(samples)
 
 
-def analyze(
-    experiment: Experiment, noisemodel: NoiseModel = None, **kwargs
-) -> go._figure.Figure:
+def post_processing_sequential(experiment: Experiment):
+    # Compute and add the ground state probabilities row by row.
     experiment.perform(filter_sign)
-    report = moduleReport(experiment.dataframe, fit_exp1_func)
-    report.single_fig()
-    report = report.build()
-    return report
 
 
-def theoretical_outcome(noisemodel: NoiseModel) -> list:
-    """Only for one qubit and Pauli Error noise!
+def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
+    depths, ydata = experiment.extract("depth", "filter", "mean")
+    _, ydata_std = experiment.extract("depth", "filter", "std")
 
-    Args:
-        experiment (Experiment): _description_
-        noisemodel (NoiseModel): _description_
-
-    Returns:
-        float: _description_
-
-    Yields:
-        Iterator[float]: _description_
-    """
-    from qibocal.calibrations.protocols import validate_simulations
-
-    # Check for correctness of noise model and gate independence.
-    errorkeys = noisemodel.errors.keys()
-    if len(errorkeys) == 1 and list(errorkeys)[0] == gates.X:
-        # Extract the noise acting on unitaries and turn it into the associated
-        # error channel.
-        error = noisemodel.errors[gates.X][0]
-        errorchannel = error.channel(0, *error.options)
-        if isinstance(
-            errorchannel, (gates.PauliNoiseChannel, gates.ThermalRelaxationChannel)
-        ):
-            liouvillerep = errorchannel.to_pauli_liouville(normalize=True)
-            phi = (
-                np.eye(4)
-                - liouvillerep @ gate_adjoint_action_to_pauli_liouville(gates.X(0))
-            ) / 2
-    return validate_simulations.validation(phi)
+    popt, perr = fitting_methods.fit_exp2_func(depths, ydata)
+    data = [
+        {
+            "depth": depths,
+            "data": ydata,
+            "2sigma": 2 * ydata_std,
+            "fit_func": "exp2_func",
+            "popt": {"A1": popt[0], "A2": popt[1], "p1": popt[2], "p2": popt[2]},
+            "perr": {
+                "A1_err": perr[0],
+                "A2_err": perr[1],
+                "p1_err": perr[2],
+                "p2_err": perr[3],
+            },
+        }
+    ]
+    df = pd.DataFrame(data, index=["filter"])
+    return df
 
 
-# Make ``perform`` take a whole noisemodel already.
-def perform(
-    nqubits: int,
-    depths: list,
-    runs: int,
-    nshots: int,
-    qubits: list = None,
-    noise_params: list = None,
-):
-    if noise_params is not None:
-        # Define the noise model.
-        paulinoise = PauliError(*noise_params)
-        noise = NoiseModel()
-        noise.add(paulinoise, gates.X)
-        depol = effective_depol(paulinoise)
-    else:
-        noise = None
-    # Initiate the circuit factory and the faulty Experiment object.
-    factory = moduleFactory(nqubits, depths, runs, qubits=qubits)
-    experiment = moduleExperiment(factory, nshots, noisemodel=noise)
-    # Execute the experiment.
-    experiment.perform(experiment.execute)
-    analyze(experiment, noisemodel=noise).show()
+def build_report(experiment: Experiment, df_aggr: pd.DataFrame):
+    report = moduleReport()
+    report.info_dict["Number of qubits"] = len(experiment.data[0]["samples"][0])
+    report.info_dict["Number of shots"] = len(experiment.data[0]["samples"])
+    report.info_dict["runs"] = experiment.extract("depth", "samples", "count")[1][0]
+    print(df_aggr)
+    report.info_dict["Fitting daviations"] = "".join(
+        [
+            "{}:{:.3f} ".format(key, df_aggr.loc["filter"]["perr"][key])
+            for key in df_aggr.loc["filter"]["perr"]
+        ]
+    )
+    report.all_figures.append(scatter_fit_fig(experiment, df_aggr, "depth", "filter"))
+    return report.build()
 
 
-@plot("Randomized benchmarking", XIdrb_plot)
-def qqperform_XIdrb(
-    platform: AbstractPlatform,
-    qubit: list,
-    depths: list,
-    runs: int,
-    nshots: int,
-    nqubit: int = None,
-    noise_params: list = None,
-):
-    # Check if noise should artificially be added.
-    if noise_params is not None:
-        # Define the noise model.
-        paulinoise = PauliError(*noise_params)
-        noise = NoiseModel()
-        noise.add(paulinoise, gates.X)
-        data_depol = Data("effectivedepol", quantities=["effective_depol"])
-        data_depol.add({"effective_depol": effective_depol(paulinoise)})
-        yield data_depol
-    else:
-        noise = None
-    # Initiate the circuit factory and the Experiment object.
-    factory = moduleFactory(nqubit, depths, runs, qubits=qubit)
-    experiment = moduleExperiment(factory, nshots, noisemodel=noise)
-    # Execute the experiment.
-    experiment.perform(experiment.execute)
-    data = Data()
-    data.df = experiment.dataframe
-    yield data
+# def theoretical_outcome(noisemodel: NoiseModel) -> list:
+#     """Only for one qubit and Pauli Error noise!
+
+#     Args:
+#         experiment (Experiment): _description_
+#         noisemodel (NoiseModel): _description_
+
+#     Returns:
+#         float: _description_
+
+#     Yields:
+#         Iterator[float]: _description_
+#     """
+#     from qibocal.calibrations.protocols import validate_simulations
+
+#     # Check for correctness of noise model and gate independence.
+#     errorkeys = noisemodel.errors.keys()
+#     if len(errorkeys) == 1 and list(errorkeys)[0] == gates.X:
+#         # Extract the noise acting on unitaries and turn it into the associated
+#         # error channel.
+#         error = noisemodel.errors[gates.X][0]
+#         errorchannel = error.channel(0, *error.options)
+#         if isinstance(
+#             errorchannel, (gates.PauliNoiseChannel, gates.ThermalRelaxationChannel)
+#         ):
+#             liouvillerep = errorchannel.to_pauli_liouville(normalize=True)
+#             phi = (
+#                 np.eye(4)
+#                 - liouvillerep @ gate_adjoint_action_to_pauli_liouville(gates.X(0))
+#             ) / 2
+#     return validate_simulations.validation(phi)

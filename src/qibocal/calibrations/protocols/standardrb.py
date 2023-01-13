@@ -16,16 +16,17 @@ from qibo.noise import NoiseModel, PauliError
 from qibolab.platforms.abstract import AbstractPlatform
 
 import qibocal.calibrations.protocols.noisemodels as noisemodels
+import qibocal.fitting.rb_methods as fitting_methods
 from qibocal.calibrations.protocols.abstract import (
     Experiment,
     Report,
     SingleCliffordsFactory,
+    scatter_fit_fig,
 )
 from qibocal.calibrations.protocols.utils import effective_depol
 from qibocal.config import raise_error
 from qibocal.data import Data
 from qibocal.decorators import plot
-from qibocal.fitting.rb_methods import fit_exp1_func, fit_exp1B_func
 from qibocal.plots.rb import standardrb_plot
 
 
@@ -76,48 +77,14 @@ class moduleExperiment(Experiment):
         datadict["depth"] = circuit.ngates - 2 if circuit.ngates > 1 else 0
         return datadict
 
-    @property
-    def depths(self) -> np.ndarray:
-        """Extracts the used circuits depths.
-
-        Returns:
-            np.ndarray: Used depths for every data row.
-        """
-        try:
-            return self.dataframe["depth"].to_numpy()
-        except KeyError:
-            raise_error(KeyError, "No depths. Execute experiment first.")
-
 
 class moduleReport(Report):
-    def __init__(self, dataframe: pd.DataFrame, fitting_func) -> None:
-        super().__init__(dataframe)
-        self.fitting_func = fitting_func
+    def __init__(self) -> None:
+        super().__init__()
         self.title = "Standard Randomized Benchmarking"
 
-    def single_fig(
-        self,
-    ):
-        xdata_scatter = self.df["depth"].to_numpy()
-        ydata_scatter = self.df["groundstate_probabilities"].to_numpy()
-        xdata, ydata = self.extract("depth", "groundstate_probabilities", "mean")
-        self.scatter_fit_fig(xdata_scatter, ydata_scatter, xdata, ydata)
 
-
-def groundstate_probability(experiment: Experiment):
-    """Computes sequential the ground state probabilities of an executed
-    experiment and stores them in the experiment.
-
-    Args:
-        experiment (Experiment): Executed experiment for which the ground state
-        probabilities for each data row are calculated.
-    """
-    probs = experiment.probabilities[:, 0]
-    experiment._append_data("groundstate_probabilities", list(probs))
-    return experiment
-
-
-def groundstate_probs(circuit: Circuit, datarow: dict) -> dict:
+def groundstate_probabilities(circuit: Circuit, datarow: dict) -> dict:
     """_summary_
 
     Args:
@@ -133,7 +100,7 @@ def groundstate_probs(circuit: Circuit, datarow: dict) -> dict:
     samples = datarow["samples"]
     # This is how
     ground = np.array([0] * len(samples[0]))
-    datarow["groundstate_probabilities"] = np.sum(
+    datarow["groundstate probability"] = np.sum(
         np.product(samples == ground, axis=1)
     ) / len(samples)
     return datarow
@@ -163,58 +130,43 @@ def theoretical_outcome(noisemodel: NoiseModel) -> float:
     return effective_depol(errorchannel)
 
 
-def analyze(
-    experiment: Experiment, noisemodel: NoiseModel = None, **kwargs
-) -> go._figure.Figure:
-    # Compute and add the ground state probabilities.
-    # experiment = groundstate_probability(experiment)
-    experiment.perform(groundstate_probs)
-    report = moduleReport(experiment.dataframe, fit_exp1B_func)
-    report.single_fig()
-    report.info_dict["effective depol"] = np.around(theoretical_outcome(noisemodel), 3)
-    report = report.build()
-    return report
+def post_processing_sequential(experiment: Experiment):
+    # Compute and add the ground state probabilities row by row.
+    experiment.perform(groundstate_probabilities)
 
 
-def perform(
-    nqubits: int,
-    depths: list,
-    runs: int,
-    nshots: int,
-    qubits: list = None,
-    noise_model: NoiseModel = None,
-):
-    # Initiate the circuit factory and the faulty Experiment object.
-    factory = moduleFactory(nqubits, depths, runs, qubits=qubits)
-    experiment = moduleExperiment(factory, nshots, noisemodel=noise_model)
-    # Execute the experiment.
-    experiment.perform(experiment.execute)
-    analyze(experiment, noisemodel=noise_model).show()
+def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
+    depths, ydata = experiment.extract("depth", "groundstate probability", "mean")
+    _, ydata_std = experiment.extract("depth", "groundstate probability", "std")
+
+    popt, perr = fitting_methods.fit_exp1B_func(depths, ydata)
+    data = [
+        {
+            "depth": depths,
+            "data": ydata,
+            "groundstate probability 2sigma": 2 * ydata_std,
+            "fit_func": "exp1_func",
+            "popt": {"A": popt[0], "p": popt[1], "B": popt[2]},
+            "perr": {"A_err": perr[0], "p_err": perr[1], "B_err": perr[2]},
+        }
+    ]
+    df = pd.DataFrame(data, index=["groundstate probability"])
+    return df
 
 
-@plot("Randomized benchmarking", standardrb_plot)
-def qqperform_standardrb(
-    platform: AbstractPlatform,
-    qubit: list,
-    depths: list,
-    runs: int,
-    nshots: int,
-    nqubit: int = None,
-    noise_model: str = None,
-    noise_params: list = None,
-):
-    # Check if noise should artificially be added.
-    if noise_model is not None:
-        # Get the wanted noise model class.
-        noise_model = getattr(noisemodels, noise_model)(noise_params)
-        validation = Data("validation", quantities=["effective_depol"])
-        validation.add({"effective_depol": theoretical_outcome(noise_model)})
-        yield validation
-    # Initiate the circuit factory and the Experiment object.
-    factory = moduleFactory(nqubit, depths, runs, qubits=qubit)
-    experiment = moduleExperiment(factory, nshots, noisemodel=noise_model)
-    # Execute the experiment.
-    experiment.perform(experiment.execute)
-    data = Data()
-    data.df = experiment.dataframe
-    yield data
+def build_report(experiment: Experiment, df_aggr: pd.DataFrame):
+    report = moduleReport()
+    report.info_dict["Number of qubits"] = len(experiment.data[0]["samples"][0])
+    report.info_dict["Number of shots"] = len(experiment.data[0]["samples"])
+    report.info_dict["runs"] = experiment.extract("depth", "samples", "count")[1][0]
+    print(df_aggr)
+    report.info_dict["Fitting daviations"] = "".join(
+        [
+            "{}:{:.3f} ".format(key, df_aggr.iloc[0]["perr"][key])
+            for key in df_aggr.iloc[0]["perr"]
+        ]
+    )
+    report.all_figures.append(
+        scatter_fit_fig(experiment, df_aggr, "depth", "groundstate probability")
+    )
+    return report.build()

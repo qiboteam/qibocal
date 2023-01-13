@@ -7,7 +7,7 @@ import pytest
 from qibo import gates, models
 from qibo.noise import NoiseModel, PauliError
 
-from qibocal.calibrations.protocols import crosstalkrb
+from qibocal.calibrations.protocols import correlatedrb
 
 
 @pytest.fixture
@@ -33,7 +33,7 @@ def test_factory(nqubits: int, depths: list, runs: int):
         depths (list): list of depths for circuits
         runs (int): How many randomly drawn cirucit for one depth value
     """
-    myfactory1 = crosstalkrb.SingleCliffordsFactory(nqubits, depths, runs)
+    myfactory1 = correlatedrb.SingleCliffordsFactory(nqubits, depths, runs)
     assert isinstance(myfactory1, Iterable)
     circuits_list = list(myfactory1)
     assert len(circuits_list) == len(depths) * runs
@@ -47,7 +47,7 @@ def test_factory(nqubits: int, depths: list, runs: int):
             assert circuit.ngates == depths[count % len(depths)] * nqubits + 1
     randomnesscount = 0
     depth = depths[-1]
-    circuits_list = list(crosstalkrb.SingleCliffordsFactory(nqubits, [depth], runs))
+    circuits_list = list(correlatedrb.SingleCliffordsFactory(nqubits, [depth], runs))
     for count in range(runs - 1):
         circuit1q = circuits_list[count].queue[:depth]
         circuit2q = circuits_list[count + 1].queue[:depth]
@@ -71,8 +71,8 @@ def test_experiment(nqubits: int, depths: list, runs: int, nshots: int):
         runs (int): _description_
     """
     # Test execute an experiment.
-    myfactory1 = crosstalkrb.SingleCliffordsFactory(nqubits, depths, runs)
-    myexperiment1 = crosstalkrb.CrosstalkRBExperiment(myfactory1, nshots)
+    myfactory1 = correlatedrb.SingleCliffordsFactory(nqubits, depths, runs)
+    myexperiment1 = correlatedrb.CrosstalkRBExperiment(myfactory1, nshots)
     myexperiment1.execute()
     assert isinstance(myexperiment1.data, list)
     assert isinstance(myexperiment1.data[0], dict)
@@ -93,14 +93,14 @@ def test_experiment(nqubits: int, depths: list, runs: int, nshots: int):
     myexperiment1.save()
     path1 = myexperiment1.path
 
-    myexperiment1_loaded = crosstalkrb.CrosstalkRBExperiment.load(path1)
+    myexperiment1_loaded = correlatedrb.CrosstalkRBExperiment.load(path1)
     for datarow, datarow_load in zip(myexperiment1.data, myexperiment1_loaded.data):
         assert np.array_equal(datarow["samples"], datarow_load["samples"])
         assert datarow["depth"] == datarow_load["depth"]
     assert myexperiment1_loaded.circuitfactory is None
 
-    myfactory2 = crosstalkrb.SingleCliffordsFactory(nqubits, depths, runs)
-    myexperiment2 = crosstalkrb.CrosstalkRBExperiment(myfactory2, nshots)
+    myfactory2 = correlatedrb.SingleCliffordsFactory(nqubits, depths, runs)
+    myexperiment2 = correlatedrb.CrosstalkRBExperiment(myfactory2, nshots)
     assert myexperiment2.circuitfactory == myfactory2
     myexperiment2.prebuild()
     assert isinstance(myexperiment2.circuitfactory, list)
@@ -111,7 +111,7 @@ def test_experiment(nqubits: int, depths: list, runs: int, nshots: int):
     myexperiment2.save()
     path3 = myexperiment2.path
 
-    myexperiment2_loaded = crosstalkrb.CrosstalkRBExperiment.load(path2)
+    myexperiment2_loaded = correlatedrb.CrosstalkRBExperiment.load(path2)
     for datarow, datarow_load in zip(myexperiment2.data, myexperiment2_loaded.data):
         assert np.array_equal(datarow["samples"], datarow_load["samples"])
         assert datarow["depth"] == datarow_load["depth"]
@@ -139,8 +139,8 @@ def test_experiment_withnoise(
     noise = NoiseModel()
     noise.add(paulinoise, gates.Unitary)
     # Test exectue an experiment.
-    myfactory1 = crosstalkrb.SingleCliffordsFactory(nqubits, depths, runs)
-    myfaultyexperiment = crosstalkrb.CrosstalkRBExperiment(
+    myfactory1 = correlatedrb.SingleCliffordsFactory(nqubits, depths, runs)
+    myfaultyexperiment = correlatedrb.CrosstalkRBExperiment(
         myfactory1, nshots, noisemodel=noise
     )
     myfaultyexperiment.execute()
@@ -169,7 +169,7 @@ def test_filterfunction():
     nshots = 3000
     d = 2
     # Steal the class method for calculating clifford unitaries.
-    clifford_unitary = crosstalkrb.SingleCliffordsFactory.clifford_unitary
+    clifford_unitary = correlatedrb.SingleCliffordsFactory.clifford_unitary
     # The first parameter is self, set it to None since it is not needed.
     g1_matrix = clifford_unitary(None, *ONEQUBIT_CLIFFORD_PARAMS[8])
     g1 = gates.Unitary(g1_matrix, 0)
@@ -216,10 +216,10 @@ def test_filterfunction():
     c = models.Circuit(nqubits)
     c.add([g1, g3, g2, g4])
     c.add(gates.M(0, 1))
-    experiment = crosstalkrb.CrosstalkRBExperiment([c], nshots)
+    experiment = correlatedrb.CrosstalkRBExperiment([c], nshots)
     experiment.execute()
     # Compute and get the filtered signals.
-    experiment.apply_task(crosstalkrb.filter_function)
+    experiment.apply_task(correlatedrb.filter_function)
     list_crosstalk = experiment.data[0]["crosstalk"]
     # Compare the above calculated filtered signals and the signals
     # computed with the crosstalkrb method.
@@ -308,9 +308,9 @@ def test_analyze(
     noise = NoiseModel()
     noise.add(paulinoise, gates.Unitary)
     # Test exectue an experiment.
-    myfactory1 = crosstalkrb.SingleCliffordsFactory(nqubits, depths, runs)
-    myfaultyexperiment = crosstalkrb.CrosstalkRBExperiment(
+    myfactory1 = correlatedrb.SingleCliffordsFactory(nqubits, depths, runs)
+    myfaultyexperiment = correlatedrb.CrosstalkRBExperiment(
         myfactory1, nshots, noisemodel=noise
     )
     myfaultyexperiment.execute()
-    crosstalkrb.analyze(myfaultyexperiment).show()
+    correlatedrb.analyze(myfaultyexperiment).show()

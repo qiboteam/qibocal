@@ -6,6 +6,7 @@ from collections.abc import Iterable
 from copy import deepcopy
 from itertools import product
 from os.path import isfile
+from typing import Union
 
 import numpy as np
 import pandas as pd
@@ -14,6 +15,7 @@ from qibo import gates
 from qibo.models import Circuit
 from qibo.noise import NoiseModel
 
+import qibocal.fitting.rb_methods as fitting_methods
 from qibocal.calibrations.protocols.utils import (
     ONEQUBIT_CLIFFORD_PARAMS,
     experiment_directory,
@@ -262,6 +264,18 @@ class Experiment:
         with open(f"{self.path}data.pkl", "wb") as f:
             pickle.dump(self.data, f)
 
+    def extract(self, group_by: str, output: str, agg_type: str | callable):
+        """Aggregates the dataframe, extracts the data by which the frame was
+        grouped, what was calculated given the ``agg_type`` parameters.
+
+        Args:
+            group_by (str): _description_
+            output (str): _description_
+            agg_type (str): _description_
+        """
+        grouped_df = self.dataframe.groupby(group_by)[output].apply(agg_type)
+        return np.array(grouped_df.index), np.array(grouped_df.values.tolist())
+
     def prebuild(self) -> None:
         """Converts the attribute ``circuitfactory`` which is in general
         an iterable into a list.
@@ -350,62 +364,10 @@ class Report:
     reports to display results of an randomized benchmarking experiment.
     """
 
-    def __init__(self, dataframe: pd.DataFrame) -> None:
-        self.df = dataframe
+    def __init__(self) -> None:
         self.all_figures = []
-        # The fitting function should return two tuples and two np.ndarrays.
-        self.fitting_func = lambda x, y: ((0, 0, 0), (1, 1, 1), x, y)
         self.title = "Report"
-        self.info_dict = {
-            "nqubits": len(self.df["samples"].to_numpy()[0][0]),
-            "nshots": len(self.df["samples"].to_numpy()[0]),
-        }
-
-    def extract(self, group_by: str, output: str, agg_type: str):
-        """Aggregates the dataframe, extracts the data by which the frame was
-        grouped, what was calculated given the ``agg_type`` parameters.
-
-        Args:
-            group_by (str): _description_
-            output (str): _description_
-            agg_type (str): _description_
-        """
-        grouped_df = self.df.groupby(group_by)[output].apply(agg_type)
-        return np.array(grouped_df.index), np.array(grouped_df.values.tolist())
-
-    def get_info(self):
-        """Extract information from attribute ``self.info_dict`` and formats
-        it as columns.
-        """
-        info_string = "<br>".join(
-            [f"{key} : {value}\n" for key, value in self.info_dict.items()]
-        )
-        return info_string
-
-    def scatter_fit_fig(self, xdata_scatter, ydata_scatter, xdata, ydata):
-        myfigs = []
-        popt, pcov, x_fit, y_fit = self.fitting_func(xdata, ydata)
-        fig = go.Scatter(
-            x=xdata_scatter,
-            y=ydata_scatter,
-            line=dict(color="#6597aa"),
-            mode="markers",
-            marker={"opacity": 0.2, "symbol": "square"},
-            name="runs",
-        )
-        myfigs.append(fig)
-        fig = go.Scatter(
-            x=xdata, y=ydata, line=dict(color="#aa6464"), mode="markers", name="average"
-        )
-        myfigs.append(fig)
-        fig = go.Scatter(
-            x=x_fit,
-            y=y_fit,
-            name="A: {:.3f}, p: {:.3f}, B: {:.3f}".format(popt[0], popt[1], popt[2]),
-            line=go.scatter.Line(dash="dot"),
-        )
-        myfigs.append(fig)
-        self.all_figures.append({"figs": myfigs})
+        self.info_dict = {}
 
     def build(self):
         from plotly.subplots import make_subplots
@@ -429,7 +391,9 @@ class Report:
                 x=0.0,
                 y=1.0 / (int(l / 2) + l % 2 + 1) - len(self.info_dict) * 0.005,
                 showarrow=False,
-                text=self.get_info(),
+                text="<br>".join(
+                    [f"{key} : {value}\n" for key, value in self.info_dict.items()]
+                ),
                 align="left",
                 textangle=0,
                 yanchor="top",
@@ -452,3 +416,42 @@ class Report:
         )
 
         return fig
+
+
+def scatter_fit_fig(
+    experiment: Experiment, df_aggr: pd.DataFrame, xlabel: str, index: str
+):
+    fig_traces = []
+    dfrow = df_aggr.loc[index]
+    fig_traces.append(
+        go.Scatter(
+            x=experiment.dataframe[xlabel],
+            y=experiment.dataframe[index],
+            line=dict(color="#6597aa"),
+            mode="markers",
+            marker={"opacity": 0.2, "symbol": "square"},
+            name="runs",
+        )
+    )
+    fig_traces.append(
+        go.Scatter(
+            x=dfrow[xlabel],
+            y=dfrow["data"],
+            line=dict(color="#aa6464"),
+            mode="markers",
+            name="average",
+        )
+    )
+    x_fit = np.linspace(min(dfrow[xlabel]), max(dfrow[xlabel]), len(dfrow[xlabel]) * 20)
+    y_fit = getattr(fitting_methods, dfrow["fit_func"])(x_fit, *dfrow["popt"].values())
+    fig_traces.append(
+        go.Scatter(
+            x=x_fit,
+            y=y_fit,
+            name="".join(
+                ["{}:{:.3f} ".format(key, dfrow["popt"][key]) for key in dfrow["popt"]]
+            ),
+            line=go.scatter.Line(dash="dot"),
+        )
+    )
+    return {"figs": fig_traces, "xlabel": xlabel, "ylabel": index}

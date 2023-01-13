@@ -12,15 +12,16 @@ from qibo.noise import NoiseModel, PauliError
 from qibolab.platforms.abstract import AbstractPlatform
 
 import qibocal.calibrations.protocols.noisemodels as noisemodels
+import qibocal.fitting.rb_methods as fitting_methods
 from qibocal.calibrations.protocols.abstract import Experiment, Report
 from qibocal.calibrations.protocols.abstract import (
     SingleCliffordsFactory as moduleFactory,
 )
+from qibocal.calibrations.protocols.abstract import scatter_fit_fig
 from qibocal.calibrations.protocols.utils import effective_depol
 from qibocal.config import raise_error
 from qibocal.data import Data
 from qibocal.decorators import plot
-from qibocal.fitting.rb_methods import fit_exp1_func
 from qibocal.plots.rb import crosstalkrb_plot
 
 
@@ -53,19 +54,7 @@ class moduleExperiment(Experiment):
         # Make the circuitfactory a list. That way they will be stored when
         # calling the save method and the circuits are not lost once executed.
         self.prebuild()
-        self.name = "CrosstalkRB"
-
-    @property
-    def depths(self) -> np.ndarray:
-        """Extracts the used circuits depths.
-
-        Returns:
-            np.ndarray: Used depths for every data row.
-        """
-        try:
-            return self.dataframe["depth"].to_numpy()
-        except KeyError:
-            raise_error(KeyError, "No depths. Execute experiment first.")
+        self.name = "CorrelatedRB"
 
     def execute(self, circuit: Circuit, datarow: dict) -> dict:
         """Executes a circuit, returns the single shot results and depth.
@@ -84,16 +73,17 @@ class moduleExperiment(Experiment):
 
 
 class moduleReport(Report):
-    def __init__(self, dataframe: pd.DataFrame, fitting_func) -> None:
-        super().__init__(dataframe)
-        self.fitting_func = fitting_func
-        self.title = "Crosstalk Filtered Randomized Benchmarking"
+    def __init__(self) -> None:
+        super().__init__()
+        self.title = "Correlated Filtered Randomized Benchmarking"
 
     def cross_figs(self):
         xdata_scatter = self.df["depth"].to_numpy()
         allydata_scatter = np.array(self.df["crosstalk"].tolist())
         xdata, allydata = self.extract("depth", "crosstalk", "mean")
+
         lambdas = iter(product([0, 1], repeat=int(np.log2(len(allydata_scatter[0])))))
+
         for count in range(len(allydata_scatter[0])):
             self.scatter_fit_fig(
                 xdata_scatter, allydata_scatter[:, count], xdata, allydata[:, count]
@@ -166,7 +156,8 @@ def filter_function(circuit: Circuit, datarow: dict) -> dict:
                     )
         # Normalize with inverse of effective measuremetn.
         f_list.append(a * (d + 1) ** sum(l) / d**nqubits)
-    datarow["crosstalk"] = np.array(f_list) / nshots
+    for kk in range(len(f_list)):
+        datarow[f"irrep{kk}"] = f_list[kk] / nshots
     return datarow
 
 
@@ -174,63 +165,51 @@ def theoretical_outcome(noisemodel: NoiseModel) -> float:
     return 0
 
 
-def analyze(experiment: moduleExperiment, noisemodel: NoiseModel = None):
-    # Apply the fiterfunction via matmul operator.
+def post_processing_sequential(experiment: Experiment):
+    # Compute and add the ground state probabilities row by row.
     experiment.perform(filter_function)
-    report = moduleReport(experiment.dataframe, fit_exp1_func)
-    report.cross_figs()
-    report.info_dict["effective depol"] = np.around(theoretical_outcome(noisemodel), 3)
-    report = report.build()
-    return report
 
 
-def perform(
-    nqubits: int,
-    depths: list,
-    runs: int,
-    nshots: int,
-    qubits: list = None,
-    noise_params: list = None,
-):
-    if noise_params is not None:
-        # Define the noise model.
-        paulinoise = PauliError(*noise_params)
-        noise = NoiseModel()
-        noise.add(paulinoise, gates.Unitary)
-        # depol = effective_depol(paulinoise)
-    else:
-        noise = None
-    # Initiate the circuit factory and the (faulty) Experiment object.
-    factory = moduleFactory(nqubits, depths, runs, qubits=qubits)
-    experiment = moduleExperiment(factory, nshots, noisemodel=noise)
-    # Execute the experiment.
-    experiment @ experiment.execute
-    analyze(experiment, noisemodel=noise).show()
+def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
+    nqubits = len(experiment.data[0]["samples"][0])
+    data_list, index = [], []
+    for kk in range(2**nqubits):
+        ylabel = f"irrep{kk}"
+        depths, ydata = experiment.extract("depth", ylabel, "mean")
+        _, ydata_std = experiment.extract("depth", ylabel, "std")
+        popt, perr = fitting_methods.fit_exp1_func(depths, ydata)
+        data_list.append(
+            {
+                "depth": depths,
+                "data": ydata,
+                "2sigma": 2 * ydata_std,
+                "fit_func": "exp1_func",
+                "popt": {"A": popt[0], "p": popt[1], "B": popt[2]},
+                "perr": {"A_err": perr[0], "p_err": perr[1], "B_err": perr[2]},
+            }
+        )
+        index.append(ylabel)
+
+    df = pd.DataFrame(data_list, index=index)
+    return df
 
 
-@plot("Randomized benchmarking", crosstalkrb_plot)
-def qqperform_crosstalkrb(
-    platform: AbstractPlatform,
-    qubit: list,
-    depths: list,
-    runs: int,
-    nshots: int,
-    nqubit: int = None,
-    noise_model: str = None,
-    noise_params: list = None,
-):
-    # Check if noise should artificially be added.
-    if noise_model is not None:
-        # Get the wanted noise model class.
-        noise_model = getattr(noisemodels, noise_model)(noise_params)
-        validation = Data("validation", quantities=["effective_depol"])
-        validation.add({"effective_depol": theoretical_outcome(noise_model)})
-        yield validation
-    # Initiate the circuit factory and the Experiment object.
-    factory = moduleFactory(nqubit, depths, runs, qubits=qubit)
-    experiment = moduleExperiment(factory, nshots, noisemodel=noise_model)
-    # Execute the experiment.
-    experiment @ experiment.execute
-    data = Data()
-    data.df = experiment.dataframe
-    yield data
+def build_report(experiment: Experiment, df_aggr: pd.DataFrame):
+    report = moduleReport()
+    report.info_dict["Number of qubits"] = len(experiment.data[0]["samples"][0])
+    report.info_dict["Number of shots"] = len(experiment.data[0]["samples"])
+    report.info_dict["runs"] = experiment.extract("depth", "samples", "count")[1][0]
+    lambdas = iter(product([0, 1], repeat=int(report.info_dict["Number of qubits"])))
+    print(df_aggr)
+    for kk, l in enumerate(lambdas):
+        report.info_dict[f"Fitting daviations irrep {l}"] = "".join(
+            [
+                "{}:{:.3f} ".format(key, df_aggr.loc[f"irrep{kk}"]["perr"][key])
+                for key in df_aggr.loc[f"irrep{kk}"]["perr"]
+            ]
+        )
+
+        figdict = scatter_fit_fig(experiment, df_aggr, "depth", f"irrep{kk}")
+        figdict["subplot_title"] = f"Irrep {l}"
+        report.all_figures.append(figdict)
+    return report.build()
