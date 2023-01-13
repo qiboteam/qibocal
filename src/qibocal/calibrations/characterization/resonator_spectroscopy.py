@@ -60,7 +60,6 @@ def resonator_spectroscopy(
 
     # reload instrument settings from runcard
     platform.reload_settings()
-
     # create a sequence of pulses for the experiment:
     # MZ
 
@@ -74,8 +73,8 @@ def resonator_spectroscopy(
     # define the parameter to sweep and its range:
     # resonator frequency
     resonator_frequencies = {}
-    for qubit in qubits:
-        resonator_frequencies[qubit] = platform.get_resonator_frequency(qubit)
+    for qubit in qubits.values():
+        resonator_frequencies[qubit] = qubit.readout_frequency
 
     delta_frequency_range = np.arange(-fast_width // 2, fast_width // 2, fast_step)
 
@@ -112,8 +111,8 @@ def resonator_spectroscopy(
             # reconfigure the instruments based on the new resonator frequency
             # in this case setting the local oscillators
             # the pulse sequence does not need to be modified or recreated between executions
-            for qubit in qubits:
-                ro_pulses[qubit].frequency = delta_freq + resonator_frequencies[qubit]
+            for qubit in qubits.values():
+                ro_pulses[qubit.name].frequency = delta_freq + qubit.readout_frequency
 
             # execute the pulse sequence
             results = platform.execute_pulse_sequence(sequence)
@@ -146,7 +145,6 @@ def resonator_spectroscopy(
     )
 
     # store max/min peaks as new frequencies
-    new_resonator_frequencies = {}
     for qubit in qubits:
         qubit_data = (
             fast_sweep_data.df[fast_sweep_data.df["qubit"] == qubit]
@@ -155,7 +153,7 @@ def resonator_spectroscopy(
             .mean()
         )
         if platform.resonator_type == "3D":
-            new_resonator_frequencies[qubit] = (
+            qubits[qubit].readout_frequency = (
                 qubit_data["frequency"][
                     np.argmax(qubit_data["MSR"].pint.to("V").pint.magnitude)
                 ]
@@ -163,7 +161,7 @@ def resonator_spectroscopy(
                 .magnitude
             )
         else:
-            new_resonator_frequencies[qubit] = (
+            qubits[qubit].readout_frequency = (
                 qubit_data["frequency"][
                     np.argmin(qubit_data["MSR"].pint.to("V").pint.magnitude)
                 ]
@@ -178,26 +176,6 @@ def resonator_spectroscopy(
     ro_pulses = {}
     for qubit in qubits:
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
-        # TODO: implement algorithm to find correct LO
-        # if (
-        #     abs(
-        #         new_resonator_frequencies[qubit]
-        #         - resonator_frequencies[qubit]
-        #         + ro_pulses[qubit].frequency
-        #     )
-        #     <= 300e6
-        #     and abs(
-        #         new_resonator_frequencies[qubit]
-        #         - resonator_frequencies[qubit]
-        #         + ro_pulses[qubit].frequency
-        #     )
-        #     >= 1e6
-        # ):
-        #     ro_pulses[qubit].frequency = (
-        #         new_resonator_frequencies[qubit]
-        #         - resonator_frequencies[qubit]
-        #         + ro_pulses[qubit].frequency
-        #     )
         sequence.add(ro_pulses[qubit])
 
     delta_frequency_range = np.arange(
@@ -227,16 +205,13 @@ def resonator_spectroscopy(
                     y="MSR[uV]",
                     qubits=qubits,
                     resonator_type=platform.resonator_type,
-                    labels=["resonator_freq", "peak_voltage"]  # , "intermediate_freq"],
-                    # lo_freqs=lo_frequencies,
+                    labels=["resonator_freq", "peak_voltage"],
                 )
             # reconfigure the instrument based on the new resonator frequency
             # in this case setting the local oscillators
             # the pulse sequence does not need to be modified between executions
-            for qubit in qubits:
-                ro_pulses[qubit].frequency = (
-                    delta_freq + new_resonator_frequencies[qubit]
-                )
+            for qubit in qubits.values():
+                ro_pulses[qubit.name].frequency = delta_freq + qubit.readout_frequency
 
             # execute the pulse sequence
             results = platform.execute_pulse_sequence(sequence)
