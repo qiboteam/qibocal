@@ -1,8 +1,8 @@
-platform: qblox
+platform: tii1q_b1
 
 # runcard: tii1q_b1.yml
 
-qubits: [q0]
+qubits: [0]
 
 format: csv
 
@@ -61,13 +61,13 @@ actions:
   #   software_averages: 1
   #   points: 5
 
-  # qubit_spectroscopy: # narrow
-  #   fast_width: 5_000_000
-  #   fast_step: 500_000
-  #   precision_width: 400_000
-  #   precision_step: 20_000
-  #   software_averages: 2
-  #   points: 5
+  qubit_spectroscopy: # narrow
+    fast_width: 5_000_000
+    fast_step: 500_000
+    precision_width: 400_000
+    precision_step: 20_000
+    software_averages: 2
+    points: 5
 
   # qubit_spectroscopy_flux: # precission
   #   freq_width: 5_000_000

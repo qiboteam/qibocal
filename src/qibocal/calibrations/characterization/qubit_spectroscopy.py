@@ -204,7 +204,7 @@ def qubit_spectroscopy(
                     y="MSR[uV]",
                     qubits=qubits,
                     resonator_type=platform.resonator_type,
-                    labels=["resonator_freq", "peak_voltage", "intermediate_freq"],
+                    labels=["qubit_freq", "peak_voltage", "intermediate_freq"],
                 )
             # reconfigure the instrument based on the new resonator frequency
             # in this case setting the local oscillators
@@ -243,7 +243,7 @@ def qubit_spectroscopy(
         y="MSR[uV]",
         qubits=qubits,
         resonator_type=platform.resonator_type,
-        labels=["resonator_freq", "peak_voltage", "intermediate_freq"],
+        labels=["qubit_freq", "peak_voltage", "intermediate_freq"],
     )
 
 
