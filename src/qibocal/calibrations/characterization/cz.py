@@ -10,15 +10,17 @@ from qibocal.decorators import plot
 @plot("Chevron CZ", plots.duration_amplitude_msr_flux_pulse)
 def tune_transition(
     platform: AbstractPlatform,
-    qubit: int,
+    qubits: list,
     flux_pulse_duration_start,
     flux_pulse_duration_end,
     flux_pulse_duration_step,
     flux_pulse_amplitude_start,
     flux_pulse_amplitude_end,
     flux_pulse_amplitude_step,
+    wait_time,
     single_flux=True,
     dt=1,
+    nshots=1024,
 ):
     """Perform a Chevron-style plot for the flux pulse designed to apply a CZ (CPhase) gate.
     This experiment probes the |11> to i|02> transition by preparing the |11> state with
@@ -43,6 +45,10 @@ def tune_transition(
         data (DataSet): Measurement data for both the high and low frequency qubits.
 
     """
+    if len(qubits) > 1:
+        raise NotImplementedError
+
+    qubit = qubits[0]
 
     platform.reload_settings()
 
@@ -63,7 +69,7 @@ def tune_transition(
             amplitude=flux_pulse_amplitude_start,
             relative_phase=0,
             shape=Rectangular(),
-            channel=platform.qubit_channel_map[highfreq][2],
+            channel=str(platform.qubits[highfreq].flux),
             qubit=highfreq,
         )
         measure_lowfreq = platform.create_qubit_readout_pulse(
@@ -74,13 +80,14 @@ def tune_transition(
         )
 
     else:
+        raise NotImplementedError
         flux_pulse_plus = FluxPulse(
             start=initialize_1.se_finish,
             duration=flux_pulse_duration_start,
             amplitude=flux_pulse_amplitude_start,
             relative_phase=0,
             shape=Rectangular(),
-            channel=platform.qubit_channel_map[highfreq][2],
+            channel=str(platform.qubits[highfreq].flux),
             qubit=highfreq,
         )
         flux_pulse_minus = FluxPulse(
@@ -89,7 +96,7 @@ def tune_transition(
             amplitude=-flux_pulse_amplitude_start,
             relative_phase=0,
             shape=Rectangular(),
-            channel=platform.qubit_channel_map[highfreq][2],
+            channel=str(platform.qubits[highfreq].flux),
             qubit=highfreq,
         )
         measure_lowfreq = platform.create_qubit_readout_pulse(
@@ -114,9 +121,11 @@ def tune_transition(
     durations = np.arange(
         flux_pulse_duration_start, flux_pulse_duration_end, flux_pulse_duration_step
     )
+    # TODO: Implement for two pulses
+    sweeper = Sweeper("amplitude", amplitudes, pulses=[flux_pulse], wait_time=wait_time)
 
     if single_flux:
-        seq = (
+        sequence = (
             initialize_1
             + initialize_2
             + flux_pulse
@@ -124,7 +133,7 @@ def tune_transition(
             + measure_highfreq
         )
     else:
-        seq = (
+        sequence = (
             initialize_1
             + initialize_2
             + flux_pulse_plus
@@ -134,48 +143,37 @@ def tune_transition(
         )
 
     # Might want to fix duration to expected time for 2 qubit gate.
-    live = 0
-    for amplitude in amplitudes:
-        for duration in durations:
-            if single_flux:
-                flux_pulse.amplitude = amplitude
-                flux_pulse.duration = duration
-            else:
-                flux_pulse_plus.amplitude = amplitude
-                flux_pulse_minus.amplitude = -amplitude
-                flux_pulse_plus.duration = duration
-                flux_pulse_minus.duration = duration
+    for duration in durations:
+        if single_flux:
+            flux_pulse.amplitude = amplitude
+            flux_pulse.duration = duration
+        else:
+            flux_pulse_plus.amplitude = amplitude
+            flux_pulse_minus.amplitude = -amplitude
+            flux_pulse_plus.duration = duration
+            flux_pulse_minus.duration = duration
 
-            res = platform.execute_pulse_sequence(seq)
+        results = platform.sweep(sequence, sweeper, nshots=nshots)
 
-            res_temp = res[measure_lowfreq.serial]
-            results = {
-                "MSR[V]": res_temp[0],
-                "i[V]": res_temp[2],
-                "q[V]": res_temp[3],
-                "phase[rad]": res_temp[1],
-                "flux_pulse_duration[ns]": duration,
-                "flux_pulse_amplitude[dimensionless]": amplitude,
-                "q_freq": "low",
+        res_temp = results[measure_lowfreq.serial].to_dict()
+        res_temp.update(
+            {
+                "flux_pulse_duration[ns]": len(amplitudes) * [duration],
+                "flux_pulse_amplitude[dimensionless]": amplitudes,
+                "q_freq": len(amplitudes) * ["low"],
             }
-            data.add(results)
+        )
+        data.add_data_from_dict(res_temp)
 
-            res_temp = res[measure_highfreq.serial]
-            results = {
-                "MSR[V]": res_temp[0],
-                "i[V]": res_temp[2],
-                "q[V]": res_temp[3],
-                "phase[rad]": res_temp[1],
-                "flux_pulse_duration[ns]": duration,
-                "flux_pulse_amplitude[dimensionless]": amplitude,
-                "q_freq": "high",
+        res_temp = results[measure_highfreq.serial].to_dict()
+        res_temp.update(
+            {
+                "flux_pulse_duration[ns]": len(amplitudes) * [duration],
+                "flux_pulse_amplitude[dimensionless]": amplitudes,
+                "q_freq": len(amplitudes) * ["high"],
             }
-            data.add(results)
-
-            if live % 10 == 0:
-                yield data
-
-            live += 1
+        )
+        data.add_data_from_dict(res_temp)
 
     yield data
 
