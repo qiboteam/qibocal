@@ -5,8 +5,8 @@ qubits: [0]
 format: pickle
 
 actions:
-  qqperform_standardrb:
-    nqubit: 1
+  standardrb:
+    nqubits: 1
     depths: [0,1, 3,5,7,10,15,20]
     runs: 5
     nshots: 1024

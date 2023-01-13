@@ -1,4 +1,5 @@
 import datetime
+import importlib
 import inspect
 import os
 import shutil
@@ -15,6 +16,114 @@ def load_yaml(path):
     with open(path) as file:
         data = yaml.safe_load(file)
     return data
+
+
+class singleActionParser:
+    def __init__(self, runcard, folder, name):
+        self.runcard = runcard
+        self.folder = folder
+        self.func = None
+        self.single_qubit = None
+        self.params = None
+        self.name = name
+        self.path = os.path.join(self.folder, f"data/{self.name}/")
+
+        # FIXME: dummy fix
+        self.__name__ = name
+
+    def build(self):
+
+        if not os.path.exists(self.path):
+            os.makedirs(self.path)
+        # collect function from module
+        self.func = getattr(calibrations, self.name)
+
+        sig = inspect.signature(self.func)
+        self.params = self.runcard["actions"][self.name]
+        for param in list(sig.parameters)[2:-1]:
+            if param not in self.params:
+                raise_error(AttributeError, f"Missing parameter {param} in runcard.")
+        if self.func.__annotations__["qubit"] == int:
+            self.single_qubit = True
+        else:
+            self.single_qubit = False
+
+    def execute(self, data_format, platform):
+        """Method to execute a single action and retrieving the results."""
+        if data_format is None:
+            raise_error(ValueError, f"Cannot store data using {data_format} format.")
+        if self.single_qubit:
+            for qubit in self.runcard["qubits"]:
+                results = self.func(platform, qubit, **self.params)
+
+                for data in results:
+                    getattr(data, f"to_{data_format}")(self.path)
+
+                # if platform is not None:
+                #     self.update_platform_runcard(qubit, routine.__name__)
+        else:
+            results = self.func(platform, self.runcard["qubits"], **self.params)
+
+            for data in results:
+                getattr(data, f"to_{data_format}")(self.path)
+
+
+class RBsingleActionParser(singleActionParser):
+    def __init__(self, runcard, folder, name):
+        super().__init__(runcard, folder, name)
+
+        self.module = None
+        self.experiment = None
+        self.factory = None
+        self.fitting = None
+        self.plots = []
+
+        self.nqubits = self.runcard["actions"][self.name]["nqubits"]
+        self.depths = self.runcard["actions"][self.name]["depths"]
+        self.runs = self.runcard["actions"][self.name]["runs"]
+        self.nshots = self.runcard["actions"][self.name]["nshots"]
+        self.noise_params = self.runcard["actions"][self.name]["noise_params"]
+
+        from qibocal.calibrations.protocols import noisemodels
+
+        self.noise_model = getattr(
+            noisemodels, self.runcard["actions"][self.name]["nshots"]
+        )(*self.noise_params)
+
+    def build(self):
+
+        if not os.path.exists(self.path):
+            os.makedirs(self.path)
+
+        self.module = importlib.import_module(
+            f"qibocal.calibrations.protocols.{self.name}"
+        )
+
+    # @plot()
+    def execute(self, data_format):
+
+        data_experiment = Data("experiment")
+        if data_format is None:
+            raise_error(ValueError, f"Cannot store data using {data_format} format.")
+
+        factory = self.module.moduleFactory(
+            self.nqubit, self.depths, self.runs, qubits=self.runcard["qubit"]
+        )
+        experiment = self.module.moduleExperiment(
+            factory, self.nshots, noisemodel=self.noise_model
+        )
+        # Execute the experiment.
+        experiment.perform(experiment.execute)
+        # Run the row by row postprocessing.
+        self.module.post_processing_sequential(experiment)
+        # Take the data from the experiment and but it in the ``Data`` format.
+        data_experiment.df = self.experiment.dataframe
+        getattr(data_experiment, f"to_{data_format}")(self.path)
+
+        data_fit_df = self.module.get_aggregational_data(experiment)
+        data_fit = Data("fit_plot")
+        data_fit.df = data_fit_df
+        getattr(data_fit, f"to_{data_format}")(self.path)
 
 
 class ActionBuilder:
@@ -117,23 +226,6 @@ class ActionBuilder:
         with open(f"{path}/meta.yml", "w") as file:
             yaml.dump(meta, file)
 
-    def _build_single_action(self, name):
-        """Helper method to parse the actions in the runcard."""
-        f = getattr(calibrations, name)
-        path = os.path.join(self.folder, f"data/{name}/")
-        os.makedirs(path)
-        sig = inspect.signature(f)
-        params = self.runcard["actions"][name]
-        for param in list(sig.parameters)[2:-1]:
-            if param not in params:
-                raise_error(AttributeError, f"Missing parameter {param} in runcard.")
-        if f.__annotations__["qubit"] == int:
-            single_qubit_action = True
-        else:
-            single_qubit_action = False
-
-        return f, params, path, single_qubit_action
-
     def execute(self):
         """Method to execute sequentially all the actions in the runcard."""
         if self.platform is not None:
@@ -142,34 +234,19 @@ class ActionBuilder:
             self.platform.start()
 
         for action in self.runcard["actions"]:
-            routine, args, path, single_qubit_action = self._build_single_action(action)
-            self._execute_single_action(routine, args, path, single_qubit_action)
+            try:
+                parser = RBsingleActionParser(self.runcard, self.folder, action)
+                parser.build()
+                parser.execute(self.format, self.platform)
+            # TODO: find a better way to choose between the two parsers
+            except (ModuleNotFoundError, KeyError):
+                parser = singleActionParser(self.runcard, self.folder, action)
+                parser.build()
+                parser.execute(self.format, self.platform)
 
         if self.platform is not None:
             self.platform.stop()
             self.platform.disconnect()
-
-    def _execute_single_action(self, routine, arguments, path, single_qubit):
-        """Method to execute a single action and retrieving the results."""
-        if self.format is None:
-            raise_error(ValueError, f"Cannot store data using {self.format} format.")
-        if single_qubit:
-            for qubit in self.qubits:
-                results = routine(self.platform, qubit, **arguments)
-
-                for data in results:
-                    getattr(data, f"to_{self.format}")(path)
-
-                if self.platform is not None:
-                    self.update_platform_runcard(qubit, routine.__name__)
-        else:
-            results = routine(self.platform, self.qubits, **arguments)
-
-            for data in results:
-                getattr(data, f"to_{self.format}")(path)
-
-            if self.platform is not None:
-                self.update_platform_runcard(qubit, routine.__name__)
 
     def update_platform_runcard(self, qubit, routine):
 
@@ -229,9 +306,13 @@ class ReportBuilder:
         # create calibration routine objects
         # (could be incorporated to :meth:`qibocal.cli.builders.ActionBuilder._build_single_action`)
         self.routines = []
+
         for action in self.runcard.get("actions"):
             if hasattr(calibrations, action):
                 routine = getattr(calibrations, action)
+            elif hasattr(calibrations.protocols, action):
+                routine = RBsingleActionParser(self.runcard, self.path, action)
+                routine.build()
             else:
                 raise_error(ValueError, f"Undefined action {action} in report.")
 
