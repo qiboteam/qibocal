@@ -53,6 +53,8 @@ def get_noise(background, platform, ro_pulse, qubit, sequence):
         msr = platform.execute_pulse_sequence(sequence)[ro_pulse.serial][0]
         noise += msr
     return noise / len(background)
+
+
 def scan_level(
     best_f,
     best_msr,

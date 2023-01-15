@@ -4,7 +4,7 @@ from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import freq_r_mathieu, freq_r_transmon, line, lorenzian
-from qibocal.plots.utils import get_data_subfolders, get_color
+from qibocal.plots.utils import get_color, get_data_subfolders
 
 
 # Resonator and qubit spectroscopies

@@ -16,8 +16,17 @@ from qibocal.fitting.methods import (
     res_spectroscopy_flux_fit,
     t1_fit,
 )
-from qibocal.fitting.utils import freq_r_mathieu, freq_r_transmon, line, cos, exp, flipping, lorenzian, rabi, ramsey
-
+from qibocal.fitting.utils import (
+    cos,
+    exp,
+    flipping,
+    freq_r_mathieu,
+    freq_r_transmon,
+    line,
+    lorenzian,
+    rabi,
+    ramsey,
+)
 
 
 @pytest.mark.parametrize("name", [None, "test"])
