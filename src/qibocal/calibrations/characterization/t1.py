@@ -109,12 +109,12 @@ def t1(
 
             for qubit in qubits:
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                msr, phase, i, q = results[ro_pulses[qubit].serial]
+                result = results[ro_pulses[qubit].serial]
                 r = {
-                    "MSR[V]": msr,
-                    "i[V]": i,
-                    "q[V]": q,
-                    "phase[rad]": phase,
+                    "MSR[V]": np.mean(result.MSR),
+                    "i[V]": np.mean(result.I),
+                    "q[V]": np.mean(result.Q),
+                    "phase[rad]": np.mean(result.phase),
                     "wait[ns]": wait,
                     "qubit": qubit,
                     "iteration": iteration,
