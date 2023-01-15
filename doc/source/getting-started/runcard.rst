@@ -15,6 +15,8 @@ In the case of the ``qq`` command a possible runcard should look like this:
 
     platform: tii5q
 
+    runcard: <path_to_platform_runcard>
+
     qubits: [0]
 
     format: pickle
@@ -31,6 +33,7 @@ In the case of the ``qq`` command a possible runcard should look like this:
 
 First, the user will need to specify some global parameters including:
     * ``platform``: the platform name.
+    * ``runcard``: path to the platform runcard (optional). If not specified it will be used the platform runcard available in qibolab.
     * ``qubits``: the qubit(s) that we are calibrating.
     * ``format``: the format for storing the measurements.
 

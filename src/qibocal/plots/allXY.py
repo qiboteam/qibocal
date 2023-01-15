@@ -4,61 +4,35 @@ from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import cos
-from qibocal.plots.utils import get_data_subfolders
+from qibocal.plots.utils import get_color, get_data_subfolders
+
+# allXY rotations
+gatelist = [
+    ["I", "I"],
+    ["RX(pi)", "RX(pi)"],
+    ["RY(pi)", "RY(pi)"],
+    ["RX(pi)", "RY(pi)"],
+    ["RY(pi)", "RX(pi)"],
+    ["RX(pi/2)", "I"],
+    ["RY(pi/2)", "I"],
+    ["RX(pi/2)", "RY(pi/2)"],
+    ["RY(pi/2)", "RX(pi/2)"],
+    ["RX(pi/2)", "RY(pi)"],
+    ["RY(pi/2)", "RX(pi)"],
+    ["RX(pi)", "RY(pi/2)"],
+    ["RY(pi)", "RX(pi/2)"],
+    ["RX(pi/2)", "RX(pi)"],
+    ["RX(pi)", "RX(pi/2)"],
+    ["RY(pi/2)", "RY(pi)"],
+    ["RY(pi)", "RY(pi/2)"],
+    ["RX(pi)", "I"],
+    ["RY(pi)", "I"],
+    ["RX(pi/2)", "RX(pi/2)"],
+    ["RY(pi/2)", "RY(pi/2)"],
+]
 
 
-# allXY
-def prob_gate(folder, routine, qubit, format):
-
-    fig = make_subplots(
-        rows=1,
-        cols=1,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
-        subplot_titles=(f"allXY",),
-    )
-
-    # iterate over multiple data folders
-    subfolders = get_data_subfolders(folder)
-    i = 0
-    for subfolder in subfolders:
-        try:
-            data = DataUnits.load_data(
-                folder, subfolder, routine, format, f"data_q{qubit}"
-            )
-        except:
-            data = DataUnits(
-                quantities={
-                    "probability": "dimensionless",
-                    "gateNumber": "dimensionless",
-                }
-            )
-
-        fig.add_trace(
-            go.Scatter(
-                x=data.get_values("gateNumber", "dimensionless"),
-                y=data.get_values("probability", "dimensionless"),
-                mode="markers",
-                name=f"Probabilities q{qubit}/r{i}",
-            ),
-            row=1,
-            col=1,
-        )
-        i += 1
-
-    fig.update_layout(
-        showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Gate sequence number",
-        yaxis_title="Z projection probability of qubit state |o>",
-    )
-    return fig
-
-
-# allXY iteration
-def prob_gate_iteration(folder, routine, qubit, format):
-
-    import numpy as np
+def allXY(folder, routine, qubit, format):
 
     fig = make_subplots(
         rows=1,
@@ -70,49 +44,79 @@ def prob_gate_iteration(folder, routine, qubit, format):
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
-    i = 0
+    report_n = 0
     for subfolder in subfolders:
-
         try:
-            data = DataUnits.load_data(
-                folder, subfolder, routine, format, f"data_q{qubit}"
-            )
+            data = Data.load_data(folder, subfolder, routine, format, "data")
+            data.df = data.df[data.df["qubit"] == qubit]
         except:
-            data = DataUnits(
-                quantities={
-                    "probability": "dimensionless",
-                    "gateNumber": "dimensionless",
-                    "beta_param": "dimensionless",
-                }
+            data = Data(
+                name="data",
+                quantities={"probability", "gateNumber", "qubit", "iteration"},
             )
+        iterations = data.df["iteration"].unique()
+        gate_numbers = data.df["gateNumber"].unique()
 
-        gates = len(data.get_values("gateNumber", "dimensionless"))
-        for n in range(gates // 21):
-            data_start = n * 21
-            data_end = data_start + 21
-            beta_param = np.array(data.get_values("beta_param", "dimensionless"))[
-                data_start
-            ]
-            gates = np.array(data.get_values("gateNumber", "dimensionless"))[
-                data_start:data_end
-            ]
-            probabilities = np.array(data.get_values("probability", "dimensionless"))[
-                data_start:data_end
-            ]
-            c = "#" + "{:06x}".format(n * 99999)
+        for iteration in iterations:
+            iteration_data = data.df[data.df["iteration"] == iteration]
             fig.add_trace(
                 go.Scatter(
-                    x=gates,
-                    y=probabilities,
-                    mode="markers+lines",
-                    line=dict(color=c),
-                    name=f"q{qubit}/r{i}: beta_param = {beta_param}",
-                    marker_size=16,
+                    x=iteration_data["gateNumber"],
+                    y=iteration_data["probability"],
+                    marker_color=get_color(report_n),
+                    mode="markers",
+                    text=gatelist,
+                    textposition="bottom center",
+                    opacity=0.3,
+                    name=f"q{qubit}/r{report_n}: Probability",
+                    showlegend=not bool(iteration),
+                    legendgroup="group1",
                 ),
                 row=1,
                 col=1,
             )
-        i += 1
+
+        fig.add_trace(
+            go.Scatter(
+                x=gate_numbers,
+                y=data.df.groupby("gateNumber", as_index=False)[
+                    "probability"
+                ].mean(),  # pylint: disable=E1101
+                name=f"q{qubit}/r{report_n}: Average Probability",
+                marker_color=get_color(report_n),
+                mode="markers",
+                text=gatelist,
+                textposition="bottom center",
+            ),
+            row=1,
+            col=1,
+        )
+        report_n += 1
+
+    fig.add_hline(
+        y=-1,
+        line_width=2,
+        line_dash="dash",
+        line_color="grey",
+        row=1,
+        col=1,
+    )
+    fig.add_hline(
+        y=0,
+        line_width=2,
+        line_dash="dash",
+        line_color="grey",
+        row=1,
+        col=1,
+    )
+    fig.add_hline(
+        y=1,
+        line_width=2,
+        line_dash="dash",
+        line_color="grey",
+        row=1,
+        col=1,
+    )
 
     fig.update_layout(
         showlegend=True,
@@ -123,79 +127,219 @@ def prob_gate_iteration(folder, routine, qubit, format):
     return fig
 
 
-# Beta param tuning
-def msr_beta(folder, routine, qubit, format):
+# allXY
+def allXY_drag_pulse_tuning(folder, routine, qubit, format):
+
+    fig = make_subplots(
+        rows=1,
+        cols=1,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        subplot_titles=(f"allXY",),
+    )
+
+    # iterate over multiple data folders
+    subfolders = get_data_subfolders(folder)
+    report_n = 0
+    for subfolder in subfolders:
+
+        try:
+            data = Data.load_data(folder, subfolder, routine, format, "data")
+            data.df = data.df[data.df["qubit"] == qubit]
+        except:
+            data = Data(
+                quantities={
+                    "probability",
+                    "gateNumber",
+                    "beta_param",
+                    "qubit",
+                    "iteration",
+                },
+            )
+
+        iterations = data.df["iteration"].unique()
+        beta_params = data.df["beta_param"].unique()
+        gate_numbers = data.df["gateNumber"].unique()
+
+        for iteration in iterations:
+            iteration_data = data.df[data.df["iteration"] == iteration]
+            for j, beta_param in enumerate(beta_params):
+                beta_param_data = iteration_data[
+                    iteration_data["beta_param"] == beta_param
+                ]
+                fig.add_trace(
+                    go.Scatter(
+                        x=beta_param_data["gateNumber"],
+                        y=beta_param_data["probability"],
+                        marker_color=get_color(report_n * len(beta_params) + j),
+                        mode="markers+lines",
+                        opacity=0.5,
+                        name=f"q{qubit}/r{report_n}: beta {beta_param}",
+                        showlegend=not bool(iteration),
+                        legendgroup=f"group{j}",
+                        text=gatelist,
+                        textposition="bottom center",
+                    ),
+                    row=1,
+                    col=1,
+                )
+        report_n += 1
+
+    fig.add_hline(
+        y=-1,
+        line_width=2,
+        line_dash="dash",
+        line_color="grey",
+        row=1,
+        col=1,
+    )
+    fig.add_hline(
+        y=0,
+        line_width=2,
+        line_dash="dash",
+        line_color="grey",
+        row=1,
+        col=1,
+    )
+    fig.add_hline(
+        y=1,
+        line_width=2,
+        line_dash="dash",
+        line_color="grey",
+        row=1,
+        col=1,
+    )
+
+    fig.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Gate sequence number",
+        yaxis_title="Z projection probability of qubit state |o>",
+    )
+    return fig
+
+
+# beta param tuning
+def drag_pulse_tuning(folder, routine, qubit, format):
 
     fig = make_subplots(
         rows=1,
         cols=1,
         horizontal_spacing=0.01,
         vertical_spacing=0.01,
-        subplot_titles=(f"beta_param_tuning",),
     )
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
-    i = 0
+    report_n = 0
     fitting_report = ""
     for subfolder in subfolders:
         try:
-            data = DataUnits.load_data(
-                folder, subfolder, routine, format, f"data_q{qubit}"
-            )
+            data = DataUnits.load_data(folder, subfolder, routine, format, "data")
+            data.df = data.df[data.df["qubit"] == qubit]
         except:
             data = DataUnits(
-                name=f"data_q{qubit}", quantities={"beta_param": "dimensionless"}
+                name="data",
+                quantities={"beta_param": "dimensionless"},
+                options=["qubit", "iteration"],
             )
         try:
-            data_fit = DataUnits.load_data(
-                folder, subfolder, routine, format, f"fit_q{qubit}"
-            )
+            data_fit = Data.load_data(folder, subfolder, routine, format, "fits")
+            data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
         except:
-            data_fit = DataUnits()
+            data_fit = Data()
 
-        # c = "#6597aa"
-        fig.add_trace(
-            go.Scatter(
-                x=data.get_values("beta_param", "dimensionless"),
-                y=data.get_values("MSR", "uV"),
-                # line=dict(color=c),
-                mode="markers",
-                name=f"q{qubit}/r{i}: [Rx(pi/2) - Ry(pi)] - [Ry(pi/2) - Rx(pi)]",
-            ),
-            row=1,
-            col=1,
-        )
-        # add fitting traces
-        if len(data) > 0 and len(data_fit) > 0:
-            beta_param = np.linspace(
-                min(data.get_values("beta_param", "dimensionless")),
-                max(data.get_values("beta_param", "dimensionless")),
-                2 * len(data),
-            )
-            params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+        iterations = data.df["iteration"].unique()
+        beta_params = data.df["beta_param"].pint.magnitude.unique()
+
+        for iteration in iterations:
+            iteration_data = data.df[data.df["iteration"] == iteration]
             fig.add_trace(
                 go.Scatter(
-                    x=beta_param,
-                    y=cos(
-                        beta_param,
-                        data_fit.get_values("popt0"),
-                        data_fit.get_values("popt1"),
-                        data_fit.get_values("popt2"),
-                        data_fit.get_values("popt3"),
-                    ),
-                    name=f"Fit q{qubit}/r{i}",
-                    line=go.scatter.Line(dash="dot"),
+                    x=iteration_data["beta_param"].pint.magnitude,
+                    y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
+                    marker_color=get_color(report_n),
+                    mode="markers",
+                    opacity=0.3,
+                    name=f"q{qubit}/r{report_n}: Probability",
+                    showlegend=not bool(iteration),
+                    legendgroup="group1",
                 ),
                 row=1,
                 col=1,
             )
 
-            fitting_report = fitting_report + (
-                f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.4f}<br><br>"
+        iterations = data.df["iteration"].unique()
+        beta_params = data.df["beta_param"].pint.magnitude.unique()
+
+        for iteration in iterations:
+            iteration_data = data.df[data.df["iteration"] == iteration]
+            fig.add_trace(
+                go.Scatter(
+                    x=iteration_data["beta_param"].pint.magnitude,
+                    y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
+                    marker_color=get_color(report_n),
+                    mode="markers",
+                    opacity=0.3,
+                    name=f"q{qubit}/r{report_n}: Probability",
+                    showlegend=not bool(iteration),
+                    legendgroup="group1",
+                ),
+                row=1,
+                col=1,
             )
 
-            i += 1
+        fig.add_trace(
+            go.Scatter(
+                x=beta_params,
+                y=data.df.groupby("beta_param", as_index=False)[
+                    "MSR"
+                ]  # pylint: disable=E1101
+                .mean()
+                .pint.to("uV")
+                .pint.magnitude,
+                name=f"q{qubit}/r{report_n}: Average MSR",
+                marker_color=get_color(report_n),
+                mode="markers",
+            ),
+            row=1,
+            col=1,
+        )
+
+        # add fitting traces
+
+        if len(data) > 0 and (qubit in data_fit.df["qubit"].values):
+            beta_range = np.linspace(
+                min(data.get_values("beta_param", "dimensionless")),
+                max(data.get_values("beta_param", "dimensionless")),
+                20,
+            )
+
+            params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(
+                orient="records"
+            )[0]
+            fig.add_trace(
+                go.Scatter(
+                    x=beta_range,
+                    y=cos(
+                        beta_range,
+                        data_fit.get_values("popt0"),
+                        data_fit.get_values("popt1"),
+                        data_fit.get_values("popt2"),
+                        data_fit.get_values("popt3"),
+                    ),
+                    name=f"q{qubit}/r{report_n}: Fit",
+                    line=go.scatter.Line(dash="dot"),
+                    marker_color=get_color(4 * report_n + 2),
+                ),
+                row=1,
+                col=1,
+            )
+            fitting_report = fitting_report + (
+                f"q{qubit}/r{report_n} optimal_beta_param: {params['optimal_beta_param']:.4f}<br><br>"
+            )
+
+            report_n += 1
 
     fig.add_annotation(
         dict(
@@ -219,6 +363,6 @@ def msr_beta(folder, routine, qubit, format):
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Beta parameter",
-        yaxis_title="MSR[uV]",
+        yaxis_title="MSR[uV] [Rx(pi/2) - Ry(pi)] - [Ry(pi/2) - Rx(pi)]",
     )
     return fig

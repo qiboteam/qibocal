@@ -52,6 +52,8 @@ def command(runcard, folder, force=None):
     Arguments:
 
      - RUNCARD: runcard with declarative inputs.
+
+     - PLATFORM_RUNCARD: Qibolab's platform runcard. If not provided Qibocal will use the runcard available in Qibolab for the platform chosen.
     """
 
     builder = ActionBuilder(runcard, folder, force)
