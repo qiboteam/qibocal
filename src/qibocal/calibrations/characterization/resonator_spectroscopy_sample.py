@@ -147,7 +147,7 @@ def scan_small(best_f, best_msr, span, resolution, platform, ro_pulse, qubit, se
 @plot("Frequency vs Attenuation", frequency_attenuation)
 def resonator_punchout_sample(
     platform: AbstractPlatform,
-    qubit: int,
+    qubits: list,
     min_att,
     max_att,
     step_att,
@@ -178,83 +178,84 @@ def resonator_punchout_sample(
 
     """
 
-    data = DataUnits(
-        name=f"data_q{qubit}", quantities={"frequency": "Hz", "attenuation": "dB"}
-    )
+    for qubit in qubits:
+        data = DataUnits(
+            name=f"data_q{qubit}", quantities={"frequency": "Hz", "attenuation": "dB"}
+        )
 
-    platform.reload_settings()
-    sequence = PulseSequence()
-    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
-    sequence.add(ro_pulse)
+        platform.reload_settings()
+        sequence = PulseSequence()
+        ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
+        sequence.add(ro_pulse)
 
-    resonator_frequency = platform.characterization["single_qubit"][qubit][
-        "resonator_freq"
-    ]
+        resonator_frequency = platform.characterization["single_qubit"][qubit][
+            "resonator_freq"
+        ]
 
-    attenuation_range = np.arange(min_att, max_att, step_att)
-    best_f = resonator_frequency
+        attenuation_range = np.arange(min_att, max_att, step_att)
+        best_f = resonator_frequency
 
-    opt_att = 30
-    opt_snr = 0
-    for k, att in enumerate(attenuation_range):
-        platform.ro_port[qubit].attenuation = att
+        opt_att = 30
+        opt_snr = 0
+        for k, att in enumerate(attenuation_range):
+            platform.ro_port[qubit].attenuation = att
 
-        background = [best_f + 1e7, best_f - 1e7]
-        noise = get_noise(background, platform, ro_pulse, qubit, sequence)
-        best_msr = noise
-        for span in spans:
-            best_f, best_msr, phase, i, q = scan_level(
-                best_f,
-                best_msr,
-                max_runs,
-                thr,
-                span,
-                resolution,
-                noise,
-                platform,
-                ro_pulse,
-                qubit,
-                sequence,
-            )
-        for span in small_spans:
-            best_f, best_msr, phase, i, q = scan_small(
-                best_f, best_msr, span, 11, platform, ro_pulse, qubit, sequence
-            )
+            background = [best_f + 1e7, best_f - 1e7]
+            noise = get_noise(background, platform, ro_pulse, qubit, sequence)
+            best_msr = noise
+            for span in spans:
+                best_f, best_msr, phase, i, q = scan_level(
+                    best_f,
+                    best_msr,
+                    max_runs,
+                    thr,
+                    span,
+                    resolution,
+                    noise,
+                    platform,
+                    ro_pulse,
+                    qubit,
+                    sequence,
+                )
+            for span in small_spans:
+                best_f, best_msr, phase, i, q = scan_small(
+                    best_f, best_msr, span, 11, platform, ro_pulse, qubit, sequence
+                )
+            results = {
+                "MSR[V]": best_msr,
+                "i[V]": i,
+                "q[V]": q,
+                "phase[rad]": phase,
+                "frequency[Hz]": best_f,
+                "attenuation[dB]": att,
+            }
+            data.add(results)
+            if k % points == 0:
+                yield data
+            if att >= opt_att:
+                if abs(snr(best_msr, noise)) > opt_snr:
+                    opt_snr = abs(snr(best_msr, noise))
+                    opt_att = att
+                    opt_f = best_f
+        data1 = DataUnits(
+            name=f"results_q{qubit}",
+            quantities={"snr": "dimensionless", "frequency": "Hz", "attenuation": "dB"},
+        )
+        f_err = len(str(int(small_spans[-1] / 10)))
         results = {
-            "MSR[V]": best_msr,
-            "i[V]": i,
-            "q[V]": q,
-            "phase[rad]": phase,
-            "frequency[Hz]": best_f,
-            "attenuation[dB]": att,
+            "snr[dimensionless]": opt_snr,
+            "frequency[Hz]": round(opt_f, -f_err),
+            "attenuation[dB]": opt_att,
         }
-        data.add(results)
-        if k % points == 0:
-            yield data
-        if att >= opt_att:
-            if abs(snr(best_msr, noise)) > opt_snr:
-                opt_snr = abs(snr(best_msr, noise))
-                opt_att = att
-                opt_f = best_f
-    data1 = DataUnits(
-        name=f"results_q{qubit}",
-        quantities={"snr": "dimensionless", "frequency": "Hz", "attenuation": "dB"},
-    )
-    f_err = len(str(int(small_spans[-1] / 10)))
-    results = {
-        "snr[dimensionless]": opt_snr,
-        "frequency[Hz]": round(opt_f, -f_err),
-        "attenuation[dB]": opt_att,
-    }
-    data1.add(results)
-    yield data1
-    yield data
+        data1.add(results)
+        yield data1
+        yield data
 
 
 @plot("Frequency vs Current", frequency_current_flux)
 def resonator_flux_sample(
     platform: AbstractPlatform,
-    qubit: int,
+    qubits: list,
     current_min,
     current_max,
     current_step,
@@ -292,89 +293,91 @@ def resonator_flux_sample(
 
     """
 
-    params_fit = params_fit[qubit]
-    for fluxline in fluxlines:
-        data = DataUnits(
-            name=f"data_q{qubit}_f{fluxline}",
-            quantities={"frequency": "Hz", "current": "A"},
-        )
-
-        if fluxline == "qubit":
-            fluxline = qubit
-
-        platform.reload_settings()
-        for f in fluxlines:
-            platform.qf_port[f].current = 0
-
-        sequence = PulseSequence()
-        ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
-        sequence.add(ro_pulse)
-
-        resonator_frequency = platform.characterization["single_qubit"][qubit][
-            "resonator_freq"
-        ]
-        qubit_biasing_current = platform.characterization["single_qubit"][qubit][
-            "sweetspot"
-        ]
-        platform.qf_port[fluxline].current = qubit_biasing_current
-        current_range = (
-            np.arange(current_min, current_max, current_step) + qubit_biasing_current
-        )
-        start = next(
-            (
-                index
-                for index, curr in enumerate(current_range)
-                if curr >= qubit_biasing_current
+    for qubit in qubits:
+        params_fit = params_fit[qubit]
+        for fluxline in fluxlines:
+            data = DataUnits(
+                name=f"data_q{qubit}_f{fluxline}",
+                quantities={"frequency": "Hz", "current": "A"},
             )
-        )
-        start_f = resonator_frequency
-        background = [start_f + 1e7, start_f - 1e7]
-        noise = get_noise(background, platform, ro_pulse, qubit, sequence)
-        current_range = np.concatenate(
-            (current_range[start:], current_range[:start][::-1])
-        )
-        index = len(current_range[start:])
-        best_f = start_f
-        for k, curr in enumerate(current_range):
-            if k == index:
-                best_f = start_f
-            best_msr = noise
-            platform.qf_port[fluxline].current = curr
-            for span in spans:
-                best_f, best_msr, phase, i, q = scan_level(
-                    best_f,
-                    best_msr,
-                    max_runs,
-                    thr,
-                    span,
-                    resolution,
-                    noise,
-                    platform,
-                    ro_pulse,
-                    qubit,
-                    sequence,
+
+            if fluxline == "qubit":
+                fluxline = qubit
+
+            platform.reload_settings()
+            for f in fluxlines:
+                platform.qb_port[f].current = 0
+
+            sequence = PulseSequence()
+            ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
+            sequence.add(ro_pulse)
+
+            resonator_frequency = platform.characterization["single_qubit"][qubit][
+                "resonator_freq"
+            ]
+            qubit_biasing_current = platform.characterization["single_qubit"][qubit][
+                "sweetspot"
+            ]
+            platform.qb_port[fluxline].current = qubit_biasing_current
+            current_range = (
+                np.arange(current_min, current_max, current_step)
+                + qubit_biasing_current
+            )
+            start = next(
+                (
+                    index
+                    for index, curr in enumerate(current_range)
+                    if curr >= qubit_biasing_current
                 )
-            for span in small_spans:
-                best_f, best_msr, phase, i, q = scan_small(
-                    best_f, best_msr, span, 11, platform, ro_pulse, qubit, sequence
-                )
-            results = {
-                "MSR[V]": best_msr,
-                "i[V]": i,
-                "q[V]": q,
-                "phase[rad]": phase,
-                "frequency[Hz]": best_f,
-                "current[A]": curr,
-            }
-            data.add(results)
-            if k % points == 0:
-                yield data
-        yield res_spectroscopy_flux_fit(
-            data,
-            x="current[A]",
-            y="frequency[Hz]",
-            qubit=qubit,
-            fluxline=fluxline,
-            params_fit=params_fit,
-        )
-        yield data
+            )
+            start_f = resonator_frequency
+            background = [start_f + 1e7, start_f - 1e7]
+            noise = get_noise(background, platform, ro_pulse, qubit, sequence)
+            current_range = np.concatenate(
+                (current_range[start:], current_range[:start][::-1])
+            )
+            index = len(current_range[start:])
+            best_f = start_f
+            for k, curr in enumerate(current_range):
+                if k == index:
+                    best_f = start_f
+                best_msr = noise
+                platform.qb_port[fluxline].current = curr
+                for span in spans:
+                    best_f, best_msr, phase, i, q = scan_level(
+                        best_f,
+                        best_msr,
+                        max_runs,
+                        thr,
+                        span,
+                        resolution,
+                        noise,
+                        platform,
+                        ro_pulse,
+                        qubit,
+                        sequence,
+                    )
+                for span in small_spans:
+                    best_f, best_msr, phase, i, q = scan_small(
+                        best_f, best_msr, span, 11, platform, ro_pulse, qubit, sequence
+                    )
+                results = {
+                    "MSR[V]": best_msr,
+                    "i[V]": i,
+                    "q[V]": q,
+                    "phase[rad]": phase,
+                    "frequency[Hz]": best_f,
+                    "current[A]": curr,
+                }
+                data.add(results)
+                if k % points == 0:
+                    yield data
+            yield res_spectroscopy_flux_fit(
+                data,
+                x="current[A]",
+                y="frequency[Hz]",
+                qubit=qubit,
+                fluxline=fluxline,
+                params_fit=params_fit,
+            )
+            yield data
