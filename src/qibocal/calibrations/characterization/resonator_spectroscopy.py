@@ -568,15 +568,7 @@ def dispersive_shift(
         sequence_1.add(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:
-    resonator_frequencies = {}
-    for qubit in qubits:
-        resonator_frequencies[qubit] = platform.characterization["single_qubit"][qubit][
-            "resonator_freq"
-        ]
     delta_frequency_range = np.arange(-freq_width // 2, freq_width // 2, freq_step)
-
-    # save runcard local oscillator frequencies to be able to calculate new intermediate frequencies
-    lo_frequencies = {qubit: platform.get_lo_frequency(qubit) for qubit in qubits}
 
     # create a DataUnits objects to store the results
     data_0 = DataUnits(
@@ -603,7 +595,7 @@ def dispersive_shift(
                     y="MSR[uV]",
                     qubits=qubits,
                     resonator_type=platform.resonator_type,
-                    labels=["resonator_freq", "peak_voltage", "intermediate_freq"],
+                    labels=["resonator_freq", "peak_voltage"],
                     fit_file_name="fit_data_0",
                 )
                 yield lorentzian_fit(
@@ -612,7 +604,7 @@ def dispersive_shift(
                     y="MSR[uV]",
                     qubits=qubits,
                     resonator_type=platform.resonator_type,
-                    labels=["resonator_freq", "peak_voltage", "intermediate_freq"],
+                    labels=["resonator_freq", "peak_voltage"],
                     fit_file_name="fit_data_1",
                 )
 
@@ -620,11 +612,8 @@ def dispersive_shift(
             # in this case setting the local oscillators
             # the pulse sequence does not need to be modified or recreated between executions
             for qubit in qubits:
-                platform.set_lo_frequency(
-                    qubit,
-                    delta_freq
-                    + resonator_frequencies[qubit]
-                    - ro_pulses[qubit].frequency,
+                ro_pulses[qubit].frequency = (
+                    delta_freq + qubits[qubit].readout_frequency
                 )
 
             # execute the pulse sequences
@@ -635,14 +624,14 @@ def dispersive_shift(
             for data, results in list(zip([data_0, data_1], [results_0, results_1])):
                 for qubit in qubits:
                     # average msr, phase, i and q over the number of shots defined in the runcard
-                    msr, phase, i, q = results[ro_pulses[qubit].serial]
+                    msr, phase, i, q = results[qubit]
                     # store the results
                     r = {
                         "MSR[V]": msr,
                         "i[V]": i,
                         "q[V]": q,
                         "phase[rad]": phase,
-                        "frequency[Hz]": delta_freq + resonator_frequencies[qubit],
+                        "frequency[Hz]": ro_pulses[qubit].frequency,
                         "qubit": qubit,
                         "iteration": iteration,
                     }
@@ -657,7 +646,7 @@ def dispersive_shift(
         y="MSR[uV]",
         qubits=qubits,
         resonator_type=platform.resonator_type,
-        labels=["resonator_freq", "peak_voltage", "intermediate_freq"],
+        labels=["resonator_freq", "peak_voltage"],
         fit_file_name="fit_data_0",
     )
     yield lorentzian_fit(
@@ -666,6 +655,6 @@ def dispersive_shift(
         y="MSR[uV]",
         qubits=qubits,
         resonator_type=platform.resonator_type,
-        labels=["resonator_freq", "peak_voltage", "intermediate_freq"],
+        labels=["resonator_freq", "peak_voltage"],
         fit_file_name="fit_data_1",
     )
