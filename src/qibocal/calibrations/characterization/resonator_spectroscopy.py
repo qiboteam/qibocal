@@ -167,6 +167,7 @@ def resonator_spectroscopy(
 
     # run a precision sweep around the newly detected frequencies
 
+    # TODO: remove it
     # create a new sequence of pulses with adjusted frequencies
     sequence = PulseSequence()
     ro_pulses = {}

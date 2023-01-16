@@ -76,12 +76,6 @@ def qubit_spectroscopy(
         sequence.add(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:
-    # qubit drive frequency
-    qubit_frequencies = {}
-    for qubit in qubits:
-        qubit_frequencies[qubit] = platform.characterization["single_qubit"][qubit][
-            "qubit_freq"
-        ]
     delta_frequency_range = np.arange(-fast_width // 2, fast_width // 2, fast_step)
 
     # create a DataUnits object to store the results,
@@ -133,7 +127,7 @@ def qubit_spectroscopy(
                     "i[V]": i,
                     "q[V]": q,
                     "phase[rad]": phase,
-                    "frequency[Hz]": delta_freq + qubit_frequencies[qubit],
+                    "frequency[Hz]": qd_pulses[qubit].frequency,
                     "qubit": qubit,
                     "iteration": iteration,
                 }
