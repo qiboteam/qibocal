@@ -339,7 +339,7 @@ def resonator_punchout(
                     ro_pulses[qubit.name].frequency = (
                         delta_freq + qubit.readout_frequency
                     )
-                    qubit.set_attenuation(att)
+                    platform.set_attenuation(qubit, att)
 
                 # execute the pulse sequence
                 results = platform.execute_pulse_sequence(sequence)
