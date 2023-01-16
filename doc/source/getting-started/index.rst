@@ -11,4 +11,5 @@ your quantum hardware.
     installation
     interface
     runcard
+    resonator_sample/resonator_spectroscopy_sample
     example
