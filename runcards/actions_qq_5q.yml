@@ -98,7 +98,7 @@ actions:
   # qubit_spectroscopy_flux_track:
   #   freq_width: 50_000_000
   #   freq_step: 1_000_000
-  #   current_offset: 10.e-3
+  #   current_width: 10.e-3
   #   current_step: 4.e-3 # 0.0001
   #   software_averages: 1
   #   points: 10
