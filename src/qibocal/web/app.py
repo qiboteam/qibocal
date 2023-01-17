@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import os
 
 import pandas as pd
@@ -23,7 +22,7 @@ app.layout = html.Div(
         dcc.Interval(
             id="interval",
             # TODO: Perhaps the user should be allowed to change the refresh rate
-            interval=1000,
+            interval=5000,
             n_intervals=0,
             disabled=False,
         ),
@@ -38,7 +37,13 @@ app.layout = html.Div(
     Input("url", "pathname"),
 )
 def get_graph(n, current_figure, url):
+    if "data" not in url:
+        url = f"/data{url}"
+
     method, folder, routine, qubit, format = url.split(os.sep)[2:]
+    if qubit.isdigit():
+        qubit = int(qubit)
+
     try:
         # data = DataUnits.load_data(folder, routine, format, "precision_sweep")
         # with open(f"{folder}/platform.yml", "r") as f:
