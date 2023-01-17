@@ -424,11 +424,6 @@ def resonator_spectroscopy_flux(
         sequence.add(ro_pulses[qubit])
 
     # define the parameters to sweep and their range:
-    # resonator frequency
-    resonator_frequencies = {}
-    for qubit in qubits:
-        resonator_frequencies[qubit] = platform.get_resonator_frequency(qubit)
-
     delta_frequency_range = np.arange(-freq_width // 2, freq_width // 2, freq_step)
 
     # flux current
@@ -441,7 +436,9 @@ def resonator_spectroscopy_flux(
         fluxlines = qubits
 
     for fluxline in fluxlines:
-        sweetspot_currents[fluxline] = platform.characterization["single_qubit"][qubit][
+        sweetspot_currents[fluxline] = platform.characterization["single_qubit"][
+            fluxline
+        ][  # TODO: check if this is correct
             "sweetspot"
         ]
         current_min[fluxline] = max(
@@ -470,7 +467,7 @@ def resonator_spectroscopy_flux(
         for fluxline in fluxlines:
             for current in current_ranges[fluxline]:
                 # set new flux current
-                platform.qb_port[fluxline].current = current
+                platform.set_current(fluxline, current)
                 for delta_freq in delta_frequency_range:
                     # save data as often as defined by points
                     if count % points == 0:
@@ -480,11 +477,8 @@ def resonator_spectroscopy_flux(
 
                     # set new lo frequency
                     for qubit in qubits:
-                        platform.set_lo_frequency(
-                            qubit,
-                            delta_freq
-                            + resonator_frequencies[qubit]
-                            - ro_pulses[qubit].frequency,
+                        ro_pulses[qubit.name].frequency = (
+                            delta_freq + qubit.readout_frequenc
                         )
 
                     # execute the pulse sequence
@@ -500,7 +494,7 @@ def resonator_spectroscopy_flux(
                             "i[V]": i,
                             "q[V]": q,
                             "phase[rad]": phase,
-                            "frequency[Hz]": delta_freq + resonator_frequencies[qubit],
+                            "frequency[Hz]": ro_pulses[qubit].frequency,
                             "current[A]": current,
                             "qubit": qubit,
                             "fluxline": fluxline,
