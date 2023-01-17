@@ -269,33 +269,11 @@ def drag_pulse_tuning(folder, routine, qubit, format):
                 col=1,
             )
 
-        iterations = data.df["iteration"].unique()
-        beta_params = data.df["beta_param"].pint.magnitude.unique()
-
-        for iteration in iterations:
-            iteration_data = data.df[data.df["iteration"] == iteration]
-            fig.add_trace(
-                go.Scatter(
-                    x=iteration_data["beta_param"].pint.magnitude,
-                    y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
-                    marker_color=get_color(report_n),
-                    mode="markers",
-                    opacity=0.3,
-                    name=f"q{qubit}/r{report_n}: Probability",
-                    showlegend=not bool(iteration),
-                    legendgroup="group1",
-                ),
-                row=1,
-                col=1,
-            )
-
         fig.add_trace(
             go.Scatter(
                 x=beta_params,
-                y=data.df.groupby("beta_param", as_index=False)[
-                    "MSR"
-                ]  # pylint: disable=E1101
-                .mean()
+                y=data.df.groupby("beta_param", as_index=False)
+                .mean()["MSR"]  # pylint: disable=E1101
                 .pint.to("uV")
                 .pint.magnitude,
                 name=f"q{qubit}/r{report_n}: Average MSR",
