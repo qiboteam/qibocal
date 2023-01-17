@@ -201,7 +201,7 @@ class Experiment:
         Returns:
             Experiment: The object with data (and circuitfactory).
         """
-        datapath = f"{path}data.pkl"
+        datapath = f"{path}experiment_data.pkl"
         circuitspath = f"{path}circuits.pkl"
         if isfile(datapath):
             with open(datapath, "rb") as f:
@@ -228,7 +228,7 @@ class Experiment:
         if isinstance(self.circuitfactory, list):
             with open(f"{self.path}circuits.pkl", "wb") as f:
                 pickle.dump(self.circuitfactory, f)
-        with open(f"{self.path}data.pkl", "wb") as f:
+        with open(f"{self.path}experiment_data.pkl", "wb") as f:
             pickle.dump(self.data, f)
 
     def extract(self, group_by: str, output: str, agg_type: str | callable):

@@ -21,7 +21,7 @@ from qibocal.config import raise_error
 from qibocal.data import Data
 from qibocal.decorators import plot
 from qibocal.fitting.rb_methods import fit_exp1_func
-from qibocal.plots.rb import crosstalkrb_plot
+from qibocal.plots.gateset import crosstalkrb_plot
 
 
 class CrosstalkRBExperiment(AbstractExperiment):

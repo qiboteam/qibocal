@@ -87,10 +87,11 @@ class RBsingleActionParser(singleActionParser):
         from qibocal.calibrations.protocols import noisemodels
 
         self.noise_model = getattr(
-            noisemodels, self.runcard["actions"][self.name]["nshots"]
+            noisemodels, self.runcard["actions"][self.name]["noise_model"]
         )(*self.noise_params)
 
     def build(self):
+        import qibocal.plots.gateset as gateset
 
         if not os.path.exists(self.path):
             os.makedirs(self.path)
@@ -98,16 +99,17 @@ class RBsingleActionParser(singleActionParser):
         self.module = importlib.import_module(
             f"qibocal.calibrations.protocols.{self.name}"
         )
+        self.plots.append((f"{self.name} protocol", gateset.plot))
 
     # @plot()
-    def execute(self, data_format):
+    def execute(self, data_format, platform):
 
-        data_experiment = Data("experiment")
+        data_experiment = Data("experiment_data")
         if data_format is None:
             raise_error(ValueError, f"Cannot store data using {data_format} format.")
 
         factory = self.module.moduleFactory(
-            self.nqubit, self.depths, self.runs, qubits=self.runcard["qubit"]
+            self.nqubits, self.depths, self.runs, qubits=self.runcard["qubits"]
         )
         experiment = self.module.moduleExperiment(
             factory, self.nshots, noisemodel=self.noise_model
@@ -117,7 +119,7 @@ class RBsingleActionParser(singleActionParser):
         # Run the row by row postprocessing.
         self.module.post_processing_sequential(experiment)
         # Take the data from the experiment and but it in the ``Data`` format.
-        data_experiment.df = self.experiment.dataframe
+        data_experiment.df = experiment.dataframe
         getattr(data_experiment, f"to_{data_format}")(self.path)
 
         data_fit_df = self.module.get_aggregational_data(experiment)

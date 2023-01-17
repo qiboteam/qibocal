@@ -5,13 +5,7 @@ qubits: [0,1,2]
 format: pickle
 
 actions:
-  # qqperform_standardrb:
-  #   nqubit: 1
-  #   depths: [2,5,10]
-  #   runs: 5
-  #   nshots: 1024
-  #   noise_params: [0.01, 0.01, 0.01]
-  qqperform_crosstalkrb:
+  correlated:
     nqubit: 3
     depths: [2, 5, 10, 15, 17, 20, 23, 25, 30] #,15,20]
     runs: 1000
