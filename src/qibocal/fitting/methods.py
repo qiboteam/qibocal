@@ -519,7 +519,7 @@ def t1_fit(data, x, y, qubits, resonator_type, labels):
     return data_fit
 
 
-def flipping_fit(data, x, y, qubits, resonator_type, pi_pulse_amplitude, labels):
+def flipping_fit(data, x, y, qubits, resonator_type, pi_pulse_amplitudes, labels):
     r"""
     Fitting routine for T1 experiment. The used model is
 
@@ -535,7 +535,7 @@ def flipping_fit(data, x, y, qubits, resonator_type, pi_pulse_amplitude, labels)
         qubit (int): ID qubit number
         nqubits (int): total number of qubits
         niter(int): Number of times of the flipping sequence applied to the qubit
-        pi_pulse_amplitude(float): corrected pi pulse amplitude
+        pi_pulse_amplitudes(list): list of corrected pi pulse amplitude
         labels (list of str): list containing the lables of the quantities computed by this fitting method.
 
     Returns:
@@ -551,7 +551,6 @@ def flipping_fit(data, x, y, qubits, resonator_type, pi_pulse_amplitude, labels)
 
 
     """
-
     data_fit = Data(
         name="fits",
         quantities=[
@@ -586,7 +585,9 @@ def flipping_fit(data, x, y, qubits, resonator_type, pi_pulse_amplitude, labels)
             popt, pcov = curve_fit(flipping, flips, voltages, p0=pguess, maxfev=2000000)
             epsilon = -np.pi / popt[2]
             amplitude_correction_factor = np.pi / (np.pi + epsilon)
-            corrected_amplitude = amplitude_correction_factor * pi_pulse_amplitude
+            corrected_amplitude = (
+                amplitude_correction_factor * pi_pulse_amplitudes[qubit]
+            )
             # angle = (niter * 2 * np.pi / popt[2] + popt[3]) / (1 + 4 * niter)
             # amplitude_delta = angle * 2 / np.pi * pi_pulse_amplitude
         except:

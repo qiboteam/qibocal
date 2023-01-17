@@ -79,6 +79,7 @@ def allXY(
     count = 0
     # repeat the experiment as many times as defined by software_averages
     for iteration in range(software_averages):
+        gateNumber = 1
         # sweep the parameter
         for gates in gatelist:
             # save data as often as defined by points
