@@ -4,6 +4,7 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
 from qibocal import plots
+from qibocal.config import raise_error
 from qibocal.data import DataUnits
 from qibocal.decorators import plot
 from qibocal.fitting.methods import lorentzian_fit
@@ -107,8 +108,10 @@ def resonator_spectroscopy(
             # reconfigure the instruments based on the new resonator frequency
             # in this case setting the local oscillators
             # the pulse sequence does not need to be modified or recreated between executions
-            for qubit in qubits.values():
-                ro_pulses[qubit.name].frequency = delta_freq + qubit.readout_frequency
+            for qubit in qubits:
+                ro_pulses[qubit].frequency = (
+                    delta_freq + qubits[qubit].readout_frequency
+                )
 
             # execute the pulse sequence
             results = platform.execute_pulse_sequence(sequence)
@@ -207,8 +210,10 @@ def resonator_spectroscopy(
             # reconfigure the instrument based on the new resonator frequency
             # in this case setting the local oscillators
             # the pulse sequence does not need to be modified between executions
-            for qubit in qubits.values():
-                ro_pulses[qubit.name].frequency = delta_freq + qubit.readout_frequency
+            for qubit in qubits:
+                ro_pulses[qubit].frequency = (
+                    delta_freq + qubits[qubit].readout_frequency
+                )
 
             # execute the pulse sequence
             results = platform.execute_pulse_sequence(sequence)
@@ -335,9 +340,9 @@ def resonator_punchout(
                 # reconfigure the instrument based on the new parameters
                 # in this case setting the local oscillators and their attenuations
                 # the pulse sequence does not need to be modified between executions
-                for qubit in qubits.values():
-                    ro_pulses[qubit.name].frequency = (
-                        delta_freq + qubit.readout_frequency
+                for qubit in qubits:
+                    ro_pulses[qubit].frequency = (
+                        delta_freq + qubits[qubit].readout_frequency
                     )
                     platform.set_attenuation(qubit, att)
 
@@ -479,8 +484,8 @@ def resonator_spectroscopy_flux(
 
                     # set new lo frequency
                     for qubit in qubits:
-                        ro_pulses[qubit.name].frequency = (
-                            delta_freq + qubit.readout_frequenc
+                        ro_pulses[qubit].frequency = (
+                            delta_freq + qubits[qubit].readout_frequenc
                         )
 
                     # execute the pulse sequence
