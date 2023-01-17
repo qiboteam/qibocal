@@ -292,6 +292,8 @@ def qubit_spectroscopy_flux(
             - **qubit**: The qubit being tested
     """
 
+    if not platform.flux_tunable:
+        raise_error(ValueError, f"Platform {platform} does not provide flux!")
     # reload instrument settings from runcard
     platform.reload_settings()
 

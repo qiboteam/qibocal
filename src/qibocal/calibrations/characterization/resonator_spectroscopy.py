@@ -410,6 +410,8 @@ def resonator_spectroscopy_flux(
             - **iteration**: The iteration number of the many determined by software_averages
     """
 
+    if not platform.flux_tunable:
+        raise_error(ValueError, f"Platform {platform} does not provide flux!")
     # reload instrument settings from runcard
     platform.reload_settings()
 
