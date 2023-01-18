@@ -292,9 +292,6 @@ def qubit_spectroscopy_flux(
             - **popt3**: Lorentzian's offset
             - **qubit**: The qubit being tested
     """
-
-    if not platform.flux_tunable:
-        raise_error(ValueError, f"Platform {platform} does not provide flux!")
     # reload instrument settings from runcard
     platform.reload_settings()
 

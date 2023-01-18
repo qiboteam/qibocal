@@ -413,9 +413,6 @@ def resonator_spectroscopy_flux(
             - **fluxline**: The fluxline being tested
             - **iteration**: The iteration number of the many determined by software_averages
     """
-
-    if not platform.flux_tunable:
-        raise_error(ValueError, f"Platform {platform} does not provide flux!")
     # reload instrument settings from runcard
     platform.reload_settings()
 
@@ -442,11 +439,8 @@ def resonator_spectroscopy_flux(
         fluxlines = qubits
 
     for fluxline in fluxlines:
-        sweetspot_currents[fluxline] = platform.characterization["single_qubit"][
-            fluxline
-        ][  # TODO: check if this is correct
-            "sweetspot"
-        ]
+        sweetspot_currents[fluxline] = qubits[fluxline].sweetspot
+
         current_min[fluxline] = max(
             -current_width / 2 + sweetspot_currents[fluxline], -0.03
         )
@@ -484,7 +478,7 @@ def resonator_spectroscopy_flux(
                     # set new lo frequency
                     for qubit in qubits:
                         ro_pulses[qubit].frequency = (
-                            delta_freq + qubits[qubit].readout_frequenc
+                            delta_freq + qubits[qubit].readout_frequency
                         )
 
                     # execute the pulse sequence

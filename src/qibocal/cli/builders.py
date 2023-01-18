@@ -164,14 +164,15 @@ class ActionBuilder:
             getattr(data, f"to_{self.format}")(path)
 
     def update_platform_runcard(self, qubit, routine):
+
         try:
             data_fit = Data.load_data(self.folder, "data", routine, self.format, "fits")
-            params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict("index")[0]
-        except:
-            data_fit = Data()
+        except FileNotFoundError:
+            return None
 
         settings = load_yaml(f"{self.folder}/new_platform.yml")
 
+        params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict("index")[0]
         for param in params:
             if param in list(self.qubits[qubit].__annotations__.keys()):
                 setattr(self.qubits[qubit], param, params[param])
