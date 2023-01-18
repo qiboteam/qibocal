@@ -55,8 +55,8 @@ def ramsey_frequency_detuned(
         - A DataUnits object with the fitted data obtained with the following keys
 
             - **delta_frequency**: Physical detunning of the actual qubit frequency
-            - **corrected_qubit_frequency**:
-            - **t2**: New qubit frequency after correcting the actual qubit frequency with the detunning calculated
+            - **drive_frequency**:
+            - **T2**: New qubit frequency after correcting the actual qubit frequency with the detunning calculated
             - **popt0**: offset
             - **popt1**: oscillation amplitude
             - **popt2**: frequency
@@ -132,8 +132,8 @@ def ramsey_frequency_detuned(
                         offset_freq=offset_freq,
                         labels=[
                             "delta_frequency",
-                            "corrected_qubit_frequency",
-                            "t2",
+                            "drive_frequency",
+                            "T2",
                         ],
                     )
 
@@ -177,26 +177,24 @@ def ramsey_frequency_detuned(
                 offset_freq=offset_freq,
                 labels=[
                     "delta_frequency",
-                    "corrected_qubit_frequency",
-                    "t2",
+                    "drive_frequency",
+                    "T2",
                 ],
             )
 
         stop = False
         for qubit in qubits:
-            new_t2 = float(data_fit.df[data_fit.df["qubit"] == qubit]["t2"][0])
+            new_t2 = float(data_fit.df[data_fit.df["qubit"] == qubit]["T2"][0])
             corrected_qubit_freq = int(
-                data_fit.df[data_fit.df["qubit"] == qubit]["corrected_qubit_frequency"][
-                    0
-                ]
+                data_fit.df[data_fit.df["qubit"] == qubit]["drive_frequency"][0]
             )
 
-            if new_t2 > qubits[qubit].t2 and len(delay_between_pulses_end) > 1:
+            if new_t2 > qubits[qubit].T2 and len(delay_between_pulses_end) > 1:
                 print(
-                    f"t_max: {t_max} -- new t2: {new_t2} > current t2: {qubits[qubit].t2} new iteration!"
+                    f"t_max: {t_max} -- new t2: {new_t2} > current t2: {qubits[qubit].T2} new iteration!"
                 )
                 qubits[qubit].drive_frequency = int(corrected_qubit_freq)
-                qubits[qubit].t2 = new_t2
+                qubits[qubit].T2 = new_t2
                 data = DataUnits(
                     name=f"data",
                     quantities={"wait": "ns", "t_max": "ns"},
@@ -204,7 +202,7 @@ def ramsey_frequency_detuned(
                 )
             else:
                 print(
-                    f"t_max: {t_max} -- new t2: {new_t2} < current t2: {qubits[qubit].t2} stop!"
+                    f"t_max: {t_max} -- new t2: {new_t2} < current t2: {qubits[qubit].T2} stop!"
                 )
                 # corrected_qubit_freq = int(current_qubit_freqs[qubit])
                 # new_t2 = current_T2s[qubit]
@@ -225,8 +223,8 @@ def ramsey_frequency_detuned(
         offset_freq=0,
         labels=[
             "delta_frequency",
-            "corrected_qubit_frequency",
-            "t2",
+            "drive_frequency",
+            "T2",
         ],
     )
 
@@ -271,8 +269,8 @@ def ramsey(
         - A DataUnits object with the fitted data obtained with the following keys
 
             - **delta_frequency**: Physical detunning of the actual qubit frequency
-            - **corrected_qubit_frequency**:
-            - **t2**: New qubit frequency after correcting the actual qubit frequency with the detunning calculated
+            - **drive_frequency**:
+            - **T2**: New qubit frequency after correcting the actual qubit frequency with the detunning calculated
             - **popt0**: offset
             - **popt1**: oscillation amplitude
             - **popt2**: frequency
@@ -344,8 +342,8 @@ def ramsey(
                     offset_freq=0,
                     labels=[
                         "delta_frequency",
-                        "corrected_qubit_frequency",
-                        "t2",
+                        "drive_frequency",
+                        "T2",
                     ],
                 )
 
@@ -383,7 +381,7 @@ def ramsey(
         offset_freq=0,
         labels=[
             "delta_frequency",
-            "corrected_qubit_frequency",
-            "t2",
+            "drive_frequency",
+            "T2",
         ],
     )

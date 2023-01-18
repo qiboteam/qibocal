@@ -98,7 +98,7 @@ def t1(
                     y="MSR[uV]",
                     qubits=qubits,
                     resonator_type=platform.resonator_type,
-                    labels=["t1"],
+                    labels=["T1"],
                 )
 
             for qubit in qubits:
@@ -128,5 +128,5 @@ def t1(
         y="MSR[uV]",
         qubits=qubits,
         resonator_type=platform.resonator_type,
-        labels=["t1"],
+        labels=["T1"],
     )

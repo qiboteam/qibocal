@@ -685,8 +685,8 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, format):
                     col=1,
                 )
 
-                if "resonator_freq" in params:
-                    resonator_freqs[label] = params["resonator_freq"]
+                if "readout_frequency" in params:
+                    resonator_freqs[label] = params["readout_frequency"]
 
                 for param, value in params.items():
                     if "freq" in param:
