@@ -166,19 +166,18 @@ class ActionBuilder:
     def update_platform_runcard(self, qubit, routine):
         try:
             data_fit = Data.load_data(self.folder, "data", routine, self.format, "fits")
-            data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
+            params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict("index")[0]
         except:
             data_fit = Data()
 
-        params = [
-            i for i in list(data_fit.df.keys()) if "popt" not in i and i != "qubit"
-        ]
         settings = load_yaml(f"{self.folder}/new_platform.yml")
 
         for param in params:
-            settings["characterization"]["single_qubit"][qubit][param] = int(
-                data_fit.get_values(param)
-            )
+            if param in list(self.qubits[qubit].__annotations__.keys()):
+                setattr(self.qubits[qubit], param, params[param])
+                settings["characterization"]["single_qubit"][qubit][param] = int(
+                    data_fit.get_values(param)
+                )
 
         with open(f"{self.folder}/new_platform.yml", "w") as file:
             yaml.dump(

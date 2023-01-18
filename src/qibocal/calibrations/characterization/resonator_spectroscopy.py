@@ -58,7 +58,6 @@ def resonator_spectroscopy(
             - **popt3**: Lorentzian's offset
             - **qubit**: The qubit being tested
     """
-
     # reload instrument settings from runcard
     platform.reload_settings()
     # create a sequence of pulses for the experiment:
