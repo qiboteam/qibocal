@@ -1,6 +1,7 @@
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import FluxPulse, Pulse, PulseSequence, PulseType, Rectangular
+from qibolab.sweeper import Sweeper
 
 from qibocal import plots
 from qibocal.data import DataUnits
@@ -8,6 +9,8 @@ from qibocal.decorators import plot
 
 
 @plot("Chevron CZ", plots.duration_amplitude_msr_flux_pulse)
+@plot("Chevron CZ - I", plots.duration_amplitude_I_flux_pulse)
+@plot("Chevron CZ - Q", plots.duration_amplitude_Q_flux_pulse)
 def tune_transition(
     platform: AbstractPlatform,
     qubits: list,
@@ -66,8 +69,7 @@ def tune_transition(
         flux_pulse = FluxPulse(
             start=initialize_1.se_finish,
             duration=flux_pulse_duration_start,
-            amplitude=flux_pulse_amplitude_start,
-            relative_phase=0,
+            amplitude=0.056,
             shape=Rectangular(),
             channel=str(platform.qubits[highfreq].flux),
             qubit=highfreq,
@@ -145,11 +147,8 @@ def tune_transition(
     # Might want to fix duration to expected time for 2 qubit gate.
     for duration in durations:
         if single_flux:
-            flux_pulse.amplitude = amplitude
             flux_pulse.duration = duration
         else:
-            flux_pulse_plus.amplitude = amplitude
-            flux_pulse_minus.amplitude = -amplitude
             flux_pulse_plus.duration = duration
             flux_pulse_minus.duration = duration
 
@@ -174,6 +173,7 @@ def tune_transition(
             }
         )
         data.add_data_from_dict(res_temp)
+        yield data
 
     yield data
 
