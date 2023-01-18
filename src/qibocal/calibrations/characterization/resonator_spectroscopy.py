@@ -4,6 +4,7 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
 from qibocal import plots
+from qibocal.config import raise_error
 from qibocal.data import DataUnits
 from qibocal.decorators import plot
 from qibocal.fitting.methods import lorentzian_fit
@@ -57,7 +58,6 @@ def resonator_spectroscopy(
             - **popt3**: Lorentzian's offset
             - **qubit**: The qubit being tested
     """
-
     # reload instrument settings from runcard
     platform.reload_settings()
     # create a sequence of pulses for the experiment:
@@ -71,10 +71,6 @@ def resonator_spectroscopy(
         sequence.add(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:
-    # resonator frequency
-    resonator_frequencies = {}
-    for qubit in qubits.values():
-        resonator_frequencies[qubit] = qubit.readout_frequency
 
     delta_frequency_range = np.arange(-fast_width // 2, fast_width // 2, fast_step)
 
@@ -111,8 +107,10 @@ def resonator_spectroscopy(
             # reconfigure the instruments based on the new resonator frequency
             # in this case setting the local oscillators
             # the pulse sequence does not need to be modified or recreated between executions
-            for qubit in qubits.values():
-                ro_pulses[qubit.name].frequency = delta_freq + qubit.readout_frequency
+            for qubit in qubits:
+                ro_pulses[qubit].frequency = (
+                    delta_freq + qubits[qubit].readout_frequency
+                )
 
             # execute the pulse sequence
             results = platform.execute_pulse_sequence(sequence)
@@ -171,6 +169,7 @@ def resonator_spectroscopy(
 
     # run a precision sweep around the newly detected frequencies
 
+    # TODO: remove it
     # create a new sequence of pulses with adjusted frequencies
     sequence = PulseSequence()
     ro_pulses = {}
@@ -210,8 +209,10 @@ def resonator_spectroscopy(
             # reconfigure the instrument based on the new resonator frequency
             # in this case setting the local oscillators
             # the pulse sequence does not need to be modified between executions
-            for qubit in qubits.values():
-                ro_pulses[qubit.name].frequency = delta_freq + qubit.readout_frequency
+            for qubit in qubits:
+                ro_pulses[qubit].frequency = (
+                    delta_freq + qubits[qubit].readout_frequency
+                )
 
             # execute the pulse sequence
             results = platform.execute_pulse_sequence(sequence)
@@ -338,11 +339,11 @@ def resonator_punchout(
                 # reconfigure the instrument based on the new parameters
                 # in this case setting the local oscillators and their attenuations
                 # the pulse sequence does not need to be modified between executions
-                for qubit in qubits.values():
-                    ro_pulses[qubit.name].frequency = (
-                        delta_freq + qubit.readout_frequency
+                for qubit in qubits:
+                    ro_pulses[qubit].frequency = (
+                        delta_freq + qubits[qubit].readout_frequency
                     )
-                    qubit.set_attenuation(att)
+                    platform.set_attenuation(qubit, att)
 
                 # execute the pulse sequence
                 results = platform.execute_pulse_sequence(sequence)
@@ -413,6 +414,8 @@ def resonator_spectroscopy_flux(
             - **iteration**: The iteration number of the many determined by software_averages
     """
 
+    if not platform.flux_tunable:
+        raise_error(ValueError, f"Platform {platform} does not provide flux!")
     # reload instrument settings from runcard
     platform.reload_settings()
 
@@ -427,11 +430,6 @@ def resonator_spectroscopy_flux(
         sequence.add(ro_pulses[qubit])
 
     # define the parameters to sweep and their range:
-    # resonator frequency
-    resonator_frequencies = {}
-    for qubit in qubits:
-        resonator_frequencies[qubit] = platform.get_resonator_frequency(qubit)
-
     delta_frequency_range = np.arange(-freq_width // 2, freq_width // 2, freq_step)
 
     # flux current
@@ -444,7 +442,9 @@ def resonator_spectroscopy_flux(
         fluxlines = qubits
 
     for fluxline in fluxlines:
-        sweetspot_currents[fluxline] = platform.characterization["single_qubit"][qubit][
+        sweetspot_currents[fluxline] = platform.characterization["single_qubit"][
+            fluxline
+        ][  # TODO: check if this is correct
             "sweetspot"
         ]
         current_min[fluxline] = max(
@@ -473,7 +473,7 @@ def resonator_spectroscopy_flux(
         for fluxline in fluxlines:
             for current in current_ranges[fluxline]:
                 # set new flux current
-                platform.qb_port[fluxline].current = current
+                platform.set_current(fluxline, current)
                 for delta_freq in delta_frequency_range:
                     # save data as often as defined by points
                     if count % points == 0:
@@ -483,11 +483,8 @@ def resonator_spectroscopy_flux(
 
                     # set new lo frequency
                     for qubit in qubits:
-                        platform.set_lo_frequency(
-                            qubit,
-                            delta_freq
-                            + resonator_frequencies[qubit]
-                            - ro_pulses[qubit].frequency,
+                        ro_pulses[qubit].frequency = (
+                            delta_freq + qubits[qubit].readout_frequenc
                         )
 
                     # execute the pulse sequence
@@ -503,7 +500,7 @@ def resonator_spectroscopy_flux(
                             "i[V]": i,
                             "q[V]": q,
                             "phase[rad]": phase,
-                            "frequency[Hz]": delta_freq + resonator_frequencies[qubit],
+                            "frequency[Hz]": ro_pulses[qubit].frequency,
                             "current[A]": current,
                             "qubit": qubit,
                             "fluxline": fluxline,
@@ -571,15 +568,7 @@ def dispersive_shift(
         sequence_1.add(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:
-    resonator_frequencies = {}
-    for qubit in qubits:
-        resonator_frequencies[qubit] = platform.characterization["single_qubit"][qubit][
-            "resonator_freq"
-        ]
     delta_frequency_range = np.arange(-freq_width // 2, freq_width // 2, freq_step)
-
-    # save runcard local oscillator frequencies to be able to calculate new intermediate frequencies
-    lo_frequencies = {qubit: platform.get_lo_frequency(qubit) for qubit in qubits}
 
     # create a DataUnits objects to store the results
     data_0 = DataUnits(
@@ -606,7 +595,7 @@ def dispersive_shift(
                     y="MSR[uV]",
                     qubits=qubits,
                     resonator_type=platform.resonator_type,
-                    labels=["resonator_freq", "peak_voltage", "intermediate_freq"],
+                    labels=["resonator_freq", "peak_voltage"],
                     fit_file_name="fit_data_0",
                 )
                 yield lorentzian_fit(
@@ -615,7 +604,7 @@ def dispersive_shift(
                     y="MSR[uV]",
                     qubits=qubits,
                     resonator_type=platform.resonator_type,
-                    labels=["resonator_freq", "peak_voltage", "intermediate_freq"],
+                    labels=["resonator_freq", "peak_voltage"],
                     fit_file_name="fit_data_1",
                 )
 
@@ -623,11 +612,8 @@ def dispersive_shift(
             # in this case setting the local oscillators
             # the pulse sequence does not need to be modified or recreated between executions
             for qubit in qubits:
-                platform.set_lo_frequency(
-                    qubit,
-                    delta_freq
-                    + resonator_frequencies[qubit]
-                    - ro_pulses[qubit].frequency,
+                ro_pulses[qubit].frequency = (
+                    delta_freq + qubits[qubit].readout_frequency
                 )
 
             # execute the pulse sequences
@@ -638,14 +624,14 @@ def dispersive_shift(
             for data, results in list(zip([data_0, data_1], [results_0, results_1])):
                 for qubit in qubits:
                     # average msr, phase, i and q over the number of shots defined in the runcard
-                    msr, phase, i, q = results[ro_pulses[qubit].serial]
+                    msr, phase, i, q = results[qubit]
                     # store the results
                     r = {
                         "MSR[V]": msr,
                         "i[V]": i,
                         "q[V]": q,
                         "phase[rad]": phase,
-                        "frequency[Hz]": delta_freq + resonator_frequencies[qubit],
+                        "frequency[Hz]": ro_pulses[qubit].frequency,
                         "qubit": qubit,
                         "iteration": iteration,
                     }
@@ -660,7 +646,7 @@ def dispersive_shift(
         y="MSR[uV]",
         qubits=qubits,
         resonator_type=platform.resonator_type,
-        labels=["resonator_freq", "peak_voltage", "intermediate_freq"],
+        labels=["resonator_freq", "peak_voltage"],
         fit_file_name="fit_data_0",
     )
     yield lorentzian_fit(
@@ -669,6 +655,6 @@ def dispersive_shift(
         y="MSR[uV]",
         qubits=qubits,
         resonator_type=platform.resonator_type,
-        labels=["resonator_freq", "peak_voltage", "intermediate_freq"],
+        labels=["resonator_freq", "peak_voltage"],
         fit_file_name="fit_data_1",
     )

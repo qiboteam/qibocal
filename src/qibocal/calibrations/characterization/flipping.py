@@ -55,12 +55,6 @@ def flipping(
     # reload instrument settings from runcard
     platform.reload_settings()
 
-    pi_pulse_amplitudes = {}
-    for qubit in qubits:
-        pi_pulse_amplitudes[qubit] = platform.settings["native_gates"]["single_qubit"][
-            qubit
-        ]["RX"]["amplitude"]
-
     # create a DataUnits object to store MSR, phase, i, q and the number of flips
     data = DataUnits(
         name="data",
@@ -85,7 +79,9 @@ def flipping(
                     y="MSR[uV]",
                     qubits=qubits,
                     resonator_type=platform.resonator_type,
-                    pi_pulse_amplitude=pi_pulse_amplitudes[qubit],
+                    pi_pulse_amplitudes={
+                        q: qubits[qubit].pi_pulse_amplitude for q in qubits
+                    },
                     labels=["amplitude_correction_factor", "corrected_amplitude"],
                 )
 
@@ -136,6 +132,6 @@ def flipping(
         y="MSR[uV]",
         qubits=qubits,
         resonator_type=platform.resonator_type,
-        pi_pulse_amplitude=pi_pulse_amplitudes[qubit],
+        pi_pulse_amplitudes={q: qubits[qubit].pi_pulse_amplitude for q in qubits},
         labels=["amplitude_correction_factor", "corrected_amplitude"],
     )
