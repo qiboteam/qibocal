@@ -49,7 +49,7 @@ def get_noise(background, platform, ro_pulse, qubit, sequence):
     """
     noise = 0
     for b_freq in background:
-        platform.ro_port[qubit].lo_frequency = b_freq - ro_pulse.frequency
+        ro_pulse.frequency = b_freq
         msr = platform.execute_pulse_sequence(sequence)[ro_pulse.serial][0]
         noise += msr
     return noise / len(background)
@@ -94,7 +94,7 @@ def scan_level(
     """
     freq = best_f
     for _ in range(max_runs):
-        platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
+        ro_pulse.frequency = freq
         msr, phase, i, q = platform.execute_pulse_sequence(sequence)[ro_pulse.serial]
         if abs(snr(msr, noise)) >= thr:
             msr1 = msr
@@ -133,7 +133,7 @@ def scan_small(best_f, best_msr, span, resolution, platform, ro_pulse, qubit, se
     scan = np.linspace(-span / 2, span / 2, resolution)
     for s in scan:
         freq = start_f + s
-        platform.ro_port[qubit].lo_frequency = freq - ro_pulse.frequency
+        ro_pulse.frequency = freq
         msr, phase, i, q = platform.execute_pulse_sequence(sequence)[ro_pulse.serial]
         msr1 = msr
         if platform.resonator_type == "3D":
@@ -156,7 +156,7 @@ def resonator_punchout_sample(
     spans,
     small_spans,
     resolution,
-    points,
+    points=10,
 ):
     """Use gaussian samples to extract the punchout of the resonator for different values of attenuation.
 
@@ -188,9 +188,7 @@ def resonator_punchout_sample(
         ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
         sequence.add(ro_pulse)
 
-        resonator_frequency = platform.characterization["single_qubit"][qubit][
-            "resonator_freq"
-        ]
+        resonator_frequency = qubits[qubit].readout_frequency
 
         attenuation_range = np.arange(min_att, max_att, step_att)
         best_f = resonator_frequency
@@ -198,7 +196,7 @@ def resonator_punchout_sample(
         opt_att = 30
         opt_snr = 0
         for k, att in enumerate(attenuation_range):
-            platform.ro_port[qubit].attenuation = att
+            platform.set_attenuation(qubit, att)
 
             background = [best_f + 1e7, best_f - 1e7]
             noise = get_noise(background, platform, ro_pulse, qubit, sequence)
@@ -266,7 +264,7 @@ def resonator_flux_sample(
     small_spans,
     resolution,
     params_fit,
-    points,
+    points=10,
 ):
     """Use gaussian samples to extract the flux-frequency response of the resonator for different values of current.
 
@@ -306,19 +304,15 @@ def resonator_flux_sample(
 
             platform.reload_settings()
             for f in fluxlines:
-                platform.qb_port[f].current = 0
+                platform.set_current(qubit, 0)
 
             sequence = PulseSequence()
             ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
             sequence.add(ro_pulse)
 
-            resonator_frequency = platform.characterization["single_qubit"][qubit][
-                "resonator_freq"
-            ]
-            qubit_biasing_current = platform.characterization["single_qubit"][qubit][
-                "sweetspot"
-            ]
-            platform.qb_port[fluxline].current = qubit_biasing_current
+            resonator_frequency = qubits[qubit].readout_frequency
+            qubit_biasing_current = qubits[qubit].sweetspot
+            platform.set_current(qubit, qubit_biasing_current)
             current_range = (
                 np.arange(current_min, current_max, current_step)
                 + qubit_biasing_current
@@ -342,7 +336,7 @@ def resonator_flux_sample(
                 if k == index:
                     best_f = start_f
                 best_msr = noise
-                platform.qb_port[fluxline].current = curr
+                platform.set_current(qubit, curr)
                 for span in spans:
                     best_f, best_msr, phase, i, q = scan_level(
                         best_f,
