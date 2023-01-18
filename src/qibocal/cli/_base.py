@@ -5,6 +5,8 @@ import pathlib
 import shutil
 import socket
 import subprocess
+import sys
+import time
 import uuid
 from datetime import date, datetime
 from glob import glob
@@ -226,6 +228,113 @@ def compare(folders):
 
     create_report(TARGET_COMPARE_DIR)
     log.info(f"HTML report generated")
+
+
+# qq-monitor
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument("runcard", metavar="RUNCARD", type=click.Path(exists=True))
+@click.option(
+    "folder",
+    "-o",
+    type=click.Path(),
+    help="Output folder. If not provided a standard name will generated.",
+)
+@click.option(
+    "force",
+    "-f",
+    is_flag=True,
+    help="Use --force option to overwrite the output folder.",
+)
+@click.option(
+    "terminate",
+    "-t",
+    is_flag=True,
+    help="Use --terminate to cancel the monitoring of a given runcard",
+)
+@click.option(
+    "local",
+    "-l",
+    is_flag=True,
+    help="Use to run locally, default sends to partition / runcard name",
+)
+def monitor(runcard, folder, force=None, terminate=None, local=None):
+
+    """qibocal: Quantum Calibration Verification and Validation using Qibo.
+
+    Arguments:
+
+     - RUNCARD: runcard with declarative inputs.
+
+     - PLATFORM_RUNCARD: Qibolab's platform runcard. If not provided Qibocal will use the runcard available in Qibolab for the platform chosen.
+    """
+    cache_dir = pathlib.Path.home() / ".qibocal"
+    if not os.path.isdir(cache_dir):
+        os.mkdir(cache_dir)
+
+    with open(runcard) as file:
+        data = yaml.safe_load(file)
+        qpu = data["platform"]
+
+    if terminate:
+        with open(cache_dir / "nohup.int") as f:
+            pid = int(f.read())
+        subprocess.run(f"kill -9 {pid}", shell=True)
+    elif not local:
+        nohup_cmd = 'nohup python -c \'import {module_name}; {module_name}.{function_name}("{cache_dir}","{runcard}","{qpu}", "{folder}", "{force}")\' > mylog.log 2> myerror.log &'.format(
+            module_name=__name__,
+            function_name=monitor_process.__name__,
+            cache_dir=cache_dir,
+            runcard=runcard,
+            qpu=qpu,
+            folder=folder,
+            force=force,
+        )
+        process = subprocess.Popen(nohup_cmd, shell=True)
+        with open(cache_dir / "nohup.int", "w") as f:
+            f.write(str(process.pid + 1))
+    else:
+        play_action_card()
+
+
+def monitor_process(cache_dir, runcard, qpu, folder, force):
+    cache_dir = pathlib.Path(cache_dir)
+    runcard = pathlib.Path(runcard)
+    while True:
+        output = subprocess.check_output(
+            f'squeue -h -o "%.7i %.9P" -p {qpu}', shell=True
+        )
+        if not output:
+            latest_job = None
+        else:
+            latest_job = int(output.strip().split()[0])
+        ouput = subprocess.check_output(
+            f"sacct --format=jobid --name=monitor", shell=True
+        )
+        if not output:
+            my_job = None
+        else:
+            my_job = int(output.strip().split()[0])
+        if latest_job == my_job or latest_job is None:
+            sbatch_cmd = 'srun -p {qpu} -J monitor -o "{my_job_out}" python -c \'import {module_name}; {module_name}.{function_name}("{runcard}","{folder}","{force}")\''.format(
+                qpu=qpu,
+                my_job_out=cache_dir / "my_job.out",
+                module_name=__name__,
+                function_name=play_action_card.__name__,
+                runcard=runcard,
+                folder=folder,
+                force=force,
+            )
+            os.system(sbatch_cmd)
+        elif my_job is not None:
+            os.system(f"scancel {my_job}")
+            my_job = None
+
+
+def play_action_card(runcard, folder, force):
+    time.sleep(1)
+    builder = ActionBuilder(runcard, folder, force, monitor=True)
+    builder.execute()
+    builder.dump_report()
 
 
 def folders_exists(folders):

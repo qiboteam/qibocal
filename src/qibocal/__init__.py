@@ -2,6 +2,6 @@
 
 import importlib.metadata as im
 
-from .cli import command, compare, live_plot, upload
+from .cli import command, compare, live_plot, monitor, upload
 
 __version__ = im.version(__package__)

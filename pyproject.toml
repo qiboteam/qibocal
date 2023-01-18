@@ -50,6 +50,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry.scripts]
 qq = "qibocal:command"
 qq-live = "qibocal:live_plot"
+qq-monitor = "qibocal:monitor"
 qq-upload = "qibocal:upload"
 qq-compare = "qibocal:compare"
 
