@@ -167,7 +167,7 @@ class ActionBuilder:
         try:
             data_fit = Data.load_data(self.folder, "data", routine, self.format, "fits")
         except FileNotFoundError:
-            return None 
+            return None
 
         params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict("index")[0]
         settings = load_yaml(f"{self.folder}/new_platform.yml")
