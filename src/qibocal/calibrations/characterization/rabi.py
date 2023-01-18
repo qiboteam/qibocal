@@ -64,7 +64,9 @@ def rabi_pulse_length(
     ro_pulses = {}
     for qubit in qubits:
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=4)
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+            qubit, start=qd_pulses[qubit].finish
+        )
         sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
 
@@ -192,8 +194,10 @@ def rabi_pulse_gain(
     qd_pulses = {}
     ro_pulses = {}
     for qubit in qubits:
-        qd_pulses[qubit] = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=4)
+        qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+            qubit, start=qd_pulses[qubit].finish
+        )
         sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
 
@@ -320,8 +324,10 @@ def rabi_pulse_amplitude(
     qd_pulses = {}
     ro_pulses = {}
     for qubit in qubits:
-        qd_pulses[qubit] = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=4)
+        qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+            qubit, start=qd_pulses[qubit].finish
+        )
         sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
 
@@ -446,7 +452,9 @@ def rabi_pulse_length_and_gain(
     ro_pulses = {}
     for qubit in qubits:
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=4)
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+            qubit, start=qd_pulses[qubit].finish
+        )
         sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
 
@@ -554,7 +562,9 @@ def rabi_pulse_length_and_amplitude(
     ro_pulses = {}
     for qubit in qubits:
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=4)
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+            qubit, start=qd_pulses[qubit].finish
+        )
         sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
 
