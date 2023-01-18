@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
@@ -13,7 +15,6 @@ def calibrate_qubit_states(
     platform: AbstractPlatform,
     qubits: list,
     nshots,
-    points=10,
 ):
     """
     Method which implements the state's calibration of a chosen qubit. Two analogous tests are performed
@@ -56,7 +57,7 @@ def calibrate_qubit_states(
     for qubit in qubits:
         RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=RX_pulses[qubit].duration
+            qubit, start=RX_pulses[qubit].finish
         )
 
         state0_sequence.add(ro_pulses[qubit])
@@ -67,44 +68,51 @@ def calibrate_qubit_states(
     data = DataUnits(name="data", options=["qubit", "iteration", "state"])
 
     # execute the first pulse sequence
+    start_time = time.time()
     state0_results = platform.execute_pulse_sequence(state0_sequence, nshots=nshots)
+    print("State0 run time:", time.time() - start_time)
 
     # retrieve and store the results for every qubit
+    start_time = time.time()
     for qubit in qubits:
-        msr, phase, i, q = state0_results["demodulated_integrated_binned"][
-            ro_pulses[qubit].serial
-        ]
+        result = state0_results[ro_pulses[qubit].serial]
         r = {
-            "MSR[V]": msr,
-            "i[V]": i,
-            "q[V]": q,
-            "phase[rad]": phase,
+            "MSR[V]": result.MSR,
+            "i[V]": result.I,
+            "q[V]": result.Q,
+            "phase[rad]": result.phase,
             "qubit": [qubit] * nshots,
             "iteration": np.arange(nshots),
             "state": [0] * nshots,
         }
         data.add_data_from_dict(r)
+    print("State0 saving time:", time.time() - start_time)
 
     # execute the second pulse sequence
+    start_time = time.time()
     state1_results = platform.execute_pulse_sequence(state1_sequence, nshots=nshots)
+    print("State1 time:", time.time() - start_time)
 
     # retrieve and store the results for every qubit
+    start_time = time.time()
     for qubit in qubits:
-        msr, phase, i, q = state1_results["demodulated_integrated_binned"][
-            ro_pulses[qubit].serial
-        ]
+        result = state1_results[ro_pulses[qubit].serial]
         r = {
-            "MSR[V]": msr,
-            "i[V]": i,
-            "q[V]": q,
-            "phase[rad]": phase,
+            "MSR[V]": result.MSR,
+            "i[V]": result.I,
+            "q[V]": result.Q,
+            "phase[rad]": result.phase,
             "qubit": [qubit] * nshots,
             "iteration": np.arange(nshots),
             "state": [1] * nshots,
         }
         data.add_data_from_dict(r)
+    print("State1 saving time:", time.time() - start_time)
+
     # finally, save the remaining data and the fits
     yield data
+    start_time = time.time()
     yield calibrate_qubit_states_fit(
         data, x="i[V]", y="q[V]", nshots=nshots, qubits=qubits
     )
+    print("Fitting time:", time.time() - start_time)

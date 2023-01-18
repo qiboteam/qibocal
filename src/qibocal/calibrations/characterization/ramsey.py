@@ -379,7 +379,6 @@ def ramsey(
             for qubit in qubits:
                 # average msr, phase, i and q over the number of shots defined in the runcard
                 result = results[ro_pulses[qubit].serial]
-                print(result.I.shape)
                 r = {
                     "MSR[V]": np.mean(result.MSR),
                     "i[V]": np.mean(result.I),
