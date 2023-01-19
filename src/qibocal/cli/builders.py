@@ -174,12 +174,15 @@ class ActionBuilder:
             self.platform.setup()
             self.platform.start()
 
-        for action in self.runcard["actions"]:
-            routine, args, path = self._build_single_action(action)
-            self._execute_single_action(routine, args, path)
-            for qubit in self.qubits:
-                if self.platform is not None:
-                    self.update_platform_runcard(qubit, action)
+        while True:
+            for action in self.runcard["actions"]:
+                routine, args, path = self._build_single_action(action)
+                self._execute_single_action(routine, args, path)
+                for qubit in self.qubits:
+                    if self.platform is not None:
+                        self.update_platform_runcard(qubit, action)
+            if not self.monitor:
+                break
 
         if self.platform is not None:
             self.platform.stop()
@@ -208,19 +211,18 @@ class ActionBuilder:
                     datas[result.name] = result
 
             current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")  
-            for data in datas.values():          
-                if not os.path.isfile(os.path.join(path+f"{data.name}.{self.format}")):
-                    data.options += ["timestamp"]
-                    data.df["timestamp"] = current_time
+            for data in datas.values():  
+                data.options += ["timestamp"]        
+                if not os.path.isfile(os.path.join(path+f"{data.name}.{self.format}")):                    
+                    data.df = data.df.assign(timestamp=current_time)
                     getattr(data, f"to_{self.format}")(path)  
                 else:
                     sub_folder = get_data_subfolders(self.folder) 
                     if len(sub_folder) > 1:
                         raise_error(ValueError, f"More than one subfolder found in {path}.")                       
-                    data_old = data.load_data(self.folder, sub_folder[0], routine.__name__, self.format, data.name)             
-                    data.df["timestamp"] = current_time
-                    data.df = pd.concat([data_old.df, data.df])
-                    print(data.df)
+                    data_old = data.load_data(self.folder, sub_folder[0], routine.__name__, self.format, data.name)           
+                    data.df = data.df.assign(timestamp=current_time)
+                    data.df = pd.concat([data_old.df, data.df], ignore_index=True)              
                     getattr(data, f"to_{self.format}")(path)
         else:
             for data in results:
