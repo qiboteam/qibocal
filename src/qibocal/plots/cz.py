@@ -26,8 +26,14 @@ def _get_flux_pulse_durations_and_amplitudes(data: DataUnits):
     return durations, amplitudes
 
 
-def _get_values(data, component, duration=None, amplitude=None):
-    values = data.get_values("prob", "dimensionless")[data.df["component"] == component]
+def _get_values(data, component=None, duration=None, amplitude=None):
+    if component:
+        values = data.get_values("prob", "dimensionless")[
+            data.df["component"] == component
+        ]
+    else:
+        values = data.get_values("prob", "dimensionless")
+
     if duration:
         values = values[data.df["flux_pulse_duration"] == duration]
     if amplitude:
@@ -119,52 +125,64 @@ def cryoscope_raw(folder, routine, qubit, format):
 
 
 def flux_pulse_timing(folder, routine, qubit, format):
-    data = DataUnits.load_data(folder, "data", routine, format, "data")
-    import numpy as np
 
-    MX_tag = "MX"
-    MY_tag = "MY"
-
-    amplitude = data.get_values("flux_pulse_amplitude", "dimensionless")
-    duration = data.get_values("flux_pulse_duration", "ns")
-    flux_pulse_duration = duration[data.df["component"] == MY_tag].to_numpy()
-    flux_pulse_amplitude = amplitude[data.df["component"] == MY_tag].to_numpy()
-    amplitude_unique = flux_pulse_amplitude[
-        flux_pulse_duration == flux_pulse_duration[0]
-    ]
-    duration_unique = flux_pulse_duration[
-        flux_pulse_amplitude == flux_pulse_amplitude[0]
-    ]
-
-    # Making figure
     figs = {}
-    figs["raw"] = make_subplots(
+    figs["flux_pulse_timing"] = make_subplots(
         rows=1,
         cols=1,
         horizontal_spacing=0.1,
-        vertical_spacing=0.2,
+        vertical_spacing=0.1,
     )
-    for amp in amplitude_unique:
-        figs["raw"].add_trace(
+
+    # iterate over multiple data folders
+    subfolders = get_data_subfolders(folder)
+    report_n = 0
+    for subfolder in subfolders:
+        try:
+            data = DataUnits.load_data(folder, subfolder, routine, format, "data")
+            data.df = (
+                data.df[data.df["qubit"] == qubit]
+                .drop(columns=["qubit", "iteration"])
+                .groupby(
+                    ["flux_pulse_amplitude", "flux_pulse_start"],
+                    as_index=False,
+                )
+                .mean()
+            )
+        except:
+            data = DataUnits(
+                name=f"data",
+                quantities={
+                    "flux_pulse_amplitude": "dimensionless",
+                    "flux_pulse_start": "ns",
+                    "prob": "dimensionless",
+                },
+                options=["qubit", "iteration"],
+            )
+
+        amplitudes = (
+            data.df["flux_pulse_amplitude"]
+            .pint.to("dimensionless")
+            .pint.magnitude.unique()
+        )
+        starts = data.df["flux_pulse_start"].pint.to("ns").pint.magnitude.unique()
+
+    for amp in amplitudes:
+        figs["flux_pulse_timing"].add_trace(
             go.Scatter(
-                x=data.get_values("flux_start", "ns")[
-                    data.df["flux_pulse_amplitude"] == amp
-                ][data.df["component"] == MX_tag].to_numpy(),
-                y=data.get_values("prob", "dimensionless")[
-                    data.df["flux_pulse_amplitude"] == amp
-                ][data.df["component"] == MX_tag].to_numpy(),
-                name=f"<X> | A = {amp:.3f}",
+                x=starts,
+                y=_get_values(data, amplitude=amp),
+                name=f"q{qubit}/r{report_n}: <X> | A = {amp:.3f}",
             ),
             row=1,
             col=1,
         )
 
-    figs["raw"].update_layout(
+    figs["flux_pulse_timing"].update_layout(
         xaxis_title="Flux start time (ns)",
-        yaxis_title="MSR (prob)",
-        title=f"Raw data",
+        yaxis_title="Magnitude X component (dimensionless)",
     )
-    return figs["raw"]
+    return figs["flux_pulse_timing"]
 
 
 def cryoscope_dephasing_heatmap(folder, routine, qubit, format):
