@@ -41,9 +41,9 @@ def lorentzian_fit(data, x, y, qubits, resonator_type, labels, fit_file_name=Non
         resonator_type (str): the type of readout resonator ['3D', '2D']
         labels (list of str): list containing the lables of the quantities computed by this fitting method.
 
-            -   When using ``resonator_spectroscopy`` the expected labels are [`resonator_freq`, `peak voltage`], where `resonator_freq` is the estimated frequency of the resonator, and `peak_voltage` the peak of the Lorentzian
+            -   When using ``resonator_spectroscopy`` the expected labels are [`readout_frequency`, `peak voltage`], where `readout_frequency` is the estimated frequency of the resonator, and `peak_voltage` the peak of the Lorentzian
 
-            -   when using ``qubit_spectroscopy`` the expected labels are [`qubit_freq`, `peak voltage`], where `qubit_freq` is the estimated frequency of the qubit
+            -   when using ``qubit_spectroscopy`` the expected labels are [`drive_frequency`, `peak voltage`], where `drive_frequency` is the estimated frequency of the qubit
 
         fit_file_name (str): file name, ``None`` is the default value.
 
@@ -53,7 +53,6 @@ def lorentzian_fit(data, x, y, qubits, resonator_type, labels, fit_file_name=Non
 
             - **labels[0]**: peak voltage
             - **labels[1]**: frequency
-            - **labels[2]**: readout frequency
             - **popt0**: Lorentzian's amplitude
             - **popt1**: Lorentzian's center
             - **popt2**: Lorentzian's sigma
@@ -74,7 +73,7 @@ def lorentzian_fit(data, x, y, qubits, resonator_type, labels, fit_file_name=Non
 
                 name = "test"
                 nqubits = 1
-                label = "qubit_freq"
+                label = "drive_frequency"
                 amplitude = -1
                 center = 2
                 sigma = 3
@@ -171,8 +170,8 @@ def lorentzian_fit(data, x, y, qubits, resonator_type, labels, fit_file_name=Non
         model_Q = lmfit.Model(lorenzian)
 
         # Guess parameters for Lorentzian max or min
-        if (resonator_type == "3D" and labels[0] == "resonator_freq") or (
-            resonator_type != "3D" and labels[0] == "qubit_freq"
+        if (resonator_type == "3D" and "readout_frequency" in labels[0]) or (
+            resonator_type != "3D" and labels[0] == "drive_frequency"
         ):
             guess_center = frequencies[
                 np.argmax(voltages)

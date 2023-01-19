@@ -120,10 +120,12 @@ def test_res_spectroscopy_flux_fit(name, qubit, fluxline, num_params, caplog):
 @pytest.mark.parametrize(
     "label, resonator_type, amplitude_sign",
     [
-        ("resonator_freq", "3D", 1),
-        ("resonator_freq", "2D", -1),
-        ("qubit_freq", "3D", -1),
-        ("qubit_freq", "2D", 1),
+        ("readout_frequency", "3D", 1),
+        ("readout_frequency", "2D", -1),
+        ("readout_frequency_shifted", "3D", 1),
+        ("readout_frequency_shifted", "2D", -1),
+        ("drive_frequency", "3D", -1),
+        ("drive_frequency", "2D", 1),
     ],
 )
 def test_lorentzian_fit(name, label, resonator_type, amplitude_sign, caplog):
@@ -156,7 +158,7 @@ def test_lorentzian_fit(name, label, resonator_type, amplitude_sign, caplog):
         "MSR[V]",
         [0],
         resonator_type,
-        labels=[label, "peak_voltage", "intermediate_freq"],
+        labels=[label, "peak_voltage"],
         fit_file_name=name,
     )
     # Given the couople (amplitude, sigma) as a solution of lorentzian_fit method
@@ -187,7 +189,7 @@ def test_lorentzian_fit(name, label, resonator_type, amplitude_sign, caplog):
         "MSR[V]",
         [0],
         resonator_type,
-        labels=[label, "peak_voltage", "intermediate_freq"],
+        labels=[label, "peak_voltage"],
         fit_file_name=name,
     )
     assert "lorentzian_fit: the fitting was not successful" in caplog.text

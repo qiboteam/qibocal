@@ -50,7 +50,7 @@ def qubit_spectroscopy(
         - A DataUnits object with the fitted data obtained with the following keys
 
             - **qubit**: The qubit being tested
-            - **qubit_freq**: frequency
+            - **drive_frequency**: frequency
             - **peak_voltage**: peak voltage
             - **popt0**: Lorentzian's amplitude
             - **popt1**: Lorentzian's center
@@ -104,16 +104,13 @@ def qubit_spectroscopy(
                     y="MSR[uV]",
                     qubits=qubits,
                     resonator_type=platform.resonator_type,
-                    labels=["qubit_freq", "peak_voltage"],
+                    labels=["drive_frequency", "peak_voltage"],
                 )
             # reconfigure the instruments based on the new resonator frequency
             # in this case setting the local oscillators
             # the pulse sequence does not need to be modified or recreated between executions
             for qubit in qubits:
                 qd_pulses[qubit].frequency = delta_freq + qubits[qubit].drive_frequency
-                # platform.qd_port[qubit].lo_frequency = (
-                #     delta_freq + qubit_frequencies[qubit] - qd_pulses[qubit].frequency
-                # )
 
             # execute the pulse sequence
             results = platform.execute_pulse_sequence(sequence)
@@ -142,7 +139,7 @@ def qubit_spectroscopy(
         y="MSR[uV]",
         qubits=qubits,
         resonator_type=platform.resonator_type,
-        labels=["qubit_freq", "peak_voltage"],
+        labels=["drive_frequency", "peak_voltage"],
     )
 
     # store max/min peaks as new frequencies
@@ -234,7 +231,7 @@ def qubit_spectroscopy(
         y="MSR[uV]",
         qubits=qubits,
         resonator_type=platform.resonator_type,
-        labels=["qubit_freq", "peak_voltage"],
+        labels=["drive_frequency", "peak_voltage"],
     )
 
 
@@ -284,7 +281,7 @@ def qubit_spectroscopy_flux(
 
         - A DataUnits object with the fitted data obtained with the following keys
 
-            - **qubit_freq**: frequency
+            - **drive_frequency**: frequency
             - **peak_voltage**: peak voltage
             - **popt0**: Lorentzian's amplitude
             - **popt1**: Lorentzian's center

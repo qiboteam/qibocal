@@ -50,7 +50,7 @@ def resonator_spectroscopy(
 
         - A DataUnits object with the fitted data obtained with the following keys
 
-            - **resonator_freq**: frequency
+            - **readout_frequency**: frequency
             - **peak_voltage**: peak voltage
             - **popt0**: Lorentzian's amplitude
             - **popt1**: Lorentzian's center
@@ -102,7 +102,7 @@ def resonator_spectroscopy(
                     y="MSR[uV]",
                     qubits=qubits,
                     resonator_type=platform.resonator_type,
-                    labels=["resonator_freq", "peak_voltage"],
+                    labels=["readout_frequency", "peak_voltage"],
                 )
             # reconfigure the instruments based on the new resonator frequency
             # in this case setting the local oscillators
@@ -139,7 +139,7 @@ def resonator_spectroscopy(
         y="MSR[uV]",
         qubits=qubits,
         resonator_type=platform.resonator_type,
-        labels=["resonator_freq", "peak_voltage"],
+        labels=["readout_frequency", "peak_voltage"],
     )
 
     # store max/min peaks as new frequencies
@@ -204,7 +204,7 @@ def resonator_spectroscopy(
                     y="MSR[uV]",
                     qubits=qubits,
                     resonator_type=platform.resonator_type,
-                    labels=["resonator_freq", "peak_voltage"],
+                    labels=["readout_frequency", "peak_voltage"],
                 )
             # reconfigure the instrument based on the new resonator frequency
             # in this case setting the local oscillators
@@ -241,7 +241,7 @@ def resonator_spectroscopy(
         y="MSR[uV]",
         qubits=qubits,
         resonator_type=platform.resonator_type,
-        labels=["resonator_freq", "peak_voltage"],
+        labels=["readout_frequency", "peak_voltage"],
     )
 
 
@@ -589,7 +589,7 @@ def dispersive_shift(
                     y="MSR[uV]",
                     qubits=qubits,
                     resonator_type=platform.resonator_type,
-                    labels=["resonator_freq", "peak_voltage"],
+                    labels=["readout_frequency", "peak_voltage"],
                     fit_file_name="fit_data_0",
                 )
                 yield lorentzian_fit(
@@ -598,7 +598,7 @@ def dispersive_shift(
                     y="MSR[uV]",
                     qubits=qubits,
                     resonator_type=platform.resonator_type,
-                    labels=["resonator_freq", "peak_voltage"],
+                    labels=["readout_frequency_shifted", "peak_voltage"],
                     fit_file_name="fit_data_1",
                 )
 
@@ -640,7 +640,7 @@ def dispersive_shift(
         y="MSR[uV]",
         qubits=qubits,
         resonator_type=platform.resonator_type,
-        labels=["resonator_freq", "peak_voltage"],
+        labels=["readout_frequency", "peak_voltage"],
         fit_file_name="fit_data_0",
     )
     yield lorentzian_fit(
@@ -649,6 +649,6 @@ def dispersive_shift(
         y="MSR[uV]",
         qubits=qubits,
         resonator_type=platform.resonator_type,
-        labels=["resonator_freq", "peak_voltage"],
+        labels=["readout_frequency_shifted", "peak_voltage"],
         fit_file_name="fit_data_1",
     )
