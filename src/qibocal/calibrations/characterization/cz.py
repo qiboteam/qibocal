@@ -3,7 +3,7 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import IIR, FluxPulse, Pulse, PulseSequence, PulseType, Rectangular
 
 from qibocal import plots
-from qibocal.data import DataUnits
+from qibocal.data import Data, DataUnits
 from qibocal.decorators import plot
 
 
@@ -22,6 +22,48 @@ def flux_pulse_timing(
     software_averages=1,
     points=10,
 ):
+    r"""
+    The flux pulse timing experiment aims to determine the relative time of flight between
+    the drive lines and the flux lines, as well as the time required for the transient response to
+    disappear when the flux pulse stops. This is later required for the correct scheduling of
+    the flux pulses in the implementation of 2q gates.
+
+    Args:
+        platform (AbstractPlatform): Qibolab platform object
+        qubits (list): List of target qubits to perform the action
+        flux_pulse_amplitude_start (int): Initial flux pulse amplitude
+        flux_pulse_amplitude_end (int): Maximum flux pulse amplitude
+        flux_pulse_amplitude_step (int): Scan range step for the flux pulse amplitude
+        flux_pulse_start_start (int): The earliest start time of the flux pluse, in ns,
+            relative to the start of the first pulse of the sequence Ry(pi/2)
+        flux_pulse_start_end (int): The earliest start time of the flux pluse, in ns
+        flux_pulse_start_step (int): Scan range step for the flux pulse start
+        flux_pulse_duration (int): The duration of the flux pulse
+        time_window (int): The time window in ns between the end of the first pulse of the sequence Ry(pi/2)
+            and the beginning of the second pulse of the sequence Ry(pi/2)
+        software_averages (int): Number of executions of the routine for averaging results
+        points (int): Save data results in a file every number of points
+
+    Returns:
+        - A DataUnits object with the raw data with the following keys
+            - **MSR[V]**: Resonator signal voltage mesurement in volts
+            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
+            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
+            - **phase[rad]**: Resonator signal phase mesurement in radians
+            - **prob[dimensionless]**: Statistical relative frequency of measuring state |1>
+            - **flux_pulse_amplitude[dimensionless]**: Flux pulse amplitude
+            - **flux_pulse_start[ns]**:The absolut start time of the flux pulse, in ns
+            - **qubit**: The qubit being tested
+            - **iteration**: The iteration number of the many determined by software_averages
+
+        - A Data object with the following parameters
+            - **flux_pulse_duration**: The duration of the flux pulse
+            - **time_window**: The time window in ns between the end of the first pulse of the sequence Ry(pi/2)
+                    and the beginning of the second pulse of the sequence Ry(pi/2)
+            - **initial_RY90_pulses_finish**: The absolut finish time of the first pulse of the sequence Ry(pi/2)
+            - **qubit**: The qubit being tested
+
+    """
 
     # the purpose of this routine is to determine the time of flight of a flux pulse and the duration
     # of the transient at the end of the pulse
@@ -45,10 +87,15 @@ def flux_pulse_timing(
     flux_pulses = {}
     RY90_pulses = {}
     MZ_ro_pulses = {}
+    if flux_pulse_start_start < 0:
+        initial_RY90_pulses_start = -flux_pulse_start_start
+    else:
+        initial_RY90_pulses_start = 0
+
     for qubit in qubits:
         # start at |+> by rotating Ry(pi/2)
         initial_RY90_pulses[qubit] = platform.create_RX90_pulse(
-            qubit, start=0, relative_phase=np.pi / 2
+            qubit, start=initial_RY90_pulses_start, relative_phase=np.pi / 2
         )
 
         # wait time window
@@ -67,7 +114,7 @@ def flux_pulse_timing(
 
         # apply a detuning flux pulse around the time window
         flux_pulses[qubit] = FluxPulse(
-            start=0,
+            start=initial_RY90_pulses_start + flux_pulse_start_start,
             duration=flux_pulse_duration,
             amplitude=flux_pulse_amplitude_start,  # fix for each run
             shape=Rectangular(),
@@ -108,6 +155,26 @@ def flux_pulse_timing(
         options=["qubit", "iteration"],
     )
 
+    parameters = Data(
+        name=f"parameters",
+        quantities=[
+            "flux_pulse_duration",
+            "time_window",
+            "initial_RY90_pulses_finish",
+            "qubit",
+        ],
+    )
+    for qubit in qubits:
+        parameters.add(
+            {
+                "flux_pulse_duration": flux_pulse_duration,
+                "time_window": time_window,
+                "initial_RY90_pulses_finish": initial_RY90_pulses[qubit].finish,
+                "qubit": qubit,
+            }
+        )
+    yield parameters
+
     count = 0
     for iteration in range(software_averages):
         # sweep the parameters
@@ -119,23 +186,7 @@ def flux_pulse_timing(
                     yield data
                 for qubit in qubits:
                     flux_pulses[qubit].amplitude = amplitude
-                # adjust the sequences
-                if start < 0:
-                    for qubit in qubits:
-                        flux_pulses[qubit].start = 0
-                        initial_RY90_pulses[qubit].start = -start
-                        RY90_pulses[qubit].start = (
-                            initial_RY90_pulses[qubit].finish + time_window
-                        )
-                        MZ_ro_pulses[qubit].start = RY90_pulses[qubit].finish
-                else:
-                    for qubit in qubits:
-                        initial_RY90_pulses[qubit].start = 0
-                        flux_pulses[qubit].start = start
-                        RY90_pulses[qubit].start = (
-                            initial_RY90_pulses[qubit].finish + time_window
-                        )
-                        MZ_ro_pulses[qubit].start = RY90_pulses[qubit].finish
+                    flux_pulses[qubit].start = initial_RY90_pulses_start + start
 
                 # execute the pulse sequence
                 results = platform.execute_pulse_sequence(sequence)
@@ -235,8 +286,7 @@ def cryoscope(
         points (int): Save data results in a file every number of points
 
     Returns:
-        - A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
-
+        - A DataUnits object with the raw data with the following keys
             - **MSR[V]**: Resonator signal voltage mesurement in volts
             - **i[V]**: Resonator signal voltage mesurement for the component I in volts
             - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
