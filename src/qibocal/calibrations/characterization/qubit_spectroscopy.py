@@ -73,6 +73,7 @@ def qubit_spectroscopy(
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=2000
         )
+        qd_pulses[qubit].amplitude = 0.005
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=qd_pulses[qubit].finish
         )

@@ -34,7 +34,7 @@ def landscape_2q_gate(folder, routine, qubit, format):
 
     fig.add_trace(
         go.Scatter(
-            x=data.get_values("phase", "rad")[data.df["q_freq"] == "high"][
+            x=data.get_values("theta", "rad")[data.df["q_freq"] == "high"][
                 data.df["setup"] == "I"
             ].to_numpy(),
             y=data.get_values("MSR", "V")[data.df["q_freq"] == "high"][
@@ -47,7 +47,7 @@ def landscape_2q_gate(folder, routine, qubit, format):
 
     fig.add_trace(
         go.Scatter(
-            x=data.get_values("phase", "rad")[data.df["q_freq"] == "high"][
+            x=data.get_values("theta", "rad")[data.df["q_freq"] == "high"][
                 data.df["setup"] == "X"
             ].to_numpy(),
             y=data.get_values("MSR", "V")[data.df["q_freq"] == "high"][
@@ -60,7 +60,7 @@ def landscape_2q_gate(folder, routine, qubit, format):
 
     fig.add_trace(
         go.Scatter(
-            x=data.get_values("phase", "rad")[data.df["q_freq"] == "low"][
+            x=data.get_values("theta", "rad")[data.df["q_freq"] == "low"][
                 data.df["setup"] == "I"
             ].to_numpy(),
             y=data.get_values("MSR", "V")[data.df["q_freq"] == "low"][
@@ -73,7 +73,7 @@ def landscape_2q_gate(folder, routine, qubit, format):
 
     fig.add_trace(
         go.Scatter(
-            x=data.get_values("phase", "rad")[data.df["q_freq"] == "low"][
+            x=data.get_values("theta", "rad")[data.df["q_freq"] == "low"][
                 data.df["setup"] == "X"
             ].to_numpy(),
             y=data.get_values("MSR", "V")[data.df["q_freq"] == "low"][
@@ -87,9 +87,9 @@ def landscape_2q_gate(folder, routine, qubit, format):
     fig.update_layout(
         showlegend=False,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="phase (rad)",
+        xaxis_title="theta (rad)",
         yaxis_title="MSR (V)",
-        xaxis2_title="phase (rad)",
+        xaxis2_title="theta (rad)",
         yaxis2_title="MSR (V)",
     )
     return fig
