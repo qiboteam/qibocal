@@ -8,8 +8,8 @@ import yaml
 
 from qibocal import calibrations
 from qibocal.config import log, raise_error
-from qibocal.data import Data
-
+from qibocal.data import Data, DataUnits
+from qibocal.plots.utils import get_color, get_data_subfolders
 
 def load_yaml(path):
     """Load yaml file from disk."""
@@ -158,7 +158,7 @@ class ActionBuilder:
         """Helper method to parse the actions in the runcard."""
         f = getattr(calibrations, name)
         path = os.path.join(self.folder, f"data/{name}/")
-        os.makedirs(path)
+        os.makedirs(path, exist_ok=True)
         sig = inspect.signature(f)
         params = self.runcard["actions"][name]
         for param in list(sig.parameters)[2:-1]:
@@ -186,14 +186,45 @@ class ActionBuilder:
             self.platform.disconnect()
 
     def _execute_single_action(self, routine, arguments, path):
-        """Method to execute a single action and retrieving the results."""
+        """Method to execute a single action and retrieving the results.
+        It will add a timestamp column to the results and append the data if the 
+        file already exists.
+        """
         if self.format is None:
             raise_error(ValueError, f"Cannot store data using {self.format} format.")
 
         results = routine(self.platform, self.qubits, **arguments)
 
-        for data in results:
-            getattr(data, f"to_{self.format}")(path)
+        
+        if self.monitor:
+            import datetime
+            import pandas as pd
+
+            
+            # Generate all the data to only keep the data when the routine is completed
+            datas = {}
+            for result in results:
+                if result.name not in datas:
+                    datas[result.name] = result
+
+            current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")  
+            for data in datas.values():          
+                if not os.path.isfile(os.path.join(path+f"{data.name}.{self.format}")):
+                    data.options += ["timestamp"]
+                    data.df["timestamp"] = current_time
+                    getattr(data, f"to_{self.format}")(path)  
+                else:
+                    sub_folder = get_data_subfolders(self.folder) 
+                    if len(sub_folder) > 1:
+                        raise_error(ValueError, f"More than one subfolder found in {path}.")                       
+                    data_old = data.load_data(self.folder, sub_folder[0], routine.__name__, self.format, data.name)             
+                    data.df["timestamp"] = current_time
+                    data.df = pd.concat([data_old.df, data.df])
+                    print(data.df)
+                    getattr(data, f"to_{self.format}")(path)
+        else:
+            for data in results:
+                getattr(data, f"to_{self.format}")(path)
 
     def update_platform_runcard(self, qubit, routine):
         try:
@@ -202,15 +233,16 @@ class ActionBuilder:
         except:
             data_fit = Data()
 
-        params = [
-            i for i in list(data_fit.df.keys()) if "popt" not in i and i != "qubit"
-        ]
         settings = load_yaml(f"{self.folder}/new_platform.yml")
 
+        # Parameters to change in the platform runcard
+        params = settings["characterization"]["single_qubit"][qubit].keys()
+
         for param in params:
-            settings["characterization"]["single_qubit"][qubit][param] = int(
-                data_fit.get_values(param)
-            )
+            if param in data_fit.df.columns:
+                settings["characterization"]["single_qubit"][qubit][param] = int(
+                    data_fit.get_values(param)
+                )
 
         with open(f"{self.folder}/new_platform.yml", "w") as file:
             yaml.dump(
