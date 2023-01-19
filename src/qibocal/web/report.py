@@ -22,7 +22,7 @@ def create_report(path):
         is_static=True,
         css_styles=css_styles,
         version=__version__,
-        report=report,
+        reports=[report],
     )
 
     with open(os.path.join(path, "index.html"), "w") as file:
