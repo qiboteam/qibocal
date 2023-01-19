@@ -112,7 +112,7 @@ def flipping(
 
             for qubit in qubits:
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                msr, phase, i, q = results[ro_pulses[qubit].serial]
+                msr, phase, i, q = results[qubit]
                 r = {
                     "MSR[V]": msr,
                     "i[V]": i,

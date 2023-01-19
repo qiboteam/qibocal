@@ -50,7 +50,7 @@ def get_noise(background, platform, ro_pulse, qubit, sequence):
     noise = 0
     for b_freq in background:
         ro_pulse.frequency = b_freq
-        msr = platform.execute_pulse_sequence(sequence)[ro_pulse.serial][0]
+        msr = platform.execute_pulse_sequence(sequence)[ro_pulse.qubit][0]
         noise += msr
     return noise / len(background)
 
@@ -95,7 +95,7 @@ def scan_level(
     freq = best_f
     for _ in range(max_runs):
         ro_pulse.frequency = freq
-        msr, phase, i, q = platform.execute_pulse_sequence(sequence)[ro_pulse.serial]
+        msr, phase, i, q = platform.execute_pulse_sequence(sequence)[ro_pulse.qubit]
         if abs(snr(msr, noise)) >= thr:
             msr1 = msr
             if platform.resonator_type == "3D":
@@ -134,7 +134,7 @@ def scan_small(best_f, best_msr, span, resolution, platform, ro_pulse, qubit, se
     for s in scan:
         freq = start_f + s
         ro_pulse.frequency = freq
-        msr, phase, i, q = platform.execute_pulse_sequence(sequence)[ro_pulse.serial]
+        msr, phase, i, q = platform.execute_pulse_sequence(sequence)[ro_pulse.qubit]
         msr1 = msr
         if platform.resonator_type == "3D":
             msr = -msr

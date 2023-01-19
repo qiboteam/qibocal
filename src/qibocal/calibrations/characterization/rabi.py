@@ -113,7 +113,7 @@ def rabi_pulse_length(
 
             for qubit in qubits:
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                msr, phase, i, q = results[ro_pulses[qubit].serial]
+                msr, phase, i, q = results[qubit]
                 r = {
                     "MSR[V]": msr,
                     "i[V]": i,
@@ -243,7 +243,7 @@ def rabi_pulse_gain(
 
             for qubit in qubits:
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                msr, phase, i, q = results[ro_pulses[qubit].serial]
+                msr, phase, i, q = results[qubit]
                 r = {
                     "MSR[V]": msr,
                     "i[V]": i,
@@ -373,7 +373,7 @@ def rabi_pulse_amplitude(
 
             for qubit in qubits:
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                msr, phase, i, q = results[ro_pulses[qubit].serial]
+                msr, phase, i, q = results[qubit]
                 r = {
                     "MSR[V]": msr,
                     "i[V]": i,
@@ -493,7 +493,7 @@ def rabi_pulse_length_and_gain(
                 results = platform.execute_pulse_sequence(sequence)
                 for qubit in qubits:
                     # average msr, phase, i and q over the number of shots defined in the runcard
-                    msr, phase, i, q = results[ro_pulses[qubit].serial]
+                    msr, phase, i, q = results[qubit]
                     r = {
                         "MSR[V]": msr,
                         "i[V]": i,
@@ -605,7 +605,7 @@ def rabi_pulse_length_and_amplitude(
                 results = platform.execute_pulse_sequence(sequence)
                 for qubit in qubits:
                     # average msr, phase, i and q over the number of shots defined in the runcard
-                    msr, phase, i, q = results[ro_pulses[qubit].serial]
+                    msr, phase, i, q = results[qubit]
                     r = {
                         "MSR[V]": msr,
                         "i[V]": i,

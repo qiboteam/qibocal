@@ -118,7 +118,9 @@ def resonator_spectroscopy(
             # retrieve the results for every qubit
             for qubit in qubits:
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                msr, phase, i, q = results[ro_pulses[qubit].qubit]
+                # print(results['demodulated_integrated_averaged'][ro_pulses[qubit].qubit])
+                # print(results['averaged_raw'][ro_pulses[qubit].qubit]))
+                msr, phase, i, q = results[qubit]
                 # store the results
                 r = {
                     "MSR[V]": msr,
@@ -351,7 +353,7 @@ def resonator_punchout(
                 # retrieve the results for every qubit
                 for qubit in qubits:
                     # average msr, phase, i and q over the number of shots defined in the runcard
-                    msr, phase, i, q = results[ro_pulses[qubit].qubit]
+                    msr, phase, i, q = results[qubit]
                     # store the results
                     r = {
                         "MSR[V]": msr,  # * (np.exp(att / 20)), # normalise the results
@@ -487,7 +489,7 @@ def resonator_spectroscopy_flux(
                     # retrieve the results for every qubit
                     for qubit in qubits:
                         # average msr, phase, i and q over the number of shots defined in the runcard
-                        msr, phase, i, q = result[ro_pulses[qubit].serial]
+                        msr, phase, i, q = result[qubit]
                         # store the results
                         r = {
                             "MSR[V]": msr,

@@ -100,7 +100,7 @@ def allXY(
 
             # retrieve the results for every qubit
             for qubit in qubits:
-                prob = 1 - 2 * results["probability"][ro_pulses[qubit].serial]
+                prob = 1 - 2 * results["probability"][qubit]
                 # store the results
                 r = {
                     "probability": prob,
@@ -192,7 +192,7 @@ def allXY_drag_pulse_tuning(
 
                 # retrieve the results for every qubit
                 for qubit in qubits:
-                    prob = 1 - 2 * results["probability"][ro_pulses[qubit].serial]
+                    prob = 1 - 2 * results["probability"][qubit]
                     # store the results
                     r = {
                         "probability": prob,
@@ -334,8 +334,8 @@ def drag_pulse_tuning(
 
             # retrieve the results for every qubit
             for qubit in qubits:
-                msr1, phase1, i1, q1 = result1[ro_pulses[qubit].serial]
-                msr2, phase2, i2, q2 = result2[ro_pulses[qubit].serial]
+                msr1, phase1, i1, q1 = result1[qubit]
+                msr2, phase2, i2, q2 = result2[qubit]
                 # store the results
                 r = {
                     "MSR[V]": msr1 - msr2,

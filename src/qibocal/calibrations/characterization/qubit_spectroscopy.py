@@ -375,7 +375,7 @@ def qubit_spectroscopy_flux(
                     # retrieve the results for every qubit
                     for qubit in qubits:
                         # average msr, phase, i and q over the number of shots defined in the runcard
-                        msr, phase, i, q = result[ro_pulses[qubit].serial]
+                        msr, phase, i, q = result[qubit]
                         # store the results
                         r = {
                             "MSR[V]": msr,

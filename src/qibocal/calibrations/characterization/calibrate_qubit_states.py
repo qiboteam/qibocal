@@ -71,9 +71,7 @@ def calibrate_qubit_states(
 
     # retrieve and store the results for every qubit
     for qubit in qubits:
-        msr, phase, i, q = state0_results["demodulated_integrated_binned"][
-            ro_pulses[qubit].serial
-        ]
+        msr, phase, i, q = state0_results["demodulated_integrated_binned"][qubit]
         r = {
             "MSR[V]": msr,
             "i[V]": i,
