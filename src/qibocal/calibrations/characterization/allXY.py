@@ -80,7 +80,7 @@ def allXY(
     # repeat the experiment as many times as defined by software_averages
     for iteration in range(software_averages):
         # sweep the parameter
-        for gates in gatelist:
+        for gateNumber, gates in enumerate(gatelist):
             # save data as often as defined by points
             if count % points == 0 and count > 0:
                 # save data
@@ -99,7 +99,7 @@ def allXY(
 
             # retrieve the results for every qubit
             for qubit in qubits:
-                prob = 1 - 2 * results["probability"][ro_pulses[qubit].serial]
+                prob = 1 - 2 * results[ro_pulses[qubit].serial].probability
                 # store the results
                 r = {
                     "probability": prob,
@@ -109,7 +109,6 @@ def allXY(
                 }
                 data.add(r)
             count += 1
-            gateNumber += 1
     # finally, save the remaining data
     yield data
 
