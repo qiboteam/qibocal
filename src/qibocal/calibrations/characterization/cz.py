@@ -7,6 +7,162 @@ from qibocal.data import DataUnits
 from qibocal.decorators import plot
 
 
+@plot("Flux pulse timing", plots.flux_pulse_timing)
+def flux_pulse_timing(
+    platform: AbstractPlatform,
+    qubits: list,
+    flux_pulse_amplitude_start,
+    flux_pulse_amplitude_end,
+    flux_pulse_amplitude_step,
+    flux_pulse_start_start,
+    flux_pulse_start_end,
+    flux_pulse_start_step,
+    flux_pulse_duration,
+    time_window,
+    software_averages=1,
+    points=10,
+):
+
+    # the purpose of this routine is to determine the time of flight of a flux pulse and the duration
+    # of the transient at the end of the pulse
+
+    # 1) from state |0> apply Ry(pi/2) to state |+>,
+    # 2) apply a detunning flux pulse of fixed duration at various start times
+    # 3) after a certain time window from the end of the initial Ry(pi/2) pulse,
+    #    measure in the X axis: Ry(pi/2) - MZ
+
+    #   MX = Ry(pi/2) - (flux) - Ry(pi/2)  - MZ
+    # If the flux pulse of sufficient amplitude falls within the time window between the Ry(pi/2) pulses,
+    # it detunes the qubit and results in a rotation around the Z axis r so that MX = Cos(r)
+
+    # reload instrument settings from runcard
+    platform.reload_settings()
+
+    # define the sequences of pulses to be executed
+    sequence = PulseSequence()
+
+    initial_RY90_pulses = {}
+    flux_pulses = {}
+    RY90_pulses = {}
+    MZ_ro_pulses = {}
+    for qubit in qubits:
+        # start at |+> by rotating Ry(pi/2)
+        initial_RY90_pulses[qubit] = platform.create_RX90_pulse(
+            qubit, start=0, relative_phase=np.pi / 2
+        )
+
+        # wait time window
+
+        # rotate around the Y asis Ry(pi/2) to meassure X component
+        RY90_pulses[qubit] = platform.create_RX90_pulse(
+            qubit,
+            start=initial_RY90_pulses[qubit].finish + time_window,
+            relative_phase=np.pi / 2,
+        )
+
+        # add ro pulse at the end of each sequence
+        MZ_ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+            qubit, start=RY90_pulses[qubit].finish
+        )
+
+        # apply a detuning flux pulse around the time window
+        flux_pulses[qubit] = FluxPulse(
+            start=0,
+            duration=flux_pulse_duration,
+            amplitude=flux_pulse_amplitude_start,  # fix for each run
+            shape=Rectangular(),
+            # relative_phase=0,
+            channel=platform.qubit_channel_map[qubit][2],
+            qubit=qubit,
+        )
+
+        # add pulses to the sequences
+        sequence.add(
+            initial_RY90_pulses[qubit],
+            flux_pulses[qubit],
+            RY90_pulses[qubit],
+            MZ_ro_pulses[qubit],
+        )
+
+    # define the parameters to sweep and their range:
+    # flux pulse amplitude
+    # flux pulse duration
+
+    flux_pulse_amplitude_range = np.arange(
+        flux_pulse_amplitude_start, flux_pulse_amplitude_end, flux_pulse_amplitude_step
+    )
+    flux_pulse_start_range = np.arange(
+        flux_pulse_start_start, flux_pulse_start_end, flux_pulse_start_step
+    )
+
+    # create a DataUnits object to store the results,
+    # DataUnits stores by default MSR, phase, i, q
+    # additionally include flux pulse duration, amplitude and the probability
+    data = DataUnits(
+        name=f"data",
+        quantities={
+            "flux_pulse_amplitude": "dimensionless",
+            "flux_pulse_start": "ns",
+            "prob": "dimensionless",
+        },
+        options=["qubit", "iteration"],
+    )
+
+    count = 0
+    for iteration in range(software_averages):
+        # sweep the parameters
+        for amplitude in flux_pulse_amplitude_range:
+            for start in flux_pulse_start_range:
+                # save data as often as defined by points
+                if count % points == 0 and count > 0:
+                    # save data
+                    yield data
+                for qubit in qubits:
+                    flux_pulses[qubit].amplitude = amplitude
+                # adjust the sequences
+                if start < 0:
+                    for qubit in qubits:
+                        flux_pulses[qubit].start = 0
+                        initial_RY90_pulses[qubit].start = -start
+                        RY90_pulses[qubit].start = (
+                            initial_RY90_pulses[qubit].finish + time_window
+                        )
+                        MZ_ro_pulses[qubit].start = RY90_pulses[qubit].finish
+                else:
+                    for qubit in qubits:
+                        initial_RY90_pulses[qubit].start = 0
+                        flux_pulses[qubit].start = start
+                        RY90_pulses[qubit].start = (
+                            initial_RY90_pulses[qubit].finish + time_window
+                        )
+                        MZ_ro_pulses[qubit].start = RY90_pulses[qubit].finish
+
+                # execute the pulse sequence
+                results = platform.execute_pulse_sequence(sequence)
+
+                for qubit in qubits:
+                    prob = results["probability"][MZ_ro_pulses[qubit].serial]
+                    voltages = results["demodulated_integrated_averaged"][
+                        MZ_ro_pulses[qubit].serial
+                    ]
+                    r = {
+                        "MSR[V]": voltages[0],
+                        "phase[rad]": voltages[1],
+                        "i[V]": voltages[2],
+                        "q[V]": voltages[3],
+                        "prob[dimensionless]": prob,
+                        "flux_pulse_amplitude[dimensionless]": amplitude,
+                        "flux_pulse_start[ns]": start,
+                        "qubit": qubit,
+                        "iteration": iteration,
+                    }
+                    data.add(r)
+
+                count += 1
+    # finally, save the remaining data
+    yield data
+
+
 @plot("cryoscope_raw", plots.cryoscope_raw)
 @plot("cryoscope_dephasing_heatmap", plots.cryoscope_dephasing_heatmap)
 @plot("cryoscope_fft_peak_fitting", plots.cryoscope_fft_peak_fitting)
@@ -195,7 +351,7 @@ def cryoscope(
 
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
-    # additionally include wait time and t_max
+    # additionally include flux pulse duration, amplitude and the probability
     data = DataUnits(
         name=f"data",
         quantities={

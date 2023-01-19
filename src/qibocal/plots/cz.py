@@ -118,7 +118,7 @@ def cryoscope_raw(folder, routine, qubit, format):
     return figs["raw"]
 
 
-def cryoscope_delays(folder, routine, qubit, format):
+def flux_pulse_timing(folder, routine, qubit, format):
     data = DataUnits.load_data(folder, "data", routine, format, "data")
     import numpy as np
 
