@@ -42,7 +42,8 @@ def _get_values(data, component=None, duration=None, amplitude=None):
 
 
 def _normalise(values: np.array):
-    values = ((values - np.min(values)) / (np.max(values) - np.min(values))) * 2 - 1
+    # values = ((values - np.min(values)) / (np.max(values) - np.min(values))) * 2 - 1
+
     # TODO: consider moving this normalisation to data acquisition (work with magnitudes instead of 0-1 probs)
     return values
 
