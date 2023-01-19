@@ -126,8 +126,7 @@ def test_res_spectroscopy_flux_fit(name, qubit, fluxline, num_params, caplog):
         ("qubit_freq", "2D", 1),
     ],
 )
-@pytest.mark.parametrize("lo_freqs", [None, [0]])
-def test_lorentzian_fit(name, label, resonator_type, amplitude_sign, lo_freqs, caplog):
+def test_lorentzian_fit(name, label, resonator_type, amplitude_sign, caplog):
     """Test the *lorentzian_fit* function"""
     amplitude = 1 * amplitude_sign
     center = 2
@@ -159,7 +158,6 @@ def test_lorentzian_fit(name, label, resonator_type, amplitude_sign, lo_freqs, c
         resonator_type,
         labels=[label, "peak_voltage", "intermediate_freq"],
         fit_file_name=name,
-        lo_freqs=lo_freqs,
     )
     # Given the couople (amplitude, sigma) as a solution of lorentzian_fit method
     # also (-amplitude,-sigma) is a possible solution.
@@ -418,7 +416,7 @@ def test_flipping_fit(label, resonator_type, amplitude_sign, caplog):
     p2 = 17 * amplitude_sign
     p3 = 3
 
-    pi_pulse_amplituse = 5
+    pi_pulse_amplitudes = [5]
 
     x = np.linspace(0, 10, 100)
     noisy_flip = flipping(x, p0, p1, p2, p3) + p0 * np.random.randn(100) * 1e-4
@@ -442,7 +440,7 @@ def test_flipping_fit(label, resonator_type, amplitude_sign, caplog):
         "MSR[V]",
         [0],
         resonator_type,
-        pi_pulse_amplituse,
+        pi_pulse_amplitudes,
         labels=[label, "corrected_amplitude"],
     )
     fit_p = [fit.get_values(f"popt{i}")[0] for i in range(4)]
@@ -471,7 +469,7 @@ def test_flipping_fit(label, resonator_type, amplitude_sign, caplog):
         "MSR[V]",
         [0],
         resonator_type,
-        pi_pulse_amplituse,
+        pi_pulse_amplitudes,
         labels=[label, "corrected_amplitude"],
     )
     assert "flipping_fit: the fitting was not succesful" in caplog.text
