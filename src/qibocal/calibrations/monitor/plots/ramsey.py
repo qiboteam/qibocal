@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -5,10 +7,10 @@ from plotly.subplots import make_subplots
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import exp
 from qibocal.plots.utils import get_color, get_data_subfolders
-from datetime import datetime
+
 
 # T2
-def time_msr(folder, routine, qubit, format):    
+def time_msr(folder, routine, qubit, format):
     fig = make_subplots(
         rows=2,
         cols=1,
@@ -49,12 +51,12 @@ def time_msr(folder, routine, qubit, format):
                     "popt0",
                     "timestamp",
                 ]
-            )   
+            )
 
         # TODO: average over iterations
         for iteration in iterations:
             pass
-        
+
         # plot raw data
         iteration_data = data.df[data.df["iteration"] == 0]
         fig.add_trace(
@@ -68,12 +70,12 @@ def time_msr(folder, routine, qubit, format):
             ),
             row=1,
             col=1,
-        )            
-        # add fitting trace            
+        )
+        # add fitting trace
         if len(data_fit) > 0 and (qubit in data_fit.df["qubit"].values):
             fig.add_trace(
                 go.Scatter(
-                    x=data_fit.df["timestamp"], # "%Y-%m-%d %H:%M:%S.%f" ,
+                    x=data_fit.df["timestamp"],  # "%Y-%m-%d %H:%M:%S.%f" ,
                     y=data_fit.df["t2"],
                     name=f"q{qubit}/r{report_n} Fit",
                     line=go.scatter.Line(dash="dot"),
@@ -90,7 +92,7 @@ def time_msr(folder, routine, qubit, format):
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Time (ns)",
-        yaxis_title="Date",            
+        yaxis_title="Date",
         xaxis2_title="Date",
         yaxis2_title="t2 (ns)",
     )
