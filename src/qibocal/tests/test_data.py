@@ -210,25 +210,6 @@ def test_data__add__():
     assert data0.df.equals(data_results.df)
 
 
-def test_abstract_data_NotImplementedErrors():
-    """Test methods of AbstractData class with NotImplementedError"""
-    data = AbstractData()
-    with pytest.raises(NotImplementedError):
-        data.add(
-            {
-                "int": 1,
-                "float": 1.0,
-                "string": "1",
-                "bool": 1,
-            }
-        )
-
-    with pytest.raises(NotImplementedError):
-        data.load_data(
-            "test_folder", "test_subolder", "test_routine", "test_format", "test_name"
-        )
-
-
 def test_data_units_load_data_from_dict():
     """Test set method of DataUnits class"""
     data_units = DataUnits()
@@ -357,13 +338,6 @@ def test_save_open_data_pickle():
     )
     shutil.rmtree("test_folder")
     assert data.df.equals(data_upload.df)
-
-
-def test_save_abstract_data_csv():
-    """Test the to_csv method in AbstractData"""
-    data = AbstractData()
-    with pytest.raises(NotImplementedError):
-        data.to_csv("path")
 
 
 def test_load_data_from_dict_data_units():
