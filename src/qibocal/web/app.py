@@ -1,4 +1,6 @@
+import datetime
 import os
+import time
 
 import pandas as pd
 import yaml
@@ -17,12 +19,52 @@ app = Dash(
 
 app.layout = html.Div(
     [
+        html.Div(
+            [
+                html.Div(
+                    [
+                        html.P(
+                            "Refresh rate:",
+                            style={
+                                "margin-right": "2em",
+                                "margin-top": "5px",
+                                "font-size": "1.1em",
+                                "font-family": "verdana",
+                            },
+                        )
+                    ],
+                ),
+                dcc.Dropdown(
+                    id="interval-refresh",
+                    placeholder="Select refresh rate",
+                    options=[
+                        {"label": "Auto", "value": 0},
+                        {"label": "2 seconds", "value": 2},
+                        {"label": "5 seconds", "value": 5},
+                        {"label": "10 seconds", "value": 10},
+                        {"label": "20 seconds", "value": 20},
+                        {"label": "No refresh", "value": 3600},
+                    ],
+                    value=0,
+                    style={
+                        "width": "35%",
+                        "margin-left": "-10px",
+                        "font-family": "verdana",
+                    },
+                ),
+                html.Div(
+                    id="latest-timestamp",
+                    style={"margin-left": "-150px", "margin-top": "10px"},
+                ),
+            ],
+            style={"display": "flex", "font-family": "verdana"},
+        ),
         dcc.Location(id="url", refresh=False),
         dcc.Graph(id="graph", figure={}),
         dcc.Interval(
             id="interval",
             # TODO: Perhaps the user should be allowed to change the refresh rate
-            interval=5000,
+            interval=5 * 1000,
             n_intervals=0,
             disabled=False,
         ),
@@ -32,11 +74,16 @@ app.layout = html.Div(
 
 @app.callback(
     Output("graph", "figure"),
+    Output(component_id="latest-timestamp", component_property="children"),
+    Output(component_id="interval", component_property="interval"),
     Input("interval", "n_intervals"),
     Input("graph", "figure"),
     Input("url", "pathname"),
+    Input("interval-refresh", "value"),
 )
-def get_graph(n, current_figure, url):
+def get_graph(interval, current_figure, url, value):
+
+    st = time.time()
     if "data" not in url:
         url = f"/data{url}"
 
@@ -58,7 +105,21 @@ def get_graph(n, current_figure, url):
         # # multiple routines with different names in one folder
         # # should be changed to:
         # # return getattr(getattr(plots, routine), method)(data)
+        figure = getattr(plots, method)(folder, routine, qubit, format)
+        et = time.time()
+        if value == 0:
+            refresh_rate = (et - st) + 6
+        else:
+            refresh_rate = value
 
-        return getattr(plots, method)(folder, routine, qubit, format)
+        return (
+            figure,
+            [html.Span(f"Last update: {datetime.datetime.now()}")],
+            refresh_rate * 1000,
+        )
     except (FileNotFoundError, pd.errors.EmptyDataError):
-        return current_figure
+        return (
+            current_figure,
+            [html.Span(f"Last updated: {datetime.datetime.now()}")],
+            refresh_rate * 1000,
+        )
