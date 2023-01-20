@@ -280,7 +280,8 @@ def monitor(runcard, folder, force=None, terminate=None, local=None):
             pid = int(f.read())
         subprocess.run(f"kill -9 {pid}", shell=True)
         output = subprocess.check_output(
-            f"sacct --format=jobid --name=monitor -s PENDING,RUNNING --noheader", shell=True
+            f"sacct --format=jobid --name=monitor -s PENDING,RUNNING --noheader",
+            shell=True,
         )
         os.system(f"scancel {int(output.strip().split()[0])}")
 
@@ -324,7 +325,8 @@ def monitor_process(cache_dir, runcard, qpu, folder, force):
         else:
             latest_job = int(output.strip().split()[0])
         output = subprocess.check_output(
-            f"sacct --format=jobid --name=monitor -s PENDING,RUNNING --noheader", shell=True
+            f"sacct --format=jobid --name=monitor -s PENDING,RUNNING --noheader",
+            shell=True,
         )
         if not output:
             my_job = None
@@ -333,24 +335,24 @@ def monitor_process(cache_dir, runcard, qpu, folder, force):
         if latest_job is None:
             if folder:
                 sbatch_cmd = 'srun -p {qpu} -J monitor -o "{my_job_out}" python -c \'import {module_name}; {module_name}.{function_name}("{runcard}","{folder}",{force})\'&'.format(
-                            qpu=qpu,
-                            my_job_out=cache_dir / "my_job.out",
-                            module_name=__name__,
-                            function_name=play_action_card.__name__,
-                            runcard=runcard,
-                            folder=folder,
-                            force=force,
-                        )
+                    qpu=qpu,
+                    my_job_out=cache_dir / "my_job.out",
+                    module_name=__name__,
+                    function_name=play_action_card.__name__,
+                    runcard=runcard,
+                    folder=folder,
+                    force=force,
+                )
             else:
                 sbatch_cmd = 'srun -p {qpu} -J monitor -o "{my_job_out}" python -c \'import {module_name}; {module_name}.{function_name}("{runcard}",{folder},{force})\'&'.format(
-                            qpu=qpu,
-                            my_job_out=cache_dir / "my_job.out",
-                            module_name=__name__,
-                            function_name=play_action_card.__name__,
-                            runcard=runcard,
-                            folder=folder,
-                            force=force,
-                        )
+                    qpu=qpu,
+                    my_job_out=cache_dir / "my_job.out",
+                    module_name=__name__,
+                    function_name=play_action_card.__name__,
+                    runcard=runcard,
+                    folder=folder,
+                    force=force,
+                )
 
             os.system(sbatch_cmd)
         elif latest_job is not None and latest_job != my_job and my_job is not None:
@@ -359,8 +361,8 @@ def monitor_process(cache_dir, runcard, qpu, folder, force):
         elif latest_job is not None and latest_job == my_job:
             pass
         else:
-            raise_error(ValueError , f"latest_job: {latest_job}, my_job: {my_job}")
-        
+            raise_error(ValueError, f"latest_job: {latest_job}, my_job: {my_job}")
+
 
 def play_action_card(runcard, folder, force):
     time.sleep(1)

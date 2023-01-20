@@ -4,9 +4,10 @@ import pandas as pd
 import yaml
 from dash import Dash, Input, Output, dcc, html
 
+from qibocal.cli.builders import load_yaml
 from qibocal.data import DataUnits
 from qibocal.web.server import server
-from qibocal.cli.builders import load_yaml
+
 DataUnits()  # dummy dataset call to suppress ``pint[V]`` error
 
 app = Dash(

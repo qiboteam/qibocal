@@ -20,7 +20,6 @@ def load_yaml(path):
     return data
 
 
-
 class ActionBuilder:
     """Class for parsing and executing runcards.
     Args:

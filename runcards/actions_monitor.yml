@@ -8,7 +8,7 @@ format: csv
 
 actions:
 
-  # resonator_spectroscopy: 
+  # resonator_spectroscopy:
   #   fast_width: 30_000_000
   #   fast_step: 1_000_000
   #   precision_width: 2_000_000

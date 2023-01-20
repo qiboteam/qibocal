@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -5,7 +7,7 @@ from plotly.subplots import make_subplots
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import exp
 from qibocal.plots.utils import get_color, get_data_subfolders
-from datetime import datetime
+
 
 # T1
 def t1_time_msr(folder, routine, qubit, format):
@@ -32,26 +34,19 @@ def t1_time_msr(folder, routine, qubit, format):
                 name=f"data",
                 quantities={"wait": "ns", "t_max": "ns"},
                 options=["qubit", "iteration"],
-            )        
+            )
         try:
             data_fit = Data.load_data(folder, subfolder, routine, format, f"fits")
             data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
         except:
             data_fit = Data(
-                quantities=[
-                    "popt0",
-                    "t1",
-                    "popt2",
-                    "label1",
-                    "qubit",
-                    "timestamp"
-                ]
+                quantities=["popt0", "t1", "popt2", "label1", "qubit", "timestamp"]
             )
 
         # TODO: average over iterations
         for iteration in iterations:
             pass
-        
+
         # plot raw data
         iteration_data = data.df[data.df["iteration"] == 0]
         fig.add_trace(
@@ -71,7 +66,7 @@ def t1_time_msr(folder, routine, qubit, format):
         if len(data_fit) > 0 and (qubit in data_fit.df["qubit"].values):
             fig.add_trace(
                 go.Scatter(
-                    x=data_fit.df["timestamp"], # "%Y-%m-%d %H:%M:%S.%f" ,
+                    x=data_fit.df["timestamp"],  # "%Y-%m-%d %H:%M:%S.%f" ,
                     y=data_fit.df["t1"],
                     name=f"q{qubit}/r{report_n} Fit",
                     line=go.scatter.Line(dash="dot"),
@@ -90,6 +85,6 @@ def t1_time_msr(folder, routine, qubit, format):
         xaxis2_title="Date",
         yaxis2_title="t1 (ns)",
         xaxis_title="Time (ns)",
-        yaxis_title="Date",         
+        yaxis_title="Date",
     )
     return fig
