@@ -410,26 +410,28 @@ def ramsey_fit(
         times = qubit_data[parameter_keys[0]].pint.to(parameter_keys[1]).pint.magnitude
         voltages = qubit_data[voltages_keys[0]].pint.to(voltages_keys[1]).pint.magnitude
 
-        if resonator_type == "3D":
-            pguess = [
-                np.mean(voltages.values),
-                np.max(voltages.values) - np.min(voltages.values),
-                0.5 / times.values[np.argmin(voltages.values)],
-                np.pi / 2,
-                500e-9,
-            ]
-        else:
-            pguess = [
-                np.mean(voltages.values),
-                np.max(voltages.values) - np.min(voltages.values),
-                0.5 / times.values[np.argmax(voltages.values)],
-                np.pi / 2,
-                500e-9,
-            ]
         try:
-            popt, pcov = curve_fit(
-                ramsey, times.values, voltages.values, p0=pguess, maxfev=2000000
-            )
+            y_max = np.max(voltages.values)
+            y_min = np.min(voltages.values)
+            y = (voltages.values - y_min) / (y_max - y_min)
+            x_max = np.max(times.values)
+            x_min = np.min(times.values)
+            x = (times.values - x_min) / (x_max - x_min)
+            p0 = [
+                np.mean(y),
+                y_max - y_min,
+                0.5 / x[np.argmax(y)],
+                np.pi / 2,
+                0,
+            ]
+            popt = curve_fit(ramsey, x, y, method="lm", p0=p0)[0]
+            popt = [
+                (y_max - y_min) * popt[0] + y_min,
+                (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
+                popt[2] / (x_max - x_min),
+                popt[3] - x_min * popt[2] / (x_max - x_min),
+                popt[4] / (x_max - x_min),
+            ]
             delta_fitting = popt[2]
             delta_phys = int((delta_fitting * sampling_rate) - offset_freq)
             corrected_qubit_frequency = int(qubit_freqs[qubit] + delta_phys)
