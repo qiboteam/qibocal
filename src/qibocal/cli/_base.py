@@ -286,7 +286,7 @@ def monitor(runcard, folder, force=None, terminate=None, local=None):
 
     elif not local:
         if folder:
-            nohup_cmd = 'nohup python -c \'import {module_name}; {module_name}.{function_name}("{cache_dir}","{runcard}","{qpu}", "{folder}", {force})\' > mylog.log 2> myerror.log &'.format(
+            nohup_cmd = 'nohup python -c \'import {module_name}; {module_name}.{function_name}("{cache_dir}","{runcard}","{qpu}", "{folder}", {force})\' > "{nohup_log}" 2> "{nohup_err}" &'.format(
                 module_name=__name__,
                 function_name=monitor_process.__name__,
                 cache_dir=cache_dir,
@@ -294,9 +294,11 @@ def monitor(runcard, folder, force=None, terminate=None, local=None):
                 qpu=qpu,
                 folder=folder,
                 force=force,
+                nohup_err=cache_dir / "nohup.err",
+                nohup_log=cache_dir / "nohup.log",
             )
         else:
-            nohup_cmd = 'nohup python -c \'import {module_name}; {module_name}.{function_name}("{cache_dir}","{runcard}","{qpu}", {folder}, {force})\' > mylog.log 2> myerror.log &'.format(
+            nohup_cmd = 'nohup python -c \'import {module_name}; {module_name}.{function_name}("{cache_dir}","{runcard}","{qpu}", {folder}, {force})\' > "{nohup_log}" 2> "{nohup_err}" &'.format(
                 module_name=__name__,
                 function_name=monitor_process.__name__,
                 cache_dir=cache_dir,
@@ -304,6 +306,8 @@ def monitor(runcard, folder, force=None, terminate=None, local=None):
                 qpu=qpu,
                 folder=folder,
                 force=force,
+                nohup_err=cache_dir / "nohup.err",
+                nohup_log=cache_dir / "nohup.log",                
             )
         process = subprocess.Popen(nohup_cmd, shell=True)
         with open(cache_dir / "nohup.int", "w") as f:
@@ -353,7 +357,7 @@ def monitor_process(cache_dir, runcard, qpu, folder, force):
                         )
 
             os.system(sbatch_cmd)
-        elif latest_job is not None and latest_job != my_job and my_job is not None:
+        elif latest_job is not None and latest_job != my_job and my_job is not None and my_job != "None":
             os.system(f"scancel {my_job}")
             my_job = None
         elif latest_job is not None and latest_job == my_job:
@@ -361,7 +365,7 @@ def monitor_process(cache_dir, runcard, qpu, folder, force):
         else:
             raise_error(ValueError , f"latest_job: {latest_job}, my_job: {my_job}")
         
-
+    
 def play_action_card(runcard, folder, force):
     time.sleep(1)
     builder = ActionBuilder(runcard, folder, force, monitor=True)
