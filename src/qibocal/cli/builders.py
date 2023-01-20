@@ -40,7 +40,6 @@ class ActionBuilder:
             for q in self.runcard["qubits"]
             if q in self.platform.qubits
         }
-        print(self.qubits)
         self.format = self.runcard["format"]
 
         # Saving runcard

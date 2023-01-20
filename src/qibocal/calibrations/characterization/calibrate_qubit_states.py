@@ -70,14 +70,16 @@ def calibrate_qubit_states(
     state0_results = platform.execute_pulse_sequence(state0_sequence, nshots=nshots)
 
     # retrieve and store the results for every qubit
-    for qubit in qubits:
-        msr, phase, i, q = state0_results["demodulated_integrated_binned"][qubit]
+    for ro_pulse in ro_pulses.values():
+        msr, phase, i, q = state0_results["demodulated_integrated_binned"][
+            ro_pulse.qubit
+        ]
         r = {
             "MSR[V]": msr,
             "i[V]": i,
             "q[V]": q,
             "phase[rad]": phase,
-            "qubit": [qubit] * nshots,
+            "qubit": [ro_pulse.qubit] * nshots,
             "iteration": np.arange(nshots),
             "state": [0] * nshots,
         }
@@ -87,16 +89,16 @@ def calibrate_qubit_states(
     state1_results = platform.execute_pulse_sequence(state1_sequence, nshots=nshots)
 
     # retrieve and store the results for every qubit
-    for qubit in qubits:
+    for ro_pulse in ro_pulses.values():
         msr, phase, i, q = state1_results["demodulated_integrated_binned"][
-            ro_pulses[qubit].serial
+            ro_pulse.serial
         ]
         r = {
             "MSR[V]": msr,
             "i[V]": i,
             "q[V]": q,
             "phase[rad]": phase,
-            "qubit": [qubit] * nshots,
+            "qubit": [ro_pulse.qubit] * nshots,
             "iteration": np.arange(nshots),
             "state": [1] * nshots,
         }

@@ -99,13 +99,13 @@ def allXY(
             results = platform.execute_pulse_sequence(sequence)
 
             # retrieve the results for every qubit
-            for qubit in qubits:
-                prob = 1 - 2 * results["probability"][qubit]
+            for ro_pulse in ro_pulses.values():
+                prob = 1 - 2 * results["probability"][ro_pulse.serial]
                 # store the results
                 r = {
                     "probability": prob,
                     "gateNumber": gateNumber,
-                    "qubit": qubit,
+                    "qubit": ro_pulse.qubit,
                     "iteration": iteration,
                 }
                 data.add(r)
@@ -191,8 +191,8 @@ def allXY_drag_pulse_tuning(
                 results = platform.execute_pulse_sequence(sequence)
 
                 # retrieve the results for every qubit
-                for qubit in qubits:
-                    prob = 1 - 2 * results["probability"][qubit]
+                for ro_pulse in ro_pulses.values():
+                    prob = 1 - 2 * results["probability"][ro_pulse.serial]
                     # store the results
                     r = {
                         "probability": prob,
@@ -333,9 +333,9 @@ def drag_pulse_tuning(
             result2 = platform.execute_pulse_sequence(seq2)
 
             # retrieve the results for every qubit
-            for qubit in qubits:
-                msr1, phase1, i1, q1 = result1[qubit]
-                msr2, phase2, i2, q2 = result2[qubit]
+            for ro_pulse in ro_pulses.values():
+                msr1, phase1, i1, q1 = result1[ro_pulse.serial]
+                msr2, phase2, i2, q2 = result2[ro_pulse.serial]
                 # store the results
                 r = {
                     "MSR[V]": msr1 - msr2,
@@ -343,7 +343,7 @@ def drag_pulse_tuning(
                     "q[V]": q1 - q2,
                     "phase[rad]": phase1 - phase2,
                     "beta_param[dimensionless]": beta_param,
-                    "qubit": qubit,
+                    "qubit": ro_pulse.qubit,
                     "iteration": iteration,
                 }
                 data.add(r)

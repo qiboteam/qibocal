@@ -116,19 +116,17 @@ def resonator_spectroscopy(
             results = platform.execute_pulse_sequence(sequence)
 
             # retrieve the results for every qubit
-            for qubit in qubits:
+            for ro_pulse in ro_pulses.values():
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                # print(results['demodulated_integrated_averaged'][ro_pulses[qubit].qubit])
-                # print(results['averaged_raw'][ro_pulses[qubit].qubit]))
-                msr, phase, i, q = results[qubit]
+                msr, phase, i, q = results[ro_pulse.serial]
                 # store the results
                 r = {
                     "MSR[V]": msr,
                     "i[V]": i,
                     "q[V]": q,
                     "phase[rad]": phase,
-                    "frequency[Hz]": ro_pulses[qubit].frequency,
-                    "qubit": qubit,
+                    "frequency[Hz]": ro_pulse.frequency,
+                    "qubit": ro_pulse.qubit,
                     "iteration": iteration,
                 }
                 fast_sweep_data.add(r)
@@ -220,17 +218,17 @@ def resonator_spectroscopy(
             results = platform.execute_pulse_sequence(sequence)
 
             # retrieve the results for every qubit
-            for pulse in sequence.ro_pulses:
+            for ro_pulse in sequence.ro_pulses:
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                msr, phase, i, q = results[pulse.qubit]
+                msr, phase, i, q = results[ro_pulse.serial]
                 # store the results
                 r = {
                     "MSR[V]": msr,
                     "i[V]": i,
                     "q[V]": q,
                     "phase[rad]": phase,
-                    "frequency[Hz]": pulse.frequency,
-                    "qubit": pulse.qubit,
+                    "frequency[Hz]": ro_pulse.frequency,
+                    "qubit": ro_pulse.qubit,
                     "iteration": iteration,
                 }
                 precision_sweep_data.add(r)
@@ -351,18 +349,18 @@ def resonator_punchout(
                 results = platform.execute_pulse_sequence(sequence)
 
                 # retrieve the results for every qubit
-                for qubit in qubits:
+                for ro_pulse in ro_pulses.values():
                     # average msr, phase, i and q over the number of shots defined in the runcard
-                    msr, phase, i, q = results[qubit]
+                    msr, phase, i, q = results[ro_pulse.serial]
                     # store the results
                     r = {
                         "MSR[V]": msr,  # * (np.exp(att / 20)), # normalise the results
                         "i[V]": i,
                         "q[V]": q,
                         "phase[rad]": phase,
-                        "frequency[Hz]": ro_pulses[qubit].frequency,
+                        "frequency[Hz]": ro_pulse.frequency,
                         "attenuation[dB]": att,
-                        "qubit": qubit,
+                        "qubit": ro_pulse.qubit,
                         "iteration": iteration,
                     }
                     data.add(r)
@@ -487,9 +485,9 @@ def resonator_spectroscopy_flux(
                     result = platform.execute_pulse_sequence(sequence)
 
                     # retrieve the results for every qubit
-                    for qubit in qubits:
+                    for ro_pulse in ro_pulses.values():
                         # average msr, phase, i and q over the number of shots defined in the runcard
-                        msr, phase, i, q = result[qubit]
+                        msr, phase, i, q = result[ro_pulse.serial]
                         # store the results
                         r = {
                             "MSR[V]": msr,
@@ -618,9 +616,9 @@ def dispersive_shift(
 
             # retrieve the results for every qubit
             for data, results in list(zip([data_0, data_1], [results_0, results_1])):
-                for qubit in qubits:
+                for ro_pulse in ro_pulses.values():
                     # average msr, phase, i and q over the number of shots defined in the runcard
-                    msr, phase, i, q = results[qubit]
+                    msr, phase, i, q = results[ro_pulse.serial]
                     # store the results
                     r = {
                         "MSR[V]": msr,

@@ -98,16 +98,16 @@ def spin_echo_3pulses(
             # execute the pulse sequence
             results = platform.execute_pulse_sequence(sequence)
 
-            for qubit in qubits:
+            for ro_pulse in ro_pulses.values():
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                msr, phase, i, q = results[qubit]
+                msr, phase, i, q = results[ro_pulse.serial]
                 r = {
                     "MSR[V]": msr,
                     "i[V]": i,
                     "q[V]": q,
                     "phase[rad]": phase,
                     "wait[ns]": wait,
-                    "qubit": qubit,
+                    "qubit": ro_pulse.qubit,
                     "iteration": iteration,
                 }
                 data.add(r)
