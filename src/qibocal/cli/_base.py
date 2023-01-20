@@ -328,24 +328,24 @@ def monitor_process(cache_dir, runcard, qpu, folder, force):
         if latest_job == my_job or latest_job is None:
             if folder:
                 sbatch_cmd = 'srun -p {qpu} -J monitor -o "{my_job_out}" python -c \'import {module_name}; {module_name}.{function_name}("{runcard}","{folder}",{force})\''.format(
-                            qpu=qpu,
-                            my_job_out=cache_dir / "my_job.out",
-                            module_name=__name__,
-                            function_name=play_action_card.__name__,
-                            runcard=runcard,
-                            folder=folder,
-                            force=force,
-                        )
+                    qpu=qpu,
+                    my_job_out=cache_dir / "my_job.out",
+                    module_name=__name__,
+                    function_name=play_action_card.__name__,
+                    runcard=runcard,
+                    folder=folder,
+                    force=force,
+                )
             else:
                 sbatch_cmd = 'srun -p {qpu} -J monitor -o "{my_job_out}" python -c \'import {module_name}; {module_name}.{function_name}("{runcard}",{folder},{force})\''.format(
-                            qpu=qpu,
-                            my_job_out=cache_dir / "my_job.out",
-                            module_name=__name__,
-                            function_name=play_action_card.__name__,
-                            runcard=runcard,
-                            folder=folder,
-                            force=force,
-                        )
+                    qpu=qpu,
+                    my_job_out=cache_dir / "my_job.out",
+                    module_name=__name__,
+                    function_name=play_action_card.__name__,
+                    runcard=runcard,
+                    folder=folder,
+                    force=force,
+                )
 
             os.system(sbatch_cmd)
         elif my_job is not None:

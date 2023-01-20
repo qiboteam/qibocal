@@ -228,7 +228,6 @@ def ramsey_frequency_detuned(
                 # new_t2 = current_T2s[qubit]
                 # TODO: These best values need to be saved to the fits file so that they are returned to the user
                 stop = True
-            
 
     yield data
     yield ramsey_fit(

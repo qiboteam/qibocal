@@ -1,8 +1,9 @@
 import datetime
+import filecmp
 import inspect
 import os
-import shutil, pathlib
-import filecmp
+import pathlib
+import shutil
 
 import yaml
 
@@ -11,11 +12,13 @@ from qibocal.config import log, raise_error
 from qibocal.data import Data, DataUnits
 from qibocal.plots.utils import get_color, get_data_subfolders
 
+
 def load_yaml(path):
     """Load yaml file from disk."""
     with open(path) as file:
         data = yaml.safe_load(file)
     return data
+
 
 def str_to_bool(value):
     r"""Convert string to boolean."""
@@ -31,6 +34,7 @@ def str_to_bool(value):
     else:
         raise_error(ValueError, f"Cannot convert {value} to boolean.")
 
+
 class ActionBuilder:
     """Class for parsing and executing runcards.
     Args:
@@ -43,7 +47,7 @@ class ActionBuilder:
         self.monitor = monitor
         self.runcard_path = runcard
         self.runcard = load_yaml(runcard)
-        path, self.folder = self._generate_output_folder(folder, force)        
+        path, self.folder = self._generate_output_folder(folder, force)
 
         # Qibolab default backend if not provided in runcard.
         backend_name = self.runcard.get("backend", "qibolab")
@@ -72,11 +76,15 @@ class ActionBuilder:
         current_directory = pathlib.Path.cwd()
 
         if self.monitor and folder is None:
-            directories_with_runcard = [entry.path for entry in os.scandir(current_directory) if entry.is_dir() and "runcard.yml" in os.listdir(entry.path)]
+            directories_with_runcard = [
+                entry.path
+                for entry in os.scandir(current_directory)
+                if entry.is_dir() and "runcard.yml" in os.listdir(entry.path)
+            ]
             for directory in directories_with_runcard:
                 if filecmp.cmp(self.runcard_path, f"{directory}/runcard.yml"):
                     log.info(f"Found previous directory {directory}.")
-                    return current_directory / directory, os.path.basename(directory)            
+                    return current_directory / directory, os.path.basename(directory)
         if folder is None:
             import getpass
 
@@ -92,8 +100,13 @@ class ActionBuilder:
                 log.info(f"Trying to create directory {folder}")
         elif os.path.exists(folder) and not force:
             if self.monitor:
-                if not os.path.exists(f"{folder}/runcard.yml") and not filecmp.cmp(self.runcard_path, f"{folder}/runcard.yml"):
-                    raise_error(ValueError, f"Directory {folder} does not contain the same runcard.")
+                if not os.path.exists(f"{folder}/runcard.yml") and not filecmp.cmp(
+                    self.runcard_path, f"{folder}/runcard.yml"
+                ):
+                    raise_error(
+                        ValueError,
+                        f"Directory {folder} does not contain the same runcard.",
+                    )
                 log.info(f"Found previous directory {folder}.")
                 return folder, os.path.basename(folder)
             else:
@@ -101,10 +114,13 @@ class ActionBuilder:
 
         elif os.path.exists(folder) and force:
             if not os.path.exists(f"{folder}/runcard.yml"):
-                raise_error(ValueError, f"Directory {folder} might not be a qibocal directory. Aborting its deletion.")
+                raise_error(
+                    ValueError,
+                    f"Directory {folder} might not be a qibocal directory. Aborting its deletion.",
+                )
             log.warning(f"Deleting previous directory {folder}.")
             shutil.rmtree(os.path.join(current_directory, folder))
-                
+
         path = os.path.join(current_directory, folder)
         log.info(f"Creating directory {folder}.")
         os.makedirs(path)
@@ -190,7 +206,7 @@ class ActionBuilder:
 
     def _execute_single_action(self, routine, arguments, path):
         """Method to execute a single action and retrieving the results.
-        It will add a timestamp column to the results and append the data if the 
+        It will add a timestamp column to the results and append the data if the
         file already exists.
         """
         if self.format is None:
@@ -198,31 +214,40 @@ class ActionBuilder:
 
         results = routine(self.platform, self.qubits, **arguments)
 
-        
         if self.monitor:
             import datetime
+
             import pandas as pd
 
-            
             # Generate all the data to only keep the data when the routine is completed
             datas = {}
             for result in results:
                 if result.name not in datas:
                     datas[result.name] = result
 
-            current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")  
-            for data in datas.values():  
-                data.options += ["timestamp"]        
-                if not os.path.isfile(os.path.join(path+f"{data.name}.{self.format}")):                    
+            current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+            for data in datas.values():
+                data.options += ["timestamp"]
+                if not os.path.isfile(
+                    os.path.join(path + f"{data.name}.{self.format}")
+                ):
                     data.df = data.df.assign(timestamp=current_time)
-                    getattr(data, f"to_{self.format}")(path)  
+                    getattr(data, f"to_{self.format}")(path)
                 else:
-                    sub_folder = get_data_subfolders(self.folder) 
+                    sub_folder = get_data_subfolders(self.folder)
                     if len(sub_folder) > 1:
-                        raise_error(ValueError, f"More than one subfolder found in {path}.")                       
-                    data_old = data.load_data(self.folder, sub_folder[0], routine.__name__, self.format, data.name)           
+                        raise_error(
+                            ValueError, f"More than one subfolder found in {path}."
+                        )
+                    data_old = data.load_data(
+                        self.folder,
+                        sub_folder[0],
+                        routine.__name__,
+                        self.format,
+                        data.name,
+                    )
                     data.df = data.df.assign(timestamp=current_time)
-                    data.df = pd.concat([data_old.df, data.df], ignore_index=True)              
+                    data.df = pd.concat([data_old.df, data.df], ignore_index=True)
                     getattr(data, f"to_{self.format}")(path)
         else:
             for data in results:
