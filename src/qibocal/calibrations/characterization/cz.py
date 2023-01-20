@@ -240,7 +240,7 @@ def tune_landscape(
 
     if single_flux:
         flux_pulse = FluxPulse(
-            start=y90_pulse.finish,
+            start=y90_pulse.se_finish,
             duration=flux_pulse_duration,
             amplitude=flux_pulse_amplitude,
             shape=Rectangular(),
@@ -248,10 +248,10 @@ def tune_landscape(
             qubit=highfreq,
         )
         theta_pulse = platform.create_RX90_pulse(
-            lowfreq, flux_pulse.finish, relative_phase=theta_start
+            lowfreq, start=flux_pulse.se_finish, relative_phase=theta_start
         )
         x_pulse_end = platform.create_RX_pulse(
-            highfreq, start=flux_pulse.finish, relative_phase=0
+            highfreq, start=flux_pulse.se_finish, relative_phase=0
         )
 
     else:
@@ -280,10 +280,10 @@ def tune_landscape(
         )
 
     measure_lowfreq = platform.create_qubit_readout_pulse(
-        lowfreq, start=theta_pulse.finish
+        lowfreq, start=theta_pulse.se_finish
     )
     measure_highfreq = platform.create_qubit_readout_pulse(
-        highfreq, start=theta_pulse.finish
+        highfreq, start=theta_pulse.se_finish
     )
 
     data = DataUnits(
@@ -296,7 +296,7 @@ def tune_landscape(
         options=["q_freq", "setup"],
     )
 
-    thetas = np.arange(theta_start, theta_end, theta_step)
+    thetas = np.arange(theta_start + np.pi / 2, theta_end + np.pi / 2, theta_step)
     sweeper = Sweeper("relative_phase", thetas, [theta_pulse], wait_time=wait_time)
 
     setups = ["I", "X"]
