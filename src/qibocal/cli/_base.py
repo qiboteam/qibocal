@@ -308,7 +308,7 @@ def monitor(runcard, folder, force=None, terminate=None, local=None):
                 folder=folder,
                 force=force,
                 nohup_err=cache_dir / "nohup.err",
-                nohup_log=cache_dir / "nohup.log",                
+                nohup_log=cache_dir / "nohup.log",
             )
         process = subprocess.Popen(nohup_cmd, shell=True)
         with open(cache_dir / "nohup.int", "w") as f:
@@ -359,15 +359,20 @@ def monitor_process(cache_dir, runcard, qpu, folder, force):
                 )
 
             os.system(sbatch_cmd)
-        elif latest_job is not None and latest_job != my_job and my_job is not None and my_job != "None":
+        elif (
+            latest_job is not None
+            and latest_job != my_job
+            and my_job is not None
+            and my_job != "None"
+        ):
             os.system(f"scancel {my_job}")
             my_job = None
         elif latest_job is not None and latest_job == my_job:
             pass
         else:
-            raise_error(ValueError , f"latest_job: {latest_job}, my_job: {my_job}")
-        
-    
+            raise_error(ValueError, f"latest_job: {latest_job}, my_job: {my_job}")
+
+
 def play_action_card(runcard, folder, force):
     time.sleep(1)
     builder = ActionBuilder(runcard, folder, force, monitor=True)
