@@ -417,10 +417,15 @@ def ramsey_fit(
             x_max = np.max(times.values)
             x_min = np.min(times.values)
             x = (times.values - x_min) / (x_max - x_min)
+            if resonator_type == "3D":
+                index = np.argmin(y)
+            else:
+                index = np.argmax(y)
+
             p0 = [
                 np.mean(y),
                 y_max - y_min,
-                0.5 / x[np.argmax(y)],
+                0.5 / x[index],
                 np.pi / 2,
                 0,
             ]
