@@ -4,10 +4,9 @@ import pandas as pd
 import yaml
 from dash import Dash, Input, Output, dcc, html
 
-from qibocal import plots
 from qibocal.data import DataUnits
 from qibocal.web.server import server
-
+from qibocal.cli.builders import load_yaml
 DataUnits()  # dummy dataset call to suppress ``pint[V]`` error
 
 app = Dash(
@@ -58,7 +57,14 @@ def get_graph(n, current_figure, url):
         # # multiple routines with different names in one folder
         # # should be changed to:
         # # return getattr(getattr(plots, routine), method)(data)
-
+        runcard = load_yaml(f"{folder}/runcard.yml")
+        if "monitor" in runcard:
+            if runcard["monitor"] == True:
+                from qibocal.calibrations.monitor import plots
+            else:
+                from qibocal import plots
+        else:
+            from qibocal import plots
         return getattr(plots, method)(folder, routine, qubit, format)
     except (FileNotFoundError, pd.errors.EmptyDataError):
         return current_figure

@@ -17,19 +17,6 @@ def load_yaml(path):
         data = yaml.safe_load(file)
     return data
 
-def str_to_bool(value):
-    r"""Convert string to boolean."""
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        if value.lower() in ("yes", "true", "t", "y", "1"):
-            return True
-        elif value.lower() in ("no", "false", "f", "n", "0", "None", "none"):
-            return False
-        else:
-            raise_error(ValueError, f"Cannot convert {value} to boolean.")
-    else:
-        raise_error(ValueError, f"Cannot convert {value} to boolean.")
 
 class ActionBuilder:
     """Class for parsing and executing runcards.

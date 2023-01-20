@@ -1,6 +1,6 @@
 platform: tii1q_b1
 
-# runcard: tii1q_b1.yml
+monitor: True
 
 qubits: [0]
 
@@ -8,19 +8,11 @@ format: csv
 
 actions:
 
-  resonator_spectroscopy: # wide
-    fast_width: 30_000_000
-    fast_step: 1_000_000
-    precision_width: 2_000_000
-    precision_step: 100_000
-    software_averages: 2
-    points: 5
-
-  # resonator_spectroscopy: # narrow
-  #   fast_width: 10_000_000
-  #   fast_step: 500_000
-  #   precision_width: 1_000_000
-  #   precision_step: 50_000
+  # resonator_spectroscopy: 
+  #   fast_width: 30_000_000
+  #   fast_step: 1_000_000
+  #   precision_width: 2_000_000
+  #   precision_step: 100_000
   #   software_averages: 2
   #   points: 5
 
@@ -61,13 +53,13 @@ actions:
   #   software_averages: 1
   #   points: 5
 
-  qubit_spectroscopy: # narrow
-    fast_width: 5_000_000
-    fast_step: 500_000
-    precision_width: 400_000
-    precision_step: 20_000
-    software_averages: 2
-    points: 5
+  # qubit_spectroscopy: # narrow
+  #   fast_width: 5_000_000
+  #   fast_step: 500_000
+  #   precision_width: 400_000
+  #   precision_step: 20_000
+  #   software_averages: 2
+  #   points: 5
 
   # qubit_spectroscopy_flux: # precission
   #   freq_width: 5_000_000
@@ -148,22 +140,22 @@ actions:
   #   software_averages: 2
   #   points: 1
 
-  # ramsey_frequency_detuned:
-  #   delay_between_pulses_start: 4
-  #   delay_between_pulses_end: [1000, 2000] #t_end (optimal) = 3.5 * T2
-  #   delay_between_pulses_step: 32
-  #   n_osc: 4
-  #   software_averages: 1
-  #   points: 1
+  ramsey_frequency_detuned:
+    delay_between_pulses_start: 4
+    delay_between_pulses_end: [8000] #t_end (optimal) = 3.5 * T2
+    delay_between_pulses_step: 100
+    n_osc: 4
+    software_averages: 1
+    points: 1
 
 
 
-  # t1:
-  #   delay_before_readout_start: 4
-  #   delay_before_readout_end: 40_000
-  #   delay_before_readout_step: 200
-  #   software_averages: 1
-  #   points: 5
+  t1:
+    delay_before_readout_start: 4
+    delay_before_readout_end: 150_000
+    delay_before_readout_step: 2000
+    software_averages: 1
+    points: 5
 
 
 
