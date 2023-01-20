@@ -417,7 +417,7 @@ def qubit_spectroscopy_flux(
 @plot("MSR (row 1) and Phase (row 2)", plots.frequency_flux_msr_phase)
 def qubit_spectroscopy_flux_track(
     platform: AbstractPlatform,
-    qubit: list,
+    qubits: list,
     freq_width,
     freq_step,
     current_width,
@@ -488,19 +488,11 @@ def qubit_spectroscopy_flux_track(
 
     # flux current
     sweetspot_currents = {}
-    current_ranges = {}
-    current_min = {}
-    current_max = {}
-
     for qubit in qubits:
         sweetspot_currents[qubit] = platform.characterization["single_qubit"][qubit][
             "sweetspot"
         ]
-        current_min[qubit] = max(-current_width / 2 + sweetspot_currents[qubit], -0.03)
-        current_max[qubit] = min(+current_width / 2 + sweetspot_currents[qubit], +0.03)
-        current_ranges[qubit] = np.arange(
-            current_min[qubit], current_max[qubit], current_step
-        )
+    current_range = np.arange(-current_width // 2, current_width // 2, current_step)
 
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
@@ -525,16 +517,16 @@ def qubit_spectroscopy_flux_track(
                         platform.characterization["single_qubit"][qubit][
                             "resonator_polycoef_flux"
                         ]
-                    )(curr)
+                    )(current + sweetspot_currents[qubit])
                     - platform.ro_port[qubit].lo_frequency
                 )
 
-                if curr == sweetspot:
+                if current == 0:
                     center[qubit] = qubit_frequencies[qubit]
                     msrs = {}
                 else:
                     idx = np.argmax(msrs)
-                    center[qubit] = np.mean(frequency_range[idx])
+                    center[qubit] += np.mean(delta_frequency_range[idx])
                     msrs = {}
 
             for delta_freq in delta_frequency_range:
@@ -544,7 +536,7 @@ def qubit_spectroscopy_flux_track(
                     platform.qd_port[qubit].lo_frequency = (
                         delta_freq + center[qubit] - qd_pulses[qubit].frequency
                     )
-                msr, phase, i, q = platform.execute_pulse_sequence(sequence)
+                result = platform.execute_pulse_sequence(sequence)
 
                 # retrieve the results for every qubit
                 for qubit in qubits:
@@ -556,8 +548,8 @@ def qubit_spectroscopy_flux_track(
                         "i[V]": i,
                         "q[V]": q,
                         "phase[rad]": phase,
-                        "frequency[Hz]": delta_freq + qubit_frequencies[qubit],
-                        "current[A]": current,
+                        "frequency[Hz]": delta_freq + center[qubit],
+                        "current[A]": current + sweetspot_currents[qubit],
                         "qubit": qubit,
                         "fluxline": qubit,
                         "iteration": iteration,
