@@ -100,16 +100,14 @@ def spin_echo_3pulses(
 
             for ro_pulse in ro_pulses.values():
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                msr, phase, i, q = results[ro_pulse.serial]
-                r = {
-                    "MSR[V]": msr,
-                    "i[V]": i,
-                    "q[V]": q,
-                    "phase[rad]": phase,
-                    "wait[ns]": wait,
-                    "qubit": ro_pulse.qubit,
-                    "iteration": iteration,
-                }
+                r = results[ro_pulse.serial].to_dict()
+                r.update(
+                    {
+                        "wait[ns]": wait,
+                        "qubit": ro_pulse.qubit,
+                        "iteration": iteration,
+                    }
+                )
                 data.add(r)
             count += 1
     yield data

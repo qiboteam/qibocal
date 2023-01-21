@@ -71,18 +71,14 @@ def calibrate_qubit_states(
 
     # retrieve and store the results for every qubit
     for ro_pulse in ro_pulses.values():
-        msr, phase, i, q = state0_results["demodulated_integrated_binned"][
-            ro_pulse.qubit
-        ]
-        r = {
-            "MSR[V]": msr,
-            "i[V]": i,
-            "q[V]": q,
-            "phase[rad]": phase,
-            "qubit": [ro_pulse.qubit] * nshots,
-            "iteration": np.arange(nshots),
-            "state": [0] * nshots,
-        }
+        r = state0_results[ro_pulse.serial].to_dict(average=False)
+        r.update(
+            {
+                "qubit": [ro_pulse.qubit] * nshots,
+                "iteration": np.arange(nshots),
+                "state": [0] * nshots,
+            }
+        )
         data.add_data_from_dict(r)
 
     # execute the second pulse sequence
@@ -90,18 +86,14 @@ def calibrate_qubit_states(
 
     # retrieve and store the results for every qubit
     for ro_pulse in ro_pulses.values():
-        msr, phase, i, q = state1_results["demodulated_integrated_binned"][
-            ro_pulse.serial
-        ]
-        r = {
-            "MSR[V]": msr,
-            "i[V]": i,
-            "q[V]": q,
-            "phase[rad]": phase,
-            "qubit": [ro_pulse.qubit] * nshots,
-            "iteration": np.arange(nshots),
-            "state": [1] * nshots,
-        }
+        r = state1_results[ro_pulse.serial].to_dict(average=False)
+        r.update(
+            {
+                "qubit": [ro_pulse.qubit] * nshots,
+                "iteration": np.arange(nshots),
+                "state": [1] * nshots,
+            }
+        )
         data.add_data_from_dict(r)
     # finally, save the remaining data and the fits
     yield data

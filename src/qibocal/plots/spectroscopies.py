@@ -679,7 +679,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, format):
                         ),
                         name=f"q{qubit}/r{report_n}: {label} Fit",
                         line=go.scatter.Line(dash="dot"),
-                        marker_color="rgb(255, 130, 67)",
+                        marker_color=get_color(3 * report_n + i),
                     ),
                     row=1,
                     col=1,

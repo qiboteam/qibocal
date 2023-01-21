@@ -118,17 +118,15 @@ def resonator_spectroscopy(
             # retrieve the results for every qubit
             for ro_pulse in ro_pulses.values():
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                msr, phase, i, q = results[ro_pulse.serial]
+                r = results[ro_pulse.serial].to_dict()
                 # store the results
-                r = {
-                    "MSR[V]": msr,
-                    "i[V]": i,
-                    "q[V]": q,
-                    "phase[rad]": phase,
-                    "frequency[Hz]": ro_pulse.frequency,
-                    "qubit": ro_pulse.qubit,
-                    "iteration": iteration,
-                }
+                r.update(
+                    {
+                        "frequency[Hz]": ro_pulse.frequency,
+                        "qubit": ro_pulse.qubit,
+                        "iteration": iteration,
+                    }
+                )
                 fast_sweep_data.add(r)
             count += 1
     # finally, save the remaining data and fits
@@ -218,19 +216,17 @@ def resonator_spectroscopy(
             results = platform.execute_pulse_sequence(sequence)
 
             # retrieve the results for every qubit
-            for ro_pulse in sequence.ro_pulses:
+            for ro_pulse in ro_pulses.values():
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                msr, phase, i, q = results[ro_pulse.serial]
+                r = results[ro_pulse.serial].to_dict()
                 # store the results
-                r = {
-                    "MSR[V]": msr,
-                    "i[V]": i,
-                    "q[V]": q,
-                    "phase[rad]": phase,
-                    "frequency[Hz]": ro_pulse.frequency,
-                    "qubit": ro_pulse.qubit,
-                    "iteration": iteration,
-                }
+                r.update(
+                    {
+                        "frequency[Hz]": ro_pulse.frequency,
+                        "qubit": ro_pulse.qubit,
+                        "iteration": iteration,
+                    }
+                )
                 precision_sweep_data.add(r)
             count += 1
     # finally, save the remaining data and fits
@@ -351,18 +347,17 @@ def resonator_punchout(
                 # retrieve the results for every qubit
                 for ro_pulse in ro_pulses.values():
                     # average msr, phase, i and q over the number of shots defined in the runcard
-                    msr, phase, i, q = results[ro_pulse.serial]
+                    r = results[ro_pulse.serial].to_dict()
+                    # * (np.exp(att / 20)), # normalise the results
+                    r.update(
+                        {
+                            "frequency[Hz]": ro_pulse.frequency,
+                            "attenuation[dB]": att,
+                            "qubit": ro_pulse.qubit,
+                            "iteration": iteration,
+                        }
+                    )
                     # store the results
-                    r = {
-                        "MSR[V]": msr,  # * (np.exp(att / 20)), # normalise the results
-                        "i[V]": i,
-                        "q[V]": q,
-                        "phase[rad]": phase,
-                        "frequency[Hz]": ro_pulse.frequency,
-                        "attenuation[dB]": att,
-                        "qubit": ro_pulse.qubit,
-                        "iteration": iteration,
-                    }
                     data.add(r)
                 count += 1
     # finally, save the remaining data and fits
@@ -487,19 +482,17 @@ def resonator_spectroscopy_flux(
                     # retrieve the results for every qubit
                     for ro_pulse in ro_pulses.values():
                         # average msr, phase, i and q over the number of shots defined in the runcard
-                        msr, phase, i, q = result[ro_pulse.serial]
+                        r = result[ro_pulse.serial].to_dict()
                         # store the results
-                        r = {
-                            "MSR[V]": msr,
-                            "i[V]": i,
-                            "q[V]": q,
-                            "phase[rad]": phase,
-                            "frequency[Hz]": ro_pulses[qubit].frequency,
-                            "current[A]": current,
-                            "qubit": qubit,
-                            "fluxline": fluxline,
-                            "iteration": iteration,
-                        }
+                        r.update(
+                            {
+                                "frequency[Hz]": ro_pulses[qubit].frequency,
+                                "current[A]": current,
+                                "qubit": qubit,
+                                "fluxline": fluxline,
+                                "iteration": iteration,
+                            }
+                        )
                         data.add(r)
                     count += 1
     # finally, save the remaining data and fits
@@ -618,17 +611,15 @@ def dispersive_shift(
             for data, results in list(zip([data_0, data_1], [results_0, results_1])):
                 for ro_pulse in ro_pulses.values():
                     # average msr, phase, i and q over the number of shots defined in the runcard
-                    msr, phase, i, q = results[ro_pulse.serial]
+                    r = results[ro_pulse.serial].to_dict()
                     # store the results
-                    r = {
-                        "MSR[V]": msr,
-                        "i[V]": i,
-                        "q[V]": q,
-                        "phase[rad]": phase,
-                        "frequency[Hz]": ro_pulses[qubit].frequency,
-                        "qubit": qubit,
-                        "iteration": iteration,
-                    }
+                    r.update(
+                        {
+                            "frequency[Hz]": ro_pulses[qubit].frequency,
+                            "qubit": qubit,
+                            "iteration": iteration,
+                        }
+                    )
                     data.add(r)
             count += 1
     # finally, save the remaining data and fits
