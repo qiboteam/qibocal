@@ -10,6 +10,8 @@ from qibocal.plots.utils import get_color, get_data_subfolders
 # Flipping
 def flips_msr(folder, routine, qubit, format):
 
+    figures = []
+
     fig = make_subplots(
         rows=1,
         cols=1,
@@ -145,4 +147,7 @@ def flips_msr(folder, routine, qubit, format):
         xaxis_title="Flips (dimensionless)",
         yaxis_title="MSR (uV)",
     )
-    return fig
+
+    figures.append(fig)
+
+    return figures

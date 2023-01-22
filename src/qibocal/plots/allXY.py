@@ -34,6 +34,8 @@ gatelist = [
 
 def allXY(folder, routine, qubit, format):
 
+    figures = []
+
     fig = make_subplots(
         rows=1,
         cols=1,
@@ -124,11 +126,16 @@ def allXY(folder, routine, qubit, format):
         xaxis_title="Gate sequence number",
         yaxis_title="Z projection probability of qubit state |o>",
     )
-    return fig
+
+    figures.append(fig)
+
+    return figures
 
 
 # allXY
 def allXY_drag_pulse_tuning(folder, routine, qubit, format):
+
+    figures = []
 
     fig = make_subplots(
         rows=1,
@@ -216,11 +223,16 @@ def allXY_drag_pulse_tuning(folder, routine, qubit, format):
         xaxis_title="Gate sequence number",
         yaxis_title="Z projection probability of qubit state |o>",
     )
-    return fig
+
+    figures.append(fig)
+
+    return figures
 
 
 # beta param tuning
 def drag_pulse_tuning(folder, routine, qubit, format):
+
+    figures = []
 
     fig = make_subplots(
         rows=1,
@@ -365,4 +377,7 @@ def drag_pulse_tuning(folder, routine, qubit, format):
         xaxis_title="Beta parameter",
         yaxis_title="MSR[uV] [Rx(pi/2) - Ry(pi)] - [Ry(pi/2) - Rx(pi)]",
     )
-    return fig
+
+    figures.append(fig)
+
+    return figures
