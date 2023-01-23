@@ -1,7 +1,5 @@
 platform: tii1q_b1
 
-# runcard: tii1q_b1.yml
-
 qubits: [0]
 
 format: csv
@@ -53,13 +51,13 @@ actions:
 
 
 
-  qubit_spectroscopy: # wide
-    fast_width: 500_000_000
-    fast_step: 2_000_000
-    precision_width: 2_000_000
-    precision_step: 100_000
-    software_averages: 1
-    points: 5
+  # qubit_spectroscopy: # wide
+  #   fast_width: 500_000_000
+  #   fast_step: 2_000_000
+  #   precision_width: 2_000_000
+  #   precision_step: 100_000
+  #   software_averages: 1
+  #   points: 5
 
 
   # qubit_spectroscopy_flux: # precission
