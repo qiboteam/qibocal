@@ -12,6 +12,7 @@ from qibo import gates
 from qibo.models import Circuit
 from qibo.noise import NoiseModel
 
+import qibocal.calibrations.protocols.noisemodels as noisemodels
 import qibocal.fitting.rb_methods as fitting_methods
 from qibocal.calibrations.protocols.abstract import (
     Experiment,
@@ -21,6 +22,9 @@ from qibocal.calibrations.protocols.abstract import (
 )
 from qibocal.calibrations.protocols.utils import effective_depol
 from qibocal.config import raise_error
+from qibocal.data import Data
+from qibocal.decorators import plot
+from qibocal.plots import gateset
 
 
 class moduleFactory(SingleCliffordsFactory):
@@ -152,7 +156,6 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame):
     report.info_dict["Number of qubits"] = len(experiment.data[0]["samples"][0])
     report.info_dict["Number of shots"] = len(experiment.data[0]["samples"])
     report.info_dict["runs"] = experiment.extract("depth", "samples", "count")[1][0]
-    print(df_aggr)
     report.info_dict["Fitting daviations"] = "".join(
         [
             "{}:{:.3f} ".format(key, df_aggr.iloc[0]["perr"][key])
@@ -163,3 +166,34 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame):
         scatter_fit_fig(experiment, df_aggr, "depth", "groundstate probability")
     )
     return report.build()
+
+
+@plot("Randomized benchmarking", gateset.plot)
+def standardrb(
+    qubit: list,
+    depths: list,
+    runs: int,
+    nshots: int,
+    nqubits: int = None,
+    noise_model: str = None,
+    noise_params: list = None,
+):
+    # Check if noise should artificially be added.
+    if noise_model is not None:
+        # Get the wanted noise model class.
+        noise_model = getattr(noisemodels, noise_model)(noise_params)
+        # validation = Data("validation", quantities=["effective_depol"])
+        # validation.add({"effective_depol": theoretical_outcome(noise_model)})
+        # yield validation
+    # Initiate the circuit factory and the Experiment object.
+    factory = moduleFactory(nqubits, depths, runs, qubits=qubit)
+    experiment = moduleExperiment(factory, nshots, noisemodel=noise_model)
+    # Execute the experiment.
+    experiment.perform(experiment.execute)
+    data = Data("experiment_data")
+    data.df = experiment.dataframe
+    yield data
+    data_fit = Data("fit_plot")
+    post_processing_sequential(experiment)
+    data_fit.df = get_aggregational_data(experiment)
+    yield data_fit
