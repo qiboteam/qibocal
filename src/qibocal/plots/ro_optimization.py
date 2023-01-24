@@ -9,238 +9,187 @@ from qibocal.plots.utils import get_color_state0, get_color_state1, get_data_sub
 # For calibrate qubit states
 def ro_frequency(folder, routine, qubit, format):
 
-    fig = make_subplots(
-        rows=1,
-        cols=1,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
-        # subplot_titles=("Calibrate qubit states"),
-    )
+    fig = go.Figure()
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
     report_n = 0
     fitting_report = ""
-    max_x, max_y, min_x, min_y = 0, 0, 0, 0
+
     for subfolder in subfolders:
         try:
             data = DataUnits.load_data(folder, subfolder, routine, format, "data")
             data.df = data.df[data.df["qubit"] == qubit]
         except:
-            data = DataUnits(options=["qubit", "iteration", "state"])
+            data = DataUnits(
+                name="data",
+                quantities={"frequency": "Hz", "delta_frequency": "Hz"},
+                options=["iteration", "state"],
+            )
 
         try:
-            parameters = Data.load_data(
-                folder, subfolder, routine, format, "parameters"
-            )
-            parameters.df = parameters.df[parameters.df["qubit"] == qubit]
-
-            average_state0 = complex(parameters.get_values("average_state0")[0])
-            average_state1 = complex(parameters.get_values("average_state1")[0])
-            rotation_angle = parameters.get_values("rotation_angle")[0]
-            threshold = parameters.get_values("threshold")[0]
-            fidelity = parameters.get_values("fidelity")[0]
-            assignment_fidelity = parameters.get_values("assignment_fidelity")[0]
+            data_fit = Data.load_data(folder, subfolder, routine, format, "fit")
+            data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
 
         except:
-            parameters = Data(
-                name=f"parameters",
-                quantities=[
-                    "rotation_angle",  # in degrees
+            data_fit = Data(
+                name="fit",
+                quantities={"frequency": "Hz", "delta_frequency": "Hz"},
+                options=[
+                    "rotation_angle",
                     "threshold",
                     "fidelity",
                     "assignment_fidelity",
                     "average_state0",
                     "average_state1",
-                    "qubit",
                 ],
             )
 
-        state0_data = data.df[data.df["state"] == 0]
-        state1_data = data.df[data.df["state"] == 1]
+        # Plot raw results with sliders
+        annotations_dict = []
+        for delta_frequency in data.df["delta_frequency"].unique():
+            state0_data = data.df[
+                (data.df["delta_frequency"] == delta_frequency)
+                & (data.df["state"] == 0)
+            ]
+            state1_data = data.df[
+                (data.df["delta_frequency"] == delta_frequency)
+                & (data.df["state"] == 1)
+            ]
+            fit_data = data_fit.df[
+                data_fit.df["delta_frequency"] == delta_frequency.magnitude
+            ]
+            fit_data["average_state0"] = data_fit.df["average_state0"].apply(
+                lambda x: complex(x)
+            )
+            fit_data["average_state1"] = data_fit.df["average_state1"].apply(
+                lambda x: complex(x)
+            )
 
-        fig.add_trace(
-            go.Scatter(
-                x=state0_data["i"].pint.to("V").pint.magnitude,
-                y=state0_data["q"].pint.to("V").pint.magnitude,
-                name=f"q{qubit}/r{report_n}: state 0",
-                legendgroup=f"q{qubit}/r{report_n}: state 0",
-                mode="markers",
-                showlegend=False,
-                opacity=0.7,
-                marker=dict(size=3, color=get_color_state0(report_n)),
-            ),
-            row=1,
-            col=1,
-        )
+            # print(fit_data)
+            fig.add_trace(
+                go.Scatter(
+                    x=state0_data["i"].pint.to("V").pint.magnitude,
+                    y=state0_data["q"].pint.to("V").pint.magnitude,
+                    name=f"q{qubit}/r{report_n}: state 0",
+                    legendgroup=f"q{qubit}/r{report_n}",
+                    mode="markers",
+                    showlegend=True,
+                    opacity=0.7,
+                    marker=dict(size=3, color=get_color_state0(report_n)),
+                    visible=False,
+                ),
+            )
 
-        fig.add_trace(
-            go.Scatter(
-                x=state1_data["i"].pint.to("V").pint.magnitude,
-                y=state1_data["q"].pint.to("V").pint.magnitude,
-                name=f"q{qubit}/r{report_n}: state 1",
-                legendgroup=f"q{qubit}/r{report_n}: state 1",
-                mode="markers",
-                showlegend=False,
-                opacity=0.7,
-                marker=dict(size=3, color=get_color_state1(report_n)),
-            ),
-            row=1,
-            col=1,
-        )
+            fig.add_trace(
+                go.Scatter(
+                    x=state1_data["i"].pint.to("V").pint.magnitude,
+                    y=state1_data["q"].pint.to("V").pint.magnitude,
+                    name=f"q{qubit}/r{report_n}: state 1",
+                    legendgroup=f"q{qubit}/r{report_n}",
+                    mode="markers",
+                    showlegend=True,
+                    opacity=0.7,
+                    marker=dict(size=3, color=get_color_state1(report_n)),
+                    visible=False,
+                ),
+            )
+            # print([float(fit_data["average_state1"].apply(lambda x: np.real(x)))])
+            # print([float(fit_data["average_state0"].apply(lambda x: np.imag(x)))])
+            fig.add_trace(
+                go.Scatter(
+                    x=[float(fit_data["average_state0"].apply(lambda x: np.real(x)))],
+                    y=[float(fit_data["average_state0"].apply(lambda x: np.imag(x)))],
+                    name=f"q{qubit}/r{report_n}: mean state 0",
+                    legendgroup=f"q{qubit}/r{report_n}",
+                    showlegend=True,
+                    visible=False,
+                    mode="markers",
+                    marker=dict(size=10, color=get_color_state0(report_n)),
+                ),
+            )
 
-        max_x = max(
-            max_x,
-            state0_data["i"].pint.to("V").pint.magnitude.max(),
-            state1_data["i"].pint.to("V").pint.magnitude.max(),
-        )
-        max_y = max(
-            max_y,
-            state0_data["q"].pint.to("V").pint.magnitude.max(),
-            state1_data["q"].pint.to("V").pint.magnitude.max(),
-        )
-        min_x = min(
-            min_x,
-            state0_data["i"].pint.to("V").pint.magnitude.min(),
-            state1_data["i"].pint.to("V").pint.magnitude.min(),
-        )
-        min_y = min(
-            min_y,
-            state0_data["q"].pint.to("V").pint.magnitude.min(),
-            state1_data["q"].pint.to("V").pint.magnitude.min(),
-        )
+            fig.add_trace(
+                go.Scatter(
+                    x=[float(fit_data["average_state1"].apply(lambda x: np.real(x)))],
+                    y=[float(fit_data["average_state1"].apply(lambda x: np.imag(x)))],
+                    name=f"avg q{qubit}/r{report_n}: mean state 1",
+                    legendgroup=f"q{qubit}/r{report_n}",
+                    showlegend=True,
+                    visible=False,
+                    mode="markers",
+                    marker=dict(size=10, color=get_color_state1(report_n)),
+                ),
+            )
 
-        fig.add_trace(
-            go.Scatter(
-                x=[average_state0.real],
-                y=[average_state0.imag],
-                name=f"q{qubit}/r{report_n}: state 0",
-                legendgroup=f"q{qubit}/r{report_n}: state 0",
-                showlegend=True,
-                mode="markers",
-                marker=dict(size=10, color=get_color_state0(report_n)),
-            ),
-            row=1,
-            col=1,
-        )
+            # Add fitting report
+            title_text = f"q{qubit}/r{report_n}/r{delta_frequency}<br>"
+            # title_text += f"average state 0: ({fit_data['average_state0'][0]:.6f})<br>"
+            # title_text += f"average state 1: ({fit_data['average_state1'][0]:.6f})<br>"
+            # title_text += (
+            #     f"rotation angle = {fit_data['rotation_angle'][0]:.3f} / threshold = {fit_data['threshold'][0]:.6f}<br>"
+            # )
+            # title_text += f"fidelity = {fit_data['fidelity'][0]:.3f} / assignment fidelity = {fit_data['assignment_fidelity'][0]:.3f}<br><br>"
+            fitting_report = fitting_report + title_text
 
-        fig.add_trace(
-            go.Scatter(
-                x=[average_state1.real],
-                y=[average_state1.imag],
-                name=f"q{qubit}/r{report_n}: state 1",
-                legendgroup=f"q{qubit}/r{report_n}: state 1",
-                showlegend=True,
-                mode="markers",
-                marker=dict(size=10, color=get_color_state1(report_n)),
-            ),
-            row=1,
-            col=1,
-        )
-
-        title_text = f"q{qubit}/r{report_n}<br>"
-        title_text += f"average state 0: ({average_state0:.6f})<br>"
-        title_text += f"average state 1: ({average_state1:.6f})<br>"
-        title_text += (
-            f"rotation angle = {rotation_angle:.3f} / threshold = {threshold:.6f}<br>"
-        )
-        title_text += f"fidelity = {fidelity:.3f} / assignment fidelity = {assignment_fidelity:.3f}<br><br>"
-        fitting_report = fitting_report + title_text
+            annotations_dict.append(
+                dict(
+                    font=dict(color="black", size=12),
+                    x=0,
+                    y=1.2,
+                    showarrow=False,
+                    text="<b>FITTING DATA</b>",
+                    font_family="Arial",
+                    font_size=20,
+                    textangle=0,
+                    xanchor="left",
+                    xref="paper",
+                    yref="paper",
+                    font_color="#5e9af1",
+                    hovertext=fitting_report,
+                ),
+            )
+            fig.add_annotation(annotations_dict[-1], visible=False)
         report_n += 1
+    # Show data for the first frequency
+    fig.data[0].visible = True
+    fig.data[1].visible = True
+    fig.data[2].visible = True
+    fig.data[3].visible = True
+    # TODO: Show annotations for the first frequency
 
-    fig.add_annotation(
-        dict(
-            font=dict(color="black", size=12),
-            x=0,
-            y=1.2,
-            showarrow=False,
-            text="<b>FITTING DATA</b>",
-            font_family="Arial",
-            font_size=20,
-            textangle=0,
-            xanchor="left",
-            xref="paper",
-            yref="paper",
-            font_color="#5e9af1",
-            hovertext=fitting_report,
+    # Add slider
+    steps = []
+    for i, freq in enumerate(data.df["delta_frequency"].unique()):
+        step = dict(
+            method="update",
+            args=[
+                {"visible": [False] * len(fig.data)},
+                {"annotations": [[False] * len(fig.data), annotations_dict[i]]},
+            ],
+            label=f"{data.df['delta_frequency'].unique()[i]:.6f}",
         )
-    )
+        for j in range(4):
+            step["args"][0]["visible"][i * 4 + j] = True
+            step["args"][1]["annotations"][0][i * 4 + j] = True
+        steps.append(step)
+
+    sliders = [
+        dict(
+            currentvalue={"prefix": "delta_frequency: "},
+            steps=steps,
+        )
+    ]
 
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="i (V)",
         yaxis_title="q (V)",
-        width=1000,
-        xaxis_range=(min_x, max_x),
-        yaxis_range=(min_y, max_y),
+        sliders=sliders,
     )
     fig.update_yaxes(
         scaleanchor="x",
         scaleratio=1,
     )
     return fig
-
-
-# figs[
-#         "reconstructed_tests"
-#     ] = go.Figure()  # 6 for the reconstructed pulse and its fit
-
-#     for i, amp in enumerate(amplitude_unique):
-#         awg_reconstructed_pulse_tests = {}
-
-#         awg_reconstructed_pulse_tests[
-#             "FitMedianAmplitude_InstantAmplitude"
-#         ] = np.interp(
-#             np.append(detuning_amplitude[i, :], [detuning_median_amplitude[i]]),
-#             np.polyval(coeff_fit, amplitude_unique),
-#             amplitude_unique,
-#         )
-#         awg_reconstructed_pulse_tests["AvgAmplitude_AvgAmplitude"] = np.interp(
-#             detuning_mean_amplitude[i, :],  # detuning[i, :],
-#             np.nanmean(detuning_mean_amplitude, axis=1),
-#             amplitude_unique,
-#         )
-#         awg_reconstructed_pulse_tests["AvgAmplitude_InstantAmplitude"] = np.interp(
-#             np.append(detuning_amplitude[i, :], [detuning_median[i]]),
-#             np.nanmean(detuning_mean_amplitude, axis=1),
-#             amplitude_unique,
-#         )
-#         awg_reconstructed_pulse_tests["MedianDuration_InstantDuration"] = np.interp(
-#             np.append(detuning[i, :], [detuning_median[i]]),  # detuning[i, :],
-#             detuning_median,
-#             amplitude_unique,
-#         )
-#         for key in awg_reconstructed_pulse_tests:
-#             figs["reconstructed_tests"].add_trace(
-#                 go.Scatter(
-#                     visible=False,
-#                     x=duration_unique,
-#                     y=awg_reconstructed_pulse_tests[key],
-#                     name=f"{key} - A = {amp}",
-#                 ),
-#             )
-#         pass
-
-#     for j in range(1, len(awg_reconstructed_pulse_tests) + 1):
-#         figs["reconstructed_tests"].data[-j].visible = True
-
-#     steps = []
-#     for i, amp in enumerate(amplitude_unique):
-#         step = dict(
-#             method="restyle",
-#             args=["visible", [False] * len(figs["reconstructed_tests"].data)],
-#             label=str(amp),
-#         )
-#         for j in range(len(awg_reconstructed_pulse_tests)):
-#             step["args"][1][
-#                 len(awg_reconstructed_pulse_tests) * i + j
-#             ] = True  # Toggle i'th trace to "visible"
-#         steps.append(step)
-#     sliders = [dict(steps=steps, currentvalue={"prefix": "Amplitude (a.u.) = "})]
-#     figs["reconstructed_tests"].update_layout(
-#         xaxis_title="Pulse duration (ns)",
-#         yaxis_title="Amplitude (a.u.)",
-#         title=f"Reconstructed pulse",
-#         sliders=sliders,
-#     )

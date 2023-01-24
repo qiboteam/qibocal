@@ -6,7 +6,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Sweeper
 
 from qibocal import plots
-from qibocal.data import DataUnits
+from qibocal.data import Data, DataUnits
 from qibocal.decorators import plot
 from qibocal.fitting.methods import calibrate_qubit_states_fit
 
@@ -71,10 +71,11 @@ def ro_frequency(
         quantities={"frequency": "Hz", "delta_frequency": "Hz"},
         options=["qubit", "iteration", "state"],
     )
-    data_fit = DataUnits(
+    data_fit = Data(
         name="fit",
-        quantities={"frequency": "Hz", "delta_frequency": "Hz"},
-        options=[
+        quantities=[
+            "frequency",
+            "delta_frequency",
             "rotation_angle",
             "threshold",
             "fidelity",
@@ -114,11 +115,11 @@ def ro_frequency(
                 * nshots
                 * len(delta_frequency_range),
                 "delta_frequency[Hz]": np.repeat(
-                    np.vstack(delta_frequency_range).T, len(np.arange(nshots)), axis=1
+                    np.vstack(delta_frequency_range).T, len(np.arange(nshots)), axis=0
                 ).flatten(),
                 "qubit": [qubit] * nshots * len(delta_frequency_range),
                 "iteration": np.repeat(
-                    np.vstack(np.arange(nshots)).T, len(delta_frequency_range), axis=0
+                    np.vstack(np.arange(nshots)).T, len(delta_frequency_range), axis=1
                 ).flatten(),  # Might be the other way depending on how is result happening. Axis=0 gives 123123 and axis=1 gives 1112233
                 "state": [0] * nshots * len(delta_frequency_range),
             }
@@ -149,11 +150,11 @@ def ro_frequency(
                 * nshots
                 * len(delta_frequency_range),
                 "delta_frequency[Hz]": np.repeat(
-                    np.vstack(delta_frequency_range).T, len(np.arange(nshots)), axis=1
+                    np.vstack(delta_frequency_range).T, len(np.arange(nshots)), axis=0
                 ).flatten(),
                 "qubit": [qubit] * nshots * len(delta_frequency_range),
                 "iteration": np.repeat(
-                    np.vstack(np.arange(nshots)).T, len(delta_frequency_range), axis=0
+                    np.vstack(np.arange(nshots)).T, len(delta_frequency_range), axis=1
                 ).flatten(),  # Might be the other way depending on how is result happening. Axis=0 gives 123123 and axis=1 gives 1112233
                 "state": [1] * nshots * len(delta_frequency_range),
             }
@@ -170,6 +171,8 @@ def ro_frequency(
     for delta_freq in delta_frequency_range:
         import copy
 
+        import pandas as pd
+
         start_time = time.time()
         data_trim = copy.deepcopy(data)
         data_trim.df = data_trim.df[
@@ -179,7 +182,7 @@ def ro_frequency(
         fits = calibrate_qubit_states_fit(
             data_trim, x="i[V]", y="q[V]", nshots=nshots, qubits=qubits
         )
-        fits = fits.df.to_dict()
-        fits.update({"delta_frequency": [delta_freq] * len(qubits)})
-        data_fit.add_data_from_dict(fits)
+        fits.df["delta_frequency"] = [delta_freq] * len(qubits)
+        data_fit.df = pd.concat([data_fit.df, fits.df], ignore_index=True)
         print("Fitting time:", time.time() - start_time)
+        yield data_fit
