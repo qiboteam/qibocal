@@ -36,13 +36,15 @@ class AbstractData:
         """Computes the length of the data."""
         return len(self.df)
 
-    @classmethod  # pragma: no cover
-    def load_data(cls, folder, subfolder, routine, data_format, name):
+    @classmethod
+    def load_data(
+        cls, folder, subfolder, routine, data_format, name
+    ):  # pragma: no cover
         """Load data from specific format."""
         raise_error(NotImplementedError)
 
-    @abstractmethod  # pragma: no cover
-    def to_csv(self, path):
+    @abstractmethod
+    def to_csv(self, path):  # pragma: no cover
         """Save data in csv file.
 
         Args:
