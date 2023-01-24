@@ -13,23 +13,122 @@ from qibocal.fitting.methods import (
     lorentzian_fit,
     rabi_fit,
     ramsey_fit,
+    res_spectroscopy_flux_fit,
     t1_fit,
 )
-from qibocal.fitting.utils import cos, exp, flipping, lorenzian, rabi, ramsey
+from qibocal.fitting.utils import (
+    cos,
+    exp,
+    flipping,
+    freq_r_mathieu,
+    freq_r_transmon,
+    line,
+    lorenzian,
+    rabi,
+    ramsey,
+)
+
+
+@pytest.mark.parametrize("name", [None, "test"])
+@pytest.mark.parametrize(
+    "qubit, fluxline, num_params",
+    [
+        (1, 1, 6),
+        (1, 1, 7),
+        (1, 2, 2),
+    ],
+)
+def test_res_spectroscopy_flux_fit(name, qubit, fluxline, num_params, caplog):
+    """Test the *res_spectrocopy_flux_fit* function"""
+    x = np.linspace(-0.01, 0.03, 100)
+    if num_params == 6:
+        p0 = 0.01
+        p1 = 41
+        p2 = 0.17
+        p3 = 0.75
+        p4 = 78847979
+        p5 = 7651970152
+        params = [p0, p1, p2, p3, p4, p5]
+        noisy_flux = freq_r_transmon(x, *params) + np.random.randn(100) * 1e-3
+        params_fit = [p5, p4]
+        labels = [
+            "curr_sp",
+            "xi",
+            "d",
+            "f_q/f_rh",
+            "g",
+            "f_rh",
+        ]
+    elif num_params == 7:
+        p0 = 7651970152
+        p1 = 78847979
+        p2 = 0.01
+        p3 = 41
+        p4 = 0.17
+        p5 = 2.7e8
+        p6 = 1.77e10
+        params = [p0, p1, p2, p3, p4, p5, p6]
+        noisy_flux = freq_r_mathieu(x, *params) + np.random.randn(100) * 1e-3
+        params_fit = [p0, p1, p5, p6]
+        labels = [
+            "f_rh",
+            "g",
+            "curr_sp",
+            "xi",
+            "d",
+            "Ec",
+            "Ej",
+        ]
+    else:
+        p0 = -4366377
+        p1 = 7655179288
+        params = [p0, p1]
+        noisy_flux = line(x, p0, p1) + np.random.randn(100) * 1e-3
+        params_fit = []
+        labels = [
+            "popt0",
+            "popt1",
+        ]
+
+    data = DataUnits(quantities={"frequency": "Hz", "current": "A"})
+
+    mydict = {"frequency[Hz]": noisy_flux, "current[A]": x}
+
+    data.load_data_from_dict(mydict)
+
+    fit = res_spectroscopy_flux_fit(
+        data, "current[A]", "frequency[Hz]", qubit, fluxline, params_fit
+    )
+
+    for j in range(num_params):
+        np.testing.assert_allclose(fit.get_values(labels[j])[0], params[j], rtol=0.1)
+
+    x = [0]
+    noisy_flux = [0]
+    data = DataUnits(quantities={"frequency": "Hz", "current": "A"})
+    mydict = {"frequency[Hz]": noisy_flux, "current[A]": x}
+
+    data.load_data_from_dict(mydict)
+
+    fit = res_spectroscopy_flux_fit(
+        data, "current[A]", "frequency[Hz]", qubit, fluxline, params_fit
+    )
+    assert "The fitting was not successful" in caplog.text
 
 
 @pytest.mark.parametrize("name", [None, "test"])
 @pytest.mark.parametrize(
     "label, resonator_type, amplitude_sign",
     [
-        ("resonator_freq", "3D", 1),
-        ("resonator_freq", "2D", -1),
-        ("qubit_freq", "3D", -1),
-        ("qubit_freq", "2D", 1),
+        ("readout_frequency", "3D", 1),
+        ("readout_frequency", "2D", -1),
+        ("readout_frequency_shifted", "3D", 1),
+        ("readout_frequency_shifted", "2D", -1),
+        ("drive_frequency", "3D", -1),
+        ("drive_frequency", "2D", 1),
     ],
 )
-@pytest.mark.parametrize("lo_freqs", [None, [0]])
-def test_lorentzian_fit(name, label, resonator_type, amplitude_sign, lo_freqs, caplog):
+def test_lorentzian_fit(name, label, resonator_type, amplitude_sign, caplog):
     """Test the *lorentzian_fit* function"""
     amplitude = 1 * amplitude_sign
     center = 2
@@ -59,9 +158,8 @@ def test_lorentzian_fit(name, label, resonator_type, amplitude_sign, lo_freqs, c
         "MSR[V]",
         [0],
         resonator_type,
-        labels=[label, "peak_voltage", "intermediate_freq"],
+        labels=[label, "peak_voltage"],
         fit_file_name=name,
-        lo_freqs=lo_freqs,
     )
     # Given the couople (amplitude, sigma) as a solution of lorentzian_fit method
     # also (-amplitude,-sigma) is a possible solution.
@@ -91,7 +189,7 @@ def test_lorentzian_fit(name, label, resonator_type, amplitude_sign, lo_freqs, c
         "MSR[V]",
         [0],
         resonator_type,
-        labels=[label, "peak_voltage", "intermediate_freq"],
+        labels=[label, "peak_voltage"],
         fit_file_name=name,
     )
     assert "lorentzian_fit: the fitting was not successful" in caplog.text
@@ -320,7 +418,7 @@ def test_flipping_fit(label, resonator_type, amplitude_sign, caplog):
     p2 = 17 * amplitude_sign
     p3 = 3
 
-    pi_pulse_amplituse = 5
+    pi_pulse_amplitudes = [5]
 
     x = np.linspace(0, 10, 100)
     noisy_flip = flipping(x, p0, p1, p2, p3) + p0 * np.random.randn(100) * 1e-4
@@ -344,7 +442,7 @@ def test_flipping_fit(label, resonator_type, amplitude_sign, caplog):
         "MSR[V]",
         [0],
         resonator_type,
-        pi_pulse_amplituse,
+        pi_pulse_amplitudes,
         labels=[label, "corrected_amplitude"],
     )
     fit_p = [fit.get_values(f"popt{i}")[0] for i in range(4)]
@@ -373,7 +471,7 @@ def test_flipping_fit(label, resonator_type, amplitude_sign, caplog):
         "MSR[V]",
         [0],
         resonator_type,
-        pi_pulse_amplituse,
+        pi_pulse_amplitudes,
         labels=[label, "corrected_amplitude"],
     )
     assert "flipping_fit: the fitting was not succesful" in caplog.text

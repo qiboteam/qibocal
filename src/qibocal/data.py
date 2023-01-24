@@ -28,7 +28,7 @@ class AbstractData:
         return self
 
     @abstractmethod
-    def add(self, data):
+    def add(self, data):  # pragma: no cover
         """Add row to `AbstractData` dataframe."""
         raise_error(NotImplementedError)
 
@@ -37,12 +37,14 @@ class AbstractData:
         return len(self.df)
 
     @classmethod
-    def load_data(cls, folder, subfolder, routine, data_format, name):
+    def load_data(
+        cls, folder, subfolder, routine, data_format, name
+    ):  # pragma: no cover
         """Load data from specific format."""
         raise_error(NotImplementedError)
 
     @abstractmethod
-    def to_csv(self, path):
+    def to_csv(self, path):  # pragma: no cover
         """Save data in csv file.
 
         Args:

@@ -1,16 +1,28 @@
 """Routine-specific method for post-processing data acquired."""
+from functools import partial
+
 import lmfit
 import numpy as np
 from scipy.optimize import curve_fit
 
 from qibocal.config import log
 from qibocal.data import Data
-from qibocal.fitting.utils import cos, exp, flipping, lorenzian, parse, rabi, ramsey
+from qibocal.fitting.utils import (
+    cos,
+    exp,
+    flipping,
+    freq_q_mathieu,
+    freq_r_mathieu,
+    freq_r_transmon,
+    line,
+    lorenzian,
+    parse,
+    rabi,
+    ramsey,
+)
 
 
-def lorentzian_fit(
-    data, x, y, qubits, resonator_type, labels, fit_file_name=None, lo_freqs=None
-):
+def lorentzian_fit(data, x, y, qubits, resonator_type, labels, fit_file_name=None):
     r"""
     Fitting routine for resonator/qubit spectroscopy.
     The used model is
@@ -29,9 +41,9 @@ def lorentzian_fit(
         resonator_type (str): the type of readout resonator ['3D', '2D']
         labels (list of str): list containing the lables of the quantities computed by this fitting method.
 
-            -   When using ``resonator_spectroscopy`` the expected labels are [`resonator_freq`, `peak voltage`], where `resonator_freq` is the estimated frequency of the resonator, and `peak_voltage` the peak of the Lorentzian
+            -   When using ``resonator_spectroscopy`` the expected labels are [`readout_frequency`, `peak voltage`], where `readout_frequency` is the estimated frequency of the resonator, and `peak_voltage` the peak of the Lorentzian
 
-            -   when using ``qubit_spectroscopy`` the expected labels are [`qubit_freq`, `peak voltage`], where `qubit_freq` is the estimated frequency of the qubit
+            -   when using ``qubit_spectroscopy`` the expected labels are [`drive_frequency`, `peak voltage`], where `drive_frequency` is the estimated frequency of the qubit
 
         fit_file_name (str): file name, ``None`` is the default value.
 
@@ -41,7 +53,6 @@ def lorentzian_fit(
 
             - **labels[0]**: peak voltage
             - **labels[1]**: frequency
-            - **labels[2]**: readout frequency
             - **popt0**: Lorentzian's amplitude
             - **popt1**: Lorentzian's center
             - **popt2**: Lorentzian's sigma
@@ -62,7 +73,7 @@ def lorentzian_fit(
 
                 name = "test"
                 nqubits = 1
-                label = "qubit_freq"
+                label = "drive_frequency"
                 amplitude = -1
                 center = 2
                 sigma = 3
@@ -125,7 +136,6 @@ def lorentzian_fit(
                 "popt3",
                 labels[0],
                 labels[1],
-                labels[2],
                 "qubit",
             ],
         )
@@ -139,7 +149,6 @@ def lorentzian_fit(
                 "popt3",
                 labels[0],
                 labels[1],
-                labels[2],
                 "qubit",
             ],
         )
@@ -161,8 +170,8 @@ def lorentzian_fit(
         model_Q = lmfit.Model(lorenzian)
 
         # Guess parameters for Lorentzian max or min
-        if (resonator_type == "3D" and labels[0] == "resonator_freq") or (
-            resonator_type != "3D" and labels[0] == "qubit_freq"
+        if (resonator_type == "3D" and "readout_frequency" in labels[0]) or (
+            resonator_type != "3D" and labels[0] == "drive_frequency"
         ):
             guess_center = frequencies[
                 np.argmax(voltages)
@@ -211,15 +220,10 @@ def lorentzian_fit(
 
         freq = f0
 
-        intermediate_freq = 0
-        if lo_freqs != None:
-            intermediate_freq = freq - lo_freqs[qubit]
-
         data_fit.add(
             {
                 labels[0]: freq,
                 labels[1]: peak_voltage,
-                labels[2]: intermediate_freq,
                 "popt0": fit_res.best_values["amplitude"],
                 "popt1": fit_res.best_values["center"],
                 "popt2": fit_res.best_values["sigma"],
@@ -528,7 +532,7 @@ def t1_fit(data, x, y, qubits, resonator_type, labels):
     return data_fit
 
 
-def flipping_fit(data, x, y, qubits, resonator_type, pi_pulse_amplitude, labels):
+def flipping_fit(data, x, y, qubits, resonator_type, pi_pulse_amplitudes, labels):
     r"""
     Fitting routine for T1 experiment. The used model is
 
@@ -544,7 +548,7 @@ def flipping_fit(data, x, y, qubits, resonator_type, pi_pulse_amplitude, labels)
         qubit (int): ID qubit number
         nqubits (int): total number of qubits
         niter(int): Number of times of the flipping sequence applied to the qubit
-        pi_pulse_amplitude(float): corrected pi pulse amplitude
+        pi_pulse_amplitudes(list): list of corrected pi pulse amplitude
         labels (list of str): list containing the lables of the quantities computed by this fitting method.
 
     Returns:
@@ -560,7 +564,6 @@ def flipping_fit(data, x, y, qubits, resonator_type, pi_pulse_amplitude, labels)
 
 
     """
-
     data_fit = Data(
         name="fits",
         quantities=[
@@ -595,7 +598,9 @@ def flipping_fit(data, x, y, qubits, resonator_type, pi_pulse_amplitude, labels)
             popt, pcov = curve_fit(flipping, flips, voltages, p0=pguess, maxfev=2000000)
             epsilon = -np.pi / popt[2]
             amplitude_correction_factor = np.pi / (np.pi + epsilon)
-            corrected_amplitude = amplitude_correction_factor * pi_pulse_amplitude
+            corrected_amplitude = (
+                amplitude_correction_factor * pi_pulse_amplitudes[qubit]
+            )
             # angle = (niter * 2 * np.pi / popt[2] + popt[3]) / (1 + 4 * niter)
             # amplitude_delta = angle * 2 / np.pi * pi_pulse_amplitude
         except:
@@ -702,6 +707,203 @@ def drag_tuning_fit(data: Data, x, y, qubits, labels):
             }
         )
     return data_fit
+
+
+def res_spectroscopy_flux_fit(data, x, y, qubit, fluxline, params_fit):
+    """Fit frequency as a function of current for the flux resonator spectroscopy
+        Args:
+        data (DataUnits): Data file with information on the feature response at each current point.
+        x (str): Column of the data file associated to x-axis.
+        y (str): Column of the data file associated to y-axis.
+        qubit (int): qubit coupled to the resonator that we are probing.
+        fluxline (int): id of the current line used for the experiment.
+        params_fit (list): List of parameters for the fit. [freq_rh, g, Ec, Ej].
+                          freq_rh is the resonator frequency at high power and g in the readout coupling.
+                          If Ec and Ej are missing, the fit is valid in the transmon limit and if they are indicated,
+                          contains the next-order correction.
+
+    Returns:
+        data_fit (Data): Data file with labels and fit parameters.
+
+    """
+
+    curr = np.array(data.get_values(*parse(x)))
+    freq = np.array(data.get_values(*parse(y)))
+    if qubit == fluxline:
+        if len(params_fit) == 2:
+            quantities = [
+                "curr_sp",
+                "xi",
+                "d",
+                "f_q/f_rh",
+                "g",
+                "f_rh",
+                "f_qs",
+                "f_rs",
+                "f_offset",
+                "C_ii",
+            ]
+        else:
+            quantities = [
+                "curr_sp",
+                "xi",
+                "d",
+                "g",
+                "Ec",
+                "Ej",
+                "f_rh",
+                "f_qs",
+                "f_rs",
+                "f_offset",
+                "C_ii",
+            ]
+
+        data_fit = Data(
+            name=f"fit1_q{qubit}_f{fluxline}",
+            quantities=quantities,
+        )
+        try:
+            f_rh = params_fit[0]
+            g = params_fit[1]
+            max_c = curr[np.argmax(freq)]
+            min_c = curr[np.argmin(freq)]
+            xi = 1 / (2 * abs(max_c - min_c))
+            if len(params_fit) == 2:
+                f_r = np.max(freq)
+                f_q_0 = f_rh - g**2 / (f_r - f_rh)
+                popt = curve_fit(
+                    freq_r_transmon,
+                    curr,
+                    freq,
+                    p0=[max_c, xi, 0, f_q_0 / f_rh, g, f_rh],
+                )[0]
+                f_qs = popt[3] * popt[5]
+                f_rs = freq_r_transmon(popt[0], *popt)
+                f_offset = freq_r_transmon(0, *popt)
+                C_ii = (f_rs - f_offset) / popt[0]
+                data_fit.add(
+                    {
+                        "curr_sp": popt[0],
+                        "xi": popt[1],
+                        "d": abs(popt[2]),
+                        "f_q/f_rh": popt[3],
+                        "g": popt[4],
+                        "f_rh": popt[5],
+                        "f_qs": f_qs,
+                        "f_rs": f_rs,
+                        "f_offset": f_offset,
+                        "C_ii": C_ii,
+                    }
+                )
+            else:
+                Ec = params_fit[2]
+                Ej = params_fit[3]
+                freq_r_mathieu1 = partial(freq_r_mathieu, p7=0.4999)
+                popt = curve_fit(
+                    freq_r_mathieu1,
+                    curr,
+                    freq,
+                    p0=[f_rh, g, max_c, xi, 0, Ec, Ej],
+                    method="dogbox",
+                )[0]
+                f_qs = freq_q_mathieu(popt[2], *popt[2::])
+                f_rs = freq_r_mathieu(popt[2], *popt)
+                f_offset = freq_r_mathieu(0, *popt)
+                C_ii = (f_rs - f_offset) / popt[2]
+                data_fit.add(
+                    {
+                        "curr_sp": popt[2],
+                        "xi": popt[3],
+                        "d": abs(popt[4]),
+                        "g": popt[1],
+                        "Ec": popt[5],
+                        "Ej": popt[6],
+                        "f_rh": popt[0],
+                        "f_qs": f_qs,
+                        "f_rs": f_rs,
+                        "f_offset": f_offset,
+                        "C_ii": C_ii,
+                    }
+                )
+        except:
+            log.warning("The fitting was not successful")
+            return data_fit
+    else:
+        data_fit = Data(
+            name=f"fit1_q{qubit}_f{fluxline}",
+            quantities=[
+                "popt0",
+                "popt1",
+            ],
+        )
+        try:
+            freq_min = np.min(freq)
+            freq_max = np.max(freq)
+            freq_norm = (freq - freq_min) / (freq_max - freq_min)
+            popt = curve_fit(line, curr, freq_norm)[0]
+            popt[0] = popt[0] * (freq_max - freq_min)
+            popt[1] = popt[1] * (freq_max - freq_min) + freq_min
+        except:
+            log.warning("The fitting was not successful")
+            return data_fit
+
+        data_fit.add(
+            {
+                "popt0": popt[0],  # C_ij
+                "popt1": popt[1],
+            }
+        )
+    return data_fit
+
+
+def res_spectroscopy_flux_matrix(folder, fluxlines):
+    """Calculation of the resonator flux matrix, Mf.
+       curr = Mf*freq + offset_c.
+       Mf = Mc^-1, offset_c = -Mc^-1 * offset_f
+       freq = Mc*curr + offset_f
+        Args:
+        folder (str): Folder where the data files with the experimental and fit data are.
+        fluxlines (list): ids of the current line used for the experiment.
+
+    Returns:
+        data (Data): Data file with len(fluxlines)+1 columns that contains the flux matrix (Mf) and
+                     offset (offset_c) in the last column.
+
+    """
+    import os
+
+    from pandas import DataFrame
+
+    fits = []
+    for q in fluxlines:
+        for f in fluxlines:
+            file = f"{folder}/data/resonator_flux_sample/fit1_q{q}_f{f}.csv"
+            if os.path.exists(file):
+                fits += [f]
+    if len(fits) == len(fluxlines) ** 2:
+        mat = np.zeros((len(fluxlines), len(fluxlines)))
+        offset = np.zeros(len(fluxlines))
+        for i, q in enumerate(fluxlines):
+            for j, f in enumerate(fluxlines):
+                data_fit = Data.load_data(
+                    folder, "data", "resonator_flux_sample", "csv", f"fit1_q{q}_f{f}"
+                )
+                if q == f:
+                    element = "C_ii"
+                    offset[i] = data_fit.get_values("f_offset")[0]
+                else:
+                    element = "popt0"
+                mat[i, j] = data_fit.get_values(element)[0]
+        m = np.linalg.inv(mat)
+        offset_c = -m @ offset
+        data = Data(name=f"flux_matrix")
+        data.df = DataFrame(m)
+        data.df.insert(len(fluxlines), "offset_c", offset_c, True)
+        # [m, offset_c] freq = M*curr + offset --> curr = m*freq + offset_c  m = M^-1, offset_c = -M^-1 * offset
+        data.to_csv(f"{folder}/data/resonator_flux_sample/")
+    else:
+        data = Data(name=f"flux_matrix")
+    return data
 
 
 def spin_echo_fit(data, x, y, qubits, resonator_type, labels):

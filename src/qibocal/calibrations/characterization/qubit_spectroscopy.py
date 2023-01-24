@@ -4,6 +4,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Sweeper
 
 from qibocal import plots
+from qibocal.config import raise_error
 from qibocal.data import DataUnits
 from qibocal.decorators import plot
 from qibocal.fitting.methods import lorentzian_fit
@@ -51,7 +52,7 @@ def qubit_spectroscopy(
         - A DataUnits object with the fitted data obtained with the following keys
 
             - **qubit**: The qubit being tested
-            - **qubit_freq**: frequency
+            - **drive_frequency**: frequency
             - **peak_voltage**: peak voltage
             - **popt0**: Lorentzian's amplitude
             - **popt1**: Lorentzian's center
@@ -132,9 +133,8 @@ def qubit_spectroscopy(
                     y="MSR[uV]",
                     qubits=qubits,
                     resonator_type=platform.resonator_type,
-                    labels=["qubit_freq", "peak_voltage", "intermediate_freq"],
+                    labels=["drive_frequency", "peak_voltage"],
                 )
-
     # finally, save the remaining data and fits
     yield fast_sweep_data
     yield lorentzian_fit(
@@ -143,7 +143,7 @@ def qubit_spectroscopy(
         y="MSR[uV]",
         qubits=qubits,
         resonator_type=platform.resonator_type,
-        labels=["qubit_freq", "peak_voltage", "intermediate_freq"],
+        labels=["drive_frequency", "peak_voltage"],
     )
 
     # store max/min peaks as new frequencies
@@ -288,7 +288,7 @@ def qubit_spectroscopy_flux(
 
         - A DataUnits object with the fitted data obtained with the following keys
 
-            - **qubit_freq**: frequency
+            - **drive_frequency**: frequency
             - **peak_voltage**: peak voltage
             - **popt0**: Lorentzian's amplitude
             - **popt1**: Lorentzian's center
@@ -296,7 +296,6 @@ def qubit_spectroscopy_flux(
             - **popt3**: Lorentzian's offset
             - **qubit**: The qubit being tested
     """
-
     # reload instrument settings from runcard
     platform.reload_settings()
 
