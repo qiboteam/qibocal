@@ -90,3 +90,19 @@
 .btn-toggle-nav a:focus {
   background-color: #6600ff1c;
 }
+
+@media print {
+  .sidebar
+  {
+    width:0px;
+    overflow-y: hidden;
+  }
+  .ms-sm-auto
+  {
+    width:1800px;
+    margin-left: 800px;
+    overflow-y: hidden;
+    overflow-x: hidden;
+  }
+
+}
