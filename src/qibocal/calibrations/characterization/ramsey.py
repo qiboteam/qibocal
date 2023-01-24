@@ -157,7 +157,7 @@ def ramsey_frequency_detuned(
                         {
                             "wait[ns]": wait,
                             "t_max[ns]": t_max,
-                            "qubit": qubit,
+                            "qubit": ro_pulse.qubit,
                             "iteration": iteration,
                         }
                     )
@@ -359,7 +359,7 @@ def ramsey(
                     {
                         "wait[ns]": wait,
                         "t_max[ns]": delay_between_pulses_end,
-                        "qubit": qubit,
+                        "qubit": ro_pulse.qubit,
                         "iteration": iteration,
                     }
                 )

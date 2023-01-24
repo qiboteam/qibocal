@@ -488,7 +488,7 @@ def resonator_spectroscopy_flux(
                             {
                                 "frequency[Hz]": ro_pulses[qubit].frequency,
                                 "current[A]": current,
-                                "qubit": qubit,
+                                "qubit": ro_pulse.qubit,
                                 "fluxline": fluxline,
                                 "iteration": iteration,
                             }
@@ -616,7 +616,7 @@ def dispersive_shift(
                     r.update(
                         {
                             "frequency[Hz]": ro_pulses[qubit].frequency,
-                            "qubit": qubit,
+                            "qubit": ro_pulse.qubit,
                             "iteration": iteration,
                         }
                     )

@@ -377,7 +377,7 @@ def qubit_spectroscopy_flux(
                             {
                                 "frequency[Hz]": qd_pulses[ro_pulse.qubit].frequency,
                                 "current[A]": current,
-                                "qubit": qubit,
+                                "qubit": ro_pulse.qubit,
                                 "fluxline": fluxline,
                                 "iteration": iteration,
                             }
