@@ -118,14 +118,16 @@ def get_graph(interval, url, value):
         for fig in figs:
             figures.append(dcc.Graph(figure=fig))
 
+        timestamp = datetime.datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
         return (
             figures,
-            [html.Span(f"Last update: {datetime.datetime.now()}")],
+            [html.Span(f"Last update: {(timestamp)}")],
             refresh_rate * 1000,
         )
     except (FileNotFoundError, pd.errors.EmptyDataError):
+        timestamp = datetime.datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
         return (
             figures,
-            [html.Span(f"Last updated: {datetime.datetime.now()}")],
+            [html.Span(f"Last updated: {timestamp}")],
             refresh_rate * 1000,
         )
