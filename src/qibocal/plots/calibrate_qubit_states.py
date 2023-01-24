@@ -9,6 +9,8 @@ from qibocal.plots.utils import get_color_state0, get_color_state1, get_data_sub
 # For calibrate qubit states
 def qubit_states(folder, routine, qubit, format):
 
+    figures = []
+
     fig = make_subplots(
         rows=1,
         cols=1,
@@ -179,4 +181,7 @@ def qubit_states(folder, routine, qubit, format):
         scaleanchor="x",
         scaleratio=1,
     )
-    return fig
+
+    figures.append(fig)
+
+    return figures

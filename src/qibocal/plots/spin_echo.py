@@ -19,6 +19,7 @@ def spin_echo_time_msr(folder, routine, qubit, format):
         qubit (int): Target qubit to characterize
         format (string): Data file format. Supported formats are .csv and .pkl
     """
+    figures = []
 
     fig = make_subplots(
         rows=1,
@@ -153,4 +154,7 @@ def spin_echo_time_msr(folder, routine, qubit, format):
         xaxis_title="Time (ns)",
         yaxis_title="MSR (uV)",
     )
-    return fig
+
+    figures.append(fig)
+
+    return figures

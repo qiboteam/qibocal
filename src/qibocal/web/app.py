@@ -59,8 +59,8 @@ app.layout = html.Div(
             ],
             style={"display": "flex", "font-family": "verdana"},
         ),
+        html.Div(id="div-figures"),
         dcc.Location(id="url", refresh=False),
-        dcc.Graph(id="graph", figure={}),
         dcc.Interval(
             id="interval",
             # TODO: Perhaps the user should be allowed to change the refresh rate
@@ -73,17 +73,19 @@ app.layout = html.Div(
 
 
 @app.callback(
-    Output("graph", "figure"),
+    Output(component_id="div-figures", component_property="children"),
     Output(component_id="latest-timestamp", component_property="children"),
     Output(component_id="interval", component_property="interval"),
     Input("interval", "n_intervals"),
-    Input("graph", "figure"),
     Input("url", "pathname"),
     Input("interval-refresh", "value"),
 )
-def get_graph(interval, current_figure, url, value):
+def get_graph(interval, url, value):
 
     st = time.time()
+
+    figures = []
+
     if "data" not in url:
         url = f"/data{url}"
 
@@ -105,21 +107,25 @@ def get_graph(interval, current_figure, url, value):
         # # multiple routines with different names in one folder
         # # should be changed to:
         # # return getattr(getattr(plots, routine), method)(data)
-        figure = getattr(plots, method)(folder, routine, qubit, format)
+        figs = getattr(plots, method)(folder, routine, qubit, format)
         et = time.time()
+
         if value == 0:
             refresh_rate = (et - st) + 6
         else:
             refresh_rate = value
 
+        for fig in figs:
+            figures.append(dcc.Graph(figure=fig))
+
         return (
-            figure,
+            figures,
             [html.Span(f"Last update: {datetime.datetime.now()}")],
             refresh_rate * 1000,
         )
     except (FileNotFoundError, pd.errors.EmptyDataError):
         return (
-            current_figure,
+            figures,
             [html.Span(f"Last updated: {datetime.datetime.now()}")],
             refresh_rate * 1000,
         )
