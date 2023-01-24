@@ -100,7 +100,7 @@ def allXY(
 
             # retrieve the results for every qubit
             for ro_pulse in ro_pulses.values():
-                r = results[ro_pulse.serial].to_dict_probability()
+                r = results[ro_pulse.serial].to_dict_probability(state=0)
                 # store the results
                 r.update(
                     {
@@ -193,7 +193,7 @@ def allXY_drag_pulse_tuning(
 
                 # retrieve the results for every qubit
                 for ro_pulse in ro_pulses.values():
-                    r = results[ro_pulse.serial].to_dict_probability()
+                    r = results[ro_pulse.serial].to_dict_probability(state=0)
                     # store the results
                     r.update(
                         {
