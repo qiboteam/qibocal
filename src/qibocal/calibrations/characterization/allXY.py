@@ -190,7 +190,7 @@ def allXY_drag_pulse_tuning(
 
                 # retrieve the results for every qubit
                 for qubit in qubits:
-                    prob = 1 - 2 * results["probability"][ro_pulses[qubit].serial]
+                    prob = 1 - 2 * results[ro_pulses[qubit].serial].probability
                     # store the results
                     r = {
                         "probability": prob,
@@ -361,9 +361,7 @@ def _add_gate_pair_pulses_to_sequence(
     platform: AbstractPlatform, gates, qubit, beta_param, sequence
 ):
 
-    pulse_duration = platform.settings["native_gates"]["single_qubit"][qubit]["RX"][
-        "duration"
-    ]
+    pulse_duration = platform.create_RX_pulse(qubit).duration
     # All gates have equal pulse duration
 
     sequenceDuration = 0
