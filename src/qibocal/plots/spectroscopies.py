@@ -679,14 +679,14 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, format):
                         ),
                         name=f"q{qubit}/r{report_n}: {label} Fit",
                         line=go.scatter.Line(dash="dot"),
-                        marker_color="rgb(255, 130, 67)",
+                        marker_color=get_color(3 * report_n + i),
                     ),
                     row=1,
                     col=1,
                 )
 
-                if "resonator_freq" in params:
-                    resonator_freqs[label] = params["resonator_freq"]
+                if "readout_frequency" in params:
+                    resonator_freqs[label] = params["readout_frequency"]
 
                 for param, value in params.items():
                     if "freq" in param:

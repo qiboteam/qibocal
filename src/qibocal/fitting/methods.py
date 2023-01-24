@@ -22,9 +22,7 @@ from qibocal.fitting.utils import (
 )
 
 
-def lorentzian_fit(
-    data, x, y, qubits, resonator_type, labels, fit_file_name=None, lo_freqs=None
-):
+def lorentzian_fit(data, x, y, qubits, resonator_type, labels, fit_file_name=None):
     r"""
     Fitting routine for resonator/qubit spectroscopy.
     The used model is
@@ -43,9 +41,9 @@ def lorentzian_fit(
         resonator_type (str): the type of readout resonator ['3D', '2D']
         labels (list of str): list containing the lables of the quantities computed by this fitting method.
 
-            -   When using ``resonator_spectroscopy`` the expected labels are [`resonator_freq`, `peak voltage`], where `resonator_freq` is the estimated frequency of the resonator, and `peak_voltage` the peak of the Lorentzian
+            -   When using ``resonator_spectroscopy`` the expected labels are [`readout_frequency`, `peak voltage`], where `readout_frequency` is the estimated frequency of the resonator, and `peak_voltage` the peak of the Lorentzian
 
-            -   when using ``qubit_spectroscopy`` the expected labels are [`qubit_freq`, `peak voltage`], where `qubit_freq` is the estimated frequency of the qubit
+            -   when using ``qubit_spectroscopy`` the expected labels are [`drive_frequency`, `peak voltage`], where `drive_frequency` is the estimated frequency of the qubit
 
         fit_file_name (str): file name, ``None`` is the default value.
 
@@ -55,7 +53,6 @@ def lorentzian_fit(
 
             - **labels[0]**: peak voltage
             - **labels[1]**: frequency
-            - **labels[2]**: readout frequency
             - **popt0**: Lorentzian's amplitude
             - **popt1**: Lorentzian's center
             - **popt2**: Lorentzian's sigma
@@ -76,7 +73,7 @@ def lorentzian_fit(
 
                 name = "test"
                 nqubits = 1
-                label = "qubit_freq"
+                label = "drive_frequency"
                 amplitude = -1
                 center = 2
                 sigma = 3
@@ -139,7 +136,6 @@ def lorentzian_fit(
                 "popt3",
                 labels[0],
                 labels[1],
-                labels[2],
                 "qubit",
             ],
         )
@@ -153,7 +149,6 @@ def lorentzian_fit(
                 "popt3",
                 labels[0],
                 labels[1],
-                labels[2],
                 "qubit",
             ],
         )
@@ -175,8 +170,8 @@ def lorentzian_fit(
         model_Q = lmfit.Model(lorenzian)
 
         # Guess parameters for Lorentzian max or min
-        if (resonator_type == "3D" and labels[0] == "resonator_freq") or (
-            resonator_type != "3D" and labels[0] == "qubit_freq"
+        if (resonator_type == "3D" and "readout_frequency" in labels[0]) or (
+            resonator_type != "3D" and labels[0] == "drive_frequency"
         ):
             guess_center = frequencies[
                 np.argmax(voltages)
@@ -225,15 +220,10 @@ def lorentzian_fit(
 
         freq = f0
 
-        intermediate_freq = 0
-        if lo_freqs != None:
-            intermediate_freq = freq - lo_freqs[qubit]
-
         data_fit.add(
             {
                 labels[0]: freq,
                 labels[1]: peak_voltage,
-                labels[2]: intermediate_freq,
                 "popt0": fit_res.best_values["amplitude"],
                 "popt1": fit_res.best_values["center"],
                 "popt2": fit_res.best_values["sigma"],
@@ -542,7 +532,7 @@ def t1_fit(data, x, y, qubits, resonator_type, labels):
     return data_fit
 
 
-def flipping_fit(data, x, y, qubits, resonator_type, pi_pulse_amplitude, labels):
+def flipping_fit(data, x, y, qubits, resonator_type, pi_pulse_amplitudes, labels):
     r"""
     Fitting routine for T1 experiment. The used model is
 
@@ -558,7 +548,7 @@ def flipping_fit(data, x, y, qubits, resonator_type, pi_pulse_amplitude, labels)
         qubit (int): ID qubit number
         nqubits (int): total number of qubits
         niter(int): Number of times of the flipping sequence applied to the qubit
-        pi_pulse_amplitude(float): corrected pi pulse amplitude
+        pi_pulse_amplitudes(list): list of corrected pi pulse amplitude
         labels (list of str): list containing the lables of the quantities computed by this fitting method.
 
     Returns:
@@ -574,7 +564,6 @@ def flipping_fit(data, x, y, qubits, resonator_type, pi_pulse_amplitude, labels)
 
 
     """
-
     data_fit = Data(
         name="fits",
         quantities=[
@@ -609,7 +598,9 @@ def flipping_fit(data, x, y, qubits, resonator_type, pi_pulse_amplitude, labels)
             popt, pcov = curve_fit(flipping, flips, voltages, p0=pguess, maxfev=2000000)
             epsilon = -np.pi / popt[2]
             amplitude_correction_factor = np.pi / (np.pi + epsilon)
-            corrected_amplitude = amplitude_correction_factor * pi_pulse_amplitude
+            corrected_amplitude = (
+                amplitude_correction_factor * pi_pulse_amplitudes[qubit]
+            )
             # angle = (niter * 2 * np.pi / popt[2] + popt[3]) / (1 + 4 * niter)
             # amplitude_delta = angle * 2 / np.pi * pi_pulse_amplitude
         except:

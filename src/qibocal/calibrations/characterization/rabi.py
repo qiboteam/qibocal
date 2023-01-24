@@ -111,18 +111,16 @@ def rabi_pulse_length(
             # execute the pulse sequence
             results = platform.execute_pulse_sequence(sequence)
 
-            for qubit in qubits:
+            for ro_pulse in ro_pulses.values():
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                msr, phase, i, q = results[ro_pulses[qubit].serial]
-                r = {
-                    "MSR[V]": msr,
-                    "i[V]": i,
-                    "q[V]": q,
-                    "phase[rad]": phase,
-                    "time[ns]": duration,
-                    "qubit": qubit,
-                    "iteration": iteration,
-                }
+                r = results[ro_pulse.serial].to_dict()
+                r.update(
+                    {
+                        "time[ns]": duration,
+                        "qubit": ro_pulse.qubit,
+                        "iteration": iteration,
+                    }
+                )
                 data.add(r)
             count += 1
     yield data
@@ -219,7 +217,7 @@ def rabi_pulse_gain(
         # sweep the parameter
         for gain in qd_pulse_gain_range:
             for qubit in qubits:
-                platform.qd_port[qubit].gain = gain
+                platform.set_gain(qubit, gain)
             # save data as often as defined by points
             if count % points == 0 and count > 0:
                 # save data
@@ -241,18 +239,16 @@ def rabi_pulse_gain(
             # execute the pulse sequence
             results = platform.execute_pulse_sequence(sequence)
 
-            for qubit in qubits:
+            for ro_pulse in ro_pulses.values():
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                msr, phase, i, q = results[ro_pulses[qubit].serial]
-                r = {
-                    "MSR[V]": msr,
-                    "i[V]": i,
-                    "q[V]": q,
-                    "phase[rad]": phase,
-                    "gain[dimensionless]": gain,
-                    "qubit": qubit,
-                    "iteration": iteration,
-                }
+                r = results[ro_pulse.serial].to_dict()
+                r.update(
+                    {
+                        "gain[dimensionless]": gain,
+                        "qubit": ro_pulse.qubit,
+                        "iteration": iteration,
+                    }
+                )
                 data.add(r)
             count += 1
     yield data
@@ -371,18 +367,16 @@ def rabi_pulse_amplitude(
             # execute the pulse sequence
             results = platform.execute_pulse_sequence(sequence)
 
-            for qubit in qubits:
+            for ro_pulse in ro_pulses.values():
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                msr, phase, i, q = results[ro_pulses[qubit].serial]
-                r = {
-                    "MSR[V]": msr,
-                    "i[V]": i,
-                    "q[V]": q,
-                    "phase[rad]": phase,
-                    "amplitude[dimensionless]": amplitude,
-                    "qubit": qubit,
-                    "iteration": iteration,
-                }
+                r = results[ro_pulse.serial].to_dict()
+                r.update(
+                    {
+                        "amplitude[dimensionless]": amplitude,
+                        "qubit": ro_pulse.qubit,
+                        "iteration": iteration,
+                    }
+                )
                 data.add(r)
             count += 1
     yield data
@@ -478,12 +472,11 @@ def rabi_pulse_length_and_gain(
     for iteration in range(software_averages):
         # sweep the parameters
         for duration in qd_pulse_duration_range:
-            for qubit in qubits:
-                qd_pulses[qubit].duration = duration
-                ro_pulses[qubit].start = duration
             for gain in qd_pulse_gain_range:
                 for qubit in qubits:
-                    platform.qd_port[qubit].gain = gain
+                    qd_pulses[qubit].duration = duration
+                    ro_pulses[qubit].start = duration
+                    platform.set_gain(qubit, gain)
                 # save data as often as defined by points
                 if count % points == 0 and count > 0:
                     # save data
@@ -491,19 +484,17 @@ def rabi_pulse_length_and_gain(
 
                 # execute the pulse sequence
                 results = platform.execute_pulse_sequence(sequence)
-                for qubit in qubits:
+                for ro_pulse in ro_pulses.values():
                     # average msr, phase, i and q over the number of shots defined in the runcard
-                    msr, phase, i, q = results[ro_pulses[qubit].serial]
-                    r = {
-                        "MSR[V]": msr,
-                        "i[V]": i,
-                        "q[V]": q,
-                        "phase[rad]": phase,
-                        "duration[ns]": duration,
-                        "gain[dimensionless]": gain,
-                        "qubit": qubit,
-                        "iteration": iteration,
-                    }
+                    r = results[ro_pulse.serial].to_dict()
+                    r.update(
+                        {
+                            "duration[ns]": duration,
+                            "gain[dimensionless]": gain,
+                            "qubit": ro_pulse.qubit,
+                            "iteration": iteration,
+                        }
+                    )
                     data.add(r)
                 count += 1
     yield data
@@ -590,11 +581,10 @@ def rabi_pulse_length_and_amplitude(
     for iteration in range(software_averages):
         # sweep the parameters
         for duration in qd_pulse_duration_range:
-            for qubit in qubits:
-                qd_pulses[qubit].duration = duration
-                ro_pulses[qubit].start = duration
             for amplitude in qd_pulse_amplitude_range:
                 for qubit in qubits:
+                    qd_pulses[qubit].duration = duration
+                    ro_pulses[qubit].start = duration
                     qd_pulses[qubit].amplitude = amplitude
                 # save data as often as defined by points
                 if count % points == 0 and count > 0:
@@ -603,19 +593,17 @@ def rabi_pulse_length_and_amplitude(
 
                 # execute the pulse sequence
                 results = platform.execute_pulse_sequence(sequence)
-                for qubit in qubits:
+                for ro_pulse in ro_pulses.values():
                     # average msr, phase, i and q over the number of shots defined in the runcard
-                    msr, phase, i, q = results[ro_pulses[qubit].serial]
-                    r = {
-                        "MSR[V]": msr,
-                        "i[V]": i,
-                        "q[V]": q,
-                        "phase[rad]": phase,
-                        "duration[ns]": duration,
-                        "amplitude[dimensionless]": amplitude,
-                        "qubit": qubit,
-                        "iteration": iteration,
-                    }
+                    r = results[ro_pulse.serial].to_dict()
+                    r.update(
+                        {
+                            "duration[ns]": duration,
+                            "amplitude[dimensionless]": amplitude,
+                            "qubit": ro_pulse.qubit,
+                            "iteration": iteration,
+                        }
+                    )
                     data.add(r)
                 count += 1
     yield data

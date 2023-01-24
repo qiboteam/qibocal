@@ -79,6 +79,7 @@ def allXY(
     count = 0
     # repeat the experiment as many times as defined by software_averages
     for iteration in range(software_averages):
+        gateNumber = 1
         # sweep the parameter
         for gates in gatelist:
             # save data as often as defined by points
@@ -98,15 +99,16 @@ def allXY(
             results = platform.execute_pulse_sequence(sequence)
 
             # retrieve the results for every qubit
-            for qubit in qubits:
-                prob = 1 - 2 * results["probability"][ro_pulses[qubit].serial]
+            for ro_pulse in ro_pulses.values():
+                r = results[ro_pulse.serial].to_dict_probability(state=0)
                 # store the results
-                r = {
-                    "probability": prob,
-                    "gateNumber": gateNumber,
-                    "qubit": qubit,
-                    "iteration": iteration,
-                }
+                r.update(
+                    {
+                        "gateNumber": gateNumber,
+                        "qubit": ro_pulse.qubit,
+                        "iteration": iteration,
+                    }
+                )
                 data.add(r)
             count += 1
             gateNumber += 1
@@ -190,16 +192,17 @@ def allXY_drag_pulse_tuning(
                 results = platform.execute_pulse_sequence(sequence)
 
                 # retrieve the results for every qubit
-                for qubit in qubits:
-                    prob = 1 - 2 * results["probability"][ro_pulses[qubit].serial]
+                for ro_pulse in ro_pulses.values():
+                    r = results[ro_pulse.serial].to_dict_probability(state=0)
                     # store the results
-                    r = {
-                        "probability": prob,
-                        "gateNumber": gateNumber,
-                        "beta_param": beta_param,
-                        "qubit": qubit,
-                        "iteration": iteration,
-                    }
+                    r.update(
+                        {
+                            "gateNumber": gateNumber,
+                            "beta_param": beta_param,
+                            "qubit": ro_pulse.qubit,
+                            "iteration": iteration,
+                        }
+                    )
                     data.add(r)
                 count += 1
                 gateNumber += 1
@@ -332,17 +335,17 @@ def drag_pulse_tuning(
             result2 = platform.execute_pulse_sequence(seq2)
 
             # retrieve the results for every qubit
-            for qubit in qubits:
-                msr1, phase1, i1, q1 = result1[ro_pulses[qubit].serial]
-                msr2, phase2, i2, q2 = result2[ro_pulses[qubit].serial]
+            for ro_pulse in ro_pulses.values():
+                r1 = result1[ro_pulse.serial]
+                r2 = result2[ro_pulse.serial]
                 # store the results
                 r = {
-                    "MSR[V]": msr1 - msr2,
-                    "i[V]": i1 - i2,
-                    "q[V]": q1 - q2,
-                    "phase[rad]": phase1 - phase2,
+                    "MSR[V]": r1.msr.mean() - r2.msr.mean(),
+                    "i[V]": r1.i.mean() - r2.i.mean(),
+                    "q[V]": r1.q.mean() - r2.q.mean(),
+                    "phase[rad]": r1.phase.mean() - r2.phase.mean(),
                     "beta_param[dimensionless]": beta_param,
-                    "qubit": qubit,
+                    "qubit": ro_pulse.qubit,
                     "iteration": iteration,
                 }
                 data.add(r)
