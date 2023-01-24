@@ -98,7 +98,7 @@ def t1(
                     y="MSR[uV]",
                     qubits=qubits,
                     resonator_type=platform.resonator_type,
-                    labels=["t1"],
+                    labels=["T1"],
                 )
 
             for qubit in qubits:
@@ -107,18 +107,16 @@ def t1(
             # execute the pulse sequence
             results = platform.execute_pulse_sequence(sequence)
 
-            for qubit in qubits:
+            for ro_pulse in ro_pulses.values():
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                result = results[ro_pulses[qubit].serial]
-                r = {
-                    "MSR[V]": np.mean(result.MSR),
-                    "i[V]": np.mean(result.I),
-                    "q[V]": np.mean(result.Q),
-                    "phase[rad]": np.mean(result.phase),
-                    "wait[ns]": wait,
-                    "qubit": qubit,
-                    "iteration": iteration,
-                }
+                r = results[ro_pulse.serial].to_dict()
+                r.update(
+                    {
+                        "wait[ns]": wait,
+                        "qubit": qubit,
+                        "iteration": iteration,
+                    }
+                )
                 data.add(r)
             count += 1
     yield data
@@ -128,5 +126,5 @@ def t1(
         y="MSR[uV]",
         qubits=qubits,
         resonator_type=platform.resonator_type,
-        labels=["t1"],
+        labels=["T1"],
     )

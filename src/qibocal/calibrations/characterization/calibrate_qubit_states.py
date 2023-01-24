@@ -73,18 +73,15 @@ def calibrate_qubit_states(
     print("State0 run time:", time.time() - start_time)
 
     # retrieve and store the results for every qubit
-    start_time = time.time()
-    for qubit in qubits:
-        result = state0_results[ro_pulses[qubit].serial]
-        r = {
-            "MSR[V]": result.MSR,
-            "i[V]": result.I,
-            "q[V]": result.Q,
-            "phase[rad]": result.phase,
-            "qubit": [qubit] * nshots,
-            "iteration": np.arange(nshots),
-            "state": [0] * nshots,
-        }
+    for ro_pulse in ro_pulses.values():
+        r = state0_results[ro_pulse.serial].to_dict(average=False)
+        r.update(
+            {
+                "qubit": [ro_pulse.qubit] * nshots,
+                "iteration": np.arange(nshots),
+                "state": [0] * nshots,
+            }
+        )
         data.add_data_from_dict(r)
     print("State0 saving time:", time.time() - start_time)
 
@@ -94,18 +91,15 @@ def calibrate_qubit_states(
     print("State1 time:", time.time() - start_time)
 
     # retrieve and store the results for every qubit
-    start_time = time.time()
-    for qubit in qubits:
-        result = state1_results[ro_pulses[qubit].serial]
-        r = {
-            "MSR[V]": result.MSR,
-            "i[V]": result.I,
-            "q[V]": result.Q,
-            "phase[rad]": result.phase,
-            "qubit": [qubit] * nshots,
-            "iteration": np.arange(nshots),
-            "state": [1] * nshots,
-        }
+    for ro_pulse in ro_pulses.values():
+        r = state1_results[ro_pulse.serial].to_dict(average=False)
+        r.update(
+            {
+                "qubit": [ro_pulse.qubit] * nshots,
+                "iteration": np.arange(nshots),
+                "state": [1] * nshots,
+            }
+        )
         data.add_data_from_dict(r)
     print("State1 saving time:", time.time() - start_time)
 
