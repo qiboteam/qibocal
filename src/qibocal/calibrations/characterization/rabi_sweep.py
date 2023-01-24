@@ -1,18 +1,18 @@
+import time
+from types import SimpleNamespace
+
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
+from qibolab.result import ExecutionResult
 from qibolab.sweeper import Sweeper
+from qm.qua import *
+from qualang_tools.loops import from_array
 
 from qibocal import plots
 from qibocal.data import DataUnits
 from qibocal.decorators import plot
 from qibocal.fitting.methods import rabi_fit
-
-import time
-from qibolab.result import ExecutionResult
-from types import SimpleNamespace
-from qm.qua import *
-from qualang_tools.loops import from_array
 
 
 @plot("MSR vs Time", plots.time_msr_phase)
@@ -71,8 +71,12 @@ def rabi_pulse_length_sweep(
     qd_pulses = {}
     ro_pulses = {}
     for qubit in qubits:
-        qd_pulses[qubit] = platform.create_qubit_drive_pulse(qubit, start=0, duration=pulse_duration_start)
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=pulse_duration_start)
+        qd_pulses[qubit] = platform.create_qubit_drive_pulse(
+            qubit, start=0, duration=pulse_duration_start
+        )
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+            qubit, start=pulse_duration_start
+        )
         sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
 
@@ -91,10 +95,10 @@ def rabi_pulse_length_sweep(
 
     start_time = time.time()
     # repeat the experiment as many times as defined by software_averages
-    #count = 0
+    # count = 0
     for iteration in range(software_averages):
         # sweep the parameter
-        #results = platform.sweep(sequence, sweeper, nshots=1000)
+        # results = platform.sweep(sequence, sweeper, nshots=1000)
 
         with program() as experiment:
             n = declare(int)
@@ -111,7 +115,11 @@ def rabi_pulse_length_sweep(
             qmsequence = []
             for pulse in sequence:
                 qmpulse = SimpleNamespace(
-                    pulse=pulse, target=platform.design.opx.register_pulse(platform.qubits[pulse.qubit], pulse), operation=pulse.serial
+                    pulse=pulse,
+                    target=platform.design.opx.register_pulse(
+                        platform.qubits[pulse.qubit], pulse
+                    ),
+                    operation=pulse.serial,
                 )
                 qmsequence.append(qmpulse)
 
@@ -129,7 +137,9 @@ def rabi_pulse_length_sweep(
                                 qmpulse.target,
                                 None,
                                 dual_demod.full("cos", "out1", "sin", "out2", output.I),
-                                dual_demod.full("minus_sin", "out1", "cos", "out2", output.Q),
+                                dual_demod.full(
+                                    "minus_sin", "out1", "cos", "out2", output.Q
+                                ),
                             )
                         else:
                             play(qmpulse.operation, qmpulse.target, duration=dur)
@@ -142,11 +152,15 @@ def rabi_pulse_length_sweep(
 
             with stream_processing():
                 for serial, output in outputs.items():
-                    output.I_st.buffer(len(qd_pulse_duration_range)).average().save(f"{serial}_I")
-                    output.Q_st.buffer(len(qd_pulse_duration_range)).average().save(f"{serial}_Q")
+                    output.I_st.buffer(len(qd_pulse_duration_range)).average().save(
+                        f"{serial}_I"
+                    )
+                    output.Q_st.buffer(len(qd_pulse_duration_range)).average().save(
+                        f"{serial}_Q"
+                    )
 
             # save data as often as defined by points
-            #if count % points == 0 and count > 0:
+            # if count % points == 0 and count > 0:
             #    # save data
             #    yield data
             #    # calculate and save fit
@@ -163,7 +177,7 @@ def rabi_pulse_length_sweep(
             #    )
 
         # execute the pulse sequence
-        #results = platform.execute_pulse_sequence(sequence, nshots=nshots)
+        # results = platform.execute_pulse_sequence(sequence, nshots=nshots)
         machine = platform.design.opx.manager.open_qm(platform.design.opx.config)
 
         # for debugging only
@@ -198,7 +212,7 @@ def rabi_pulse_length_sweep(
                 "iteration": iteration,
             }
             data.add_data_from_dict(r)
-        #count += 1
+        # count += 1
     print("Total execution time:", time.time() - start_time)
     yield data
     yield rabi_fit(
