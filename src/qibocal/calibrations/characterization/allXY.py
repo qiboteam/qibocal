@@ -361,9 +361,7 @@ def _add_gate_pair_pulses_to_sequence(
     platform: AbstractPlatform, gates, qubit, beta_param, sequence
 ):
 
-    pulse_duration = platform.settings["native_gates"]["single_qubit"][qubit]["RX"][
-        "duration"
-    ]
+    pulse_duration = platform.create_RX_pulse(qubit, start=0).duration
     # All gates have equal pulse duration
 
     sequenceDuration = 0
