@@ -94,14 +94,6 @@ def allXY(folder, routine, qubit, format):
         report_n += 1
 
     fig.add_hline(
-        y=-1,
-        line_width=2,
-        line_dash="dash",
-        line_color="grey",
-        row=1,
-        col=1,
-    )
-    fig.add_hline(
         y=0,
         line_width=2,
         line_dash="dash",
@@ -185,14 +177,6 @@ def allXY_drag_pulse_tuning(folder, routine, qubit, format):
                 )
         report_n += 1
 
-    fig.add_hline(
-        y=-1,
-        line_width=2,
-        line_dash="dash",
-        line_color="grey",
-        row=1,
-        col=1,
-    )
     fig.add_hline(
         y=0,
         line_width=2,

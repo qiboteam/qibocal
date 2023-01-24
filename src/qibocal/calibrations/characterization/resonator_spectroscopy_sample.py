@@ -50,7 +50,7 @@ def get_noise(background, platform, ro_pulse, qubit, sequence):
     noise = 0
     for b_freq in background:
         ro_pulse.frequency = b_freq
-        msr = platform.execute_pulse_sequence(sequence)[ro_pulse.serial][0]
+        msr = platform.execute_pulse_sequence(sequence)[ro_pulse.serial].msr.mean()
         noise += msr
     return noise / len(background)
 
@@ -95,7 +95,8 @@ def scan_level(
     freq = best_f
     for _ in range(max_runs):
         ro_pulse.frequency = freq
-        msr, phase, i, q = platform.execute_pulse_sequence(sequence)[ro_pulse.serial]
+        result = platform.execute_pulse_sequence(sequence)[ro_pulse.serial]
+        msr = result.msr.mean()
         if abs(snr(msr, noise)) >= thr:
             msr1 = msr
             if platform.resonator_type == "3D":
@@ -103,9 +104,15 @@ def scan_level(
                 best_msr = -best_msr
             if msr < best_msr:
                 best_f, best_msr = freq, msr1
-                return best_f, best_msr, phase, i, q
+                return (
+                    best_f,
+                    best_msr,
+                    result.phase.mean(),
+                    result.i.mean(),
+                    result.q.mean(),
+                )
         freq = choose_freq(best_f, span, resolution)
-    return best_f, best_msr, phase, i, q
+    return best_f, best_msr, result.phase, result.i, result.q
 
 
 def scan_small(best_f, best_msr, span, resolution, platform, ro_pulse, qubit, sequence):
@@ -134,14 +141,15 @@ def scan_small(best_f, best_msr, span, resolution, platform, ro_pulse, qubit, se
     for s in scan:
         freq = start_f + s
         ro_pulse.frequency = freq
-        msr, phase, i, q = platform.execute_pulse_sequence(sequence)[ro_pulse.serial]
+        result = platform.execute_pulse_sequence(sequence)[ro_pulse.serial]
+        msr = result.msr.mean()
         msr1 = msr
         if platform.resonator_type == "3D":
             msr = -msr
             best_msr = -best_msr
         if msr < best_msr:
             best_f, best_msr = freq, msr1
-    return best_f, best_msr, phase, i, q
+    return best_f, best_msr, result.phase.mean(), result.i.mean(), result.q.mean()
 
 
 @plot("Frequency vs Attenuation", frequency_attenuation)
@@ -197,7 +205,6 @@ def resonator_punchout_sample(
         opt_snr = 0
         for k, att in enumerate(attenuation_range):
             platform.set_attenuation(qubit, att)
-
             background = [best_f + 1e7, best_f - 1e7]
             noise = get_noise(background, platform, ro_pulse, qubit, sequence)
             best_msr = noise

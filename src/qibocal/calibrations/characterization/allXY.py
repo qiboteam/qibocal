@@ -100,7 +100,7 @@ def allXY(
 
             # retrieve the results for every qubit
             for ro_pulse in ro_pulses.values():
-                r = results[ro_pulse.serial].to_dict(probability=True)
+                r = results[ro_pulse.serial].to_dict_probability()
                 # store the results
                 r.update(
                     {
@@ -193,7 +193,7 @@ def allXY_drag_pulse_tuning(
 
                 # retrieve the results for every qubit
                 for ro_pulse in ro_pulses.values():
-                    r = results[ro_pulse.serial].to_dict(probability=True)
+                    r = results[ro_pulse.serial].to_dict_probability()
                     # store the results
                     r.update(
                         {
@@ -340,10 +340,10 @@ def drag_pulse_tuning(
                 r2 = result2[ro_pulse.serial]
                 # store the results
                 r = {
-                    "MSR[V]": r1.msr().mean() - r2.msr().mean(),
+                    "MSR[V]": r1.msr.mean() - r2.msr.mean(),
                     "i[V]": r1.i.mean() - r2.i.mean(),
                     "q[V]": r1.q.mean() - r2.q.mean(),
-                    "phase[rad]": r1.phase().mean() - r2.phase().mean(),
+                    "phase[rad]": r1.phase.mean() - r2.phase.mean(),
                     "beta_param[dimensionless]": beta_param,
                     "qubit": ro_pulse.qubit,
                     "iteration": iteration,
