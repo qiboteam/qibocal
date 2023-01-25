@@ -103,7 +103,7 @@ def resonator_spectroscopy(
                 # average msr, phase, i and q over the number of shots defined in the runcard
                 result = results[ro_pulses[qubit].serial]
                 # store the results
-                r = result.to_dict()
+                r = result.to_dict(average=False)
                 r.update(
                     {
                         "frequency[Hz]": delta_frequency_range
@@ -203,7 +203,7 @@ def resonator_spectroscopy(
             for qubit, ro_pulse in ro_pulses.items():
                 # average msr, phase, i and q over the number of shots defined in the runcard
                 result = results[ro_pulse.serial]
-                r = result.to_dict()
+                r = result.to_dict(average=False)
                 # store the results
                 r.update(
                     {
@@ -604,7 +604,7 @@ def dispersive_shift(
                     r.update(
                         {
                             "frequency[Hz]": ro_pulses[qubit].frequency,
-                            "qubit": qubit,
+                            "qubit": ro_pulse.qubit,
                             "iteration": iteration,
                         }
                     )

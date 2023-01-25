@@ -116,7 +116,7 @@ def flipping(
                 r.update(
                     {
                         "flips[dimensionless]": flips,
-                        "qubit": qubit,
+                        "qubit": ro_pulse.qubit,
                         "iteration": iteration,
                     }
                 )
