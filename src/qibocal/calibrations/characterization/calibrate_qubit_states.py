@@ -1,5 +1,3 @@
-import time
-
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
@@ -68,9 +66,7 @@ def calibrate_qubit_states(
     data = DataUnits(name="data", options=["qubit", "iteration", "state"])
 
     # execute the first pulse sequence
-    start_time = time.time()
     state0_results = platform.execute_pulse_sequence(state0_sequence, nshots=nshots)
-    print("State0 run time:", time.time() - start_time)
 
     # retrieve and store the results for every qubit
     for ro_pulse in ro_pulses.values():
@@ -83,12 +79,9 @@ def calibrate_qubit_states(
             }
         )
         data.add_data_from_dict(r)
-    print("State0 saving time:", time.time() - start_time)
 
     # execute the second pulse sequence
-    start_time = time.time()
     state1_results = platform.execute_pulse_sequence(state1_sequence, nshots=nshots)
-    print("State1 time:", time.time() - start_time)
 
     # retrieve and store the results for every qubit
     for ro_pulse in ro_pulses.values():
@@ -101,12 +94,9 @@ def calibrate_qubit_states(
             }
         )
         data.add_data_from_dict(r)
-    print("State1 saving time:", time.time() - start_time)
 
     # finally, save the remaining data and the fits
     yield data
-    start_time = time.time()
     yield calibrate_qubit_states_fit(
         data, x="i[V]", y="q[V]", nshots=nshots, qubits=qubits
     )
-    print("Fitting time:", time.time() - start_time)
