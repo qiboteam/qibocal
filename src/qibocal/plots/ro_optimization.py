@@ -400,7 +400,21 @@ def ro_amplitude(folder, routine, qubit, format):
         scaleanchor="x",
         scaleratio=1,
     )
-    return fig
+
+    # Plot the fidelity as a function of frequency
+    fig_fidelity = go.Figure()
+
+    fig_fidelity.add_trace(
+        go.Scatter(x=data_fit.df["delta_amplitude"], y=data_fit.df["fidelity"])
+    )
+    fig_fidelity.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="delta amplitude (dimensionless)",
+        yaxis_title="fidelity (ratio)",
+    )
+
+    return [fig, fig_fidelity]
 
 
 def ro_duration(folder, routine, qubit, format):
@@ -586,4 +600,18 @@ def ro_duration(folder, routine, qubit, format):
         scaleanchor="x",
         scaleratio=1,
     )
-    return fig
+
+    # Plot the fidelity as a function of frequency
+    fig_fidelity = go.Figure()
+
+    fig_fidelity.add_trace(
+        go.Scatter(x=data_fit.df["delta_duration"], y=data_fit.df["fidelity"])
+    )
+    fig_fidelity.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="delta duration (ns)",
+        yaxis_title="fidelity (ratio)",
+    )
+
+    return [fig, fig_fidelity]
