@@ -346,7 +346,7 @@ def resonator_punchout(
                     len(attenuation_range)
                     * list(delta_frequency_range + ro_pulse.frequency)
                 ).flatten()
-                r = result.to_dict()
+                r = result.to_dict(average=False)
                 r.update(
                     {
                         "frequency[Hz]": freqs,
@@ -468,7 +468,7 @@ def resonator_spectroscopy_flux(
                     * list(delta_frequency_range + ro_pulses[qubit].frequency)
                 ).flatten()
                 # store the results
-                r = result.to_dict()
+                r = result.to_dict(average=False)
                 r.update(
                     {
                         "frequency[Hz]": freqs,

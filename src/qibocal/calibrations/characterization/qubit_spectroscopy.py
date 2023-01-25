@@ -111,7 +111,7 @@ def qubit_spectroscopy(
             for qubit, ro_pulse in ro_pulses.items():
                 # average msr, phase, i and q over the number of shots defined in the runcard
                 result = results[ro_pulse.serial]
-                r = result.to_dict()
+                r = result.to_dict(average=False)
                 # store the results
                 r.update(
                     {
@@ -203,7 +203,7 @@ def qubit_spectroscopy(
             for qubit, ro_pulse in ro_pulses.items():
                 # average msr, phase, i and q over the number of shots defined in the runcard
                 result = results[ro_pulse.serial]
-                r = result.to_dict()
+                r = result.to_dict(average=False)
                 # store the results
                 r.update(
                     {
@@ -363,7 +363,7 @@ def qubit_spectroscopy_flux(
                     len(delta_bias_range)
                     * list(delta_frequency_range + qd_pulses[qubit].frequency)
                 ).flatten()
-                r = result.to_dict()
+                r = result.to_dict(average=False)
                 r.update(
                     {
                         "frequency[Hz]": freqs,
