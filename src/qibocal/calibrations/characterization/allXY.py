@@ -100,15 +100,15 @@ def allXY(
 
             # retrieve the results for every qubit
             for ro_pulse in ro_pulses.values():
-                r = results[ro_pulse.serial].to_dict_probability(state=0)
+                z_proj = 2 * results[ro_pulse.serial].ground_state_probability - 1
                 # store the results
-                r.update(
-                    {
-                        "gateNumber": gateNumber,
-                        "qubit": ro_pulse.qubit,
-                        "iteration": iteration,
-                    }
-                )
+                r = {
+                    "probability": z_proj,
+                    "gateNumber": gateNumber,
+                    "beta_param": beta_param,
+                    "qubit": ro_pulse.qubit,
+                    "iteration": iteration,
+                }
                 data.add(r)
             count += 1
             gateNumber += 1
@@ -193,16 +193,15 @@ def allXY_drag_pulse_tuning(
 
                 # retrieve the results for every qubit
                 for ro_pulse in ro_pulses.values():
-                    r = results[ro_pulse.serial].to_dict_probability(state=0)
+                    z_proj = 2 * results[ro_pulse.serial].ground_state_probability - 1
                     # store the results
-                    r.update(
-                        {
-                            "gateNumber": gateNumber,
-                            "beta_param": beta_param,
-                            "qubit": ro_pulse.qubit,
-                            "iteration": iteration,
-                        }
-                    )
+                    r = {
+                        "probability": z_proj,
+                        "gateNumber": gateNumber,
+                        "beta_param": beta_param,
+                        "qubit": ro_pulse.qubit,
+                        "iteration": iteration,
+                    }
                     data.add(r)
                 count += 1
                 gateNumber += 1
