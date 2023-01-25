@@ -155,7 +155,7 @@ def scan_small(best_f, best_msr, span, resolution, platform, ro_pulse, qubit, se
 @plot("Frequency vs Attenuation", frequency_attenuation)
 def resonator_punchout_sample(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     min_att,
     max_att,
     step_att,
@@ -170,7 +170,7 @@ def resonator_punchout_sample(
 
     Args:
         platform (AbstractPlatform): Platform the experiment is executed on.
-        qubit (int): qubit coupled to the resonator that we are probing.
+        qubits (dict): Dict of target Qubit objects to perform the action
         min_att (int): minimum attenuation value where the experiment starts. Less attenuation -> more power.
         max_att (int): maximum attenuation reached in the scan.
         step_att (int): change in attenuation after every step.
@@ -260,7 +260,7 @@ def resonator_punchout_sample(
 @plot("Frequency vs Current", frequency_current_flux)
 def resonator_flux_sample(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     current_min,
     current_max,
     current_step,
@@ -277,7 +277,7 @@ def resonator_flux_sample(
 
     Args:
         platform (AbstractPlatform): Platform the experiment is executed on.
-        qubit (int): qubit coupled to the resonator that we are probing.
+        qubits (dict): Dict of target Qubit objects to perform the action
         current_min (float): minimum current value where the experiment starts.
         current_max (float): maximum current reached in the scan.
         current_step (float): change in current after every step.

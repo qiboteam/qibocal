@@ -11,7 +11,7 @@ from qibocal.fitting.methods import ramsey_fit
 @plot("MSR vs Time", plots.time_msr)
 def ramsey_frequency_detuned(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     delay_between_pulses_start,
     delay_between_pulses_end,
     delay_between_pulses_step,
@@ -33,7 +33,7 @@ def ramsey_frequency_detuned(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubits (list): List of target qubits to perform the action
+        qubits (dict): Dict of target Qubit objects to perform the action
         delay_between_pulses_start (int): Initial time delay between drive pulses in the Ramsey sequence
         delay_between_pulses_end (list): List of maximum time delays between drive pulses in the Ramsey sequence
         delay_between_pulses_step (int): Scan range step for the time delay between drive pulses in the Ramsey sequence
@@ -230,7 +230,7 @@ def ramsey_frequency_detuned(
 @plot("MSR vs Time", plots.time_msr)
 def ramsey(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     delay_between_pulses_start,
     delay_between_pulses_end,
     delay_between_pulses_step,
@@ -245,7 +245,7 @@ def ramsey(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubits (list): List of target qubits to perform the action
+        qubits (dict): Dict of target Qubit objects to perform the action
         delay_between_pulses_start (int): Initial time delay between drive pulses in the Ramsey sequence
         delay_between_pulses_end (list): Maximum time delay between drive pulses in the Ramsey sequence
         delay_between_pulses_step (int): Scan range step for the time delay between drive pulses in the Ramsey sequence

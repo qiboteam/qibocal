@@ -11,7 +11,7 @@ from qibocal.fitting.methods import rabi_fit
 @plot("MSR vs Time", plots.time_msr_phase)
 def rabi_pulse_length(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     pulse_duration_start,
     pulse_duration_end,
     pulse_duration_step,
@@ -25,7 +25,7 @@ def rabi_pulse_length(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubits (list): List of target qubits to perform the action
+        qubits (dict): Dict of target Qubit objects to perform the action
         pulse_duration_start (int): Initial drive pulse duration for the Rabi experiment
         pulse_duration_end (int): Maximum drive pulse duration for the Rabi experiment
         pulse_duration_step (int): Scan range step for the drive pulse duration for the Rabi experiment
@@ -140,7 +140,7 @@ def rabi_pulse_length(
 @plot("MSR vs Gain", plots.gain_msr_phase)
 def rabi_pulse_gain(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     pulse_gain_start,
     pulse_gain_end,
     pulse_gain_step,
@@ -154,7 +154,7 @@ def rabi_pulse_gain(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubits (list): List of target qubits to perform the action
+        qubits (dict): Dict of target Qubit objects to perform the action
         pulse_gain_start (int): Initial drive pulse gain for the Rabi experiment
         pulse_gain_end (int): Maximum drive pulse gain for the Rabi experiment
         pulse_gain_step (int): Scan range step for the drive pulse gain for the Rabi experiment
@@ -268,7 +268,7 @@ def rabi_pulse_gain(
 @plot("MSR vs Amplitude", plots.amplitude_msr_phase)
 def rabi_pulse_amplitude(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     pulse_amplitude_start,
     pulse_amplitude_end,
     pulse_amplitude_step,
@@ -282,7 +282,7 @@ def rabi_pulse_amplitude(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubits (list): List of target qubits to perform the action
+        qubits (dict): Dict of target Qubit objects to perform the action
         pulse_amplitude_start (int): Initial drive pulse amplitude for the Rabi experiment
         pulse_amplitude_end (int): Maximum drive pulse amplitude for the Rabi experiment
         pulse_amplitude_step (int): Scan range step for the drive pulse amplitude for the Rabi experiment
@@ -396,7 +396,7 @@ def rabi_pulse_amplitude(
 @plot("MSR vs length and gain", plots.duration_gain_msr_phase)
 def rabi_pulse_length_and_gain(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     pulse_duration_start,
     pulse_duration_end,
     pulse_duration_step,
@@ -413,7 +413,7 @@ def rabi_pulse_length_and_gain(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubits (list): List of target qubits to perform the action
+        qubits (dict): Dict of target Qubit objects to perform the action
         pulse_duration_start (int): Initial drive pulse duration for the Rabi experiment
         pulse_duration_end (int): Maximum drive pulse duration for the Rabi experiment
         pulse_duration_step (int): Scan range step for the drive pulse duration for the Rabi experiment
@@ -503,7 +503,7 @@ def rabi_pulse_length_and_gain(
 @plot("MSR vs length and amplitude", plots.duration_amplitude_msr_phase)
 def rabi_pulse_length_and_amplitude(
     platform,
-    qubits: list,
+    qubits: dict,
     pulse_duration_start,
     pulse_duration_end,
     pulse_duration_step,
