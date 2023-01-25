@@ -35,11 +35,12 @@ class ActionBuilder:
         self.backend, self.platform = self._allocate_backend(
             backend_name, platform_name, path, platform_runcard
         )
-        self.qubits = {
-            q: self.platform.qubits[q]
-            for q in self.runcard["qubits"]
-            if q in self.platform.qubits
-        }
+        self.qubits = self.runcard["qubits"]
+        #  {
+        #     q: self.platform.qubits[q]
+        #     for q in self.runcard["qubits"]
+        #     if q in self.platform.qubits
+        # }
         self.format = self.runcard["format"]
 
         # Saving runcard
