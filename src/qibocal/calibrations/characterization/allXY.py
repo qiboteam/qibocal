@@ -99,16 +99,16 @@ def allXY(
             results = platform.execute_pulse_sequence(sequence)
 
             # retrieve the results for every qubit
-            for qubit in qubits:
-                prob = 1 - 2 * results[ro_pulses[qubit].serial].probability
+            for ro_pulse in ro_pulses.values():
+                z_proj = 2 * results[ro_pulse.serial].ground_state_probability - 1
                 # store the results
-                r.update(
-                    {
-                        "gateNumber": gateNumber,
-                        "qubit": ro_pulse.qubit,
-                        "iteration": iteration,
-                    }
-                )
+                r = {
+                    "probability": z_proj,
+                    "gateNumber": gateNumber,
+                    "beta_param": beta_param,
+                    "qubit": ro_pulse.qubit,
+                    "iteration": iteration,
+                }
                 data.add(r)
             count += 1
     # finally, save the remaining data
@@ -191,17 +191,16 @@ def allXY_drag_pulse_tuning(
                 results = platform.execute_pulse_sequence(sequence)
 
                 # retrieve the results for every qubit
-                for qubit in qubits:
-                    prob = 1 - 2 * results[ro_pulses[qubit].serial].probability
+                for ro_pulse in ro_pulses.values():
+                    z_proj = 2 * results[ro_pulse.serial].ground_state_probability - 1
                     # store the results
-                    r.update(
-                        {
-                            "gateNumber": gateNumber,
-                            "beta_param": beta_param,
-                            "qubit": ro_pulse.qubit,
-                            "iteration": iteration,
-                        }
-                    )
+                    r = {
+                        "probability": z_proj,
+                        "gateNumber": gateNumber,
+                        "beta_param": beta_param,
+                        "qubit": ro_pulse.qubit,
+                        "iteration": iteration,
+                    }
                     data.add(r)
                 count += 1
                 gateNumber += 1
@@ -364,7 +363,7 @@ def _add_gate_pair_pulses_to_sequence(
     platform: AbstractPlatform, gates, qubit, beta_param, sequence
 ):
 
-    pulse_duration = platform.create_RX_pulse(qubit).duration
+    pulse_duration = platform.create_RX_pulse(qubit, start=0).duration
     # All gates have equal pulse duration
 
     sequenceDuration = 0

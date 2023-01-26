@@ -115,16 +115,14 @@ def rabi_pulse_length(
 
             for ro_pulse in ro_pulses.values():
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                result = results[ro_pulses[qubit].serial]
-                r = {
-                    "MSR[V]": np.mean(result.MSR),
-                    "i[V]": np.mean(result.I),
-                    "q[V]": np.mean(result.Q),
-                    "phase[rad]": np.mean(result.phase),
-                    "time[ns]": duration,
-                    "qubit": qubit,
-                    "iteration": iteration,
-                }
+                r = results[ro_pulse.serial].to_dict()
+                r.update(
+                    {
+                        "time[ns]": duration,
+                        "qubit": ro_pulse.qubit,
+                        "iteration": iteration,
+                    }
+                )
                 data.add(r)
             count += 1
     yield data
@@ -361,12 +359,12 @@ def rabi_pulse_amplitude(
             for qubit in qubits:
                 # average msr, phase, i and q over the number of shots defined in the runcard
                 result = results[ro_pulses[qubit].serial]
-                r = result.to_dict()
+                r = result.to_dict(average=False)
                 r.update(
                     {
                         "amplitude[dimensionless]": qd_pulse_amplitude_range,
-                        "qubit": len(result) * [qubit],
-                        "iteration": len(result) * [iteration],
+                        "qubit": len(qd_pulse_amplitude_range) * [qubit],
+                        "iteration": len(qd_pulse_amplitude_range) * [iteration],
                     }
                 )
                 data.add_data_from_dict(r)

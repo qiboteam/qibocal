@@ -157,7 +157,7 @@ def ramsey_frequency_detuned(
                         {
                             "wait[ns]": wait,
                             "t_max[ns]": t_max,
-                            "qubit": qubit,
+                            "qubit": ro_pulse.qubit,
                             "iteration": iteration,
                         }
                     )
@@ -306,10 +306,6 @@ def ramsey(
         delay_between_pulses_step,
     )
 
-    qubit_freqs = {}
-    for qubit in qubits:
-        qubit_freqs[qubit] = RX90_pulses1[qubit].frequency
-
     sampling_rate = platform.sampling_rate
 
     # create a DataUnits object to store the results,
@@ -358,17 +354,15 @@ def ramsey(
 
             for ro_pulse in ro_pulses.values():
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                result = results[ro_pulses[qubit].serial]
-                r = {
-                    "MSR[V]": np.mean(result.MSR),
-                    "i[V]": np.mean(result.I),
-                    "q[V]": np.mean(result.Q),
-                    "phase[rad]": np.mean(result.phase),
-                    "wait[ns]": wait,
-                    "t_max[ns]": delay_between_pulses_end,
-                    "qubit": qubit,
-                    "iteration": iteration,
-                }
+                r = results[ro_pulse.serial].to_dict()
+                r.update(
+                    {
+                        "wait[ns]": wait,
+                        "t_max[ns]": delay_between_pulses_end,
+                        "qubit": ro_pulse.qubit,
+                        "iteration": iteration,
+                    }
+                )
                 data.add(r)
             count += 1
     yield data

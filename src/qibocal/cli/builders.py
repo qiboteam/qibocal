@@ -167,13 +167,12 @@ class ActionBuilder:
 
         try:
             data_fit = Data.load_data(self.folder, "data", routine, self.format, "fits")
+            data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
         except FileNotFoundError:
             return None
 
-        params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict("index")[0]
+        params = data_fit.df.to_dict("index")[qubit - 1]
         settings = load_yaml(f"{self.folder}/new_platform.yml")
-
-        params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict("index")[0]
         for param in params:
             if param in list(self.qubits[qubit].__annotations__.keys()):
                 setattr(self.qubits[qubit], param, params[param])

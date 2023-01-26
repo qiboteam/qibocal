@@ -1,5 +1,3 @@
-import time
-
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
@@ -68,51 +66,37 @@ def calibrate_qubit_states(
     data = DataUnits(name="data", options=["qubit", "iteration", "state"])
 
     # execute the first pulse sequence
-    start_time = time.time()
     state0_results = platform.execute_pulse_sequence(state0_sequence, nshots=nshots)
-    print("State0 run time:", time.time() - start_time)
 
     # retrieve and store the results for every qubit
-    start_time = time.time()
-    for qubit in qubits:
-        result = state0_results[ro_pulses[qubit].serial]
-        r = {
-            "MSR[V]": result.MSR,
-            "i[V]": result.I,
-            "q[V]": result.Q,
-            "phase[rad]": result.phase,
-            "qubit": [qubit] * nshots,
-            "iteration": np.arange(nshots),
-            "state": [0] * nshots,
-        }
+    for ro_pulse in ro_pulses.values():
+        r = state0_results[ro_pulse.serial].to_dict(average=False)
+        r.update(
+            {
+                "qubit": [ro_pulse.qubit] * nshots,
+                "iteration": np.arange(nshots),
+                "state": [0] * nshots,
+            }
+        )
         data.add_data_from_dict(r)
-    print("State0 saving time:", time.time() - start_time)
 
     # execute the second pulse sequence
-    start_time = time.time()
     state1_results = platform.execute_pulse_sequence(state1_sequence, nshots=nshots)
-    print("State1 time:", time.time() - start_time)
 
     # retrieve and store the results for every qubit
-    start_time = time.time()
-    for qubit in qubits:
-        result = state1_results[ro_pulses[qubit].serial]
-        r = {
-            "MSR[V]": result.MSR,
-            "i[V]": result.I,
-            "q[V]": result.Q,
-            "phase[rad]": result.phase,
-            "qubit": [qubit] * nshots,
-            "iteration": np.arange(nshots),
-            "state": [1] * nshots,
-        }
+    for ro_pulse in ro_pulses.values():
+        r = state1_results[ro_pulse.serial].to_dict(average=False)
+        r.update(
+            {
+                "qubit": [ro_pulse.qubit] * nshots,
+                "iteration": np.arange(nshots),
+                "state": [1] * nshots,
+            }
+        )
         data.add_data_from_dict(r)
-    print("State1 saving time:", time.time() - start_time)
 
     # finally, save the remaining data and the fits
     yield data
-    start_time = time.time()
     yield calibrate_qubit_states_fit(
         data, x="i[V]", y="q[V]", nshots=nshots, qubits=qubits
     )
-    print("Fitting time:", time.time() - start_time)
