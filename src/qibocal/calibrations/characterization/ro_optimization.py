@@ -92,7 +92,10 @@ def ro_frequency(
     )
 
     frequency_sweeper = Sweeper(
-        "frequency", delta_frequency_range, [ro_pulses[qubit] for qubit in qubits]
+        "frequency",
+        delta_frequency_range,
+        [ro_pulses[qubit] for qubit in qubits],
+        wait_time=platform.options["relaxation_time"],
     )
 
     # execute the first pulse sequence
@@ -270,7 +273,10 @@ def ro_amplitude(
     )
 
     amplitude_sweeper = Sweeper(
-        "amplitude", delta_amplitude_range, [ro_pulses[qubit] for qubit in qubits]
+        "amplitude",
+        delta_amplitude_range,
+        [ro_pulses[qubit] for qubit in qubits],
+        wait_time=platform.options["relaxation_time"],
     )
 
     # execute the first pulse sequence
@@ -450,7 +456,10 @@ def ro_duration_sweep(
     )
 
     duration_sweeper = Sweeper(
-        "duration", delta_duration_range, [ro_pulses[qubit] for qubit in qubits]
+        "duration",
+        delta_duration_range,
+        [ro_pulses[qubit] for qubit in qubits],
+        wait_time=platform.options["relaxation_time"],
     )
 
     # execute the first pulse sequence
@@ -629,7 +638,10 @@ def ro_duration(
     )
 
     duration_sweeper = Sweeper(
-        "duration", delta_duration_range, [ro_pulses[qubit] for qubit in qubits]
+        "duration",
+        delta_duration_range,
+        [ro_pulses[qubit] for qubit in qubits],
+        wait_time=platform.options["relaxation_time"],
     )
 
     # retrieve and store the results for every qubit
