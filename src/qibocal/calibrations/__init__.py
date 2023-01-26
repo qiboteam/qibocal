@@ -10,4 +10,5 @@ from qibocal.calibrations.characterization.resonator_spectroscopy_sample import 
 from qibocal.calibrations.characterization.ro_optimization import *
 from qibocal.calibrations.characterization.spin_echo import *
 from qibocal.calibrations.characterization.t1 import *
+from qibocal.calibrations.characterization.twpa_fixedband import *
 from qibocal.calibrations.protocols.test import *

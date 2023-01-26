@@ -109,24 +109,26 @@ def ro_frequency(
     start_time = time.time()
     while any(result.in_progress for result in state0_results.values()) or True:
         for qubit in qubits:
-            result = state0_results[ro_pulses[qubit].serial]
-            r = {
-                "MSR[V]": result.MSR.flatten(),
-                "i[V]": result.I.flatten(),
-                "q[V]": result.Q.flatten(),
-                "phase[rad]": result.phase.flatten(),
-                "frequency[Hz]": [ro_pulses[qubit].frequency]
-                * nshots
-                * len(delta_frequency_range),
-                "delta_frequency[Hz]": np.repeat(
-                    np.vstack(delta_frequency_range).T, len(np.arange(nshots)), axis=0
-                ).flatten(),
-                "qubit": [qubit] * nshots * len(delta_frequency_range),
-                "iteration": np.repeat(
-                    np.vstack(np.arange(nshots)).T, len(delta_frequency_range), axis=1
-                ).flatten(),  # Might be the other way depending on how is result happening. Axis=0 gives 123123 and axis=1 gives 1112233
-                "state": [0] * nshots * len(delta_frequency_range),
-            }
+            r = state0_results[ro_pulses[qubit].serial].to_dict(average=False)
+            r.update(
+                {
+                    "frequency[Hz]": [ro_pulses[qubit].frequency]
+                    * nshots
+                    * len(delta_frequency_range),
+                    "delta_frequency[Hz]": np.repeat(
+                        np.vstack(delta_frequency_range).T,
+                        len(np.arange(nshots)),
+                        axis=0,
+                    ).flatten(),
+                    "qubit": [qubit] * nshots * len(delta_frequency_range),
+                    "iteration": np.repeat(
+                        np.vstack(np.arange(nshots)).T,
+                        len(delta_frequency_range),
+                        axis=1,
+                    ).flatten(),  # Might be the other way depending on how is result happening. Axis=0 gives 123123 and axis=1 gives 1112233
+                    "state": [0] * nshots * len(delta_frequency_range),
+                }
+            )
             data.add_data_from_dict(r)
         print("State0 saving time:", time.time() - start_time)
         yield data
@@ -144,24 +146,26 @@ def ro_frequency(
     start_time = time.time()
     while any(result.in_progress for result in state1_results.values()) or True:
         for qubit in qubits:
-            result = state1_results[ro_pulses[qubit].serial]
-            r = {
-                "MSR[V]": result.MSR.flatten(),
-                "i[V]": result.I.flatten(),
-                "q[V]": result.Q.flatten(),
-                "phase[rad]": result.phase.flatten(),
-                "frequency[Hz]": [ro_pulses[qubit].frequency]
-                * nshots
-                * len(delta_frequency_range),
-                "delta_frequency[Hz]": np.repeat(
-                    np.vstack(delta_frequency_range).T, len(np.arange(nshots)), axis=0
-                ).flatten(),
-                "qubit": [qubit] * nshots * len(delta_frequency_range),
-                "iteration": np.repeat(
-                    np.vstack(np.arange(nshots)).T, len(delta_frequency_range), axis=1
-                ).flatten(),  # Might be the other way depending on how is result happening. Axis=0 gives 123123 and axis=1 gives 1112233
-                "state": [1] * nshots * len(delta_frequency_range),
-            }
+            r = state1_results[ro_pulses[qubit].serial].to_dict(average=False)
+            r.update(
+                {
+                    "frequency[Hz]": [ro_pulses[qubit].frequency]
+                    * nshots
+                    * len(delta_frequency_range),
+                    "delta_frequency[Hz]": np.repeat(
+                        np.vstack(delta_frequency_range).T,
+                        len(np.arange(nshots)),
+                        axis=0,
+                    ).flatten(),
+                    "qubit": [qubit] * nshots * len(delta_frequency_range),
+                    "iteration": np.repeat(
+                        np.vstack(np.arange(nshots)).T,
+                        len(delta_frequency_range),
+                        axis=1,
+                    ).flatten(),  # Might be the other way depending on how is result happening. Axis=0 gives 123123 and axis=1 gives 1112233
+                    "state": [1] * nshots * len(delta_frequency_range),
+                }
+            )
             data.add_data_from_dict(r)
         print("State1 saving time:", time.time() - start_time)
 
@@ -290,24 +294,26 @@ def ro_amplitude(
     start_time = time.time()
     while any(result.in_progress for result in state0_results.values()) or True:
         for qubit in qubits:
-            result = state0_results[ro_pulses[qubit].serial]
-            r = {
-                "MSR[V]": result.MSR.flatten(),
-                "i[V]": result.I.flatten(),
-                "q[V]": result.Q.flatten(),
-                "phase[rad]": result.phase.flatten(),
-                "amplitude[dimensionless]": [ro_pulses[qubit].amplitude]
-                * nshots
-                * len(delta_amplitude_range),
-                "delta_amplitude[dimensionless]": np.repeat(
-                    np.vstack(delta_amplitude_range).T, len(np.arange(nshots)), axis=0
-                ).flatten(),
-                "qubit": [qubit] * nshots * len(delta_amplitude_range),
-                "iteration": np.repeat(
-                    np.vstack(np.arange(nshots)).T, len(delta_amplitude_range), axis=1
-                ).flatten(),  # Might be the other way depending on how is result happening. Axis=0 gives 123123 and axis=1 gives 1112233
-                "state": [0] * nshots * len(delta_amplitude_range),
-            }
+            r = state0_results[ro_pulses[qubit].serial].to_dict(average=False)
+            r.update(
+                {
+                    "amplitude[dimensionless]": [ro_pulses[qubit].amplitude]
+                    * nshots
+                    * len(delta_amplitude_range),
+                    "delta_amplitude[dimensionless]": np.repeat(
+                        np.vstack(delta_amplitude_range).T,
+                        len(np.arange(nshots)),
+                        axis=0,
+                    ).flatten(),
+                    "qubit": [qubit] * nshots * len(delta_amplitude_range),
+                    "iteration": np.repeat(
+                        np.vstack(np.arange(nshots)).T,
+                        len(delta_amplitude_range),
+                        axis=1,
+                    ).flatten(),  # Might be the other way depending on how is result happening. Axis=0 gives 123123 and axis=1 gives 1112233
+                    "state": [0] * nshots * len(delta_amplitude_range),
+                }
+            )
             data.add_data_from_dict(r)
         print("State0 saving time:", time.time() - start_time)
         yield data
@@ -325,24 +331,26 @@ def ro_amplitude(
     start_time = time.time()
     while any(result.in_progress for result in state1_results.values()) or True:
         for qubit in qubits:
-            result = state1_results[ro_pulses[qubit].serial]
-            r = {
-                "MSR[V]": result.MSR.flatten(),
-                "i[V]": result.I.flatten(),
-                "q[V]": result.Q.flatten(),
-                "phase[rad]": result.phase.flatten(),
-                "amplitude[dimensionless]": [ro_pulses[qubit].amplitude]
-                * nshots
-                * len(delta_amplitude_range),
-                "delta_amplitude[dimensionless]": np.repeat(
-                    np.vstack(delta_amplitude_range).T, len(np.arange(nshots)), axis=0
-                ).flatten(),
-                "qubit": [qubit] * nshots * len(delta_amplitude_range),
-                "iteration": np.repeat(
-                    np.vstack(np.arange(nshots)).T, len(delta_amplitude_range), axis=1
-                ).flatten(),  # Might be the other way depending on how is result happening. Axis=0 gives 123123 and axis=1 gives 1112233
-                "state": [1] * nshots * len(delta_amplitude_range),
-            }
+            r = state1_results[ro_pulses[qubit].serial].to_dict(average=False)
+            r.update(
+                {
+                    "amplitude[dimensionless]": [ro_pulses[qubit].amplitude]
+                    * nshots
+                    * len(delta_amplitude_range),
+                    "delta_amplitude[dimensionless]": np.repeat(
+                        np.vstack(delta_amplitude_range).T,
+                        len(np.arange(nshots)),
+                        axis=0,
+                    ).flatten(),
+                    "qubit": [qubit] * nshots * len(delta_amplitude_range),
+                    "iteration": np.repeat(
+                        np.vstack(np.arange(nshots)).T,
+                        len(delta_amplitude_range),
+                        axis=1,
+                    ).flatten(),  # Might be the other way depending on how is result happening. Axis=0 gives 123123 and axis=1 gives 1112233
+                    "state": [1] * nshots * len(delta_amplitude_range),
+                }
+            )
             data.add_data_from_dict(r)
         print("State1 saving time:", time.time() - start_time)
 
@@ -473,24 +481,26 @@ def ro_duration_sweep(
     start_time = time.time()
     while any(result.in_progress for result in state0_results.values()) or True:
         for qubit in qubits:
-            result = state0_results[ro_pulses[qubit].serial]
-            r = {
-                "MSR[V]": result.MSR.flatten(),
-                "i[V]": result.I.flatten(),
-                "q[V]": result.Q.flatten(),
-                "phase[rad]": result.phase.flatten(),
-                "duration[ns]": [ro_pulses[qubit].duration]
-                * nshots
-                * len(delta_duration_range),
-                "delta_duration[ns]": np.repeat(
-                    np.vstack(delta_duration_range).T, len(np.arange(nshots)), axis=0
-                ).flatten(),
-                "qubit": [qubit] * nshots * len(delta_duration_range),
-                "iteration": np.repeat(
-                    np.vstack(np.arange(nshots)).T, len(delta_duration_range), axis=1
-                ).flatten(),  # Might be the other way depending on how is result happening. Axis=0 gives 123123 and axis=1 gives 1112233
-                "state": [0] * nshots * len(delta_duration_range),
-            }
+            r = state0_results[ro_pulses[qubit].serial].to_dict(average=False)
+            r.update(
+                {
+                    "duration[ns]": [ro_pulses[qubit].duration]
+                    * nshots
+                    * len(delta_duration_range),
+                    "delta_duration[ns]": np.repeat(
+                        np.vstack(delta_duration_range).T,
+                        len(np.arange(nshots)),
+                        axis=0,
+                    ).flatten(),
+                    "qubit": [qubit] * nshots * len(delta_duration_range),
+                    "iteration": np.repeat(
+                        np.vstack(np.arange(nshots)).T,
+                        len(delta_duration_range),
+                        axis=1,
+                    ).flatten(),  # Might be the other way depending on how is result happening. Axis=0 gives 123123 and axis=1 gives 1112233
+                    "state": [0] * nshots * len(delta_duration_range),
+                }
+            )
             data.add_data_from_dict(r)
         print("State0 saving time:", time.time() - start_time)
         yield data
@@ -508,24 +518,26 @@ def ro_duration_sweep(
     start_time = time.time()
     while any(result.in_progress for result in state1_results.values()) or True:
         for qubit in qubits:
-            result = state1_results[ro_pulses[qubit].serial]
-            r = {
-                "MSR[V]": result.MSR.flatten(),
-                "i[V]": result.I.flatten(),
-                "q[V]": result.Q.flatten(),
-                "phase[rad]": result.phase.flatten(),
-                "duration[ns]": [ro_pulses[qubit].duration]
-                * nshots
-                * len(delta_duration_range),
-                "delta_duration[ns]": np.repeat(
-                    np.vstack(delta_duration_range).T, len(np.arange(nshots)), axis=0
-                ).flatten(),
-                "qubit": [qubit] * nshots * len(delta_duration_range),
-                "iteration": np.repeat(
-                    np.vstack(np.arange(nshots)).T, len(delta_duration_range), axis=1
-                ).flatten(),  # Might be the other way depending on how is result happening. Axis=0 gives 123123 and axis=1 gives 1112233
-                "state": [1] * nshots * len(delta_duration_range),
-            }
+            r = state1_results[ro_pulses[qubit].serial].to_dict(average=False)
+            r.update(
+                {
+                    "duration[ns]": [ro_pulses[qubit].duration]
+                    * nshots
+                    * len(delta_duration_range),
+                    "delta_duration[ns]": np.repeat(
+                        np.vstack(delta_duration_range).T,
+                        len(np.arange(nshots)),
+                        axis=0,
+                    ).flatten(),
+                    "qubit": [qubit] * nshots * len(delta_duration_range),
+                    "iteration": np.repeat(
+                        np.vstack(np.arange(nshots)).T,
+                        len(delta_duration_range),
+                        axis=1,
+                    ).flatten(),  # Might be the other way depending on how is result happening. Axis=0 gives 123123 and axis=1 gives 1112233
+                    "state": [1] * nshots * len(delta_duration_range),
+                }
+            )
             data.add_data_from_dict(r)
         print("State1 saving time:", time.time() - start_time)
 
@@ -652,20 +664,18 @@ def ro_duration(
 
         state0_results = platform.execute_pulse_sequence(state0_sequence, nshots=nshots)
         for qubit in qubits:
-            result = state0_results[ro_pulses[qubit].serial]
-            r = {
-                "MSR[V]": result.MSR,
-                "i[V]": result.I,
-                "q[V]": result.Q,
-                "phase[rad]": result.phase,
-                "duration[ns]": [ro_pulses[qubit].duration] * nshots,
-                "delta_duration[ns]": [duration] * nshots,
-                "qubit": [qubit] * nshots,
-                "iteration": np.arange(
-                    nshots
-                ),  # Might be the other way depending on how is result happening. Axis=0 gives 123123 and axis=1 gives 1112233
-                "state": [0] * nshots,
-            }
+            r = state0_results[ro_pulses[qubit].serial].to_dict(average=False)
+            r.update(
+                {
+                    "duration[ns]": [ro_pulses[qubit].duration] * nshots,
+                    "delta_duration[ns]": [duration] * nshots,
+                    "qubit": [qubit] * nshots,
+                    "iteration": np.arange(
+                        nshots
+                    ),  # Might be the other way depending on how is result happening. Axis=0 gives 123123 and axis=1 gives 1112233
+                    "state": [0] * nshots,
+                }
+            )
             data.add_data_from_dict(r)
         print("State0 saving time:", time.time() - start_time)
         yield data
@@ -679,20 +689,18 @@ def ro_duration(
 
         state1_results = platform.execute_pulse_sequence(state1_sequence, nshots=nshots)
         for qubit in qubits:
-            result = state1_results[ro_pulses[qubit].serial]
-            r = {
-                "MSR[V]": result.MSR,
-                "i[V]": result.I,
-                "q[V]": result.Q,
-                "phase[rad]": result.phase,
-                "duration[ns]": [ro_pulses[qubit].duration] * nshots,
-                "delta_duration[ns]": [duration] * nshots,
-                "qubit": [qubit] * nshots,
-                "iteration": np.arange(
-                    nshots
-                ),  # Might be the other way depending on how is result happening. Axis=0 gives 123123 and axis=1 gives 1112233
-                "state": [1] * nshots,
-            }
+            r = state1_results[ro_pulses[qubit].serial].to_dict(average=False)
+            r.update(
+                {
+                    "duration[ns]": [ro_pulses[qubit].duration] * nshots,
+                    "delta_duration[ns]": [duration] * nshots,
+                    "qubit": [qubit] * nshots,
+                    "iteration": np.arange(
+                        nshots
+                    ),  # Might be the other way depending on how is result happening. Axis=0 gives 123123 and axis=1 gives 1112233
+                    "state": [1] * nshots,
+                }
+            )
             data.add_data_from_dict(r)
         print("State1 saving time:", time.time() - start_time)
 
