@@ -1042,7 +1042,7 @@ def calibrate_qubit_states_fit(data, x, y, nshots, qubits):
         # assignment_fidelity = 1/2 + (cum_distribution_state1[argmax] - cum_distribution_state0[argmax])/nshots/2
 
         results = {
-            "rotation_angle": (-rotation_angle * 360 / (2 * np.pi)) % 360,  # in degrees
+            "rotation_angle": rotation_angle,  # in degrees
             "threshold": threshold,
             "fidelity": fidelity,
             "assignment_fidelity": assignment_fidelity,

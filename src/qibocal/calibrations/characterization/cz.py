@@ -52,9 +52,9 @@ def tune_transition(
     if len(qubits) > 1:
         raise NotImplementedError
 
-    qubit = qubits[0]
-
     platform.reload_settings()
+
+    qubit = list(qubits.keys())[0]
 
     initialize_1 = platform.create_RX_pulse(qubit, start=0, relative_phase=0)
     initialize_2 = platform.create_RX_pulse(2, start=0, relative_phase=0)

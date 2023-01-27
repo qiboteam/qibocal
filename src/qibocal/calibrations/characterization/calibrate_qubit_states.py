@@ -8,7 +8,7 @@ from qibocal.decorators import plot
 from qibocal.fitting.methods import calibrate_qubit_states_fit
 
 
-@plot("Qubit States", plots.qubit_states)
+@plot("Qubit States", plots.calibrate_qubit_states)
 def calibrate_qubit_states(
     platform: AbstractPlatform,
     qubits: list,

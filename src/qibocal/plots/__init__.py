@@ -8,3 +8,4 @@ from qibocal.plots.ro_optimization import *
 from qibocal.plots.spectroscopies import *
 from qibocal.plots.spin_echo import *
 from qibocal.plots.t1 import *
+from qibocal.plots.twpa_fixedband import *
