@@ -148,7 +148,6 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame):
     report.info_dict["Number of qubits"] = len(experiment.data[0]["samples"][0])
     report.info_dict["Number of shots"] = len(experiment.data[0]["samples"])
     report.info_dict["runs"] = experiment.extract("depth", "samples", "count")[1][0]
-    print(df_aggr)
     report.info_dict["Fitting daviations"] = "".join(
         [
             "{}:{:.3f} ".format(key, df_aggr.loc["filter"]["perr"][key])

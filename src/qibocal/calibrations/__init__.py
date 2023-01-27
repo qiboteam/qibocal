@@ -9,6 +9,6 @@ from qibocal.calibrations.characterization.spin_echos import *
 from qibocal.calibrations.characterization.t1 import *
 
 # from qibocal.calibrations.protocols.correlatedrb import qqperform_correlatedrb
-from qibocal.calibrations.protocols.standardrb import standardrb
+# from qibocal.calibrations.protocols.standardrb import standardrb
 
 # from qibocal.calibrations.protocols.XIdrb import qqperform_XIdrb

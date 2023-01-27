@@ -1,0 +1,18 @@
+
+Executing a script for quantum hardware does not work:
+
+Make sure ``qibo`` and ``qibolab`` are up-to-date on your machine.
+    1. Go to qibo folder:
+        ``git checkout master``
+        ``git pull``
+        ``pip install -e .``
+
+    2. Go to qibolab
+        ``git checkout master``
+        ``git pull``
+        ``pip install -e .[tiiq]``
+
+Visit https://github.com/qiboteam/qrccluster/wiki/QPU-Status for checking which partition to take.
+For example, if the partition name is ``tii1q_b1``:
+    Write the partition name in the runcard, first line as ``platform: tii1q_b1```
+    Wirte the same name ``#SBATCH --partition=tii1q_b1`` in the .sh file which calles the runcard

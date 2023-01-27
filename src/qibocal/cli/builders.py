@@ -68,7 +68,11 @@ class singleActionParser:
                 getattr(data, f"to_{data_format}")(self.path)
 
 
-class RBsingleActionParser(singleActionParser):
+class niGSCactionParser(singleActionParser):
+    """ni = non interactive
+    GSC = gate set characterization
+    """
+
     def __init__(self, runcard, folder, name):
         super().__init__(runcard, folder, name)
 
@@ -82,13 +86,19 @@ class RBsingleActionParser(singleActionParser):
         self.depths = self.runcard["actions"][self.name]["depths"]
         self.runs = self.runcard["actions"][self.name]["runs"]
         self.nshots = self.runcard["actions"][self.name]["nshots"]
-        self.noise_params = self.runcard["actions"][self.name]["noise_params"]
 
         from qibocal.calibrations.protocols import noisemodels
 
-        self.noise_model = getattr(
-            noisemodels, self.runcard["actions"][self.name]["noise_model"]
-        )(*self.noise_params)
+        try:
+            self.noise_params = self.runcard["actions"][self.name]["noise_params"]
+        except KeyError:
+            self.noise_params = None
+        try:
+            self.noise_model = getattr(
+                noisemodels, self.runcard["actions"][self.name]["noise_model"]
+            )(*self.noise_params)
+        except:
+            self.noise_model = None
 
     def build(self):
         import qibocal.plots.gateset as gateset
@@ -237,7 +247,7 @@ class ActionBuilder:
 
         for action in self.runcard["actions"]:
             try:
-                parser = RBsingleActionParser(self.runcard, self.folder, action)
+                parser = niGSCactionParser(self.runcard, self.folder, action)
                 parser.build()
                 parser.execute(self.format, self.platform)
             # TODO: find a better way to choose between the two parsers
@@ -313,7 +323,7 @@ class ReportBuilder:
             if hasattr(calibrations, action):
                 routine = getattr(calibrations, action)
             elif hasattr(calibrations.protocols, action):
-                routine = RBsingleActionParser(self.runcard, self.path, action)
+                routine = niGSCactionParser(self.runcard, self.path, action)
                 routine.build()
             else:
                 raise_error(ValueError, f"Undefined action {action} in report.")

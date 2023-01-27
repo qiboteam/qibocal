@@ -1,0 +1,11 @@
+backend: qibolab (tii1q_b1)
+date: '2023-01-23'
+end-time: 09:10:57
+platform: tii1q_b1
+start-time: 09:09:29
+title: 2023-01-23-008-jadwiga-wilkens
+versions:
+  numpy: 1.23.4
+  qibo: 0.1.11.dev0
+  qibocal: 0.0.1.dev0
+  qibolab: 0.0.1.dev6

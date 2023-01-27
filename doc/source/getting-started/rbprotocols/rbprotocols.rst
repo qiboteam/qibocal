@@ -20,12 +20,12 @@ regarding the implementation of gates.
 For that the quantum device needs to be able to prepare a quantum state, modify this quantum state with gates,
 and in the end measure the outcome of the modulation of the quantum state.
 The survival probability of the ground state :math:`y(m)` dependent on the sequence length
-of the applied gates :math:`m` is modulated with the following exponential function:
+of the applied gates :math:`m`, modulated with the following exponential function:
 
 .. math::
     y_{\text{fit}}(m) = Ap^m+B,
 
-where :math:`A, B` are SPAM-constants absorbing the state preparation and measurement error.
+where :math:`A, B` are SPAM (state preparation and measurement)-error constants  absorbing the state preparation and measurement error.
 The base of the exponent :math:`p` is used to calculate the average gate fidelity :math:`F` as
 
 .. math::

@@ -168,32 +168,32 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame):
     return report.build()
 
 
-@plot("Randomized benchmarking", gateset.plot)
-def standardrb(
-    qubit: list,
-    depths: list,
-    runs: int,
-    nshots: int,
-    nqubits: int = None,
-    noise_model: str = None,
-    noise_params: list = None,
-):
-    # Check if noise should artificially be added.
-    if noise_model is not None:
-        # Get the wanted noise model class.
-        noise_model = getattr(noisemodels, noise_model)(noise_params)
-        # validation = Data("validation", quantities=["effective_depol"])
-        # validation.add({"effective_depol": theoretical_outcome(noise_model)})
-        # yield validation
-    # Initiate the circuit factory and the Experiment object.
-    factory = moduleFactory(nqubits, depths, runs, qubits=qubit)
-    experiment = moduleExperiment(factory, nshots, noisemodel=noise_model)
-    # Execute the experiment.
-    experiment.perform(experiment.execute)
-    data = Data("experiment_data")
-    data.df = experiment.dataframe
-    yield data
-    data_fit = Data("fit_plot")
-    post_processing_sequential(experiment)
-    data_fit.df = get_aggregational_data(experiment)
-    yield data_fit
+# @plot("Randomized benchmarking", gateset.plot)
+# def standardrb(
+#     qubit: list,
+#     depths: list,
+#     runs: int,
+#     nshots: int,
+#     nqubits: int = None,
+#     noise_model: str = None,
+#     noise_params: list = None,
+# ):
+#     # Check if noise should artificially be added.
+#     if noise_model is not None:
+#         # Get the wanted noise model class.
+#         noise_model = getattr(noisemodels, noise_model)(noise_params)
+#         # validation = Data("validation", quantities=["effective_depol"])
+#         # validation.add({"effective_depol": theoretical_outcome(noise_model)})
+#         # yield validation
+#     # Initiate the circuit factory and the Experiment object.
+#     factory = moduleFactory(nqubits, depths, runs, qubits=qubit)
+#     experiment = moduleExperiment(factory, nshots, noisemodel=noise_model)
+#     # Execute the experiment.
+#     experiment.perform(experiment.execute)
+#     data = Data("experiment_data")
+#     data.df = experiment.dataframe
+#     yield data
+#     data_fit = Data("fit_plot")
+#     post_processing_sequential(experiment)
+#     data_fit.df = get_aggregational_data(experiment)
+#     yield data_fit
