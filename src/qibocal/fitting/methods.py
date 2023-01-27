@@ -355,7 +355,7 @@ def ramsey_fit(
 
     .. math::
 
-        y = p_0 + p_1 sin \Big(2 \pi p_2 x + p_3 \Big) e^{-x p_4}.
+        y = p_0 + p_1 sin \Big(p_2 x + p_3 \Big) e^{-x p_4}.
 
     Args:
 
