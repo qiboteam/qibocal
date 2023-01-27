@@ -13,7 +13,7 @@ from qibocal.fitting.methods import lorentzian_fit
 @plot("MSR and Phase vs Resonator Frequency", plots.frequency_msr_phase)
 def resonator_spectroscopy(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     fast_width,
     fast_step,
     precision_width,
@@ -29,7 +29,7 @@ def resonator_spectroscopy(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubits (list): List of target qubits to perform the action
+        qubits (dict): List of target qubits to perform the action
         fast_width (int): Width frequency in HZ to perform the high resolution sweep
         fast_step (int): Step frequency in HZ for the high resolution sweep
         precision_width (int): Width frequency in HZ to perform the precision resolution sweep
@@ -250,7 +250,7 @@ def resonator_spectroscopy(
 )
 def resonator_punchout(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     freq_width,
     freq_step,
     min_att,
@@ -266,7 +266,7 @@ def resonator_punchout(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubits (list): List of target qubits to perform the action
+        qubits (dict): List of target qubits to perform the action
         freq_width (int): Width frequency in HZ to perform the spectroscopy sweep
         freq_step (int): Step frequency in HZ for the spectroscopy sweep
         min_att (int): Minimum value in db for the attenuation sweep
@@ -370,7 +370,7 @@ def resonator_punchout(
 )
 def resonator_spectroscopy_flux(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     freq_width,
     freq_step,
     current_width,
@@ -385,7 +385,7 @@ def resonator_spectroscopy_flux(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubits (list): List of target qubits to perform the action
+        qubits (dict): List of target qubits to perform the action
         freq_width (int): Width frequency in HZ to perform the spectroscopy sweep
         freq_step (int): Step frequency in HZ for the spectroscopy sweep
         current_width (float): Width current in A for the flux current sweep
@@ -488,7 +488,7 @@ def resonator_spectroscopy_flux(
                             {
                                 "frequency[Hz]": ro_pulses[qubit].frequency,
                                 "current[A]": current,
-                                "qubit": qubit,
+                                "qubit": ro_pulse.qubit,
                                 "fluxline": fluxline,
                                 "iteration": iteration,
                             }
@@ -502,7 +502,7 @@ def resonator_spectroscopy_flux(
 @plot("MSR and Phase vs Resonator Frequency", plots.dispersive_frequency_msr_phase)
 def dispersive_shift(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     freq_width,
     freq_step,
     software_averages=1,
@@ -514,7 +514,7 @@ def dispersive_shift(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubits (list): List of target qubits to perform the action
+        qubits (dict): List of target qubits to perform the action
         freq_width (int): Width frequency in HZ to perform the spectroscopy sweep
         freq_step (int): Step frequency in HZ for the spectroscopy sweep
         software_averages (int): Number of executions of the routine for averaging results
@@ -616,7 +616,7 @@ def dispersive_shift(
                     r.update(
                         {
                             "frequency[Hz]": ro_pulses[qubit].frequency,
-                            "qubit": qubit,
+                            "qubit": ro_pulse.qubit,
                             "iteration": iteration,
                         }
                     )

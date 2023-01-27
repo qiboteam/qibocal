@@ -36,7 +36,7 @@ gatelist = [
 @plot("Probability vs Gate Sequence", plots.allXY)
 def allXY(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     beta_param=None,
     software_averages=1,
     points=10,
@@ -50,7 +50,7 @@ def allXY(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubits (list): List of target qubits to perform the action
+        qubits (dict): Dict of target Qubit objects to perform the action
         beta_param (float): Drag pi pulse coefficient. If none, teh default shape defined in the runcard will be used.
         software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
@@ -100,15 +100,15 @@ def allXY(
 
             # retrieve the results for every qubit
             for ro_pulse in ro_pulses.values():
-                r = results[ro_pulse.serial].to_dict_probability(state=0)
+                z_proj = 2 * results[ro_pulse.serial].ground_state_probability - 1
                 # store the results
-                r.update(
-                    {
-                        "gateNumber": gateNumber,
-                        "qubit": ro_pulse.qubit,
-                        "iteration": iteration,
-                    }
-                )
+                r = {
+                    "probability": z_proj,
+                    "gateNumber": gateNumber,
+                    "beta_param": beta_param,
+                    "qubit": ro_pulse.qubit,
+                    "iteration": iteration,
+                }
                 data.add(r)
             count += 1
             gateNumber += 1
@@ -119,7 +119,7 @@ def allXY(
 @plot("Probability vs Gate Sequence", plots.allXY_drag_pulse_tuning)
 def allXY_drag_pulse_tuning(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     beta_start,
     beta_end,
     beta_step,
@@ -138,7 +138,7 @@ def allXY_drag_pulse_tuning(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubits (list): List of target qubits to perform the action
+        qubits (dict): Dict of target Qubit objects to perform the action
         beta_start (float): Initial drag pulse beta parameter
         beta_end (float): Maximum drag pulse beta parameter
         beta_step (float): Scan range step for the drag pulse beta parameter
@@ -193,16 +193,15 @@ def allXY_drag_pulse_tuning(
 
                 # retrieve the results for every qubit
                 for ro_pulse in ro_pulses.values():
-                    r = results[ro_pulse.serial].to_dict_probability(state=0)
+                    z_proj = 2 * results[ro_pulse.serial].ground_state_probability - 1
                     # store the results
-                    r.update(
-                        {
-                            "gateNumber": gateNumber,
-                            "beta_param": beta_param,
-                            "qubit": ro_pulse.qubit,
-                            "iteration": iteration,
-                        }
-                    )
+                    r = {
+                        "probability": z_proj,
+                        "gateNumber": gateNumber,
+                        "beta_param": beta_param,
+                        "qubit": ro_pulse.qubit,
+                        "iteration": iteration,
+                    }
                     data.add(r)
                 count += 1
                 gateNumber += 1
@@ -213,7 +212,7 @@ def allXY_drag_pulse_tuning(
 @plot("MSR vs beta parameter", plots.drag_pulse_tuning)
 def drag_pulse_tuning(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     beta_start,
     beta_end,
     beta_step,
@@ -227,7 +226,7 @@ def drag_pulse_tuning(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubits (list): List of target qubits to perform the action
+        qubits (dict): Dict of target Qubit objects to perform the action
         beta_start (float): Initial drag pulse beta parameter
         beta_end (float): Maximum drag pulse beta parameter
         beta_step (float): Scan range step for the drag pulse beta parameter

@@ -11,7 +11,7 @@ from qibocal.fitting.methods import flipping_fit
 @plot("MSR vs Flips", plots.flips_msr)
 def flipping(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     nflips_max,
     nflips_step,
     software_averages=1,
@@ -24,7 +24,7 @@ def flipping(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubits (list): List of target qubits to perform the action
+        qubits (dict): Dict of target Qubit objects to perform the action
         nflips_max (int): Maximum number of flips introduced in each sequence
         nflips_step (int): Scan range step for the number of flippings
         software_averages (int): Number of executions of the routine for averaging results
@@ -116,7 +116,7 @@ def flipping(
                 r.update(
                     {
                         "flips[dimensionless]": flips,
-                        "qubit": qubit,
+                        "qubit": ro_pulse.qubit,
                         "iteration": iteration,
                     }
                 )

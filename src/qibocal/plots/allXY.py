@@ -110,11 +110,20 @@ def allXY(folder, routine, qubit, format):
         col=1,
     )
 
+    fig.add_hline(
+        y=-1,
+        line_width=2,
+        line_dash="dash",
+        line_color="grey",
+        row=1,
+        col=1,
+    )
+
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Gate sequence number",
-        yaxis_title="Z projection probability of qubit state |o>",
+        yaxis_title="Expectation value of Z",
     )
     return fig
 
@@ -194,11 +203,20 @@ def allXY_drag_pulse_tuning(folder, routine, qubit, format):
         col=1,
     )
 
+    fig.add_hline(
+        y=-1,
+        line_width=2,
+        line_dash="dash",
+        line_color="grey",
+        row=1,
+        col=1,
+    )
+
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Gate sequence number",
-        yaxis_title="Z projection probability of qubit state |o>",
+        yaxis_title="Expectation value of Z",
     )
     return fig
 
