@@ -13,7 +13,7 @@ from qibocal.fitting.methods import lorentzian_fit
 @plot("MSR and Phase vs Qubit Drive Frequency", plots.frequency_msr_phase)
 def qubit_spectroscopy(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     drive_amplitude,
     fast_width,
     fast_step,
@@ -30,7 +30,7 @@ def qubit_spectroscopy(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubits (list): List of target qubits to perform the action
+        qubits (dict): Dict of target Qubit objects to perform the action
         fast_start (int): Initial frequency in HZ to perform the qubit fast sweep
         fast_width (int): Width frequency in HZ to perform the high resolution sweep
         fast_step (int): Step frequency in HZ for the high resolution sweep
@@ -248,7 +248,7 @@ def qubit_spectroscopy(
 )
 def qubit_spectroscopy_flux(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     drive_amplitude,
     freq_width,
     freq_step,
@@ -265,7 +265,7 @@ def qubit_spectroscopy_flux(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubits (list): List of target qubits to perform the action
+        qubits (dict): Dict of target Qubit objects to perform the action
         freq_width (int): Width frequency in HZ to perform the spectroscopy sweep
         freq_step (int): Step frequency in HZ for the spectroscopy sweep
         current_width (float): Width current in A for the flux current sweep
