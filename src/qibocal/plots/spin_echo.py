@@ -3,12 +3,22 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
-from qibocal.fitting.utils import flipping
+from qibocal.fitting.utils import exp
 from qibocal.plots.utils import get_color, get_data_subfolders
 
 
-# Flipping
-def flips_msr(folder, routine, qubit, format):
+# Spin echos
+def spin_echo_time_msr(folder, routine, qubit, format):
+
+    """Spin echo plotting routine:
+    The routine plots the results of a modified Ramsey sequence with an additional Rx(pi) pulse placed symmetrically between the two Rx(pi/2) pulses.
+    An exponential fit to this data gives a spin echo decay time T2.
+    Args:
+        folder (string): Folder name where the data and fitted data is located
+        routine (string): Name of the calibration routine that calls this plotting method
+        qubit (int): Target qubit to characterize
+        format (string): Data file format. Supported formats are .csv and .pkl
+    """
 
     fig = make_subplots(
         rows=1,
@@ -24,12 +34,15 @@ def flips_msr(folder, routine, qubit, format):
     fitting_report = ""
     for subfolder in subfolders:
         try:
-            data = DataUnits.load_data(folder, subfolder, routine, format, "data")
+            data = DataUnits.load_data(folder, subfolder, routine, format, f"data")
             data.df = data.df[data.df["qubit"] == qubit]
         except:
             data = DataUnits(
-                quantities={"flips": "dimensionless"}, options=["qubit", "iteration"]
+                name=f"data",
+                quantities={"wait": "ns"},
+                options=["qubit", "iteration"],
             )
+
         try:
             data_fit = Data.load_data(folder, subfolder, routine, format, f"fits")
             data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
@@ -39,16 +52,12 @@ def flips_msr(folder, routine, qubit, format):
                     "popt0",
                     "popt1",
                     "popt2",
-                    "popt3",
-                    "popt4",
                     "label1",
-                    "label2",
-                    "qubit",
                 ]
             )
 
         iterations = data.df["iteration"].unique()
-        flips = data.df["flips"].pint.magnitude.unique()
+        waits = data.df["wait"].pint.to("ns").pint.magnitude.unique()
 
         if len(iterations) > 1:
             opacity = 0.3
@@ -58,7 +67,7 @@ def flips_msr(folder, routine, qubit, format):
             iteration_data = data.df[data.df["iteration"] == iteration]
             fig.add_trace(
                 go.Scatter(
-                    x=iteration_data["flips"].pint.magnitude,
+                    x=iteration_data["wait"].pint.to("ns").pint.magnitude,
                     y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
                     marker_color=get_color(report_n),
                     opacity=opacity,
@@ -73,8 +82,8 @@ def flips_msr(folder, routine, qubit, format):
         if len(iterations) > 1:
             fig.add_trace(
                 go.Scatter(
-                    x=flips,
-                    y=data.df.groupby("flips")["MSR"]
+                    x=waits,
+                    y=data.df.groupby("wait")["MSR"]
                     .mean()
                     .pint.to("uV")
                     .pint.magnitude,
@@ -89,37 +98,37 @@ def flips_msr(folder, routine, qubit, format):
 
         # add fitting trace
         if len(data) > 0 and (qubit in data_fit.df["qubit"].values):
-            flips_range = np.linspace(
-                min(data.get_values("flips", "dimensionless")),
-                max(data.get_values("flips", "dimensionless")),
+            waitrange = np.linspace(
+                min(data.get_values("wait", "ns")),
+                max(data.get_values("wait", "ns")),
                 2 * len(data),
             )
             params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(
                 orient="records"
             )[0]
+
             fig.add_trace(
                 go.Scatter(
-                    x=flips_range,
-                    y=flipping(
-                        flips_range,
-                        data_fit.get_values("popt0"),
-                        data_fit.get_values("popt1"),
-                        data_fit.get_values("popt2"),
-                        data_fit.get_values("popt3"),
+                    x=waitrange,
+                    y=exp(
+                        waitrange,
+                        data_fit.df["popt0"][0],
+                        data_fit.df["popt1"][0],
+                        data_fit.df["popt2"][0],
                     ),
-                    name=f"q{qubit}/r{report_n}: Fit MSR",
+                    name=f"q{qubit}/r{report_n} Fit",
                     line=go.scatter.Line(dash="dot"),
                     marker_color=get_color(4 * report_n + 2),
                 ),
                 row=1,
                 col=1,
             )
-            fitting_report = fitting_report + (
-                f"q{qubit}/r{report_n} amplitude_correction_factor: {params['amplitude_correction_factor']:.4f}<br>"
-                + f"q{qubit}/r{report_n} corrected_amplitude: {params['corrected_amplitude']:.4f}<br><br>"
-            )
 
+            fitting_report = fitting_report + (
+                f"q{qubit}/r{report_n} t2: {params['t2']:,.0f} ns.<br><br>"
+            )
         report_n += 1
+
     fig.add_annotation(
         dict(
             font=dict(color="black", size=12),
@@ -138,11 +147,10 @@ def flips_msr(folder, routine, qubit, format):
         )
     )
 
-    # last part
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Flips (dimensionless)",
+        xaxis_title="Time (ns)",
         yaxis_title="MSR (uV)",
     )
     return fig

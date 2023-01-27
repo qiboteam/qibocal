@@ -31,10 +31,15 @@ class ActionBuilder:
         # Qibolab default backend if not provided in runcard.
         backend_name = self.runcard.get("backend", "qibolab")
         platform_name = self.runcard.get("platform", "dummy")
+        platform_runcard = self.runcard.get("runcard", None)
         self.backend, self.platform = self._allocate_backend(
-            backend_name, platform_name, path
+            backend_name, platform_name, path, platform_runcard
         )
-        self.qubits = self.runcard["qubits"]
+        self.qubits = {
+            q: self.platform.qubits[q]
+            for q in self.runcard["qubits"]
+            if q in self.platform.qubits
+        }
         self.format = self.runcard["format"]
 
         # Saving runcard
@@ -72,14 +77,17 @@ class ActionBuilder:
         os.makedirs(path)
         return path, folder
 
-    def _allocate_backend(self, backend_name, platform_name, path):
+    def _allocate_backend(self, backend_name, platform_name, path, platform_runcard):
         """Allocate the platform using Qibolab."""
         from qibo.backends import GlobalBackend, set_backend
 
         if backend_name == "qibolab":
-            from qibolab.paths import qibolab_folder
+            if platform_runcard is None:
+                from qibolab.paths import qibolab_folder
 
-            original_runcard = qibolab_folder / "runcards" / f"{platform_name}.yml"
+                original_runcard = qibolab_folder / "runcards" / f"{platform_name}.yml"
+            else:
+                original_runcard = platform_runcard
             # copy of the original runcard that will stay unmodified
             shutil.copy(original_runcard, f"{path}/platform.yml")
             # copy of the original runcard that will be modified during calibration
@@ -123,12 +131,8 @@ class ActionBuilder:
         for param in list(sig.parameters)[2:-1]:
             if param not in params:
                 raise_error(AttributeError, f"Missing parameter {param} in runcard.")
-        if f.__annotations__["qubit"] == int:
-            single_qubit_action = True
-        else:
-            single_qubit_action = False
 
-        return f, params, path, single_qubit_action
+        return f, params, path
 
     def execute(self):
         """Method to execute sequentially all the actions in the runcard."""
@@ -138,51 +142,42 @@ class ActionBuilder:
             self.platform.start()
 
         for action in self.runcard["actions"]:
-            routine, args, path, single_qubit_action = self._build_single_action(action)
-            self._execute_single_action(routine, args, path, single_qubit_action)
+            routine, args, path = self._build_single_action(action)
+            self._execute_single_action(routine, args, path)
+            for qubit in self.qubits:
+                if self.platform is not None:
+                    self.update_platform_runcard(qubit, action)
 
         if self.platform is not None:
             self.platform.stop()
             self.platform.disconnect()
 
-    def _execute_single_action(self, routine, arguments, path, single_qubit):
+    def _execute_single_action(self, routine, arguments, path):
         """Method to execute a single action and retrieving the results."""
         if self.format is None:
             raise_error(ValueError, f"Cannot store data using {self.format} format.")
-        if single_qubit:
-            for qubit in self.qubits:
-                results = routine(self.platform, qubit, **arguments)
 
-                for data in results:
-                    getattr(data, f"to_{self.format}")(path)
+        results = routine(self.platform, self.qubits, **arguments)
 
-                if self.platform is not None:
-                    self.update_platform_runcard(qubit, routine.__name__)
-        else:
-            results = routine(self.platform, self.qubits, **arguments)
-
-            for data in results:
-                getattr(data, f"to_{self.format}")(path)
-
-            if self.platform is not None:
-                self.update_platform_runcard(qubit, routine.__name__)
+        for data in results:
+            getattr(data, f"to_{self.format}")(path)
 
     def update_platform_runcard(self, qubit, routine):
 
         try:
-            data_fit = Data.load_data(
-                self.folder, routine, self.format, f"fit_q{qubit}"
-            )
-        except:
-            data_fit = Data()
+            data_fit = Data.load_data(self.folder, "data", routine, self.format, "fits")
+            data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
+        except FileNotFoundError:
+            return None
 
-        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+        params = data_fit.df.to_dict("index")[qubit if qubit == 0 else qubit - 1]
         settings = load_yaml(f"{self.folder}/new_platform.yml")
-
         for param in params:
-            settings["characterization"]["single_qubit"][qubit][param] = int(
-                data_fit.get_values(param)
-            )
+            if param in list(self.qubits[qubit].__annotations__.keys()):
+                setattr(self.qubits[qubit], param, params[param])
+                settings["characterization"]["single_qubit"][qubit][param] = int(
+                    data_fit.get_values(param)
+                )
 
         with open(f"{self.folder}/new_platform.yml", "w") as file:
             yaml.dump(
