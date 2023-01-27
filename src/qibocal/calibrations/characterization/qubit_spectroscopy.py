@@ -14,6 +14,7 @@ from qibocal.fitting.methods import lorentzian_fit
 def qubit_spectroscopy(
     platform: AbstractPlatform,
     qubits: list,
+    drive_amplitude,
     fast_width,
     fast_step,
     precision_width,
@@ -74,7 +75,7 @@ def qubit_spectroscopy(
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=2000
         )
-        qd_pulses[qubit].amplitude = 0.005
+        qd_pulses[qubit].amplitude = drive_amplitude
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=qd_pulses[qubit].finish
         )
@@ -248,6 +249,7 @@ def qubit_spectroscopy(
 def qubit_spectroscopy_flux(
     platform: AbstractPlatform,
     qubits: list,
+    drive_amplitude,
     freq_width,
     freq_step,
     bias_width,
@@ -310,6 +312,7 @@ def qubit_spectroscopy_flux(
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=2000
         )
+        qd_pulses[qubit].amplitude = drive_amplitude
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=qd_pulses[qubit].finish
         )
