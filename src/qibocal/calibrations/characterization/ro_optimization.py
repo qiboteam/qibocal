@@ -612,6 +612,7 @@ def ro_duration(
 
     RX_pulses = {}
     ro_pulses = {}
+    delta_duration_range = {}
     for qubit in qubits:
         RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
@@ -621,6 +622,14 @@ def ro_duration(
         state0_sequence.add(ro_pulses[qubit])
         state1_sequence.add(RX_pulses[qubit])
         state1_sequence.add(ro_pulses[qubit])
+
+        # iterate over the duration range
+        delta_duration_range[qubit] = (
+            np.arange(-duration_width / 2, duration_width / 2, duration_step).astype(
+                int
+            )
+            + ro_pulses[qubit].duration
+        )
 
     # create a DataUnits object to store the results
     data = DataUnits(
@@ -643,12 +652,6 @@ def ro_duration(
         ],
     )
 
-    # iterate over the duration range
-    delta_duration_range = (
-        np.arange(-duration_width / 2, duration_width / 2, duration_step).astype(int)
-        + ro_pulses[qubit].duration
-    )
-
     duration_sweeper = Sweeper(
         "duration",
         delta_duration_range,
@@ -658,9 +661,10 @@ def ro_duration(
 
     # retrieve and store the results for every qubit
     start_time = time.time()
-    for duration in delta_duration_range:
+    for i in range(len(delta_duration_range[qubit])):
+
         for qubit in qubits:
-            ro_pulses[qubit].duration = duration
+            ro_pulses[qubit].duration = delta_duration_range[qubit][i]
 
         state0_results = platform.execute_pulse_sequence(state0_sequence, nshots=nshots)
         for qubit in qubits:
@@ -668,7 +672,7 @@ def ro_duration(
             r.update(
                 {
                     "duration[ns]": [ro_pulses[qubit].duration] * nshots,
-                    "delta_duration[ns]": [duration] * nshots,
+                    "delta_duration[ns]": [ro_pulses[qubit].duration] * nshots,
                     "qubit": [qubit] * nshots,
                     "iteration": np.arange(
                         nshots
@@ -683,9 +687,10 @@ def ro_duration(
 
     # retrieve and store the results for every qubit
     start_time = time.time()
-    for duration in delta_duration_range:
+    for i in range(len(delta_duration_range[qubit])):
+
         for qubit in qubits:
-            ro_pulses[qubit].duration = duration
+            ro_pulses[qubit].duration = delta_duration_range[qubit][i]
 
         state1_results = platform.execute_pulse_sequence(state1_sequence, nshots=nshots)
         for qubit in qubits:
@@ -693,7 +698,7 @@ def ro_duration(
             r.update(
                 {
                     "duration[ns]": [ro_pulses[qubit].duration] * nshots,
-                    "delta_duration[ns]": [duration] * nshots,
+                    "delta_duration[ns]": [ro_pulses[qubit].duration] * nshots,
                     "qubit": [qubit] * nshots,
                     "iteration": np.arange(
                         nshots

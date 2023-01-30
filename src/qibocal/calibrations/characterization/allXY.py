@@ -33,8 +33,7 @@ gatelist = [
 ]
 
 
-@plot("Probability vs Gate Sequence", plots.allXY)
-def allXY(
+def allXY_without(
     platform: AbstractPlatform,
     qubits: list,
     beta_param=None,
@@ -104,6 +103,101 @@ def allXY(
                 # store the results
                 r = {
                     "probability": z_proj,
+                    "gateNumber": gateNumber,
+                    "beta_param": beta_param,
+                    "qubit": ro_pulse.qubit,
+                    "iteration": iteration,
+                }
+                data.add(r)
+            count += 1
+    # finally, save the remaining data
+    yield data
+
+
+@plot("Probability vs Gate Sequence", plots.allXY)
+def allXY(
+    platform: AbstractPlatform,
+    qubits: list,
+    beta_param=None,
+    software_averages=1,
+    points=10,
+):
+
+    r"""
+    The AllXY experiment is a simple test of the calibration of single qubit gatesThe qubit (initialized in the |0> state)
+    is subjected to two back-to-back single-qubit gates and measured. In each round, we run 21 different gate pairs:
+    ideally, the first 5 return the qubit to |0>, the next 12 drive it to superposition state, and the last 4 put the
+    qubit in |1> state.
+
+    Args:
+        platform (AbstractPlatform): Qibolab platform object
+        qubits (list): List of target qubits to perform the action
+        beta_param (float): Drag pi pulse coefficient. If none, teh default shape defined in the runcard will be used.
+        software_averages (int): Number of executions of the routine for averaging results
+        points (int): Save data results in a file every number of points
+
+    Returns:
+        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
+
+            - **MSR[V]**: Difference between resonator signal voltage mesurement in volts from sequence 1 and 2
+            - **i[V]**: Difference between resonator signal voltage mesurement for the component I in volts from sequence 1 and 2
+            - **q[V]**: Difference between resonator signal voltage mesurement for the component Q in volts from sequence 1 and 2
+            - **phase[rad]**: Difference between resonator signal phase mesurement in radians from sequence 1 and 2
+            - **probability[dimensionless]**: Probability of being in |0> state
+            - **gateNumber[dimensionless]**: Gate number applied from the list of gates
+            - **qubit**: The qubit being tested
+            - **iteration**: The iteration number of the many determined by software_averages
+    """
+    # reload instrument settings from runcard
+    platform.reload_settings()
+
+    # create a Data object to store the results
+    data = Data(
+        name="data",
+        quantities={"probability", "gateNumber", "qubit", "iteration"},
+    )
+
+    # Load model
+    import pathlib
+
+    import joblib
+
+    path = pathlib.Path("/home/users/maxime.hantute/measurements/16-qm_qw5q_gold")
+    models = {}
+    for qubit in qubits:
+        models[qubit] = joblib.load(path / f"RBF_SVM_{qubit}.pkl")
+
+    count = 0
+    # repeat the experiment as many times as defined by software_averages
+    for iteration in range(software_averages):
+        gateNumber = 1
+        # sweep the parameter
+        for gateNumber, gates in enumerate(gatelist):
+            # save data as often as defined by points
+            if count % points == 0 and count > 0:
+                # save data
+                yield data
+
+            # create a sequence of pulses
+            ro_pulses = {}
+            sequence = PulseSequence()
+            for qubit in qubits:
+                sequence, ro_pulses[qubit] = _add_gate_pair_pulses_to_sequence(
+                    platform, gates, qubit, beta_param, sequence
+                )
+
+            # execute the pulse sequence
+            results = platform.execute_pulse_sequence(sequence)
+
+            # retrieve the results for every qubit
+            for ro_pulse in ro_pulses.values():
+                z_proj = 2 * results[ro_pulse.serial].ground_state_probability - 1
+                i = results[ro_pulse.serial].to_dict(average=False)["i[V]"]
+                q = results[ro_pulse.serial].to_dict(average=False)["q[V]"]
+                prob = models[ro_pulse.qubit].predict(np.vstack((i, q)).T)
+                # store the results
+                r = {
+                    "probability": prob,
                     "gateNumber": gateNumber,
                     "beta_param": beta_param,
                     "qubit": ro_pulse.qubit,
