@@ -91,6 +91,16 @@
   background-color: #6600ff1c;
 }
 
+.gh-fullwidth {
+    min-height: 550px;
+    width: 100%;
+}
+
+.fitting-table
+{
+  background-color: gray;
+}
+
 @media print {
   .sidebar
   {
@@ -104,5 +114,4 @@
     overflow-y: hidden;
     overflow-x: hidden;
   }
-
 }

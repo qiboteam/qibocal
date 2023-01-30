@@ -184,8 +184,10 @@
                           {{ report.get_figure(routine, method, qubit) }}
                         {% else %}
                           <!-- find a way to change height and width depending on screen type -->
-                          <iframe src="{{ report.get_live_figure(routine, method, qubit) }}"
-                          style="position: relative; height: 550px; width: 100%;"></iframe>
+                          <!-- <iframe id="graphics_{{ header }}_{{ qubit }}" onload='ResizeIframe("graphics_{{ header }}_{{ qubit }}", 3)'
+                          src='{{ report.get_live_figure(routine, method, qubit) }}'
+                          style='width:100%; min-height:550px; border:0px; overflow-y:hidden;'></iframe> -->
+                          <iframe src='{{ report.get_live_figure(routine, method, qubit) }}' class="gh-fit gh-fullwidth"></iframe>
                         {% endif %}
                       </div>
                     {% endfor %}
@@ -223,5 +225,44 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0/dist/js/bootstrap.bundle.min.js"
     integrity="sha384-A3rJD856KowSb7dwlZdYEkO39Gagi7vIsF0jrRAoQmDKKtQBHUuLZ9AsSv4jD4Xa"
     crossorigin="anonymous"></script>
+
+    <script>
+      function ResizeIframe(id, n_figs){
+        console.log(id);
+        var frame = document.getElementById(id);
+        const doc = frame.contentDocument;
+        console.log(doc);
+        frame.style.height = (550 * n_figs) + "px";
+      }
+    </script>
+
+    <script>
+      function fit() {
+        var iframes = document.querySelectorAll("iframe.gh-fit")
+
+          for(var id = 0; id < iframes.length; id++) {
+              var win = iframes[id].contentWindow
+              var doc = win.document
+              var html = doc.documentElement
+              var body = doc.body
+              var ifrm = iframes[id] // or win.frameElement
+
+              if(body) {
+                  body.style.overflowX = "hidden" // scrollbar-jitter fix
+                  body.style.overflowY = "hidden"
+              }
+              if(html) {
+                  html.style.overflowX = "hidden" // scrollbar-jitter fix
+                  html.style.overflowY = "hidden"
+                  var style = win.getComputedStyle(html)
+                  ifrm.width = parseInt(style.getPropertyValue("width")) // round value
+                  ifrm.height = parseInt(style.getPropertyValue("height"))
+              }
+          }
+          requestAnimationFrame(fit)
+      }
+      addEventListener("load", requestAnimationFrame.bind(this, fit))
+    </script>
+
   </body>
 </html>

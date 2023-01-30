@@ -10,6 +10,9 @@ from qibocal import plots
 from qibocal.data import DataUnits
 from qibocal.web.server import server
 
+# import pandas as pd
+# from collections import OrderedDict
+
 DataUnits()  # dummy dataset call to suppress ``pint[V]`` error
 
 app = Dash(
@@ -54,10 +57,18 @@ app.layout = html.Div(
                 ),
                 html.Div(
                     id="latest-timestamp",
-                    style={"margin-left": "-150px", "margin-top": "10px"},
+                    style={"margin-left": "-120px", "margin-top": "10px"},
                 ),
             ],
             style={"display": "flex", "font-family": "verdana"},
+        ),
+        html.Div(
+            id="div-fitting",
+            style={
+                "margin-left": "28%",
+                "margin-top": "40px",
+                "font-family": "verdana",
+            },
         ),
         html.Div(id="div-figures"),
         dcc.Location(id="url", refresh=False),
@@ -76,6 +87,7 @@ app.layout = html.Div(
     Output(component_id="div-figures", component_property="children"),
     Output(component_id="latest-timestamp", component_property="children"),
     Output(component_id="interval", component_property="interval"),
+    Output(component_id="div-fitting", component_property="children"),
     Input("interval", "n_intervals"),
     Input("url", "pathname"),
     Input("interval-refresh", "value"),
@@ -107,7 +119,7 @@ def get_graph(interval, url, value):
         # # multiple routines with different names in one folder
         # # should be changed to:
         # # return getattr(getattr(plots, routine), method)(data)
-        figs = getattr(plots, method)(folder, routine, qubit, format)
+        figs, fitting_report = getattr(plots, method)(folder, routine, qubit, format)
         et = time.time()
 
         if value == 0:
@@ -118,11 +130,60 @@ def get_graph(interval, url, value):
         for fig in figs:
             figures.append(dcc.Graph(figure=fig))
 
+        fitting_params = fitting_report.split("<br>")
+        table = (
+            html.Div(
+                [
+                    html.Table(
+                        style={"border": "none"},
+                        className="fitting-table",
+                        children=[
+                            html.Tr(
+                                [
+                                    html.Th(
+                                        "Fitting Parameter",
+                                        style={
+                                            "background-color": "gray",
+                                            "border": "none",
+                                            "padding": "10px",
+                                        },
+                                    ),
+                                    html.Th(
+                                        "Value",
+                                        style={
+                                            "background-color": "gray",
+                                            "border": "none",
+                                            "padding": "10px",
+                                        },
+                                    ),
+                                ],
+                            )
+                        ]
+                        + [
+                            html.Tr(
+                                [
+                                    html.Td(
+                                        fitting_params[0],
+                                        style={"border": "none", "padding": "10px"},
+                                    ),
+                                    html.Td(
+                                        fitting_params[1],
+                                        style={"border": "none", "padding": "10px"},
+                                    ),
+                                ]
+                            ),
+                        ],
+                    )
+                ]
+            ),
+        )
+
         timestamp = datetime.datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
         return (
             figures,
             [html.Span(f"Last update: {(timestamp)}")],
             refresh_rate * 1000,
+            table,
         )
     except (FileNotFoundError, pd.errors.EmptyDataError):
         timestamp = datetime.datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
@@ -130,4 +191,5 @@ def get_graph(interval, url, value):
             figures,
             [html.Span(f"Last updated: {timestamp}")],
             refresh_rate * 1000,
+            table,
         )

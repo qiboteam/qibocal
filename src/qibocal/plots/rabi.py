@@ -186,8 +186,9 @@ def time_msr_phase(folder, routine, qubit, format):
     )
 
     figures.append(fig)
+    figures.append(fig)
 
-    return figures
+    return figures, fitting_report
 
 
 # Rabi oscillations pulse gain
@@ -371,7 +372,7 @@ def gain_msr_phase(folder, routine, qubit, format):
 
     figures.append(fig)
 
-    return figures
+    return figures, fitting_report
 
 
 # Rabi oscillations pulse amplitude
@@ -562,7 +563,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
 
     figures.append(fig)
 
-    return figures
+    return figures, fitting_report
 
 
 # Rabi pulse length and gain
