@@ -290,7 +290,7 @@ def test_ramsey_fit(resonator_type, amplitude_sign, caplog):
     sampling_rate = 10
     offset_freq = 1
     samples = 100
-    x = np.linspace(0, 1 / p2, samples)
+    x = np.linspace(0, 2 * np.pi / p2, samples)
     noisy_ramsey = ramsey(x, p0, p1, p2, p3, p4) + p1 * np.random.randn(samples) * 1e-3
 
     data = DataUnits(quantities={"wait": "ns"}, options=["qubit", "iteration"])
@@ -321,8 +321,8 @@ def test_ramsey_fit(resonator_type, amplitude_sign, caplog):
     fit_p3 = fit.get_values("popt3")[0]
     fit_p4 = fit.get_values("popt4")[0]
 
-    y_real = p1 * np.sin(2 * np.pi * x * p2 + p3)
-    y_fit = fit_p1 * np.sin(2 * np.pi * x * fit_p2 + fit_p3)
+    y_real = ramsey(x, p0, p1, p2, p3, p4)
+    y_fit = ramsey(x, fit_p0, fit_p1, fit_p2, fit_p3, fit_p4)
     for i in range(len(x)):
         assert abs(y_real[i] - y_fit[i]) < 0.1
     # Dummy fit
