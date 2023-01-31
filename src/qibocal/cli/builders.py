@@ -240,7 +240,7 @@ class ReportBuilder:
         """
         import tempfile
 
-        figure = method(self.path, routine.__name__, qubit, self.format)
+        figures = method(self.path, routine.__name__, qubit, self.format)
         with tempfile.NamedTemporaryFile() as temp:
             for figure in figures:
                 figure.write_html(temp.name, include_plotlyjs=False, full_html=False)
