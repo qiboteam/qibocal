@@ -1,5 +1,6 @@
 import datetime
 import os
+import re
 import time
 
 import pandas as pd
@@ -65,7 +66,7 @@ app.layout = html.Div(
         html.Div(
             id="div-fitting",
             style={
-                "margin-left": "28%",
+                "margin-left": "40%",
                 "margin-top": "40px",
                 "font-family": "verdana",
             },
@@ -130,7 +131,7 @@ def get_graph(interval, url, value):
         for fig in figs:
             figures.append(dcc.Graph(figure=fig))
 
-        fitting_params = fitting_report.split("<br>")
+        fitting_params = re.split(r"<br>|:", fitting_report)
         table = (
             html.Div(
                 [
