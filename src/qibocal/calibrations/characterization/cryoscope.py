@@ -1,6 +1,9 @@
+from typing import Optional
+
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
-from qibolab.pulses import IIR, FluxPulse, Pulse, PulseSequence, PulseType, Rectangular
+from qibolab.pulses import FluxPulse, PulseSequence, Rectangular
+from qibolab.sweeper import Sweeper
 
 from qibocal import plots
 from qibocal.data import Data, DataUnits
@@ -119,8 +122,8 @@ def flux_pulse_timing(
             amplitude=flux_pulse_amplitude_start,  # fix for each run
             shape=Rectangular(),
             # relative_phase=0,
-            channel=platform.qubit_channel_map[qubit][2],
-            qubit=qubit,
+            channel=qubit.flux.name,
+            qubit=qubit.name,
         )
 
         # add pulses to the sequences
@@ -235,6 +238,7 @@ def flux_pulse_timing(
 def cryoscope(
     platform: AbstractPlatform,
     qubits: list,
+    flux_pulse_amplitude,
     flux_pulse_duration_start,
     flux_pulse_duration_end,
     flux_pulse_duration_step,
@@ -242,7 +246,9 @@ def cryoscope(
     flux_pulse_amplitude_end,
     flux_pulse_amplitude_step,
     delay_before_readout,
-    flux_pulse_shapes: list = None,
+    wait_time,
+    flux_pulse_shapes: Optional[list] = None,
+    nshots=1024,
     software_averages=1,
     points=10,
 ):
@@ -327,19 +333,19 @@ def cryoscope(
         )
 
         if flux_pulse_shapes and len(flux_pulse_shapes) == len(qubits):
-            flux_pulse_shapes[qubit] = eval(flux_pulse_shapes[qubit])
+            flux_pulse_shape = eval(flux_pulse_shapes[qubit])
         else:
-            flux_pulse_shapes[qubit] = Rectangular()
+            flux_pulse_shape = Rectangular()
 
         # apply a detuning flux pulse
         flux_pulses[qubit] = FluxPulse(
             start=initial_RY90_pulses[qubit].se_finish,
             duration=flux_pulse_duration_start,  # sweep to produce oscillations [up to 400ns] in steps od 1ns? or 4?
-            amplitude=flux_pulse_amplitude_start,  # fix for each run
-            shape=flux_pulse_shapes[qubit],
+            amplitude=flux_pulse_amplitude,  # fix for each run
+            shape=flux_pulse_shape,
             # relative_phase=0,
-            channel=platform.qubit_channel_map[qubit][2],
-            qubit=qubit,
+            channel=qubit.flux.name,
+            qubit=qubit.name,
         )
 
         # wait delay_before_readout
@@ -347,18 +353,14 @@ def cryoscope(
         # rotate around the X asis Rx(-pi/2) to meassure Y component
         RX90_pulses[qubit] = platform.create_RX90_pulse(
             qubit,
-            start=initial_RY90_pulses[qubit].duration
-            + flux_pulse_duration_end
-            + delay_before_readout,
+            start=flux_pulses[qubit].finish + delay_before_readout,
             relative_phase=np.pi,
         )
 
         # rotate around the Y asis Ry(pi/2) to meassure X component
         RY90_pulses[qubit] = platform.create_RX90_pulse(
             qubit,
-            start=initial_RY90_pulses[qubit].duration
-            + flux_pulse_duration_end
-            + delay_before_readout,
+            start=flux_pulses[qubit].finish + delay_before_readout,
             relative_phase=np.pi / 2,
         )
 
@@ -382,8 +384,8 @@ def cryoscope(
         )
 
         # DEBUG: Plot Cryoscope Sequences
-        MX_seq.plot("MX_seq")
-        MY_seq.plot("MY_seq")
+        # MX_seq.plot("MX_seq")
+        # MY_seq.plot("MY_seq")
 
     MX_tag = "MX"
     MY_tag = "MY"
@@ -394,6 +396,12 @@ def cryoscope(
 
     flux_pulse_amplitude_range = np.arange(
         flux_pulse_amplitude_start, flux_pulse_amplitude_end, flux_pulse_amplitude_step
+    )
+    sweeper = Sweeper(
+        "amplitude",
+        flux_pulse_amplitude_range,
+        pulses=[flux_pulses[qubit] for qubit in qubits],
+        wait_time=wait_time,
     )
     flux_pulse_duration_range = np.arange(
         flux_pulse_duration_start, flux_pulse_duration_end, flux_pulse_duration_step
@@ -412,42 +420,38 @@ def cryoscope(
         options=["component", "qubit", "iteration"],
     )
 
+    ndata = len(flux_pulse_amplitude_range)
     count = 0
     for iteration in range(software_averages):
-        # sweep the parameters
-        for amplitude in flux_pulse_amplitude_range:
-            for duration in flux_pulse_duration_range:
-                # save data as often as defined by points
-                if count % points == 0 and count > 0:
-                    # save data
-                    yield data
+        for duration in flux_pulse_duration_range:
+            # save data as often as defined by points
+            if count % points == 0 and count > 0:
+                # save data
+                yield data
+            for qubit in qubits:
+                flux_pulses[qubit].duration = duration
+            # execute the pulse sequences
+            for sequence, tag in [(MX_seq, MX_tag), (MY_seq, MY_tag)]:
+                results = platform.sweep(
+                    sequence, sweeper, nshots=nshots, average=False
+                )
                 for qubit in qubits:
-                    flux_pulses[qubit].amplitude = amplitude
-                    flux_pulses[qubit].duration = duration
+                    prob = results["probability"][MZ_ro_pulses[qubit].serial]
+                    qubit_res = results[MZ_ro_pulses[qubit].serial]
+                    r = {
+                        "MSR[V]": qubit_res.msr.mean(axis=0),
+                        "i[V]": qubit_res.i.mean(axis=0),
+                        "q[V]": qubit_res.q.mean(axis=0),
+                        "phase[rad]": qubit_res.phase.mean(axis=0),
+                        "prob[dimensionless]": qubit_res.shots.mean(axis=0),
+                        "flux_pulse_duration[ns]": ndata * [duration],
+                        "flux_pulse_amplitude[dimensionless]": flux_pulse_amplitude_range,
+                        "component": ndata * [tag],
+                        "qubit": ndata * [qubit],
+                        "iteration": ndata * [iteration],
+                    }
+                    data.add(r)
+            count += 1
 
-                # execute the pulse sequences
-                for sequence, tag in [(MX_seq, MX_tag), (MY_seq, MY_tag)]:
-                    results = platform.execute_pulse_sequence(sequence)
-
-                    for qubit in qubits:
-                        prob = results["probability"][MZ_ro_pulses[qubit].serial]
-                        voltages = results["demodulated_integrated_averaged"][
-                            MZ_ro_pulses[qubit].serial
-                        ]
-                        r = {
-                            "MSR[V]": voltages[0],
-                            "phase[rad]": voltages[1],
-                            "i[V]": voltages[2],
-                            "q[V]": voltages[3],
-                            "prob[dimensionless]": prob,
-                            "flux_pulse_duration[ns]": duration,
-                            "flux_pulse_amplitude[dimensionless]": amplitude,
-                            "component": tag,
-                            "qubit": qubit,
-                            "iteration": iteration,
-                        }
-                        data.add(r)
-
-                count += 1
     # finally, save the remaining data
     yield data
