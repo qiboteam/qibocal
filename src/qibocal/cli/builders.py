@@ -242,8 +242,9 @@ class ReportBuilder:
 
         figure = method(self.path, routine.__name__, qubit, self.format)
         with tempfile.NamedTemporaryFile() as temp:
-            figure.write_html(temp.name, include_plotlyjs=False, full_html=False)
-            fightml = temp.read().decode("utf-8")
+            for figure in figures:
+                figure.write_html(temp.name, include_plotlyjs=False, full_html=False)
+                fightml = temp.read().decode("utf-8")
         return fightml
 
     def get_live_figure(self, routine, method, qubit):
