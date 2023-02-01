@@ -11,7 +11,7 @@ from qibocal.fitting.methods import calibrate_qubit_states_fit
 @plot("Qubit States", plots.calibrate_qubit_states)
 def calibrate_qubit_states(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     nshots,
 ):
     """
@@ -21,7 +21,7 @@ def calibrate_qubit_states(
 
     Args:
         platform (:class:`qibolab.platforms.abstract.AbstractPlatform`): custom abstract platform on which we perform the calibration.
-        qubits (list): List of target qubits to perform the action
+        qubits (dict): Dict of target Qubit objects to perform the action
         nshots (int): number of times the pulse sequence will be repeated.
         software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
