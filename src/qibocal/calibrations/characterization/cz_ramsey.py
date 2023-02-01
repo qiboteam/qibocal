@@ -1,6 +1,7 @@
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import SNZ, FluxPulse, Pulse, PulseSequence, PulseType, Rectangular
+from qibolab.sweeper import Sweeper
 
 from qibocal import plots
 from qibocal.calibrations.characterization.utils import iq_to_prob
@@ -276,16 +277,15 @@ def amplitude_balance_cz(
 def snz_tune_up(
     platform: AbstractPlatform,
     qubits: dict,
-    positive_amplitude_start,
-    positive_amplitude_end,
-    positive_amplitude_step,
-    snz_ratio_amplitude_start,
-    snz_ratio_amplitude_end,
-    snz_ratio_amplitude_step,
+    amplitude_start,
+    amplitude_end,
+    amplitude_step,
+    b_amplitude_start,
+    b_amplitude_end,
+    b_amplitude_step,
     detuning_start,
     detuning_end,
     detuning_step,
-    points=10,
 ):
     r"""
     This experiment is used to find the optimal amplitude for the flux pulse for
@@ -336,42 +336,26 @@ def snz_tune_up(
 
     platform.reload_settings()
 
-    # Get the qubits to perform the experiment on
-    qubit_control = {}
-    qubit_target = {}
-    for q in qubits:
-        topology = platform.topology[platform.qubits.index(q)]
-        for j in platform.qubits:
-            if (
-                topology[j] == 1
-                and platform.qubits[j] != q
-                and platform.qubits[j] in qubits
-            ):
-                if (
-                    platform.characterization["single_qubit"][q]["qubit_freq"]
-                    > platform.characterization["single_qubit"][platform.qubits[j]][
-                        "qubit_freq"
-                    ]
-                ):
-                    if (
-                        platform.qubits[j]
-                        not in np.array(qubit_control)[np.array(qubit_target) == q]
-                    ):
-                        qubit_control += [platform.qubits[j]]
-                        qubit_target += [q]
-                if (
-                    platform.characterization["single_qubit"][q]["qubit_freq"]
-                    < platform.characterization["single_qubit"][platform.qubits[j]][
-                        "qubit_freq"
-                    ]
-                ):
-                    if (
-                        platform.qubits[j]
-                        not in np.array(qubit_target)[np.array(qubit_control) == q]
-                    ):
-                        qubit_control += [q]
-                        qubit_target += [platform.qubits[j]]
+    # FIXME: Use networkx in Qibolab
+    import networkx as nx
+    G = nx.Graph()
+    G.add_nodes_from(platform.qubits)
+    G.add_edges_from(
+        [(0,2), (1,2), (2,3), (2,4)]
+    )
 
+    # Find unique pairs of qubits
+    unique_pairs = []
+    for qubit in qubits:
+        neighbors = list(G.neighbors(qubit))
+        for neighbor in neighbors:
+            if (neighbor, qubit) not in unique_pairs and (qubit, neighbor) not in unique_pairs:
+                if platform.qubits[qubit].drive_frequency > platform.qubits[neighbor].drive_frequency:
+                    unique_pairs.append((qubit, neighbor))
+                else:
+                    unique_pairs.append((neighbor, qubit))
+
+    # Create the data object
     data = DataUnits(
         name=f"data",
         quantities={
@@ -385,148 +369,139 @@ def snz_tune_up(
 
     # Variables
     amplitudes = np.arange(
-        positive_amplitude_start,
-        positive_amplitude_end,
-        positive_amplitude_step,
+        amplitude_start,
+        amplitude_end,
+        amplitude_step,
     )
     ratios = np.arange(
-        snz_ratio_amplitude_start,
-        snz_ratio_amplitude_end,
-        snz_ratio_amplitude_step,
+        b_amplitude_start,
+        b_amplitude_end,
+        b_amplitude_step,
     )
     detuning = np.arange(
         detuning_start,
         detuning_end,
         detuning_step,
     )
+    # generate the flattened mesh grid of the nested sweep of amplitude_sweep, b_amplitude_sweep and detuning_sweep
+    amplitude_mesh, b_amplitude_mesh, detuning_mesh = np.meshgrid(amplitudes, ratios, detuning)
+    amplitude_mesh = amplitude_mesh.flatten()
+    b_amplitude_mesh = b_amplitude_mesh.flatten()
+    detuning_mesh = detuning_mesh.flatten()
 
-    for i, q_target in enumerate(qubit_target):
+
+    for q_target, q_control in unique_pairs:
 
         # Target sequence RX90 - CPhi - RX90 - MZ
         initial_RX90_pulse = platform.create_RX90_pulse(
             q_target, start=0, relative_phase=0
         )
-        tp = 20
-        flux_pulse = platform.create_CZ_pulse(
-            [q_target, qubit_control[i]],
-            start=initial_RX90_pulse.se_finish + 8,
+
+        # Creating the deconstructed SNZ pulse and pulses for the target qubit
+        # FIXME: Get the duration of the single flux pulse for avoiding crossing
+        half_flux_pulse_duration = 30
+        snz_amplitude = 0.05477
+        pos_flux = FluxPulse(
+            start=initial_RX90_pulse.finish + 8,
+            duration=half_flux_pulse_duration,
+            amplitude=snz_amplitude,
+            shape=Rectangular(),
+            qubit=q_target,
+            channel=platform.qubits[q_target].flux.name
         )
+        pos_b_flux = FluxPulse(
+            start=pos_flux.finish,
+            duration=1,
+            amplitude=b_amplitude_start*snz_amplitude,
+            shape=Rectangular(),
+            qubit=q_target,
+            channel=platform.qubits[q_target].flux.name
+        )
+        neg_b_flux = FluxPulse(
+            start=pos_b_flux.finish,
+            duration=1,
+            amplitude=-b_amplitude_start*snz_amplitude,
+            shape=Rectangular(),
+            qubit=q_target,
+            channel=platform.qubits[q_target].flux.name
+        )
+        neg_flux = FluxPulse(
+            start=neg_b_flux.finish,
+            duration=half_flux_pulse_duration,
+            amplitude=snz_amplitude,
+            shape=Rectangular(),
+            qubit=q_target,
+            channel=platform.qubits[q_target].flux.name
+        )
+
         RX90_pulse = platform.create_RX90_pulse(
-            q_target, start=flux_pulse.finish + 8, relative_phase=0
+            q_target, start=neg_flux.finish + 8, relative_phase=0
         )
         ro_pulse_target = platform.create_qubit_readout_pulse(
             q_target, start=RX90_pulse.se_finish
         )
 
         # Creating different measurment
-        sequence_target = initial_RX90_pulse + flux_pulse + RX90_pulse + ro_pulse_target
+        sequence_target = initial_RX90_pulse + \
+                pos_flux + pos_b_flux + neg_b_flux + \
+                neg_flux + RX90_pulse + ro_pulse_target
 
-        # Control sequence
-        initial_RX_pulse = platform.create_RX_pulse(qubit_control[i], start=0)
-        RX_pulse = platform.create_RX_pulse(qubit_control[i], start=RX90_pulse.se_start)
+        # Control pulses
+        initial_RX_pulse = platform.create_RX_pulse(q_control, start=0)
+        RX_pulse = platform.create_RX_pulse(q_control, start=RX90_pulse.se_start)
         ro_pulse_control = platform.create_qubit_readout_pulse(
-            qubit_control[i], start=RX90_pulse.se_finish
+            q_control, start=RX90_pulse.se_finish
         )
 
-        # Mean and excited states
-        mean_gnd = {
-            qubit_target[i]: complex(
-                platform.characterization["single_qubit"][qubit_target[i]][
-                    "mean_gnd_states"
-                ]
-            ),
-            qubit_control[i]: complex(
-                platform.characterization["single_qubit"][qubit_control[i]][
-                    "mean_gnd_states"
-                ]
-            ),
-        }
-        mean_exc = {
-            qubit_target[i]: complex(
-                platform.characterization["single_qubit"][qubit_target[i]][
-                    "mean_exc_states"
-                ]
-            ),
-            qubit_control[i]: complex(
-                platform.characterization["single_qubit"][qubit_control[i]][
-                    "mean_exc_states"
-                ]
-            ),
+        # Creating the two different sequences ON and OFF
+        sequences = {
+            "ON": sequence_target + initial_RX_pulse + RX_pulse + ro_pulse_control,
+            "OFF": sequence_target + ro_pulse_control,
         }
 
-        count = 0
-        for amplitude in amplitudes:
-            for ratio in ratios:
-                if count % points == 0 and count > 1:
-                    yield data
-                    # yield fit_amplitude_balance_cz(data)
-                flux_pulse[0].amplitude = amplitude
-                flux_pulse[0].shape = SNZ(10, ratio, 0.9734188817598534)
+        # Create the Sweepers
+        amplitude_sweep = Sweeper(
+            "amplitude",
+            amplitudes,
+            pulses=[pos_flux, neg_flux],
+            wait_time=0
+        )
+        b_amplitude_sweep = Sweeper(
+            "amplitude",
+            ratios,
+            pulses=[pos_b_flux, neg_b_flux],
+            wait_time=0
+        )
+        detuning_sweep = Sweeper(
+            "relative_phase",
+            detuning,
+            pulses=[RX90_pulse],
+            wait_time= platform.options["relaxation_time"]
+        )
 
-                for det in detuning:
-                    RX90_pulse.relative_phase = np.deg2rad(det)
+        for ON_OFF in ["ON", "OFF"]:
 
-                    # while True:  # FIXME: Long scan, it is to avoid QBlox bug
-                    #     try:
-                    sequenceON = (
-                        sequence_target + initial_RX_pulse + RX_pulse + ro_pulse_control
-                    )
-                    sequenceOFF = sequence_target + ro_pulse_control
+            results = platform.sweep(sequences[ON_OFF], amplitude_sweep, b_amplitude_sweep, detuning_sweep)
 
-                    platform_results = platform.execute_pulse_sequence(sequenceON)
-
-                    for ro_pulse in sequenceON.ro_pulses:
-                        results = {
-                            "MSR[V]": platform_results[ro_pulse.serial][0],
-                            "i[V]": platform_results[ro_pulse.serial][2],
-                            "q[V]": platform_results[ro_pulse.serial][3],
-                            "phase[rad]": platform_results[ro_pulse.serial][1],
-                            "prob[dimensionless]": iq_to_prob(
-                                platform_results[ro_pulse.serial][2],
-                                platform_results[ro_pulse.serial][3],
-                                mean_gnd[ro_pulse.qubit],
-                                mean_exc[ro_pulse.qubit],
-                            ),
-                            "controlqubit": qubit_control[i],
-                            "targetqubit": qubit_target[i],
-                            "result_qubit": ro_pulse.qubit,
-                            "ON_OFF": "ON",
-                            "detuning[degree]": det,
-                            "flux_pulse_amplitude[dimensionless]": amplitude,
-                            "flux_pulse_ratio[dimensionless]": ratio,
-                        }
-                        data.add(results)
-
-                    platform_results = platform.execute_pulse_sequence(sequenceOFF)
-
-                    for ro_pulse in sequenceOFF.ro_pulses:
-                        results = {
-                            "MSR[V]": platform_results[ro_pulse.serial][0],
-                            "i[V]": platform_results[ro_pulse.serial][2],
-                            "q[V]": platform_results[ro_pulse.serial][3],
-                            "phase[rad]": platform_results[ro_pulse.serial][1],
-                            "prob[dimensionless]": iq_to_prob(
-                                platform_results[ro_pulse.serial][2],
-                                platform_results[ro_pulse.serial][3],
-                                mean_gnd[ro_pulse.qubit],
-                                mean_exc[ro_pulse.qubit],
-                            ),
-                            "controlqubit": qubit_control[i],
-                            "targetqubit": qubit_target[i],
-                            "result_qubit": ro_pulse.qubit,
-                            "ON_OFF": "OFF",
-                            "detuning[degree]": det,
-                            "flux_pulse_amplitude[dimensionless]": amplitude,
-                            "flux_pulse_ratio[dimensionless]": ratio,
-                        }
-                        data.add(results)
-
-                        # except:
-                        #     continue
-                        # break
-
-                count += 1
-            yield data
+            for ro_pulse in sequences[ON_OFF].ro_pulses:
+                r = results[ro_pulse.serial].to_dict()
+                r.update({
+                    "prob[dimensionless]": iq_to_prob(
+                        r["i[V]"],
+                        r["q[V]"],
+                        platform.qubits[ro_pulse.qubit].mean_gnd,
+                        platform.qubits[ro_pulse.qubit].mean_exc,
+                    ),
+                    "controlqubit": q_control,
+                    "targetqubit": q_target,
+                    "result_qubit": ro_pulse.qubit,
+                    "ON_OFF": ON_OFF,
+                    "detuning[degree]": detuning_mesh,
+                    "flux_pulse_amplitude[dimensionless]": amplitude_mesh,
+                    "flux_pulse_ratio[dimensionless]": b_amplitude_mesh,
+                })
+                data.add_data_from_dict(r)
+                yield data
 
 
 @plot("snz", plots.chevron_iswap)
