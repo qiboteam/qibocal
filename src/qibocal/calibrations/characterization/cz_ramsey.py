@@ -338,19 +338,24 @@ def snz_tune_up(
 
     # FIXME: Use networkx in Qibolab
     import networkx as nx
+
     G = nx.Graph()
     G.add_nodes_from(platform.qubits)
-    G.add_edges_from(
-        [(0,2), (1,2), (2,3), (2,4)]
-    )
+    G.add_edges_from([(0, 2), (1, 2), (2, 3), (2, 4)])
 
     # Find unique pairs of qubits
     unique_pairs = []
     for qubit in qubits:
         neighbors = list(G.neighbors(qubit))
         for neighbor in neighbors:
-            if (neighbor, qubit) not in unique_pairs and (qubit, neighbor) not in unique_pairs:
-                if platform.qubits[qubit].drive_frequency > platform.qubits[neighbor].drive_frequency:
+            if (neighbor, qubit) not in unique_pairs and (
+                qubit,
+                neighbor,
+            ) not in unique_pairs:
+                if (
+                    platform.qubits[qubit].drive_frequency
+                    > platform.qubits[neighbor].drive_frequency
+                ):
                     unique_pairs.append((qubit, neighbor))
                 else:
                     unique_pairs.append((neighbor, qubit))
@@ -384,11 +389,12 @@ def snz_tune_up(
         detuning_step,
     )
     # generate the flattened mesh grid of the nested sweep of amplitude_sweep, b_amplitude_sweep and detuning_sweep
-    amplitude_mesh, b_amplitude_mesh, detuning_mesh = np.meshgrid(amplitudes, ratios, detuning)
+    amplitude_mesh, b_amplitude_mesh, detuning_mesh = np.meshgrid(
+        amplitudes, ratios, detuning
+    )
     amplitude_mesh = amplitude_mesh.flatten()
     b_amplitude_mesh = b_amplitude_mesh.flatten()
     detuning_mesh = detuning_mesh.flatten()
-
 
     for q_target, q_control in unique_pairs:
 
@@ -407,23 +413,23 @@ def snz_tune_up(
             amplitude=snz_amplitude,
             shape=Rectangular(),
             qubit=q_target,
-            channel=platform.qubits[q_target].flux.name
+            channel=platform.qubits[q_target].flux.name,
         )
         pos_b_flux = FluxPulse(
             start=pos_flux.finish,
             duration=1,
-            amplitude=b_amplitude_start*snz_amplitude,
+            amplitude=b_amplitude_start * snz_amplitude,
             shape=Rectangular(),
             qubit=q_target,
-            channel=platform.qubits[q_target].flux.name
+            channel=platform.qubits[q_target].flux.name,
         )
         neg_b_flux = FluxPulse(
             start=pos_b_flux.finish,
             duration=1,
-            amplitude=-b_amplitude_start*snz_amplitude,
+            amplitude=-b_amplitude_start * snz_amplitude,
             shape=Rectangular(),
             qubit=q_target,
-            channel=platform.qubits[q_target].flux.name
+            channel=platform.qubits[q_target].flux.name,
         )
         neg_flux = FluxPulse(
             start=neg_b_flux.finish,
@@ -431,7 +437,7 @@ def snz_tune_up(
             amplitude=snz_amplitude,
             shape=Rectangular(),
             qubit=q_target,
-            channel=platform.qubits[q_target].flux.name
+            channel=platform.qubits[q_target].flux.name,
         )
 
         RX90_pulse = platform.create_RX90_pulse(
@@ -442,9 +448,15 @@ def snz_tune_up(
         )
 
         # Creating different measurment
-        sequence_target = initial_RX90_pulse + \
-                pos_flux + pos_b_flux + neg_b_flux + \
-                neg_flux + RX90_pulse + ro_pulse_target
+        sequence_target = (
+            initial_RX90_pulse
+            + pos_flux
+            + pos_b_flux
+            + neg_b_flux
+            + neg_flux
+            + RX90_pulse
+            + ro_pulse_target
+        )
 
         # Control pulses
         initial_RX_pulse = platform.create_RX_pulse(q_control, start=0)
@@ -461,45 +473,43 @@ def snz_tune_up(
 
         # Create the Sweepers
         amplitude_sweep = Sweeper(
-            "amplitude",
-            amplitudes,
-            pulses=[pos_flux, neg_flux],
-            wait_time=0
+            "amplitude", amplitudes, pulses=[pos_flux, neg_flux], wait_time=0
         )
         b_amplitude_sweep = Sweeper(
-            "amplitude",
-            ratios,
-            pulses=[pos_b_flux, neg_b_flux],
-            wait_time=0
+            "amplitude", ratios, pulses=[pos_b_flux, neg_b_flux], wait_time=0
         )
         detuning_sweep = Sweeper(
             "relative_phase",
             detuning,
             pulses=[RX90_pulse],
-            wait_time= platform.options["relaxation_time"]
+            wait_time=platform.options["relaxation_time"],
         )
 
         for ON_OFF in ["ON", "OFF"]:
 
-            results = platform.sweep(sequences[ON_OFF], amplitude_sweep, b_amplitude_sweep, detuning_sweep)
+            results = platform.sweep(
+                sequences[ON_OFF], amplitude_sweep, b_amplitude_sweep, detuning_sweep
+            )
 
             for ro_pulse in sequences[ON_OFF].ro_pulses:
                 r = results[ro_pulse.serial].to_dict()
-                r.update({
-                    "prob[dimensionless]": iq_to_prob(
-                        r["i[V]"],
-                        r["q[V]"],
-                        platform.qubits[ro_pulse.qubit].mean_gnd,
-                        platform.qubits[ro_pulse.qubit].mean_exc,
-                    ),
-                    "controlqubit": q_control,
-                    "targetqubit": q_target,
-                    "result_qubit": ro_pulse.qubit,
-                    "ON_OFF": ON_OFF,
-                    "detuning[degree]": detuning_mesh,
-                    "flux_pulse_amplitude[dimensionless]": amplitude_mesh,
-                    "flux_pulse_ratio[dimensionless]": b_amplitude_mesh,
-                })
+                r.update(
+                    {
+                        "prob[dimensionless]": iq_to_prob(
+                            r["i[V]"],
+                            r["q[V]"],
+                            platform.qubits[ro_pulse.qubit].mean_gnd,
+                            platform.qubits[ro_pulse.qubit].mean_exc,
+                        ),
+                        "controlqubit": q_control,
+                        "targetqubit": q_target,
+                        "result_qubit": ro_pulse.qubit,
+                        "ON_OFF": ON_OFF,
+                        "detuning[degree]": detuning_mesh,
+                        "flux_pulse_amplitude[dimensionless]": amplitude_mesh,
+                        "flux_pulse_ratio[dimensionless]": b_amplitude_mesh,
+                    }
+                )
                 data.add_data_from_dict(r)
                 yield data
 
