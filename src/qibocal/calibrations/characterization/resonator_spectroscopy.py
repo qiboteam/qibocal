@@ -78,7 +78,6 @@ def resonator_spectroscopy(
         "frequency",
         delta_frequency_range,
         pulses=[ro_pulses[qubit] for qubit in qubits],
-        wait_time=wait_time,
     )
 
     # create a DataUnits object to store the results,
@@ -92,7 +91,7 @@ def resonator_spectroscopy(
 
     # repeat the experiment as many times as defined by software_averages
     for iteration in range(software_averages):
-        results = platform.sweep(sequence, sweeper, nshots=nshots)
+        results = platform.sweep(sequence, sweeper, nshots=nshots, wait_time=wait_time)
 
         while (
             any(result.in_progress for result in results.values())
@@ -181,7 +180,6 @@ def resonator_spectroscopy(
         "frequency",
         delta_frequency_range,
         pulses=[ro_pulses[qubit] for qubit in qubits],
-        wait_time=wait_time,
     )
 
     # create a second DataUnits object to store the results,
@@ -193,7 +191,7 @@ def resonator_spectroscopy(
 
     # repeat the experiment as many times as defined by software_averages
     for iteration in range(software_averages):
-        results = platform.sweep(sequence, sweeper, nshots=nshots)
+        results = platform.sweep(sequence, sweeper, nshots=nshots, wait_time=wait_time)
 
         while (
             any(result.in_progress for result in results.values())
