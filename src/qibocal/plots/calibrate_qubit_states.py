@@ -140,40 +140,28 @@ def qubit_states(folder, routine, qubit, format):
             col=1,
         )
 
-        title_text = f"q{qubit}/r{report_n}<br>"
-        title_text += f"average state 0: ({average_state0:.6f})<br>"
-        title_text += f"average state 1: ({average_state1:.6f})<br>"
+        title_text = ""
         title_text += (
-            f"rotation angle = {rotation_angle:.3f} / threshold = {threshold:.6f}<br>"
+            f"q{qubit}/r{report_n} | average state 0: ({average_state0:.6f})<br>"
         )
-        title_text += f"fidelity = {fidelity:.3f} / assignment fidelity = {assignment_fidelity:.3f}<br><br>"
+        title_text += (
+            f"q{qubit}/r{report_n} | average state 1: ({average_state1:.6f})<br>"
+        )
+        title_text += f"q{qubit}/r{report_n} | rotation angle: {rotation_angle:.3f}<br>"
+        title_text += f"q{qubit}/r{report_n} | threshold: {threshold:.6f}<br>"
+        title_text += f"q{qubit}/r{report_n} | fidelity: {fidelity:.3f}<br>"
+        title_text += (
+            f"q{qubit}/r{report_n} | assignment fidelity: {assignment_fidelity:.3f}<br>"
+        )
+
         fitting_report = fitting_report + title_text
         report_n += 1
-
-    fig.add_annotation(
-        dict(
-            font=dict(color="black", size=12),
-            x=0,
-            y=1.2,
-            showarrow=False,
-            text="<b>FITTING DATA</b>",
-            font_family="Arial",
-            font_size=20,
-            textangle=0,
-            xanchor="left",
-            xref="paper",
-            yref="paper",
-            font_color="#5e9af1",
-            hovertext=fitting_report,
-        )
-    )
 
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="i (V)",
         yaxis_title="q (V)",
-        width=1000,
         xaxis_range=(min_x, max_x),
         yaxis_range=(min_y, max_y),
     )
@@ -184,4 +172,4 @@ def qubit_states(folder, routine, qubit, format):
 
     figures.append(fig)
 
-    return figures
+    return figures, fitting_report

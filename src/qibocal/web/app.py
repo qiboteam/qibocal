@@ -23,26 +23,22 @@ app = Dash(
 
 app.layout = html.Div(
     [
+        html.Link(href="/static/styles.css", rel="stylesheet"),
         html.Div(
-            [
+            id="refresh-area",
+            className="refresh-area",
+            children=[
                 html.Div(
-                    [
-                        html.P(
-                            "Refresh rate:",
-                            style={
-                                "margin-right": "2em",
-                                "margin-top": "5px",
-                                "font-size": "1.1em",
-                                "font-family": "verdana",
-                            },
-                        )
-                    ],
+                    id="refresh-text",
+                    className="refresh-text",
+                    children=[html.P("Refresh rate:")],
                 ),
                 dcc.Dropdown(
                     id="interval-refresh",
+                    className="interval-refresh",
                     placeholder="Select refresh rate",
                     options=[
-                        {"label": "Auto", "value": 0},
+                        {"label": "Auto refresh", "value": 0},
                         {"label": "2 seconds", "value": 2},
                         {"label": "5 seconds", "value": 5},
                         {"label": "10 seconds", "value": 10},
@@ -50,27 +46,14 @@ app.layout = html.Div(
                         {"label": "No refresh", "value": 3600},
                     ],
                     value=0,
-                    style={
-                        "width": "35%",
-                        "margin-left": "-10px",
-                        "font-family": "verdana",
-                    },
                 ),
                 html.Div(
                     id="latest-timestamp",
-                    style={"margin-left": "-120px", "margin-top": "10px"},
+                    className="latest-timestamp",
                 ),
             ],
-            style={"display": "flex", "font-family": "verdana"},
         ),
-        html.Div(
-            id="div-fitting",
-            style={
-                "margin-left": "40%",
-                "margin-top": "40px",
-                "font-family": "verdana",
-            },
-        ),
+        html.Div(id="div-fitting", className="div-fitting"),
         html.Div(id="div-figures"),
         dcc.Location(id="url", refresh=False),
         dcc.Interval(
@@ -131,53 +114,47 @@ def get_graph(interval, url, value):
         for fig in figs:
             figures.append(dcc.Graph(figure=fig))
 
-        fitting_params = re.split(r"<br>|:", fitting_report)
-        table = (
-            html.Div(
-                [
-                    html.Table(
-                        style={"border": "none"},
-                        className="fitting-table",
+        table = ""
+        if "No fitting data" not in fitting_report:
+            fitting_params = re.split(r"<br>|:|\|", fitting_report)
+            fitting_params = list(filter(lambda x: x.strip(), fitting_params))
+            table_header = [
+                html.Thead(
+                    children=[
+                        html.Tr(
+                            children=[
+                                html.Th(
+                                    className="th_styles", children="qubit # / report #"
+                                ),
+                                html.Th(
+                                    className="th_styles", children="Fitting Parameter"
+                                ),
+                                html.Th(className="th_styles", children="Value"),
+                            ]
+                        )
+                    ]
+                )
+            ]
+            table_rows = []
+
+            for i in range(0, len(fitting_params), 3):
+                # print(fitting_params[i])
+                table_rows.append(
+                    html.Tr(
+                        className="td_styles",
                         children=[
-                            html.Tr(
-                                [
-                                    html.Th(
-                                        "Fitting Parameter",
-                                        style={
-                                            "background-color": "gray",
-                                            "border": "none",
-                                            "padding": "10px",
-                                        },
-                                    ),
-                                    html.Th(
-                                        "Value",
-                                        style={
-                                            "background-color": "gray",
-                                            "border": "none",
-                                            "padding": "10px",
-                                        },
-                                    ),
-                                ],
-                            )
-                        ]
-                        + [
-                            html.Tr(
-                                [
-                                    html.Td(
-                                        fitting_params[0],
-                                        style={"border": "none", "padding": "10px"},
-                                    ),
-                                    html.Td(
-                                        fitting_params[1],
-                                        style={"border": "none", "padding": "10px"},
-                                    ),
-                                ]
-                            ),
+                            html.Td(fitting_params[i]),
+                            html.Td(fitting_params[i + 1]),
+                            html.Td(fitting_params[i + 2]),
                         ],
                     )
-                ]
-            ),
-        )
+                )
+
+            table = [
+                html.Table(
+                    className="fitting-table", children=table_header + table_rows
+                )
+            ]
 
         timestamp = datetime.datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
         return (

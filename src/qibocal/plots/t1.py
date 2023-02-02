@@ -118,28 +118,10 @@ def t1_time_msr(folder, routine, qubit, format):
             )
 
             fitting_report = fitting_report + (
-                f"q{qubit}/r{report_n} t1: {params['t1']:,.0f} ns.<br><br>"
+                f"q{qubit}/r{report_n} | t1: {params['t1']:,.0f} ns.<br><br>"
             )
 
         report_n += 1
-
-    fig.add_annotation(
-        dict(
-            font=dict(color="black", size=12),
-            x=0,
-            y=1.2,
-            showarrow=False,
-            text="<b>FITTING DATA</b>",
-            font_family="Arial",
-            font_size=20,
-            textangle=0,
-            xanchor="left",
-            xref="paper",
-            yref="paper",
-            font_color="#5e9af1",
-            hovertext=fitting_report,
-        )
-    )
 
     # last part
     fig.update_layout(
@@ -151,4 +133,4 @@ def t1_time_msr(folder, routine, qubit, format):
 
     figures.append(fig)
 
-    return figures
+    return figures, fitting_report

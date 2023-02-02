@@ -35,6 +35,7 @@ gatelist = [
 def allXY(folder, routine, qubit, format):
 
     figures = []
+    fitting_report = "No fitting data: -<br>No fitting data: -<br><br>"
 
     fig = make_subplots(
         rows=1,
@@ -129,13 +130,14 @@ def allXY(folder, routine, qubit, format):
 
     figures.append(fig)
 
-    return figures
+    return figures, fitting_report
 
 
 # allXY
 def allXY_drag_pulse_tuning(folder, routine, qubit, format):
 
     figures = []
+    fitting_report = "No fitting data: -<br>No fitting data: -<br><br>"
 
     fig = make_subplots(
         rows=1,
@@ -226,13 +228,14 @@ def allXY_drag_pulse_tuning(folder, routine, qubit, format):
 
     figures.append(fig)
 
-    return figures
+    return figures, fitting_report
 
 
 # beta param tuning
 def drag_pulse_tuning(folder, routine, qubit, format):
 
     figures = []
+    fitting_report = "No fitting data: -<br>No fitting data: -<br><br>"
 
     fig = make_subplots(
         rows=1,
@@ -353,24 +356,6 @@ def drag_pulse_tuning(folder, routine, qubit, format):
 
             report_n += 1
 
-    fig.add_annotation(
-        dict(
-            font=dict(color="black", size=12),
-            x=0,
-            y=1.2,
-            showarrow=False,
-            text="<b>FITTING DATA</b>",
-            font_family="Arial",
-            font_size=20,
-            textangle=0,
-            xanchor="left",
-            xref="paper",
-            yref="paper",
-            font_color="#5e9af1",
-            hovertext=fitting_report,
-        )
-    )
-
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
@@ -380,4 +365,4 @@ def drag_pulse_tuning(folder, routine, qubit, format):
 
     figures.append(fig)
 
-    return figures
+    return figures, fitting_report
