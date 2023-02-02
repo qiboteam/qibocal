@@ -1,6 +1,6 @@
 name: Tests
 
-on: 
+on:
   workflow_dispatch:
   push:
 
@@ -14,5 +14,5 @@ jobs:
     with:
       os: ${{ matrix.os }}
       python-version: ${{ matrix.python-version }}
-      doctests: true 
+      doctests: true
     secrets: inherit
