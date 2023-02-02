@@ -23,7 +23,7 @@ def spin_echo_time_msr(folder, routine, qubit, format):
 
     fig = make_subplots(
         rows=1,
-        cols=2,
+        cols=1,
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
         subplot_titles=("MSR (V)",),
