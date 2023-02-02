@@ -1,10 +1,18 @@
 
-=========================
-Gate set characterization
-=========================
+=========================================
+Non-Interactive Gate Set Characterization
+=========================================
 
-``qibocal`` provides a convenient infrastructure to implement gate set characterization protocols
-easily and fast. In ``abstract.py``, see section :ref:`abstract-module-label` of the APIs documentation,
+``qibocal`` offers a seamless and efficient solution for implementing non-interactive Gate Set Characterization (niGSC) protocols.
+An abstract level explanation of the architecture is depicted in the figure below.
+ 
+
+.. image:: images/qibocal_niGSC.png
+  :width: 700
+  :alt: Diagram explaining how non-interactive gate set characterization works on an abstract level.
+
+
+In ``abstract.py``, see section :ref:`abstract-module-label` of the APIs documentation,
 the overall structure is set up.
 The foundation is three classes:
 
@@ -21,8 +29,8 @@ In general, the idea of a standard RB protocol is to quantify the performance of
 regarding the implementation of gates.
 For that the quantum device needs to be able to prepare a quantum state, modify this quantum state with gates,
 and in the end measure the outcome of the modulation of the quantum state.
-The survival probability of the ground state :math:`y(m)` dependent on the sequence length
-of the applied gates :math:`m`, modulated with the following exponential function:
+The survival probability of the ground state :math:`y(m)` dependent on the sequence length 
+of the applied gates :math:`m`, is modulated with the following exponential function:
 
 .. math::
     y_{\text{fit}}(m) = Ap^m+B,
@@ -107,7 +115,6 @@ Now build the circuit factory, and check out how it works.
     # All the three lists have circuits constructed with
     # single clifford gates according to the ``depths``list,
     # repeated ``runs``many times.
-    assert circuits_list1 == circuits_list2
 
 The experiment
 """"""""""""""

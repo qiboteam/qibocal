@@ -162,13 +162,13 @@ Standard RB
 Correlated RB
 ^^^^^^^^^^^^
 .. automodule:: qibocal.calibrations.protocols.correlatedrb
-.. autoclass:: qibocal.data.Data
-    :members:
-    :member-order: bysource
+   :members:
+   :undoc-members:
+   :show-inheritance:
    
 X-ID RB
 ^^^^^^^^^^^^
 .. automodule:: qibocal.calibrations.protocols.XIdrb
-.. autoclass:: qibocal.data.Data
-    :members:
-    :member-order: bysource
+   :members:
+   :undoc-members:
+   :show-inheritance:

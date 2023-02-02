@@ -68,19 +68,6 @@ class moduleReport(Report):
         super().__init__()
         self.title = "Correlated Filtered Randomized Benchmarking"
 
-    def cross_figs(self):
-        xdata_scatter = self.df["depth"].to_numpy()
-        allydata_scatter = np.array(self.df["crosstalk"].tolist())
-        xdata, allydata = self.extract("depth", "crosstalk", "mean")
-
-        lambdas = iter(product([0, 1], repeat=int(np.log2(len(allydata_scatter[0])))))
-
-        for count in range(len(allydata_scatter[0])):
-            self.scatter_fit_fig(
-                xdata_scatter, allydata_scatter[:, count], xdata, allydata[:, count]
-            )
-            self.all_figures[-1]["subplot_title"] = f"Irrep {next(lambdas)}"
-
 
 def filter_function(circuit: Circuit, datarow: dict) -> dict:
     """Calculates the filtered signal for every crosstalk irrep.
@@ -151,15 +138,9 @@ def filter_function(circuit: Circuit, datarow: dict) -> dict:
         datarow[f"irrep{kk}"] = f_list[kk] / nshots
     return datarow
 
-
-def theoretical_outcome(noisemodel: NoiseModel) -> float:
-    return 0
-
-
 def post_processing_sequential(experiment: Experiment):
     # Compute and add the ground state probabilities row by row.
     experiment.perform(filter_function)
-
 
 def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
     nqubits = len(experiment.data[0]["samples"][0])
@@ -183,7 +164,6 @@ def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
 
     df = pd.DataFrame(data_list, index=index)
     return df
-
 
 def build_report(experiment: Experiment, df_aggr: pd.DataFrame):
     report = moduleReport()

@@ -11,5 +11,5 @@ your quantum hardware.
     installation
     interface
     runcard
-    rbprotocols/rbprotocols
+    niGSC/niGSC_and_standardrb
     example
