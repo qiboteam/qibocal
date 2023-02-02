@@ -1,16 +1,18 @@
 
-=================================
-Randomized Benchmarking Protocols
-=================================
+=========================
+Gate set characterization
+=========================
 
-``qibocal`` provides a convenient infrastructure to implement randomized benchmarking protocols
+``qibocal`` provides a convenient infrastructure to implement gate set characterization protocols
 easily and fast. In ``abstract.py``, see section :ref:`abstract-module-label` of the APIs documentation,
 the overall structure is set up.
 The foundation is three classes:
 
     1. The circuit factory, an iterator which produces circuits when called.
     2. The Experiment class which takes an iterable object producing circuits, optional some parameters. It is able to execute the circuits and to overwrite/store/process the necessary data.
-    3. A class storing and displaying the results of a randomized benchmarking scheme.
+    3. A class storing and displaying the results of a gate set characterization.
+
+A gate set characterization protocol will be demonstrated with a standard randomized benchmarking scheme.
 
 Standard Randomized Benchmarking
 ================================
@@ -70,7 +72,7 @@ circuit factory and the experiment object.
 
     # Define the necessary variables.
     nqubits = 1 # Number of qubits in the quantum hardware.
-    depths = [0,1,4] # How many random gates there are in each circuit.
+    depths = [0,1,5] # How many random gates there are in each circuit.
     runs = 2 # The amount of repetitions of the whole experiment.
     nshots = 5 # When a circuit is executed how many shots are used.
 
@@ -84,7 +86,7 @@ Now build the circuit factory, and check out how it works.
     from qibocal.calibrations.protocols import standardrb
     # To not alter the iterator when using it, make deep copies.
     from copy import deepcopy
-    factory = standardrb.SingleCliffordsInvFactory(nqubits, depths, runs)
+    factory = standardrb.moduleFactory(nqubits, depths, runs)
     # ``factory`` is an iterator class object generating single clifford
     # gates with the last gate always the inverse of the whole gate sequence.
     # There are mainly three ways how to extract the circuits.
@@ -105,6 +107,7 @@ Now build the circuit factory, and check out how it works.
     # All the three lists have circuits constructed with
     # single clifford gates according to the ``depths``list,
     # repeated ``runs``many times.
+    assert circuits_list1 == circuits_list2
 
 The experiment
 """"""""""""""
@@ -113,11 +116,11 @@ The experiment
 
     # Initiate the standard RB experiment. To make it simpler
     # first without simulated noise on the circuits.
-    experiment = standardrb.StandardRBExperiment(factory, nshots)
+    experiment = standardrb.moduleExperiment(factory, nshots)
     # Nothing happened yet. The experiment has to be executed
     # to execute the single circuits and store the samples along
     # with the number of applied gates.
-    experiment.execute()
+    experiment.perform(experiment.execute)
     # Check out the data in a data frame. Since there is no noise all
     # the samples from the measured qubits were in the ground state.
     print(experiment.dataframe)
@@ -142,20 +145,17 @@ base of the exponent to calculate the average gate fidelity.
 
 .. code-block:: python
 
-    from qibocal.calibrations.protocols.fitting_methods import fit_exp1_func
     # Make the experiment calculate its own ground state probability,
     # it will be appended to the data.
-    experiment.apply(standardrb.groundstate_probability)
+    standardrb.post_processing_sequential(experiment)
     # Now the data attribute of the experiment object has all its needs
     # for the desired signal (ground state survival probability) to
-    # be fitted and plotted.
-    # For that use the custom designed ``Result``class, use a single
-    # exponential decay model for fitting.
-    result = standardrb.StandardRBResult(experiment.dataframe, fit_exp1_func)
-    # With the result class multiple figure can be build and stored and when
-    # the report is needed all of these figure will be shown in one report.
-    result.single_fig()
-    result.report().show()
+    # be fitted and plotted. It only has to be aggregated.
+    df_aggr = standardrb.get_aggregational_data(experiment)
+    # The build_report functions knows how to plot the aggregated data along
+    # with the sequential data and returns the report figure.
+    fig = standardrb.build_report(experiment, df_aggr)
+    fig.show()
 
 .. image:: images/Example_standardRB_report.png
   :width: 600
@@ -167,27 +167,22 @@ It has to be predefined and passed when initiating the experiment object.
 .. code-block:: python
 
     from qibocal.calibrations.protocols import standardrb
-    from qibocal.calibrations.protocols.fitting_methods import fit_exp1_func
-    from qibo.noise import NoiseModel, PauliError
-    from qibo import gates
+    from qibocal.calibrations.protocols.noisemodels import PauliErrorOnUnitary
     nqubits = 1
-    depths = [0,1,5]
-    runs = 50
+    depths = [0,1,5,10,15]
+    runs = 10
     nshots = 128
     # Define the noise model used in the simulation.
-    pauliflip_params = [0.1, 0.1, 0.1]
-    paulinoise = PauliError(*pauliflip_params)
-    noise = NoiseModel()
-    noise.add(paulinoise, gates.Unitary)
-    factory = standardrb.SingleCliffordsInvFactory(nqubits, depths, runs)
+    noisemodel = PauliErrorOnUnitary(0.01, 0.02, 0.04)
+    factory = standardrb.moduleFactory(nqubits, depths, runs)
     # Add the noise model to the experiment.
-    experiment = standardrb.StandardRBExperiment(
-        factory, nshots, noisemodel = noise)
-    experiment.execute()
-    experiment.apply_task(standardrb.groundstate_probability)
-    result = standardrb.StandardRBResult(experiment.dataframe, fit_exp1_func)
-    result.single_fig()
-    result.report().show()
+    experiment = standardrb.moduleExperiment(
+        factory, nshots, noisemodel = noisemodel)
+    experiment.perform(experiment.execute)
+    experiment.perform(standardrb.groundstate_probabilities)
+    df_aggr = standardrb.get_aggregational_data(experiment)
+    fig = standardrb.build_report(experiment, df_aggr)
+    fig.show()
 
 .. image:: images/Example_standardRBerror_report.png
   :width: 600
