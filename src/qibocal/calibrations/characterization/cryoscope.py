@@ -237,7 +237,7 @@ def flux_pulse_timing(
 )
 def cryoscope(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     flux_pulse_amplitude,
     flux_pulse_duration_start,
     flux_pulse_duration_end,
@@ -344,8 +344,8 @@ def cryoscope(
             amplitude=flux_pulse_amplitude,  # fix for each run
             shape=flux_pulse_shape,
             # relative_phase=0,
-            channel=qubit.flux.name,
-            qubit=qubit.name,
+            channel=platform.qubits[qubit].flux.name,
+            qubit=platform.qubits[qubit].name,
         )
 
         # wait delay_before_readout
@@ -436,8 +436,8 @@ def cryoscope(
                     sequence, sweeper, nshots=nshots, average=False
                 )
                 for qubit in qubits:
-                    prob = results["probability"][MZ_ro_pulses[qubit].serial]
                     qubit_res = results[MZ_ro_pulses[qubit].serial]
+
                     r = {
                         "MSR[V]": qubit_res.msr.mean(axis=0),
                         "i[V]": qubit_res.i.mean(axis=0),
@@ -450,7 +450,7 @@ def cryoscope(
                         "qubit": ndata * [qubit],
                         "iteration": ndata * [iteration],
                     }
-                    data.add(r)
+                    data.add_data_from_dict(r)
             count += 1
 
     # finally, save the remaining data
