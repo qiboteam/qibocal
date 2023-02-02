@@ -93,50 +93,32 @@ def resonator_spectroscopy(
     for iteration in range(software_averages):
         results = platform.sweep(sequence, sweeper, nshots=nshots, wait_time=wait_time)
 
-        while (
-            any(result.in_progress for result in results.values())
-            or len(fast_sweep_data) == 0
-        ):
-            # retrieve the results for every qubit
-            for qubit in qubits:
-                # average msr, phase, i and q over the number of shots defined in the runcard
-                result = results[ro_pulses[qubit].serial]
-                # store the results
-                r = result.to_dict()
-                r.update(
-                    {
-                        "frequency[Hz]": delta_frequency_range
-                        + ro_pulses[qubit].frequency,
-                        "qubit": len(delta_frequency_range) * [qubit],
-                        "iteration": len(delta_frequency_range) * [iteration],
-                    }
-                )
-                fast_sweep_data.add_data_from_dict(r)
+        # retrieve the results for every qubit
+        for qubit in qubits:
+            # average msr, phase, i and q over the number of shots defined in the runcard
+            result = results[ro_pulses[qubit].serial]
+            # store the results
+            r = result.to_dict()
+            r.update(
+                {
+                    "frequency[Hz]": delta_frequency_range + ro_pulses[qubit].frequency,
+                    "qubit": len(delta_frequency_range) * [qubit],
+                    "iteration": len(delta_frequency_range) * [iteration],
+                }
+            )
+            fast_sweep_data.add_data_from_dict(r)
 
-            # save data as often as defined by points
-            if result.in_progress:
-                # save data
-                yield fast_sweep_data
-                # calculate and save fit
-                yield lorentzian_fit(
-                    fast_sweep_data,
-                    x="frequency[Hz]",
-                    y="MSR[uV]",
-                    qubits=qubits,
-                    resonator_type=platform.resonator_type,
-                    labels=["resonator_freq", "peak_voltage"],
-                )
-
-    # finally, save the remaining data and fits
-    yield fast_sweep_data
-    yield lorentzian_fit(
-        fast_sweep_data,
-        x="frequency[Hz]",
-        y="MSR[uV]",
-        qubits=qubits,
-        resonator_type=platform.resonator_type,
-        labels=["readout_frequency", "peak_voltage"],
-    )
+            # save data
+            yield fast_sweep_data
+            # calculate and save fit
+            yield lorentzian_fit(
+                fast_sweep_data,
+                x="frequency[Hz]",
+                y="MSR[uV]",
+                qubits=qubits,
+                resonator_type=platform.resonator_type,
+                labels=["readout_frequency", "peak_voltage"],
+            )
 
     # store max/min peaks as new frequencies
     for qubit in qubits:
@@ -165,12 +147,12 @@ def resonator_spectroscopy(
 
     # run a precision sweep around the newly detected frequencies
 
-    # TODO: remove it
     # create a new sequence of pulses with adjusted frequencies
     sequence = PulseSequence()
     ro_pulses = {}
     for qubit in qubits:
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
+        ro_pulses[qubit].frequency = qubits[qubit].readout_frequency
         sequence.add(ro_pulses[qubit])
 
     delta_frequency_range = np.arange(
@@ -193,49 +175,32 @@ def resonator_spectroscopy(
     for iteration in range(software_averages):
         results = platform.sweep(sequence, sweeper, nshots=nshots, wait_time=wait_time)
 
-        while (
-            any(result.in_progress for result in results.values())
-            or len(precision_sweep_data) == 0
-        ):
-            # retrieve the results for every qubit
-            for qubit, ro_pulse in ro_pulses.items():
-                # average msr, phase, i and q over the number of shots defined in the runcard
-                result = results[ro_pulse.serial]
-                r = result.to_dict()
-                # store the results
-                r.update(
-                    {
-                        "frequency[Hz]": delta_frequency_range + ro_pulse.frequency,
-                        "qubit": len(delta_frequency_range) * [qubit],
-                        "iteration": len(delta_frequency_range) * [iteration],
-                    }
-                )
-                precision_sweep_data.add_data_from_dict(r)
+        # retrieve the results for every qubit
+        for qubit, ro_pulse in ro_pulses.items():
+            # average msr, phase, i and q over the number of shots defined in the runcard
+            result = results[ro_pulse.serial]
+            r = result.to_dict()
+            # store the results
+            r.update(
+                {
+                    "frequency[Hz]": delta_frequency_range + ro_pulse.frequency,
+                    "qubit": len(delta_frequency_range) * [qubit],
+                    "iteration": len(delta_frequency_range) * [iteration],
+                }
+            )
+            precision_sweep_data.add_data_from_dict(r)
 
-            # save data as often as defined by points
-            if result.in_progress:
-                # save data
-                yield precision_sweep_data
-                # calculate and save fit
-                yield lorentzian_fit(
-                    precision_sweep_data,
-                    x="frequency[Hz]",
-                    y="MSR[uV]",
-                    qubits=qubits,
-                    resonator_type=platform.resonator_type,
-                    labels=["resonator_freq", "peak_voltage"],
-                )
-
-    # finally, save the remaining data and fits
-    yield precision_sweep_data
-    yield lorentzian_fit(
-        precision_sweep_data,
-        x="frequency[Hz]",
-        y="MSR[uV]",
-        qubits=qubits,
-        resonator_type=platform.resonator_type,
-        labels=["readout_frequency", "peak_voltage"],
-    )
+            # save data
+            yield precision_sweep_data
+            # calculate and save fit
+            yield lorentzian_fit(
+                precision_sweep_data,
+                x="frequency[Hz]",
+                y="MSR[uV]",
+                qubits=qubits,
+                resonator_type=platform.resonator_type,
+                labels=["readout_frequency", "peak_voltage"],
+            )
 
 
 @plot(
@@ -332,33 +297,29 @@ def resonator_punchout_attenuation(
             sequence, att_sweeper, freq_sweeper, nshots=nshots, wait_time=wait_time
         )
 
-        while any(result.in_progress for result in results.values()) or len(data) == 0:
-            # retrieve the results for every qubit
-            for qubit, ro_pulse in ro_pulses.items():
-                # average msr, phase, i and q over the number of shots defined in the runcard
-                result = results[ro_pulse.serial]
-                # store the results
-                freqs = np.array(
-                    len(attenuation_range)
-                    * list(delta_frequency_range + ro_pulse.frequency)
-                ).flatten()
-                r = result.to_dict()
-                r.update(
-                    {
-                        "frequency[Hz]": freqs,
-                        "attenuation[dB]": atts,
-                        "qubit": len(freqs) * [qubit],
-                        "iteration": len(freqs) * [iteration],
-                    }
-                )
-                data.add_data_from_dict(r)
+        # retrieve the results for every qubit
+        for qubit, ro_pulse in ro_pulses.items():
+            # average msr, phase, i and q over the number of shots defined in the runcard
+            result = results[ro_pulse.serial]
+            # store the results
+            freqs = np.array(
+                len(attenuation_range)
+                * list(delta_frequency_range + ro_pulse.frequency)
+            ).flatten()
+            r = result.to_dict()
+            r.update(
+                {
+                    "frequency[Hz]": freqs,
+                    "attenuation[dB]": atts,
+                    "qubit": len(freqs) * [qubit],
+                    "iteration": len(freqs) * [iteration],
+                }
+            )
+            data.add_data_from_dict(r)
 
-            # save data
-            yield data
-            # TODO: calculate and save fit
-
-    # finally, save the remaining data and fits
-    yield data
+        # save data
+        yield data
+        # TODO: calculate and save fit
 
 
 @plot(
