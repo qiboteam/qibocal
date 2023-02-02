@@ -178,6 +178,7 @@ def qubit_spectroscopy(
     delta_frequency_range = np.arange(
         -precision_width // 2, precision_width // 2, precision_step
     )
+
     sweeper = Sweeper(
         "frequency",
         delta_frequency_range,

@@ -102,7 +102,7 @@ def resonator_spectroscopy(
                 # average msr, phase, i and q over the number of shots defined in the runcard
                 result = results[ro_pulses[qubit].serial]
                 # store the results
-                r = result.to_dict(average=False)
+                r = result.to_dict()
                 r.update(
                     {
                         "frequency[Hz]": delta_frequency_range
@@ -201,7 +201,7 @@ def resonator_spectroscopy(
             for qubit, ro_pulse in ro_pulses.items():
                 # average msr, phase, i and q over the number of shots defined in the runcard
                 result = results[ro_pulse.serial]
-                r = result.to_dict(average=False)
+                r = result.to_dict()
                 # store the results
                 r.update(
                     {
@@ -245,7 +245,7 @@ def resonator_spectroscopy(
 @plot(
     "Cross section at half range attenuation", plots.frequency_attenuation_msr_phase_cut
 )
-def resonator_punchout(
+def resonator_punchout_attenuation(
     platform: AbstractPlatform,
     qubits: dict,
     freq_width,
@@ -253,7 +253,7 @@ def resonator_punchout(
     min_att,
     max_att,
     step_att,
-    wait_time,
+    wait_time=None,
     nshots=1024,
     software_averages=1,
 ):
@@ -270,6 +270,130 @@ def resonator_punchout(
         min_att (int): Minimum value in db for the attenuation sweep
         max_att (int): Minimum value in db for the attenuation sweep
         step_att (int): Step attenuation in db for the attenuation sweep
+        wait_time (int): Relaxation time between shots (ns)
+        software_averages (int): Number of executions of the routine for averaging results
+        points (int): Save data results in a file every number of points
+
+    Returns:
+        A DataUnits object with the raw data obtained with the following keys
+
+            - **MSR[V]**: Resonator signal voltage mesurement in volts
+            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
+            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
+            - **phase[rad]**: Resonator signal phase mesurement in radians
+            - **frequency[Hz]**: Resonator frequency value in Hz
+            - **attenuation[dB]**: attenuation value in db applied to the flux line
+            - **qubit**: The qubit being tested
+            - **iteration**: The iteration number of the many determined by software_averages
+    """
+
+    # reload instrument settings from runcard
+    platform.reload_settings()
+
+    # create a sequence of pulses for the experiment:
+    # MZ
+
+    # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
+    sequence = PulseSequence()
+
+    ro_pulses = {}
+    for qubit in qubits:
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
+        sequence.add(ro_pulses[qubit])
+
+    # define the parameters to sweep and their range:
+    # resonator frequency
+    delta_frequency_range = (
+        np.arange(-freq_width // 2, freq_width // 2, freq_step) - freq_width // 8
+    )
+    freq_sweeper = Sweeper(
+        "frequency", delta_frequency_range, [ro_pulses[qubit] for qubit in qubits]
+    )
+
+    # attenuation
+    attenuation_range = np.flip(np.arange(min_att, max_att, step_att))
+    att_sweeper = Sweeper(
+        "attenuation", attenuation_range, [ro_pulses[qubit] for qubit in qubits]
+    )
+
+    # create a DataUnits object to store the results,
+    # DataUnits stores by default MSR, phase, i, q
+    # additionally include resonator frequency and attenuation
+    data = DataUnits(
+        name=f"data",
+        quantities={"frequency": "Hz", "attenuation": "dB"},
+        options=["qubit", "iteration"],
+    )
+
+    # repeat the experiment as many times as defined by software_averages
+    atts = np.repeat(attenuation_range, len(delta_frequency_range))
+    for iteration in range(software_averages):
+        results = platform.sweep(
+            sequence, att_sweeper, freq_sweeper, nshots=nshots, wait_time=wait_time
+        )
+
+        while any(result.in_progress for result in results.values()) or len(data) == 0:
+            # retrieve the results for every qubit
+            for qubit, ro_pulse in ro_pulses.items():
+                # average msr, phase, i and q over the number of shots defined in the runcard
+                result = results[ro_pulse.serial]
+                # store the results
+                freqs = np.array(
+                    len(attenuation_range)
+                    * list(delta_frequency_range + ro_pulse.frequency)
+                ).flatten()
+                r = result.to_dict()
+                r.update(
+                    {
+                        "frequency[Hz]": freqs,
+                        "attenuation[dB]": atts,
+                        "qubit": len(freqs) * [qubit],
+                        "iteration": len(freqs) * [iteration],
+                    }
+                )
+                data.add_data_from_dict(r)
+
+            # save data
+            yield data
+            # TODO: calculate and save fit
+
+    # finally, save the remaining data and fits
+    yield data
+
+
+@plot(
+    "MSR and Phase vs Resonator Frequency and Attenuation",
+    plots.frequency_attenuation_msr_phase,
+)
+@plot(
+    "Cross section at half range attenuation", plots.frequency_attenuation_msr_phase_cut
+)
+def resonator_punchout_amplitude(
+    platform: AbstractPlatform,
+    qubits: dict,
+    freq_width,
+    freq_step,
+    min_amp,
+    max_amp,
+    step_amp,
+    wait_time=None,
+    nshots=1024,
+    software_averages=1,
+):
+    r"""
+    Perform spectroscopies on the qubits' readout resonators, decreasing the attenuation applied to
+    the read-out pulse, producing an increment of the power sent to the resonator.
+    That shows the two regimes of a given resonator, low and high-power regimes.
+
+    Args:
+        platform (AbstractPlatform): Qibolab platform object
+        qubits (dict): List of target qubits to perform the action
+        freq_width (int): Width frequency in HZ to perform the spectroscopy sweep
+        freq_step (int): Step frequency in HZ for the spectroscopy sweep
+        max_amp (float): Maximum amplitude value
+        min_amp (float): Minimum amplitude value
+        step_amp (float): Step amplitude value for the amplitude sweep
+        wait_time (int): Relaxation time between shots (ns)
         software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
 
@@ -304,20 +428,13 @@ def resonator_punchout(
     # resonator frequency
     delta_frequency_range = np.arange(-freq_width // 2, freq_width // 2, freq_step)
     freq_sweeper = Sweeper(
-        "frequency",
-        delta_frequency_range,
-        [ro_pulses[qubit] for qubit in qubits],
-        wait_time=wait_time,
+        "frequency", delta_frequency_range, [ro_pulses[qubit] for qubit in qubits]
     )
 
-    # attenuation
-    # TODO: Rename attenuation to amplitude?
-    attenuation_range = np.arange(min_att, max_att, step_att)
+    # amplitude
+    amplitude_range = np.arange(min_amp, max_amp, step_amp)
     att_sweeper = Sweeper(
-        "amplitude",
-        attenuation_range,
-        [ro_pulses[qubit] for qubit in qubits],
-        wait_time=0,
+        "amplitude", amplitude_range, [ro_pulses[qubit] for qubit in qubits]
     )
 
     # create a DataUnits object to store the results,
@@ -332,7 +449,9 @@ def resonator_punchout(
     # repeat the experiment as many times as defined by software_averages
     atts = np.repeat(attenuation_range, len(delta_frequency_range))
     for iteration in range(software_averages):
-        results = platform.sweep(sequence, att_sweeper, freq_sweeper, nshots=nshots)
+        results = platform.sweep(
+            sequence, att_sweeper, freq_sweeper, nshots=nshots, wait_time=wait_time
+        )
 
         while any(result.in_progress for result in results.values()) or len(data) == 0:
             # retrieve the results for every qubit
@@ -341,10 +460,10 @@ def resonator_punchout(
                 result = results[ro_pulse.serial]
                 # store the results
                 freqs = np.array(
-                    len(attenuation_range)
+                    len(amplitude_range)
                     * list(delta_frequency_range + ro_pulse.frequency)
                 ).flatten()
-                r = result.to_dict(average=False)
+                r = result.to_dict()
                 r.update(
                     {
                         "frequency[Hz]": freqs,
@@ -466,7 +585,7 @@ def resonator_spectroscopy_flux(
                     * list(delta_frequency_range + ro_pulses[qubit].frequency)
                 ).flatten()
                 # store the results
-                r = result.to_dict(average=False)
+                r = result.to_dict()
                 r.update(
                     {
                         "frequency[Hz]": freqs,
