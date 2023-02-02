@@ -13,7 +13,8 @@ from qibocal.decorators import plot
 @plot("Chevron CZ - Q", plots.duration_amplitude_Q_flux_pulse)
 def tune_transition(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
+    flux_pulse_amplitude,
     flux_pulse_duration_start,
     flux_pulse_duration_end,
     flux_pulse_duration_step,
@@ -52,6 +53,8 @@ def tune_transition(
     if len(qubits) > 1:
         raise NotImplementedError
 
+    qubit = list(qubits.keys())[0]
+
     platform.reload_settings()
 
     qubit = list(qubits.keys())[0]
@@ -69,7 +72,7 @@ def tune_transition(
         flux_pulse = FluxPulse(
             start=initialize_1.se_finish,
             duration=flux_pulse_duration_start,
-            amplitude=0.056,
+            amplitude=flux_pulse_amplitude,
             shape=Rectangular(),
             channel=str(platform.qubits[highfreq].flux),
             qubit=highfreq,
@@ -154,7 +157,7 @@ def tune_transition(
 
         results = platform.sweep(sequence, sweeper, nshots=nshots)
 
-        res_temp = results[measure_lowfreq.serial].to_dict()
+        res_temp = results[measure_lowfreq.serial].to_dict(average=False)
         res_temp.update(
             {
                 "flux_pulse_duration[ns]": len(amplitudes) * [duration],
@@ -164,7 +167,7 @@ def tune_transition(
         )
         data.add_data_from_dict(res_temp)
 
-        res_temp = results[measure_highfreq.serial].to_dict()
+        res_temp = results[measure_highfreq.serial].to_dict(average=False)
         res_temp.update(
             {
                 "flux_pulse_duration[ns]": len(amplitudes) * [duration],
@@ -181,7 +184,7 @@ def tune_transition(
 @plot("Landscape 2-qubit gate", plots.landscape_2q_gate)
 def tune_landscape(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     theta_start,
     theta_end,
     theta_step,
@@ -225,8 +228,7 @@ def tune_landscape(
     if len(qubits) > 1:
         raise NotImplementedError
 
-    qubit = qubits[0]
-
+    qubit = list(qubits.keys())[0]
     platform.reload_settings()
 
     highfreq = 2
@@ -244,7 +246,7 @@ def tune_landscape(
             duration=flux_pulse_duration,
             amplitude=flux_pulse_amplitude,
             shape=Rectangular(),
-            channel=str(platform.qubits[highfreq].flux),
+            channel=platform.qubits[highfreq].flux.name,
             qubit=highfreq,
         )
         theta_pulse = platform.create_RX90_pulse(
@@ -345,7 +347,7 @@ def tune_landscape(
 
         results = platform.sweep(sequence, sweeper, nshots=nshots)
 
-        result_low = results[measure_lowfreq.serial].to_dict()
+        result_low = results[measure_lowfreq.serial].to_dict(average=False)
         result_low.update(
             {
                 "theta[rad]": thetas,
@@ -358,7 +360,7 @@ def tune_landscape(
         )
         data.add_data_from_dict(result_low)
 
-        result_high = results[measure_highfreq.serial].to_dict()
+        result_high = results[measure_highfreq.serial].to_dict(average=False)
         result_high.update(
             {
                 "theta[rad]": thetas,
