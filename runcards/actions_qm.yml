@@ -1,4 +1,4 @@
-platform: qw5q_gold_poc
+platform: qw5q_gold
 
 # Instructions: Uncomment whatever you would like to run!
 
@@ -18,25 +18,25 @@ actions:
   #  nshots: 1000
   #  software_averages: 1
 
-  #resonator_punchout:
+  # resonator_punchout_amplitude:
   #  freq_width: 5_000_000
   #  freq_step: 100_000
-  #  min_att: 0.01
-  #  max_att: 2.0
-  #  step_att: 0.02
+  #  min_amp: 0.01
+  #  max_amp: 2.0
+  #  step_amp: 0.02
   #  wait_time: 50
   #  nshots: 1000
   #  software_averages: 1
 
-  #resonator_spectroscopy_flux:
-  #  freq_width: 5_000_000
-  #  freq_step: 100_000
-  #  bias_width: 0.1
-  #  bias_step:  0.002
-  #  fluxlines: qubits
-  #  wait_time: 50
-  #  nshots: 1000
-  #  software_averages: 1
+  resonator_spectroscopy_flux:
+   freq_width: 5_000_000
+   freq_step: 100_000
+   bias_width: 0.1
+   bias_step:  0.002
+   fluxlines: qubits
+   wait_time: 50
+   nshots: 1000
+   software_averages: 1
 
   #qubit_spectroscopy:
   #  fast_width: 400_000_000
