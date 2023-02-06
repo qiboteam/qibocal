@@ -10,6 +10,8 @@ from qibocal.plots.utils import get_color, get_data_subfolders
 # T1
 def t1_time_msr(folder, routine, qubit, format):
 
+    figures = []
+
     fig = make_subplots(
         rows=1,
         cols=1,
@@ -146,4 +148,7 @@ def t1_time_msr(folder, routine, qubit, format):
         xaxis_title="Time (ns)",
         yaxis_title="MSR (uV)",
     )
-    return fig
+
+    figures.append(fig)
+
+    return figures
