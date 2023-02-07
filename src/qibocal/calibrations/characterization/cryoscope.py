@@ -246,9 +246,9 @@ def cryoscope(
     flux_pulse_amplitude_end,
     flux_pulse_amplitude_step,
     delay_before_readout,
-    wait_time,
     flux_pulse_shapes: Optional[list] = None,
     nshots=1024,
+    relaxation_time=None,
     software_averages=1,
     points=10,
 ):
@@ -401,7 +401,6 @@ def cryoscope(
         "amplitude",
         flux_pulse_amplitude_range,
         pulses=[flux_pulses[qubit] for qubit in qubits],
-        wait_time=wait_time,
     )
     flux_pulse_duration_range = np.arange(
         flux_pulse_duration_start, flux_pulse_duration_end, flux_pulse_duration_step
@@ -433,7 +432,11 @@ def cryoscope(
             # execute the pulse sequences
             for sequence, tag in [(MX_seq, MX_tag), (MY_seq, MY_tag)]:
                 results = platform.sweep(
-                    sequence, sweeper, nshots=nshots, average=False
+                    sequence,
+                    sweeper,
+                    nshots=nshots,
+                    relaxation_time=relaxation_time,
+                    average=False,
                 )
                 for qubit in qubits:
                     qubit_res = results[MZ_ro_pulses[qubit].serial]

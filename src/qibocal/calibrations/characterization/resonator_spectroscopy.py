@@ -19,8 +19,8 @@ def resonator_spectroscopy(
     fast_step,
     precision_width,
     precision_step,
-    wait_time,
     nshots=1024,
+    relaxation_time=50,
     software_averages=1,
 ):
     r"""
@@ -78,7 +78,6 @@ def resonator_spectroscopy(
         "frequency",
         delta_frequency_range,
         pulses=[ro_pulses[qubit] for qubit in qubits],
-        wait_time=wait_time,
     )
 
     # create a DataUnits object to store the results,
@@ -92,7 +91,9 @@ def resonator_spectroscopy(
 
     # repeat the experiment as many times as defined by software_averages
     for iteration in range(software_averages):
-        results = platform.sweep(sequence, sweeper, nshots=nshots)
+        results = platform.sweep(
+            sequence, sweeper, nshots=nshots, relaxation_time=relaxation_time
+        )
 
         while (
             any(result.in_progress for result in results.values())
@@ -181,7 +182,6 @@ def resonator_spectroscopy(
         "frequency",
         delta_frequency_range,
         pulses=[ro_pulses[qubit] for qubit in qubits],
-        wait_time=wait_time,
     )
 
     # create a second DataUnits object to store the results,
@@ -193,7 +193,9 @@ def resonator_spectroscopy(
 
     # repeat the experiment as many times as defined by software_averages
     for iteration in range(software_averages):
-        results = platform.sweep(sequence, sweeper, nshots=nshots)
+        results = platform.sweep(
+            sequence, sweeper, nshots=nshots, relaxation_time=relaxation_time
+        )
 
         while (
             any(result.in_progress for result in results.values())
@@ -255,8 +257,8 @@ def resonator_punchout(
     min_att,
     max_att,
     step_att,
-    wait_time,
     nshots=1024,
+    relaxation_time=50,
     software_averages=1,
 ):
     r"""
@@ -309,7 +311,6 @@ def resonator_punchout(
         "frequency",
         delta_frequency_range,
         [ro_pulses[qubit] for qubit in qubits],
-        wait_time=wait_time,
     )
 
     # attenuation
@@ -319,7 +320,6 @@ def resonator_punchout(
         "amplitude",
         attenuation_range,
         [ro_pulses[qubit] for qubit in qubits],
-        wait_time=0,
     )
 
     # create a DataUnits object to store the results,
@@ -334,7 +334,13 @@ def resonator_punchout(
     # repeat the experiment as many times as defined by software_averages
     atts = np.repeat(attenuation_range, len(delta_frequency_range))
     for iteration in range(software_averages):
-        results = platform.sweep(sequence, att_sweeper, freq_sweeper, nshots=nshots)
+        results = platform.sweep(
+            sequence,
+            att_sweeper,
+            freq_sweeper,
+            nshots=nshots,
+            relaxation_time=relaxation_time,
+        )
 
         while any(result.in_progress for result in results.values()) or len(data) == 0:
             # retrieve the results for every qubit
@@ -377,8 +383,8 @@ def resonator_spectroscopy_flux(
     bias_width,
     bias_step,
     fluxlines,
-    wait_time,
     nshots=1024,
+    relaxation_time=50,
     software_averages=1,
 ):
     r"""
@@ -429,7 +435,6 @@ def resonator_spectroscopy_flux(
         "frequency",
         delta_frequency_range,
         [ro_pulses[qubit] for qubit in qubits],
-        wait_time=wait_time,
     )
 
     # flux current
@@ -437,7 +442,7 @@ def resonator_spectroscopy_flux(
         fluxlines = qubits
 
     delta_bias_range = np.arange(-bias_width / 2, bias_width / 2, bias_step)
-    bias_sweeper = Sweeper("offset", delta_bias_range, qubits=fluxlines, wait_time=0)
+    bias_sweeper = Sweeper("offset", delta_bias_range, qubits=fluxlines)
 
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
@@ -450,7 +455,13 @@ def resonator_spectroscopy_flux(
 
     # repeat the experiment as many times as defined by software_averages
     for iteration in range(software_averages):
-        results = platform.sweep(sequence, bias_sweeper, freq_sweeper, nshots=nshots)
+        results = platform.sweep(
+            sequence,
+            bias_sweeper,
+            freq_sweeper,
+            nshots=nshots,
+            relaxation_time=relaxation_time,
+        )
 
         while any(result.in_progress for result in results.values()) or len(data) == 0:
             # retrieve the results for every qubit

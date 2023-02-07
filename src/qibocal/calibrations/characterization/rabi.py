@@ -274,8 +274,8 @@ def rabi_pulse_amplitude(
     pulse_amplitude_start,
     pulse_amplitude_end,
     pulse_amplitude_step,
-    wait_time,
     nshots=1024,
+    relaxation_time=None,
     software_averages=1,
 ):
 
@@ -339,7 +339,6 @@ def rabi_pulse_amplitude(
         "amplitude",
         qd_pulse_amplitude_range,
         [qd_pulses[qubit] for qubit in qubits],
-        wait_time=wait_time,
     )
 
     # create a DataUnits object to store the results,
@@ -354,7 +353,9 @@ def rabi_pulse_amplitude(
     count = 0
     for iteration in range(software_averages):
         # sweep the parameter
-        results = platform.sweep(sequence, sweeper, nshots=nshots)
+        results = platform.sweep(
+            sequence, sweeper, nshots=nshots, relaxation_time=relaxation_time
+        )
         while any(result.in_progress for result in results.values()) or len(data) == 0:
             for qubit in qubits:
                 # average msr, phase, i and q over the number of shots defined in the runcard

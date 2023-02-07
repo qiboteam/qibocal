@@ -19,8 +19,8 @@ def qubit_spectroscopy(
     fast_step,
     precision_width,
     precision_step,
-    wait_time,
     nshots=1024,
+    relaxation_time=50,
     software_averages=1,
 ):
     r"""
@@ -88,7 +88,6 @@ def qubit_spectroscopy(
         "frequency",
         delta_frequency_range,
         pulses=[qd_pulses[qubit] for qubit in qubits],
-        wait_time=wait_time,
     )
 
     # create a DataUnits object to store the results,
@@ -102,7 +101,9 @@ def qubit_spectroscopy(
 
     # repeat the experiment as many times as defined by software_averages
     for iteration in range(software_averages):
-        results = platform.sweep(sequence, sweeper, nshots=nshots)
+        results = platform.sweep(
+            sequence, sweeper, nshots=nshots, relaxation_time=relaxation_time
+        )
 
         while (
             any(result.in_progress for result in results.values())
@@ -182,7 +183,6 @@ def qubit_spectroscopy(
         "frequency",
         delta_frequency_range,
         pulses=[qd_pulses[qubit] for qubit in qubits],
-        wait_time=wait_time,
     )
 
     # create a second DataUnits object to store the results,
@@ -194,7 +194,9 @@ def qubit_spectroscopy(
 
     # repeat the experiment as many times as defined by software_averages
     for iteration in range(software_averages):
-        results = platform.sweep(sequence, sweeper, nshots=nshots)
+        results = platform.sweep(
+            sequence, sweeper, nshots=nshots, relaxation_time=relaxation_time
+        )
 
         while (
             any(result.in_progress for result in results.values())
@@ -255,8 +257,8 @@ def qubit_spectroscopy_flux(
     bias_width,
     bias_step,
     fluxlines,
-    wait_time,
     nshots=1024,
+    relaxation_time=50,
     software_averages=1,
 ):
     r"""
@@ -326,7 +328,6 @@ def qubit_spectroscopy_flux(
         "frequency",
         delta_frequency_range,
         pulses=[qd_pulses[qubit] for qubit in qubits],
-        wait_time=wait_time,
     )
 
     if fluxlines == "qubits":
@@ -334,7 +335,7 @@ def qubit_spectroscopy_flux(
 
     # flux current
     delta_bias_range = np.arange(-bias_width / 2, bias_width / 2, bias_step)
-    bias_sweeper = Sweeper("offset", delta_bias_range, qubits=fluxlines, wait_time=0)
+    bias_sweeper = Sweeper("offset", delta_bias_range, qubits=fluxlines)
 
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
@@ -349,7 +350,11 @@ def qubit_spectroscopy_flux(
     count = 0
     for iteration in range(software_averages):
         results = platform.sweep(
-            sequence, bias_sweeper, frequency_sweeper, nshots=nshots
+            sequence,
+            bias_sweeper,
+            frequency_sweeper,
+            nshots=nshots,
+            relaxation_time=relaxation_time,
         )
 
         while any(result.in_progress for result in results.values()) or len(data) == 0:
