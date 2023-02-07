@@ -64,7 +64,6 @@ def qubit_spectroscopy(
 
     # reload instrument settings from runcard
     platform.reload_settings()
-
     # create a sequence of pulses for the experiment:
     # long drive probing pulse - MZ
 
@@ -162,6 +161,11 @@ def qubit_spectroscopy(
         -precision_width // 2, precision_width // 2, precision_step
     )
 
+    # update pulse and qubits frequencies
+    for qubit in qubits:
+        qd_pulses[qubit].frequency = qubits[qubit].drive_frequency
+        platform.qubits[qubit].drive_frequency = qubits[qubit].drive_frequency
+
     sweeper = Sweeper(
         "frequency",
         delta_frequency_range,
@@ -174,9 +178,6 @@ def qubit_spectroscopy(
         quantities={"frequency": "Hz"},
         options=["qubit", "iteration"],
     )
-
-    for qubit in qubits:
-        qd_pulses[qubit].frequency = qubits[qubit].drive_frequency
 
     # repeat the experiment as many times as defined by software_averages
     for iteration in range(software_averages):
