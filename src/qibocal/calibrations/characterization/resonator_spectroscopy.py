@@ -2,7 +2,7 @@ import numpy as np
 from qibo.config import log
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
-from qibolab.sweeper import Sweeper
+from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal import plots
 from qibocal.config import raise_error
@@ -75,7 +75,7 @@ def resonator_spectroscopy(
     # define the parameter to sweep and its range resonator frequency
     delta_frequency_range = np.arange(-fast_width // 2, fast_width // 2, fast_step)
     sweeper = Sweeper(
-        "frequency",
+        Parameter.frequency,
         delta_frequency_range,
         pulses=[ro_pulses[qubit] for qubit in qubits],
     )
@@ -159,7 +159,7 @@ def resonator_spectroscopy(
         -precision_width // 2, precision_width // 2, precision_step
     )
     sweeper = Sweeper(
-        "frequency",
+        Parameter.frequency,
         delta_frequency_range,
         pulses=[ro_pulses[qubit] for qubit in qubits],
     )
@@ -270,13 +270,15 @@ def resonator_punchout_attenuation(
     # resonator frequency
     delta_frequency_range = np.arange(-freq_width // 2, freq_width // 2, freq_step)
     freq_sweeper = Sweeper(
-        "frequency", delta_frequency_range, [ro_pulses[qubit] for qubit in qubits]
+        Parameter.frequency,
+        delta_frequency_range,
+        [ro_pulses[qubit] for qubit in qubits],
     )
 
     # attenuation
     attenuation_range = np.flip(np.arange(min_att, max_att, step_att))
     att_sweeper = Sweeper(
-        "attenuation", attenuation_range, [ro_pulses[qubit] for qubit in qubits]
+        Parameter.attenuation, attenuation_range, [ro_pulses[qubit] for qubit in qubits]
     )
 
     # create a DataUnits object to store the results,
@@ -387,7 +389,9 @@ def resonator_punchout_amplitude(
     # resonator frequency
     delta_frequency_range = np.arange(-freq_width // 2, freq_width // 2, freq_step)
     freq_sweeper = Sweeper(
-        "frequency", delta_frequency_range, [ro_pulses[qubit] for qubit in qubits]
+        Parameter.frequency,
+        delta_frequency_range,
+        [ro_pulses[qubit] for qubit in qubits],
     )
 
     # amplitude
@@ -497,7 +501,7 @@ def resonator_spectroscopy_flux(
     # define the parameters to sweep and their range:
     delta_frequency_range = np.arange(-freq_width // 2, freq_width // 2, freq_step)
     freq_sweeper = Sweeper(
-        "frequency",
+        Parameter.frequency,
         delta_frequency_range,
         [ro_pulses[qubit] for qubit in qubits],
     )

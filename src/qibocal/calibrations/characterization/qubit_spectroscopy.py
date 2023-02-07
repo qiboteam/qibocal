@@ -1,7 +1,7 @@
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
-from qibolab.sweeper import Sweeper
+from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal import plots
 from qibocal.config import raise_error
@@ -86,7 +86,7 @@ def qubit_spectroscopy(
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(-fast_width // 2, fast_width // 2, fast_step)
     sweeper = Sweeper(
-        "frequency",
+        Parameter.frequency,
         delta_frequency_range,
         pulses=[qd_pulses[qubit] for qubit in qubits],
     )
@@ -167,7 +167,7 @@ def qubit_spectroscopy(
         platform.qubits[qubit].drive_frequency = qubits[qubit].drive_frequency
 
     sweeper = Sweeper(
-        "frequency",
+        Parameter.frequency,
         delta_frequency_range,
         pulses=[qd_pulses[qubit] for qubit in qubits],
     )
@@ -292,7 +292,7 @@ def qubit_spectroscopy_flux(
     # qubit drive frequency
     delta_frequency_range = np.arange(-freq_width // 2, freq_width // 2, freq_step)
     frequency_sweeper = Sweeper(
-        "frequency",
+        Parameter.frequency,
         delta_frequency_range,
         pulses=[qd_pulses[qubit] for qubit in qubits],
         wait_time=wait_time,
