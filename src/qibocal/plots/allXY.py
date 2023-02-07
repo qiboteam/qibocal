@@ -33,7 +33,6 @@ gatelist = [
 
 
 def allXY(folder, routine, qubit, format):
-
     figures = []
 
     fig = make_subplots(
@@ -135,7 +134,6 @@ def allXY(folder, routine, qubit, format):
 
 # allXY
 def allXY_drag_pulse_tuning(folder, routine, qubit, format):
-
     figures = []
 
     fig = make_subplots(
@@ -150,7 +148,6 @@ def allXY_drag_pulse_tuning(folder, routine, qubit, format):
     subfolders = get_data_subfolders(folder)
     report_n = 0
     for subfolder in subfolders:
-
         try:
             data = Data.load_data(folder, subfolder, routine, format, "data")
             data.df = data.df[data.df["qubit"] == qubit]
@@ -233,7 +230,6 @@ def allXY_drag_pulse_tuning(folder, routine, qubit, format):
 
 # beta param tuning
 def drag_pulse_tuning(folder, routine, qubit, format):
-
     figures = []
 
     fig = make_subplots(

@@ -11,7 +11,6 @@ from qibocal.plots.utils import get_color, get_data_subfolders
 
 # Resonator and qubit spectroscopies
 def frequency_msr_phase(folder, routine, qubit, format):
-
     figures = []
 
     fig = make_subplots(
@@ -205,7 +204,6 @@ def frequency_msr_phase(folder, routine, qubit, format):
 
 # Punchout
 def frequency_attenuation_msr_phase(folder, routine, qubit, format):
-
     figures = []
 
     # iterate over multiple data folders
@@ -295,7 +293,6 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
 
 # Resonator and qubit spectroscopies
 def frequency_attenuation_msr_phase_cut(folder, routine, qubit, format):
-
     figures = []
 
     fig = make_subplots(
@@ -409,7 +406,6 @@ def frequency_attenuation_msr_phase_cut(folder, routine, qubit, format):
 
 # Resonator spectroscopy flux
 def frequency_flux_msr_phase(folder, routine, qubit, format):
-
     figures = []
 
     # iterate over multiple data folders
@@ -536,7 +532,6 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
 
 # Dispersive shift
 def dispersive_frequency_msr_phase(folder, routine, qubit, format):
-
     figures = []
 
     fig = make_subplots(

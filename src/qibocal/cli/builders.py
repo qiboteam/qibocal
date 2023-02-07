@@ -163,7 +163,6 @@ class ActionBuilder:
             getattr(data, f"to_{self.format}")(path)
 
     def update_platform_runcard(self, qubit, routine):
-
         try:
             data_fit = Data.load_data(self.folder, "data", routine, self.format, "fits")
             data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
