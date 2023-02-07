@@ -9,7 +9,6 @@ from qibocal.plots.utils import get_color, get_data_subfolders
 
 # Spin echos
 def spin_echo_time_msr(folder, routine, qubit, format):
-
     """Spin echo plotting routine:
     The routine plots the results of a modified Ramsey sequence with an additional Rx(pi) pulse placed symmetrically between the two Rx(pi/2) pulses.
     An exponential fit to this data gives a spin echo decay time T2.

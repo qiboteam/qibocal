@@ -9,7 +9,6 @@ from qibocal.plots.utils import get_color, get_data_subfolders
 
 # T1
 def t1_time_msr(folder, routine, qubit, format):
-
     figures = []
 
     fig = make_subplots(

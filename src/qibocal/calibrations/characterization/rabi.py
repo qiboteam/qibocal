@@ -18,7 +18,6 @@ def rabi_pulse_length(
     software_averages=1,
     points=10,
 ):
-
     r"""
     In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse duration
     to find the drive pulse length that creates a rotation of a desired angle.
@@ -147,7 +146,6 @@ def rabi_pulse_gain(
     software_averages=1,
     points=10,
 ):
-
     r"""
     In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse gain
     to find the drive pulse gain that creates a rotation of a desired angle.
@@ -275,7 +273,6 @@ def rabi_pulse_amplitude(
     software_averages=1,
     points=10,
 ):
-
     r"""
     In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse amplitude
     to find the drive pulse amplitude that creates a rotation of a desired angle.
@@ -406,7 +403,6 @@ def rabi_pulse_length_and_gain(
     software_averages=1,
     points=10,
 ):
-
     r"""
     In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse
     combination of duration and gain to find the drive pulse amplitude that creates a rotation of a desired angle.
@@ -513,7 +509,6 @@ def rabi_pulse_length_and_amplitude(
     software_averages=1,
     points=10,
 ):
-
     r"""
     In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse
     combination of duration and amplitude to find the drive pulse amplitude that creates a rotation of a desired angle.
