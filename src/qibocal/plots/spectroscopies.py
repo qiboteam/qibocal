@@ -11,7 +11,6 @@ from qibocal.plots.utils import get_color, get_data_subfolders
 
 # Resonator and qubit spectroscopies
 def frequency_msr_phase(folder, routine, qubit, format):
-
     figures = []
 
     fig = make_subplots(
@@ -187,7 +186,6 @@ def frequency_msr_phase(folder, routine, qubit, format):
 
 # Punchout
 def frequency_attenuation_msr_phase(folder, routine, qubit, format):
-
     figures = []
     fitting_report = "No fitting data"
 
@@ -278,7 +276,6 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
 
 # Resonator and qubit spectroscopies
 def frequency_attenuation_msr_phase_cut(folder, routine, qubit, format):
-
     figures = []
     fitting_report = "No fitting data"
 
@@ -393,7 +390,6 @@ def frequency_attenuation_msr_phase_cut(folder, routine, qubit, format):
 
 # Resonator spectroscopy flux
 def frequency_flux_msr_phase(folder, routine, qubit, format):
-
     figures = []
     fitting_report = "No fitting data"
 
@@ -521,7 +517,6 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
 
 # Dispersive shift
 def dispersive_frequency_msr_phase(folder, routine, qubit, format):
-
     figures = []
 
     fig = make_subplots(
@@ -686,14 +681,14 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, format):
                         ),
                         name=f"q{qubit}/r{report_n}: {label} Fit",
                         line=go.scatter.Line(dash="dot"),
-                        marker_color="rgb(255, 130, 67)",
+                        marker_color=get_color(3 * report_n + i),
                     ),
                     row=1,
                     col=1,
                 )
 
-                if "resonator_freq" in params:
-                    resonator_freqs[label] = params["resonator_freq"]
+                if "readout_frequency" in params:
+                    resonator_freqs[label] = params["readout_frequency"]
 
                 for param, value in params.items():
                     if "freq" in param:

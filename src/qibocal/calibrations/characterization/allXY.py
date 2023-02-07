@@ -36,12 +36,11 @@ gatelist = [
 @plot("Probability vs Gate Sequence", plots.allXY)
 def allXY(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     beta_param=None,
     software_averages=1,
     points=10,
 ):
-
     r"""
     The AllXY experiment is a simple test of the calibration of single qubit gatesThe qubit (initialized in the |0> state)
     is subjected to two back-to-back single-qubit gates and measured. In each round, we run 21 different gate pairs:
@@ -50,7 +49,7 @@ def allXY(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubits (list): List of target qubits to perform the action
+        qubits (dict): Dict of target Qubit objects to perform the action
         beta_param (float): Drag pi pulse coefficient. If none, teh default shape defined in the runcard will be used.
         software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
@@ -79,6 +78,7 @@ def allXY(
     count = 0
     # repeat the experiment as many times as defined by software_averages
     for iteration in range(software_averages):
+        gateNumber = 1
         # sweep the parameter
         for gates in gatelist:
             # save data as often as defined by points
@@ -98,13 +98,14 @@ def allXY(
             results = platform.execute_pulse_sequence(sequence)
 
             # retrieve the results for every qubit
-            for qubit in qubits:
-                prob = 1 - 2 * results["probability"][ro_pulses[qubit].serial]
+            for ro_pulse in ro_pulses.values():
+                z_proj = 2 * results[ro_pulse.serial].ground_state_probability - 1
                 # store the results
                 r = {
-                    "probability": prob,
+                    "probability": z_proj,
                     "gateNumber": gateNumber,
-                    "qubit": qubit,
+                    "beta_param": beta_param,
+                    "qubit": ro_pulse.qubit,
                     "iteration": iteration,
                 }
                 data.add(r)
@@ -117,14 +118,13 @@ def allXY(
 @plot("Probability vs Gate Sequence", plots.allXY_drag_pulse_tuning)
 def allXY_drag_pulse_tuning(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     beta_start,
     beta_end,
     beta_step,
     software_averages=1,
     points=10,
 ):
-
     r"""
     The AllXY experiment is a simple test of the calibration of single qubit gatesThe qubit (initialized in the |0> state)
     is subjected to two back-to-back single-qubit gates and measured. In each round, we run 21 different gate pairs:
@@ -136,7 +136,7 @@ def allXY_drag_pulse_tuning(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubits (list): List of target qubits to perform the action
+        qubits (dict): Dict of target Qubit objects to perform the action
         beta_start (float): Initial drag pulse beta parameter
         beta_end (float): Maximum drag pulse beta parameter
         beta_step (float): Scan range step for the drag pulse beta parameter
@@ -190,14 +190,14 @@ def allXY_drag_pulse_tuning(
                 results = platform.execute_pulse_sequence(sequence)
 
                 # retrieve the results for every qubit
-                for qubit in qubits:
-                    prob = 1 - 2 * results["probability"][ro_pulses[qubit].serial]
+                for ro_pulse in ro_pulses.values():
+                    z_proj = 2 * results[ro_pulse.serial].ground_state_probability - 1
                     # store the results
                     r = {
-                        "probability": prob,
+                        "probability": z_proj,
                         "gateNumber": gateNumber,
                         "beta_param": beta_param,
-                        "qubit": qubit,
+                        "qubit": ro_pulse.qubit,
                         "iteration": iteration,
                     }
                     data.add(r)
@@ -210,21 +210,20 @@ def allXY_drag_pulse_tuning(
 @plot("MSR vs beta parameter", plots.drag_pulse_tuning)
 def drag_pulse_tuning(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     beta_start,
     beta_end,
     beta_step,
     software_averages=1,
     points=10,
 ):
-
     r"""
     In this experiment, we apply two sequences in a given qubit: Rx(pi/2) - Ry(pi) and Ry(pi) - Rx(pi/2) for a range
     of different beta parameter values. After fitting, we obtain the best coefficient value for a pi pulse with drag shape.
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubits (list): List of target qubits to perform the action
+        qubits (dict): Dict of target Qubit objects to perform the action
         beta_start (float): Initial drag pulse beta parameter
         beta_end (float): Maximum drag pulse beta parameter
         beta_step (float): Scan range step for the drag pulse beta parameter
@@ -332,17 +331,17 @@ def drag_pulse_tuning(
             result2 = platform.execute_pulse_sequence(seq2)
 
             # retrieve the results for every qubit
-            for qubit in qubits:
-                msr1, phase1, i1, q1 = result1[ro_pulses[qubit].serial]
-                msr2, phase2, i2, q2 = result2[ro_pulses[qubit].serial]
+            for ro_pulse in ro_pulses.values():
+                r1 = result1[ro_pulse.serial]
+                r2 = result2[ro_pulse.serial]
                 # store the results
                 r = {
-                    "MSR[V]": msr1 - msr2,
-                    "i[V]": i1 - i2,
-                    "q[V]": q1 - q2,
-                    "phase[rad]": phase1 - phase2,
+                    "MSR[V]": r1.msr.mean() - r2.msr.mean(),
+                    "i[V]": r1.i.mean() - r2.i.mean(),
+                    "q[V]": r1.q.mean() - r2.q.mean(),
+                    "phase[rad]": r1.phase.mean() - r2.phase.mean(),
                     "beta_param[dimensionless]": beta_param,
-                    "qubit": qubit,
+                    "qubit": ro_pulse.qubit,
                     "iteration": iteration,
                 }
                 data.add(r)
@@ -361,7 +360,6 @@ def drag_pulse_tuning(
 def _add_gate_pair_pulses_to_sequence(
     platform: AbstractPlatform, gates, qubit, beta_param, sequence
 ):
-
     pulse_duration = platform.settings["native_gates"]["single_qubit"][qubit]["RX"][
         "duration"
     ]

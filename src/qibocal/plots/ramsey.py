@@ -9,7 +9,6 @@ from qibocal.plots.utils import get_color, get_data_subfolders
 
 # Ramsey oscillations
 def time_msr(folder, routine, qubit, format):
-
     figures = []
 
     fig = make_subplots(

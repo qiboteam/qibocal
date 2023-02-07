@@ -11,20 +11,19 @@ from qibocal.fitting.methods import flipping_fit
 @plot("MSR vs Flips", plots.flips_msr)
 def flipping(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     nflips_max,
     nflips_step,
     software_averages=1,
     points=10,
 ):
-
     r"""
     The flipping experiment correct the delta amplitude in the qubit drive pulse. We measure a qubit after applying
     a Rx(pi/2) and N flips (Rx(pi) rotations). After fitting we can obtain the delta amplitude to refine pi pulses.
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubits (list): List of target qubits to perform the action
+        qubits (dict): Dict of target Qubit objects to perform the action
         nflips_max (int): Maximum number of flips introduced in each sequence
         nflips_step (int): Scan range step for the number of flippings
         software_averages (int): Number of executions of the routine for averaging results
@@ -55,12 +54,6 @@ def flipping(
     # reload instrument settings from runcard
     platform.reload_settings()
 
-    pi_pulse_amplitudes = {}
-    for qubit in qubits:
-        pi_pulse_amplitudes[qubit] = platform.settings["native_gates"]["single_qubit"][
-            qubit
-        ]["RX"]["amplitude"]
-
     # create a DataUnits object to store MSR, phase, i, q and the number of flips
     data = DataUnits(
         name="data",
@@ -71,7 +64,6 @@ def flipping(
     # repeat the experiment as many times as defined by software_averages
     count = 0
     for iteration in range(software_averages):
-
         # sweep the parameter
         for flips in range(0, nflips_max, nflips_step):
             # save data as often as defined by points
@@ -85,7 +77,9 @@ def flipping(
                     y="MSR[uV]",
                     qubits=qubits,
                     resonator_type=platform.resonator_type,
-                    pi_pulse_amplitude=pi_pulse_amplitudes[qubit],
+                    pi_pulse_amplitudes={
+                        q: qubits[qubit].pi_pulse_amplitude for q in qubits
+                    },
                     labels=["amplitude_correction_factor", "corrected_amplitude"],
                 )
 
@@ -114,18 +108,16 @@ def flipping(
             # execute the pulse sequence
             results = platform.execute_pulse_sequence(sequence)
 
-            for qubit in qubits:
+            for ro_pulse in ro_pulses.values():
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                msr, phase, i, q = results[ro_pulses[qubit].serial]
-                r = {
-                    "MSR[V]": msr,
-                    "i[V]": i,
-                    "q[V]": q,
-                    "phase[rad]": phase,
-                    "flips[dimensionless]": flips,
-                    "qubit": qubit,
-                    "iteration": iteration,
-                }
+                r = results[ro_pulse.serial].to_dict()
+                r.update(
+                    {
+                        "flips[dimensionless]": flips,
+                        "qubit": ro_pulse.qubit,
+                        "iteration": iteration,
+                    }
+                )
                 data.add(r)
             count += 1
     yield data
@@ -136,6 +128,6 @@ def flipping(
         y="MSR[uV]",
         qubits=qubits,
         resonator_type=platform.resonator_type,
-        pi_pulse_amplitude=pi_pulse_amplitudes[qubit],
+        pi_pulse_amplitudes={q: qubits[qubit].pi_pulse_amplitude for q in qubits},
         labels=["amplitude_correction_factor", "corrected_amplitude"],
     )

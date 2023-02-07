@@ -35,7 +35,11 @@ class ActionBuilder:
         self.backend, self.platform = self._allocate_backend(
             backend_name, platform_name, path, platform_runcard
         )
-        self.qubits = self.runcard["qubits"]
+        self.qubits = {
+            q: self.platform.qubits[q]
+            for q in self.runcard["qubits"]
+            if q in self.platform.qubits
+        }
         self.format = self.runcard["format"]
 
         # Saving runcard
@@ -162,18 +166,17 @@ class ActionBuilder:
         try:
             data_fit = Data.load_data(self.folder, "data", routine, self.format, "fits")
             data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
-        except:
-            data_fit = Data()
+        except FileNotFoundError:
+            return None
 
-        params = [
-            i for i in list(data_fit.df.keys()) if "popt" not in i and i != "qubit"
-        ]
+        params = data_fit.df.to_dict("index")[qubit if qubit == 0 else qubit - 1]
         settings = load_yaml(f"{self.folder}/new_platform.yml")
-
         for param in params:
-            settings["characterization"]["single_qubit"][qubit][param] = int(
-                data_fit.get_values(param)
-            )
+            if param in list(self.qubits[qubit].__annotations__.keys()):
+                setattr(self.qubits[qubit], param, params[param])
+                settings["characterization"]["single_qubit"][qubit][param] = int(
+                    data_fit.get_values(param)
+                )
 
         with open(f"{self.folder}/new_platform.yml", "w") as file:
             yaml.dump(

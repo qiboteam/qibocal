@@ -9,7 +9,6 @@ from qibocal.plots.utils import get_color, get_data_subfolders
 
 # Rabi oscillations pulse length
 def time_msr_phase(folder, routine, qubit, format):
-
     figures = []
 
     fig = make_subplots(
@@ -174,7 +173,6 @@ def time_msr_phase(folder, routine, qubit, format):
 
 # Rabi oscillations pulse gain
 def gain_msr_phase(folder, routine, qubit, format):
-
     figures = []
 
     fig = make_subplots(
@@ -340,7 +338,6 @@ def gain_msr_phase(folder, routine, qubit, format):
 
 # Rabi oscillations pulse amplitude
 def amplitude_msr_phase(folder, routine, qubit, format):
-
     figures = []
     fitting_report = ""
 
@@ -359,7 +356,6 @@ def amplitude_msr_phase(folder, routine, qubit, format):
     subfolders = get_data_subfolders(folder)
     report_n = 0
     for subfolder in subfolders:
-
         try:
             data = DataUnits.load_data(folder, subfolder, routine, format, f"data")
             data.df = data.df[data.df["qubit"] == qubit]
@@ -513,7 +509,6 @@ def amplitude_msr_phase(folder, routine, qubit, format):
 
 # Rabi pulse length and gain
 def duration_gain_msr_phase(folder, routine, qubit, format):
-
     figures = []
     fitting_report = "No fitting data"
 
@@ -595,7 +590,6 @@ def duration_gain_msr_phase(folder, routine, qubit, format):
 
 # Rabi pulse length and amplitude
 def duration_amplitude_msr_phase(folder, routine, qubit, format):
-
     figures = []
     fitting_report = "No fitting data"
 

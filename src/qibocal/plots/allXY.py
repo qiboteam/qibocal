@@ -33,7 +33,6 @@ gatelist = [
 
 
 def allXY(folder, routine, qubit, format):
-
     figures = []
     fitting_report = "No fitting data: -<br>No fitting data: -<br><br>"
 
@@ -97,14 +96,6 @@ def allXY(folder, routine, qubit, format):
         report_n += 1
 
     fig.add_hline(
-        y=-1,
-        line_width=2,
-        line_dash="dash",
-        line_color="grey",
-        row=1,
-        col=1,
-    )
-    fig.add_hline(
         y=0,
         line_width=2,
         line_dash="dash",
@@ -121,11 +112,20 @@ def allXY(folder, routine, qubit, format):
         col=1,
     )
 
+    fig.add_hline(
+        y=-1,
+        line_width=2,
+        line_dash="dash",
+        line_color="grey",
+        row=1,
+        col=1,
+    )
+
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Gate sequence number",
-        yaxis_title="Z projection probability of qubit state |o>",
+        yaxis_title="Expectation value of Z",
     )
 
     figures.append(fig)
@@ -135,7 +135,6 @@ def allXY(folder, routine, qubit, format):
 
 # allXY
 def allXY_drag_pulse_tuning(folder, routine, qubit, format):
-
     figures = []
     fitting_report = "No fitting data: -<br>No fitting data: -<br><br>"
 
@@ -151,7 +150,6 @@ def allXY_drag_pulse_tuning(folder, routine, qubit, format):
     subfolders = get_data_subfolders(folder)
     report_n = 0
     for subfolder in subfolders:
-
         try:
             data = Data.load_data(folder, subfolder, routine, format, "data")
             data.df = data.df[data.df["qubit"] == qubit]
@@ -195,14 +193,6 @@ def allXY_drag_pulse_tuning(folder, routine, qubit, format):
         report_n += 1
 
     fig.add_hline(
-        y=-1,
-        line_width=2,
-        line_dash="dash",
-        line_color="grey",
-        row=1,
-        col=1,
-    )
-    fig.add_hline(
         y=0,
         line_width=2,
         line_dash="dash",
@@ -219,11 +209,20 @@ def allXY_drag_pulse_tuning(folder, routine, qubit, format):
         col=1,
     )
 
+    fig.add_hline(
+        y=-1,
+        line_width=2,
+        line_dash="dash",
+        line_color="grey",
+        row=1,
+        col=1,
+    )
+
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Gate sequence number",
-        yaxis_title="Z projection probability of qubit state |o>",
+        yaxis_title="Expectation value of Z",
     )
 
     figures.append(fig)
@@ -233,7 +232,6 @@ def allXY_drag_pulse_tuning(folder, routine, qubit, format):
 
 # beta param tuning
 def drag_pulse_tuning(folder, routine, qubit, format):
-
     figures = []
     fitting_report = "No fitting data: -<br>No fitting data: -<br><br>"
 
@@ -284,33 +282,11 @@ def drag_pulse_tuning(folder, routine, qubit, format):
                 col=1,
             )
 
-        iterations = data.df["iteration"].unique()
-        beta_params = data.df["beta_param"].pint.magnitude.unique()
-
-        for iteration in iterations:
-            iteration_data = data.df[data.df["iteration"] == iteration]
-            fig.add_trace(
-                go.Scatter(
-                    x=iteration_data["beta_param"].pint.magnitude,
-                    y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
-                    marker_color=get_color(report_n),
-                    mode="markers",
-                    opacity=0.3,
-                    name=f"q{qubit}/r{report_n}: Probability",
-                    showlegend=not bool(iteration),
-                    legendgroup="group1",
-                ),
-                row=1,
-                col=1,
-            )
-
         fig.add_trace(
             go.Scatter(
                 x=beta_params,
-                y=data.df.groupby("beta_param", as_index=False)[
-                    "MSR"
-                ]  # pylint: disable=E1101
-                .mean()
+                y=data.df.groupby("beta_param", as_index=False)
+                .mean()["MSR"]  # pylint: disable=E1101
                 .pint.to("uV")
                 .pint.magnitude,
                 name=f"q{qubit}/r{report_n}: Average MSR",

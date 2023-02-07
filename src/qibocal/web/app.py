@@ -77,7 +77,6 @@ app.layout = html.Div(
     Input("interval-refresh", "value"),
 )
 def get_graph(interval, url, value):
-
     st = time.time()
 
     figures = []

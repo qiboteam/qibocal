@@ -120,14 +120,15 @@ def test_res_spectroscopy_flux_fit(name, qubit, fluxline, num_params, caplog):
 @pytest.mark.parametrize(
     "label, resonator_type, amplitude_sign",
     [
-        ("resonator_freq", "3D", 1),
-        ("resonator_freq", "2D", -1),
-        ("qubit_freq", "3D", -1),
-        ("qubit_freq", "2D", 1),
+        ("readout_frequency", "3D", 1),
+        ("readout_frequency", "2D", -1),
+        ("readout_frequency_shifted", "3D", 1),
+        ("readout_frequency_shifted", "2D", -1),
+        ("drive_frequency", "3D", -1),
+        ("drive_frequency", "2D", 1),
     ],
 )
-@pytest.mark.parametrize("lo_freqs", [None, [0]])
-def test_lorentzian_fit(name, label, resonator_type, amplitude_sign, lo_freqs, caplog):
+def test_lorentzian_fit(name, label, resonator_type, amplitude_sign, caplog):
     """Test the *lorentzian_fit* function"""
     amplitude = 1 * amplitude_sign
     center = 2
@@ -157,9 +158,8 @@ def test_lorentzian_fit(name, label, resonator_type, amplitude_sign, lo_freqs, c
         "MSR[V]",
         [0],
         resonator_type,
-        labels=[label, "peak_voltage", "intermediate_freq"],
+        labels=[label, "peak_voltage"],
         fit_file_name=name,
-        lo_freqs=lo_freqs,
     )
     # Given the couople (amplitude, sigma) as a solution of lorentzian_fit method
     # also (-amplitude,-sigma) is a possible solution.
@@ -189,7 +189,7 @@ def test_lorentzian_fit(name, label, resonator_type, amplitude_sign, lo_freqs, c
         "MSR[V]",
         [0],
         resonator_type,
-        labels=[label, "peak_voltage", "intermediate_freq"],
+        labels=[label, "peak_voltage"],
         fit_file_name=name,
     )
     assert "lorentzian_fit: the fitting was not successful" in caplog.text
@@ -290,7 +290,7 @@ def test_ramsey_fit(resonator_type, amplitude_sign, caplog):
     sampling_rate = 10
     offset_freq = 1
     samples = 100
-    x = np.linspace(0, 1 / p2, samples)
+    x = np.linspace(0, 2 * np.pi / p2, samples)
     noisy_ramsey = ramsey(x, p0, p1, p2, p3, p4) + p1 * np.random.randn(samples) * 1e-3
 
     data = DataUnits(quantities={"wait": "ns"}, options=["qubit", "iteration"])
@@ -321,8 +321,8 @@ def test_ramsey_fit(resonator_type, amplitude_sign, caplog):
     fit_p3 = fit.get_values("popt3")[0]
     fit_p4 = fit.get_values("popt4")[0]
 
-    y_real = p1 * np.sin(2 * np.pi * x * p2 + p3)
-    y_fit = fit_p1 * np.sin(2 * np.pi * x * fit_p2 + fit_p3)
+    y_real = ramsey(x, p0, p1, p2, p3, p4)
+    y_fit = ramsey(x, fit_p0, fit_p1, fit_p2, fit_p3, fit_p4)
     for i in range(len(x)):
         assert abs(y_real[i] - y_fit[i]) < 0.1
     # Dummy fit
@@ -418,7 +418,7 @@ def test_flipping_fit(label, resonator_type, amplitude_sign, caplog):
     p2 = 17 * amplitude_sign
     p3 = 3
 
-    pi_pulse_amplituse = 5
+    pi_pulse_amplitudes = [5]
 
     x = np.linspace(0, 10, 100)
     noisy_flip = flipping(x, p0, p1, p2, p3) + p0 * np.random.randn(100) * 1e-4
@@ -442,7 +442,7 @@ def test_flipping_fit(label, resonator_type, amplitude_sign, caplog):
         "MSR[V]",
         [0],
         resonator_type,
-        pi_pulse_amplituse,
+        pi_pulse_amplitudes,
         labels=[label, "corrected_amplitude"],
     )
     fit_p = [fit.get_values(f"popt{i}")[0] for i in range(4)]
@@ -471,7 +471,7 @@ def test_flipping_fit(label, resonator_type, amplitude_sign, caplog):
         "MSR[V]",
         [0],
         resonator_type,
-        pi_pulse_amplituse,
+        pi_pulse_amplitudes,
         labels=[label, "corrected_amplitude"],
     )
     assert "flipping_fit: the fitting was not succesful" in caplog.text

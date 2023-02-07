@@ -14,7 +14,6 @@ class AbstractData:
     """Base class for the implementation of `DataUnits` and `Data`."""
 
     def __init__(self, name=None):
-
         if name is None:
             self.name = "data"
         else:
@@ -28,7 +27,7 @@ class AbstractData:
         return self
 
     @abstractmethod
-    def add(self, data):
+    def add(self, data):  # pragma: no cover
         """Add row to `AbstractData` dataframe."""
         raise_error(NotImplementedError)
 
@@ -37,12 +36,14 @@ class AbstractData:
         return len(self.df)
 
     @classmethod
-    def load_data(cls, folder, subfolder, routine, data_format, name):
+    def load_data(
+        cls, folder, subfolder, routine, data_format, name
+    ):  # pragma: no cover
         """Load data from specific format."""
         raise_error(NotImplementedError)
 
     @abstractmethod
-    def to_csv(self, path):
+    def to_csv(self, path):  # pragma: no cover
         """Save data in csv file.
 
         Args:
@@ -70,7 +71,6 @@ class DataUnits(AbstractData):
     """
 
     def __init__(self, name=None, quantities=None, options=None):
-
         super().__init__(name=name)
 
         self._df = pd.DataFrame(
@@ -280,7 +280,6 @@ class Data(AbstractData):
     """
 
     def __init__(self, name=None, quantities=None):
-
         super().__init__(name=name)
 
         if quantities is not None:

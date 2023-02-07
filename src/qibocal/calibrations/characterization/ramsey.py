@@ -11,7 +11,7 @@ from qibocal.fitting.methods import ramsey_fit
 @plot("MSR vs Time", plots.time_msr)
 def ramsey_frequency_detuned(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     delay_between_pulses_start,
     delay_between_pulses_end,
     delay_between_pulses_step,
@@ -19,7 +19,6 @@ def ramsey_frequency_detuned(
     software_averages=1,
     points=10,
 ):
-
     r"""
     We introduce an artificial detune over the drive pulse frequency to be off-resonance and, after fitting,
     determine two of the qubit's properties: Ramsey or detuning frequency and T2. If our drive pulse is well
@@ -33,7 +32,7 @@ def ramsey_frequency_detuned(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubits (list): List of target qubits to perform the action
+        qubits (dict): Dict of target Qubit objects to perform the action
         delay_between_pulses_start (int): Initial time delay between drive pulses in the Ramsey sequence
         delay_between_pulses_end (list): List of maximum time delays between drive pulses in the Ramsey sequence
         delay_between_pulses_step (int): Scan range step for the time delay between drive pulses in the Ramsey sequence
@@ -55,8 +54,8 @@ def ramsey_frequency_detuned(
         - A DataUnits object with the fitted data obtained with the following keys
 
             - **delta_frequency**: Physical detunning of the actual qubit frequency
-            - **corrected_qubit_frequency**:
-            - **t2**: New qubit frequency after correcting the actual qubit frequency with the detunning calculated
+            - **drive_frequency**:
+            - **T2**: New qubit frequency after correcting the actual qubit frequency with the detunning calculated
             - **popt0**: offset
             - **popt1**: oscillation amplitude
             - **popt2**: frequency
@@ -76,6 +75,7 @@ def ramsey_frequency_detuned(
     sequence = PulseSequence()
     for qubit in qubits:
         RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
+        RX90_pulses1[qubit].frequency = qubits[qubit].drive_frequency
         RX90_pulses2[qubit] = platform.create_RX90_pulse(
             qubit, start=RX90_pulses1[qubit].finish
         )
@@ -85,24 +85,6 @@ def ramsey_frequency_detuned(
         sequence.add(RX90_pulses1[qubit])
         sequence.add(RX90_pulses2[qubit])
         sequence.add(ro_pulses[qubit])
-
-    runcard_qubit_freqs = {}
-    runcard_T2s = {}
-    intermediate_freqs = {}
-    current_qubit_freqs = {}
-    current_T2s = {}
-    for qubit in qubits:
-        runcard_qubit_freqs[qubit] = platform.characterization["single_qubit"][qubit][
-            "qubit_freq"
-        ]
-        runcard_T2s[qubit] = platform.characterization["single_qubit"][qubit]["T2"]
-        intermediate_freqs[qubit] = platform.settings["native_gates"]["single_qubit"][
-            qubit
-        ]["RX"]["frequency"]
-
-        # TODO: fix this
-        current_qubit_freqs[qubit] = runcard_qubit_freqs[qubit]
-        current_T2s[qubit] = runcard_T2s[qubit]
 
     sampling_rate = platform.sampling_rate
 
@@ -121,10 +103,6 @@ def ramsey_frequency_detuned(
     for t_max in delay_between_pulses_end:
         for iteration in range(software_averages):
             count = 0
-            for qubit in qubits:
-                platform.qd_port[qubit].lo_frequency = (
-                    current_qubit_freqs[qubit] - intermediate_freqs[qubit]
-                )
             offset_freq = n_osc / t_max * sampling_rate  # Hz
 
             # define the parameter to sweep and its range:
@@ -146,18 +124,21 @@ def ramsey_frequency_detuned(
                         y="MSR[uV]",
                         qubits=qubits,
                         resonator_type=platform.resonator_type,
-                        qubit_freqs=current_qubit_freqs,
+                        qubit_freqs={
+                            qubit: qubits[qubit].drive_frequency for qubit in qubits
+                        },
                         sampling_rate=sampling_rate,
                         offset_freq=offset_freq,
                         labels=[
                             "delta_frequency",
-                            "corrected_qubit_frequency",
-                            "t2",
+                            "drive_frequency",
+                            "T2",
                         ],
                     )
 
                 for qubit in qubits:
                     RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
+                    RX90_pulses2[qubit].frequency = qubits[qubit].drive_frequency
                     RX90_pulses2[qubit].relative_phase = (
                         (RX90_pulses2[qubit].start / sampling_rate)
                         * (2 * np.pi)
@@ -168,19 +149,17 @@ def ramsey_frequency_detuned(
                 # execute the pulse sequence
                 results = platform.execute_pulse_sequence(sequence)
 
-                for qubit in qubits:
+                for ro_pulse in ro_pulses.values():
                     # average msr, phase, i and q over the number of shots defined in the runcard
-                    msr, phase, i, q = results[ro_pulses[qubit].serial]
-                    r = {
-                        "MSR[V]": msr,
-                        "i[V]": i,
-                        "q[V]": q,
-                        "phase[rad]": phase,
-                        "wait[ns]": wait,
-                        "t_max[ns]": t_max,
-                        "qubit": qubit,
-                        "iteration": iteration,
-                    }
+                    r = results[ro_pulse.serial].to_dict()
+                    r.update(
+                        {
+                            "wait[ns]": wait,
+                            "t_max[ns]": t_max,
+                            "qubit": ro_pulse.qubit,
+                            "iteration": iteration,
+                        }
+                    )
                     data.add(r)
                 count += 1
 
@@ -190,31 +169,29 @@ def ramsey_frequency_detuned(
                 y="MSR[uV]",
                 qubits=qubits,
                 resonator_type=platform.resonator_type,
-                qubit_freqs=current_qubit_freqs,
+                qubit_freqs={qubit: qubits[qubit].drive_frequency for qubit in qubits},
                 sampling_rate=sampling_rate,
                 offset_freq=offset_freq,
                 labels=[
                     "delta_frequency",
-                    "corrected_qubit_frequency",
-                    "t2",
+                    "drive_frequency",
+                    "T2",
                 ],
             )
 
         stop = False
         for qubit in qubits:
-            new_t2 = float(data_fit.df[data_fit.df["qubit"] == qubit]["t2"][0])
+            new_t2 = float(data_fit.df[data_fit.df["qubit"] == qubit]["T2"][0])
             corrected_qubit_freq = int(
-                data_fit.df[data_fit.df["qubit"] == qubit]["corrected_qubit_frequency"][
-                    0
-                ]
+                data_fit.df[data_fit.df["qubit"] == qubit]["drive_frequency"][0]
             )
 
-            if new_t2 > current_T2s[qubit] and len(delay_between_pulses_end) > 1:
+            if new_t2 > qubits[qubit].T2 and len(delay_between_pulses_end) > 1:
                 print(
-                    f"t_max: {t_max} -- new t2: {new_t2} > current t2: {current_T2s[qubit]} new iteration!"
+                    f"t_max: {t_max} -- new t2: {new_t2} > current t2: {qubits[qubit].T2} new iteration!"
                 )
-                current_qubit_freqs[qubit] = int(corrected_qubit_freq)
-                current_T2s[qubit] = new_t2
+                qubits[qubit].drive_frequency = int(corrected_qubit_freq)
+                qubits[qubit].T2 = new_t2
                 data = DataUnits(
                     name=f"data",
                     quantities={"wait": "ns", "t_max": "ns"},
@@ -222,7 +199,7 @@ def ramsey_frequency_detuned(
                 )
             else:
                 print(
-                    f"t_max: {t_max} -- new t2: {new_t2} < current t2: {current_T2s[qubit]} stop!"
+                    f"t_max: {t_max} -- new t2: {new_t2} < current t2: {qubits[qubit].T2} stop!"
                 )
                 # corrected_qubit_freq = int(current_qubit_freqs[qubit])
                 # new_t2 = current_T2s[qubit]
@@ -238,13 +215,13 @@ def ramsey_frequency_detuned(
         y="MSR[uV]",
         qubits=qubits,
         resonator_type=platform.resonator_type,
-        qubit_freqs=current_qubit_freqs,
+        qubit_freqs={qubit: qubits[qubit].drive_frequency for qubit in qubits},
         sampling_rate=sampling_rate,
         offset_freq=0,
         labels=[
             "delta_frequency",
-            "corrected_qubit_frequency",
-            "t2",
+            "drive_frequency",
+            "T2",
         ],
     )
 
@@ -252,14 +229,13 @@ def ramsey_frequency_detuned(
 @plot("MSR vs Time", plots.time_msr)
 def ramsey(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     delay_between_pulses_start,
     delay_between_pulses_end,
     delay_between_pulses_step,
     software_averages=1,
     points=10,
 ):
-
     r"""
     The purpose of the Ramsey experiment is to determine two of the qubit's properties: Ramsey or detuning frequency and T2.
 
@@ -267,7 +243,7 @@ def ramsey(
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubits (list): List of target qubits to perform the action
+        qubits (dict): Dict of target Qubit objects to perform the action
         delay_between_pulses_start (int): Initial time delay between drive pulses in the Ramsey sequence
         delay_between_pulses_end (list): Maximum time delay between drive pulses in the Ramsey sequence
         delay_between_pulses_step (int): Scan range step for the time delay between drive pulses in the Ramsey sequence
@@ -289,8 +265,8 @@ def ramsey(
         - A DataUnits object with the fitted data obtained with the following keys
 
             - **delta_frequency**: Physical detunning of the actual qubit frequency
-            - **corrected_qubit_frequency**:
-            - **t2**: New qubit frequency after correcting the actual qubit frequency with the detunning calculated
+            - **drive_frequency**:
+            - **T2**: New qubit frequency after correcting the actual qubit frequency with the detunning calculated
             - **popt0**: offset
             - **popt1**: oscillation amplitude
             - **popt2**: frequency
@@ -328,12 +304,6 @@ def ramsey(
         delay_between_pulses_step,
     )
 
-    qubit_freqs = {}
-    for qubit in qubits:
-        qubit_freqs[qubit] = platform.characterization["single_qubit"][qubit][
-            "qubit_freq"
-        ]
-
     sampling_rate = platform.sampling_rate
 
     # create a DataUnits object to store the results,
@@ -361,13 +331,15 @@ def ramsey(
                     y="MSR[uV]",
                     qubits=qubits,
                     resonator_type=platform.resonator_type,
-                    qubit_freqs=qubit_freqs,
+                    qubit_freqs={
+                        qubit: qubits[qubit].drive_frequency for qubit in qubits
+                    },
                     sampling_rate=sampling_rate,
                     offset_freq=0,
                     labels=[
                         "delta_frequency",
-                        "corrected_qubit_frequency",
-                        "t2",
+                        "drive_frequency",
+                        "T2",
                     ],
                 )
 
@@ -378,19 +350,17 @@ def ramsey(
             # execute the pulse sequence
             results = platform.execute_pulse_sequence(sequence)
 
-            for qubit in qubits:
+            for ro_pulse in ro_pulses.values():
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                msr, phase, i, q = results[ro_pulses[qubit].serial]
-                r = {
-                    "MSR[V]": msr,
-                    "i[V]": i,
-                    "q[V]": q,
-                    "phase[rad]": phase,
-                    "wait[ns]": wait,
-                    "t_max[ns]": delay_between_pulses_end,
-                    "qubit": qubit,
-                    "iteration": iteration,
-                }
+                r = results[ro_pulse.serial].to_dict()
+                r.update(
+                    {
+                        "wait[ns]": wait,
+                        "t_max[ns]": delay_between_pulses_end,
+                        "qubit": ro_pulse.qubit,
+                        "iteration": iteration,
+                    }
+                )
                 data.add(r)
             count += 1
     yield data
@@ -400,12 +370,12 @@ def ramsey(
         y="MSR[uV]",
         qubits=qubits,
         resonator_type=platform.resonator_type,
-        qubit_freqs=qubit_freqs,
+        qubit_freqs={qubit: qubits[qubit].drive_frequency for qubit in qubits},
         sampling_rate=sampling_rate,
         offset_freq=0,
         labels=[
             "delta_frequency",
-            "corrected_qubit_frequency",
-            "t2",
+            "drive_frequency",
+            "T2",
         ],
     )
