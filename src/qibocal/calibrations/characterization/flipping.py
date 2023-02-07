@@ -17,7 +17,6 @@ def flipping(
     software_averages=1,
     points=10,
 ):
-
     r"""
     The flipping experiment correct the delta amplitude in the qubit drive pulse. We measure a qubit after applying
     a Rx(pi/2) and N flips (Rx(pi) rotations). After fitting we can obtain the delta amplitude to refine pi pulses.
@@ -65,7 +64,6 @@ def flipping(
     # repeat the experiment as many times as defined by software_averages
     count = 0
     for iteration in range(software_averages):
-
         # sweep the parameter
         for flips in range(0, nflips_max, nflips_step):
             # save data as often as defined by points

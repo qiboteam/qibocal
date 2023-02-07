@@ -14,7 +14,6 @@ class AbstractData:
     """Base class for the implementation of `DataUnits` and `Data`."""
 
     def __init__(self, name=None):
-
         if name is None:
             self.name = "data"
         else:
@@ -72,7 +71,6 @@ class DataUnits(AbstractData):
     """
 
     def __init__(self, name=None, quantities=None, options=None):
-
         super().__init__(name=name)
 
         self._df = pd.DataFrame(
@@ -282,7 +280,6 @@ class Data(AbstractData):
     """
 
     def __init__(self, name=None, quantities=None):
-
         super().__init__(name=name)
 
         if quantities is not None:

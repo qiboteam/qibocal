@@ -28,7 +28,7 @@ def ramsey(x, p0, p1, p2, p3, p4):
     #   DeltaFreq                    : p[2]
     #   Phase                        : p[3]
     #   Arbitrary parameter T_2      : 1/p[4]
-    return p0 + p1 * np.sin(2 * np.pi * x * p2 + p3) * np.exp(-x * p4)
+    return p0 + p1 * np.sin(x * p2 + p3) * np.exp(-x * p4)
 
 
 def exp(x, *p):

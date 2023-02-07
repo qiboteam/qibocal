@@ -19,7 +19,6 @@ def ramsey_frequency_detuned(
     software_averages=1,
     points=10,
 ):
-
     r"""
     We introduce an artificial detune over the drive pulse frequency to be off-resonance and, after fitting,
     determine two of the qubit's properties: Ramsey or detuning frequency and T2. If our drive pulse is well
@@ -237,7 +236,6 @@ def ramsey(
     software_averages=1,
     points=10,
 ):
-
     r"""
     The purpose of the Ramsey experiment is to determine two of the qubit's properties: Ramsey or detuning frequency and T2.
 

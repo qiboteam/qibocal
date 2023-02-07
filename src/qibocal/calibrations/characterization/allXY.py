@@ -41,7 +41,6 @@ def allXY(
     software_averages=1,
     points=10,
 ):
-
     r"""
     The AllXY experiment is a simple test of the calibration of single qubit gatesThe qubit (initialized in the |0> state)
     is subjected to two back-to-back single-qubit gates and measured. In each round, we run 21 different gate pairs:
@@ -125,7 +124,6 @@ def allXY_drag_pulse_tuning(
     software_averages=1,
     points=10,
 ):
-
     r"""
     The AllXY experiment is a simple test of the calibration of single qubit gatesThe qubit (initialized in the |0> state)
     is subjected to two back-to-back single-qubit gates and measured. In each round, we run 21 different gate pairs:
@@ -218,7 +216,6 @@ def drag_pulse_tuning(
     software_averages=1,
     points=10,
 ):
-
     r"""
     In this experiment, we apply two sequences in a given qubit: Rx(pi/2) - Ry(pi) and Ry(pi) - Rx(pi/2) for a range
     of different beta parameter values. After fitting, we obtain the best coefficient value for a pi pulse with drag shape.
@@ -362,7 +359,6 @@ def drag_pulse_tuning(
 def _add_gate_pair_pulses_to_sequence(
     platform: AbstractPlatform, gates, qubit, beta_param, sequence
 ):
-
     pulse_duration = platform.create_RX_pulse(qubit, start=0).duration
     # All gates have equal pulse duration
 
