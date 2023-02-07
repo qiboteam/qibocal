@@ -117,7 +117,7 @@ def t1_time_msr(folder, routine, qubit, format):
             )
 
             fitting_report = fitting_report + (
-                f"q{qubit}/r{report_n} | t1: {params['t1']:,.0f} ns.<br><br>"
+                f"q{qubit}/r{report_n} | t1: {params['T1']:,.0f} ns.<br><br>"
             )
 
         report_n += 1
