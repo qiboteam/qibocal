@@ -1,3 +1,8 @@
+""" Costum error models are build here for making it possible to pass
+strings describing the error model via runcards in qibocal.
+They inherit from the qibo noise NoiseModel module and are prebuild.
+"""
+
 import numpy as np
 from qibo import gates
 from qibo.noise import NoiseModel, PauliError
@@ -14,11 +19,14 @@ class PauliErrorOnUnitary(NoiseModel):
 
     def __init__(self, *args) -> None:
         super().__init__()
+        # Check if number of arguments is 0 or 1 and if it's equal to None
         if len(args) == 0 or (len(args) == 1 and args[0] is None):
+            # Assign random values to params.
             params = np.random.uniform(0, 0.25, size=3)
         elif len(args) == 3:
             params = args
         else:
+            # Raise ValueError if given paramters are wrong.
             raise_error(
                 ValueError,
                 "Wrong number of error parameters, 3 != {}.".format(len(args)),
@@ -26,6 +34,7 @@ class PauliErrorOnUnitary(NoiseModel):
         self.build(*params)
 
     def build(self, *params):
+        # Add PauliError to gates.Unitary
         self.add(PauliError(*params), gates.Unitary)
 
 
@@ -44,6 +53,3 @@ class PauliErrorOnX(PauliErrorOnUnitary):
     def build(self, *params):
         self.add(PauliError(*params), gates.X)
 
-
-class LizasNoiseModel(NoiseModel):
-    pass

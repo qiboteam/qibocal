@@ -25,14 +25,14 @@ from qibo import gates
 from qibo.models import Circuit
 from qibo.noise import NoiseModel
 
-import qibocal.fitting.rb_methods as fitting_methods
+import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
 from qibocal.calibrations.protocols.abstract import (
     Circuitfactory,
     Experiment,
     Report,
     scatter_fit_fig,
 )
-from qibocal.calibrations.protocols.utils import gate_adjoint_action_to_pauli_liouville
+from qibocal.calibrations.niGSC.basics.utils import gate_adjoint_action_to_pauli_liouville
 
 
 # Define the circuit factory class for this specific module.

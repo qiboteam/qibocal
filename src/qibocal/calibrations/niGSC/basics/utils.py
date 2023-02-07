@@ -1,9 +1,9 @@
 from os import mkdir
 from os.path import isdir
+from typing import Union
 
 import numpy as np
-from qibo import gates, models
-from qibo.noise import PauliError
+from qibo import gates
 
 # To not define the parameters for one qubit Cliffords every time a
 # new qubits is drawn define the parameters as global variable.
@@ -34,6 +34,9 @@ ONEQUBIT_CLIFFORD_PARAMS = [
     (2 * np.pi / 3, 1 / np.sqrt(3), 1 / np.sqrt(3), -1 / np.sqrt(3)),
     (-2 * np.pi / 3, 1 / np.sqrt(3), 1 / np.sqrt(3), -1 / np.sqrt(3)),
 ]
+
+# Gates, without having to define any paramters
+ONEQ_GATES = ['I', 'X', 'Y', 'Z', 'H', 'S', 'SDG', 'T', 'TDG']
 
 # TODO use Renatos Pauli basis.
 X = np.array([[0, 1], [1, 0]])
@@ -86,21 +89,32 @@ def gate_adjoint_action_to_pauli_liouville(gate: gates.gates) -> np.ndarray:
         [[np.trace(p2.conj().T @ matrix @ p1 @ matrix) for p1 in pauli] for p2 in pauli]
     )
 
-    # def probabilities(self) -> np.ndarray:
-    #     """Takes the stored samples and returns probabilities for each
-    #     possible state to occure.
+def probabilities(allsamples: Union[list, np.ndarray]) -> np.ndarray:
+    """Takes the given list/array (3-dimensional) of samples and returns probabilities
+    for each possible state to occure.
 
-    #     Returns:
-    #         np.ndarray: Probability array of 2 dimension.
-    #     """
+    The states for 4 qubits are order as follows:
+    [(0, 0, 0, 0), (0, 0, 0, 1), (0, 0, 1, 0), (0, 0, 1, 1), (0, 1, 0, 0),
+    (0, 1, 0, 1), (0, 1, 1, 0), (0, 1, 1, 1), (1, 0, 0, 0), (1, 0, 0, 1),
+    (1, 0, 1, 0), (1, 0, 1, 1), (1, 1, 0, 0), (1, 1, 0, 1), (1, 1, 1, 0), (1, 1, 1, 1)]
 
-    #     allsamples = self.samples
-    #     # Create all possible state vectors.
-    #     allstates = list(product([0, 1], repeat=len(allsamples[0][0])))
-    #     # Iterate over all the samples and count the different states.
-    #     probs = [
-    #         [np.sum(np.product(samples == state, axis=1)) for state in allstates]
-    #         for samples in allsamples
-    #     ]
-    #     probs = np.array(probs) / (self.nshots)
-    #     return probs
+    Args:
+        allsamples (Union[list, np.ndarray]): The single shot samples, 3-dimensional.
+
+    Returns:
+        np.ndarray: Probability array of 2 dimension.
+    """
+    
+    from itertools import product
+    nqubits, nshots = len(allsamples[0][0]), len(allsamples[0])
+    # Create all possible state vectors.
+    allstates = list(product([0, 1], repeat=nqubits))
+    # Iterate over all the samples and count the different states.
+    probs = [
+        [np.sum(np.product(samples == state, axis=1)) for state in allstates]
+        for samples in allsamples
+    ]
+    probs = np.array(probs) / (nshots)
+    return probs
+
+

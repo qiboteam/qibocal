@@ -8,7 +8,7 @@ import pandas as pd
 from qibo.models import Circuit
 from qibo.noise import NoiseModel
 
-import qibocal.fitting.rb_methods as fitting_methods
+import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
 from qibocal.calibrations.protocols.abstract import Experiment, Report
 from qibocal.calibrations.protocols.abstract import (
     SingleCliffordsFactory as moduleFactory,
@@ -156,8 +156,8 @@ def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
                 "data": ydata,
                 "2sigma": 2 * ydata_std,
                 "fit_func": "exp1_func",
-                "popt": {"A": popt[0], "p": popt[1], "B": popt[2]},
-                "perr": {"A_err": perr[0], "p_err": perr[1], "B_err": perr[2]},
+                "popt": {"A": popt[0], "p": popt[1]},
+                "perr": {"A_err": perr[0], "p_err": perr[1]},
             }
         )
         index.append(ylabel)

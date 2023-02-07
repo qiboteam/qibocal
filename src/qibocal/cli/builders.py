@@ -87,7 +87,7 @@ class niGSCactionParser(singleActionParser):
         self.runs = self.runcard["actions"][self.name]["runs"]
         self.nshots = self.runcard["actions"][self.name]["nshots"]
 
-        from qibocal.calibrations.protocols import noisemodels
+        from qibocal.calibrations.niGSC.basics import noisemodels
 
         try:
             self.noise_params = self.runcard["actions"][self.name]["noise_params"]
@@ -101,7 +101,7 @@ class niGSCactionParser(singleActionParser):
             self.noise_model = None
 
     def build(self):
-        import qibocal.plots.gateset as gateset
+        from qibocal.calibrations.niGSC.basics.plot import plot_qq
 
         if not os.path.exists(self.path):
             os.makedirs(self.path)
@@ -109,9 +109,8 @@ class niGSCactionParser(singleActionParser):
         self.module = importlib.import_module(
             f"qibocal.calibrations.protocols.{self.name}"
         )
-        self.plots.append((f"{self.name} protocol", gateset.plot))
+        self.plots.append((f"{self.name} protocol", plot_qq))
 
-    # @plot()
     def execute(self, data_format, platform):
 
         data_experiment = Data("experiment_data")

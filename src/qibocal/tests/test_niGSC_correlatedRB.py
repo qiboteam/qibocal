@@ -7,7 +7,7 @@ import pytest
 from qibo import gates, models
 from qibo.noise import NoiseModel, PauliError
 
-from qibocal.calibrations.protocols import correlatedrb
+from qibocal.calibrations.niGSC import correlatedrb
 
 
 @pytest.fixture
@@ -163,7 +163,7 @@ def test_experiment_withnoise(
 
 def test_filterfunction():
     """Test if the filter function works, without noise."""
-    from qibocal.calibrations.protocols.utils import ONEQUBIT_CLIFFORD_PARAMS
+    from qibocal.calibrations.niGSC.basics.utils import ONEQUBIT_CLIFFORD_PARAMS
 
     nqubits = 2
     nshots = 3000
