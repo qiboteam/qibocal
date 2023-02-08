@@ -13,7 +13,7 @@ class Update(ABC):
 
 
 @dataclass
-class Output:
+class Output:  # TODO: write Output as abstract class
     # status: Status
     results: str
     # update: Update
