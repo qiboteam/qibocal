@@ -4,92 +4,123 @@ from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import flipping
-from qibocal.plots.utils import get_data_subfolders
+from qibocal.plots.utils import get_color, get_data_subfolders
 
 
 # Flipping
-def flips_msr_phase(folder, routine, qubit, format):
+def flips_msr(folder, routine, qubit, format):
+    figures = []
 
     fig = make_subplots(
         rows=1,
-        cols=2,
+        cols=1,
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
-        subplot_titles=(
-            "MSR (V)",
-            "phase (rad)",
-        ),
+        subplot_titles=("MSR (V)",),
     )
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
-    i = 0
+    report_n = 0
     fitting_report = ""
     for subfolder in subfolders:
         try:
-            data = DataUnits.load_data(
-                folder, subfolder, routine, format, f"data_q{qubit}"
-            )
+            data = DataUnits.load_data(folder, subfolder, routine, format, "data")
+            data.df = data.df[data.df["qubit"] == qubit]
         except:
-            data = DataUnits(quantities={"flips": "dimensionless"})
-
+            data = DataUnits(
+                quantities={"flips": "dimensionless"}, options=["qubit", "iteration"]
+            )
         try:
-            data_fit = Data.load_data(
-                folder, subfolder, routine, format, f"fit_q{qubit}"
-            )
+            data_fit = Data.load_data(folder, subfolder, routine, format, f"fits")
+            data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
         except:
-            data_fit = DataUnits()
-
-        fig.add_trace(
-            go.Scatter(
-                x=data.get_values("flips", "dimensionless"),
-                y=data.get_values("MSR", "uV"),
-                name=f"Flipping MSR q{qubit}/r{i}",
-            ),
-            row=1,
-            col=1,
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=data.get_values("flips", "dimensionless"),
-                y=data.get_values("phase", "rad"),
-                name=f"Flipping Phase q{qubit}/r{i}",
-            ),
-            row=1,
-            col=2,
-        )
-
-        # add fitting trace
-        if len(data) > 0 and len(data_fit) > 0:
-            flipsrange = np.linspace(
-                min(data.get_values("flips", "dimensionless")),
-                max(data.get_values("flips", "dimensionless")),
-                2 * len(data),
+            data_fit = Data(
+                quantities=[
+                    "popt0",
+                    "popt1",
+                    "popt2",
+                    "popt3",
+                    "popt4",
+                    "label1",
+                    "label2",
+                    "qubit",
+                ]
             )
-            params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+
+        iterations = data.df["iteration"].unique()
+        flips = data.df["flips"].pint.magnitude.unique()
+
+        if len(iterations) > 1:
+            opacity = 0.3
+        else:
+            opacity = 1
+        for iteration in iterations:
+            iteration_data = data.df[data.df["iteration"] == iteration]
             fig.add_trace(
                 go.Scatter(
-                    x=flipsrange,
-                    y=flipping(
-                        flipsrange,
-                        data_fit.get_values("popt0"),
-                        data_fit.get_values("popt1"),
-                        data_fit.get_values("popt2"),
-                        data_fit.get_values("popt3"),
-                    ),
-                    name=f"Fit q{qubit}/r{i}",
-                    line=go.scatter.Line(dash="dot"),
+                    x=iteration_data["flips"].pint.magnitude,
+                    y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
+                    marker_color=get_color(report_n),
+                    opacity=opacity,
+                    name=f"q{qubit}/r{report_n}",
+                    showlegend=not bool(iteration),
+                    legendgroup=f"q{qubit}/r{report_n}",
                 ),
                 row=1,
                 col=1,
             )
 
-            fitting_report = fitting_report + (
-                f"q{qubit}/r{i} {params[0]}: {data_fit.df[params[0]][0]:.4f}<br>q{qubit}/r{i} {params[1]}: {data_fit.df[params[1]][0]:.3f}<br><br>"
+        if len(iterations) > 1:
+            fig.add_trace(
+                go.Scatter(
+                    x=flips,
+                    y=data.df.groupby("flips")["MSR"]
+                    .mean()
+                    .pint.to("uV")
+                    .pint.magnitude,
+                    marker_color=get_color(report_n),
+                    name=f"q{qubit}/r{report_n}: Average",
+                    showlegend=True,
+                    legendgroup=f"q{qubit}/r{report_n}: Average",
+                ),
+                row=1,
+                col=1,
             )
 
-        i += 1
+        # add fitting trace
+        if len(data) > 0 and (qubit in data_fit.df["qubit"].values):
+            flips_range = np.linspace(
+                min(data.get_values("flips", "dimensionless")),
+                max(data.get_values("flips", "dimensionless")),
+                2 * len(data),
+            )
+            params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(
+                orient="records"
+            )[0]
+            fig.add_trace(
+                go.Scatter(
+                    x=flips_range,
+                    y=flipping(
+                        flips_range,
+                        data_fit.get_values("popt0"),
+                        data_fit.get_values("popt1"),
+                        data_fit.get_values("popt2"),
+                        data_fit.get_values("popt3"),
+                    ),
+                    name=f"q{qubit}/r{report_n}: Fit MSR",
+                    line=go.scatter.Line(dash="dot"),
+                    marker_color=get_color(4 * report_n + 2),
+                ),
+                row=1,
+                col=1,
+            )
+            fitting_report = fitting_report + (
+                f"q{qubit}/r{report_n} amplitude_correction_factor: {params['amplitude_correction_factor']:.4f}<br>"
+                + f"q{qubit}/r{report_n} corrected_amplitude: {params['corrected_amplitude']:.4f}<br><br>"
+            )
 
+        report_n += 1
     fig.add_annotation(
         dict(
             font=dict(color="black", size=12),
@@ -114,7 +145,8 @@ def flips_msr_phase(folder, routine, qubit, format):
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Flips (dimensionless)",
         yaxis_title="MSR (uV)",
-        xaxis2_title="Flips (dimensionless)",
-        yaxis2_title="Phase (rad)",
     )
-    return fig
+
+    figures.append(fig)
+
+    return figures

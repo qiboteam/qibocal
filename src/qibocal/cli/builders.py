@@ -32,7 +32,6 @@ class singleActionParser:
         self.__name__ = name
 
     def build(self):
-
         if not os.path.exists(self.path):
             os.makedirs(self.path)
         # collect function from module
@@ -112,7 +111,6 @@ class niGSCactionParser(singleActionParser):
         self.plots.append((f"{self.name} protocol", plot_qq))
 
     def execute(self, data_format, platform):
-
         data_experiment = Data("experiment_data")
         if data_format is None:
             raise_error(ValueError, f"Cannot store data using {data_format} format.")
@@ -155,7 +153,11 @@ class ActionBuilder:
         self.backend, self.platform = self._allocate_backend(
             backend_name, platform_name, path, platform_runcard
         )
-        self.qubits = self.runcard["qubits"]
+        self.qubits = {
+            q: self.platform.qubits[q]
+            for q in self.runcard["qubits"]
+            if q in self.platform.qubits
+        }
         self.format = self.runcard["format"]
 
         # Saving runcard
@@ -237,6 +239,19 @@ class ActionBuilder:
         with open(f"{path}/meta.yml", "w") as file:
             yaml.dump(meta, file)
 
+    def _build_single_action(self, name):
+        """Helper method to parse the actions in the runcard."""
+        f = getattr(calibrations, name)
+        path = os.path.join(self.folder, f"data/{name}/")
+        os.makedirs(path)
+        sig = inspect.signature(f)
+        params = self.runcard["actions"][name]
+        for param in list(sig.parameters)[2:-1]:
+            if param not in params:
+                raise_error(AttributeError, f"Missing parameter {param} in runcard.")
+
+        return f, params, path
+
     def execute(self):
         """Method to execute sequentially all the actions in the runcard."""
         if self.platform is not None:
@@ -254,27 +269,41 @@ class ActionBuilder:
                 parser = singleActionParser(self.runcard, self.folder, action)
                 parser.build()
                 parser.execute(self.format, self.platform)
+            routine, args, path = self._build_single_action(action)
+            self._execute_single_action(routine, args, path)
+            for qubit in self.qubits:
+                if self.platform is not None:
+                    self.update_platform_runcard(qubit, action)
 
         if self.platform is not None:
             self.platform.stop()
             self.platform.disconnect()
 
+    def _execute_single_action(self, routine, arguments, path):
+        """Method to execute a single action and retrieving the results."""
+        if self.format is None:
+            raise_error(ValueError, f"Cannot store data using {self.format} format.")
+
+        results = routine(self.platform, self.qubits, **arguments)
+
+        for data in results:
+            getattr(data, f"to_{self.format}")(path)
+
     def update_platform_runcard(self, qubit, routine):
-
         try:
-            data_fit = Data.load_data(
-                self.folder, "data", routine, self.format, f"fit_q{qubit}"
-            )
-        except:
-            data_fit = Data()
+            data_fit = Data.load_data(self.folder, "data", routine, self.format, "fits")
+            data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
+        except FileNotFoundError:
+            return None
 
-        params = [i for i in list(data_fit.df.keys()) if "popt" not in i]
+        params = data_fit.df.to_dict("index")[qubit if qubit == 0 else qubit - 1]
         settings = load_yaml(f"{self.folder}/new_platform.yml")
-
         for param in params:
-            settings["characterization"]["single_qubit"][qubit][param] = int(
-                data_fit.get_values(param)
-            )
+            if param in list(self.qubits[qubit].__annotations__.keys()):
+                setattr(self.qubits[qubit], param, params[param])
+                settings["characterization"]["single_qubit"][qubit][param] = int(
+                    data_fit.get_values(param)
+                )
 
         with open(f"{self.folder}/new_platform.yml", "w") as file:
             yaml.dump(
@@ -345,10 +374,11 @@ class ReportBuilder:
         """
         import tempfile
 
-        figure = method(self.path, routine.__name__, qubit, self.format)
+        figures = method(self.path, routine.__name__, qubit, self.format)
         with tempfile.NamedTemporaryFile() as temp:
-            figure.write_html(temp.name, include_plotlyjs=False, full_html=False)
-            fightml = temp.read().decode("utf-8")
+            for figure in figures:
+                figure.write_html(temp.name, include_plotlyjs=False, full_html=False)
+                fightml = temp.read().decode("utf-8")
         return fightml
 
     def get_live_figure(self, routine, method, qubit):

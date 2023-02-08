@@ -14,7 +14,6 @@ class AbstractData:
     """Base class for the implementation of `DataUnits` and `Data`."""
 
     def __init__(self, name=None):
-
         if name is None:
             self.name = "data"
         else:
@@ -28,7 +27,7 @@ class AbstractData:
         return self
 
     @abstractmethod
-    def add(self, data):
+    def add(self, data):  # pragma: no cover
         """Add row to `AbstractData` dataframe."""
         raise_error(NotImplementedError)
 
@@ -37,12 +36,14 @@ class AbstractData:
         return len(self.df)
 
     @classmethod
-    def load_data(cls, folder, subfolder, routine, data_format, name):
+    def load_data(
+        cls, folder, subfolder, routine, data_format, name
+    ):  # pragma: no cover
         """Load data from specific format."""
         raise_error(NotImplementedError)
 
     @abstractmethod
-    def to_csv(self, path):
+    def to_csv(self, path):  # pragma: no cover
         """Save data in csv file.
 
         Args:
@@ -70,7 +71,6 @@ class DataUnits(AbstractData):
     """
 
     def __init__(self, name=None, quantities=None, options=None):
-
         super().__init__(name=name)
 
         self._df = pd.DataFrame(
@@ -78,7 +78,7 @@ class DataUnits(AbstractData):
                 "MSR": pd.Series(dtype="pint[V]"),
                 "i": pd.Series(dtype="pint[V]"),
                 "q": pd.Series(dtype="pint[V]"),
-                "phase": pd.Series(dtype="pint[deg]"),
+                "phase": pd.Series(dtype="pint[rad]"),
             }
         )
         self.quantities = {"MSR": "V", "i": "V", "q": "V", "phase": "rad"}
@@ -119,10 +119,10 @@ class DataUnits(AbstractData):
             raise_error(TypeError, f"{type(df)} is not a pd.DataFrame.")
 
     def load_data_from_dict(self, data: dict):
-        """Set df attribute.
+        """Load dataframe from dictionary.
 
         Args:
-            data (dict): dictionary containing the data to be added.
+            data (dict): dictionary containing the data to be loaded.
                         Every key should have the following form:
                         ``<name>[<unit>]``.
         """
@@ -137,6 +137,25 @@ class DataUnits(AbstractData):
             else:
                 processed_data[key] = pd.Series(data=(values), dtype=object)
         self._df = pd.DataFrame(processed_data)
+
+    def add_data_from_dict(self, data: dict):
+        """Add the contents of a dictionary to the data of the dataframe.
+        Args:
+            df (dict): dictionary containing the data to be added.
+        """
+        processed_data = {}
+        for key, values in data.items():
+            if "[" in key:
+                name = key.split("[")[0]
+                unit = re.search(r"\[([A-Za-z0-9_]+)\]", key).group(1)
+                processed_data[name] = pd.Series(
+                    data=(np.array(values) * self.ureg(unit)), dtype=f"pint[{unit}]"
+                )
+            else:
+                processed_data[key] = pd.Series(data=(values), dtype=object)
+        self._df = pd.concat(
+            [self._df, pd.DataFrame(processed_data)], ignore_index=True
+        )
 
     def add(self, data):
         """Add a row to `DataUnits`.
@@ -235,7 +254,7 @@ class DataUnits(AbstractData):
                         "MSR[V]": msr,
                         "i[V]": i,
                         "q[V]": q,
-                        "phase[deg]": phase,
+                        "phase[rad]]": phase,
                     }
                     data.add({**pulse_sequence_result})
                 data.to_csv(folder)
@@ -261,7 +280,6 @@ class Data(AbstractData):
     """
 
     def __init__(self, name=None, quantities=None):
-
         super().__init__(name=name)
 
         if quantities is not None:
