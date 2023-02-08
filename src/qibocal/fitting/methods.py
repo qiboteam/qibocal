@@ -453,7 +453,6 @@ def ramsey_fit(
 
 
 def t1_fit(data, x, y, qubits, resonator_type, labels):
-
     """
     Fitting routine for T1 experiment. The used model is
 
@@ -914,7 +913,6 @@ def res_spectroscopy_flux_matrix(folder, fluxlines):
 
 
 def spin_echo_fit(data, x, y, qubits, resonator_type, labels):
-
     data_fit = Data(
         name=f"fits",
         quantities=[
@@ -973,7 +971,6 @@ def spin_echo_fit(data, x, y, qubits, resonator_type, labels):
 
 
 def calibrate_qubit_states_fit(data, x, y, nshots, qubits):
-
     parameters = Data(
         name=f"parameters",
         quantities={
