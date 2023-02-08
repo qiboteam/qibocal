@@ -39,7 +39,11 @@ def test_queue():
     assert ready[0].requirements == {"command_2": True, "command_1": True}
 
 
-# def test_executor():
+def test_executor():
+    executor = Executor.load(tasks)
 
-#     executor = Executor.load(tasks)
-#     executor.run()
+    with pytest.raises(
+        RuntimeError, match="Execution completed but tasks still pending "
+    ):
+        executor.run()
+    # TODO: write better test

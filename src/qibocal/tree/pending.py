@@ -9,6 +9,8 @@ class Queue:
     queue: list[Task]
 
     def free(self, completed=None) -> list[Task]:
+        # this function removes all the runnable actions from the queue
+        # and saves them in ready
         ready = []
         j = 0
         while j < len(self.queue):

@@ -13,8 +13,10 @@ class Update(ABC):
 
 
 @dataclass
-class Output(ABC):
-    pass
+class Output:
+    # status: Status
+    results: str
+    # update: Update
 
 
 @dataclass
@@ -23,6 +25,7 @@ class Task:
     operation: Operation
     parameters: Parameters
     _requirements: dict[str, bool]
+    output: Output = Output("")
 
     @property
     def ready(self):
@@ -49,13 +52,12 @@ class Task:
         )
 
     def run(self) -> Output:
-        return self.operation.value.routine(self.parameters)
+        self.output = Output(self.operation.value.routine(self.parameters))
+        return Output
 
     def complete(self, completed_id):
-        """
-        This function takes the ID of a completed Task
-        and updates the requirements
+        # This function takes the ID of a completed Task
+        # and updates the requirements
 
-        """
         if completed_id in self._requirements.keys():
             self._requirements[completed_id] = True
