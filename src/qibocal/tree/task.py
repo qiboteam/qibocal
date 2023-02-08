@@ -21,7 +21,7 @@ class Output(ABC):
 class Task:
     operation: Operation
     parameters: Parameters
-    _requirements: dict
+    _requirements: Dict[str, bool]
     _ready: bool
 
     @property
