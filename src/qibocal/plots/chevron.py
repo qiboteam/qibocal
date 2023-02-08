@@ -9,7 +9,6 @@ from qibocal.plots.utils import get_data_subfolders
 
 
 def landscape_2q_gate(folder, routine, qubit, format):
-
     highfreq = 2
     lowfreq = qubit
     if qubit > 2:
@@ -96,7 +95,6 @@ def landscape_2q_gate(folder, routine, qubit, format):
 
 
 def duration_amplitude_msr_flux_pulse(folder, routine, qubit, format):
-
     highfreq = 2
     lowfreq = qubit
     if qubit > 2:
