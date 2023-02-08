@@ -12,14 +12,22 @@ tasks = [
 
 
 def test_queue():
-    print(tasks)
     l = [Task.load(i) for i in tasks]
-    print(type(l[0]))
     q = Queue(l)
-    print("prova", q.queue)
     ready = q.free()
+
+    assert ready[0].run() == "command_1"
     assert ready[0].requirements == {"start": True}
     assert ready[0].ready == True
+
+    ready = q.free(completed="command_1")
+    assert ready[0].run() == "command_2"
+    assert ready[0].requirements == {"command_1": True}
+    assert ready[0].ready == True
+
+    ready = q.free(completed="command_2")
+    assert ready[0].run() == "command_3"
+    assert ready[0].requirements == {"command_2": True, "command_1": True}
 
 
 def test_task():

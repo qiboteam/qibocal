@@ -45,4 +45,13 @@ class Task:
         )
 
     def run(self) -> Output:
-        self.operation.value.routine(self.parameters)
+        return self.operation.value.routine(self.parameters)
+
+    def complete(self, completed_id):
+        """
+        This function takes the ID of a completed Task
+        and updates the requirements
+
+        """
+        if completed_id in self._requirements.keys():
+            self._requirements[completed_id] = True
