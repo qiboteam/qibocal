@@ -12,18 +12,14 @@ from qibo import gates
 from qibo.models import Circuit
 from qibo.noise import NoiseModel
 
+import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
 from qibocal.calibrations.niGSC.basics.circuitfactory import SingleCliffordsFactory
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
-import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
-from qibocal.calibrations.niGSC.basics.plot import (
-    Report,
-    scatter_fit_fig
-)
+from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig
+
 
 class moduleFactory(SingleCliffordsFactory):
-    def __init__(
-        self, nqubits: int, depths: list, qubits: list = []
-    ) -> None:
+    def __init__(self, nqubits: int, depths: list, qubits: list = []) -> None:
         super().__init__(nqubits, depths, qubits)
         self.name = "SingleCliffordsInv"
 
@@ -75,7 +71,7 @@ class moduleReport(Report):
 
 
 def groundstate_probabilities(circuit: Circuit, datarow: dict) -> dict:
-    """ Calculates the groundstate probability with data from single shot measurements.
+    """Calculates the groundstate probability with data from single shot measurements.
 
     Args:
         circuit (Circuit): Not needed here.
@@ -96,6 +92,7 @@ def groundstate_probabilities(circuit: Circuit, datarow: dict) -> dict:
     ) / len(samples)
     # Return the updated dictionary.
     return datarow
+
 
 def post_processing_sequential(experiment: Experiment):
     # Compute and add the ground state probabilities row by row.

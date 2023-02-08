@@ -1,17 +1,17 @@
-from collections.abc import Iterable
-from shutil import rmtree
-
 import os
+from collections.abc import Iterable
+from itertools import product
+from shutil import rmtree
 
 import numpy as np
 import pandas as pd
 import pytest
 from qibo import gates, models
 from qibo.noise import NoiseModel, PauliError
-from itertools import product
 
 from qibocal.calibrations.niGSC import standardrb
 from qibocal.calibrations.niGSC.basics import utils
+
 
 def theoretical_outcome(noisemodel: NoiseModel) -> float:
     """Take the used noise model acting on unitaries and calculates the
@@ -35,6 +35,7 @@ def theoretical_outcome(noisemodel: NoiseModel) -> float:
     errorchannel = error.channel(0, *error.options)
     # Calculate the effective depolarizing parameter.
     return utils.effective_depol(errorchannel)
+
 
 @pytest.fixture
 def depths():
@@ -111,7 +112,6 @@ def test_experiment(nqubits: int, depths: list, runs: int, nshots: int):
         assert datarow["depth"] == depths[count % len(depths)]
     assert isinstance(myexperiment1.dataframe, pd.DataFrame)
 
-
     myexperiment1.save()
     path1 = myexperiment1.path
 
@@ -148,11 +148,11 @@ def test_experiment(nqubits: int, depths: list, runs: int, nshots: int):
     #             assert np.array_equal(m, m_load)
 
     rmtree(path1)
-    if len(os.listdir('experiments/rb')) == 0:
-        rmtree('experiments/rb')
-    if len(os.listdir('experiments')) == 0:
-        rmtree('experiments/')
-        
+    if len(os.listdir("experiments/rb")) == 0:
+        rmtree("experiments/rb")
+    if len(os.listdir("experiments")) == 0:
+        rmtree("experiments/")
+
     # rmtree(path2)
     # rmtree(path3)
 
@@ -189,9 +189,7 @@ def test_experiment_withnoise(
 @pytest.mark.parametrize("qubits", [[0], [0, 1]])
 def test_embed_circuit(nqubits: int, depths: list, runs: int, qubits: list):
     nshots = 2
-    myfactory1 = standardrb.moduleFactory(
-        nqubits, list(depths) * runs, qubits=qubits
-    )
+    myfactory1 = standardrb.moduleFactory(nqubits, list(depths) * runs, qubits=qubits)
     test_list = list(product(qubits))
     test_list.append(tuple(qubits))
     for circuit in myfactory1:
@@ -207,7 +205,6 @@ def test_embed_circuit(nqubits: int, depths: list, runs: int, qubits: list):
 @pytest.mark.parametrize("nqubits", [2, 3])
 @pytest.mark.parametrize("runs", [1, 3])
 def test_utils_probs(nqubits: int, depths: list, runs: int, nshots: int):
-
     # Build the noise model.
     noise_params = [0.0001, 0.001, 0.0005]
     paulinoise = PauliError(*noise_params)
@@ -220,20 +217,21 @@ def test_utils_probs(nqubits: int, depths: list, runs: int, nshots: int):
     )
     myfaultyexperiment.perform(myfaultyexperiment.execute)
     myfaultyexperiment.perform(standardrb.groundstate_probabilities)
-    probs = utils.probabilities(myfaultyexperiment.extract('samples'))
-    assert probs.shape == (runs * len(depths), 2 ** nqubits)
+    probs = utils.probabilities(myfaultyexperiment.extract("samples"))
+    assert probs.shape == (runs * len(depths), 2**nqubits)
     assert np.allclose(np.sum(probs, axis=1), 1)
     for probsarray in probs:
-        if probsarray[0] < 1.:
-            assert np.all(np.greater_equal(probsarray[0] * np.ones(len(probsarray)), probsarray))
+        if probsarray[0] < 1.0:
+            assert np.all(
+                np.greater_equal(probsarray[0] * np.ones(len(probsarray)), probsarray)
+            )
         else:
-            assert probsarray[0] == 1.
+            assert probsarray[0] == 1.0
 
 
 @pytest.mark.parametrize("nqubits", [2, 3])
 @pytest.mark.parametrize("runs", [1, 3])
 def test_post_processing(nqubits: int, depths: list, runs: int, nshots: int):
-
     # Build the noise model.
     noise_params = [0.01, 0.3, 0.14]
     paulinoise = PauliError(*noise_params)
@@ -246,18 +244,18 @@ def test_post_processing(nqubits: int, depths: list, runs: int, nshots: int):
     )
     myfaultyexperiment.perform(myfaultyexperiment.execute)
     standardrb.post_processing_sequential(myfaultyexperiment)
-    probs = utils.probabilities(myfaultyexperiment.extract('samples'))
+    probs = utils.probabilities(myfaultyexperiment.extract("samples"))
     ground_probs = probs[:, 0]
-    test_ground_probs = myfaultyexperiment.extract('groundstate probability')
+    test_ground_probs = myfaultyexperiment.extract("groundstate probability")
     assert np.allclose(ground_probs, test_ground_probs)
     aggr_df = standardrb.get_aggregational_data(myfaultyexperiment)
-    assert len(aggr_df) == 1 and aggr_df.index[0] == 'groundstate probability'
-    assert 'depth' in aggr_df.columns
-    assert 'data' in aggr_df.columns
-    assert '2sigma' in aggr_df.columns
-    assert 'fit_func' in aggr_df.columns
-    assert 'popt' in aggr_df.columns
-    assert 'perr' in aggr_df.columns
+    assert len(aggr_df) == 1 and aggr_df.index[0] == "groundstate probability"
+    assert "depth" in aggr_df.columns
+    assert "data" in aggr_df.columns
+    assert "2sigma" in aggr_df.columns
+    assert "fit_func" in aggr_df.columns
+    assert "popt" in aggr_df.columns
+    assert "perr" in aggr_df.columns
 
 
 def test_build_report():
@@ -278,7 +276,7 @@ def test_build_report():
     myfaultyexperiment.perform(myfaultyexperiment.execute)
     standardrb.post_processing_sequential(myfaultyexperiment)
     aggr_df = standardrb.get_aggregational_data(myfaultyexperiment)
-    assert theoretical_outcome(noise) - aggr_df.popt[0]['p'] < 2 * aggr_df.perr[0]['p_err']
+    assert (
+        theoretical_outcome(noise) - aggr_df.popt[0]["p"] < 2 * aggr_df.perr[0]["p_err"]
+    )
     figure = standardrb.build_report(myfaultyexperiment, aggr_df)
-
-

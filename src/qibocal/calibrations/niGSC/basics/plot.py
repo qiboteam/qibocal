@@ -1,9 +1,10 @@
+import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+
 import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
-import numpy as np
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
-import pandas as pd
 
 
 def plot_qq(folder: str, routine: str, qubit, format):
@@ -21,16 +22,18 @@ def plot_qq(folder: str, routine: str, qubit, format):
     """
 
     import importlib
+
     # Load the module, something like 'standardrb'.
     module = importlib.import_module(f"qibocal.calibrations.protocols.{routine}")
     # Load the experiment with the class method ``load``.
     experiment = module.moduleExperiment.load(f"{folder}/data/{routine}/")
-    # In this data frame the precomputed fitting parameters and other 
+    # In this data frame the precomputed fitting parameters and other
     # parameters for fitting and plotting are stored.
     aggr_df = pd.read_pickle(f"{folder}/data/{routine}/fit_plot.pkl")
     # Build the figure/report using the responsible module.
     plotly_figure = module.build_report(experiment, aggr_df)
     return plotly_figure
+
 
 class Report:
     """Once initialized with the correct parameters an Report object can build
@@ -43,7 +46,6 @@ class Report:
         self.info_dict = {}
 
     def build(self):
-        
         l = len(self.all_figures)
         subplot_titles = [figdict.get("subplot_title") for figdict in self.all_figures]
         fig = make_subplots(

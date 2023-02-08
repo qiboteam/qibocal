@@ -11,13 +11,14 @@ from qibo.quantum_info.random_ensembles import random_clifford
 from qibocal.calibrations.niGSC.basics.utils import ONEQ_GATES
 from qibocal.config import raise_error
 
+
 class Circuitfactory:
-    """ Iterator object, when called a random circuit with wanted gate
+    """Iterator object, when called a random circuit with wanted gate
     distribution is created.
     """
 
     def __init__(
-        self, nqubits: int, depths: Union[list, np.ndarray, int], qubits: list = []
+        self, nqubits: int, depths: list | np.ndarray | int, qubits: list = []
     ) -> None:
         self.nqubits = nqubits if nqubits is not None else len(qubits)
         self.qubits = qubits if qubits else list(range(nqubits))
@@ -34,7 +35,7 @@ class Circuitfactory:
         return self
 
     def __next__(self) -> Circuit:
-        """ Build a ``Circuit`` object with wanted gate distribution.
+        """Build a ``Circuit`` object with wanted gate distribution.
 
         Embeds the circuit if the number of qubits ``self.nqubits`` is bigger than
         the amount of qubits indicated in ``self.qubits``.
@@ -77,22 +78,22 @@ class Circuitfactory:
         # Add a ``Measurement`` gate for every qubit.
         circuit.add(gates.M(*range(len(self.qubits))))
         return circuit
-    
+
     @abc.abstractmethod
     def gate_layer(self):
-        """This method has to be overwritten by the inheriting child class.
-        """
+        """This method has to be overwritten by the inheriting child class."""
         raise_error(NotImplementedError)
 
+
 class Qibo1qGatesFactory(Circuitfactory):
-    """ When called creates a random circuit build out of 1-qubit non-parameterized
+    """When called creates a random circuit build out of 1-qubit non-parameterized
     qibo gates.
     """
 
     def __init__(self, nqubits: int, depths: list, qubits: list = []) -> None:
         super().__init__(nqubits, depths, qubits)
-        self.name = 'Qibo1qGates'
-    
+        self.name = "Qibo1qGates"
+
     def gate_layer(self):
         """Build a circuit out of random 1-qubit qibo gates.
 
@@ -116,12 +117,10 @@ class SingleCliffordsFactory(Circuitfactory):
     """Creates circuits filled with random  single qubit Clifford gates for
     each active qubit.
     """
-    def __init__(
-        self, nqubits: int, depths: list, qubits: list = []
-    ) -> None:
-        super().__init__(nqubits, depths, qubits)
-        self.name = 'SingleCliffords'
 
+    def __init__(self, nqubits: int, depths: list, qubits: list = []) -> None:
+        super().__init__(nqubits, depths, qubits)
+        self.name = "SingleCliffords"
 
     def gate_layer(self) -> list:
         """Use the ``qibo.quantum_info`` module to draw as many random clifford

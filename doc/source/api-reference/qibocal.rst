@@ -165,7 +165,7 @@ Correlated RB
    :members:
    :undoc-members:
    :show-inheritance:
-   
+
 X-ID RB
 ^^^^^^^^^^^^
 .. automodule:: qibocal.calibrations.protocols.XIdrb

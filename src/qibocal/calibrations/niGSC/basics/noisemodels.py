@@ -52,4 +52,3 @@ class PauliErrorOnX(PauliErrorOnUnitary):
 
     def build(self, *params):
         self.add(PauliError(*params), gates.X)
-

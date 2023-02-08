@@ -5,7 +5,7 @@ Non-Interactive Gate Set Characterization
 
 ``qibocal`` offers a seamless and efficient solution for implementing non-interactive Gate Set Characterization (niGSC) protocols.
 An abstract level explanation of the architecture is depicted in the figure below.
- 
+
 
 .. image:: images/qibocal_niGSC.png
   :width: 700
@@ -29,7 +29,7 @@ In general, the idea of a standard RB protocol is to quantify the performance of
 regarding the implementation of gates.
 For that the quantum device needs to be able to prepare a quantum state, modify this quantum state with gates,
 and in the end measure the outcome of the modulation of the quantum state.
-The survival probability of the ground state :math:`y(m)` dependent on the sequence length 
+The survival probability of the ground state :math:`y(m)` dependent on the sequence length
 of the applied gates :math:`m`, is modulated with the following exponential function:
 
 .. math::

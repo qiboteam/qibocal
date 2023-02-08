@@ -36,7 +36,7 @@ ONEQUBIT_CLIFFORD_PARAMS = [
 ]
 
 # Gates, without having to define any paramters
-ONEQ_GATES = ['I', 'X', 'Y', 'Z', 'H', 'S', 'SDG', 'T', 'TDG']
+ONEQ_GATES = ["I", "X", "Y", "Z", "H", "S", "SDG", "T", "TDG"]
 
 # TODO use Renatos Pauli basis.
 X = np.array([[0, 1], [1, 0]])
@@ -89,6 +89,7 @@ def gate_adjoint_action_to_pauli_liouville(gate: gates.gates) -> np.ndarray:
         [[np.trace(p2.conj().T @ matrix @ p1 @ matrix) for p1 in pauli] for p2 in pauli]
     )
 
+
 def probabilities(allsamples: Union[list, np.ndarray]) -> np.ndarray:
     """Takes the given list/array (3-dimensional) of samples and returns probabilities
     for each possible state to occure.
@@ -104,8 +105,9 @@ def probabilities(allsamples: Union[list, np.ndarray]) -> np.ndarray:
     Returns:
         np.ndarray: Probability array of 2 dimension.
     """
-    
+
     from itertools import product
+
     nqubits, nshots = len(allsamples[0][0]), len(allsamples[0])
     # Create all possible state vectors.
     allstates = list(product([0, 1], repeat=nqubits))
@@ -116,5 +118,3 @@ def probabilities(allsamples: Union[list, np.ndarray]) -> np.ndarray:
     ]
     probs = np.array(probs) / (nshots)
     return probs
-
-

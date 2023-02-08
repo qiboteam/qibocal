@@ -3,7 +3,7 @@ from __future__ import annotations
 import pickle
 from collections.abc import Iterable
 from os.path import isfile
-from typing import Union, Callable, Optional
+from typing import Callable, Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -12,6 +12,7 @@ from qibo.noise import NoiseModel
 
 from qibocal.calibrations.niGSC.basics.utils import experiment_directory
 from qibocal.config import raise_error
+
 
 class Experiment:
     """Experiment objects which holds an iterable circuit factory along with
@@ -28,14 +29,14 @@ class Experiment:
 
     def __init__(
         self,
-        circuitfactory: Optional[Iterable],
-        data: Optional[list] = None,
-        nshots: Optional[int] = None,
-        noise_model: Optional[NoiseModel] = None,
+        circuitfactory: Iterable | None,
+        data: list | None = None,
+        nshots: int | None = None,
+        noise_model: NoiseModel | None = None,
     ) -> None:
         """ """
         self.circuitfactory = circuitfactory
-        self.nshots = nshots 
+        self.nshots = nshots
         self.data = data
         self.__noise_model = noise_model
         self.name = "Abstract"
@@ -74,7 +75,7 @@ class Experiment:
         else:
             circuitfactory = None
         # Initiate an instance of the experiment class.
-        obj = cls(circuitfactory, data = data, nshots = nshots)
+        obj = cls(circuitfactory, data=data, nshots=nshots)
         return obj
 
     def save(self) -> None:
@@ -88,10 +89,11 @@ class Experiment:
         with open(f"{self.path}experiment_data.pkl", "wb") as f:
             pickle.dump(self.data, f)
 
-    def extract(self, outputkey: str,  groupby_key: str = '', agg_type: str | Callable = ''
-) -> Union[np.ndarray, tuple[np.ndarray, np.ndarray]]:
+    def extract(
+        self, outputkey: str, groupby_key: str = "", agg_type: str | Callable = ""
+    ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
         """Return wanted values from ``self.data`` via the dataframe property.
-        
+
         If ``groupby_key`` given, aggregate the dataframe, extract the data by which the frame was
         grouped, what was calculated given the ``agg_type`` parameter. Two arrays are returned then,
         the group values and the grouped (aggregated) data. If no ``agg_type`` given use a linear function.
@@ -101,13 +103,13 @@ class Experiment:
             outputkey (str): Key name of the wanted output.
             groupby_key (str): If given, group with that key name.
             agg_type (str): If given, calcuted aggregation function on groups.
-        
+
         Returns:
             Either one or two np.ndarrays. If no grouping wanted, just the data. If grouping
             wanted, the values after which where grouped and the grouped data.
         """
 
-        # Check what parameters where given. 
+        # Check what parameters where given.
         if not groupby_key and not agg_type:
             # No grouping and no aggreagtion is wanted. Just return the wanted outputkey.
             return np.array(self.dataframe[outputkey].tolist())
@@ -141,7 +143,7 @@ class Experiment:
         # Both ``circuit`` and ``datarow`` can be provided:
         if self.circuitfactory is not None and self.data is not None:
             for circuit, datarow in zip(self.circuitfactory, self.data):
-                datarow = sequential_task(circuit.copy(deep = True), datarow)
+                datarow = sequential_task(circuit.copy(deep=True), datarow)
         # Only``datarow`` can be provided:
         elif self.circuitfactory is None and self.data is not None:
             for datarow in self.data:
@@ -150,7 +152,7 @@ class Experiment:
         elif self.circuitfactory is not None and self.data is None:
             newdata = []
             for circuit in self.circuitfactory:
-                newdata.append(sequential_task(circuit.copy(deep = True), {}))
+                newdata.append(sequential_task(circuit.copy(deep=True), {}))
             self.data = newdata
         else:
             raise_error(ValueError, "Both attributes circuitfactory and data are None.")
@@ -168,4 +170,3 @@ class Experiment:
             circuit = self.noise_model.apply(circuit)
         samples = circuit(nshots=self.nshots).samples()
         return {"samples": samples}
-

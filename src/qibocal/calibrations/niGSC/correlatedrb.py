@@ -138,9 +138,11 @@ def filter_function(circuit: Circuit, datarow: dict) -> dict:
         datarow[f"irrep{kk}"] = f_list[kk] / nshots
     return datarow
 
+
 def post_processing_sequential(experiment: Experiment):
     # Compute and add the ground state probabilities row by row.
     experiment.perform(filter_function)
+
 
 def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
     nqubits = len(experiment.data[0]["samples"][0])
@@ -164,6 +166,7 @@ def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
 
     df = pd.DataFrame(data_list, index=index)
     return df
+
 
 def build_report(experiment: Experiment, df_aggr: pd.DataFrame):
     report = moduleReport()

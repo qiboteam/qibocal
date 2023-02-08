@@ -2,11 +2,12 @@
 They consist mostly of exponential decay fitting.
 """
 
-from typing import Tuple, Union, Optional
+from typing import Optional, Tuple, Union
 
 import numpy as np
 from scipy.linalg import hankel, svd
 from scipy.optimize import curve_fit
+
 from qibocal.config import raise_error
 
 
@@ -24,8 +25,12 @@ def exp2_func(x: np.ndarray, A1: float, A2: float, f1: float, f2: float) -> np.n
     return A1 * f1**x + A2 * f2**x
 
 
-def esprit(xdata: np.ndarray, ydata: np.ndarray, num_decays: int, hankel_dim: Optional[int] = None
-           ) -> np.ndarray:
+def esprit(
+    xdata: np.ndarray,
+    ydata: np.ndarray,
+    num_decays: int,
+    hankel_dim: Optional[int] = None,
+) -> np.ndarray:
     """Implements the ESPRIT algorithm for peak detection.
 
     Args:
@@ -35,16 +40,16 @@ def esprit(xdata: np.ndarray, ydata: np.ndarray, num_decays: int, hankel_dim: Op
         hankel_dim (int | None, optional): The Hankel dimension. Defaults to None.
 
     Returns:
-        np.ndarray: The decay parameters. 
-    
+        np.ndarray: The decay parameters.
+
     Raises:
         ValueError: When the x-labels are not equally spaced the algorithm does not work.
-    
+
     """
 
     # Check for equally spacing.
     if not np.all(xdata[1:] - xdata[:-1] == xdata[1] - xdata[0]):
-        raise_error(ValueError, 'xdata has to be equally spaced.')
+        raise_error(ValueError, "xdata has to be equally spaced.")
     sampleRate = 1 / (xdata[1] - xdata[0])
     # xdata has to be an array.
     xdata = np.array(xdata)
@@ -53,24 +58,15 @@ def esprit(xdata: np.ndarray, ydata: np.ndarray, num_decays: int, hankel_dim: Op
         hankel_dim = int(np.round(0.5 * xdata.size))
     # Fine tune the dimension of the hankel matrix such that the mulitplication
     # processes don't break.
-    hankel_dim = max(num_decays + 1, hankel_dim) 
-    hankel_dim = min(hankel_dim, xdata.size - num_decays + 1) 
+    hankel_dim = max(num_decays + 1, hankel_dim)
+    hankel_dim = min(hankel_dim, xdata.size - num_decays + 1)
     hankelMatrix = hankel(ydata[:hankel_dim], ydata[(hankel_dim - 1) :])
     # Calculate nontrivial (nonzero) singular vectors of the hankel matrix.
     U, _, _ = svd(hankelMatrix, full_matrices=False)
     # Cut off the columns to the amount which is needed.
     U_signal = U[:, :num_decays]
     # Calculte the solution.
-    spectralMatrix = (
-        np.linalg.pinv(
-            U_signal[
-                :-1,
-            ]
-        )
-        @ U_signal[
-            1:,
-        ]
-    )
+    spectralMatrix = np.linalg.pinv(U_signal[:-1,]) @ U_signal[1:,]
     # Calculate the poles/eigenvectors and space them right. Return them.
     return np.linalg.eigvals(spectralMatrix) * sampleRate
 
@@ -148,7 +144,7 @@ def fit_exp2_func(
     xdata: Union[np.ndarray, list], ydata: Union[np.ndarray, list], **kwargs
 ) -> Tuple[tuple, tuple]:
     """Calculate 2 exponentials on top of each other, fit to the given ydata.
-    
+
     No linear offset, the ESPRIT algorithm is used to identify the two exponential decays.
 
     Args:
