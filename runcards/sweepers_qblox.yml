@@ -1,6 +1,6 @@
-# platform: qili1q_os2
+platform: qili1q_os2
 
-platform: dummy
+# platform: dummy
 
 # Instructions: Uncomment whatever you would like to run!
 
@@ -16,7 +16,7 @@ actions:
   #  fast_step: 1_000_000
   #  precision_width: 10_000_000
   #  precision_step: 50_000
-  #  wait_time: 10
+  #  relaxation_time: 10
   #  nshots: 1024
   #  software_averages: 1
 
@@ -27,7 +27,7 @@ actions:
   #   max_att: 50
   #   step_att: 2
   #   software_averages: 2
-  #   wait_time: 50
+  #   relaxation_time: 50
   #   nshots: 1024
 
   # resonator_punchout_amplitude:
@@ -37,7 +37,7 @@ actions:
   #   max_amp: 1
   #   step_amp: 0.01
   #   software_averages: 1
-  #   wait_time: 50
+  #   relaxation_time: 50
   #   nshots: 1024
 
 
@@ -47,7 +47,7 @@ actions:
    min_att: 2
    max_att: 50
    step_att: 2
-   wait_time: 50
+   relaxation_time: 50
    nshots: 10
    software_averages: 1
 
@@ -57,7 +57,7 @@ actions:
   #  bias_width: 0.1
   #  bias_step:  0.002
   #  fluxlines: qubits
-  #  wait_time: 50
+  #  relaxation_time: 50
   #  nshots: 1000
   #  software_averages: 1
 
@@ -68,7 +68,7 @@ actions:
   #   precision_step: 50_000
   #   drive_duration: 5000
   #   drive_amplitude: 0.457
-  #   wait_time: 20
+  #   relaxation_time: 20
   #   nshots: 1024
   #   software_averages: 2
 
@@ -78,7 +78,7 @@ actions:
   #  bias_width: 0.1
   #  bias_step:  0.001
   #  fluxlines: "qubits"
-  #  wait_time: 20
+  #  relaxation_time: 20
   #  nshots: 1000
   #  software_averages: 1
 
@@ -87,7 +87,7 @@ actions:
   #   pulse_amplitude_end: 1
   #   pulse_amplitude_step: 0.02
   #   software_averages: 1
-  #   wait_time: 50000
+  #   relaxation_time: 50000
   #   nshots: 1024
 
   # rabi_pulse_length_and_amplitude:
@@ -98,7 +98,7 @@ actions:
   #   pulse_amplitude_end: 1
   #   pulse_amplitude_step: 0.3
   #   software_averages: 1
-  #   wait_time: 50000
+  #   relaxation_time: 50000
   #   nshots: 1024
     # points: 10
 
@@ -153,7 +153,7 @@ actions:
   #  flux_pulse_amplitude_start: 0.94
   #  flux_pulse_amplitude_end: 1.06
   #  flux_pulse_amplitude_step: 0.002
-  #  wait_time: 50000
+  #  relaxation_time: 50000
   #  single_flux: True
   #  dt: 1
   #  nshots: 1000
@@ -164,7 +164,7 @@ actions:
   #  theta_step: 0.02
   #  flux_pulse_duration: 30
   #  flux_pulse_amplitude: 0.05485
-  #  wait_time: 50000
+  #  relaxation_time: 50000
   #  single_flux: True
   #  nshots: 1024
   #  dt: 1

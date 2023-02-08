@@ -18,7 +18,7 @@ def qubit_spectroscopy(
     fast_step,
     precision_width,
     precision_step,
-    wait_time,
+    relaxation_time,
     drive_duration,
     drive_amplitude=None,
     nshots=1024,
@@ -102,7 +102,9 @@ def qubit_spectroscopy(
 
     # repeat the experiment as many times as defined by software_averages
     for iteration in range(software_averages):
-        results = platform.sweep(sequence, sweeper, nshots=nshots, wait_time=wait_time)
+        results = platform.sweep(
+            sequence, sweeper, nshots=nshots, relaxation_time=relaxation_time
+        )
 
         # retrieve the results for every qubit
         for qubit, ro_pulse in ro_pulses.items():
@@ -181,7 +183,9 @@ def qubit_spectroscopy(
 
     # repeat the experiment as many times as defined by software_averages
     for iteration in range(software_averages):
-        results = platform.sweep(sequence, sweeper, nshots=nshots, wait_time=wait_time)
+        results = platform.sweep(
+            sequence, sweeper, nshots=nshots, relaxation_time=relaxation_time
+        )
 
         # retrieve the results for every qubit
         for qubit, ro_pulse in ro_pulses.items():
@@ -224,7 +228,7 @@ def qubit_spectroscopy_flux(
     bias_width,
     bias_step,
     fluxlines,
-    wait_time,
+    relaxation_time,
     nshots=1024,
     software_averages=1,
 ):
@@ -295,7 +299,7 @@ def qubit_spectroscopy_flux(
         Parameter.frequency,
         delta_frequency_range,
         pulses=[qd_pulses[qubit] for qubit in qubits],
-        wait_time=wait_time,
+        relaxation_time=relaxation_time,
     )
 
     if fluxlines == "qubits":
@@ -303,7 +307,9 @@ def qubit_spectroscopy_flux(
 
     # flux current
     delta_bias_range = np.arange(-bias_width / 2, bias_width / 2, bias_step)
-    bias_sweeper = Sweeper("offset", delta_bias_range, qubits=fluxlines, wait_time=0)
+    bias_sweeper = Sweeper(
+        "offset", delta_bias_range, qubits=fluxlines, relaxation_time=0
+    )
 
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q

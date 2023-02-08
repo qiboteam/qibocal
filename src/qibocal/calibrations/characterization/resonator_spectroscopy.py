@@ -19,7 +19,7 @@ def resonator_spectroscopy(
     fast_step,
     precision_width,
     precision_step,
-    wait_time,
+    relaxation_time,
     nshots=1024,
     software_averages=1,
 ):
@@ -91,7 +91,9 @@ def resonator_spectroscopy(
 
     # repeat the experiment as many times as defined by software_averages
     for iteration in range(software_averages):
-        results = platform.sweep(sequence, sweeper, nshots=nshots, wait_time=wait_time)
+        results = platform.sweep(
+            sequence, sweeper, nshots=nshots, relaxation_time=relaxation_time
+        )
 
         # retrieve the results for every qubit
         for qubit in qubits:
@@ -173,7 +175,9 @@ def resonator_spectroscopy(
 
     # repeat the experiment as many times as defined by software_averages
     for iteration in range(software_averages):
-        results = platform.sweep(sequence, sweeper, nshots=nshots, wait_time=wait_time)
+        results = platform.sweep(
+            sequence, sweeper, nshots=nshots, relaxation_time=relaxation_time
+        )
 
         # retrieve the results for every qubit
         for qubit, ro_pulse in ro_pulses.items():
@@ -218,7 +222,7 @@ def resonator_punchout_attenuation(
     min_att,
     max_att,
     step_att,
-    wait_time=None,
+    relaxation_time=None,
     nshots=1024,
     software_averages=1,
 ):
@@ -235,7 +239,7 @@ def resonator_punchout_attenuation(
         min_att (int): Minimum value in db for the attenuation sweep
         max_att (int): Minimum value in db for the attenuation sweep
         step_att (int): Step attenuation in db for the attenuation sweep
-        wait_time (int): Relaxation time between shots (ns)
+        relaxation_time (int): Relaxation time between shots (ns)
         software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
 
@@ -294,7 +298,11 @@ def resonator_punchout_attenuation(
     atts = np.repeat(attenuation_range, len(delta_frequency_range))
     for iteration in range(software_averages):
         results = platform.sweep(
-            sequence, att_sweeper, freq_sweeper, nshots=nshots, wait_time=wait_time
+            sequence,
+            att_sweeper,
+            freq_sweeper,
+            nshots=nshots,
+            relaxation_time=relaxation_time,
         )
 
         # retrieve the results for every qubit
@@ -337,7 +345,7 @@ def resonator_punchout_amplitude(
     min_amp,
     max_amp,
     step_amp,
-    wait_time=None,
+    relaxation_time=None,
     nshots=1024,
     software_averages=1,
 ):
@@ -354,7 +362,7 @@ def resonator_punchout_amplitude(
         max_amp (float): Maximum amplitude value
         min_amp (float): Minimum amplitude value
         step_amp (float): Step amplitude value for the amplitude sweep
-        wait_time (int): Relaxation time between shots (ns)
+        relaxation_time (int): Relaxation time between shots (ns)
         software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
 
@@ -413,7 +421,11 @@ def resonator_punchout_amplitude(
     amps = np.repeat(amplitude_range, len(delta_frequency_range))
     for iteration in range(software_averages):
         results = platform.sweep(
-            sequence, amp_sweeper, freq_sweeper, nshots=nshots, wait_time=wait_time
+            sequence,
+            amp_sweeper,
+            freq_sweeper,
+            nshots=nshots,
+            relaxation_time=relaxation_time,
         )
 
         # retrieve the results for every qubit
@@ -452,7 +464,7 @@ def resonator_spectroscopy_flux(
     bias_width,
     bias_step,
     fluxlines,
-    wait_time,
+    relaxation_time,
     nshots=1024,
     software_averages=1,
 ):
@@ -525,7 +537,11 @@ def resonator_spectroscopy_flux(
     # repeat the experiment as many times as defined by software_averages
     for iteration in range(software_averages):
         results = platform.sweep(
-            sequence, bias_sweeper, freq_sweeper, nshots=nshots, wait_time=wait_time
+            sequence,
+            bias_sweeper,
+            freq_sweeper,
+            nshots=nshots,
+            relaxation_time=relaxation_time,
         )
 
         # retrieve the results for every qubit

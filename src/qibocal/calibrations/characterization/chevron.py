@@ -21,7 +21,7 @@ def tune_transition(
     flux_pulse_amplitude_start,
     flux_pulse_amplitude_end,
     flux_pulse_amplitude_step,
-    wait_time,
+    relaxation_time,
     single_flux=True,
     dt=1,
     nshots=1024,
@@ -125,7 +125,9 @@ def tune_transition(
         flux_pulse_duration_start, flux_pulse_duration_end, flux_pulse_duration_step
     )
     # TODO: Implement for two pulses
-    sweeper = Sweeper("amplitude", amplitudes, pulses=[flux_pulse], wait_time=wait_time)
+    sweeper = Sweeper(
+        "amplitude", amplitudes, pulses=[flux_pulse], relaxation_time=relaxation_time
+    )
 
     if single_flux:
         sequence = (
@@ -188,7 +190,7 @@ def tune_landscape(
     theta_step,
     flux_pulse_duration,
     flux_pulse_amplitude,
-    wait_time,
+    relaxation_time,
     single_flux=True,
     nshots=1024,
     dt=1,
@@ -297,7 +299,9 @@ def tune_landscape(
     )
 
     thetas = np.arange(theta_start + np.pi / 2, theta_end + np.pi / 2, theta_step)
-    sweeper = Sweeper("relative_phase", thetas, [theta_pulse], wait_time=wait_time)
+    sweeper = Sweeper(
+        "relative_phase", thetas, [theta_pulse], relaxation_time=relaxation_time
+    )
 
     setups = ["I", "X"]
 

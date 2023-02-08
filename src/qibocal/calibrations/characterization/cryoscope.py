@@ -246,7 +246,7 @@ def cryoscope(
     flux_pulse_amplitude_end,
     flux_pulse_amplitude_step,
     delay_before_readout,
-    wait_time,
+    relaxation_time,
     flux_pulse_shapes: Optional[list] = None,
     nshots=1024,
     software_averages=1,
@@ -401,7 +401,7 @@ def cryoscope(
         "amplitude",
         flux_pulse_amplitude_range,
         pulses=[flux_pulses[qubit] for qubit in qubits],
-        wait_time=wait_time,
+        relaxation_time=relaxation_time,
     )
     flux_pulse_duration_range = np.arange(
         flux_pulse_duration_start, flux_pulse_duration_end, flux_pulse_duration_step

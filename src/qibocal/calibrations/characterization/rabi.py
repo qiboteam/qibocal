@@ -274,7 +274,7 @@ def rabi_pulse_amplitude(
     pulse_amplitude_start,
     pulse_amplitude_end,
     pulse_amplitude_step,
-    wait_time,
+    relaxation_time,
     nshots=1024,
     software_averages=1,
 ):
@@ -339,7 +339,7 @@ def rabi_pulse_amplitude(
         "amplitude",
         qd_pulse_amplitude_range,
         [qd_pulses[qubit] for qubit in qubits],
-        wait_time=wait_time,
+        relaxation_time=relaxation_time,
     )
 
     # create a DataUnits object to store the results,
