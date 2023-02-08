@@ -19,6 +19,7 @@ class Output(ABC):
 
 @dataclass
 class Task:
+    id: str
     operation: Operation
     parameters: Parameters
     _requirements: dict[str, bool]
@@ -39,9 +40,12 @@ class Task:
             requirements = {"start": True}
         else:
             requirements = {i: False for i in card[2]}
-        ready = all(requirements.values())
+
         return cls(
-            operation=Operation[name], parameters=parameters, _requirements=requirements
+            id=name,
+            operation=Operation[name],
+            parameters=parameters,
+            _requirements=requirements,
         )
 
     def run(self) -> Output:
