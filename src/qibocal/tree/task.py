@@ -26,7 +26,7 @@ class Task:
 
     @property
     def ready(self):
-        return self._ready
+        return all(self.requirements.values())
 
     @property
     def requirements(self):
