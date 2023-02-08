@@ -46,7 +46,6 @@ TARGET_COMPARE_DIR = "qq-compare/"
     help="Use --force option to overwrite the output folder.",
 )
 def command(runcard, folder, force=None):
-
     """qibocal: Quantum Calibration Verification and Validation using Qibo.
 
     Arguments:

@@ -33,6 +33,7 @@ gatelist = [
 
 
 def allXY(folder, routine, qubit, format):
+    figures = []
 
     fig = make_subplots(
         rows=1,
@@ -125,11 +126,15 @@ def allXY(folder, routine, qubit, format):
         xaxis_title="Gate sequence number",
         yaxis_title="Expectation value of Z",
     )
-    return fig
+
+    figures.append(fig)
+
+    return figures
 
 
 # allXY
 def allXY_drag_pulse_tuning(folder, routine, qubit, format):
+    figures = []
 
     fig = make_subplots(
         rows=1,
@@ -143,7 +148,6 @@ def allXY_drag_pulse_tuning(folder, routine, qubit, format):
     subfolders = get_data_subfolders(folder)
     report_n = 0
     for subfolder in subfolders:
-
         try:
             data = Data.load_data(folder, subfolder, routine, format, "data")
             data.df = data.df[data.df["qubit"] == qubit]
@@ -218,11 +222,15 @@ def allXY_drag_pulse_tuning(folder, routine, qubit, format):
         xaxis_title="Gate sequence number",
         yaxis_title="Expectation value of Z",
     )
-    return fig
+
+    figures.append(fig)
+
+    return figures
 
 
 # beta param tuning
 def drag_pulse_tuning(folder, routine, qubit, format):
+    figures = []
 
     fig = make_subplots(
         rows=1,
@@ -345,4 +353,7 @@ def drag_pulse_tuning(folder, routine, qubit, format):
         xaxis_title="Beta parameter",
         yaxis_title="MSR[uV] [Rx(pi/2) - Ry(pi)] - [Ry(pi/2) - Rx(pi)]",
     )
-    return fig
+
+    figures.append(fig)
+
+    return figures

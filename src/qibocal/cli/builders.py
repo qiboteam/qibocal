@@ -163,7 +163,6 @@ class ActionBuilder:
             getattr(data, f"to_{self.format}")(path)
 
     def update_platform_runcard(self, qubit, routine):
-
         try:
             data_fit = Data.load_data(self.folder, "data", routine, self.format, "fits")
             data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
@@ -244,10 +243,11 @@ class ReportBuilder:
         """
         import tempfile
 
-        figure = method(self.path, routine.__name__, qubit, self.format)
+        figures = method(self.path, routine.__name__, qubit, self.format)
         with tempfile.NamedTemporaryFile() as temp:
-            figure.write_html(temp.name, include_plotlyjs=False, full_html=False)
-            fightml = temp.read().decode("utf-8")
+            for figure in figures:
+                figure.write_html(temp.name, include_plotlyjs=False, full_html=False)
+                fightml = temp.read().decode("utf-8")
         return fightml
 
     def get_live_figure(self, routine, method, qubit):

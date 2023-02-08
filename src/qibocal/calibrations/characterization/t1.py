@@ -18,7 +18,6 @@ def t1(
     software_averages=1,
     points=10,
 ):
-
     r"""
     In a T1 experiment, we measure an excited qubit after a delay. Due to decoherence processes
     (e.g. amplitude damping channel), it is possible that, at the time of measurement, after the delay,

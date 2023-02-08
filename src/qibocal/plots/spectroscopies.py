@@ -11,6 +11,7 @@ from qibocal.plots.utils import get_color, get_data_subfolders
 
 # Resonator and qubit spectroscopies
 def frequency_msr_phase(folder, routine, qubit, format):
+    figures = []
 
     fig = make_subplots(
         rows=1,
@@ -195,11 +196,15 @@ def frequency_msr_phase(folder, routine, qubit, format):
         xaxis2_title="Frequency (Hz)",
         yaxis2_title="Phase (rad)",
     )
-    return fig
+
+    figures.append(fig)
+
+    return figures
 
 
 # Punchout
 def frequency_attenuation_msr_phase(folder, routine, qubit, format):
+    figures = []
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
@@ -280,11 +285,15 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
         report_n += 1
     if report_n > 1:
         fig.update_traces(showscale=False)
-    return fig
+
+    figures.append(fig)
+
+    return figures
 
 
 # Resonator and qubit spectroscopies
 def frequency_attenuation_msr_phase_cut(folder, routine, qubit, format):
+    figures = []
 
     fig = make_subplots(
         rows=1,
@@ -389,11 +398,15 @@ def frequency_attenuation_msr_phase_cut(folder, routine, qubit, format):
         xaxis2_title="Frequency (Hz)",
         yaxis2_title="Phase (rad)",
     )
-    return fig
+
+    figures.append(fig)
+
+    return figures
 
 
 # Resonator spectroscopy flux
 def frequency_flux_msr_phase(folder, routine, qubit, format):
+    figures = []
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
@@ -511,11 +524,15 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
         report_n += 1
     if report_n > 1:
         fig.update_traces(showscale=False)
-    return fig
+
+    figures.append(fig)
+
+    return figures
 
 
 # Dispersive shift
 def dispersive_frequency_msr_phase(folder, routine, qubit, format):
+    figures = []
 
     fig = make_subplots(
         rows=1,
@@ -736,7 +753,10 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, format):
         xaxis2_title="Frequency (Hz)",
         yaxis2_title="Phase (rad)",
     )
-    return fig
+
+    figures.append(fig)
+
+    return figures
 
 
 def frequency_attenuation(folder, routine, qubit, format):
@@ -748,9 +768,12 @@ def frequency_attenuation(folder, routine, qubit, format):
         format (str): format of the data files.
 
     Returns:
-        fig (Figure): Figure associated to data.
+        figures (Figure): Array of figures associated to data.
 
     """
+
+    figures = []
+
     try:
         data = DataUnits.load_data(folder, "data", routine, format, f"data_q{qubit}")
     except:
@@ -806,7 +829,10 @@ def frequency_attenuation(folder, routine, qubit, format):
         height=500,
         uirevision="0",
     )
-    return fig
+
+    figures.append(fig)
+
+    return figures
 
 
 def frequency_current_flux(folder, routine, qubit, format):
@@ -818,9 +844,12 @@ def frequency_current_flux(folder, routine, qubit, format):
         format (str): format of the data files.
 
     Returns:
-        fig (Figure): Figure associated to data.
+        figures [Figure]: Array of figures associated to data.
 
     """
+
+    figures = []
+
     fluxes = []
     fluxes_fit = []
     for i in range(5):  # FIXME: 5 is hardcoded
@@ -970,4 +999,7 @@ def frequency_current_flux(folder, routine, qubit, format):
         height=500,
         uirevision="0",
     )
-    return fig
+
+    figures.append(fig)
+
+    return figures
