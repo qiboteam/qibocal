@@ -26,23 +26,15 @@ from qibo.models import Circuit
 from qibo.noise import NoiseModel
 
 import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
-from qibocal.calibrations.niGSC.basics.utils import (
-    gate_adjoint_action_to_pauli_liouville,
-)
-from qibocal.calibrations.protocols.abstract import (
-    Circuitfactory,
-    Experiment,
-    Report,
-    scatter_fit_fig,
-)
+from qibocal.calibrations.niGSC.basics.circuitfactory import Circuitfactory
+from qibocal.calibrations.niGSC.basics.experiment import Experiment
+from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig
 
 
 # Define the circuit factory class for this specific module.
 class moduleFactory(Circuitfactory):
-    def __init__(
-        self, nqubits: int, depths: list, runs: int, qubits: list = None
-    ) -> None:
-        super().__init__(nqubits, depths, runs, qubits)
+    def __init__(self, nqubits: int, depths: list, qubits: list = []) -> None:
+        super().__init__(nqubits, depths, qubits)
         self.name = "XId"
 
     def build_circuit(self, depth: int):
@@ -65,12 +57,12 @@ class moduleFactory(Circuitfactory):
 class moduleExperiment(Experiment):
     def __init__(
         self,
-        circuitfactory: Iterable,
-        nshots: int = None,
-        data: list = None,
-        noisemodel: NoiseModel = None,
+        circuitfactory: Optional[Iterable],
+        data: Optional[list] = None,
+        nshots: Optional[int] = None,
+        noise_model: Optional[NoiseModel] = None,
     ) -> None:
-        super().__init__(circuitfactory, nshots, data, noisemodel)
+        super().__init__(circuitfactory, data, nshots, noisemodel)
         self.name = "XIdRB"
 
     def execute(self, circuit: Circuit, datarow: dict) -> dict:

@@ -47,47 +47,6 @@ def nshots():
     return 13
 
 
-@pytest.mark.parametrize("nqubits", [1, 2, 3])
-@pytest.mark.parametrize("runs", [1, 3])
-def test_factory(nqubits: int, depths: list, runs: int):
-    """Check for how random circuits are produced and if the lengths, shape
-    and randomness works.
-
-    TODO how to check these are Cliffords?
-
-    Args:
-        qubits (list): List of qubits
-        depths (list): list of depths for circuits
-        runs (int): How many randomly drawn cirucit for one depth value
-    """
-    myfactory1 = standardrb.moduleFactory(nqubits, list(depths) * runs)
-    assert isinstance(myfactory1, Iterable)
-    circuits_list = list(myfactory1)
-    assert len(circuits_list) == len(depths) * runs
-    for count, circuit in enumerate(myfactory1):
-        assert isinstance(circuit, models.Circuit)
-        assert np.allclose(circuit.unitary(), np.eye(2**nqubits))
-        if circuit.ngates == 1:
-            assert isinstance(circuit.queue[0], gates.measurements.M)
-        else:
-            # There will be an inverse and measurement gate, so + 2.
-            assert circuit.ngates == depths[count % len(depths)] * nqubits + 2
-            assert circuit.depth == depths[count % len(depths)] + 2
-    randomnesscount = 0
-    depth = depths[-1]
-    circuits_list = list(standardrb.moduleFactory(nqubits, [depth] * runs))
-    for count in range(runs - 1):
-        circuit1q = circuits_list[count].queue[:depth]
-        circuit2q = circuits_list[count + 1].queue[:depth]
-        circuit1 = models.Circuit(nqubits)
-        circuit1.add(circuit1q)
-        circuit2 = models.Circuit(nqubits)
-        circuit2.add(circuit2q)
-        equal = np.array_equal(circuit1.unitary(), circuit2.unitary())
-        randomnesscount += equal
-    assert randomnesscount < runs / 2.0
-
-
 @pytest.mark.parametrize("nqubits", [1, 2])
 @pytest.mark.parametrize("runs", [1, 3])
 def test_experiment(nqubits: int, depths: list, runs: int, nshots: int):

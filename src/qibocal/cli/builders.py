@@ -75,10 +75,6 @@ class niGSCactionParser(singleActionParser):
     def __init__(self, runcard, folder, name):
         super().__init__(runcard, folder, name)
 
-        self.module = None
-        self.experiment = None
-        self.factory = None
-        self.fitting = None
         self.plots = []
 
         self.nqubits = self.runcard["actions"][self.name]["nqubits"]
@@ -105,9 +101,7 @@ class niGSCactionParser(singleActionParser):
         if not os.path.exists(self.path):
             os.makedirs(self.path)
 
-        self.module = importlib.import_module(
-            f"qibocal.calibrations.protocols.{self.name}"
-        )
+        self.module = importlib.import_module(f"qibocal.calibrations.niGSC.{self.name}")
         self.plots.append((f"{self.name} protocol", plot_qq))
 
     def execute(self, data_format, platform):
@@ -350,7 +344,7 @@ class ReportBuilder:
         for action in self.runcard.get("actions"):
             if hasattr(calibrations, action):
                 routine = getattr(calibrations, action)
-            elif hasattr(calibrations.protocols, action):
+            elif hasattr(calibrations.niGSC, action):
                 routine = niGSCactionParser(self.runcard, self.path, action)
                 routine.build()
             else:

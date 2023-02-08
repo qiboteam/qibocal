@@ -5,36 +5,6 @@ from typing import Union
 import numpy as np
 from qibo import gates
 
-# To not define the parameters for one qubit Cliffords every time a
-# new qubits is drawn define the parameters as global variable.
-# This are parameters for all 24 one qubit clifford gates.
-ONEQUBIT_CLIFFORD_PARAMS = [
-    (0, 0, 0, 0),
-    (np.pi, 1, 0, 0),
-    (np.pi, 0, 1, 0),
-    (np.pi, 0, 0, 1),
-    (np.pi / 2, 1, 0, 0),
-    (-np.pi / 2, 1, 0, 0),
-    (np.pi / 2, 0, 1, 0),
-    (-np.pi / 2, 0, 1, 0),
-    (np.pi / 2, 0, 0, 1),
-    (-np.pi / 2, 0, 0, 1),
-    (np.pi, 1 / np.sqrt(2), 1 / np.sqrt(2), 0),
-    (np.pi, 1 / np.sqrt(2), 0, 1 / np.sqrt(2)),
-    (np.pi, 0, 1 / np.sqrt(2), 1 / np.sqrt(2)),
-    (np.pi, -1 / np.sqrt(2), 1 / np.sqrt(2), 0),
-    (np.pi, 1 / np.sqrt(2), 0, -1 / np.sqrt(2)),
-    (np.pi, 0, -1 / np.sqrt(2), 1 / np.sqrt(2)),
-    (2 * np.pi / 3, 1 / np.sqrt(3), 1 / np.sqrt(3), 1 / np.sqrt(3)),
-    (-2 * np.pi / 3, 1 / np.sqrt(3), 1 / np.sqrt(3), 1 / np.sqrt(3)),
-    (2 * np.pi / 3, -1 / np.sqrt(3), 1 / np.sqrt(3), 1 / np.sqrt(3)),
-    (-2 * np.pi / 3, -1 / np.sqrt(3), 1 / np.sqrt(3), 1 / np.sqrt(3)),
-    (2 * np.pi / 3, 1 / np.sqrt(3), -1 / np.sqrt(3), 1 / np.sqrt(3)),
-    (-2 * np.pi / 3, 1 / np.sqrt(3), -1 / np.sqrt(3), 1 / np.sqrt(3)),
-    (2 * np.pi / 3, 1 / np.sqrt(3), 1 / np.sqrt(3), -1 / np.sqrt(3)),
-    (-2 * np.pi / 3, 1 / np.sqrt(3), 1 / np.sqrt(3), -1 / np.sqrt(3)),
-]
-
 # Gates, without having to define any paramters
 ONEQ_GATES = ["I", "X", "Y", "Z", "H", "S", "SDG", "T", "TDG"]
 

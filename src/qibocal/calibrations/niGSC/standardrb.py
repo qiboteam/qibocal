@@ -46,7 +46,7 @@ class moduleExperiment(Experiment):
         data: list | None = None,
         noisemodel: NoiseModel = None,
     ) -> None:
-        super().__init__(circuitfactory, nshots, data, noisemodel)
+        super().__init__(circuitfactory, data, nshots, noisemodel)
         self.name = "StandardRB"
 
     def execute(self, circuit: Circuit, datarow: dict) -> dict:

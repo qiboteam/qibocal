@@ -31,13 +31,38 @@ class Experiment:
         self,
         circuitfactory: Iterable | None,
         data: list | None = None,
-        nshots: int | None = None,
+        nshots: int | None = 128,
         noise_model: NoiseModel | None = None,
     ) -> None:
         """ """
+
+        assert circuitfactory is None or isinstance(
+            circuitfactory, Iterable
+        ), """
+            given circuit factory has wrong type {}, must be Iterable | None.""".format(
+            type(circuitfactory)
+        )
         self.circuitfactory = circuitfactory
-        self.nshots = nshots
+        assert data is None or isinstance(
+            data, Iterable
+        ), """
+            given data has wrong type {}, must be Iterable | None """.format(
+            type(data)
+        )
         self.data = data
+        assert nshots is None or isinstance(
+            nshots, int
+        ), """
+            given nshots has wrong type {}, must be int | None""".format(
+            type(nshots)
+        )
+        self.nshots = nshots
+        assert noise_model is None or isinstance(
+            noise_model, NoiseModel
+        ), """
+            given circuit factory has wrong type {}, must be qibo NoiseModel | None .""".format(
+            type(noise_model)
+        )
         self.__noise_model = noise_model
         self.name = "Abstract"
 
@@ -64,9 +89,12 @@ class Experiment:
         if isfile(datapath):
             with open(datapath, "rb") as f:
                 data = pickle.load(f)
-                if isinstance(data, pd.DataFrame):
-                    data = data.to_dict("records")
-            nshots = len(data[0]["samples"])
+            if isinstance(data, pd.DataFrame):
+                data = data.to_dict("records")
+            if data is not None:
+                nshots = len(data[0]["samples"])
+            else:
+                nshots = None
         else:
             data, nshots = None, None
         if isfile(circuitspath):
@@ -78,9 +106,12 @@ class Experiment:
         obj = cls(circuitfactory, data=data, nshots=nshots)
         return obj
 
-    def save(self) -> None:
+    def save(self) -> str:
         """Creates a path and pickles relevant data from ``self.data`` and
         if ``self.circuitfactory`` is a list that one too.
+
+        Returns:
+            (str): The path of stored experiment.
         """
         self.path = experiment_directory("rb")
         if isinstance(self.circuitfactory, list):
@@ -88,9 +119,10 @@ class Experiment:
                 pickle.dump(self.circuitfactory, f)
         with open(f"{self.path}experiment_data.pkl", "wb") as f:
             pickle.dump(self.data, f)
+        return self.path
 
     def extract(
-        self, outputkey: str, groupby_key: str = "", agg_type: str | Callable = ""
+        self, output_key: str, groupby_key: str = "", agg_type: str | Callable = ""
     ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
         """Return wanted values from ``self.data`` via the dataframe property.
 
@@ -100,7 +132,7 @@ class Experiment:
         If ``groupby_key`` not given, only return the extracted data from given key.
 
         Args:
-            outputkey (str): Key name of the wanted output.
+            output_key (str): Key name of the wanted output.
             groupby_key (str): If given, group with that key name.
             agg_type (str): If given, calcuted aggregation function on groups.
 
@@ -111,13 +143,18 @@ class Experiment:
 
         # Check what parameters where given.
         if not groupby_key and not agg_type:
-            # No grouping and no aggreagtion is wanted. Just return the wanted outputkey.
-            return np.array(self.dataframe[outputkey].tolist())
+            # No grouping and no aggreagtion is wanted. Just return the wanted output key.
+            return np.array(self.dataframe[output_key].tolist())
         elif groupby_key and not agg_type:
             # Grouping is wanted but no aggregation, use a linear function.
             agg_type = lambda x: x
-        grouped_df = self.dataframe.groupby(groupby_key)[outputkey].apply(agg_type)
-        return np.array(grouped_df.index), np.array(grouped_df.values.tolist())
+        elif not groupby_key and agg_type:
+            # No grouping wanted, just an aggregational task on all the data.
+            return self.dataframe[output_key].apply(agg_type)
+        grouped_df = self.dataframe.groupby(groupby_key, group_keys=True)[
+            output_key
+        ].apply(agg_type)
+        return np.array(grouped_df.index), np.array(grouped_df.values)
 
     def prebuild(self) -> None:
         """Converts the attribute ``circuitfactory`` which is in general
