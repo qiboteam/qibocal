@@ -23,7 +23,7 @@ def test_queue():
     assert ready[0].ready == True
 
 
-def test_Task():
+def test_task():
     job = Task.load(tasks[1])
     assert job.requirements == {"command_1": False}
     assert job.ready == False
