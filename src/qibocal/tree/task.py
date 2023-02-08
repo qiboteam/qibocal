@@ -21,8 +21,7 @@ class Output(ABC):
 class Task:
     operation: Operation
     parameters: Parameters
-    _requirements: Dict[str, bool]
-    _ready: bool
+    _requirements: dict[str, bool]
 
     @property
     def ready(self):
@@ -42,10 +41,7 @@ class Task:
             requirements = {i: False for i in card[2]}
         ready = all(requirements.values())
         return cls(
-            operation=Operation[name],
-            parameters=parameters,
-            _requirements=requirements,
-            _ready=ready,
+            operation=Operation[name], parameters=parameters, _requirements=requirements
         )
 
     def run(self) -> Output:

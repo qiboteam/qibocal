@@ -1,6 +1,5 @@
-from queue import Queue
-
 import pytest
+from pending import Queue
 from task import Task
 
 # Each task is a list
@@ -14,11 +13,11 @@ tasks = [
 
 def test_queue():
     print(tasks)
-    list = [Task.load(i) for i in tasks]
-    print(type(list[0]))
-    q = Queue(list)
+    l = [Task.load(i) for i in tasks]
+    print(type(l[0]))
+    q = Queue(l)
     print("prova", q.queue)
-    ready = q.free()  # TODO: fix AttributeError: 'Queue' object has no attribute 'free
+    ready = q.free()
     assert ready[0].requirements == {"start": True}
     assert ready[0].ready == True
 
