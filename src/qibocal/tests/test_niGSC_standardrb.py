@@ -1,19 +1,17 @@
-import os
-from collections.abc import Iterable
 from itertools import product
-from shutil import rmtree
 
 import numpy as np
 import pandas as pd
 import pytest
-from qibo import gates, models
-from qibo.noise import NoiseModel, PauliError
+from plotly.graph_objects import Figure
+from qibo import gates
+from qibo.noise import NoiseModel
 
 from qibocal.calibrations.niGSC import standardrb
-from qibocal.calibrations.niGSC.basics import utils
+from qibocal.calibrations.niGSC.basics import noisemodels, utils
 
 
-def theoretical_outcome(noisemodel: NoiseModel) -> float:
+def theoretical_outcome(noise_model: NoiseModel) -> float:
     """Take the used noise model acting on unitaries and calculates the
     effective depolarizing parameter.
 
@@ -27,11 +25,11 @@ def theoretical_outcome(noisemodel: NoiseModel) -> float:
 
     # TODO This has to be more systematic. Delete it from the branch which will be merged.
     # Check for correctness of noise model and gate independence.
-    errorkeys = noisemodel.errors.keys()
+    errorkeys = noise_model.errors.keys()
     assert len(errorkeys) == 1 and list(errorkeys)[0] == gates.Unitary
     # Extract the noise acting on unitaries and turn it into the associated
     # error channel.
-    error = noisemodel.errors[gates.Unitary][0]
+    error = noise_model.errors[gates.Unitary][0]
     errorchannel = error.channel(0, *error.options)
     # Calculate the effective depolarizing parameter.
     return utils.effective_depol(errorchannel)
@@ -50,16 +48,10 @@ def nshots():
 @pytest.mark.parametrize("nqubits", [1, 2])
 @pytest.mark.parametrize("runs", [1, 3])
 def test_experiment(nqubits: int, depths: list, runs: int, nshots: int):
-    """_summary_
-
-    Args:
-        qubits (list): _description_
-        depths (list): _description_
-        runs (int): _description_
-    """
     # Test execute an experiment.
     myfactory1 = standardrb.moduleFactory(nqubits, list(depths) * runs)
-    myexperiment1 = standardrb.moduleExperiment(myfactory1, nshots)
+    myexperiment1 = standardrb.moduleExperiment(myfactory1, nshots=nshots)
+    assert myexperiment1.name == "StandardRB"
     myexperiment1.perform(myexperiment1.execute)
     assert isinstance(myexperiment1.data, list)
     assert isinstance(myexperiment1.data[0], dict)
@@ -69,67 +61,22 @@ def test_experiment(nqubits: int, depths: list, runs: int, nshots: int):
         assert len(datarow["samples"]) == nshots
         assert isinstance(datarow["depth"], int)
         assert datarow["depth"] == depths[count % len(depths)]
+        assert np.array_equal(datarow["samples"], np.zeros(datarow["samples"].shape))
     assert isinstance(myexperiment1.dataframe, pd.DataFrame)
-
-    myexperiment1.save()
-    path1 = myexperiment1.path
-
-    myexperiment1_loaded = standardrb.moduleExperiment.load(path1)
-    for datarow, datarow_load in zip(myexperiment1.data, myexperiment1_loaded.data):
-        assert np.array_equal(datarow["samples"], datarow_load["samples"])
-        assert datarow["depth"] == datarow_load["depth"]
-    assert myexperiment1_loaded.circuitfactory is None
-
-    myfactory2 = standardrb.moduleFactory(nqubits, depths, runs)
-    myexperiment2 = standardrb.moduleExperiment(myfactory2, nshots)
-    assert myexperiment2.circuitfactory == myfactory2
-    myexperiment2.prebuild()
-    assert isinstance(myexperiment2.circuitfactory, list)
-    assert len(myexperiment2.circuitfactory) == len(depths) * runs
-    myexperiment2.perform(myexperiment2.execute)
-    # TODO this only works when the .copy() method works.
-    # myexperiment2.save()
-    # path2 = myexperiment2.path
-    # myexperiment2.save()
-    # path3 = myexperiment2.path
-
-    # myexperiment2_loaded = standardrb.moduleExperiment.load(path2)
-    # for datarow, datarow_load in zip(myexperiment2.data, myexperiment2_loaded.data):
-    #     assert np.array_equal(datarow["samples"], datarow_load["samples"])
-    #     assert datarow["depth"] == datarow_load["depth"]
-
-    # for circuit, circuit_load in zip(
-    #     myexperiment2.circuitfactory, myexperiment2_loaded.circuitfactory
-    # ):
-    #     for gate, gate_load in zip(circuit.queue, circuit_load.queue):
-    #         if not isinstance(gate, gates.M):
-    #             m, m_load = gate.matrix, gate_load.matrix
-    #             assert np.array_equal(m, m_load)
-
-    rmtree(path1)
-    if len(os.listdir("experiments/rb")) == 0:
-        rmtree("experiments/rb")
-    if len(os.listdir("experiments")) == 0:
-        rmtree("experiments/")
-
-    # rmtree(path2)
-    # rmtree(path3)
 
 
 @pytest.mark.parametrize("nqubits", [1, 3])
 @pytest.mark.parametrize("runs", [1, 3])
-@pytest.mark.parametrize("noise_params", [[0.1, 0.1, 0.1], [0.02, 0.03, 0.007]])
+@pytest.mark.parametrize("noise_params", [[0.1, 0.1, 0.1], [0.02, 0.3, 0.07]])
 def test_experiment_withnoise(
     nqubits: int, depths: list, runs: int, nshots: int, noise_params: list
 ):
     # Build the noise model.
-    paulinoise = PauliError(*noise_params)
-    noise = NoiseModel()
-    noise.add(paulinoise, gates.Unitary)
+    noise = noisemodels.PauliErrorOnUnitary(*noise_params)
     # Test exectue an experiment.
     myfactory1 = standardrb.moduleFactory(nqubits, list(depths) * runs)
     myfaultyexperiment = standardrb.moduleExperiment(
-        myfactory1, nshots, noisemodel=noise
+        myfactory1, nshots=nshots, noise_model=noise
     )
     myfaultyexperiment.perform(myfaultyexperiment.execute)
     assert isinstance(myfaultyexperiment.data, list)
@@ -140,6 +87,12 @@ def test_experiment_withnoise(
         assert len(datarow["samples"]) == nshots
         assert isinstance(datarow["depth"], int)
         assert datarow["depth"] == depths[count % len(depths)]
+        # If there are no executed gates (other than the measurement) or only one
+        # the probability that no error occured is too high.
+        if datarow["depth"] > 2:
+            assert not np.array_equal(
+                datarow["samples"], np.zeros(datarow["samples"].shape)
+            )
     assert isinstance(myfaultyexperiment.dataframe, pd.DataFrame)
 
 
@@ -154,25 +107,23 @@ def test_embed_circuit(nqubits: int, depths: list, runs: int, qubits: list):
     for circuit in myfactory1:
         assert circuit.nqubits == nqubits
         for gate in circuit.queue:
-            # import pdb
-            # pdb.set_trace()
             assert gate._target_qubits in test_list
-    myexperiment1 = standardrb.moduleExperiment(myfactory1, nshots)
+    myexperiment1 = standardrb.moduleExperiment(myfactory1, nshots=nshots)
     myexperiment1.perform(myexperiment1.execute)
 
 
 @pytest.mark.parametrize("nqubits", [2, 3])
 @pytest.mark.parametrize("runs", [1, 3])
-def test_utils_probs(nqubits: int, depths: list, runs: int, nshots: int):
-    # Build the noise model.
+def test_utils_probs_and_noisy_execution(
+    nqubits: int, depths: list, runs: int, nshots: int
+):
     noise_params = [0.0001, 0.001, 0.0005]
-    paulinoise = PauliError(*noise_params)
-    noise = NoiseModel()
-    noise.add(paulinoise, gates.Unitary)
+    # Build the noise model.
+    noise = noisemodels.PauliErrorOnUnitary(*noise_params)
     # Test exectue an experiment.
     myfactory1 = standardrb.moduleFactory(nqubits, list(depths) * runs)
     myfaultyexperiment = standardrb.moduleExperiment(
-        myfactory1, nshots, noisemodel=noise
+        myfactory1, nshots=nshots, noise_model=noise
     )
     myfaultyexperiment.perform(myfaultyexperiment.execute)
     myfaultyexperiment.perform(standardrb.groundstate_probabilities)
@@ -191,15 +142,13 @@ def test_utils_probs(nqubits: int, depths: list, runs: int, nshots: int):
 @pytest.mark.parametrize("nqubits", [2, 3])
 @pytest.mark.parametrize("runs", [1, 3])
 def test_post_processing(nqubits: int, depths: list, runs: int, nshots: int):
-    # Build the noise model.
     noise_params = [0.01, 0.3, 0.14]
-    paulinoise = PauliError(*noise_params)
-    noise = NoiseModel()
-    noise.add(paulinoise, gates.Unitary)
+    # Build the noise model.
+    noise = noisemodels.PauliErrorOnUnitary(*noise_params)
     # Test exectue an experiment.
     myfactory1 = standardrb.moduleFactory(nqubits, list(depths) * runs)
     myfaultyexperiment = standardrb.moduleExperiment(
-        myfactory1, nshots, noisemodel=noise
+        myfactory1, nshots=nshots, noise_model=noise
     )
     myfaultyexperiment.perform(myfaultyexperiment.execute)
     standardrb.post_processing_sequential(myfaultyexperiment)
@@ -219,18 +168,16 @@ def test_post_processing(nqubits: int, depths: list, runs: int, nshots: int):
 
 def test_build_report():
     depths = [1, 5, 10, 15, 20, 25]
-    nshots = 128
-    runs = 10
+    nshots = 1024
+    runs = 5
     nqubits = 1
-    # Build the noise model.
     noise_params = [0.01, 0.1, 0.05]
-    paulinoise = PauliError(*noise_params)
-    noise = NoiseModel()
-    noise.add(paulinoise, gates.Unitary)
+    # Build the noise model.
+    noise = noisemodels.PauliErrorOnUnitary(*noise_params)
     # Test exectue an experiment.
     myfactory1 = standardrb.moduleFactory(nqubits, depths * runs)
     myfaultyexperiment = standardrb.moduleExperiment(
-        myfactory1, nshots, noisemodel=noise
+        myfactory1, nshots=nshots, noise_model=noise
     )
     myfaultyexperiment.perform(myfaultyexperiment.execute)
     standardrb.post_processing_sequential(myfaultyexperiment)
@@ -238,4 +185,5 @@ def test_build_report():
     assert (
         theoretical_outcome(noise) - aggr_df.popt[0]["p"] < 2 * aggr_df.perr[0]["p_err"]
     )
-    figure = standardrb.build_report(myfaultyexperiment, aggr_df)
+    report_figure = standardrb.build_report(myfaultyexperiment, aggr_df)
+    assert isinstance(report_figure, Figure)

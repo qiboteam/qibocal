@@ -11,7 +11,14 @@ from scipy.optimize import curve_fit
 from qibocal.config import raise_error
 
 
-def exp1_func(x: np.ndarray, A: float, f: float, B: float) -> np.ndarray:
+def exp1_func(x: np.ndarray, A: float, f: float) -> np.ndarray:
+    """Return :math:`A\\cdot f^x` where ``x`` is an ``np.ndarray`` and
+    ``A``, ``f`` are floats
+    """
+    return A * f**x
+
+
+def exp1B_func(x: np.ndarray, A: float, f: float, B: float) -> np.ndarray:
     """Return :math:`A\\cdot f^x+B` where ``x`` is an ``np.ndarray`` and
     ``A``, ``f``, ``B`` are floats
     """
@@ -95,8 +102,8 @@ def fit_exp1B_func(
         # If the search for fitting parameters does not work just return
         # fixed parameters where one can see that the fit did not work
         try:
-            popt, pcov = curve_fit(exp1_func, xdata, ydata, p0=guess, method="lm")
-            perr = np.sqrt(np.diag(pcov))
+            popt, pcov = curve_fit(exp1B_func, xdata, ydata, p0=guess, method="lm")
+            perr = tuple(np.sqrt(np.diag(pcov)))
         except:
             popt, perr = (0, 0, 0), (0, 0, 0)
     return popt, perr
@@ -121,19 +128,19 @@ def fit_exp1_func(
         popt, perr = (ydata[0], 1.0), (0, 0)
     else:
         # Get a guess for the exponential function.
-        guess = kwargs.get("p0", [0.5, 0.9, 0.8])
+        guess = kwargs.get("p0", [0.5, 0.9])
         # If the search for fitting parameters does not work just return
         # fixed parameters where one can see that the fit did not work
         try:
             # Build a new function such that the linear offset is zero.
             popt, pcov = curve_fit(
-                lambda x, A, f: exp1_func(x, A, f, 0),
+                lambda x, A, f: exp1B_func(x, A, f, 0),
                 xdata,
                 ydata,
-                p0=guess[:-1],
+                p0=guess,
                 method="lm",
             )
-            perr = np.sqrt(np.diag(pcov))
+            perr = tuple(np.sqrt(np.diag(pcov)))
         except:
             popt, perr = (0, 0), (0, 0)
 
@@ -157,7 +164,7 @@ def fit_exp2_func(
 
     # TODO how are the errors estimated?
     # TODO the data has to have a sufficiently big size, check that.
-    decays = esprit(xdata, ydata, 2)
+    decays = esprit(np.array(xdata), np.array(ydata), 2)
     vandermonde = np.vander(decays, N=xdata[-1] + 1, increasing=True)
     vandermonde = np.take(vandermonde, xdata, axis=1)
     alphas = np.linalg.pinv(vandermonde.T) @ np.array(ydata).reshape(-1, 1).flatten()

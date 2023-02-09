@@ -1,6 +1,21 @@
 import numpy as np
+from qibo import gates
 
 # TODO add fourier transform of protocol.
+X = np.array([[0, 1], [1, 0]])
+Y = np.array([[0, -1j], [1j, 0]], dtype=complex)
+Z = np.array([[1, 0], [0, -1]])
+PAULIS = [np.eye(2) / np.sqrt(2), X / np.sqrt(2), Y / np.sqrt(2), Z / np.sqrt(2)]
+
+
+def gate_adjoint_action_to_pauli_liouville(gate: gates.gates) -> np.ndarray:
+    matrix = gate.matrix
+    return np.array(
+        [
+            [np.trace(p2.conj().T @ matrix @ p1 @ matrix) for p1 in PAULIS]
+            for p2 in PAULIS
+        ]
+    )
 
 
 def inner_prod(a, b):
@@ -11,14 +26,9 @@ def inner_prod(a, b):
 
 def density_to_pauli(density):
     """Returns Pauli vector of a 1-qubit density matrix"""
-    s0 = np.eye(2)
-    s1 = np.array([[0, 1], [1, 0]])
-    s2 = np.array([[0, -1j], [1j, 0]])
-    s3 = np.array([[1, 0], [0, -1]])
-    paulis = np.array([s0, s1, s2, s3]) / np.sqrt(2)
     bloch_vec = []
-    for i in range(0, len(paulis)):
-        el = inner_prod(paulis[i], density)
+    for i in range(0, len(PAULIS)):
+        el = inner_prod(PAULIS[i], density)
         bloch_vec.append(el)
     return np.array(bloch_vec)
 

@@ -8,6 +8,7 @@ from collections.abc import Iterable
 
 import numpy as np
 import pandas as pd
+from plotly.graph_objects import Figure
 from qibo import gates
 from qibo.models import Circuit
 from qibo.noise import NoiseModel
@@ -23,8 +24,21 @@ class moduleFactory(SingleCliffordsFactory):
         super().__init__(nqubits, depths, qubits)
         self.name = "SingleCliffordsInv"
 
-    def build_circuit(self, depth: int):
+    def build_circuit(self, depth: int) -> Circuit:
+        """Overwrites parent method. Add an inverse gate before the measurement.
+
+        Args:
+            depth (int): How many gate layers.
+
+        Returns:
+            (Circuit): A circuit with single qubit Clifford gates with ``depth`` many layers
+            and an inverse gate before the measurement gate.
+        """
+
+        # Initiate a ``Circuit`` object with as many qubits as is indicated with the list
+        # of qubits on which the gates should act on.
         circuit = Circuit(len(self.qubits))
+        # Add ``depth`` many gate layers.
         for _ in range(depth):
             circuit.add(self.gate_layer())
         # If there is at least one gate in the circuit, add an inverse.
@@ -42,26 +56,42 @@ class moduleExperiment(Experiment):
     def __init__(
         self,
         circuitfactory: Iterable,
+        data: Iterable | None = None,
         nshots: int | None = None,
-        data: list | None = None,
-        noisemodel: NoiseModel = None,
+        noise_model: NoiseModel = None,
     ) -> None:
-        super().__init__(circuitfactory, data, nshots, noisemodel)
+        """Calles the parent method, sets name.
+
+        Args:
+            circuitfactory (Iterable): Gives a certain amount of circuits when
+                iterated over.
+            nshots (int): For execution of circuit, indicates how many shots.
+            data (Iterable): If filled, ``data`` can be used to specifying parameters
+                        while executing a circuit or deciding how to process results.
+                        It is used to store all relevant data.
+        """
+        super().__init__(circuitfactory, data, nshots, noise_model)
         self.name = "StandardRB"
 
     def execute(self, circuit: Circuit, datarow: dict) -> dict:
-        """Executes a circuit, returns the single shot results
+        """Overwrites parent class method. Executes a circuit, adds the single shot results
+        and depth of the circuit to the data row.
 
         Args:
             circuit (Circuit): Will be executed, has to return samples.
             datarow (dict): Dictionary with parameters for execution and
                 immediate postprocessing information.
+
+        Returns:
+            datarow (dict):
         """
-        datadict = super().execute(circuit, datarow)
+
+        # Execute parent class method.
+        datarow = super().execute(circuit, datarow)
         # Substract 1 for sequence length to not count the inverse gate and
         # substract the measurement gate.
-        datadict["depth"] = (circuit.depth - 2) if circuit.depth > 1 else 0
-        return datadict
+        datarow["depth"] = (circuit.depth - 2) if circuit.depth > 1 else 0
+        return datarow
 
 
 class moduleReport(Report):
@@ -80,6 +110,7 @@ def groundstate_probabilities(circuit: Circuit, datarow: dict) -> dict:
     Returns:
         dict: The updated dictionary.
     """
+
     # Get the samples data from the dictionary
     samples = datarow["samples"]
     # Create the ground state as it would look like in a single shot measurement.
@@ -95,31 +126,74 @@ def groundstate_probabilities(circuit: Circuit, datarow: dict) -> dict:
 
 
 def post_processing_sequential(experiment: Experiment):
+    """Perform sequential tasks needed to analyze the experiment results.
+
+    The data is added/changed in the experiment, nothign has to be returned.
+
+    Args:
+        experiment (Experiment): Experiment object after execution of the experiment itself.
+    """
+
     # Compute and add the ground state probabilities row by row.
     experiment.perform(groundstate_probabilities)
 
 
 def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
+    """Computes aggregational tasks, fits data and stores the results in a data frame.
+
+    No data is manipulated in the ``experiment`` object.
+
+    Args:
+        experiment (Experiment): After sequential postprocessing of the experiment data.
+
+    Returns:
+        pd.DataFrame: The summarized data.
+    """
+
+    # Has to fit the column describtion from ``groundstate_probabilities``.
     depths, ydata = experiment.extract("groundstate probability", "depth", "mean")
     _, ydata_std = experiment.extract("groundstate probability", "depth", "std")
-
+    # Fit the ground state probabilies mean for each depth.
     popt, perr = fitting_methods.fit_exp1B_func(depths, ydata)
+    # Build a list of dictionaries with the aggregational information.
     data = [
         {
-            "depth": depths,
-            "data": ydata,
-            "2sigma": 2 * ydata_std,
-            "fit_func": "exp1_func",
-            "popt": {"A": popt[0], "p": popt[1], "B": popt[2]},
-            "perr": {"A_err": perr[0], "p_err": perr[1], "B_err": perr[2]},
+            "depth": depths,  # The x-axis.
+            "data": ydata,  # The mean of ground state probability for each depth.
+            "2sigma": 2 * ydata_std,  # The standard deviation error for each depth.
+            "fit_func": "exp1B_func",  # Which function was used to fit.
+            "popt": {
+                "A": popt[0],
+                "p": popt[1],
+                "B": popt[2],
+            },  # The fitting paramters.
+            "perr": {
+                "A_err": perr[0],
+                "p_err": perr[1],
+                "B_err": perr[2],
+            },  # The estimated errors.
         }
     ]
+    # The row name will be displayed as y-axis label.
     df = pd.DataFrame(data, index=["groundstate probability"])
     return df
 
 
-def build_report(experiment: Experiment, df_aggr: pd.DataFrame):
+def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
+    """Use data and information from ``experiment`` and the aggregated data dataframe to
+    build a reprot as plotly figure.
+
+    Args:
+        experiment (Experiment): After sequential postprocessing of the experiment data.
+        df_aggr (pd.DataFrame): Normally build with ``get_aggregational_data`` function.
+
+    Returns:
+        (Figure): A plotly.graphical_object.Figure object.
+    """
+
+    # Initiate a report object.
     report = moduleReport()
+    # Add general information to the object.
     report.info_dict["Number of qubits"] = len(experiment.data[0]["samples"][0])
     report.info_dict["Number of shots"] = len(experiment.data[0]["samples"])
     report.info_dict["runs"] = experiment.extract("samples", "depth", "count")[1][0]
@@ -129,7 +203,11 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame):
             for key in df_aggr.iloc[0]["perr"]
         ]
     )
+    # Use the predefined ``scatter_fit_fig`` function from ``basics.utils`` to build the wanted
+    # plotly figure with the scattered ground state probability data along with the mean for
+    # each depth and the exponential fit for the means.
     report.all_figures.append(
         scatter_fit_fig(experiment, df_aggr, "depth", "groundstate probability")
     )
+    # Return the figure the report object builds out of all figures added to the report.
     return report.build()

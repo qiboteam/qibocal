@@ -11,6 +11,7 @@ def test_1expfitting():
         x = np.sort(np.random.choice(np.linspace(0, 15, 50), size=20, replace=False))
         A, f, B = np.random.uniform(0.1, 0.99, size=3)
         y = A * f**x + B
+        assert np.allclose(fitting.exp1B_func(x, A, f, B), y)
         # Distort ``y`` a bit.
         y_dist = y + np.random.randn(len(y)) * 0.005
         popt, perr = fitting.fit_exp1B_func(x, y_dist)
@@ -39,6 +40,28 @@ def test_1expfitting():
         )
     assert success >= number_runs * 0.8
 
+    x = np.sort(np.random.choice(np.linspace(0, 15, 50), size=20, replace=False))
+    y = np.zeros(len(x)) + 0.75
+    assert fitting.fit_exp1B_func(x, y) == ((0.75, 1.0, 0), (0, 0, 0))
+    assert fitting.fit_exp1_func(x, y) == ((0.75, 1.0), (0, 0))
+    # At least once the algorithm shall not find a fit:
+    didnt_getit = 0
+    didnt_getitB = 0
+    for _ in range(10):
+        x = np.sort(np.random.choice(np.linspace(0, 15, 50), size=20, replace=False))
+        y_dist = np.e ** (-(x**2)) + np.random.randn(len(y)) * 0.01
+        didnt_getit += not (
+            np.all(
+                np.array(fitting.fit_exp1_func(x, y_dist)) == np.array(((0, 0), (0, 0)))
+            )
+        )
+        didnt_getitB += not (
+            np.all(
+                np.array(fitting.fit_exp1B_func(x, y_dist))
+                == np.array(((0, 0, 0), (0, 0, 0)))
+            )
+        )
+
 
 def test_exp2_fitting():
     success = 0
@@ -47,6 +70,7 @@ def test_exp2_fitting():
         x = np.arange(1, 50)
         A1, A2, f1, f2 = np.random.uniform(0.1, 0.99, size=4)
         y = A1 * f1**x + A2 * f2**x
+        assert np.allclose(fitting.exp2_func(x, A1, A2, f1, f2), y)
         # Distort ``y`` a bit.
         y_dist = y + np.random.uniform(-1, 1, size=len(y)) * 0.001
         popt, perr = fitting.fit_exp2_func(x, y_dist)

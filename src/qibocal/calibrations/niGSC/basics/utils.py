@@ -3,16 +3,9 @@ from os.path import isdir
 from typing import Union
 
 import numpy as np
-from qibo import gates
 
 # Gates, without having to define any paramters
 ONEQ_GATES = ["I", "X", "Y", "Z", "H", "S", "SDG", "T", "TDG"]
-
-# TODO use Renatos Pauli basis.
-X = np.array([[0, 1], [1, 0]])
-Y = np.array([[0, -1j], [1j, 0]])
-Z = np.array([[1, 0], [0, -1]])
-pauli = [np.eye(2) / np.sqrt(2), X / np.sqrt(2), Y / np.sqrt(2), Z / np.sqrt(2)]
 
 
 def experiment_directory(name: str):
@@ -27,11 +20,11 @@ def experiment_directory(name: str):
     dt_string = datetime.now().strftime("%y%b%d_%H%M%S")
     # Every script name ``name`` gets its own directory.
     subdirectory = f"{overall_dir}{name}/"
-    if not isdir(subdirectory):
+    if not isdir(subdirectory):  # pragma: no cover
         mkdir(subdirectory)
     # Name the final directory for this experiment.
     final_directory = f"{subdirectory}experiment{dt_string}/"
-    if not isdir(final_directory):
+    if not isdir(final_directory):  # pragma: no cover
         mkdir(final_directory)
     else:
         already_file, count = True, 1
@@ -53,13 +46,6 @@ def effective_depol(error_channel, **kwargs):
     return depolp
 
 
-def gate_adjoint_action_to_pauli_liouville(gate: gates.gates) -> np.ndarray:
-    matrix = gate.matrix
-    return np.array(
-        [[np.trace(p2.conj().T @ matrix @ p1 @ matrix) for p1 in pauli] for p2 in pauli]
-    )
-
-
 def probabilities(allsamples: Union[list, np.ndarray]) -> np.ndarray:
     """Takes the given list/array (3-dimensional) of samples and returns probabilities
     for each possible state to occure.
@@ -78,6 +64,11 @@ def probabilities(allsamples: Union[list, np.ndarray]) -> np.ndarray:
 
     from itertools import product
 
+    # Make it an array to use the shape property.
+    allsamples = np.array(allsamples)
+    # The array has to have three dimension.
+    if len(allsamples.shape) == 2:
+        allsamples = allsamples[None, ...]
     nqubits, nshots = len(allsamples[0][0]), len(allsamples[0])
     # Create all possible state vectors.
     allstates = list(product([0, 1], repeat=nqubits))

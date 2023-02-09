@@ -30,7 +30,7 @@ class Experiment:
     def __init__(
         self,
         circuitfactory: Iterable | None,
-        data: list | None = None,
+        data: Iterable | None = None,
         nshots: int | None = 128,
         noise_model: NoiseModel | None = None,
     ) -> None:
@@ -89,12 +89,9 @@ class Experiment:
         if isfile(datapath):
             with open(datapath, "rb") as f:
                 data = pickle.load(f)
-            if isinstance(data, pd.DataFrame):
+            if isinstance(data, pd.DataFrame):  # pragma: no cover
                 data = data.to_dict("records")
-            if data is not None:
-                nshots = len(data[0]["samples"])
-            else:
-                nshots = None
+            nshots = len(data[0]["samples"])
         else:
             data, nshots = None, None
         if isfile(circuitspath):
@@ -117,8 +114,9 @@ class Experiment:
         if isinstance(self.circuitfactory, list):
             with open(f"{self.path}circuits.pkl", "wb") as f:
                 pickle.dump(self.circuitfactory, f)
-        with open(f"{self.path}experiment_data.pkl", "wb") as f:
-            pickle.dump(self.data, f)
+        if self.data is not None:
+            with open(f"{self.path}experiment_data.pkl", "wb") as f:
+                pickle.dump(self.data, f)
         return self.path
 
     def extract(
@@ -145,16 +143,18 @@ class Experiment:
         if not groupby_key and not agg_type:
             # No grouping and no aggreagtion is wanted. Just return the wanted output key.
             return np.array(self.dataframe[output_key].tolist())
-        elif groupby_key and not agg_type:
-            # Grouping is wanted but no aggregation, use a linear function.
-            agg_type = lambda x: x
         elif not groupby_key and agg_type:
             # No grouping wanted, just an aggregational task on all the data.
             return self.dataframe[output_key].apply(agg_type)
-        grouped_df = self.dataframe.groupby(groupby_key, group_keys=True)[
-            output_key
-        ].apply(agg_type)
-        return np.array(grouped_df.index), np.array(grouped_df.values)
+        elif groupby_key and not agg_type:
+            # Grouping is wanted but no aggregation, use a linear function.
+            df = self.dataframe.get([output_key, groupby_key])
+            grouped_df = df.groupby(groupby_key, group_keys=True).apply(lambda x: x)
+            return grouped_df[groupby_key].to_numpy(), grouped_df[output_key].to_numpy()
+        else:
+            df = self.dataframe.get([output_key, groupby_key])
+            grouped_df = df.groupby(groupby_key, group_keys=True).apply(agg_type)
+            return grouped_df.index.to_numpy(), grouped_df[output_key].to_numpy()
 
     def prebuild(self) -> None:
         """Converts the attribute ``circuitfactory`` which is in general
