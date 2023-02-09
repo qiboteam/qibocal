@@ -91,7 +91,7 @@ def landscape_2q_gate(folder, routine, qubit, format):
         xaxis2_title="theta (rad)",
         yaxis2_title="MSR (V)",
     )
-    return fig
+    return [fig]
 
 
 def duration_amplitude_msr_flux_pulse(folder, routine, qubit, format):
@@ -153,7 +153,7 @@ def duration_amplitude_msr_flux_pulse(folder, routine, qubit, format):
         xaxis2_title="duration (ns)",
         yaxis2_title="amplitude (dimensionless)",
     )
-    return fig
+    return [fig]
 
 
 def duration_amplitude_I_flux_pulse(folder, routine, qubit, format):
@@ -215,7 +215,7 @@ def duration_amplitude_I_flux_pulse(folder, routine, qubit, format):
         xaxis2_title="duration (ns)",
         yaxis2_title="amplitude (dimensionless)",
     )
-    return fig
+    return [fig]
 
 
 def duration_amplitude_Q_flux_pulse(folder, routine, qubit, format):
@@ -277,4 +277,4 @@ def duration_amplitude_Q_flux_pulse(folder, routine, qubit, format):
         xaxis2_title="duration (ns)",
         yaxis2_title="amplitude (dimensionless)",
     )
-    return fig
+    return [fig]
