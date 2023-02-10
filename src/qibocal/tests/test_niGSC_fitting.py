@@ -56,7 +56,7 @@ def test_1expfitting():
         )
         popt, perr = fitting.fit_exp1B_func(x, y_dist, p0=[-100, 0.0001, -200])
         didnt_getitB += not (
-            np.all(np.array([*popt, *perr]) == np.array(((0, 0, 0), (0, 0, 0))))
+            np.all(np.array([*popt, *perr]) == np.array([0, 0, 0, 0, 0, 0]))
         )
     assert didnt_getit >= 1 and didnt_getitB >= 1
 
