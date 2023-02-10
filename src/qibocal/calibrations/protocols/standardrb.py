@@ -8,30 +8,27 @@ from collections.abc import Iterable
 
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
 from qibo import gates
 from qibo.models import Circuit
-from qibo.noise import NoiseModel, PauliError
-from qibolab.platforms.abstract import AbstractPlatform
+from qibo.noise import NoiseModel
 
+import qibocal.fitting.rb_methods as fitting_methods
 from qibocal.calibrations.protocols.abstract import (
     Experiment,
-    Result,
+    Report,
     SingleCliffordsFactory,
+    scatter_fit_fig,
 )
 from qibocal.calibrations.protocols.utils import effective_depol
 from qibocal.config import raise_error
-from qibocal.data import Data
-from qibocal.decorators import plot
-from qibocal.fitting.rb_methods import fit_exp1_func, fit_exp1B_func
-from qibocal.plots.rb import standardrb_plot
 
 
-class SingleCliffordsInvFactory(SingleCliffordsFactory):
+class moduleFactory(SingleCliffordsFactory):
     def __init__(
         self, nqubits: int, depths: list, runs: int, qubits: list = None
     ) -> None:
         super().__init__(nqubits, depths, runs, qubits)
+        self.name = "SingleCliffordsInv"
 
     def build_circuit(self, depth: int):
         circuit = Circuit(len(self.qubits))
@@ -48,7 +45,7 @@ class SingleCliffordsInvFactory(SingleCliffordsFactory):
         return circuit
 
 
-class StandardRBExperiment(Experiment):
+class moduleExperiment(Experiment):
     def __init__(
         self,
         circuitfactory: Iterable,
@@ -57,8 +54,9 @@ class StandardRBExperiment(Experiment):
         noisemodel: NoiseModel = None,
     ) -> None:
         super().__init__(circuitfactory, nshots, data, noisemodel)
+        self.name = "StandardRB"
 
-    def single_task(self, circuit: Circuit, datarow: dict) -> None:
+    def execute(self, circuit: Circuit, datarow: dict) -> None:
         """Executes a circuit, returns the single shot results
 
         Args:
@@ -66,122 +64,102 @@ class StandardRBExperiment(Experiment):
             datarow (dict): Dictionary with parameters for execution and
                 immediate postprocessing information.
         """
-        datadict = super().single_task(circuit, datarow)
-        # Substract 1 for sequence length to not count the inverse gate
-        # FIXME and on the measurement branch of qibo the measurement is
-        # counted as one gate on the master branch not.
+        datadict = super().execute(circuit, datarow)
+        # Substract 1 for sequence length to not count the inverse gate and
+        # substract the measurement gate.
         datadict["depth"] = circuit.ngates - 2 if circuit.ngates > 1 else 0
         return datadict
 
-    @property
-    def depths(self) -> np.ndarray:
-        """Extracts the used circuits depths.
 
-        Returns:
-            np.ndarray: Used depths for every data row.
-        """
-        try:
-            return self.dataframe["depth"].to_numpy()
-        except KeyError:
-            raise_error(KeyError, "No depths. Execute experiment first.")
-
-
-class StandardRBResult(Result):
-    def __init__(self, dataframe: pd.DataFrame, fitting_func) -> None:
-        super().__init__(dataframe)
-        self.fitting_func = fitting_func
+class moduleReport(Report):
+    def __init__(self) -> None:
+        super().__init__()
         self.title = "Standard Randomized Benchmarking"
 
-    def single_fig(self):
-        xdata_scatter = self.df["depth"].to_numpy()
-        ydata_scatter = self.df["groundstate_probabilities"].to_numpy()
-        xdata, ydata = self.extract("depth", "groundstate_probabilities", "mean")
-        self.scatter_fit_fig(xdata_scatter, ydata_scatter, xdata, ydata)
 
-
-def groundstate_probability(experiment: Experiment):
-    """Computes sequential the ground state probabilities of an executed
-    experiment and stores them in the experiment.
+def groundstate_probabilities(circuit: Circuit, datarow: dict) -> dict:
+    """_summary_
 
     Args:
-        experiment (Experiment): Executed experiment for which the ground state
-        probabilities for each data row are calculated.
+        circuit (Circuit): _description_
+        datarow (dict): _description_
+
+    Returns:
+        dict: _description_
+
+    Yields:
+        Iterator[dict]: _description_
     """
-    probs = experiment.probabilities[:, 0]
-    experiment._append_data("groundstate_probabilities", list(probs))
+    samples = datarow["samples"]
+    # This is how
+    ground = np.array([0] * len(samples[0]))
+    datarow["groundstate probability"] = np.sum(
+        np.product(samples == ground, axis=1)
+    ) / len(samples)
+    return datarow
 
 
-def validate_simulation(experiment: Experiment):
-    """Take the used noise model in the simulation and calculates
-    the desired outcome.
+def theoretical_outcome(noisemodel: NoiseModel) -> float:
+    """Take the used noise model acting on unitaries and calculates the
+    effective depolarizing parameter.
 
     Args:
         experiment (Experiment): Experiment which executed the simulation.
+        noisemddel (NoiseModel): Applied noise model.
+
+    Returns:
+        (float): The effective depolarizing parameter of given error.
     """
-    pass
-
-
-def analyze(
-    experiment: Experiment, noisemodel: NoiseModel = None, **kwargs
-) -> go._figure.Figure:
-    # Compute and add the ground state probabilities.
-    experiment.apply_task(groundstate_probability)
-    result = StandardRBResult(experiment.dataframe, fit_exp1B_func)
-    result.single_fig()
-    report = result.report()
-    return report
-
-
-def perform(
-    nqubits: int,
-    depths: list,
-    runs: int,
-    nshots: int,
-    qubits: list = None,
-    noise_params: list = None,
-):
-    if noise_params is not None:
-        # Define the noise model.
-        paulinoise = PauliError(*noise_params)
-        noise = NoiseModel()
-        noise.add(paulinoise, gates.Unitary)
-        depol = effective_depol(paulinoise)
+    # Check for correctness of noise model and gate independence.
+    errorkeys = noisemodel.errors.keys()
+    if len(errorkeys) == 1 and list(errorkeys)[0] == gates.Unitary:
+        # Extract the noise acting on unitaries and turn it into the associated
+        # error channel.
+        error = noisemodel.errors[gates.Unitary][0]
+        errorchannel = error.channel(0, *error.options)
     else:
-        noise = None
-    # Initiate the circuit factory and the faulty Experiment object.
-    factory = SingleCliffordsInvFactory(nqubits, depths, runs, qubits=qubits)
-    experiment = StandardRBExperiment(factory, nshots, noisemodel=noise)
-    # Execute the experiment.
-    experiment.execute()
-    analyze(experiment, noisemodel=noise).show()
+        raise_error(ValueError, "Wrong noisemodel given.")
+    # Calculate the effective depolarizing parameter.
+    return effective_depol(errorchannel)
 
 
-@plot("Randomized benchmarking", standardrb_plot)
-def qqperform_standardrb(
-    platform: AbstractPlatform,
-    qubit: list,
-    depths: list,
-    runs: int,
-    nshots: int,
-    nqubit: int = None,
-    noise_params: list = None,
-):
-    # Check if noise should artificially be added.
-    if noise_params is not None:
-        # Define the noise model.
-        paulinoise = PauliError(*noise_params)
-        noise = NoiseModel()
-        noise.add(paulinoise, gates.Unitary)
-        data_depol = Data("effectivedepol", quantities=["effective_depol"])
-        data_depol.add({"effective_depol": effective_depol(paulinoise)})
-        yield data_depol
-    else:
-        noise = None
-    # Initiate the circuit factory and the Experiment object.
-    factory = SingleCliffordsInvFactory(nqubit, depths, runs, qubits=qubit)
-    experiment = StandardRBExperiment(factory, nshots, noisemodel=noise)
-    # Execute the experiment.
-    experiment.execute()
-    data = Data()
-    data.df = experiment.dataframe
-    yield data
+def post_processing_sequential(experiment: Experiment):
+    # Compute and add the ground state probabilities row by row.
+    experiment.perform(groundstate_probabilities)
+
+
+def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
+    depths, ydata = experiment.extract("depth", "groundstate probability", "mean")
+    _, ydata_std = experiment.extract("depth", "groundstate probability", "std")
+
+    popt, perr = fitting_methods.fit_exp1B_func(depths, ydata)
+    data = [
+        {
+            "depth": depths,
+            "data": ydata,
+            "2sigma": 2 * ydata_std,
+            "fit_func": "exp1_func",
+            "popt": {"A": popt[0], "p": popt[1], "B": popt[2]},
+            "perr": {"A_err": perr[0], "p_err": perr[1], "B_err": perr[2]},
+        }
+    ]
+    df = pd.DataFrame(data, index=["groundstate probability"])
+    return df
+
+
+def build_report(experiment: Experiment, df_aggr: pd.DataFrame):
+    report = moduleReport()
+    report.info_dict["Number of qubits"] = len(experiment.data[0]["samples"][0])
+    report.info_dict["Number of shots"] = len(experiment.data[0]["samples"])
+    report.info_dict["runs"] = experiment.extract("depth", "samples", "count")[1][0]
+    print(df_aggr)
+    report.info_dict["Fitting daviations"] = "".join(
+        [
+            "{}:{:.3f} ".format(key, df_aggr.iloc[0]["perr"][key])
+            for key in df_aggr.iloc[0]["perr"]
+        ]
+    )
+    report.all_figures.append(
+        scatter_fit_fig(experiment, df_aggr, "depth", "groundstate probability")
+    )
+    return report.build()

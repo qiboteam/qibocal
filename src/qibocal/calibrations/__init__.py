@@ -8,6 +8,7 @@ from qibocal.calibrations.characterization.resonator_spectroscopy import *
 from qibocal.calibrations.characterization.resonator_spectroscopy_sample import *
 from qibocal.calibrations.characterization.spin_echo import *
 from qibocal.calibrations.characterization.t1 import *
-from qibocal.calibrations.protocols.crosstalkrb import qqperform_crosstalkrb
-from qibocal.calibrations.protocols.standardrb import qqperform_standardrb
-from qibocal.calibrations.protocols.XIdrb import qqperform_XIdrb
+
+# from qibocal.calibrations.protocols.correlatedrb import qqperform_correlatedrb
+# from qibocal.calibrations.protocols.standardrb import qqperform_standardrb
+# from qibocal.calibrations.protocols.XIdrb import qqperform_XIdrb

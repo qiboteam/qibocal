@@ -54,7 +54,7 @@ def esprit(xdata, ydata, num_decays, hankel_dim=None):
 
 def fit_exp1B_func(
     xdata: Union[np.ndarray, list], ydata: Union[np.ndarray, list], **kwargs
-) -> Tuple[tuple, tuple, np.ndarray, np.ndarray]:
+) -> Tuple[tuple, tuple]:
     """Calculate an single exponential fit to the given ydata.
 
     Args:
@@ -67,7 +67,7 @@ def fit_exp1B_func(
     # Check if all the values in ``ydata``are the same. That would make the
     # exponential fit unnecessary.
     if np.all(ydata == ydata[0]):
-        popt, pcov = (ydata[0], 1.0, 0), (0, 0, 0)
+        popt, perr = (ydata[0], 1.0, 0), (0, 0, 0)
     else:
         # Get a guess for the exponential function.
         guess = kwargs.get("p0", [0.5, 0.9, 0.8])
@@ -75,16 +75,15 @@ def fit_exp1B_func(
         # fixed parameters where one can see that the fit did not work
         try:
             popt, pcov = curve_fit(exp1_func, xdata, ydata, p0=guess, method="lm")
+            perr = np.sqrt(np.diag(pcov))
         except:
-            popt, pcov = (0, 0, 0), (1, 1, 1)
-    x_fit = np.linspace(np.sort(xdata)[0], np.sort(xdata)[-1], num=len(xdata) * 20)
-    y_fit = exp1_func(x_fit, *popt)
-    return popt, pcov, x_fit, y_fit
+            popt, perr = (0, 0, 0), (0, 0, 0)
+    return popt, perr
 
 
 def fit_exp1_func(
     xdata: Union[np.ndarray, list], ydata: Union[np.ndarray, list], **kwargs
-) -> Tuple[tuple, tuple, np.ndarray, np.ndarray]:
+) -> Tuple[tuple, tuple]:
     """Calculate an single exponential fit to the given ydata.
 
     Args:
@@ -97,7 +96,7 @@ def fit_exp1_func(
     # Check if all the values in ``ydata``are the same. That would make the
     # exponential fit unnecessary.
     if np.all(ydata == ydata[0]):
-        popt, pcov = (ydata[0], 1.0), (0, 0)
+        popt, perr = (ydata[0], 1.0), (0, 0)
     else:
         # Get a guess for the exponential function.
         guess = kwargs.get("p0", [0.5, 0.9, 0.8])
@@ -111,18 +110,18 @@ def fit_exp1_func(
                 p0=guess[:-1],
                 method="lm",
             )
+            perr = np.sqrt(np.diag(pcov))
         except:
-            popt, pcov = (0, 0), (1, 1)
-    x_fit = np.linspace(np.sort(xdata)[0], np.sort(xdata)[-1], num=len(xdata) * 20)
-    y_fit = exp1_func(x_fit, *popt, 0)
-    return (*popt, 0), (*pcov, 0), x_fit, y_fit
+            popt, perr = (0, 0), (0, 0)
+
+    return (*popt, 0), (*perr, 0)
 
 
 def fit_exp2_func(
     xdata: Union[np.ndarray, list], ydata: Union[np.ndarray, list], **kwargs
-) -> Tuple[np.ndarray, np.ndarray, tuple]:
+) -> Tuple[tuple, tuple]:
     """Calculate 2 exponentials on top of each other fit to the given ydata."""
-
+    # TODO how are the errors estimated?
     # TODO the data has to have a sufficiently big size, check that.
     decays = esprit(xdata, ydata, 2)
     vandermonde = np.vander(decays, N=xdata[-1] + 1, increasing=True)
@@ -133,9 +132,4 @@ def fit_exp2_func(
         dtype = complex
     else:
         dtype = float
-    x_fit = np.linspace(
-        np.sort(xdata)[0], np.sort(xdata)[-1], num=len(xdata) * 20, dtype=dtype
-    )
-    # Get the ydata for the fit with the calculated parameters.
-    y_fit = exp2_func(x_fit, *alphas, *decays)
-    return x_fit, y_fit, tuple([*alphas, *decays])
+    return tuple([*alphas, *decays]), (0, 0, 0, 0)
