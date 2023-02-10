@@ -17,7 +17,7 @@ def theoretical_outcome(noise_model: NoiseModel) -> float:
 
     Args:
         experiment (Experiment): Experiment which executed the simulation.
-        noisemddel (NoiseModel): Applied noise model.
+        noisemodel (NoiseModel): Applied noise model.
 
     Returns:
         (float): The effective depolarizing parameter of given error.

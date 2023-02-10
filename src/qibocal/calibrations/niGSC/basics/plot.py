@@ -24,7 +24,7 @@ def plot_qq(folder: str, routine: str, qubit, format):
     import importlib
 
     # Load the module, something like 'standardrb'.
-    module = importlib.import_module(f"qibocal.calibrations.protocols.{routine}")
+    module = importlib.import_module(f"qibocal.calibrations.niGSC.{routine}")
     # Load the experiment with the class method ``load``.
     experiment = module.moduleExperiment.load(f"{folder}/data/{routine}/")
     # In this data frame the precomputed fitting parameters and other
@@ -32,7 +32,7 @@ def plot_qq(folder: str, routine: str, qubit, format):
     aggr_df = pd.read_pickle(f"{folder}/data/{routine}/fit_plot.pkl")
     # Build the figure/report using the responsible module.
     plotly_figure = module.build_report(experiment, aggr_df)
-    return plotly_figure
+    return [plotly_figure]
 
 
 class Report:

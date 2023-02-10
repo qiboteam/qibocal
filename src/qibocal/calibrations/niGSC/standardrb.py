@@ -1,4 +1,5 @@
-"""
+""" Here the standard randomized benchmarking is implemented using the
+niGSC (non-interactive gate set characterization) architecture.
 """
 
 
@@ -60,7 +61,7 @@ class moduleExperiment(Experiment):
         nshots: int | None = None,
         noise_model: NoiseModel = None,
     ) -> None:
-        """Calles the parent method, sets name.
+        """Calls the parent method, sets name.
 
         Args:
             circuitfactory (Iterable): Gives a certain amount of circuits when
@@ -101,7 +102,7 @@ class moduleReport(Report):
 
 
 def groundstate_probabilities(circuit: Circuit, datarow: dict) -> dict:
-    """Calculates the groundstate probability with data from single shot measurements.
+    """Calculates the ground state probability with data from single shot measurements.
 
     Args:
         circuit (Circuit): Not needed here.
@@ -128,7 +129,7 @@ def groundstate_probabilities(circuit: Circuit, datarow: dict) -> dict:
 def post_processing_sequential(experiment: Experiment):
     """Perform sequential tasks needed to analyze the experiment results.
 
-    The data is added/changed in the experiment, nothign has to be returned.
+    The data is added/changed in the experiment, nothing has to be returned.
 
     Args:
         experiment (Experiment): Experiment object after execution of the experiment itself.
@@ -150,7 +151,7 @@ def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
         pd.DataFrame: The summarized data.
     """
 
-    # Has to fit the column describtion from ``groundstate_probabilities``.
+    # Has to fit the column description from ``groundstate_probabilities``.
     depths, ydata = experiment.extract("groundstate probability", "depth", "mean")
     _, ydata_std = experiment.extract("groundstate probability", "depth", "std")
     # Fit the ground state probabilies mean for each depth.
@@ -160,7 +161,7 @@ def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
         {
             "depth": depths,  # The x-axis.
             "data": ydata,  # The mean of ground state probability for each depth.
-            "2sigma": 2 * ydata_std,  # The standard deviation error for each depth.
+            "2sigma": 2 * ydata_std,  # The 2 * standard deviation error for each depth.
             "fit_func": "exp1B_func",  # Which function was used to fit.
             "popt": {
                 "A": popt[0],
@@ -180,8 +181,8 @@ def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
 
 
 def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
-    """Use data and information from ``experiment`` and the aggregated data dataframe to
-    build a reprot as plotly figure.
+    """Use data and information from ``experiment`` and the aggregated data data frame to
+    build a report as plotly figure.
 
     Args:
         experiment (Experiment): After sequential postprocessing of the experiment data.

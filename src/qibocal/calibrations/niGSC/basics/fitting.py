@@ -53,7 +53,6 @@ def esprit(
         ValueError: When the x-labels are not equally spaced the algorithm does not work.
 
     """
-
     # Check for equally spacing.
     if not np.all(xdata[1:] - xdata[:-1] == xdata[1] - xdata[0]):
         raise_error(ValueError, "xdata has to be equally spaced.")

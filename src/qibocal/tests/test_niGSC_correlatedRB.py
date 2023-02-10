@@ -23,7 +23,7 @@ def nshots():
 @pytest.mark.parametrize("qubits", [[0], [0, 1]])
 def test_experiment(nqubits: int, depths: list, runs: int, nshots: int, qubits: list):
     byaccident_zeros = 0
-    if nqubits < len(qubits):
+    if max(qubits) > nqubits - 1:
         pass
     else:
         myfactory1 = correlatedrb.moduleFactory(nqubits, depths * runs)

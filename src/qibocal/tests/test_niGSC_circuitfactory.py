@@ -52,8 +52,13 @@ def general_circuittest(gfactory: Circuitfactory):
     assert same_count <= count * 0.5
 
 
-def test_Circuitfactory():
-    pass
+def test_abstract_factory():
+    cfactory = Circuitfactory(1, [1, 2] * 3, qubits=[0])
+    with pytest.raises(NotImplementedError):
+        for circuit in cfactory:
+            print(circuit.draw())
+    cfactory = Circuitfactory(1, 3, qubits=[0])
+    assert cfactory.depths == [3]
 
 
 @pytest.mark.parametrize("nqubits", [1, 2, 5])

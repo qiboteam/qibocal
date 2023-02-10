@@ -1,8 +1,10 @@
+from copy import deepcopy
 from os import mkdir
 from os.path import isdir
 from typing import Union
 
 import numpy as np
+from qibo.models import Circuit
 
 # Gates, without having to define any paramters
 ONEQ_GATES = ["I", "X", "Y", "Z", "H", "S", "SDG", "T", "TDG"]
@@ -79,3 +81,10 @@ def probabilities(allsamples: Union[list, np.ndarray]) -> np.ndarray:
     ]
     probs = np.array(probs) / (nshots)
     return probs
+
+
+def copy_circuit(circuit: Circuit):
+    newcircuit = Circuit(circuit.nqubits)
+    for gate in circuit.queue:
+        newcircuit.add(deepcopy(gate))
+    return newcircuit

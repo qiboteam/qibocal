@@ -40,7 +40,7 @@ def test_1expfitting():
         )
     assert success >= number_runs * 0.8
 
-    x = np.sort(np.random.choice(np.linspace(0, 15, 50), size=20, replace=False))
+    x = np.sort(np.random.choice(np.linspace(-5, 5, 50), size=20, replace=False))
     y = np.zeros(len(x)) + 0.75
     assert fitting.fit_exp1B_func(x, y) == ((0.75, 1.0, 0), (0, 0, 0))
     assert fitting.fit_exp1_func(x, y) == ((0.75, 1.0), (0, 0))
@@ -49,18 +49,16 @@ def test_1expfitting():
     didnt_getitB = 0
     for _ in range(10):
         x = np.sort(np.random.choice(np.linspace(0, 15, 50), size=20, replace=False))
-        y_dist = np.e ** (-(x**2)) + np.random.randn(len(y)) * 0.01
+        y_dist = np.e ** (-((x - 2) ** 2) * 10) + np.random.randn(len(x)) * 0.1
+        popt1, perr1 = fitting.fit_exp1_func(x, y_dist, p0=[-100, 0.0001, -200])
         didnt_getit += not (
-            np.all(
-                np.array(fitting.fit_exp1_func(x, y_dist)) == np.array(((0, 0), (0, 0)))
-            )
+            np.all(np.array([*popt1, *perr1]) == np.array(((0, 0), (0, 0))))
         )
+        popt, perr = fitting.fit_exp1B_func(x, y_dist, p0=[-100, 0.0001, -200])
         didnt_getitB += not (
-            np.all(
-                np.array(fitting.fit_exp1B_func(x, y_dist))
-                == np.array(((0, 0, 0), (0, 0, 0)))
-            )
+            np.all(np.array([*popt, *perr]) == np.array(((0, 0, 0), (0, 0, 0))))
         )
+    assert didnt_getit >= 1 and didnt_getitB >= 1
 
 
 def test_exp2_fitting():
