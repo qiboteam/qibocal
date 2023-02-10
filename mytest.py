@@ -1,5 +1,7 @@
 from qibo import gates, models
 
+from qibocal.calibrations.protocols.XIdrb import *
+
 # nqubits = 2
 # circuit = models.Circuit(nqubits)
 # circuit.add([gates.X(0), gates.Z(1), gates.Y(0), gates.H(1)])
@@ -18,7 +20,6 @@ from qibo import gates, models
 # print(fused_circuit.queue[0].matrix)
 # print(fused_circuit.queue[1].matrix)
 
-from qibocal.calibrations.protocols.XIdrb import *
 
 
 nqubits = 1
@@ -29,5 +30,4 @@ noise_params = [0.01, 0.05, 0.05]
 
 # factory = XIdFactory(nqubits, depths, runs)
 
-perform(nqubits, depths, runs, nshots, noise_params = noise_params)
-
+perform(nqubits, depths, runs, nshots, noise_params=noise_params)

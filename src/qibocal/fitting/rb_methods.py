@@ -37,16 +37,7 @@ def esprit(xdata, ydata, num_decays, hankel_dim=None):
     # Cut off the columns to the amount which is needed.
     U_signal = U[:, :num_decays]
     # Calculte the solution.
-    spectralMatrix = (
-        np.linalg.pinv(
-            U_signal[
-                :-1,
-            ]
-        )
-        @ U_signal[
-            1:,
-        ]
-    )
+    spectralMatrix = np.linalg.pinv(U_signal[:-1,]) @ U_signal[1:,]
     # Calculate the poles/eigenvectors and space them right.
     decays = np.linalg.eigvals(spectralMatrix) * sampleRate
     return decays
