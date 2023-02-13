@@ -110,17 +110,17 @@ def resonator_spectroscopy(
             )
             fast_sweep_data.add_data_from_dict(r)
 
-            # save data
-            yield fast_sweep_data
-            # calculate and save fit
-            yield lorentzian_fit(
-                fast_sweep_data,
-                x="frequency[Hz]",
-                y="MSR[uV]",
-                qubits=qubits,
-                resonator_type=platform.resonator_type,
-                labels=["readout_frequency", "peak_voltage"],
-            )
+        # save data
+        yield fast_sweep_data
+        # calculate and save fit
+        yield lorentzian_fit(
+            fast_sweep_data,
+            x="frequency[Hz]",
+            y="MSR[uV]",
+            qubits=qubits,
+            resonator_type=platform.resonator_type,
+            labels=["readout_frequency", "peak_voltage"],
+        )
 
     # store max/min peaks as new frequencies
     for qubit in qubits:
@@ -194,17 +194,17 @@ def resonator_spectroscopy(
             )
             precision_sweep_data.add_data_from_dict(r)
 
-            # save data
-            yield precision_sweep_data
-            # calculate and save fit
-            yield lorentzian_fit(
-                precision_sweep_data,
-                x="frequency[Hz]",
-                y="MSR[uV]",
-                qubits=qubits,
-                resonator_type=platform.resonator_type,
-                labels=["readout_frequency", "peak_voltage"],
-            )
+        # save data
+        yield precision_sweep_data
+        # calculate and save fit
+        yield lorentzian_fit(
+            precision_sweep_data,
+            x="frequency[Hz]",
+            y="MSR[uV]",
+            qubits=qubits,
+            resonator_type=platform.resonator_type,
+            labels=["readout_frequency", "peak_voltage"],
+        )
 
 
 @plot(
@@ -434,7 +434,7 @@ def resonator_punchout(
             freqs = np.array(
                 len(amplitude_range) * list(delta_frequency_range + ro_pulse.frequency)
             ).flatten()
-            r = result.to_dict()
+            r = {k: v.ravel() for k, v in result.to_dict().items()}
             r.update(
                 {
                     "frequency[Hz]": freqs,
@@ -451,7 +451,7 @@ def resonator_punchout(
 
 
 @plot(
-    "MSR and Phase vs Resonator Frequency and Flux Current",
+    "MSR and Phase vs Resonator Frequency and Flux",
     plots.frequency_flux_msr_phase,
 )
 def resonator_spectroscopy_flux(
@@ -490,7 +490,7 @@ def resonator_spectroscopy_flux(
             - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
             - **phase[rad]**: Resonator signal phase mesurement in radians
             - **frequency[Hz]**: Resonator frequency value in Hz
-            - **bias[A]**: Current value in A applied to the flux line
+            - **bias[dimensionless]**: Bias value applied to the flux line
             - **qubit**: The qubit being tested
             - **fluxline**: The fluxline being tested
             - **iteration**: The iteration number of the many determined by software_averages
@@ -521,14 +521,14 @@ def resonator_spectroscopy_flux(
         fluxlines = qubits
 
     delta_bias_range = np.arange(-bias_width / 2, bias_width / 2, bias_step)
-    bias_sweeper = Sweeper("offset", delta_bias_range, qubits=fluxlines)
+    bias_sweeper = Sweeper(Parameter.bias, delta_bias_range, qubits=fluxlines)
 
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
     # additionally include resonator frequency and flux bias
     data = DataUnits(
         name="data",
-        quantities={"frequency": "Hz", "bias": "A"},
+        quantities={"frequency": "Hz", "bias": "dimensionless"},
         options=["qubit", "fluxline", "iteration"],
     )
 
@@ -557,11 +557,11 @@ def resonator_spectroscopy_flux(
                 * list(delta_frequency_range + ro_pulses[qubit].frequency)
             ).flatten()
             # store the results
-            r = result.to_dict()
+            r = {k: v.ravel() for k, v in result.to_dict().items()}
             r.update(
                 {
                     "frequency[Hz]": freqs,
-                    "bias[A]": biases,
+                    "bias[dimensionless]": biases,
                     "qubit": len(freqs) * [qubit],
                     "fluxline": len(freqs) * [fluxline],
                     "iteration": len(freqs) * [iteration],
@@ -641,6 +641,7 @@ def dispersive_shift(
 
     # repeat the experiment as many times as defined by software_averages
     count = 0
+    # TODO: implement sweeper
     for iteration in range(software_averages):
         # sweep the parameter
         for delta_freq in delta_frequency_range:

@@ -8,7 +8,7 @@ format: csv
 
 actions:
 
-  #resonator_spectroscopy:
+  # resonator_spectroscopy:
   #  fast_width: 20_000_000
   #  fast_step: 100_000
   #  precision_width: 10_000_000
@@ -17,12 +17,12 @@ actions:
   #  relaxation_time: 50
   #  software_averages: 1
 
-  # resonator_punchout_amplitude:
+  # resonator_punchout:
   #  freq_width: 5_000_000
   #  freq_step: 100_000
-  #  min_att: 0.01
-  #  max_att: 2.0
-  #  step_att: 0.02
+  #  min_amp_factor: 0.01
+  #  max_amp_factor: 2.0
+  #  step_amp_factor: 0.02
   #  nshots: 1000
   #  relaxation_time: 50
   #  software_averages: 1
@@ -33,7 +33,7 @@ actions:
   #  bias_width: 0.1
   #  bias_step:  0.002
   #  fluxlines: qubits
-  #  wait_time: 50
+  #  relaxation_time: 50
   #  nshots: 1000
   #  software_averages: 1
 
@@ -130,11 +130,11 @@ actions:
   #   software_averages: 1
   #   points: 1
 
-  # dispersive_shift:
-  #   freq_width: 10_000_000
-  #   freq_step: 400_000
-  #   software_averages: 2
-  #   points: 5
+  dispersive_shift:
+    freq_width: 10_000_000
+    freq_step: 400_000
+    software_averages: 1
+    points: 5
 
   # calibrate_qubit_states:
   #   nshots: 2048
