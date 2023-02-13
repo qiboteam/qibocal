@@ -4,7 +4,6 @@ from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal import plots
-from qibocal.config import raise_error
 from qibocal.data import DataUnits
 from qibocal.decorators import plot
 from qibocal.fitting.methods import lorentzian_fit
@@ -121,16 +120,16 @@ def qubit_spectroscopy(
             )
             fast_sweep_data.add_data_from_dict(r)
 
-        yield fast_sweep_data
-        # calculate and save fit
-        yield lorentzian_fit(
-            fast_sweep_data,
-            x="frequency[Hz]",
-            y="MSR[uV]",
-            qubits=qubits,
-            resonator_type=platform.resonator_type,
-            labels=["drive_frequency", "peak_voltage"],
-        )
+    yield fast_sweep_data
+    # calculate and save fit
+    yield lorentzian_fit(
+        fast_sweep_data,
+        x="frequency[Hz]",
+        y="MSR[uV]",
+        qubits=qubits,
+        resonator_type=platform.resonator_type,
+        labels=["drive_frequency", "peak_voltage"],
+    )
 
     # store max/min peaks as new frequencies
     for qubit in qubits:
@@ -202,17 +201,17 @@ def qubit_spectroscopy(
             )
             precision_sweep_data.add_data_from_dict(r)
 
-        # save data
-        yield precision_sweep_data
-        # calculate and save fit
-        yield lorentzian_fit(
-            precision_sweep_data,
-            x="frequency[Hz]",
-            y="MSR[uV]",
-            qubits=qubits,
-            resonator_type=platform.resonator_type,
-            labels=["qubit_freq", "peak_voltage"],
-        )
+    # save data
+    yield precision_sweep_data
+    # calculate and save fit
+    yield lorentzian_fit(
+        precision_sweep_data,
+        x="frequency[Hz]",
+        y="MSR[uV]",
+        qubits=qubits,
+        resonator_type=platform.resonator_type,
+        labels=["qubit_freq", "peak_voltage"],
+    )
 
 
 @plot(
@@ -256,7 +255,7 @@ def qubit_spectroscopy_flux(
             - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
             - **phase[rad]**: Resonator signal phase mesurement in radians
             - **frequency[Hz]**: Qubit drive frequency value in Hz
-            - **bias[A]**: Current value in A applied to the flux line
+            - **bias[dimensionless]**: Bias value applied to the flux line
             - **qubit**: The qubit being tested
             - **fluxline**: The fluxline being tested
             - **iteration**: The iteration number of the many determined by software_averages
@@ -317,7 +316,7 @@ def qubit_spectroscopy_flux(
     # additionally include qubit frequency and flux bias
     data = DataUnits(
         name=f"data",
-        quantities={"frequency": "Hz", "bias": "A"},
+        quantities={"frequency": "Hz", "bias": "dimensionless"},
         options=["qubit", "fluxline", "iteration"],
     )
 
@@ -345,11 +344,11 @@ def qubit_spectroscopy_flux(
                 len(delta_bias_range)
                 * list(delta_frequency_range + qd_pulses[qubit].frequency)
             ).flatten()
-            r = result.to_dict()
+            r = {k: v.ravel() for k, v in result.to_dict().items()}
             r.update(
                 {
                     "frequency[Hz]": freqs,
-                    "bias[A]": biases,
+                    "bias[dimensionless]": biases,
                     "qubit": len(freqs) * [qubit],
                     "fluxline": len(freqs) * [fluxline],
                     "iteration": len(freqs) * [iteration],

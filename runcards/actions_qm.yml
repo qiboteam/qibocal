@@ -37,8 +37,9 @@ actions:
   #  nshots: 1000
   #  software_averages: 1
 
-  #qubit_spectroscopy:
+  # qubit_spectroscopy:
   #  drive_amplitude: 0.005
+  #  drive_duration: 2000
   #  fast_width: 200_000_000
   #  fast_step: 100_000
   #  precision_width: 20_000_000
@@ -47,16 +48,16 @@ actions:
   #  relaxation_time: 20
   #  software_averages: 1
 
-  #qubit_spectroscopy_flux:
-  #  drive_amplitude: 0.005
-  #  freq_width: 300_000_000
-  #  freq_step: 500_000
-  #  bias_width: 0.1
-  #  bias_step:  0.001
-  #  fluxlines: "qubits"
-  #  nshots: 1000
-  #  relaxation_time: 20
-  #  software_averages: 1
+  qubit_spectroscopy_flux:
+   drive_amplitude: 0.005
+   freq_width: 300_000_000
+   freq_step: 500_000
+   bias_width: 0.1
+   bias_step:  0.001
+   fluxlines: "qubits"
+   nshots: 1000
+   relaxation_time: 20
+   software_averages: 1
 
   #rabi_pulse_amplitude:
   #  pulse_amplitude_start: 0.01
@@ -130,11 +131,11 @@ actions:
   #   software_averages: 1
   #   points: 1
 
-  dispersive_shift:
-    freq_width: 10_000_000
-    freq_step: 400_000
-    software_averages: 1
-    points: 5
+  # dispersive_shift:
+  #   freq_width: 10_000_000
+  #   freq_step: 400_000
+  #   software_averages: 1
+  #   points: 5
 
   # calibrate_qubit_states:
   #   nshots: 2048
