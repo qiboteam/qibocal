@@ -196,7 +196,7 @@ def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
     return df
 
 
-def build_report(experiment: Experiment, df_aggr: pd.DataFrame):
+def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
     """Use data and information from ``experiment`` and the aggregated data dataframe to
     build a reprot as plotly figure.
 

@@ -133,7 +133,7 @@ def fit_exp1_func(
         try:
             # Build a new function such that the linear offset is zero.
             popt, pcov = curve_fit(
-                lambda x, A, f: exp1B_func(x, A, f, 0),
+                exp1_func,
                 xdata,
                 ydata,
                 p0=guess,

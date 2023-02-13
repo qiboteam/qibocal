@@ -10,11 +10,17 @@ from qibocal.calibrations.niGSC.basics.utils import ONEQ_GATES
 from qibocal.calibrations.niGSC.standardrb import (
     moduleFactory as SingleCliffordsInvFactory,
 )
+from qibocal.calibrations.niGSC.XIdrb import moduleFactory as XIdFactory
 
 
 @pytest.fixture
 def factories_singlequbitgates():
-    thelist = [SingleCliffordsFactory, Qibo1qGatesFactory, SingleCliffordsInvFactory]
+    thelist = [
+        SingleCliffordsFactory,
+        Qibo1qGatesFactory,
+        SingleCliffordsInvFactory,
+        XIdFactory,
+    ]
     return thelist
 
 
@@ -84,42 +90,52 @@ def test_general_singlequbitgates_factories(
         pass
     else:
         for factory_init in factories_singlequbitgates:
-            factory = factory_init(nqubits, list(depths) * runs, qubits=qubits)
-            abstract_factorytest(factory)
-            # if factory.name not in ('XId', 'SingleCliffordsInv'):
-            general_circuittest(factory)
-            if "inv" in factory.name or "Inv" in factory.name:
-                # When checking the depth of circuits, the measurement gate and inverse gate
-                # has to be taken into account
-                additional_gates = 2
+            # XId factory is only defined for 1 qubit.
+            if max(qubits) > 0 and factory_init == XIdFactory:
+                with pytest.raises(AssertionError):
+                    factory = factory_init(nqubits, list(depths) * runs, qubits=qubits)
             else:
-                # When checking the depth of circuits, measurement gate has to be taken into account
-                additional_gates = 1
-            for count, circuit in enumerate(factory):
-                if circuit.ngates == 1:
-                    assert isinstance(circuit.queue[0], gates.measurements.M)
+                factory = factory_init(nqubits, list(depths) * runs, qubits=qubits)
+                abstract_factorytest(factory)
+                # if factory.name not in ('XId', 'SingleCliffordsInv'):
+                general_circuittest(factory)
+                if "inv" in factory.name or "Inv" in factory.name:
+                    # When checking the depth of circuits, the measurement gate and inverse gate
+                    # has to be taken into account
+                    additional_gates = 2
                 else:
-                    assert (
-                        circuit.ngates
-                        == depths[count % len(depths)] * len(qubits) + additional_gates
-                    )
-                    assert (
-                        circuit.depth == depths[count % len(depths)] + additional_gates
-                    )
-                # Check the factories individual trades.
-                if factory.name in ("Qibo1qGates"):
-                    for gate in circuit.queue[:-1]:
-                        assert gate.__class__.__name__ in ONEQ_GATES
-                elif factory.name in ("SingleCliffords"):
-                    for gate in circuit.queue[:-1]:
-                        assert isinstance(gate, gates.Unitary)
-                elif factory.name in ("SingleCliffordsInv"):
-                    for gate in circuit.queue[:-1]:
-                        assert isinstance(gate, gates.Unitary)
-                elif factory.name in ("XId"):
-                    for gate in circuit.queue[:-1]:
-                        assert isinstance(gate, gates.X) or isinstance(gate, gates.I)
-                else:
-                    raise_error(
-                        ValueError, "Unknown circuitfactory :{}".format(factory.name)
-                    )
+                    # When checking the depth of circuits, measurement gate has to be taken into account
+                    additional_gates = 1
+                for count, circuit in enumerate(factory):
+                    if circuit.ngates == 1:
+                        assert isinstance(circuit.queue[0], gates.measurements.M)
+                    else:
+                        assert (
+                            circuit.ngates
+                            == depths[count % len(depths)] * len(qubits)
+                            + additional_gates
+                        )
+                        assert (
+                            circuit.depth
+                            == depths[count % len(depths)] + additional_gates
+                        )
+                    # Check the factories individual trades.
+                    if factory.name in ("Qibo1qGates"):
+                        for gate in circuit.queue[:-1]:
+                            assert gate.__class__.__name__ in ONEQ_GATES
+                    elif factory.name in ("SingleCliffords"):
+                        for gate in circuit.queue[:-1]:
+                            assert isinstance(gate, gates.Unitary)
+                    elif factory.name in ("SingleCliffordsInv"):
+                        for gate in circuit.queue[:-1]:
+                            assert isinstance(gate, gates.Unitary)
+                    elif factory.name in ("XId"):
+                        for gate in circuit.queue[:-1]:
+                            assert isinstance(gate, gates.X) or isinstance(
+                                gate, gates.I
+                            )
+                    else:
+                        raise_error(
+                            ValueError,
+                            "Unknown circuitfactory :{}".format(factory.name),
+                        )

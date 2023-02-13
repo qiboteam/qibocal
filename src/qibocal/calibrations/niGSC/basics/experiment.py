@@ -3,7 +3,6 @@ from __future__ import annotations
 import pickle
 from collections.abc import Iterable
 from os.path import isfile
-from typing import Callable, Optional, Union
 
 import numpy as np
 import pandas as pd
