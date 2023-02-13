@@ -117,7 +117,6 @@ def t1(
                     }
                 )
                 data.add(r)
-                print(data.df)
             count += 1
     yield data
     yield t1_fit(
