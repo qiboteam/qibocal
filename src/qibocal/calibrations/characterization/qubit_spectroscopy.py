@@ -201,17 +201,17 @@ def qubit_spectroscopy(
             )
             precision_sweep_data.add_data_from_dict(r)
 
-    # save data
-    yield precision_sweep_data
-    # calculate and save fit
-    yield lorentzian_fit(
-        precision_sweep_data,
-        x="frequency[Hz]",
-        y="MSR[uV]",
-        qubits=qubits,
-        resonator_type=platform.resonator_type,
-        labels=["qubit_freq", "peak_voltage"],
-    )
+        # save data
+        yield precision_sweep_data
+        # calculate and save fit
+        yield lorentzian_fit(
+            precision_sweep_data,
+            x="frequency[Hz]",
+            y="MSR[uV]",
+            qubits=qubits,
+            resonator_type=platform.resonator_type,
+            labels=["qubit_freq", "peak_voltage"],
+        )
 
 
 @plot(
