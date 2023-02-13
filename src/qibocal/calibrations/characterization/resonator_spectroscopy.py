@@ -332,10 +332,7 @@ def resonator_punchout_attenuation(
     "MSR and Phase vs Resonator Frequency and Amplitude",
     plots.frequency_amplitude_msr_phase,
 )
-# @plot(
-#    "Cross section at half range amplitude", plots.frequency_amplitude_msr_phase_cut
-# )
-def resonator_punchout_amplitude(
+def resonator_punchout(
     platform: AbstractPlatform,
     qubits: dict,
     freq_width,

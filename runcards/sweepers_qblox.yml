@@ -22,7 +22,7 @@ actions:
 
   # resonator_punchout_attenuation:
   #   freq_width: 10_000_000
-  #   freq_step: 500_000
+  #   freq_step: 5_000_000
   #   min_att: 2
   #   max_att: 50
   #   step_att: 2
@@ -30,7 +30,7 @@ actions:
   #   relaxation_time: 50
   #   nshots: 100
 
-  # resonator_punchout_amplitude:
+  # resonator_punchout:
   #   freq_width: 10_000_000
   #   freq_step: 1_000_000
   #   min_amp: 0.01
@@ -82,13 +82,13 @@ actions:
   #  nshots: 1000
   #  software_averages: 1
 
-  rabi_pulse_amplitude:
-    pulse_amplitude_start: 0 # 0<=a<=1
-    pulse_amplitude_end: 2.188
-    pulse_amplitude_step: 0.044
-    software_averages: 1
-    relaxation_time: 200_000
-    nshots: 1024
+  # rabi_pulse_amplitude:
+  #   pulse_amplitude_start: 0 # 0<=a<=1
+  #   pulse_amplitude_end: 2.188
+  #   pulse_amplitude_step: 0.044
+  #   software_averages: 1
+  #   relaxation_time: 200_000
+  #   nshots: 1024
 
   # rabi_pulse_length_and_amplitude:
   #   pulse_duration_start: 4 # minimum 4ns
