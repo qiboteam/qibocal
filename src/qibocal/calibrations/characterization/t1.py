@@ -112,11 +112,12 @@ def t1(
                 r.update(
                     {
                         "wait[ns]": wait,
-                        "qubit": qubit,
+                        "qubit": ro_pulse.qubit,
                         "iteration": iteration,
                     }
                 )
                 data.add(r)
+                print(data.df)
             count += 1
     yield data
     yield t1_fit(
