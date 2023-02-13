@@ -213,6 +213,7 @@ def rabi_pulse_gain(
     )
 
     count = 0
+    # TODO: add Sweeper for gain
     for iteration in range(software_averages):
         # sweep the parameter
         for gain in qd_pulse_gain_range:
@@ -455,6 +456,7 @@ def rabi_pulse_length_and_gain(
     )
 
     count = 0
+    # TODO: add sweeper for gain
     for iteration in range(software_averages):
         # sweep the parameters
         for duration in qd_pulse_duration_range:
@@ -565,6 +567,7 @@ def rabi_pulse_length_and_amplitude(
     )
 
     count = 0
+    # TODO: implement Sweeper for amplitude
     for iteration in range(software_averages):
         # sweep the parameters
         for duration in qd_pulse_duration_range:
