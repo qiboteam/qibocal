@@ -281,9 +281,7 @@ def resonator_punchout_attenuation(
 
     # attenuation
     attenuation_range = np.flip(np.arange(min_att, max_att, step_att))
-    att_sweeper = Sweeper(
-        Parameter.attenuation, attenuation_range, [ro_pulses[qubit] for qubit in qubits]
-    )
+    att_sweeper = Sweeper(Parameter.attenuation, attenuation_range, qubits=qubits)
 
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
