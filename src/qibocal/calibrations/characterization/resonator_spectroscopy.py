@@ -19,8 +19,8 @@ def resonator_spectroscopy(
     fast_step,
     precision_width,
     precision_step,
-    relaxation_time,
     nshots=1024,
+    relaxation_time=50,
     software_averages=1,
 ):
     r"""
@@ -222,7 +222,7 @@ def resonator_punchout_attenuation(
     min_att,
     max_att,
     step_att,
-    relaxation_time=None,
+    relaxation_time=50,
     nshots=1024,
     software_averages=1,
 ):
@@ -281,7 +281,9 @@ def resonator_punchout_attenuation(
 
     # attenuation
     attenuation_range = np.flip(np.arange(min_att, max_att, step_att))
-    att_sweeper = Sweeper(Parameter.attenuation, attenuation_range, qubits=qubits)
+    att_sweeper = Sweeper(
+        Parameter.attenuation, attenuation_range, qubits=qubits, nshots=nshots
+    )
 
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
@@ -459,8 +461,8 @@ def resonator_spectroscopy_flux(
     bias_width,
     bias_step,
     fluxlines,
-    relaxation_time,
     nshots=1024,
+    relaxation_time=50,
     software_averages=1,
 ):
     r"""

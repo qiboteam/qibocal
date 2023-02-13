@@ -18,7 +18,6 @@ def spin_echo_3pulses(
     software_averages=1,
     points=10,
 ):
-
     """Spin echo calibration routine:
     The two routines are a modified Ramsey sequence with an additional Rx(pi) pulse placed symmetrically between the two Rx(pi/2) pulses.
     The random phases accumulated before and after the pi pulse compensate exactly if the frequency does not change during the sequence.

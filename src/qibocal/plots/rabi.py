@@ -9,6 +9,7 @@ from qibocal.plots.utils import get_color, get_data_subfolders
 
 # Rabi oscillations pulse length
 def time_msr_phase(folder, routine, qubit, format):
+    figures = []
 
     fig = make_subplots(
         rows=1,
@@ -182,11 +183,15 @@ def time_msr_phase(folder, routine, qubit, format):
         xaxis2_title="Time (ns)",
         yaxis2_title="Phase (rad)",
     )
-    return fig
+
+    figures.append(fig)
+
+    return figures
 
 
 # Rabi oscillations pulse gain
 def gain_msr_phase(folder, routine, qubit, format):
+    figures = []
 
     fig = make_subplots(
         rows=1,
@@ -361,11 +366,15 @@ def gain_msr_phase(folder, routine, qubit, format):
         xaxis2_title="Gain (dimensionless)",
         yaxis2_title="Phase (rad)",
     )
-    return fig
+
+    figures.append(fig)
+
+    return figures
 
 
 # Rabi oscillations pulse amplitude
 def amplitude_msr_phase(folder, routine, qubit, format):
+    figures = []
 
     fig = make_subplots(
         rows=1,
@@ -383,7 +392,6 @@ def amplitude_msr_phase(folder, routine, qubit, format):
     report_n = 0
     fitting_report = ""
     for subfolder in subfolders:
-
         try:
             data = DataUnits.load_data(folder, subfolder, routine, format, f"data")
             data.df = data.df[data.df["qubit"] == qubit]
@@ -547,11 +555,15 @@ def amplitude_msr_phase(folder, routine, qubit, format):
         xaxis2_title="Amplitude (dimensionless)",
         yaxis2_title="Phase (rad)",
     )
-    return fig
+
+    figures.append(fig)
+
+    return figures
 
 
 # Rabi pulse length and gain
 def duration_gain_msr_phase(folder, routine, qubit, format):
+    figures = []
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
@@ -623,11 +635,15 @@ def duration_gain_msr_phase(folder, routine, qubit, format):
         report_n += 1
     if report_n > 1:
         fig.update_traces(showscale=False)
-    return fig
+
+    figures.append(fig)
+
+    return figures
 
 
 # Rabi pulse length and amplitude
 def duration_amplitude_msr_phase(folder, routine, qubit, format):
+    figures = []
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
@@ -705,4 +721,7 @@ def duration_amplitude_msr_phase(folder, routine, qubit, format):
         report_n += 1
     if report_n > 1:
         fig.update_traces(showscale=False)
-    return fig
+
+    figures.append(fig)
+
+    return figures
