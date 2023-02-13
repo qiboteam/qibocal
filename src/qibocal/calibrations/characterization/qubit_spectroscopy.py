@@ -307,7 +307,7 @@ def qubit_spectroscopy_flux(
     # flux bias
     delta_bias_range = np.arange(-bias_width / 2, bias_width / 2, bias_step)
     bias_sweeper = Sweeper(
-        "offset",
+        Parameter.bias,
         delta_bias_range,
         qubits=fluxlines,
     )
@@ -332,36 +332,30 @@ def qubit_spectroscopy_flux(
             relaxation_time=relaxation_time,
         )
 
-        while any(result.in_progress for result in results.values()) or len(data) == 0:
-            # retrieve the results for every qubit
-            for qubit, fluxline in zip(qubits, fluxlines):
-                # average msr, phase, i and q over the number of shots defined in the runcard
-                result = results[ro_pulses[qubit].serial]
-                # store the results
-                biases = (
-                    np.repeat(delta_bias_range, len(delta_frequency_range))
-                    + platform.qubits[fluxline].flux.offset
-                )
-                freqs = np.array(
-                    len(delta_bias_range)
-                    * list(delta_frequency_range + qd_pulses[qubit].frequency)
-                ).flatten()
-                r = result.to_dict()
-                r.update(
-                    {
-                        "frequency[Hz]": freqs,
-                        "bias[A]": biases,
-                        "qubit": len(freqs) * [qubit],
-                        "fluxline": len(freqs) * [fluxline],
-                        "iteration": len(freqs) * [iteration],
-                    }
-                )
-                data.add_data_from_dict(r)
+        # retrieve the results for every qubit
+        for qubit, fluxline in zip(qubits, fluxlines):
+            # average msr, phase, i and q over the number of shots defined in the runcard
+            result = results[ro_pulses[qubit].serial]
+            # store the results
+            biases = (
+                np.repeat(delta_bias_range, len(delta_frequency_range))
+                + platform.qubits[fluxline].flux.offset
+            )  # TODO: this will not work for dummy or qblox
+            freqs = np.array(
+                len(delta_bias_range)
+                * list(delta_frequency_range + qd_pulses[qubit].frequency)
+            ).flatten()
+            r = result.to_dict()
+            r.update(
+                {
+                    "frequency[Hz]": freqs,
+                    "bias[A]": biases,
+                    "qubit": len(freqs) * [qubit],
+                    "fluxline": len(freqs) * [fluxline],
+                    "iteration": len(freqs) * [iteration],
+                }
+            )
+            data.add_data_from_dict(r)
 
-            # save data as often as defined by points
-            if result.in_progress:
-                # save data
-                yield data
-
-    # finally, save the remaining data and fits
-    yield data
+        # finally, save the remaining data and fits
+        yield data

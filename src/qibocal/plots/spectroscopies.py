@@ -293,6 +293,7 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
 
 # Punchout
 def frequency_amplitude_msr_phase(folder, routine, qubit, format):
+    figures = []
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
 
@@ -373,7 +374,10 @@ def frequency_amplitude_msr_phase(folder, routine, qubit, format):
         report_n += 1
     if report_n > 1:
         fig.update_traces(showscale=False)
-    return fig
+
+    figures.append(fig)
+
+    return figures
 
 
 # Resonator and qubit spectroscopies

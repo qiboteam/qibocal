@@ -472,7 +472,7 @@ def rabi_pulse_length_and_gain(
                 results = platform.execute_pulse_sequence(sequence)
                 for ro_pulse in ro_pulses.values():
                     # average msr, phase, i and q over the number of shots defined in the runcard
-                    r = results[ro_pulse.serial].to_dict()
+                    r = results[ro_pulse.serial].to_dict(average=True)
                     r.update(
                         {
                             "duration[ns]": duration,
@@ -496,6 +496,8 @@ def rabi_pulse_length_and_amplitude(
     pulse_amplitude_start,
     pulse_amplitude_end,
     pulse_amplitude_step,
+    relaxation_time=None,
+    nshots=None,
     software_averages=1,
     points=10,
 ):
@@ -577,10 +579,12 @@ def rabi_pulse_length_and_amplitude(
                     yield data
 
                 # execute the pulse sequence
-                results = platform.execute_pulse_sequence(sequence)
+                results = platform.execute_pulse_sequence(
+                    sequence, relaxation_time=relaxation_time, nshots=nshots
+                )
                 for ro_pulse in ro_pulses.values():
                     # average msr, phase, i and q over the number of shots defined in the runcard
-                    r = results[ro_pulse.serial].to_dict()
+                    r = results[ro_pulse.serial].to_dict(average=True)
                     r.update(
                         {
                             "duration[ns]": duration,

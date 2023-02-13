@@ -281,9 +281,7 @@ def resonator_punchout_attenuation(
 
     # attenuation
     attenuation_range = np.flip(np.arange(min_att, max_att, step_att))
-    att_sweeper = Sweeper(
-        Parameter.attenuation, attenuation_range, qubits=qubits, nshots=nshots
-    )
+    att_sweeper = Sweeper(Parameter.attenuation, attenuation_range, qubits=qubits)
 
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
@@ -339,9 +337,9 @@ def resonator_punchout(
     qubits: dict,
     freq_width,
     freq_step,
-    min_amp,
-    max_amp,
-    step_amp,
+    min_amp_factor,
+    max_amp_factor,
+    step_amp_factor,
     relaxation_time=None,
     nshots=1024,
     software_averages=1,
@@ -356,9 +354,12 @@ def resonator_punchout(
         qubits (dict): List of target qubits to perform the action
         freq_width (int): Width frequency in HZ to perform the spectroscopy sweep
         freq_step (int): Step frequency in HZ for the spectroscopy sweep
-        max_amp (float): Maximum amplitude value
-        min_amp (float): Minimum amplitude value
-        step_amp (float): Step amplitude value for the amplitude sweep
+        max_amp_factor (float): Maximum value of the factor that multiplies the amplitude
+            of the readout pulse
+        min_amp_factor (float): Minimum value of the factor that multiplies the amplitude
+            of the readout pulse
+        step_amp_factor (float): Step value of the factor that multiplies the amplitude
+            of the readout pulse
         relaxation_time (int): Relaxation time between shots (ns)
         software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
@@ -400,9 +401,9 @@ def resonator_punchout(
     )
 
     # amplitude
-    amplitude_range = np.arange(min_amp, max_amp, step_amp)
+    amplitude_range = np.arange(min_amp_factor, max_amp_factor, step_amp_factor)
     amp_sweeper = Sweeper(
-        "amplitude", amplitude_range, [ro_pulses[qubit] for qubit in qubits]
+        Parameter.amplitude, amplitude_range, [ro_pulses[qubit] for qubit in qubits]
     )
 
     # create a DataUnits object to store the results,
@@ -526,7 +527,7 @@ def resonator_spectroscopy_flux(
     # DataUnits stores by default MSR, phase, i, q
     # additionally include resonator frequency and flux bias
     data = DataUnits(
-        name=f"data",
+        name="data",
         quantities={"frequency": "Hz", "bias": "A"},
         options=["qubit", "fluxline", "iteration"],
     )
@@ -543,14 +544,14 @@ def resonator_spectroscopy_flux(
 
         # retrieve the results for every qubit
         for qubit, fluxline in zip(qubits, fluxlines):
-            # TODO: Support more fluxlines
+            # TODO: Support more fluxlines for QM
 
             result = results[ro_pulses[qubit].serial]
 
             biases = (
                 np.repeat(delta_bias_range, len(delta_frequency_range))
                 + platform.qubits[fluxline].flux.offset
-            )
+            )  # TODO: this will not work with dummy or qblox
             freqs = np.array(
                 len(delta_bias_range)
                 * list(delta_frequency_range + ro_pulses[qubit].frequency)
@@ -632,10 +633,10 @@ def dispersive_shift(
 
     # create a DataUnits objects to store the results
     data_0 = DataUnits(
-        name=f"data_0", quantities={"frequency": "Hz"}, options=["qubit", "iteration"]
+        name="data_0", quantities={"frequency": "Hz"}, options=["qubit", "iteration"]
     )
     data_1 = DataUnits(
-        name=f"data_1", quantities={"frequency": "Hz"}, options=["qubit", "iteration"]
+        name="data_1", quantities={"frequency": "Hz"}, options=["qubit", "iteration"]
     )
 
     # repeat the experiment as many times as defined by software_averages
@@ -684,7 +685,7 @@ def dispersive_shift(
             for data, results in list(zip([data_0, data_1], [results_0, results_1])):
                 for ro_pulse in ro_pulses.values():
                     # average msr, phase, i and q over the number of shots defined in the runcard
-                    r = results[ro_pulse.serial].to_dict()
+                    r = results[ro_pulse.serial].to_dict(average=True)
                     # store the results
                     r.update(
                         {

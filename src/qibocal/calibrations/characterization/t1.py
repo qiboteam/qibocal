@@ -108,7 +108,7 @@ def t1(
 
             for ro_pulse in ro_pulses.values():
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                r = results[ro_pulse.serial].to_dict()
+                r = results[ro_pulse.serial].to_dict(average=True)
                 r.update(
                     {
                         "wait[ns]": wait,

@@ -1,4 +1,4 @@
-platform: qili1q_os2
+# platform: qili1q_os2
 
 # platform: dummy
 
@@ -22,7 +22,7 @@ actions:
 
   # resonator_punchout_attenuation:
   #   freq_width: 10_000_000
-  #   freq_step: 5_000_000
+  #   freq_step: 500_000
   #   min_att: 2
   #   max_att: 50
   #   step_att: 2
@@ -33,25 +33,14 @@ actions:
   # resonator_punchout:
   #   freq_width: 10_000_000
   #   freq_step: 1_000_000
-  #   min_amp: 0.01
-  #   max_amp: 1
-  #   step_amp: 0.01
+  #   min_amp_factor: 0.01
+  #   max_amp_factor: 2
+  #   step_amp_factor: 0.01
   #   software_averages: 1
   #   relaxation_time: 50
   #   nshots: 1024
 
-
-  # resonator_punchout_attenuation:
-  #  freq_width: 10_000_000
-  #  freq_step: 200_000
-  #  min_att: 2
-  #  max_att: 50
-  #  step_att: 2
-  #  relaxation_time: 50
-  #  nshots: 10
-  #  software_averages: 1
-
-  #resonator_spectroscopy_flux:
+  # resonator_spectroscopy_flux: #NOT WORKING WITH DUMMY OR QBLOX
   #  freq_width: 5_000_000
   #  freq_step: 100_000
   #  bias_width: 0.1
@@ -72,7 +61,8 @@ actions:
   #   nshots: 1024
   #   software_averages: 2
 
-  #qubit_spectroscopy_flux:
+  # qubit_spectroscopy_flux: #NOT WORKING WITH DUMMY OR QBLOX
+  #  drive_amplitude: 0.457
   #  freq_width: 400_000_000
   #  freq_step: 500_000
   #  bias_width: 0.1
@@ -83,24 +73,24 @@ actions:
   #  software_averages: 1
 
   # rabi_pulse_amplitude:
-  #   pulse_amplitude_start: 0 # 0<=a<=1
-  #   pulse_amplitude_end: 2.188
-  #   pulse_amplitude_step: 0.044
-  #   software_averages: 1
-  #   relaxation_time: 200_000
-  #   nshots: 1024
+    # pulse_amplitude_start: 0 # 0<=a<=1
+    # pulse_amplitude_end: 1.11
+    # pulse_amplitude_step: 0.044
+    # software_averages: 1
+    # relaxation_time: 200_000
+    # nshots: 1024
 
   # rabi_pulse_length_and_amplitude:
   #   pulse_duration_start: 4 # minimum 4ns
   #   pulse_duration_end: 200
-  #   pulse_duration_step: 40
+  #   pulse_duration_step: 100
   #   pulse_amplitude_start: 0 # -1.0<= amplitude <=1.0
   #   pulse_amplitude_end: 1
   #   pulse_amplitude_step: 0.3
   #   software_averages: 1
-  #   relaxation_time: 50000
+  #   relaxation_time: 5
   #   nshots: 1024
-    # points: 10
+  #   points: 10
 
   # rabi_pulse_length:
   #  pulse_duration_start: 4 # minimum 4ns
@@ -109,6 +99,13 @@ actions:
   #  nshots: 1024
   #  software_averages: 1
   #  points: 4
+
+  # rabi_pulse_gain:
+  #   pulse_gain_start: 0 # -1.0<=g<=1.0
+  #   pulse_gain_end: 1
+  #   pulse_gain_step: 0.02
+  #   software_averages: 2
+  #   points: 1
 
   # allXY:
   #    beta_param: null
@@ -129,22 +126,36 @@ actions:
   #  software_averages: 5
   #  points: 2
 
-  #t1:
+  # t1:
   #  delay_before_readout_start: 4
   #  delay_before_readout_end: 10_000
   #  delay_before_readout_step: 200
   #  software_averages: 1
   #  points: 5
 
-  #ramsey:
+  # ramsey:
   #  delay_between_pulses_start: 16 # must be a multiple of 4 incl 0
   #  delay_between_pulses_end: 8000
   #  delay_between_pulses_step: 20 # must be a multiple of 4
   #  software_averages: 1
   #  points: 10
 
-  #calibrate_qubit_states:
+  # calibrate_qubit_states:
   #  nshots: 5000
+
+  # ramsey_frequency_detuned:
+  #   delay_between_pulses_start: 4
+  #   delay_between_pulses_end: [1000, 2000] #t_end (optimal) = 3.5 * T2
+  #   delay_between_pulses_step: 32
+  #   n_osc: 4
+  #   software_averages: 1
+  #   points: 1
+
+  # dispersive_shift:
+  #   freq_width: 10_000_000
+  #   freq_step: 400_000
+  #   software_averages: 2
+  #   points: 5
 
   #tune_transition:
   #  flux_pulse_duration_start: 0
@@ -172,22 +183,17 @@ actions:
 
 ########## NOT TESTED ##########
 
-  # rabi_pulse_gain:
-  #   pulse_gain_start: 0 # -1.0<=g<=1.0
-  #   pulse_gain_end: 1
-  #   pulse_gain_step: 0.02
-  #   software_averages: 2
-  #   points: 1
 
-  # rabi_pulse_length_and_gain:
-  #   pulse_duration_start: 4 # minimum 4ns
-  #   pulse_duration_end: 200
-  #   pulse_duration_step: 4
-  #   pulse_gain_start: 0 # -1.0<=g<=1.0
-  #   pulse_gain_end: 1
-  #   pulse_gain_step: 0.1
-  #   software_averages: 1
-  #   points: 10
+
+  rabi_pulse_length_and_gain:
+    pulse_duration_start: 4 # minimum 4ns
+    pulse_duration_end: 20
+    pulse_duration_step: 4
+    pulse_gain_start: 0 # -1.0<=g<=1.0
+    pulse_gain_end: 1
+    pulse_gain_step: 0.1
+    software_averages: 1
+    points: 10
 
   # rabi_pulse_length_and_amplitude:
   #   pulse_duration_start: 4 # minimum 4ns
@@ -199,19 +205,7 @@ actions:
   #   software_averages: 1
   #   points: 10
 
-  # ramsey_frequency_detuned:
-  #   delay_between_pulses_start: 4
-  #   delay_between_pulses_end: [1000, 2000] #t_end (optimal) = 3.5 * T2
-  #   delay_between_pulses_step: 32
-  #   n_osc: 4
-  #   software_averages: 1
-  #   points: 1
 
-  # dispersive_shift:
-  #   freq_width: 10_000_000
-  #   freq_step: 400_000
-  #   software_averages: 2
-  #   points: 5
 
   # calibrate_qubit_states:
   #   nshots: 2048
