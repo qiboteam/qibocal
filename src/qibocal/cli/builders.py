@@ -18,7 +18,9 @@ def load_yaml(path):
     return data
 
 
-class singleActionParser:
+class ActionParser:
+    """Class for parsing and executing single actions in the runcard."""
+
     def __init__(self, runcard, folder, name):
         self.runcard = runcard
         self.folder = folder
@@ -31,6 +33,7 @@ class singleActionParser:
         self.__name__ = name
 
     def build(self):
+        """Load function from :func:`qibocal.characterization.calibrations` and check arguments"""
         if not os.path.exists(self.path):
             os.makedirs(self.path)
         # collect function from module
@@ -43,7 +46,7 @@ class singleActionParser:
                 raise_error(AttributeError, f"Missing parameter {param} in runcard.")
 
     def execute(self, data_format, platform):
-        """Method to execute a single action and retrieving the results."""
+        """Execute action and retrieve results."""
         if data_format is None:
             raise_error(ValueError, f"Cannot store data using {data_format} format.")
 
@@ -53,7 +56,7 @@ class singleActionParser:
             getattr(data, f"to_{data_format}")(self.path)
 
 
-class niGSCactionParser(singleActionParser):
+class niGSCactionParser(ActionParser):
     """ni = non interactive
     GSC = gate set characterization
     """
@@ -81,14 +84,18 @@ class niGSCactionParser(singleActionParser):
         except:
             self.noise_model = None
 
-    def build(self):
+    def load_plot(self):
+        """Helper method to import the plotting function."""
         from qibocal.calibrations.niGSC.basics.plot import plot_qq
 
+        self.plots.append((f"{self.name} protocol", plot_qq))
+
+    def build(self):
+        """Load appropirate module to run the experiment."""
         if not os.path.exists(self.path):
             os.makedirs(self.path)
 
         self.module = importlib.import_module(f"qibocal.calibrations.niGSC.{self.name}")
-        self.plots.append((f"{self.name} protocol", plot_qq))
 
     def execute(self, data_format, platform):
         """Executes a non-interactive gate set characterication using only the wanted
@@ -246,7 +253,7 @@ class ActionBuilder:
                 parser.execute(self.format, self.platform)
             # TODO: find a better way to choose between the two parsers
             except (ModuleNotFoundError, KeyError):
-                parser = singleActionParser(self.runcard, self.folder, action)
+                parser = ActionParser(self.runcard, self.folder, action)
                 parser.build()
                 parser.execute(self.format, self.platform)
                 for qubit in self.qubits:
@@ -320,7 +327,7 @@ class ReportBuilder:
                 routine = getattr(calibrations, action)
             elif hasattr(calibrations.niGSC, action):
                 routine = niGSCactionParser(self.runcard, self.path, action)
-                routine.build()
+                routine.load_plot()
             else:
                 raise_error(ValueError, f"Undefined action {action} in report.")
 
