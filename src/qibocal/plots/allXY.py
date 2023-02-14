@@ -32,6 +32,7 @@ gatelist = [
 ]
 
 
+# allXY
 def allXY(folder, routine, qubit, format):
     figures = []
 

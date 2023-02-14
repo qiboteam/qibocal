@@ -4,10 +4,11 @@ from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import ramsey
-from qibocal.plots.utils import get_color, get_data_subfolders
+from qibocal.plots.utils import get_color, get_data_subfolders, grouped_by_mean_one
 
 
 # Ramsey oscillations
+# performance checked: pass
 def time_msr(folder, routine, qubit, format):
     figures = []
 
@@ -53,6 +54,7 @@ def time_msr(folder, routine, qubit, format):
 
         iterations = data.df["iteration"].unique()
         waits = data.df["wait"].pint.to("ns").pint.magnitude.unique()
+        data.df = data.df.drop(columns=["i", "q", "phase", "qubit"])
 
         if len(iterations) > 1:
             opacity = 0.3
@@ -75,13 +77,13 @@ def time_msr(folder, routine, qubit, format):
             )
 
         if len(iterations) > 1:
+            data.df = data.df.drop(columns=["iteration"])
+            unique_waits, mean_measurements = grouped_by_mean_one(data.df, 1, 0)
             fig.add_trace(
                 go.Scatter(
-                    x=waits,
-                    y=data.df.groupby("wait")["MSR"]
-                    .mean()
-                    .pint.to("uV")
-                    .pint.magnitude,
+                    x=unique_waits,  # waits,
+                    y=mean_measurements
+                    * 1e6,  # data.df.groupby("wait")["MSR"].mean().pint.to("uV").pint.magnitude,
                     marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,

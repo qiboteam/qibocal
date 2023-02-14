@@ -4,10 +4,11 @@ from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import exp
-from qibocal.plots.utils import get_color, get_data_subfolders
+from qibocal.plots.utils import get_color, get_data_subfolders, grouped_by_mean_one
 
 
 # Spin echos
+# performance checked: pass
 def spin_echo_time_msr(folder, routine, qubit, format):
     """Spin echo plotting routine:
     The routine plots the results of a modified Ramsey sequence with an additional Rx(pi) pulse placed symmetrically between the two Rx(pi/2) pulses.
@@ -56,6 +57,7 @@ def spin_echo_time_msr(folder, routine, qubit, format):
                 ]
             )
 
+        data.df = data.df.drop(columns=["i", "q", "phase", "qubit"])
         iterations = data.df["iteration"].unique()
         waits = data.df["wait"].pint.to("ns").pint.magnitude.unique()
 
@@ -80,13 +82,18 @@ def spin_echo_time_msr(folder, routine, qubit, format):
             )
 
         if len(iterations) > 1:
+            data.df = data.df.drop(columns=["iteration"])
+            unique_waits, mean_measurements = grouped_by_mean_one(data.df, 1, 0)
             fig.add_trace(
                 go.Scatter(
-                    x=waits,
-                    y=data.df.groupby("wait")["MSR"]
-                    .mean()
-                    .pint.to("uV")
-                    .pint.magnitude,
+                    x=unique_waits,  # waits,
+                    y=mean_measurements
+                    * 1e6,  # data.df.groupby("wait")["MSR"].mean().pint.to("uV").pint.magnitude,
+                    # x=waits,
+                    # y=data.df.groupby("wait")["MSR"]
+                    # .mean()
+                    # .pint.to("uV")
+                    # .pint.magnitude,
                     marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,
