@@ -101,7 +101,13 @@ def fit_exp1B_func(
         # If the search for fitting parameters does not work just return
         # fixed parameters where one can see that the fit did not work
         try:
-            popt, pcov = curve_fit(exp1B_func, xdata, ydata, p0=guess, method="lm")
+            popt, pcov = curve_fit(
+                exp1B_func,
+                xdata,
+                ydata,
+                p0=guess,
+                method="lm",
+            )
             perr = tuple(np.sqrt(np.diag(pcov)))
         except:
             popt, perr = (0, 0, 0), (0, 0, 0)

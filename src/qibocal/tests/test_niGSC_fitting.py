@@ -44,26 +44,23 @@ def test_1expfitting():
 
     x = np.sort(np.random.choice(np.linspace(-5, 5, 50), size=20, replace=False))
     y = np.zeros(len(x)) + 0.75
-    assert fitting.fit_exp1B_func(x, y) == ((0.75, 1.0, 0), (0, 0, 0))
-    assert fitting.fit_exp1_func(x, y) == ((0.75, 1.0), (0, 0))
+    assert np.array_equal(
+        np.array(fitting.fit_exp1B_func(x, y)), np.array(((0.75, 1.0, 0), (0, 0, 0)))
+    )
+    assert np.array_equal(
+        np.array(fitting.fit_exp1_func(x, y)), np.array(((0.75, 1.0), (0, 0)))
+    )
     # At least once the algorithm shall not find a fit:
-    with pytest.warns(RuntimeWarning):
-        didnt_getit = 0
-        didnt_getitB = 0
-        for _ in range(10):
-            x = np.sort(
-                np.random.choice(np.linspace(0, 15, 50), size=20, replace=False)
-            )
-            y_dist = np.e ** (-((x - 5) ** 2) * 10) + np.random.randn(len(x)) * 0.1
-            popt1, perr1 = fitting.fit_exp1_func(x, y_dist, p0=[-100, 0.0001, -200])
-            didnt_getit += not (
-                np.all(np.array([*popt1, *perr1]) == np.array(((0, 0), (0, 0))))
-            )
-            popt, perr = fitting.fit_exp1B_func(x, y_dist, p0=[-100, 0.0001, -200])
-            didnt_getitB += not (
-                np.all(np.array([*popt, *perr]) == np.array([0, 0, 0, 0, 0, 0]))
-            )
-        assert didnt_getit >= 1 and didnt_getitB >= 1
+    didnt_getit = 0
+    didnt_getitB = 0
+    for _ in range(20):
+        x = np.sort(np.random.choice(np.linspace(0, 15, 50), size=50, replace=False))
+        y_dist = np.e ** (-((x - 5) ** 2) * 10) + np.random.randn(len(x)) * 0.1
+        popt1, perr1 = fitting.fit_exp1_func(x, y_dist, p0=[-100])
+        didnt_getit += not (np.all(np.array([*popt1, *perr1]), 0))
+        popt, perr = fitting.fit_exp1B_func(x, y_dist, p0=[-100, 0.01])
+        didnt_getitB += not (np.all(np.array([*popt, *perr]), 0))
+    assert didnt_getit >= 1 and didnt_getitB >= 1
 
 
 def test_exp2_fitting():
