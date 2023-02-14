@@ -8,7 +8,7 @@ actions:
   standardrb:
     nqubits: 1
     depths: [1,3,5,7,10]
-    runs: 2
+    runs: 5
     nshots: 1024
     noise_model: PauliErrorOnUnitary
     noise_params: [0.01, 0.01, 0.01]
@@ -22,7 +22,7 @@ actions:
   correlatedrb:
     nqubits: 1
     depths: [1,3,5,7,10]
-    runs: 2
+    runs: 5
     nshots: 1024
     noise_model: PauliErrorOnUnitary
     noise_params: [0.01, 0.01, 0.01]

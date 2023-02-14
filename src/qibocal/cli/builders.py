@@ -23,7 +23,6 @@ class singleActionParser:
         self.runcard = runcard
         self.folder = folder
         self.func = None
-        self.single_qubit = None
         self.params = None
         self.name = name
         self.path = os.path.join(self.folder, f"data/{self.name}/")
@@ -42,29 +41,16 @@ class singleActionParser:
         for param in list(sig.parameters)[2:-1]:
             if param not in self.params:
                 raise_error(AttributeError, f"Missing parameter {param} in runcard.")
-        if self.func.__annotations__["qubit"] == int:
-            self.single_qubit = True
-        else:
-            self.single_qubit = False
 
     def execute(self, data_format, platform):
         """Method to execute a single action and retrieving the results."""
         if data_format is None:
             raise_error(ValueError, f"Cannot store data using {data_format} format.")
-        if self.single_qubit:
-            for qubit in self.runcard["qubits"]:
-                results = self.func(platform, qubit, **self.params)
 
-                for data in results:
-                    getattr(data, f"to_{data_format}")(self.path)
+        results = self.func(platform, self.runcard["qubits"], **self.params)
 
-                # if platform is not None:
-                #     self.update_platform_runcard(qubit, routine.__name__)
-        else:
-            results = self.func(platform, self.runcard["qubits"], **self.params)
-
-            for data in results:
-                getattr(data, f"to_{data_format}")(self.path)
+        for data in results:
+            getattr(data, f"to_{data_format}")(self.path)
 
 
 class niGSCactionParser(singleActionParser):
@@ -246,19 +232,6 @@ class ActionBuilder:
         with open(f"{path}/meta.yml", "w") as file:
             yaml.dump(meta, file)
 
-    def _build_single_action(self, name):
-        """Helper method to parse the actions in the runcard."""
-        f = getattr(calibrations, name)
-        path = os.path.join(self.folder, f"data/{name}/")
-        os.makedirs(path)
-        sig = inspect.signature(f)
-        params = self.runcard["actions"][name]
-        for param in list(sig.parameters)[2:-1]:
-            if param not in params:
-                raise_error(AttributeError, f"Missing parameter {param} in runcard.")
-
-        return f, params, path
-
     def execute(self):
         """Method to execute sequentially all the actions in the runcard."""
         if self.platform is not None:
@@ -276,8 +249,6 @@ class ActionBuilder:
                 parser = singleActionParser(self.runcard, self.folder, action)
                 parser.build()
                 parser.execute(self.format, self.platform)
-                routine, args, path = self._build_single_action(action)
-                self._execute_single_action(routine, args, path)
                 for qubit in self.qubits:
                     if self.platform is not None:
                         self.update_platform_runcard(qubit, action)
@@ -285,16 +256,6 @@ class ActionBuilder:
         if self.platform is not None:
             self.platform.stop()
             self.platform.disconnect()
-
-    def _execute_single_action(self, routine, arguments, path):
-        """Method to execute a single action and retrieving the results."""
-        if self.format is None:
-            raise_error(ValueError, f"Cannot store data using {self.format} format.")
-
-        results = routine(self.platform, self.qubits, **arguments)
-
-        for data in results:
-            getattr(data, f"to_{self.format}")(path)
 
     def update_platform_runcard(self, qubit, routine):
         try:
