@@ -133,8 +133,10 @@ dmypy.json
 
 # QCVV output directories
 20*
-crosstalk-*
 
 # Visual Studio Code
 .vscode
 *.DS_Store
+
+# Runcards
+runcards/actions_qq_1q.yml
