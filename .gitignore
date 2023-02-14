@@ -137,6 +137,3 @@ dmypy.json
 # Visual Studio Code
 .vscode
 *.DS_Store
-
-# Runcards
-runcards/actions_qq_1q.yml
