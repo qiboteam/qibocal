@@ -145,30 +145,56 @@ Gate set characterization
 
 .. _abstract-module-label:
 
-Abstract
-^^^^^^^^
-.. automodule:: qibocal.calibrations.protocols.abstract
+Abstract and Basic methods
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. automodule:: qibocal.calibrations.niGSC.basics.curcuitfactory
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: qibocal.calibrations.niGSC.basics.experiment
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: qibocal.calibrations.niGSC.basics.fitting
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: qibocal.calibrations.niGSC.basics.plot
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: qibocal.calibrations.niGSC.basics.utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: qibocal.calibrations.niGSC.basics.noisemodels
    :members:
    :undoc-members:
    :show-inheritance:
 
 Standard RB
 ^^^^^^^^^^^
-.. automodule:: qibocal.calibrations.protocols.standardrb
+.. automodule:: qibocal.calibrations.niGSC.standardrb
    :members:
    :undoc-members:
    :show-inheritance:
 
 Correlated RB
-^^^^^^^^^^^^
-.. automodule:: qibocal.calibrations.protocols.correlatedrb
+^^^^^^^^^^^^^
+.. automodule:: qibocal.calibrations.niGSC.correlatedrb
    :members:
    :undoc-members:
    :show-inheritance:
 
 X-ID RB
-^^^^^^^^^^^^
-.. automodule:: qibocal.calibrations.protocols.XIdrb
+^^^^^^^
+.. automodule:: qibocal.calibrations.niGSC.XIdrb
    :members:
    :undoc-members:
    :show-inheritance:
