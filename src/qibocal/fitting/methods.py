@@ -526,15 +526,15 @@ def t1_fit(data, x, y, qubits, resonator_type, labels):
             data_fit.add({key: 0 for key in data_fit.df.columns})
             return data_fit
 
-    data_fit.add(
-        {
-            "popt0": popt[0],
-            "popt1": popt[1],
-            "popt2": popt[2],
-            labels[0]: t1,
-            "qubit": qubit,
-        }
-    )
+        data_fit.add(
+            {
+                "popt0": popt[0],
+                "popt1": popt[1],
+                "popt2": popt[2],
+                labels[0]: t1,
+                "qubit": qubit,
+            }
+        )
     return data_fit
 
 

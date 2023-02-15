@@ -5,7 +5,7 @@ from qibolab.pulses import PulseSequence
 from qibocal.data import DataUnits
 from qibocal.decorators import plot
 from qibocal.fitting.methods import res_spectroscopy_flux_fit
-from qibocal.plots import frequency_attenuation, frequency_current_flux
+from qibocal.plots import frequency_attenuation, frequency_bias_flux
 
 
 def snr(signal, noise):
@@ -257,7 +257,7 @@ def resonator_punchout_sample(
         yield data
 
 
-@plot("Frequency vs Current", frequency_current_flux)
+@plot("Frequency vs Bias", frequency_bias_flux)
 def resonator_flux_sample(
     platform: AbstractPlatform,
     qubits: dict,

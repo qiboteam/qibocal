@@ -1,12 +1,14 @@
 platform: qw5q_gold
 
+# Instructions: Uncomment whatever you would like to run!
+
 qubits: [1, 2, 3, 4]
 
 format: csv
 
 actions:
 
-  #resonator_spectroscopy:
+  # resonator_spectroscopy:
   #  fast_width: 20_000_000
   #  fast_step: 100_000
   #  precision_width: 10_000_000
@@ -15,28 +17,29 @@ actions:
   #  relaxation_time: 50
   #  software_averages: 1
 
-  #resonator_punchout:
+  # resonator_punchout:
   #  freq_width: 5_000_000
   #  freq_step: 100_000
-  #  min_att: 0.01
-  #  max_att: 2.0
-  #  step_att: 0.02
+  #  min_amp_factor: 0.01
+  #  max_amp_factor: 2.0
+  #  step_amp_factor: 0.02
   #  nshots: 1000
   #  relaxation_time: 50
   #  software_averages: 1
 
-  #resonator_spectroscopy_flux:
+  # resonator_spectroscopy_flux:
   #  freq_width: 5_000_000
   #  freq_step: 100_000
   #  bias_width: 0.1
   #  bias_step:  0.002
   #  fluxlines: qubits
-  #  nshots: 1000
   #  relaxation_time: 50
+  #  nshots: 1000
   #  software_averages: 1
 
-  #qubit_spectroscopy:
+  # qubit_spectroscopy:
   #  drive_amplitude: 0.005
+  #  drive_duration: 2000
   #  fast_width: 200_000_000
   #  fast_step: 100_000
   #  precision_width: 20_000_000
@@ -45,7 +48,7 @@ actions:
   #  relaxation_time: 20
   #  software_averages: 1
 
-  #qubit_spectroscopy_flux:
+  # qubit_spectroscopy_flux:
   #  drive_amplitude: 0.005
   #  freq_width: 300_000_000
   #  freq_step: 500_000
@@ -56,7 +59,7 @@ actions:
   #  relaxation_time: 20
   #  software_averages: 1
 
-  #rabi_pulse_amplitude:
+  # rabi_pulse_amplitude:
   #  pulse_amplitude_start: 0.01
   #  pulse_amplitude_end: 2.0
   #  pulse_amplitude_step: 0.01
@@ -64,7 +67,7 @@ actions:
   #  relaxation_time: 50000
   #  nshots: 1000
 
-  #rabi_pulse_length:
+  # rabi_pulse_length:
   #  pulse_duration_start: 20 # minimum 4ns
   #  pulse_duration_end: 200
   #  pulse_duration_step: 4
@@ -77,14 +80,14 @@ actions:
   #  software_averages: 1
   #  points: 5
 
-  #t1:
+  # t1:
   #  delay_before_readout_start: 4
   #  delay_before_readout_end: 10_000
   #  delay_before_readout_step: 200
   #  software_averages: 1
   #  points: 5
 
-  #ramsey:
+  # ramsey:
   #  delay_between_pulses_start: 16 # must be a multiple of 4 incl 0
   #  delay_between_pulses_end: 6000
   #  delay_between_pulses_step: 20 # must be a multiple of 4
@@ -103,17 +106,17 @@ actions:
   #   software_averages: 1
   #   points: 10
 
-  #calibrate_qubit_states:
+  # calibrate_qubit_states:
   #  nshots: 5000
 
-  #allXY_drag_pulse_tuning:
+  # allXY_drag_pulse_tuning:
   #  beta_start: -1
   #  beta_end: 1
   #  beta_step: 0.5
-  #  software_averages: 2
-  #  points: 3
+  #  software_averages: 1
+  #  points: 10
 
-  #drag_pulse_tuning:
+  # drag_pulse_tuning:
   #  beta_start: -0.1
   #  beta_end: 0.1
   #  beta_step: 0.01
@@ -131,7 +134,7 @@ actions:
   # dispersive_shift:
   #   freq_width: 10_000_000
   #   freq_step: 400_000
-  #   software_averages: 2
+  #   software_averages: 1
   #   points: 5
 
   # calibrate_qubit_states:
