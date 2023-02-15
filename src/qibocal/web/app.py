@@ -11,9 +11,6 @@ from qibocal import plots
 from qibocal.data import DataUnits
 from qibocal.web.server import server
 
-# import pandas as pd
-# from collections import OrderedDict
-
 DataUnits()  # dummy dataset call to suppress ``pint[V]`` error
 
 app = Dash(
@@ -137,7 +134,6 @@ def get_graph(interval, url, value):
             table_rows = []
 
             for i in range(0, len(fitting_params), 3):
-                # print(fitting_params[i])
                 table_rows.append(
                     html.Tr(
                         className="td_styles",
