@@ -25,7 +25,7 @@ def nshots():
 def test_experiment(nqubits: int, depths: list, runs: int, nshots: int, qubits: list):
     if max(qubits) > nqubits - 1:
         qubits = [0, 1]
-        with pytest.raises(AssertionError):
+        with pytest.raises(ValueError):
             myfactory1 = XIdrb.moduleFactory(2, list(depths) * runs, qubits)
     else:
         myfactory1 = XIdrb.moduleFactory(nqubits, list(depths) * runs, qubits)

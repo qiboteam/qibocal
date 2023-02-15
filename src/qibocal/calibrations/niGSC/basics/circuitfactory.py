@@ -11,7 +11,7 @@ from qibocal.calibrations.niGSC.basics.utils import ONEQ_GATES
 from qibocal.config import raise_error
 
 
-class Circuitfactory:
+class CircuitFactory:
     """Iterator object, when called a random circuit with wanted gate
     distribution is created.
     """
@@ -29,7 +29,7 @@ class Circuitfactory:
     def __len__(self):
         return len(self.depths)
 
-    def __iter__(self) -> Circuitfactory:
+    def __iter__(self) -> CircuitFactory:
         self.n = 0
         return self
 
@@ -84,7 +84,7 @@ class Circuitfactory:
         raise_error(NotImplementedError)
 
 
-class Qibo1qGatesFactory(Circuitfactory):
+class Qibo1qGatesFactory(CircuitFactory):
     """When called creates a random circuit build out of 1-qubit non-parameterized
     qibo gates.
     """
@@ -112,7 +112,7 @@ class Qibo1qGatesFactory(Circuitfactory):
         return gates_list
 
 
-class SingleCliffordsFactory(Circuitfactory):
+class SingleCliffordsFactory(CircuitFactory):
     """Creates circuits filled with random  single qubit Clifford gates for
     each active qubit.
     """

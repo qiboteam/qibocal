@@ -27,21 +27,23 @@ from qibo.models import Circuit
 from qibo.noise import NoiseModel
 
 import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
-from qibocal.calibrations.niGSC.basics.circuitfactory import Circuitfactory
+from qibocal.calibrations.niGSC.basics.circuitfactory import CircuitFactory
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
 from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig
+from qibocal.config import raise_error
 
 
 # Define the circuit factory class for this specific module.
-class moduleFactory(Circuitfactory):
+class moduleFactory(CircuitFactory):
     def __init__(self, nqubits: int, depths: list, qubits: list = []) -> None:
         super().__init__(nqubits, depths, qubits)
-        assert (
-            len(self.qubits) == 1
-        ), """
-        This class is written for gates acting on only one qubit, not {} qubits.""".format(
-            len(self.qubits)
-        )
+        if not len(self.qubits) == 1:
+            raise_error(
+                ValueError,
+                "This class is written for gates acting on only one qubit, not {} qubits.".format(
+                    len(self.qubits)
+                ),
+            )
         self.name = "XId"
 
     def build_circuit(self, depth: int):

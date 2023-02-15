@@ -21,7 +21,7 @@ def test_Experiment_init():
     noise_model = None
     # All None should work.
     experiment1 = Experiment(cfactory, data=data, noise_model=noise_model)
-    with pytest.raises(AssertionError):
+    with pytest.raises(TypeError):
         _ = Experiment(1)
         _ = Experiment(None, 1)
         _ = Experiment(None, None, True)

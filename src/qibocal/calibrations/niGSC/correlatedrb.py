@@ -1,3 +1,5 @@
+# TODO simulfilteredrb
+
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -31,7 +33,7 @@ class moduleExperiment(Experiment):
         noise_model: NoiseModel = None,
     ) -> None:
         """Calles the parent method and additionally prebuilds the circuit factory
-        making it a list stored in memory and saved if ``save()`` method is called.
+        making it a list stored in memory and saves if ``save()`` method is called.
 
         Args:
             circuitfactory (Iterable): Gives a certain amount of circuits when

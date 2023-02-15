@@ -36,33 +36,37 @@ class Experiment:
     ) -> None:
         """ """
 
-        assert circuitfactory is None or isinstance(
-            circuitfactory, Iterable
-        ), """
-            given circuit factory has wrong type {}, must be Iterable | None.""".format(
-            type(circuitfactory)
-        )
+        if circuitfactory is not None and not isinstance(circuitfactory, Iterable):
+            raise_error(
+                TypeError,
+                "given circuit factory has wrong type {}, must be Iterable | None.".format(
+                    type(circuitfactory)
+                ),
+            )
         self.circuitfactory = circuitfactory
-        assert data is None or isinstance(
-            data, Iterable
-        ), """
-            given data has wrong type {}, must be Iterable | None """.format(
-            type(data)
-        )
+        if data is not None and not isinstance(data, Iterable):
+            raise_error(
+                TypeError,
+                "given data has wrong type {}, must be Iterable | None ".format(
+                    type(data)
+                ),
+            )
         self.data = data
-        assert nshots is None or isinstance(
-            nshots, int
-        ), """
-            given nshots has wrong type {}, must be int | None""".format(
-            type(nshots)
-        )
+        if nshots is not None and not isinstance(nshots, int):
+            raise_error(
+                TypeError,
+                "given nshots has wrong type {}, must be int | None".format(
+                    type(nshots)
+                ),
+            )
         self.nshots = nshots
-        assert noise_model is None or isinstance(
-            noise_model, NoiseModel
-        ), """
-            given circuit factory has wrong type {}, must be qibo NoiseModel | None .""".format(
-            type(noise_model)
-        )
+        if noise_model is not None and not isinstance(noise_model, NoiseModel):
+            raise_error(
+                TypeError,
+                "given circuit factory has wrong type {}, must be qibo NoiseModel | None .".format(
+                    type(noise_model)
+                ),
+            )
         self.__noise_model = noise_model
         self.name = "Abstract"
 

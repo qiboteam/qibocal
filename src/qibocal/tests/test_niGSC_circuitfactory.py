@@ -37,12 +37,12 @@ def abstract_factorytest(gfactory):
         assert isinstance(circuit, models.Circuit)
 
 
-def general_circuittest(gfactory: Circuitfactory):
+def general_circuittest(gfactory: CircuitFactory):
     """Check if the circuits produced by the given factory are
     kind of random.
 
     Args:
-        gfactory (Circuitfactory): Produces circuits which are checked.
+        gfactory (CircuitFactory): Produces circuits which are checked.
     """
     factory1 = deepcopy(gfactory)
     factory2 = deepcopy(gfactory)
@@ -59,11 +59,11 @@ def general_circuittest(gfactory: Circuitfactory):
 
 
 def test_abstract_factory():
-    cfactory = Circuitfactory(1, [1, 2] * 3, qubits=[0])
+    cfactory = CircuitFactory(1, [1, 2] * 3, qubits=[0])
     with pytest.raises(NotImplementedError):
         for circuit in cfactory:
             print(circuit.draw())
-    cfactory = Circuitfactory(1, 3, qubits=[0])
+    cfactory = CircuitFactory(1, 3, qubits=[0])
     assert cfactory.depths == [3]
 
 
@@ -92,7 +92,7 @@ def test_general_singlequbitgates_factories(
         for factory_init in factories_singlequbitgates:
             # XId factory is only defined for 1 qubit.
             if max(qubits) > 0 and factory_init == XIdFactory:
-                with pytest.raises(AssertionError):
+                with pytest.raises(ValueError):
                     factory = factory_init(nqubits, list(depths) * runs, qubits=qubits)
             else:
                 factory = factory_init(nqubits, list(depths) * runs, qubits=qubits)
