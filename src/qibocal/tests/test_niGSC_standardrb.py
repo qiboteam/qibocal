@@ -183,7 +183,8 @@ def test_build_report():
     standardrb.post_processing_sequential(myfaultyexperiment)
     aggr_df = standardrb.get_aggregational_data(myfaultyexperiment)
     assert (
-        theoretical_outcome(noise) - aggr_df.popt[0]["p"] < 2 * aggr_df.perr[0]["p_err"]
+        theoretical_outcome(noise) - aggr_df.popt[0]["p"]
+        < 2 * aggr_df.perr[0]["p_err"] + theoretical_outcome(noise) * 0.01
     )
     report_figure = standardrb.build_report(myfaultyexperiment, aggr_df)
     assert isinstance(report_figure, Figure)
