@@ -26,10 +26,10 @@ def test_experiment(nqubits: int, depths: list, runs: int, nshots: int, qubits: 
     if max(qubits) > nqubits - 1:
         qubits = [0, 1]
         with pytest.raises(ValueError):
-            myfactory1 = XIdrb.moduleFactory(2, list(depths) * runs, qubits)
+            myfactory1 = XIdrb.ModuleFactory(2, list(depths) * runs, qubits)
     else:
-        myfactory1 = XIdrb.moduleFactory(nqubits, list(depths) * runs, qubits)
-        myexperiment1 = XIdrb.moduleExperiment(myfactory1, nshots=nshots)
+        myfactory1 = XIdrb.ModuleFactory(nqubits, list(depths) * runs, qubits)
+        myexperiment1 = XIdrb.ModuleExperiment(myfactory1, nshots=nshots)
         assert myexperiment1.name == "XIdRB"
         myexperiment1.perform(myexperiment1.execute)
         assert isinstance(myexperiment1.data, list)
@@ -61,8 +61,8 @@ def test_experiment_withnoise(
         # Build the noise model.
         noise = noisemodels.PauliErrorOnX(*noise_params)
         # Test exectue an experiment.
-        myfactory1 = XIdrb.moduleFactory(nqubits, list(depths) * runs, qubits)
-        myfaultyexperiment = XIdrb.moduleExperiment(
+        myfactory1 = XIdrb.ModuleFactory(nqubits, list(depths) * runs, qubits)
+        myfaultyexperiment = XIdrb.ModuleExperiment(
             myfactory1, nshots=nshots, noise_model=noise
         )
         myfaultyexperiment.perform(myfaultyexperiment.execute)
@@ -100,8 +100,8 @@ def test_post_processing(
         # Build the noise model.
         noise = noisemodels.PauliErrorOnX(*noise_params)
         # Test exectue an experiment.
-        myfactory1 = XIdrb.moduleFactory(nqubits, list(depths) * runs, qubits)
-        myfaultyexperiment = XIdrb.moduleExperiment(
+        myfactory1 = XIdrb.ModuleFactory(nqubits, list(depths) * runs, qubits)
+        myfaultyexperiment = XIdrb.ModuleExperiment(
             myfactory1, nshots=nshots, noise_model=noise
         )
         myfaultyexperiment.perform(myfaultyexperiment.execute)
@@ -127,8 +127,8 @@ def test_build_report(depths: list, nshots: int, nqubits: int, runs: int, qubits
         # Build the noise model.
         noise = noisemodels.PauliErrorOnX(*noise_params)
         # Test exectue an experiment.
-        myfactory1 = XIdrb.moduleFactory(nqubits, depths * runs, qubits)
-        myfaultyexperiment = XIdrb.moduleExperiment(
+        myfactory1 = XIdrb.ModuleFactory(nqubits, depths * runs, qubits)
+        myfaultyexperiment = XIdrb.ModuleExperiment(
             myfactory1, nshots=nshots, noise_model=noise
         )
         myfaultyexperiment.perform(myfaultyexperiment.execute)

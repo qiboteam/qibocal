@@ -34,7 +34,7 @@ from qibocal.config import raise_error
 
 
 # Define the circuit factory class for this specific module.
-class moduleFactory(CircuitFactory):
+class ModuleFactory(CircuitFactory):
     def __init__(self, nqubits: int, depths: list, qubits: list = []) -> None:
         super().__init__(nqubits, depths, qubits)
         if not len(self.qubits) == 1:
@@ -63,7 +63,7 @@ class moduleFactory(CircuitFactory):
 
 
 # Define the experiment class for this specific module.
-class moduleExperiment(Experiment):
+class ModuleExperiment(Experiment):
     def __init__(
         self,
         circuitfactory: Iterable,

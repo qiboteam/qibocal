@@ -17,12 +17,12 @@ from qibocal.calibrations.niGSC.basics.experiment import Experiment
 from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig
 
 
-class moduleFactory(SingleCliffordsFactory):
+class ModuleFactory(SingleCliffordsFactory):
     def __init__(self, nqubits: int, depths: list, qubits: list = []) -> None:
         super().__init__(nqubits, depths, qubits)
 
 
-class moduleExperiment(Experiment):
+class ModuleExperiment(Experiment):
     """Inherits from abstract ``Experiment`` class."""
 
     def __init__(

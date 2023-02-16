@@ -8,9 +8,9 @@ from qibo import gates, models
 from qibocal.calibrations.niGSC.basics.circuitfactory import *
 from qibocal.calibrations.niGSC.basics.utils import ONEQ_GATES
 from qibocal.calibrations.niGSC.standardrb import (
-    moduleFactory as SingleCliffordsInvFactory,
+    ModuleFactory as SingleCliffordsInvFactory,
 )
-from qibocal.calibrations.niGSC.XIdrb import moduleFactory as XIdFactory
+from qibocal.calibrations.niGSC.XIdrb import ModuleFactory as XIdFactory
 
 
 @pytest.fixture

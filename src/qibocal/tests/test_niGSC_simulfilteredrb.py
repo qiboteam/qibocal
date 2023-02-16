@@ -26,8 +26,8 @@ def test_experiment(nqubits: int, depths: list, runs: int, nshots: int, qubits: 
     if max(qubits) > nqubits - 1:
         pass
     else:
-        myfactory1 = simulfilteredrb.moduleFactory(nqubits, depths * runs)
-        myexperiment1 = simulfilteredrb.moduleExperiment(myfactory1, nshots=nshots)
+        myfactory1 = simulfilteredrb.ModuleFactory(nqubits, depths * runs)
+        myexperiment1 = simulfilteredrb.ModuleExperiment(myfactory1, nshots=nshots)
         myexperiment1.perform(myexperiment1.execute)
         assert isinstance(myexperiment1.data, list)
         assert isinstance(myexperiment1.data[0], dict)
@@ -58,15 +58,15 @@ def test_experiment_withnoise(nqubits: int, noise_params):
     # Build the noise model.
     noise = noisemodels.PauliErrorOnUnitary(*noise_params)
     # Test exectue an experiment.
-    myfactory1 = simulfilteredrb.moduleFactory(nqubits, depths * runs)
+    myfactory1 = simulfilteredrb.ModuleFactory(nqubits, depths * runs)
     circuit_list = list(myfactory1)
-    myfaultyexperiment = simulfilteredrb.moduleExperiment(
+    myfaultyexperiment = simulfilteredrb.ModuleExperiment(
         circuit_list, nshots=nshots, noise_model=noise
     )
     myfaultyexperiment.perform(myfaultyexperiment.execute)
-    experiment1 = simulfilteredrb.moduleExperiment(circuit_list, nshots=nshots)
+    experiment1 = simulfilteredrb.ModuleExperiment(circuit_list, nshots=nshots)
     experiment1.perform(experiment1.execute)
-    experiment12 = simulfilteredrb.moduleExperiment(circuit_list, nshots=nshots)
+    experiment12 = simulfilteredrb.ModuleExperiment(circuit_list, nshots=nshots)
     experiment12.perform(experiment12.execute)
     for datarow_faulty, datarow2, datarow3 in zip(
         myfaultyexperiment.data, experiment1.data, experiment12.data
@@ -140,7 +140,7 @@ def test_filterfunction():
     c = models.Circuit(nqubits)
     c.add([g1, g3, g2, g4])
     c.add(gates.M(0, 1))
-    experiment = simulfilteredrb.moduleExperiment([c], nshots=nshots)
+    experiment = simulfilteredrb.ModuleExperiment([c], nshots=nshots)
     experiment.perform(experiment.execute)
     # Compute and get the filtered signals.
     experiment.perform(simulfilteredrb.filter_function)
@@ -162,8 +162,8 @@ def test_post_processing(
     # Build the noise model.
     noise = noisemodels.PauliErrorOnUnitary(*noise_params)
     # Test exectue an experiment.
-    myfactory1 = simulfilteredrb.moduleFactory(nqubits, list(depths) * runs)
-    myfaultyexperiment = simulfilteredrb.moduleExperiment(
+    myfactory1 = simulfilteredrb.ModuleFactory(nqubits, list(depths) * runs)
+    myfaultyexperiment = simulfilteredrb.ModuleExperiment(
         myfactory1, nshots=nshots, noise_model=noise
     )
     myfaultyexperiment.perform(myfaultyexperiment.execute)
@@ -191,8 +191,8 @@ def test_build_report():
     # Build the noise model.
     noise = noisemodels.PauliErrorOnUnitary(*noise_params)
     # Test exectue an experiment.
-    myfactory1 = simulfilteredrb.moduleFactory(nqubits, depths * runs)
-    myfaultyexperiment = simulfilteredrb.moduleExperiment(
+    myfactory1 = simulfilteredrb.ModuleFactory(nqubits, depths * runs)
+    myfaultyexperiment = simulfilteredrb.ModuleExperiment(
         myfactory1, nshots=nshots, noise_model=noise
     )
     myfaultyexperiment.perform(myfaultyexperiment.execute)

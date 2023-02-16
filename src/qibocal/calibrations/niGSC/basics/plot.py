@@ -26,7 +26,7 @@ def plot_qq(folder: str, routine: str, qubit, format):
     # Load the module, something like 'standardrb'.
     module = importlib.import_module(f"qibocal.calibrations.niGSC.{routine}")
     # Load the experiment with the class method ``load``.
-    experiment = module.moduleExperiment.load(f"{folder}/data/{routine}/")
+    experiment = module.ModuleExperiment.load(f"{folder}/data/{routine}/")
     # In this data frame the precomputed fitting parameters and other
     # parameters for fitting and plotting are stored.
     aggr_df = pd.read_pickle(f"{folder}/data/{routine}/fit_plot.pkl")

@@ -49,8 +49,8 @@ def nshots():
 @pytest.mark.parametrize("runs", [1, 3])
 def test_experiment(nqubits: int, depths: list, runs: int, nshots: int):
     # Test execute an experiment.
-    myfactory1 = standardrb.moduleFactory(nqubits, list(depths) * runs)
-    myexperiment1 = standardrb.moduleExperiment(myfactory1, nshots=nshots)
+    myfactory1 = standardrb.ModuleFactory(nqubits, list(depths) * runs)
+    myexperiment1 = standardrb.ModuleExperiment(myfactory1, nshots=nshots)
     assert myexperiment1.name == "StandardRB"
     myexperiment1.perform(myexperiment1.execute)
     assert isinstance(myexperiment1.data, list)
@@ -74,8 +74,8 @@ def test_experiment_withnoise(
     # Build the noise model.
     noise = noisemodels.PauliErrorOnUnitary(*noise_params)
     # Test exectue an experiment.
-    myfactory1 = standardrb.moduleFactory(nqubits, list(depths) * runs)
-    myfaultyexperiment = standardrb.moduleExperiment(
+    myfactory1 = standardrb.ModuleFactory(nqubits, list(depths) * runs)
+    myfaultyexperiment = standardrb.ModuleExperiment(
         myfactory1, nshots=nshots, noise_model=noise
     )
     myfaultyexperiment.perform(myfaultyexperiment.execute)
@@ -101,14 +101,14 @@ def test_experiment_withnoise(
 @pytest.mark.parametrize("qubits", [[0], [0, 1]])
 def test_embed_circuit(nqubits: int, depths: list, runs: int, qubits: list):
     nshots = 2
-    myfactory1 = standardrb.moduleFactory(nqubits, list(depths) * runs, qubits=qubits)
+    myfactory1 = standardrb.ModuleFactory(nqubits, list(depths) * runs, qubits=qubits)
     test_list = list(product(qubits))
     test_list.append(tuple(qubits))
     for circuit in myfactory1:
         assert circuit.nqubits == nqubits
         for gate in circuit.queue:
             assert gate._target_qubits in test_list
-    myexperiment1 = standardrb.moduleExperiment(myfactory1, nshots=nshots)
+    myexperiment1 = standardrb.ModuleExperiment(myfactory1, nshots=nshots)
     myexperiment1.perform(myexperiment1.execute)
 
 
@@ -121,8 +121,8 @@ def test_utils_probs_and_noisy_execution(
     # Build the noise model.
     noise = noisemodels.PauliErrorOnUnitary(*noise_params)
     # Test exectue an experiment.
-    myfactory1 = standardrb.moduleFactory(nqubits, list(depths) * runs)
-    myfaultyexperiment = standardrb.moduleExperiment(
+    myfactory1 = standardrb.ModuleFactory(nqubits, list(depths) * runs)
+    myfaultyexperiment = standardrb.ModuleExperiment(
         myfactory1, nshots=nshots, noise_model=noise
     )
     myfaultyexperiment.perform(myfaultyexperiment.execute)
@@ -146,8 +146,8 @@ def test_post_processing(nqubits: int, depths: list, runs: int, nshots: int):
     # Build the noise model.
     noise = noisemodels.PauliErrorOnUnitary(*noise_params)
     # Test exectue an experiment.
-    myfactory1 = standardrb.moduleFactory(nqubits, list(depths) * runs)
-    myfaultyexperiment = standardrb.moduleExperiment(
+    myfactory1 = standardrb.ModuleFactory(nqubits, list(depths) * runs)
+    myfaultyexperiment = standardrb.ModuleExperiment(
         myfactory1, nshots=nshots, noise_model=noise
     )
     myfaultyexperiment.perform(myfaultyexperiment.execute)
@@ -175,8 +175,8 @@ def test_build_report():
     # Build the noise model.
     noise = noisemodels.PauliErrorOnUnitary(*noise_params)
     # Test exectue an experiment.
-    myfactory1 = standardrb.moduleFactory(nqubits, depths * runs)
-    myfaultyexperiment = standardrb.moduleExperiment(
+    myfactory1 = standardrb.ModuleFactory(nqubits, depths * runs)
+    myfaultyexperiment = standardrb.ModuleExperiment(
         myfactory1, nshots=nshots, noise_model=noise
     )
     myfaultyexperiment.perform(myfaultyexperiment.execute)

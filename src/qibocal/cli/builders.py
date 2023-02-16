@@ -113,10 +113,10 @@ class niGSCactionParser(ActionParser):
         """
 
         # Initiate the factory and the experiment.
-        factory = self.module.moduleFactory(
+        factory = self.module.ModuleFactory(
             self.nqubits, self.depths * self.runs, qubits=self.runcard["qubits"]
         )
-        experiment = self.module.moduleExperiment(
+        experiment = self.module.ModuleExperiment(
             factory, nshots=self.nshots, noise_model=self.noise_model
         )
         # Execute the circuits in the experiment.
