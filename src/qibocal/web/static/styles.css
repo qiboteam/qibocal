@@ -173,12 +173,45 @@
   font-size: 0.8em;
 }
 
+
 @media print {
+
+  .impresion main
+  {
+    transform: scale(0.52) translate(0%, 0%);
+    transform-origin: top left;
+  }
+
+  .impresion header
+  {
+    display: none;
+  }
 
   .sidebar
   {
     width:0px;
     overflow-y: hidden;
+    display: none;
+  }
+
+  .impresion #export-pdf
+  {
+    display: none;
+  }
+
+  .impresion #margin
+  {
+    display: none;
+  }
+
+  .impresion #actions
+  {
+    display: none;
+  }
+
+  #margin_iframes
+  {
+    margin-top:-20px;
   }
 
   .refresh-area
@@ -189,7 +222,7 @@
 
   .ms-sm-auto
   {
-    width:1800px;
+    width:2800px;
     overflow-y: hidden;
     overflow-x: hidden;
   }
@@ -198,6 +231,4 @@
   {
     margin-left: -30%;
   }
-
-
 }
