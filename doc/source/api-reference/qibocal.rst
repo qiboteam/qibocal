@@ -185,9 +185,9 @@ Standard RB
    :undoc-members:
    :show-inheritance:
 
-Correlated RB
-^^^^^^^^^^^^^
-.. automodule:: qibocal.calibrations.niGSC.correlatedrb
+Simultaneous Filtered RB
+^^^^^^^^^^^^^^^^^^^^^^^^
+.. automodule:: qibocal.calibrations.niGSC.simulfilteredrb
    :members:
    :undoc-members:
    :show-inheritance:

@@ -4,7 +4,7 @@ import pytest
 from plotly.graph_objects import Figure
 from qibo import gates, models
 
-from qibocal.calibrations.niGSC import correlatedrb
+from qibocal.calibrations.niGSC import simulfilteredrb
 from qibocal.calibrations.niGSC.basics import noisemodels, utils
 
 
@@ -26,8 +26,8 @@ def test_experiment(nqubits: int, depths: list, runs: int, nshots: int, qubits: 
     if max(qubits) > nqubits - 1:
         pass
     else:
-        myfactory1 = correlatedrb.moduleFactory(nqubits, depths * runs)
-        myexperiment1 = correlatedrb.moduleExperiment(myfactory1, nshots=nshots)
+        myfactory1 = simulfilteredrb.moduleFactory(nqubits, depths * runs)
+        myexperiment1 = simulfilteredrb.moduleExperiment(myfactory1, nshots=nshots)
         myexperiment1.perform(myexperiment1.execute)
         assert isinstance(myexperiment1.data, list)
         assert isinstance(myexperiment1.data[0], dict)
@@ -58,15 +58,15 @@ def test_experiment_withnoise(nqubits: int, noise_params):
     # Build the noise model.
     noise = noisemodels.PauliErrorOnUnitary(*noise_params)
     # Test exectue an experiment.
-    myfactory1 = correlatedrb.moduleFactory(nqubits, depths * runs)
+    myfactory1 = simulfilteredrb.moduleFactory(nqubits, depths * runs)
     circuit_list = list(myfactory1)
-    myfaultyexperiment = correlatedrb.moduleExperiment(
+    myfaultyexperiment = simulfilteredrb.moduleExperiment(
         circuit_list, nshots=nshots, noise_model=noise
     )
     myfaultyexperiment.perform(myfaultyexperiment.execute)
-    experiment1 = correlatedrb.moduleExperiment(circuit_list, nshots=nshots)
+    experiment1 = simulfilteredrb.moduleExperiment(circuit_list, nshots=nshots)
     experiment1.perform(experiment1.execute)
-    experiment12 = correlatedrb.moduleExperiment(circuit_list, nshots=nshots)
+    experiment12 = simulfilteredrb.moduleExperiment(circuit_list, nshots=nshots)
     experiment12.perform(experiment12.execute)
     for datarow_faulty, datarow2, datarow3 in zip(
         myfaultyexperiment.data, experiment1.data, experiment12.data
@@ -140,10 +140,10 @@ def test_filterfunction():
     c = models.Circuit(nqubits)
     c.add([g1, g3, g2, g4])
     c.add(gates.M(0, 1))
-    experiment = correlatedrb.moduleExperiment([c], nshots=nshots)
+    experiment = simulfilteredrb.moduleExperiment([c], nshots=nshots)
     experiment.perform(experiment.execute)
     # Compute and get the filtered signals.
-    experiment.perform(correlatedrb.filter_function)
+    experiment.perform(simulfilteredrb.filter_function)
     # Compare the above calculated filtered signals and the signals
     # computed with the crosstalkrb method.
     assert isinstance(experiment.data, list)
@@ -162,13 +162,13 @@ def test_post_processing(
     # Build the noise model.
     noise = noisemodels.PauliErrorOnUnitary(*noise_params)
     # Test exectue an experiment.
-    myfactory1 = correlatedrb.moduleFactory(nqubits, list(depths) * runs)
-    myfaultyexperiment = correlatedrb.moduleExperiment(
+    myfactory1 = simulfilteredrb.moduleFactory(nqubits, list(depths) * runs)
+    myfaultyexperiment = simulfilteredrb.moduleExperiment(
         myfactory1, nshots=nshots, noise_model=noise
     )
     myfaultyexperiment.perform(myfaultyexperiment.execute)
-    correlatedrb.post_processing_sequential(myfaultyexperiment)
-    aggr_df = correlatedrb.get_aggregational_data(myfaultyexperiment)
+    simulfilteredrb.post_processing_sequential(myfaultyexperiment)
+    aggr_df = simulfilteredrb.get_aggregational_data(myfaultyexperiment)
     assert (
         len(aggr_df) == 2**nqubits
         and aggr_df.index[0] == "irrep0"
@@ -191,12 +191,12 @@ def test_build_report():
     # Build the noise model.
     noise = noisemodels.PauliErrorOnUnitary(*noise_params)
     # Test exectue an experiment.
-    myfactory1 = correlatedrb.moduleFactory(nqubits, depths * runs)
-    myfaultyexperiment = correlatedrb.moduleExperiment(
+    myfactory1 = simulfilteredrb.moduleFactory(nqubits, depths * runs)
+    myfaultyexperiment = simulfilteredrb.moduleExperiment(
         myfactory1, nshots=nshots, noise_model=noise
     )
     myfaultyexperiment.perform(myfaultyexperiment.execute)
-    correlatedrb.post_processing_sequential(myfaultyexperiment)
-    aggr_df = correlatedrb.get_aggregational_data(myfaultyexperiment)
-    report_figure = correlatedrb.build_report(myfaultyexperiment, aggr_df)
+    simulfilteredrb.post_processing_sequential(myfaultyexperiment)
+    aggr_df = simulfilteredrb.get_aggregational_data(myfaultyexperiment)
+    report_figure = simulfilteredrb.build_report(myfaultyexperiment, aggr_df)
     assert isinstance(report_figure, Figure)
