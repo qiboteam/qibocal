@@ -336,10 +336,9 @@ def qubit_spectroscopy_flux(
             # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulses[qubit].serial]
             # store the results
-            biases = (
-                np.repeat(delta_bias_range, len(delta_frequency_range))
-                + platform.qubits[fluxline].flux.offset
-            )  # TODO: this will not work for dummy or qblox
+            biases = np.repeat(
+                delta_bias_range, len(delta_frequency_range)
+            ) + platform.get_bias(fluxline)
             freqs = np.array(
                 len(delta_bias_range)
                 * list(delta_frequency_range + qd_pulses[qubit].frequency)
