@@ -4,11 +4,10 @@ from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import exp
-from qibocal.plots.utils import get_color, get_data_subfolders, grouped_by_mean_one
+from qibocal.plots.utils import get_color, get_data_subfolders, grouped_by_mean
 
 
 # T1
-# performance checked: pass
 def t1_time_msr(folder, routine, qubit, format):
     figures = []
 
@@ -75,12 +74,11 @@ def t1_time_msr(folder, routine, qubit, format):
 
         if len(iterations) > 1:
             data.df = data.df.drop(columns=["iteration"])
-            unique_waits, mean_measurements = grouped_by_mean_one(data.df, 1, 0)
+            unique_waits, mean_measurements = grouped_by_mean(data.df, 1, 0)
             fig.add_trace(
                 go.Scatter(
-                    x=unique_waits,  # waits,
-                    y=mean_measurements
-                    * 1e6,  # data.df.groupby("wait")["MSR"].mean().pint.to("uV").pint.magnitude,
+                    x=unique_waits,
+                    y=mean_measurements * 1e6,
                     marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,
@@ -117,7 +115,6 @@ def t1_time_msr(folder, routine, qubit, format):
                 row=1,
                 col=1,
             )
-            # T1 lable modificado para tests. Volver a modificart a T1
             fitting_report = fitting_report + (
                 f"q{qubit}/r{report_n} t1: {params['T1']:,.0f} ns.<br><br>"
             )

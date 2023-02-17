@@ -6,16 +6,10 @@ from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import freq_r_mathieu, freq_r_transmon, line, lorenzian
-from qibocal.plots.utils import (
-    get_color,
-    get_data_subfolders,
-    grouped_by_mean,
-    grouped_by_mean_one,
-)
+from qibocal.plots.utils import get_color, get_data_subfolders, grouped_by_mean
 
 
 # Resonator and qubit spectroscopies
-# performance checked: pass
 def frequency_msr_phase(folder, routine, qubit, format):
     figures = []
 
@@ -109,14 +103,11 @@ def frequency_msr_phase(folder, routine, qubit, format):
                 )
             if len(iterations) > 1:
                 data.df = data.df.drop(columns=["iteration"])
-                unique_frequencies, mean_measurements = grouped_by_mean_one(
-                    data.df, 2, 0
-                )
+                unique_frequencies, mean_measurements = grouped_by_mean(data.df, 2, 0)
                 fig.add_trace(
                     go.Scatter(
-                        x=unique_frequencies,  # frequencies,
-                        y=mean_measurements
-                        * 1e6,  # data.df.groupby("frequency")["MSR"].mean().pint.to("uV").pint.magnitude,
+                        x=unique_frequencies,
+                        y=mean_measurements * 1e6,
                         marker_color=get_color(2 * report_n + i),
                         name=f"q{qubit}/r{report_n}: {label} Average",
                         showlegend=True,
@@ -125,12 +116,11 @@ def frequency_msr_phase(folder, routine, qubit, format):
                     row=1,
                     col=1,
                 )
-                print(data.df)
-                unique_frequencies, mean_phases = grouped_by_mean_one(data.df, 2, 1)
+                unique_frequencies, mean_phases = grouped_by_mean(data.df, 2, 1)
                 fig.add_trace(
                     go.Scatter(
-                        x=unique_frequencies,  # frequencies,
-                        y=mean_phases,  # data.df.groupby("frequency")["phase"].mean().pint.to("rad").pint.magnitude,
+                        x=unique_frequencies,
+                        y=mean_phases,
                         marker_color=get_color(2 * report_n + i),
                         showlegend=False,
                         legendgroup=f"q{qubit}/r{report_n}: {label} Average",
@@ -211,8 +201,6 @@ def frequency_msr_phase(folder, routine, qubit, format):
 
 
 # Punchout
-# performance checked: pass
-# Check normalization with Alvaro or Sergi!!
 def frequency_attenuation_msr_phase(folder, routine, qubit, format):
     figures = []
 
@@ -243,8 +231,6 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
             )
 
         iterations = data.df["iteration"].unique()
-        # frequencies = data.df["frequency"].pint.to("Hz").pint.magnitude.unique()
-        # attenuations = data.df["attenuation"].pint.to("dB").pint.magnitude.unique()
 
         averaged_data = data.df.drop(columns=["i", "q", "qubit", "iteration"])
 
@@ -254,7 +240,7 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
                 unique_attenuations,
                 mean_measurements,
                 mean_phases,
-            ) = grouped_by_mean(averaged_data, 2, 3, 0, 1)
+            ) = grouped_by_mean(averaged_data, 2, 0, 3, 1)
         else:
             unique_frequencies = averaged_data["frequency"].pint.to("Hz").pint.magnitude
             unique_attenuations = (
@@ -263,28 +249,16 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
             mean_measurements = averaged_data["MSR"].pint.to("V").pint.magnitude
             mean_phases = averaged_data["phase"].pint.to("rad").pint.magnitude
 
-        # averaged_data = (
-        #     data.df.drop(columns=["qubit", "iteration"])
-        #     .groupby(["frequency", "attenuation"], as_index=False)
-        #     .mean()
-        # )
-
         def norm(x_mags):
-            # x_mags = x.pint.to("V").pint.magnitude
             return (x_mags - np.min(x_mags)) / (np.max(x_mags) - np.min(x_mags))
-
-        # normalised_data = averaged_data.groupby(["attenuation"], as_index=False)[
-        #     ["MSR"]
-        # ].transform(norm)
 
         normalised_data = norm(mean_measurements)
 
         fig.add_trace(
             go.Heatmap(
-                x=unique_frequencies,  # averaged_data["frequency"].pint.to("Hz").pint.magnitude,
-                y=unique_attenuations,  # averaged_data["attenuation"].pint.to("dB").pint.magnitude,
-                z=normalised_data,  # normalised_data["MSR"],
-                # z=averaged_data["MSR"].pint.to("V").pint.magnitude,
+                x=unique_frequencies,
+                y=unique_attenuations,
+                z=normalised_data,
                 colorbar_x=0.46,
             ),
             row=1 + report_n,
@@ -296,9 +270,9 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
         fig.update_yaxes(title_text="Attenuation (dB)", row=1 + report_n, col=1)
         fig.add_trace(
             go.Heatmap(
-                x=unique_frequencies,  # averaged_data["frequency"].pint.to("Hz").pint.magnitude,
-                y=unique_attenuations,  # averaged_data["attenuation"].pint.to("dB").pint.magnitude,
-                z=mean_phases,  # averaged_data["phase"].pint.to("rad").pint.magnitude,
+                x=unique_frequencies,
+                y=unique_attenuations,
+                z=mean_phases,
                 colorbar_x=1.01,
             ),
             row=1 + report_n,
@@ -323,7 +297,6 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
 
 
 # Resonator and qubit spectroscopies
-# performance checked: pass
 def frequency_attenuation_msr_phase_cut(folder, routine, qubit, format):
     figures = []
 
@@ -393,12 +366,11 @@ def frequency_attenuation_msr_phase_cut(folder, routine, qubit, format):
             )
         if len(iterations) > 1:
             data.df = data.df.drop(columns=["iteration"])
-            unique_frequencies, mean_measurements = grouped_by_mean_one(data.df, 2, 0)
+            unique_frequencies, mean_measurements = grouped_by_mean(data.df, 2, 0)
             fig.add_trace(
                 go.Scatter(
-                    x=unique_frequencies,  # frequencies,
-                    y=mean_measurements
-                    * 1e6,  # data.df.groupby("frequency")["MSR"].mean().pint.to("uV").pint.magnitude,  # pylint: disable=E1101
+                    x=unique_frequencies,
+                    y=mean_measurements * 1e6,  # pylint: disable=E1101
                     marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,
@@ -407,11 +379,11 @@ def frequency_attenuation_msr_phase_cut(folder, routine, qubit, format):
                 row=1,
                 col=1,
             )
-            unique_frequencies, mean_phases = grouped_by_mean_one(data.df, 2, 1)
+            unique_frequencies, mean_phases = grouped_by_mean(data.df, 2, 1)
             fig.add_trace(
                 go.Scatter(
-                    x=unique_frequencies,  # frequencies,
-                    y=mean_phases,  # data.df.groupby("frequency")["phase"].mean().pint.to("rad").pint.magnitude,  # pylint: disable=E1101
+                    x=unique_frequencies,
+                    y=mean_phases,  # pylint: disable=E1101
                     marker_color=get_color(report_n),
                     showlegend=False,
                     legendgroup=f"q{qubit}/r{report_n}: Average",
@@ -437,7 +409,6 @@ def frequency_attenuation_msr_phase_cut(folder, routine, qubit, format):
 
 
 # Resonator spectroscopy flux
-# performance checked: pass
 def frequency_flux_msr_phase(folder, routine, qubit, format):
     figures = []
 
@@ -484,7 +455,7 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
                         unique_currents,
                         mean_measurements,
                         mean_phases,
-                    ) = grouped_by_mean(fluxline_df, 2, 3, 0, 1)
+                    ) = grouped_by_mean(fluxline_df, 2, 0, 3, 1)
                 else:
                     unique_frequencies = (
                         fluxline_df["frequency"].pint.to("Hz").pint.magnitude
@@ -532,7 +503,7 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
                     unique_currents,
                     mean_measurements,
                     mean_phases,
-                ) = grouped_by_mean(fluxline_df, 2, 3, 0, 1)
+                ) = grouped_by_mean(fluxline_df, 2, 0, 3, 1)
             else:
                 unique_frequencies = (
                     fluxline_df["frequency"].pint.to("Hz").pint.magnitude
@@ -590,7 +561,6 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
 
 
 # Dispersive shift
-# performance checked: pass
 def dispersive_frequency_msr_phase(folder, routine, qubit, format):
     figures = []
 
@@ -707,14 +677,11 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, format):
                 )
             if len(iterations) > 1:
                 data.df = data.df.drop(columns=["iteration"])
-                unique_frequencies, mean_measurements = grouped_by_mean_one(
-                    data.df, 2, 0
-                )
+                unique_frequencies, mean_measurements = grouped_by_mean(data.df, 2, 0)
                 fig.add_trace(
                     go.Scatter(
-                        x=unique_frequencies,  # frequencies,
-                        y=mean_measurements
-                        * 1e6,  # data.df.groupby("frequency")["MSR"].mean().pint.to("uV").pint.magnitude,
+                        x=unique_frequencies,
+                        y=mean_measurements * 1e6,
                         marker_color=get_color(2 * report_n + i),
                         name=f"q{qubit}/r{report_n}: {label} Average",
                         showlegend=True,
@@ -723,11 +690,11 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, format):
                     row=1,
                     col=1,
                 )
-                unique_frequencies, mean_phases = grouped_by_mean_one(data.df, 2, 1)
+                unique_frequencies, mean_phases = grouped_by_mean(data.df, 2, 1)
                 fig.add_trace(
                     go.Scatter(
-                        x=unique_frequencies,  # frequencies,
-                        y=mean_phases,  # data.df.groupby("frequency")["phase"].mean().pint.to("rad").pint.magnitude,
+                        x=unique_frequencies,
+                        y=mean_phases,
                         marker_color=get_color(2 * report_n + i),
                         showlegend=False,
                         legendgroup=f"q{qubit}/r{report_n}: {label} Average",
@@ -820,7 +787,6 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, format):
     return figures
 
 
-# Not modified or checked
 def frequency_attenuation(folder, routine, qubit, format):
     """Plot of the experimental data for the flux resonator flux spectroscopy and its corresponding fit.
         Args:

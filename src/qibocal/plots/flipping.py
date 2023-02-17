@@ -4,11 +4,10 @@ from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import flipping
-from qibocal.plots.utils import get_color, get_data_subfolders, grouped_by_mean_one
+from qibocal.plots.utils import get_color, get_data_subfolders, grouped_by_mean
 
 
 # Flipping
-# performance checked: pass
 def flips_msr(folder, routine, qubit, format):
     figures = []
 
@@ -75,12 +74,11 @@ def flips_msr(folder, routine, qubit, format):
 
         if len(iterations) > 1:
             data.df = data.df.drop(columns=["iteration"])
-            unique_flips, mean_measurements = grouped_by_mean_one(data.df, 1, 0)
+            unique_flips, mean_measurements = grouped_by_mean(data.df, 1, 0)
             fig.add_trace(
                 go.Scatter(
-                    x=unique_flips,  # flips,
-                    y=mean_measurements
-                    * 1e6,  # data.df.groupby("flips")["MSR"].mean().pint.to("uV").pint.magnitude,
+                    x=unique_flips,
+                    y=mean_measurements * 1e6,
                     marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,
