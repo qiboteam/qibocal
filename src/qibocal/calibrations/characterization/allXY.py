@@ -336,7 +336,7 @@ def drag_pulse_tuning(
                 r2 = result2[ro_pulse.serial]
                 # store the results
                 r = {
-                    "MSR[V]": r1.msr.mean() - r2.msr.mean(),
+                    "MSR[V]": r1.measurement.mean() - r2.measurement.mean(),
                     "i[V]": r1.i.mean() - r2.i.mean(),
                     "q[V]": r1.q.mean() - r2.q.mean(),
                     "phase[rad]": r1.phase.mean() - r2.phase.mean(),

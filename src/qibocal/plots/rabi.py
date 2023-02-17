@@ -147,32 +147,14 @@ def time_msr_phase(folder, routine, qubit, format):
             fitting_report = (
                 fitting_report
                 + (
-                    f"q{qubit}/r{report_n} pi_pulse_duration: {params['pi_pulse_duration']:.2f} ns<br>"
+                    f"q{qubit}/r{report_n} | pi_pulse_duration: {params['pi_pulse_duration']:.2f} ns<br>"
                 )
                 + (
-                    f"q{qubit}/r{report_n} pi_pulse_peak_voltage: {params['pi_pulse_peak_voltage']:,.0f} uV.<br><br>"
+                    f"q{qubit}/r{report_n} | pi_pulse_peak_voltage: {params['pi_pulse_peak_voltage']:,.0f} uV.<br><br>"
                 )
             )
 
         report_n += 1
-
-    fig.add_annotation(
-        dict(
-            font=dict(color="black", size=12),
-            x=0,
-            y=1.2,
-            showarrow=False,
-            text="<b>FITTING DATA</b>",
-            font_family="Arial",
-            font_size=20,
-            textangle=0,
-            xanchor="left",
-            xref="paper",
-            yref="paper",
-            font_color="#5e9af1",
-            hovertext=fitting_report,
-        )
-    )
 
     # last part
     fig.update_layout(
@@ -186,7 +168,7 @@ def time_msr_phase(folder, routine, qubit, format):
 
     figures.append(fig)
 
-    return figures
+    return figures, fitting_report
 
 
 # Rabi oscillations pulse gain
@@ -333,32 +315,14 @@ def gain_msr_phase(folder, routine, qubit, format):
             fitting_report = (
                 fitting_report
                 + (
-                    f"q{qubit}/r{report_n} pi_pulse_gain: {params['pi_pulse_gain']:.3f}<br>"
+                    f"q{qubit}/r{report_n} | pi_pulse_gain: {params['pi_pulse_gain']:.3f}<br>"
                 )
                 + (
-                    f"q{qubit}/r{report_n} pi_pulse_peak_voltage: {params['pi_pulse_peak_voltage']:,.0f} uV.<br><br>"
+                    f"q{qubit}/r{report_n} | pi_pulse_peak_voltage: {params['pi_pulse_peak_voltage']:,.0f} uV.<br><br>"
                 )
             )
 
         report_n += 1
-
-    fig.add_annotation(
-        dict(
-            font=dict(color="black", size=12),
-            x=0,
-            y=1.2,
-            showarrow=False,
-            text="<b>FITTING DATA</b>",
-            font_family="Arial",
-            font_size=20,
-            textangle=0,
-            xanchor="left",
-            xref="paper",
-            yref="paper",
-            font_color="#5e9af1",
-            hovertext=fitting_report,
-        )
-    )
 
     fig.update_layout(
         showlegend=True,
@@ -371,12 +335,13 @@ def gain_msr_phase(folder, routine, qubit, format):
 
     figures.append(fig)
 
-    return figures
+    return figures, fitting_report
 
 
 # Rabi oscillations pulse amplitude
 def amplitude_msr_phase(folder, routine, qubit, format):
     figures = []
+    fitting_report = ""
 
     fig = make_subplots(
         rows=1,
@@ -392,7 +357,6 @@ def amplitude_msr_phase(folder, routine, qubit, format):
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
     report_n = 0
-    fitting_report = ""
     for subfolder in subfolders:
         try:
             data = DataUnits.load_data(folder, subfolder, routine, format, f"data")
@@ -523,32 +487,14 @@ def amplitude_msr_phase(folder, routine, qubit, format):
             fitting_report = (
                 fitting_report
                 + (
-                    f"q{qubit}/r{report_n} pi_pulse_amplitude: {params['pi_pulse_amplitude']:.3f}<br>"
+                    f"q{qubit}/r{report_n} | pi_pulse_amplitude: {params['pi_pulse_amplitude']:.3f}<br>"
                 )
                 + (
-                    f"q{qubit}/r{report_n} pi_pulse_peak_voltage: {params['pi_pulse_peak_voltage']:,.0f} uV.<br><br>"
+                    f"q{qubit}/r{report_n} | pi_pulse_peak_voltage: {params['pi_pulse_peak_voltage']:,.0f} uV.<br><br>"
                 )
             )
 
         report_n += 1
-
-    fig.add_annotation(
-        dict(
-            font=dict(color="black", size=12),
-            x=0,
-            y=1.2,
-            showarrow=False,
-            text="<b>FITTING DATA</b>",
-            font_family="Arial",
-            font_size=20,
-            textangle=0,
-            xanchor="left",
-            xref="paper",
-            yref="paper",
-            font_color="#5e9af1",
-            hovertext=fitting_report,
-        )
-    )
 
     fig.update_layout(
         showlegend=True,
@@ -561,12 +507,13 @@ def amplitude_msr_phase(folder, routine, qubit, format):
 
     figures.append(fig)
 
-    return figures
+    return figures, fitting_report
 
 
 # Rabi pulse length and gain
 def duration_gain_msr_phase(folder, routine, qubit, format):
     figures = []
+    fitting_report = "No fitting data"
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
@@ -651,12 +598,13 @@ def duration_gain_msr_phase(folder, routine, qubit, format):
 
     figures.append(fig)
 
-    return figures
+    return figures, fitting_report
 
 
 # Rabi pulse length and amplitude
 def duration_amplitude_msr_phase(folder, routine, qubit, format):
     figures = []
+    fitting_report = "No fitting data"
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
@@ -749,4 +697,4 @@ def duration_amplitude_msr_phase(folder, routine, qubit, format):
 
     figures.append(fig)
 
-    return figures
+    return figures, fitting_report
