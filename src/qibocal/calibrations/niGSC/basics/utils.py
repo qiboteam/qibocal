@@ -88,3 +88,23 @@ def copy_circuit(circuit: Circuit):
     for gate in circuit.queue:
         newcircuit.add(deepcopy(gate))
     return newcircuit
+
+
+def gate_fidelity(eff_depol: float, primitive=False) -> float:
+    """Returns the average gate fidelity given the effective depolarizing parameter for single qubits.
+
+    If primitive is True, divide by additional 1.875 as convetion in RB reporting.
+    (The original reasoning was that Clifford gates are typically
+    compiled with an average number of 1.875 Pi half pulses.)
+
+    Args:
+        eff_depol (float): The effective depolarizing parameter.
+        primitive (bool, optional): If True, additionally divide by 1.875.
+
+    Returns:
+        float: Average gate fidelity
+    """
+    infidelity = (1 - eff_depol) / 2
+    if primitive:
+        infidelity /= 1.875
+    return 1 - infidelity

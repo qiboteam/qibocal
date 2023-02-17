@@ -18,6 +18,7 @@ import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
 from qibocal.calibrations.niGSC.basics.circuitfactory import SingleCliffordsFactory
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
 from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig
+from qibocal.calibrations.niGSC.basics.utils import gate_fidelity
 
 
 class ModuleFactory(SingleCliffordsFactory):
@@ -204,7 +205,13 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
             for key in df_aggr.iloc[0]["perr"]
         ]
     )
-    # Use the predefined ``scatter_fit_fig`` function from ``basics.utils`` to build the wanted
+    report.info_dict["Gate fidelity"] = "{:.4f}".format(
+        gate_fidelity(df_aggr.iloc[0]["popt"]["p"])
+    )
+    report.info_dict["Gate fidelity primitive"] = "{:.4f}".format(
+        gate_fidelity(df_aggr.iloc[0]["popt"]["p"], primitive=True)
+    )
+    # Use the predefined ``scatter_fit_fig`` function from ``basics.plot`` to build the wanted
     # plotly figure with the scattered ground state probability data along with the mean for
     # each depth and the exponential fit for the means.
     report.all_figures.append(

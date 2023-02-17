@@ -141,7 +141,7 @@ Fitting functions
    :show-inheritance:
 
 Gate set characterization
----------------------------------
+-------------------------
 
 .. _abstract-module-label:
 
