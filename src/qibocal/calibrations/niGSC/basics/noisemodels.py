@@ -91,8 +91,7 @@ class PauliErrorOnNonDiagonal(PauliErrorOnUnitary):
 
 
 class ThermalRelaxationErrorOnUnitary(NoiseModel):
-    """Builds a noise model with thermal relaxation error acting on unitaries.
-    """
+    """Builds a noise model with thermal relaxation error acting on unitaries."""
 
     def __init__(self, *args) -> None:
         super().__init__()
@@ -103,18 +102,19 @@ class ThermalRelaxationErrorOnUnitary(NoiseModel):
             # Raise ValueError if given paramters are wrong.
             raise_error(
                 ValueError,
-                "Wrong number of error parameters, {} instead of 3 or 4.".format(len(args)),
+                "Wrong number of error parameters, {} instead of 3 or 4.".format(
+                    len(args)
+                ),
             )
         self.build(*params)
 
     def build(self, *params):
         # Add ThermalRelaxationError to gates.Unitary
         self.add(ThermalRelaxationError(*params), gates.Unitary)
-    
+
 
 class ThermalRelaxationErrorOnX(ThermalRelaxationErrorOnUnitary):
-    """Builds a noise model with thermal relaxation error acting on X gates.
-    """
+    """Builds a noise model with thermal relaxation error acting on X gates."""
 
     def __init__(self, *args) -> None:
         super().__init__(*args)
@@ -125,8 +125,7 @@ class ThermalRelaxationErrorOnX(ThermalRelaxationErrorOnUnitary):
 
 
 class ThermalRelaxationErrorOnXAndRX(ThermalRelaxationErrorOnUnitary):
-    """Builds a noise model with thermal relaxation error acting on X and RX gates.
-    """
+    """Builds a noise model with thermal relaxation error acting on X and RX gates."""
 
     def __init__(self, *args) -> None:
         super().__init__(*args)
