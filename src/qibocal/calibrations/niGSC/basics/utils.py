@@ -73,7 +73,7 @@ def probabilities(allsamples: Union[list, np.ndarray]) -> np.ndarray:
         allsamples = allsamples[None, ...]
     nqubits, nshots = len(allsamples[0][0]), len(allsamples[0])
     # Create all possible state vectors.
-    allstates = product([0, 1], repeat=nqubits)
+    allstates = list(product([0, 1], repeat=nqubits))
     # Iterate over all the samples and count the different states.
     probs = [
         [np.sum(np.product(samples == state, axis=1)) for state in allstates]

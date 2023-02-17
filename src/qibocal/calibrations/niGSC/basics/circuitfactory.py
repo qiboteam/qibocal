@@ -81,6 +81,7 @@ class CircuitFactory:
     @abc.abstractmethod
     def gate_layer(self):
         """This method has to be overwritten by the inheriting child class."""
+        raise_error(NotImplementedError)
 
 
 class Qibo1qGatesFactory(CircuitFactory):
