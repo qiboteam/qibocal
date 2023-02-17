@@ -45,12 +45,12 @@ class ActionParser:
             if param not in self.params:
                 raise_error(AttributeError, f"Missing parameter {param} in runcard.")
 
-    def execute(self, data_format, platform):
+    def execute(self, data_format, platform, qubits):
         """Execute action and retrieve results."""
         if data_format is None:
             raise_error(ValueError, f"Cannot store data using {data_format} format.")
 
-        results = self.func(platform, self.runcard["qubits"], **self.params)
+        results = self.func(platform, qubits, **self.params)
 
         for data in results:
             getattr(data, f"to_{data_format}")(self.path)
@@ -257,7 +257,7 @@ class ActionBuilder:
             except (ModuleNotFoundError, KeyError):
                 parser = ActionParser(self.runcard, self.folder, action)
                 parser.build()
-                parser.execute(self.format, self.platform)
+                parser.execute(self.format, self.platform, self.qubits)
                 for qubit in self.qubits:
                     if self.platform is not None:
                         self.update_platform_runcard(qubit, action)
