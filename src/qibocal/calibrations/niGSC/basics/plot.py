@@ -8,6 +8,7 @@ from qibocal.calibrations.niGSC.basics.experiment import Experiment
 
 
 def plot_qq(folder: str, routine: str, qubit, format):
+    fitting_report = ""
     """Load the module for which the plot has to be done.
 
 
@@ -32,7 +33,7 @@ def plot_qq(folder: str, routine: str, qubit, format):
     aggr_df = pd.read_pickle(f"{folder}/data/{routine}/fit_plot.pkl")
     # Build the figure/report using the responsible module.
     plotly_figure = module.build_report(experiment, aggr_df)
-    return [plotly_figure]
+    return [plotly_figure], fitting_report
 
 
 class Report:

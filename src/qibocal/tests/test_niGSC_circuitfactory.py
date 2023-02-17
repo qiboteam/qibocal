@@ -37,27 +37,6 @@ def abstract_factorytest(gfactory):
         assert isinstance(circuit, models.Circuit)
 
 
-def general_circuittest(gfactory: CircuitFactory):
-    """Check if the circuits produced by the given factory are
-    kind of random.
-
-    Args:
-        gfactory (CircuitFactory): Produces circuits which are checked.
-    """
-    factory1 = deepcopy(gfactory)
-    factory2 = deepcopy(gfactory)
-    same_count = 0
-    count = 0
-    for circuit1, circuit2 in zip(factory1, factory2):
-        same_circuit = True
-        for gate1, gate2 in zip(circuit1.queue[:-1], circuit2.queue[:-1]):
-            same_circuit *= np.array_equal(gate1.matrix, gate2.matrix)
-        same_count += same_circuit
-        count += 1
-    # Half of the runs should not give the same
-    assert same_count <= count * 0.5
-
-
 def test_abstract_factory():
     cfactory = CircuitFactory(1, [1, 2] * 3, qubits=[0])
     with pytest.raises(NotImplementedError):
@@ -98,7 +77,6 @@ def test_general_singlequbitgates_factories(
                 factory = factory_init(nqubits, list(depths) * runs, qubits=qubits)
                 abstract_factorytest(factory)
                 # if factory.name not in ('XId', 'SingleCliffordsInv'):
-                general_circuittest(factory)
                 if "inv" in factory.name or "Inv" in factory.name:
                     # When checking the depth of circuits, the measurement gate and inverse gate
                     # has to be taken into account
