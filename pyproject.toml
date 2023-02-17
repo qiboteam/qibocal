@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "qibocal"
-version = "0.0.1"
+version = "0.0.1.dev0"
 description = ""
-authors = ["The Qibo Team"]
+authors = ["andrea-pasquale <andreapasquale97@gmail.com>"]
 license = "Apache License 2.0"
 readme = "README.md"
 homepage = ""
