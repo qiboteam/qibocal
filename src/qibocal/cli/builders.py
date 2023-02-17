@@ -246,7 +246,9 @@ class ActionBuilder:
             self.platform.setup()
             self.platform.start()
 
+        actions = []
         for action in self.runcard["actions"]:
+            actions.append(action)
             try:
                 parser = niGSCactionParser(self.runcard, self.folder, action)
                 parser.build()
@@ -259,6 +261,7 @@ class ActionBuilder:
                 for qubit in self.qubits:
                     if self.platform is not None:
                         self.update_platform_runcard(qubit, action)
+            self.dump_report(actions)
 
         if self.platform is not None:
             self.platform.stop()
@@ -285,7 +288,7 @@ class ActionBuilder:
                 settings, file, sort_keys=False, indent=4, default_flow_style=None
             )
 
-    def dump_report(self):
+    def dump_report(self, actions=None):
         from qibocal.web.report import create_report
 
         # update end time
@@ -295,7 +298,7 @@ class ActionBuilder:
         with open(f"{self.folder}/meta.yml", "w") as file:
             yaml.dump(meta, file)
 
-        create_report(self.folder)
+        create_report(self.folder, actions)
 
 
 class ReportBuilder:
@@ -303,9 +306,11 @@ class ReportBuilder:
 
     Args:
         path (str): Path to the data folder to generate report for.
+        actions (list): List of action to be included in the report. Default is `None`
+                        which corresponds to including all the actions in the qq runcard.
     """
 
-    def __init__(self, path):
+    def __init__(self, path, actions=None):
         self.path = path
         self.metadata = load_yaml(os.path.join(path, "meta.yml"))
 
@@ -321,8 +326,10 @@ class ReportBuilder:
         # create calibration routine objects
         # (could be incorporated to :meth:`qibocal.cli.builders.ActionBuilder._build_single_action`)
         self.routines = []
+        if actions is None:
+            actions = self.runcard.get("actions")
 
-        for action in self.runcard.get("actions"):
+        for action in actions:
             if hasattr(calibrations, action):
                 routine = getattr(calibrations, action)
             elif hasattr(calibrations.niGSC, action):
