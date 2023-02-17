@@ -51,7 +51,6 @@ def grouped_by_mean(df, g_column1, m_column1, g_column2=None, m_column2=None):
 
     # group by 1 column
     if (g_column2 == None) and (m_column2 == None):
-        print("grouped by 1 columns")
         # Group by column g_column and calculate mean of m_column
         unique_column, column_indexes = np.unique(
             data[:, g_column1], return_inverse=True
@@ -67,7 +66,6 @@ def grouped_by_mean(df, g_column1, m_column1, g_column2=None, m_column2=None):
 
     # group by 2 columns
     else:
-        print("grouped by 2 columns")
         # Group by columns g_column1 and g_column2 and calculate mean of m_column1 and m_column2
         unique_column1, column1_indexes = np.unique(
             data[:, g_column1], return_inverse=True

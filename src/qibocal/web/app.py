@@ -97,8 +97,6 @@ def get_graph(interval, url, value):
         figs, fitting_report = getattr(plots, method)(folder, routine, qubit, format)
         et = time.time()
 
-        print(f"elapsed time: {et-st}")
-
         if value == 0:
             refresh_rate = int(et - st) + 6
         else:
