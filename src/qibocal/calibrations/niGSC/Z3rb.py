@@ -4,6 +4,7 @@ from collections.abc import Iterable
 
 import numpy as np
 import pandas as pd
+import qibo
 from plotly.graph_objects import Figure
 from qibo import gates
 from qibo.models import Circuit
@@ -14,7 +15,6 @@ from qibocal.calibrations.niGSC.basics.circuitfactory import CircuitFactory
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
 from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig
 
-import qibo
 qibo.set_backend("numpy")
 
 
@@ -81,13 +81,13 @@ class ModuleReport(Report):
 def filter_irrep(circuit: Circuit, datarow: dict) -> dict:
     """Calculates the filtered signal for the gate group :math:`\\{Id, R_x(2\\pi/3), R_x(4\\pi/3)\\}`.
 
-    Each gate from the circuit with gates :math:`g` can be written as :math:`g_j=R_x(k_j\\cdot 2\\pi/3)` 
+    Each gate from the circuit with gates :math:`g` can be written as :math:`g_j=R_x(k_j\\cdot 2\\pi/3)`
     and :math`i` the outcome which is either ground state :math:`0`
     or exited state :math:`1`.
 
     .. math::
         f_{\\lambda}(i,g)
-        = (-1)^i\\left(\\frac\\{-1+\sqrt3i\\}\\{2\\}\\right)^{\\sum k_j}/2
+        = (-1)^i\\left(\\frac\\{-1+\\sqrt3i\\}\\{2\\}\\right)^{\\sum k_j}/2
 
 
     Args:
@@ -102,9 +102,11 @@ def filter_irrep(circuit: Circuit, datarow: dict) -> dict:
     sumK = datarow["sumK"]
     filtervalue = 0
     for s in samples:
-        filtervalue += (-1)**s[0] * np.conj(((-1 + np.sqrt(3)*1j) / 2) ** (sumK % 3) / 2.0)
+        filtervalue += (-1) ** s[0] * np.conj(
+            ((-1 + np.sqrt(3) * 1j) / 2) ** (sumK % 3) / 2.0
+        )
 
-    datarow["filter"] = np.real(filtervalue / len(samples)) 
+    datarow["filter"] = np.real(filtervalue / len(samples))
     return datarow
 
 

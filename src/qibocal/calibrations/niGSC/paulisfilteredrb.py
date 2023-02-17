@@ -4,9 +4,9 @@ from collections.abc import Iterable
 
 import numpy as np
 import pandas as pd
+import qibo
 from plotly.graph_objects import Figure
-from qibo import gates
-from qibo import matrices
+from qibo import gates, matrices
 from qibo.models import Circuit
 from qibo.noise import NoiseModel
 
@@ -15,7 +15,6 @@ from qibocal.calibrations.niGSC.basics.circuitfactory import CircuitFactory
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
 from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig
 
-import qibo
 qibo.set_backend("numpy")
 
 # matrices = QiboMatrices()
@@ -23,8 +22,8 @@ pauli_list = []
 for p in [matrices.I, matrices.X, matrices.Y, matrices.Z]:
     pauli_list.append(gates.Unitary(p, 0))
     pauli_list.append(gates.Unitary(-p, 0))
-    pauli_list.append(gates.Unitary(1j*p, 0))
-    pauli_list.append(gates.Unitary(-1j*p, 0))
+    pauli_list.append(gates.Unitary(1j * p, 0))
+    pauli_list.append(gates.Unitary(-1j * p, 0))
 
 
 def is_xy(g):
@@ -117,7 +116,7 @@ def filter_irrep(circuit: Circuit, datarow: dict) -> dict:
     for s in samples:
         filtervalue += np.conj(((-1) ** (countXY % 2 + s[0])) / 2.0)
 
-    datarow["filter"] = np.real(filtervalue / len(samples)) 
+    datarow["filter"] = np.real(filtervalue / len(samples))
     return datarow
 
 
