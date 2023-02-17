@@ -5,7 +5,7 @@ They inherit from the qibo noise NoiseModel module and are prebuild.
 
 import numpy as np
 from qibo import gates
-from qibo.noise import NoiseModel, PauliError
+from qibo.noise import NoiseModel, PauliError, ThermalRelaxationError
 
 from qibocal.config import raise_error
 
@@ -52,3 +52,66 @@ class PauliErrorOnX(PauliErrorOnUnitary):
 
     def build(self, *params):
         self.add(PauliError(*params), gates.X)
+
+
+class PauliErrorOnXAndRX(PauliErrorOnUnitary):
+    """Builds a noise model with pauli flips acting on X and RX gates.
+
+    Inherited from ``PauliErrorOnUnitary`` but the ``build`` method is
+    overwritten to act on X and RX gates.
+    If no initial parameters for px, py, pz are given, random values
+    are drawn (in sum not bigger than 1).
+    """
+
+    def __init__(self, *args) -> None:
+        super().__init__(*args)
+
+    def build(self, *params):
+        self.add(PauliError(*params), gates.X)
+        self.add(PauliError(*params), gates.RX)
+
+
+class ThermalRelaxationErrorOnUnitary(NoiseModel):
+    """Builds a noise model with thermal relaxation error acting on unitaries.
+    """
+
+    def __init__(self, *args) -> None:
+        super().__init__()
+        # Check if number of arguments is 3 or 4
+        if len(args) == 3 or len(args) == 4:
+            params = args
+        else:
+            # Raise ValueError if given paramters are wrong.
+            raise_error(
+                ValueError,
+                "Wrong number of error parameters, {} instead of 3 or 4.".format(len(args)),
+            )
+        self.build(*params)
+
+    def build(self, *params):
+        # Add ThermalRelaxationError to gates.Unitary
+        self.add(ThermalRelaxationError(*params), gates.Unitary)
+    
+
+class ThermalRelaxationErrorOnX(ThermalRelaxationErrorOnUnitary):
+    """Builds a noise model with thermal relaxation error acting on X gates.
+    """
+
+    def __init__(self, *args) -> None:
+        super().__init__(*args)
+
+    def build(self, *params):
+        # Add ThermalRelaxationError to gates.X
+        self.add(ThermalRelaxationError(*params), gates.X)
+
+
+class ThermalRelaxationErrorOnXAndRX(ThermalRelaxationErrorOnUnitary):
+    """Builds a noise model with thermal relaxation error acting on X and RX gates.
+    """
+
+    def __init__(self, *args) -> None:
+        super().__init__(*args)
+
+    def build(self, *params):
+        self.add(PauliError(*params), gates.X)
+        self.add(ThermalRelaxationError(*params), gates.RX)

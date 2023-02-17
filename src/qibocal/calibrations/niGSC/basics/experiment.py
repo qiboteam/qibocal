@@ -195,7 +195,7 @@ class Experiment:
         if self.circuitfactory is not None and self.data is not None:
             for circuit, datarow in zip(self.circuitfactory, self.data):
                 datarow = sequential_task(
-                    copy_circuit(circuit.copy(deep=True)), datarow
+                    (circuit.copy(deep=True)), datarow
                 )
         # Only``datarow`` can be provided:
         elif self.circuitfactory is None and self.data is not None:
@@ -206,7 +206,7 @@ class Experiment:
             newdata = []
             for circuit in self.circuitfactory:
                 newdata.append(
-                    sequential_task(copy_circuit(circuit.copy(deep=True)), {})
+                    sequential_task((circuit.copy(deep=True)), {})
                 )
             self.data = newdata
         else:
