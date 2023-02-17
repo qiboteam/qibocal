@@ -17,7 +17,6 @@ def create_report(path, actions=None):
     report = ReportBuilder(path, actions)
     env = Environment(loader=FileSystemLoader(filepath.with_name("templates")))
     template = env.get_template("template.html")
-
     html = template.render(
         is_static=True,
         css_styles=css_styles,
