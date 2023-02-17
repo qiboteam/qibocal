@@ -28,16 +28,16 @@ class ModuleFactory(CircuitFactory):
         This class is written for gates acting on only one qubit, not {} qubits.""".format(
             len(self.qubits)
         )
-        self.name = "Z4"
+        self.name = "Z3"
 
     def build_circuit(self, depth: int):
         # Initiate the empty circuit from qibo with 'self.nqubits'
         # many qubits.
         circuit = Circuit(1, density_matrix=True)
         # There are only two gates to choose from for every qubit.
-        a = [gates.I(0), gates.RX(0, np.pi / 2), gates.X(0), gates.RX(0, 3 * np.pi / 2)]
+        a = [gates.I(0), gates.RX(0, 2 * np.pi / 3), gates.RX(0, 4 * np.pi / 3)]
         # Draw sequence length many zeros and ones.
-        random_ints = np.random.randint(0, 4, size=depth)
+        random_ints = np.random.randint(0, 3, size=depth)
         # Get the gates with random_ints as indices.
         gate_lists = np.take(a, random_ints)
         # Add gates to circuit.
@@ -56,7 +56,7 @@ class ModuleExperiment(Experiment):
         noise_model: NoiseModel = None,
     ) -> None:
         super().__init__(circuitfactory, data, nshots, noise_model)
-        self.name = "Z4RB"
+        self.name = "Z3RB"
 
     def execute(self, circuit: Circuit, datarow: dict) -> dict:
         datadict = super().execute(circuit, datarow)
@@ -64,8 +64,8 @@ class ModuleExperiment(Experiment):
         # Find sum of k where each gate of a circuit is RX(k*pi/2)
         rx_k = 0
         for gate in circuit.gates_of_type("rx"):
-            rx_k += 1 if (gate[-1].parameters[0] == np.pi / 2) else 3
-        datadict["sumK"] = rx_k + (circuit.gate_types["x"] * 2)
+            rx_k += int(gate[-1].parameters[0] * 3 / (2 * np.pi))
+        datadict["sumK"] = rx_k
         return datadict
 
 
@@ -73,21 +73,21 @@ class ModuleExperiment(Experiment):
 class ModuleReport(Report):
     def __init__(self) -> None:
         super().__init__()
-        self.title = "Z4 Benchmarking"
+        self.title = "Z3 Benchmarking"
 
 
 # The filter functions/post processing functions always dependent on circuit and data row!
 # It is executed row by row when used on an experiment object.
 def filter_irrep(circuit: Circuit, datarow: dict) -> dict:
-    """Calculates the filtered signal for the gate group :math:`\\{Id, R_x(\\pi/2), X, R_x(3\\pi/2)\\}`.
+    """Calculates the filtered signal for the gate group :math:`\\{Id, R_x(2\\pi/3), R_x(4\\pi/3)\\}`.
 
-    Each gate from the circuit with gates :math:`g` can be written as :math:`g_j=R_x(k_j\\pi/2)` 
+    Each gate from the circuit with gates :math:`g` can be written as :math:`g_j=R_x(k_j\\cdot 2\\pi/3)` 
     and :math`i` the outcome which is either ground state :math:`0`
     or exited state :math:`1`.
 
     .. math::
         f_{\\lambda}(i,g)
-        = (-1)^{\\sum k_j + i}/2
+        = (-1)^i\\left(\\frac\\{-1+\sqrt3i\\}\\{2\\}\\right)^{\\sum k_j}/2
 
 
     Args:
@@ -102,7 +102,7 @@ def filter_irrep(circuit: Circuit, datarow: dict) -> dict:
     sumK = datarow["sumK"]
     filtervalue = 0
     for s in samples:
-        filtervalue += np.conj(((-1j) ** (sumK + 2 * s[0])) / 2.0)
+        filtervalue += (-1)**s[0] * np.conj(((-1 + np.sqrt(3)*1j) / 2) ** (sumK % 3) / 2.0)
 
     datarow["filter"] = np.real(filtervalue / len(samples)) 
     return datarow

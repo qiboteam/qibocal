@@ -121,7 +121,7 @@ def scatter_fit_fig(
     fig_traces.append(
         go.Scatter(
             x=x_fit,
-            y=y_fit,
+            y=np.real(y_fit),
             name="".join(
                 ["{}:{:.3f} ".format(key, dfrow["popt"][key]) for key in dfrow["popt"]]
             ),

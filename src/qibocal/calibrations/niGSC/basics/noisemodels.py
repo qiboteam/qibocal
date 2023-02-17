@@ -71,6 +71,25 @@ class PauliErrorOnXAndRX(PauliErrorOnUnitary):
         self.add(PauliError(*params), gates.RX)
 
 
+class PauliErrorOnNonDiagonal(PauliErrorOnUnitary):
+    """Builds a noise model with pauli flips acting on gates X, Y and Unitary that are not diagonal.
+
+    Inherited from ``PauliErrorOnUnitary`` but the ``build`` method is
+    overwritten to act on X and Y and Unitary gates.
+    If no initial parameters for px, py, pz are given, random values
+    are drawn (in sum not bigger than 1).
+    """
+
+    def __init__(self, *args) -> None:
+        super().__init__(*args)
+
+    def build(self, *params):
+        is_non_diag = lambda g: not np.allclose(np.abs(g.parameters), np.eye(2))
+        self.add(PauliError(*params), gates.X)
+        self.add(PauliError(*params), gates.Y)
+        self.add(PauliError(*params), gates.Unitary, condition=is_non_diag)
+
+
 class ThermalRelaxationErrorOnUnitary(NoiseModel):
     """Builds a noise model with thermal relaxation error acting on unitaries.
     """
@@ -113,5 +132,19 @@ class ThermalRelaxationErrorOnXAndRX(ThermalRelaxationErrorOnUnitary):
         super().__init__(*args)
 
     def build(self, *params):
-        self.add(PauliError(*params), gates.X)
+        self.add(ThermalRelaxationError(*params), gates.X)
         self.add(ThermalRelaxationError(*params), gates.RX)
+
+
+class ThermalRelaxationErrorOnNonDiagonal(ThermalRelaxationErrorOnUnitary):
+    """Builds a noise model with thermal relaxation error acting on X, Y and non-diagonal Unitary gates.
+    """
+
+    def __init__(self, *args) -> None:
+        super().__init__(*args)
+    
+    def build(self, *params):
+        is_non_diag = lambda g: not np.allclose(np.abs(g.parameters), np.eye(2))
+        self.add(ThermalRelaxationError(*params), gates.X)
+        self.add(ThermalRelaxationError(*params), gates.Y)
+        self.add(ThermalRelaxationError(*params), gates.Unitary, condition=is_non_diag)

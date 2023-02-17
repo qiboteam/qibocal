@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from plotly.graph_objects import Figure
 from qibo import gates
+from qibo import matrices
 from qibo.models import Circuit
 from qibo.noise import NoiseModel
 
@@ -17,9 +18,22 @@ from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig
 import qibo
 qibo.set_backend("numpy")
 
+# matrices = QiboMatrices()
+pauli_list = []
+for p in [matrices.I, matrices.X, matrices.Y, matrices.Z]:
+    pauli_list.append(gates.Unitary(p, 0))
+    pauli_list.append(gates.Unitary(-p, 0))
+    pauli_list.append(gates.Unitary(1j*p, 0))
+    pauli_list.append(gates.Unitary(-1j*p, 0))
+
+
+def is_xy(g):
+    """Check if a Unitary gate is not diagonal"""
+    return not np.allclose(np.abs(g.parameters), np.eye(2))
+
 
 # Define the circuit factory class for this specific module.
-class ModuleFactory(CircuitFactory):
+class moduleFactory(CircuitFactory):
     def __init__(self, nqubits: int, depths: list, qubits: list = []) -> None:
         super().__init__(nqubits, depths, qubits)
         assert (
@@ -28,18 +42,17 @@ class ModuleFactory(CircuitFactory):
         This class is written for gates acting on only one qubit, not {} qubits.""".format(
             len(self.qubits)
         )
-        self.name = "Z4"
+        self.name = "PauliGroup"
 
     def build_circuit(self, depth: int):
         # Initiate the empty circuit from qibo with 'self.nqubits'
         # many qubits.
         circuit = Circuit(1, density_matrix=True)
         # There are only two gates to choose from for every qubit.
-        a = [gates.I(0), gates.RX(0, np.pi / 2), gates.X(0), gates.RX(0, 3 * np.pi / 2)]
         # Draw sequence length many zeros and ones.
-        random_ints = np.random.randint(0, 4, size=depth)
+        random_ints = np.random.randint(0, len(pauli_list), size=depth)
         # Get the gates with random_ints as indices.
-        gate_lists = np.take(a, random_ints)
+        gate_lists = np.take(pauli_list, random_ints)
         # Add gates to circuit.
         circuit.add(gate_lists)
         circuit.add(gates.M(0))
@@ -47,7 +60,7 @@ class ModuleFactory(CircuitFactory):
 
 
 # Define the experiment class for this specific module.
-class ModuleExperiment(Experiment):
+class moduleExperiment(Experiment):
     def __init__(
         self,
         circuitfactory: Iterable,
@@ -56,38 +69,38 @@ class ModuleExperiment(Experiment):
         noise_model: NoiseModel = None,
     ) -> None:
         super().__init__(circuitfactory, data, nshots, noise_model)
-        self.name = "Z4RB"
+        self.name = "PaulisFilteredRB"
 
     def execute(self, circuit: Circuit, datarow: dict) -> dict:
         datadict = super().execute(circuit, datarow)
         datadict["depth"] = circuit.ngates - 1
-        # Find sum of k where each gate of a circuit is RX(k*pi/2)
-        rx_k = 0
-        for gate in circuit.gates_of_type("rx"):
-            rx_k += 1 if (gate[-1].parameters[0] == np.pi / 2) else 3
-        datadict["sumK"] = rx_k + (circuit.gate_types["x"] * 2)
+        # Find the number of X and Y gates in the circuit
+        countXY = circuit.gate_types["x"] + circuit.gate_types["y"]
+        for gate in circuit.gates_of_type("Unitary"):
+            countXY += int(is_xy(gate[-1]))
+        datadict["countXY"] = countXY
         return datadict
 
 
 # Define the result class for this specific module.
-class ModuleReport(Report):
+class moduleReport(Report):
     def __init__(self) -> None:
         super().__init__()
-        self.title = "Z4 Benchmarking"
+        self.title = "Pauli Filtered Randomized Benchmarking"
 
 
 # The filter functions/post processing functions always dependent on circuit and data row!
 # It is executed row by row when used on an experiment object.
 def filter_irrep(circuit: Circuit, datarow: dict) -> dict:
-    """Calculates the filtered signal for the gate group :math:`\\{Id, R_x(\\pi/2), X, R_x(3\\pi/2)\\}`.
+    """Calculates the filtered signal for the gate group :math:`\\{i^k\\sigma_j\\}_\\{j, k=0\\}^\\{3\\}`.
 
-    Each gate from the circuit with gates :math:`g` can be written as :math:`g_j=R_x(k_j\\pi/2)` 
-    and :math`i` the outcome which is either ground state :math:`0`
+    :math:`n_X`, :math:`n_Y` denote the amount of :math:`X` and :math:`Y` gates in the circuit with gates
+    :math:`g` and :math`i` the outcome which is either ground state :math:`0`
     or exited state :math:`1`.
 
     .. math::
         f_{\\lambda}(i,g)
-        = (-1)^{\\sum k_j + i}/2
+        = (-1)^{m_x+m_y + i}/2
 
 
     Args:
@@ -99,10 +112,10 @@ def filter_irrep(circuit: Circuit, datarow: dict) -> dict:
         dict: _description_
     """
     samples = datarow["samples"]
-    sumK = datarow["sumK"]
+    countXY = datarow["countXY"]
     filtervalue = 0
     for s in samples:
-        filtervalue += np.conj(((-1j) ** (sumK + 2 * s[0])) / 2.0)
+        filtervalue += np.conj(((-1) ** (countXY % 2 + s[0])) / 2.0)
 
     datarow["filter"] = np.real(filtervalue / len(samples)) 
     return datarow
@@ -181,7 +194,7 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
     """
 
     # Initiate a report object.
-    report = ModuleReport()
+    report = moduleReport()
     # Add general information to the object.
     report.info_dict["Number of qubits"] = len(experiment.data[0]["samples"][0])
     report.info_dict["Number of shots"] = len(experiment.data[0]["samples"])
