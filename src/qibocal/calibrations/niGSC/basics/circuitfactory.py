@@ -58,7 +58,7 @@ class CircuitFactory:
             return bigcircuit
 
     def build_circuit(self, depth: int) -> Circuit:
-        """Initiate a ``qibo.modles.Circuit`` object and fill it with the wanted gates.
+        """Initiate a ``qibo.models.Circuit`` object and fill it with the wanted gates.
 
         Which gates are wanted is encoded in ``self.gates_layer()``.
         Add a measurement gate for every qubit.
@@ -81,7 +81,6 @@ class CircuitFactory:
     @abc.abstractmethod
     def gate_layer(self):
         """This method has to be overwritten by the inheriting child class."""
-        raise_error(NotImplementedError)
 
 
 class Qibo1qGatesFactory(CircuitFactory):

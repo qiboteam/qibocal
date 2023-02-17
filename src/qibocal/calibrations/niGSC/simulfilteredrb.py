@@ -18,8 +18,7 @@ from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig
 
 
 class ModuleFactory(SingleCliffordsFactory):
-    def __init__(self, nqubits: int, depths: list, qubits: list = []) -> None:
-        super().__init__(nqubits, depths, qubits)
+    pass
 
 
 class ModuleExperiment(Experiment):
