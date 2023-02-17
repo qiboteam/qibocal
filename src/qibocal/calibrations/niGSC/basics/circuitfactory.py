@@ -53,7 +53,7 @@ class CircuitFactory:
             circuit = self.build_circuit(self.depths[self.n])
             self.n += 1
             circuit_init_kwargs = circuit.init_kwargs
-            del circuit_init_kwargs['nqubits']
+            del circuit_init_kwargs["nqubits"]
             self.n += 1
             # Distribute the circuit onto the given support.
             bigcircuit = Circuit(self.nqubits, **circuit_init_kwargs)

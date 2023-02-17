@@ -4,6 +4,7 @@ from collections.abc import Iterable
 
 import numpy as np
 import pandas as pd
+import qibo
 from plotly.graph_objects import Figure
 from qibo import gates
 from qibo.models import Circuit
@@ -14,7 +15,6 @@ from qibocal.calibrations.niGSC.basics.circuitfactory import CircuitFactory
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
 from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig
 
-import qibo
 qibo.set_backend("numpy")
 
 
@@ -81,7 +81,7 @@ class moduleReport(Report):
 def filter_irrep(circuit: Circuit, datarow: dict) -> dict:
     """Calculates the filtered signal for the gate group :math:`\\{Id, R_x(\\pi/2), X, R_x(3\\pi/2)\\}`.
 
-    Each gate from the circuit with gates :math:`g` can be written as :math:`g_j=R_x(k_j\\pi/2)` 
+    Each gate from the circuit with gates :math:`g` can be written as :math:`g_j=R_x(k_j\\pi/2)`
     and :math`i` the outcome which is either ground state :math:`0`
     or exited state :math:`1`.
 
@@ -104,7 +104,7 @@ def filter_irrep(circuit: Circuit, datarow: dict) -> dict:
     for s in samples:
         filtervalue += np.conj(((-1j) ** (sumK + 2 * s[0])) / 2.0)
 
-    datarow["filter"] = np.real(filtervalue / len(samples)) 
+    datarow["filter"] = np.real(filtervalue / len(samples))
     return datarow
 
 
