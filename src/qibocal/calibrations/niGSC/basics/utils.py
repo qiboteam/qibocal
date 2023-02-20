@@ -121,7 +121,7 @@ def gate_fidelity(eff_depol: float, primitive=False) -> float:
     return 1 - infidelity
 
 
-def number_to_str(number: int | float | complex) -> str:
+def number_to_str(number: Union[int, float, complex]) -> str:
     """Converts a number into a string.
 
     Necessary when storing a complex number in JASON format.
