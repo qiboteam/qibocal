@@ -112,7 +112,11 @@ def gate_fidelity(eff_depol: float, primitive=False) -> float:
 
 def number_to_str(number: complex):
     if np.iscomplex(number):
-        the_str = "{:.2f}{:.2f}j".format(np.real(number), np.imag(number))
+        the_str = "{:.2f}{}{:.2f}j".format(
+            np.real(number),
+            "+" if np.imag(number) >= 0 else "-",
+            np.abs(np.imag(number)),
+        )
     else:
-        the_str = "{:.3f}j".format(number)
+        the_str = "{:.3f}".format(number)
     return the_str
