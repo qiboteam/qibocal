@@ -408,14 +408,13 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
         except:
             data = DataUnits(
                 name=f"data",
-                quantities={"frequency": "Hz", "bias": "V"},
+                quantities={"frequency": "Hz", "current": "V"},
                 options=["qubit", "fluxline", "iteration"],
             )
 
         iterations = data.df["iteration"].unique()
         fluxlines = data.df["fluxline"].unique()
         frequencies = data.df["frequency"].pint.to("Hz").pint.magnitude.unique()
-        biass = data.df["bias"].pint.to("V").pint.magnitude.unique()
 
         if len(fluxlines) > 1:
             fig = make_subplots(
@@ -832,7 +831,7 @@ def frequency_attenuation(folder, routine, qubit, format):
 
 
 # Not modified or checked
-def frequency_current_flux(folder, routine, qubit, format):
+def frequency_bias_flux(folder, routine, qubit, format):
     """Plot of the experimental data of the punchout.
         Args:
         folder (str): Folder where the data files with the experimental and fit data are.
