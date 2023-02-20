@@ -132,9 +132,18 @@ def scatter_fit_fig(
         )
     )
     x_fit = np.linspace(min(dfrow[xlabel]), max(dfrow[xlabel]), len(dfrow[xlabel]) * 20)
-    y_fit = getattr(fitting_methods, dfrow["fit_func"])(
-        x_fit, *dfrow[fittingparam_label].values()
-    )
+    if "imag" in fittingparam_label:
+        y_fit = np.imag(
+            getattr(fitting_methods, dfrow["fit_func"])(
+                x_fit, *dfrow[fittingparam_label].values()
+            )
+        )
+    else:
+        y_fit = np.real(
+            getattr(fitting_methods, dfrow["fit_func"])(
+                x_fit, *dfrow[fittingparam_label].values()
+            )
+        )
     fig_traces.append(
         go.Scatter(
             x=x_fit,
