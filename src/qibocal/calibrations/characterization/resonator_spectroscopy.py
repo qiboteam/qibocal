@@ -373,14 +373,14 @@ def resonator_spectroscopy_flux(
     qubits: dict,
     freq_width,
     freq_step,
-    current_width,
-    current_step,
+    bias_width,
+    bias_step,
     fluxlines,
     software_averages=1,
     points=10,
 ):
     r"""
-    Perform spectroscopy on the readout resonator modifying the current applied in the flux control line.
+    Perform spectroscopy on the readout resonator modifying the bias applied in the flux control line.
     This routine works for quantum devices flux controlled.
 
     Args:
@@ -388,8 +388,8 @@ def resonator_spectroscopy_flux(
         qubits (dict): List of target qubits to perform the action
         freq_width (int): Width frequency in HZ to perform the spectroscopy sweep
         freq_step (int): Step frequency in HZ for the spectroscopy sweep
-        current_width (float): Width current in A for the flux current sweep
-        current_step (float): Step current in A for the flux current sweep
+        bias_width (float): Width bias in A for the flux bias sweep
+        bias_step (float): Step bias in A for the flux bias sweep
         fluxlines (list): List of flux lines to use to perform the experiment. If it is set to "qubits", it uses each of
                         flux lines associated with the target qubits.
         software_averages (int): Number of executions of the routine for averaging results
@@ -403,7 +403,7 @@ def resonator_spectroscopy_flux(
             - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
             - **phase[rad]**: Resonator signal phase mesurement in radians
             - **frequency[Hz]**: Resonator frequency value in Hz
-            - **current[A]**: Current value in A applied to the flux line
+            - **bias[V]**: Current value in A applied to the flux line
             - **qubit**: The qubit being tested
             - **fluxline**: The fluxline being tested
             - **iteration**: The iteration number of the many determined by software_averages
@@ -424,34 +424,30 @@ def resonator_spectroscopy_flux(
     # define the parameters to sweep and their range:
     delta_frequency_range = np.arange(-freq_width // 2, freq_width // 2, freq_step)
 
-    # flux current
-    sweetspot_currents = {}
-    current_ranges = {}
-    current_min = {}
-    current_max = {}
+    # flux bias
+    sweetspot_biass = {}
+    bias_ranges = {}
+    bias_min = {}
+    bias_max = {}
 
     if fluxlines == "qubits":
         fluxlines = qubits
 
     for fluxline in fluxlines:
-        sweetspot_currents[fluxline] = qubits[fluxline].sweetspot
+        sweetspot_biass[fluxline] = qubits[fluxline].sweetspot
 
-        current_min[fluxline] = max(
-            -current_width / 2 + sweetspot_currents[fluxline], -0.03
-        )
-        current_max[fluxline] = min(
-            +current_width / 2 + sweetspot_currents[fluxline], +0.03
-        )
-        current_ranges[fluxline] = np.arange(
-            current_min[fluxline], current_max[fluxline], current_step
+        bias_min[fluxline] = max(-bias_width / 2 + sweetspot_biass[fluxline], -0.03)
+        bias_max[fluxline] = min(+bias_width / 2 + sweetspot_biass[fluxline], +0.03)
+        bias_ranges[fluxline] = np.arange(
+            bias_min[fluxline], bias_max[fluxline], bias_step
         )
 
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
-    # additionally include resonator frequency and flux current
+    # additionally include resonator frequency and flux bias
     data = DataUnits(
         name=f"data",
-        quantities={"frequency": "Hz", "current": "A"},
+        quantities={"frequency": "Hz", "bias": "V"},
         options=["qubit", "fluxline", "iteration"],
     )
 
@@ -460,9 +456,9 @@ def resonator_spectroscopy_flux(
     for iteration in range(software_averages):
         # sweep the parameters
         for fluxline in fluxlines:
-            for current in current_ranges[fluxline]:
-                # set new flux current
-                platform.set_current(fluxline, current)
+            for bias in bias_ranges[fluxline]:
+                # set new flux bias
+                platform.set_bias(fluxline, bias)
                 for delta_freq in delta_frequency_range:
                     # save data as often as defined by points
                     if count % points == 0:
@@ -487,7 +483,7 @@ def resonator_spectroscopy_flux(
                         r.update(
                             {
                                 "frequency[Hz]": ro_pulses[qubit].frequency,
-                                "current[A]": current,
+                                "bias[V]": bias,
                                 "qubit": ro_pulse.qubit,
                                 "fluxline": fluxline,
                                 "iteration": iteration,
@@ -518,7 +514,6 @@ def dispersive_shift(
         freq_width (int): Width frequency in HZ to perform the spectroscopy sweep
         freq_step (int): Step frequency in HZ for the spectroscopy sweep
         software_averages (int): Number of executions of the routine for averaging results
-        fluxlines (list): List of flux control lines associated to different qubits to sweep current
         points (int): Save data results in a file every number of points
 
     Returns:

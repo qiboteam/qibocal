@@ -408,14 +408,14 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
         except:
             data = DataUnits(
                 name=f"data",
-                quantities={"frequency": "Hz", "current": "A"},
+                quantities={"frequency": "Hz", "bias": "V"},
                 options=["qubit", "fluxline", "iteration"],
             )
 
         iterations = data.df["iteration"].unique()
         fluxlines = data.df["fluxline"].unique()
         frequencies = data.df["frequency"].pint.to("Hz").pint.magnitude.unique()
-        currents = data.df["current"].pint.to("A").pint.magnitude.unique()
+        biass = data.df["bias"].pint.to("V").pint.magnitude.unique()
 
         if len(fluxlines) > 1:
             fig = make_subplots(
@@ -877,7 +877,7 @@ def frequency_current_flux(folder, routine, qubit, format):
         )
         fig.add_trace(
             go.Scatter(
-                x=data_spec.get_values("current", "A"),
+                x=data_spec.get_values("bias", "V"),
                 y=data_spec.get_values("frequency", "GHz"),
                 name=f"fluxline: {j}",
                 mode="markers",
@@ -895,8 +895,8 @@ def frequency_current_flux(folder, routine, qubit, format):
                 data_fit = Data(quantities=[])
             if len(data_spec) > 0 and len(data_fit) > 0:
                 curr_range = np.linspace(
-                    min(data_spec.get_values("current", "A")),
-                    max(data_spec.get_values("current", "A")),
+                    min(data_spec.get_values("bias", "V")),
+                    max(data_spec.get_values("bias", "V")),
                     100,
                 )
                 if int(j) == int(qubit):

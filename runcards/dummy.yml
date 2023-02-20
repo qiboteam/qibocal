@@ -34,8 +34,8 @@ actions:
   # resonator_spectroscopy_flux: # wide
   #   freq_width: 2_000_000
   #   freq_step: 200_000
-  #   current_width: 0.03 # absolute min is -40 mA
-  #   current_step:  0.003
+  #   bias_width: 0.03 # absolute min is -40 mA
+  #   bias_step:  0.003
   #   fluxlines: qubits
   #   software_averages: 2
   #   points: 1
@@ -43,9 +43,9 @@ actions:
   # resonator_spectroscopy_flux: # narrow
   #   freq_width: 2_000_000
   #   freq_step: 200_000
-  #   current_width: 0.005 # absolute min is -40 mA
-  #   current_step:  0.0002
-  #   fluxlines: [2, 3]
+  #   bias_width: 0.005 # absolute min is -40 mA
+  #   bias_step:  0.0002
+  #   fluxlines: [0]
   #   software_averages: 1
   #   points: 1
 
@@ -70,8 +70,8 @@ actions:
   # qubit_spectroscopy_flux: # precission
   #   freq_width: 5_000_000
   #   freq_step: 100_000
-  #   current_width: 0.0005 # absolute min is -40 mA
-  #   current_step:  0.00002
+  #   bias_width: 0.0005 # absolute min is -40 mA
+  #   bias_step:  0.00002
   #   fluxlines: qubits
   #   software_averages: 1
   #   points: 1
@@ -79,8 +79,8 @@ actions:
   # qubit_spectroscopy_flux: # narrow
   #   freq_width: 4_500_000
   #   freq_step: 300_000
-  #   current_width: 0.0010 # absolute min is -40 mA
-  #   current_step:  0.0001
+  #   bias_width: 0.0010 # absolute min is -40 mA
+  #   bias_step:  0.0001
   #   fluxlines: qubits
   #   software_averages: 1
   #   points: 1
@@ -88,8 +88,8 @@ actions:
   # qubit_spectroscopy_flux: # wide
   #   freq_width: 20_000_000
   #   freq_step: 200_000
-  #   current_width: 0.03 # absolute min is -40 mA
-  #   current_step:  0.003
+  #   bias_width: 0.03 # absolute min is -40 mA
+  #   bias_step:  0.003
   #   fluxlines: qubits
   #   software_averages: 1
   #   points: 1
