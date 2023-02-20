@@ -160,12 +160,16 @@ def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
             "data": ydata,  # The filtred signal.
             "2sigma": 2 * ydata_std,  # The 2 * standard deviation error for each depth.
             "fit_func": "exp2_func",  # Which function was used to fit.
-            "popt": {
-                "A1": popt[0],
-                "A2": popt[1],
+            "popt_real": {
+                "A1_real": np.real(
+                    popt[0]
+                ),  # The complex prefactors would lead to imaginary data.
+                "A2_real": np.real(
+                    popt[1]
+                ),  # That's why they have to be stored seperatly.
                 "p1": popt[2],
-                "p2": popt[2],
-            },  # The fitting parameters.
+                "p2": popt[3],
+            },  # The real fitting parameters.
             "perr": {
                 "A1_err": perr[0],
                 "A2_err": perr[1],
@@ -174,6 +178,13 @@ def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
             },  # The estimated errors.
         }
     ]
+    if np.iscomplex(popt[0]) or np.iscomplex(popt[1]) or True:
+        data[0]["popt_imag"] = {
+            "A1_imag": np.imag(popt[0]),
+            "A2_imag": np.imag(popt[1]),
+            "p1": popt[2],
+            "p2": popt[3],
+        }  # The imaginary fitting parameters.
     df = pd.DataFrame(data, index=["filter"])
     return df
 
@@ -207,6 +218,16 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
     # Use the predefined ``scatter_fit_fig`` function from ``basics.utils`` to build the wanted
     # plotly figure with the scattered filtered data along with the mean for
     # each depth and the exponential fit for the means.
-    report.all_figures.append(scatter_fit_fig(experiment, df_aggr, "depth", "filter"))
+    report.all_figures.append(
+        scatter_fit_fig(
+            experiment, df_aggr, "depth", "filter", fittingparam_label="popt_real"
+        )
+    )
+    if "popt_imag" in df_aggr:
+        report.all_figures.append(
+            scatter_fit_fig(
+                experiment, df_aggr, "depth", "filter", fittingparam_label="popt_imag"
+            )
+        )
     # Return the figure the report object builds out of all figures added to the report.
     return report.build()
