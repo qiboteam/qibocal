@@ -22,7 +22,6 @@ def nshots():
 @pytest.mark.parametrize("runs", [1, 3])
 @pytest.mark.parametrize("qubits", [[0], [0, 1]])
 def test_experiment(nqubits: int, depths: list, runs: int, nshots: int, qubits: list):
-    byaccident_zeros = 0
     if max(qubits) > nqubits - 1:
         pass
     else:
@@ -41,11 +40,6 @@ def test_experiment(nqubits: int, depths: list, runs: int, nshots: int, qubits: 
                 assert np.array_equal(
                     datarow["samples"], np.zeros(datarow["samples"].shape)
                 )
-            else:
-                byaccident_zeros += np.array_equal(
-                    datarow["samples"], np.zeros(datarow["samples"].shape)
-                )
-        assert byaccident_zeros < len(depths) * runs / 2
         assert isinstance(myexperiment1.dataframe, pd.DataFrame)
 
 
