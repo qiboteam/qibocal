@@ -1,8 +1,22 @@
 name: Deploy
 
 on:
-  workflow_dispatch:
-  push:
+
+  workflow_call:
+    inputs:
+        os:
+          required: true
+          type: string
+        python-version:
+          required: true
+          type: string
+        publish:
+          required: false
+          type: boolean
+          default: false
+    secrets:
+      PYPI-TOKEN:
+        required: false
 
 jobs:
   build:
