@@ -408,13 +408,14 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
         except:
             data = DataUnits(
                 name=f"data",
-                quantities={"frequency": "Hz", "current": "V"},
+                quantities={"frequency": "Hz", "bias": "V"},
                 options=["qubit", "fluxline", "iteration"],
             )
 
         iterations = data.df["iteration"].unique()
         fluxlines = data.df["fluxline"].unique()
         frequencies = data.df["frequency"].pint.to("Hz").pint.magnitude.unique()
+        # biass = data.df["bias"].pint.to("V").pint.magnitude.unique()
 
         if len(fluxlines) > 1:
             fig = make_subplots(
@@ -436,7 +437,7 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
                 if len(iterations) > 1:
                     (
                         unique_frequencies,
-                        unique_currents,
+                        unique_bias,
                         mean_measurements,
                         mean_phases,
                     ) = grouped_by_mean(fluxline_df, 2, 0, 3, 1)
@@ -444,14 +445,14 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
                     unique_frequencies = (
                         fluxline_df["frequency"].pint.to("Hz").pint.magnitude
                     )
-                    unique_currents = fluxline_df["current"].pint.to("A").pint.magnitude
+                    unique_bias = fluxline_df["bias"].pint.to("V").pint.magnitude
                     mean_measurements = fluxline_df["MSR"].pint.to("V").pint.magnitude
                     mean_phases = fluxline_df["phase"].pint.to("rad").pint.magnitude
 
                 fig.add_trace(
                     go.Heatmap(
                         x=unique_frequencies,
-                        y=unique_currents,
+                        y=unique_bias,
                         z=mean_measurements,
                         showscale=False,
                     ),
@@ -484,7 +485,7 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
             if len(iterations) > 1:
                 (
                     unique_frequencies,
-                    unique_currents,
+                    unique_bias,
                     mean_measurements,
                     mean_phases,
                 ) = grouped_by_mean(fluxline_df, 2, 0, 3, 1)
@@ -492,14 +493,14 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
                 unique_frequencies = (
                     fluxline_df["frequency"].pint.to("Hz").pint.magnitude
                 )
-                unique_currents = fluxline_df["current"].pint.to("A").pint.magnitude
+                unique_bias = fluxline_df["bias"].pint.to("V").pint.magnitude
                 mean_measurements = fluxline_df["MSR"].pint.to("V").pint.magnitude
                 mean_phases = fluxline_df["phase"].pint.to("rad").pint.magnitude
 
             fig.add_trace(
                 go.Heatmap(
                     x=unique_frequencies,
-                    y=unique_currents,
+                    y=unique_bias,
                     z=mean_measurements,
                     colorbar_x=0.46,
                 ),
@@ -515,7 +516,7 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
             fig.add_trace(
                 go.Heatmap(
                     x=unique_frequencies,
-                    y=unique_currents,
+                    y=unique_bias,
                     z=mean_phases,
                     colorbar_x=1.01,
                 ),
@@ -527,9 +528,9 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
                 row=1 + report_n,
                 col=2,
             )
-            fig.update_yaxes(title_text="Current (A)", row=1 + report_n, col=2)
+            fig.update_yaxes(title_text="Bias (V)", row=1 + report_n, col=2)
 
-        fig.update_yaxes(title_text="Current (A)", row=1 + report_n, col=1)
+        fig.update_yaxes(title_text="Bias (V)", row=1 + report_n, col=1)
         fig.update_layout(
             showlegend=False,
             uirevision="0",  # ``uirevision`` allows zooming while live plotting
@@ -865,7 +866,7 @@ def frequency_bias_flux(folder, routine, qubit, format):
         cols=nb,
         horizontal_spacing=0.05,
         vertical_spacing=0.1,
-        x_title="Current (A)",
+        x_title="Bias (V)",
         y_title="Frequency (GHz)",
         shared_xaxes=False,
         shared_yaxes=True,
