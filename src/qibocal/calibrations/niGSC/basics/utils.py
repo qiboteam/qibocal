@@ -83,7 +83,18 @@ def probabilities(allsamples: Union[list, np.ndarray]) -> np.ndarray:
     return probs
 
 
-def copy_circuit(circuit: Circuit):
+def copy_circuit(circuit: Circuit) -> Circuit:
+    """Truly deepcopies a given circuit by copying the gates.
+
+
+    Right now, qibos copy function changes properties of the copied circuit.
+
+    Args:
+        circuit (Circuit): The circuit which is copied.
+
+    Returns:
+        (Circuit): The copied circuit
+    """
     newcircuit = Circuit(circuit.nqubits)
     for gate in circuit.queue:
         newcircuit.add(deepcopy(gate))
@@ -110,7 +121,18 @@ def gate_fidelity(eff_depol: float, primitive=False) -> float:
     return 1 - infidelity
 
 
-def number_to_str(number: complex):
+def number_to_str(number: int | float | complex) -> str:
+    """Converts a number into a string.
+
+    Necessary when storing a complex number in JASON format.
+
+    Args:
+        number (int | float | complex)
+
+    Returns:
+        str: The number expressed as a string, with two floating points when
+        complex or three when real.
+    """
     if np.iscomplex(number):
         the_str = "{:.2f}{}{:.2f}j".format(
             np.real(number),

@@ -7,7 +7,7 @@ from qibocal.calibrations.niGSC.basics import fitting
 
 
 def test_1expfitting():
-    success = 0
+    successes = 0
     number_runs = 50
     for _ in range(number_runs):
         x = np.sort(np.random.choice(np.linspace(0, 30, 50), size=20, replace=False))
@@ -18,13 +18,13 @@ def test_1expfitting():
         # Distort ``y`` a bit.
         y_dist = y + np.random.randn(len(y)) * 0.005
         popt, perr = fitting.fit_exp1B_func(x, y_dist)
-        success += np.all(
+        successes += np.all(
             np.abs(np.array(popt) - [A, f, B])
             < 2 * np.array(perr) + 0.05 * np.array([A, f, B]),
         )
-    assert success >= number_runs * 0.8
+    assert successes >= number_runs * 0.8
 
-    success = 0
+    successes = 0
     number_runs = 50
     for _ in range(number_runs):
         x = np.sort(np.random.choice(np.linspace(0, 30, 50), size=20, replace=False))
@@ -34,11 +34,11 @@ def test_1expfitting():
         # Distort ``y`` a bit.
         y_dist = y + np.random.randn(len(y)) * 0.005
         popt, perr = fitting.fit_exp1_func(x, y_dist)
-        success += np.all(
+        successes += np.all(
             np.abs(np.array(popt) - [A, f])
             < 2 * np.array(perr) + 0.05 * np.array([A, f])
         )
-    assert success >= number_runs * 0.8
+    assert successes >= number_runs * 0.8
 
     x = np.sort(np.random.choice(np.linspace(-5, 5, 50), size=20, replace=False))
     y = np.zeros(len(x)) + 0.75
@@ -62,7 +62,7 @@ def test_1expfitting():
 
 
 def test_exp2_fitting():
-    success = 0
+    successes = 0
     number_runs = 50
     for count in range(number_runs):
         x = np.arange(0, 50)
@@ -92,9 +92,9 @@ def test_exp2_fitting():
                 rtol=0.01,
             )
             worked = True
-        success += worked
+        successes += worked
     # This is a pretty bad rate. The ESPRIT algorithm has to be optimized.
-    assert success >= number_runs * 0.4
+    assert successes >= number_runs * 0.4
 
     with pytest.raises(ValueError):
         x = np.array([1, 2, 3, 5])
