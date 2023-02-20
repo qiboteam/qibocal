@@ -178,7 +178,7 @@ def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
             },  # The estimated errors.
         }
     ]
-    if np.iscomplex(popt[0]) or np.iscomplex(popt[1]) or True:
+    if np.iscomplex(popt[0]) or np.iscomplex(popt[1]):
         data[0]["popt_imag"] = {
             "A1_imag": np.imag(popt[0]),
             "A2_imag": np.imag(popt[1]),

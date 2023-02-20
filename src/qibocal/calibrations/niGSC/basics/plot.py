@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
+from qibocal.calibrations.niGSC.basics import utils
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
 
 
@@ -140,7 +141,9 @@ def scatter_fit_fig(
             y=y_fit,
             name="".join(
                 [
-                    "{}:{:.3f} ".format(key, dfrow[fittingparam_label][key])
+                    "{}:{} ".format(
+                        key, utils.number_to_str(dfrow[fittingparam_label][key])
+                    )
                     for key in dfrow[fittingparam_label]
                 ]
             ),

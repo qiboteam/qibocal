@@ -108,3 +108,11 @@ def gate_fidelity(eff_depol: float, primitive=False) -> float:
     if primitive:
         infidelity /= 1.875
     return 1 - infidelity
+
+
+def number_to_str(number: complex):
+    if np.iscomplex(number):
+        the_str = "{:.2f}{:.2f}j".format(np.real(number), np.imag(number))
+    else:
+        the_str = "{:.3f}j".format(number)
+    return the_str
