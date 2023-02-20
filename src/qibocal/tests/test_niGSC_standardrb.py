@@ -42,7 +42,7 @@ def depths():
 
 @pytest.fixture
 def nshots():
-    return 13
+    return 127
 
 
 @pytest.mark.parametrize("nqubits", [1, 2])
