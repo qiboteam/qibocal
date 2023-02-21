@@ -38,6 +38,22 @@ class PauliErrorOnUnitary(NoiseModel):
         self.add(PauliError(*params), gates.Unitary)
 
 
+class PauliErrorOnId(PauliErrorOnUnitary):
+    """Builds a noise model with pauli flips acting on Id gates.
+
+    Inherited from ``PauliErrorOnUnitary`` but the ``build`` method is
+    overwritten to act on Id gates.
+    If no initial parameters for px, py, pz are given, random values
+    are drawn (in sum not bigger than 1).
+    """
+
+    def __init__(self, *args) -> None:
+        super().__init__(*args)
+
+    def build(self, *params):
+        self.add(PauliError(*params), gates.I)
+
+
 class PauliErrorOnX(PauliErrorOnUnitary):
     """Builds a noise model with pauli flips acting on X gates.
 

@@ -1,20 +1,3 @@
-""" This script implements an easy 1-qubit protocol with only X-gates and identities.
-It is a great example on how to write an own niGSC protocol. The single functions above have
-little descriptions for the purpose of that function and what is important to include.
-
-1. Step:
-  Define the two module specific classes which are used in defining and executing an experiment,
-  the circuit factory and experiment class.
-  They can also just inherit everything from another module.
-2. Step:
-  Write the sequential post processing functions.
-3. Step:
-  Write the aggregational post processing function.
-4. Step:
-  Write the function to build a report. When using the qq module, a plotly figure has to be returned.
-"""
-
-# These libraries should be enough when starting a new protocol.
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -22,6 +5,7 @@ from collections.abc import Iterable
 import numpy as np
 import pandas as pd
 from plotly.graph_objects import Figure
+import qibo
 from qibo import gates
 from qibo.models import Circuit
 from qibo.noise import NoiseModel
@@ -32,6 +16,7 @@ from qibocal.calibrations.niGSC.basics.experiment import Experiment
 from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig
 from qibocal.config import raise_error
 
+qibo.set_backend("numpy")
 
 # Define the circuit factory class for this specific module.
 class ModuleFactory(CircuitFactory):
@@ -44,22 +29,21 @@ class ModuleFactory(CircuitFactory):
                     len(self.qubits)
                 ),
             )
-        self.name = "XId"
+        self.name = "Id"
 
     def build_circuit(self, depth: int):
         # Initiate the empty circuit from qibo with 'self.nqubits'
         # many qubits.
         circuit = Circuit(1, density_matrix=True)
-        # There are only two gates to choose from for every qubit.
-        a = [gates.I(0), gates.X(0)]
-        # Draw sequence length many zeros and ones.
-        random_ints = np.random.randint(0, 2, size=depth)
-        # Get the Xs and Ids with random_ints as indices.
-        gate_lists = np.take(a, random_ints)
+        # Create a list with Id gates of size depth. 
+        gate_lists = [gates.I(0)] * depth
         # Add gates to circuit.
         circuit.add(gate_lists)
         circuit.add(gates.M(0))
         return circuit
+    
+    def gate_group(self):
+        return [gates.I]
 
 
 # Define the experiment class for this specific module.
@@ -72,13 +56,11 @@ class ModuleExperiment(Experiment):
         noise_model: NoiseModel = None,
     ) -> None:
         super().__init__(circuitfactory, data, nshots, noise_model)
-        self.name = "XIdRB"
+        self.name = "IdRB"
 
     def execute(self, circuit: Circuit, datarow: dict) -> dict:
         datadict = super().execute(circuit, datarow)
         datadict["depth"] = circuit.ngates - 1
-        # TODO change that.
-        datadict["countX"] = circuit.gate_types["x"]
         return datadict
 
 
@@ -86,37 +68,35 @@ class ModuleExperiment(Experiment):
 class moduleReport(Report):
     def __init__(self) -> None:
         super().__init__()
-        self.title = "X-Id Benchmarking"
+        self.title = "Id Benchmarking"
 
 
 # The filter functions/post processing functions always dependent on circuit and data row!
 # It is executed row by row when used on an experiment object.
-def filter_sign(circuit: Circuit, datarow: dict) -> dict:
-    """Calculates the filtered signal for the XId.
+def filter_trivial(circuit: Circuit, datarow: dict) -> dict:
+    """Calculates the filtered signal for the Id.
 
-    :math:`n_X` denotes the amount of :math:`X` gates in the circuit with gates
-    :math:`g` and :math`i` the outcome which is either ground state :math:`0`
+    The filter function is calculated for the circuit with gates 
+    :math:`g` and the outcome :math`i` which is either ground state :math:`0`
     or exited state :math:`1`.
 
     .. math::
         f_{\\text{sign}}(i,g)
-        = (-1)^{n_X\\%2 + i}/2
+        = 1-i
 
 
     Args:
         circuit (Circuit): Not needed here.
-        datarow (dict): The dictionary with the samples from executed circuits and amount of
-                        X gates in the executed circuit.
+        datarow (dict): The dictionary with the samples from executed circuits.
 
     Returns:
         dict: _description_
     """
     samples = datarow["samples"]
-    countX = datarow["countX"]
-    filtersign = 0
+    filter_trivial = 0
     for s in samples:
-        filtersign += (-1) ** (countX % 2 + s[0]) / 2.0
-    datarow["filter"] = filtersign / len(samples)
+        filter_trivial += 1 - s[0]
+    datarow["filter"] = filter_trivial / len(samples)
     return datarow
 
 
@@ -131,7 +111,7 @@ def post_processing_sequential(experiment: Experiment):
     """
 
     # Compute and add the ground state probabilities row by row.
-    experiment.perform(filter_sign)
+    experiment.perform(filter_trivial)
 
 
 # After the row by row execution of tasks comes the aggregational task. Something like calculation

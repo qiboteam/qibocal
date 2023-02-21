@@ -165,7 +165,7 @@ def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
                 "A1": popt[0],
                 "A2": popt[1],
                 "p1": popt[2],
-                "p2": popt[2],
+                "p2": popt[3],
             },  # The fitting parameters.
             "perr": {
                 "A1_err": perr[0],
