@@ -103,7 +103,9 @@ def frequency_msr_phase(folder, routine, qubit, format):
                 )
             if len(iterations) > 1:
                 data.df = data.df.drop(columns=["iteration"])
-                unique_frequencies, mean_measurements = grouped_by_mean(data.df, 2, 0)
+                unique_frequencies, mean_measurements = grouped_by_mean(
+                    data.df, "frequency", "MSR"
+                )
                 fig.add_trace(
                     go.Scatter(
                         x=unique_frequencies,
@@ -116,7 +118,9 @@ def frequency_msr_phase(folder, routine, qubit, format):
                     row=1,
                     col=1,
                 )
-                unique_frequencies, mean_phases = grouped_by_mean(data.df, 2, 1)
+                unique_frequencies, mean_phases = grouped_by_mean(
+                    data.df, "frequency", "phase"
+                )
                 fig.add_trace(
                     go.Scatter(
                         x=unique_frequencies,
@@ -223,7 +227,9 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
                 unique_attenuations,
                 mean_measurements,
                 mean_phases,
-            ) = grouped_by_mean(averaged_data, 2, 0, 3, 1)
+            ) = grouped_by_mean(
+                averaged_data, "frequency", "MSR", "attenuation", "phase"
+            )
         else:
             unique_frequencies = averaged_data["frequency"].pint.to("Hz").pint.magnitude
             unique_attenuations = (
@@ -350,11 +356,13 @@ def frequency_attenuation_msr_phase_cut(folder, routine, qubit, format):
             )
         if len(iterations) > 1:
             data.df = data.df.drop(columns=["iteration"])
-            unique_frequencies, mean_measurements = grouped_by_mean(data.df, 2, 0)
+            unique_frequencies, mean_measurements = grouped_by_mean(
+                data.df, "frequency", "MSR"
+            )
             fig.add_trace(
                 go.Scatter(
                     x=unique_frequencies,
-                    y=mean_measurements * 1e6,  # pylint: disable=E1101
+                    y=mean_measurements * 1e6,
                     marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,
@@ -363,11 +371,13 @@ def frequency_attenuation_msr_phase_cut(folder, routine, qubit, format):
                 row=1,
                 col=1,
             )
-            unique_frequencies, mean_phases = grouped_by_mean(data.df, 2, 1)
+            unique_frequencies, mean_phases = grouped_by_mean(
+                data.df, "frequency", "phase"
+            )
             fig.add_trace(
                 go.Scatter(
                     x=unique_frequencies,
-                    y=mean_phases,  # pylint: disable=E1101
+                    y=mean_phases,
                     marker_color=get_color(report_n),
                     showlegend=False,
                     legendgroup=f"q{qubit}/r{report_n}: Average",
@@ -415,7 +425,6 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
         iterations = data.df["iteration"].unique()
         fluxlines = data.df["fluxline"].unique()
         frequencies = data.df["frequency"].pint.to("Hz").pint.magnitude.unique()
-        # biass = data.df["bias"].pint.to("V").pint.magnitude.unique()
 
         if len(fluxlines) > 1:
             fig = make_subplots(
@@ -440,7 +449,9 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
                         unique_bias,
                         mean_measurements,
                         mean_phases,
-                    ) = grouped_by_mean(fluxline_df, 2, 0, 3, 1)
+                    ) = grouped_by_mean(
+                        fluxline_df, "frequency", "MSR", "bias", "phase"
+                    )
                 else:
                     unique_frequencies = (
                         fluxline_df["frequency"].pint.to("Hz").pint.magnitude
@@ -488,7 +499,7 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
                     unique_bias,
                     mean_measurements,
                     mean_phases,
-                ) = grouped_by_mean(fluxline_df, 2, 0, 3, 1)
+                ) = grouped_by_mean(fluxline_df, "frequency", "MSR", "bias", "phase")
             else:
                 unique_frequencies = (
                     fluxline_df["frequency"].pint.to("Hz").pint.magnitude
@@ -662,7 +673,9 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, format):
                 )
             if len(iterations) > 1:
                 data.df = data.df.drop(columns=["iteration"])
-                unique_frequencies, mean_measurements = grouped_by_mean(data.df, 2, 0)
+                unique_frequencies, mean_measurements = grouped_by_mean(
+                    data.df, "frequency", "MSR"
+                )
                 fig.add_trace(
                     go.Scatter(
                         x=unique_frequencies,
@@ -675,7 +688,9 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, format):
                     row=1,
                     col=1,
                 )
-                unique_frequencies, mean_phases = grouped_by_mean(data.df, 2, 1)
+                unique_frequencies, mean_phases = grouped_by_mean(
+                    data.df, "frequency", "phase"
+                )
                 fig.add_trace(
                     go.Scatter(
                         x=unique_frequencies,
@@ -831,7 +846,6 @@ def frequency_attenuation(folder, routine, qubit, format):
     return figures, fitting_report
 
 
-# Not modified or checked
 def frequency_bias_flux(folder, routine, qubit, format):
     """Plot of the experimental data of the punchout.
         Args:

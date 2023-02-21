@@ -88,7 +88,7 @@ def time_msr_phase(folder, routine, qubit, format):
             )
         if len(iterations) > 1:
             data.df = data.df.drop(columns=["iteration"])
-            unique_times, mean_measurements = grouped_by_mean(data.df, 2, 0)
+            unique_times, mean_measurements = grouped_by_mean(data.df, "time", "MSR")
 
             fig.add_trace(
                 go.Scatter(
@@ -102,7 +102,7 @@ def time_msr_phase(folder, routine, qubit, format):
                 row=1,
                 col=1,
             )
-            unique_times, mean_phases = grouped_by_mean(data.df, 2, 1)
+            unique_times, mean_phases = grouped_by_mean(data.df, "time", "phase")
             fig.add_trace(
                 go.Scatter(
                     x=unique_times,
@@ -254,7 +254,7 @@ def gain_msr_phase(folder, routine, qubit, format):
             )
         if len(iterations) > 1:
             data.df = data.df.drop(columns=["iteration"])
-            unique_gains, mean_measurements = grouped_by_mean(data.df, 2, 0)
+            unique_gains, mean_measurements = grouped_by_mean(data.df, "gain", "MSR")
 
             fig.add_trace(
                 go.Scatter(
@@ -269,12 +269,12 @@ def gain_msr_phase(folder, routine, qubit, format):
                 col=1,
             )
 
-            unique_gains, mean_phases = grouped_by_mean(data.df, 2, 1)
+            unique_gains, mean_phases = grouped_by_mean(data.df, "gain", "phase")
 
             fig.add_trace(
                 go.Scatter(
                     x=unique_gains,
-                    y=mean_phases,  # pylint: disable=E1101
+                    y=mean_phases,
                     marker_color=get_color(report_n),
                     showlegend=False,
                     legendgroup=f"q{qubit}/r{report_n}: Average",
@@ -427,7 +427,9 @@ def amplitude_msr_phase(folder, routine, qubit, format):
             )
         if len(iterations) > 1:
             data.df = data.df.drop(columns=["iteration"])
-            unique_amplitudes, mean_measurements = grouped_by_mean(data.df, 2, 0)
+            unique_amplitudes, mean_measurements = grouped_by_mean(
+                data.df, "amplitude", "MSR"
+            )
             fig.add_trace(
                 go.Scatter(
                     x=unique_amplitudes,
@@ -440,13 +442,13 @@ def amplitude_msr_phase(folder, routine, qubit, format):
                 row=1,
                 col=1,
             )
+            unique_amplitudes, mean_phases = grouped_by_mean(
+                data.df, "amplitude", "phase"
+            )
             fig.add_trace(
                 go.Scatter(
-                    x=amplitudes,
-                    y=data.df.groupby("amplitude")["phase"]  # pylint: disable=E1101
-                    .mean()
-                    .pint.to("rad")
-                    .pint.magnitude,
+                    x=unique_amplitudes,
+                    y=mean_phases,
                     marker_color=get_color(report_n),
                     showlegend=False,
                     legendgroup=f"q{qubit}/r{report_n}: Average",
@@ -553,7 +555,7 @@ def duration_gain_msr_phase(folder, routine, qubit, format):
                 unique_gains,
                 mean_measurements,
                 mean_phases,
-            ) = grouped_by_mean(averaged_data, 2, 0, 3, 1)
+            ) = grouped_by_mean(averaged_data, "duration", "MSR", "gain", "phase")
         else:
             unique_durations = averaged_data["duration"].pint.to("ns").pint.magnitude
             unique_gains = averaged_data["gain"].pint.to("dimensionless").pint.magnitude
@@ -646,7 +648,7 @@ def duration_amplitude_msr_phase(folder, routine, qubit, format):
                 unique_amplitudes,
                 mean_measurements,
                 mean_phases,
-            ) = grouped_by_mean(averaged_data, 2, 0, 3, 1)
+            ) = grouped_by_mean(averaged_data, "duration", "MSR", "amplitude", "phase")
         else:
             unique_durations = averaged_data["duration"].pint.to("ns").pint.magnitude
             unique_amplitudes = (

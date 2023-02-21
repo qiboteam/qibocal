@@ -34,10 +34,10 @@ def grouped_by_mean(df, g_column1, m_column1, g_column2=None, m_column2=None):
 
     Args:
         df: Pandas Data Frame
-        g_column1 (int): Data Frame column to group data
-        g_column2 (int): Data Frame column to group data
-        m_column1 (int): Data Frame column to calculate data mean
-        m_column2 (int): Data Frame column to calculate data mean
+        g_column1 (string): Data Frame column to group data
+        g_column2 (string): Data Frame column to group data
+        m_column1 (string): Data Frame column to calculate data mean
+        m_column2 (string): Data Frame column to calculate data mean
 
     Returns:
         unique_column1 (array): Array with unique values of m_column1
@@ -46,11 +46,16 @@ def grouped_by_mean(df, g_column1, m_column1, g_column2=None, m_column2=None):
         grouped_m_column2_mean (array): Array with the mean values of m_column2 for the differents groups created
     """
 
-    df = df.astype(float)
-    data = df.to_numpy()
-
     # group by 1 column
     if (g_column2 == None) and (m_column2 == None):
+        # get columns indexes
+        g_column1 = df.columns.get_loc(g_column1)
+        m_column1 = df.columns.get_loc(m_column1)
+
+        # convert df to numpy matrix
+        df = df.astype(float)
+        data = df.to_numpy()
+
         # Group by column g_column and calculate mean of m_column
         unique_column, column_indexes = np.unique(
             data[:, g_column1], return_inverse=True
@@ -66,6 +71,15 @@ def grouped_by_mean(df, g_column1, m_column1, g_column2=None, m_column2=None):
 
     # group by 2 columns
     else:
+        # get columns indexes
+        g_column1 = df.columns.get_loc(g_column1)
+        m_column1 = df.columns.get_loc(m_column1)
+        g_column2 = df.columns.get_loc(g_column2)
+        m_column2 = df.columns.get_loc(m_column2)
+
+        df = df.astype(float)
+        data = df.to_numpy()
+
         # Group by columns g_column1 and g_column2 and calculate mean of m_column1 and m_column2
         unique_column1, column1_indexes = np.unique(
             data[:, g_column1], return_inverse=True

@@ -78,7 +78,7 @@ def time_msr(folder, routine, qubit, format):
 
         if len(iterations) > 1:
             data.df = data.df.drop(columns=["iteration"])
-            unique_waits, mean_measurements = grouped_by_mean(data.df, 1, 0)
+            unique_waits, mean_measurements = grouped_by_mean(data.df, "wait", "MSR")
             fig.add_trace(
                 go.Scatter(
                     x=unique_waits,
