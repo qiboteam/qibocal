@@ -2,6 +2,7 @@ name: Deploy
 
 on:
   push:
+  merge_group:
   release:
     types:
       - published
