@@ -146,7 +146,7 @@ def test_Experiment_save_load(nqubits: int, depths: list, runs: int, qubits: lis
         rmtree("experiments/")
 
 
-@pytest.mark.parametrize("amount_data", [10, 17])
+@pytest.mark.parametrize("amount_data", [50, 71])
 def test_Experiment_extract(amount_data):
     def populate_experiment_data(circuit: Circuit, datarow: dict) -> dict:
         datarow["rand_uniform"] = np.random.uniform(0, 1)
