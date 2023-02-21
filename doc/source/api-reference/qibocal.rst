@@ -148,35 +148,48 @@ Gate set characterization
 Abstract and Basic methods
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. automodule:: qibocal.calibrations.niGSC.basics.curcuitfactory
+Circuit Factory
+"""""""""""""""
+.. automodule:: qibocal.calibrations.niGSC.basics.circuitfactory
    :members:
    :undoc-members:
    :show-inheritance:
 
+Experiment
+""""""""""
 .. automodule:: qibocal.calibrations.niGSC.basics.experiment
    :members:
    :undoc-members:
    :show-inheritance:
 
+Fitting methods
+"""""""""""""""
 .. automodule:: qibocal.calibrations.niGSC.basics.fitting
    :members:
    :undoc-members:
    :show-inheritance:
 
+Plotting methods
+""""""""""""""""
 .. automodule:: qibocal.calibrations.niGSC.basics.plot
    :members:
    :undoc-members:
    :show-inheritance:
 
+Useful functions
+""""""""""""""""
 .. automodule:: qibocal.calibrations.niGSC.basics.utils
    :members:
    :undoc-members:
    :show-inheritance:
 
+Prebuild noise models
+"""""""""""""""""""""
 .. automodule:: qibocal.calibrations.niGSC.basics.noisemodels
    :members:
    :undoc-members:
    :show-inheritance:
+
 
 Standard RB
 ^^^^^^^^^^^
