@@ -152,12 +152,11 @@ class ThermalRelaxationErrorOnXAndRX(ThermalRelaxationErrorOnUnitary):
 
 
 class ThermalRelaxationErrorOnNonDiagonal(ThermalRelaxationErrorOnUnitary):
-    """Builds a noise model with thermal relaxation error acting on X, Y and non-diagonal Unitary gates.
-    """
+    """Builds a noise model with thermal relaxation error acting on X, Y and non-diagonal Unitary gates."""
 
     def __init__(self, *args) -> None:
         super().__init__(*args)
-    
+
     def build(self, *params):
         is_non_diag = lambda g: not np.allclose(np.abs(g.parameters), np.eye(2))
         self.add(ThermalRelaxationError(*params), gates.X)
