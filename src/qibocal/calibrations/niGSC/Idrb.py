@@ -4,8 +4,8 @@ from collections.abc import Iterable
 
 import numpy as np
 import pandas as pd
-from plotly.graph_objects import Figure
 import qibo
+from plotly.graph_objects import Figure
 from qibo import gates
 from qibo.models import Circuit
 from qibo.noise import NoiseModel
@@ -17,6 +17,7 @@ from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig
 from qibocal.config import raise_error
 
 qibo.set_backend("numpy")
+
 
 # Define the circuit factory class for this specific module.
 class ModuleFactory(CircuitFactory):
@@ -35,13 +36,13 @@ class ModuleFactory(CircuitFactory):
         # Initiate the empty circuit from qibo with 'self.nqubits'
         # many qubits.
         circuit = Circuit(1, density_matrix=True)
-        # Create a list with Id gates of size depth. 
+        # Create a list with Id gates of size depth.
         gate_lists = [gates.I(0)] * depth
         # Add gates to circuit.
         circuit.add(gate_lists)
         circuit.add(gates.M(0))
         return circuit
-    
+
     def gate_group(self):
         return [gates.I]
 
@@ -76,7 +77,7 @@ class moduleReport(Report):
 def filter_trivial(circuit: Circuit, datarow: dict) -> dict:
     """Calculates the filtered signal for the Id.
 
-    The filter function is calculated for the circuit with gates 
+    The filter function is calculated for the circuit with gates
     :math:`g` and the outcome :math`i` which is either ground state :math:`0`
     or exited state :math:`1`.
 
