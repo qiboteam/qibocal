@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
+from qibocal.calibrations.niGSC.basics import utils
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
 
 
@@ -93,7 +94,11 @@ class Report:
 
 
 def scatter_fit_fig(
-    experiment: Experiment, df_aggr: pd.DataFrame, xlabel: str, index: str
+    experiment: Experiment,
+    df_aggr: pd.DataFrame,
+    xlabel: str,
+    index: str,
+    fittingparam_label="popt",
 ):
     fig_traces = []
     dfrow = df_aggr.loc[index]
@@ -117,13 +122,29 @@ def scatter_fit_fig(
         )
     )
     x_fit = np.linspace(min(dfrow[xlabel]), max(dfrow[xlabel]), len(dfrow[xlabel]) * 20)
-    y_fit = getattr(fitting_methods, dfrow["fit_func"])(x_fit, *dfrow["popt"].values())
+    if "imag" in fittingparam_label:
+        y_fit = np.imag(
+            getattr(fitting_methods, dfrow["fit_func"])(
+                x_fit, *dfrow[fittingparam_label].values()
+            )
+        )
+    else:
+        y_fit = np.real(
+            getattr(fitting_methods, dfrow["fit_func"])(
+                x_fit, *dfrow[fittingparam_label].values()
+            )
+        )
     fig_traces.append(
         go.Scatter(
             x=x_fit,
-            y=np.real(y_fit),
+            y=y_fit,
             name="".join(
-                ["{}:{:.3f} ".format(key, dfrow["popt"][key]) for key in dfrow["popt"]]
+                [
+                    "{}:{} ".format(
+                        key, utils.number_to_str(dfrow[fittingparam_label][key])
+                    )
+                    for key in dfrow[fittingparam_label]
+                ]
             ),
             line=go.scatter.Line(dash="dot"),
         )

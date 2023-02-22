@@ -144,18 +144,23 @@ def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
     # Fit the filtered signal for each depth, there could be two overlaying exponential functions.
     popt, perr = fitting_methods.fit_exp2_func(depths, ydata)
     # Build a list of dictionaries with the aggregational information.
+    # Build a list of dictionaries with the aggregational information.
     data = [
         {
             "depth": depths,  # The x-axis.
             "data": ydata,  # The filtred signal.
             "2sigma": 2 * ydata_std,  # The 2 * standard deviation error for each depth.
             "fit_func": "exp2_func",  # Which function was used to fit.
-            "popt": {
-                "A1": popt[0],
-                "A2": popt[1],
+            "popt_real": {
+                "A1_real": np.real(
+                    popt[0]
+                ),  # The complex prefactors would lead to imaginary data.
+                "A2_real": np.real(
+                    popt[1]
+                ),  # That's why they have to be stored seperatly.
                 "p1": popt[2],
                 "p2": popt[3],
-            },  # The fitting parameters.
+            },  # The real fitting parameters.
             "perr": {
                 "A1_err": perr[0],
                 "A2_err": perr[1],
@@ -164,6 +169,13 @@ def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
             },  # The estimated errors.
         }
     ]
+    if np.iscomplex(popt[0]) or np.iscomplex(popt[1]):
+        data[0]["popt_imag"] = {
+            "A1_imag": np.imag(popt[0]),
+            "A2_imag": np.imag(popt[1]),
+            "p1": popt[2],
+            "p2": popt[3],
+        }  # The imaginary fitting parameters.
     df = pd.DataFrame(data, index=["filter"])
     return df
 
