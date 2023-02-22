@@ -161,32 +161,14 @@ def frequency_msr_phase(folder, routine, qubit, format):
             for param, value in params.items():
                 if "freq" in param:
                     fitting_report = fitting_report + (
-                        f"q{qubit}/r{report_n} {param}: {value:,.0f} Hz.<br>"
+                        f"q{qubit}/r{report_n} | {param}: {value:,.0f} Hz.<br>"
                     )
                 elif "voltage" in param:
                     fitting_report = fitting_report + (
-                        f"q{qubit}/r{report_n} {param}: {value:,.0f} uV.<br>"
+                        f"q{qubit}/r{report_n} | {param}: {value:,.0f} uV.<br>"
                     )
             fitting_report += "<br>"
         report_n += 1
-
-    fig.add_annotation(
-        dict(
-            font=dict(color="black", size=12),
-            x=0,
-            y=1.2,
-            showarrow=False,
-            text="<b>FITTING DATA</b>",
-            font_family="Arial",
-            font_size=20,
-            textangle=0,
-            xanchor="left",
-            xref="paper",
-            yref="paper",
-            font_color="#5e9af1",
-            hovertext=fitting_report,
-        )
-    )
 
     fig.update_layout(
         showlegend=True,
@@ -199,12 +181,13 @@ def frequency_msr_phase(folder, routine, qubit, format):
 
     figures.append(fig)
 
-    return figures
+    return figures, fitting_report
 
 
 # Punchout
 def frequency_attenuation_msr_phase(folder, routine, qubit, format):
     figures = []
+    fitting_report = "No fitting data"
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
@@ -288,7 +271,7 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
 
     figures.append(fig)
 
-    return figures
+    return figures, fitting_report
 
 
 # Punchout
@@ -383,6 +366,7 @@ def frequency_amplitude_msr_phase(folder, routine, qubit, format):
 # Resonator and qubit spectroscopies
 def frequency_attenuation_msr_phase_cut(folder, routine, qubit, format):
     figures = []
+    fitting_report = "No fitting data"
 
     fig = make_subplots(
         rows=1,
@@ -490,7 +474,7 @@ def frequency_attenuation_msr_phase_cut(folder, routine, qubit, format):
 
     figures.append(fig)
 
-    return figures
+    return figures, fitting_report
 
 
 # Resonator and qubit spectroscopies
@@ -604,6 +588,7 @@ def frequency_amplitude_msr_phase_cut(folder, routine, qubit, format):
 # Resonator spectroscopy flux
 def frequency_flux_msr_phase(folder, routine, qubit, format):
     figures = []
+    fitting_report = "No fitting data"
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
@@ -616,14 +601,14 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
         except:
             data = DataUnits(
                 name=f"data",
-                quantities={"frequency": "Hz", "bias": "dimensionless"},
+                quantities={"frequency": "Hz", "bias": "V"},
                 options=["qubit", "fluxline", "iteration"],
             )
 
         iterations = data.df["iteration"].unique()
         fluxlines = data.df["fluxline"].unique()
         frequencies = data.df["frequency"].pint.to("Hz").pint.magnitude.unique()
-        biass = data.df["bias"].pint.to("dimensionless").pint.magnitude.unique()
+        biass = data.df["bias"].pint.to("V").pint.magnitude.unique()
 
         if len(fluxlines) > 1:
             fig = make_subplots(
@@ -647,7 +632,7 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
                 fig.add_trace(
                     go.Heatmap(
                         x=fluxline_df["frequency"].pint.to("Hz").pint.magnitude,
-                        y=fluxline_df["bias"].pint.to("dimensionless").pint.magnitude,
+                        y=fluxline_df["bias"].pint.to("V").pint.magnitude,
                         z=fluxline_df["MSR"].pint.to("V").pint.magnitude,
                         showscale=False,
                     ),
@@ -682,7 +667,7 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
             fig.add_trace(
                 go.Heatmap(
                     x=fluxline_df["frequency"].pint.to("Hz").pint.magnitude,
-                    y=fluxline_df["bias"].pint.to("dimensionless").pint.magnitude,
+                    y=fluxline_df["bias"].pint.to("V").pint.magnitude,
                     z=fluxline_df["MSR"].pint.to("V").pint.magnitude,
                     colorbar_x=0.46,
                 ),
@@ -698,7 +683,7 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
             fig.add_trace(
                 go.Heatmap(
                     x=fluxline_df["frequency"].pint.to("Hz").pint.magnitude,
-                    y=fluxline_df["bias"].pint.to("dimensionless").pint.magnitude,
+                    y=fluxline_df["bias"].pint.to("V").pint.magnitude,
                     z=fluxline_df["phase"].pint.to("rad").pint.magnitude,
                     colorbar_x=1.01,
                 ),
@@ -724,7 +709,7 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
 
     figures.append(fig)
 
-    return figures
+    return figures, fitting_report
 
 
 # Dispersive shift
@@ -905,11 +890,11 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, format):
                 for param, value in params.items():
                     if "freq" in param:
                         fitting_report = fitting_report + (
-                            f"q{qubit}/r{report_n} {label} {param}: {value:,.0f} Hz.<br>"
+                            f"q{qubit}/r{report_n} | {label} {param}: {value:,.0f} Hz.<br>"
                         )
                     elif "voltage" in param:
                         fitting_report = fitting_report + (
-                            f"q{qubit}/r{report_n} {label} {param}: {value:,.0f} uV.<br>"
+                            f"q{qubit}/r{report_n} | {label} {param}: {value:,.0f} uV.<br>"
                         )
         if ("Spectroscopy" in resonator_freqs) and (
             "Shifted spectroscopy" in resonator_freqs
@@ -919,28 +904,10 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, format):
                 - resonator_freqs["Spectroscopy"]
             )
             fitting_report = fitting_report + (
-                f"q{qubit}/r{report_n} Frequency shift: {frequency_shift:,.0f} Hz.<br>"
+                f"q{qubit}/r{report_n} | Frequency shift: {frequency_shift:,.0f} Hz.<br>"
             )
         fitting_report += "<br>"
         report_n += 1
-
-    fig.add_annotation(
-        dict(
-            font=dict(color="black", size=12),
-            x=0,
-            y=1.2,
-            showarrow=False,
-            text="<b>FITTING DATA</b>",
-            font_family="Arial",
-            font_size=20,
-            textangle=0,
-            xanchor="left",
-            xref="paper",
-            yref="paper",
-            font_color="#5e9af1",
-            hovertext=fitting_report,
-        )
-    )
 
     fig.update_layout(
         showlegend=True,
@@ -953,7 +920,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, format):
 
     figures.append(fig)
 
-    return figures
+    return figures, fitting_report
 
 
 def frequency_attenuation(folder, routine, qubit, format):
@@ -970,6 +937,7 @@ def frequency_attenuation(folder, routine, qubit, format):
     """
 
     figures = []
+    fitting_report = "No fitting data"
 
     try:
         data = DataUnits.load_data(folder, "data", routine, format, f"data_q{qubit}")
@@ -1029,7 +997,7 @@ def frequency_attenuation(folder, routine, qubit, format):
 
     figures.append(fig)
 
-    return figures
+    return figures, fitting_report
 
 
 def frequency_bias_flux(folder, routine, qubit, format):
@@ -1046,6 +1014,7 @@ def frequency_bias_flux(folder, routine, qubit, format):
     """
 
     figures = []
+    fitting_report = "No fitting data"
 
     fluxes = []
     fluxes_fit = []
@@ -1076,7 +1045,7 @@ def frequency_bias_flux(folder, routine, qubit, format):
         )
         fig.add_trace(
             go.Scatter(
-                x=data_spec.get_values("bias", "A"),
+                x=data_spec.get_values("bias", "V"),
                 y=data_spec.get_values("frequency", "GHz"),
                 name=f"fluxline: {j}",
                 mode="markers",
@@ -1094,8 +1063,8 @@ def frequency_bias_flux(folder, routine, qubit, format):
                 data_fit = Data(quantities=[])
             if len(data_spec) > 0 and len(data_fit) > 0:
                 curr_range = np.linspace(
-                    min(data_spec.get_values("bias", "A")),
-                    max(data_spec.get_values("bias", "A")),
+                    min(data_spec.get_values("bias", "V")),
+                    max(data_spec.get_values("bias", "V")),
                     100,
                 )
                 if int(j) == int(qubit):
@@ -1199,4 +1168,4 @@ def frequency_bias_flux(folder, routine, qubit, format):
 
     figures.append(fig)
 
-    return figures
+    return figures, fitting_report

@@ -255,7 +255,7 @@ def qubit_spectroscopy_flux(
             - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
             - **phase[rad]**: Resonator signal phase mesurement in radians
             - **frequency[Hz]**: Qubit drive frequency value in Hz
-            - **bias[dimensionless]**: Bias value applied to the flux line
+            - **bias[V]**: Current value in A applied to the flux line
             - **qubit**: The qubit being tested
             - **fluxline**: The fluxline being tested
             - **iteration**: The iteration number of the many determined by software_averages
@@ -316,7 +316,7 @@ def qubit_spectroscopy_flux(
     # additionally include qubit frequency and flux bias
     data = DataUnits(
         name=f"data",
-        quantities={"frequency": "Hz", "bias": "dimensionless"},
+        quantities={"frequency": "Hz", "bias": "V"},
         options=["qubit", "fluxline", "iteration"],
     )
 
@@ -347,7 +347,7 @@ def qubit_spectroscopy_flux(
             r.update(
                 {
                     "frequency[Hz]": freqs,
-                    "bias[dimensionless]": biases,
+                    "bias[V]": biases,
                     "qubit": len(freqs) * [qubit],
                     "fluxline": len(freqs) * [fluxline],
                     "iteration": len(freqs) * [iteration],

@@ -133,3 +133,7 @@ dmypy.json
 
 # QCVV output directories
 20*
+
+# Visual Studio Code
+.vscode
+*.DS_Store
