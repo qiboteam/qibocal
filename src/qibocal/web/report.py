@@ -7,14 +7,14 @@ from qibocal import __version__
 from qibocal.cli.builders import ReportBuilder
 
 
-def create_report(path):
+def create_report(path, actions=None):
     """Creates an HTML report for the data in the given path."""
     filepath = pathlib.Path(__file__)
 
     with open(os.path.join(filepath.with_name("static"), "styles.css")) as file:
         css_styles = f"<style>\n{file.read()}\n</style>"
 
-    report = ReportBuilder(path)
+    report = ReportBuilder(path, actions)
     env = Environment(loader=FileSystemLoader(filepath.with_name("templates")))
     template = env.get_template("template.html")
     html = template.render(

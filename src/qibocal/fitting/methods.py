@@ -427,7 +427,7 @@ def ramsey_fit(
                 popt[3] - x_min * popt[2] / (x_max - x_min),
                 popt[4] / (x_max - x_min),
             ]
-            delta_fitting = popt[2]
+            delta_fitting = popt[2] / 2 * np.pi
             delta_phys = int((delta_fitting * sampling_rate) - offset_freq)
             corrected_qubit_frequency = int(qubit_freqs[qubit] + delta_phys)
             t2 = 1.0 / popt[4]

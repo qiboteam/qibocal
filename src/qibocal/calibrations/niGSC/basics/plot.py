@@ -9,6 +9,7 @@ from qibocal.calibrations.niGSC.basics.experiment import Experiment
 
 
 def plot_qq(folder: str, routine: str, qubit, format):
+    fitting_report = ""
     """Load the module for which the plot has to be done.
 
 
@@ -33,7 +34,7 @@ def plot_qq(folder: str, routine: str, qubit, format):
     aggr_df = pd.read_pickle(f"{folder}/data/{routine}/fit_plot.pkl")
     # Build the figure/report using the responsible module.
     plotly_figure = module.build_report(experiment, aggr_df)
-    return [plotly_figure]
+    return [plotly_figure], fitting_report
 
 
 class Report:
@@ -48,23 +49,30 @@ class Report:
 
     def build(self):
         l = len(self.all_figures)
+        if l < 3:
+            divide_by = 1
+        else:
+            divide_by = 2
         subplot_titles = [figdict.get("subplot_title") for figdict in self.all_figures]
         fig = make_subplots(
-            rows=int(l / 2) + l % 2 + 1,
-            cols=1 if l == 1 else 2,
+            rows=int(l / divide_by) + l % divide_by + 1,
+            cols=1 if l == 1 else divide_by,
             subplot_titles=subplot_titles,
         )
         for count, fig_dict in enumerate(self.all_figures):
             plot_list = fig_dict["figs"]
             for plot in plot_list:
-                fig.add_trace(plot, row=count // 2 + 1, col=count % 2 + 1)
+                fig.add_trace(
+                    plot, row=count // divide_by + 1, col=count % divide_by + 1
+                )
 
         fig.add_annotation(
             dict(
                 bordercolor="black",
                 font=dict(color="black", size=16),
                 x=0.0,
-                y=1.0 / (int(l / 2) + l % 2 + 1) - len(self.info_dict) * 0.005,
+                y=1.0 / (int(l / divide_by) + l % divide_by + 1)
+                - len(self.info_dict) * 0.005,
                 showarrow=False,
                 text="<br>".join(
                     [f"{key} : {value}\n" for key, value in self.info_dict.items()]
@@ -86,7 +94,9 @@ class Report:
             legend_font_size=16,
             hoverlabel_font_size=16,
             showlegend=True,
-            height=500 * (int(l / 2) + l % 2) if l > 2 else 1000,
+            height=500 * (int(l / divide_by) + l % divide_by)
+            if l > divide_by
+            else 1000,
             width=1000,
         )
 

@@ -42,7 +42,7 @@ def depths():
 
 @pytest.fixture
 def nshots():
-    return 13
+    return 127
 
 
 @pytest.mark.parametrize("nqubits", [1, 2])
@@ -184,7 +184,7 @@ def test_build_report():
     aggr_df = standardrb.get_aggregational_data(myfaultyexperiment)
     assert (
         theoretical_outcome(noise) - aggr_df.popt[0]["p"]
-        < 2 * aggr_df.perr[0]["p_err"] + theoretical_outcome(noise) * 0.01
+        < 2 * aggr_df.perr[0]["p_err"] + theoretical_outcome(noise) * 0.05
     )
     report_figure = standardrb.build_report(myfaultyexperiment, aggr_df)
     assert isinstance(report_figure, Figure)

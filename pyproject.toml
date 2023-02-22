@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "qibocal"
-version = "0.0.1.dev0"
+version = "0.0.2.dev0"
 description = ""
 authors = ["andrea-pasquale <andreapasquale97@gmail.com>"]
 license = "Apache License 2.0"
@@ -16,10 +16,10 @@ classifiers=[
 
 [tool.poetry.dependencies]
 python = ">=3.8, <4"
-qibolab = {git = "https://github.com/qiboteam/qibolab.git", rev = "main"}
+qibolab = "^0.0.1"
 qibo = "^0.1.9"
 pandas = "^1.4.3"
-Pint-Pandas = {git = "https://github.com/hgrecco/pint-pandas.git", rev = "master"}
+Pint-Pandas = "^0.3"
 dash = "^2.6.0"
 lmfit = "^1.0.3"
 # docs dependencies (for readthedocs, https://github.com/readthedocs/readthedocs.org/issues/4912#issuecomment-664002569)
