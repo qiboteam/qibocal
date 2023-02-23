@@ -1082,3 +1082,63 @@ def calibrate_qubit_states_fit(data, x, y, nshots, qubits):
         }
         parameters.add(results)
     return parameters
+
+
+def qubit_spectroscopy_flux_fit(data, x, y, qubits, resonator_type):
+    r""" """
+
+    data_fit = Data(
+        name=f"fits",
+        quantities=[
+            "popt0",
+            "popt1",
+            "popt2",
+            "qubit",
+        ],
+    )
+
+    bias_keys = parse(x)
+    frequency_keys = parse(y)
+    for qubit in qubits:
+        qubit_data = (
+            data.df[data.df["qubit"] == qubit]
+            .drop(columns=["qubit", "iteration"])
+            .groupby(bias_keys[0], frequency_keys[0], as_index=False)
+            .mean()
+        )
+        biases = qubit_data[bias_keys[0]].pint.to(bias_keys[1]).pint.magnitude
+
+        if resonator_type == "3D":
+            frequencies = (
+                qubit_data.loc[
+                    qubit_data.groupby(bias_keys[0])[frequency_keys[0]].idxmin()
+                ]
+                .pint.to(frequency_keys[1])
+                .pint.magnitude
+            )
+        else:
+            frequencies = (
+                qubit_data.loc[
+                    qubit_data.groupby(bias_keys[0])[frequency_keys[0]].idxmax()
+                ]
+                .pint.to(frequency_keys[1])
+                .pint.magnitude
+            )
+
+        try:
+            popt = np.polyfit(x, y, 2)
+
+        except:
+            log.warning("qubit_spectroscopy_flux_fit: the fitting was not succesful")
+            data_fit.add({key: 0 for key in data_fit.df.columns})
+            return data_fit
+
+        data_fit.add(
+            {
+                "popt0": popt[0],
+                "popt1": popt[1],
+                "popt2": popt[2],
+                "qubit": qubit,
+            }
+        )
+    return data_fit
