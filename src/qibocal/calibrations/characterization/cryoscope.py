@@ -252,7 +252,8 @@ def cryoscope(
     flux_pulse_amplitude_start,
     flux_pulse_amplitude_end,
     flux_pulse_amplitude_step,
-    delay_before_readout,
+    delay_before_flux,
+    delay_after_flux,
     flux_pulse_shapes: Optional[list] = None,
     nshots=1024,
     relaxation_time=None,
@@ -292,7 +293,8 @@ def cryoscope(
         flux_pulse_amplitude_start (int): Initial flux pulse amplitude
         flux_pulse_amplitude_end (int): Maximum flux pulse amplitude
         flux_pulse_amplitude_step (int): Scan range step for the flux pulse amplitude
-        delay_before_readout (int): A time delay in ns between the end of the flux pulse and the beginning of the measurement of the phase
+        delay_before_flux (int): A time delay in ns before the flux pulse
+        delay_before_readout (int): A time delay in ns after the flux pulse
         flux_pulse_shapes (dict(PulseShape)): A dictionary of qubit_ids: PulseShape objects to be used for each qubit flux pulse.
         software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
@@ -316,8 +318,12 @@ def cryoscope(
     # 2) apply a flux pulse of variable duration,
     # 3) wait for the transient of the flux pulse to disappear
     # 3) measure in the X and Y axis
-    #   MX = Ry(pi/2) - (flux)(t) - wait - Ry(pi/2)  - MZ
-    #   MY = Ry(pi/2) - (flux)(t) - wait - Rx(-pi/2) - MZ
+    #   MX = Ry(pi/2) - delay before - (flux)(t) - delay after - Ry(pi/2)  - MZ
+    #   MY = Ry(pi/2) - delay before - (flux)(t) - delay after - Rx(-pi/2) - MZ
+    #   MZ = Ry(pi/2) - delay before - (flux)(t) - delay after -           - MZ
+    #   M0 =                                                               - MZ
+    #   M1 = Ry(pi) -                                                      - MZ
+
     # The flux pulse detunes the qubit and results in a rotation around the Z axis = atan(MY/MX)
 
     # reload instrument settings from runcard
@@ -326,6 +332,9 @@ def cryoscope(
     # define the sequences of pulses to be executed
     MX_seq = PulseSequence()
     MY_seq = PulseSequence()
+    MZ_seq = PulseSequence()
+    M0_seq = PulseSequence()
+    M1_seq = PulseSequence()
 
     initial_RY90_pulses = {}
     flux_pulses = {}
@@ -343,30 +352,31 @@ def cryoscope(
         else:
             flux_pulse_shape = Rectangular()
 
+        # wait before applying flux pulse (delay_before_flux)
+
         # apply a detuning flux pulse
         flux_pulses[qubit] = FluxPulse(
-            start=initial_RY90_pulses[qubit].se_finish,
+            start=initial_RY90_pulses[qubit].se_finish + delay_before_flux,
             duration=flux_pulse_duration_start,  # sweep to produce oscillations [up to 400ns] in steps od 1ns? or 4?
             amplitude=flux_pulse_amplitude,  # fix for each run
             shape=flux_pulse_shape,
-            # relative_phase=0,
             channel=platform.qubits[qubit].flux.name,
             qubit=platform.qubits[qubit].name,
         )
 
-        # wait delay_before_readout
+        # wait after applying flux pulse (delay_after_flux)
 
         # rotate around the X asis Rx(-pi/2) to meassure Y component
         RX90_pulses[qubit] = platform.create_RX90_pulse(
             qubit,
-            start=flux_pulses[qubit].finish + delay_before_readout,
+            start=flux_pulses[qubit].finish + delay_after_flux,
             relative_phase=np.pi,
         )
 
         # rotate around the Y asis Ry(pi/2) to meassure X component
         RY90_pulses[qubit] = platform.create_RX90_pulse(
             qubit,
-            start=flux_pulses[qubit].finish + delay_before_readout,
+            start=flux_pulses[qubit].finish + delay_after_flux,
             relative_phase=np.pi / 2,
         )
 
@@ -388,13 +398,33 @@ def cryoscope(
             RX90_pulses[qubit],
             MZ_ro_pulses[qubit],
         )
+        MZ_seq.add(
+            initial_RY90_pulses[qubit],
+            flux_pulses[qubit],
+            MZ_ro_pulses[qubit],
+        )
+        M0_seq.add(
+            MZ_ro_pulses[qubit],
+        )
+        M1_seq.add(
+            platform.create_RX_pulse(
+                qubit, start=0, relative_phase=np.pi / 2
+            ),
+            MZ_ro_pulses[qubit],
+        )
 
         # DEBUG: Plot Cryoscope Sequences
         # MX_seq.plot("MX_seq")
         # MY_seq.plot("MY_seq")
+        # MZ_seq.plot("MZ_seq")
+        # M0_seq.plot("M0_seq")
+        # M1_seq.plot("M1_seq")
 
     MX_tag = "MX"
     MY_tag = "MY"
+    MZ_tag = "MZ"
+    M0_tag = "M0"
+    M1_tag = "M1"
 
     # define the parameters to sweep and their range:
     # flux pulse amplitude
@@ -436,7 +466,7 @@ def cryoscope(
             for qubit in qubits:
                 flux_pulses[qubit].duration = duration
             # execute the pulse sequences
-            for sequence, tag in [(MX_seq, MX_tag), (MY_seq, MY_tag)]:
+            for sequence, tag in [(MX_seq, MX_tag), (MY_seq, MY_tag), (MZ_seq, MZ_tag), (M0_seq, M0_tag), (M1_seq, M1_tag)]:
                 results = platform.sweep(
                     sequence,
                     sweeper,

@@ -23,3 +23,6 @@ def get_color_state0(number):
 
 def get_color_state1(number):
     return "rgb" + str(hls_to_rgb((-0.02 - number * 9 / 20) % 1, 0.6, 0.75))
+
+def get_color_pair(number):
+    return (get_color_state0(number), get_color_state1(number))

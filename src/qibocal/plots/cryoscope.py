@@ -8,17 +8,19 @@ from scipy.signal import argrelextrema, lfilter, savgol_filter
 
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import cos, exp, flipping, lorenzian, rabi, ramsey
-from qibocal.plots.utils import get_color, get_data_subfolders
+from qibocal.plots.utils import get_color, get_color_pair, get_data_subfolders
 
 MX_tag = "MX"
 MY_tag = "MY"
-
+MZ_tag = "MZ"
+M0_tag = "M0"
+M1_tag = "M1"
 
 def _get_flux_pulse_durations_and_amplitudes(data: DataUnits):
-    flux_pulse_durations = data.get_values("flux_pulse_duration", "ns")[
+    flux_pulse_durations = data["flux_pulse_duration"][
         data.df["component"] == MX_tag
     ].to_numpy()
-    flux_pulse_amplitudes = data.get_values("flux_pulse_amplitude", "dimensionless")[
+    flux_pulse_amplitudes = data["flux_pulse_amplitude"][
         data.df["component"] == MX_tag
     ].to_numpy()
     amplitudes = flux_pulse_amplitudes[flux_pulse_durations == flux_pulse_durations[0]]
@@ -28,11 +30,9 @@ def _get_flux_pulse_durations_and_amplitudes(data: DataUnits):
 
 def _get_values(data, component=None, duration=None, amplitude=None):
     if component:
-        values = data.get_values("prob", "dimensionless")[
-            data.df["component"] == component
-        ]
+        values = data["prob"][data.df["component"] == component]
     else:
-        values = data.get_values("prob", "dimensionless")
+        values = data["prob"]
 
     if duration:
         values = values[data.df["flux_pulse_duration"] == duration]
@@ -63,11 +63,13 @@ def cryoscope_raw(folder, routine, qubit, format):
     for subfolder in subfolders:
         try:
             data = DataUnits.load_data(folder, subfolder, routine, format, "data")
-            # data.df = data.df[data.df["qubit"] == qubit]
+            quantities = list(data.quantities.keys())
+            data.df[quantities] = data.df[quantities].pint.dequantify()
+
             # extract qubit data and average over iterations
             data.df = (
                 data.df[data.df["qubit"] == qubit]
-                .drop(columns=["qubit", "iteration"])
+                .drop(columns=["i", "q", "phase", "qubit", "iteration"])
                 .groupby(
                     ["flux_pulse_duration", "flux_pulse_amplitude", "component"],
                     as_index=False,
@@ -75,33 +77,34 @@ def cryoscope_raw(folder, routine, qubit, format):
                 .mean()
             )
         except:
-            data = DataUnits(
+            data = Data(
                 name=f"data",
                 quantities={
-                    "flux_pulse_duration": "ns",
-                    "flux_pulse_amplitude": "dimensionless",
-                    "prob": "dimensionless",
-                },
-                options=["component", "qubit", "iteration"],
+                    "flux_pulse_duration",
+                    "flux_pulse_amplitude",
+                    "prob",
+                    "component",
+                    "qubit",
+                    "iteration"
+                }
             )
 
         durations = (
-            data.df[data.df["component"] == MY_tag]["flux_pulse_duration"]
-            .pint.to("ns")
-            .pint.magnitude.unique()
+            data.df[data.df["component"] == MY_tag]["flux_pulse_duration"].unique()
         )
         amplitudes = (
-            data.df[data.df["component"] == MY_tag]["flux_pulse_amplitude"]
-            .pint.to("dimensionless")
-            .pint.magnitude.unique()
+            data.df[data.df["component"] == MY_tag]["flux_pulse_amplitude"].unique()
         )
 
+        opacity = 0.3
+        
         for amp in amplitudes:
             figs["raw"].add_trace(
                 go.Scatter(
                     x=durations,
                     y=_get_values(data, MX_tag, amplitude=amp),
                     name=f"q{qubit}/r{report_n}: <X> | A = {amp:.3f}",
+                    marker_color=get_color_pair(report_n)[0],
                 ),
                 row=1,
                 col=1,
@@ -112,10 +115,52 @@ def cryoscope_raw(folder, routine, qubit, format):
                     x=durations,
                     y=_get_values(data, MY_tag, amplitude=amp),
                     name=f"q{qubit}/r{report_n}: <Y> | A = {amp:.3f}",
+                    marker_color=get_color_pair(report_n)[1],
                 ),
                 row=1,
                 col=1,
             )
+
+
+            figs["raw"].add_trace(
+                go.Scatter(
+                    x=durations,
+                    y=_get_values(data, MZ_tag, amplitude=amp),
+                    name=f"q{qubit}/r{report_n}: <Z> | A = {amp:.3f}",
+                    marker_color=get_color(0),
+                    opacity=opacity,
+                    legendgroup=f"q{qubit}/r{report_n} | A = {amp:.3f}",
+                ),
+                row=1,
+                col=1,
+            )
+
+            figs["raw"].add_trace(
+                go.Scatter(
+                    x=durations,
+                    y=_get_values(data, M0_tag, amplitude=amp),
+                    marker_color=get_color(0),
+                    opacity=opacity,
+                    showlegend=False,
+                    legendgroup=f"q{qubit}/r{report_n} | A = {amp:.3f}",
+                ),
+                row=1,
+                col=1,
+            )
+
+            figs["raw"].add_trace(
+                go.Scatter(
+                    x=durations,
+                    y=_get_values(data, M1_tag, amplitude=amp),
+                    marker_color=get_color(0),
+                    opacity=opacity,
+                    showlegend=False,
+                    legendgroup=f"q{qubit}/r{report_n} | A = {amp:.3f}",
+                ),
+                row=1,
+                col=1,
+            )
+
     figs["raw"].update_layout(
         xaxis_title="Pulse duration (ns)",
         yaxis_title="Magnitude (dimensionless)",
@@ -160,11 +205,9 @@ def flux_pulse_timing(folder, routine, qubit, format):
             )
 
         amplitudes = (
-            data.df["flux_pulse_amplitude"]
-            .pint.to("dimensionless")
-            .pint.magnitude.unique()
+            data.df["flux_pulse_amplitude"].unique()
         )
-        starts = data.df["flux_pulse_start"].pint.to("ns").pint.magnitude.unique()
+        starts = data.df["flux_pulse_start"].unique()
 
     for amp in amplitudes:
         figs["flux_pulse_timing"].add_trace(
