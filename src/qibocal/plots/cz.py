@@ -49,7 +49,6 @@ def _normalise(values: np.array):
 
 
 def cryoscope_raw(folder, routine, qubit, format):
-
     figs = {}
     figs["raw"] = make_subplots(
         rows=1,
@@ -126,7 +125,6 @@ def cryoscope_raw(folder, routine, qubit, format):
 
 
 def flux_pulse_timing(folder, routine, qubit, format):
-
     figs = {}
     figs["flux_pulse_timing"] = make_subplots(
         rows=1,
