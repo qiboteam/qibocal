@@ -9,6 +9,7 @@ from qibocal.plots.utils import get_color, get_data_subfolders
 
 # Flipping
 def flips_msr(folder, routine, qubit, format):
+    figures = []
 
     fig = make_subplots(
         rows=1,
@@ -115,28 +116,11 @@ def flips_msr(folder, routine, qubit, format):
                 col=1,
             )
             fitting_report = fitting_report + (
-                f"q{qubit}/r{report_n} amplitude_correction_factor: {params['amplitude_correction_factor']:.4f}<br>"
-                + f"q{qubit}/r{report_n} corrected_amplitude: {params['corrected_amplitude']:.4f}<br><br>"
+                f"q{qubit}/r{report_n} | amplitude_correction_factor: {params['amplitude_correction_factor']:.4f}<br>"
+                + f"q{qubit}/r{report_n} | corrected_amplitude: {params['corrected_amplitude']:.4f}<br><br>"
             )
 
         report_n += 1
-    fig.add_annotation(
-        dict(
-            font=dict(color="black", size=12),
-            x=0,
-            y=1.2,
-            showarrow=False,
-            text="<b>FITTING DATA</b>",
-            font_family="Arial",
-            font_size=20,
-            textangle=0,
-            xanchor="left",
-            xref="paper",
-            yref="paper",
-            font_color="#5e9af1",
-            hovertext=fitting_report,
-        )
-    )
 
     # last part
     fig.update_layout(
@@ -145,4 +129,7 @@ def flips_msr(folder, routine, qubit, format):
         xaxis_title="Flips (dimensionless)",
         yaxis_title="MSR (uV)",
     )
-    return fig
+
+    figures.append(fig)
+
+    return figures, fitting_report

@@ -9,7 +9,6 @@ from qibocal.plots.utils import get_color, get_data_subfolders
 
 # Spin echos
 def spin_echo_time_msr(folder, routine, qubit, format):
-
     """Spin echo plotting routine:
     The routine plots the results of a modified Ramsey sequence with an additional Rx(pi) pulse placed symmetrically between the two Rx(pi/2) pulses.
     An exponential fit to this data gives a spin echo decay time T2.
@@ -19,10 +18,11 @@ def spin_echo_time_msr(folder, routine, qubit, format):
         qubit (int): Target qubit to characterize
         format (string): Data file format. Supported formats are .csv and .pkl
     """
+    figures = []
 
     fig = make_subplots(
         rows=1,
-        cols=2,
+        cols=1,
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
         subplot_titles=("MSR (V)",),
@@ -125,27 +125,9 @@ def spin_echo_time_msr(folder, routine, qubit, format):
             )
 
             fitting_report = fitting_report + (
-                f"q{qubit}/r{report_n} t2: {params['t2']:,.0f} ns.<br><br>"
+                f"q{qubit}/r{report_n} | t2: {params['t2']:,.0f} ns.<br><br>"
             )
         report_n += 1
-
-    fig.add_annotation(
-        dict(
-            font=dict(color="black", size=12),
-            x=0,
-            y=1.2,
-            showarrow=False,
-            text="<b>FITTING DATA</b>",
-            font_family="Arial",
-            font_size=20,
-            textangle=0,
-            xanchor="left",
-            xref="paper",
-            yref="paper",
-            font_color="#5e9af1",
-            hovertext=fitting_report,
-        )
-    )
 
     fig.update_layout(
         showlegend=True,
@@ -153,4 +135,7 @@ def spin_echo_time_msr(folder, routine, qubit, format):
         xaxis_title="Time (ns)",
         yaxis_title="MSR (uV)",
     )
-    return fig
+
+    figures.append(fig)
+
+    return figures, fitting_report

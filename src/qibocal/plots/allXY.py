@@ -33,6 +33,8 @@ gatelist = [
 
 
 def allXY(folder, routine, qubit, format):
+    figures = []
+    fitting_report = "No fitting data: -<br>No fitting data: -<br><br>"
 
     fig = make_subplots(
         rows=1,
@@ -94,14 +96,6 @@ def allXY(folder, routine, qubit, format):
         report_n += 1
 
     fig.add_hline(
-        y=-1,
-        line_width=2,
-        line_dash="dash",
-        line_color="grey",
-        row=1,
-        col=1,
-    )
-    fig.add_hline(
         y=0,
         line_width=2,
         line_dash="dash",
@@ -118,17 +112,31 @@ def allXY(folder, routine, qubit, format):
         col=1,
     )
 
+    fig.add_hline(
+        y=-1,
+        line_width=2,
+        line_dash="dash",
+        line_color="grey",
+        row=1,
+        col=1,
+    )
+
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Gate sequence number",
-        yaxis_title="Z projection probability of qubit state |o>",
+        yaxis_title="Expectation value of Z",
     )
-    return fig
+
+    figures.append(fig)
+
+    return figures, fitting_report
 
 
 # allXY
 def allXY_drag_pulse_tuning(folder, routine, qubit, format):
+    figures = []
+    fitting_report = "No fitting data: -<br>No fitting data: -<br><br>"
 
     fig = make_subplots(
         rows=1,
@@ -142,7 +150,6 @@ def allXY_drag_pulse_tuning(folder, routine, qubit, format):
     subfolders = get_data_subfolders(folder)
     report_n = 0
     for subfolder in subfolders:
-
         try:
             data = Data.load_data(folder, subfolder, routine, format, "data")
             data.df = data.df[data.df["qubit"] == qubit]
@@ -186,14 +193,6 @@ def allXY_drag_pulse_tuning(folder, routine, qubit, format):
         report_n += 1
 
     fig.add_hline(
-        y=-1,
-        line_width=2,
-        line_dash="dash",
-        line_color="grey",
-        row=1,
-        col=1,
-    )
-    fig.add_hline(
         y=0,
         line_width=2,
         line_dash="dash",
@@ -210,17 +209,31 @@ def allXY_drag_pulse_tuning(folder, routine, qubit, format):
         col=1,
     )
 
+    fig.add_hline(
+        y=-1,
+        line_width=2,
+        line_dash="dash",
+        line_color="grey",
+        row=1,
+        col=1,
+    )
+
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Gate sequence number",
-        yaxis_title="Z projection probability of qubit state |o>",
+        yaxis_title="Expectation value of Z",
     )
-    return fig
+
+    figures.append(fig)
+
+    return figures, fitting_report
 
 
 # beta param tuning
 def drag_pulse_tuning(folder, routine, qubit, format):
+    figures = []
+    fitting_report = "No fitting data: -<br>No fitting data: -<br><br>"
 
     fig = make_subplots(
         rows=1,
@@ -269,33 +282,11 @@ def drag_pulse_tuning(folder, routine, qubit, format):
                 col=1,
             )
 
-        iterations = data.df["iteration"].unique()
-        beta_params = data.df["beta_param"].pint.magnitude.unique()
-
-        for iteration in iterations:
-            iteration_data = data.df[data.df["iteration"] == iteration]
-            fig.add_trace(
-                go.Scatter(
-                    x=iteration_data["beta_param"].pint.magnitude,
-                    y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
-                    marker_color=get_color(report_n),
-                    mode="markers",
-                    opacity=0.3,
-                    name=f"q{qubit}/r{report_n}: Probability",
-                    showlegend=not bool(iteration),
-                    legendgroup="group1",
-                ),
-                row=1,
-                col=1,
-            )
-
         fig.add_trace(
             go.Scatter(
                 x=beta_params,
-                y=data.df.groupby("beta_param", as_index=False)[
-                    "MSR"
-                ]  # pylint: disable=E1101
-                .mean()
+                y=data.df.groupby("beta_param", as_index=False)
+                .mean()["MSR"]  # pylint: disable=E1101
                 .pint.to("uV")
                 .pint.magnitude,
                 name=f"q{qubit}/r{report_n}: Average MSR",
@@ -341,28 +332,13 @@ def drag_pulse_tuning(folder, routine, qubit, format):
 
             report_n += 1
 
-    fig.add_annotation(
-        dict(
-            font=dict(color="black", size=12),
-            x=0,
-            y=1.2,
-            showarrow=False,
-            text="<b>FITTING DATA</b>",
-            font_family="Arial",
-            font_size=20,
-            textangle=0,
-            xanchor="left",
-            xref="paper",
-            yref="paper",
-            font_color="#5e9af1",
-            hovertext=fitting_report,
-        )
-    )
-
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Beta parameter",
         yaxis_title="MSR[uV] [Rx(pi/2) - Ry(pi)] - [Ry(pi/2) - Rx(pi)]",
     )
-    return fig
+
+    figures.append(fig)
+
+    return figures, fitting_report

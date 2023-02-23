@@ -1,4 +1,7 @@
+import datetime
 import os
+import re
+import time
 
 import pandas as pd
 import yaml
@@ -17,12 +20,43 @@ app = Dash(
 
 app.layout = html.Div(
     [
+        html.Link(href="/static/styles.css", rel="stylesheet"),
+        html.Div(
+            id="refresh-area",
+            className="refresh-area",
+            children=[
+                html.Div(
+                    id="refresh-text",
+                    className="refresh-text",
+                    children=[html.P("Refresh rate:")],
+                ),
+                dcc.Dropdown(
+                    id="interval-refresh",
+                    className="interval-refresh",
+                    placeholder="Select refresh rate",
+                    options=[
+                        {"label": "Auto refresh", "value": 0},
+                        {"label": "2 seconds", "value": 2},
+                        {"label": "5 seconds", "value": 5},
+                        {"label": "10 seconds", "value": 10},
+                        {"label": "20 seconds", "value": 20},
+                        {"label": "No refresh", "value": 3600},
+                    ],
+                    value=0,
+                ),
+                html.Div(
+                    id="latest-timestamp",
+                    className="latest-timestamp",
+                ),
+            ],
+        ),
+        html.Div(id="div-fitting", className="div-fitting"),
+        html.Div(id="div-figures"),
         dcc.Location(id="url", refresh=False),
-        dcc.Graph(id="graph", figure={}),
         dcc.Interval(
             id="interval",
             # TODO: Perhaps the user should be allowed to change the refresh rate
-            interval=5000,
+            interval=5 * 1000,
             n_intervals=0,
             disabled=False,
         ),
@@ -31,12 +65,19 @@ app.layout = html.Div(
 
 
 @app.callback(
-    Output("graph", "figure"),
+    Output(component_id="div-figures", component_property="children"),
+    Output(component_id="latest-timestamp", component_property="children"),
+    Output(component_id="interval", component_property="interval"),
+    Output(component_id="div-fitting", component_property="children"),
     Input("interval", "n_intervals"),
-    Input("graph", "figure"),
     Input("url", "pathname"),
+    Input("interval-refresh", "value"),
 )
-def get_graph(n, current_figure, url):
+def get_graph(interval, url, value):
+    st = time.time()
+
+    figures = []
+
     if "data" not in url:
         url = f"/data{url}"
 
@@ -58,7 +99,70 @@ def get_graph(n, current_figure, url):
         # # multiple routines with different names in one folder
         # # should be changed to:
         # # return getattr(getattr(plots, routine), method)(data)
+        figs, fitting_report = getattr(plots, method)(folder, routine, qubit, format)
+        et = time.time()
 
-        return getattr(plots, method)(folder, routine, qubit, format)
+        if value == 0:
+            refresh_rate = (et - st) + 6
+        else:
+            refresh_rate = value
+
+        for fig in figs:
+            figures.append(dcc.Graph(figure=fig))
+
+        table = ""
+        if "No fitting data" not in fitting_report:
+            fitting_params = re.split(r"<br>|:|\|", fitting_report)
+            fitting_params = list(filter(lambda x: x.strip(), fitting_params))
+            table_header = [
+                html.Thead(
+                    children=[
+                        html.Tr(
+                            children=[
+                                html.Th(
+                                    className="th_styles", children="qubit # / report #"
+                                ),
+                                html.Th(
+                                    className="th_styles", children="Fitting Parameter"
+                                ),
+                                html.Th(className="th_styles", children="Value"),
+                            ]
+                        )
+                    ]
+                )
+            ]
+            table_rows = []
+
+            for i in range(0, len(fitting_params), 3):
+                table_rows.append(
+                    html.Tr(
+                        className="td_styles",
+                        children=[
+                            html.Td(fitting_params[i]),
+                            html.Td(fitting_params[i + 1]),
+                            html.Td(fitting_params[i + 2]),
+                        ],
+                    )
+                )
+
+            table = [
+                html.Table(
+                    className="fitting-table", children=table_header + table_rows
+                )
+            ]
+
+        timestamp = datetime.datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
+        return (
+            figures,
+            [html.Span(f"Last update: {(timestamp)}")],
+            refresh_rate * 1000,
+            table,
+        )
     except (FileNotFoundError, pd.errors.EmptyDataError):
-        return current_figure
+        timestamp = datetime.datetime.now().strftime("%d/%m/%Y, %H:%M:%S")
+        return (
+            figures,
+            [html.Span(f"Last updated: {timestamp}")],
+            refresh_rate * 1000,
+            table,
+        )

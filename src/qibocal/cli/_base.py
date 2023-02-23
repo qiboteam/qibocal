@@ -46,7 +46,6 @@ TARGET_COMPARE_DIR = "qq-compare/"
     help="Use --force option to overwrite the output folder.",
 )
 def command(runcard, folder, force=None):
-
     """qibocal: Quantum Calibration Verification and Validation using Qibo.
 
     Arguments:
@@ -58,7 +57,6 @@ def command(runcard, folder, force=None):
 
     builder = ActionBuilder(runcard, folder, force)
     builder.execute()
-    builder.dump_report()
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
@@ -194,14 +192,16 @@ def compare(folders):
 
     os.mkdir(TARGET_COMPARE_DIR)
     # TODO: prepare meta.yml and runcard.yml as mix of all meta and runcard files
-    shutil.copy(f"{foldernames[0]}/meta.yml", TARGET_COMPARE_DIR)
-    shutil.copy(f"{foldernames[0]}/runcard.yml", TARGET_COMPARE_DIR)
+    shutil.copy(pathlib.Path(foldernames[0]).joinpath("meta.yml"), TARGET_COMPARE_DIR)
+    shutil.copy(
+        pathlib.Path(foldernames[0]).joinpath("runcard.yml"), TARGET_COMPARE_DIR
+    )
 
     for i, folder in enumerate(foldernames):
         newdir = TARGET_COMPARE_DIR + f"data{i}"
         log.info(f"Copying ({folder}) into {newdir}")
         try:
-            shutil.copytree(f"{folder}/data", newdir)
+            shutil.copytree(pathlib.Path(folder).joinpath("data"), newdir)
             for file in glob(os.path.join(folder, "*.html")):
                 shutil.copy2(file, newdir)
             for file in glob(os.path.join(folder, "*.yml")):

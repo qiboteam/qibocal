@@ -32,7 +32,6 @@ def random_data_units(length, options=None):
 def data_units_dummy(length, options=None):
     data = DataUnits(options=options)
     for l in range(length):
-
         pulse_sequence_result = {
             "MSR[V]": float(l),
             "i[V]": float(l),
@@ -63,7 +62,6 @@ def random_data(length):
 
 
 def data_dummy(length):
-
     data = Data()
     for i in range(length):
         data.add(
@@ -183,7 +181,6 @@ def test_data_add():
 
 
 def test_data__add__():
-
     data0 = Data()
     data0.add(
         {
@@ -208,25 +205,6 @@ def test_data__add__():
             }
         )
     assert data0.df.equals(data_results.df)
-
-
-def test_abstract_data_NotImplementedErrors():
-    """Test methods of AbstractData class with NotImplementedError"""
-    data = AbstractData()
-    with pytest.raises(NotImplementedError):
-        data.add(
-            {
-                "int": 1,
-                "float": 1.0,
-                "string": "1",
-                "bool": 1,
-            }
-        )
-
-    with pytest.raises(NotImplementedError):
-        data.load_data(
-            "test_folder", "test_subolder", "test_routine", "test_format", "test_name"
-        )
 
 
 def test_data_units_load_data_from_dict():
@@ -357,13 +335,6 @@ def test_save_open_data_pickle():
     )
     shutil.rmtree("test_folder")
     assert data.df.equals(data_upload.df)
-
-
-def test_save_abstract_data_csv():
-    """Test the to_csv method in AbstractData"""
-    data = AbstractData()
-    with pytest.raises(NotImplementedError):
-        data.to_csv("path")
 
 
 def test_load_data_from_dict_data_units():
