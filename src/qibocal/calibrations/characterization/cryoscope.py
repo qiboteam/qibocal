@@ -225,23 +225,24 @@ def flux_pulse_timing(
 
 
 @plot("cryoscope_raw", plots.cryoscope_raw)
+@plot("cryoscope_dephasing", plots.cryoscope_dephasing)
 @plot("cryoscope_dephasing_heatmap", plots.cryoscope_dephasing_heatmap)
-@plot("cryoscope_fft_peak_fitting", plots.cryoscope_fft_peak_fitting)
-@plot("cryoscope_fft", plots.cryoscope_fft)
-@plot("cryoscope_phase", plots.cryoscope_phase)
-@plot("cryoscope_phase_heatmap", plots.cryoscope_phase_heatmap)
-@plot("cryoscope_phase_unwrapped", plots.cryoscope_phase_unwrapped)
-@plot("cryoscope_phase_unwrapped_heatmap", plots.cryoscope_phase_unwrapped_heatmap)
-@plot(
-    "cryoscope_phase_amplitude_unwrapped_heatmap",
-    plots.cryoscope_phase_amplitude_unwrapped_heatmap,
-)
-@plot("cryoscope_detuning_time", plots.cryoscope_detuning_time)
-@plot("cryoscope_distorted_amplitude_time", plots.cryoscope_distorted_amplitude_time)
-@plot(
-    "cryoscope_reconstructed_amplitude_time",
-    plots.cryoscope_reconstructed_amplitude_time,
-)
+# @plot("cryoscope_fft_peak_fitting", plots.cryoscope_fft_peak_fitting)
+# @plot("cryoscope_fft", plots.cryoscope_fft)
+# @plot("cryoscope_phase", plots.cryoscope_phase)
+# @plot("cryoscope_phase_heatmap", plots.cryoscope_phase_heatmap)
+# @plot("cryoscope_phase_unwrapped", plots.cryoscope_phase_unwrapped)
+# @plot("cryoscope_phase_unwrapped_heatmap", plots.cryoscope_phase_unwrapped_heatmap)
+# @plot(
+#     "cryoscope_phase_amplitude_unwrapped_heatmap",
+#     plots.cryoscope_phase_amplitude_unwrapped_heatmap,
+# )
+# @plot("cryoscope_detuning_time", plots.cryoscope_detuning_time)
+# @plot("cryoscope_distorted_amplitude_time", plots.cryoscope_distorted_amplitude_time)
+# @plot(
+#     "cryoscope_reconstructed_amplitude_time",
+#     plots.cryoscope_reconstructed_amplitude_time,
+# )
 def cryoscope(
     platform: AbstractPlatform,
     qubits: dict,
@@ -407,9 +408,7 @@ def cryoscope(
             MZ_ro_pulses[qubit],
         )
         M1_seq.add(
-            platform.create_RX_pulse(
-                qubit, start=0, relative_phase=np.pi / 2
-            ),
+            platform.create_RX_pulse(qubit, start=0, relative_phase=np.pi / 2),
             MZ_ro_pulses[qubit],
         )
 
@@ -466,7 +465,13 @@ def cryoscope(
             for qubit in qubits:
                 flux_pulses[qubit].duration = duration
             # execute the pulse sequences
-            for sequence, tag in [(MX_seq, MX_tag), (MY_seq, MY_tag), (MZ_seq, MZ_tag), (M0_seq, M0_tag), (M1_seq, M1_tag)]:
+            for sequence, tag in [
+                (MX_seq, MX_tag),
+                (MY_seq, MY_tag),
+                (MZ_seq, MZ_tag),
+                (M0_seq, M0_tag),
+                (M1_seq, M1_tag),
+            ]:
                 results = platform.sweep(
                     sequence,
                     sweeper,

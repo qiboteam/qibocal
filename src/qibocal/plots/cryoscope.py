@@ -16,11 +16,12 @@ MZ_tag = "MZ"
 M0_tag = "M0"
 M1_tag = "M1"
 
+
 def _get_flux_pulse_durations_and_amplitudes(data: DataUnits):
-    flux_pulse_durations = data["flux_pulse_duration"][
+    flux_pulse_durations = data.df["flux_pulse_duration"][
         data.df["component"] == MX_tag
     ].to_numpy()
-    flux_pulse_amplitudes = data["flux_pulse_amplitude"][
+    flux_pulse_amplitudes = data.df["flux_pulse_amplitude"][
         data.df["component"] == MX_tag
     ].to_numpy()
     amplitudes = flux_pulse_amplitudes[flux_pulse_durations == flux_pulse_durations[0]]
@@ -28,11 +29,11 @@ def _get_flux_pulse_durations_and_amplitudes(data: DataUnits):
     return durations, amplitudes
 
 
-def _get_values(data, component=None, duration=None, amplitude=None):
+def _get_values(data, component=None, duration=None, amplitude=None, column="prob"):
     if component:
-        values = data["prob"][data.df["component"] == component]
+        values = data.df[column][data.df["component"] == component]
     else:
-        values = data["prob"]
+        values = data.df[column]
 
     if duration:
         values = values[data.df["flux_pulse_duration"] == duration]
@@ -42,10 +43,20 @@ def _get_values(data, component=None, duration=None, amplitude=None):
 
 
 def _normalise(values: np.array):
-    values = ((values - np.min(values)) / (np.max(values) - np.min(values))) * 2 - 1
+    if (values.size != 0) and (np.max(values) != np.min(values)):
+        values = ((values - np.min(values)) / (np.max(values) - np.min(values))) * 2 - 1
 
     # TODO: consider moving this normalisation to data acquisition (work with magnitudes instead of 0-1 probs)
     return values
+
+
+def _load_data(folder, subfolder, routine, data_format, name):
+    file = f"{folder}/{subfolder}/{routine}/{name}.csv"
+    data = DataUnits()
+    import pandas as pd
+
+    data.df = pd.read_csv(file, header=[0], skiprows=[1], index_col=[0])
+    return data
 
 
 def cryoscope_raw(folder, routine, qubit, format):
@@ -62,9 +73,7 @@ def cryoscope_raw(folder, routine, qubit, format):
     report_n = 0
     for subfolder in subfolders:
         try:
-            data = DataUnits.load_data(folder, subfolder, routine, format, "data")
-            quantities = list(data.quantities.keys())
-            data.df[quantities] = data.df[quantities].pint.dequantify()
+            data = _load_data(folder, subfolder, routine, format, "data")
 
             # extract qubit data and average over iterations
             data.df = (
@@ -85,26 +94,27 @@ def cryoscope_raw(folder, routine, qubit, format):
                     "prob",
                     "component",
                     "qubit",
-                    "iteration"
-                }
+                    "iteration",
+                },
             )
 
-        durations = (
-            data.df[data.df["component"] == MY_tag]["flux_pulse_duration"].unique()
-        )
-        amplitudes = (
-            data.df[data.df["component"] == MY_tag]["flux_pulse_amplitude"].unique()
-        )
+        durations = data.df[data.df["component"] == MY_tag][
+            "flux_pulse_duration"
+        ].unique()
+        amplitudes = data.df[data.df["component"] == MY_tag][
+            "flux_pulse_amplitude"
+        ].unique()
 
         opacity = 0.3
-        
-        for amp in amplitudes:
+
+        for n, amp in enumerate(amplitudes):
             figs["raw"].add_trace(
                 go.Scatter(
                     x=durations,
                     y=_get_values(data, MX_tag, amplitude=amp),
                     name=f"q{qubit}/r{report_n}: <X> | A = {amp:.3f}",
-                    marker_color=get_color_pair(report_n)[0],
+                    marker_color="Grey",  #  get_color_pair(n)[0],
+                    opacity=opacity,
                 ),
                 row=1,
                 col=1,
@@ -115,12 +125,72 @@ def cryoscope_raw(folder, routine, qubit, format):
                     x=durations,
                     y=_get_values(data, MY_tag, amplitude=amp),
                     name=f"q{qubit}/r{report_n}: <Y> | A = {amp:.3f}",
-                    marker_color=get_color_pair(report_n)[1],
+                    marker_color="Grey",  #  marker_color=get_color_pair(n)[1],
+                    opacity=opacity,
                 ),
                 row=1,
                 col=1,
             )
 
+            # smoothed_average = savgol_filter(
+            #     (_get_values(data, MX_tag, amplitude=amp) + _get_values(data, MY_tag, amplitude=amp))/2,
+            #     window_length=21,
+            #     polyorder=3,
+            # )
+
+            # figs["raw"].add_trace(
+            #     go.Scatter(
+            #         x=durations,
+            #         y=smoothed_average,
+            #         name=f"q{qubit}/r{report_n}: <smoothed_average> | A = {amp:.3f}",
+            #         marker_color=get_color(1),
+            #         opacity=opacity,
+            #     ),
+            #     row=1,
+            #     col=1,
+            # )
+
+            delta = (
+                np.mean(
+                    _get_values(data, MY_tag, amplitude=amp)
+                    - _get_values(data, MX_tag, amplitude=amp)
+                )
+                / 2
+            )
+
+            figs["raw"].add_trace(
+                go.Scatter(
+                    x=durations,
+                    y=_get_values(data, MX_tag, amplitude=amp) + delta,
+                    name=f"q{qubit}/r{report_n}: <X> | A = {amp:.3f}",
+                    marker_color=get_color_pair(n)[0],
+                ),
+                row=1,
+                col=1,
+            )
+
+            figs["raw"].add_trace(
+                go.Scatter(
+                    x=durations,
+                    y=_get_values(data, MY_tag, amplitude=amp) - delta,
+                    name=f"q{qubit}/r{report_n}: <Y> | A = {amp:.3f}",
+                    marker_color=get_color_pair(n)[1],
+                ),
+                row=1,
+                col=1,
+            )
+
+            # figs["raw"].add_trace(
+            #     go.Scatter(
+            #         x=durations,
+            #         y=_get_values(data, MY_tag, amplitude=amp) - _get_values(data, MX_tag, amplitude=amp),
+            #         name=f"q{qubit}/r{report_n}: <difs> | A = {amp:.3f}",
+            #         marker_color=get_color(1),
+            #         opacity=opacity,
+            #     ),
+            #     row=1,
+            #     col=1,
+            # )
 
             figs["raw"].add_trace(
                 go.Scatter(
@@ -166,7 +236,8 @@ def cryoscope_raw(folder, routine, qubit, format):
         yaxis_title="Magnitude (dimensionless)",
         title=f"Raw data",
     )
-    return [figs["raw"]]
+    fitting_report = "No fitting data"
+    return [figs["raw"]], fitting_report
 
 
 def flux_pulse_timing(folder, routine, qubit, format):
@@ -183,7 +254,7 @@ def flux_pulse_timing(folder, routine, qubit, format):
     report_n = 0
     for subfolder in subfolders:
         try:
-            data = DataUnits.load_data(folder, subfolder, routine, format, "data")
+            data = _load_data(folder, subfolder, routine, format, "data")
             data.df = (
                 data.df[data.df["qubit"] == qubit]
                 .drop(columns=["qubit", "iteration"])
@@ -204,9 +275,7 @@ def flux_pulse_timing(folder, routine, qubit, format):
                 options=["qubit", "iteration"],
             )
 
-        amplitudes = (
-            data.df["flux_pulse_amplitude"].unique()
-        )
+        amplitudes = data.df["flux_pulse_amplitude"].unique()
         starts = data.df["flux_pulse_start"].unique()
 
     for amp in amplitudes:
@@ -227,8 +296,45 @@ def flux_pulse_timing(folder, routine, qubit, format):
     return [figs["flux_pulse_timing"]]
 
 
+def cryoscope_dephasing(folder, routine, qubit, format):
+    data = _load_data(folder, "data", routine, format, "data")
+    durations, amplitudes = _get_flux_pulse_durations_and_amplitudes(data)
+
+    figs = {}
+    figs["norm"] = make_subplots(
+        rows=1,
+        cols=1,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.2,
+    )
+
+    for amp in amplitudes:
+        delta = (
+            np.mean(
+                _get_values(data, MY_tag, amplitude=amp)
+                - _get_values(data, MX_tag, amplitude=amp)
+            )
+            / 2
+        )
+        re = _get_values(data, MX_tag, amplitude=amp)  # + delta
+        im = _get_values(data, MY_tag, amplitude=amp)  # - delta
+
+        figs["norm"].add_trace(
+            go.Scatter(
+                x=durations,
+                y=np.abs(re + 1j * im),
+                name=f"q{qubit}: <magnitude> | A = {amp:.3f}",
+            ),
+            row=1,
+            col=1,
+        )
+
+    fitting_report = "No fitting data"
+    return [figs["norm"]], fitting_report
+
+
 def cryoscope_dephasing_heatmap(folder, routine, qubit, format):
-    data = DataUnits.load_data(folder, "data", routine, format, "data")
+    data = _load_data(folder, "data", routine, format, "data")
     durations, amplitudes = _get_flux_pulse_durations_and_amplitudes(data)
 
     figs = {}
@@ -241,8 +347,15 @@ def cryoscope_dephasing_heatmap(folder, routine, qubit, format):
 
     signal = []
     for amp in amplitudes:
-        re = _get_values(data, MX_tag, amplitude=amp)
-        im = _get_values(data, MY_tag, amplitude=amp)
+        delta = (
+            np.mean(
+                _get_values(data, MY_tag, amplitude=amp)
+                - _get_values(data, MX_tag, amplitude=amp)
+            )
+            / 2
+        )
+        re = _get_values(data, MX_tag, amplitude=amp)  # + delta
+        im = _get_values(data, MY_tag, amplitude=amp)  # - delta
         signal.append(re + 1j * im)
     signal = np.array(signal, dtype=np.complex128)
     phase = np.arctan2(signal.imag, signal.real)
@@ -265,11 +378,12 @@ def cryoscope_dephasing_heatmap(folder, routine, qubit, format):
         yaxis_title=title_y,
         title=f"{global_title}",
     )
-    return [figs["norm"]]
+    fitting_report = "No fitting data"
+    return [figs["norm"]], fitting_report
 
 
 def cryoscope_fft_peak_fitting(folder, routine, qubit, format):
-    data = DataUnits.load_data(folder, "data", routine, format, "data")
+    data = _load_data(folder, "data", routine, format, "data")
     durations, amplitudes = _get_flux_pulse_durations_and_amplitudes(data)
 
     figs = {}
@@ -353,7 +467,7 @@ def cryoscope_fft_peak_fitting(folder, routine, qubit, format):
 
 
 def cryoscope_fft(folder, routine, qubit, format):
-    data = DataUnits.load_data(folder, "data", routine, format, "data")
+    data = _load_data(folder, "data", routine, format, "data")
     durations, amplitudes = _get_flux_pulse_durations_and_amplitudes(data)
 
     figs = {}
@@ -451,7 +565,7 @@ def cryoscope_fft(folder, routine, qubit, format):
 
 
 def cryoscope_phase(folder, routine, qubit, format):
-    data = DataUnits.load_data(folder, "data", routine, format, "data")
+    data = _load_data(folder, "data", routine, format, "data")
     durations, amplitudes = _get_flux_pulse_durations_and_amplitudes(data)
 
     figs = {}
@@ -493,7 +607,7 @@ def cryoscope_phase(folder, routine, qubit, format):
 
 
 def cryoscope_phase_heatmap(folder, routine, qubit, format):
-    data = DataUnits.load_data(folder, "data", routine, format, "data")
+    data = _load_data(folder, "data", routine, format, "data")
     durations, amplitudes = _get_flux_pulse_durations_and_amplitudes(data)
 
     figs = {}
@@ -534,7 +648,7 @@ def cryoscope_phase_heatmap(folder, routine, qubit, format):
 
 
 def cryoscope_phase_unwrapped(folder, routine, qubit, format):
-    data = DataUnits.load_data(folder, "data", routine, format, "data")
+    data = _load_data(folder, "data", routine, format, "data")
     durations, amplitudes = _get_flux_pulse_durations_and_amplitudes(data)
 
     figs = {}
@@ -571,7 +685,7 @@ def cryoscope_phase_unwrapped(folder, routine, qubit, format):
 
 
 def cryoscope_phase_unwrapped_heatmap(folder, routine, qubit, format):
-    data = DataUnits.load_data(folder, "data", routine, format, "data")
+    data = _load_data(folder, "data", routine, format, "data")
     durations, amplitudes = _get_flux_pulse_durations_and_amplitudes(data)
 
     figs = {}
@@ -613,7 +727,7 @@ def cryoscope_phase_unwrapped_heatmap(folder, routine, qubit, format):
 
 
 def cryoscope_phase_amplitude_unwrapped_heatmap(folder, routine, qubit, format):
-    data = DataUnits.load_data(folder, "data", routine, format, "data")
+    data = _load_data(folder, "data", routine, format, "data")
     durations, amplitudes = _get_flux_pulse_durations_and_amplitudes(data)
 
     # start the unroll desde amp = 0 (no phase shift)
@@ -660,7 +774,7 @@ def cryoscope_phase_amplitude_unwrapped_heatmap(folder, routine, qubit, format):
 
 
 def cryoscope_detuning_time(folder, routine, qubit, format):
-    data = DataUnits.load_data(folder, "data", routine, format, "data")
+    data = _load_data(folder, "data", routine, format, "data")
     durations, amplitudes = _get_flux_pulse_durations_and_amplitudes(data)
 
     figs = {}
@@ -751,7 +865,7 @@ def cryoscope_detuning_time(folder, routine, qubit, format):
 
 
 def cryoscope_distorted_amplitude_time(folder, routine, qubit, format):
-    data = DataUnits.load_data(folder, "data", routine, format, "data")
+    data = _load_data(folder, "data", routine, format, "data")
     durations, amplitudes = _get_flux_pulse_durations_and_amplitudes(data)
 
     figs = {}
@@ -887,7 +1001,7 @@ def cryoscope_distorted_amplitude_time(folder, routine, qubit, format):
 
 
 def cryoscope_reconstructed_amplitude_time(folder, routine, qubit, format):
-    data = DataUnits.load_data(folder, "data", routine, format, "data")
+    data = _load_data(folder, "data", routine, format, "data")
     durations, amplitudes = _get_flux_pulse_durations_and_amplitudes(data)
 
     figs = {}
@@ -1261,7 +1375,7 @@ def cryoscope_fit_exp(durations, ideal_pulse, distorted_pulse, pguess):
 
 # ?
 # def cryoscope_detuning_amplitude(folder, routine, qubit, format):
-#     data = DataUnits.load_data(folder, "data", routine, format, "data")
+#     data = load_data(folder, "data", routine, format, "data")
 #     import numpy as np
 #     import scipy.signal as ss
 
@@ -1475,7 +1589,7 @@ def cryoscope_fit_exp(durations, ideal_pulse, distorted_pulse, pguess):
 #     return x, y
 
 # def cryoscope_demod_circle(folder, routine, qubit, format):
-#     data = DataUnits.load_data(folder, "data", routine, format, "data")
+#     data = load_data(folder, "data", routine, format, "data")
 #     import numpy as np
 #     import scipy.signal as ss
 
@@ -1549,7 +1663,7 @@ def cryoscope_fit_exp(durations, ideal_pulse, distorted_pulse, pguess):
 #     return [figs["norm"]]
 
 # def cryoscope_demod_fft(folder, routine, qubit, format):
-#     data = DataUnits.load_data(folder, "data", routine, format, "data")
+#     data = load_data(folder, "data", routine, format, "data")
 #     import numpy as np
 #     import scipy.signal as ss
 
