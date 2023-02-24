@@ -34,7 +34,6 @@ def spin_echo_time_msr(folder, routine, qubit, format):
     fitting_report = ""
     for subfolder in subfolders:
         try:
-            # data = DataUnits.load_data(folder, subfolder, routine, format, f"data")
             data = load_data(folder, subfolder, routine, format, "data")
             data.df = data.df[data.df["qubit"] == qubit]
         except:
@@ -45,7 +44,6 @@ def spin_echo_time_msr(folder, routine, qubit, format):
             )
 
         try:
-            # data_fit = Data.load_data(folder, subfolder, routine, format, f"fits")
             data_fit = load_data(folder, subfolder, routine, format, "fits")
             data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
         except:
@@ -60,9 +58,7 @@ def spin_echo_time_msr(folder, routine, qubit, format):
 
         data.df = data.df.drop(columns=["i", "q", "phase", "qubit"])
         iterations = data.df["iteration"].unique()
-        waits = data.df[
-            "wait"
-        ].unique()  # .pint.to("ns").unique() #.pint.magnitude.unique()
+        waits = data.df["wait"].unique()
 
         if len(iterations) > 1:
             opacity = 0.3
@@ -72,8 +68,8 @@ def spin_echo_time_msr(folder, routine, qubit, format):
             iteration_data = data.df[data.df["iteration"] == iteration]
             fig.add_trace(
                 go.Scatter(
-                    x=iteration_data["wait"],  # .pint.to("ns").pint.magnitude,
-                    y=iteration_data["MSR"] * 1e6,  # .pint.to("uV").pint.magnitude,
+                    x=iteration_data["wait"],
+                    y=iteration_data["MSR"] * 1e6,
                     marker_color=get_color(report_n),
                     opacity=opacity,
                     name=f"q{qubit}/r{report_n}",
@@ -86,12 +82,10 @@ def spin_echo_time_msr(folder, routine, qubit, format):
 
         if len(iterations) > 1:
             data.df = data.df.drop(columns=["iteration"])
-            # unique_waits, mean_measurements = grouped_by_mean(data.df, "wait", "MSR")
             fig.add_trace(
                 go.Scatter(
-                    x=waits.tolist(),  # unique_waits,
-                    y=data.df.groupby("wait")["MSR"].mean()
-                    * 1e6,  # mean_measurements * 1e6,
+                    x=waits.tolist(),
+                    y=data.df.groupby("wait")["MSR"].mean() * 1e6,
                     marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,
@@ -104,8 +98,8 @@ def spin_echo_time_msr(folder, routine, qubit, format):
         # add fitting trace
         if len(data) > 0 and (qubit in data_fit.df["qubit"].values):
             waitrange = np.linspace(
-                min(data.df["wait"]),  # min(data.get_values("wait", "ns")),
-                max(data.df["wait"]),  # max(data.get_values("wait", "ns")),
+                min(data.df["wait"]),
+                max(data.df["wait"]),
                 2 * len(data),
             )
             params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(
