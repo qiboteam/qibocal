@@ -4,7 +4,7 @@ from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import cos
-from qibocal.plots.utils import get_color, get_data_subfolders
+from qibocal.plots.utils import get_color, get_data_subfolders, load_data
 
 # allXY rotations
 gatelist = [
@@ -50,7 +50,7 @@ def allXY(folder, routine, qubit, format):
     report_n = 0
     for subfolder in subfolders:
         try:
-            data = Data.load_data(folder, subfolder, routine, format, "data")
+            data = load_data(folder, subfolder, routine, format, "data")
             data.df = data.df[data.df["qubit"] == qubit]
         except:
             data = Data(
@@ -152,7 +152,7 @@ def allXY_drag_pulse_tuning(folder, routine, qubit, format):
     report_n = 0
     for subfolder in subfolders:
         try:
-            data = Data.load_data(folder, subfolder, routine, format, "data")
+            data = load_data(folder, subfolder, routine, format, "data")
             data.df = data.df[data.df["qubit"] == qubit]
         except:
             data = Data(
@@ -249,7 +249,7 @@ def drag_pulse_tuning(folder, routine, qubit, format):
     fitting_report = ""
     for subfolder in subfolders:
         try:
-            data = DataUnits.load_data(folder, subfolder, routine, format, "data")
+            data = load_data(folder, subfolder, routine, format, "data")
             data.df = data.df[data.df["qubit"] == qubit]
         except:
             data = DataUnits(
@@ -258,20 +258,20 @@ def drag_pulse_tuning(folder, routine, qubit, format):
                 options=["qubit", "iteration"],
             )
         try:
-            data_fit = Data.load_data(folder, subfolder, routine, format, "fits")
+            data_fit = load_data(folder, subfolder, routine, format, "fits")
             data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
         except:
             data_fit = Data()
 
         iterations = data.df["iteration"].unique()
-        beta_params = data.df["beta_param"].pint.magnitude.unique()
+        beta_params = data.df["beta_param"].unique()
 
         for iteration in iterations:
             iteration_data = data.df[data.df["iteration"] == iteration]
             fig.add_trace(
                 go.Scatter(
-                    x=iteration_data["beta_param"].pint.magnitude,
-                    y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
+                    x=iteration_data["beta_param"],
+                    y=iteration_data["MSR"] * 1e6,
                     marker_color=get_color(report_n),
                     mode="markers",
                     opacity=0.3,
@@ -286,10 +286,8 @@ def drag_pulse_tuning(folder, routine, qubit, format):
         fig.add_trace(
             go.Scatter(
                 x=beta_params,
-                y=data.df.groupby("beta_param", as_index=False)
-                .mean()["MSR"]  # pylint: disable=E1101
-                .pint.to("uV")
-                .pint.magnitude,
+                y=data.df.groupby("beta_param", as_index=False).mean()["MSR"]
+                * 1e6,  # pylint: disable=E1101
                 name=f"q{qubit}/r{report_n}: Average MSR",
                 marker_color=get_color(report_n),
                 mode="markers",
@@ -302,23 +300,24 @@ def drag_pulse_tuning(folder, routine, qubit, format):
 
         if len(data) > 0 and (qubit in data_fit.df["qubit"].values):
             beta_range = np.linspace(
-                min(data.get_values("beta_param", "dimensionless")),
-                max(data.get_values("beta_param", "dimensionless")),
+                min(data.df["beta_param"]),
+                max(data.df["beta_param"]),
                 20,
             )
 
             params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(
                 orient="records"
             )[0]
+
             fig.add_trace(
                 go.Scatter(
                     x=beta_range,
                     y=cos(
                         beta_range,
-                        data_fit.get_values("popt0"),
-                        data_fit.get_values("popt1"),
-                        data_fit.get_values("popt2"),
-                        data_fit.get_values("popt3"),
+                        data_fit.df["popt0"][0],
+                        data_fit.df["popt1"][0],
+                        data_fit.df["popt2"][0],
+                        data_fit.df["popt3"][0],
                     ),
                     name=f"q{qubit}/r{report_n}: Fit",
                     line=go.scatter.Line(dash="dot"),

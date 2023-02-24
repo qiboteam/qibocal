@@ -3,7 +3,12 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
-from qibocal.plots.utils import get_color_state0, get_color_state1, get_data_subfolders
+from qibocal.plots.utils import (
+    get_color_state0,
+    get_color_state1,
+    get_data_subfolders,
+    load_data,
+)
 
 
 # For calibrate qubit states
@@ -25,23 +30,21 @@ def qubit_states(folder, routine, qubit, format):
     max_x, max_y, min_x, min_y = 0, 0, 0, 0
     for subfolder in subfolders:
         try:
-            data = DataUnits.load_data(folder, subfolder, routine, format, "data")
+            data = load_data(folder, subfolder, routine, format, "data")
             data.df = data.df[data.df["qubit"] == qubit]
         except:
             data = DataUnits(options=["qubit", "iteration", "state"])
 
         try:
-            parameters = Data.load_data(
-                folder, subfolder, routine, format, "parameters"
-            )
+            parameters = load_data(folder, subfolder, routine, format, "parameters")
             parameters.df = parameters.df[parameters.df["qubit"] == qubit]
 
-            average_state0 = complex(parameters.get_values("average_state0")[0])
-            average_state1 = complex(parameters.get_values("average_state1")[0])
-            rotation_angle = parameters.get_values("rotation_angle")[0]
-            threshold = parameters.get_values("threshold")[0]
-            fidelity = parameters.get_values("fidelity")[0]
-            assignment_fidelity = parameters.get_values("assignment_fidelity")[0]
+            average_state0 = complex(parameters.df.iloc[0]["average_state0"])
+            average_state1 = complex(parameters.df.iloc[0]["average_state1"])
+            rotation_angle = parameters.df.iloc[0]["rotation_angle"]
+            threshold = parameters.df.iloc[0]["threshold"]
+            fidelity = parameters.df.iloc[0]["fidelity"]
+            assignment_fidelity = parameters.df.iloc[0]["assignment_fidelity"]
 
         except:
             parameters = Data(
@@ -62,8 +65,8 @@ def qubit_states(folder, routine, qubit, format):
 
         fig.add_trace(
             go.Scatter(
-                x=state0_data["i"].pint.to("V").pint.magnitude,
-                y=state0_data["q"].pint.to("V").pint.magnitude,
+                x=state0_data["i"],
+                y=state0_data["q"],
                 name=f"q{qubit}/r{report_n}: state 0",
                 legendgroup=f"q{qubit}/r{report_n}: state 0",
                 mode="markers",
@@ -77,8 +80,8 @@ def qubit_states(folder, routine, qubit, format):
 
         fig.add_trace(
             go.Scatter(
-                x=state1_data["i"].pint.to("V").pint.magnitude,
-                y=state1_data["q"].pint.to("V").pint.magnitude,
+                x=state1_data["i"],
+                y=state1_data["q"],
                 name=f"q{qubit}/r{report_n}: state 1",
                 legendgroup=f"q{qubit}/r{report_n}: state 1",
                 mode="markers",
@@ -92,23 +95,23 @@ def qubit_states(folder, routine, qubit, format):
 
         max_x = max(
             max_x,
-            state0_data["i"].pint.to("V").pint.magnitude.max(),
-            state1_data["i"].pint.to("V").pint.magnitude.max(),
+            state0_data["i"].max(),
+            state1_data["i"].max(),
         )
         max_y = max(
             max_y,
-            state0_data["q"].pint.to("V").pint.magnitude.max(),
-            state1_data["q"].pint.to("V").pint.magnitude.max(),
+            state0_data["q"].max(),
+            state1_data["q"].max(),
         )
         min_x = min(
             min_x,
-            state0_data["i"].pint.to("V").pint.magnitude.min(),
-            state1_data["i"].pint.to("V").pint.magnitude.min(),
+            state0_data["i"].min(),
+            state1_data["i"].min(),
         )
         min_y = min(
             min_y,
-            state0_data["q"].pint.to("V").pint.magnitude.min(),
-            state1_data["q"].pint.to("V").pint.magnitude.min(),
+            state0_data["q"].min(),
+            state1_data["q"].min(),
         )
 
         fig.add_trace(

@@ -4,7 +4,7 @@ from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import ramsey
-from qibocal.plots.utils import get_color, get_data_subfolders, grouped_by_mean
+from qibocal.plots.utils import get_color, get_data_subfolders, load_data
 
 
 # Ramsey oscillations
@@ -26,7 +26,8 @@ def time_msr(folder, routine, qubit, format):
 
     for subfolder in subfolders:
         try:
-            data = DataUnits.load_data(folder, subfolder, routine, format, f"data")
+            # data = DataUnits.load_data(folder, subfolder, routine, format, f"data")
+            data = load_data(folder, subfolder, routine, format, "data")
             data.df = data.df[data.df["qubit"] == qubit]
         except:
             data = DataUnits(
@@ -35,7 +36,8 @@ def time_msr(folder, routine, qubit, format):
                 options=["qubit", "iteration"],
             )
         try:
-            data_fit = Data.load_data(folder, subfolder, routine, format, f"fits")
+            # data_fit = Data.load_data(folder, subfolder, routine, format, f"fits")
+            data_fit = load_data(folder, subfolder, routine, format, "fits")
             data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
         except:
             data_fit = Data(
@@ -53,7 +55,7 @@ def time_msr(folder, routine, qubit, format):
             )
 
         iterations = data.df["iteration"].unique()
-        waits = data.df["wait"].pint.to("ns").pint.magnitude.unique()
+        waits = data.df["wait"].unique()  # .pint.to("ns").pint.magnitude.unique()
         data.df = data.df.drop(columns=["i", "q", "phase", "qubit"])
 
         if len(iterations) > 1:
@@ -64,8 +66,8 @@ def time_msr(folder, routine, qubit, format):
             iteration_data = data.df[data.df["iteration"] == iteration]
             fig.add_trace(
                 go.Scatter(
-                    x=iteration_data["wait"].pint.to("ns").pint.magnitude,
-                    y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
+                    x=iteration_data["wait"],  # .pint.to("ns").pint.magnitude,
+                    y=iteration_data["MSR"] * 1e6,  # .pint.to("uV").pint.magnitude,
                     marker_color=get_color(report_n),
                     opacity=opacity,
                     name=f"q{qubit}/r{report_n}",
@@ -78,11 +80,12 @@ def time_msr(folder, routine, qubit, format):
 
         if len(iterations) > 1:
             data.df = data.df.drop(columns=["iteration"])
-            unique_waits, mean_measurements = grouped_by_mean(data.df, "wait", "MSR")
+            # unique_waits, mean_measurements = grouped_by_mean(data.df, "wait", "MSR")
             fig.add_trace(
                 go.Scatter(
-                    x=unique_waits,
-                    y=mean_measurements * 1e6,
+                    x=waits,  # unique_waits,
+                    y=data.df.groupby("wait")["MSR"].mean()
+                    * 1e6,  # mean_measurements * 1e6,
                     marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,
@@ -95,8 +98,8 @@ def time_msr(folder, routine, qubit, format):
         # add fitting trace
         if len(data) > 0 and (qubit in data_fit.df["qubit"].values):
             waitrange = np.linspace(
-                min(data.get_values("wait", "ns")),
-                max(data.get_values("wait", "ns")),
+                min(data.df["wait"]),  # min(data.get_values("wait", "ns")),
+                max(data.df["wait"]),  # max(data.get_values("wait", "ns")),
                 2 * len(data),
             )
             params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(
@@ -108,11 +111,11 @@ def time_msr(folder, routine, qubit, format):
                     x=waitrange,
                     y=ramsey(
                         waitrange,
-                        data_fit.get_values("popt0"),
-                        data_fit.get_values("popt1"),
-                        data_fit.get_values("popt2"),
-                        data_fit.get_values("popt3"),
-                        data_fit.get_values("popt4"),
+                        data_fit.df["popt0"][0],  # .get_values("popt0"),
+                        data_fit.df["popt1"][0],  # .get_values("popt1"),
+                        data_fit.df["popt2"][0],  # .get_values("popt2"),
+                        data_fit.df["popt3"][0],  # .get_values("popt3"),
+                        data_fit.df["popt4"][0],  # .get_values("popt4"),
                     ),
                     name=f"q{qubit}/r{report_n} Fit",
                     line=go.scatter.Line(dash="dot"),

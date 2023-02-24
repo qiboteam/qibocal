@@ -4,7 +4,7 @@ from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import rabi
-from qibocal.plots.utils import get_color, get_data_subfolders, grouped_by_mean
+from qibocal.plots.utils import get_color, get_data_subfolders, load_data
 
 
 # Rabi oscillations pulse length
@@ -28,13 +28,13 @@ def time_msr_phase(folder, routine, qubit, format):
     fitting_report = ""
     for subfolder in subfolders:
         try:
-            data = DataUnits.load_data(folder, subfolder, routine, format, "data")
+            data = load_data(folder, subfolder, routine, format, "data")
             data.df = data.df[data.df["qubit"] == qubit]
         except:
             data = DataUnits(quantities={"time": "ns"}, options=["qubit", "iteration"])
 
         try:
-            data_fit = Data.load_data(folder, subfolder, routine, format, f"fits")
+            data_fit = load_data(folder, subfolder, routine, format, "fits")
             data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
         except:
             data_fit = Data(
@@ -51,7 +51,7 @@ def time_msr_phase(folder, routine, qubit, format):
             )
 
         iterations = data.df["iteration"].unique()
-        times = data.df["time"].pint.to("ns").pint.magnitude.unique()
+        times = data.df["time"].unique()
         data.df = data.df.drop(columns=["i", "q", "qubit"])
 
         if len(iterations) > 1:
@@ -62,8 +62,8 @@ def time_msr_phase(folder, routine, qubit, format):
             iteration_data = data.df[data.df["iteration"] == iteration]
             fig.add_trace(
                 go.Scatter(
-                    x=iteration_data["time"].pint.to("ns").pint.magnitude,
-                    y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
+                    x=iteration_data["time"],
+                    y=iteration_data["MSR"] * 1e6,
                     marker_color=get_color(report_n),
                     opacity=opacity,
                     name=f"q{qubit}/r{report_n}",
@@ -75,8 +75,8 @@ def time_msr_phase(folder, routine, qubit, format):
             )
             fig.add_trace(
                 go.Scatter(
-                    x=iteration_data["time"].pint.to("ns").pint.magnitude,
-                    y=iteration_data["phase"].pint.to("rad").pint.magnitude,
+                    x=iteration_data["time"],
+                    y=iteration_data["phase"],
                     marker_color=get_color(report_n),
                     opacity=opacity,
                     name=f"q{qubit}/r{report_n}",
@@ -88,12 +88,10 @@ def time_msr_phase(folder, routine, qubit, format):
             )
         if len(iterations) > 1:
             data.df = data.df.drop(columns=["iteration"])
-            unique_times, mean_measurements = grouped_by_mean(data.df, "time", "MSR")
-
             fig.add_trace(
                 go.Scatter(
-                    x=unique_times,
-                    y=mean_measurements * 1e6,
+                    x=times,
+                    y=data.df.groupby("time")["MSR"].mean() * 1e6,
                     marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,
@@ -102,11 +100,10 @@ def time_msr_phase(folder, routine, qubit, format):
                 row=1,
                 col=1,
             )
-            unique_times, mean_phases = grouped_by_mean(data.df, "time", "phase")
             fig.add_trace(
                 go.Scatter(
-                    x=unique_times,
-                    y=mean_phases,  # pylint: disable=E1101
+                    x=times,
+                    y=data.df.groupby("time")["phase"].mean(),  # pylint: disable=E1101
                     marker_color=get_color(report_n),
                     showlegend=False,
                     legendgroup=f"q{qubit}/r{report_n}: Average",
@@ -118,8 +115,8 @@ def time_msr_phase(folder, routine, qubit, format):
         # add fitting trace
         if len(data) > 0 and (qubit in data_fit.df["qubit"].values):
             timerange = np.linspace(
-                min(data.get_values("time", "ns")),
-                max(data.get_values("time", "ns")),
+                min(data.df["time"]),
+                max(data.df["time"]),
                 2 * len(data),
             )
             params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(
@@ -130,11 +127,11 @@ def time_msr_phase(folder, routine, qubit, format):
                     x=timerange,
                     y=rabi(
                         timerange,
-                        data_fit.get_values("popt0"),
-                        data_fit.get_values("popt1"),
-                        data_fit.get_values("popt2"),
-                        data_fit.get_values("popt3"),
-                        data_fit.get_values("popt4"),
+                        data_fit.df["popt0"][0],
+                        data_fit.df["popt1"][0],
+                        data_fit.df["popt2"][0],
+                        data_fit.df["popt3"][0],
+                        data_fit.df["popt4"][0],
                     ),
                     name=f"q{qubit}/r{report_n} Fit",
                     line=go.scatter.Line(dash="dot"),
@@ -192,7 +189,7 @@ def gain_msr_phase(folder, routine, qubit, format):
     fitting_report = ""
     for subfolder in subfolders:
         try:
-            data = DataUnits.load_data(folder, subfolder, routine, format, f"data")
+            data = load_data(folder, subfolder, routine, format, "data")
             data.df = data.df[data.df["qubit"] == qubit]
         except:
             data = DataUnits(
@@ -200,7 +197,7 @@ def gain_msr_phase(folder, routine, qubit, format):
             )
 
         try:
-            data_fit = Data.load_data(folder, subfolder, routine, format, f"fits")
+            data_fit = load_data(folder, subfolder, routine, format, "fits")
             data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
         except:
             data_fit = Data(
@@ -217,7 +214,7 @@ def gain_msr_phase(folder, routine, qubit, format):
             )
 
         iterations = data.df["iteration"].unique()
-        gains = data.df["gain"].pint.to("dimensionless").pint.magnitude.unique()
+        gains = data.df["gain"].unique()
         data.df = data.df.drop(columns=["i", "q", "qubit"])
 
         if len(iterations) > 1:
@@ -228,8 +225,8 @@ def gain_msr_phase(folder, routine, qubit, format):
             iteration_data = data.df[data.df["iteration"] == iteration]
             fig.add_trace(
                 go.Scatter(
-                    x=iteration_data["gain"].pint.to("dimensionless").pint.magnitude,
-                    y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
+                    x=iteration_data["gain"],
+                    y=iteration_data["MSR"] * 1e6,
                     marker_color=get_color(report_n),
                     opacity=opacity,
                     name=f"q{qubit}/r{report_n}",
@@ -241,8 +238,8 @@ def gain_msr_phase(folder, routine, qubit, format):
             )
             fig.add_trace(
                 go.Scatter(
-                    x=iteration_data["gain"].pint.to("dimensionless").pint.magnitude,
-                    y=iteration_data["phase"].pint.to("rad").pint.magnitude,
+                    x=iteration_data["gain"],
+                    y=iteration_data["phase"],
                     marker_color=get_color(report_n),
                     opacity=opacity,
                     name=f"q{qubit}/r{report_n}",
@@ -254,12 +251,10 @@ def gain_msr_phase(folder, routine, qubit, format):
             )
         if len(iterations) > 1:
             data.df = data.df.drop(columns=["iteration"])
-            unique_gains, mean_measurements = grouped_by_mean(data.df, "gain", "MSR")
-
             fig.add_trace(
                 go.Scatter(
-                    x=unique_gains,
-                    y=mean_measurements * 1e6,
+                    x=gains,
+                    y=data.df.groupby("gain")["MSR"].mean() * 1e6,
                     marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,
@@ -269,12 +264,10 @@ def gain_msr_phase(folder, routine, qubit, format):
                 col=1,
             )
 
-            unique_gains, mean_phases = grouped_by_mean(data.df, "gain", "phase")
-
             fig.add_trace(
                 go.Scatter(
-                    x=unique_gains,
-                    y=mean_phases,
+                    x=gains,
+                    y=data.df.groupby("gain")["phase"].mean(),  # pylint: disable=E1101
                     marker_color=get_color(report_n),
                     showlegend=False,
                     legendgroup=f"q{qubit}/r{report_n}: Average",
@@ -286,8 +279,8 @@ def gain_msr_phase(folder, routine, qubit, format):
         # add fitting trace
         if len(data) > 0 and (qubit in data_fit.df["qubit"].values):
             gainrange = np.linspace(
-                min(data.get_values("gain", "dimensionless")),
-                max(data.get_values("gain", "dimensionless")),
+                min(data.df["gain"]),
+                max(data.df["gain"]),
                 2 * len(data),
             )
             params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(
@@ -298,11 +291,11 @@ def gain_msr_phase(folder, routine, qubit, format):
                     x=gainrange,
                     y=rabi(
                         gainrange,
-                        data_fit.get_values("popt0"),
-                        data_fit.get_values("popt1"),
-                        data_fit.get_values("popt2"),
-                        data_fit.get_values("popt3"),
-                        data_fit.get_values("popt4"),
+                        data_fit.df["popt0"][0],
+                        data_fit.df["popt1"][0],
+                        data_fit.df["popt2"][0],
+                        data_fit.df["popt3"][0],
+                        data_fit.df["popt4"][0],
                     ),
                     name=f"q{qubit}/r{report_n} Fit",
                     line=go.scatter.Line(dash="dot"),
@@ -359,7 +352,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
     report_n = 0
     for subfolder in subfolders:
         try:
-            data = DataUnits.load_data(folder, subfolder, routine, format, f"data")
+            data = load_data(folder, subfolder, routine, format, "data")
             data.df = data.df[data.df["qubit"] == qubit]
         except:
             data = DataUnits(
@@ -367,7 +360,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
                 options=["qubit", "iteration"],
             )
         try:
-            data_fit = Data.load_data(folder, subfolder, routine, format, f"fits")
+            data_fit = load_data(folder, subfolder, routine, format, "fits")
             data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
         except:
             data_fit = Data(
@@ -384,9 +377,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
             )
 
         iterations = data.df["iteration"].unique()
-        amplitudes = (
-            data.df["amplitude"].pint.to("dimensionless").pint.magnitude.unique()
-        )
+        amplitudes = data.df["amplitude"].unique()
         data.df = data.df.drop(columns=["i", "q", "qubit"])
 
         if len(iterations) > 1:
@@ -397,10 +388,8 @@ def amplitude_msr_phase(folder, routine, qubit, format):
             iteration_data = data.df[data.df["iteration"] == iteration]
             fig.add_trace(
                 go.Scatter(
-                    x=iteration_data["amplitude"]
-                    .pint.to("dimensionless")
-                    .pint.magnitude,
-                    y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
+                    x=iteration_data["amplitude"],
+                    y=iteration_data["MSR"] * 1e6,
                     marker_color=get_color(report_n),
                     opacity=opacity,
                     name=f"q{qubit}/r{report_n}",
@@ -412,10 +401,8 @@ def amplitude_msr_phase(folder, routine, qubit, format):
             )
             fig.add_trace(
                 go.Scatter(
-                    x=iteration_data["amplitude"]
-                    .pint.to("dimensionless")
-                    .pint.magnitude,
-                    y=iteration_data["phase"].pint.to("rad").pint.magnitude,
+                    x=iteration_data["amplitude"],
+                    y=iteration_data["phase"],
                     marker_color=get_color(report_n),
                     opacity=opacity,
                     name=f"q{qubit}/r{report_n}",
@@ -427,13 +414,10 @@ def amplitude_msr_phase(folder, routine, qubit, format):
             )
         if len(iterations) > 1:
             data.df = data.df.drop(columns=["iteration"])
-            unique_amplitudes, mean_measurements = grouped_by_mean(
-                data.df, "amplitude", "MSR"
-            )
             fig.add_trace(
                 go.Scatter(
-                    x=unique_amplitudes,
-                    y=mean_measurements * 1e6,
+                    x=amplitudes,
+                    y=data.df.groupby("amplitude")["MSR"].mean() * 1e6,
                     marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,
@@ -442,13 +426,13 @@ def amplitude_msr_phase(folder, routine, qubit, format):
                 row=1,
                 col=1,
             )
-            unique_amplitudes, mean_phases = grouped_by_mean(
-                data.df, "amplitude", "phase"
-            )
+
             fig.add_trace(
                 go.Scatter(
-                    x=unique_amplitudes,
-                    y=mean_phases,
+                    x=amplitudes,
+                    y=data.df.groupby("amplitude")[
+                        "phase"
+                    ].mean(),  # pylint: disable=E1101
                     marker_color=get_color(report_n),
                     showlegend=False,
                     legendgroup=f"q{qubit}/r{report_n}: Average",
@@ -460,8 +444,8 @@ def amplitude_msr_phase(folder, routine, qubit, format):
         # add fitting trace
         if len(data) > 0 and (qubit in data_fit.df["qubit"].values):
             amplituderange = np.linspace(
-                min(data.get_values("amplitude", "dimensionless")),
-                max(data.get_values("amplitude", "dimensionless")),
+                min(data.df["amplitude"]),
+                max(data.df["amplitude"]),
                 2 * len(data),
             )
             params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(
@@ -472,11 +456,11 @@ def amplitude_msr_phase(folder, routine, qubit, format):
                     x=amplituderange,
                     y=rabi(
                         amplituderange,
-                        data_fit.get_values("popt0"),
-                        data_fit.get_values("popt1"),
-                        data_fit.get_values("popt2"),
-                        data_fit.get_values("popt3"),
-                        data_fit.get_values("popt4"),
+                        data_fit.df["popt0"][0],
+                        data_fit.df["popt1"][0],
+                        data_fit.df["popt2"][0],
+                        data_fit.df["popt3"][0],
+                        data_fit.df["popt4"][0],
                     ),
                     name=f"q{qubit}/r{report_n} Fit",
                     line=go.scatter.Line(dash="dot"),
@@ -534,7 +518,7 @@ def duration_gain_msr_phase(folder, routine, qubit, format):
     report_n = 0
     for subfolder in subfolders:
         try:
-            data = DataUnits.load_data(folder, subfolder, routine, format, f"data")
+            data = load_data(folder, subfolder, routine, format, f"data")
             data.df = data.df[data.df["qubit"] == qubit]
         except:
             data = DataUnits(
@@ -544,29 +528,17 @@ def duration_gain_msr_phase(folder, routine, qubit, format):
             )
 
         iterations = data.df["iteration"].unique()
-        durations = data.df["duration"].pint.to("ns").pint.magnitude.unique()
-        gains = data.df["gain"].pint.to("dimensionless").pint.magnitude.unique()
+        durations = data.df["duration"].unique()
+        gains = data.df["gain"].unique()
 
         averaged_data = data.df.drop(columns=["i", "q", "qubit", "iteration"])
-
-        if len(iterations) > 1:
-            (
-                unique_durations,
-                unique_gains,
-                mean_measurements,
-                mean_phases,
-            ) = grouped_by_mean(averaged_data, "duration", "MSR", "gain", "phase")
-        else:
-            unique_durations = averaged_data["duration"].pint.to("ns").pint.magnitude
-            unique_gains = averaged_data["gain"].pint.to("dimensionless").pint.magnitude
-            mean_measurements = averaged_data["MSR"].pint.to("V").pint.magnitude
-            mean_phases = averaged_data["phase"].pint.to("rad").pint.magnitude
+        averaged_data = data.df.groupby(["duration", "gain"], as_index=False).mean()
 
         fig.add_trace(
             go.Heatmap(
-                x=unique_durations,
-                y=unique_gains,
-                z=mean_measurements,
+                x=averaged_data["duration"],
+                y=averaged_data["gain"],
+                z=averaged_data["MSR"] * 1e6,
                 colorbar_x=0.46,
             ),
             row=1 + report_n,
@@ -578,9 +550,9 @@ def duration_gain_msr_phase(folder, routine, qubit, format):
         fig.update_yaxes(title_text="Gain (dimensionless)", row=1 + report_n, col=1)
         fig.add_trace(
             go.Heatmap(
-                x=unique_durations,
-                y=unique_gains,
-                z=mean_phases,
+                x=averaged_data["duration"],
+                y=averaged_data["gain"],
+                z=averaged_data["phase"],
                 colorbar_x=1.01,
             ),
             row=1 + report_n,
@@ -625,7 +597,7 @@ def duration_amplitude_msr_phase(folder, routine, qubit, format):
     report_n = 0
     for subfolder in subfolders:
         try:
-            data = DataUnits.load_data(folder, subfolder, routine, format, f"data")
+            data = load_data(folder, subfolder, routine, format, "data")
             data.df = data.df[data.df["qubit"] == qubit]
         except:
             data = DataUnits(
@@ -635,33 +607,20 @@ def duration_amplitude_msr_phase(folder, routine, qubit, format):
             )
 
         iterations = data.df["iteration"].unique()
-        durations = data.df["duration"].pint.to("ns").pint.magnitude.unique()
-        amplitudes = (
-            data.df["amplitude"].pint.to("dimensionless").pint.magnitude.unique()
-        )
+        durations = data.df["duration"].unique()
+        amplitudes = data.df["amplitude"].unique()
 
         averaged_data = data.df.drop(columns=["i", "q", "qubit", "iteration"])
 
-        if len(iterations) > 1:
-            (
-                unique_durations,
-                unique_amplitudes,
-                mean_measurements,
-                mean_phases,
-            ) = grouped_by_mean(averaged_data, "duration", "MSR", "amplitude", "phase")
-        else:
-            unique_durations = averaged_data["duration"].pint.to("ns").pint.magnitude
-            unique_amplitudes = (
-                averaged_data["amplitude"].pint.to("dimensionless").pint.magnitude
-            )
-            mean_measurements = averaged_data["MSR"].pint.to("V").pint.magnitude
-            mean_phases = averaged_data["phase"].pint.to("rad").pint.magnitude
+        averaged_data = data.df.groupby(
+            ["duration", "amplitude"], as_index=False
+        ).mean()
 
         fig.add_trace(
             go.Heatmap(
-                x=unique_durations,
-                y=unique_amplitudes,
-                z=mean_measurements,
+                x=averaged_data["duration"],
+                y=averaged_data["amplitude"],
+                z=averaged_data["MSR"] * 1e6,
                 colorbar_x=0.46,
             ),
             row=1 + report_n,
@@ -675,9 +634,9 @@ def duration_amplitude_msr_phase(folder, routine, qubit, format):
         )
         fig.add_trace(
             go.Heatmap(
-                x=unique_durations,
-                y=unique_amplitudes,
-                z=mean_phases,
+                x=averaged_data["duration"],
+                y=averaged_data["amplitude"],
+                z=averaged_data["phase"],
                 colorbar_x=1.01,
             ),
             row=1 + report_n,

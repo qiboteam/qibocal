@@ -2,6 +2,9 @@ import os
 from colorsys import hls_to_rgb
 
 import numpy as np
+import pandas as pd
+
+from qibocal.data import DataUnits
 
 
 def get_data_subfolders(folder):
@@ -25,6 +28,29 @@ def get_color_state0(number):
 
 def get_color_state1(number):
     return "rgb" + str(hls_to_rgb((-0.02 - number * 9 / 20) % 1, 0.6, 0.75))
+
+
+def load_data(folder, subfolder, routine, data_format, name):
+    file = f"{folder}/{subfolder}/{routine}/{name}.csv"
+    data = DataUnits()
+    all_columns = pd.read_csv(file, nrows=1).columns.tolist()
+    dtype_dict = {
+        col: "float64"
+        for col in all_columns
+        if col not in ["Unnamed: 0", "qubit", "iteration"]
+    }
+    if "fit" in name or "parameters" in name:
+        # print("data fit frame")
+        data.df = pd.read_csv(file, header=[0], index_col=[0])
+
+    else:
+        # print("data frame")
+        data.df = pd.read_csv(
+            file, dtype=dtype_dict, header=[0], skiprows=[1], index_col=[0]
+        )
+
+    # print(data.df)
+    return data
 
 
 def grouped_by_mean(df, g_column1, m_column1, g_column2=None, m_column2=None):
