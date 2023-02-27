@@ -9,7 +9,7 @@ from qibocal.plots.utils import get_data_subfolders
 
 
 def landscape_2q_gate(folder, routine, qubit, format):
-
+    fitting_report = "No fitting data"
     highfreq = 2
     lowfreq = qubit
     if qubit > 2:
@@ -92,11 +92,11 @@ def landscape_2q_gate(folder, routine, qubit, format):
         xaxis2_title="theta (rad)",
         yaxis2_title="MSR (V)",
     )
-    return fig
+    return [fig], fitting_report
 
 
 def duration_amplitude_msr_flux_pulse(folder, routine, qubit, format):
-
+    fitting_report = "No fitting data"
     highfreq = 2
     lowfreq = qubit
     if qubit > 2:
@@ -155,10 +155,11 @@ def duration_amplitude_msr_flux_pulse(folder, routine, qubit, format):
         xaxis2_title="duration (ns)",
         yaxis2_title="amplitude (dimensionless)",
     )
-    return fig
+    return [fig], fitting_report
 
 
 def duration_amplitude_I_flux_pulse(folder, routine, qubit, format):
+    fitting_report = "No fitting data"
     highfreq = 2
     lowfreq = qubit
     if qubit > 2:
@@ -217,10 +218,11 @@ def duration_amplitude_I_flux_pulse(folder, routine, qubit, format):
         xaxis2_title="duration (ns)",
         yaxis2_title="amplitude (dimensionless)",
     )
-    return fig
+    return [fig], fitting_report
 
 
 def duration_amplitude_Q_flux_pulse(folder, routine, qubit, format):
+    fitting_report = "No fitting data"
     highfreq = 2
     lowfreq = qubit
     if qubit > 2:
@@ -279,4 +281,4 @@ def duration_amplitude_Q_flux_pulse(folder, routine, qubit, format):
         xaxis2_title="duration (ns)",
         yaxis2_title="amplitude (dimensionless)",
     )
-    return fig
+    return [fig], fitting_report

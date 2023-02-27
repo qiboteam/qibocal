@@ -44,7 +44,7 @@ feature greatly helps in designing the span list. Example showcased in Hz, for a
 
 **small_spans**: list of spans for the small scans that are run when the feature is located. Scans of 10 equaly distributes
 points will be executed. This will directly correlate to the final desired precision of the feature. Example showcased in Hz,
- for a resonator punchout.
+for a resonator punchout.
 
 **resolution**: precision in the sampled space for the gaussianly distributed samples. In the initial part of the algorithm,
 this value will be the precision used to detect the feature. This value needs to be small enough for the feature to be

@@ -22,6 +22,8 @@ def flux_pulse_timing(
     flux_pulse_start_step,
     flux_pulse_duration,
     time_window,
+    nshots=1024,
+    relaxation_time=None,
     software_averages=1,
     points=10,
 ):
@@ -141,6 +143,11 @@ def flux_pulse_timing(
     flux_pulse_amplitude_range = np.arange(
         flux_pulse_amplitude_start, flux_pulse_amplitude_end, flux_pulse_amplitude_step
     )
+    sweeper = Sweeper(
+        "amplitude",
+        flux_pulse_amplitude_range,
+        pulses=[flux_pulses[qubit] for qubit in qubits],
+    )
     flux_pulse_start_range = np.arange(
         flux_pulse_start_start, flux_pulse_start_end, flux_pulse_start_step
     )
@@ -178,41 +185,41 @@ def flux_pulse_timing(
         )
     yield parameters
 
+    ndata = len(flux_pulse_amplitude_range)
     count = 0
     for iteration in range(software_averages):
         # sweep the parameters
-        for amplitude in flux_pulse_amplitude_range:
-            for start in flux_pulse_start_range:
-                # save data as often as defined by points
-                if count % points == 0 and count > 0:
-                    # save data
-                    yield data
-                for qubit in qubits:
-                    flux_pulses[qubit].amplitude = amplitude
-                    flux_pulses[qubit].start = initial_RY90_pulses_start + start
+        for start in flux_pulse_start_range:
+            # save data as often as defined by points
+            if count % points == 0 and count > 0:
+                # save data
+                yield data
+            for qubit in qubits:
+                flux_pulses[qubit].start = initial_RY90_pulses_start + start
+            # execute the pulse sequence
+            results = platform.sweep(
+                sequence,
+                sweeper,
+                nshots=nshots,
+                relaxation_time=relaxation_time,
+                average=False,
+            )
+            for qubit in qubits:
+                qubit_res = results[MZ_ro_pulses[qubit].serial]
+                r = {
+                    "MSR[V]": qubit_res.measurement.mean(axis=0),
+                    "i[V]": qubit_res.i.mean(axis=0),
+                    "q[V]": qubit_res.q.mean(axis=0),
+                    "phase[rad]": qubit_res.phase.mean(axis=0),
+                    "prob[dimensionless]": qubit_res.shots.mean(axis=0),
+                    "flux_pulse_amplitude[dimensionless]": flux_pulse_amplitude_range,
+                    "flux_pulse_start[ns]": ndata * [start],
+                    "qubit": ndata * [qubit],
+                    "iteration": ndata * [iteration],
+                }
+                data.add_data_from_dict(r)
 
-                # execute the pulse sequence
-                results = platform.execute_pulse_sequence(sequence)
-
-                for qubit in qubits:
-                    prob = results["probability"][MZ_ro_pulses[qubit].serial]
-                    voltages = results["demodulated_integrated_averaged"][
-                        MZ_ro_pulses[qubit].serial
-                    ]
-                    r = {
-                        "MSR[V]": voltages[0],
-                        "phase[rad]": voltages[1],
-                        "i[V]": voltages[2],
-                        "q[V]": voltages[3],
-                        "prob[dimensionless]": prob,
-                        "flux_pulse_amplitude[dimensionless]": amplitude,
-                        "flux_pulse_start[ns]": start,
-                        "qubit": qubit,
-                        "iteration": iteration,
-                    }
-                    data.add(r)
-
-                count += 1
+            count += 1
     # finally, save the remaining data
     yield data
 
@@ -237,7 +244,7 @@ def flux_pulse_timing(
 )
 def cryoscope(
     platform: AbstractPlatform,
-    qubits: list,
+    qubits: dict,
     flux_pulse_amplitude,
     flux_pulse_duration_start,
     flux_pulse_duration_end,
@@ -246,13 +253,12 @@ def cryoscope(
     flux_pulse_amplitude_end,
     flux_pulse_amplitude_step,
     delay_before_readout,
-    wait_time,
     flux_pulse_shapes: Optional[list] = None,
     nshots=1024,
+    relaxation_time=None,
     software_averages=1,
     points=10,
 ):
-
     r"""
     The cryoscope is one of the experiments required to characterise 2-qubit gates. Its aim is to measure
     the distorsions suffered by a flux pulse on its way from the control instrument to the qubit, so that they can later
@@ -344,8 +350,8 @@ def cryoscope(
             amplitude=flux_pulse_amplitude,  # fix for each run
             shape=flux_pulse_shape,
             # relative_phase=0,
-            channel=qubit.flux.name,
-            qubit=qubit.name,
+            channel=platform.qubits[qubit].flux.name,
+            qubit=platform.qubits[qubit].name,
         )
 
         # wait delay_before_readout
@@ -401,7 +407,6 @@ def cryoscope(
         "amplitude",
         flux_pulse_amplitude_range,
         pulses=[flux_pulses[qubit] for qubit in qubits],
-        wait_time=wait_time,
     )
     flux_pulse_duration_range = np.arange(
         flux_pulse_duration_start, flux_pulse_duration_end, flux_pulse_duration_step
@@ -433,13 +438,17 @@ def cryoscope(
             # execute the pulse sequences
             for sequence, tag in [(MX_seq, MX_tag), (MY_seq, MY_tag)]:
                 results = platform.sweep(
-                    sequence, sweeper, nshots=nshots, average=False
+                    sequence,
+                    sweeper,
+                    nshots=nshots,
+                    relaxation_time=relaxation_time,
+                    average=False,
                 )
                 for qubit in qubits:
-                    prob = results["probability"][MZ_ro_pulses[qubit].serial]
                     qubit_res = results[MZ_ro_pulses[qubit].serial]
+
                     r = {
-                        "MSR[V]": qubit_res.msr.mean(axis=0),
+                        "MSR[V]": qubit_res.measurement.mean(axis=0),
                         "i[V]": qubit_res.i.mean(axis=0),
                         "q[V]": qubit_res.q.mean(axis=0),
                         "phase[rad]": qubit_res.phase.mean(axis=0),
@@ -450,7 +459,7 @@ def cryoscope(
                         "qubit": ndata * [qubit],
                         "iteration": ndata * [iteration],
                     }
-                    data.add(r)
+                    data.add_data_from_dict(r)
             count += 1
 
     # finally, save the remaining data

@@ -9,7 +9,6 @@ from qibocal.plots.utils import get_color, get_data_subfolders
 
 # Ramsey oscillations
 def time_msr(folder, routine, qubit, format):
-
     figures = []
 
     fig = make_subplots(
@@ -24,6 +23,7 @@ def time_msr(folder, routine, qubit, format):
     subfolders = get_data_subfolders(folder)
     report_n = 0
     fitting_report = ""
+
     for subfolder in subfolders:
         try:
             data = DataUnits.load_data(folder, subfolder, routine, format, f"data")
@@ -125,32 +125,14 @@ def time_msr(folder, routine, qubit, format):
             fitting_report = (
                 fitting_report
                 + (
-                    f"q{qubit}/r{report_n} delta_frequency: {params['delta_frequency']:,.0f} Hz<br>"
+                    f"q{qubit}/r{report_n} | delta_frequency: {params['delta_frequency']:,.0f} Hz<br>"
                 )
                 + (
-                    f"q{qubit}/r{report_n} corrected_qubit_frequency: {params['drive_frequency']:,.0f} Hz<br>"
+                    f"q{qubit}/r{report_n} | corrected_qubit_frequency: {params['corrected_qubit_frequency']:,.0f} Hz<br>"
                 )
-                + (f"q{qubit}/r{report_n} t2: {params['T2']:,.0f} ns.<br><br>")
+                + (f"q{qubit}/r{report_n} | t2: {params['t2']:,.0f} ns.<br><br>")
             )
         report_n += 1
-
-    fig.add_annotation(
-        dict(
-            font=dict(color="black", size=12),
-            x=0,
-            y=1.2,
-            showarrow=False,
-            text="<b>FITTING DATA</b>",
-            font_family="Arial",
-            font_size=20,
-            textangle=0,
-            xanchor="left",
-            xref="paper",
-            yref="paper",
-            font_color="#5e9af1",
-            hovertext=fitting_report,
-        )
-    )
 
     fig.update_layout(
         showlegend=True,
@@ -161,4 +143,4 @@ def time_msr(folder, routine, qubit, format):
 
     figures.append(fig)
 
-    return figures
+    return figures, fitting_report

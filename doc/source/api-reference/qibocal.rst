@@ -128,6 +128,7 @@ and `csv <https://docs.python.org/3/library/csv.html>`_.
     :members:
     :member-order: bysource
 
+
 Fitting functions
 -----------------
 
@@ -135,6 +136,78 @@ Fitting functions
 
 
 .. automodule:: qibocal.fitting.methods
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Gate set characterization
+-------------------------
+
+.. _abstract-module-label:
+
+Abstract and Basic methods
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Circuit Factory
+"""""""""""""""
+.. automodule:: qibocal.calibrations.niGSC.basics.circuitfactory
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Experiment
+""""""""""
+.. automodule:: qibocal.calibrations.niGSC.basics.experiment
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Fitting methods
+"""""""""""""""
+.. automodule:: qibocal.calibrations.niGSC.basics.fitting
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Plotting methods
+""""""""""""""""
+.. automodule:: qibocal.calibrations.niGSC.basics.plot
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Useful functions
+""""""""""""""""
+.. automodule:: qibocal.calibrations.niGSC.basics.utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Prebuild noise models
+"""""""""""""""""""""
+.. automodule:: qibocal.calibrations.niGSC.basics.noisemodels
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+Standard RB
+^^^^^^^^^^^
+.. automodule:: qibocal.calibrations.niGSC.standardrb
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Simultaneous Filtered RB
+^^^^^^^^^^^^^^^^^^^^^^^^
+.. automodule:: qibocal.calibrations.niGSC.simulfilteredrb
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+X-ID RB
+^^^^^^^
+.. automodule:: qibocal.calibrations.niGSC.XIdrb
    :members:
    :undoc-members:
    :show-inheritance:

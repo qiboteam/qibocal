@@ -16,9 +16,9 @@ actions:
      resolution: 100000
 
    resonator_flux_sample:
-     current_min: -12.e-3
-     current_max: +12.e-3
-     current_step: 2.e-3
+     bias_min: -12.e-3
+     bias_max: +12.e-3
+     bias_step: 2.e-3
      fluxlines: [2,3,4]
      max_runs: 40
      thr: 5

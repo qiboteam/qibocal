@@ -5,7 +5,7 @@ from qibolab.pulses import PulseSequence
 from qibocal.data import DataUnits
 from qibocal.decorators import plot
 from qibocal.fitting.methods import res_spectroscopy_flux_fit
-from qibocal.plots import frequency_attenuation, frequency_current_flux
+from qibocal.plots import frequency_attenuation, frequency_bias_flux
 
 
 def snr(signal, noise):
@@ -257,13 +257,13 @@ def resonator_punchout_sample(
         yield data
 
 
-@plot("Frequency vs Current", frequency_current_flux)
+@plot("Frequency vs Current", frequency_bias_flux)
 def resonator_flux_sample(
     platform: AbstractPlatform,
     qubits: dict,
-    current_min,
-    current_max,
-    current_step,
+    bias_min,
+    bias_max,
+    bias_step,
     fluxlines,
     max_runs,
     thr,
@@ -273,15 +273,15 @@ def resonator_flux_sample(
     params_fit,
     points=10,
 ):
-    """Use gaussian samples to extract the flux-frequency response of the resonator for different values of current.
+    """Use gaussian samples to extract the flux-frequency response of the resonator for different values of bias.
 
     Args:
         platform (AbstractPlatform): Platform the experiment is executed on.
         qubits (dict): Dict of target Qubit objects to perform the action
-        current_min (float): minimum current value where the experiment starts.
-        current_max (float): maximum current reached in the scan.
-        current_step (float): change in current after every step.
-        fluxlines (list): ids of the current lines to use for the experiment. Use qubit if matching the qubit id.
+        bias_min (float): minimum bias value where the experiment starts.
+        bias_max (float): maximum bias reached in the scan.
+        bias_step (float): change in bias after every step.
+        fluxlines (list): ids of the bias lines to use for the experiment. Use qubit if matching the qubit id.
         max_runs (int): Maximum amount of tries before stopping if feature is not found.
         thr (float): SNR value used as threshold for detection of the feature.
         spans (list): Different spans to search for the feature at different precisions.
@@ -294,7 +294,7 @@ def resonator_flux_sample(
         points (int): Number of points plotted at a time in qq-live.
 
     Returns:
-        data (Data): Data file with information on the feature response at each current point.
+        data (Data): Data file with information on the feature response at each bias point.
 
     """
 
@@ -303,7 +303,7 @@ def resonator_flux_sample(
         for fluxline in fluxlines:
             data = DataUnits(
                 name=f"data_q{qubit}_f{fluxline}",
-                quantities={"frequency": "Hz", "current": "A"},
+                quantities={"frequency": "Hz", "bias": "V"},
             )
 
             if fluxline == "qubit":
@@ -311,39 +311,34 @@ def resonator_flux_sample(
 
             platform.reload_settings()
             for f in fluxlines:
-                platform.set_current(qubit, 0)
+                platform.set_bias(qubit, 0)
 
             sequence = PulseSequence()
             ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
             sequence.add(ro_pulse)
 
             resonator_frequency = qubits[qubit].readout_frequency
-            qubit_biasing_current = qubits[qubit].sweetspot
-            platform.set_current(qubit, qubit_biasing_current)
-            current_range = (
-                np.arange(current_min, current_max, current_step)
-                + qubit_biasing_current
-            )
+            qubit_biasing_bias = qubits[qubit].sweetspot
+            platform.set_bias(qubit, qubit_biasing_bias)
+            bias_range = np.arange(bias_min, bias_max, bias_step) + qubit_biasing_bias
             start = next(
                 (
                     index
-                    for index, curr in enumerate(current_range)
-                    if curr >= qubit_biasing_current
+                    for index, curr in enumerate(bias_range)
+                    if curr >= qubit_biasing_bias
                 )
             )
             start_f = resonator_frequency
             background = [start_f + 1e7, start_f - 1e7]
             noise = get_noise(background, platform, ro_pulse, qubit, sequence)
-            current_range = np.concatenate(
-                (current_range[start:], current_range[:start][::-1])
-            )
-            index = len(current_range[start:])
+            bias_range = np.concatenate((bias_range[start:], bias_range[:start][::-1]))
+            index = len(bias_range[start:])
             best_f = start_f
-            for k, curr in enumerate(current_range):
+            for k, curr in enumerate(bias_range):
                 if k == index:
                     best_f = start_f
                 best_msr = noise
-                platform.set_current(qubit, curr)
+                platform.set_bias(qubit, curr)
                 for span in spans:
                     best_f, best_msr, phase, i, q = scan_level(
                         best_f,
@@ -368,14 +363,14 @@ def resonator_flux_sample(
                     "q[V]": q,
                     "phase[rad]": phase,
                     "frequency[Hz]": best_f,
-                    "current[A]": curr,
+                    "bias[V]": curr,
                 }
                 data.add(results)
                 if k % points == 0:
                     yield data
             yield res_spectroscopy_flux_fit(
                 data,
-                x="current[A]",
+                x="bias[V]",
                 y="frequency[Hz]",
                 qubit=qubit,
                 fluxline=fluxline,

@@ -18,7 +18,6 @@ def t1(
     software_averages=1,
     points=10,
 ):
-
     r"""
     In a T1 experiment, we measure an excited qubit after a delay. Due to decoherence processes
     (e.g. amplitude damping channel), it is possible that, at the time of measurement, after the delay,
@@ -109,11 +108,11 @@ def t1(
 
             for ro_pulse in ro_pulses.values():
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                r = results[ro_pulse.serial].to_dict()
+                r = results[ro_pulse.serial].to_dict(average=True)
                 r.update(
                     {
                         "wait[ns]": wait,
-                        "qubit": qubit,
+                        "qubit": ro_pulse.qubit,
                         "iteration": iteration,
                     }
                 )

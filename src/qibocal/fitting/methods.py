@@ -427,7 +427,7 @@ def ramsey_fit(
                 popt[3] - x_min * popt[2] / (x_max - x_min),
                 popt[4] / (x_max - x_min),
             ]
-            delta_fitting = popt[2]
+            delta_fitting = popt[2] / 2 * np.pi
             delta_phys = int((delta_fitting * sampling_rate) - offset_freq)
             corrected_qubit_frequency = int(qubit_freqs[qubit] + delta_phys)
             t2 = 1.0 / popt[4]
@@ -453,7 +453,6 @@ def ramsey_fit(
 
 
 def t1_fit(data, x, y, qubits, resonator_type, labels):
-
     """
     Fitting routine for T1 experiment. The used model is
 
@@ -527,15 +526,15 @@ def t1_fit(data, x, y, qubits, resonator_type, labels):
             data_fit.add({key: 0 for key in data_fit.df.columns})
             return data_fit
 
-    data_fit.add(
-        {
-            "popt0": popt[0],
-            "popt1": popt[1],
-            "popt2": popt[2],
-            labels[0]: t1,
-            "qubit": qubit,
-        }
-    )
+        data_fit.add(
+            {
+                "popt0": popt[0],
+                "popt1": popt[1],
+                "popt2": popt[2],
+                labels[0]: t1,
+                "qubit": qubit,
+            }
+        )
     return data_fit
 
 
@@ -914,7 +913,6 @@ def res_spectroscopy_flux_matrix(folder, fluxlines):
 
 
 def spin_echo_fit(data, x, y, qubits, resonator_type, labels):
-
     data_fit = Data(
         name=f"fits",
         quantities=[
@@ -973,7 +971,6 @@ def spin_echo_fit(data, x, y, qubits, resonator_type, labels):
 
 
 def calibrate_qubit_states_fit(data, x, y, nshots, qubits):
-
     parameters = Data(
         name=f"parameters",
         quantities={

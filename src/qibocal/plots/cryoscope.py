@@ -49,7 +49,6 @@ def _normalise(values: np.array):
 
 
 def cryoscope_raw(folder, routine, qubit, format):
-
     figs = {}
     figs["raw"] = make_subplots(
         rows=1,
@@ -122,11 +121,10 @@ def cryoscope_raw(folder, routine, qubit, format):
         yaxis_title="Magnitude (dimensionless)",
         title=f"Raw data",
     )
-    return figs["raw"]
+    return [figs["raw"]]
 
 
 def flux_pulse_timing(folder, routine, qubit, format):
-
     figs = {}
     figs["flux_pulse_timing"] = make_subplots(
         rows=1,
@@ -183,7 +181,7 @@ def flux_pulse_timing(folder, routine, qubit, format):
         xaxis_title="Flux start time (ns)",
         yaxis_title="Magnitude X component (dimensionless)",
     )
-    return figs["flux_pulse_timing"]
+    return [figs["flux_pulse_timing"]]
 
 
 def cryoscope_dephasing_heatmap(folder, routine, qubit, format):
@@ -224,7 +222,7 @@ def cryoscope_dephasing_heatmap(folder, routine, qubit, format):
         yaxis_title=title_y,
         title=f"{global_title}",
     )
-    return figs["norm"]
+    return [figs["norm"]]
 
 
 def cryoscope_fft_peak_fitting(folder, routine, qubit, format):
@@ -308,7 +306,7 @@ def cryoscope_fft_peak_fitting(folder, routine, qubit, format):
         yaxis_title=title_y,
         title=f"{global_title}",
     )
-    return figs["norm"]
+    return [figs["norm"]]
 
 
 def cryoscope_fft(folder, routine, qubit, format):
@@ -406,7 +404,7 @@ def cryoscope_fft(folder, routine, qubit, format):
         yaxis_title=title_y,
         title=f"{global_title}",
     )
-    return figs["norm"]
+    return [figs["norm"]]
 
 
 def cryoscope_phase(folder, routine, qubit, format):
@@ -448,7 +446,7 @@ def cryoscope_phase(folder, routine, qubit, format):
         yaxis_title=title_y,
         title=f"{global_title}",
     )
-    return figs["norm"]
+    return [figs["norm"]]
 
 
 def cryoscope_phase_heatmap(folder, routine, qubit, format):
@@ -489,7 +487,7 @@ def cryoscope_phase_heatmap(folder, routine, qubit, format):
         yaxis_title=title_y,
         title=f"{global_title}",
     )
-    return figs["norm"]
+    return [figs["norm"]]
 
 
 def cryoscope_phase_unwrapped(folder, routine, qubit, format):
@@ -526,7 +524,7 @@ def cryoscope_phase_unwrapped(folder, routine, qubit, format):
         yaxis_title=title_y,
         title=f"{global_title}",
     )
-    return figs["norm"]
+    return [figs["norm"]]
 
 
 def cryoscope_phase_unwrapped_heatmap(folder, routine, qubit, format):
@@ -568,7 +566,7 @@ def cryoscope_phase_unwrapped_heatmap(folder, routine, qubit, format):
         yaxis_title=title_y,
         title=f"{global_title}",
     )
-    return figs["norm"]
+    return [figs["norm"]]
 
 
 def cryoscope_phase_amplitude_unwrapped_heatmap(folder, routine, qubit, format):
@@ -615,7 +613,7 @@ def cryoscope_phase_amplitude_unwrapped_heatmap(folder, routine, qubit, format):
         yaxis_title=title_y,
         title=f"{global_title}",
     )
-    return figs["norm"]
+    return [figs["norm"]]
 
 
 def cryoscope_detuning_time(folder, routine, qubit, format):
@@ -706,7 +704,7 @@ def cryoscope_detuning_time(folder, routine, qubit, format):
         yaxis_title=title_y,
         title=f"{global_title}",
     )
-    return figs["norm"]
+    return [figs["norm"]]
 
 
 def cryoscope_distorted_amplitude_time(folder, routine, qubit, format):
@@ -842,7 +840,7 @@ def cryoscope_distorted_amplitude_time(folder, routine, qubit, format):
         yaxis_title=title_y,
         title=f"{global_title}",
     )
-    return figs["norm"]
+    return [figs["norm"]]
 
 
 def cryoscope_reconstructed_amplitude_time(folder, routine, qubit, format):
@@ -1030,7 +1028,7 @@ def cryoscope_reconstructed_amplitude_time(folder, routine, qubit, format):
         yaxis_title=title_y,
         title=f"{global_title}",
     )
-    return figs["norm"]
+    return [figs["norm"]]
 
 
 # Helper functions
@@ -1322,7 +1320,7 @@ def cryoscope_fit_exp(durations, ideal_pulse, distorted_pulse, pguess):
 #         yaxis_title=title_y,
 #         title=f"{global_title}",
 #     )
-#     return figs["norm"]
+#     return [figs["norm"]]
 
 
 # def peak_finder_v2(x, y, perc=90, window_len=11):
@@ -1505,7 +1503,7 @@ def cryoscope_fit_exp(durations, ideal_pulse, distorted_pulse, pguess):
 #         yaxis_title=title_y,
 #         title=f"{global_title}",
 #     )
-#     return figs["norm"]
+#     return [figs["norm"]]
 
 # def cryoscope_demod_fft(folder, routine, qubit, format):
 #     data = DataUnits.load_data(folder, "data", routine, format, "data")
@@ -1589,4 +1587,4 @@ def cryoscope_fit_exp(durations, ideal_pulse, distorted_pulse, pguess):
 #         yaxis_title=title_y,
 #         title=f"{global_title}",
 #     )
-#     return figs["norm"]
+#     return [figs["norm"]]

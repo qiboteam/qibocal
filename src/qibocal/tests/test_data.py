@@ -32,7 +32,6 @@ def random_data_units(length, options=None):
 def data_units_dummy(length, options=None):
     data = DataUnits(options=options)
     for l in range(length):
-
         pulse_sequence_result = {
             "MSR[V]": float(l),
             "i[V]": float(l),
@@ -63,7 +62,6 @@ def random_data(length):
 
 
 def data_dummy(length):
-
     data = Data()
     for i in range(length):
         data.add(
@@ -183,7 +181,6 @@ def test_data_add():
 
 
 def test_data__add__():
-
     data0 = Data()
     data0.add(
         {
