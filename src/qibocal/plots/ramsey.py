@@ -42,7 +42,7 @@ def time_msr(folder, routine, qubit, format):
                 quantities=[
                     "T2",
                     "drive_frequency",
-                    "delta_frequency",                 
+                    "delta_frequency",
                     "popt0",
                     "popt1",
                     "popt2",
@@ -121,7 +121,9 @@ def time_msr(folder, routine, qubit, format):
                 row=1,
                 col=1,
             )
-            corrected_qubit_frequency = params['delta_frequency'] + params['drive_frequency']
+            corrected_qubit_frequency = (
+                params["delta_frequency"] + params["drive_frequency"]
+            )
             fitting_report = (
                 fitting_report
                 + (
