@@ -1,12 +1,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 from lmfit import Model
 from plotly.subplots import make_subplots
 from scipy.optimize import curve_fit
 from scipy.signal import argrelextrema, lfilter, savgol_filter
 
-from qibocal.data import Data, DataUnits
+from qibocal.data import Data, DataUnits  # to be removed
 from qibocal.fitting.utils import cos, exp, flipping, lorenzian, rabi, ramsey
 from qibocal.plots.utils import get_color, get_color_pair, get_data_subfolders
 
@@ -16,50 +17,201 @@ MZ_tag = "MZ"
 M0_tag = "M0"
 M1_tag = "M1"
 
-
-def _get_flux_pulse_durations_and_amplitudes(data: DataUnits):
-    flux_pulse_durations = data.df["flux_pulse_duration"][
-        data.df["component"] == MX_tag
-    ].to_numpy()
-    flux_pulse_amplitudes = data.df["flux_pulse_amplitude"][
-        data.df["component"] == MX_tag
-    ].to_numpy()
-    amplitudes = flux_pulse_amplitudes[flux_pulse_durations == flux_pulse_durations[0]]
-    durations = flux_pulse_durations[flux_pulse_amplitudes == flux_pulse_amplitudes[0]]
-    return durations, amplitudes
+values_column = "prob"
 
 
-def _get_values(data, component=None, duration=None, amplitude=None, column="prob"):
-    if component:
-        values = data.df[column][data.df["component"] == component]
-    else:
-        values = data.df[column]
-
-    if duration:
-        values = values[data.df["flux_pulse_duration"] == duration]
-    if amplitude:
-        values = values[data.df["flux_pulse_amplitude"] == amplitude]
-    return _normalise(values.to_numpy())
-
-
-def _normalise(values: np.array):
-    if (values.size != 0) and (np.max(values) != np.min(values)):
-        values = ((values - np.min(values)) / (np.max(values) - np.min(values))) * 2 - 1
-
-    # TODO: consider moving this normalisation to data acquisition (work with magnitudes instead of 0-1 probs)
-    return values
-
-
-def _load_data(folder, subfolder, routine, data_format, name):
+def load_data(folder, subfolder, routine, name):
     file = f"{folder}/{subfolder}/{routine}/{name}.csv"
-    data = DataUnits()
-    import pandas as pd
+    # skip loading units row
+    data: pd.DataFrame = pd.read_csv(file, header=[0], skiprows=[1], index_col=[0])
 
-    data.df = pd.read_csv(file, header=[0], skiprows=[1], index_col=[0])
+    # drop unnecessary columns and average over iterations
+    data = (
+        data.drop(columns=["i", "q", "phase", "iteration"])
+        .groupby(
+            ["flux_pulse_duration", "flux_pulse_amplitude", "component", "qubit"],
+            as_index=False,
+        )
+        .mean()
+    )
     return data
 
 
+def normalise_1(df: pd.DataFrame):
+    # normalise between -1 to 1 both X & Y symultaneously
+    # correct XY misalignment
+
+    df = df.copy()
+    for qubit in df["qubit"].unique():
+        qubit_m = df["qubit"] == qubit
+        durations, amplitudes = get_flux_pulse_durations_and_amplitudes(df[qubit_m])
+        MX_m = df["component"] == MX_tag
+        MY_m = df["component"] == MY_tag
+
+        for amp in amplitudes:
+            amp_m = df["flux_pulse_amplitude"] == amp
+
+            # normalise between -1 to 1
+            dfqa = df.loc[qubit_m & amp_m, values_column]
+            if (dfqa.size != 0) and (np.max(dfqa) != np.min(dfqa)):
+                df.loc[qubit_m & amp_m, values_column] = (
+                    (dfqa - np.min(dfqa)) / (np.max(dfqa) - np.min(dfqa))
+                ) * 2 - 1
+
+            # correct XY misalignment
+            delta = (
+                np.mean(
+                    df.loc[qubit_m & amp_m & MY_m, values_column].to_numpy()
+                    - df.loc[qubit_m & amp_m & MX_m, values_column].to_numpy()
+                )
+                / 2
+            )
+            df.loc[qubit_m & amp_m & MX_m, values_column] += delta
+            df.loc[qubit_m & amp_m & MY_m, values_column] -= delta
+    return df
+
+
+def normalise_2(df: pd.DataFrame):
+    # normalise between -1 to 1 each X & Y separately
+    # correct XY misalignment
+
+    df = df.copy()
+    for qubit in df["qubit"].unique():
+        qubit_m = df["qubit"] == qubit
+        durations, amplitudes = get_flux_pulse_durations_and_amplitudes(df[qubit_m])
+        MX_m = df["component"] == MX_tag
+        MY_m = df["component"] == MY_tag
+
+        for amp in amplitudes:
+            amp_m = df["flux_pulse_amplitude"] == amp
+            # normalise between -1 to 1
+            for component_m in [MX_m, MY_m]:
+                dfqa = df.loc[qubit_m & component_m & amp_m, values_column]
+                if (dfqa.size != 0) and (np.max(dfqa) != np.min(dfqa)):
+                    df.loc[qubit_m & component_m & amp_m, values_column] = (
+                        (dfqa - np.min(dfqa)) / (np.max(dfqa) - np.min(dfqa))
+                    ) * 2 - 1
+
+            # correct XY misalignment
+            delta = (
+                np.mean(
+                    df.loc[qubit_m & amp_m & MY_m, values_column].to_numpy()
+                    - df.loc[qubit_m & amp_m & MX_m, values_column].to_numpy()
+                )
+                / 2
+            )
+            df.loc[qubit_m & amp_m & MX_m, values_column] += delta
+            df.loc[qubit_m & amp_m & MY_m, values_column] -= delta
+    return df
+
+
+def normalise_3(df: pd.DataFrame):
+    # normalise between -1 to 1 both X & Y symultaneously
+    df = df.copy()
+    for qubit in df["qubit"].unique():
+        qubit_m = df["qubit"] == qubit
+        durations, amplitudes = get_flux_pulse_durations_and_amplitudes(df[qubit_m])
+
+        for amp in amplitudes:
+            amp_m = df["flux_pulse_amplitude"] == amp
+            # normalise between -1 to 1
+            dfqa = df.loc[qubit_m & amp_m, values_column]
+            if (dfqa.size != 0) and (np.max(dfqa) != np.min(dfqa)):
+                df.loc[qubit_m & amp_m, values_column] = (
+                    (dfqa - np.min(dfqa)) / (np.max(dfqa) - np.min(dfqa))
+                ) * 2 - 1
+    return df
+
+
+def normalise_4(df: pd.DataFrame):
+    # normalise between -1 to 1 each X & Y separately
+    df = df.copy()
+    for qubit in df["qubit"].unique():
+        qubit_m = df["qubit"] == qubit
+        durations, amplitudes = get_flux_pulse_durations_and_amplitudes(df[qubit_m])
+        MX_m = df["component"] == MX_tag
+        MY_m = df["component"] == MY_tag
+
+        for amp in amplitudes:
+            amp_m = df["flux_pulse_amplitude"] == amp
+            # normalise between -1 to 1
+            for component_m in [MX_m, MY_m]:
+                dfqa = df.loc[qubit_m & component_m & amp_m, values_column]
+                if (dfqa.size != 0) and (np.max(dfqa) != np.min(dfqa)):
+                    df.loc[qubit_m & component_m & amp_m, values_column] = (
+                        (dfqa - np.min(dfqa)) / (np.max(dfqa) - np.min(dfqa))
+                    ) * 2 - 1
+    return df
+
+
+def normalise(df: pd.DataFrame):
+    # correct XY misalignment
+    # normalise between -1 to 1 both X & Y symultaneously
+
+    df = df.copy()
+    for qubit in df["qubit"].unique():
+        qubit_m = df["qubit"] == qubit
+        durations, amplitudes = get_flux_pulse_durations_and_amplitudes(df[qubit_m])
+        MX_m = df["component"] == MX_tag
+        MY_m = df["component"] == MY_tag
+
+        for amp in amplitudes:
+            amp_m = df["flux_pulse_amplitude"] == amp
+
+            # correct XY misalignment
+            delta = (
+                np.mean(
+                    df.loc[qubit_m & amp_m & MY_m, values_column].to_numpy()
+                    - df.loc[qubit_m & amp_m & MX_m, values_column].to_numpy()
+                )
+                / 2
+            )
+            df.loc[qubit_m & amp_m & MX_m, values_column] += delta
+            df.loc[qubit_m & amp_m & MY_m, values_column] -= delta
+
+            # normalise between -1 to 1
+            dfqa = df.loc[qubit_m & amp_m, values_column]
+            if (dfqa.size != 0) and (np.max(dfqa) != np.min(dfqa)):
+                df.loc[qubit_m & amp_m, values_column] = (
+                    (dfqa - np.min(dfqa)) / (np.max(dfqa) - np.min(dfqa))
+                ) * 2 - 1
+    return df
+
+
+def get_flux_pulse_durations_and_amplitudes(df: pd.DataFrame):
+    MX_m = df["component"] == MX_tag
+    MY_m = df["component"] == MY_tag
+    durations = np.intersect1d(
+        df["flux_pulse_duration"][MX_m], df["flux_pulse_duration"][MY_m]
+    )
+    amplitudes = np.intersect1d(
+        df["flux_pulse_amplitude"][MX_m], df["flux_pulse_amplitude"][MY_m]
+    )
+    return durations, amplitudes
+
+
+def get_values(df: pd.DataFrame, component=None, duration=None, amplitude=None):
+    values = df[values_column]
+    if component:
+        values = values[df["component"] == component]
+    if duration:
+        values = values[df["flux_pulse_duration"] == duration]
+    if amplitude:
+        values = values[df["flux_pulse_amplitude"] == amplitude]
+    return values.to_numpy()
+
+
 def cryoscope_raw(folder, routine, qubit, format):
+    show_not_corrected = False
+    show_calibration_points = False
+
+    # load qubit data
+    df = load_data(folder, "data", routine, "data")
+    df = df[df["qubit"] == qubit]
+    df_not_corrected = normalise_3(df)
+    df = normalise_1(df)
+    durations, amplitudes = get_flux_pulse_durations_and_amplitudes(df)
+
     figs = {}
     figs["raw"] = make_subplots(
         rows=1,
@@ -68,52 +220,38 @@ def cryoscope_raw(folder, routine, qubit, format):
         vertical_spacing=0.1,
     )
 
-    # iterate over multiple data folders
-    subfolders = get_data_subfolders(folder)
-    report_n = 0
-    for subfolder in subfolders:
-        try:
-            data = _load_data(folder, subfolder, routine, format, "data")
+    opacity = 0.3
 
-            # extract qubit data and average over iterations
-            data.df = (
-                data.df[data.df["qubit"] == qubit]
-                .drop(columns=["i", "q", "phase", "qubit", "iteration"])
-                .groupby(
-                    ["flux_pulse_duration", "flux_pulse_amplitude", "component"],
-                    as_index=False,
-                )
-                .mean()
-            )
-        except:
-            data = Data(
-                name=f"data",
-                quantities={
-                    "flux_pulse_duration",
-                    "flux_pulse_amplitude",
-                    "prob",
-                    "component",
-                    "qubit",
-                    "iteration",
-                },
-            )
+    for n, amp in enumerate(amplitudes):
+        figs["raw"].add_trace(
+            go.Scatter(
+                x=durations,
+                y=get_values(df, MX_tag, amplitude=amp),
+                name=f"q{qubit}: <X> | A = {amp:.3f}",
+                marker_color=get_color_pair(n)[0],
+            ),
+            row=1,
+            col=1,
+        )
 
-        durations = data.df[data.df["component"] == MY_tag][
-            "flux_pulse_duration"
-        ].unique()
-        amplitudes = data.df[data.df["component"] == MY_tag][
-            "flux_pulse_amplitude"
-        ].unique()
+        figs["raw"].add_trace(
+            go.Scatter(
+                x=durations,
+                y=get_values(df, MY_tag, amplitude=amp),
+                name=f"q{qubit}: <Y> | A = {amp:.3f}",
+                marker_color=get_color_pair(n)[1],
+            ),
+            row=1,
+            col=1,
+        )
 
-        opacity = 0.3
-
-        for n, amp in enumerate(amplitudes):
+        if show_not_corrected:
             figs["raw"].add_trace(
                 go.Scatter(
                     x=durations,
-                    y=_get_values(data, MX_tag, amplitude=amp),
-                    name=f"q{qubit}/r{report_n}: <X> | A = {amp:.3f}",
-                    marker_color="Grey",  #  get_color_pair(n)[0],
+                    y=get_values(df_not_corrected, MX_tag, amplitude=amp),
+                    name=f"q{qubit}: <X> | A = {amp:.3f}",
+                    marker_color="Grey",
                     opacity=opacity,
                 ),
                 row=1,
@@ -123,83 +261,57 @@ def cryoscope_raw(folder, routine, qubit, format):
             figs["raw"].add_trace(
                 go.Scatter(
                     x=durations,
-                    y=_get_values(data, MY_tag, amplitude=amp),
-                    name=f"q{qubit}/r{report_n}: <Y> | A = {amp:.3f}",
-                    marker_color="Grey",  #  marker_color=get_color_pair(n)[1],
+                    y=get_values(df_not_corrected, MY_tag, amplitude=amp),
+                    name=f"q{qubit}: <Y> | A = {amp:.3f}",
+                    marker_color="Grey",
                     opacity=opacity,
                 ),
                 row=1,
                 col=1,
             )
 
-            # smoothed_average = savgol_filter(
-            #     (_get_values(data, MX_tag, amplitude=amp) + _get_values(data, MY_tag, amplitude=amp))/2,
-            #     window_length=21,
-            #     polyorder=3,
-            # )
-
-            # figs["raw"].add_trace(
-            #     go.Scatter(
-            #         x=durations,
-            #         y=smoothed_average,
-            #         name=f"q{qubit}/r{report_n}: <smoothed_average> | A = {amp:.3f}",
-            #         marker_color=get_color(1),
-            #         opacity=opacity,
-            #     ),
-            #     row=1,
-            #     col=1,
-            # )
-
-            delta = (
-                np.mean(
-                    _get_values(data, MY_tag, amplitude=amp)
-                    - _get_values(data, MX_tag, amplitude=amp)
+            smoothed_average = savgol_filter(
+                (
+                    get_values(df, MX_tag, amplitude=amp)
+                    + get_values(df, MY_tag, amplitude=amp)
                 )
-                / 2
+                / 2,
+                window_length=21,
+                polyorder=3,
             )
 
             figs["raw"].add_trace(
                 go.Scatter(
                     x=durations,
-                    y=_get_values(data, MX_tag, amplitude=amp) + delta,
-                    name=f"q{qubit}/r{report_n}: <X> | A = {amp:.3f}",
-                    marker_color=get_color_pair(n)[0],
+                    y=smoothed_average,
+                    name=f"q{qubit}: <smoothed_average> | A = {amp:.3f}",
+                    marker_color=get_color(1),
+                    opacity=opacity,
                 ),
                 row=1,
                 col=1,
             )
 
+        # figs["raw"].add_trace(
+        #     go.Scatter(
+        #         x=durations,
+        #         y=get_prob(df, MY_tag, amplitude=amp) - get_prob(df, MX_tag, amplitude=amp),
+        #         name=f"q{qubit}: <difs> | A = {amp:.3f}",
+        #         marker_color=get_color(1),
+        #         opacity=opacity,
+        #     ),
+        #     row=1,
+        #     col=1,
+        # )
+        if show_calibration_points:
             figs["raw"].add_trace(
                 go.Scatter(
                     x=durations,
-                    y=_get_values(data, MY_tag, amplitude=amp) - delta,
-                    name=f"q{qubit}/r{report_n}: <Y> | A = {amp:.3f}",
-                    marker_color=get_color_pair(n)[1],
-                ),
-                row=1,
-                col=1,
-            )
-
-            # figs["raw"].add_trace(
-            #     go.Scatter(
-            #         x=durations,
-            #         y=_get_values(data, MY_tag, amplitude=amp) - _get_values(data, MX_tag, amplitude=amp),
-            #         name=f"q{qubit}/r{report_n}: <difs> | A = {amp:.3f}",
-            #         marker_color=get_color(1),
-            #         opacity=opacity,
-            #     ),
-            #     row=1,
-            #     col=1,
-            # )
-
-            figs["raw"].add_trace(
-                go.Scatter(
-                    x=durations,
-                    y=_get_values(data, MZ_tag, amplitude=amp),
-                    name=f"q{qubit}/r{report_n}: <Z> | A = {amp:.3f}",
+                    y=get_values(df, MZ_tag, amplitude=amp),
+                    name=f"q{qubit}: <Z> | A = {amp:.3f}",
                     marker_color=get_color(0),
                     opacity=opacity,
-                    legendgroup=f"q{qubit}/r{report_n} | A = {amp:.3f}",
+                    legendgroup=f"q{qubit} | A = {amp:.3f}",
                 ),
                 row=1,
                 col=1,
@@ -208,11 +320,11 @@ def cryoscope_raw(folder, routine, qubit, format):
             figs["raw"].add_trace(
                 go.Scatter(
                     x=durations,
-                    y=_get_values(data, M0_tag, amplitude=amp),
+                    y=get_values(df, M0_tag, amplitude=amp),
                     marker_color=get_color(0),
                     opacity=opacity,
                     showlegend=False,
-                    legendgroup=f"q{qubit}/r{report_n} | A = {amp:.3f}",
+                    legendgroup=f"q{qubit} | A = {amp:.3f}",
                 ),
                 row=1,
                 col=1,
@@ -221,11 +333,11 @@ def cryoscope_raw(folder, routine, qubit, format):
             figs["raw"].add_trace(
                 go.Scatter(
                     x=durations,
-                    y=_get_values(data, M1_tag, amplitude=amp),
+                    y=get_values(df, M1_tag, amplitude=amp),
                     marker_color=get_color(0),
                     opacity=opacity,
                     showlegend=False,
-                    legendgroup=f"q{qubit}/r{report_n} | A = {amp:.3f}",
+                    legendgroup=f"q{qubit} | A = {amp:.3f}",
                 ),
                 row=1,
                 col=1,
@@ -254,9 +366,9 @@ def flux_pulse_timing(folder, routine, qubit, format):
     report_n = 0
     for subfolder in subfolders:
         try:
-            data = _load_data(folder, subfolder, routine, format, "data")
-            data.df = (
-                data.df[data.df["qubit"] == qubit]
+            df = load_data(folder, subfolder, routine, format, "data")
+            df.df = (
+                df.df[df.df["qubit"] == qubit]
                 .drop(columns=["qubit", "iteration"])
                 .groupby(
                     ["flux_pulse_amplitude", "flux_pulse_start"],
@@ -265,7 +377,7 @@ def flux_pulse_timing(folder, routine, qubit, format):
                 .mean()
             )
         except:
-            data = DataUnits(
+            df = DataUnits(
                 name=f"data",
                 quantities={
                     "flux_pulse_amplitude": "dimensionless",
@@ -275,15 +387,15 @@ def flux_pulse_timing(folder, routine, qubit, format):
                 options=["qubit", "iteration"],
             )
 
-        amplitudes = data.df["flux_pulse_amplitude"].unique()
-        starts = data.df["flux_pulse_start"].unique()
+        amplitudes = df.df["flux_pulse_amplitude"].unique()
+        starts = df.df["flux_pulse_start"].unique()
 
     for amp in amplitudes:
         figs["flux_pulse_timing"].add_trace(
             go.Scatter(
                 x=starts,
-                y=_get_values(data, amplitude=amp),
-                name=f"q{qubit}/r{report_n}: <X> | A = {amp:.3f}",
+                y=get_values(df, amplitude=amp),
+                name=f"q{qubit}: <X> | A = {amp:.3f}",
             ),
             row=1,
             col=1,
@@ -297,8 +409,11 @@ def flux_pulse_timing(folder, routine, qubit, format):
 
 
 def cryoscope_dephasing(folder, routine, qubit, format):
-    data = _load_data(folder, "data", routine, format, "data")
-    durations, amplitudes = _get_flux_pulse_durations_and_amplitudes(data)
+    # load qubit data
+    df = load_data(folder, "data", routine, "data")
+    df = df[df["qubit"] == qubit]
+    df = normalise(df)
+    durations, amplitudes = get_flux_pulse_durations_and_amplitudes(df)
 
     figs = {}
     figs["norm"] = make_subplots(
@@ -309,24 +424,40 @@ def cryoscope_dephasing(folder, routine, qubit, format):
     )
 
     for amp in amplitudes:
-        delta = (
-            np.mean(
-                _get_values(data, MY_tag, amplitude=amp)
-                - _get_values(data, MX_tag, amplitude=amp)
-            )
-            / 2
-        )
-        re = _get_values(data, MX_tag, amplitude=amp)  # + delta
-        im = _get_values(data, MY_tag, amplitude=amp)  # - delta
+        re = get_values(df, MX_tag, amplitude=amp)
+        im = get_values(df, MY_tag, amplitude=amp)
+        magnitude = np.abs(re + 1j * im)
 
         figs["norm"].add_trace(
             go.Scatter(
                 x=durations,
-                y=np.abs(re + 1j * im),
+                y=magnitude,
                 name=f"q{qubit}: <magnitude> | A = {amp:.3f}",
             ),
             row=1,
             col=1,
+        )
+
+        smoothed_average = savgol_filter(
+            magnitude,
+            window_length=41,
+            polyorder=3,
+        )
+        figs["norm"].add_trace(
+            go.Scatter(
+                x=durations,
+                y=smoothed_average,
+                name=f"q{qubit}: <smooth> | A = {amp:.3f}",
+            ),
+            row=1,
+            col=1,
+        )
+
+        dephased_point = np.argmax(
+            savgol_filter(magnitude, window_length=41, polyorder=3, deriv=2)
+        )
+        figs["norm"].add_vline(
+            x=dephased_point, line_width=1, line_dash="dash", line_color="red"
         )
 
     fitting_report = "No fitting data"
@@ -334,8 +465,11 @@ def cryoscope_dephasing(folder, routine, qubit, format):
 
 
 def cryoscope_dephasing_heatmap(folder, routine, qubit, format):
-    data = _load_data(folder, "data", routine, format, "data")
-    durations, amplitudes = _get_flux_pulse_durations_and_amplitudes(data)
+    # load qubit data
+    df = load_data(folder, "data", routine, "data")
+    df = df[df["qubit"] == qubit]
+    df = normalise(df)
+    durations, amplitudes = get_flux_pulse_durations_and_amplitudes(df)
 
     figs = {}
     figs["norm"] = make_subplots(
@@ -347,15 +481,8 @@ def cryoscope_dephasing_heatmap(folder, routine, qubit, format):
 
     signal = []
     for amp in amplitudes:
-        delta = (
-            np.mean(
-                _get_values(data, MY_tag, amplitude=amp)
-                - _get_values(data, MX_tag, amplitude=amp)
-            )
-            / 2
-        )
-        re = _get_values(data, MX_tag, amplitude=amp)  # + delta
-        im = _get_values(data, MY_tag, amplitude=amp)  # - delta
+        re = get_values(df, MX_tag, amplitude=amp)
+        im = get_values(df, MY_tag, amplitude=amp)
         signal.append(re + 1j * im)
     signal = np.array(signal, dtype=np.complex128)
     phase = np.arctan2(signal.imag, signal.real)
@@ -383,8 +510,11 @@ def cryoscope_dephasing_heatmap(folder, routine, qubit, format):
 
 
 def cryoscope_fft_peak_fitting(folder, routine, qubit, format):
-    data = _load_data(folder, "data", routine, format, "data")
-    durations, amplitudes = _get_flux_pulse_durations_and_amplitudes(data)
+    # load qubit data
+    df = load_data(folder, "data", routine, "data")
+    df = df[df["qubit"] == qubit]
+    df = normalise(df)
+    durations, amplitudes = get_flux_pulse_durations_and_amplitudes(df)
 
     figs = {}
     figs["norm"] = make_subplots(
@@ -408,8 +538,8 @@ def cryoscope_fft_peak_fitting(folder, routine, qubit, format):
     amp_freqs = amp_freqs[mask]
 
     for amp in amplitudes:
-        re = _get_values(data, MX_tag, amplitude=amp)
-        im = _get_values(data, MY_tag, amplitude=amp)
+        re = get_values(df, MX_tag, amplitude=amp)
+        im = get_values(df, MY_tag, amplitude=amp)
 
         amp_signal = re + 1j * im
         signal.append(amp_signal)
@@ -463,12 +593,16 @@ def cryoscope_fft_peak_fitting(folder, routine, qubit, format):
         yaxis_title=title_y,
         title=f"{global_title}",
     )
-    return [figs["norm"]]
+    fitting_report = "No fitting data"
+    return [figs["norm"]], fitting_report
 
 
 def cryoscope_fft(folder, routine, qubit, format):
-    data = _load_data(folder, "data", routine, format, "data")
-    durations, amplitudes = _get_flux_pulse_durations_and_amplitudes(data)
+    # load qubit data
+    df = load_data(folder, "data", routine, "data")
+    df = df[df["qubit"] == qubit]
+    df = normalise(df)
+    durations, amplitudes = get_flux_pulse_durations_and_amplitudes(df)
 
     figs = {}
     figs["norm"] = make_subplots(
@@ -492,8 +626,8 @@ def cryoscope_fft(folder, routine, qubit, format):
     amp_freqs = amp_freqs[mask]
 
     for amp in amplitudes:
-        re = _get_values(data, MX_tag, amplitude=amp)
-        im = _get_values(data, MY_tag, amplitude=amp)
+        re = get_values(df, MX_tag, amplitude=amp)
+        im = get_values(df, MY_tag, amplitude=amp)
 
         amp_signal = re + 1j * im
         signal.append(amp_signal)
@@ -512,7 +646,7 @@ def cryoscope_fft(folder, routine, qubit, format):
         peaks_x = np.arange(num_points)[array_peaks]
         sort_mask = np.argsort(np.absolute(amp_fft)[array_peaks])[::-1]
 
-        if len(peaks_x[sort_mask]) > 0 and amp_freqs[peaks_x[sort_mask][0]] <= 0:
+        if len(peaks_x[sort_mask]) > 0:  # and  amp_freqs[peaks_x[sort_mask][0]] <= 0:
             curve_amps.append(amp)
             curve_detunings.append(amp_freqs[peaks_x[sort_mask][0]])
 
@@ -561,12 +695,16 @@ def cryoscope_fft(folder, routine, qubit, format):
         yaxis_title=title_y,
         title=f"{global_title}",
     )
-    return [figs["norm"]]
+    fitting_report = "No fitting data"
+    return [figs["norm"]], fitting_report
 
 
 def cryoscope_phase(folder, routine, qubit, format):
-    data = _load_data(folder, "data", routine, format, "data")
-    durations, amplitudes = _get_flux_pulse_durations_and_amplitudes(data)
+    # load qubit data
+    df = load_data(folder, "data", routine, "data")
+    df = df[df["qubit"] == qubit]
+    df = normalise(df)
+    durations, amplitudes = get_flux_pulse_durations_and_amplitudes(df)
 
     figs = {}
     figs["norm"] = make_subplots(
@@ -577,8 +715,8 @@ def cryoscope_phase(folder, routine, qubit, format):
     )
 
     for amp in amplitudes:
-        re = _get_values(data, MX_tag, amplitude=amp)
-        im = _get_values(data, MY_tag, amplitude=amp)
+        re = get_values(df, MX_tag, amplitude=amp)
+        im = get_values(df, MY_tag, amplitude=amp)
 
         phase = np.arctan2(im, re)
 
@@ -603,12 +741,16 @@ def cryoscope_phase(folder, routine, qubit, format):
         yaxis_title=title_y,
         title=f"{global_title}",
     )
-    return [figs["norm"]]
+    fitting_report = "No fitting data"
+    return [figs["norm"]], fitting_report
 
 
 def cryoscope_phase_heatmap(folder, routine, qubit, format):
-    data = _load_data(folder, "data", routine, format, "data")
-    durations, amplitudes = _get_flux_pulse_durations_and_amplitudes(data)
+    # load qubit data
+    df = load_data(folder, "data", routine, "data")
+    df = df[df["qubit"] == qubit]
+    df = normalise(df)
+    durations, amplitudes = get_flux_pulse_durations_and_amplitudes(df)
 
     figs = {}
     figs["norm"] = make_subplots(
@@ -620,8 +762,8 @@ def cryoscope_phase_heatmap(folder, routine, qubit, format):
 
     signal = []
     for amp in amplitudes:
-        re = _get_values(data, MX_tag, amplitude=amp)
-        im = _get_values(data, MY_tag, amplitude=amp)
+        re = get_values(df, MX_tag, amplitude=amp)
+        im = get_values(df, MY_tag, amplitude=amp)
         signal.append(re + 1j * im)
     signal = np.array(signal, dtype=np.complex128)
     phase = np.arctan2(signal.imag, signal.real)
@@ -644,12 +786,16 @@ def cryoscope_phase_heatmap(folder, routine, qubit, format):
         yaxis_title=title_y,
         title=f"{global_title}",
     )
-    return [figs["norm"]]
+    fitting_report = "No fitting data"
+    return [figs["norm"]], fitting_report
 
 
 def cryoscope_phase_unwrapped(folder, routine, qubit, format):
-    data = _load_data(folder, "data", routine, format, "data")
-    durations, amplitudes = _get_flux_pulse_durations_and_amplitudes(data)
+    # load qubit data
+    df = load_data(folder, "data", routine, "data")
+    df = df[df["qubit"] == qubit]
+    df = normalise(df)
+    durations, amplitudes = get_flux_pulse_durations_and_amplitudes(df)
 
     figs = {}
     figs["norm"] = make_subplots(
@@ -660,8 +806,8 @@ def cryoscope_phase_unwrapped(folder, routine, qubit, format):
     )
 
     for amp in amplitudes:
-        re = _get_values(data, MX_tag, amplitude=amp)
-        im = _get_values(data, MY_tag, amplitude=amp)
+        re = get_values(df, MX_tag, amplitude=amp)
+        im = get_values(df, MY_tag, amplitude=amp)
 
         phase = np.arctan2(im, re)
         phase_unwrapped = np.unwrap(phase)
@@ -681,12 +827,16 @@ def cryoscope_phase_unwrapped(folder, routine, qubit, format):
         yaxis_title=title_y,
         title=f"{global_title}",
     )
-    return [figs["norm"]]
+    fitting_report = "No fitting data"
+    return [figs["norm"]], fitting_report
 
 
 def cryoscope_phase_unwrapped_heatmap(folder, routine, qubit, format):
-    data = _load_data(folder, "data", routine, format, "data")
-    durations, amplitudes = _get_flux_pulse_durations_and_amplitudes(data)
+    # load qubit data
+    df = load_data(folder, "data", routine, "data")
+    df = df[df["qubit"] == qubit]
+    df = normalise(df)
+    durations, amplitudes = get_flux_pulse_durations_and_amplitudes(df)
 
     figs = {}
     figs["norm"] = make_subplots(
@@ -698,8 +848,8 @@ def cryoscope_phase_unwrapped_heatmap(folder, routine, qubit, format):
 
     signal = []
     for amp in amplitudes:
-        re = _get_values(data, MX_tag, amplitude=amp)
-        im = _get_values(data, MY_tag, amplitude=amp)
+        re = get_values(df, MX_tag, amplitude=amp)
+        im = get_values(df, MY_tag, amplitude=amp)
         signal.append(re + 1j * im)
     signal = np.array(signal, dtype=np.complex128)
     phase = np.arctan2(signal.imag, signal.real)
@@ -723,12 +873,16 @@ def cryoscope_phase_unwrapped_heatmap(folder, routine, qubit, format):
         yaxis_title=title_y,
         title=f"{global_title}",
     )
-    return [figs["norm"]]
+    fitting_report = "No fitting data"
+    return [figs["norm"]], fitting_report
 
 
 def cryoscope_phase_amplitude_unwrapped_heatmap(folder, routine, qubit, format):
-    data = _load_data(folder, "data", routine, format, "data")
-    durations, amplitudes = _get_flux_pulse_durations_and_amplitudes(data)
+    # load qubit data
+    df = load_data(folder, "data", routine, "data")
+    df = df[df["qubit"] == qubit]
+    df = normalise(df)
+    durations, amplitudes = get_flux_pulse_durations_and_amplitudes(df)
 
     # start the unroll desde amp = 0 (no phase shift)
     # unroll in both directions
@@ -743,8 +897,8 @@ def cryoscope_phase_amplitude_unwrapped_heatmap(folder, routine, qubit, format):
 
     signal = []
     for amp in amplitudes:
-        re = _get_values(data, MX_tag, amplitude=amp)
-        im = _get_values(data, MY_tag, amplitude=amp)
+        re = get_values(df, MX_tag, amplitude=amp)
+        im = get_values(df, MY_tag, amplitude=amp)
         signal.append(re + 1j * im)
     signal = np.array(signal, dtype=np.complex128)
     phase = np.arctan2(signal.imag, signal.real)
@@ -770,12 +924,16 @@ def cryoscope_phase_amplitude_unwrapped_heatmap(folder, routine, qubit, format):
         yaxis_title=title_y,
         title=f"{global_title}",
     )
-    return [figs["norm"]]
+    fitting_report = "No fitting data"
+    return [figs["norm"]], fitting_report
 
 
 def cryoscope_detuning_time(folder, routine, qubit, format):
-    data = _load_data(folder, "data", routine, format, "data")
-    durations, amplitudes = _get_flux_pulse_durations_and_amplitudes(data)
+    # load qubit data
+    df = load_data(folder, "data", routine, "data")
+    df = df[df["qubit"] == qubit]
+    df = normalise(df)
+    durations, amplitudes = get_flux_pulse_durations_and_amplitudes(df)
 
     figs = {}
     figs["norm"] = make_subplots(
@@ -798,8 +956,8 @@ def cryoscope_detuning_time(folder, routine, qubit, format):
     # signal_fft = []
 
     for amp in amplitudes:  # unwrap along duration
-        re = _get_values(data, MX_tag, amplitude=amp)
-        im = _get_values(data, MY_tag, amplitude=amp)
+        re = get_values(df, MX_tag, amplitude=amp)
+        im = get_values(df, MY_tag, amplitude=amp)
 
         # Unwrap phase
         phase = np.arctan2(im, re)
@@ -808,8 +966,8 @@ def cryoscope_detuning_time(folder, routine, qubit, format):
         # -----------------      Unwrap along durations     ---------------------------
         # phase_unwrapped_matrix = np.array(amplitudes).reshape(len(amplitudes),1)
         # for dur in durations: # unwrap along amplitudes
-        #     re = _get_values(data, MX_tag, duration=dur)
-        #     im = _get_values(data, MY_tag, duration=dur)
+        #     re = get_prob(df, MX_tag, duration=dur)
+        #     im = get_prob(df, MY_tag, duration=dur)
 
         #     # Unwrap phase
         #     phase = np.arctan2(im, re)
@@ -861,12 +1019,16 @@ def cryoscope_detuning_time(folder, routine, qubit, format):
         yaxis_title=title_y,
         title=f"{global_title}",
     )
-    return [figs["norm"]]
+    fitting_report = "No fitting data"
+    return [figs["norm"]], fitting_report
 
 
 def cryoscope_distorted_amplitude_time(folder, routine, qubit, format):
-    data = _load_data(folder, "data", routine, format, "data")
-    durations, amplitudes = _get_flux_pulse_durations_and_amplitudes(data)
+    # load qubit data
+    df = load_data(folder, "data", routine, "data")
+    df = df[df["qubit"] == qubit]
+    df = normalise(df)
+    durations, amplitudes = get_flux_pulse_durations_and_amplitudes(df)
 
     figs = {}
     figs["norm"] = make_subplots(
@@ -898,8 +1060,8 @@ def cryoscope_distorted_amplitude_time(folder, routine, qubit, format):
     nyquist_order = 0
 
     for amp in amplitudes:
-        re = _get_values(data, MX_tag, amplitude=amp)
-        im = _get_values(data, MY_tag, amplitude=amp)
+        re = get_values(df, MX_tag, amplitude=amp)
+        im = get_values(df, MY_tag, amplitude=amp)
 
         amp_signal = re + 1j * im
         signal.append(amp_signal)
@@ -918,7 +1080,7 @@ def cryoscope_distorted_amplitude_time(folder, routine, qubit, format):
         peaks_x = np.arange(num_points)[array_peaks]
         sort_mask = np.argsort(np.absolute(amp_fft)[array_peaks])[::-1]
 
-        if len(peaks_x[sort_mask]) > 0 and amp_freqs[peaks_x[sort_mask][0]] <= 0:
+        if len(peaks_x[sort_mask]) > 0:  # and amp_freqs[peaks_x[sort_mask][0]] <= 0:
             curve_amps.append(amp)
             curve_detunings.append(amp_freqs[peaks_x[sort_mask][0]])
 
@@ -926,8 +1088,8 @@ def cryoscope_distorted_amplitude_time(folder, routine, qubit, format):
     curve_amps = np.array(curve_amps)
 
     for amp in amplitudes:
-        re = _get_values(data, MX_tag, amplitude=amp)
-        im = _get_values(data, MY_tag, amplitude=amp)
+        re = get_values(df, MX_tag, amplitude=amp)
+        im = get_values(df, MY_tag, amplitude=amp)
 
         # Unwrap phase
         phase = np.arctan2(im, re)
@@ -936,8 +1098,8 @@ def cryoscope_distorted_amplitude_time(folder, routine, qubit, format):
         # -----------------      Unwrap along durations     ---------------------------
         # phase_unwrapped_matrix = np.array(amplitudes).reshape(len(amplitudes),1)
         # for dur in durations: # unwrap along amplitudes
-        #     re = _get_values(data, MX_tag, duration=dur)
-        #     im = _get_values(data, MY_tag, duration=dur)
+        #     re = get_prob(df, MX_tag, duration=dur)
+        #     im = get_prob(df, MY_tag, duration=dur)
 
         #     # Unwrap phase
         #     phase = np.arctan2(im, re)
@@ -997,12 +1159,16 @@ def cryoscope_distorted_amplitude_time(folder, routine, qubit, format):
         yaxis_title=title_y,
         title=f"{global_title}",
     )
-    return [figs["norm"]]
+    fitting_report = "No fitting data"
+    return [figs["norm"]], fitting_report
 
 
 def cryoscope_reconstructed_amplitude_time(folder, routine, qubit, format):
-    data = _load_data(folder, "data", routine, format, "data")
-    durations, amplitudes = _get_flux_pulse_durations_and_amplitudes(data)
+    # load qubit data
+    df = load_data(folder, "data", routine, "data")
+    df = df[df["qubit"] == qubit]
+    df = normalise(df)
+    durations, amplitudes = get_flux_pulse_durations_and_amplitudes(df)
 
     figs = {}
     figs["norm"] = make_subplots(
@@ -1034,8 +1200,8 @@ def cryoscope_reconstructed_amplitude_time(folder, routine, qubit, format):
     nyquist_order = 0
 
     for amp in amplitudes:
-        re = _get_values(data, MX_tag, amplitude=amp)
-        im = _get_values(data, MY_tag, amplitude=amp)
+        re = get_values(df, MX_tag, amplitude=amp)
+        im = get_values(df, MY_tag, amplitude=amp)
 
         amp_signal = re + 1j * im
         signal.append(amp_signal)
@@ -1054,7 +1220,7 @@ def cryoscope_reconstructed_amplitude_time(folder, routine, qubit, format):
         peaks_x = np.arange(num_points)[array_peaks]
         sort_mask = np.argsort(np.absolute(amp_fft)[array_peaks])[::-1]
 
-        if len(peaks_x[sort_mask]) > 0 and amp_freqs[peaks_x[sort_mask][0]] <= 0:
+        if len(peaks_x[sort_mask]) > 0:  # and amp_freqs[peaks_x[sort_mask][0]] <= 0:
             curve_amps.append(amp)
             curve_detunings.append(amp_freqs[peaks_x[sort_mask][0]])
 
@@ -1063,8 +1229,8 @@ def cryoscope_reconstructed_amplitude_time(folder, routine, qubit, format):
     # x=pfit[0]*curve_amps**2 + pfit[1]*curve_amps + pfit[2]
 
     for amp in amplitudes:
-        re = _get_values(data, MX_tag, amplitude=amp)
-        im = _get_values(data, MY_tag, amplitude=amp)
+        re = get_values(df, MX_tag, amplitude=amp)
+        im = get_values(df, MY_tag, amplitude=amp)
 
         # Unwrap phase
         phase = np.arctan2(im, re)
@@ -1073,8 +1239,8 @@ def cryoscope_reconstructed_amplitude_time(folder, routine, qubit, format):
         # -----------------      Unwrap along durations     ---------------------------
         # phase_unwrapped_matrix = np.array(amplitudes).reshape(len(amplitudes),1)
         # for dur in durations: # unwrap along amplitudes
-        #     re = _get_values(data, MX_tag, duration=dur)
-        #     im = _get_values(data, MY_tag, duration=dur)
+        #     re = get_prob(df, MX_tag, duration=dur)
+        #     im = get_prob(df, MY_tag, duration=dur)
 
         #     # Unwrap phase
         #     phase = np.arctan2(im, re)
@@ -1185,7 +1351,8 @@ def cryoscope_reconstructed_amplitude_time(folder, routine, qubit, format):
         yaxis_title=title_y,
         title=f"{global_title}",
     )
-    return [figs["norm"]]
+    fitting_report = "No fitting data"
+    return [figs["norm"]], fitting_report
 
 
 # Helper functions
@@ -1316,432 +1483,430 @@ def cryoscope_fit_exp(durations, ideal_pulse, distorted_pulse, pguess):
     b_fit, a_fit = coefs_from_exp(amp, tau_iir)
     return b_fit, a_fit, [amp, tau_iir]
 
-
-# def cryoscope_fit(x_data, y_data, awg_reconstructed_pulse):
-#     pguess = [
-#         1, #b0
-#         0, #b1
-#         1, #a0
-#         0  #a1
-#     ]
-#     popt, pcov = curve_fit(lambda t,*p:cryoscope_step_response(t, p, awg_reconstructed_pulse), x_data, y_data, p0=pguess)
-#     b_fit = popt[[0,1]]
-#     a_fit = popt[[2,3]]
-#     return b_fit, a_fit
-
-# def cryoscope_step_response(t, p, awg_reconstructed_pulse):
-
-#     # https://arxiv.org/pdf/1907.04818.pdf (page 11 - filter formula S22)
-#     # p = [b0 = 1−k +k ·α, b1 = −(1−k)·(1−α),a0 = 1 and a1 = −(1−α)]
-#     # p = [b0, b1, a0, a1]
-#     from scipy.signal import lfilter
-#     b_fit = p[:2]
-#     a_fit = p[2:]
-#     return lfilter(b_fit, a_fit, awg_reconstructed_pulse)
-
-# def cryoscope_step_response_exp(t, p, awg_reconstructed_pulse):
-
-#     # https://arxiv.org/pdf/1907.04818.pdf (page 11 - filter formula S22)
-#     # p = [A, tau_iir]
-#     # p = [b0 = 1−k +k ·α, b1 = −(1−k)·(1−α),a0 = 1 and a1 = −(1−α)]
-#     # p = [b0, b1, a0, a1]
-#     from scipy.signal import lfilter
-#     amp = p[0] # ration between the shooting point and the settling amplitude
-#     tau_iir = p[1]
-#     alpha = 1-np.exp((1+amp)/tau_iir)
-#     if amp<0:
-#         k = amp/((1+amp)*(1-alpha))
-#     else:
-#         k = 1/(1+amp-alpha)
-#     b_fit = [1-k+k*alpha, -(1-k)*(1-alpha)]
-#     a_fit = [1,-(1-alpha)]
-#     return lfilter(b_fit, a_fit, awg_reconstructed_pulse)
-
-# def cryoscope_fit_exp(x_data, y_data, awg_reconstructed_pulse):
-#     amp_guess = -0.78
-#     tau_guess = 37
-#     pguess = [amp_guess, tau_guess]
-#     popt, pcov = curve_fit(lambda t,*p:cryoscope_step_response_exp(t, p, awg_reconstructed_pulse), x_data, y_data, p0=pguess)
-#     amp = popt[0] # ration between the shooting point and the settling amplitude
-#     tau_iir = popt[1]
-#     alpha = 1-np.exp((1+amp)/tau_iir)
-#     if amp<0:
-#         k = amp/((1+amp)*(1-alpha))
-#     else:
-#         k = 1/(1+amp-alpha)
-#     b_fit = [1-k+k*alpha, -(1-k)*(1-alpha)]
-#     a_fit = [1,-(1-alpha)]
-#     return b_fit, a_fit, popt
-
-# ?
-# def cryoscope_detuning_amplitude(folder, routine, qubit, format):
-#     data = load_data(folder, "data", routine, format, "data")
-#     import numpy as np
-#     import scipy.signal as ss
-
-#     MX_tag = "MX"
-#     MY_tag = "MY"
-
-#     amplitude = data.get_values("flux_pulse_amplitude", "dimensionless")
-#     duration = data.get_values("flux_pulse_duration", "ns")
-#     flux_pulse_duration = duration[data.df["component"] == MY_tag].to_numpy()
-#     flux_pulse_amplitude = amplitude[data.df["component"] == MY_tag].to_numpy()
-#     amplitude_unique = flux_pulse_amplitude[
-#         flux_pulse_duration == flux_pulse_duration[0]
-#     ]
-#     duration_unique = flux_pulse_duration[
-#         flux_pulse_amplitude == flux_pulse_amplitude[0]
-#     ]
-
-#     # Making figure
-#     figs = {}
-#     figs["norm"] = make_subplots(
-#         rows=1,
-#         cols=1,
-#         horizontal_spacing=0.1,
-#         vertical_spacing=0.2,
-#     )
-
-#     mean_detuning = []
-
-#     for amp in amplitude_unique:
-#         x_data = data.get_values("prob", "dimensionless")[data.df["flux_pulse_amplitude"] == amp][data.df["component"] == MX_tag].to_numpy()
-#         y_data = data.get_values("prob", "dimensionless")[data.df["flux_pulse_amplitude"] == amp][data.df["component"] == MY_tag].to_numpy()
-
-#         complex_data = x_data + 1j * y_data
-#         #print (len(complex_data))
-#         ws = 10 # Needs to be adjusted for data analysis
-#         norm_data = normalize_sincos(complex_data, window_size=ws)
-
-#         sampling_rate = 1 / (duration_unique[1] - duration_unique[0])
-#         derivative_window_length = 7 / sampling_rate
-#         derivative_window_size = max(3, int(derivative_window_length * sampling_rate))
-#         derivative_window_size += (derivative_window_size + 1) % 2
-#         derivative_order = 2
-#         nyquist_order=0
-
-#         freq_guess, phase_guess, offset_guess, amp_guess = fft_based_freq_guess_complex(norm_data)
-#         demod_freq = - \
-#                 freq_guess * sampling_rate
-
-#         #y = amp*exp(2pi i f t + ph) + off.
-#         #demod_data = amp_guess * np.exp(2 * np.pi * 1j * demod_freq * duration_unique + phase_guess) + offset_guess
-#         demod_data = np.exp(2 * np.pi * 1j * duration_unique * demod_freq) * norm_data
-#         # Di Carlo has smooth here!!!
-
-
-#         # Unwrap phase
-#         phase = np.arctan2(demod_data.imag, demod_data.real)
-#         # phase_unwrapped = np.unwrap(phase)
-#         phase_unwrapped = np.unwrap(np.angle(demod_data))
-
-#         # use a savitzky golay filter: it take sliding window of length
-#         # `window_length`, fits a polynomial, returns derivative at
-#         # middle point
-#         # phase = phase_unwrapped_data
-
-#         # Di Carlo method
-#         detuning = savgol_filter(
-#             phase_unwrapped / (2 * np.pi),
-#             window_length = derivative_window_size,
-#             polyorder = derivative_order,
-#             deriv=1) * sampling_rate * 1e9
-
-#         nyquist_order = 0
-#         detuning = get_real_detuning(detuning, demod_freq, sampling_rate, nyquist_order)
-
-#         # Maxime method
-#         # dt = np.diff(duration_unique) * 1e-9
-#         # dphi_dt_unwrap = np.abs(np.diff(phase_unwrapped) / dt)
-#         # detuning = dphi_dt_unwrap / (2 * np.pi)
-
-
-#         mean_detuning.append(np.mean(detuning))
-
-#     # Mean detunning vs. amplitude
-#     global_title = "Mean Detuning vs. Amplitude"
-#     title_x = "Amplitude (dimensionless)"
-#     title_y = "Detunning mean (Hz)"
-#     figs["norm"].add_trace(
-#         go.Scatter(
-#             x=amplitude_unique,
-#             y=mean_detuning,
-#             name=f"Detuning"
-#         ),
-#         row=1,
-#         col=1,
-#     )
-
-#     figs["norm"].update_layout(
-#         xaxis_title=title_x,
-#         yaxis_title=title_y,
-#         title=f"{global_title}",
-#     )
-#     return [figs["norm"]]
-
-
-# def peak_finder_v2(x, y, perc=90, window_len=11):
-#     """
-#     Peak finder based on argrelextrema function from scipy
-#     only finds maximums, this can be changed to minimum by using -y instead of y
-#     """
-#     smoothed_y = smooth(y, window_len=window_len)
-#     percval = np.percentile(smoothed_y, perc) # finds the top perc points in amplitude smoothed_y
-#     filtered_y = np.where(smoothed_y > percval, smoothed_y, percval)
-#     array_peaks = argrelextrema(filtered_y, np.greater)
-#     peaks_x = x[array_peaks]
-#     sort_mask = np.argsort(y[array_peaks])[::-1]
-#     return peaks_x[sort_mask]
-
-
-# def normalize_sincos(
-#         data,
-#         window_size_frac=500,
-#         window_size=None,
-#         do_envelope=True):
-
-#     if window_size is None:
-#         window_size = len(data) // window_size_frac
-
-#         # window size for savgol filter must be odd
-#         window_size -= (window_size + 1) % 2
-
-#     mean_data_r = savgol_filter(data.real, window_size, 0, 0)
-#     mean_data_i = savgol_filter(data.imag, window_size, 0, 0)
-
-#     mean_data = mean_data_r + 1j * mean_data_i
-
-#     if do_envelope:
-#         envelope = np.sqrt(
-#             savgol_filter(
-#                 (np.abs(
-#                     data -
-#                     mean_data))**2,
-#                 window_size,
-#                 0,
-#                 0))
-#     else:
-#         envelope = 1
-#     norm_data = ((data - mean_data) / envelope)
-#     return norm_data
-
-# def fft_based_freq_guess_complex(y):
-#     """
-#     guess the shape of a sinusoidal complex signal y (in multiples of
-#         sampling rate), by selecting the peak in the fft.
-#     return guess (f, ph, off, amp) for the model
-#         y = amp*exp(2pi i f t + ph) + off.
-#     """
-#     fft = np.fft.fft(y)[1:len(y)]
-#     freq_guess_idx = np.argmax(np.abs(fft))
-#     if freq_guess_idx >= len(y) // 2:
-#         freq_guess_idx -= len(y)
-
-#     freq_guess = 1 / len(y) * (freq_guess_idx + 1)
-#     phase_guess = np.angle(fft[freq_guess_idx]) + np.pi / 2
-#     amp_guess = np.absolute(fft[freq_guess_idx]) / len(y)
-#     offset_guess = np.mean(y)
-
-#     return freq_guess, phase_guess, offset_guess, amp_guess
-
-# def get_real_detuning(detuning, demod_freq, sampling_rate, nyquist_order=0):
-#     real_detuning = detuning - demod_freq + sampling_rate * nyquist_order
-#     return real_detuning
-
-# def normalize_data(x, y, amplitude_unique, duration_unique, flux_pulse_amplitude, flux_pulse_duration, amplitude):
-#     x_norm = np.ones((len(amplitude_unique), len(duration_unique))) * np.nan
-#     y_norm = np.ones((len(amplitude_unique), len(duration_unique))) * np.nan
-
-#     for i, amp in enumerate(amplitude_unique):
-#         idx = np.where(flux_pulse_amplitude == amp)
-#         if amp == flux_pulse_amplitude[-1]:
-#             n = int(np.where(flux_pulse_duration[-1] == duration_unique)[0][0]) + 1
-#         else:
-#             n = len(duration_unique)
-
-#         x_norm[i, :n] = x[idx]
-#         x_norm[i, :n] = x_norm[i, :n] - 0.5
-#         x_norm[i, :n] = x_norm[i, :n] / max(abs(x_norm[i, :n]))
-#         y_norm[i, :n] = y[idx]
-#         y_norm[i, :n] = y_norm[i, :n] - 0.5
-#         y_norm[i, :n] = y_norm[i, :n] / max(abs(y_norm[i, :n]))
-
-#     return x_norm, y_norm
-
-# def normalize_sincos(x, y, window_size_frac=61, window_size=None, do_envelope=True):
-
-#     if window_size is None:
-#         window_size = len(x) // window_size_frac
-
-#         # window size for savgol filter must be odd
-#         window_size -= (window_size + 1) % 2
-
-#     x = savgol_filter(x, window_size, 0, 0)  ## why poly order 0
-#     y = savgol_filter(y, window_size, 0, 0)
-
-#     # if do_envelope:
-#     #     envelope = np.sqrt(savgol_filter((np.abs(data - mean_data))**2, window_size, 0, 0))
-#     # else:
-#     #     envelope = 1
-
-#     # norm_data = ((data - mean_data) / envelope)
-
-#     return x, y
-
-# def cryoscope_demod_circle(folder, routine, qubit, format):
-#     data = load_data(folder, "data", routine, format, "data")
-#     import numpy as np
-#     import scipy.signal as ss
-
-#     MX_tag = "MX"
-#     MY_tag = "MY"
-
-#     amplitude = data.get_values("flux_pulse_amplitude", "dimensionless")
-#     duration = data.get_values("flux_pulse_duration", "ns")
-#     flux_pulse_duration = duration[data.df["component"] == MY_tag].to_numpy()
-#     flux_pulse_amplitude = amplitude[data.df["component"] == MY_tag].to_numpy()
-#     amplitude_unique = flux_pulse_amplitude[
-#         flux_pulse_duration == flux_pulse_duration[0]
-#     ]
-#     duration_unique = flux_pulse_duration[
-#         flux_pulse_amplitude == flux_pulse_amplitude[0]
-#     ]
-
-#     # Making figure
-#     figs = {}
-#     figs["norm"] = make_subplots(
-#         rows=1,
-#         cols=1,
-#         horizontal_spacing=0.1,
-#         vertical_spacing=0.2,
-#     )
-
-#     for amp in amplitude_unique:
-#         x_data = data.get_values("prob", "dimensionless")[data.df["flux_pulse_amplitude"] == amp][data.df["component"] == MX_tag].to_numpy()
-#         y_data = data.get_values("prob", "dimensionless")[data.df["flux_pulse_amplitude"] == amp][data.df["component"] == MY_tag].to_numpy()
-
-#         complex_data = x_data + 1j * y_data
-#         #print (len(complex_data))
-#         ws = 10 # Needs to be adjusted for data analysis
-#         norm_data = normalize_sincos(complex_data, window_size=ws)
-
-#         sampling_rate = 1 / (duration_unique[1] - duration_unique[0])
-#         derivative_window_length = 7 / sampling_rate
-#         derivative_window_size = max(3, int(derivative_window_length * sampling_rate))
-#         derivative_window_size += (derivative_window_size + 1) % 2
-#         derivative_order = 2
-#         nyquist_order=0
-
-#         freq_guess, phase_guess, offset_guess, amp_guess = fft_based_freq_guess_complex(norm_data)
-#         demod_freq = - \
-#                 freq_guess * sampling_rate
-
-#         #y = amp*exp(2pi i f t + ph) + off.
-#         #demod_data = amp_guess * np.exp(2 * np.pi * 1j * demod_freq * duration_unique + phase_guess) + offset_guess
-#         demod_data = np.exp(2 * np.pi * 1j * duration_unique * demod_freq) * norm_data
-#         # Di Carlo has smooth here!!!
-
-#         # demod_data circle
-#         global_title = "FFT demod data circle"
-#         title_x = "<X>"
-#         title_y = "<Y>"
-#         figs["norm"].add_trace(
-#             go.Scatter(
-#                 x=demod_data.real,
-#                 y=demod_data.imag,
-#                 name=f"A = {amp:.3f}"
-#             ),
-#             row=1,
-#             col=1,
-#         )
-
-#     figs["norm"].update_layout(
-#         xaxis_title=title_x,
-#         yaxis_title=title_y,
-#         title=f"{global_title}",
-#     )
-#     return [figs["norm"]]
-
-# def cryoscope_demod_fft(folder, routine, qubit, format):
-#     data = load_data(folder, "data", routine, format, "data")
-#     import numpy as np
-#     import scipy.signal as ss
-
-#     MX_tag = "MX"
-#     MY_tag = "MY"
-
-#     amplitude = data.get_values("flux_pulse_amplitude", "dimensionless")
-#     duration = data.get_values("flux_pulse_duration", "ns")
-#     flux_pulse_duration = duration[data.df["component"] == MY_tag].to_numpy()
-#     flux_pulse_amplitude = amplitude[data.df["component"] == MY_tag].to_numpy()
-#     amplitude_unique = flux_pulse_amplitude[
-#         flux_pulse_duration == flux_pulse_duration[0]
-#     ]
-#     duration_unique = flux_pulse_duration[
-#         flux_pulse_amplitude == flux_pulse_amplitude[0]
-#     ]
-
-#     # Making figure
-#     figs = {}
-#     figs["norm"] = make_subplots(
-#         rows=1,
-#         cols=1,
-#         horizontal_spacing=0.1,
-#         vertical_spacing=0.2,
-#     )
-
-#     for amp in amplitude_unique:
-#         x_data = data.get_values("prob", "dimensionless")[data.df["flux_pulse_amplitude"] == amp][data.df["component"] == MX_tag].to_numpy()
-#         y_data = data.get_values("prob", "dimensionless")[data.df["flux_pulse_amplitude"] == amp][data.df["component"] == MY_tag].to_numpy()
-
-#         complex_data = x_data + 1j * y_data
-#         #print (len(complex_data))
-#         ws = 10 # Needs to be adjusted for data analysis
-#         norm_data = normalize_sincos(complex_data, window_size=ws)
-
-#         sampling_rate = 1 / (duration_unique[1] - duration_unique[0])
-#         derivative_window_length = 7 / sampling_rate
-#         derivative_window_size = max(3, int(derivative_window_length * sampling_rate))
-#         derivative_window_size += (derivative_window_size + 1) % 2
-#         derivative_order = 2
-#         nyquist_order=0
-
-#         freq_guess, phase_guess, offset_guess, amp_guess = fft_based_freq_guess_complex(norm_data)
-#         demod_freq = - \
-#                 freq_guess * sampling_rate
-
-#         #y = amp*exp(2pi i f t + ph) + off.
-#         #demod_data = amp_guess * np.exp(2 * np.pi * 1j * demod_freq * duration_unique + phase_guess) + offset_guess
-#         demod_data = np.exp(2 * np.pi * 1j * duration_unique * demod_freq) * norm_data
-#         # Di Carlo has smooth here!!!
-
-#         # <X> sin <Y> cos demod data
-#         global_title = "<X> , <Y> after FFT demodulation"
-#         title_x = "Flux Pulse duration"
-#         title_y = "<X> , <Y>"
-#         figs["norm"].add_trace(
-#             go.Scatter(
-#                 x=duration_unique,
-#                 y=demod_data.real,
-#                 name=f"<X> fft demod | A = {amp:.3f}"
-#             ),
-#             row=1,
-#             col=1,
-#         )
-
-#         figs["norm"].add_trace(
-#             go.Scatter(
-#                 x=duration_unique,
-#                 y=demod_data.imag,
-#                 name=f"<Y> fft demod | A = {amp:.3f}"
-#             ),
-#             row=1,
-#             col=1,
-#         )
-
-#     figs["norm"].update_layout(
-#         xaxis_title=title_x,
-#         yaxis_title=title_y,
-#         title=f"{global_title}",
-#     )
-#     return [figs["norm"]]
+    # def cryoscope_fit(x_data, y_data, awg_reconstructed_pulse):
+    #     pguess = [
+    #         1, #b0
+    #         0, #b1
+    #         1, #a0
+    #         0  #a1
+    #     ]
+    #     popt, pcov = curve_fit(lambda t,*p:cryoscope_step_response(t, p, awg_reconstructed_pulse), x_data, y_data, p0=pguess)
+    #     b_fit = popt[[0,1]]
+    #     a_fit = popt[[2,3]]
+    #     return b_fit, a_fit
+
+    # def cryoscope_step_response(t, p, awg_reconstructed_pulse):
+
+    #     # https://arxiv.org/pdf/1907.04818.pdf (page 11 - filter formula S22)
+    #     # p = [b0 = 1−k +k ·α, b1 = −(1−k)·(1−α),a0 = 1 and a1 = −(1−α)]
+    #     # p = [b0, b1, a0, a1]
+    #     from scipy.signal import lfilter
+    #     b_fit = p[:2]
+    #     a_fit = p[2:]
+    #     return lfilter(b_fit, a_fit, awg_reconstructed_pulse)
+
+    # def cryoscope_step_response_exp(t, p, awg_reconstructed_pulse):
+
+    #     # https://arxiv.org/pdf/1907.04818.pdf (page 11 - filter formula S22)
+    #     # p = [A, tau_iir]
+    #     # p = [b0 = 1−k +k ·α, b1 = −(1−k)·(1−α),a0 = 1 and a1 = −(1−α)]
+    #     # p = [b0, b1, a0, a1]
+    #     from scipy.signal import lfilter
+    #     amp = p[0] # ration between the shooting point and the settling amplitude
+    #     tau_iir = p[1]
+    #     alpha = 1-np.exp((1+amp)/tau_iir)
+    #     if amp<0:
+    #         k = amp/((1+amp)*(1-alpha))
+    #     else:
+    #         k = 1/(1+amp-alpha)
+    #     b_fit = [1-k+k*alpha, -(1-k)*(1-alpha)]
+    #     a_fit = [1,-(1-alpha)]
+    #     return lfilter(b_fit, a_fit, awg_reconstructed_pulse)
+
+    # def cryoscope_fit_exp(x_data, y_data, awg_reconstructed_pulse):
+    #     amp_guess = -0.78
+    #     tau_guess = 37
+    #     pguess = [amp_guess, tau_guess]
+    #     popt, pcov = curve_fit(lambda t,*p:cryoscope_step_response_exp(t, p, awg_reconstructed_pulse), x_data, y_data, p0=pguess)
+    #     amp = popt[0] # ration between the shooting point and the settling amplitude
+    #     tau_iir = popt[1]
+    #     alpha = 1-np.exp((1+amp)/tau_iir)
+    #     if amp<0:
+    #         k = amp/((1+amp)*(1-alpha))
+    #     else:
+    #         k = 1/(1+amp-alpha)
+    #     b_fit = [1-k+k*alpha, -(1-k)*(1-alpha)]
+    #     a_fit = [1,-(1-alpha)]
+    #     return b_fit, a_fit, popt
+
+    # ?
+    # def cryoscope_detuning_amplitude(folder, routine, qubit, format):
+    #     data = load_data(folder, "data", routine, format, "data")
+    #     import numpy as np
+    #     import scipy.signal as ss
+
+    #     MX_tag = "MX"
+    #     MY_tag = "MY"
+
+    #     amplitude = data.get_values("flux_pulse_amplitude", "dimensionless")
+    #     duration = data.get_values("flux_pulse_duration", "ns")
+    #     flux_pulse_duration = duration[data.df["component"] == MY_tag].to_numpy()
+    #     flux_pulse_amplitude = amplitude[data.df["component"] == MY_tag].to_numpy()
+    #     amplitude_unique = flux_pulse_amplitude[
+    #         flux_pulse_duration == flux_pulse_duration[0]
+    #     ]
+    #     duration_unique = flux_pulse_duration[
+    #         flux_pulse_amplitude == flux_pulse_amplitude[0]
+    #     ]
+
+    #     # Making figure
+    #     figs = {}
+    #     figs["norm"] = make_subplots(
+    #         rows=1,
+    #         cols=1,
+    #         horizontal_spacing=0.1,
+    #         vertical_spacing=0.2,
+    #     )
+
+    #     mean_detuning = []
+
+    #     for amp in amplitude_unique:
+    #         x_data = data.get_values("prob", "dimensionless")[data.df["flux_pulse_amplitude"] == amp][data.df["component"] == MX_tag].to_numpy()
+    #         y_data = data.get_values("prob", "dimensionless")[data.df["flux_pulse_amplitude"] == amp][data.df["component"] == MY_tag].to_numpy()
+
+    #         complex_data = x_data + 1j * y_data
+    #         #print (len(complex_data))
+    #         ws = 10 # Needs to be adjusted for data analysis
+    #         norm_data = normalize_sincos(complex_data, window_size=ws)
+
+    #         sampling_rate = 1 / (duration_unique[1] - duration_unique[0])
+    #         derivative_window_length = 7 / sampling_rate
+    #         derivative_window_size = max(3, int(derivative_window_length * sampling_rate))
+    #         derivative_window_size += (derivative_window_size + 1) % 2
+    #         derivative_order = 2
+    #         nyquist_order=0
+
+    #         freq_guess, phase_guess, offset_guess, amp_guess = fft_based_freq_guess_complex(norm_data)
+    #         demod_freq = - \
+    #                 freq_guess * sampling_rate
+
+    #         #y = amp*exp(2pi i f t + ph) + off.
+    #         #demod_data = amp_guess * np.exp(2 * np.pi * 1j * demod_freq * duration_unique + phase_guess) + offset_guess
+    #         demod_data = np.exp(2 * np.pi * 1j * duration_unique * demod_freq) * norm_data
+    #         # Di Carlo has smooth here!!!
+
+    #         # Unwrap phase
+    #         phase = np.arctan2(demod_data.imag, demod_data.real)
+    #         # phase_unwrapped = np.unwrap(phase)
+    #         phase_unwrapped = np.unwrap(np.angle(demod_data))
+
+    #         # use a savitzky golay filter: it take sliding window of length
+    #         # `window_length`, fits a polynomial, returns derivative at
+    #         # middle point
+    #         # phase = phase_unwrapped_data
+
+    #         # Di Carlo method
+    #         detuning = savgol_filter(
+    #             phase_unwrapped / (2 * np.pi),
+    #             window_length = derivative_window_size,
+    #             polyorder = derivative_order,
+    #             deriv=1) * sampling_rate * 1e9
+
+    #         nyquist_order = 0
+    #         detuning = get_real_detuning(detuning, demod_freq, sampling_rate, nyquist_order)
+
+    #         # Maxime method
+    #         # dt = np.diff(duration_unique) * 1e-9
+    #         # dphi_dt_unwrap = np.abs(np.diff(phase_unwrapped) / dt)
+    #         # detuning = dphi_dt_unwrap / (2 * np.pi)
+
+    #         mean_detuning.append(np.mean(detuning))
+
+    #     # Mean detunning vs. amplitude
+    #     global_title = "Mean Detuning vs. Amplitude"
+    #     title_x = "Amplitude (dimensionless)"
+    #     title_y = "Detunning mean (Hz)"
+    #     figs["norm"].add_trace(
+    #         go.Scatter(
+    #             x=amplitude_unique,
+    #             y=mean_detuning,
+    #             name=f"Detuning"
+    #         ),
+    #         row=1,
+    #         col=1,
+    #     )
+
+    #     figs["norm"].update_layout(
+    #         xaxis_title=title_x,
+    #         yaxis_title=title_y,
+    #         title=f"{global_title}",
+    #     )
+    #     fitting_report = "No fitting data"
+    return [figs["norm"]], fitting_report
+
+    # def peak_finder_v2(x, y, perc=90, window_len=11):
+    #     """
+    #     Peak finder based on argrelextrema function from scipy
+    #     only finds maximums, this can be changed to minimum by using -y instead of y
+    #     """
+    #     smoothed_y = smooth(y, window_len=window_len)
+    #     percval = np.percentile(smoothed_y, perc) # finds the top perc points in amplitude smoothed_y
+    #     filtered_y = np.where(smoothed_y > percval, smoothed_y, percval)
+    #     array_peaks = argrelextrema(filtered_y, np.greater)
+    #     peaks_x = x[array_peaks]
+    #     sort_mask = np.argsort(y[array_peaks])[::-1]
+    #     return peaks_x[sort_mask]
+
+    # def normalize_sincos(
+    #         data,
+    #         window_size_frac=500,
+    #         window_size=None,
+    #         do_envelope=True):
+
+    #     if window_size is None:
+    #         window_size = len(data) // window_size_frac
+
+    #         # window size for savgol filter must be odd
+    #         window_size -= (window_size + 1) % 2
+
+    #     mean_data_r = savgol_filter(data.real, window_size, 0, 0)
+    #     mean_data_i = savgol_filter(data.imag, window_size, 0, 0)
+
+    #     mean_data = mean_data_r + 1j * mean_data_i
+
+    #     if do_envelope:
+    #         envelope = np.sqrt(
+    #             savgol_filter(
+    #                 (np.abs(
+    #                     data -
+    #                     mean_data))**2,
+    #                 window_size,
+    #                 0,
+    #                 0))
+    #     else:
+    #         envelope = 1
+    #     norm_data = ((data - mean_data) / envelope)
+    #     return norm_data
+
+    # def fft_based_freq_guess_complex(y):
+    #     """
+    #     guess the shape of a sinusoidal complex signal y (in multiples of
+    #         sampling rate), by selecting the peak in the fft.
+    #     return guess (f, ph, off, amp) for the model
+    #         y = amp*exp(2pi i f t + ph) + off.
+    #     """
+    #     fft = np.fft.fft(y)[1:len(y)]
+    #     freq_guess_idx = np.argmax(np.abs(fft))
+    #     if freq_guess_idx >= len(y) // 2:
+    #         freq_guess_idx -= len(y)
+
+    #     freq_guess = 1 / len(y) * (freq_guess_idx + 1)
+    #     phase_guess = np.angle(fft[freq_guess_idx]) + np.pi / 2
+    #     amp_guess = np.absolute(fft[freq_guess_idx]) / len(y)
+    #     offset_guess = np.mean(y)
+
+    #     return freq_guess, phase_guess, offset_guess, amp_guess
+
+    # def get_real_detuning(detuning, demod_freq, sampling_rate, nyquist_order=0):
+    #     real_detuning = detuning - demod_freq + sampling_rate * nyquist_order
+    #     return real_detuning
+
+    # def normalize_data(x, y, amplitude_unique, duration_unique, flux_pulse_amplitude, flux_pulse_duration, amplitude):
+    #     x_norm = np.ones((len(amplitude_unique), len(duration_unique))) * np.nan
+    #     y_norm = np.ones((len(amplitude_unique), len(duration_unique))) * np.nan
+
+    #     for i, amp in enumerate(amplitude_unique):
+    #         idx = np.where(flux_pulse_amplitude == amp)
+    #         if amp == flux_pulse_amplitude[-1]:
+    #             n = int(np.where(flux_pulse_duration[-1] == duration_unique)[0][0]) + 1
+    #         else:
+    #             n = len(duration_unique)
+
+    #         x_norm[i, :n] = x[idx]
+    #         x_norm[i, :n] = x_norm[i, :n] - 0.5
+    #         x_norm[i, :n] = x_norm[i, :n] / max(abs(x_norm[i, :n]))
+    #         y_norm[i, :n] = y[idx]
+    #         y_norm[i, :n] = y_norm[i, :n] - 0.5
+    #         y_norm[i, :n] = y_norm[i, :n] / max(abs(y_norm[i, :n]))
+
+    #     return x_norm, y_norm
+
+    # def normalize_sincos(x, y, window_size_frac=61, window_size=None, do_envelope=True):
+
+    #     if window_size is None:
+    #         window_size = len(x) // window_size_frac
+
+    #         # window size for savgol filter must be odd
+    #         window_size -= (window_size + 1) % 2
+
+    #     x = savgol_filter(x, window_size, 0, 0)  ## why poly order 0
+    #     y = savgol_filter(y, window_size, 0, 0)
+
+    #     # if do_envelope:
+    #     #     envelope = np.sqrt(savgol_filter((np.abs(data - mean_data))**2, window_size, 0, 0))
+    #     # else:
+    #     #     envelope = 1
+
+    #     # norm_data = ((data - mean_data) / envelope)
+
+    #     return x, y
+
+    # def cryoscope_demod_circle(folder, routine, qubit, format):
+    #     data = load_data(folder, "data", routine, format, "data")
+    #     import numpy as np
+    #     import scipy.signal as ss
+
+    #     MX_tag = "MX"
+    #     MY_tag = "MY"
+
+    #     amplitude = data.get_values("flux_pulse_amplitude", "dimensionless")
+    #     duration = data.get_values("flux_pulse_duration", "ns")
+    #     flux_pulse_duration = duration[data.df["component"] == MY_tag].to_numpy()
+    #     flux_pulse_amplitude = amplitude[data.df["component"] == MY_tag].to_numpy()
+    #     amplitude_unique = flux_pulse_amplitude[
+    #         flux_pulse_duration == flux_pulse_duration[0]
+    #     ]
+    #     duration_unique = flux_pulse_duration[
+    #         flux_pulse_amplitude == flux_pulse_amplitude[0]
+    #     ]
+
+    #     # Making figure
+    #     figs = {}
+    #     figs["norm"] = make_subplots(
+    #         rows=1,
+    #         cols=1,
+    #         horizontal_spacing=0.1,
+    #         vertical_spacing=0.2,
+    #     )
+
+    #     for amp in amplitude_unique:
+    #         x_data = data.get_values("prob", "dimensionless")[data.df["flux_pulse_amplitude"] == amp][data.df["component"] == MX_tag].to_numpy()
+    #         y_data = data.get_values("prob", "dimensionless")[data.df["flux_pulse_amplitude"] == amp][data.df["component"] == MY_tag].to_numpy()
+
+    #         complex_data = x_data + 1j * y_data
+    #         #print (len(complex_data))
+    #         ws = 10 # Needs to be adjusted for data analysis
+    #         norm_data = normalize_sincos(complex_data, window_size=ws)
+
+    #         sampling_rate = 1 / (duration_unique[1] - duration_unique[0])
+    #         derivative_window_length = 7 / sampling_rate
+    #         derivative_window_size = max(3, int(derivative_window_length * sampling_rate))
+    #         derivative_window_size += (derivative_window_size + 1) % 2
+    #         derivative_order = 2
+    #         nyquist_order=0
+
+    #         freq_guess, phase_guess, offset_guess, amp_guess = fft_based_freq_guess_complex(norm_data)
+    #         demod_freq = - \
+    #                 freq_guess * sampling_rate
+
+    #         #y = amp*exp(2pi i f t + ph) + off.
+    #         #demod_data = amp_guess * np.exp(2 * np.pi * 1j * demod_freq * duration_unique + phase_guess) + offset_guess
+    #         demod_data = np.exp(2 * np.pi * 1j * duration_unique * demod_freq) * norm_data
+    #         # Di Carlo has smooth here!!!
+
+    #         # demod_data circle
+    #         global_title = "FFT demod data circle"
+    #         title_x = "<X>"
+    #         title_y = "<Y>"
+    #         figs["norm"].add_trace(
+    #             go.Scatter(
+    #                 x=demod_data.real,
+    #                 y=demod_data.imag,
+    #                 name=f"A = {amp:.3f}"
+    #             ),
+    #             row=1,
+    #             col=1,
+    #         )
+
+    #     figs["norm"].update_layout(
+    #         xaxis_title=title_x,
+    #         yaxis_title=title_y,
+    #         title=f"{global_title}",
+    #     )
+    #     fitting_report = "No fitting data"
+    return [figs["norm"]], fitting_report
+
+    # def cryoscope_demod_fft(folder, routine, qubit, format):
+    #     data = load_data(folder, "data", routine, format, "data")
+    #     import numpy as np
+    #     import scipy.signal as ss
+
+    #     MX_tag = "MX"
+    #     MY_tag = "MY"
+
+    #     amplitude = data.get_values("flux_pulse_amplitude", "dimensionless")
+    #     duration = data.get_values("flux_pulse_duration", "ns")
+    #     flux_pulse_duration = duration[data.df["component"] == MY_tag].to_numpy()
+    #     flux_pulse_amplitude = amplitude[data.df["component"] == MY_tag].to_numpy()
+    #     amplitude_unique = flux_pulse_amplitude[
+    #         flux_pulse_duration == flux_pulse_duration[0]
+    #     ]
+    #     duration_unique = flux_pulse_duration[
+    #         flux_pulse_amplitude == flux_pulse_amplitude[0]
+    #     ]
+
+    #     # Making figure
+    #     figs = {}
+    #     figs["norm"] = make_subplots(
+    #         rows=1,
+    #         cols=1,
+    #         horizontal_spacing=0.1,
+    #         vertical_spacing=0.2,
+    #     )
+
+    #     for amp in amplitude_unique:
+    #         x_data = data.get_values("prob", "dimensionless")[data.df["flux_pulse_amplitude"] == amp][data.df["component"] == MX_tag].to_numpy()
+    #         y_data = data.get_values("prob", "dimensionless")[data.df["flux_pulse_amplitude"] == amp][data.df["component"] == MY_tag].to_numpy()
+
+    #         complex_data = x_data + 1j * y_data
+    #         #print (len(complex_data))
+    #         ws = 10 # Needs to be adjusted for data analysis
+    #         norm_data = normalize_sincos(complex_data, window_size=ws)
+
+    #         sampling_rate = 1 / (duration_unique[1] - duration_unique[0])
+    #         derivative_window_length = 7 / sampling_rate
+    #         derivative_window_size = max(3, int(derivative_window_length * sampling_rate))
+    #         derivative_window_size += (derivative_window_size + 1) % 2
+    #         derivative_order = 2
+    #         nyquist_order=0
+
+    #         freq_guess, phase_guess, offset_guess, amp_guess = fft_based_freq_guess_complex(norm_data)
+    #         demod_freq = - \
+    #                 freq_guess * sampling_rate
+
+    #         #y = amp*exp(2pi i f t + ph) + off.
+    #         #demod_data = amp_guess * np.exp(2 * np.pi * 1j * demod_freq * duration_unique + phase_guess) + offset_guess
+    #         demod_data = np.exp(2 * np.pi * 1j * duration_unique * demod_freq) * norm_data
+    #         # Di Carlo has smooth here!!!
+
+    #         # <X> sin <Y> cos demod data
+    #         global_title = "<X> , <Y> after FFT demodulation"
+    #         title_x = "Flux Pulse duration"
+    #         title_y = "<X> , <Y>"
+    #         figs["norm"].add_trace(
+    #             go.Scatter(
+    #                 x=duration_unique,
+    #                 y=demod_data.real,
+    #                 name=f"<X> fft demod | A = {amp:.3f}"
+    #             ),
+    #             row=1,
+    #             col=1,
+    #         )
+
+    #         figs["norm"].add_trace(
+    #             go.Scatter(
+    #                 x=duration_unique,
+    #                 y=demod_data.imag,
+    #                 name=f"<Y> fft demod | A = {amp:.3f}"
+    #             ),
+    #             row=1,
+    #             col=1,
+    #         )
+
+    #     figs["norm"].update_layout(
+    #         xaxis_title=title_x,
+    #         yaxis_title=title_y,
+    #         title=f"{global_title}",
+    #     )
+    #     fitting_report = "No fitting data"
+    return [figs["norm"]], fitting_report
