@@ -67,7 +67,6 @@ def fit_amplitude_balance_cz(data):
 
         for amp in amplitude_unique:
             for ratio in ratio_unique:
-
                 try:
                     # Normalizing between -1 and 1
                     for ON_OFF in ["ON", "OFF"]:

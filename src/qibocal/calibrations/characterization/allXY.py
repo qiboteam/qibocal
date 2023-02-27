@@ -40,7 +40,6 @@ def allXY_without(
     software_averages=1,
     points=10,
 ):
-
     r"""
     The AllXY experiment is a simple test of the calibration of single qubit gatesThe qubit (initialized in the |0> state)
     is subjected to two back-to-back single-qubit gates and measured. In each round, we run 21 different gate pairs:

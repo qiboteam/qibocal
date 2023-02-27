@@ -662,7 +662,6 @@ def ro_duration(
     # retrieve and store the results for every qubit
     start_time = time.time()
     for i in range(len(delta_duration_range[qubit])):
-
         for qubit in qubits:
             ro_pulses[qubit].duration = delta_duration_range[qubit][i]
 
@@ -688,7 +687,6 @@ def ro_duration(
     # retrieve and store the results for every qubit
     start_time = time.time()
     for i in range(len(delta_duration_range[qubit])):
-
         for qubit in qubits:
             ro_pulses[qubit].duration = delta_duration_range[qubit][i]
 

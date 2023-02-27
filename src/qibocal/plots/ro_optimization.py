@@ -8,7 +8,6 @@ from qibocal.plots.utils import get_color_state0, get_color_state1, get_data_sub
 
 # For calibrate qubit states
 def ro_frequency(folder, routine, qubit, format):
-
     fig = go.Figure()
 
     # iterate over multiple data folders
@@ -212,7 +211,6 @@ def ro_frequency(folder, routine, qubit, format):
 
 
 def ro_amplitude(folder, routine, qubit, format):
-
     fig = go.Figure()
 
     # iterate over multiple data folders
@@ -422,7 +420,6 @@ def ro_amplitude(folder, routine, qubit, format):
 
 
 def ro_duration(folder, routine, qubit, format):
-
     fig = go.Figure()
 
     # iterate over multiple data folders

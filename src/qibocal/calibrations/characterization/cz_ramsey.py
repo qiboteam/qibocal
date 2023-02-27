@@ -142,7 +142,6 @@ def amplitude_balance_cz(
     )
 
     for i, q_target in enumerate(qubit_target):
-
         # Target sequence RX90 - CPhi - RX90 - MZ
         initial_RX90_pulse = platform.create_RX90_pulse(
             q_target, start=0, relative_phase=0
@@ -397,7 +396,6 @@ def snz_tune_up(
     detuning_mesh = detuning_mesh.flatten()
 
     for q_target, q_control in unique_pairs:
-
         # Target sequence RX90 - CPhi - RX90 - MZ
         initial_RX90_pulse = platform.create_RX90_pulse(
             q_target, start=0, relative_phase=0
@@ -486,7 +484,6 @@ def snz_tune_up(
         )
 
         for ON_OFF in ["ON", "OFF"]:
-
             results = platform.sweep(
                 sequences[ON_OFF], amplitude_sweep, b_amplitude_sweep, detuning_sweep
             )
@@ -567,7 +564,6 @@ def chevron_iswap(
     )
 
     for i, q_target in enumerate(qubit_target):
-
         # Target sequence RX - iSWAP - MZ
         initial_RX_pulse = platform.create_RX_pulse(q_target, start=0)
 
