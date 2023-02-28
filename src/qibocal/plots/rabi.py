@@ -419,9 +419,9 @@ def amplitude_msr_phase(folder, routine, qubit, format):
             fig.add_trace(
                 go.Scatter(
                     x=amplitudes,
-                    y=data.df.groupby("amplitude")[
+                    y=data.df.groupby("amplitude")[  # pylint: disable=E1101
                         "MSR"
-                    ].mean()  # pylint: disable=E1101
+                    ].mean()
                     * 1e6,
                     marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",

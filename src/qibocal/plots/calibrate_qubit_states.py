@@ -43,7 +43,7 @@ def qubit_states(folder, routine, qubit, format):
             average_state1 = complex(
                 parameters.df.iloc[0]["average_state1"]  # pylint: disable=E1101
             )
-            rotation_angle = parameters.df.iloc[0][
+            rotation_angle = parameters.df.iloc[0][  # pylint: disable=E1101
                 "rotation_angle"
             ]  # pylint: disable=E1101
             threshold = parameters.df.iloc[0]["threshold"]  # pylint: disable=E1101
