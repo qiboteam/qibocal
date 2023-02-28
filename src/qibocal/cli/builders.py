@@ -360,10 +360,16 @@ class ReportBuilder:
             self.path, routine.__name__, qubit, self.format
         )
         with tempfile.NamedTemporaryFile(delete=False) as temp:
+            html_list = []
             for figure in figures:
                 figure.write_html(temp.name, include_plotlyjs=False, full_html=False)
+                temp.seek(0)
                 fightml = temp.read().decode("utf-8")
-        return fightml, fitting_report
+                html_list.append(fightml)
+
+            all_html = "".join(html_list)
+
+        return all_html, fitting_report
 
     def get_live_figure(self, routine, method, qubit):
         """Get url to dash page for live plotting.
