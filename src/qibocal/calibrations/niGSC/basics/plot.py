@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
+from qibocal.calibrations.niGSC.basics import utils
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
 
 
@@ -48,23 +49,30 @@ class Report:
 
     def build(self):
         l = len(self.all_figures)
+        if l < 3:
+            divide_by = 1
+        else:
+            divide_by = 2
         subplot_titles = [figdict.get("subplot_title") for figdict in self.all_figures]
         fig = make_subplots(
-            rows=int(l / 2) + l % 2 + 1,
-            cols=1 if l == 1 else 2,
+            rows=int(l / divide_by) + l % divide_by + 1,
+            cols=1 if l == 1 else divide_by,
             subplot_titles=subplot_titles,
         )
         for count, fig_dict in enumerate(self.all_figures):
             plot_list = fig_dict["figs"]
             for plot in plot_list:
-                fig.add_trace(plot, row=count // 2 + 1, col=count % 2 + 1)
+                fig.add_trace(
+                    plot, row=count // divide_by + 1, col=count % divide_by + 1
+                )
 
         fig.add_annotation(
             dict(
                 bordercolor="black",
                 font=dict(color="black", size=16),
                 x=0.0,
-                y=1.0 / (int(l / 2) + l % 2 + 1) - len(self.info_dict) * 0.005,
+                y=1.0 / (int(l / divide_by) + l % divide_by + 1)
+                - len(self.info_dict) * 0.005,
                 showarrow=False,
                 text="<br>".join(
                     [f"{key} : {value}\n" for key, value in self.info_dict.items()]
@@ -86,7 +94,9 @@ class Report:
             legend_font_size=16,
             hoverlabel_font_size=16,
             showlegend=True,
-            height=500 * (int(l / 2) + l % 2) if l > 2 else 1000,
+            height=500 * (int(l / divide_by) + l % divide_by)
+            if l > divide_by
+            else 1000,
             width=1000,
         )
 
@@ -94,7 +104,11 @@ class Report:
 
 
 def scatter_fit_fig(
-    experiment: Experiment, df_aggr: pd.DataFrame, xlabel: str, index: str
+    experiment: Experiment,
+    df_aggr: pd.DataFrame,
+    xlabel: str,
+    index: str,
+    fittingparam_label="popt",
 ):
     fig_traces = []
     dfrow = df_aggr.loc[index]
@@ -118,13 +132,29 @@ def scatter_fit_fig(
         )
     )
     x_fit = np.linspace(min(dfrow[xlabel]), max(dfrow[xlabel]), len(dfrow[xlabel]) * 20)
-    y_fit = getattr(fitting_methods, dfrow["fit_func"])(x_fit, *dfrow["popt"].values())
+    if "imag" in fittingparam_label:
+        y_fit = np.imag(
+            getattr(fitting_methods, dfrow["fit_func"])(
+                x_fit, *dfrow[fittingparam_label].values()
+            )
+        )
+    else:
+        y_fit = np.real(
+            getattr(fitting_methods, dfrow["fit_func"])(
+                x_fit, *dfrow[fittingparam_label].values()
+            )
+        )
     fig_traces.append(
         go.Scatter(
             x=x_fit,
             y=y_fit,
             name="".join(
-                ["{}:{:.3f} ".format(key, dfrow["popt"][key]) for key in dfrow["popt"]]
+                [
+                    "{}:{} ".format(
+                        key, utils.number_to_str(dfrow[fittingparam_label][key])
+                    )
+                    for key in dfrow[fittingparam_label]
+                ]
             ),
             line=go.scatter.Line(dash="dot"),
         )

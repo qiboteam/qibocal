@@ -112,7 +112,7 @@ def test_post_processing(
         assert "data" in aggr_df.columns
         assert "2sigma" in aggr_df.columns
         assert "fit_func" in aggr_df.columns
-        assert "popt" in aggr_df.columns
+        assert "popt_real" in aggr_df.columns
         assert "perr" in aggr_df.columns
 
 
