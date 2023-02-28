@@ -1,6 +1,7 @@
 from qibocal.calibrations.characterization.allXY import *
 from qibocal.calibrations.characterization.calibrate_qubit_states import *
 from qibocal.calibrations.characterization.flipping import *
+from qibocal.calibrations.characterization.higher_transition import *
 from qibocal.calibrations.characterization.qubit_spectroscopy import *
 from qibocal.calibrations.characterization.rabi import *
 from qibocal.calibrations.characterization.ramsey import *
