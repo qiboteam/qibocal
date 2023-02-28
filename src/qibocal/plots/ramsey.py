@@ -81,8 +81,8 @@ def time_msr(folder, routine, qubit, format):
             fig.add_trace(
                 go.Scatter(
                     x=waits,
-                    y=data.df.groupby("wait")["MSR"].mean()
-                    * 1e6,  # pylint: disable=E1101
+                    y=data.df.groupby("wait")["MSR"].mean()  # pylint: disable=E1101
+                    * 1e6,
                     marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,

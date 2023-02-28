@@ -91,8 +91,8 @@ def time_msr_phase(folder, routine, qubit, format):
             fig.add_trace(
                 go.Scatter(
                     x=times,
-                    y=data.df.groupby("time")["MSR"].mean()
-                    * 1e6,  # pylint: disable=E1101
+                    y=data.df.groupby("time")["MSR"].mean()  # pylint: disable=E1101
+                    * 1e6,
                     marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,
@@ -255,8 +255,8 @@ def gain_msr_phase(folder, routine, qubit, format):
             fig.add_trace(
                 go.Scatter(
                     x=gains,
-                    y=data.df.groupby("gain")["MSR"].mean()
-                    * 1e6,  # pylint: disable=E1101
+                    y=data.df.groupby("gain")["MSR"].mean()  # pylint: disable=E1101
+                    * 1e6,
                     marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,
@@ -419,8 +419,10 @@ def amplitude_msr_phase(folder, routine, qubit, format):
             fig.add_trace(
                 go.Scatter(
                     x=amplitudes,
-                    y=data.df.groupby("amplitude")["MSR"].mean()
-                    * 1e6,  # pylint: disable=E1101
+                    y=data.df.groupby("amplitude")[
+                        "MSR"
+                    ].mean()  # pylint: disable=E1101
+                    * 1e6,
                     marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,
@@ -535,9 +537,9 @@ def duration_gain_msr_phase(folder, routine, qubit, format):
         gains = data.df["gain"].unique()
 
         averaged_data = data.df.drop(columns=["i", "q", "qubit", "iteration"])
-        averaged_data = data.df.groupby(
+        averaged_data = data.df.groupby(  # pylint: disable=E1101
             ["duration", "gain"], as_index=False
-        ).mean()  # pylint: disable=E1101
+        ).mean()
 
         fig.add_trace(
             go.Heatmap(

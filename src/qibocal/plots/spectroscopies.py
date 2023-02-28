@@ -343,10 +343,10 @@ def frequency_attenuation_msr_phase_cut(folder, routine, qubit, format):
             fig.add_trace(
                 go.Scatter(
                     x=frequencies,
-                    y=data.df.groupby("frequency")[
+                    y=data.df.groupby("frequency")[  # pylint: disable=E1101
                         "MSR"
-                    ].mean()  # pylint: disable=E1101
-                    * 1e6,  # pylint: disable=E1101
+                    ].mean()
+                    * 1e6,
                     marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,
