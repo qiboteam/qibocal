@@ -144,8 +144,8 @@ def frequency_msr_phase(folder, routine, qubit, format):
                         freqrange,
                         data_fit.df.iloc[0]["popt0"],
                         data_fit.df.iloc[0]["popt1"],
-                        data_fit.df.iloc[0]["popt2"],
-                        data_fit.df.iloc[0]["popt3"],
+                        data_fit.df.iloc[0]["popt2"],  # pylint: disable=E1101
+                        data_fit.df.iloc[0]["popt3"],  # pylint: disable=E1101
                     ),
                     name=f"q{qubit}/r{report_n} Fit",
                     line=go.scatter.Line(dash="dot"),
@@ -339,11 +339,13 @@ def frequency_attenuation_msr_phase_cut(folder, routine, qubit, format):
                 col=2,
             )
         if len(iterations) > 1:
-            data.df = data.df.drop(columns=["iteration"])
+            data.df = data.df.drop(columns=["iteration"])  # pylint: disable=E1101
             fig.add_trace(
                 go.Scatter(
                     x=frequencies,
-                    y=data.df.groupby("frequency")["MSR"].mean()
+                    y=data.df.groupby("frequency")[
+                        "MSR"
+                    ].mean()  # pylint: disable=E1101
                     * 1e6,  # pylint: disable=E1101
                     marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
@@ -357,7 +359,7 @@ def frequency_attenuation_msr_phase_cut(folder, routine, qubit, format):
             fig.add_trace(
                 go.Scatter(
                     x=frequencies,
-                    y=data.df.groupby("frequency")[
+                    y=data.df.groupby("frequency")[  # pylint: disable=E1101
                         "phase"
                     ].mean(),  # pylint: disable=E1101
                     marker_color=get_color(report_n),

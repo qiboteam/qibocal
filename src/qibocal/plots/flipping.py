@@ -73,11 +73,12 @@ def flips_msr(folder, routine, qubit, format):
             )
 
         if len(iterations) > 1:
-            data.df = data.df.drop(columns=["iteration"])
+            data.df = data.df.drop(columns=["iteration"])  # pylint: disable=E1101
             fig.add_trace(
                 go.Scatter(
                     x=flips,
-                    y=data.df.groupby("flips")["MSR"].mean() * 1e6,
+                    y=data.df.groupby("flips")["MSR"].mean()
+                    * 1e6,  # pylint: disable=E1101
                     marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,

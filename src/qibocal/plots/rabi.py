@@ -87,11 +87,12 @@ def time_msr_phase(folder, routine, qubit, format):
                 col=2,
             )
         if len(iterations) > 1:
-            data.df = data.df.drop(columns=["iteration"])
+            data.df = data.df.drop(columns=["iteration"])  # pylint: disable=E1101
             fig.add_trace(
                 go.Scatter(
                     x=times,
-                    y=data.df.groupby("time")["MSR"].mean() * 1e6,
+                    y=data.df.groupby("time")["MSR"].mean()
+                    * 1e6,  # pylint: disable=E1101
                     marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,
@@ -250,11 +251,12 @@ def gain_msr_phase(folder, routine, qubit, format):
                 col=2,
             )
         if len(iterations) > 1:
-            data.df = data.df.drop(columns=["iteration"])
+            data.df = data.df.drop(columns=["iteration"])  # pylint: disable=E1101
             fig.add_trace(
                 go.Scatter(
                     x=gains,
-                    y=data.df.groupby("gain")["MSR"].mean() * 1e6,
+                    y=data.df.groupby("gain")["MSR"].mean()
+                    * 1e6,  # pylint: disable=E1101
                     marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,
@@ -413,11 +415,12 @@ def amplitude_msr_phase(folder, routine, qubit, format):
                 col=2,
             )
         if len(iterations) > 1:
-            data.df = data.df.drop(columns=["iteration"])
+            data.df = data.df.drop(columns=["iteration"])  # pylint: disable=E1101
             fig.add_trace(
                 go.Scatter(
                     x=amplitudes,
-                    y=data.df.groupby("amplitude")["MSR"].mean() * 1e6,
+                    y=data.df.groupby("amplitude")["MSR"].mean()
+                    * 1e6,  # pylint: disable=E1101
                     marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,
@@ -430,9 +433,9 @@ def amplitude_msr_phase(folder, routine, qubit, format):
             fig.add_trace(
                 go.Scatter(
                     x=amplitudes,
-                    y=data.df.groupby("amplitude")[
+                    y=data.df.groupby("amplitude")[  # pylint: disable=E1101
                         "phase"
-                    ].mean(),  # pylint: disable=E1101
+                    ].mean(),
                     marker_color=get_color(report_n),
                     showlegend=False,
                     legendgroup=f"q{qubit}/r{report_n}: Average",
@@ -532,7 +535,9 @@ def duration_gain_msr_phase(folder, routine, qubit, format):
         gains = data.df["gain"].unique()
 
         averaged_data = data.df.drop(columns=["i", "q", "qubit", "iteration"])
-        averaged_data = data.df.groupby(["duration", "gain"], as_index=False).mean()
+        averaged_data = data.df.groupby(
+            ["duration", "gain"], as_index=False
+        ).mean()  # pylint: disable=E1101
 
         fig.add_trace(
             go.Heatmap(
@@ -612,7 +617,7 @@ def duration_amplitude_msr_phase(folder, routine, qubit, format):
 
         averaged_data = data.df.drop(columns=["i", "q", "qubit", "iteration"])
 
-        averaged_data = data.df.groupby(
+        averaged_data = data.df.groupby(  # pylint: disable=E1101
             ["duration", "amplitude"], as_index=False
         ).mean()
 

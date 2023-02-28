@@ -40,11 +40,17 @@ def qubit_states(folder, routine, qubit, format):
             parameters.df = parameters.df[parameters.df["qubit"] == qubit]
 
             average_state0 = complex(parameters.df.iloc[0]["average_state0"])
-            average_state1 = complex(parameters.df.iloc[0]["average_state1"])
-            rotation_angle = parameters.df.iloc[0]["rotation_angle"]
-            threshold = parameters.df.iloc[0]["threshold"]
-            fidelity = parameters.df.iloc[0]["fidelity"]
-            assignment_fidelity = parameters.df.iloc[0]["assignment_fidelity"]
+            average_state1 = complex(
+                parameters.df.iloc[0]["average_state1"]
+            )  # pylint: disable=E1101
+            rotation_angle = parameters.df.iloc[0][
+                "rotation_angle"
+            ]  # pylint: disable=E1101
+            threshold = parameters.df.iloc[0]["threshold"]  # pylint: disable=E1101
+            fidelity = parameters.df.iloc[0]["fidelity"]  # pylint: disable=E1101
+            assignment_fidelity = parameters.df.iloc[0][
+                "assignment_fidelity"
+            ]  # pylint: disable=E1101
 
         except:
             parameters = Data(
