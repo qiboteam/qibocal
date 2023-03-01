@@ -194,11 +194,71 @@ def get_values(df: pd.DataFrame, component=None, duration=None, amplitude=None):
     values = df[values_column]
     if component:
         values = values[df["component"] == component]
-    if duration:
+    if type(duration) == np.ndarray:
+        values = values[df["flux_pulse_duration"].isin(duration.tolist())]
+    elif duration:
         values = values[df["flux_pulse_duration"] == duration]
-    if amplitude:
+    if type(amplitude) == np.ndarray:
+        values = values[df["flux_pulse_amplitude"].isin(amplitude.tolist())]
+    elif amplitude:
         values = values[df["flux_pulse_amplitude"] == amplitude]
     return values.to_numpy()
+
+
+def flux_pulse_timing(folder, routine, qubit, format):
+    figs = {}
+    figs["flux_pulse_timing"] = make_subplots(
+        rows=1,
+        cols=1,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+    )
+
+    # iterate over multiple data folders
+    subfolders = get_data_subfolders(folder)
+    report_n = 0
+    for subfolder in subfolders:
+        try:
+            df = load_data(folder, subfolder, routine, format, "data")
+            df.df = (
+                df.df[df.df["qubit"] == qubit]
+                .drop(columns=["qubit", "iteration"])
+                .groupby(
+                    ["flux_pulse_amplitude", "flux_pulse_start"],
+                    as_index=False,
+                )
+                .mean()
+            )
+        except:
+            df = DataUnits(
+                name=f"data",
+                quantities={
+                    "flux_pulse_amplitude": "dimensionless",
+                    "flux_pulse_start": "ns",
+                    "prob": "dimensionless",
+                },
+                options=["qubit", "iteration"],
+            )
+
+        amplitudes = df.df["flux_pulse_amplitude"].unique()
+        starts = df.df["flux_pulse_start"].unique()
+
+    for amp in amplitudes:
+        figs["flux_pulse_timing"].add_trace(
+            go.Scatter(
+                x=starts,
+                y=get_values(df, amplitude=amp),
+                name=f"q{qubit}: <X> | A = {amp:.3f}",
+            ),
+            row=1,
+            col=1,
+        )
+
+    figs["flux_pulse_timing"].update_layout(
+        xaxis_title="Flux start time (ns)",
+        yaxis_title="Magnitude X component (dimensionless)",
+    )
+    return [figs["flux_pulse_timing"]]
 
 
 def cryoscope_raw(folder, routine, qubit, format):
@@ -269,14 +329,14 @@ def cryoscope_raw(folder, routine, qubit, format):
                 row=1,
                 col=1,
             )
-
+            window_length = len(durations) // 24 * 2 + 3
             smoothed_average = savgol_filter(
                 (
                     get_values(df, MX_tag, amplitude=amp)
                     + get_values(df, MY_tag, amplitude=amp)
                 )
                 / 2,
-                window_length=21,
+                window_length=window_length,
                 polyorder=3,
             )
 
@@ -352,62 +412,6 @@ def cryoscope_raw(folder, routine, qubit, format):
     return [figs["raw"]], fitting_report
 
 
-def flux_pulse_timing(folder, routine, qubit, format):
-    figs = {}
-    figs["flux_pulse_timing"] = make_subplots(
-        rows=1,
-        cols=1,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
-    )
-
-    # iterate over multiple data folders
-    subfolders = get_data_subfolders(folder)
-    report_n = 0
-    for subfolder in subfolders:
-        try:
-            df = load_data(folder, subfolder, routine, format, "data")
-            df.df = (
-                df.df[df.df["qubit"] == qubit]
-                .drop(columns=["qubit", "iteration"])
-                .groupby(
-                    ["flux_pulse_amplitude", "flux_pulse_start"],
-                    as_index=False,
-                )
-                .mean()
-            )
-        except:
-            df = DataUnits(
-                name=f"data",
-                quantities={
-                    "flux_pulse_amplitude": "dimensionless",
-                    "flux_pulse_start": "ns",
-                    "prob": "dimensionless",
-                },
-                options=["qubit", "iteration"],
-            )
-
-        amplitudes = df.df["flux_pulse_amplitude"].unique()
-        starts = df.df["flux_pulse_start"].unique()
-
-    for amp in amplitudes:
-        figs["flux_pulse_timing"].add_trace(
-            go.Scatter(
-                x=starts,
-                y=get_values(df, amplitude=amp),
-                name=f"q{qubit}: <X> | A = {amp:.3f}",
-            ),
-            row=1,
-            col=1,
-        )
-
-    figs["flux_pulse_timing"].update_layout(
-        xaxis_title="Flux start time (ns)",
-        yaxis_title="Magnitude X component (dimensionless)",
-    )
-    return [figs["flux_pulse_timing"]]
-
-
 def cryoscope_dephasing(folder, routine, qubit, format):
     # load qubit data
     df = load_data(folder, "data", routine, "data")
@@ -438,9 +442,10 @@ def cryoscope_dephasing(folder, routine, qubit, format):
             col=1,
         )
 
+        window_length = len(durations) // 24 * 2 + 3
         smoothed_average = savgol_filter(
             magnitude,
-            window_length=41,
+            window_length=window_length,
             polyorder=3,
         )
         figs["norm"].add_trace(
@@ -454,7 +459,7 @@ def cryoscope_dephasing(folder, routine, qubit, format):
         )
 
         dephased_point = np.argmax(
-            savgol_filter(magnitude, window_length=41, polyorder=3, deriv=2)
+            savgol_filter(magnitude, window_length=window_length, polyorder=3, deriv=2)
         )
         figs["norm"].add_vline(
             x=dephased_point, line_width=1, line_dash="dash", line_color="red"
@@ -479,13 +484,25 @@ def cryoscope_dephasing_heatmap(folder, routine, qubit, format):
         vertical_spacing=0.2,
     )
 
-    signal = []
-    for amp in amplitudes:
-        re = get_values(df, MX_tag, amplitude=amp)
-        im = get_values(df, MY_tag, amplitude=amp)
-        signal.append(re + 1j * im)
-    signal = np.array(signal, dtype=np.complex128)
-    phase = np.arctan2(signal.imag, signal.real)
+    re = get_values(df, MX_tag, amplitude=amplitudes)
+    im = get_values(df, MY_tag, amplitude=amplitudes)
+
+    signal = re + 1j * im
+    signal = signal.reshape((len(durations), len(amplitudes))).transpose()
+
+    window_length = len(durations) // 24 * 2 + 3
+
+    dephased_points = np.array([])
+    for row in signal:
+        dephased_points = np.append(
+            dephased_points,
+            np.argmax(
+                savgol_filter(
+                    np.abs(row), window_length=window_length, polyorder=3, deriv=2
+                )
+            ),
+        )
+
     global_title = "Dephasing"
     title_x = "Flux Pulse Duration"
     title_y = "Amplitudes"
@@ -495,6 +512,17 @@ def cryoscope_dephasing_heatmap(folder, routine, qubit, format):
             y=amplitudes,
             z=np.abs(signal),
             colorbar=dict(len=0.46, y=0.25),
+        ),
+        row=1,
+        col=1,
+    )
+
+    figs["norm"].add_trace(
+        go.Scatter(
+            x=dephased_points,
+            y=amplitudes,
+            mode="markers+lines",
+            marker=dict(size=3, color="r"),
         ),
         row=1,
         col=1,
@@ -524,30 +552,50 @@ def cryoscope_fft_peak_fitting(folder, routine, qubit, format):
         vertical_spacing=0.2,
     )
 
-    signal = []  # TODO: replace lists with np arrays
-    fft = []
-    freqs = []
+    re = get_values(df, MX_tag, amplitude=amplitudes)
+    im = get_values(df, MY_tag, amplitude=amplitudes)
 
-    curve_amps = []
-    curve_detunings = []
+    signal = re + 1j * im
+    signal = signal.reshape((len(durations), len(amplitudes))).transpose()
 
-    num_points = durations.shape[0]
+    window_length = len(durations) // 24 * 2 + 3
+    # calculate the duration where the state is dephased
+    dephased_points = np.array([])
+    for row in signal:
+        dephased_points = np.append(
+            dephased_points,
+            np.argmax(
+                savgol_filter(
+                    np.abs(row), window_length=window_length, polyorder=3, deriv=2
+                )
+            ),
+        )
+
+    # # trim data beyond that point
+    # cut_off_duration = np.argmax(durations>=np.mean(dephased_points))
+    # durations = durations[:cut_off_duration]
+    # signal = signal[:,:cut_off_duration]
+
+    window_length = len(durations) // 24 * 2 + 3
+
+    # fft
+    fft = np.zeros(signal.shape)
+
+    curve_amps = np.array([])
+    curve_detunings = np.array([])
+
+    num_points = len(durations)
     interval = (durations[1] - durations[0]) * 1e-9
     amp_freqs = np.fft.fftfreq(n=num_points, d=interval)
+    amp_freqs[amp_freqs >= 10e6] -= 1 / interval
     mask = np.argsort(amp_freqs)
     amp_freqs = amp_freqs[mask]
+    freqs = np.tile(amp_freqs, (len(amplitudes), 1))
 
-    for amp in amplitudes:
-        re = get_values(df, MX_tag, amplitude=amp)
-        im = get_values(df, MY_tag, amplitude=amp)
-
-        amp_signal = re + 1j * im
-        signal.append(amp_signal)
-
-        freqs.append(amp_freqs)
-
+    for row, amp in enumerate(amplitudes):
+        amp_signal = signal[row, :]
         amp_fft = np.fft.fft(amp_signal - np.mean(amp_signal))[mask]
-        fft.append(amp_fft)
+        fft[row] = amp_fft
 
         figs["norm"].add_trace(
             go.Scatter(x=amp_freqs, y=np.abs(amp_fft), name=f"fft | A = {amp:.3f}"),
@@ -555,7 +603,7 @@ def cryoscope_fft_peak_fitting(folder, routine, qubit, format):
             col=1,
         )
 
-        smoothed_y = smooth(np.absolute(amp_fft), window_len=21)
+        smoothed_y = smooth(np.abs(amp_fft), window_len=window_length)
         percval = np.percentile(
             smoothed_y, 90
         )  # finds the top perc points in amplitude smoothed_y
@@ -565,8 +613,10 @@ def cryoscope_fft_peak_fitting(folder, routine, qubit, format):
         sort_mask = np.argsort(np.absolute(amp_fft)[array_peaks])[::-1]
 
         if len(peaks_x[sort_mask]) > 0 and amp_freqs[peaks_x[sort_mask][0]] <= 0:
-            curve_amps.append(amp)
-            curve_detunings.append(amp_freqs[peaks_x[sort_mask][0]])
+            curve_amps = np.append(curve_amps, amp)
+            curve_detunings = np.append(
+                curve_detunings, amp_freqs[peaks_x[sort_mask][0]]
+            )
 
         figs["norm"].add_trace(
             go.Scatter(x=amp_freqs, y=smoothed_y, name=f"smoothed_y | A = {amp:.3f}"),
@@ -612,51 +662,81 @@ def cryoscope_fft(folder, routine, qubit, format):
         vertical_spacing=0.2,
     )
 
-    signal = []  # TODO: replace lists with np arrays
-    fft = []
-    freqs = []
+    #     smoothed_y = smooth(np.absolute(amp_fft), window_len=21)
+    #     percval = np.percentile(
+    #         smoothed_y, 90
+    #     )  # finds the top perc points in amplitude smoothed_y
+    #     filtered_y = np.where(smoothed_y > percval, smoothed_y, percval)
+    #     array_peaks = argrelextrema(filtered_y, np.greater)
+    #     peaks_x = np.arange(num_points)[array_peaks]
+    #     sort_mask = np.argsort(np.absolute(amp_fft)[array_peaks])[::-1]
 
-    curve_amps = []
-    curve_detunings = []
+    #     if len(peaks_x[sort_mask]) > 0:  # and  amp_freqs[peaks_x[sort_mask][0]] <= 0:
+    #         curve_amps.append(amp)
+    #         curve_detunings.append(amp_freqs[peaks_x[sort_mask][0]])
+    re = get_values(df, MX_tag, amplitude=amplitudes)
+    im = get_values(df, MY_tag, amplitude=amplitudes)
 
-    num_points = durations.shape[0]
+    signal = re + 1j * im
+    signal = signal.reshape((len(durations), len(amplitudes))).transpose()
+
+    window_length = len(durations) // 24 * 2 + 3
+    # calculate the duration where the state is dephased
+    dephased_points = np.array([])
+    for row in signal:
+        dephased_points = np.append(
+            dephased_points,
+            np.argmax(
+                savgol_filter(
+                    np.abs(row), window_length=window_length, polyorder=3, deriv=2
+                )
+            ),
+        )
+
+    # # trim data beyond that point
+    # cut_off_duration = np.argmax(durations>=np.mean(dephased_points))
+    # durations = durations[:cut_off_duration]
+    # signal = signal[:,:cut_off_duration]
+
+    window_length = len(durations) // 24 * 2 + 3
+
+    # fft
+    fft = np.zeros(signal.shape)
+
+    curve_amps = np.array([])
+    curve_detunings = np.array([])
+
+    num_points = len(durations)
     interval = (durations[1] - durations[0]) * 1e-9
     amp_freqs = np.fft.fftfreq(n=num_points, d=interval)
+    amp_freqs[amp_freqs >= 10e6] -= 1 / interval
     mask = np.argsort(amp_freqs)
     amp_freqs = amp_freqs[mask]
+    freqs = np.tile(amp_freqs, (len(amplitudes), 1))
 
-    for amp in amplitudes:
-        re = get_values(df, MX_tag, amplitude=amp)
-        im = get_values(df, MY_tag, amplitude=amp)
-
-        amp_signal = re + 1j * im
-        signal.append(amp_signal)
-
-        freqs.append(amp_freqs)
-
+    for row, amp in enumerate(amplitudes):
+        amp_signal = signal[row, :]
         amp_fft = np.fft.fft(amp_signal - np.mean(amp_signal))[mask]
-        fft.append(amp_fft)
 
-        smoothed_y = smooth(np.absolute(amp_fft), window_len=21)
+        smoothed_y = smooth(np.abs(amp_fft), window_len=window_length)
         percval = np.percentile(
             smoothed_y, 90
         )  # finds the top perc points in amplitude smoothed_y
         filtered_y = np.where(smoothed_y > percval, smoothed_y, percval)
+        fft[row] = amp_fft
+        # fft[row] = smoothed_y
+
         array_peaks = argrelextrema(filtered_y, np.greater)
         peaks_x = np.arange(num_points)[array_peaks]
         sort_mask = np.argsort(np.absolute(amp_fft)[array_peaks])[::-1]
 
-        if len(peaks_x[sort_mask]) > 0:  # and  amp_freqs[peaks_x[sort_mask][0]] <= 0:
-            curve_amps.append(amp)
-            curve_detunings.append(amp_freqs[peaks_x[sort_mask][0]])
+        if len(peaks_x[sort_mask]) > 0 and amp_freqs[peaks_x[sort_mask][0]] <= 0:
+            curve_amps = np.append(curve_amps, amp)
+            curve_detunings = np.append(
+                curve_detunings, amp_freqs[peaks_x[sort_mask][0]]
+            )
 
-    # print(curve_amps,curve_detunings)
     pfit = np.polyfit(curve_amps, curve_detunings, 2)
-    # DEBUG:
-    _amp = -0.109
-    print(f"Curve fit {pfit} _ {pfit[0]*_amp**2 + pfit[1]*_amp + pfit[2]}")
-
-    curve_amps = np.array(curve_amps)
 
     global_title = "FFT with curve fit"
     title_x = "Detunning (GHz)"
