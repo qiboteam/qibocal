@@ -1,7 +1,9 @@
+import argparse
+import pathlib
+
 import pandas as pd
 import tensorflow as tf
 import matplotlib.pyplot as plt
-from qibocal.data import Data 
 import seaborn as sns
 import keras_tuner as kt
 from keras.models import Sequential
@@ -28,7 +30,6 @@ from sklearn.inspection import DecisionBoundaryDisplay
 from matplotlib.colors import ListedColormap
 from scikeras.wrappers import KerasClassifier
 import tensorflow as tf
-import pathlib
 
 def results(model,x_train,y_train,x_test,y_test,ml_results,model_name):
     start = time.time()
@@ -120,10 +121,9 @@ def model_builder(hp):
                 metrics=['accuracy'])
         return model
 
-path = "data/calibrate_qubit_states/data.csv"
-save_dir = pathlib.Path.cwd() 
-
-for qubit in range(1,6):
+path = "calibrate_qubit_states/data.csv"
+    
+def classify_qubit(qubit, save_dir=pathlib.Path.cwd()):
     qubit_dir = save_dir / f"qubit{qubit}"
     qubit_dir.mkdir()
 
@@ -148,7 +148,9 @@ for qubit in range(1,6):
 
     tuner = kt.Hyperband(model_builder,
                         objective='val_accuracy',
-                        max_epochs=150
+                        max_epochs=150,
+                        directory = qubit_dir, 
+                        project_name = "NNmodel"
                         )
     tuner.search_space_summary()
 
@@ -285,6 +287,7 @@ for qubit in range(1,6):
                     x_vars=["accuracy", "testing time", "training time"], 
                     height=4, hue ='model', palette = "bright")
     g.map(sns.scatterplot)
+    plt.xscale('log')
     plt.savefig(qubit_dir / "benchmarks.pdf")
 
     from sklearn.metrics import RocCurveDisplay
@@ -341,3 +344,14 @@ for qubit in range(1,6):
         i+=1
 
     plt.savefig(qubit_dir / "ROC_curves.pdf")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("folder")
+    args = parser.parse_args()
+
+    save_dir = pathlib.Path.cwd() / f"_{args.folder}"
+    save_dir.mkdir()
+
+    for qubit in range(1,6):
+        classify_qubit(qubit, save_dir=save_dir)
