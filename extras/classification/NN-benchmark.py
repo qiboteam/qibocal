@@ -1,9 +1,16 @@
+<<<<<<< HEAD
 import argparse
 import pathlib
 
 import pandas as pd
 import tensorflow as tf
 import matplotlib.pyplot as plt
+=======
+import pandas as pd
+import tensorflow as tf
+import matplotlib.pyplot as plt
+from qibocal.data import Data 
+>>>>>>> b7d4240d55d33ddfc45271aa4679bafff85737ac
 import seaborn as sns
 import keras_tuner as kt
 from keras.models import Sequential
@@ -30,6 +37,10 @@ from sklearn.inspection import DecisionBoundaryDisplay
 from matplotlib.colors import ListedColormap
 from scikeras.wrappers import KerasClassifier
 import tensorflow as tf
+<<<<<<< HEAD
+=======
+import pathlib
+>>>>>>> b7d4240d55d33ddfc45271aa4679bafff85737ac
 
 def results(model,x_train,y_train,x_test,y_test,ml_results,model_name):
     start = time.time()
@@ -121,9 +132,16 @@ def model_builder(hp):
                 metrics=['accuracy'])
         return model
 
+<<<<<<< HEAD
 path = "calibrate_qubit_states/data.csv"
     
 def classify_qubit(qubit, save_dir=pathlib.Path.cwd()):
+=======
+path = "data/calibrate_qubit_states/data.csv"
+save_dir = pathlib.Path.cwd() 
+
+for qubit in range(1,6):
+>>>>>>> b7d4240d55d33ddfc45271aa4679bafff85737ac
     qubit_dir = save_dir / f"qubit{qubit}"
     qubit_dir.mkdir()
 
@@ -148,9 +166,13 @@ def classify_qubit(qubit, save_dir=pathlib.Path.cwd()):
 
     tuner = kt.Hyperband(model_builder,
                         objective='val_accuracy',
+<<<<<<< HEAD
                         max_epochs=150,
                         directory = qubit_dir, 
                         project_name = "NNmodel"
+=======
+                        max_epochs=150
+>>>>>>> b7d4240d55d33ddfc45271aa4679bafff85737ac
                         )
     tuner.search_space_summary()
 
@@ -287,7 +309,10 @@ def classify_qubit(qubit, save_dir=pathlib.Path.cwd()):
                     x_vars=["accuracy", "testing time", "training time"], 
                     height=4, hue ='model', palette = "bright")
     g.map(sns.scatterplot)
+<<<<<<< HEAD
     plt.xscale('log')
+=======
+>>>>>>> b7d4240d55d33ddfc45271aa4679bafff85737ac
     plt.savefig(qubit_dir / "benchmarks.pdf")
 
     from sklearn.metrics import RocCurveDisplay
@@ -344,6 +369,7 @@ def classify_qubit(qubit, save_dir=pathlib.Path.cwd()):
         i+=1
 
     plt.savefig(qubit_dir / "ROC_curves.pdf")
+<<<<<<< HEAD
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -355,3 +381,5 @@ if __name__ == "__main__":
 
     for qubit in range(1,6):
         classify_qubit(qubit, save_dir=save_dir)
+=======
+>>>>>>> b7d4240d55d33ddfc45271aa4679bafff85737ac
