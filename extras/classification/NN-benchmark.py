@@ -10,7 +10,6 @@ from keras import optimizers
 from keras.layers import Layer
 from keras import backend as K
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import RepeatedStratifiedKFold
 from sklearn.model_selection import GridSearchCV
 import time
@@ -278,7 +277,7 @@ for qubit in range(1,6):
     confusion_matrices.append(results(ada_boost,x_train,y_train,x_test,y_test,ml_results, 'Ada Boost'))
 
     ml_results_pd = pd.DataFrame(ml_results)
-    ml_results_pd.to_csv(save_dir / "results.csv")
+    ml_results_pd.to_csv(qubit_dir / "results.csv")
     ml_results_pd["testing time"] *=1e5
 
     sns.set_style("darkgrid")
@@ -286,7 +285,7 @@ for qubit in range(1,6):
                     x_vars=["accuracy", "testing time", "training time"], 
                     height=4, hue ='model', palette = "bright")
     g.map(sns.scatterplot)
-    plt.savefig(save_dir / "benchmarks.pdf")
+    plt.savefig(qubit_dir / "benchmarks.pdf")
 
     from sklearn.metrics import RocCurveDisplay
     nn = KerasClassifier(neural_network)
@@ -317,15 +316,15 @@ for qubit in range(1,6):
             ax.set_yticks(())
             ax.set_title(name)
             i += 1
-    plt.savefig(save_dir / "results.pdf")
+    plt.savefig(qubit_dir / "results.pdf")
 
     figure = plt.figure(figsize=(30,5))
-    for i, confusion_matrix in enumerate( confusion_matrices):
+    for i, conf_matrix in enumerate( confusion_matrices):
         ax = plt.subplot(1, len(models_name), i+1)
-        sns.heatmap(confusion_matrix, annot = True,xticklabels=["P","N"],yticklabels=["P","N"])
+        sns.heatmap(conf_matrix, annot = True,xticklabels=["P","N"],yticklabels=["P","N"])
         ax.set_title(models_name[i])
 
-    plt.savefig(save_dir / "confusion_matrices.pdf")
+    plt.savefig(qubit_dir / "confusion_matrices.pdf")
     
     figure = plt.figure(figsize=(30,5))
     i=0
@@ -341,4 +340,4 @@ for qubit in range(1,6):
         plt.legend()
         i+=1
 
-    plt.savefig(save_dir / "ROC_curves.pdf")
+    plt.savefig(qubit_dir / "ROC_curves.pdf")
