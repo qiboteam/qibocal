@@ -35,7 +35,7 @@ gatelist = [
 # allXY
 def allXY(folder, routine, qubit, format):
     figures = []
-    fitting_report = "No fitting data: -<br>No fitting data: -<br><br>"
+    fitting_report = "No fitting data"
 
     fig = make_subplots(
         rows=1,
@@ -137,7 +137,7 @@ def allXY(folder, routine, qubit, format):
 # allXY
 def allXY_drag_pulse_tuning(folder, routine, qubit, format):
     figures = []
-    fitting_report = "No fitting data: -<br>No fitting data: -<br><br>"
+    fitting_report = "No fitting data"
 
     fig = make_subplots(
         rows=1,
@@ -234,7 +234,7 @@ def allXY_drag_pulse_tuning(folder, routine, qubit, format):
 # beta param tuning
 def drag_pulse_tuning(folder, routine, qubit, format):
     figures = []
-    fitting_report = "No fitting data: -<br>No fitting data: -<br><br>"
+    fitting_report = ""
 
     fig = make_subplots(
         rows=1,
@@ -246,7 +246,6 @@ def drag_pulse_tuning(folder, routine, qubit, format):
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
     report_n = 0
-    fitting_report = ""
     for subfolder in subfolders:
         try:
             data = load_data(folder, subfolder, routine, format, "data")
@@ -327,9 +326,8 @@ def drag_pulse_tuning(folder, routine, qubit, format):
                 col=1,
             )
             fitting_report = fitting_report + (
-                f"q{qubit}/r{report_n} optimal_beta_param: {params['optimal_beta_param']:.4f}<br><br>"
+                f"q{qubit}/r{report_n} | optimal_beta_param: {params['optimal_beta_param']:.4f}<br><br>"
             )
-
             report_n += 1
 
     fig.update_layout(
