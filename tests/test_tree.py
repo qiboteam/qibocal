@@ -1,7 +1,8 @@
 import pytest
-from execute import Executor
-from pending import Queue
-from task import Task
+
+from qibocal.tree.execute import Executor
+from qibocal.tree.pending import Queue
+from qibocal.tree.task import Task
 
 # Each task is a list
 # [name, parameters, requirements]
@@ -15,11 +16,11 @@ tasks = [
 def test_task():
     job = Task.load(tasks[1])
     assert job.requirements == {"command_1": False}
-    assert job.ready == False
+    assert not job.ready
 
     job = Task.load(tasks[0])
     assert job.requirements == {"start": True}
-    assert job.ready == True
+    assert job.ready
 
 
 def test_queue():
@@ -46,4 +47,3 @@ def test_executor():
         RuntimeError, match="Execution completed but tasks still pending "
     ):
         executor.run()
-    # TODO: write better test
