@@ -33,3 +33,18 @@ actions:
     priority: 1200
   - id: randomized-benchmarking-2q
     priority: 1999
+
+# ---
+# Not part of an actual runcard
+result:
+  - high-power-spectroscopy
+  - punchout
+  - qubit-spectroscopy
+  - rabi
+  - ramsey
+  - single-shot
+  - randomized-benchmarking
+  - avoided-crossing
+  - chevron
+  - 2q-gate-landscape
+  - randomized-benchmarking

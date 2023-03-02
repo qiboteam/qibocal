@@ -1,11 +1,15 @@
 from abc import ABC
 from dataclasses import dataclass
+from enum import Enum
+from typing import Dict, Optional, Union
 
-from operation import *
+from operation import Operation
 
 
 class Parameters(ABC):
-    pass
+    @classmethod
+    def load(cls):
+        pass
 
 
 class Update(ABC):
@@ -14,9 +18,16 @@ class Update(ABC):
 
 @dataclass
 class Output:  # TODO: write Output as abstract class
-    # status: Status
     results: str
-    # update: Update
+    update: Update
+
+
+class Keywords(Enum):
+    id = "id"
+    operation = "operation"
+    main = "main"
+    next = "next"
+    priority = "priority"
 
 
 @dataclass
@@ -24,31 +35,27 @@ class Task:
     id: str
     operation: Operation
     parameters: Parameters
-    _requirements: dict[str, bool]
-    output: Output = Output("")
-
-    @property
-    def ready(self):
-        return all(self.requirements.values())
-
-    @property
-    def requirements(self):
-        return self._requirements
+    output: Optional[Output] = None
 
     @classmethod
-    def load(cls, card: list):
-        name = card[0]
-        parameters = card[1]
-        if card[2][0] == "start":
-            requirements = {"start": True}
-        else:
-            requirements = {i: False for i in card[2]}
+    def load(cls, card: Dict[str, Union[str, int, float, list]]):
+        operation = card[Keywords.operation.value]
+        assert isinstance(operation, str)
+
+        id_ = card[Keywords.id.value]
+        assert isinstance(id_, str)
+
+        parameters = {}
+        for name, value in card:
+            if name in Keywords:
+                continue
+
+            parameters[name] = value
 
         return cls(
-            id=name,
-            operation=Operation[name],
-            parameters=parameters,
-            _requirements=requirements,
+            id=id_,
+            operation=Operation[operation],
+            parameters=Parameters.load(parameters),
         )
 
     def run(self) -> Output:

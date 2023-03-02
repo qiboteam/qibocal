@@ -1,46 +1,15 @@
+import pathlib
+
 import pytest
 
 from qibocal.tree.execute import Executor
 from qibocal.tree.pending import Queue
 from qibocal.tree.task import Task
 
-# Each task is a list
-# [name, parameters, requirements]
-tasks = [
-    ["command_1", [], ["start"]],
-    ["command_2", [], ["command_1"]],
-    ["command_3", [], ["command_2", "command_1"]],
-]
+runcards = pathlib.Path(__file__) / "runcards"
 
 
-def test_task():
-    job = Task.load(tasks[1])
-    assert job.requirements == {"command_1": False}
-    assert not job.ready
-
-    job = Task.load(tasks[0])
-    assert job.requirements == {"start": True}
-    assert job.ready
-
-
-def test_queue():
-    tasks_list = [Task.load(i) for i in tasks]
-    q = Queue(tasks_list)
-    ready = q.free()
-
-    assert ready[0].id == "command_1"
-    assert ready[0].requirements == {"start": True}
-
-    ready = q.free(completed="command_1")
-    assert ready[0].id == "command_2"
-    assert ready[0].requirements == {"command_1": True}
-
-    ready = q.free(completed="command_2")
-    assert ready[0].id == "command_3"
-    assert ready[0].requirements == {"command_2": True, "command_1": True}
-
-
-def test_executor():
+def test_execution():
     executor = Executor.load(tasks)
 
     with pytest.raises(

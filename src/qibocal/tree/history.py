@@ -1,6 +1,7 @@
 from dataclasses import dataclass
+from typing import List
 
-from task import *
+from .task import Task, Output
 
 
 @dataclass
@@ -11,7 +12,7 @@ class Completed:
 
 @dataclass
 class History:
-    steps: list[Completed]
+    steps: List[Completed]
 
     def record(self, task: Task, output: Output):
         completed = Completed(task, output)
