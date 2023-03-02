@@ -9,10 +9,10 @@ homepage = ""
 repository = "https://github.com/qiboteam/qibocal/"
 documentation = ""
 keywords = []
-classifiers=[
-    "Programming Language :: Python :: 3",
-    "Topic :: Scientific/Engineering :: Physics",
-    ]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Physics",
+]
 
 [tool.poetry.dependencies]
 python = ">=3.8, <4"
@@ -23,25 +23,32 @@ Pint-Pandas = "^0.3"
 dash = "^2.6.0"
 lmfit = "^1.0.3"
 # docs dependencies (for readthedocs, https://github.com/readthedocs/readthedocs.org/issues/4912#issuecomment-664002569)
-Sphinx = { version = "^4.3.2", optional = true }
+Sphinx = { version = "^5.0.0", optional = true }
 furo = { version = "^2022.9.29", optional = true }
 sphinxcontrib-bibtex = { version = "^2.4.1", optional = true }
 recommonmark = { version = "^0.7.1", optional = true }
 sphinx_markdown_tables = { version = "^0.0.17", optional = true }
+networkx = "^3.0"
 
 [tool.poetry.dev-dependencies]
 pylint = "2.12.2"
 pytest = "^7.1.2"
 pytest-cov = "^3.0.0"
 poethepoet = "^0.16.0"
-Sphinx = "^4.3.2"
+Sphinx = "^5.0.0"
 furo = "^2022.9.29"
 sphinxcontrib-bibtex = "^2.4.1"
 recommonmark = "^0.7.1"
 sphinx_markdown_tables = "^0.0.17"
 
 [tool.poetry.extras]
-docs = ["sphinx", "furo", "sphinxcontrib-bibtex", "recommonmark", "sphinx_markdown_tables"]
+docs = [
+  "sphinx",
+  "furo",
+  "sphinxcontrib-bibtex",
+  "recommonmark",
+  "sphinx_markdown_tables",
+]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -63,11 +70,7 @@ test-docs = "make -C doc doctest"
 
 [tool.pytest.ini_options]
 testpaths = ['tests/']
-addopts = [
-    '--cov=qibocal',
-    '--cov-report=xml',
-    '--cov-report=html',
-]
+addopts = ['--cov=qibocal', '--cov-report=xml', '--cov-report=html']
 
 [tool.pylint.master]
 # extensions not to check
