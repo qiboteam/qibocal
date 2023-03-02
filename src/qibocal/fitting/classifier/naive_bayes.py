@@ -4,8 +4,10 @@ from . import utils
 
 constructor = GaussianNB()
 
+
 def hyperopt(_x_train, _y_train) -> HyperPars:
     return constructor.get_params()
+
 
 normalize = utils.scikit_normalize(constructor)
 

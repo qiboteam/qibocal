@@ -18,12 +18,15 @@ from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
 from sklearn.inspection import DecisionBoundaryDisplay
+
 <<<<<<< HEAD
+import json
+
+import tensorflow as tf
 from matplotlib.colors import ListedColormap
 from scikeras.wrappers import KerasClassifier
 from sklearn.metrics import RocCurveDisplay, roc_curve
-import tensorflow as tf
-import json
+
 =======
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import (
@@ -135,7 +138,7 @@ def model_builder(hp):
     return model
 
 <<<<<<< HEAD
-# Random search 
+# Random search
 def model_builder(hp):
     hp_units_1 = hp.Int('units_1', min_value=16, max_value=1056, step=16)
     hp_units_2 = hp.Int('units_2', min_value=16, max_value=1056, step=16)
@@ -144,8 +147,8 @@ def model_builder(hp):
     optimizer_choice=hp.Choice("optimizer", ["Adam", "Adagrad","SGD","RMSprop"])
     norm = hp.Boolean('add_normalisation')
     losses = hp.Choice('losses', ['binary_crossentropy','categorical_crossentropy'])
-    
-    
+
+
     model = Sequential()
     if norm:
             model.add(Normalization())
@@ -154,17 +157,17 @@ def model_builder(hp):
                     hp.Float("mu", min_value=1e-4, max_value=1),
                     input_shape=(2,)))
     else:
-            model.add(Dense(hp_units_1, input_shape=(2,), 
-                    activation=activation)) 
+            model.add(Dense(hp_units_1, input_shape=(2,),
+                    activation=activation))
 
     if activation == "RBF":
             model.add(RBFLayer(hp_units_2,
                     hp.Float("mu", min_value=1e-4, max_value=1),
                     input_shape=(2,)))
     else:
-            model.add(Dense(hp_units_2, input_shape=(2,), 
-                    activation=activation)) 
-    
+            model.add(Dense(hp_units_2, input_shape=(2,),
+                    activation=activation))
+
     model.add(Dense(1, activation='sigmoid'))
 
     if optimizer_choice == "Adam":
@@ -177,8 +180,8 @@ def model_builder(hp):
             optimizer = optimizers.RMSprop(learning_rate=learning_rate)
     else:
             raise ValueError
-                
-    model.compile(optimizer=optimizer, 
+
+    model.compile(optimizer=optimizer,
             loss=losses,
             metrics=['accuracy'])
     return model
@@ -187,7 +190,7 @@ def NN_hparams_opt (qubit_dir,x_train, y_train):
         tuner = kt.Hyperband(model_builder,
                         objective='val_accuracy',
                         max_epochs=150,
-                        directory = qubit_dir, 
+                        directory = qubit_dir,
                         project_name = "NNmodel"
                         )
         tuner.search_space_summary()
@@ -226,7 +229,7 @@ def plot_models_results(models_name, models, x_train, y_train, x_test, y_test, q
     i = 1
     figure = plt.figure(figsize=(20,8))
     for name, clf in zip(models_name, models):
-            
+
             ax = plt.subplot(1, len(models_name), i)
             clf.fit(x_train, y_train)
             score = clf.score(x_test, y_test)
@@ -239,7 +242,7 @@ def plot_models_results(models_name, models, x_train, y_train, x_test, y_test, q
                 c=y_test,
                 cmap=cm_bright,
                 edgecolors="k",
-                
+
             )
 
             ax.set_xticks(())
@@ -360,7 +363,7 @@ def classify_qubit(qubit, save_dir=pathlib.Path.cwd()):
     stop = time.time()
     training_time = stop - start
 <<<<<<< HEAD
-    
+
     plot_history(history, qubit_dir)
 =======
     print("training time: ", training_time)
@@ -382,7 +385,7 @@ def classify_qubit(qubit, save_dir=pathlib.Path.cwd()):
     loss_and_metrics = neural_network.evaluate(x_test, y_test)
     stop = time.time()
 <<<<<<< HEAD
-    classification_time = stop - start 
+    classification_time = stop - start
 =======
     classification_time = stop - start
     print("NN trainig")
@@ -521,7 +524,7 @@ def classify_qubit(qubit, save_dir=pathlib.Path.cwd()):
     plot_confusion_matrices(confusion_matrices, models_name)
     plot_roc_curves(models_name, models, x_test, y_test, qubit_dir)
     plt.close('all')
-    
+
 =======
     from sklearn.metrics import RocCurveDisplay
 
