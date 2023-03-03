@@ -77,11 +77,11 @@ def hypermodel(hp):
     return model
 
 
-def hyperopt(qubit_dir,x_train, y_train):
+def hyperopt(x_train, y_train, path):
     tuner = kt.Hyperband(hypermodel,
                     objective='val_accuracy',
                     max_epochs=150,
-                    directory = qubit_dir, 
+                    directory = path, 
                     project_name = "NNmodel"
                     )
     tuner.search_space_summary()
@@ -95,7 +95,7 @@ def hyperopt(qubit_dir,x_train, y_train):
 
     return best_hps.get_config()
 
-def constructor(hyperpars):
+def constructor(hyperpars,qubit_dir):
     best_hps = kt.HyperParameters.from_config(hyperpars)
     tuner = kt.Hyperband(hypermodel,
                         objective='val_accuracy',

@@ -4,7 +4,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV
 from . import utils 
 
-def hyperopt(x_train,y_train):
+def hyperopt(x_train,y_train, _path):
     clf = RandomForestClassifier()
     cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=3, random_state=1)
     space = dict()
@@ -18,4 +18,4 @@ def hyperopt(x_train,y_train):
 def constructor(hyperpars):
     return RandomForestClassifier().set_params(**hyperpars)
 
-normalize = utils.scikit_normalize(constructor)
+normalize = utils.scikit_normalize

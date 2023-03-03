@@ -18,13 +18,6 @@ from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
 from sklearn.inspection import DecisionBoundaryDisplay
-<<<<<<< HEAD
-from matplotlib.colors import ListedColormap
-from scikeras.wrappers import KerasClassifier
-from sklearn.metrics import RocCurveDisplay, roc_curve
-import tensorflow as tf
-import json
-=======
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import (
     GridSearchCV,
@@ -36,7 +29,6 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
 
->>>>>>> 7dfd80bdfed9f82196afa9372ce85c600669e713
 
 def results(model, x_train, y_train, x_test, y_test, ml_results, model_name):
     start = time.time()
@@ -134,7 +126,6 @@ def model_builder(hp):
     model.compile(optimizer=optimizer, loss=losses, metrics=["accuracy"])
     return model
 
-<<<<<<< HEAD
 # Random search 
 def model_builder(hp):
     hp_units_1 = hp.Int('units_1', min_value=16, max_value=1056, step=16)
@@ -207,8 +198,6 @@ def NN_hparams_opt (qubit_dir,x_train, y_train):
         model = tuner.hypermodel.build(best_hps)
 
         return model
-=======
->>>>>>> 7dfd80bdfed9f82196afa9372ce85c600669e713
 
 def plot_history(epochs,history, qubit_dir):
     history_dict = history.history
@@ -268,7 +257,7 @@ def plot_roc_curves(models_name, models, x_test, y_test, qubit_dir):
 
         y_score = clf.decision_function(x_test)
         fpr, tpr, _ = roc_curve(y_test, y_score) # TODO: add dictionary and Ramiro's method and close windows with plt.close('all')
-        roc_display = RocCurveDisplay(fpr=fpr, tpr=tpr).plot()
+        _roc_display = RocCurveDisplay(fpr=fpr, tpr=tpr).plot()
         RocCurveDisplay.from_estimator(clf, x_test, y_test,ax=ax,color="darkorange",)
         plt.plot([0, 1], [0, 1], "k--", label="chance level (AUC = 0.5)")
         plt.axis("square")
@@ -288,16 +277,8 @@ def classify_qubit(qubit, save_dir=pathlib.Path.cwd()):
     qubit_dir = save_dir / f"qubit{qubit}"
     qubit_dir.mkdir()
 
-<<<<<<< HEAD
     data = pd.read_csv(path,skiprows=[1])
     data = data[data.qubit==qubit]
-=======
-    data = pd.read_csv(path, skiprows=[1])
-    data = data[data.qubit == qubit]
-    print("qubit: ", qubit)
-    print("size: ", len(data))
-    print(data.head())
->>>>>>> 7dfd80bdfed9f82196afa9372ce85c600669e713
 
     f, axes = plt.subplots(1, 2, figsize=(14, 7))
     sns.scatterplot(x="i", y="q", data=data, hue="state", ec=None, ax=axes[0], s=1)
@@ -310,86 +291,21 @@ def classify_qubit(qubit, save_dir=pathlib.Path.cwd()):
     input_data = data[["i", "q"]].values * 10000  # WARNINGchange unit measure
     output_data = data["state"].values
     # Split data into X_train, X_test, y_train, y_test
-<<<<<<< HEAD
     x_train, x_test, y_train, y_test = train_test_split(input_data, output_data, test_size=0.25, random_state= 0)
 
     model = NN_hparams_opt( qubit_dir, x_train, y_train )
-=======
-    x_train, x_test, y_train, y_test = train_test_split(
-        input_data, output_data, test_size=0.25, random_state=0
-    )
-
-    tuner = kt.Hyperband(
-        model_builder,
-        objective="val_accuracy",
-        max_epochs=150,
-        directory=qubit_dir,
-        project_name="NNmodel",
-    )
-    tuner.search_space_summary()
-
-    stop_early = tf.keras.callbacks.EarlyStopping(monitor="val_accuracy", patience=10)
-
-    tuner.search(
-        x_train, y_train, epochs=120, validation_split=0.2, callbacks=[stop_early]
-    )
-
-    # Get the optimal hyperparameters
-    best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
-
-    print(best_hps)
-
-    neural_network = tuner.get_best_models()[0]
-    hp_name = [
-        "units_1",
-        "units_2",
-        "activation",
-        "optimizer",
-        "learning_rate",
-        "losses",
-        "add_normalisation",
-    ]
-    for i in hp_name:
-        print(i, ": ", best_hps.get(i))
-
-    model = tuner.hypermodel.build(best_hps)
->>>>>>> 7dfd80bdfed9f82196afa9372ce85c600669e713
     epochs = 200
     start = time.time()
     history = model.fit(x_train, y_train, epochs=epochs, validation_split=0.2)
     stop = time.time()
     training_time = stop - start
-<<<<<<< HEAD
     
     plot_history(history, qubit_dir)
-=======
-    print("training time: ", training_time)
-
-    history_dict = history.history
-    results_model = pd.DataFrame(history_dict)
-
-    plt.figure(figsize=(14, 7))
-    plt.plot(range(epochs), history_dict["loss"], label="loss")
-    plt.plot(range(epochs), history_dict["accuracy"], label="accurancy")
-    plt.plot(range(epochs), history_dict["val_loss"], label="val_loss")
-    plt.plot(range(epochs), history_dict["val_accuracy"], label="val_accuracy")
-    plt.legend()
-    plt.grid()
-    plt.savefig(qubit_dir / "NN_training.pdf")
->>>>>>> 7dfd80bdfed9f82196afa9372ce85c600669e713
 
     start = time.time()
     loss_and_metrics = neural_network.evaluate(x_test, y_test)
     stop = time.time()
-<<<<<<< HEAD
     classification_time = stop - start 
-=======
-    classification_time = stop - start
-    print("NN trainig")
-    print("classification time per item:", classification_time / len(x_test))
-    print("Loss = ", loss_and_metrics[0])
-    print("Accuracy = ", loss_and_metrics[1])
->>>>>>> 7dfd80bdfed9f82196afa9372ce85c600669e713
 
     y_pred = np.round(neural_network.predict(x_test))
     confusion_matrices = []
@@ -510,7 +426,6 @@ def classify_qubit(qubit, save_dir=pathlib.Path.cwd()):
     plt.xscale("log")
     plt.savefig(qubit_dir / "benchmarks.pdf")
 
-<<<<<<< HEAD
     nn = KerasClassifier(neural_network)
     cm = plt.cm.RdBu
     cm_bright = ListedColormap(["#FF0000", "#0000FF"])
@@ -522,77 +437,6 @@ def classify_qubit(qubit, save_dir=pathlib.Path.cwd()):
     plot_roc_curves(models_name, models, x_test, y_test, qubit_dir)
     plt.close('all')
     
-=======
-    from sklearn.metrics import RocCurveDisplay
-
-    nn = KerasClassifier(neural_network)
-    cm = plt.cm.RdBu
-    cm_bright = ListedColormap(["#FF0000", "#0000FF"])
-    models = [nn, svm, naive_bayes, linear_svm, gaussian, random_forest, ada_boost]
-    models_name = [
-        "Neural Network",
-        "RBF SVM",
-        "Naive Bayes",
-        "Linear SVM",
-        "Gaussian Process",
-        "Random Forest",
-        "Ada Boost",
-    ]
-    i = 1
-    figure = plt.figure(figsize=(20, 8))
-    for name, clf in zip(models_name, models):
-        ax = plt.subplot(1, len(models_name), i)
-        clf.fit(x_train, y_train)
-        score = clf.score(x_test, y_test)
-        DecisionBoundaryDisplay.from_estimator(
-            clf, x_train, cmap=cm, alpha=0.8, ax=ax, eps=0.5
-        )
-        ax.scatter(
-            x_test[:, 0],
-            x_test[:, 1],
-            c=y_test,
-            cmap=cm_bright,
-            edgecolors="k",
-        )
-
-        ax.set_xticks(())
-        ax.set_yticks(())
-        ax.set_title(name)
-        i += 1
-    plt.savefig(qubit_dir / "results.pdf")
-
-    figure = plt.figure(figsize=(30, 5))
-    for i, conf_matrix in enumerate(confusion_matrices):
-        ax = plt.subplot(1, len(models_name), i + 1)
-        sns.heatmap(
-            conf_matrix, annot=True, xticklabels=["P", "N"], yticklabels=["P", "N"]
-        )
-        ax.set_title(models_name[i])
-
-    plt.savefig(qubit_dir / "confusion_matrices.pdf")
-
-    figure = plt.figure(figsize=(30, 5))
-    i = 0
-    for name, clf in zip(models_name, models):
-        ax = plt.subplot(1, len(models_name), i + 1)
-        plt.subplot(1, len(models_name), i + 1)
-        RocCurveDisplay.from_estimator(
-            clf,
-            x_test,
-            y_test,
-            ax=ax,
-            color="darkorange",
-        )
-        plt.plot([0, 1], [0, 1], "k--", label="chance level (AUC = 0.5)")
-        plt.axis("square")
-        plt.xlabel("False Positive Rate")
-        plt.ylabel("True Positive Rate")
-        plt.title(f"{name}")
-        plt.legend()
-        i += 1
-
-    plt.savefig(qubit_dir / "ROC_curves.pdf")
->>>>>>> 7dfd80bdfed9f82196afa9372ce85c600669e713
 
 
 if __name__ == "__main__":
