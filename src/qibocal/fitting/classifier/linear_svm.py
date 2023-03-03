@@ -3,8 +3,8 @@ from sklearn.svm import SVC
 from . import utils
 
 
-def constructor(**_hyperpars):
-    return SVC(kernel="linear", C=0.025)
+def constructor(**hyperpars):
+    return SVC(kernel="linear", C=0.025).set_params(**hyperpars)
 
 
 def hyperopt(_x_train, _y_train, _path):

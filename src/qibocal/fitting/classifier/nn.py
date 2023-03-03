@@ -1,8 +1,12 @@
+import json
+import pathlib
+
 import keras_tuner as kt
 from keras import backend as K
-from keras import optimizers
+from keras import callbacks, optimizers
 from keras.layers import Dense, Layer, Normalization
 from keras.models import Sequential
+from matplotlib import pyplot as plt
 
 
 class RBFLayer(Layer):
@@ -91,7 +95,7 @@ def hyperopt(x_train, y_train, path):
     )
     tuner.search_space_summary()
 
-    stop_early = keras.callbacks.EarlyStopping(monitor="val_accuracy", patience=10)
+    stop_early = callbacks.EarlyStopping(monitor="val_accuracy", patience=10)
 
     tuner.search(
         x_train, y_train, epochs=120, validation_split=0.2, callbacks=[stop_early]

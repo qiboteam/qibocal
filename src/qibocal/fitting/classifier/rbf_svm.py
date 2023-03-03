@@ -19,7 +19,7 @@ def hyperopt(x_train, y_train, _path):
 
 
 def constructor(**hyperpars):
-    return SVC(gamma="auto", **hyperpars)
+    return SVC(gamma="auto", **hyperpars).set_params(**hyperpars)
 
 
 normalize = utils.scikit_normalize

@@ -24,13 +24,13 @@ from . import (
 
 
 class Classifiers(enum.Enum):
-    nn = nn
     linear_svm = linear_svm
     naive_bayes = naive_bayes
     rbf_svm = rbf_svm
     ada_boost = ada_boost
-    gaussian_process = gaussian_process
     random_forest = random_forest
+    gaussian_process = gaussian_process
+    nn = nn
 
 
 HYPERFILE = "hyperpars.json"
@@ -90,7 +90,7 @@ class Classifier:
         return cls.load_model(name, base_dir)
 
     def dump_hyper(self, hyperpars):
-        self.hyperfile.write_text(json.dumps(hyperpars), encoding="utf-8")
+        self.hyperfile.write_text(json.dumps(hyperpars, default=str), encoding="utf-8")
 
     def load_hyper(self):
         return json.loads(self.hyperfile.load_text(encoding="utf-8"))
@@ -127,8 +127,9 @@ def benchmarking(model, x_train, y_train, x_test, y_test, fit_kwargs=None):
     return results, y_pred, fit_info
 
 
-def plot_history(epochs, history, save_dir):
+def plot_history(history, save_dir):
     history_dict = history.history
+    epochs = history_dict["loss"]
     plt.figure(figsize=(14, 7))
     plt.plot(range(epochs), history_dict["loss"], label="loss")
     plt.plot(range(epochs), history_dict["accuracy"], label="accurancy")
@@ -140,7 +141,7 @@ def plot_history(epochs, history, save_dir):
     json.dump(history_dict, open(save_dir / "NN_history.json", "w"))
 
 
-def train_qubit(data_path, base_dir: pathlib.Path, qubit, filter=None):
+def train_qubit(data_path, base_dir: pathlib.Path, qubit, classifiers=None):
     nn_epochs = 200
     nn_val_split = 0.2
     qubit_dir = base_dir / f"qubit{qubit}"
@@ -152,17 +153,16 @@ def train_qubit(data_path, base_dir: pathlib.Path, qubit, filter=None):
     results_list = []
     # conf_matrices = []
 
-    if filter is None:
-        cls = [i.value for i in Classifiers]
-    else:
-        cls = filter
+    if classifiers is None:
+        classifiers = [i.value for i in Classifiers]
 
-    for mod in cls:
+    for mod in classifiers:
         classifier = Classifier(mod, qubit_dir)
         classifier.savedir.mkdir()
+        print(classifier.name)
         hyperpars = classifier.hyperopt(x_train, y_train, classifier.savedir)
-        classifier.dump_hyper(hyperpars)
         print(hyperpars)
+        classifier.dump_hyper(hyperpars)
         model = classifier.create_model(hyperpars)
         models.append(model)
 
@@ -176,7 +176,7 @@ def train_qubit(data_path, base_dir: pathlib.Path, qubit, filter=None):
                 epochs=nn_epochs,
                 validation_split=nn_val_split,
             )
-            plot_history(nn_epochs, fit_info, classifier.savedir)
+            plot_history(fit_info, classifier.savedir)
         else:
             results, y_pred, _ = benchmarking(model, x_train, y_train, x_test, y_test)
 
@@ -185,7 +185,6 @@ def train_qubit(data_path, base_dir: pathlib.Path, qubit, filter=None):
         # conf_matrices.append(confusion_matrix(y_test, y_pred, normalize="true"))
 
         dump_preds(y_pred, classifier.savedir)
-        print(classifier.name)
 
     benchmarks_table = pd.DataFrame([asdict(res) for res in results_list])
     return benchmarks_table, y_test
