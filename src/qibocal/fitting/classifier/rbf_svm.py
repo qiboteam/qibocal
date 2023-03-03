@@ -3,8 +3,9 @@ from sklearn.model_selection import GridSearchCV, RepeatedStratifiedKFold
 from sklearn.svm import SVC
 from . import utils 
 
-def hyperopt(x_train,y_train, _path):
-    clf = SVC(gamma='auto')
+
+def hyperopt(x_train, y_train, _path):
+    clf = SVC(gamma="auto")
 
     cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=3, random_state=1)
     space = dict()
@@ -15,7 +16,9 @@ def hyperopt(x_train,y_train, _path):
 
     return search.best_params_
 
+
 def constructor(**hyperpars):
-    return SVC(gamma = 'auto', **hyperpars)
+    return SVC(gamma="auto", **hyperpars)
+
 
 normalize = utils.scikit_normalize

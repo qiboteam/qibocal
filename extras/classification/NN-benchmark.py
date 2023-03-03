@@ -18,6 +18,7 @@ from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
 from sklearn.inspection import DecisionBoundaryDisplay
+
 <<<<<<< HEAD
 =======
 
@@ -140,7 +141,7 @@ def model_builder(hp):
     return model
 
 <<<<<<< HEAD
-# Random search 
+# Random search
 =======
 <<<<<<< HEAD
 # Random search
@@ -318,7 +319,7 @@ def classify_qubit(qubit, save_dir=pathlib.Path.cwd()):
     stop = time.time()
     training_time = stop - start
 <<<<<<< HEAD
-    
+
 =======
 <<<<<<< HEAD
 
@@ -329,7 +330,7 @@ def classify_qubit(qubit, save_dir=pathlib.Path.cwd()):
     loss_and_metrics = neural_network.evaluate(x_test, y_test)
     stop = time.time()
 <<<<<<< HEAD
-    classification_time = stop - start 
+    classification_time = stop - start
 =======
 <<<<<<< HEAD
     classification_time = stop - start
@@ -472,7 +473,7 @@ def classify_qubit(qubit, save_dir=pathlib.Path.cwd()):
     plot_roc_curves(models_name, models, x_test, y_test, qubit_dir)
     plt.close('all')
 <<<<<<< HEAD
-    
+
 =======
 
 =======
