@@ -83,12 +83,13 @@ def hypermodel(hp):
 
 
 def hyperopt(x_train, y_train, path):
-    tuner = kt.Hyperband(hypermodel,
-                    objective='val_accuracy',
-                    max_epochs=150,
-                    directory = path, 
-                    project_name = "NNmodel"
-                    )
+    tuner = kt.Hyperband(
+        hypermodel,
+        objective="val_accuracy",
+        max_epochs=150,
+        directory=path,
+        project_name="NNmodel",
+    )
     tuner.search_space_summary()
 
     stop_early = tf.keras.callbacks.EarlyStopping(monitor="val_accuracy", patience=10)
@@ -102,7 +103,8 @@ def hyperopt(x_train, y_train, path):
 
     return best_hps.get_config()
 
-def constructor(hyperpars,qubit_dir):
+
+def constructor(hyperpars, qubit_dir):
     best_hps = kt.HyperParameters.from_config(hyperpars)
     tuner = kt.Hyperband(
         hypermodel,

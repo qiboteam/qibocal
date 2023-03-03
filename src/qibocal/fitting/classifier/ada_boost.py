@@ -2,7 +2,8 @@ import numpy as np
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.model_selection import GridSearchCV, RepeatedStratifiedKFold
 
-def hyperopt(x_train,y_train, _path):
+
+def hyperopt(x_train, y_train, _path):
     clf = AdaBoostClassifier()
     cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=3, random_state=1)
     space = dict()
@@ -17,5 +18,6 @@ def hyperopt(x_train,y_train, _path):
 
 def constructor(hyperpars):
     return AdaBoostClassifier().set_params(**hyperpars)
+
 
 normalize = utils.scikit_normalize
