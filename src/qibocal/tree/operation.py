@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Callable
+from typing import Callable, NewType
 
 
 @dataclass
@@ -30,6 +30,8 @@ def _command_3(*args):
 
 
 command_3 = Routine(_command_3)
+
+OperationId = NewType("OperationId", str)
 
 
 class Operation(Enum):

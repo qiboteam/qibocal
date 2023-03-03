@@ -1,8 +1,10 @@
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, NewType, Optional, Union
 
 import yaml
 from pydantic.dataclasses import dataclass
+
+from .operation import OperationId
 
 MAX_PRIORITY = int(1e9)
 """A number bigger than whatever will be manually typed.
@@ -11,15 +13,17 @@ But not so insanely big not to fit in a native integer.
 
 """
 
+Id = NewType("Id", str)
+
 
 @dataclass
 class Action:
-    id: str
-    operation: Optional[str] = None
-    main: Optional[str] = None
-    next: Optional[Union[List[str], str]] = None
+    id: Id
+    operation: Optional[OperationId] = None
+    main: Optional[Id] = None
+    next: Optional[Union[List[Id], Id]] = None
     priority: Optional[int] = None
-    pars: Optional[Dict[str, Any]] = None
+    parameters: Optional[Dict[str, Any]] = None
 
     def __post_init__(self):
         if self.next is None:

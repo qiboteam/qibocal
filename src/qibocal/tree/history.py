@@ -10,12 +10,6 @@ class Completed:
     output: Output
 
 
-@dataclass
-class History:
-    steps: List[Completed]
-
-    def record(self, task: Task, output: Output):
-        completed = Completed(task, output)
-        self.steps.append(completed)
-
+class History(List[Completed]):
+    pass
     # TODO: implemet time_travel()

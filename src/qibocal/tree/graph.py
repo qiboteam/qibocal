@@ -1,8 +1,9 @@
-from typing import List
+from typing import List, Optional
 
 import networkx as nx
 
-from qibocal.tree.runcard import Action
+from .runcard import Action, Id
+from .task import Task
 
 
 class Graph(nx.DiGraph):
@@ -15,16 +16,29 @@ class Graph(nx.DiGraph):
         dig = cls()
 
         for action in actions:
-            dig.add_node(action.id, action=action)
+            dig.add_node(action.id, task=Task(action))
 
-        for node, data in dig.nodes.items():
-            action: Action = data["action"]
+        for task in dig.tasks():
+            if task.main is not None:
+                dig.add_edge(task.id, task.main, main=True)
 
-            if action.main is not None:
-                dig.add_edge(node, action.main, main=True)
-
-            assert action.next is not None
-            for succ in action.next:
-                dig.add_edge(node, succ)
+            for succ in task.next:
+                dig.add_edge(task.id, succ)
 
         return dig
+
+    @property
+    def start(self) -> Id:
+        for task in self.tasks():
+            if task.priority is 0:
+                return task.id
+
+        raise RuntimeError()
+
+    def task(self, id: Id) -> Task:
+        return self.nodes[id]["task"]
+
+    def tasks(self):
+        for node, data in self.nodes.items():
+            task: Task = data["task"]
+            yield task
