@@ -1,20 +1,19 @@
-import numpy as np 
-from sklearn.model_selection import RepeatedStratifiedKFold
+import numpy as np
 from sklearn.ensemble import AdaBoostClassifier
-from sklearn.model_selection import GridSearchCV
-from . import utils 
+from sklearn.model_selection import GridSearchCV, RepeatedStratifiedKFold
 
 def hyperopt(x_train,y_train, _path):
     clf = AdaBoostClassifier()
     cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=3, random_state=1)
     space = dict()
-    space['n_estimators'] = np.linspace(10,200,num = 20).astype('int')
-    space['learning_rate'] = np.linspace(0.1,1,num = 10)
-    space['algorithm'] = ['SAMME', 'SAMME.R']
-    search = GridSearchCV(clf, space, scoring='accuracy', n_jobs=-1, cv=cv)
+    space["n_estimators"] = np.linspace(10, 200, num=20).astype("int")
+    space["learning_rate"] = np.linspace(0.1, 1, num=10)
+    space["algorithm"] = ["SAMME", "SAMME.R"]
+    search = GridSearchCV(clf, space, scoring="accuracy", n_jobs=-1, cv=cv)
     _ = search.fit(x_train, y_train)
 
     return search.best_params_
+
 
 def constructor(hyperpars):
     return AdaBoostClassifier().set_params(**hyperpars)
