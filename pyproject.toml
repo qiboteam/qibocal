@@ -29,6 +29,7 @@ sphinxcontrib-bibtex = { version = "^2.4.1", optional = true }
 recommonmark = { version = "^0.7.1", optional = true }
 sphinx_markdown_tables = { version = "^0.0.17", optional = true }
 networkx = "^3.0"
+pydantic = "^1.10.5"
 
 [tool.poetry.group.test]
 optional = true
