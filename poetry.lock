@@ -544,6 +544,25 @@ files = [
 ]
 
 [[package]]
+name = "devtools"
+version = "0.10.0"
+description = "Python's missing debug print command, and more."
+category = "dev"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "devtools-0.10.0-py3-none-any.whl", hash = "sha256:b0bc02043bb032cdfb93e227226e2fea1aaea8f5a31fca25fabc4eadca22f228"},
+    {file = "devtools-0.10.0.tar.gz", hash = "sha256:6eb7c4fa7c4b90e5cfe623537a9961d1dc3199d8be0981802c6931cd8f02418f"},
+]
+
+[package.dependencies]
+asttokens = ">=2.0.0,<3.0.0"
+executing = ">=1.1.1"
+
+[package.extras]
+pygments = ["pygments (>=2.2.0)"]
+
+[[package]]
 name = "docutils"
 version = "0.19"
 description = "Docutils -- Python Documentation Utilities"
@@ -2598,4 +2617,4 @@ docs = ["Sphinx", "furo", "recommonmark", "sphinx_markdown_tables", "sphinxcontr
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8, <4"
-content-hash = "dbf81191862622e3b824f663655b1785feafa2698c9c7de4d0bc8e872d19b550"
+content-hash = "c4ed94067cbce36aca17671fa3350184981f34a2b777873f4c1ff98620c20452"
