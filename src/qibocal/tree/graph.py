@@ -30,7 +30,7 @@ class Graph(nx.DiGraph):
     @property
     def start(self) -> Id:
         for task in self.tasks():
-            if task.priority is 0:
+            if task.priority == 0:
                 return task.id
 
         raise RuntimeError()
