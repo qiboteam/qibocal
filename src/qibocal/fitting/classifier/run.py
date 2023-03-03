@@ -3,7 +3,7 @@ import json
 import pathlib
 import time
 from dataclasses import asdict, dataclass
-from typing import Any, Optional
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -24,10 +24,13 @@ from . import (
 
 
 class Classifiers(enum.Enum):
-    # nn = nn
+    nn = nn
     linear_svm = linear_svm
     naive_bayes = naive_bayes
     rbf_svm = rbf_svm
+    ada_boost = ada_boost
+    gaussian_process = gaussian_process
+    random_forest = random_forest
 
 
 HYPERFILE = "hyperpars.json"
@@ -137,7 +140,7 @@ def plot_history(epochs, history, save_dir):
     json.dump(history_dict, open(save_dir / "NN_history.json", "w"))
 
 
-def train_qubit(data_path, base_dir: pathlib.Path, qubit):
+def train_qubit(data_path, base_dir: pathlib.Path, qubit, filter=None):
     nn_epochs = 200
     nn_val_split = 0.2
     qubit_dir = base_dir / f"qubit{qubit}"
@@ -147,10 +150,14 @@ def train_qubit(data_path, base_dir: pathlib.Path, qubit):
     x_train, y_train, x_test, y_test = data.generate_models(qubit_data)
     models = []
     results_list = []
-    conf_matrices = []
+    # conf_matrices = []
 
-    for modvariant in Classifiers:
-        mod = modvariant.value
+    if filter is None:
+        cls = [i.value for i in Classifiers]
+    else:
+        cls = filter
+
+    for mod in cls:
         classifier = Classifier(mod, qubit_dir)
         classifier.savedir.mkdir()
         hyperpars = classifier.hyperopt(x_train, y_train, classifier.savedir)
@@ -175,12 +182,13 @@ def train_qubit(data_path, base_dir: pathlib.Path, qubit):
 
         results.name = classifier.name
         results_list.append(results)
-        conf_matrices.append(confusion_matrix(y_test, y_pred, normalize="true"))
+        # conf_matrices.append(confusion_matrix(y_test, y_pred, normalize="true"))
 
         dump_preds(y_pred, classifier.savedir)
+        print(classifier.name)
 
     benchmarks_table = pd.DataFrame([asdict(res) for res in results_list])
-    return benchmarks_table
+    return benchmarks_table, y_test
 
 
 def dump_preds(y_pred, dir_path):
