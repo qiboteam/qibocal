@@ -35,15 +35,20 @@ class Executor:
         candidates = []
 
         if task.main is not None:
+            # main task has always more priority on its own, with respect to
+            # same with the same level
             candidates.append(self.graph.task(task.main))
-        candidates.extend(task.next)
+        # add all possible successors to the list of candidates
+        candidates.extend([self.graph.task(id) for id in task.next])
 
         candidates = list(filter(lambda t: self.available(t), candidates))
 
         if len(candidates) == 0:
             return None
 
+        # sort accord to priority
         candidates.sort(key=lambda t: -t.priority)
+        # TODO: append missing successors to the list of
         return candidates[0].id
 
     @property

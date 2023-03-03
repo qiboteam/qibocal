@@ -25,7 +25,7 @@ class TestCard:
 
 @pytest.mark.parametrize("card", cards.glob("*.yaml"))
 def test_execution(card: pathlib.Path):
-    if "vertical" not in card.name:
+    if card.stem not in ["vertical", "horizontal"]:
         # TODO: implement the secondary pointers mechanism
         return
 

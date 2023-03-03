@@ -2,19 +2,15 @@ runcard:
   actions:
     - id: start
       priority: 0
-      next: [thread-0-1, thread-1-1, thread-2-1]
-    - id: thread-0-1
-      priority: 0
-      next: thread-0-2
-    - id: thread-0-2
-      priority: 0
-    - id: thread-1-1
-      priority: 100
-    - id: thread-2-1
-      priority: 200
-      next: thread-2-2
-    - id: thread-2-2
-      priority: 200
+      next: a1
+    - id: a1
+      priority: 10
+      next: a2
+    - id: a2
+      priority: 10
+      next: a3
+    - id: a3
+      priority: 20
 
 validation:
-  result: [start, thread-0-1, thread-0-2, thread-1-1, thread-2-1, thread-2-2]
+  result: [start, a1, a2, a3]
