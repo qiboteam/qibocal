@@ -2,7 +2,6 @@ import pathlib
 from typing import List
 
 import yaml
-from devtools import debug
 from pydantic.dataclasses import dataclass
 from pydantic.json import pydantic_encoder
 
@@ -28,4 +27,6 @@ def test_execution():
         testcard = TestCard(**yaml.safe_load(card.read_text(encoding="utf-8")))
         executor = Executor.load(pydantic_encoder(testcard.runcard))
         executor.run()
-        debug(executor)
+        #  __import__("devtools").debug(
+        #  executor, executor.graph.nodes, executor.graph.edges
+        #  )
