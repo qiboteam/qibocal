@@ -1,0 +1,16 @@
+runcard:
+  actions:
+    - id: start
+      priority: 0
+      main: first
+    - id: first
+      priority: 100
+      main: second
+    - id: second
+      priority: 200
+      main: third
+    - id: third
+      priority: 300
+
+validation:
+  result: [start, first, second, third]

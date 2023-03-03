@@ -1,16 +1,16 @@
-actions:
-  - id: start
-    priority: 0
-    next: [first, second]
-  - id: first
-    priority: 100
-    next: [third]
-  - id: second
-    priority: 200
-    next: [third]
-  - id: third
-    priority: 300
+runcard:
+  actions:
+    - id: start
+      priority: 0
+      next: [first, second]
+    - id: first
+      priority: 100
+      next: [third]
+    - id: second
+      priority: 200
+      next: [third]
+    - id: third
+      priority: 300
 
-# ---
-# Not part of an actual runcard
-result: [start, first, second, third]
+validation:
+  result: [start, first, second, third]
