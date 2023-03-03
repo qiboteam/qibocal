@@ -17,7 +17,14 @@ class Graph(nx.DiGraph):
         for action in actions:
             dig.add_node(action.id, action=action)
 
-        for node in dig.nodes:
-            __import__("pdb").set_trace()
+        for node, data in dig.nodes.items():
+            action: Action = data["action"]
+
+            if action.main is not None:
+                dig.add_edge(node, action.main, main=True)
+
+            assert action.next is not None
+            for succ in action.next:
+                dig.add_edge(node, succ)
 
         return dig
