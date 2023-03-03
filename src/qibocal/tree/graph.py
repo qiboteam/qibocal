@@ -1,4 +1,5 @@
 from typing import List
+
 import networkx as nx
 
 from qibocal.tree.runcard import Action
