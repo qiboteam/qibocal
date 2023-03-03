@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List
 
-from .task import Task, Output
+from .task import Output, Task
 
 
 @dataclass

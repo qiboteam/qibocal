@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-from .history import History
 from .graph import Graph
+from .history import History
 
 
 @dataclass
