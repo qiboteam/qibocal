@@ -1,8 +1,9 @@
 from abc import ABC
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Optional
 
 from .operation import Operation
+from .runcard import Action
 
 
 class Parameters(ABC):
@@ -22,16 +23,6 @@ class Output:  # TODO: write Output as abstract class
 
 
 @dataclass
-class Description:
-    id: str
-    operation: str
-    main: Optional[str] = None
-    next: Optional[List[str]] = None
-    priority: Optional[int] = None
-    pars: Optional[Dict[str, Any]] = None
-
-
-@dataclass
 class Task:
     id: str
     operation: Operation
@@ -40,11 +31,12 @@ class Task:
 
     @classmethod
     def load(cls, card: dict):
-        descr = Description(**card)
+        descr = Action(**card)
 
         return cls(
             id=descr.id,
-            operation=Operation[descr.id],
+            #  operation=Operation[descr.id],
+            operation=Operation.command_1,
             parameters=Parameters.load(descr.pars),
         )
 
