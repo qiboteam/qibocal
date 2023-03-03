@@ -1,15 +1,14 @@
 from abc import ABC
 from dataclasses import dataclass
-from enum import Enum
-from typing import Dict, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from .operation import Operation
 
 
 class Parameters(ABC):
     @classmethod
-    def load(cls):
-        pass
+    def load(cls, parameters):
+        return cls()
 
 
 class Update(ABC):
@@ -22,12 +21,14 @@ class Output:  # TODO: write Output as abstract class
     update: Update
 
 
-class Keywords(Enum):
-    id = "id"
-    operation = "operation"
-    main = "main"
-    next = "next"
-    priority = "priority"
+@dataclass
+class Description:
+    id: str
+    operation: str
+    main: Optional[str] = None
+    next: Optional[List[str]] = None
+    priority: Optional[int] = None
+    pars: Optional[Dict[str, Any]] = None
 
 
 @dataclass
@@ -38,29 +39,17 @@ class Task:
     output: Optional[Output] = None
 
     @classmethod
-    def load(cls, card: Dict[str, Union[str, int, float, list]]):
-        operation = card[Keywords.operation.value]
-        assert isinstance(operation, str)
-
-        id_ = card[Keywords.id.value]
-        assert isinstance(id_, str)
-
-        parameters = {}
-        for name, value in card:
-            if name in Keywords:
-                continue
-
-            parameters[name] = value
+    def load(cls, card: dict):
+        descr = Description(**card)
 
         return cls(
-            id=id_,
-            operation=Operation[operation],
-            parameters=Parameters.load(parameters),
+            id=descr.id,
+            operation=Operation[descr.id],
+            parameters=Parameters.load(descr.pars),
         )
 
-    def run(self) -> Output:
+    def run(self):
         self.output = Output(self.operation.value.routine(self.parameters), Update())
-        return Output
 
     def complete(self, completed_id):
         pass
