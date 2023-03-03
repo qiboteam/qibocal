@@ -21,9 +21,12 @@ class Executor:
         return cls(graph=Graph.from_actions(runcard.actions), history=History({}))
 
     def available(self, task: Task):
-        preds = self.graph.predecessors(task.id)
-        for pred in preds:
-            pass
+        for pred in self.graph.predecessors(task.id):
+            ptask = self.graph.task(pred)
+
+            if ptask.uid not in self.history:
+                return False
+
         return True
 
     def next(self) -> Optional[Id]:
@@ -33,9 +36,9 @@ class Executor:
 
         if task.main is not None:
             candidates.append(self.graph.task(task.main))
-        #  candidates.extend(task.next)
+        candidates.extend(task.next)
 
-        #  candidates = list(filter(lambda t: self.available(t), candidates))
+        candidates = list(filter(lambda t: self.available(t), candidates))
 
         if len(candidates) == 0:
             return None
@@ -56,5 +59,6 @@ class Executor:
 
             output = task.run()
             completed = Completed(task, output)
-            self.history[(task.id, task.time)] = completed
+            self.history.push(completed)
+
             self.pointer = self.next()

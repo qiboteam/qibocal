@@ -1,6 +1,7 @@
 import pathlib
 from typing import List
 
+import pytest
 import yaml
 from pydantic.dataclasses import dataclass
 from pydantic.json import pydantic_encoder
@@ -22,13 +23,17 @@ class TestCard:
     validation: Validation
 
 
-def test_execution():
-    for card in cards.glob("vertical.yaml"):
-        testcard = TestCard(**yaml.safe_load(card.read_text(encoding="utf-8")))
-        executor = Executor.load(pydantic_encoder(testcard.runcard))
-        executor.run()
+@pytest.mark.parametrize("card", cards.glob("*.yaml"))
+def test_execution(card: pathlib.Path):
+    if "vertical" not in card.name:
+        # TODO: implement the secondary pointers mechanism
+        return
 
-        assert testcard.validation.result == [step[0] for step in executor.history]
-        #  __import__("devtools").debug(
-        #  executor, executor.graph.nodes, executor.graph.edges
-        #  )
+    testcard = TestCard(**yaml.safe_load(card.read_text(encoding="utf-8")))
+    executor = Executor.load(pydantic_encoder(testcard.runcard))
+    executor.run()
+
+    assert testcard.validation.result == [step[0] for step in executor.history]
+    #  __import__("devtools").debug(
+    #  executor, executor.graph.nodes, executor.graph.edges
+    #  )

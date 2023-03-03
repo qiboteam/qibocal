@@ -26,7 +26,7 @@ class Output:
 @dataclass
 class Task:
     action: Action
-    time: int = 0
+    iteration: int = 0
 
     @classmethod
     def load(cls, card: dict):
@@ -37,6 +37,10 @@ class Task:
     @property
     def id(self):
         return self.action.id
+
+    @property
+    def uid(self):
+        return (self.action.id, self.iteration)
 
     @property
     def operation(self):
