@@ -1,7 +1,8 @@
 import numpy as np
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.model_selection import GridSearchCV, RepeatedStratifiedKFold
-from . import utils 
+
+from . import utils
 
 
 def hyperopt(x_train, y_train, _path):

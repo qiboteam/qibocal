@@ -1,7 +1,8 @@
 import numpy as np
 from sklearn.model_selection import GridSearchCV, RepeatedStratifiedKFold
 from sklearn.svm import SVC
-from . import utils 
+
+from . import utils
 
 
 def hyperopt(x_train, y_train, _path):

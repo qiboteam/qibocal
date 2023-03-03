@@ -7,6 +7,7 @@ from . import utils
 def constructor(_hyperparams):
     return GaussianProcessClassifier(1.0 * RBF(1.0))
 
+
 def hyperopt(_x_train, _y_train, _path):
     return {}
 
