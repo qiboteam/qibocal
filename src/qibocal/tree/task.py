@@ -59,7 +59,7 @@ class Task:
         )
 
     def run(self) -> Output:
-        self.output = Output(self.operation.value.routine(self.parameters))
+        self.output = Output(self.operation.value.routine(self.parameters), Update())
         return Output
 
     def complete(self, completed_id):
