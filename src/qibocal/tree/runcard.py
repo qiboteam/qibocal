@@ -1,5 +1,7 @@
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
+import yaml
 from pydantic.dataclasses import dataclass
 
 
@@ -16,7 +18,19 @@ class Action:
         if isinstance(self.next, str):
             self.next = [self.next]
 
+    def __hash__(self) -> int:
+        return hash(self.id)
+
 
 @dataclass
 class Runcard:
     actions: List[Action]
+
+    @classmethod
+    def load(cls, card: Union[dict, Path]):
+        content = (
+            yaml.safe_load(card.read_text(encoding="utf-8"))
+            if isinstance(card, Path)
+            else card
+        )
+        return cls(**content)
