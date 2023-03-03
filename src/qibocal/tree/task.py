@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Dict, Optional, Union
 
-from operation import Operation
+from .operation import Operation
 
 
 class Parameters(ABC):
@@ -63,8 +63,4 @@ class Task:
         return Output
 
     def complete(self, completed_id):
-        # This function takes the ID of a completed Task
-        # and updates the requirements
-
-        if completed_id in self._requirements.keys():
-            self._requirements[completed_id] = True
+        pass
