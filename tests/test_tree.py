@@ -28,7 +28,7 @@ def test_execution():
         executor = Executor.load(pydantic_encoder(testcard.runcard))
         executor.run()
 
-        assert testcard.validation.result == [step.task.id for step in executor.history]
+        assert testcard.validation.result == [step[0] for step in executor.history]
         #  __import__("devtools").debug(
         #  executor, executor.graph.nodes, executor.graph.edges
         #  )

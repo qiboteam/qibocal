@@ -1,6 +1,8 @@
 from dataclasses import dataclass
-from typing import List
+from typing import Dict, Tuple
 
+
+from .runcard import Id
 from .task import Output, Task
 
 
@@ -10,6 +12,6 @@ class Completed:
     output: Output
 
 
-class History(List[Completed]):
+class History(Dict[Tuple[Id, int], Completed]):
     pass
     # TODO: implemet time_travel()

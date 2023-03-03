@@ -26,6 +26,7 @@ class Output:
 @dataclass
 class Task:
     action: Action
+    time: int = 0
 
     @classmethod
     def load(cls, card: dict):

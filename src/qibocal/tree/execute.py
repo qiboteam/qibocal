@@ -18,7 +18,13 @@ class Executor:
     def load(cls, card: Union[dict, Path]):
         runcard = Runcard.load(card)
 
-        return cls(graph=Graph.from_actions(runcard.actions), history=History([]))
+        return cls(graph=Graph.from_actions(runcard.actions), history=History({}))
+
+    def available(self, task: Task):
+        preds = self.graph.predecessors(task.id)
+        for pred in preds:
+            pass
+        return True
 
     def next(self) -> Optional[Id]:
         task: Task = self.current
@@ -27,6 +33,9 @@ class Executor:
 
         if task.main is not None:
             candidates.append(self.graph.task(task.main))
+        #  candidates.extend(task.next)
+
+        #  candidates = list(filter(lambda t: self.available(t), candidates))
 
         if len(candidates) == 0:
             return None
@@ -43,7 +52,9 @@ class Executor:
         self.pointer = self.graph.start
 
         while self.pointer is not None:
-            output = self.current.run()
-            completed = Completed(self.current, output)
-            self.history.append(completed)
+            task = self.current
+
+            output = task.run()
+            completed = Completed(task, output)
+            self.history[(task.id, task.time)] = completed
             self.pointer = self.next()
