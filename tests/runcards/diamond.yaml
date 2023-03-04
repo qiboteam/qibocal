@@ -14,3 +14,5 @@ runcard:
 
 validation:
   result: [start, first, second, third]
+  description: |
+    basic example with branching and merging

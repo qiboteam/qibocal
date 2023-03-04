@@ -7,10 +7,12 @@ runcard:
       priority: 100
       main: second
     - id: second
-      priority: 200
       main: third
     - id: third
-      priority: 300
+      priority: 50
 
 validation:
   result: [start, first, second, third]
+  description: |
+    a "vertical" flow, defined by `main` keys
+    being linear, priority is irrelevant

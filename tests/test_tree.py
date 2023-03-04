@@ -15,6 +15,7 @@ cards = pathlib.Path(__file__).parent / "runcards"
 @dataclass
 class Validation:
     result: List[str]
+    description: str
 
 
 @dataclass

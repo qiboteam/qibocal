@@ -48,3 +48,5 @@ validation:
     - chevron
     - 2q-gate-landscape
     - randomized-benchmarking
+  description: |
+    autocalibration normal flow

@@ -2,15 +2,34 @@ runcard:
   actions:
     - id: start
       priority: 0
-      main: first
-    - id: first
+      next: [b1, b2, b3]
+    - id: b1
       priority: 100
-      main: second
-    - id: second
+      next: [b1-1, b1-2]
+    - id: b1-1
+      priority: 1100
+    - id: b1-2
       priority: 200
-      main: third
-    - id: third
+      next: b1-2-1
+    - id: b1-2-1
+      priority: 200
+    - id: b2
       priority: 300
+      next: b2-1
+    - id: b2-1
+      priority: 2000
+    - id: b3
+      priority: 200
 
 validation:
-  result: [start, first, second, third]
+  result: [start, b1, b1-2, b1-2-1, b3, b2, b2-1, b1-1]
+  description: |
+    two main principles are clearly enforced:
+    - execution always prefers local threads, so, for as long as it possible to
+      follow a single linear sequence, it is done, despite a possible extremely
+      low preference of successors
+    - when the current thread reaches its end, only priority is used to resume
+      the open branches (locality, intended as scope, is used as tie breaker)
+
+    this example intentionally focuses on branching and priority, while no
+    merge is involved
