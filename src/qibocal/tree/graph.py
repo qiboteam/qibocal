@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Dict, List, Set, Tuple
 
 import networkx as nx
 
@@ -42,3 +42,29 @@ class Graph(nx.DiGraph):
         for node, data in self.nodes.items():
             task: Task = data["task"]
             yield task
+
+    def draw(self, ax=None):
+        from networkx.drawing.nx_pydot import graphviz_layout
+
+        rawpos = graphviz_layout(self, prog="dot")
+        assert rawpos is not None
+
+        priorities = sorted([t.priority for t in self.tasks()])
+        xs = [p[1] for p in rawpos.values()]
+        length = max(xs) - min(xs)
+
+        ys: Dict[float, Set[float]] = {}
+        pos: Dict[Id, Tuple[float, float]] = {}
+        for id, (x, y) in rawpos.items():
+            depth = -priorities.index(self.task(id).priority)
+            if x in ys:
+                if depth in ys[x]:
+                    depth = min(ys[x]) - 0.2
+                ys[x].add(depth)
+            else:
+                ys[x] = {depth}
+
+            newx = x + len(ys[x]) * length / 10
+            pos[id] = (newx, depth)
+
+        nx.draw(self, pos=pos, with_labels=True, ax=ax)
