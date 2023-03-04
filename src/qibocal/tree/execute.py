@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 from .graph import Graph
 from .history import Completed, History
@@ -29,17 +29,24 @@ class Executor:
 
         return True
 
-    def next(self) -> Optional[Id]:
+    def successors(self):
         task: Task = self.current
 
-        candidates = []
-
+        candidates: List[Task] = []
         if task.main is not None:
             # main task has always more priority on its own, with respect to
             # same with the same level
             candidates.append(self.graph.task(task.main))
         # add all possible successors to the list of candidates
         candidates.extend([self.graph.task(id) for id in task.next])
+
+        return candidates
+
+    def next(self) -> Optional[Id]:
+        candidates = self.successors()
+
+        if len(candidates) == 0:
+            candidates.extend([])
 
         candidates = list(filter(lambda t: self.available(t), candidates))
 

@@ -5,6 +5,13 @@ from typing import List
 from .operation import Operation
 from .runcard import Action, Id
 
+MAX_PRIORITY = int(1e9)
+"""A number bigger than whatever will be manually typed.
+
+But not so insanely big not to fit in a native integer.
+
+"""
+
 
 class Parameters(ABC):
     @classmethod
@@ -55,12 +62,17 @@ class Task:
 
     @property
     def next(self) -> List[Id]:
-        assert self.action.next is not None
-        assert not isinstance(self.action.next, str)
+        if self.action.next is None:
+            return []
+        if isinstance(self.action.next, str):
+            return [self.action.next]
+
         return self.action.next
 
     @property
     def priority(self):
+        if self.action.priority is None:
+            return MAX_PRIORITY
         return self.action.priority
 
     @property
