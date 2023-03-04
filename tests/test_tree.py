@@ -26,15 +26,8 @@ class TestCard:
 
 @pytest.mark.parametrize("card", cards.glob("*.yaml"))
 def test_execution(card: pathlib.Path):
-    if card.stem not in ["vertical", "horizontal"]:
-        # TODO: implement the secondary pointers mechanism
-        return
-
     testcard = TestCard(**yaml.safe_load(card.read_text(encoding="utf-8")))
     executor = Executor.load(pydantic_encoder(testcard.runcard))
     executor.run()
 
     assert testcard.validation.result == [step[0] for step in executor.history]
-    #  __import__("devtools").debug(
-    #  executor, executor.graph.nodes, executor.graph.edges
-    #  )

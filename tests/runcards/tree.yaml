@@ -13,6 +13,9 @@ runcard:
       next: b1-2-1
     - id: b1-2-1
       priority: 200
+      next: b1-2-2
+    - id: b1-2-2
+      priority: 200
     - id: b2
       priority: 300
       next: b2-1
@@ -22,7 +25,7 @@ runcard:
       priority: 200
 
 validation:
-  result: [start, b1, b1-2, b1-2-1, b3, b2, b2-1, b1-1]
+  result: [start, b1, b1-2, b1-2-1, b1-2-2, b3, b2, b2-1, b1-1]
   description: |
     two main principles are clearly enforced:
     - execution always prefers local threads, so, for as long as it possible to

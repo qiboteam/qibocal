@@ -12,6 +12,7 @@ runcard:
     - id: qubit-spectroscopy
       main: rabi
       priority: 300
+      next: [avoided-crossing] # TODO: replace with proper ones
     - id: rabi
       main: ramsey
       priority: 400
@@ -47,6 +48,6 @@ validation:
     - avoided-crossing
     - chevron
     - 2q-gate-landscape
-    - randomized-benchmarking
+    - randomized-benchmarking-2q
   description: |
     autocalibration normal flow
