@@ -6,8 +6,8 @@ import yaml
 from pydantic.dataclasses import dataclass
 from pydantic.json import pydantic_encoder
 
-from qibocal.tree.execute import Executor
-from qibocal.tree.runcard import Runcard
+from qibocal.auto.execute import Executor
+from qibocal.auto.runcard import Runcard
 
 cards = pathlib.Path(__file__).parent / "runcards"
 
