@@ -40,14 +40,14 @@ def time_msr(folder, routine, qubit, format):
         except:
             data_fit = Data(
                 quantities=[
+                    "T2",
+                    "drive_frequency",
+                    "delta_frequency",
                     "popt0",
                     "popt1",
                     "popt2",
                     "popt3",
                     "popt4",
-                    "label1",
-                    "label2",
-                    "label3",
                     "qubit",
                 ]
             )
@@ -128,9 +128,9 @@ def time_msr(folder, routine, qubit, format):
                     f"q{qubit}/r{report_n} | delta_frequency: {params['delta_frequency']:,.0f} Hz<br>"
                 )
                 + (
-                    f"q{qubit}/r{report_n} | corrected_qubit_frequency: {params['corrected_qubit_frequency']:,.0f} Hz<br>"
+                    f"q{qubit}/r{report_n} | drive_frequency: {params['drive_frequency']:,.0f} Hz<br>"
                 )
-                + (f"q{qubit}/r{report_n} | t2: {params['t2']:,.0f} ns.<br><br>")
+                + (f"q{qubit}/r{report_n} | t2: {params['T2']:,.0f} ns.<br><br>")
             )
         report_n += 1
 
