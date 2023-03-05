@@ -75,6 +75,14 @@ def G_f_d(x, p0, p1, p2):
     return np.sqrt(G)
 
 
+def freq_q_transmon(x, p0, p1, p2, p3):
+    # Current offset:                                      : p[0]
+    # 1/I_0, Phi0=Xi*I_0                                   : p[1]
+    # Junction asymmetry d                                 : p[2]
+    # f_q0 Qubit frequency at zero flux                    : p[3]
+    return p3 * G_f_d(x, p0, p1, p2)
+
+
 def freq_r_transmon(x, p0, p1, p2, p3, p4, p5):
     # Current offset:                                      : p[0]
     # 1/I_0, Phi0=Xi*I_0                                   : p[1]
