@@ -1,3 +1,4 @@
+"""Execution graph and navigation utilities."""
 from typing import Dict, List, Set, Tuple
 
 import networkx as nx
@@ -7,12 +8,26 @@ from .task import Task
 
 
 class Graph(nx.DiGraph):
+    """Execution graph."""
+
     @classmethod
     def load(cls, actions: List[dict]):
+        """Load graph from list of actions dump.
+
+        Useful to load the graph from its description in a runcard.
+
+        """
         return cls.from_actions([Action(**d) for d in actions])
 
     @classmethod
     def from_actions(cls, actions: List[Action]):
+        """Load graph from list of actions.
+
+        One node is added to the graph for each action, and the edges are
+        created to represent the execution normal flow, according to the
+        `action.main` and `action.next` attributes.
+
+        """
         dig = cls()
 
         for action in actions:
@@ -29,6 +44,16 @@ class Graph(nx.DiGraph):
 
     @property
     def start(self) -> Id:
+        """Retrieve the graph starting point.
+
+        Note that this method is potentially unsafe, since it is not checking
+        for the existence of multiple starting points (defined by a
+        `node.priority == 0` condition), and trust the graph to be a valid one.
+
+        To validate a graph for a single starting point check
+        :func:`qibocal.auto.validate.starting_point`.
+
+        """
         for task in self.tasks():
             if task.priority == 0:
                 return task.id
@@ -36,35 +61,11 @@ class Graph(nx.DiGraph):
         raise RuntimeError()
 
     def task(self, id: Id) -> Task:
+        """Retrieve a task from its identifier."""
         return self.nodes[id]["task"]
 
     def tasks(self):
+        """Iterate over all tasks in the graph."""
         for node, data in self.nodes.items():
             task: Task = data["task"]
             yield task
-
-    def draw(self, ax=None):
-        from networkx.drawing.nx_pydot import graphviz_layout
-
-        rawpos = graphviz_layout(self, prog="dot")
-        assert rawpos is not None
-
-        priorities = sorted([t.priority for t in self.tasks()])
-        xs = [p[1] for p in rawpos.values()]
-        length = max(xs) - min(xs)
-
-        ys: Dict[float, Set[float]] = {}
-        pos: Dict[Id, Tuple[float, float]] = {}
-        for id, (x, y) in rawpos.items():
-            depth = -priorities.index(self.task(id).priority)
-            if x in ys:
-                if depth in ys[x]:
-                    depth = min(ys[x]) - 0.2
-                ys[x].add(depth)
-            else:
-                ys[x] = {depth}
-
-            newx = x + len(ys[x]) * length / 10
-            pos[id] = (newx, depth)
-
-        nx.draw(self, pos=pos, with_labels=True, ax=ax)
