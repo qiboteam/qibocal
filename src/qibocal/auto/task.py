@@ -1,8 +1,8 @@
-from abc import ABC
+"""Action execution tracker."""
 from dataclasses import dataclass
 from typing import List
 
-from .operation import Operation
+from .operation import Operation, Parameters, Results
 from .runcard import Action, Id
 
 MAX_PRIORITY = int(1e9)
@@ -11,23 +11,6 @@ MAX_PRIORITY = int(1e9)
 But not so insanely big not to fit in a native integer.
 
 """
-
-
-class Parameters(ABC):
-    @classmethod
-    def load(cls, parameters):
-        return cls()
-
-
-class Update(ABC):
-    pass
-
-
-@dataclass
-class Output:
-    # TODO: write Output as abstract class
-    results: str
-    update: Update
 
 
 @dataclass
@@ -80,5 +63,5 @@ class Task:
         return Parameters.load(self.action.parameters)
 
     def run(self):
-        #  return Output(self.operation.routine(self.parameters), Update())
-        return Output("", Update())
+        #  return self.operation.routine(self.parameters), Update()
+        return Results()

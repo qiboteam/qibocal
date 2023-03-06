@@ -5,6 +5,7 @@ from typing import List, Optional, Set, Union
 from .graph import Graph
 from .history import Completed, History
 from .runcard import Id, Runcard
+from .status import Normal
 from .task import Task
 
 
@@ -80,7 +81,7 @@ class Executor:
             task = self.current
 
             output = task.run()
-            completed = Completed(task, output)
+            completed = Completed(task, output, Normal())
             self.history.push(completed)
 
             self.head = self.next()
