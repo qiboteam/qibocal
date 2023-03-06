@@ -1,3 +1,4 @@
+"""Test graph execution."""
 import pathlib
 from typing import List
 
@@ -14,7 +15,10 @@ cards = pathlib.Path(__file__).parent / "runcards"
 
 @dataclass
 class Validation:
+    """Values used to validate the result."""
+
     result: List[str]
+    """Asserted history."""
     description: str
 
 
@@ -26,6 +30,11 @@ class TestCard:
 
 @pytest.mark.parametrize("card", cards.glob("*.yaml"))
 def test_execution(card: pathlib.Path):
+    """Execute a set of example runcards.
+
+    The declared result is asserted to be the expected one.
+
+    """
     testcard = TestCard(**yaml.safe_load(card.read_text(encoding="utf-8")))
     executor = Executor.load(pydantic_encoder(testcard.runcard))
     executor.run()
