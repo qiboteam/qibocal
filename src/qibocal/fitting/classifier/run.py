@@ -181,9 +181,8 @@ def train_qubit(data_path, base_dir: pathlib.Path, qubit, classifiers=None):
         print(hyperpars)
         classifier.dump_hyper(hyperpars)
         model = classifier.create_model(hyperpars)
-        print("CIAOOOOOOO", model, classifier.name, nn)
+
         if classifier.name == "nn":
-            print("PROVAAAAAAAAAAAAAA")
             results, y_pred, model, fit_info = benchmarking(
                 model,
                 x_train,
@@ -198,7 +197,7 @@ def train_qubit(data_path, base_dir: pathlib.Path, qubit, classifiers=None):
             results, y_pred, model, _ = benchmarking(
                 model, x_train, y_train, x_test, y_test
             )
-        print("PPPPP", model)
+
         models.append(model)  # save trained model
         results.name = classifier.name
         results_list.append(results)
