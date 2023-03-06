@@ -40,7 +40,7 @@ def hypermodel(hp):
     activation = hp.Choice("activation", ["relu", "sigmoid", "tanh", "RBF"])
     learning_rate = hp.Float("learning_rate", min_value=1e-4, max_value=1e-2)
     optimizer_choice = hp.Choice("optimizer", ["Adam", "Adagrad", "SGD", "RMSprop"])
-    norm = hp.Boolean("add_normalisation")
+    norm = hp.Boolean("add_normalisation", default=True)
     losses = hp.Choice("losses", ["binary_crossentropy", "categorical_crossentropy"])
 
     model = Sequential()
@@ -107,15 +107,9 @@ def hyperopt(x_train, y_train, path):
     return best_hps.get_config()
 
 
-def constructor(hyperpars, qubit_dir):
+def constructor(hyperpars):
     best_hps = kt.HyperParameters.from_config(hyperpars)
-    tuner = kt.Hyperband(
-        hypermodel,
-        objective="val_accuracy",
-        max_epochs=150,
-        directory=qubit_dir,
-        project_name="NNmodel",
-    )
+    tuner = kt.Hyperband(hypermodel)
 
     return tuner.hypermodel.build(best_hps)
 

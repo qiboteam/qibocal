@@ -18,8 +18,8 @@ def hyperopt(x_train, y_train, _path):
     return search.best_params_
 
 
-def constructor(**hyperpars):
-    return SVC(gamma="auto", **hyperpars).set_params(**hyperpars)
+def constructor(hyperpars):
+    return SVC(gamma="auto").set_params(**hyperpars)
 
 
 normalize = utils.scikit_normalize

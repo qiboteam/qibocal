@@ -8,7 +8,7 @@ from typing import Optional
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import accuracy_score
 
 from . import (
     ada_boost,
@@ -21,6 +21,11 @@ from . import (
     random_forest,
     rbf_svm,
 )
+
+# TODO:  - plot models classifications
+#       - add Alvaro's method
+#       - check neural net
+#       - check ROC curves
 
 
 class Classifiers(enum.Enum):
@@ -96,7 +101,7 @@ class Classifier:
         return json.loads(self.hyperfile.load_text(encoding="utf-8"))
 
     def create_model(self, hyperpars):
-        return self.normalize(self.constructor(**hyperpars))
+        return self.normalize(self.constructor(hyperpars))
 
 
 @dataclass
@@ -107,29 +112,33 @@ class BenchmarkResults:
     name: Optional[str] = None
 
 
-def benchmarking(model, x_train, y_train, x_test, y_test, fit_kwargs=None):
-    if fit_kwargs is None:
-        fit_kwargs = {}
-
+def benchmarking(model, x_train, y_train, x_test, y_test, **fit_kwargs):
+    # if fit_kwargs is None:
+    #     fit_kwargs = {}
+    print("fit")
     start = time.time()
     fit_info = model.fit(x_train, y_train, **fit_kwargs)
     stop = time.time()
     training_time = stop - start
-    score = model.score(x_test, y_test)
-    print("Accuracy", score)
     start = time.time()
     y_pred = model.predict(x_test)
     stop = time.time()
     test_time = (stop - start) / len(x_test)
+    print(y_test)
+    print(y_pred)
+    y_pred = np.round(y_pred)
+    print(y_pred)
+    score = accuracy_score(y_test, y_pred)
+    print("Accuracy", score)
 
     results = BenchmarkResults(score, test_time, training_time)
 
-    return results, y_pred, fit_info
+    return results, y_pred, model, fit_info
 
 
-def plot_history(history, save_dir):
+def plot_history(history, save_dir: pathlib.Path):
     history_dict = history.history
-    epochs = history_dict["loss"]
+    epochs = len(history_dict["loss"])
     plt.figure(figsize=(14, 7))
     plt.plot(range(epochs), history_dict["loss"], label="loss")
     plt.plot(range(epochs), history_dict["accuracy"], label="accurancy")
@@ -137,6 +146,7 @@ def plot_history(history, save_dir):
     plt.plot(range(epochs), history_dict["val_accuracy"], label="val_accuracy")
     plt.legend()
     plt.grid()
+    print(save_dir)
     plt.savefig(save_dir / "NN_training.pdf")
     json.dump(history_dict, open(save_dir / "NN_history.json", "w"))
 
@@ -145,12 +155,16 @@ def train_qubit(data_path, base_dir: pathlib.Path, qubit, classifiers=None):
     nn_epochs = 200
     nn_val_split = 0.2
     qubit_dir = base_dir / f"qubit{qubit}"
-    qubit_dir.mkdir()
+    try:
+        qubit_dir.mkdir()
+    except:
+        print("folder already exists")
     qubit_data = data.load_qubit(data_path, qubit)
     data.plot_qubit(qubit_data, qubit_dir)
     x_train, y_train, x_test, y_test = data.generate_models(qubit_data)
     models = []
     results_list = []
+    names = []
     # conf_matrices = []
 
     if classifiers is None:
@@ -158,16 +172,19 @@ def train_qubit(data_path, base_dir: pathlib.Path, qubit, classifiers=None):
 
     for mod in classifiers:
         classifier = Classifier(mod, qubit_dir)
-        classifier.savedir.mkdir()
+        try:
+            classifier.savedir.mkdir()
+        except:
+            print("foler exists")
         print(classifier.name)
         hyperpars = classifier.hyperopt(x_train, y_train, classifier.savedir)
         print(hyperpars)
         classifier.dump_hyper(hyperpars)
         model = classifier.create_model(hyperpars)
-        models.append(model)
-
-        if model is nn:
-            results, y_pred, fit_info = benchmarking(
+        print("CIAOOOOOOO", model, classifier.name, nn)
+        if classifier.name == "nn":
+            print("PROVAAAAAAAAAAAAAA")
+            results, y_pred, model, fit_info = benchmarking(
                 model,
                 x_train,
                 y_train,
@@ -178,15 +195,21 @@ def train_qubit(data_path, base_dir: pathlib.Path, qubit, classifiers=None):
             )
             plot_history(fit_info, classifier.savedir)
         else:
-            results, y_pred, _ = benchmarking(model, x_train, y_train, x_test, y_test)
-
+            results, y_pred, model, _ = benchmarking(
+                model, x_train, y_train, x_test, y_test
+            )
+        print("PPPPP", model)
+        models.append(model)  # save trained model
         results.name = classifier.name
         results_list.append(results)
+        names.append(classifier.name)
+
         # conf_matrices.append(confusion_matrix(y_test, y_pred, normalize="true"))
 
         dump_preds(y_pred, classifier.savedir)
 
     benchmarks_table = pd.DataFrame([asdict(res) for res in results_list])
+    plots.plot_models_results(x_train, x_test, y_test, qubit_dir, models, names)
     return benchmarks_table, y_test
 
 

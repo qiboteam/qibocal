@@ -11,7 +11,10 @@ from qibocal.fitting.classifier import (
 
 data_path = Path("calibrate_qubit_states/data.csv")
 base_dir = Path("_results")
-base_dir.mkdir()
+try:
+    base_dir.mkdir()
+except:
+    print("folder already exists")
 qubit = 1
 qubit_dir = base_dir / f"qubit{qubit}"
 classifiers = [linear_svm]
@@ -20,3 +23,4 @@ run.dump_benchmarks_table(table, qubit_dir)
 plots.plot_table(table, qubit_dir)
 plots.plot_conf_matr(y_test, qubit_dir)
 plots.plot_roc_curves(y_test, qubit_dir)
+# plot.plot_models_results( x_train, x_test, y_test, base_dir, classifiers)

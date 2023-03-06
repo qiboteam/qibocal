@@ -18,7 +18,7 @@ def hyperopt(x_train, y_train, _path):
     return search.best_params_
 
 
-def constructor(**hyperpars):
+def constructor(hyperpars):
     return AdaBoostClassifier().set_params(**hyperpars)
 
 

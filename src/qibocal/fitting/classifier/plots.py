@@ -4,6 +4,8 @@ import pathlib
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
+from matplotlib.colors import ListedColormap
+from sklearn.inspection import DecisionBoundaryDisplay
 from sklearn.metrics import RocCurveDisplay, confusion_matrix, roc_curve
 
 from . import run
@@ -106,3 +108,42 @@ def plot_roc_curves(y_test, base_dir: pathlib.Path, classifiers=None):
         sort_keys=True,
         indent=4,
     )
+
+
+def plot_models_results(
+    x_train, x_test, y_test, base_dir, classifiers, classifiers_name
+):
+    i = 1
+    _figure = plt.figure(figsize=(20, 8))
+
+    len_list = len(classifiers)
+
+    for count, classifier in enumerate(classifiers):
+        # classifier = run.Classifier(model, base_dir)
+
+        ax = plt.subplot(3, len_list // 3 + 1, count + 1)
+
+        i, q = np.meshgrid(
+            np.linspace(x_train[:, 0].min(), x_train[:, 0].max(), num=200),
+            np.linspace(x_train[:, 1].min(), x_train[:, 1].max(), num=200),
+        )
+        grid = np.vstack([i.ravel(), q.ravel()]).T
+        y_pred = np.reshape(classifier.predict(grid), q.shape)
+        display = DecisionBoundaryDisplay(xx0=i, xx1=q, response=y_pred)
+
+        cm = plt.cm.RdBu
+        display.plot(cmap=cm, alpha=0.8, ax=ax, eps=0.5)
+        cm_bright = ListedColormap(["#FF0000", "#0000FF"])
+        ax.scatter(
+            x_test[:, 0],
+            x_test[:, 1],
+            c=y_test,
+            cmap=cm_bright,
+            edgecolors="k",
+        )
+
+        ax.set_xticks(())
+        ax.set_yticks(())
+        ax.set_title(classifiers_name[count])
+        print(base_dir)
+        plt.savefig(base_dir / "results.pdf")
