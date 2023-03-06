@@ -40,14 +40,14 @@ def time_msr(folder, routine, qubit, format):
         except:
             data_fit = Data(
                 quantities=[
+                    "T2",
+                    "drive_frequency",
+                    "delta_frequency",
                     "popt0",
                     "popt1",
                     "popt2",
                     "popt3",
                     "popt4",
-                    "label1",
-                    "label2",
-                    "label3",
                     "qubit",
                 ]
             )
