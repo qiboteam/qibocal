@@ -1,3 +1,4 @@
+"""Tasks execution."""
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional, Set, Union
@@ -11,18 +12,26 @@ from .task import Task
 
 @dataclass
 class Executor:
+    """Execute a tasks' graph and tracks its history."""
+
     graph: Graph
+    """The graph to be executed."""
     history: History
+    """The execution history, with results and exit states."""
     head: Optional[Id] = None
+    """The current position."""
     pending: Set[Id] = field(default_factory=set)
+    """The branched off tasks, not yet executed."""
 
     @classmethod
     def load(cls, card: Union[dict, Path]):
+        """Load execution graph and associated executor from a runcard."""
         runcard = Runcard.load(card)
 
         return cls(graph=Graph.from_actions(runcard.actions), history=History({}))
 
     def available(self, task: Task):
+        """Check if a task has all dependencies satisfied."""
         for pred in self.graph.predecessors(task.id):
             ptask = self.graph.task(pred)
 
@@ -32,6 +41,7 @@ class Executor:
         return True
 
     def successors(self, task: Task):
+        """Retrieve successors of a specified task."""
         succs: List[Task] = []
 
         if task.main is not None:
@@ -44,6 +54,18 @@ class Executor:
         return succs
 
     def next(self) -> Optional[Id]:
+        """Resolve the next task to be executed.
+
+        Returns `None` if the execution is completed.
+
+        .. todo::
+
+            consider transforming this into an iterator, and this could be its
+            `__next__` method, raising a `StopIteration` instead of returning
+            `None`.
+            it would be definitely more Pythonic...
+
+        """
         candidates = self.successors(self.current)
 
         if len(candidates) == 0:
@@ -71,10 +93,12 @@ class Executor:
 
     @property
     def current(self):
+        """Retrieve current task, associated to the `head` pointer."""
         assert self.head is not None
         return self.graph.task(self.head)
 
     def run(self):
+        """Actual execution."""
         self.head = self.graph.start
 
         while self.head is not None:
