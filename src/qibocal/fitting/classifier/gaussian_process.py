@@ -5,7 +5,6 @@ from . import utils
 
 
 def constructor(hyperparams):
-    print("ciao", hyperparams)
     return GaussianProcessClassifier(1.0 * RBF(1.0)).set_params(**hyperparams)
 
 

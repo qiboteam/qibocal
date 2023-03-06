@@ -49,7 +49,7 @@ def plot_conf_matr(y_test, base_dir: pathlib.Path, classifiers=None):
 
     plt.savefig(base_dir / "confusion_matrices.pdf")
     confusion_dic = {names[i]: matrices[i].tolist() for i in range(len(classifiers))}
-    print(confusion_dic)
+
     json.dump(
         confusion_dic,
         open(base_dir / "confusion_matrices.json", "w"),
@@ -100,7 +100,7 @@ def plot_roc_curves(y_test, base_dir: pathlib.Path, classifiers=None):
         plt.savefig(base_dir / "ROC_curves.pdf")
 
     roc_dict = {names[i]: [tprs[i].tolist(), fprs[i].tolist()] for i in range(len_list)}
-    print(roc_dict)
+
     json.dump(
         roc_dict,
         open(base_dir / "roc_curves.json", "w"),
@@ -132,7 +132,7 @@ def plot_models_results(
         display = DecisionBoundaryDisplay(xx0=i, xx1=q, response=y_pred)
 
         cm = plt.cm.RdBu
-        display.plot(cmap=cm, alpha=0.8, ax=ax, eps=0.5)
+        display.plot(cmap=cm, alpha=0.8, ax=ax)
         cm_bright = ListedColormap(["#FF0000", "#0000FF"])
         ax.scatter(
             x_test[:, 0],
@@ -145,5 +145,4 @@ def plot_models_results(
         ax.set_xticks(())
         ax.set_yticks(())
         ax.set_title(classifiers_name[count])
-        print(base_dir)
         plt.savefig(base_dir / "results.pdf")

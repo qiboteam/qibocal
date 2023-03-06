@@ -1042,8 +1042,8 @@ def calibrate_qubit_states_fit(data, x, y, nshots, qubits):
         iq_state1_translated = iq_state1 - origin
         rotation_angle = np.angle(np.mean(iq_state1_translated))
 
-        iq_state1_rotated = iq_state1 * np.exp(-1j * rotation_angle)
-        iq_state0_rotated = iq_state0 * np.exp(-1j * rotation_angle)
+        iq_state1_rotated = iq_state1_translated * np.exp(-1j * rotation_angle)
+        iq_state0_rotated = iq_state0_translated * np.exp(-1j * rotation_angle)
 
         real_values_state1 = iq_state1_rotated.real
         real_values_state0 = iq_state0_rotated.real
@@ -1070,9 +1070,8 @@ def calibrate_qubit_states_fit(data, x, y, nshots, qubits):
         fidelity = cum_distribution_diff[argmax] / nshots
         assignment_fidelity = 1 - (errors_state1 + errors_state0) / nshots / 2
         # assignment_fidelity = 1/2 + (cum_distribution_state1[argmax] - cum_distribution_state0[argmax])/nshots/2
-
         results = {
-            "rotation_angle": (-rotation_angle * 360 / (2 * np.pi)) % 360,  # in degrees
+            "rotation_angle": rotation_angle,  # (-rotation_angle * 360 / (2 * np.pi)) % 360,  # in degrees
             "threshold": threshold,
             "fidelity": fidelity,
             "assignment_fidelity": assignment_fidelity,

@@ -18,6 +18,7 @@ from . import (
     naive_bayes,
     nn,
     plots,
+    qubit_fit,
     random_forest,
     rbf_svm,
 )
@@ -29,13 +30,14 @@ from . import (
 
 
 class Classifiers(enum.Enum):
-    linear_svm = linear_svm
-    naive_bayes = naive_bayes
-    rbf_svm = rbf_svm
-    ada_boost = ada_boost
-    random_forest = random_forest
-    gaussian_process = gaussian_process
-    nn = nn
+    # linear_svm = linear_svm
+    # naive_bayes = naive_bayes
+    # rbf_svm = rbf_svm
+    # ada_boost = ada_boost
+    # random_forest = random_forest
+    # gaussian_process = gaussian_process
+    # nn = nn
+    qubit_fit = qubit_fit
 
 
 HYPERFILE = "hyperpars.json"
@@ -115,7 +117,6 @@ class BenchmarkResults:
 def benchmarking(model, x_train, y_train, x_test, y_test, **fit_kwargs):
     # if fit_kwargs is None:
     #     fit_kwargs = {}
-    print("fit")
     start = time.time()
     fit_info = model.fit(x_train, y_train, **fit_kwargs)
     stop = time.time()
@@ -124,10 +125,7 @@ def benchmarking(model, x_train, y_train, x_test, y_test, **fit_kwargs):
     y_pred = model.predict(x_test)
     stop = time.time()
     test_time = (stop - start) / len(x_test)
-    print(y_test)
-    print(y_pred)
     y_pred = np.round(y_pred)
-    print(y_pred)
     score = accuracy_score(y_test, y_pred)
     print("Accuracy", score)
 
@@ -146,7 +144,6 @@ def plot_history(history, save_dir: pathlib.Path):
     plt.plot(range(epochs), history_dict["val_accuracy"], label="val_accuracy")
     plt.legend()
     plt.grid()
-    print(save_dir)
     plt.savefig(save_dir / "NN_training.pdf")
     json.dump(history_dict, open(save_dir / "NN_history.json", "w"))
 
@@ -158,7 +155,7 @@ def train_qubit(data_path, base_dir: pathlib.Path, qubit, classifiers=None):
     try:
         qubit_dir.mkdir()
     except:
-        print("folder already exists")
+        pass
     qubit_data = data.load_qubit(data_path, qubit)
     data.plot_qubit(qubit_data, qubit_dir)
     x_train, y_train, x_test, y_test = data.generate_models(qubit_data)
@@ -175,10 +172,10 @@ def train_qubit(data_path, base_dir: pathlib.Path, qubit, classifiers=None):
         try:
             classifier.savedir.mkdir()
         except:
-            print("foler exists")
-        print(classifier.name)
+            pass
+
         hyperpars = classifier.hyperopt(x_train, y_train, classifier.savedir)
-        print(hyperpars)
+
         classifier.dump_hyper(hyperpars)
         model = classifier.create_model(hyperpars)
 

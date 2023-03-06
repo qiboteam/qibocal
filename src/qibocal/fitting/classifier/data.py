@@ -14,7 +14,7 @@ def load_qubit(data_path, qubit):
 
 def generate_models(data):
     # data = data.sample(frac=1)
-    input_data = data[["i", "q"]].values * 10000  # WARNING: change unit measure
+    input_data = data[["i", "q"]].values  # * 10000  # WARNING: change unit measure
     output_data = data["state"].values
     # Split data into X_train, X_test, y_train, y_test
     x_train, x_test, y_train, y_test = train_test_split(
