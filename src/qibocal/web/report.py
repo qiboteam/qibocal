@@ -9,8 +9,8 @@ from qibocal.cli.builders import ReportBuilder
 
 def create_report(path, actions=None):
     """Creates an HTML report for the data in the given path."""
-    filepath = pathlib.Path(__file__)
 
+    filepath = pathlib.Path(__file__)
     with open(os.path.join(filepath.with_name("static"), "styles.css")) as file:
         css_styles = f"<style>\n{file.read()}\n</style>"
 

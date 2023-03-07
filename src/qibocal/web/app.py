@@ -35,11 +35,7 @@ app.layout = html.Div(
                     className="interval-refresh",
                     placeholder="Select refresh rate",
                     options=[
-                        {"label": "Auto refresh", "value": 0},
-                        {"label": "2 seconds", "value": 2},
-                        {"label": "5 seconds", "value": 5},
-                        {"label": "10 seconds", "value": 10},
-                        {"label": "20 seconds", "value": 20},
+                        {"label": "Auto", "value": 0},
                         {"label": "No refresh", "value": 3600},
                     ],
                     value=0,
@@ -55,8 +51,7 @@ app.layout = html.Div(
         dcc.Location(id="url", refresh=False),
         dcc.Interval(
             id="interval",
-            # TODO: Perhaps the user should be allowed to change the refresh rate
-            interval=5 * 1000,
+            interval=160 * 1000,
             n_intervals=0,
             disabled=False,
         ),
@@ -103,7 +98,7 @@ def get_graph(interval, url, value):
         et = time.time()
 
         if value == 0:
-            refresh_rate = (et - st) + 6
+            refresh_rate = int(et - st) + 6
         else:
             refresh_rate = value
 
