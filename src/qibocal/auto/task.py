@@ -1,8 +1,19 @@
 """Action execution tracker."""
 from dataclasses import dataclass
-from typing import List
+from pathlib import Path
+from typing import List, Optional
 
-from .operation import Operation, Parameters, Results
+import yaml
+
+from .operation import (
+    Data,
+    DummyPars,
+    Operation,
+    Parameters,
+    Results,
+    Routine,
+    dummy_operation,
+)
 from .runcard import Action, Id
 
 MAX_PRIORITY = int(1e9)
@@ -11,6 +22,9 @@ MAX_PRIORITY = int(1e9)
 But not so insanely big not to fit in a native integer.
 
 """
+
+DATAFILE = "data.yaml"
+"""Name of the file where data acquired by calibration are dumped."""
 
 
 @dataclass
@@ -62,6 +76,26 @@ class Task:
     def parameters(self):
         return Parameters.load(self.action.parameters)
 
-    def run(self):
-        #  return self.operation.routine(self.parameters), Update()
-        return Results()
+    def datapath(self, base_dir: Path):
+        return base_dir / f"{self.id}_{self.iteration}" / DATAFILE
+
+    def data(self, base_dir) -> Optional[Data]:
+        if not self.datapath(base_dir).is_file():
+            return None
+
+        Data = self.operation.data_type
+
+        return Data(yaml.safe_load(self.datapath(base_dir).read_text(encoding="utf-8")))
+
+    def run(self) -> Results:
+        try:
+            operation: Routine = self.operation
+            parameters = self.parameters
+        except RuntimeError:
+            operation = dummy_operation
+            parameters = DummyPars()
+
+        data: Data = operation.acquisition(parameters)
+        # TODO: data dump
+        # path.write_text(yaml.dump(pydantic_encoder(self.data(base_dir))))
+        return operation.fit(data)

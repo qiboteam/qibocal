@@ -1,3 +1,4 @@
+import inspect
 from dataclasses import dataclass, field, fields
 from enum import Enum
 from typing import Callable, Dict, Generic, NewType, TypeVar, Union
@@ -31,6 +32,10 @@ class Parameters:
 
         """
         return cls()
+
+
+class Data:
+    """Data resulting from acquisition routine."""
 
 
 @dataclass
@@ -73,15 +78,56 @@ class Results:
 # Internal types, in particular `_ParametersT` is used to address function
 # contravariance on parameter type
 _ParametersT = TypeVar("_ParametersT", bound=Parameters, contravariant=True)
+_DataT = TypeVar("_DataT", bound=Data)
 _ResultsT = TypeVar("_ResultsT", bound=Results, covariant=True)
 
 
 @dataclass
-class Routine(Generic[_ParametersT, _ResultsT]):
+class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     """A wrapped calibration routine."""
 
-    routine: Callable[[_ParametersT], _ResultsT]
+    acquisition: Callable[[_ParametersT], _DataT]
+    fit: Callable[[_DataT], _ResultsT]
 
+    @property
+    def parameters_type(self):
+        sig = inspect.signature(self.acquisition)
+        param = next(iter(sig.parameters.values()))
+        return param.annotation
+
+    @property
+    def data_type(self):
+        return inspect.signature(self.acquisition).return_annotation
+
+    @property
+    def results_type(self):
+        return inspect.signature(self.fit).return_annotation
+
+
+@dataclass
+class DummyPars(Parameters):
+    """Dummy parameters."""
+
+
+@dataclass
+class DummyData(Data):
+    """Dummy data."""
+
+
+@dataclass
+class DummyRes(Results):
+    """Dummy results."""
+
+
+def _dummy_acquisition(pars: DummyPars) -> DummyData:
+    return DummyData()
+
+
+def _dummy_fit(data: DummyData) -> DummyRes:
+    return DummyRes()
+
+
+dummy_operation = Routine(_dummy_acquisition, _dummy_fit)
 
 #  --- from here on start the examples ---
 
@@ -93,17 +139,26 @@ class Cmd1Pars(Parameters):
 
 
 @dataclass
+class Cmd1Data(Data):
+    c: float
+
+
+@dataclass
 class Cmd1Res(Results):
     res: str = field(metadata=dict(update="myres"))
     num: int
 
 
-def _command_1(args: Cmd1Pars) -> Cmd1Res:
+def _cmd1_acq(args: Cmd1Pars) -> Cmd1Data:
     print("command_1")
+    return Cmd1Data(3.4)
+
+
+def _cmd1_fit(args: Cmd1Data) -> Cmd1Res:
     return Cmd1Res("command_1", 3)
 
 
-command_1 = Routine(_command_1)
+command_1 = Routine(_cmd1_acq, _cmd1_fit)
 
 
 @dataclass
@@ -111,12 +166,16 @@ class Cmd2Res(Results):
     res: str = field(metadata=dict(update="res2"))
 
 
-def _command_2(*args: Cmd1Pars) -> Cmd2Res:
+def _cmd2_acq(*args: Cmd1Pars) -> Cmd1Data:
     print("command_2")
+    return Cmd1Data(1.8)
+
+
+def _cmd2_fit(*args: Cmd1Data) -> Cmd2Res:
     return Cmd2Res("command_2")
 
 
-command_2 = Routine(_command_2)
+command_2 = Routine(_cmd1_acq, _cmd1_fit)
 
 
 #  ---
