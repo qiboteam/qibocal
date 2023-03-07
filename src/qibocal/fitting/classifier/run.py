@@ -209,21 +209,21 @@ def train_qubit(
     r"""Given a dataset in `data_path` with qubits' information, this function performs the benchmarking of some classifiers.
     Each model's prediction `y_pred` is saved in  `basedir/qubit{qubit}/{classifier name}/predictions.npy`.
 
-        Args:
-            data_path(path): Where the qubits' data are stored.
-            base_dir (path): Where save the results.
-            qubit (int): Qubit ID.
-            classifiers (list | None, optional): List of classification models. It must be a subset of the models in the `Classifiers` class.
+    Args:
+        data_path(path): Where the qubits' data are stored.
+        base_dir (path): Where save the results.
+        qubit (int): Qubit ID.
+        classifiers (list | None, optional): List of classification models. It must be a subset of the models in the `Classifiers` class.
 
-        Returns: benchmarks_table, y_test
-            - benchmarks_table (pd.DataFrame): Table with the following columns
+    Returns: benchmarks_table, y_test
+        - benchmarks_table (pd.DataFrame): Table with the following columns
 
-                - **name**: model's name
-                - **accuracy**: model's accuracy
-                - **training_time**: training time in seconds
-                - **testing_time**: testing time per item in seconds.
+            - **name**: model's name
+            - **accuracy**: model's accuracy
+            - **training_time**: training time in seconds
+            - **testing_time**: testing time per item in seconds.
 
-            - y_test (list): List of test outputs.
+        - y_test (list): List of test outputs.
     """
     nn_epochs = 200
     nn_val_split = 0.2
@@ -281,22 +281,51 @@ def train_qubit(
 
     benchmarks_table = pd.DataFrame([asdict(res) for res in results_list])
     plots.plot_models_results(x_train, x_test, y_test, qubit_dir, models, names)
-    return benchmarks_table, y_test
+    plots.plot_roc_curves(x_test, y_test, qubit_dir, models, names)
+    return benchmarks_table, y_test, x_test
 
 
 def dump_preds(y_pred, dir_path):
+    r"""Dumps the predictions in `{dir_path}/predictions.npy`.
+
+    Args:
+        y_pred (list): Predictions.
+        dir_path (path): Saving path.
+    """
     np.save(dir_path / PREDFILE, y_pred)
 
 
 def dump_benchmarks_table(table, dir_path):
+    r"""Dumps the benchmark table in `{dir_path}/benchmarks.csv`.
+
+    Args:
+        table (pd.DataFrame): Predictions.
+        dir_path (path): Saving path.
+    """
     table.to_csv(dir_path / BENCHTABFILE)
 
 
 def preds_from_file(dir_path):
+    r"""Load the predictions from a file
+
+    Args:
+        dir_path (path): Where the file `predictions.npy` is.
+
+    Returns:
+        Predictions.
+    """
     return np.load(dir_path / PREDFILE)
 
 
 def table_from_file(dir_path):
+    r"""Load the benchmark table from a file
+
+    Args:
+        dir_path (path): Where the file `benchmarks.csv` is.
+
+    Returns:
+
+    """
     return pd.read_csv(dir_path / BENCHTABFILE)
 
 
