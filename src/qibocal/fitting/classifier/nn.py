@@ -40,12 +40,12 @@ def hypermodel(hp):
     activation = hp.Choice("activation", ["relu", "sigmoid", "tanh", "RBF"])
     learning_rate = hp.Float("learning_rate", min_value=1e-4, max_value=1e-2)
     optimizer_choice = hp.Choice("optimizer", ["Adam", "Adagrad", "SGD", "RMSprop"])
-    norm = hp.Boolean("add_normalisation", default=True)
+    # norm = hp.Boolean("add_normalisation", default=True)
     losses = hp.Choice("losses", ["binary_crossentropy", "categorical_crossentropy"])
 
     model = Sequential()
-    if norm:
-        model.add(Normalization())
+    # if norm:
+    model.add(Normalization(axis=-1))
     if activation == "RBF":
         model.add(
             RBFLayer(

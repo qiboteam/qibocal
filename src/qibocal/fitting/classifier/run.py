@@ -30,13 +30,13 @@ from . import (
 
 
 class Classifiers(enum.Enum):
-    # linear_svm = linear_svm
-    # naive_bayes = naive_bayes
-    # rbf_svm = rbf_svm
-    # ada_boost = ada_boost
-    # random_forest = random_forest
-    # gaussian_process = gaussian_process
-    # nn = nn
+    linear_svm = linear_svm
+    naive_bayes = naive_bayes
+    rbf_svm = rbf_svm
+    ada_boost = ada_boost
+    random_forest = random_forest
+    gaussian_process = gaussian_process
+    nn = nn
     qubit_fit = qubit_fit
 
 
@@ -48,44 +48,67 @@ base_dir = pathlib.Path()
 
 
 class Classifier:
+    r"""Classs to define the different classifiers used in the benchmarking.
+
+    Args:
+        mod: Classsification model.
+        base_dir (Path): Where to store the classification results.
+
+    """
+
     def __init__(self, mod, base_dir: pathlib.Path) -> None:
         self.mod = mod
         self.base_dir = base_dir
 
     @property
     def name(self):
+        r"""Model's name."""
         return self.mod.__name__.split(".")[-1]
 
     @property
     def hyperopt(self):
+        r"""The function that performs the hyperparameters optimization."""
         return self.mod.hyperopt
 
     @property
     def normalize(self):
+        r"""The function that adds a data normalisation
+        stage before the model classification.
+        """
         return self.mod.normalize
 
     @property
     def constructor(self):
+        r"""The model builder."""
         return self.mod.constructor
 
     @property
     def fit(self):
+        r"""The model's fitting function."""
         return self.mod.fit
 
     @property
-    def plots(self):
-        self.mod.plots()
-
-    @property
     def savedir(self):
+        r"""The saving path."""
         return self.base_dir / self.name
 
     @property
     def hyperfile(self):
+        r"""The path where the hyperparameters are stored."""
         return self.savedir / HYPERFILE
 
     @classmethod
     def load_model(cls, name: str, base_dir: pathlib.Path):
+        r"""
+        Giving the classification name this method returns the respective classifier.\
+
+        Args:
+            name (str): classifier's name.
+            base_dir (path): Where to store the classification results.
+
+        Returns:
+            Classification model.
+        """
         inst = cls(Classifiers[name], base_dir)
         hyperpars = inst.load_hyper()
         return inst.create_model(hyperpars)
@@ -97,12 +120,22 @@ class Classifier:
         return cls.load_model(name, base_dir)
 
     def dump_hyper(self, hyperpars):
+        r"""Saves the hyperparameters"""
         self.hyperfile.write_text(json.dumps(hyperpars, default=str), encoding="utf-8")
 
     def load_hyper(self):
+        r"""Loads the hyperparameters and returns them."""
         return json.loads(self.hyperfile.load_text(encoding="utf-8"))
 
     def create_model(self, hyperpars):
+        r"""Returns a model with the normalization stage.
+
+        Args:
+            hyperpars: Model's hyperparameters.
+
+        Returns:
+            Classification model.
+        """
         return self.normalize(self.constructor(hyperpars))
 
 
@@ -115,18 +148,33 @@ class BenchmarkResults:
 
 
 def benchmarking(model, x_train, y_train, x_test, y_test, **fit_kwargs):
-    # if fit_kwargs is None:
-    #     fit_kwargs = {}
+    r"""This function evaluates the model's performances.
+    Args:
+        model: Classification model with `fit` and `predict` methods.
+        x_train: Training input.
+        y_train: Training output.
+        x_test: Test input.
+        y_test: Test output.
+        **fit_kwargs:  Arbitrary keyword arguments for the `fit` function.
+
+    Returns:
+        - results (BenchmarkResults): Stores the model's accuracy, the training and testing time.
+        - y_pred: Model's predictions.
+        - model: trained model.
+        - fit_info: Stores training infos.
+    """
+    # Evaluate training time
     start = time.time()
     fit_info = model.fit(x_train, y_train, **fit_kwargs)
     stop = time.time()
     training_time = stop - start
+    # Evaluate test time per element
     start = time.time()
     y_pred = model.predict(x_test)
     stop = time.time()
     test_time = (stop - start) / len(x_test)
-    y_pred = np.round(y_pred)
-    score = accuracy_score(y_test, y_pred)
+    # Evaluate accuracy
+    score = accuracy_score(y_test, np.round(y_pred))
     print("Accuracy", score)
 
     results = BenchmarkResults(score, test_time, training_time)
@@ -135,6 +183,13 @@ def benchmarking(model, x_train, y_train, x_test, y_test, **fit_kwargs):
 
 
 def plot_history(history, save_dir: pathlib.Path):
+    r"""Plots the neural network history
+    and save it in `json` file.
+
+    Args:
+        history (keras.callbacks.History): History.
+        save_dir (Path): Storing path.
+    """
     history_dict = history.history
     epochs = len(history_dict["loss"])
     plt.figure(figsize=(14, 7))
@@ -148,7 +203,28 @@ def plot_history(history, save_dir: pathlib.Path):
     json.dump(history_dict, open(save_dir / "NN_history.json", "w"))
 
 
-def train_qubit(data_path, base_dir: pathlib.Path, qubit, classifiers=None):
+def train_qubit(
+    data_path: pathlib.Path, base_dir: pathlib.Path, qubit, classifiers=None
+):
+    r"""Given a dataset in `data_path` with qubits' information, this function performs the benchmarking of some classifiers.
+    Each model's prediction `y_pred` is saved in  `basedir/qubit{qubit}/{classifier name}/predictions.npy`.
+
+        Args:
+            data_path(path): Where the qubits' data are stored.
+            base_dir (path): Where save the results.
+            qubit (int): Qubit ID.
+            classifiers (list | None, optional): List of classification models. It must be a subset of the models in the `Classifiers` class.
+
+        Returns: benchmarks_table, y_test
+            - benchmarks_table (pd.DataFrame): Table with the following columns
+
+                - **name**: model's name
+                - **accuracy**: model's accuracy
+                - **training_time**: training time in seconds
+                - **testing_time**: testing time per item in seconds.
+
+            - y_test (list): List of test outputs.
+    """
     nn_epochs = 200
     nn_val_split = 0.2
     qubit_dir = base_dir / f"qubit{qubit}"
@@ -162,7 +238,6 @@ def train_qubit(data_path, base_dir: pathlib.Path, qubit, classifiers=None):
     models = []
     results_list = []
     names = []
-    # conf_matrices = []
 
     if classifiers is None:
         classifiers = [i.value for i in Classifiers]

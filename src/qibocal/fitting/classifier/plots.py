@@ -39,7 +39,7 @@ def plot_conf_matr(y_test, base_dir: pathlib.Path, classifiers=None):
         classifier = run.Classifier(model, base_dir)
         names.append(classifier.name)
         y_pred = np.load(base_dir / classifier.name / run.PREDFILE)
-        conf_matr = confusion_matrix(y_test, y_pred, normalize="true")
+        conf_matr = confusion_matrix(y_test, np.round(y_pred), normalize="true")
         matrices.append(conf_matr)
         ax = plt.subplot(1, len(classifiers), count + 1)
         sns.heatmap(
