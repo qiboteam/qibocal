@@ -10,7 +10,8 @@ import pandas as pd
 from qibo.models import Circuit
 from qibo.noise import NoiseModel
 
-from qibocal.calibrations.niGSC.basics.utils import copy_circuit, experiment_directory
+from qibocal.calibrations.niGSC.basics.utils import copy_circuit
+from qibocal.cli.utils import generate_output_folder
 from qibocal.config import raise_error
 
 
@@ -118,7 +119,7 @@ class Experiment:
         # Check if path to store is given, if not create one. If yes check if the last character
         # is a /, if not add it.
         if path is None:
-            self.path = experiment_directory("rb")
+            self.path = generate_output_folder()
         else:
             self.path = path if path[-1] == "/" else f"{path}/"
         # Only if the circuit factory is a list it will be stored.
