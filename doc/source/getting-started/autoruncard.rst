@@ -52,6 +52,10 @@ like the following:
       priority: 0
       next: [first, third]
       operation:
+      # parameters:
+      #   par1: 3.1241
+      #   par2: 10_000
+      #   ...
     - id: first
       priority: 100
       main: second
@@ -69,6 +73,8 @@ like the following:
       operation:
 
    # normal-flow execution: [start, first, second, third, fourth]
+
+A complete specification of the runcard is defined in :mod:`qibocal.auto.runcard`
 
 .. caution::
 
