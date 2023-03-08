@@ -161,7 +161,7 @@ def test_lorentzian_fit(name, label, resonator_type, amplitude_sign, caplog):
         labels=[label, "peak_voltage"],
         fit_file_name=name,
     )
-    # Given the couople (amplitude, sigma) as a solution of lorentzian_fit method
+    # Given the couple (amplitude, sigma) as a solution of lorentzian_fit method
     # also (-amplitude,-sigma) is a possible solution.
     np.testing.assert_allclose(
         abs(fit.get_values("popt0")[0]), abs(amplitude), rtol=0.1
@@ -169,7 +169,7 @@ def test_lorentzian_fit(name, label, resonator_type, amplitude_sign, caplog):
     np.testing.assert_allclose(fit.get_values("popt1")[0], center, rtol=0.1)
     np.testing.assert_allclose(abs(fit.get_values("popt2")[0]), abs(sigma), rtol=0.1)
     np.testing.assert_allclose(fit.get_values("popt3")[0], offset, rtol=0.1)
-    np.testing.assert_allclose(fit.get_values(label)[0], center, rtol=0.1)
+    np.testing.assert_allclose(fit.get_values(label)[0], 1e9 * center, rtol=0.1)
     # Dummy fit
     x = [0]
     noisy_lorentzian = [0]

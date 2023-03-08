@@ -80,8 +80,8 @@ def resonator_spectroscopy(
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
     # additionally include resonator frequency
-    fast_sweep_data = DataUnits(
-        name="fast_sweep_data",
+    data = DataUnits(
+        name="data",
         quantities={"frequency": "Hz"},
         options=["qubit", "iteration"],
     )
@@ -94,11 +94,11 @@ def resonator_spectroscopy(
             # save data as often as defined by points
             if count % points == 0 and count > 0:
                 # save data
-                yield fast_sweep_data
+                yield data
                 # calculate and save fit
                 yield lorentzian_fit(
-                    fast_sweep_data,
-                    x="frequency[Hz]",
+                    data,
+                    x="frequency[GHz]",
                     y="MSR[uV]",
                     qubits=qubits,
                     resonator_type=platform.resonator_type,
@@ -127,13 +127,13 @@ def resonator_spectroscopy(
                         "iteration": iteration,
                     }
                 )
-                fast_sweep_data.add(r)
+                data.add(r)
             count += 1
     # finally, save the remaining data and fits
-    yield fast_sweep_data
+    yield data
     yield lorentzian_fit(
-        fast_sweep_data,
-        x="frequency[Hz]",
+        data,
+        x="frequency[GHz]",
         y="MSR[uV]",
         qubits=qubits,
         resonator_type=platform.resonator_type,

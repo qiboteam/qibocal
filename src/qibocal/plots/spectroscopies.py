@@ -53,9 +53,6 @@ def frequency_msr_phase(folder, routine, qubit, format):
                 ]
             )
 
-        # for i, label, data in list(
-        #     zip((0, 1), ("Fast", "Precision"), (data_fast, data_precision))
-        # ):
         data.df = data.df.drop(columns=["i", "q", "qubit"])
         iterations = data.df["iteration"].unique()
         frequencies = data.df["frequency"].unique() * 1e-9
@@ -92,11 +89,12 @@ def frequency_msr_phase(folder, routine, qubit, format):
                 col=2,
             )
         if len(iterations) > 1:
-            data.df = data.df.drop(columns=["iteration"])
+            data.df = data.df.drop(columns=["iteration"])  # pylint: disable=E1101
             fig.add_trace(
                 go.Scatter(
                     x=frequencies,
-                    y=data.df.groupby("frequency")["MSR"].mean() * 1e6,
+                    y=data.df.groupby("frequency")["MSR"].mean()
+                    * 1e6,  # pylint: disable=E1101
                     marker_color=get_color(2 * report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,
@@ -109,7 +107,9 @@ def frequency_msr_phase(folder, routine, qubit, format):
             fig.add_trace(
                 go.Scatter(
                     x=frequencies,
-                    y=data.df.groupby("frequency")["phase"].mean(),
+                    y=data.df.groupby("frequency")[
+                        "phase"
+                    ].mean(),  # pylint: disable=E1101
                     marker_color=get_color(2 * report_n),
                     showlegend=False,
                     legendgroup=f"q{qubit}/r{report_n}: Average",
