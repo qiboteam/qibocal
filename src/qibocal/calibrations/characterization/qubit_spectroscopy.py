@@ -13,10 +13,8 @@ from qibocal.fitting.methods import lorentzian_fit
 def qubit_spectroscopy(
     platform: AbstractPlatform,
     qubits: dict,
-    fast_width,
-    fast_step,
-    precision_width,
-    precision_step,
+    width: int,
+    step: int,
     software_averages=1,
     points=10,
 ):
@@ -29,10 +27,8 @@ def qubit_spectroscopy(
         platform (AbstractPlatform): Qibolab platform object
         qubits (dict): Dict of target Qubit objects to perform the action
         fast_start (int): Initial frequency in HZ to perform the qubit fast sweep
-        fast_width (int): Width frequency in HZ to perform the high resolution sweep
-        fast_step (int): Step frequency in HZ for the high resolution sweep
-        precision_width (int): Width frequency in HZ to perform the precision resolution sweep
-        precision_step (int): Step frequency in HZ for the precission resolution sweep
+        width (int): Width frequency in HZ to perform the high resolution sweep
+        step (int): Step frequency in HZ for the high resolution sweep
         software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
 
@@ -77,7 +73,7 @@ def qubit_spectroscopy(
         sequence.add(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:
-    delta_frequency_range = np.arange(-fast_width // 2, fast_width // 2, fast_step)
+    delta_frequency_range = np.arange(-width // 2, width // 2, step)
 
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q

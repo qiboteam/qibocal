@@ -7,18 +7,14 @@ format: csv
 actions:
 
   # resonator_spectroscopy: # wide
-  #   fast_width: 30_000_000
-  #   fast_step: 1_000_000
-  #   precision_width: 2_000_000
-  #   precision_step: 100_000
+  #   width: 30_000_000
+  #   step: 1_000_000
   #   software_averages: 1
   #   points: 5
 
   resonator_spectroscopy: # narrow
-    fast_width: 10_000_000
-    fast_step: 500_000
-    precision_width: 1_000_000
-    precision_step: 50_000
+    width: 10_000_000
+    step: 500_000
     software_averages: 2
     points: 5
 
@@ -52,10 +48,8 @@ actions:
 
 
   qubit_spectroscopy: # wide
-    fast_width: 500_000_000
-    fast_step: 2_000_000
-    precision_width: 2_000_000
-    precision_step: 100_000
+    width: 500_000_000
+    step: 2_000_000
     software_averages: 1
     points: 5
 
