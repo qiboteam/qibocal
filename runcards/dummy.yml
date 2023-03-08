@@ -12,11 +12,11 @@ actions:
   #   software_averages: 1
   #   points: 5
 
-  resonator_spectroscopy: # narrow
-    width: 10_000_000
-    step: 500_000
-    software_averages: 2
-    points: 5
+  # resonator_spectroscopy: # narrow
+  #   width: 10_000_000
+  #   step: 500_000
+  #   software_averages: 2
+  #   points: 5
 
   # resonator_punchout:
   #   freq_width: 10_000_000
@@ -53,11 +53,11 @@ actions:
   #   software_averages: 1
   #   points: 5
 
-  qubit_spectroscopy: # narrow
-    width: 5_000_000
-    step: 500_000
-    software_averages: 2
-    points: 5
+  # qubit_spectroscopy: # narrow
+  #   width: 5_000_000
+  #   step: 500_000
+  #   software_averages: 2
+  #   points: 5
 
   # qubit_spectroscopy_flux: # precission
   #   freq_width: 5_000_000
