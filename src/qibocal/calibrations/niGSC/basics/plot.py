@@ -33,7 +33,7 @@ def plot_qq(folder: str, routine: str, qubit, format):
     # parameters for fitting and plotting are stored.
     aggr_df = pd.read_pickle(f"{folder}/data/{routine}/fit_plot.pkl")
     # Build the figure/report using the responsible module.
-    plotly_figure = module.build_report(experiment, aggr_df)
+    plotly_figure, fitting_report = module.build_report(experiment, aggr_df)
     return [plotly_figure], fitting_report
 
 
@@ -66,24 +66,6 @@ class Report:
                     plot, row=count // divide_by + 1, col=count % divide_by + 1
                 )
 
-        fig.add_annotation(
-            dict(
-                bordercolor="black",
-                font=dict(color="black", size=16),
-                x=0.0,
-                y=1.0 / (int(l / divide_by) + l % divide_by + 1)
-                - len(self.info_dict) * 0.005,
-                showarrow=False,
-                text="<br>".join(
-                    [f"{key} : {value}\n" for key, value in self.info_dict.items()]
-                ),
-                align="left",
-                textangle=0,
-                yanchor="top",
-                xref="paper",
-                yref="paper",
-            )
-        )
         fig.update_xaxes(title_font_size=18, tickfont_size=16)
         fig.update_yaxes(title_font_size=18, tickfont_size=16)
         fig.update_layout(
@@ -148,14 +130,7 @@ def scatter_fit_fig(
         go.Scatter(
             x=x_fit,
             y=y_fit,
-            name="".join(
-                [
-                    "{}:{} ".format(
-                        key, utils.number_to_str(dfrow[fittingparam_label][key])
-                    )
-                    for key in dfrow[fittingparam_label]
-                ]
-            ),
+            name="Fit",
             line=go.scatter.Line(dash="dot"),
         )
     )

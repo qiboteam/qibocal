@@ -192,5 +192,5 @@ def test_build_report():
     myfaultyexperiment.perform(myfaultyexperiment.execute)
     simulfilteredrb.post_processing_sequential(myfaultyexperiment)
     aggr_df = simulfilteredrb.get_aggregational_data(myfaultyexperiment)
-    report_figure = simulfilteredrb.build_report(myfaultyexperiment, aggr_df)
+    report_figure, _ = simulfilteredrb.build_report(myfaultyexperiment, aggr_df)
     assert isinstance(report_figure, Figure)

@@ -134,5 +134,5 @@ def test_build_report(depths: list, nshots: int, nqubits: int, runs: int, qubits
         myfaultyexperiment.perform(myfaultyexperiment.execute)
         XIdrb.post_processing_sequential(myfaultyexperiment)
         aggr_df = XIdrb.get_aggregational_data(myfaultyexperiment)
-        report_figure = XIdrb.build_report(myfaultyexperiment, aggr_df)
+        report_figure, _ = XIdrb.build_report(myfaultyexperiment, aggr_df)
         assert isinstance(report_figure, Figure)

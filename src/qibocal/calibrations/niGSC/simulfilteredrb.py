@@ -211,6 +211,7 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
 
     # Initiate a report object.
     report = moduleReport()
+    fitting_report = ""
     # Add general information to the object.
     report.info_dict["Number of qubits"] = len(experiment.data[0]["samples"][0])
     report.info_dict["Number of shots"] = len(experiment.data[0]["samples"])
@@ -218,16 +219,23 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
     lambdas = iter(product([0, 1], repeat=int(report.info_dict["Number of qubits"])))
     for kk, l in enumerate(lambdas):
         # Add the fitting errors which will be displayed in a box under the plots.
-        report.info_dict[f"Fitting daviations irrep {l}"] = "".join(
-            [
-                "{}:{:.3f} ".format(key, df_aggr.loc[f"irrep{kk}"]["perr"][key])
-                for key in df_aggr.loc[f"irrep{kk}"]["perr"]
-            ]
-        )
+        report.info_dict[
+            f"A Irrep{kk} "
+        ] = f"{df_aggr.loc[f'irrep{kk}']['popt']['A']:.3f} +/- {df_aggr.loc[f'irrep{kk}']['perr']['A_err']:.3f}"
+        report.info_dict[
+            f"p Irrep{kk}"
+        ] = f"{df_aggr.loc[f'irrep{kk}']['popt']['p']:.3f} +/- {df_aggr.loc[f'irrep{kk}']['perr']['p_err']:.3f}"
+
         # Use the predefined ``scatter_fit_fig`` function from ``basics.utils`` to build the wanted
         # plotly figure with the scattered filter function points and then mean per depth.
         figdict = scatter_fit_fig(experiment, df_aggr, "depth", f"irrep{kk}")
         # Add a subplot title for each irrep.
-        figdict["subplot_title"] = f"Irrep {l}"
+        figdict["subplot_title"] = f"Irrep {l[0]}"
         report.all_figures.append(figdict)
-    return report.build()
+
+    for key, value in report.info_dict.items():
+        if isinstance(value, str):
+            fitting_report += f"q{0}/r{0} | {key}: {value}<br>"
+        else:
+            fitting_report += f"q{0}/r{0} | {key}: {value:,.0f}<br>"
+    return report.build(), fitting_report

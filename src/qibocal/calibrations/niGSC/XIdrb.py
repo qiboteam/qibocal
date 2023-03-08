@@ -205,16 +205,24 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
 
     # Initiate a report object.
     report = moduleReport()
+    fitting_report = ""
     # Add general information to the object.
     report.info_dict["Number of qubits"] = len(experiment.data[0]["samples"][0])
     report.info_dict["Number of shots"] = len(experiment.data[0]["samples"])
     report.info_dict["runs"] = experiment.extract("samples", "depth", "count")[1][0]
-    report.info_dict["Fitting daviations"] = "".join(
-        [
-            "{}:{:.3f} ".format(key, df_aggr.loc["filter"]["perr"][key])
-            for key in df_aggr.loc["filter"]["perr"]
-        ]
-    )
+    print(df_aggr["perr"])
+    report.info_dict[
+        "A1_real"
+    ] = f"{df_aggr['popt_real'][0]['A1_real']:.3f} +/- {df_aggr['perr'][0]['A1_err']:.3f}"
+    report.info_dict[
+        "p1_real"
+    ] = f"{df_aggr['popt_real'][0]['p1']:.3f} +/- {df_aggr['perr'][0]['p1_err']:.3f}"
+    report.info_dict[
+        "A2_real"
+    ] = f"{df_aggr['popt_real'][0]['A2_real']:.3f} +/- {df_aggr['perr'][0]['A2_err']:.3f}"
+    report.info_dict[
+        "p2_real"
+    ] = f"{df_aggr['popt_real'][0]['p2']:.3f} +/- {df_aggr['perr'][0]['p2_err']:.3f}"
     # Use the predefined ``scatter_fit_fig`` function from ``basics.utils`` to build the wanted
     # plotly figure with the scattered filtered data along with the mean for
     # each depth and the exponential fit for the means.
@@ -229,5 +237,22 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
                 experiment, df_aggr, "depth", "filter", fittingparam_label="popt_imag"
             )
         )
+        report.info_dict[
+            "A1_imag"
+        ] = f"{df_aggr['popt_imag'][0]['A1_imag']:.3f} +/- {df_aggr['perr'][0]['A1_err']:.3f}"
+        report.info_dict[
+            "p1_imag"
+        ] = f"{df_aggr['popt_imag'][0]['p1']:.3f} +/- {df_aggr['perr'][0]['p1_err']:.3f}"
+        report.info_dict[
+            "A2_imag"
+        ] = f"{df_aggr['popt_imag'][0]['A2_imag']:.3f} +/- {df_aggr['perr'][0]['A2_err']:.3f}"
+        report.info_dict[
+            "p2_imag"
+        ] = f"{df_aggr['popt_imag'][0]['p2']:.3f} +/- {df_aggr['perr'][0]['p2_err']:.3f}"
+    for key, value in report.info_dict.items():
+        if isinstance(value, str):
+            fitting_report += f"q{0}/r{0} | {key}: {value}<br>"
+        else:
+            fitting_report += f"q{0}/r{0} | {key}: {value:,.0f}<br>"
     # Return the figure the report object builds out of all figures added to the report.
-    return report.build()
+    return report.build(), fitting_report

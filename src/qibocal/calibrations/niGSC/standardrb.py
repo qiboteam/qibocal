@@ -199,12 +199,15 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
     report.info_dict["Number of qubits"] = len(experiment.data[0]["samples"][0])
     report.info_dict["Number of shots"] = len(experiment.data[0]["samples"])
     report.info_dict["runs"] = experiment.extract("samples", "depth", "count")[1][0]
-    report.info_dict["Fitting daviations"] = "".join(
-        [
-            "{}:{:.3f} ".format(key, df_aggr.iloc[0]["perr"][key])
-            for key in df_aggr.iloc[0]["perr"]
-        ]
-    )
+    report.info_dict[
+        "A"
+    ] = f"{df_aggr['popt'][0]['A']:.3f} +/- {df_aggr['perr'][0]['A_err']:.3f}"
+    report.info_dict[
+        "p"
+    ] = f"{df_aggr['popt'][0]['p']:.3f} +/- {df_aggr['perr'][0]['p_err']:.3f}"
+    report.info_dict[
+        "B"
+    ] = f"{df_aggr['popt'][0]['B']:.3f} +/- {df_aggr['perr'][0]['B_err']:.3f}"
     report.info_dict["Gate fidelity"] = "{:.4f}".format(
         gate_fidelity(df_aggr.iloc[0]["popt"]["p"])
     )
@@ -217,5 +220,12 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
     report.all_figures.append(
         scatter_fit_fig(experiment, df_aggr, "depth", "groundstate probability")
     )
+
+    fitting_report = ""
+    for key, value in report.info_dict.items():
+        if isinstance(value, str):
+            fitting_report += f"q{0}/r{0} | {key}: {value}<br>"
+        else:
+            fitting_report += f"q{0}/r{0} | {key}: {value:,.0f}<br>"
     # Return the figure the report object builds out of all figures added to the report.
-    return report.build()
+    return report.build(), fitting_report

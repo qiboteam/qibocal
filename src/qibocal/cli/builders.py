@@ -301,9 +301,6 @@ class ReportBuilder:
             if hasattr(calibrations, action):
                 routine = getattr(calibrations, action)
             elif hasattr(calibrations.niGSC, action):
-                print("OK")
-                print(action)
-                print(hasattr(calibrations.niGSC, action))
                 routine = niGSCactionParser(self.runcard, self.path, action)
                 routine.load_plot()
             else:
