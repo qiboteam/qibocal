@@ -10,7 +10,7 @@ from qibocal.fitting.classifier import (
 )
 
 data_path = Path("calibrate_qubit_states/data.csv")
-base_dir = Path("_results")
+base_dir = Path("_results2")
 try:
     base_dir.mkdir()
 except:

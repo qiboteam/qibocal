@@ -4,8 +4,8 @@ from math import cos, sin
 import matplotlib.pyplot as plt
 import numpy as np
 
-from qibocal.data import DataUnits
-from qibocal.fitting.methods import calibrate_qubit_states_fit
+from ...data import DataUnits
+from ..methods import calibrate_qubit_states_fit
 
 
 @dataclass

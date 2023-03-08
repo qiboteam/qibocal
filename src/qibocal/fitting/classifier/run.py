@@ -282,6 +282,7 @@ def train_qubit(
     benchmarks_table = pd.DataFrame([asdict(res) for res in results_list])
     plots.plot_models_results(x_train, x_test, y_test, qubit_dir, models, names)
     plots.plot_roc_curves(x_test, y_test, qubit_dir, models, names)
+    # plt.close()
     return benchmarks_table, y_test, x_test
 
 

@@ -115,7 +115,7 @@ def plot_roc_curves(x_test, y_test, base_dir: pathlib.Path, models, names):
         sort_keys=True,
         indent=4,
     )
-    plt.close("all")
+    # plt.close("all")
 
 
 def plot_models_results(
