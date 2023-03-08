@@ -135,15 +135,21 @@ class ActionBuilder:
     """
 
     def __init__(self, runcard, folder=None, force=False):
+        # setting output folder
         self.folder = generate_output_folder(folder, force)
+
+        # parse runcard
         self.runcard = load_yaml(runcard)
-        # Qibolab default backend if not provided in runcard.
+
+        # backend and platform allocation
         backend_name = self.runcard.get("backend", "qibolab")
         platform_name = self.runcard.get("platform", "dummy")
         platform_runcard = self.runcard.get("runcard", None)
         self.backend, self.platform = self._allocate_backend(
             backend_name, platform_name, platform_runcard
         )
+
+        # qubits allocation
         if self.platform is not None:
             self.qubits = {
                 q: self.platform.qubits[q]
@@ -152,8 +158,9 @@ class ActionBuilder:
             }
         else:
             self.qubits = self.runcard.get("qubits")
-        self.format = self.runcard["format"]
 
+        # Setting format. If None csv is used.
+        self.format = self.runcard.get("format", "csv")
         # Saving runcard
         shutil.copy(runcard, f"{self.folder}/runcard.yml")
         self.save_meta()

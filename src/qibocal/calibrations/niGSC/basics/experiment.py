@@ -108,7 +108,7 @@ class Experiment:
         obj = cls(circuitfactory, data=data, nshots=nshots)
         return obj
 
-    def save(self, path: str | None = None) -> str:
+    def save(self, path: str | None = None, force=False) -> str:
         """Creates a path if None given and pickles relevant data from ``self.data``
         and if ``self.circuitfactory`` is a list that one too.
 
@@ -119,9 +119,9 @@ class Experiment:
         # Check if path to store is given, if not create one. If yes check if the last character
         # is a /, if not add it.
         if path is None:
-            self.path = generate_output_folder()
+            self.path = generate_output_folder(path, force)
         else:
-            self.path = path if path[-1] == "/" else f"{path}/"
+            self.path = path
         # Only if the circuit factory is a list it will be stored.
         if isinstance(self.circuitfactory, list):
             with open(f"{self.path}circuits.pkl", "wb") as f:

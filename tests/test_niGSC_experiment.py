@@ -109,41 +109,46 @@ def test_Experiment_save_load(nqubits: int, depths: list, runs: int, qubits: lis
     cfactory1 = Qibo1qGatesFactory(nqubits, depths * runs, qubits=qubits)
     experiment1 = Experiment(cfactory1)
     experiment1.perform(experiment1.execute)
-    path1 = experiment1.save()
+
+    path = "_test_rb"
+    if not os.path.exists(path):
+        os.makedirs(path)
+    path1 = experiment1.save(path)
     experiment2 = Experiment.load(path1)
     for datarow1, datarow2 in zip(experiment1.data, experiment2.data):
         assert np.array_equal(datarow1["samples"], datarow2["samples"])
     assert experiment2.circuitfactory is None
+    rmtree(path)
 
     cfactory3 = Qibo1qGatesFactory(nqubits, depths * runs, qubits=qubits)
     experiment3 = Experiment(cfactory3)
     experiment3.prebuild()
-    path3 = experiment3.save()
+    path = "_test_rb_1"
+    if not os.path.exists(path):
+        os.makedirs(path)
+    path3 = experiment3.save(path)
     experiment4 = Experiment.load(path3)
     for circuit3, circuit4 in zip(
         experiment3.circuitfactory, experiment4.circuitfactory
     ):
         assert np.array_equal(circuit3.unitary(), circuit4.unitary())
 
+    rmtree(path)
+
     cfactory5 = Qibo1qGatesFactory(nqubits, depths * runs, qubits=qubits)
     experiment5 = Experiment(cfactory5)
     experiment5.prebuild()
-    path5 = experiment5.save()
-
+    path = "_test_rb_2"
+    if not os.path.exists(path):
+        os.makedirs(path)
+    path5 = experiment5.save(path)
     experiment6 = Experiment.load(path5)
     assert experiment6.data is None
     for circuit5, circuit6 in zip(
         experiment5.circuitfactory, experiment6.circuitfactory
     ):
         assert np.array_equal(circuit5.unitary(), circuit6.unitary())
-
-    rmtree(path1)
-    rmtree(path3)
-    rmtree(path5)
-    if len(os.listdir("experiments/rb")) == 0:
-        rmtree("experiments/rb")
-    if len(os.listdir("experiments")) == 0:
-        rmtree("experiments/")
+    rmtree(path)
 
 
 @pytest.mark.parametrize("amount_data", [50, 71])

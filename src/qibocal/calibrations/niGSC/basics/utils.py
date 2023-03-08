@@ -10,36 +10,6 @@ from qibo.models import Circuit
 ONEQ_GATES = ["I", "X", "Y", "Z", "H", "S", "SDG", "T", "TDG"]
 
 
-# def experiment_directory(name: str):
-#     """Make the directory where the experiment will be stored."""
-#     from datetime import datetime
-
-#     overall_dir = "experiments/"
-#     # Check if the overall directory exists. If not create it.
-#     if not isdir(overall_dir):
-#         mkdir(overall_dir)
-#     # Get the current date and time.
-#     dt_string = datetime.now().strftime("%y%b%d_%H%M%S")
-#     # Every script name ``name`` gets its own directory.
-#     subdirectory = f"{overall_dir}{name}/"
-#     if not isdir(subdirectory):  # pragma: no cover
-#         mkdir(subdirectory)
-#     # Name the final directory for this experiment.
-#     final_directory = f"{subdirectory}experiment{dt_string}/"
-#     if not isdir(final_directory):  # pragma: no cover
-#         mkdir(final_directory)
-#     else:
-#         already_file, count = True, 1
-#         while already_file:
-#             final_directory = f"{subdirectory}experiment{dt_string}_{count}/"
-#             if not isdir(final_directory):
-#                 mkdir(final_directory)
-#                 already_file = False
-#             else:
-#                 count += 1
-#     return final_directory
-
-
 def effective_depol(error_channel, **kwargs):
     """ """
     liouvillerep = error_channel.to_pauli_liouville(normalize=True)
