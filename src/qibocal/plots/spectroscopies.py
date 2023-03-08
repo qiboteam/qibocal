@@ -93,8 +93,10 @@ def frequency_msr_phase(folder, routine, qubit, format):
             fig.add_trace(
                 go.Scatter(
                     x=frequencies,
-                    y=data.df.groupby("frequency")["MSR"].mean()
-                    * 1e6,  # pylint: disable=E1101
+                    y=data.df.groupby("frequency")[
+                        "MSR"
+                    ].mean()  # pylint: disable=E1101
+                    * 1e6,
                     marker_color=get_color(2 * report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,
@@ -107,9 +109,9 @@ def frequency_msr_phase(folder, routine, qubit, format):
             fig.add_trace(
                 go.Scatter(
                     x=frequencies,
-                    y=data.df.groupby("frequency")[
+                    y=data.df.groupby("frequency")[  # pylint: disable=E1101
                         "phase"
-                    ].mean(),  # pylint: disable=E1101
+                    ].mean(),
                     marker_color=get_color(2 * report_n),
                     showlegend=False,
                     legendgroup=f"q{qubit}/r{report_n}: Average",
