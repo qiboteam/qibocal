@@ -30,19 +30,10 @@ def frequency_msr_phase(folder, routine, qubit, format):
     fitting_report = ""
     for subfolder in subfolders:
         try:
-            data_fast = load_data(folder, subfolder, routine, format, "fast_sweep_data")
-            data_fast.df = data_fast.df[data_fast.df["qubit"] == qubit]
+            data = load_data(folder, subfolder, routine, format, "fast_sweep_data")
+            data.df = data.df[data.df["qubit"] == qubit]
         except:
-            data_fast = DataUnits(
-                quantities={"frequency": "Hz"}, options=["qubit", "iteration"]
-            )
-        try:
-            data_precision = load_data(
-                folder, subfolder, routine, format, "precision_sweep_data"
-            )
-            data_precision.df = data_precision.df[data_precision.df["qubit"] == qubit]
-        except:
-            data_precision = DataUnits(
+            data = DataUnits(
                 quantities={"frequency": "Hz"}, options=["qubit", "iteration"]
             )
         try:
@@ -62,76 +53,76 @@ def frequency_msr_phase(folder, routine, qubit, format):
                 ]
             )
 
-        for i, label, data in list(
-            zip((0, 1), ("Fast", "Precision"), (data_fast, data_precision))
-        ):
-            data.df = data.df.drop(columns=["i", "q", "qubit"])
-            iterations = data.df["iteration"].unique()
-            frequencies = data.df["frequency"].unique()
+        # for i, label, data in list(
+        #     zip((0, 1), ("Fast", "Precision"), (data_fast, data_precision))
+        # ):
+        data.df = data.df.drop(columns=["i", "q", "qubit"])
+        iterations = data.df["iteration"].unique()
+        frequencies = data.df["frequency"].unique() * 1e-9
 
-            if len(iterations) > 1:
-                opacity = 0.3
-            else:
-                opacity = 1
-            for iteration in iterations:
-                iteration_data = data.df[data.df["iteration"] == iteration]
-                fig.add_trace(
-                    go.Scatter(
-                        x=iteration_data["frequency"],
-                        y=iteration_data["MSR"] * 1e6,
-                        marker_color=get_color(2 * report_n + i),
-                        opacity=opacity,
-                        name=f"q{qubit}/r{report_n}: {label}",
-                        showlegend=not bool(iteration),
-                        legendgroup=f"q{qubit}/r{report_n}: {label}",
-                    ),
-                    row=1,
-                    col=1,
-                )
-                fig.add_trace(
-                    go.Scatter(
-                        x=iteration_data["frequency"],
-                        y=iteration_data["phase"],
-                        marker_color=get_color(2 * report_n + i),
-                        opacity=opacity,
-                        showlegend=False,
-                        legendgroup=f"q{qubit}/r{report_n}: {label}",
-                    ),
-                    row=1,
-                    col=2,
-                )
-            if len(iterations) > 1:
-                data.df = data.df.drop(columns=["iteration"])
-                fig.add_trace(
-                    go.Scatter(
-                        x=frequencies,
-                        y=data.df.groupby("frequency")["MSR"].mean() * 1e6,
-                        marker_color=get_color(2 * report_n + i),
-                        name=f"q{qubit}/r{report_n}: {label} Average",
-                        showlegend=True,
-                        legendgroup=f"q{qubit}/r{report_n}: {label} Average",
-                    ),
-                    row=1,
-                    col=1,
-                )
+        if len(iterations) > 1:
+            opacity = 0.3
+        else:
+            opacity = 1
+        for iteration in iterations:
+            iteration_data = data.df[data.df["iteration"] == iteration]
+            fig.add_trace(
+                go.Scatter(
+                    x=iteration_data["frequency"] * 1e-9,
+                    y=iteration_data["MSR"] * 1e6,
+                    marker_color=get_color(2 * report_n),
+                    opacity=opacity,
+                    name=f"q{qubit}/r{report_n}: Data",
+                    showlegend=not bool(iteration),
+                    legendgroup=f"q{qubit}/r{report_n}: Data",
+                ),
+                row=1,
+                col=1,
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=iteration_data["frequency"] * 1e-9,
+                    y=iteration_data["phase"],
+                    marker_color=get_color(2 * report_n),
+                    opacity=opacity,
+                    showlegend=False,
+                    legendgroup=f"q{qubit}/r{report_n}: Data",
+                ),
+                row=1,
+                col=2,
+            )
+        if len(iterations) > 1:
+            data.df = data.df.drop(columns=["iteration"])
+            fig.add_trace(
+                go.Scatter(
+                    x=frequencies,
+                    y=data.df.groupby("frequency")["MSR"].mean() * 1e6,
+                    marker_color=get_color(2 * report_n),
+                    name=f"q{qubit}/r{report_n}: Average",
+                    showlegend=True,
+                    legendgroup=f"q{qubit}/r{report_n}: Average",
+                ),
+                row=1,
+                col=1,
+            )
 
-                fig.add_trace(
-                    go.Scatter(
-                        x=frequencies,
-                        y=data.df.groupby("frequency")["phase"].mean(),
-                        marker_color=get_color(2 * report_n + i),
-                        showlegend=False,
-                        legendgroup=f"q{qubit}/r{report_n}: {label} Average",
-                    ),
-                    row=1,
-                    col=2,
-                )
+            fig.add_trace(
+                go.Scatter(
+                    x=frequencies,
+                    y=data.df.groupby("frequency")["phase"].mean(),
+                    marker_color=get_color(2 * report_n),
+                    showlegend=False,
+                    legendgroup=f"q{qubit}/r{report_n}: Average",
+                ),
+                row=1,
+                col=2,
+            )
 
-        if len(data_fast) > 0 and (qubit in data_fit.df["qubit"].values):
+        if len(data) > 0 and (qubit in data_fit.df["qubit"].values):
             freqrange = np.linspace(
-                min(data_fast.df["frequency"]),
-                max(data_fast.df["frequency"]),
-                2 * len(data_fast),
+                min(frequencies),
+                max(frequencies),
+                2 * len(frequencies),
             )
             params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(
                 orient="records"

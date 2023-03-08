@@ -163,7 +163,7 @@ def lorentzian_fit(data, x, y, qubits, resonator_type, labels, fit_file_name=Non
         voltages_keys = parse(y)
         frequencies = (
             qubit_data[frequencies_keys[0]].pint.to(frequencies_keys[1]).pint.magnitude
-        )
+        ) * 1e-9  # convert frequencies to GHz for better fitting
         voltages = qubit_data[voltages_keys[0]].pint.to(voltages_keys[1]).pint.magnitude
 
         # Create a lmfit model for fitting equation defined in resonator_peak
@@ -218,7 +218,7 @@ def lorentzian_fit(data, x, y, qubits, resonator_type, labels, fit_file_name=Non
             + fit_res.best_values["offset"]
         )
 
-        freq = f0
+        freq = f0 * 1e9
 
         data_fit.add(
             {
