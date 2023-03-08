@@ -9,7 +9,6 @@ from sklearn.inspection import DecisionBoundaryDisplay
 from sklearn.metrics import RocCurveDisplay, confusion_matrix, roc_curve
 
 from . import run
-from .run import Classifiers
 
 
 def plot_table(table, path):
@@ -24,6 +23,7 @@ def plot_table(table, path):
     )
     g.map(sns.scatterplot)
     plt.xscale("log")
+    plt.tight_layout()
     plt.savefig(path / "benchmarks.pdf")
 
 
@@ -32,8 +32,12 @@ def plot_conf_matr(y_test, base_dir: pathlib.Path, classifiers=None):
     names = []
     _figure = plt.figure(figsize=(30, 5))
 
+    # if classifiers is None:
+    #     classifiers = [i.value for i in Classifiers]
     if classifiers is None:
-        classifiers = [i.value for i in Classifiers]
+        classifiers = run.CLS_MODULES  # [i.value for i in Classifiers]
+
+    classifiers = run.import_classifiers(classifiers)
 
     for count, model in enumerate(classifiers):
         classifier = run.Classifier(model, base_dir)
@@ -47,6 +51,7 @@ def plot_conf_matr(y_test, base_dir: pathlib.Path, classifiers=None):
         )
         ax.set_title(classifier.name)
 
+    plt.tight_layout()
     plt.savefig(base_dir / "confusion_matrices.pdf")
     confusion_dic = {names[i]: matrices[i].tolist() for i in range(len(classifiers))}
 
@@ -104,6 +109,7 @@ def plot_roc_curves(x_test, y_test, base_dir: pathlib.Path, models, names):
         plt.ylabel("True Positive Rate")
         plt.title(f"{names[count]}")
         plt.legend()
+        plt.tight_layout()
         plt.savefig(base_dir / "ROC_curves.pdf")
 
     roc_dict = {names[i]: [tprs[i].tolist(), fprs[i].tolist()] for i in range(len_list)}
@@ -153,4 +159,5 @@ def plot_models_results(
         ax.set_xticks(())
         ax.set_yticks(())
         ax.set_title(classifiers_name[count])
+        plt.tight_layout()
         plt.savefig(base_dir / "results.pdf")

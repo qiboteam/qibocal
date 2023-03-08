@@ -1,4 +1,5 @@
 import enum
+import importlib
 import json
 import pathlib
 import time
@@ -10,34 +11,18 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import accuracy_score
 
-from . import (
-    ada_boost,
-    data,
-    gaussian_process,
-    linear_svm,
-    naive_bayes,
-    nn,
-    plots,
-    qubit_fit,
-    random_forest,
-    rbf_svm,
-)
+from . import data, plots
 
-# TODO:  - plot models classifications
-#       - add Alvaro's method
-#       - check neural net
-#       - check ROC curves
-
-
-class Classifiers(enum.Enum):
-    linear_svm = linear_svm
-    naive_bayes = naive_bayes
-    rbf_svm = rbf_svm
-    ada_boost = ada_boost
-    random_forest = random_forest
-    gaussian_process = gaussian_process
-    nn = nn
-    qubit_fit = qubit_fit
+CLS_MODULES = [
+    "linear_svm",
+    "ada_boost",
+    "gaussian_process",
+    "naive_bayes",
+    "nn",
+    "qubit_fit",
+    "random_forest",
+    "rbf_svm",
+]
 
 
 HYPERFILE = "hyperpars.json"
@@ -45,6 +30,14 @@ PREDFILE = "predictions.npy"
 BENCHTABFILE = "benchmarks.csv"
 
 base_dir = pathlib.Path()
+
+
+def import_classifiers(cls_names: list[str]):
+    importing_func = lambda mod: importlib.import_module(
+        ".." + mod, "qibocal.fitting.classifier.*"
+    )
+    Classifiers = list(map(importing_func, cls_names))
+    return Classifiers
 
 
 class Classifier:
@@ -199,6 +192,7 @@ def plot_history(history, save_dir: pathlib.Path):
     plt.plot(range(epochs), history_dict["val_accuracy"], label="val_accuracy")
     plt.legend()
     plt.grid()
+    plt.tight_layout()
     plt.savefig(save_dir / "NN_training.pdf")
     json.dump(history_dict, open(save_dir / "NN_history.json", "w"))
 
@@ -232,15 +226,17 @@ def train_qubit(
         qubit_dir.mkdir()
     except:
         pass
+
     qubit_data = data.load_qubit(data_path, qubit)
     data.plot_qubit(qubit_data, qubit_dir)
     x_train, y_train, x_test, y_test = data.generate_models(qubit_data)
     models = []
     results_list = []
     names = []
-
     if classifiers is None:
-        classifiers = [i.value for i in Classifiers]
+        classifiers = CLS_MODULES  # [i.value for i in Classifiers]
+
+    classifiers = import_classifiers(classifiers)
 
     for mod in classifiers:
         classifier = Classifier(mod, qubit_dir)
@@ -248,7 +244,8 @@ def train_qubit(
             classifier.savedir.mkdir()
         except:
             pass
-
+        print(mod, classifier)
+        print(classifier.name)
         hyperpars = classifier.hyperopt(x_train, y_train, classifier.savedir)
 
         classifier.dump_hyper(hyperpars)
