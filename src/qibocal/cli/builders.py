@@ -32,7 +32,6 @@ class ActionParser:
             os.makedirs(self.path)
         # collect function from module
         self.func = getattr(calibrations, self.name)
-
         sig = inspect.signature(self.func)
         self.params = self.runcard["actions"][self.name]
         for param in list(sig.parameters)[2:-1]:
@@ -219,18 +218,18 @@ class ActionBuilder:
         actions = []
         for action in self.runcard["actions"]:
             actions.append(action)
-            try:
-                parser = niGSCactionParser(self.runcard, self.folder, action)
-                parser.build()
-                parser.execute(self.format, self.platform)
-            # TODO: find a better way to choose between the two parsers
-            except (ModuleNotFoundError, KeyError):
+            if hasattr(calibrations, action):
                 parser = ActionParser(self.runcard, self.folder, action)
                 parser.build()
                 parser.execute(self.format, self.platform, self.qubits)
-                for qubit in self.qubits:
-                    if self.platform is not None:
-                        self.update_platform_runcard(qubit, action)
+            else:
+                parser = niGSCactionParser(self.runcard, self.folder, action)
+                parser.build()
+                parser.execute(self.format, self.platform)
+
+            for qubit in self.qubits:
+                if self.platform is not None:
+                    self.update_platform_runcard(qubit, action)
             self.dump_report(actions)
 
         if self.platform is not None:
@@ -298,11 +297,13 @@ class ReportBuilder:
         self.routines = []
         if actions is None:
             actions = self.runcard.get("actions")
-
         for action in actions:
             if hasattr(calibrations, action):
                 routine = getattr(calibrations, action)
             elif hasattr(calibrations.niGSC, action):
+                print("OK")
+                print(action)
+                print(hasattr(calibrations.niGSC, action))
                 routine = niGSCactionParser(self.runcard, self.path, action)
                 routine.load_plot()
             else:
