@@ -11,7 +11,14 @@ from sklearn.metrics import RocCurveDisplay, confusion_matrix, roc_curve
 from . import run
 
 
-def plot_table(table, path):
+def plot_table(table, path: pathlib.Path):
+    r"""Plot the benchmark table and save it as
+    `{path}/benchmarks.pdf`.
+
+    Args:
+        table (pd.DataFrame): Benchmark's table.
+        path (path): Save path.
+    """
     sns.set_style("darkgrid")
     g = sns.PairGrid(
         table,
@@ -27,7 +34,16 @@ def plot_table(table, path):
     plt.savefig(path / "benchmarks.pdf")
 
 
-def plot_conf_matr(y_test, base_dir: pathlib.Path, classifiers=None):
+def plot_conf_matr(y_test, path: pathlib.Path, classifiers=None):
+    r"""
+    Plot the confusion matrices of the `classifiers` and save it
+    as  `{path}/confusion_matrices.pdf` and `{path}/confusion_matrices.json`.
+
+    Args:
+        y_test: Test outputs.
+        path: Save path.
+        classifiers (list | None, optional): List of classification models. It must be a subset of `run.CLS_MODULES`.
+    """
     matrices = []
     names = []
     _figure = plt.figure(figsize=(30, 5))
@@ -38,11 +54,14 @@ def plot_conf_matr(y_test, base_dir: pathlib.Path, classifiers=None):
     classifiers = run.import_classifiers(classifiers)
 
     for count, model in enumerate(classifiers):
-        classifier = run.Classifier(model, base_dir)
+        classifier = run.Classifier(model, path)
         names.append(classifier.name)
-        y_pred = np.load(base_dir / classifier.name / run.PREDFILE)
+
+        y_pred = np.load(path / classifier.name / run.PREDFILE)
+        # Evaluate confusion matrices
         conf_matr = confusion_matrix(y_test, np.round(y_pred), normalize="true")
         matrices.append(conf_matr)
+        # Plots
         ax = plt.subplot(1, len(classifiers), count + 1)
         sns.heatmap(
             conf_matr, annot=True, xticklabels=["P", "N"], yticklabels=["P", "N"]
@@ -50,19 +69,28 @@ def plot_conf_matr(y_test, base_dir: pathlib.Path, classifiers=None):
         ax.set_title(classifier.name)
 
     plt.tight_layout()
-    plt.savefig(base_dir / "confusion_matrices.pdf")
+    plt.savefig(path / "confusion_matrices.pdf")
     confusion_dic = {names[i]: matrices[i].tolist() for i in range(len(classifiers))}
-
+    # Save data in JSON
     json.dump(
         confusion_dic,
-        open(base_dir / "confusion_matrices.json", "w"),
+        open(path / "confusion_matrices.json", "w"),
         separators=(",", ":"),
         sort_keys=True,
         indent=4,
     )
 
 
-def plot_roc_curves(x_test, y_test, base_dir: pathlib.Path, models, names):
+def plot_roc_curves(x_test, y_test, path: pathlib.Path, models, models_names):
+    r"""Plot the ROC curves of the `models` and save it
+    as `{path}/ROC_curves.pdf` and `{path}/ROC_curves.json`.
+    Args:
+        x_test (list): Test inputs.
+        y_test (list): Test outputs.
+        path (path): Save path.
+        models (list): List of trained classifiers.
+        models_names (list[str]): List of classifiers' names.
+    """
     _figure = plt.figure(figsize=(30, 5))
     fprs = []
     tprs = []
@@ -72,7 +100,8 @@ def plot_roc_curves(x_test, y_test, base_dir: pathlib.Path, models, names):
         ax = plt.subplot(1, len_list, count + 1)
         plt.subplot(1, len_list, count + 1)
 
-        y_pred = np.load(base_dir / names[count] / run.PREDFILE)
+        # Evaluate the ROC curves
+        y_pred = np.load(path / models_names[count] / run.PREDFILE)
         fpr, tpr, _ = roc_curve(y_test, y_pred)
         fprs.append(fpr)
         tprs.append(tpr)
@@ -88,36 +117,45 @@ def plot_roc_curves(x_test, y_test, base_dir: pathlib.Path, models, names):
                 ax=ax,
                 color="darkorange",
             )
-
+        # Plot
         plt.plot([0, 1], [0, 1], "k--", label="chance level (AUC = 0.5)")
         plt.axis("square")
         plt.xlabel("False Positive Rate")
         plt.ylabel("True Positive Rate")
-        plt.title(f"{names[count]}")
+        plt.title(f"{models_names[count]}")
         plt.legend()
         plt.tight_layout()
-        plt.savefig(base_dir / "ROC_curves.pdf")
+        plt.savefig(path / "ROC_curves.pdf")
 
-    roc_dict = {names[i]: [tprs[i].tolist(), fprs[i].tolist()] for i in range(len_list)}
-
+    # Save data in a dictionary
+    roc_dict = {
+        models_names[i]: [tprs[i].tolist(), fprs[i].tolist()] for i in range(len_list)
+    }
     json.dump(
         roc_dict,
-        open(base_dir / "roc_curves.json", "w"),
+        open(path / "ROC_curves.json", "w"),
         separators=(",", ":"),
         sort_keys=True,
         indent=4,
     )
 
 
-def plot_models_results(
-    x_train, x_test, y_test, base_dir, classifiers, classifiers_name
-):
-    i = 1
+def plot_models_results(x_train, x_test, y_test, path, models, models_names):
+    r"""Plot the decisions boundaries of the `c` and save it
+    as `{path}/results.pdf`.
+    Args:
+        x_train (list): Train inputs.
+        x_test (list): Test inputs.
+        y_test (list): Test outputs.
+        path (path): Save path.
+        models (list): List of trained classifiers.
+        models_names (list[str]): List of classifiers' names.
+    """
     _figure = plt.figure(figsize=(20, 8))
 
-    len_list = len(classifiers)
+    len_list = len(models)
 
-    for count, classifier in enumerate(classifiers):
+    for count, classifier in enumerate(models):
         ax = plt.subplot(3, len_list // 3 + 1, count + 1)
 
         i, q = np.meshgrid(
@@ -141,6 +179,6 @@ def plot_models_results(
 
         ax.set_xticks(())
         ax.set_yticks(())
-        ax.set_title(classifiers_name[count])
+        ax.set_title(models_names[count])
         plt.tight_layout()
-        plt.savefig(base_dir / "results.pdf")
+        plt.savefig(path / "results.pdf")

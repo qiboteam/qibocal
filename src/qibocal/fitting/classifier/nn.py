@@ -10,6 +10,13 @@ from matplotlib import pyplot as plt
 
 
 class RBFLayer(Layer):
+    r"""Deploy a neural network layer with RBF activation function.
+
+    Args:
+        units: Number of nodes in the layer.
+        gamma: Activation function's parameter.
+    """
+
     def __init__(self, units, gamma, **kwargs):
         super().__init__(**kwargs)
         self.units = units
@@ -34,7 +41,8 @@ class RBFLayer(Layer):
         return (input_shape[0], self.units)
 
 
-def hypermodel(hp):
+def _hypermodel(hp):
+    r"""Hyper model for the Keras tuner"""
     hp_units_1 = hp.Int("units_1", min_value=16, max_value=1056, step=16)
     hp_units_2 = hp.Int("units_2", min_value=16, max_value=1056, step=16)
     activation = hp.Choice("activation", ["relu", "sigmoid", "tanh", "RBF"])
@@ -86,8 +94,18 @@ def hypermodel(hp):
 
 
 def hyperopt(x_train, y_train, path):
+    r"""Perform an hyperparameter optimization and return the hyperparameters.
+
+    Args:
+        x_train: Training inputs.
+        y_train: Training outputs.
+        path (path): Model save path.
+
+    Returns:
+        Dictionary with model's hyperparameters.
+    """
     tuner = kt.Hyperband(
-        hypermodel,
+        _hypermodel,
         objective="val_accuracy",
         max_epochs=150,
         directory=path,
@@ -108,11 +126,21 @@ def hyperopt(x_train, y_train, path):
 
 
 def constructor(hyperpars):
+    r"""Return the model class.
+
+    Args:
+        _hyperparams: Model hyperparameters.
+    """
     best_hps = kt.HyperParameters.from_config(hyperpars)
-    tuner = kt.Hyperband(hypermodel)
+    tuner = kt.Hyperband(_hypermodel)
 
     return tuner.hypermodel.build(best_hps)
 
 
 def normalize(unnormalized):
+    r"""Return a model that implement a step of data normalisation.
+
+    Args:
+        unormalize: Model.
+    """
     return unnormalized

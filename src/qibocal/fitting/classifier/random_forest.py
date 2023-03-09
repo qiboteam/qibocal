@@ -6,6 +6,16 @@ from . import utils
 
 
 def hyperopt(x_train, y_train, _path):
+    r"""Perform an hyperparameter optimization and return the hyperparameters.
+
+    Args:
+        x_train: Training inputs.
+        y_train: Training outputs.
+        _path (path): Model save path.
+
+    Returns:
+        Dictionary with model's hyperparameters.
+    """
     clf = RandomForestClassifier()
     cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=3, random_state=1)
     space = dict()
@@ -18,6 +28,11 @@ def hyperopt(x_train, y_train, _path):
 
 
 def constructor(hyperpars):
+    r"""Return the model class.
+
+    Args:
+        _hyperparams: Model hyperparameters.
+    """
     return RandomForestClassifier().set_params(**hyperpars)
 
 

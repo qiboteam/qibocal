@@ -1,7 +1,9 @@
+import logging
 from pathlib import Path
 
 from qibocal.fitting.classifier import plots, run
 
+logging.basicConfig(level=logging.INFO)
 data_path = Path("calibrate_qubit_states/data.csv")
 base_dir = Path("_results2")
 base_dir.mkdir(exist_ok=True)

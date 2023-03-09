@@ -94,7 +94,7 @@ class Classifier:
     @classmethod
     def load_model(cls, name: str, base_dir: pathlib.Path):
         r"""
-        Giving the classification name this method returns the respective classifier.\
+        Giving the classification name this method returns the respective classifier.
 
         Args:
             name (str): classifier's name.
@@ -169,7 +169,7 @@ def benchmarking(model, x_train, y_train, x_test, y_test, **fit_kwargs):
     test_time = (stop - start) / len(x_test)
     # Evaluate accuracy
     score = accuracy_score(y_test, np.round(y_pred))
-    logging, info(f"Accuracy: {score}")
+    logging.info(f"Accuracy: {score}")
     results = BenchmarkResults(score, test_time, training_time)
 
     return results, y_pred, model, fit_info
@@ -207,7 +207,7 @@ def train_qubit(
         data_path(path): Where the qubits' data are stored.
         base_dir (path): Where save the results.
         qubit (int): Qubit ID.
-        classifiers (list | None, optional): List of classification models. It must be a subset of the models in the `Classifiers` class.
+        classifiers (list | None, optional): List of classification models. It must be a subset of `CLS_MODULES`.
 
     Returns: benchmarks_table, y_test
         - benchmarks_table (pd.DataFrame): Table with the following columns
