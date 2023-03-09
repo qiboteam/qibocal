@@ -1,9 +1,6 @@
 from pathlib import Path
 
-from qibocal.fitting.classifier import (
-    plots,
-    run,
-)
+from qibocal.fitting.classifier import plots, run
 
 data_path = Path("calibrate_qubit_states/data.csv")
 base_dir = Path("_results2")
