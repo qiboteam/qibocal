@@ -7,7 +7,7 @@ from qibocal import plots
 from qibocal.config import raise_error
 from qibocal.data import DataUnits
 from qibocal.decorators import plot
-from qibocal.fitting.methods import lorentzian_fit
+from qibocal.fitting.methods import lorentzian_fit, punchout_fit
 
 
 @plot("MSR and Phase vs Resonator Frequency", plots.frequency_msr_phase)
@@ -330,7 +330,12 @@ def resonator_punchout(
                 if count % points == 0:
                     # save data
                     yield data
-                    # TODO: calculate and save fit
+                    yield punchout_fit(
+                        data=data,
+                        qubits=qubits,
+                        resonator_type=platform.resonator_type,
+                        labels=["freq_lp", "att_lp", "freq_hp", "att_hp"],
+                    )
 
                 # reconfigure the instrument based on the new parameters
                 # in this case setting the local oscillators and their attenuations

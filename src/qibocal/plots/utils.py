@@ -41,7 +41,6 @@ def load_data(folder, subfolder, routine, data_format, name):
     }
     if "fit" in name or "parameters" in name:
         data.df = pd.read_csv(file, header=[0], index_col=[0])
-
     else:
         data.df = pd.read_csv(
             file, dtype=dtype_dict, header=[0], skiprows=[1], index_col=[0]

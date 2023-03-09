@@ -1,24 +1,31 @@
 """Routine-specific method for post-processing data acquired."""
+import re
 from functools import partial
 
 import lmfit
 import numpy as np
 from scipy.optimize import curve_fit
+from scipy.signal import savgol_filter
 
 from qibocal.config import log
 from qibocal.data import Data
 from qibocal.fitting.utils import (
     cos,
     exp,
+    find_min_msr_att,
     flipping,
     freq_q_mathieu,
     freq_r_mathieu,
     freq_r_transmon,
+    get_max_freq,
+    get_points_with_max_freq,
     line,
     lorenzian,
+    norm,
     parse,
     rabi,
     ramsey,
+    split_list_by_threshold,
 )
 
 
@@ -1082,3 +1089,119 @@ def calibrate_qubit_states_fit(data, x, y, nshots, qubits):
         }
         parameters.add(results)
     return parameters
+
+
+def punchout_fit(data, qubits, resonator_type, labels):
+    """Fit frequency and attenuation at high and low power for a given resonator
+        Args:
+        data (DataUnits): data file with information on the feature response at each current point.
+        qubits (list): qubits coupled to the resonator that we are probing.
+        resonator_type (str): the type of readout resonator ['3D', '2D'].
+        labels (list of str): list containing the lables of the quantities computed by this fitting method.
+
+    Returns:
+        data_fit (Data): Data file with labels and fit parameters.
+    """
+
+    data_fit = Data(
+        name=f"fits",
+        quantities=[
+            labels[0],
+            labels[1],
+            labels[2],
+            labels[3],
+            "qubit",
+        ],
+    )
+
+    for qubit in qubits:
+        averaged_data = (
+            data.df.drop(columns=["i", "q", "qubit", "iteration"])
+            .groupby(["frequency", "attenuation"], as_index=False)
+            .mean()
+        )
+
+        try:
+            normalised_data = averaged_data.groupby(["attenuation"], as_index=False)[
+                ["MSR"]
+            ].transform(norm)
+
+            averaged_data_updated = averaged_data.copy()
+            averaged_data_updated["MSR"] = normalised_data["MSR"].apply(
+                lambda x: x.magnitude
+            )
+            averaged_data_updated = averaged_data_updated.applymap(
+                lambda x: x.to_base_units().magnitude if hasattr(x, "magnitude") else x
+            )
+
+            min_points = find_min_msr_att(averaged_data_updated, resonator_type)
+            x = [point[0] for point in min_points]
+            y = [point[1] for point in min_points]
+
+            window_length = len(x)
+            if window_length % 2 == 0:
+                window_length -= 1
+
+            smoothed_min_points_x = savgol_filter(
+                x,
+                window_length=window_length,
+                polyorder=3,
+            )
+
+            smoothed_min_points_y = savgol_filter(
+                y,
+                window_length=window_length,
+                polyorder=3,
+            )
+
+            log.warning("sm x\n%s", smoothed_min_points_x)
+            log.warning("sm y\n%s", smoothed_min_points_y)
+
+            max_point_x_idx = np.argmax(smoothed_min_points_x)
+            min_point_x_idx = np.argmin(smoothed_min_points_x)
+
+            log.warning("max point X idx\n%s", max_point_x_idx)
+            log.warning("mix point X idx\n%s", min_point_x_idx)
+
+            max_x = smoothed_min_points_x[max_point_x_idx]
+            max_y = smoothed_min_points_y[max_point_x_idx]
+            min_x = smoothed_min_points_x[min_point_x_idx]
+            min_y = smoothed_min_points_y[min_point_x_idx]
+
+            log.warning("max X\n%s", max_x)
+            log.warning("mix X\n%s", min_x)
+            log.warning("max Y\n%s", max_y)
+            log.warning("mix Y\n%s", min_y)
+
+            middle_x = (max_x + min_x) / 2
+            middle_y = (max_y + min_y) / 2
+
+            log.warning("middle X\n%s", middle_x)
+            log.warning("middle Y\n%s", middle_y)
+
+            hp_points, lp_points = split_list_by_threshold(min_points, middle_x)
+
+            freq_hp = get_max_freq(hp_points)
+            freq_lp = get_max_freq(lp_points)
+
+            point_hp = get_points_with_max_freq(min_points, freq_hp)
+            point_lp = get_points_with_max_freq(min_points, freq_lp)
+
+            log.warning("point hp\n%s", point_hp)
+            log.warning("point lp\n%s", point_lp)
+
+        except:
+            log.warning("Punchout_fit: the fitting was not succesful")
+            data_fit.add({key: 0 for key in data_fit.df.columns})
+            return data_fit
+
+        data_fit.add(
+            {
+                labels[0]: point_hp[0],
+                labels[1]: point_hp[1],
+                labels[2]: point_lp[0],
+                labels[3]: point_lp[1],
+                "qubit": qubit,
+            }
+        )
+    return data_fit

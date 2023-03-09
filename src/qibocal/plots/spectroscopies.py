@@ -200,6 +200,7 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
         ),
     )
 
+    fitting_report = ""
     report_n = 0
     for subfolder in subfolders:
         try:
@@ -210,6 +211,19 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
                 name=f"data",
                 quantities={"frequency": "Hz", "attenuation": "dB"},
                 options=["qubit", "iteration"],
+            )
+
+        try:
+            data_fit = load_data(folder, subfolder, routine, format, "fits")
+            data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
+        except:
+            data_fit = Data(
+                quantities=[
+                    "freq@lp",
+                    "att@lp",
+                    "freq@hp",
+                    "att@hp" "qubit",
+                ]
             )
 
         iterations = data.df["iteration"].unique()
@@ -227,6 +241,9 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
         normalised_data = averaged_data.groupby(["attenuation"], as_index=False)[
             ["MSR"]
         ].transform(norm)
+
+        # Add fitting trace
+        params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(orient="records")[0]
 
         fig.add_trace(
             go.Heatmap(
@@ -260,6 +277,18 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
             showlegend=False,
             uirevision="0",  # ``uirevision`` allows zooming while live plotting
         )
+
+        title_text = ""
+        title_text += f"q{qubit}/r{report_n} | Freq@Lp: {params['freq_lp']} Hz.<br>"
+        title_text += (
+            f"q{qubit}/r{report_n} | Attenuation@Lp: {params['att_hp']} db.<br>"
+        )
+        title_text += f"q{qubit}/r{report_n} | Freq@Hp: {params['freq_lp']} Hz.<br>"
+        title_text += (
+            f"q{qubit}/r{report_n} | Attenuation@Hp: {params['att_lp']} db.<br>"
+        )
+        fitting_report = fitting_report + title_text
+
         report_n += 1
     if report_n > 1:
         fig.update_traces(showscale=False)
