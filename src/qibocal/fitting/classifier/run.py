@@ -240,10 +240,7 @@ def train_qubit(
 
     for mod in classifiers:
         classifier = Classifier(mod, qubit_dir)
-        try:
-            classifier.savedir.mkdir()
-        except:
-            pass
+      	classifier.savedir.mkdir(exist_ok=True)
         print(mod, classifier)
         print(classifier.name)
         hyperpars = classifier.hyperopt(x_train, y_train, classifier.savedir)
