@@ -1,11 +1,7 @@
 from pathlib import Path
 
 from qibocal.fitting.classifier import (
-    linear_svm,
-    naive_bayes,
     plots,
-    random_forest,
-    rbf_svm,
     run,
 )
 
