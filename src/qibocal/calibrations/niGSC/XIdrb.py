@@ -210,7 +210,6 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
     report.info_dict["Number of qubits"] = len(experiment.data[0]["samples"][0])
     report.info_dict["Number of shots"] = len(experiment.data[0]["samples"])
     report.info_dict["runs"] = experiment.extract("samples", "depth", "count")[1][0]
-    print(df_aggr["perr"])
     report.info_dict[
         "A1_real"
     ] = f"{df_aggr['popt_real'][0]['A1_real']:.3f} +/- {df_aggr['perr'][0]['A1_err']:.3f}"

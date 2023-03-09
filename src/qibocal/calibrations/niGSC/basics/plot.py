@@ -4,12 +4,11 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
-from qibocal.calibrations.niGSC.basics import utils
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
+from qibocal.plots.utils import get_data_subfolders
 
 
 def plot_qq(folder: str, routine: str, qubit, format):
-    fitting_report = ""
     """Load the module for which the plot has to be done.
 
 
@@ -25,15 +24,20 @@ def plot_qq(folder: str, routine: str, qubit, format):
 
     import importlib
 
-    # Load the module, something like 'standardrb'.
-    module = importlib.import_module(f"qibocal.calibrations.niGSC.{routine}")
-    # Load the experiment with the class method ``load``.
-    experiment = module.ModuleExperiment.load(f"{folder}/data/{routine}/")
-    # In this data frame the precomputed fitting parameters and other
-    # parameters for fitting and plotting are stored.
-    aggr_df = pd.read_pickle(f"{folder}/data/{routine}/fit_plot.pkl")
-    # Build the figure/report using the responsible module.
-    plotly_figure, fitting_report = module.build_report(experiment, aggr_df)
+    subfolders = get_data_subfolders(folder)
+    report_n = 0
+    for subfolder in subfolders:
+        # Load the module, something like 'standardrb'.
+        module = importlib.import_module(f"qibocal.calibrations.niGSC.{routine}")
+        # Load the experiment with the class method ``load``.
+        experiment = module.ModuleExperiment.load(f"{folder}/{subfolder}/{routine}/")
+        # In this data frame the precomputed fitting parameters and other
+        # parameters for fitting and plotting are stored.
+        aggr_df = pd.read_pickle(f"{folder}/data/{routine}/fit_plot.pkl")
+        # Build the figure/report using the responsible module.
+        plotly_figure, fitting_report = module.build_report(experiment, aggr_df)
+
+        report_n += 1
     return [plotly_figure], fitting_report
 
 

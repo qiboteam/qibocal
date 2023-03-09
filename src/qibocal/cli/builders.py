@@ -300,11 +300,11 @@ class ReportBuilder:
         for action in actions:
             if hasattr(calibrations, action):
                 routine = getattr(calibrations, action)
-            elif hasattr(calibrations.niGSC, action):
+            else:
                 routine = niGSCactionParser(self.runcard, self.path, action)
                 routine.load_plot()
-            else:
-                raise_error(ValueError, f"Undefined action {action} in report.")
+            # else:
+            #     raise_error(ValueError, f"Undefined action {action} in report.")
 
             if not hasattr(routine, "plots"):
                 routine.plots = []
