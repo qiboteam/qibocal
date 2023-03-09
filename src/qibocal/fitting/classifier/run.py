@@ -36,8 +36,8 @@ def import_classifiers(cls_names: list[str]):
     importing_func = lambda mod: importlib.import_module(
         ".." + mod, "qibocal.fitting.classifier.*"
     )
-    Classifiers = list(map(importing_func, cls_names))
-    return Classifiers
+    classifiers = list(map(importing_func, cls_names))
+    return classifiers
 
 
 class Classifier:
