@@ -1,6 +1,7 @@
 import enum
 import importlib
 import json
+import logging
 import pathlib
 import time
 from dataclasses import asdict, dataclass
@@ -168,8 +169,7 @@ def benchmarking(model, x_train, y_train, x_test, y_test, **fit_kwargs):
     test_time = (stop - start) / len(x_test)
     # Evaluate accuracy
     score = accuracy_score(y_test, np.round(y_pred))
-    print("Accuracy", score)
-
+    logging, info(f"Accuracy: {score}")
     results = BenchmarkResults(score, test_time, training_time)
 
     return results, y_pred, model, fit_info
@@ -237,8 +237,7 @@ def train_qubit(
     for mod in classifiers:
         classifier = Classifier(mod, qubit_dir)
         classifier.savedir.mkdir(exist_ok=True)
-        print(mod, classifier)
-        print(classifier.name)
+        logging.info(f"Classification model: {classifier.name}")
         hyperpars = classifier.hyperopt(x_train, y_train, classifier.savedir)
 
         classifier.dump_hyper(hyperpars)
@@ -264,15 +263,12 @@ def train_qubit(
         results.name = classifier.name
         results_list.append(results)
         names.append(classifier.name)
-
-        # conf_matrices.append(confusion_matrix(y_test, y_pred, normalize="true"))
-
         dump_preds(y_pred, classifier.savedir)
 
     benchmarks_table = pd.DataFrame([asdict(res) for res in results_list])
     plots.plot_models_results(x_train, x_test, y_test, qubit_dir, models, names)
     plots.plot_roc_curves(x_test, y_test, qubit_dir, models, names)
-    # plt.close()
+
     return benchmarks_table, y_test, x_test
 
 
@@ -318,13 +314,3 @@ def table_from_file(dir_path):
 
     """
     return pd.read_csv(dir_path / BENCHTABFILE)
-
-
-# def plot_qubit(folder: pathlib.Path):
-#     data = load_data()
-#     plots.data(data)
-
-#     models = []
-#     for model_dir in folder.glob("*"):
-#         model = Classifier.load_model(model_dir)
-#     plots.common(models)

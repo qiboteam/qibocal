@@ -8,7 +8,7 @@ base_dir.mkdir(exist_ok=True)
 # qubit = 1
 for qubit in range(1, 5):
     qubit_dir = base_dir / f"qubit{qubit}"
-    classifiers = [linear_svm]
+    # classifiers = [linear_svm]
     table, y_test, x_test = run.train_qubit(data_path, base_dir, qubit)
     run.dump_benchmarks_table(table, qubit_dir)
     plots.plot_table(table, qubit_dir)

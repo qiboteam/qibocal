@@ -32,10 +32,8 @@ def plot_conf_matr(y_test, base_dir: pathlib.Path, classifiers=None):
     names = []
     _figure = plt.figure(figsize=(30, 5))
 
-    # if classifiers is None:
-    #     classifiers = [i.value for i in Classifiers]
     if classifiers is None:
-        classifiers = run.CLS_MODULES  # [i.value for i in Classifiers]
+        classifiers = run.CLS_MODULES
 
     classifiers = run.import_classifiers(classifiers)
 
@@ -68,41 +66,29 @@ def plot_roc_curves(x_test, y_test, base_dir: pathlib.Path, models, names):
     _figure = plt.figure(figsize=(30, 5))
     fprs = []
     tprs = []
-    # names = []
 
-    # if classifiers is None:
-    #     classifiers = [i.value for i in Classifiers]
-
-    # len_list = len(classifiers)
     len_list = len(models)
     for count, model in enumerate(models):
-        # classifier = run.Classifier(model, base_dir)
-        # names.append(names[count])
-
         ax = plt.subplot(1, len_list, count + 1)
         plt.subplot(1, len_list, count + 1)
 
         y_pred = np.load(base_dir / names[count] / run.PREDFILE)
-        fpr, tpr, _ = roc_curve(
-            y_test, y_pred
-        )  # TODO: add dictionary and Ramiro's method and close windows with plt.close('all')
+        fpr, tpr, _ = roc_curve(y_test, y_pred)
         fprs.append(fpr)
         tprs.append(tpr)
 
-        print(model)
         try:
             RocCurveDisplay.from_estimator(
                 model, x_test, y_test, ax=ax, color="darkorange"
             )
         except ValueError:
-            # roc_auc = auc(fpr, tpr)
-            # _roc_display = RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=roc_auc, ax=ax,color="darkorange")
             RocCurveDisplay.from_predictions(
                 y_test,
                 y_pred,
                 ax=ax,
                 color="darkorange",
             )
+
         plt.plot([0, 1], [0, 1], "k--", label="chance level (AUC = 0.5)")
         plt.axis("square")
         plt.xlabel("False Positive Rate")
@@ -121,7 +107,6 @@ def plot_roc_curves(x_test, y_test, base_dir: pathlib.Path, models, names):
         sort_keys=True,
         indent=4,
     )
-    # plt.close("all")
 
 
 def plot_models_results(
@@ -133,8 +118,6 @@ def plot_models_results(
     len_list = len(classifiers)
 
     for count, classifier in enumerate(classifiers):
-        # classifier = run.Classifier(model, base_dir)
-
         ax = plt.subplot(3, len_list // 3 + 1, count + 1)
 
         i, q = np.meshgrid(
