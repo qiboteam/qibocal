@@ -4,10 +4,7 @@ from qibocal.fitting.classifier import plots, run
 
 data_path = Path("calibrate_qubit_states/data.csv")
 base_dir = Path("_results2")
-try:
-    base_dir.mkdir()
-except:
-    pass
+base_dir.mkdir(exist_ok=True)
 # qubit = 1
 for qubit in range(1, 5):
     qubit_dir = base_dir / f"qubit{qubit}"

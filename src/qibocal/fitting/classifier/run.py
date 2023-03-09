@@ -222,11 +222,7 @@ def train_qubit(
     nn_epochs = 200
     nn_val_split = 0.2
     qubit_dir = base_dir / f"qubit{qubit}"
-    try:
-        qubit_dir.mkdir()
-    except:
-        pass
-
+    qubit_dir.mkdir(exist_ok=True)
     qubit_data = data.load_qubit(data_path, qubit)
     data.plot_qubit(qubit_data, qubit_dir)
     x_train, y_train, x_test, y_test = data.generate_models(qubit_data)
@@ -240,7 +236,11 @@ def train_qubit(
 
     for mod in classifiers:
         classifier = Classifier(mod, qubit_dir)
+<<<<<<< HEAD
       	classifier.savedir.mkdir(exist_ok=True)
+=======
+        classifier.savedir.mkdir(exist_ok=True)
+>>>>>>> 76cf6a0 (add mkdir exist_ok argument)
         print(mod, classifier)
         print(classifier.name)
         hyperpars = classifier.hyperopt(x_train, y_train, classifier.savedir)
