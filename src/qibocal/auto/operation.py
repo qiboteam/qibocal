@@ -45,7 +45,7 @@ class Results:
     As for the case of :cls:`Parameters` the explicit structure is only useful
     to fill the specific update, but in this case there should be a generic way
 
-    Each field might be annotated with an ``updata`` metadata field, in order
+    Each field might be annotated with an ``update`` metadata field, in order
     to mark them for later use in the runcard::
 
         @dataclass
