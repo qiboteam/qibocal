@@ -94,7 +94,7 @@ def plot_roc_curves(x_test, y_test, base_dir: pathlib.Path, models, names):
             RocCurveDisplay.from_estimator(
                 model, x_test, y_test, ax=ax, color="darkorange"
             )
-        except:
+        except ValueError:
             # roc_auc = auc(fpr, tpr)
             # _roc_display = RocCurveDisplay(fpr=fpr, tpr=tpr, roc_auc=roc_auc, ax=ax,color="darkorange")
             RocCurveDisplay.from_predictions(
