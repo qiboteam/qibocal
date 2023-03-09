@@ -14,8 +14,8 @@ from qibocal.fitting.methods import lorentzian_fit
 def resonator_spectroscopy(
     platform: AbstractPlatform,
     qubits: dict,
-    width: int,
-    step: int,
+    freq_width: int,
+    freq_step: int,
     software_averages=1,
     points=10,
 ):
@@ -28,8 +28,8 @@ def resonator_spectroscopy(
     Args:
         platform (AbstractPlatform): Qibolab platform object
         qubits (dict): List of target qubits to perform the action
-        width (int): Width frequency in HZ to perform the high resolution sweep
-        step (int): Step frequency in HZ for the high resolution sweep
+        freq_width (int): Width frequency in HZ to perform the high resolution sweep
+        freq_step (int): Step frequency in HZ for the high resolution sweep
         software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
 
@@ -68,7 +68,7 @@ def resonator_spectroscopy(
 
     # define the parameter to sweep and its range:
 
-    delta_frequency_range = np.arange(-width // 2, width // 2, step)
+    delta_frequency_range = np.arange(-freq_width // 2, freq_width // 2, freq_step)
 
     # save runcard local oscillator frequencies to be able to calculate new intermediate frequencies
     # lo_frequencies = {qubit: platform.get_lo_frequency(qubit) for qubit in qubits}

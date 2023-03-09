@@ -19,7 +19,7 @@ def frequency_msr_phase(folder, routine, qubit, format):
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
         subplot_titles=(
-            "MSR (V)",
+            "MSR (uV)",
             "phase (rad)",
         ),
     )
@@ -30,7 +30,7 @@ def frequency_msr_phase(folder, routine, qubit, format):
     fitting_report = ""
     for subfolder in subfolders:
         try:
-            data = load_data(folder, subfolder, routine, format, "fast_sweep_data")
+            data = load_data(folder, subfolder, routine, format, "data")
             data.df = data.df[data.df["qubit"] == qubit]
         except:
             data = DataUnits(
