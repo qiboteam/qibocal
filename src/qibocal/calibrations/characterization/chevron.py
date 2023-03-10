@@ -71,7 +71,7 @@ def tune_transition(
             duration=flux_pulse_duration_start,
             amplitude=flux_pulse_amplitude,
             shape=Rectangular(),
-            channel=str(platform.qubits[highfreq].flux),
+            channel=platform.qubits[highfreq].flux.name,
             qubit=highfreq,
         )
         measure_lowfreq = platform.create_qubit_readout_pulse(
@@ -89,7 +89,7 @@ def tune_transition(
             amplitude=flux_pulse_amplitude_start,
             relative_phase=0,
             shape=Rectangular(),
-            channel=str(platform.qubits[highfreq].flux),
+            channel=platform.qubits[highfreq].flux.name,
             qubit=highfreq,
         )
         flux_pulse_minus = FluxPulse(
@@ -98,7 +98,7 @@ def tune_transition(
             amplitude=-flux_pulse_amplitude_start,
             relative_phase=0,
             shape=Rectangular(),
-            channel=str(platform.qubits[highfreq].flux),
+            channel=platform.qubits[highfreq].flux.name,
             qubit=highfreq,
         )
         measure_lowfreq = platform.create_qubit_readout_pulse(
@@ -262,7 +262,7 @@ def tune_landscape(
             duration=flux_pulse_duration,
             amplitude=flux_pulse_amplitude,
             shape=Rectangular(),
-            channel=str(platform.qubits[highfreq].flux),
+            channel=platform.qubits[highfreq].flux.name,
             qubit=highfreq,
         )
         flux_pulse_minus = FluxPulse(
@@ -270,7 +270,7 @@ def tune_landscape(
             duration=flux_pulse_duration,
             amplitude=-flux_pulse_amplitude,
             shape=Rectangular(),
-            channel=str(platform.qubits[highfreq].flux),
+            channel=platform.qubits[highfreq].flux.name,
             qubit=highfreq,
         )
         theta_pulse = platform.create_RX90_pulse(
