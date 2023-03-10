@@ -449,7 +449,7 @@ def ramsey_fit(
                 }
             )
         except:
-            log.warning("Ramsey_fit: the fitting was not succesful")
+            log.warning("ramsey_fit: the fitting was not succesful")
             data_fit.add(
                 {key: 0 if key != "qubit" else qubit for key in data_fit.df.columns}
             )
