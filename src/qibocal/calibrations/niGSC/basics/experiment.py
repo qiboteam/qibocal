@@ -89,8 +89,8 @@ class Experiment:
         Returns:
             Experiment: The object with data (and circuitfactory).
         """
-        datapath = f"{path}experiment_data.pkl"
-        circuitspath = f"{path}circuits.pkl"
+        datapath = f"{path}/experiment_data.pkl"
+        circuitspath = f"{path}/circuits.pkl"
         if isfile(datapath):
             with open(datapath, "rb") as f:
                 data = pickle.load(f)
@@ -124,12 +124,12 @@ class Experiment:
             self.path = path
         # Only if the circuit factory is a list it will be stored.
         if isinstance(self.circuitfactory, list):
-            with open(f"{self.path}circuits.pkl", "wb") as f:
+            with open(f"{self.path}/circuits.pkl", "wb") as f:
                 pickle.dump(self.circuitfactory, f)
         # And only if data is not None the data list (full of dicionaries) will be
         # stored.
         if self.data is not None:
-            with open(f"{self.path}experiment_data.pkl", "wb") as f:
+            with open(f"{self.path}/experiment_data.pkl", "wb") as f:
                 pickle.dump(self.data, f)
         # It is convenient to know the path after storing, so return it.
         return self.path
