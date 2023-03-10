@@ -557,6 +557,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, format):
 
         try:
             fit_data_0 = load_data(folder, subfolder, routine, format, "fit_data_0")
+            fit_data_0.df = fit_data_0.df[fit_data_0.df["qubit"] == qubit]
         except:
             fit_data_0 = Data(
                 quantities=[
@@ -572,6 +573,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, format):
 
         try:
             fit_data_1 = load_data(folder, subfolder, routine, format, "fit_data_1")
+            fit_data_1.df = fit_data_1.df[fit_data_1.df["qubit"] == qubit]
         except:
             fit_data_1 = Data(
                 quantities=[

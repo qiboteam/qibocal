@@ -112,7 +112,7 @@ def t1(
                 r.update(
                     {
                         "wait[ns]": wait,
-                        "qubit": qubit,
+                        "qubit": ro_pulse.qubit,
                         "iteration": iteration,
                     }
                 )
