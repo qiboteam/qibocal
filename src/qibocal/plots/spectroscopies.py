@@ -142,10 +142,10 @@ def frequency_msr_phase(folder, routine, qubit, format):
                     x=freqrange,
                     y=lorenzian(
                         freqrange,
-                        data_fit.df.iloc[0]["popt0"],
-                        data_fit.df.iloc[0]["popt1"],
-                        data_fit.df.iloc[0]["popt2"],  # pylint: disable=E1101
-                        data_fit.df.iloc[0]["popt3"],  # pylint: disable=E1101
+                        float(data_fit.df["popt0"]),
+                        float(data_fit.df["popt1"]),
+                        float(data_fit.df["popt2"]),
+                        float(data_fit.df["popt3"]),
                     ),
                     name=f"q{qubit}/r{report_n} Fit",
                     line=go.scatter.Line(dash="dot"),
@@ -557,6 +557,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, format):
 
         try:
             fit_data_0 = load_data(folder, subfolder, routine, format, "fit_data_0")
+            fit_data_0.df = fit_data_0.df[fit_data_0.df["qubit"] == qubit]
         except:
             fit_data_0 = Data(
                 quantities=[
@@ -572,6 +573,7 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, format):
 
         try:
             fit_data_1 = load_data(folder, subfolder, routine, format, "fit_data_1")
+            fit_data_1.df = fit_data_1.df[fit_data_1.df["qubit"] == qubit]
         except:
             fit_data_1 = Data(
                 quantities=[
@@ -669,10 +671,10 @@ def dispersive_frequency_msr_phase(folder, routine, qubit, format):
                         x=freqrange,
                         y=lorenzian(
                             freqrange,
-                            data_fit.df.iloc[0]["popt0"],
-                            data_fit.df.iloc[0]["popt1"],
-                            data_fit.df.iloc[0]["popt2"],
-                            data_fit.df.iloc[0]["popt3"],
+                            float(data_fit.df["popt0"]),
+                            float(data_fit.df["popt1"]),
+                            float(data_fit.df["popt2"]),
+                            float(data_fit.df["popt3"]),
                         ),
                         name=f"q{qubit}/r{report_n}: {label} Fit",
                         line=go.scatter.Line(dash="dot"),
@@ -769,9 +771,9 @@ def frequency_attenuation(folder, routine, qubit, format):
         col=1,
     )
     if len(data1) > 0:
-        opt_f = data1.get_values("frequency", "GHz")[0]
-        opt_att = data1.get_values("attenuation", "dB")[0]
-        opt_snr = data1.get_values("snr", "dimensionless")[0]
+        opt_f = float(data1.get_values("frequency", "GHz"))
+        opt_att = float(data1.get_values("attenuation", "dB"))
+        opt_snr = float(data1.get_values("snr", "dimensionless"))
         fig.add_annotation(
             dict(
                 font=dict(color="black", size=12),
@@ -866,18 +868,18 @@ def frequency_bias_flux(folder, routine, qubit, format):
                     100,
                 )
                 if int(j) == int(qubit):
-                    f_qs = data_fit.get_values("f_qs")[0]
-                    f_rs = data_fit.get_values("f_rs")[0]
-                    curr_qs = data_fit.get_values("curr_sp")[0]
-                    g = data_fit.get_values("g")[0]
-                    d = data_fit.get_values("d")[0]
-                    xi = data_fit.get_values("xi")[0]
-                    C_ii = data_fit.get_values("C_ii")[0]
-                    f_offset = data_fit.get_values("f_offset")[0]
+                    f_qs = float(data_fit.get_values("f_qs"))
+                    f_rs = float(data_fit.get_values("f_rs"))
+                    curr_qs = float(data_fit.get_values("curr_sp"))
+                    g = float(data_fit.get_values("g"))
+                    d = float(data_fit.get_values("d"))
+                    xi = float(data_fit.get_values("xi"))
+                    C_ii = float(data_fit.get_values("C_ii"))
+                    f_offset = float(data_fit.get_values("f_offset"))
                     text_data = f"Fluxline: {j} <br> freq_r{qubit}_sp = {f_rs :.4e} Hz <br> freq_q{qubit}_sp = {f_qs :.4e} Hz <br> curr_{qubit}_sp = {curr_qs :.2e} A <br> g = {g :.2e} Hz <br> d = {d :.2e} <br> xi = {xi :.2e} 1/A <br> C_{qubit}{j} = {C_ii :.4e} Hz/A <br> f_offset_q{qubit} = {f_offset :.4e} Hz"
                     if len(data_fit.df.keys()) != 10:
-                        Ec = data_fit.get_values("Ec")[0]
-                        Ej = data_fit.get_values("Ej")[0]
+                        Ec = float(data_fit.get_values("Ec"))
+                        Ej = float(data_fit.get_values("Ej"))
                         text_data += f" <br> Ec = {Ec :.3e} Hz <br> Ej = {Ej :.3e} Hz"
                         freq_r_fit = freq_r_mathieu
                         params = [
@@ -940,7 +942,7 @@ def frequency_bias_flux(folder, routine, qubit, format):
                         row=1,
                         col=k + 1,
                     )
-                    C_ij = data_fit.get_values("popt0")[0]
+                    C_ij = float(data_fit.get_values("popt0"))
                     fig.add_annotation(
                         dict(
                             font=dict(color="black", size=12),
