@@ -1,7 +1,6 @@
 import numpy as np
-from qibolab.platforms.abstract import AbstractPlatform
-from qibolab.pulses import FluxPulse, Pulse, PulseSequence, PulseType, Rectangular
-from qibolab.sweeper import Sweeper
+from qibolab.pulses import FluxPulse, Rectangular
+from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal import plots
 from qibocal.data import DataUnits
@@ -12,7 +11,7 @@ from qibocal.decorators import plot
 @plot("Chevron CZ - I", plots.duration_amplitude_I_flux_pulse)
 @plot("Chevron CZ - Q", plots.duration_amplitude_Q_flux_pulse)
 def tune_transition(
-    platform: AbstractPlatform,
+    platform,
     qubits: dict,
     flux_pulse_amplitude,
     flux_pulse_duration_start,
@@ -125,7 +124,7 @@ def tune_transition(
         flux_pulse_duration_start, flux_pulse_duration_end, flux_pulse_duration_step
     )
     # TODO: Implement for two pulses
-    sweeper = Sweeper("amplitude", amplitudes, pulses=[flux_pulse])
+    sweeper = Sweeper(Parameter.amplitude, amplitudes, pulses=[flux_pulse])
 
     if single_flux:
         sequence = (
@@ -183,7 +182,7 @@ def tune_transition(
 
 @plot("Landscape 2-qubit gate", plots.landscape_2q_gate)
 def tune_landscape(
-    platform: AbstractPlatform,
+    platform,
     qubits: dict,
     theta_start,
     theta_end,
@@ -299,7 +298,7 @@ def tune_landscape(
     )
 
     thetas = np.arange(theta_start + np.pi / 2, theta_end + np.pi / 2, theta_step)
-    sweeper = Sweeper("relative_phase", thetas, [theta_pulse])
+    sweeper = Sweeper(Parameter.relative_phase, thetas, [theta_pulse])
 
     setups = ["I", "X"]
 
