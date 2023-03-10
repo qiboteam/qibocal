@@ -204,33 +204,35 @@ def lorentzian_fit(data, x, y, qubits, resonator_type, labels, fit_file_name=Non
             fit_res = model_Q.fit(
                 data=voltages, frequency=frequencies, params=guess_parameters
             )
+            # get the values for postprocessing and for legend.
+            f0 = fit_res.best_values["center"]
+            BW = fit_res.best_values["sigma"] * 2
+            Q = abs(f0 / BW)
+            peak_voltage = (
+                fit_res.best_values["amplitude"]
+                / (fit_res.best_values["sigma"] * np.pi)
+                + fit_res.best_values["offset"]
+            )
+
+            freq = f0
+
+            data_fit.add(
+                {
+                    labels[0]: freq,
+                    labels[1]: peak_voltage,
+                    "popt0": fit_res.best_values["amplitude"],
+                    "popt1": fit_res.best_values["center"],
+                    "popt2": fit_res.best_values["sigma"],
+                    "popt3": fit_res.best_values["offset"],
+                    "qubit": qubit,
+                }
+            )
         except:
             log.warning("lorentzian_fit: the fitting was not successful")
-            data_fit.add({key: 0 for key in data_fit.df.columns})
-            return data_fit
+            data_fit.add(
+                {key: 0 if key != "qubit" else qubit for key in data_fit.df.columns}
+            )
 
-        # get the values for postprocessing and for legend.
-        f0 = fit_res.best_values["center"]
-        BW = fit_res.best_values["sigma"] * 2
-        Q = abs(f0 / BW)
-        peak_voltage = (
-            fit_res.best_values["amplitude"] / (fit_res.best_values["sigma"] * np.pi)
-            + fit_res.best_values["offset"]
-        )
-
-        freq = f0
-
-        data_fit.add(
-            {
-                labels[0]: freq,
-                labels[1]: peak_voltage,
-                "popt0": fit_res.best_values["amplitude"],
-                "popt1": fit_res.best_values["center"],
-                "popt2": fit_res.best_values["sigma"],
-                "popt3": fit_res.best_values["offset"],
-                "qubit": qubit,
-            }
-        )
     return data_fit
 
 
@@ -266,7 +268,7 @@ def rabi_fit(data, x, y, qubits, resonator_type, labels):
     """
 
     data_fit = Data(
-        name=f"fits",
+        name="fits",
         quantities=[
             "popt0",
             "popt1",
@@ -317,23 +319,24 @@ def rabi_fit(data, x, y, qubits, resonator_type, labels):
             pi_pulse_parameter = np.abs((1.0 / popt[2]) / 2)
             pi_pulse_peak_voltage = smooth_dataset.max()
             t2 = 1.0 / popt[4]  # double check T1
+            data_fit.add(
+                {
+                    "popt0": popt[0],
+                    "popt1": popt[1],
+                    "popt2": popt[2],
+                    "popt3": popt[3],
+                    "popt4": popt[4],
+                    labels[0]: pi_pulse_parameter,
+                    labels[1]: pi_pulse_peak_voltage,
+                    "qubit": qubit,
+                }
+            )
         except:
             log.warning("rabi_fit: the fitting was not succesful")
-            data_fit.add({key: 0 for key in data_fit.df.columns})
-            return data_fit
+            data_fit.add(
+                {key: 0 if key != "qubit" else qubit for key in data_fit.df.columns}
+            )
 
-        data_fit.add(
-            {
-                "popt0": popt[0],
-                "popt1": popt[1],
-                "popt2": popt[2],
-                "popt3": popt[3],
-                "popt4": popt[4],
-                labels[0]: pi_pulse_parameter,
-                labels[1]: pi_pulse_peak_voltage,
-                "qubit": qubit,
-            }
-        )
     return data_fit
 
 
@@ -374,7 +377,7 @@ def ramsey_fit(
             - **qubit**: The qubit being tested
     """
     data_fit = Data(
-        name=f"fits",
+        name="fits",
         quantities=[
             "popt0",
             "popt1",
@@ -431,24 +434,26 @@ def ramsey_fit(
             delta_phys = int((delta_fitting * sampling_rate) - offset_freq)
             corrected_qubit_frequency = int(qubit_freqs[qubit] + delta_phys)
             t2 = 1.0 / popt[4]
+
+            data_fit.add(
+                {
+                    "popt0": popt[0],
+                    "popt1": popt[1],
+                    "popt2": popt[2],
+                    "popt3": popt[3],
+                    "popt4": popt[4],
+                    labels[0]: delta_phys,
+                    labels[1]: corrected_qubit_frequency,
+                    labels[2]: t2,
+                    "qubit": qubit,
+                }
+            )
         except:
             log.warning("ramsey_fit: the fitting was not succesful")
-            data_fit.add({key: 0 for key in data_fit.df.columns})
-            return data_fit
+            data_fit.add(
+                {key: 0 if key != "qubit" else qubit for key in data_fit.df.columns}
+            )
 
-        data_fit.add(
-            {
-                "popt0": popt[0],
-                "popt1": popt[1],
-                "popt2": popt[2],
-                "popt3": popt[3],
-                "popt4": popt[4],
-                labels[0]: delta_phys,
-                labels[1]: corrected_qubit_frequency,
-                labels[2]: t2,
-                "qubit": qubit,
-            }
-        )
     return data_fit
 
 
@@ -520,21 +525,22 @@ def t1_fit(data, x, y, qubits, resonator_type, labels):
                 exp, times.values, voltages.values, p0=pguess, maxfev=2000000
             )
             t1 = abs(1 / popt[2])
+            data_fit.add(
+                {
+                    "popt0": popt[0],
+                    "popt1": popt[1],
+                    "popt2": popt[2],
+                    labels[0]: t1,
+                    "qubit": qubit,
+                }
+            )
 
         except:
             log.warning("t1_fit: the fitting was not succesful")
-            data_fit.add({key: 0 for key in data_fit.df.columns})
-            return data_fit
+            data_fit.add(
+                {key: 0 if key != "qubit" else qubit for key in data_fit.df.columns}
+            )
 
-        data_fit.add(
-            {
-                "popt0": popt[0],
-                "popt1": popt[1],
-                "popt2": popt[2],
-                labels[0]: t1,
-                "qubit": qubit,
-            }
-        )
     return data_fit
 
 
@@ -607,24 +613,22 @@ def flipping_fit(data, x, y, qubits, resonator_type, pi_pulse_amplitudes, labels
             corrected_amplitude = (
                 amplitude_correction_factor * pi_pulse_amplitudes[qubit]
             )
-            # angle = (niter * 2 * np.pi / popt[2] + popt[3]) / (1 + 4 * niter)
-            # amplitude_delta = angle * 2 / np.pi * pi_pulse_amplitude
+            data_fit.add(
+                {
+                    "popt0": popt[0],
+                    "popt1": popt[1],
+                    "popt2": popt[2],
+                    "popt3": popt[3],
+                    labels[0]: amplitude_correction_factor,
+                    labels[1]: corrected_amplitude,
+                    "qubit": qubit,
+                }
+            )
         except:
             log.warning("flipping_fit: the fitting was not succesful")
-            data_fit.add({key: 0 for key in data_fit.df.columns})
-            return data_fit
-
-        data_fit.add(
-            {
-                "popt0": popt[0],
-                "popt1": popt[1],
-                "popt2": popt[2],
-                "popt3": popt[3],
-                labels[0]: amplitude_correction_factor,
-                labels[1]: corrected_amplitude,
-                "qubit": qubit,
-            }
-        )
+            data_fit.add(
+                {key: 0 if key != "qubit" else qubit for key in data_fit.df.columns}
+            )
 
     return data_fit
 
@@ -696,22 +700,22 @@ def drag_tuning_fit(data: Data, x, y, qubits, labels):
             popt, pcov = curve_fit(cos, beta_params.values, voltages.values)
             smooth_dataset = cos(beta_params.values, popt[0], popt[1], popt[2], popt[3])
             beta_optimal = beta_params.values[np.argmin(smooth_dataset)]
-
+            data_fit.add(
+                {
+                    "popt0": popt[0],
+                    "popt1": popt[1],
+                    "popt2": popt[2],
+                    "popt3": popt[3],
+                    labels[0]: beta_optimal,
+                    "qubit": qubit,
+                }
+            )
         except:
             log.warning("drag_tuning_fit: the fitting was not succesful")
-            data_fit.add({key: 0 for key in data_fit.df.columns})
-            return data_fit
+            data_fit.add(
+                {key: 0 if key != "qubit" else qubit for key in data_fit.df.columns}
+            )
 
-        data_fit.add(
-            {
-                "popt0": popt[0],
-                "popt1": popt[1],
-                "popt2": popt[2],
-                "popt3": popt[3],
-                labels[0]: beta_optimal,
-                "qubit": qubit,
-            }
-        )
     return data_fit
 
 
@@ -833,7 +837,10 @@ def res_spectroscopy_flux_fit(data, x, y, qubit, fluxline, params_fit):
                 )
         except:
             log.warning("The fitting was not successful")
-            return data_fit
+            data_fit.add(
+                {key: 0 if key != "qubit" else qubit for key in data_fit.df.columns}
+            )
+
     else:
         data_fit = Data(
             name=f"fit1_q{qubit}_f{fluxline}",
@@ -849,16 +856,18 @@ def res_spectroscopy_flux_fit(data, x, y, qubit, fluxline, params_fit):
             popt = curve_fit(line, curr, freq_norm)[0]
             popt[0] = popt[0] * (freq_max - freq_min)
             popt[1] = popt[1] * (freq_max - freq_min) + freq_min
+            data_fit.add(
+                {
+                    "popt0": popt[0],  # C_ij
+                    "popt1": popt[1],
+                }
+            )
         except:
             log.warning("The fitting was not successful")
-            return data_fit
+            data_fit.add(
+                {key: 0 if key != "qubit" else qubit for key in data_fit.df.columns}
+            )
 
-        data_fit.add(
-            {
-                "popt0": popt[0],  # C_ij
-                "popt1": popt[1],
-            }
-        )
     return data_fit
 
 
@@ -954,19 +963,21 @@ def spin_echo_fit(data, x, y, qubits, resonator_type, labels):
             )
             t2 = abs(1 / popt[2])
 
+            data_fit.add(
+                {
+                    "popt0": popt[0],
+                    "popt1": popt[1],
+                    "popt2": popt[2],
+                    labels[0]: t2,
+                    "qubit": qubit,
+                }
+            )
         except:
             log.warning("spin_echo_fit: the fitting was not succesful")
-            return data_fit
+            data_fit.add(
+                {key: 0 if key != "qubit" else qubit for key in data_fit.df.columns}
+            )
 
-    data_fit.add(
-        {
-            "popt0": popt[0],
-            "popt1": popt[1],
-            "popt2": popt[2],
-            labels[0]: t2,
-            "qubit": qubit,
-        }
-    )
     return data_fit
 
 
