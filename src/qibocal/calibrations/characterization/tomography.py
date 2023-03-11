@@ -12,12 +12,10 @@ def state_tomography(
     nshots=1024,
     relaxation_time=50000,
 ):
-    if len(qubits) != 1:
+    if len(qubits) != 2:
         raise NotImplementedError("Tomography is only implemented for two qubits.")
 
-    qubit = list(qubits.keys())[0]
-    qubit1 = min(qubit, 2)
-    qubit2 = max(qubit, 2)
+    qubit1, qubit2 = min(qubits.keys()), max(qubits.keys())
 
     # reload instrument settings from runcard
     platform.reload_settings()
@@ -30,16 +28,14 @@ def state_tomography(
         ),
     }
 
-    data_options = lambda q: [
-        f"rotation{q}",
-        f"i{q}[V]",
-        f"q{q}[V]",
-        f"shots{q}",
-        f"qubit{q}",
-    ]
     data = DataUnits(
         name="data",
-        options=data_options(1) + data_options(2),
+        options=[
+            "rotation1",
+            "rotation2",
+            "shots",
+            "qubit",
+        ],
     )
     for label1, basis1 in basis_rotations.items():
         for label2, basis2 in basis_rotations.items():
@@ -91,21 +87,23 @@ def state_tomography(
                 # store the results
                 result1 = results[measure1.serial]
                 result2 = results[measure2.serial]
-                print(result1.i)
-                print(result2.q)
-                r = {
+                r1 = {
                     "rotation1": nshots * [label1],
                     "rotation2": nshots * [label2],
-                    "i1[V]": result1.i,
-                    "q1[V]": result1.q,
-                    "shots1": result1.shots,
-                    "i2[V]": result2.i,
-                    "q2[V]": result2.q,
-                    "shots2": result2.shots,
-                    "qubit1": nshots * [qubit1],
-                    "qubit2": nshots * [qubit2],
+                    "shots": result1.shots,
+                    "qubit": nshots * [qubit1],
                 }
-                data.add_data_from_dict(r)
+                r1.update(result1.to_dict(average=False))
+                data.add_data_from_dict(r1)
+
+                r2 = {
+                    "rotation1": nshots * [label1],
+                    "rotation2": nshots * [label2],
+                    "shots": result2.shots,
+                    "qubit": nshots * [qubit2],
+                }
+                r2.update(result2.to_dict(average=False))
+                data.add_data_from_dict(r2)
 
                 # save data
                 yield data
