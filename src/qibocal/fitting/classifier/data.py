@@ -3,6 +3,7 @@ import pathlib
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
+from matplotlib.colors import ListedColormap
 from sklearn.model_selection import train_test_split
 
 
@@ -52,7 +53,12 @@ def plot_qubit(data, save_dir: pathlib.Path):
         save_dir (path): Save path.
     """
     _, axes = plt.subplots(1, 2, figsize=(14, 7))
-    sns.scatterplot(x="i", y="q", data=data, hue="state", ec=None, ax=axes[0], s=1)
+
+    colors = ["#FF0000", "#0000FF"]
+    sns.set_palette(sns.color_palette(colors))
+    sns.scatterplot(
+        x="i", y="q", data=data, hue="state", ax=axes[0], alpha=0.7, edgecolor="black"
+    )
     qubit = int(data.iloc[0]["qubit"])
     axes[0].set_title(f"qubit {qubit}")
     sns.countplot(x=data.state, data=data, ax=axes[1])

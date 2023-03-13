@@ -208,7 +208,7 @@ def train_qubit(
         qubit (int): Qubit ID.
         classifiers (list | None, optional): List of classification models. It must be a subset of `CLS_MODULES`.
 
-    Returns: benchmarks_table, y_test
+    Returns:
         - benchmarks_table (pd.DataFrame): Table with the following columns
 
             - **name**: model's name
@@ -229,7 +229,7 @@ def train_qubit(
     results_list = []
     names = []
     if classifiers is None:
-        classifiers = CLS_MODULES  # [i.value for i in Classifiers]
+        classifiers = CLS_MODULES
 
     classifiers = import_classifiers(classifiers)
 
@@ -304,12 +304,8 @@ def preds_from_file(dir_path):
 
 
 def table_from_file(dir_path):
-    r"""Load the benchmark table from a file
-
+    r"""Load and return the benchmark table from a file
     Args:
         dir_path (path): Where the file `benchmarks.csv` is.
-
-    Returns:
-
     """
     return pd.read_csv(dir_path / BENCHTABFILE)
