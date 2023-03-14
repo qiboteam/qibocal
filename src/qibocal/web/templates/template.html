@@ -186,9 +186,37 @@
                                 class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
                                 {{ header }} - Qubit {{ qubit }}</h5>
                                 {% if is_static %}
-                                  {{ report.get_figure(routine, method, qubit) }}
+                                  {% set figures, fitting_report = report.get_figure(routine, method, qubit) %}
+                                  {% if "No fitting data" not in fitting_report %}
+                                    {% set fitting_params= fitting_report.split('<br>') %}
+                                      <div class="div-fitting">
+                                        <table class="fitting-table">
+                                          <thead>
+                                            <tr>
+                                              <th class="th_styles">qubit # / report #</th>
+                                              <th class="th_styles">Fitting Parameter	</th>
+                                              <th class="th_styles">Value</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {% for row in fitting_params %}
+                                              {% if row != '' %}
+                                                {% set run = row.split('|') %}
+                                                {% set fparam_value = run[1].split(':') %}
+                                                <tr>
+                                                  <td class="td_styles">{{ run[0] }}</td>
+                                                  <td class="td_styles">{{ fparam_value[0] }}</td>
+                                                  <td class="td_styles">{{ fparam_value[1] }}</td>
+                                                </tr>
+                                              {% endif %}
+                                            {% endfor %}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                  {% endif %}
+                                  {{ figures }}
                                 {% else %}
-                                  <iframe src='{{ report.get_live_figure(routine, method, qubit) }}' class="gh-fit gh-fullwidth"></iframe>
+                                  <iframe src='{{ report.get_live_figure(routine, method, qubit) }}?_retry=0' class="gh-fit gh-fullwidth"></iframe>
                                 {% endif %}
                           </div>
                         {% endfor %}

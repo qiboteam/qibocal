@@ -60,7 +60,7 @@ qq-upload = "qibocal:upload"
 qq-compare = "qibocal:compare"
 
 [tool.poe.tasks]
-test = "pytest src/qibocal/tests"
+test = "pytest"
 lint = "pylint src/**/*.py -E"
 lint-warnings = "pylint src/**/*.py --exit-zero"
 docs = "make -C doc html"
@@ -68,10 +68,11 @@ docs-clean = "make -C doc clean"
 test-docs = "make -C doc doctest"
 
 [tool.pytest.ini_options]
-testpaths = ['src/qibocal/tests/']
+testpaths = ['tests/']
 addopts = [
     '--cov=qibocal',
-    '--cov-report=xml'
+    '--cov-report=xml',
+    '--cov-report=html',
 ]
 
 [tool.pylint.master]

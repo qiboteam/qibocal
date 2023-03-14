@@ -1,11 +1,14 @@
 import os
+from pathlib import Path
 from shutil import rmtree
 
 from qibocal.cli._base import ActionBuilder
 
+here = Path(__file__).parent
+
 
 def test_command_niGSC():
-    path_to_runcard = "src/qibocal/tests/niGSC.yml"
+    path_to_runcard = here / "niGSC.yml"
     test_folder = "test_and_delete/"
     builder = ActionBuilder(path_to_runcard, test_folder, force=None)
     builder.execute()
