@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from math import cos, sin
+from typing import List
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -46,7 +47,7 @@ class qubit_fit:
     def translate(self, v):
         return v - self.iq_mean0
 
-    def predict(self, inputs: list[float]):
+    def predict(self, inputs: List[float]):
         r"""Classify the `inputs`.
 
         Returns:
