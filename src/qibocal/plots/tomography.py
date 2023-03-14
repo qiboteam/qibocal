@@ -26,6 +26,7 @@ ZZ = np.kron(Z, Z)
 
 
 def experiment_frequencies(folder, routine):
+    """Load experiment data and calculate frequencies from individual shots."""
     data = DataUnits.load_data(folder, "data", routine, "csv", "data").df
     qubits = np.unique(data["qubit"])
     qubit1, qubit2 = min(qubits), max(qubits)
@@ -42,7 +43,8 @@ def experiment_frequencies(folder, routine):
     return frequencies
 
 
-def simulate_frequencies(folder, routine):
+def circuit_from_sequence(folder, routine):
+    """Create a qibo circuit that simulates the tomography procedure."""
     with open(f"{folder}/runcard.yml") as file:
         action_runcard = yaml.safe_load(file)
 
@@ -50,25 +52,32 @@ def simulate_frequencies(folder, routine):
     sequence = action_runcard["actions"][routine]["sequence"]
     nshots = action_runcard["actions"][routine]["nshots"]
 
+    circuit = Circuit(2)
+    for moment in sequence:
+        for pulse_description in moment:
+            pulse_type, qubit = pulse_description[:2]
+            if pulse_type == "FluxPulse":
+                # FIXME: FluxPulse is not always one-to-one to CZ gate
+                circuit.add(gates.CZ(0, 1))
+            else:
+                circuit.add(BASIS_GATES[pulse_type](experiment_qubits.index(qubit)))
+    return circuit, nshots
+
+
+def simulate_frequencies(circuit, nshots):
+    """Simulate the tomography procedure and obtain the expected shot frequency values."""
     frequencies = {}
     for rotation1, rotation2 in TWO_QUBIT_ROTATIONS:
-        circuit = Circuit(2)
-        for moment in sequence:
-            for pulse_description in moment:
-                pulse_type, qubit = pulse_description[:2]
-                if pulse_type == "FluxPulse":
-                    # raise NotImplementedError
-                    circuit.add(gates.CZ(0, 1))
-                else:
-                    circuit.add(BASIS_GATES[pulse_type](experiment_qubits.index(qubit)))
+        c = Circuit(2)
+        c.add(circuit.queue)
         gate1 = BASIS_GATES[rotation1]
         gate2 = BASIS_GATES[rotation2]
         if gate1 is not None:
-            circuit.add(gate1(0))
+            c.add(gate1(0))
         if gate2 is not None:
-            circuit.add(gate2(1))
-        circuit.add(gates.M(0, 1))
-        probs = NumpyBackend().execute_circuit(circuit).probabilities()
+            c.add(gate2(1))
+        c.add(gates.M(0, 1))
+        probs = NumpyBackend().execute_circuit(c).probabilities()
         frequencies[(rotation1, rotation2)] = (nshots * probs).astype(int)
     return frequencies
 
@@ -76,8 +85,10 @@ def simulate_frequencies(folder, routine):
 def shot_frequencies_bar_chart(folder, routine, qubit, format):
     fitting_report = "No fitting data"
 
+    circuit, nshots = circuit_from_sequence(folder, routine)
+    simulation_frequencies = simulate_frequencies(circuit, nshots)
+
     frequencies = experiment_frequencies(folder, routine)
-    simulation_frequencies = simulate_frequencies(folder, routine)
 
     labels = ["00", "01", "10", "11"]
     titles = [f"({r1}, {r2})" for r1, r2 in TWO_QUBIT_ROTATIONS]
@@ -120,6 +131,27 @@ def shot_frequencies_bar_chart(folder, routine, qubit, format):
         if col > 5:
             row += 1
             col = 1
+
+    # TODO: The following annotation doesn't work
+    # We need a way to show the preperation sequence (or circuit.draw())
+    # in the report
+    # fig.add_annotation(
+    #    dict(
+    #        font=dict(color="black", size=12),
+    #        x=0,
+    #        y=1.2,
+    #        showarrow=False,
+    #        text="Preperation Circuit",
+    #        font_family="Arial",
+    #        font_size=20,
+    #        textangle=0,
+    #        xanchor="left",
+    #        xref="paper",
+    #        yref="paper",
+    #        font_color="#5e9af1",
+    #        hovertext=circuit.draw(),
+    #    )
+    # )
     fig.update_layout(barmode="overlay", height=1200)
 
     return [fig], fitting_report

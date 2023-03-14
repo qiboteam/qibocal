@@ -14,6 +14,45 @@ def state_tomography(
     nshots=1024,
     relaxation_time=50000,
 ):
+    """State tomography for two qubits.
+
+    The pulse sequence applied consists of two steps.
+    First a state preperation sequence given by the user is applied, which
+    prepares the target state. Then one additional pulse may be applied to each
+    qubit to rotate the measurement basis.
+    Following arXiv:0903.2030, tomography is performed by measuring in 15 different
+    basis, which are defined by rotating using all pairs of I, RX90, RY90 and RX
+    except (RX, RX).
+
+    An example action runcard for using this routine is the following:
+
+        platform: my_platform_name
+
+        qubits: [1, 2]
+
+        format: csv
+
+        actions:
+
+        state_tomography:
+            sequence:
+                # [[Pulse Type, Target Qubit]]
+                # pulses given in the same row are played in parallel
+                - [["RX", 1]]
+                - [["RY90", 1], ["RY90", 2]]
+                - [["FluxPulse", 2, 30, 0.2782]]
+                - [["RY90", 1]]
+            nshots: 50000
+            relaxation_time: 50000
+
+    Args:
+        platform (AbstractPlatform): Qibolab platform object
+        qubits (dict): Dict of target Qubit objects to perform the action
+        sequence (list): List describing the pulse sequence to be used for state preperation.
+            See example for more details.
+        nshots (int): Number of shots to perform for each measurement.
+        relaxation_time (int): Time to wait (in ns) for the qubit to relax between each shot.
+    """
     if len(qubits) != 2:
         raise NotImplementedError("Tomography is only implemented for two qubits.")
 
@@ -52,6 +91,10 @@ def state_tomography(
                     for pulse_description in moment:
                         pulse_type, qubit = pulse_description[:2]
                         if pulse_type == "FluxPulse":
+                            # FIXME: Flux pulses should be treated similarly to the
+                            # other pulses (read from the runcard)
+                            # This is different for now, until we understand exactly
+                            # what the flux pulse is doing (in terms of 2q gates)
                             flux_duration, flux_amplitude = pulse_description[2:]
                             total_sequence.add(
                                 FluxPulse(
