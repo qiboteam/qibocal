@@ -4,7 +4,7 @@ import logging
 import pathlib
 import time
 from dataclasses import asdict, dataclass
-from typing import Optional
+from typing import List, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -32,7 +32,7 @@ BENCHTABFILE = "benchmarks.csv"
 base_dir = pathlib.Path()
 
 
-def import_classifiers(cls_names: list[str]):
+def import_classifiers(cls_names: List[str]):
     importing_func = lambda mod: importlib.import_module(
         ".." + mod, "qibocal.fitting.classifier.*"
     )
