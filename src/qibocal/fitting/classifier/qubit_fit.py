@@ -31,11 +31,11 @@ class qubit_fit:
         """
         data = _raw_to_dataunits(x, y)
         results = calibrate_qubit_states_fit(data, "i[V]", "q[V]", 1, [1]).df
-        iq_state0 = results.iloc[0]["average_state0"]  # pylint: disable=maybe-no-member
-        iq_state1 = results.iloc[0]["average_state1"]  # pylint: disable=maybe-no-member
-        # pylint: disable=maybe-no-member
+        iq_state0 = results.iloc[0]["average_state0"]  # pylint: disable=E1101
+        iq_state1 = results.iloc[0]["average_state1"]  # pylint: disable=E1101
+        # pylint: disable=E1101
         self.angle = results.iloc[0]["rotation_angle"]
-        self.threshold = results.iloc[0]["threshold"]  # pylint: disable=maybe-no-member
+        self.threshold = results.iloc[0]["threshold"]  # pylint: disable=E1101
         self.iq_mean0 = np.array([iq_state0.real, iq_state0.imag])
         self.iq_mean1 = np.array([iq_state1.real, iq_state1.imag])
 
