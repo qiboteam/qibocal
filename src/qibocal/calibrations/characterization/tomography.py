@@ -1,9 +1,12 @@
 import numpy as np
 from qibolab.pulses import FluxPulse, PulseSequence, Rectangular
 
+from qibocal import plots
 from qibocal.data import DataUnits
+from qibocal.decorators import plot
 
 
+@plot("Shot Frequencies", plots.shot_frequencies_bar_chart)
 def state_tomography(
     platform,
     qubits,
