@@ -33,6 +33,11 @@ base_dir = pathlib.Path()
 
 
 def import_classifiers(cls_names: List[str]):
+    r"""Return the classification models.
+
+    Args:
+        cls_name (list[str]): List of models' names.
+    """
     importing_func = lambda mod: importlib.import_module(
         ".." + mod, "qibocal.fitting.classifier.*"
     )
@@ -132,6 +137,7 @@ class Classifier:
 
 @dataclass
 class BenchmarkResults:
+    r"""Class that stores the models information."""
     accuracy: float
     testing_time: float
     training_time: float
@@ -215,6 +221,33 @@ def train_qubit(
             - **testing_time**: testing time per item in seconds.
 
         - y_test (list): List of test outputs.
+
+    Example:
+        The code below shows how to benchmark the state classifiers with `train_qubit` function:
+
+            .. code-block:: python
+
+                import logging
+                from pathlib import Path
+
+                from qibocal.fitting.classifier import plots, run
+
+                logging.basicConfig(level=logging.INFO)
+                # Define the data path
+                data_path = Path("calibrate_qubit_states/data.csv")
+                # Define the save path
+                base_dir = Path("results")
+                base_dir.mkdir(exist_ok=True)
+                # Define the list of classifiers (not mandatory)
+                classifiers = ["ada_boost", "linear_svm"]
+                for qubit in range(1, 5):
+                    print(f"QUBIT: {qubit}")
+                    qubit_dir = base_dir / f"qubit{qubit}"
+                    table, y_test, x_test = run.train_qubit(data_path, base_dir, qubit)
+                    run.dump_benchmarks_table(table, qubit_dir)
+                    # Plots
+                    plots.plot_table(table, qubit_dir)
+                    plots.plot_conf_matr(y_test, qubit_dir)
     """
     nn_epochs = 200
     nn_val_split = 0.2
@@ -303,6 +336,7 @@ def preds_from_file(dir_path):
 
 def table_from_file(dir_path):
     r"""Load and return the benchmark table from a file
+
     Args:
         dir_path (path): Where the file `benchmarks.csv` is.
     """

@@ -30,7 +30,9 @@ class qubit_fit:
         input data (`x`,`y`).
         """
         data = _raw_to_dataunits(x, y)
-        results = calibrate_qubit_states_fit(data, "i[V]", "q[V]", 1, [1]).df
+        results = calibrate_qubit_states_fit(
+            data, "i[V]", "q[V]", 1, [1], degree=False
+        ).df
         iq_state0 = results.iloc[0]["average_state0"]  # pylint: disable=E1101
         iq_state1 = results.iloc[0]["average_state1"]  # pylint: disable=E1101
         # pylint: disable=E1101
