@@ -166,8 +166,7 @@ def plot_models_results(x_train, x_test, y_test, path, models, models_names):
         y_pred = np.reshape(classifier.predict(grid), q.shape)
         display = DecisionBoundaryDisplay(xx0=i, xx1=q, response=y_pred)
 
-        cm = plt.cm.RdBu
-        display.plot(cmap=cm, alpha=0.8, ax=ax)
+        display.plot(cmap="RdBu", alpha=0.8, ax=ax)
         cm_bright = ListedColormap(["#FF0000", "#0000FF"])
         ax.scatter(
             x_test[:, 0],
