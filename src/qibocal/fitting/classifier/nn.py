@@ -4,7 +4,7 @@ import pathlib
 import keras_tuner as kt
 from keras import backend as K
 from keras import callbacks, optimizers
-from keras.layers import Dense, Layer, Normalization
+from keras.layers import BatchNormalization, Dense, Layer
 from keras.models import Sequential
 from matplotlib import pyplot as plt
 
@@ -53,7 +53,7 @@ def _hypermodel(hp):
 
     model = Sequential()
     # if norm:
-    model.add(Normalization(axis=-1))
+    model.add(BatchNormalization())
     if activation == "RBF":
         model.add(
             RBFLayer(

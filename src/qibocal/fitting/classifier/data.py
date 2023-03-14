@@ -35,7 +35,7 @@ def generate_models(data, test_size=0.25):
         - x_test: Test inputs.
         - y_test: Test outputs.
     """
-    input_data = data[["i", "q"]].values * 10000  # WARNING: change unit measure
+    input_data = data[["i", "q"]].values
     output_data = data["state"].values
     # Split data into X_train, X_test, y_train, y_test
     x_train, x_test, y_train, y_test = train_test_split(

@@ -5,7 +5,7 @@ from qibocal.fitting.classifier import plots, run
 
 logging.basicConfig(level=logging.INFO)
 data_path = Path("calibrate_qubit_states/data.csv")
-base_dir = Path("_results2")
+base_dir = Path("_results3")
 base_dir.mkdir(exist_ok=True)
 
 for qubit in range(1, 5):
