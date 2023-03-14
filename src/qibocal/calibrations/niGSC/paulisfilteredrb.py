@@ -9,11 +9,12 @@ from plotly.graph_objects import Figure
 from qibo import gates, matrices
 from qibo.models import Circuit
 from qibo.noise import NoiseModel
+from qibo.quantum_info.basis import comp_basis_to_pauli
 
 import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
 from qibocal.calibrations.niGSC.basics.circuitfactory import CircuitFactory
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
-from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig
+from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig, update_fig
 
 qibo.set_backend("numpy")
 
@@ -32,7 +33,7 @@ def is_xy(g):
 
 
 # Define the circuit factory class for this specific module.
-class moduleFactory(CircuitFactory):
+class ModuleFactory(CircuitFactory):
     def __init__(self, nqubits: int, depths: list, qubits: list = []) -> None:
         super().__init__(nqubits, depths, qubits)
         assert (
@@ -57,9 +58,16 @@ class moduleFactory(CircuitFactory):
         circuit.add(gates.M(0))
         return circuit
 
+    def gate_group(self):
+        return pauli_list
+
+    def irrep_info(self):
+        basis = comp_basis_to_pauli(self.nqubits, normalize=True)
+        return (basis, 3, 1, 1)
+
 
 # Define the experiment class for this specific module.
-class moduleExperiment(Experiment):
+class ModuleExperiment(Experiment):
     def __init__(
         self,
         circuitfactory: Iterable,
@@ -82,7 +90,7 @@ class moduleExperiment(Experiment):
 
 
 # Define the result class for this specific module.
-class moduleReport(Report):
+class ModuleReport(Report):
     def __init__(self) -> None:
         super().__init__()
         self.title = "Pauli Filtered Randomized Benchmarking"
@@ -137,7 +145,9 @@ def post_processing_sequential(experiment: Experiment):
 # After the row by row execution of tasks comes the aggregational task. Something like calculation
 # of means, deviations, fitting data, tasks where the whole data as to be looked at, and not just
 # one instance of circuit + other information.
-def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
+def get_aggregational_data(
+    experiment: Experiment, validate=False, N=None
+) -> pd.DataFrame:
     """Computes aggregational tasks, fits data and stores the results in a data frame.
 
     No data is manipulated in the ``experiment`` object.
@@ -152,29 +162,49 @@ def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
     depths, ydata = experiment.extract("filter", "depth", "mean")
     _, ydata_std = experiment.extract("filter", "depth", "std")
     # Fit the filtered signal for each depth, there could be two overlaying exponential functions.
-    popt, perr = fitting_methods.fit_exp2_func(depths, ydata)
+    popt, perr = fitting_methods.fit_exp1_func(depths, ydata)
     # Build a list of dictionaries with the aggregational information.
     data = [
         {
             "depth": depths,  # The x-axis.
             "data": ydata,  # The filtred signal.
             "2sigma": 2 * ydata_std,  # The 2 * standard deviation error for each depth.
-            "fit_func": "exp2_func",  # Which function was used to fit.
+            "fit_func": "exp1_func",  # Which function was used to fit.
             "popt": {
-                "A1": popt[0],
-                "A2": popt[1],
-                "p1": popt[2],
-                "p2": popt[3],
+                "A": popt[0],
+                "p": popt[1],
             },  # The fitting parameters.
             "perr": {
                 "A1_err": perr[0],
-                "A2_err": perr[1],
-                "p1_err": perr[2],
-                "p2_err": perr[3],
+                "p1_err": perr[1],
             },  # The estimated errors.
         }
     ]
+
     df = pd.DataFrame(data, index=["filter"])
+    return df
+
+
+def add_validation(
+    experiment: Experiment, dataframe: pd.DataFrame | dict, N: int | None = None
+) -> pd.DataFrame:
+    """Computes theoretical values of coefficients and decay parameters of a given experiment
+    and add validation data to the dataframe.
+    No data is manipulated in the ``experiment`` object.
+
+    Args:
+        experiment (Experiment): After sequential postprocessing of the experiment data.
+
+    Returns:
+        pd.DataFrame: The summarized data.
+    """
+
+    data = dataframe.to_dict("records")
+    coefficients, decay_parameters = experiment.validate(N=N)
+    validation_dict = {"A": coefficients[0], "p": decay_parameters[0]}
+    data[0].update({"validation": validation_dict})
+    # The row name will be displayed as y-axis label.
+    df = pd.DataFrame(data, index=dataframe.index)
     return df
 
 
@@ -193,7 +223,7 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
     """
 
     # Initiate a report object.
-    report = moduleReport()
+    report = ModuleReport()
     # Add general information to the object.
     report.info_dict["Number of qubits"] = len(experiment.data[0]["samples"][0])
     report.info_dict["Number of shots"] = len(experiment.data[0]["samples"])
@@ -208,5 +238,44 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
     # plotly figure with the scattered filtered data along with the mean for
     # each depth and the exponential fit for the means.
     report.all_figures.append(scatter_fit_fig(experiment, df_aggr, "depth", "filter"))
+    if "validation" in df_aggr:
+        report.all_figures[-1] = update_fig(report.all_figures[-1], df_aggr)
     # Return the figure the report object builds out of all figures added to the report.
     return report.build()
+
+
+def execute_simulation(depths: list, nshots: int = 500, noise_model: NoiseModel = None):
+    """Execute simulation of Paulis Filtered RB experiment
+    and generate an html report with the validation of the results
+
+    Args:
+        depths (list): list of depths for circuits
+        nshots (int): number of shots per measurement
+        noise_model (:class:`qibo.noise.NoiseModel`): noise model applied to the circuits in the simulation
+
+    Example:
+        .. testcode::
+            from qibocal.calibrations.niGSC.paulisfilteredrb.py import execute_simulation
+            from qibocal.calibrations.niGSC.basics import noisemodels
+            # Build the noise model.
+            noise_params = [0.01, 0.02, 0.05]
+            pauli_noise_model = noisemodels.PauliErrorOnX(*noise_params)
+            # Generate the list of depths repeating 20 times
+            runs = 20
+            depths = list(range(1, 31)) * runs
+            # Run the simulation
+            execute_simulation(depths, 500, pauli_noise_model)
+    """
+
+    # Execute an experiment.
+    nqubits = 1
+    factory = ModuleFactory(nqubits, depths)
+    experiment = ModuleExperiment(factory, nshots=nshots, noise_model=noise_model)
+    experiment.perform(experiment.execute)
+
+    # Build a report with validation of the results
+    post_processing_sequential(experiment)
+    aggr_df = get_aggregational_data(experiment)
+    aggr_df = add_validation(experiment, aggr_df)
+    report_figure = build_report(experiment, aggr_df)
+    report_figure.show()

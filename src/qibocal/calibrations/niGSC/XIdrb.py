@@ -21,45 +21,34 @@ from collections.abc import Iterable
 
 import numpy as np
 import pandas as pd
+import qibo
 from plotly.graph_objects import Figure
 from qibo import gates
 from qibo.models import Circuit
 from qibo.noise import NoiseModel
+from qibo.quantum_info.basis import comp_basis_to_pauli
 
 import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
-from qibocal.calibrations.niGSC.basics.circuitfactory import CircuitFactory
+from qibocal.calibrations.niGSC.basics.circuitfactory import ZkFilteredCircuitFactory
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
-from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig
+from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig, update_fig
 from qibocal.config import raise_error
+
+qibo.set_backend("numpy")
 
 
 # Define the circuit factory class for this specific module.
-class ModuleFactory(CircuitFactory):
+class ModuleFactory(ZkFilteredCircuitFactory):
     def __init__(self, nqubits: int, depths: list, qubits: list = []) -> None:
-        super().__init__(nqubits, depths, qubits)
-        if not len(self.qubits) == 1:
-            raise_error(
-                ValueError,
-                "This class is written for gates acting on only one qubit, not {} qubits.".format(
-                    len(self.qubits)
-                ),
-            )
+        super().__init__(nqubits, depths, qubits, size=2)
         self.name = "XId"
 
-    def build_circuit(self, depth: int):
-        # Initiate the empty circuit from qibo with 'self.nqubits'
-        # many qubits.
-        circuit = Circuit(1, density_matrix=True)
-        # There are only two gates to choose from for every qubit.
-        a = [gates.I(0), gates.X(0)]
-        # Draw sequence length many zeros and ones.
-        random_ints = np.random.randint(0, 2, size=depth)
-        # Get the Xs and Ids with random_ints as indices.
-        gate_lists = np.take(a, random_ints)
-        # Add gates to circuit.
-        circuit.add(gate_lists)
-        circuit.add(gates.M(0))
-        return circuit
+    def gate_group(self):
+        return [gates.I(0), gates.X(0)]
+
+    def irrep_info(self):
+        basis = comp_basis_to_pauli(self.nqubits, normalize=True)
+        return (basis, 2, 1, 2)
 
 
 # Define the experiment class for this specific module.
@@ -83,7 +72,7 @@ class ModuleExperiment(Experiment):
 
 
 # Define the result class for this specific module.
-class moduleReport(Report):
+class ModuleReport(Report):
     def __init__(self) -> None:
         super().__init__()
         self.title = "X-Id Benchmarking"
@@ -94,22 +83,22 @@ class moduleReport(Report):
 def filter_sign(circuit: Circuit, datarow: dict) -> dict:
     """Calculates the filtered signal for the XId.
 
-    :math:`n_X` denotes the amount of :math:`X` gates in the circuit with gates
-    :math:`g` and :math`i` the outcome which is either ground state :math:`0`
-    or exited state :math:`1`.
+       :math:`n_X` denotes the amount of :math:`X` gates in the circuit with gates
+       :math:`g` and :math`i` the outcome which is either ground state :math:`0`
+       or exited state :math:`1`.
 
-    .. math::
-        f_{\\text{sign}}(i,g)
-        = (-1)^{n_X\\%2 + i}/2
+       .. math::
+           f_{\\text{sign}}(i,g)
+           = (-1)^{n_X\\%2 + i}/2
 
 
-    Args:
-        circuit (Circuit): Not needed here.
-        datarow (dict): The dictionary with the samples from executed circuits and amount of
-                        X gates in the executed circuit.
-
-    Returns:
-        dict: _description_
+       Args:
+           circuit (Circuit): Not needed here.
+           datarow (dict): The dictionary with the samples from executed circuits and amount of
+                           X gates in the executed circuit.
+    g
+       Returns:
+           dict: _description_
     """
     samples = datarow["samples"]
     countX = datarow["countX"]
@@ -148,50 +137,75 @@ def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
     Returns:
         pd.DataFrame: The summarized data.
     """
-    # Has to fit the column describtion from ``filter_sign``.
+    # Has to fit the column description from ``filter_sign``.
     depths, ydata = experiment.extract("filter", "depth", "mean")
     _, ydata_std = experiment.extract("filter", "depth", "std")
     # Fit the filtered signal for each depth, there could be two overlaying exponential functions.
     popt, perr = fitting_methods.fit_exp2_func(depths, ydata)
+    # Check if there can be non-zero imaginary values in the data.
+    is_imaginary = np.any(np.iscomplex(ydata))
+    popt_key = "popt_imag" if is_imaginary else "popt"
     # Build a list of dictionaries with the aggregational information.
     data = [
         {
             "depth": depths,  # The x-axis.
             "data": ydata,  # The filtred signal.
             "2sigma": 2 * ydata_std,  # The 2 * standard deviation error for each depth.
-            "fit_func": "exp2_func",  # Which function was used to fit.
-            "popt_real": {
-                "A1_real": np.real(
-                    popt[0]
-                ),  # The complex prefactors would lead to imaginary data.
-                "A2_real": np.real(
-                    popt[1]
-                ),  # That's why they have to be stored seperatly.
+            "fit_func": "expn_func",  # Which function was used to fit.
+            popt_key: {
+                "A1": popt[0],
                 "p1": popt[2],
+                "A2": popt[1],
                 "p2": popt[3],
             },  # The real fitting parameters.
             "perr": {
                 "A1_err": perr[0],
-                "A2_err": perr[1],
                 "p1_err": perr[2],
+                "A2_err": perr[1],
                 "p2_err": perr[3],
             },  # The estimated errors.
         }
     ]
-    if np.iscomplex(popt[0]) or np.iscomplex(popt[1]):
-        data[0]["popt_imag"] = {
-            "A1_imag": np.imag(popt[0]),
-            "A2_imag": np.imag(popt[1]),
-            "p1": popt[2],
-            "p2": popt[3],
-        }  # The imaginary fitting parameters.
+
     df = pd.DataFrame(data, index=["filter"])
+    return df
+
+
+def add_validation(
+    experiment: Experiment, dataframe: pd.DataFrame | dict, N: int | None = None
+) -> pd.DataFrame:
+    """Computes theoretical values of coefficients and decay parameters of a given experiment
+    and add validation data to the dataframe.
+    No data is manipulated in the ``experiment`` object.
+
+    Args:
+        experiment (Experiment): After sequential postprocessing of the experiment data.
+
+    Returns:
+        pd.DataFrame: The summarized data.
+    """
+    from qibo.config import PRECISION_TOL
+
+    data = dataframe.to_dict("records")
+    validation_label = "validation_imag" if "popt_imag" in data[0] else "validation"
+    coefficients, decay_parameters = experiment.validate(N=N)
+    validation_dict = {}
+    for i in range(len(coefficients)):
+        if np.abs(coefficients[i]) > PRECISION_TOL:
+            k = len(validation_dict)
+            validation_dict[f"A{k//2+1}"] = coefficients[i]
+            validation_dict[f"p{k//2+1}"] = decay_parameters[i]
+    data[0].update({validation_label: validation_dict})
+    # The row name will be displayed as y-axis label.
+    df = pd.DataFrame(data, index=dataframe.index)
     return df
 
 
 # This is highly individual. The only important thing for the qq module is that a plotly figure is
 # returned, if qq is not used any type of figure can be build.
-def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
+def build_report(
+    experiment: Experiment, df_aggr: pd.DataFrame, validate: bool = False, N: int = None
+) -> Figure:
     """Use data and information from ``experiment`` and the aggregated data data frame to
     build a report as plotly figure.
 
@@ -204,7 +218,7 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
     """
 
     # Initiate a report object.
-    report = moduleReport()
+    report = ModuleReport()
     # Add general information to the object.
     report.info_dict["Number of qubits"] = len(experiment.data[0]["samples"][0])
     report.info_dict["Number of shots"] = len(experiment.data[0]["samples"])
@@ -215,19 +229,87 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
             for key in df_aggr.loc["filter"]["perr"]
         ]
     )
+
+    # Check if there are imaginary values in the data
+    is_imag = "popt_imag" in df_aggr
+    fittingparam_label = "popt_imag" if is_imag else "popt"
+    validation_label = "validation_imag" if is_imag else "validation"
     # Use the predefined ``scatter_fit_fig`` function from ``basics.utils`` to build the wanted
     # plotly figure with the scattered filtered data along with the mean for
     # each depth and the exponential fit for the means.
     report.all_figures.append(
         scatter_fit_fig(
-            experiment, df_aggr, "depth", "filter", fittingparam_label="popt_real"
+            experiment,
+            df_aggr,
+            "depth",
+            "filter",
+            fittingparam_label=fittingparam_label,
         )
     )
-    if "popt_imag" in df_aggr:
+
+    # If there is validation, add it to the figure
+    if validation_label in df_aggr.loc["filter"]:
+        report.all_figures[-1] = update_fig(
+            report.all_figures[-1],
+            df_aggr,
+            param_label=validation_label,
+        )
+
+    # If there are imaginary values in the data, create another figure
+    if is_imag:
         report.all_figures.append(
             scatter_fit_fig(
-                experiment, df_aggr, "depth", "filter", fittingparam_label="popt_imag"
+                experiment,
+                df_aggr,
+                "depth",
+                "filter",
+                fittingparam_label="popt_imag",
+                is_imag=True,
             )
         )
+
+        if validation_label in df_aggr.loc["filter"]:
+            report.all_figures[-1] = update_fig(
+                report.all_figures[-1],
+                df_aggr,
+                param_label=validation_label,
+                is_imag=True,
+            )
     # Return the figure the report object builds out of all figures added to the report.
     return report.build()
+
+
+def execute_simulation(depths: list, nshots: int = 500, noise_model: NoiseModel = None):
+    """Execute simulation of XId Radomized Benchmarking experiment and generate an html report with the validation of the results
+
+    Args:
+        depths (list): list of depths for circuits
+        nshots (int): number of shots per measurement
+        noise_model (:class:`qibo.noise.NoiseModel`): noise model applied to the circuits in the simulation
+
+    Example:
+        .. testcode::
+            from qibocal.calibrations.niGSC.XIdrb.py import execute_simulation
+            from qibocal.calibrations.niGSC.basics import noisemodels
+            # Build the noise model.
+            noise_params = [0.01, 0.02, 0.05]
+            pauli_noise_model = noisemodels.PauliErrorOnX(*noise_params)
+            # Generate the list of depths repeating 20 times
+            runs = 20
+            depths = list(range(1, 31)) * runs
+            # Run the simulation
+            execute_simulation(depths, 500, pauli_noise_model)
+    """
+
+    # Execute an experiment.
+    nqubits = 1
+    factory = ModuleFactory(nqubits, depths)
+    experiment = ModuleExperiment(factory, nshots=nshots, noise_model=noise_model)
+    experiment.perform(experiment.execute)
+
+    # Build a report with validation of the results
+    post_processing_sequential(experiment)
+    aggr_df = get_aggregational_data(experiment)
+    aggr_df = add_validation(experiment, aggr_df)
+    report_figure = build_report(experiment, aggr_df)
+    report_figure.show()

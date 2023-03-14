@@ -1,9 +1,9 @@
+import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
 from qibocal.calibrations.niGSC.basics import utils
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
 
@@ -63,7 +63,9 @@ class Report:
             plot_list = fig_dict["figs"]
             for plot in plot_list:
                 fig.add_trace(
-                    plot, row=count // divide_by + 1, col=count % divide_by + 1
+                    plot,
+                    row=count // divide_by + 1,
+                    col=count % divide_by + 1,
                 )
 
         fig.add_annotation(
@@ -93,6 +95,7 @@ class Report:
             title_font_size=24,
             legend_font_size=16,
             hoverlabel_font_size=16,
+            # legend_entrywidth=30,
             showlegend=True,
             height=500 * (int(l / divide_by) + l % divide_by)
             if l > divide_by
@@ -109,13 +112,17 @@ def scatter_fit_fig(
     xlabel: str,
     index: str,
     fittingparam_label="popt",
+    is_imag=False,
 ):
     fig_traces = []
     dfrow = df_aggr.loc[index]
+
     fig_traces.append(
         go.Scatter(
             x=experiment.dataframe[xlabel],
-            y=experiment.dataframe[index],
+            y=np.imag(experiment.dataframe[index])
+            if is_imag
+            else np.real(experiment.dataframe[index]),
             line=dict(color="#6597aa"),
             mode="markers",
             marker={"opacity": 0.2, "symbol": "square"},
@@ -125,33 +132,32 @@ def scatter_fit_fig(
     fig_traces.append(
         go.Scatter(
             x=dfrow[xlabel],
-            y=dfrow["data"],
+            y=np.imag(dfrow["data"]) if is_imag else np.real(dfrow["data"]),
             line=dict(color="#aa6464"),
             mode="markers",
             name="average",
         )
     )
     x_fit = np.linspace(min(dfrow[xlabel]), max(dfrow[xlabel]), len(dfrow[xlabel]) * 20)
-    if "imag" in fittingparam_label:
-        y_fit = np.imag(
-            getattr(fitting_methods, dfrow["fit_func"])(
-                x_fit, *dfrow[fittingparam_label].values()
-            )
-        )
-    else:
-        y_fit = np.real(
-            getattr(fitting_methods, dfrow["fit_func"])(
-                x_fit, *dfrow[fittingparam_label].values()
-            )
-        )
+
+    y_fit = getattr(fitting_methods, dfrow["fit_func"])(
+        x_fit, *(dfrow[fittingparam_label].values())
+    )
+    y_fit = np.imag(y_fit) if is_imag else np.real(y_fit)
     fig_traces.append(
         go.Scatter(
             x=x_fit,
             y=y_fit,
             name="".join(
                 [
-                    "{}:{} ".format(
-                        key, utils.number_to_str(dfrow[fittingparam_label][key])
+                    "{}:{}{}".format(
+                        key,
+                        utils.number_to_str(dfrow[fittingparam_label][key]),
+                        (
+                            "<br>"
+                            if len(dfrow[fittingparam_label]) > 4 and "p" in key
+                            else " "
+                        ),
                     )
                     for key in dfrow[fittingparam_label]
                 ]
@@ -159,4 +165,53 @@ def scatter_fit_fig(
             line=go.scatter.Line(dash="dot"),
         )
     )
-    return {"figs": fig_traces, "xlabel": xlabel, "ylabel": index}
+
+    return {
+        "figs": fig_traces,
+        "xlabel": xlabel,
+        "ylabel": index,
+        "subplot_title": "Real" if not is_imag else "Imaginary",
+    }
+
+
+def update_fig(
+    fig_dict: dict,
+    df_aggr: pd.DataFrame,
+    param_label="validation",
+    name="",
+    is_imag=False,
+):
+    fig_traces = fig_dict["figs"]
+    dfrow = df_aggr.loc[fig_dict["ylabel"]]
+    xlabel = fig_dict["xlabel"]
+
+    x_fit = np.linspace(min(dfrow[xlabel]), max(dfrow[xlabel]), len(dfrow[xlabel]) * 20)
+    y_fit = getattr(fitting_methods, dfrow["fit_func"])(
+        x_fit, *(dfrow[param_label].values())
+    )
+    y_fit = np.imag(y_fit) if is_imag else np.real(y_fit)
+
+    name = (
+        name
+        if len(name) != 0
+        else "".join(
+            [
+                "{}:{}{}".format(
+                    key,
+                    utils.number_to_str(dfrow[param_label][key]),
+                    ("<br>" if len(dfrow[param_label]) > 4 and "p" in key else " "),
+                )
+                for key in dfrow[param_label]
+            ]
+        )
+    )
+    fig_traces.append(
+        go.Scatter(
+            x=x_fit,
+            y=y_fit,
+            name=name,
+            line=go.scatter.Line(dash="dot"),
+        )
+    )
+    fig_dict["figs"] = fig_traces
+    return fig_dict

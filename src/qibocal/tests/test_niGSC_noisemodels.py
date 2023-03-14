@@ -5,7 +5,7 @@ import qibo
 from qibocal.calibrations.niGSC.basics import noisemodels
 
 
-def test_PauliErrorOnUnitary():
+def test_PauliErrorOnAll():
     def test_model(pauli_onU_error):
         assert isinstance(pauli_onU_error, qibo.noise.NoiseModel)
         errorkeys = pauli_onU_error.errors.keys()
@@ -14,14 +14,14 @@ def test_PauliErrorOnUnitary():
         assert isinstance(error, qibo.noise.PauliError)
         assert len(error.options) == 3 and np.sum(error.options) < 1
 
-    noise_model1 = noisemodels.PauliErrorOnUnitary()
+    noise_model1 = noisemodels.PauliErrorOnAll()
     test_model(noise_model1)
-    noise_model2 = noisemodels.PauliErrorOnUnitary(0.1, 0.1, 0.1)
+    noise_model2 = noisemodels.PauliErrorOnAll(0.1, 0.1, 0.1)
     test_model(noise_model2)
-    noise_model3 = noisemodels.PauliErrorOnUnitary(None)
+    noise_model3 = noisemodels.PauliErrorOnAll(None)
     test_model(noise_model3)
     with pytest.raises(ValueError):
-        noise_model4 = noisemodels.PauliErrorOnUnitary(0.1, 0.2)
+        noise_model4 = noisemodels.PauliErrorOnAll(0.1, 0.2)
 
 
 def test_PauliErrorOnX():

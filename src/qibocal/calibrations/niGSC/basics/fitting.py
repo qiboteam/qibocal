@@ -25,11 +25,24 @@ def exp1B_func(x: np.ndarray, A: float, f: float, B: float) -> np.ndarray:
     return A * f**x + B
 
 
-def exp2_func(x: np.ndarray, A1: float, A2: float, f1: float, f2: float) -> np.ndarray:
+def expn_func(x: Union[np.ndarray, list], *Af_list) -> np.ndarray:
+    """Return :math:`\\sum A_i\\cdot f_i^x` where ``x`` is an ``np.ndarray`` and
+    ``Af_list`` is a list of floats :math:`A_1`, :math:`f_1`, :math:`A_2`, :math:`f_2`, etc.
+    There is no linear offsett B.
+    """
+    Af_list = np.array(Af_list, dtype=complex)
+    sum_of_exponentials = np.vectorize(
+        lambda m: np.sum(Af_list[::2] * Af_list[1::2] ** m)
+    )
+    return sum_of_exponentials(np.real(x))
+
+
+def exp2_func(x: np.ndarray, A1: float, f1: float, A2: float, f2: float) -> np.ndarray:
     """Return :math:`A_1\\cdot f_1^x+A_2\\cdot f_2^x` where ``x`` is an ``np.ndarray`` and
     ``A1``, ``f1``, ``A2``, ``f2`` are floats. There is no linear offsett B.
     """
-    return A1 * f1**x + A2 * f2**x
+    x = np.array(x, dtype=complex)
+    return expn_func(x, A1, f1, A2, f2)
 
 
 def esprit(
@@ -152,6 +165,31 @@ def fit_exp1_func(
     return popt, perr
 
 
+def fit_expn_func(
+    xdata: Union[np.ndarray, list], ydata: Union[np.ndarray, list], n: int = 2, **kwargs
+) -> Tuple[tuple, tuple]:
+    """Calculate n exponentials on top of each other, fit to the given ydata.
+
+    No linear offset, the ESPRIT algorithm is used to identify ``n`` exponential decays.
+
+    Args:
+        xdata (Union[np.ndarray, list]): The x-labels.
+        ydata (Union[np.ndarray, list]): The data to be fitted
+        n (int): number of decays to fit. Default is 2
+
+    Returns:
+        Tuple[tuple, tuple]: (A1, ..., An, f1, ..., fn) with f* the decay parameters.
+    """
+
+    # TODO how are the errors estimated?
+    # TODO the data has to have a sufficiently big size, check that.
+    decays = esprit(np.array(xdata), np.array(ydata), n)
+    vandermonde = np.vander(decays, N=xdata[-1] + 1, increasing=True)
+    vandermonde = np.take(vandermonde, xdata, axis=1)
+    alphas = np.linalg.pinv(vandermonde.T) @ np.array(ydata).reshape(-1, 1).flatten()
+    return tuple([*alphas, *decays]), (0,) * (len(alphas) + len(decays))
+
+
 def fit_exp2_func(
     xdata: Union[np.ndarray, list], ydata: Union[np.ndarray, list], **kwargs
 ) -> Tuple[tuple, tuple]:
@@ -166,11 +204,21 @@ def fit_exp2_func(
     Returns:
         Tuple[tuple, tuple]: (A1, A2, f1, f2) with f* the decay parameters.
     """
+    return fit_expn_func(xdata, ydata, 2)
 
-    # TODO how are the errors estimated?
-    # TODO the data has to have a sufficiently big size, check that.
-    decays = esprit(np.array(xdata), np.array(ydata), 2)
-    vandermonde = np.vander(decays, N=xdata[-1] + 1, increasing=True)
-    vandermonde = np.take(vandermonde, xdata, axis=1)
-    alphas = np.linalg.pinv(vandermonde.T) @ np.array(ydata).reshape(-1, 1).flatten()
-    return tuple([*alphas, *decays]), (0, 0, 0, 0)
+
+def fit_exp4_func(
+    xdata: Union[np.ndarray, list], ydata: Union[np.ndarray, list], **kwargs
+) -> Tuple[tuple, tuple]:
+    """Calculate 2 exponentials on top of each other, fit to the given ydata.
+
+    No linear offset, the ESPRIT algorithm is used to identify the four exponential decays.
+
+    Args:
+        xdata (Union[np.ndarray, list]): The x-labels.
+        ydata (Union[np.ndarray, list]): The data to be fitted
+
+    Returns:
+        Tuple[tuple, tuple]: (A1, A2, A3, A4, f1, f2, f3, f4) with f* the decay parameters.
+    """
+    return fit_expn_func(xdata, ydata, 4)

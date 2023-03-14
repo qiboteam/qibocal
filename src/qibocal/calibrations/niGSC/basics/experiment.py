@@ -10,7 +10,12 @@ import pandas as pd
 from qibo.models import Circuit
 from qibo.noise import NoiseModel
 
-from qibocal.calibrations.niGSC.basics.utils import copy_circuit, experiment_directory
+from qibocal.calibrations.niGSC.basics.utils import (
+    channel_twirl,
+    copy_circuit,
+    experiment_directory,
+    filtered_rb_validation,
+)
 from qibocal.config import raise_error
 
 
@@ -152,7 +157,6 @@ class Experiment:
             Either one or two np.ndarrays. If no grouping wanted, just the data. If grouping
             wanted, the values after which where grouped and the grouped data.
         """
-
         # Check what parameters where given.
         if not groupby_key and not agg_type:
             # No grouping and no aggreagtion is wanted. Just return the wanted output key.
@@ -194,7 +198,7 @@ class Experiment:
         # Both ``circuit`` and ``datarow`` can be provided:
         if self.circuitfactory is not None and self.data is not None:
             for circuit, datarow in zip(self.circuitfactory, self.data):
-                datarow = sequential_task((circuit.copy(deep=True)), datarow)
+                datarow = sequential_task(circuit.copy(deep=True), datarow)
         # Only``datarow`` can be provided:
         elif self.circuitfactory is None and self.data is not None:
             for datarow in self.data:
@@ -221,3 +225,25 @@ class Experiment:
             circuit = self.noise_model.apply(circuit)
         samples = circuit(nshots=self.nshots).samples()
         return {"samples": samples}
+
+    def validate(self, N=None, backend=None):
+        """Returns the coefficients and decay parameters
+
+        Either ``self.circuitfactory`` or ``self.data`` cannot be ``None`` and
+        if not ``None`` they have to have the right length.
+
+        Args:
+            sequential_task (callable[[Circuit, dict], dict]): A function applied
+                row by row alterting each datarow.
+        """
+        from qibo.config import PRECISION_TOL
+
+        if backend is None:
+            from qibo.backends import GlobalBackend
+
+            backend = GlobalBackend()
+
+        coefficients, decay_parameters = filtered_rb_validation(
+            self.circuitfactory, self.noise_model, True, N, backend
+        )
+        return coefficients, decay_parameters

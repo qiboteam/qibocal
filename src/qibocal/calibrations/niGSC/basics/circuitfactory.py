@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import abc
+from collections.abc import Iterable
 
 import numpy as np
 from qibo import gates
 from qibo.models import Circuit
-from qibo.quantum_info.random_ensembles import random_clifford
+from qibo.noise import NoiseModel
+from qibo.quantum_info.basis import comp_basis_to_pauli
+from qibo.quantum_info.random_ensembles import _clifford_unitary, random_clifford
+from qibo.quantum_info.utils import ONEQUBIT_CLIFFORD_PARAMS
 
-from qibocal.calibrations.niGSC.basics.utils import ONEQ_GATES
+from qibocal.calibrations.niGSC.basics.utils import ONEQ_GATES, ONEQ_GATES_MATRICES
 from qibocal.config import raise_error
 
 
@@ -17,7 +21,10 @@ class CircuitFactory:
     """
 
     def __init__(
-        self, nqubits: int, depths: list | np.ndarray | int, qubits: list = []
+        self,
+        nqubits: int,
+        depths: list | np.ndarray | int,
+        qubits: list = [],
     ) -> None:
         self.nqubits = nqubits if nqubits is not None else len(qubits)
         self.qubits = qubits if qubits else list(range(nqubits))
@@ -56,6 +63,18 @@ class CircuitFactory:
             bigcircuit.add(circuit.on_qubits(*self.qubits))
             self.n += 1
             return bigcircuit
+
+    @property
+    def gate_group(self):
+        return []
+
+    @property
+    def irrep_info(self):
+        index = 0
+        size = 4**self.nqubits
+        multiplicity = 1
+        basis = np.eye(size)
+        return (basis, index, size, multiplicity)
 
     def build_circuit(self, depth: int) -> Circuit:
         """Initiate a ``qibo.models.Circuit`` object and fill it with the wanted gates.
@@ -111,6 +130,20 @@ class Qibo1qGatesFactory(CircuitFactory):
             gates_list.append(rand_gate(count))
         return gates_list
 
+    def gate_group(self):
+        from itertools import product
+
+        if self.nqubits == 1:
+            return [getattr(gates, p) for p in ONEQ_GATES]
+
+        gates_1q = ONEQ_GATES_MATRICES.values()
+        gates_nq = list(product(gates_1q, repeat=self.nqubits))
+        unitaries = [
+            gates.Unitary(np.kron(*gates_tuple), *self.qubits)
+            for gates_tuple in gates_nq
+        ]
+        return unitaries
+
 
 class SingleCliffordsFactory(CircuitFactory):
     """Creates circuits filled with random  single qubit Clifford gates for
@@ -138,3 +171,74 @@ class SingleCliffordsFactory(CircuitFactory):
             # Build the gate with the random Clifford matrix, let is act on the right qubit.
             gates_list.append(gates.Unitary(rand_cliff, count))
         return gates_list
+
+    def gate_group(self):
+        from itertools import product
+
+        cliffords_1q = [_clifford_unitary(*p) for p in ONEQUBIT_CLIFFORD_PARAMS]
+        if self.nqubits == 1:
+            return [gates.Unitary(c, *self.qubits) for c in cliffords_1q]
+        cliffords = list(product(cliffords_1q, repeat=self.nqubits))
+        cliffords_unitaries = [
+            gates.Unitary(np.kron(*clifford_layer), *self.qubits)
+            for clifford_layer in cliffords
+        ]
+        return cliffords_unitaries
+
+    def irrep_info(self):
+        basis = comp_basis_to_pauli(self.nqubits, normalize=True)
+        return (basis, 1, 3, 1)
+
+
+class ZkFilteredCircuitFactory(CircuitFactory):
+    """Creates circuits filled with random single qubit gates from the group
+    :math:`Z_k=\\{ R_x(j\\cdot 2\\pi/k)\\}_\\{j=0\\}^\\{k-1\\}`
+    """
+
+    def __init__(
+        self, nqubits: int, depths: list, qubits: list = [], size: int = 1
+    ) -> None:
+        super().__init__(nqubits, depths, qubits)
+        assert (
+            len(self.qubits) == 1
+        ), """
+        This class is written for gates acting on only one qubit, not {} qubits.""".format(
+            len(self.qubits)
+        )
+        self.name = f"Z{size}"
+
+    def build_circuit(self, depth: int):
+        # Initiate the empty circuit from qibo with 'self.nqubits'
+        # many qubits.
+        circuit = Circuit(1, density_matrix=True)
+        # Draw sequence length many indices corresponding to the elements of the gate group.
+        random_ints = np.random.randint(0, len(self.gate_group()), size=depth)
+        # Get the gates with random_ints as indices.
+        gate_lists = np.take(self.gate_group(), random_ints)
+        # Add gates to circuit.
+        circuit.add(gate_lists)
+        circuit.add(gates.M(0))
+        return circuit
+
+    def gate_group(self):
+        return [gates.RX(0, 2 * np.pi / self.k * i) for i in range(self.k)]
+
+    def irrep_info(self):
+        from qibo.quantum_info import comp_basis_to_pauli
+
+        basis = comp_basis_to_pauli(self.nqubits, normalize=True)
+        basis = (
+            np.array(
+                [
+                    [1, 0, 0, 0],
+                    [0, 1, 0, 0],
+                    [0, 0, 1 / np.sqrt(2), -1j / np.sqrt(2)],
+                    [0, 0, 1j / np.sqrt(2), -1 / np.sqrt(2)],
+                ]
+            )
+            @ basis
+        )
+        index = 3
+        size = 1
+        multiplicity = 1
+        return (basis, index, size, multiplicity)

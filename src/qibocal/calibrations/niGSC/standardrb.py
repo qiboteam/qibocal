@@ -9,6 +9,7 @@ from collections.abc import Iterable
 
 import numpy as np
 import pandas as pd
+import qibo
 from plotly.graph_objects import Figure
 from qibo import gates
 from qibo.models import Circuit
@@ -19,6 +20,8 @@ from qibocal.calibrations.niGSC.basics.circuitfactory import SingleCliffordsFact
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
 from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig
 from qibocal.calibrations.niGSC.basics.utils import gate_fidelity
+
+qibo.set_backend("numpy")
 
 
 class ModuleFactory(SingleCliffordsFactory):
@@ -39,7 +42,7 @@ class ModuleFactory(SingleCliffordsFactory):
 
         # Initiate a ``Circuit`` object with as many qubits as is indicated with the list
         # of qubits on which the gates should act on.
-        circuit = Circuit(len(self.qubits))
+        circuit = Circuit(len(self.qubits), density_matrix=True)
         # Add ``depth`` many gate layers.
         for _ in range(depth):
             circuit.add(self.gate_layer())
@@ -199,7 +202,7 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
     report.info_dict["Number of qubits"] = len(experiment.data[0]["samples"][0])
     report.info_dict["Number of shots"] = len(experiment.data[0]["samples"])
     report.info_dict["runs"] = experiment.extract("samples", "depth", "count")[1][0]
-    report.info_dict["Fitting daviations"] = "".join(
+    report.info_dict["Fitting deviations"] = "".join(
         [
             "{}:{:.3f} ".format(key, df_aggr.iloc[0]["perr"][key])
             for key in df_aggr.iloc[0]["perr"]
