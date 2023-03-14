@@ -90,6 +90,26 @@ class Classifier:
         r"""The path where the hyperparameters are stored."""
         return self.savedir / HYPERFILE
 
+    @classmethod
+    def load_model(cls, name: str, base_dir: pathlib.Path):
+        r"""
+        Giving the classification name this method returns the respective classifier.
+        Args:
+            name (str): classifier's name.
+            base_dir (path): Where to store the classification results.
+        Returns:
+            Classification model.
+        """
+        inst = cls(import_classifiers([name]), base_dir)
+        hyperpars = inst.load_hyper()
+        return inst.create_model(hyperpars)
+
+    @classmethod
+    def model_from_dir(cls, folder: pathlib.Path):
+        name = folder.name
+        base_dir = folder.parent
+        return cls.load_model(name, base_dir)
+
     def dump_hyper(self, hyperpars):
         r"""Saves the hyperparameters"""
         self.hyperfile.write_text(json.dumps(hyperpars, default=str), encoding="utf-8")
