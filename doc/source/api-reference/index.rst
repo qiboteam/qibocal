@@ -7,6 +7,6 @@ In this section we present the main Qibocal components and primitives included i
 the public API.
 
 .. toctree::
-    :maxdepth: 4
+    :maxdepth: 3
 
     qibocal
