@@ -1,0 +1,21 @@
+runcard:
+  actions:
+    - id: start
+      priority: 0
+      next: a1
+    - id: a1
+      priority: 10
+      next: a2
+    - id: a2
+      priority: 10
+      next: a3
+    - id: a3
+      next: a4
+    - id: a4
+      priority: 5
+
+validation:
+  result: [start, a1, a2, a3, a4]
+  description: |
+    a "horizontal" flow, defined by `next` keys
+    being linear, priority is irrelevant
