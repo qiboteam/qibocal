@@ -3,9 +3,11 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
-from qibocal.calibrations.niGSC.basics import utils
-from qibocal.calibrations.niGSC.basics.experiment import Experiment
+import qibocal.protocols.characterization.gateset.niGSC.basics.fitting as fitting_methods
+from qibocal.protocols.characterization.gateset.niGSC.basics import utils
+from qibocal.protocols.characterization.gateset.niGSC.basics.experiment import (
+    Experiment,
+)
 
 
 def plot_qq(folder: str, routine: str, qubit, format):
@@ -26,7 +28,9 @@ def plot_qq(folder: str, routine: str, qubit, format):
     import importlib
 
     # Load the module, something like 'standardrb'.
-    module = importlib.import_module(f"qibocal.calibrations.niGSC.{routine}")
+    module = importlib.import_module(
+        f"qibocal.protocols.characterization.gateset.niGSC.{routine}"
+    )
     # Load the experiment with the class method ``load``.
     experiment = module.ModuleExperiment.load(f"{folder}/data/{routine}/")
     # In this data frame the precomputed fitting parameters and other

@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 import qibo
 
-from qibocal.calibrations.niGSC.basics import noisemodels
+from qibocal.protocols.characterization.gateset.niGSC.basics import noisemodels
 
 
 def test_PauliErrorOnUnitary():

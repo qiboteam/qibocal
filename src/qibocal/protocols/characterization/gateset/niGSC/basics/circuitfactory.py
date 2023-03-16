@@ -7,8 +7,8 @@ from qibo import gates
 from qibo.models import Circuit
 from qibo.quantum_info.random_ensembles import random_clifford
 
-from qibocal.calibrations.niGSC.basics.utils import ONEQ_GATES
 from qibocal.config import raise_error
+from qibocal.protocols.characterization.gateset.niGSC.basics.utils import ONEQ_GATES
 
 
 class CircuitFactory:

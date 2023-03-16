@@ -7,8 +7,8 @@ from plotly.graph_objects import Figure
 from qibo import gates
 from qibo.noise import NoiseModel
 
-from qibocal.calibrations.niGSC import standardrb
-from qibocal.calibrations.niGSC.basics import noisemodels, utils
+from qibocal.protocols.characterization.gateset.niGSC import standardrb
+from qibocal.protocols.characterization.gateset.niGSC.basics import noisemodels, utils
 
 
 def theoretical_outcome(noise_model: NoiseModel) -> float:

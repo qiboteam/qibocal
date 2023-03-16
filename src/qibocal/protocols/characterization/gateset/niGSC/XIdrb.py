@@ -26,11 +26,18 @@ from qibo import gates
 from qibo.models import Circuit
 from qibo.noise import NoiseModel
 
-import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
-from qibocal.calibrations.niGSC.basics.circuitfactory import CircuitFactory
-from qibocal.calibrations.niGSC.basics.experiment import Experiment
-from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig
+import qibocal.protocols.characterization.gateset.niGSC.basics.fitting as fitting_methods
 from qibocal.config import raise_error
+from qibocal.protocols.characterization.gateset.niGSC.basics.circuitfactory import (
+    CircuitFactory,
+)
+from qibocal.protocols.characterization.gateset.niGSC.basics.experiment import (
+    Experiment,
+)
+from qibocal.protocols.characterization.gateset.niGSC.basics.plot import (
+    Report,
+    scatter_fit_fig,
+)
 
 
 # Define the circuit factory class for this specific module.

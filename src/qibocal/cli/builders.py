@@ -6,9 +6,9 @@ import shutil
 
 import yaml
 
-from qibocal import calibrations
 from qibocal.config import log, raise_error
 from qibocal.data import Data
+from qibocal.protocols.characterization import gateset, hardware
 
 
 def load_yaml(path):
@@ -37,7 +37,7 @@ class ActionParser:
         if not os.path.exists(self.path):
             os.makedirs(self.path)
         # collect function from module
-        self.func = getattr(calibrations, self.name)
+        self.func = getattr(hardware, self.name)
 
         sig = inspect.signature(self.func)
         self.params = self.runcard["actions"][self.name]
@@ -71,7 +71,7 @@ class niGSCactionParser(ActionParser):
         self.runs = self.runcard["actions"][self.name]["runs"]
         self.nshots = self.runcard["actions"][self.name]["nshots"]
 
-        from qibocal.calibrations.niGSC.basics import noisemodels
+        from qibocal.protocols.characterization.gateset.niGSC.basics import noisemodels
 
         try:
             self.noise_params = self.runcard["actions"][self.name]["noise_params"]
@@ -86,7 +86,7 @@ class niGSCactionParser(ActionParser):
 
     def load_plot(self):
         """Helper method to import the plotting function."""
-        from qibocal.calibrations.niGSC.basics.plot import plot_qq
+        from qibocal.protocols.characterization.gateset.niGSC.basics.plot import plot_qq
 
         self.plots.append((f"{self.name} protocol", plot_qq))
 
@@ -95,7 +95,9 @@ class niGSCactionParser(ActionParser):
         if not os.path.exists(self.path):
             os.makedirs(self.path)
 
-        self.module = importlib.import_module(f"qibocal.calibrations.niGSC.{self.name}")
+        self.module = importlib.import_module(
+            f"qibocal.protocols.characterization.gateset.niGSC.{self.name}"
+        )
 
     def execute(self, data_format, platform):
         """Executes a non-interactive gate set characterication using only the wanted
@@ -330,9 +332,9 @@ class ReportBuilder:
             actions = self.runcard.get("actions")
 
         for action in actions:
-            if hasattr(calibrations, action):
-                routine = getattr(calibrations, action)
-            elif hasattr(calibrations.niGSC, action):
+            if hasattr(hardware, action):
+                routine = getattr(hardware, action)
+            elif hasattr(gateset.niGSC, action):
                 routine = niGSCactionParser(self.runcard, self.path, action)
                 routine.load_plot()
             else:
