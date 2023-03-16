@@ -214,7 +214,7 @@ def lorentzian_fit(data, x, y, qubits, resonator_type, labels, fit_file_name=Non
                 + fit_res.best_values["offset"]
             )
 
-            freq = f0
+            freq = f0 * 1e9
 
             data_fit.add(
                 {
@@ -233,19 +233,6 @@ def lorentzian_fit(data, x, y, qubits, resonator_type, labels, fit_file_name=Non
                 {key: 0 if key != "qubit" else qubit for key in data_fit.df.columns}
             )
 
-        freq = f0 * 1e9
-
-        data_fit.add(
-            {
-                labels[0]: freq,
-                labels[1]: peak_voltage,
-                "popt0": fit_res.best_values["amplitude"],
-                "popt1": fit_res.best_values["center"],
-                "popt2": fit_res.best_values["sigma"],
-                "popt3": fit_res.best_values["offset"],
-                "qubit": qubit,
-            }
-        )
     return data_fit
 
 
