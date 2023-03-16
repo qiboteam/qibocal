@@ -1,0 +1,53 @@
+runcard:
+  actions:
+    - id: high-power-spectroscopy
+      main: punchout
+      priority: 0
+    - id: punchout
+      main: qubit-spectroscopy
+      priority: 100
+    - id: qubit-spectroscopy
+      main: rabi
+      priority: 200
+    - id: qubit-spectroscopy
+      main: rabi
+      priority: 300
+      next: [avoided-crossing] # TODO: replace with proper ones
+    - id: rabi
+      main: ramsey
+      priority: 400
+    - id: ramsey
+      main: single-shot
+      priority: 500
+    - id: single-shot
+      main: randomized-benchmarking
+      priority: 600
+    - id: randomized-benchmarking
+      priority: 999
+    - id: avoided-crossing
+      main: chevron
+      priority: 1000
+    - id: chevron
+      main: 2q-gate-landscape
+      priority: 1100
+    - id: 2q-gate-landscape
+      main: randomized-benchmarking-2q
+      priority: 1200
+    - id: randomized-benchmarking-2q
+      priority: 1999
+
+validation:
+  result:
+    - high-power-spectroscopy
+    - punchout
+    - qubit-spectroscopy
+    - rabi
+    - ramsey
+    - single-shot
+    - randomized-benchmarking
+    - avoided-crossing
+    - chevron
+    - 2q-gate-landscape
+    - randomized-benchmarking-2q
+  description: |
+    autocalibration normal flow
