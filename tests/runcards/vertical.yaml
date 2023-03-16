@@ -1,0 +1,18 @@
+runcard:
+  actions:
+    - id: start
+      priority: 0
+      main: first
+    - id: first
+      priority: 100
+      main: second
+    - id: second
+      main: third
+    - id: third
+      priority: 50
+
+validation:
+  result: [start, first, second, third]
+  description: |
+    a "vertical" flow, defined by `main` keys
+    being linear, priority is irrelevant
