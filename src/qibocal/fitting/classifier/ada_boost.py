@@ -18,7 +18,7 @@ def hyperopt(x_train, y_train, _path):
     """
     clf = AdaBoostClassifier()
     cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=3, random_state=1)
-    space = dict()
+    space = {}
     space["n_estimators"] = np.linspace(10, 200, num=20).astype("int")
     space["learning_rate"] = np.linspace(0.1, 1, num=10)
     space["algorithm"] = ["SAMME", "SAMME.R"]
