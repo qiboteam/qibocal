@@ -88,18 +88,18 @@ def resonator_spectroscopy(
         # sweep the parameter
         for delta_freq in delta_frequency_range:
             # save data as often as defined by points
-            if count % points == 0 and count > 0:
-                # save data
-                yield data
-                # calculate and save fit
-                yield lorentzian_fit(
-                    data,
-                    x="frequency[GHz]",
-                    y="MSR[uV]",
-                    qubits=qubits,
-                    resonator_type=platform.resonator_type,
-                    labels=["readout_frequency", "peak_voltage"],
-                )
+            # if count % points == 0 and count > 0:
+            #     # save data
+            #     yield data
+            #     # calculate and save fit
+            #     yield lorentzian_fit(
+            #         data,
+            #         x="frequency[GHz]",
+            #         y="MSR[uV]",
+            #         qubits=qubits,
+            #         resonator_type=platform.resonator_type,
+            #         labels=["readout_frequency", "peak_voltage"],
+            #     )
             # reconfigure the instruments based on the new resonator frequency
             # in this case setting the local oscillators
             # the pulse sequence does not need to be modified or recreated between executions
@@ -126,15 +126,15 @@ def resonator_spectroscopy(
                 data.add(r)
             count += 1
     # finally, save the remaining data and fits
-    yield data
-    yield lorentzian_fit(
-        data,
-        x="frequency[GHz]",
-        y="MSR[uV]",
-        qubits=qubits,
-        resonator_type=platform.resonator_type,
-        labels=["readout_frequency", "peak_voltage"],
-    )
+    return data
+    # yield lorentzian_fit(
+    #     data,
+    #     x="frequency[GHz]",
+    #     y="MSR[uV]",
+    #     qubits=qubits,
+    #     resonator_type=platform.resonator_type,
+    #     labels=["readout_frequency", "peak_voltage"],
+    # )
 
 
 @plot(

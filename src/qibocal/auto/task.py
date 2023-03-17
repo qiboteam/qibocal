@@ -5,18 +5,17 @@ from typing import List, Optional
 
 import yaml
 
-from .operation import (
+from qibocal.protocols.characterization import Operation
+
+from .operation import (  # Operation,
     Data,
     DummyPars,
-    Operation,
     Parameters,
     Results,
     Routine,
     dummy_operation,
 )
 from .runcard import Action, Id
-
-# from qibocal.protocols.characterization import Operation
 
 MAX_PRIORITY = int(1e9)
 """A number bigger than whatever will be manually typed.

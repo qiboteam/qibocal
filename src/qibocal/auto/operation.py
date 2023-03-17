@@ -185,6 +185,6 @@ command_2 = Routine(_cmd1_acq, _cmd1_fit)
 #  ---
 
 
-class Operation(Enum):
-    command_1 = command_1
-    command_2 = command_2
+# class Operation(Enum):
+#     command_1 = command_1
+#     command_2 = command_2

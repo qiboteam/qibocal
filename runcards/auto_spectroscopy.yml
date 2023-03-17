@@ -1,0 +1,23 @@
+platform: dummy
+
+qubits: [0, 1]
+
+format: csv
+
+actions:
+  - id: start
+    priority: 0
+    operation: resonator_spectroscopy
+    parameters:
+      qubits: [0, 1]
+      freq_width: 30_000_000
+      freq_step: 1_000_000
+
+  #   main: first
+  # - id: first
+  #   priority: 100
+  #   main: second
+  # - id: second
+  #   main: third
+  # - id: third
+  #   priority: 50
