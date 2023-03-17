@@ -1,0 +1,20 @@
+runcard:
+  actions:
+    - id: start
+      priority: 0
+      next: [first, second]
+    - id: first
+      priority: 100
+      next: [third]
+    - id: second
+      priority: 300
+      next: [third]
+    - id: third
+      priority: 200
+
+validation:
+  result: [start, first, second, third]
+  description: |
+    basic example with branching and merging
+    despite the higher priority, `third` is executed at the end, since it is a
+    merging point

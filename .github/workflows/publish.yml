@@ -34,4 +34,5 @@ jobs:
       package-manager: "poetry"
       dependency-path: "**/poetry.lock"
       trigger-label: "${{needs.evaluate-label.outputs.label}}"
+      poetry-extras: --with docs
       project: qibocal
