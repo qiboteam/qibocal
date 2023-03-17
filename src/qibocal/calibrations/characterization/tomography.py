@@ -56,11 +56,7 @@ def state_tomography(
     if len(qubits) != 2:
         raise NotImplementedError("Tomography is only implemented for two qubits.")
 
-    qubit1, qubit2 = min(qubits.keys()), max(qubits.keys())
-
-    # reload instrument settings from runcard
-    platform.reload_settings()
-    basis_rotations = {
+    rotation_pulses = {
         "I": None,
         "RX": lambda qubit, start: platform.create_RX_pulse(qubit, start),
         "RY": lambda qubit, start: platform.create_RX_pulse(
@@ -71,6 +67,12 @@ def state_tomography(
             qubit, start, relative_phase=np.pi / 2
         ),
     }
+    tomography_basis = ["I", "RY90", "RX90"]
+
+    qubit1, qubit2 = min(qubits.keys()), max(qubits.keys())
+
+    # reload instrument settings from runcard
+    platform.reload_settings()
 
     data = DataUnits(
         name="data",
@@ -81,8 +83,8 @@ def state_tomography(
             "qubit",
         ],
     )
-    for label1, basis1 in basis_rotations.items():
-        for label2, basis2 in basis_rotations.items():
+    for label1 in tomography_basis:
+        for label2 in tomography_basis:
             if not (label1 == "RX" and label2 == "RX"):
                 total_sequence = PulseSequence()
                 # state preperation sequence
@@ -106,17 +108,17 @@ def state_tomography(
                                     qubit=qubit,
                                 )
                             )
-                        elif pulse_type in basis_rotations:
+                        elif pulse_type in rotation_pulses:
                             total_sequence.add(
-                                basis_rotations[pulse_type](qubit, start)
+                                rotation_pulses[pulse_type](qubit, start)
                             )
 
                 # basis rotation sequence
                 start = total_sequence.finish
-                if basis1 is not None:
-                    total_sequence.add(basis1(qubit1, start))
-                if basis2 is not None:
-                    total_sequence.add(basis2(qubit2, start))
+                if label1 != "I":
+                    total_sequence.add(rotation_pulses[label1](qubit1, start))
+                if label2 != "I":
+                    total_sequence.add(rotation_pulses[label2](qubit2, start))
                 # measurements
                 start = total_sequence.finish
                 measure1 = platform.create_MZ_pulse(qubit1, start=start)
