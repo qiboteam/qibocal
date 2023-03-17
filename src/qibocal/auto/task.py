@@ -16,6 +16,8 @@ from .operation import (
 )
 from .runcard import Action, Id
 
+# from qibocal.protocols.characterization import Operation
+
 MAX_PRIORITY = int(1e9)
 """A number bigger than whatever will be manually typed.
 
@@ -74,7 +76,7 @@ class Task:
 
     @property
     def parameters(self):
-        return Parameters.load(self.action.parameters)
+        return self.operation.parameters_type.load(self.action.parameters)
 
     def datapath(self, base_dir: Path):
         return base_dir / f"{self.id}_{self.iteration}" / DATAFILE

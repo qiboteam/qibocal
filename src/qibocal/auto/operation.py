@@ -31,7 +31,7 @@ class Parameters:
             the linked outputs
 
         """
-        return cls()
+        return cls(**parameters)
 
 
 class Data:
