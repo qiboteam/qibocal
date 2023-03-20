@@ -19,7 +19,7 @@ def hyperopt(x_train, y_train, _path):
     clf = RandomForestClassifier()
     cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=3, random_state=1)
     space = dict()
-    space["n_estimators"] = np.linspace(10, 200, num=20).astype("int")
+    space["n_estimators"] = np.arange(10, 200, 10, dtype=int)
     space["criterion"] = ["gini", "entropy", "log_loss"]
     space["max_features"] = ["sqrt", "log2", None]
     search = GridSearchCV(clf, space, scoring="accuracy", n_jobs=-1, cv=cv)
