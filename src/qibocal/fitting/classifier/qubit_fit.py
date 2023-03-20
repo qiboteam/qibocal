@@ -44,7 +44,7 @@ class qubit_fit:
     def rotate(self, v):
     c, s = np.cos(self.angle), np.sin(self.angle)
     j = np.matrix([[c, s], [-s, c]])
-        return np.dot(rot, v)
+        return rot @ v
 
     def translate(self, v):
         return v - self.iq_mean0
