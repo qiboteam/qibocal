@@ -1,3 +1,4 @@
+from functools import lru_cache
 from typing import List
 
 import numpy as np
@@ -142,8 +143,8 @@ class DensityMatrix:
         rho = rotations.reconstruct(data)
         return cls(np.reshape(rho, (4, 4)))
 
-    def round(self):
-        return np.round(self.projected, decimals=3)
+    def round(self, decimals=5):
+        return np.round(self.projected, decimals=decimals)
 
     def projection_error(self):
         return np.linalg.norm(self.projected - self.direct, ord="fro")
@@ -193,18 +194,27 @@ def circuit_from_sequence(folder, routine, rotations):
     return circuit, nshots
 
 
-def probabilities_bar_chart(folder, routine, qubit, data_format):
-    """Generates the probability bar chart for each measurement basis for the report."""
+@lru_cache(maxsize=None)
+def prepare_plots(folder, routine):
     rotations = Rotations(
         ("I", None),
         ("RY90", lambda q: gates.RY(q, theta=np.pi / 2)),
         ("RX90", lambda q: gates.RX(q, theta=np.pi / 2)),
     )
-
     circuit, _ = circuit_from_sequence(folder, routine, rotations)
     simulation_probabilities = rotations.simulate_probabilities_exact(circuit)
-
     experiment_probabilities = rotations.load_experiment_probabilities(folder, routine)
+    return rotations, circuit, simulation_probabilities, experiment_probabilities
+
+
+def probabilities_bar_chart(folder, routine, qubit, data_format):
+    """Generates the probability bar chart for each measurement basis for the report."""
+    (
+        rotations,
+        circuit,
+        simulation_probabilities,
+        experiment_probabilities,
+    ) = prepare_plots(folder, routine)
 
     labels = ["00", "01", "10", "11"]
     titles = [f"({r1}, {r2})" for r1, r2 in rotations.two_qubit_labels()]
@@ -246,30 +256,68 @@ def probabilities_bar_chart(folder, routine, qubit, data_format):
             row += 1
             col = 1
 
-    # TODO: The following annotation doesn't work
-    # We need a way to show the preperation sequence (or circuit.draw())
-    # in the report
-    # fig.add_annotation(
-    #    dict(
-    #        font=dict(color="black", size=12),
-    #        x=0,
-    #        y=1.2,
-    #        showarrow=False,
-    #        text="Preperation Circuit",
-    #        font_family="Arial",
-    #        font_size=20,
-    #        textangle=0,
-    #        xanchor="left",
-    #        xref="paper",
-    #        yref="paper",
-    #        font_color="#5e9af1",
-    #        hovertext=circuit.draw(),
-    #    )
-    # )
+    fig.update_yaxes(range=[0, 1])
     fig.update_layout(barmode="overlay", height=900)
+
+    fitting_report = []
+    # circuit draw
+    for circuit_line in circuit.draw().split("\n"):
+        qubit_str, gate_str = circuit_line.split(":")
+        fitting_report.append(f"{qubit_str} | {gate_str}: <br>")
+
+    return [fig], "".join(fitting_report)
+
+
+def density_matrix_reconstruction(folder, routine, qubit, data_format):
+    (
+        rotations,
+        circuit,
+        simulation_probabilities,
+        experiment_probabilities,
+    ) = prepare_plots(folder, routine)
 
     rho_experiment = DensityMatrix.reconstruct(rotations, experiment_probabilities)
     rho_simulation = DensityMatrix.reconstruct(rotations, simulation_probabilities)
+
+    labels = [f"<{format(i, '02b')}|" for i in range(4)]
+    titles = [f"Re |{format(i, '02b')}>" for i in range(4)]
+    titles.extend([f"Im |{format(i, '02b')}>" for i in range(4)])
+    fig = make_subplots(rows=2, cols=4, subplot_titles=titles)
+    color1 = "rgba(0.1, 0.34, 0.7, 0.8)"
+    color2 = "rgba(0.7, 0.4, 0.1, 0.6)"
+    for row, comp in enumerate(["real", "imag"]):
+        for col in range(4):
+            fig.add_trace(
+                go.Bar(
+                    x=labels,
+                    y=getattr(rho_simulation.round()[col], comp),
+                    name="simulation",
+                    width=0.5,
+                    marker_color=color1,
+                    legendgroup="simulation",
+                    showlegend=row == 0 and col == 0,
+                ),
+                row=row + 1,
+                col=col + 1,
+            )
+            fig.add_trace(
+                go.Bar(
+                    x=labels,
+                    y=getattr(rho_experiment.round()[col], comp),
+                    name="experiment",
+                    width=0.5,
+                    marker_color=color2,
+                    legendgroup="experiment",
+                    showlegend=row == 0 and col == 0,
+                ),
+                row=row + 1,
+                col=col + 1,
+            )
+
+    # max_value = np.max(np.abs(rho_simulation.round()))
+    # fig.update_yaxes(range=[-max_value, max_value])
+    fig.update_yaxes(range=[-1, 1])
+    fig.update_layout(barmode="overlay", height=900)
 
     fitting_report = []
     # circuit draw
@@ -284,19 +332,13 @@ def probabilities_bar_chart(folder, routine, qubit, data_format):
         [
             f"q{qubit}/r0 | Projection error: {rho_experiment.projection_error()}<br>",
             f"q{qubit}/r0 | Error from simulation: {error_from_sim}<br>",
-            f"q{qubit}/r0 | Total purity: {rho_experiment.purity()}<br>",
+            f"q{qubit}/r0 | Purity: {rho_experiment.purity()}<br>",
+            f"q{qubit}/r0 | Purity (sim): {rho_simulation.purity()}<br>",
             f"q{qubit}/r0 | Reduced purity A: {rho_experiment.purity1()}<br>"
+            f"q{qubit}/r0 | Reduced purity A (sim): {rho_simulation.purity1()}<br>"
             f"q{qubit}/r0 | Reduced purity B: {rho_experiment.purity2()}<br>",
+            f"q{qubit}/r0 | Reduced purity B (sim): {rho_simulation.purity2()}<br>",
         ]
     )
-    # reconstructed density matrix components
-    for i in range(4):
-        for j in range(4):
-            component_sim = rho_simulation.round()[i, j]
-            component_exp = rho_experiment.round()[i, j]
-            fitting_report.append(
-                f"{format(i, '02b')}><{format(j, '02b')} | {component_sim} / {component_exp}: {np.abs(component_exp - component_sim)}<br>"
-            )
-    fitting_report.append("<br>")
 
     return [fig], "".join(fitting_report)

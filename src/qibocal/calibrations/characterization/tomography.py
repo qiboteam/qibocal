@@ -6,7 +6,8 @@ from qibocal.data import DataUnits
 from qibocal.decorators import plot
 
 
-@plot("Shot Frequencies", plots.probabilities_bar_chart)
+@plot("Measurement probabilities", plots.probabilities_bar_chart)
+@plot("Density matrix reconstruction", plots.density_matrix_reconstruction)
 def state_tomography(
     platform,
     qubits,
