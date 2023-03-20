@@ -6,7 +6,7 @@ from qibocal.data import DataUnits
 from qibocal.decorators import plot
 
 
-@plot("Shot Frequencies", plots.shot_frequencies_bar_chart)
+@plot("Shot Frequencies", plots.probabilities_bar_chart)
 def state_tomography(
     platform,
     qubits,

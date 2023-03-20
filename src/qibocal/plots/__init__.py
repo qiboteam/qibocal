@@ -6,4 +6,4 @@ from qibocal.plots.ramsey import *
 from qibocal.plots.spectroscopies import *
 from qibocal.plots.spin_echo import *
 from qibocal.plots.t1 import *
-from qibocal.plots.tomography import shot_frequencies_bar_chart
+from qibocal.plots.tomography import probabilities_bar_chart

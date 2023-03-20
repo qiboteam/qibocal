@@ -46,16 +46,23 @@ class Rotations:
         self.inverse_transformation: np.ndarray = np.linalg.pinv(self.transformation)
 
     def two_qubit_matrices(self):
+        """Yields the 4x4 matrices corresponding to all two-qubit pairs of the given rotations."""
         for u1 in self.matrices:
             for u2 in self.matrices:
                 yield np.kron(u1, u2)
 
     def two_qubit_labels(self):
+        """Yields the label tuples corresponding to all two-qubit pairs of the given rotations."""
         for label1 in self.labels:
             for label2 in self.labels:
                 yield (label1, label2)
 
     def circuits(self, state_preperation):
+        """Yields Qibo circuits that perform the state tomography.
+
+        These circuits consist of the given ``state_preperation``
+        circuit plus a rotation to a measurement basis.
+        """
         for gate1 in self.gates:
             for gate2 in self.gates:
                 c = Circuit(2)
@@ -121,7 +128,8 @@ def project_to_density_matrix(A):
 
 
 def purity(rho):
-    return np.trace(rho @ rho)
+    """Calculates the purity of a density matrix."""
+    return np.trace(rho @ rho).real
 
 
 class DensityMatrix:
@@ -182,8 +190,9 @@ def circuit_from_sequence(folder, routine, rotations):
     return circuit, nshots
 
 
-def shot_frequencies_bar_chart(folder, routine, qubit, format):
-    fitting_report = "No fitting data"
+def probabilities_bar_chart(folder, routine, qubit, format):
+    """Generates the probability bar chart for each measurement basis for the report."""
+    # fitting_report = "No fitting data"
 
     rotations = Rotations(
         ("I", None),
@@ -272,5 +281,19 @@ def shot_frequencies_bar_chart(folder, routine, qubit, format):
     print("Purity:", rho_experiment.purity())
     print("Purity of reduced1:", rho_experiment.purity1())
     print("Purity of reduced2:", rho_experiment.purity2())
+
+    error_from_sim = np.linalg.norm(
+        rho_experiment.projected - rho_simulation.projected, ord="fro"
+    )
+    fitting_report = "".join(
+        [
+            f"q{qubit}/r0 | Projection error: {rho_experiment.projection_error()}<br>",
+            f"q{qubit}/r0 | Error from simulation: {error_from_sim}<br>",
+            f"q{qubit}/r0 | Total purity: {rho_experiment.purity()}<br>",
+            f"q{qubit}/r0 | Reduced purity A: {rho_experiment.purity1()}<br>"
+            f"q{qubit}/r0 | Reduced purity B: {rho_experiment.purity2()}<br>"
+            "<br>",
+        ]
+    )
 
     return [fig], fitting_report
