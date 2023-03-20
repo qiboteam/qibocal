@@ -70,7 +70,7 @@ def test_accuracy(initialization):
     real_accuracies = table["accuracy"].tolist()
     # The model is evaluated good if it
     # misclassifys less than two points
-    min_accuracy = (len(y_test) - 2.0) / len(y_test)
+    min_accuracy = 1 - 2.0 / len(y_test)
 
     for acc in real_accuracies:
         assert acc > min_accuracy
