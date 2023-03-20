@@ -226,8 +226,8 @@ def qubit_spectroscopy_flux(
         # TODO: check if this is correct
         sweetspot_biass[fluxline] = qubits[fluxline].sweetspot
 
-        bias_min[fluxline] = max(-bias_width / 2 + sweetspot_biass[fluxline], -0.03)
-        bias_max[fluxline] = min(+bias_width / 2 + sweetspot_biass[fluxline], +0.03)
+        bias_min[fluxline] = -bias_width / 2 + sweetspot_biass[fluxline]
+        bias_max[fluxline] = +bias_width / 2 + sweetspot_biass[fluxline]
         bias_ranges[fluxline] = np.arange(
             bias_min[fluxline], bias_max[fluxline], bias_step
         )
