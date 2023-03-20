@@ -10,7 +10,7 @@ from ..methods import calibrate_qubit_states_fit
 
 
 @dataclass
-class qubit_fit:
+class QubitFit:
     r"""This class deploys a qubit state classifier.
 
     Args:
@@ -110,7 +110,7 @@ def constructor(_hyperparams):
     Args:
         _hyperparams: Model hyperparameters.
     """
-    return qubit_fit()
+    return QubitFit()
 
 
 def normalize(unormalize):

@@ -5,6 +5,9 @@ import pandas as pd
 import seaborn as sns
 from sklearn.model_selection import train_test_split
 
+COLORS = ["#FF0000", "#0000FF"]
+DATAFILE = "data_processing.pdf"
+
 
 def load_qubit(data_path: pathlib.Path, qubit):
     r"""Load the information of the qubit `qubit`
@@ -51,8 +54,7 @@ def plot_qubit(data, save_dir: pathlib.Path):
     """
     _, axes = plt.subplots(1, 2, figsize=(14, 7))
 
-    colors = ["#FF0000", "#0000FF"]
-    sns.set_palette(sns.color_palette(colors))
+    sns.set_palette(sns.color_palette(COLORS))
     sns.scatterplot(
         x="i", y="q", data=data, hue="state", ax=axes[0], alpha=0.7, edgecolor="black"
     )
@@ -61,4 +63,4 @@ def plot_qubit(data, save_dir: pathlib.Path):
     sns.countplot(x=data.state, data=data, ax=axes[1])
     axes[1].set_title("states distribution")
     plt.tight_layout()
-    plt.savefig(save_dir / "data_processing.pdf")
+    plt.savefig(save_dir / DATAFILE)

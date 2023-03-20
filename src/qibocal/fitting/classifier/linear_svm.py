@@ -2,6 +2,8 @@ from sklearn.svm import SVC
 
 from . import utils
 
+REG_PARAM = 0.025
+
 
 def constructor(hyperpars):
     r"""Return the model class.
@@ -9,7 +11,7 @@ def constructor(hyperpars):
     Args:
         hyperparams: Model hyperparameters.
     """
-    return SVC(kernel="linear", C=0.025).set_params(**hyperpars)
+    return SVC(kernel="linear", C=REG_PARAM).set_params(**hyperpars)
 
 
 def hyperopt(_x_train, _y_train, _path):
@@ -23,7 +25,7 @@ def hyperopt(_x_train, _y_train, _path):
     Returns:
         Dictionary with model's hyperparameters.
     """
-    model = SVC(kernel="linear", C=0.025)
+    model = SVC(kernel="linear", C=REG_PARAM)
     return model.get_params()
 
 

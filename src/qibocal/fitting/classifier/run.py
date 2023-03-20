@@ -19,7 +19,7 @@ CLS_MODULES = [
     "gaussian_process",
     "naive_bayes",
     "nn",
-    "qubit_fit",
+    "QubitFit",
     "random_forest",
     "rbf_svm",
 ]

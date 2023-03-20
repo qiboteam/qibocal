@@ -4,6 +4,8 @@ from sklearn.svm import SVC
 
 from . import utils
 
+GAMMA = "auto"
+
 
 def hyperopt(x_train, y_train, _path):
     r"""Perform an hyperparameter optimization and return the hyperparameters.
@@ -16,7 +18,7 @@ def hyperopt(x_train, y_train, _path):
     Returns:
         Dictionary with model's hyperparameters.
     """
-    clf = SVC(gamma="auto")
+    clf = SVC(gamma=GAMMA)
 
     cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=3, random_state=1)
     space = {}
@@ -34,7 +36,7 @@ def constructor(hyperpars):
     Args:
         _hyperparams: Model hyperparameters.
     """
-    return SVC(gamma="auto").set_params(**hyperpars)
+    return SVC(gamma=GAMMA).set_params(**hyperpars)
 
 
 normalize = utils.scikit_normalize
