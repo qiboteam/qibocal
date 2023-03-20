@@ -317,7 +317,7 @@ def frequency_amplitude_msr_phase(folder, routine, qubit, format):
 
         def norm(x):
             x_mags = x.pint.to("V").pint.magnitude
-            return (x_mags - np.min(x_mags)) / (np.max(x_mags) - np.min(x_mags))
+            return x_mags
 
         normalised_data = averaged_data.groupby(["amplitude"], as_index=False)[
             ["MSR"]
@@ -501,14 +501,14 @@ def frequency_amplitude_msr_phase_cut(folder, routine, qubit, format):
         except:
             data = DataUnits(
                 name=f"data",
-                quantities={"frequency": "Hz", "amplitude": "dimensionless"},
+                quantities={"frequency": "Hz", "bias": "dimensionless"},
                 options=["qubit", "iteration"],
             )
-        amplitudes = data.df["amplitude"].unique()
+        amplitudes = data.df["bias"].unique()
         middle_amplitude = amplitudes[len(amplitudes) // 2]
         data.df = data.df[data.df["qubit"] == qubit][
-            data.df["amplitude"] == middle_amplitude
-        ].drop(columns=["amplitude"])
+            data.df["bias"] == middle_amplitude
+        ].drop(columns=["bias"])
 
         iterations = data.df["iteration"].unique()
         frequencies = data.df["frequency"].pint.to("Hz").pint.magnitude.unique()
@@ -603,14 +603,15 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
         except:
             data = DataUnits(
                 name=f"data",
-                quantities={"frequency": "Hz", "bias": "V"},
+                quantities={"frequency": "Hz", "bias": "dimensionless"},
                 options=["qubit", "fluxline", "iteration"],
             )
 
         iterations = data.df["iteration"].unique()
         fluxlines = data.df["fluxline"].unique()
+        fluxlines = [2]
         frequencies = data.df["frequency"].pint.to("Hz").pint.magnitude.unique()
-        biass = data.df["bias"].pint.to("V").pint.magnitude.unique()
+        bias = data.df["bias"].pint.to("dimensionless").pint.magnitude.unique()
 
         if len(fluxlines) > 1:
             fig = make_subplots(
@@ -634,7 +635,7 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
                 fig.add_trace(
                     go.Heatmap(
                         x=fluxline_df["frequency"].pint.to("Hz").pint.magnitude,
-                        y=fluxline_df["bias"].pint.to("V").pint.magnitude,
+                        y=fluxline_df["bias"].pint.to("dimensionless").pint.magnitude,
                         z=fluxline_df["MSR"].pint.to("V").pint.magnitude,
                         showscale=False,
                     ),
@@ -669,7 +670,7 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
             fig.add_trace(
                 go.Heatmap(
                     x=fluxline_df["frequency"].pint.to("Hz").pint.magnitude,
-                    y=fluxline_df["bias"].pint.to("V").pint.magnitude,
+                    y=fluxline_df["bias"].pint.to("dimensionless").pint.magnitude,
                     z=fluxline_df["MSR"].pint.to("V").pint.magnitude,
                     colorbar_x=0.46,
                 ),
@@ -685,7 +686,7 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
             fig.add_trace(
                 go.Heatmap(
                     x=fluxline_df["frequency"].pint.to("Hz").pint.magnitude,
-                    y=fluxline_df["bias"].pint.to("V").pint.magnitude,
+                    y=fluxline_df["bias"].pint.to("dimensionless").pint.magnitude,
                     z=fluxline_df["phase"].pint.to("rad").pint.magnitude,
                     colorbar_x=1.01,
                 ),
@@ -700,6 +701,227 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
             fig.update_yaxes(title_text="bias (dimensionless)", row=1 + report_n, col=2)
 
         fig.update_yaxes(title_text="bias (dimensionless)", row=1 + report_n, col=1)
+        fig.update_layout(
+            showlegend=False,
+            uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        )
+
+        report_n += 1
+    if report_n > 1:
+        fig.update_traces(showscale=False)
+
+    figures.append(fig)
+
+    return figures, fitting_report
+
+
+# coupler spectroscopy flux
+def coupler_frequency_flux_msr_phase(folder, routine, qubit, format):
+    figures = []
+    fitting_report = "No fitting data"
+    qubit = [2]
+    # iterate over multiple data folders
+    subfolders = get_data_subfolders(folder)
+
+    report_n = 0
+    for subfolder in subfolders:
+        try:
+            data = DataUnits.load_data(folder, subfolder, routine, format, f"data")
+            # data.df = data.df[data.df["qubit"] == qubit]
+        except:
+            data = DataUnits(
+                name=f"data",
+                quantities={"frequency": "Hz", "bias": "dimensionless"},
+                options=["qubit", "fluxline", "iteration"],
+            )
+
+        iterations = data.df["iteration"].unique()
+        fluxlines = data.df["fluxline"].unique()
+        print(fluxlines)
+        fluxlines = [2]
+        fluxlines = ["c4"]
+        frequencies = data.df["frequency"].pint.to("Hz").pint.magnitude.unique()
+        bias = data.df["bias"].pint.to("dimensionless").pint.magnitude.unique()
+
+        if len(fluxlines) > 1:
+            fig = make_subplots(
+                rows=len(subfolders),
+                cols=len(fluxlines),
+                horizontal_spacing=0.1,
+                vertical_spacing=0.1,
+                subplot_titles=tuple(
+                    [f"MSR [V] - fluxline {fluxline}" for fluxline in fluxlines]
+                ),
+            )
+
+            for fluxline_n, fluxline in enumerate(fluxlines):
+                fluxline_df = data.df[data.df["fluxline"] == fluxline]
+                fluxline_df = (
+                    fluxline_df.drop(columns=["qubit", "fluxline", "iteration"])
+                    .groupby(["frequency", "bias"], as_index=False)
+                    .mean()
+                )
+
+                fig.add_trace(
+                    go.Heatmap(
+                        x=fluxline_df["frequency"].pint.to("Hz").pint.magnitude,
+                        y=fluxline_df["bias"].pint.to("dimensionless").pint.magnitude,
+                        z=fluxline_df["MSR"].pint.to("V").pint.magnitude,
+                        showscale=False,
+                    ),
+                    row=1 + report_n,
+                    col=1 + fluxline_n,
+                )
+                fig.update_xaxes(
+                    title_text=f"q{qubit}/r{report_n}: Frequency (GHz)",
+                    row=1 + report_n,
+                    col=1 + fluxline_n,
+                )
+
+        elif len(fluxlines) == 1:
+            fig = make_subplots(
+                rows=len(subfolders),
+                cols=2,
+                horizontal_spacing=0.1,
+                vertical_spacing=0.1,
+                subplot_titles=(
+                    f"MSR [V] - fluxline {fluxlines[0]}",
+                    f"Phase [rad] - fluxline {fluxlines[0]}",
+                ),
+            )
+
+            fluxline_df = data.df[data.df["fluxline"] == fluxlines[0]]
+            fluxline_df = (
+                fluxline_df.drop(columns=["qubit", "fluxline", "iteration"])
+                .groupby(["frequency", "bias"], as_index=False)
+                .mean()
+            )
+
+            fig.add_trace(
+                go.Heatmap(
+                    x=fluxline_df["frequency"].pint.to("Hz").pint.magnitude,
+                    y=fluxline_df["bias"].pint.to("dimensionless").pint.magnitude,
+                    z=fluxline_df["MSR"].pint.to("V").pint.magnitude,
+                    colorbar_x=0.46,
+                ),
+                row=1 + report_n,
+                col=1,
+            )
+            fig.update_xaxes(
+                title_text=f"q{qubit}/r{report_n}: Frequency (Hz)",
+                row=1 + report_n,
+                col=1,
+            )
+
+            fig.add_trace(
+                go.Heatmap(
+                    x=fluxline_df["frequency"].pint.to("Hz").pint.magnitude,
+                    y=fluxline_df["bias"].pint.to("dimensionless").pint.magnitude,
+                    z=fluxline_df["phase"].pint.to("rad").pint.magnitude,
+                    colorbar_x=1.01,
+                ),
+                row=1 + report_n,
+                col=2,
+            )
+            fig.update_xaxes(
+                title_text=f"q{qubit}/r{report_n}: Frequency (Hz)",
+                row=1 + report_n,
+                col=2,
+            )
+            fig.update_yaxes(title_text="bias (dimensionless)", row=1 + report_n, col=2)
+
+        fig.update_yaxes(title_text="bias (dimensionless)", row=1 + report_n, col=1)
+        fig.update_layout(
+            showlegend=False,
+            uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        )
+
+        report_n += 1
+    if report_n > 1:
+        fig.update_traces(showscale=False)
+
+    figures.append(fig)
+
+    return figures, fitting_report
+
+
+# coupler spectroscopy flux
+def coupler_frequencies_msr_phase(folder, routine, qubit, format):
+    figures = []
+    fitting_report = "No fitting data"
+    qubit = [4]
+
+    # iterate over multiple data folders
+    subfolders = get_data_subfolders(folder)
+
+    report_n = 0
+    for subfolder in subfolders:
+        try:
+            data = DataUnits.load_data(
+                folder, subfolder, routine, format, f"sweep_data"
+            )
+            # data.df = data.df[data.df["qubit"] == qubit]
+        except:
+            data = DataUnits(
+                name=f"data",
+                quantities={"frequency_coupler": "Hz", "frequency_drive": "Hz"},
+                options=["qubit", "iteration"],
+            )
+
+        fig = make_subplots(
+            rows=len(subfolders),
+            cols=2,
+            horizontal_spacing=0.1,
+            vertical_spacing=0.1,
+            subplot_titles=(
+                f"MSR [V]",
+                f"Phase [rad]",
+            ),
+        )
+
+        fluxline_df = data.df[data.df["qubit"] == qubit[0]]
+        fluxline_df = (
+            fluxline_df.drop(columns=["qubit", "iteration"])
+            .groupby(["frequency_coupler", "frequency_drive"], as_index=False)
+            .mean()
+        )
+
+        fig.add_trace(
+            go.Heatmap(
+                x=fluxline_df["frequency_coupler"].pint.to("Hz").pint.magnitude,
+                y=fluxline_df["frequency_drive"].pint.to("Hz").pint.magnitude,
+                z=fluxline_df["MSR"].pint.to("V").pint.magnitude,
+                colorbar_x=0.46,
+            ),
+            row=1 + report_n,
+            col=1,
+        )
+
+        fig.update_xaxes(
+            title_text=f"q{qubit}/r{report_n}: Frequency (Hz)",
+            row=1 + report_n,
+            col=1,
+        )
+
+        fig.add_trace(
+            go.Heatmap(
+                x=fluxline_df["frequency_coupler"].pint.to("Hz").pint.magnitude,
+                y=fluxline_df["frequency_drive"].pint.to("Hz").pint.magnitude,
+                z=fluxline_df["phase"].pint.to("rad").pint.magnitude,
+                colorbar_x=1.01,
+            ),
+            row=1 + report_n,
+            col=2,
+        )
+
+        fig.update_xaxes(
+            title_text=f"q{qubit}/r{report_n}: Frequency_coupler (Hz)",
+            row=1 + report_n,
+            col=2,
+        )
+        fig.update_yaxes(title_text="frequency_drive (Hz)", row=1 + report_n, col=2)
+
+        fig.update_yaxes(title_text="frequency_drive (Hz)", row=1 + report_n, col=1)
         fig.update_layout(
             showlegend=False,
             uirevision="0",  # ``uirevision`` allows zooming while live plotting
