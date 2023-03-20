@@ -5,6 +5,7 @@ import lmfit
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
+from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.config import log
@@ -15,12 +16,15 @@ from qibocal.data import DataUnits
 class ResonatorSpectroscopyParameters(Parameters):
     freq_width: int
     freq_step: int
+    nshots: int
+    relaxation_time: int
     software_averages: int
 
 
 @dataclass
 class ResonatorSpectrscopyResults(Results):
     frequency: Dict[List[Tuple], str] = field(metadata=dict(update="readout_frequency"))
+    fitted_parameters: Dict[List[Tuple], List]
 
 
 class ResonatorSpectroscopyData(DataUnits):
@@ -48,49 +52,41 @@ def _acquisition(
         sequence.add(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:
-
     delta_frequency_range = np.arange(
         -params.freq_width // 2, params.freq_width // 2, params.freq_step
     )
+    sweeper = Sweeper(
+        Parameter.frequency,
+        delta_frequency_range,
+        pulses=[ro_pulses[qubit] for qubit in qubits],
+    )
 
-    # save runcard local oscillator frequencies to be able to calculate new intermediate frequencies
-    # lo_frequencies = {qubit: platform.get_lo_frequency(qubit) for qubit in qubits}
-
-    # create a DataUnits object to store the results,
-    # DataUnits stores by default MSR, phase, i, q
-    # additionally include resonator frequency
     data = ResonatorSpectroscopyData()
 
     # repeat the experiment as many times as defined by software_averages
-    count = 0
     for iteration in range(params.software_averages):
-        # sweep the parameter
-        for delta_freq in delta_frequency_range:
-            # change freq of readout pulse
-            for qubit in qubits:
-                ro_pulses[qubit].frequency = (
-                    delta_freq + qubits[qubit].readout_frequency
-                )
+        results = platform.sweep(
+            sequence,
+            sweeper,
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+        )
 
-            # execute the pulse sequence
-            results = platform.execute_pulse_sequence(sequence)
-
-            # retrieve the results for every qubit
-            for ro_pulse in ro_pulses.values():
-                # average msr, phase, i and q over the number of shots defined in the runcard
-                r = results[ro_pulse.serial].to_dict()
-                # store the results
-                r.update(
-                    {
-                        "frequency[Hz]": ro_pulse.frequency,
-                        "qubit": ro_pulse.qubit,
-                        "iteration": iteration,
-                        "resonator_type": platform.resonator_type,
-                    }
-                )
-                data.add(r)
-            count += 1
-    # finally, save the remaining data and fits
+        # retrieve the results for every qubit
+        for qubit in qubits:
+            # average msr, phase, i and q over the number of shots defined in the runcard
+            result = results[ro_pulses[qubit].serial]
+            # store the results
+            r = result.to_dict()
+            r.update(
+                {
+                    "frequency[Hz]": delta_frequency_range + ro_pulses[qubit].frequency,
+                    "qubit": len(delta_frequency_range) * [qubit],
+                    "iteration": len(delta_frequency_range) * [iteration],
+                }
+            )
+            data.add_data_from_dict(r)
+    # finally, save the remaining data
     return data
 
 
@@ -105,7 +101,8 @@ def _fit(data: ResonatorSpectroscopyData) -> Results:
     qubits = data.df["qubit"].unique()
     resonator_type = data.df["resonator_type"].unique()
 
-    test = {}
+    frequency = {}
+    fitted_parameters = {}
 
     for qubit in qubits:
         qubit_data = (
@@ -166,9 +163,10 @@ def _fit(data: ResonatorSpectroscopyData) -> Results:
         except:
             log.warning("lorentzian_fit: the fitting was not successful")
 
-        test[qubit] = f0 * 1e9
+        frequency[qubit] = f0 * 1e9
+        fitted_parameters[qubit] = fit_res.best_values
 
-    return ResonatorSpectrscopyResults(test)
+    return ResonatorSpectrscopyResults(frequency, fitted_parameters)
 
 
 resonator_spectroscopy = Routine(_acquisition, _fit)

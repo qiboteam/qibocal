@@ -72,7 +72,7 @@ class Task:
         return self.operation.parameters_type.load(self.action.parameters)
 
     def datapath(self, base_dir: Path):
-        path = base_dir / f"{self.id}_{self.iteration}"
+        path = base_dir / "data" / f"{self.id}_{self.iteration}"
         os.makedirs(path)
         return path
 
