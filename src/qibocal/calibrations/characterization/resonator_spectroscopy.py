@@ -518,7 +518,7 @@ def resonator_spectroscopy_flux(
 
     # flux bias
     if fluxlines == "qubits":
-        fluxlines = qubits
+        fluxlines = qubits.keys()
 
     delta_bias_range = np.arange(-bias_width / 2, bias_width / 2, bias_step)
     bias_sweeper = Sweeper(Parameter.bias, delta_bias_range, qubits=fluxlines)
