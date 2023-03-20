@@ -18,7 +18,7 @@ def hyperopt(x_train, y_train, _path):
     """
     clf = RandomForestClassifier()
     cv = RepeatedStratifiedKFold(n_splits=10, n_repeats=3, random_state=1)
-    space = dict()
+    space = {}
     space["n_estimators"] = np.arange(10, 200, 10, dtype=int)
     space["criterion"] = ["gini", "entropy", "log_loss"]
     space["max_features"] = ["sqrt", "log2", None]
