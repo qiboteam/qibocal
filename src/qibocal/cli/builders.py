@@ -8,7 +8,6 @@ import yaml
 
 # from qibocal.protocols.characterization import gateset, hardware
 from qibocal.auto.execute import Executor
-from qibocal.auto.runcard import Runcard
 from qibocal.config import log, raise_error
 from qibocal.data import Data
 
@@ -400,5 +399,5 @@ class AutoCalibrationBuilder(ActionBuilder):
         self.executor = Executor.load(self.runcard)
 
     def run(self):
-        self.executor.run()
+        self.executor.run(self.platform, self.qubits, self.folder)
         print(self.executor.history)

@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
 
-import lmfit
 import numpy as np
 import numpy.typing as npt
 from qibo.backends import GlobalBackend
@@ -15,7 +14,6 @@ from .hardware.resonator_spectroscopy import resonator_spectroscopy as test
 
 @dataclass
 class ResonatorSpectroscopyParameters(Parameters):
-    qubits: list
     freq_width: int
     freq_step: int
 
@@ -33,11 +31,10 @@ class ResonatorSpectroscoyResults(Results):
     """ResonatorSpectroscopyResults"""
 
 
-def _resonator_spectroscopy_acquisition(args: ResonatorSpectroscopyParameters):
-    platform = GlobalBackend().platform
-    print(platform.qubits)
-    qubits = {q: platform.qubits[q] for q in args.qubits if q in platform.qubits}
-    data = test(GlobalBackend().platform, qubits, args.freq_width, args.freq_step)
+def _resonator_spectroscopy_acquisition(
+    platform, qubits, args: ResonatorSpectroscopyParameters
+):
+    data = test(platform, qubits, args.freq_width, args.freq_step)
 
     # print(data.df)
     output_data = ResonatorSpectroscopyData(

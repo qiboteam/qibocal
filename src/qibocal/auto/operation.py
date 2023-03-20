@@ -1,12 +1,14 @@
 import inspect
 from dataclasses import dataclass, field, fields
-from enum import Enum
 from typing import Callable, Dict, Generic, NewType, TypeVar, Union
+
+from qibolab.platforms.abstract import AbstractPlatform, Qubit
 
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
 ParameterValue = Union[float, int]
 """Valid value for a routine and runcard parameter."""
+Qubits = Dict[int, Qubit]
 
 
 class Parameters:
@@ -80,19 +82,23 @@ class Results:
 _ParametersT = TypeVar("_ParametersT", bound=Parameters, contravariant=True)
 _DataT = TypeVar("_DataT", bound=Data)
 _ResultsT = TypeVar("_ResultsT", bound=Results, covariant=True)
+_QubitsT = TypeVar("_QubitsT", bound=Qubits, contravariant=True)
+_PlatformT = TypeVar("_PlatformT", bound=AbstractPlatform, contravariant=True)
 
 
 @dataclass
-class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
+class Routine(Generic[_PlatformT, _QubitsT, _ParametersT, _DataT, _ResultsT]):
     """A wrapped calibration routine."""
 
-    acquisition: Callable[[_ParametersT], _DataT]
+    acquisition: Callable[[_PlatformT, _QubitsT, _ParametersT], _DataT]
     fit: Callable[[_DataT], _ResultsT]
 
     @property
     def parameters_type(self):
         sig = inspect.signature(self.acquisition)
-        param = next(iter(sig.parameters.values()))
+        # print(list(sig.parameters.values())[2])
+        # param = next(iter(sig.parameters.values()))
+        param = list(sig.parameters.values())[2]
         return param.annotation
 
     @property

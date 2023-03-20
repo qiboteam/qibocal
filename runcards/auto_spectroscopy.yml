@@ -9,9 +9,9 @@ actions:
     priority: 0
     operation: resonator_spectroscopy
     parameters:
-      qubits: [0, 1]
       freq_width: 30_000_000
       freq_step: 1_000_000
+      software_averages : 2
 
   #   main: first
   # - id: first

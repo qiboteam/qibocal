@@ -97,14 +97,14 @@ class Executor:
         assert self.head is not None
         return self.graph.task(self.head)
 
-    def run(self, platform):
+    def run(self, qubits, platform, folder):
         """Actual execution."""
         self.head = self.graph.start
 
         while self.head is not None:
             task = self.current
 
-            output = task.run()
+            output = task.run(qubits, platform, folder)
             completed = Completed(task, output, Normal())
             self.history.push(completed)
 

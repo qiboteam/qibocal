@@ -1,20 +1,14 @@
 """Action execution tracker."""
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
 
 import yaml
 
-from qibocal.protocols.characterization import Operation
+from qibocal.protocols.characterization.resonator_spectroscopy import Operation
 
-from .operation import (  # Operation,
-    Data,
-    DummyPars,
-    Parameters,
-    Results,
-    Routine,
-    dummy_operation,
-)
+from .operation import Data, DummyPars, Results, Routine, dummy_operation
 from .runcard import Action, Id
 
 MAX_PRIORITY = int(1e9)
@@ -24,7 +18,7 @@ But not so insanely big not to fit in a native integer.
 
 """
 
-DATAFILE = "data.yaml"
+DATAFILE = "data.csv"
 """Name of the file where data acquired by calibration are dumped."""
 
 
@@ -78,7 +72,9 @@ class Task:
         return self.operation.parameters_type.load(self.action.parameters)
 
     def datapath(self, base_dir: Path):
-        return base_dir / f"{self.id}_{self.iteration}" / DATAFILE
+        path = base_dir / f"{self.id}_{self.iteration}"
+        os.makedirs(path)
+        return path
 
     def data(self, base_dir) -> Optional[Data]:
         if not self.datapath(base_dir).is_file():
@@ -88,7 +84,7 @@ class Task:
 
         return Data(yaml.safe_load(self.datapath(base_dir).read_text(encoding="utf-8")))
 
-    def run(self) -> Results:
+    def run(self, platform, qubits, folder) -> Results:
         try:
             operation: Routine = self.operation
             parameters = self.parameters
@@ -96,7 +92,9 @@ class Task:
             operation = dummy_operation
             parameters = DummyPars()
 
-        data: Data = operation.acquisition(parameters)
+        path = self.datapath(Path(folder))
+        data: Data = operation.acquisition(platform, qubits, parameters)
+        data.to_csv(path)
         # TODO: data dump
         # path.write_text(yaml.dump(pydantic_encoder(self.data(base_dir))))
         return operation.fit(data)
