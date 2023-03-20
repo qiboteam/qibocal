@@ -72,5 +72,4 @@ def test_accuracy(initialization):
     # misclassifys less than two points
     min_accuracy = 1 - 2.0 / len(y_test)
 
-    for acc in real_accuracies:
-        assert acc > min_accuracy
+    assert all(acc > min_accuracy for acc in real_accuracies)
