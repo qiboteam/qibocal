@@ -142,6 +142,9 @@ class DensityMatrix:
         rho = rotations.reconstruct(data)
         return cls(np.reshape(rho, (4, 4)))
 
+    def round(self):
+        return np.round(self.projected, decimals=3)
+
     def projection_error(self):
         return np.linalg.norm(self.projected - self.direct, ord="fro")
 
@@ -190,10 +193,8 @@ def circuit_from_sequence(folder, routine, rotations):
     return circuit, nshots
 
 
-def probabilities_bar_chart(folder, routine, qubit, format):
+def probabilities_bar_chart(folder, routine, qubit, data_format):
     """Generates the probability bar chart for each measurement basis for the report."""
-    # fitting_report = "No fitting data"
-
     rotations = Rotations(
         ("I", None),
         ("RY90", lambda q: gates.RY(q, theta=np.pi / 2)),
@@ -270,30 +271,32 @@ def probabilities_bar_chart(folder, routine, qubit, format):
     rho_experiment = DensityMatrix.reconstruct(rotations, experiment_probabilities)
     rho_simulation = DensityMatrix.reconstruct(rotations, simulation_probabilities)
 
-    print("Preperation circuit:")
-    print(circuit.draw())
-    print()
-    print("projection error:", rho_experiment.projection_error())
-    print("reconstructed state\n", np.round(rho_experiment.projected, decimals=3))
-    print()
-    print("simulated state\n", np.round(rho_simulation.projected, decimals=3))
-    print()
-    print("Purity:", rho_experiment.purity())
-    print("Purity of reduced1:", rho_experiment.purity1())
-    print("Purity of reduced2:", rho_experiment.purity2())
-
+    fitting_report = []
+    # circuit draw
+    for circuit_line in circuit.draw().split("\n"):
+        qubit_str, gate_str = circuit_line.split(":")
+        fitting_report.append(f"{qubit_str} | {gate_str}: <br>")
+    # reconstruction parameters
     error_from_sim = np.linalg.norm(
         rho_experiment.projected - rho_simulation.projected, ord="fro"
     )
-    fitting_report = "".join(
+    fitting_report.extend(
         [
             f"q{qubit}/r0 | Projection error: {rho_experiment.projection_error()}<br>",
             f"q{qubit}/r0 | Error from simulation: {error_from_sim}<br>",
             f"q{qubit}/r0 | Total purity: {rho_experiment.purity()}<br>",
             f"q{qubit}/r0 | Reduced purity A: {rho_experiment.purity1()}<br>"
-            f"q{qubit}/r0 | Reduced purity B: {rho_experiment.purity2()}<br>"
-            "<br>",
+            f"q{qubit}/r0 | Reduced purity B: {rho_experiment.purity2()}<br>",
         ]
     )
+    # reconstructed density matrix components
+    for i in range(4):
+        for j in range(4):
+            component_sim = rho_simulation.round()[i, j]
+            component_exp = rho_experiment.round()[i, j]
+            fitting_report.append(
+                f"{format(i, '02b')}><{format(j, '02b')} | {component_sim} / {component_exp}: {np.abs(component_exp - component_sim)}<br>"
+            )
+    fitting_report.append("<br>")
 
-    return [fig], fitting_report
+    return [fig], "".join(fitting_report)
