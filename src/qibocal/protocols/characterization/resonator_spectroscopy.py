@@ -21,6 +21,7 @@ class ResonatorSpectroscopyParameters(Parameters):
 @dataclass
 class ResonatorSpectrscopyResults(Results):
     frequency: str = field(metadata=dict(update="readout_frequency"))
+    qubit: int
 
 
 class ResonatorSpectroscopyData(DataUnits):
@@ -105,6 +106,8 @@ def _fit(data: ResonatorSpectroscopyData) -> Results:
     qubits = data.df["qubit"].unique()
     resonator_type = data.df["resonator_type"].unique()
 
+    test = {}
+
     for qubit in qubits:
         qubit_data = (
             data.df[data.df["qubit"] == qubit]
@@ -164,7 +167,9 @@ def _fit(data: ResonatorSpectroscopyData) -> Results:
         except:
             log.warning("lorentzian_fit: the fitting was not successful")
 
-        return ResonatorSpectrscopyResults(frequency=f0)
+        test[qubit] = ResonatorSpectrscopyResults(frequency=f0)
+
+        return test
 
 
 resonator_spectroscopy = Routine(_acquisition, _fit)

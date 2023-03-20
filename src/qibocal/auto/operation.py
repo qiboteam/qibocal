@@ -96,8 +96,6 @@ class Routine(Generic[_PlatformT, _QubitsT, _ParametersT, _DataT, _ResultsT]):
     @property
     def parameters_type(self):
         sig = inspect.signature(self.acquisition)
-        # print(list(sig.parameters.values())[2])
-        # param = next(iter(sig.parameters.values()))
         param = list(sig.parameters.values())[2]
         return param.annotation
 
