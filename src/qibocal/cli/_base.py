@@ -13,7 +13,8 @@ from urllib.parse import urljoin
 import click
 from qibo.config import log, raise_error
 
-from qibocal.cli.builders import ActionBuilder, AutoCalibrationBuilder, load_yaml
+from qibocal.cli.auto_builder import AutoCalibrationBuilder
+from qibocal.cli.builders import ActionBuilder, load_yaml
 
 from .utils import check_folder_structure, folders_exists, update_meta, update_runcard
 

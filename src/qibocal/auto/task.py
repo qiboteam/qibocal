@@ -6,7 +6,7 @@ from typing import List, Optional
 
 import yaml
 
-from qibocal.protocols.characterization.resonator_spectroscopy import Operation
+from qibocal.protocols.characterization import Operation
 
 from .operation import Data, DummyPars, Results, Routine, dummy_operation
 from .runcard import Action, Id

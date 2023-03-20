@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from enum import Enum
+from typing import Dict, List, Tuple
 
 import lmfit
 import numpy as np
@@ -20,8 +20,7 @@ class ResonatorSpectroscopyParameters(Parameters):
 
 @dataclass
 class ResonatorSpectrscopyResults(Results):
-    frequency: str = field(metadata=dict(update="readout_frequency"))
-    qubit: int
+    frequency: Dict[List[Tuple], str] = field(metadata=dict(update="readout_frequency"))
 
 
 class ResonatorSpectroscopyData(DataUnits):
@@ -167,13 +166,9 @@ def _fit(data: ResonatorSpectroscopyData) -> Results:
         except:
             log.warning("lorentzian_fit: the fitting was not successful")
 
-        test[qubit] = ResonatorSpectrscopyResults(frequency=f0)
+        test[qubit] = f0 * 1e9
 
-        return test
+    return ResonatorSpectrscopyResults(test)
 
 
 resonator_spectroscopy = Routine(_acquisition, _fit)
-
-
-class Operation(Enum):
-    resonator_spectroscopy = resonator_spectroscopy

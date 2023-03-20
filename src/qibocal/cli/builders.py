@@ -6,10 +6,9 @@ import shutil
 
 import yaml
 
-# from qibocal.protocols.characterization import gateset, hardware
-from qibocal.auto.execute import Executor
 from qibocal.config import log, raise_error
 from qibocal.data import Data
+from qibocal.protocols.characterization import gateset, hardware
 
 
 def load_yaml(path):
@@ -391,13 +390,3 @@ class ReportBuilder:
             str(qubit),
             self.format,
         )
-
-
-class AutoCalibrationBuilder(ActionBuilder):
-    def __init__(self, runcard, folder=None, force=False):
-        super().__init__(runcard, folder, force)
-        self.executor = Executor.load(self.runcard)
-
-    def run(self):
-        self.executor.run(self.platform, self.qubits, self.folder)
-        print(self.executor.history)
