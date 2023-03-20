@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
@@ -13,15 +15,13 @@ from qibocal.fitting.methods import lorentzian_fit
 def qubit_spectroscopy(
     platform: AbstractPlatform,
     qubits: dict,
-    fast_width,
-    fast_step,
-    precision_width,
-    precision_step,
-    drive_duration,
-    drive_amplitude=None,
-    nshots=1024,
-    relaxation_time=50,
-    software_averages=1,
+    freq_width: int,
+    freq_step: int,
+    drive_duration: int,
+    drive_amplitude: Optional[float] = None,
+    nshots: int = 1024,
+    relaxation_time: int = 50,
+    software_averages: int = 1,
 ):
     r"""
     Perform spectroscopy on the qubit.
@@ -31,11 +31,8 @@ def qubit_spectroscopy(
     Args:
         platform (AbstractPlatform): Qibolab platform object
         qubits (dict): Dict of target Qubit objects to perform the action
-        fast_start (int): Initial frequency in HZ to perform the qubit fast sweep
-        fast_width (int): Width frequency in HZ to perform the high resolution sweep
-        fast_step (int): Step frequency in HZ for the high resolution sweep
-        precision_width (int): Width frequency in HZ to perform the precision resolution sweep
-        precision_step (int): Step frequency in HZ for the precission resolution sweep
+        freq_width (int): Width frequency in HZ to perform the high resolution sweep
+        freq_step (int): Step frequency in HZ for the high resolution sweep
         software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
 
@@ -83,7 +80,7 @@ def qubit_spectroscopy(
         sequence.add(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:
-    delta_frequency_range = np.arange(-fast_width // 2, fast_width // 2, fast_step)
+    delta_frequency_range = np.arange(-freq_width // 2, freq_width // 2, freq_step)
     sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
@@ -93,8 +90,8 @@ def qubit_spectroscopy(
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
     # additionally include qubit frequency
-    fast_sweep_data = DataUnits(
-        name="fast_sweep_data",
+    data = DataUnits(
+        name="data",
         quantities={"frequency": "Hz"},
         options=["qubit", "iteration"],
     )
@@ -118,99 +115,17 @@ def qubit_spectroscopy(
                     "iteration": len(delta_frequency_range) * [iteration],
                 }
             )
-            fast_sweep_data.add_data_from_dict(r)
+            data.add_data_from_dict(r)
 
-    yield fast_sweep_data
-    # calculate and save fit
-    yield lorentzian_fit(
-        fast_sweep_data,
-        x="frequency[Hz]",
-        y="MSR[uV]",
-        qubits=qubits,
-        resonator_type=platform.resonator_type,
-        labels=["drive_frequency", "peak_voltage"],
-    )
-
-    # store max/min peaks as new frequencies
-    for qubit in qubits:
-        qubit_data = (
-            fast_sweep_data.df[fast_sweep_data.df["qubit"] == qubit]
-            .drop(columns=["qubit", "iteration"])
-            .groupby("frequency", as_index=False)
-            .mean()
-        )
-        if platform.resonator_type == "3D":
-            qubits[qubit].drive_frequency = (
-                qubit_data["frequency"][
-                    np.argmin(qubit_data["MSR"].pint.to("V").pint.magnitude)
-                ]
-                .to("Hz")
-                .magnitude
-            )
-        else:
-            qubits[qubit].drive_frequency = (
-                qubit_data["frequency"][
-                    np.argmax(qubit_data["MSR"].pint.to("V").pint.magnitude)
-                ]
-                .to("Hz")
-                .magnitude
-            )
-
-    # run a precision sweep around the newly detected frequencies
-
-    delta_frequency_range = np.arange(
-        -precision_width // 2, precision_width // 2, precision_step
-    )
-
-    # update pulse and qubits frequencies
-    for qubit in qubits:
-        qd_pulses[qubit].frequency = qubits[qubit].drive_frequency
-        platform.qubits[qubit].drive_frequency = qubits[qubit].drive_frequency
-
-    sweeper = Sweeper(
-        Parameter.frequency,
-        delta_frequency_range,
-        pulses=[qd_pulses[qubit] for qubit in qubits],
-    )
-
-    # create a second DataUnits object to store the results,
-    precision_sweep_data = DataUnits(
-        name="precision_sweep_data",
-        quantities={"frequency": "Hz"},
-        options=["qubit", "iteration"],
-    )
-
-    # repeat the experiment as many times as defined by software_averages
-    for iteration in range(software_averages):
-        results = platform.sweep(
-            sequence, sweeper, nshots=nshots, relaxation_time=relaxation_time
-        )
-
-        # retrieve the results for every qubit
-        for qubit, ro_pulse in ro_pulses.items():
-            # average msr, phase, i and q over the number of shots defined in the runcard
-            result = results[ro_pulse.serial]
-            r = result.to_dict(average=False)
-            # store the results
-            r.update(
-                {
-                    "frequency[Hz]": delta_frequency_range + qd_pulses[qubit].frequency,
-                    "qubit": len(delta_frequency_range) * [qubit],
-                    "iteration": len(delta_frequency_range) * [iteration],
-                }
-            )
-            precision_sweep_data.add_data_from_dict(r)
-
-        # save data
-        yield precision_sweep_data
-        # calculate and save fit
+        # finally, save the remaining data and fits
+        yield data
         yield lorentzian_fit(
-            precision_sweep_data,
-            x="frequency[Hz]",
+            data,
+            x="frequency[GHz]",
             y="MSR[uV]",
             qubits=qubits,
             resonator_type=platform.resonator_type,
-            labels=["qubit_freq", "peak_voltage"],
+            labels=["drive_frequency", "peak_voltage"],
         )
 
 
