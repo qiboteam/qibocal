@@ -3,7 +3,12 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
-from qibocal.plots.utils import get_color_state0, get_color_state1, get_data_subfolders
+from qibocal.plots.utils import (
+    get_color_state0,
+    get_color_state1,
+    get_data_subfolders,
+    load_data,
+)
 
 
 # For calibrate qubit states
@@ -25,23 +30,27 @@ def qubit_states(folder, routine, qubit, format):
     max_x, max_y, min_x, min_y = 0, 0, 0, 0
     for subfolder in subfolders:
         try:
-            data = DataUnits.load_data(folder, subfolder, routine, format, "data")
+            data = load_data(folder, subfolder, routine, format, "data")
             data.df = data.df[data.df["qubit"] == qubit]
         except:
             data = DataUnits(options=["qubit", "iteration", "state"])
 
         try:
-            parameters = Data.load_data(
-                folder, subfolder, routine, format, "parameters"
-            )
+            parameters = load_data(folder, subfolder, routine, format, "parameters")
             parameters.df = parameters.df[parameters.df["qubit"] == qubit]
 
-            average_state0 = complex(parameters.get_values("average_state0")[0])
-            average_state1 = complex(parameters.get_values("average_state1")[0])
-            rotation_angle = parameters.get_values("rotation_angle")[0]
-            threshold = parameters.get_values("threshold")[0]
-            fidelity = parameters.get_values("fidelity")[0]
-            assignment_fidelity = parameters.get_values("assignment_fidelity")[0]
+            average_state0 = complex(parameters.df.iloc[0]["average_state0"])
+            average_state1 = complex(
+                parameters.df.iloc[0]["average_state1"]  # pylint: disable=E1101
+            )
+            rotation_angle = parameters.df.iloc[0][  # pylint: disable=E1101
+                "rotation_angle"
+            ]  # pylint: disable=E1101
+            threshold = parameters.df.iloc[0]["threshold"]  # pylint: disable=E1101
+            fidelity = parameters.df.iloc[0]["fidelity"]  # pylint: disable=E1101
+            assignment_fidelity = parameters.df.iloc[0][
+                "assignment_fidelity"
+            ]  # pylint: disable=E1101
 
         except:
             parameters = Data(
@@ -62,8 +71,8 @@ def qubit_states(folder, routine, qubit, format):
 
         fig.add_trace(
             go.Scatter(
-                x=state0_data["i"].pint.to("V").pint.magnitude,
-                y=state0_data["q"].pint.to("V").pint.magnitude,
+                x=state0_data["i"],
+                y=state0_data["q"],
                 name=f"q{qubit}/r{report_n}: state 0",
                 legendgroup=f"q{qubit}/r{report_n}: state 0",
                 mode="markers",
@@ -77,8 +86,8 @@ def qubit_states(folder, routine, qubit, format):
 
         fig.add_trace(
             go.Scatter(
-                x=state1_data["i"].pint.to("V").pint.magnitude,
-                y=state1_data["q"].pint.to("V").pint.magnitude,
+                x=state1_data["i"],
+                y=state1_data["q"],
                 name=f"q{qubit}/r{report_n}: state 1",
                 legendgroup=f"q{qubit}/r{report_n}: state 1",
                 mode="markers",
@@ -92,23 +101,23 @@ def qubit_states(folder, routine, qubit, format):
 
         max_x = max(
             max_x,
-            state0_data["i"].pint.to("V").pint.magnitude.max(),
-            state1_data["i"].pint.to("V").pint.magnitude.max(),
+            state0_data["i"].max(),
+            state1_data["i"].max(),
         )
         max_y = max(
             max_y,
-            state0_data["q"].pint.to("V").pint.magnitude.max(),
-            state1_data["q"].pint.to("V").pint.magnitude.max(),
+            state0_data["q"].max(),
+            state1_data["q"].max(),
         )
         min_x = min(
             min_x,
-            state0_data["i"].pint.to("V").pint.magnitude.min(),
-            state1_data["i"].pint.to("V").pint.magnitude.min(),
+            state0_data["i"].min(),
+            state1_data["i"].min(),
         )
         min_y = min(
             min_y,
-            state0_data["q"].pint.to("V").pint.magnitude.min(),
-            state1_data["q"].pint.to("V").pint.magnitude.min(),
+            state0_data["q"].min(),
+            state1_data["q"].min(),
         )
 
         fig.add_trace(
@@ -139,40 +148,28 @@ def qubit_states(folder, routine, qubit, format):
             col=1,
         )
 
-        title_text = f"q{qubit}/r{report_n}<br>"
-        title_text += f"average state 0: ({average_state0:.6f})<br>"
-        title_text += f"average state 1: ({average_state1:.6f})<br>"
+        title_text = ""
         title_text += (
-            f"rotation angle = {rotation_angle:.3f} / threshold = {threshold:.6f}<br>"
+            f"q{qubit}/r{report_n} | average state 0: ({average_state0:.6f})<br>"
         )
-        title_text += f"fidelity = {fidelity:.3f} / assignment fidelity = {assignment_fidelity:.3f}<br><br>"
+        title_text += (
+            f"q{qubit}/r{report_n} | average state 1: ({average_state1:.6f})<br>"
+        )
+        title_text += f"q{qubit}/r{report_n} | rotation angle: {rotation_angle:.3f}<br>"
+        title_text += f"q{qubit}/r{report_n} | threshold: {threshold:.6f}<br>"
+        title_text += f"q{qubit}/r{report_n} | fidelity: {fidelity:.3f}<br>"
+        title_text += (
+            f"q{qubit}/r{report_n} | assignment fidelity: {assignment_fidelity:.3f}<br>"
+        )
+
         fitting_report = fitting_report + title_text
         report_n += 1
-
-    fig.add_annotation(
-        dict(
-            font=dict(color="black", size=12),
-            x=0,
-            y=1.2,
-            showarrow=False,
-            text="<b>FITTING DATA</b>",
-            font_family="Arial",
-            font_size=20,
-            textangle=0,
-            xanchor="left",
-            xref="paper",
-            yref="paper",
-            font_color="#5e9af1",
-            hovertext=fitting_report,
-        )
-    )
 
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="i (V)",
         yaxis_title="q (V)",
-        width=1000,
         xaxis_range=(min_x, max_x),
         yaxis_range=(min_y, max_y),
     )
@@ -183,4 +180,4 @@ def qubit_states(folder, routine, qubit, format):
 
     figures.append(fig)
 
-    return figures
+    return figures, fitting_report

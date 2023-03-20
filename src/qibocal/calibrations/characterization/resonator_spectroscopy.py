@@ -100,7 +100,7 @@ def resonator_spectroscopy(
             # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulses[qubit].serial]
             # store the results
-            r = result.to_dict()
+            r = result.to_dict(average=False)
             r.update(
                 {
                     "frequency[Hz]": delta_frequency_range + ro_pulses[qubit].frequency,
@@ -183,7 +183,7 @@ def resonator_spectroscopy(
         for qubit, ro_pulse in ro_pulses.items():
             # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulse.serial]
-            r = result.to_dict()
+            r = result.to_dict(average=False)
             # store the results
             r.update(
                 {
@@ -312,7 +312,7 @@ def resonator_punchout_attenuation(
                 len(attenuation_range)
                 * list(delta_frequency_range + ro_pulse.frequency)
             ).flatten()
-            r = result.to_dict()
+            r = result.to_dict(average=False)
             r.update(
                 {
                     "frequency[Hz]": freqs,
@@ -434,7 +434,7 @@ def resonator_punchout(
             freqs = np.array(
                 len(amplitude_range) * list(delta_frequency_range + ro_pulse.frequency)
             ).flatten()
-            r = {k: v.ravel() for k, v in result.to_dict().items()}
+            r = {k: v.ravel() for k, v in result.to_dict(average=False).items()}
             r.update(
                 {
                     "frequency[Hz]": freqs,
@@ -490,7 +490,7 @@ def resonator_spectroscopy_flux(
             - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
             - **phase[rad]**: Resonator signal phase mesurement in radians
             - **frequency[Hz]**: Resonator frequency value in Hz
-            - **bias[dimensionless]**: Bias value applied to the flux line
+            - **bias[V]**: Current value in A applied to the flux line
             - **qubit**: The qubit being tested
             - **fluxline**: The fluxline being tested
             - **iteration**: The iteration number of the many determined by software_averages
@@ -527,8 +527,8 @@ def resonator_spectroscopy_flux(
     # DataUnits stores by default MSR, phase, i, q
     # additionally include resonator frequency and flux bias
     data = DataUnits(
-        name="data",
-        quantities={"frequency": "Hz", "bias": "dimensionless"},
+        name=f"data",
+        quantities={"frequency": "Hz", "bias": "V"},
         options=["qubit", "fluxline", "iteration"],
     )
 
@@ -556,11 +556,11 @@ def resonator_spectroscopy_flux(
                 * list(delta_frequency_range + ro_pulses[qubit].frequency)
             ).flatten()
             # store the results
-            r = {k: v.ravel() for k, v in result.to_dict().items()}
+            r = {k: v.ravel() for k, v in result.to_dict(average=False).items()}
             r.update(
                 {
                     "frequency[Hz]": freqs,
-                    "bias[dimensionless]": biases,
+                    "bias[V]": biases,
                     "qubit": len(freqs) * [qubit],
                     "fluxline": len(freqs) * [fluxline],
                     "iteration": len(freqs) * [iteration],
@@ -591,7 +591,6 @@ def dispersive_shift(
         freq_width (int): Width frequency in HZ to perform the spectroscopy sweep
         freq_step (int): Step frequency in HZ for the spectroscopy sweep
         software_averages (int): Number of executions of the routine for averaging results
-        fluxlines (list): List of flux control lines associated to different qubits to sweep bias
         points (int): Save data results in a file every number of points
 
     Returns:

@@ -10,4 +10,3 @@ from qibocal.calibrations.characterization.resonator_spectroscopy import *
 from qibocal.calibrations.characterization.resonator_spectroscopy_sample import *
 from qibocal.calibrations.characterization.spin_echo import *
 from qibocal.calibrations.characterization.t1 import *
-from qibocal.calibrations.protocols.test import *

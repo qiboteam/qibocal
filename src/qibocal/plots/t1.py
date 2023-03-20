@@ -4,7 +4,7 @@ from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import exp
-from qibocal.plots.utils import get_color, get_data_subfolders
+from qibocal.plots.utils import get_color, get_data_subfolders, load_data
 
 
 # T1
@@ -25,7 +25,7 @@ def t1_time_msr(folder, routine, qubit, format):
     fitting_report = ""
     for subfolder in subfolders:
         try:
-            data = DataUnits.load_data(folder, subfolder, routine, format, f"data")
+            data = load_data(folder, subfolder, routine, format, "data")
             data.df = data.df[data.df["qubit"] == qubit]
         except:
             data = DataUnits(
@@ -35,7 +35,7 @@ def t1_time_msr(folder, routine, qubit, format):
             )
 
         try:
-            data_fit = Data.load_data(folder, subfolder, routine, format, f"fits")
+            data_fit = load_data(folder, subfolder, routine, format, "fits")
             data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
         except:
             data_fit = Data(
@@ -48,19 +48,21 @@ def t1_time_msr(folder, routine, qubit, format):
                 ]
             )
 
+        data.df = data.df.drop(columns=["i", "q", "phase", "qubit"])
         iterations = data.df["iteration"].unique()
-        waits = data.df["wait"].pint.to("ns").pint.magnitude.unique()
+        waits = data.df["wait"].unique()
 
         if len(iterations) > 1:
             opacity = 0.3
         else:
             opacity = 1
+
         for iteration in iterations:
             iteration_data = data.df[data.df["iteration"] == iteration]
             fig.add_trace(
                 go.Scatter(
-                    x=iteration_data["wait"].pint.to("ns").pint.magnitude,
-                    y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
+                    x=iteration_data["wait"],
+                    y=iteration_data["MSR"] * 1e6,
                     marker_color=get_color(report_n),
                     opacity=opacity,
                     name=f"q{qubit}/r{report_n}",
@@ -72,13 +74,12 @@ def t1_time_msr(folder, routine, qubit, format):
             )
 
         if len(iterations) > 1:
+            data.df = data.df.drop(columns=["iteration"])  # pylint: disable=E1101
             fig.add_trace(
                 go.Scatter(
-                    x=waits,
-                    y=data.df.groupby("wait")["MSR"]
-                    .mean()
-                    .pint.to("uV")
-                    .pint.magnitude,
+                    x=waits,  # unique_waits,
+                    y=data.df.groupby("wait")["MSR"].mean()  # pylint: disable=E1101
+                    * 1e6,
                     marker_color=get_color(report_n),
                     name=f"q{qubit}/r{report_n}: Average",
                     showlegend=True,
@@ -88,11 +89,11 @@ def t1_time_msr(folder, routine, qubit, format):
                 col=1,
             )
 
-        # add fitting trace
+        # # add fitting trace
         if len(data) > 0 and (qubit in data_fit.df["qubit"].values):
             waitrange = np.linspace(
-                min(data.get_values("wait", "ns")),
-                max(data.get_values("wait", "ns")),
+                min(data.df["wait"]),
+                max(data.df["wait"]),
                 2 * len(data),
             )
             params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(
@@ -104,9 +105,9 @@ def t1_time_msr(folder, routine, qubit, format):
                     x=waitrange,
                     y=exp(
                         waitrange,
-                        data_fit.get_values("popt0"),
-                        data_fit.get_values("popt1"),
-                        data_fit.get_values("popt2"),
+                        float(data_fit.df["popt0"]),
+                        float(data_fit.df["popt1"]),
+                        float(data_fit.df["popt2"]),
                     ),
                     name=f"q{qubit}/r{report_n} Fit",
                     line=go.scatter.Line(dash="dot"),
@@ -115,30 +116,11 @@ def t1_time_msr(folder, routine, qubit, format):
                 row=1,
                 col=1,
             )
-
             fitting_report = fitting_report + (
-                f"q{qubit}/r{report_n} t1: {params['T1']:,.0f} ns.<br><br>"
+                f"q{qubit}/r{report_n} | t1: {params['T1']:,.0f} ns.<br><br>"
             )
 
         report_n += 1
-
-    fig.add_annotation(
-        dict(
-            font=dict(color="black", size=12),
-            x=0,
-            y=1.2,
-            showarrow=False,
-            text="<b>FITTING DATA</b>",
-            font_family="Arial",
-            font_size=20,
-            textangle=0,
-            xanchor="left",
-            xref="paper",
-            yref="paper",
-            font_color="#5e9af1",
-            hovertext=fitting_report,
-        )
-    )
 
     # last part
     fig.update_layout(
@@ -150,4 +132,4 @@ def t1_time_msr(folder, routine, qubit, format):
 
     figures.append(fig)
 
-    return figures
+    return figures, fitting_report

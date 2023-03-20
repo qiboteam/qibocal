@@ -3,7 +3,7 @@ from typing import Optional
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import FluxPulse, PulseSequence, Rectangular
-from qibolab.sweeper import Sweeper
+from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal import plots
 from qibocal.data import Data, DataUnits
@@ -144,7 +144,7 @@ def flux_pulse_timing(
         flux_pulse_amplitude_start, flux_pulse_amplitude_end, flux_pulse_amplitude_step
     )
     sweeper = Sweeper(
-        "amplitude",
+        Parameter.amplitude,
         flux_pulse_amplitude_range,
         pulses=[flux_pulses[qubit] for qubit in qubits],
     )
@@ -404,7 +404,7 @@ def cryoscope(
         flux_pulse_amplitude_start, flux_pulse_amplitude_end, flux_pulse_amplitude_step
     )
     sweeper = Sweeper(
-        "amplitude",
+        Parameter.amplitude,
         flux_pulse_amplitude_range,
         pulses=[flux_pulses[qubit] for qubit in qubits],
     )

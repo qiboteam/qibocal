@@ -57,7 +57,6 @@ def command(runcard, folder, force=None):
 
     builder = ActionBuilder(runcard, folder, force)
     builder.execute()
-    builder.dump_report()
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)

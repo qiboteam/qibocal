@@ -11,5 +11,7 @@ your quantum hardware.
     installation
     interface
     runcard
+    autoruncard
+    niGSC/niGSC_and_standardrb
     resonator_sample/resonator_spectroscopy_sample
     example
