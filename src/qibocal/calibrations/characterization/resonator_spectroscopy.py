@@ -327,7 +327,7 @@ def resonator_spectroscopy_flux(
     bias_max = {}
 
     if fluxlines == "qubits":
-        fluxlines = qubits.keys()
+        fluxlines = qubits
 
     for fluxline in fluxlines:
         sweetspot_biass[fluxline] = qubits[fluxline].sweetspot
