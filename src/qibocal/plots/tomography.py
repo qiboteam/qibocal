@@ -98,22 +98,12 @@ class Rotations:
     def load_experiment_probabilities(self, folder, routine):
         """Load experiment data and calculate probabilities from single shots."""
         data = DataUnits.load_data(folder, "data", routine, "csv", "data").df
-        qubits = np.unique(data["qubit"])
-        qubit1, qubit2 = min(qubits), max(qubits)
         probs = np.empty(0)
-        for rotation1, rotation2 in self.two_qubit_labels():
-            condition = (data["rotation1"] == rotation1) & (
-                data["rotation2"] == rotation2
+        for r1, r2 in self.two_qubit_labels():
+            _data = data[(data["rotation1"] == r1) & (data["rotation2"] == r2)]
+            probs = np.concatenate(
+                (probs, [float(_data[f"probability{x}"]) for x in self.OUTCOMES])
             )
-            shots1 = np.array(data[condition & (data["qubit"] == qubit1)]["shots"])
-            shots2 = np.array(data[condition & (data["qubit"] == qubit2)]["shots"])
-            shots = np.stack([shots1, shots2]).T
-            values, counts = np.unique(shots, axis=0, return_counts=True)
-            nshots = np.sum(counts)
-            meas_probs = {
-                f"{v1}{v2}": c / nshots for (v1, v2), c in zip(values, counts)
-            }
-            probs = np.concatenate((probs, [meas_probs[x] for x in self.OUTCOMES]))
         return probs
 
     def reconstruct(self, data):

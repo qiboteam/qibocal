@@ -6,6 +6,14 @@ from qibocal.data import DataUnits
 from qibocal.decorators import plot
 
 
+def calculate_probabilities(result1, result2):
+    """Calculates two-qubit outcome probabilities from individual shots."""
+    shots = np.stack([result1.shots, result2.shots]).T
+    values, counts = np.unique(shots, axis=0, return_counts=True)
+    nshots = np.sum(counts)
+    return {f"probability{v1}{v2}": c / nshots for (v1, v2), c in zip(values, counts)}
+
+
 @plot("Measurement probabilities", plots.probabilities_bar_chart)
 @plot("Density matrix reconstruction", plots.density_matrix_reconstruction)
 def state_tomography(
@@ -80,8 +88,10 @@ def state_tomography(
         options=[
             "rotation1",
             "rotation2",
-            "shots",
-            "qubit",
+            "probability00",
+            "probability01",
+            "probability10",
+            "probability11",
         ],
     )
     for label1 in tomography_basis:
@@ -132,25 +142,12 @@ def state_tomography(
                 )
 
                 # store the results
-                result1 = results[measure1.serial]
-                result2 = results[measure2.serial]
-                r1 = {
-                    "rotation1": nshots * [label1],
-                    "rotation2": nshots * [label2],
-                    "shots": result1.shots,
-                    "qubit": nshots * [qubit1],
-                }
-                r1.update(result1.to_dict(average=False))
-                data.add_data_from_dict(r1)
-
-                r2 = {
-                    "rotation1": nshots * [label1],
-                    "rotation2": nshots * [label2],
-                    "shots": result2.shots,
-                    "qubit": nshots * [qubit2],
-                }
-                r2.update(result2.to_dict(average=False))
-                data.add_data_from_dict(r2)
+                r = calculate_probabilities(
+                    results[measure1.serial], results[measure2.serial]
+                )
+                r["rotation1"] = label1
+                r["rotation2"] = label2
+                data.add(r)
 
                 # save data
                 yield data
