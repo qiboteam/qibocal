@@ -151,7 +151,6 @@
           class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
           {{ report.get_routine_name(routine, iteration) }}</h4>
 
-        <p>No plots available for {{ routine.__name__ }}.</p>
         {% for qubit in report.qubits %}
         <div id="{{ routine }}-{{ iteration }}-{{ qubit }}" style="scroll-margin-top: 4em;">
             <h5
