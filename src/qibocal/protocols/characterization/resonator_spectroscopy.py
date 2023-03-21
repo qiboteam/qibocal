@@ -3,13 +3,16 @@ from typing import Dict, List, Tuple
 
 import lmfit
 import numpy as np
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.config import log
-from qibocal.data import DataUnits
+from qibocal.data import Data, DataUnits
+from qibocal.plots.utils import get_color
 
 
 @dataclass
@@ -22,7 +25,7 @@ class ResonatorSpectroscopyParameters(Parameters):
 
 
 @dataclass
-class ResonatorSpectrscopyResults(Results):
+class ResonatorSpectroscopyResults(Results):
     frequency: Dict[List[Tuple], str] = field(metadata=dict(update="readout_frequency"))
     fitted_parameters: Dict[List[Tuple], List]
 
@@ -97,7 +100,7 @@ def lorentzian(frequency, amplitude, center, sigma, offset):
     ) + offset
 
 
-def _fit(data: ResonatorSpectroscopyData) -> Results:
+def _fit(data: ResonatorSpectroscopyData) -> ResonatorSpectroscopyResults:
     qubits = data.df["qubit"].unique()
     resonator_type = data.df["resonator_type"].unique()
 
@@ -163,10 +166,125 @@ def _fit(data: ResonatorSpectroscopyData) -> Results:
         except:
             log.warning("lorentzian_fit: the fitting was not successful")
 
-        frequency[qubit] = f0 * 1e9
+        frequency[qubit] = f0
         fitted_parameters[qubit] = fit_res.best_values
 
-    return ResonatorSpectrscopyResults(frequency, fitted_parameters)
+    return ResonatorSpectroscopyResults(frequency, fitted_parameters)
 
 
-resonator_spectroscopy = Routine(_acquisition, _fit)
+def _plot(data: ResonatorSpectroscopyData, fit: ResonatorSpectroscopyResults, qubit):
+    figures = []
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        subplot_titles=(
+            "MSR (uV)",
+            "phase (rad)",
+        ),
+    )
+    data.df = data.df[data.df["qubit"] == qubit].drop(columns=["i", "q", "qubit"])
+    iterations = data.df["iteration"].unique()
+
+    report_n = 0
+
+    if len(iterations) > 1:
+        opacity = 0.3
+    else:
+        opacity = 1
+    for iteration in iterations:
+        frequencies = data.df["frequency"].pint.to("GHz").pint.magnitude.unique()
+        iteration_data = data.df[data.df["iteration"] == iteration]
+        fig.add_trace(
+            go.Scatter(
+                x=iteration_data["frequency"].pint.to("GHz").pint.magnitude,
+                y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
+                marker_color=get_color(2 * report_n),
+                opacity=opacity,
+                name=f"q{qubit}/r{report_n}: Data",
+                showlegend=not bool(iteration),
+                legendgroup=f"q{qubit}/r{report_n}: Data",
+            ),
+            row=1,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=iteration_data["frequency"].pint.to("GHz").pint.magnitude,
+                y=iteration_data["phase"].pint.to("rad").pint.magnitude,
+                marker_color=get_color(2 * report_n),
+                opacity=opacity,
+                name=f"q{qubit}/r{report_n}: Data",
+                showlegend=False,
+                legendgroup=f"q{qubit}/r{report_n}: Data",
+            ),
+            row=1,
+            col=2,
+        )
+    if len(iterations) > 1:
+        data.df = data.df.drop(columns=["iteration"])  # pylint: disable=E1101
+        fig.add_trace(
+            go.Scatter(
+                x=frequencies,
+                y=data.df.groupby("frequency")["MSR"]
+                .mean()
+                .pint.to("uV")
+                .pint.magnitude,
+                marker_color=get_color(2 * report_n),
+                name=f"q{qubit}/r{report_n}: Average",
+                showlegend=True,
+                legendgroup=f"q{qubit}/r{report_n}: Average",
+            ),
+            row=1,
+            col=1,
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=frequencies,
+                y=data.df.groupby("frequency")["phase"]
+                .mean()
+                .pint.to("rad")
+                .pint.magnitude,
+                marker_color=get_color(2 * report_n),
+                showlegend=False,
+                legendgroup=f"q{qubit}/r{report_n}: Average",
+            ),
+            row=1,
+            col=2,
+        )
+    if len(data) > 0:
+        freqrange = np.linspace(
+            min(frequencies),
+            max(frequencies),
+            2 * len(frequencies),
+        )
+        params = fit.fitted_parameters[qubit]
+
+        fig.add_trace(
+            go.Scatter(
+                x=freqrange,
+                y=lorentzian(freqrange, **params),
+                name=f"q{qubit}/r{report_n} Fit",
+                line=go.scatter.Line(dash="dot"),
+                marker_color=get_color(4 * report_n + 2),
+            ),
+            row=1,
+            col=1,
+        )
+
+    fig.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Frequency (GHz)",
+        yaxis_title="MSR (uV)",
+        xaxis2_title="Frequency (GHz)",
+        yaxis2_title="Phase (rad)",
+    )
+    figures.append(fig)
+
+    return figures
+
+
+resonator_spectroscopy = Routine(_acquisition, _fit, _plot)
