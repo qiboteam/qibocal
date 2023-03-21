@@ -5,7 +5,7 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
-from ...auto.operation import Qubits, Routine
+from ...auto.operation import Qubits, Results, Routine
 from ...data import DataUnits
 from .resonator_spectroscopy import ResonatorSpectroscopyParameters
 
@@ -15,6 +15,11 @@ class ResonatorPunchoutParameters(ResonatorSpectroscopyParameters):
     min_amp_factor: float
     max_amp_factor: float
     step_amp_factor: float
+
+
+@dataclass
+class ResonatorPunchoutResults(Results):
+    ...
 
 
 class ResonatorPunchoutData(DataUnits):
@@ -106,4 +111,8 @@ def _fit(data):
     pass
 
 
-resonator_punchout = Routine(_acquisition, _fit)
+def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
+    pass
+
+
+resonator_punchout = Routine(_acquisition, _fit, _plot)
