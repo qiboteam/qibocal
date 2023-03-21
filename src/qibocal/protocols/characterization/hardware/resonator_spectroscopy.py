@@ -127,14 +127,14 @@ def resonator_spectroscopy(
             count += 1
     # finally, save the remaining data and fits
     return data
-    # yield lorentzian_fit(
-    #     data,
-    #     x="frequency[GHz]",
-    #     y="MSR[uV]",
-    #     qubits=qubits,
-    #     resonator_type=platform.resonator_type,
-    #     labels=["readout_frequency", "peak_voltage"],
-    # )
+    yield lorentzian_fit(
+        data,
+        x="frequency[GHz]",
+        y="MSR[uV]",
+        qubits=qubits,
+        resonator_type=platform.resonator_type,
+        labels=["readout_frequency", "peak_voltage"],
+    )
 
 
 @plot(

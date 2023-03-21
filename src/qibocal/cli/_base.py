@@ -85,8 +85,8 @@ def autocalibration(runcard, folder, force=None):
     """
 
     builder = AutoCalibrationBuilder(runcard, folder, force)
-    # builder.run()
-    # builder.dump_report()
+    builder.run()
+    builder.dump_report()
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
