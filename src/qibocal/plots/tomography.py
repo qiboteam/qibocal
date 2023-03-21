@@ -176,8 +176,7 @@ def circuit_from_sequence(folder, routine, rotations):
     for moment in sequence:
         for pulse_description in moment:
             pulse_type, qubit = pulse_description[:2]
-            if pulse_type == "FluxPulse":
-                # FIXME: FluxPulse is not always one-to-one to CZ gate
+            if pulse_type == "CZ":
                 circuit.add(gates.CZ(0, 1))
             else:
                 circuit.add(basis_gates[pulse_type](experiment_qubits.index(qubit)))

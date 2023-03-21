@@ -1,5 +1,7 @@
+from collections import defaultdict
+
 import numpy as np
-from qibolab.pulses import FluxPulse, PulseSequence, Rectangular
+from qibolab.pulses import PulseSequence
 
 from qibocal import plots
 from qibocal.data import DataUnits
@@ -67,13 +69,17 @@ def state_tomography(
 
     rotation_pulses = {
         "I": None,
-        "RX": lambda qubit, start: platform.create_RX_pulse(qubit, start),
-        "RY": lambda qubit, start: platform.create_RX_pulse(
-            qubit, start, relative_phase=np.pi / 2
+        "RX": lambda qubit, start, phase: platform.create_RX_pulse(
+            qubit, start, relative_phase=phase
         ),
-        "RX90": lambda qubit, start: platform.create_RX90_pulse(qubit, start),
-        "RY90": lambda qubit, start: platform.create_RX90_pulse(
-            qubit, start, relative_phase=np.pi / 2
+        "RY": lambda qubit, start, phase: platform.create_RX_pulse(
+            qubit, start, relative_phase=phase + np.pi / 2
+        ),
+        "RX90": lambda qubit, start, phase: platform.create_RX90_pulse(
+            qubit, start, relative_phase=phase
+        ),
+        "RY90": lambda qubit, start, phase: platform.create_RX90_pulse(
+            qubit, start, relative_phase=phase + np.pi / 2
         ),
     }
     tomography_basis = ["I", "RY90", "RX90"]
@@ -97,39 +103,36 @@ def state_tomography(
     for label1 in tomography_basis:
         for label2 in tomography_basis:
             if not (label1 == "RX" and label2 == "RX"):
+                phases = defaultdict(int)
                 total_sequence = PulseSequence()
                 # state preperation sequence
                 for moment in sequence:
                     start = total_sequence.finish
                     for pulse_description in moment:
                         pulse_type, qubit = pulse_description[:2]
-                        if pulse_type == "FluxPulse":
-                            # FIXME: Flux pulses should be treated similarly to the
-                            # other pulses (read from the runcard)
-                            # This is different for now, until we understand exactly
-                            # what the flux pulse is doing (in terms of 2q gates)
-                            flux_duration, flux_amplitude = pulse_description[2:]
-                            total_sequence.add(
-                                FluxPulse(
-                                    start=start,
-                                    duration=flux_duration,
-                                    amplitude=flux_amplitude,
-                                    shape=Rectangular(),
-                                    channel=platform.qubits[qubit2].flux.name,
-                                    qubit=qubit,
-                                )
+                        if pulse_type == "CZ":
+                            cz_sequence, phases = platform.create_CZ_pulse_sequence(
+                                qubit, start=total_sequence.finish
                             )
+                            total_sequence = total_sequence + cz_sequence
                         elif pulse_type in rotation_pulses:
                             total_sequence.add(
-                                rotation_pulses[pulse_type](qubit, start)
+                                rotation_pulses[pulse_type](qubit, start, phases[qubit])
                             )
+                            phases[qubit] = 0
+                        else:
+                            raise NotImplementedError(f"Unknown gate {pulse_type}.")
 
                 # basis rotation sequence
                 start = total_sequence.finish
                 if label1 != "I":
-                    total_sequence.add(rotation_pulses[label1](qubit1, start))
+                    total_sequence.add(
+                        rotation_pulses[label1](qubit1, start, phases[qubit1])
+                    )
                 if label2 != "I":
-                    total_sequence.add(rotation_pulses[label2](qubit2, start))
+                    total_sequence.add(
+                        rotation_pulses[label2](qubit2, start, phases[qubit2])
+                    )
                 # measurements
                 start = total_sequence.finish
                 measure1 = platform.create_MZ_pulse(qubit1, start=start)
