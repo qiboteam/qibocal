@@ -57,7 +57,7 @@ class AutoCalibrationReportBuilder:
         data = node.task.operation.data_type.load_data(
             self.path, "data", f"{routine_name}_{iteration}", "csv", "data"
         )
-        figures = node.task.operation.report(data, node.res, qubit)
+        figures, fitting_report = node.task.operation.report(data, node.res, qubit)
         with tempfile.NamedTemporaryFile(delete=False) as temp:
             html_list = []
             for figure in figures:
@@ -67,4 +67,4 @@ class AutoCalibrationReportBuilder:
                 html_list.append(fightml)
 
         all_html = "".join(html_list)
-        return all_html
+        return all_html, fitting_report

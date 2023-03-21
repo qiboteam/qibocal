@@ -187,6 +187,7 @@ def _plot(data: ResonatorSpectroscopyData, fit: ResonatorSpectroscopyResults, qu
     data.df = data.df[data.df["qubit"] == qubit].drop(columns=["i", "q", "qubit"])
     iterations = data.df["iteration"].unique()
 
+    fitting_report = ""
     report_n = 0
 
     if len(iterations) > 1:
@@ -274,6 +275,11 @@ def _plot(data: ResonatorSpectroscopyData, fit: ResonatorSpectroscopyResults, qu
             col=1,
         )
 
+        fitting_report = (
+            fitting_report
+            + f"q{qubit}/r{report_n} | frequency: {fit.frequency[qubit]*1e9:,.0f} Hz<br>"
+        )
+
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
@@ -284,7 +290,7 @@ def _plot(data: ResonatorSpectroscopyData, fit: ResonatorSpectroscopyResults, qu
     )
     figures.append(fig)
 
-    return figures
+    return figures, fitting_report
 
 
 resonator_spectroscopy = Routine(_acquisition, _fit, _plot)
