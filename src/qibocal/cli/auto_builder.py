@@ -12,7 +12,7 @@ class AutoCalibrationBuilder(ActionBuilder):
         self.executor = Executor.load(self.runcard)
 
     def run(self):
-        self.executor.run(self.platform, self.qubits, self.folder)
+        self.executor.run(self.qubits, self.platform, self.folder)
         print(self.executor.history)
 
 
