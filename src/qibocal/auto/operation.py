@@ -81,7 +81,7 @@ class Results:
 # contravariance on parameter type
 _ParametersT = TypeVar("_ParametersT", bound=Parameters, contravariant=True)
 _DataT = TypeVar("_DataT", bound=Data)
-_ResultsT = TypeVar("_ResultsT", bound=Results, covariant=True)
+_ResultsT = TypeVar("_ResultsT", bound=Results)
 _QubitsT = TypeVar("_QubitsT", bound=Qubits, contravariant=True)
 _PlatformT = TypeVar("_PlatformT", bound=AbstractPlatform, contravariant=True)
 
@@ -92,11 +92,12 @@ class Routine(Generic[_PlatformT, _QubitsT, _ParametersT, _DataT, _ResultsT]):
 
     acquisition: Callable[[_PlatformT, _QubitsT, _ParametersT], _DataT]
     fit: Callable[[_DataT], _ResultsT]
+    report: Callable[[_DataT, _ResultsT], None]
 
     @property
     def parameters_type(self):
         sig = inspect.signature(self.acquisition)
-        param = list(sig.parameters.values())[2]
+        param = list(sig.parameters.values())[2]  # skipping platform and qubits
         return param.annotation
 
     @property
@@ -131,64 +132,8 @@ def _dummy_fit(data: DummyData) -> DummyRes:
     return DummyRes()
 
 
-dummy_operation = Routine(_dummy_acquisition, _dummy_fit)
-
-#  --- from here on start the examples ---
-
-
-@dataclass
-class Cmd1Pars(Parameters):
-    a: int
-    b: int
+def _dummy_report(data: DummyData, result: DummyRes):
+    return
 
 
-@dataclass
-class Cmd1Data(Data):
-    c: float
-
-
-@dataclass
-class Cmd1Res(Results):
-    res: str = field(metadata=dict(update="myres"))
-    num: int
-
-
-def _cmd1_acq(args: Cmd1Pars) -> Cmd1Data:
-    print("command_1")
-    return Cmd1Data(3.4)
-
-
-def _cmd1_fit(args: Cmd1Data) -> Cmd1Res:
-    return Cmd1Res("command_1", 3)
-
-
-command_1 = Routine(_cmd1_acq, _cmd1_fit)
-
-
-@dataclass
-class Cmd2Res(Results):
-    res: str = field(metadata=dict(update="res2"))
-
-
-def _cmd2_acq(*args: Cmd1Pars) -> Cmd1Data:
-    print("command_2")
-    return Cmd1Data(1.8)
-
-
-def _cmd2_fit(*args: Cmd1Data) -> Cmd2Res:
-    return Cmd2Res("command_2")
-
-
-command_2 = Routine(_cmd1_acq, _cmd1_fit)
-
-
-#  ---
-#  the following enum should exist, with this name, so only its content is
-#  supposed to be an example, but it should not be exported by this module, and
-#  instead should be placed inside `qibocal.calibrations.__init__.py`
-#  ---
-
-
-# class Operation(Enum):
-#     command_1 = command_1
-#     command_2 = command_2
+dummy_operation = Routine(_dummy_acquisition, _dummy_fit, _dummy_report)

@@ -4,8 +4,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
 
-import yaml
-
 from qibocal.protocols.characterization import Operation
 
 from .operation import Data, DummyPars, Results, Routine, dummy_operation
@@ -77,12 +75,14 @@ class Task:
         return path
 
     def data(self, base_dir) -> Optional[Data]:
-        if not self.datapath(base_dir).is_file():
+        if not self.datapath(Path(base_dir)).is_file():
             return None
-
         Data = self.operation.data_type
-
-        return Data(yaml.safe_load(self.datapath(base_dir).read_text(encoding="utf-8")))
+        # print(self.datapath(Path(base_dir)))
+        return Data.load_data(
+            base_dir, "data", f"{self.id}_{self.iteration}", "csv", "data"
+        )
+        # return Data(yaml.safe_load(self.datapath(base_dir).read_text(encoding="utf-8")))
 
     def run(self, platform, qubits, folder) -> Results:
         try:
