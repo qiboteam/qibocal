@@ -3,11 +3,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional, Set, Union
 
+from qibolab.platforms.abstract import AbstractPlatform
+
 from .graph import Graph
 from .history import Completed, History
 from .runcard import Id, Runcard
 from .status import Normal
-from .task import Task
+from .task import Qubits, Task
 
 
 @dataclass
@@ -18,17 +20,36 @@ class Executor:
     """The graph to be executed."""
     history: History
     """The execution history, with results and exit states."""
+    qubits: Qubits
+    """Qubits to be calibrated."""
+    platform: AbstractPlatform
+    """Qubits' platform."""
+    folder: Path
+    """Output path."""
     head: Optional[Id] = None
     """The current position."""
     pending: Set[Id] = field(default_factory=set)
     """The branched off tasks, not yet executed."""
 
+    # TODO: find a more elegant way to pass everything
     @classmethod
-    def load(cls, card: Union[dict, Path]):
+    def load(
+        cls,
+        card: Union[dict, Path],
+        platform: AbstractPlatform,
+        qubits: Qubits,
+        folder: Path,
+    ):
         """Load execution graph and associated executor from a runcard."""
         runcard = Runcard.load(card)
 
-        return cls(graph=Graph.from_actions(runcard.actions), history=History({}))
+        return cls(
+            graph=Graph.from_actions(runcard.actions),
+            history=History({}),
+            platform=platform,
+            qubits=qubits,
+            folder=folder,
+        )
 
     def available(self, task: Task):
         """Check if a task has all dependencies satisfied."""
@@ -97,14 +118,14 @@ class Executor:
         assert self.head is not None
         return self.graph.task(self.head)
 
-    def run(self, qubits, platform, folder):
+    def run(self):
         """Actual execution."""
         self.head = self.graph.start
 
         while self.head is not None:
             task = self.current
 
-            output = task.run(qubits, platform, folder)
+            output = task.run(self.platform, self.qubits, self.folder)
             completed = Completed(task, output, Normal())
             self.history.push(completed)
 

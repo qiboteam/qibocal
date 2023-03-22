@@ -4,9 +4,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
 
+from qibolab.platforms.abstract import AbstractPlatform
+
 from qibocal.protocols.characterization import Operation
 
-from .operation import Data, DummyPars, Results, Routine, dummy_operation
+from .operation import Data, DummyPars, Qubits, Results, Routine, dummy_operation
 from .runcard import Action, Id
 
 MAX_PRIORITY = int(1e9)
@@ -70,11 +72,12 @@ class Task:
         return self.operation.parameters_type.load(self.action.parameters)
 
     def datapath(self, base_dir: Path):
+        print(base_dir)
         path = base_dir / "data" / f"{self.id}_{self.iteration}"
         os.makedirs(path)
         return path
 
-    def data(self, base_dir) -> Optional[Data]:
+    def data(self, base_dir: Path) -> Optional[Data]:
         if not self.datapath(Path(base_dir)).is_file():
             return None
         Data = self.operation.data_type
@@ -84,7 +87,7 @@ class Task:
         )
         # return Data(yaml.safe_load(self.datapath(base_dir).read_text(encoding="utf-8")))
 
-    def run(self, platform, qubits, folder) -> Results:
+    def run(self, platform: AbstractPlatform, qubits: Qubits, folder: Path) -> Results:
         try:
             operation: Routine = self.operation
             parameters = self.parameters
@@ -92,7 +95,7 @@ class Task:
             operation = dummy_operation
             parameters = DummyPars()
 
-        path = self.datapath(Path(folder))
+        path = self.datapath(folder)
         data: Data = operation.acquisition(platform, qubits, parameters)
         data.to_csv(path)
         # TODO: data dump

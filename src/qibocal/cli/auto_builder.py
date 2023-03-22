@@ -1,5 +1,6 @@
 import datetime
 import os
+from pathlib import Path
 
 import yaml
 
@@ -11,7 +12,9 @@ from .builders import ActionBuilder, load_yaml
 class AutoCalibrationBuilder(ActionBuilder):
     def __init__(self, runcard, folder=None, force=False):
         super().__init__(runcard, folder, force)
-        self.executor = Executor.load(self.runcard)
+        self.executor = Executor.load(
+            self.runcard, self.platform, self.qubits, Path(self.folder)
+        )
 
     def run(self):
         if self.platform is not None:
@@ -19,7 +22,7 @@ class AutoCalibrationBuilder(ActionBuilder):
             self.platform.setup()
             self.platform.start()
 
-        self.executor.run(self.platform, self.qubits, self.folder)
+        self.executor.run()
 
         if self.platform is not None:
             self.platform.stop()
