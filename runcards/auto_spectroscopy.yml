@@ -8,7 +8,7 @@ actions:
   - id: resonator_spectroscopy
     priority: 0
     operation: resonator_spectroscopy
-    next: resonator_punchout
+    #next: resonator_punchout
     parameters:
       freq_width: 30_000_000
       freq_step: 1_000_000
@@ -16,18 +16,18 @@ actions:
       relaxation_time: 0
       software_averages : 2
 
-  - id: resonator_punchout
-    priority: 10
-    operation: resonator_punchout
-    parameters:
-      freq_width: 10_000_000
-      freq_step: 100_000
-      min_amp_factor: 0.01
-      max_amp_factor: 1.5
-      step_amp_factor: 0.02
-      nshots: 1000
-      relaxation_time: 0
-      software_averages: 1
+  # - id: resonator_punchout
+  #   priority: 10
+  #   operation: resonator_punchout
+  #   parameters:
+  #     freq_width: 10_000_000
+  #     freq_step: 100_000
+  #     min_amp_factor: 0.01
+  #     max_amp_factor: 0.9
+  #     step_amp_factor: 0.02
+  #     nshots: 1000
+  #     relaxation_time: 0
+  #     software_averages: 1
 
   #   main: first
   # - id: first

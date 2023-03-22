@@ -106,5 +106,5 @@ class Executor:
             output = task.run(platform, qubits, folder)
             completed = Completed(task, output, Normal())
             self.history.push(completed)
-
             self.head = self.next()
+            platform.update(completed.res.update)

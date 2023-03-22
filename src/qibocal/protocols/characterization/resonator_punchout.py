@@ -108,11 +108,11 @@ def _acquisition(
 
 
 def _fit(data):
-    pass
+    return ResonatorPunchoutResults()
 
 
 def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
-    pass
+    return []
 
 
 resonator_punchout = Routine(_acquisition, _fit, _plot)
