@@ -15,7 +15,16 @@ class AutoCalibrationBuilder(ActionBuilder):
         self.executor = Executor.load(self.runcard)
 
     def run(self):
+        if self.platform is not None:
+            self.platform.connect()
+            self.platform.setup()
+            self.platform.start()
+
         self.executor.run(self.platform, self.qubits, self.folder)
+
+        if self.platform is not None:
+            self.platform.stop()
+            self.platform.disconnect()
 
     def dump_report(self):
         from qibocal.web.report import create_autocalibration_report
