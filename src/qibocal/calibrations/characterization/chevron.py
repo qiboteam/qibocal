@@ -87,6 +87,14 @@ def tune_transition(
     durations = np.arange(
         flux_pulse_duration_start, flux_pulse_duration_end, flux_pulse_duration_step
     )
+    # find flux pulse that is targeting the ``highfreq`` qubit
+    flux_pulse = next(
+        iter(
+            pulse
+            for pulse in flux_sequence
+            if isinstance(pulse, FluxPulse) and pulse.qubit == highfreq
+        )
+    )
     sweeper = Sweeper(Parameter.amplitude, amplitudes, pulses=[flux_pulse])
 
     sequence = (
