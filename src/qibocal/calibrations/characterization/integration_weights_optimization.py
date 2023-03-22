@@ -5,11 +5,10 @@ from qibolab.pulses import PulseSequence
 from qibocal import plots
 from qibocal.data import DataUnits
 from qibocal.decorators import plot
-from qibocal.fitting.methods import calibrate_qubit_states_fit
 
 
-@plot("Qubit States", plots.qubit_states)
-def calibrate_qubit_states(
+@plot("Signal_0-1", plots.signal_0_1)
+def integration_weights_optimization(
     platform: AbstractPlatform,
     qubits: dict,
     nshots,
@@ -30,10 +29,7 @@ def calibrate_qubit_states(
     Returns:
         A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
 
-            - **MSR[V]**: Resonator signal voltage mesurement in volts
-            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
-            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
-            - **phase[rad]**: Resonator signal phase mesurement in radians
+            - **MSR[V]**: Signal voltage mesurement in volts before demodulation
             - **iteration[dimensionless]**: Execution number
             - **qubit**: The qubit being tested
             - **iteration**: The iteration number of the many determined by software_averages
@@ -47,9 +43,10 @@ def calibrate_qubit_states(
     # state0_sequence: I  - MZ
     # state1_sequence: RX - MZ
 
-    # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     state0_sequence = PulseSequence()
     state1_sequence = PulseSequence()
+
+    # TODO: sequence state0_sequence2 con 2n RX para debuggar los pulsos (pi-pulse-train_routine).
 
     RX_pulses = {}
     ro_pulses = {}
@@ -64,9 +61,13 @@ def calibrate_qubit_states(
         state1_sequence.add(ro_pulses[qubit])
 
     # create a DataUnits object to store the results
-    data = DataUnits(name="data", options=["qubit", "iteration", "state"])
-
+    data = DataUnits(
+        name="data",
+        quantities={"weights": "dimensionless"},
+        options=["qubit", "sample", "state"],
+    )
     # execute the first pulse sequence
+    # state0_results = platform.execute_pulse_sequence(state0_sequence, nshots=nshots, relaxation_time=relaxation_time, acquistion = "RAW")
     state0_results = platform.execute_pulse_sequence(
         state0_sequence, nshots=nshots, relaxation_time=relaxation_time
     )
@@ -74,34 +75,67 @@ def calibrate_qubit_states(
     # retrieve and store the results for every qubit
     for ro_pulse in ro_pulses.values():
         r = state0_results[ro_pulse.serial].to_dict(average=False)
+        state0 = r["i[V]"] + 1j * r["q[V]"]
+        number_of_samples = len(r["MSR[V]"])
         r.update(
             {
-                "qubit": [ro_pulse.qubit] * nshots,
-                "iteration": np.arange(nshots),
-                "state": [0] * nshots,
+                "qubit": [ro_pulse.qubit] * len(r["MSR[V]"]),
+                "sample": np.arange(len(r["MSR[V]"])),
+                "state": [0] * len(r["MSR[V]"]),
             }
         )
         data.add_data_from_dict(r)
 
     # execute the second pulse sequence
-    state1_results = platform.execute_pulse_sequence(
-        state1_sequence, nshots=nshots, relaxation_time=relaxation_time
-    )
-
+    # state1_results = platform.execute_pulse_sequence(state1_sequence, nshots=nshots, acquistion = "RAW")
+    state1_results = platform.execute_pulse_sequence(state1_sequence, nshots=nshots)
     # retrieve and store the results for every qubit
     for ro_pulse in ro_pulses.values():
         r = state1_results[ro_pulse.serial].to_dict(average=False)
+        state1 = r["i[V]"] + 1j * r["q[V]"]
         r.update(
             {
-                "qubit": [ro_pulse.qubit] * nshots,
-                "iteration": np.arange(nshots),
-                "state": [1] * nshots,
+                "qubit": [ro_pulse.qubit] * len(r["MSR[V]"]),
+                "sample": np.arange(len(r["MSR[V]"])),
+                "state": [1] * len(r["MSR[V]"]),
             }
         )
         data.add_data_from_dict(r)
 
     # finally, save the remaining data and the fits
+
+    # np.conj to account the two phase-space evolutions of the readout state
+    samples_kernel = np.conj(state1 - state0)
+
+    samples_kernel_origin = (
+        samples_kernel - samples_kernel.real.min() - 1j * samples_kernel.imag.min()
+    )  # origin offsetted
+    samples_kernel / np.abs(samples_kernel).max()
+
+    samples_kernel.real = samples_kernel.real / abs(max(samples_kernel))
+    samples_kernel.imag = samples_kernel.imag / abs(max(samples_kernel))
+
+    samples_kernel = samples_kernel
+
+    # Remove nans
+    samples_kernel.real = (samples_kernel.real + max(samples_kernel.real)) / 2
+    samples_kernel.imag = (samples_kernel.imag + max(samples_kernel.imag)) / 2
+    samples_kernel = samples_kernel[~np.isnan(samples_kernel)]
+
+    r = {}
+    r.update(
+        {
+            "weights[dimensionless]": abs(samples_kernel),
+            "qubit": [ro_pulse.qubit] * number_of_samples,
+            "sample": np.arange(number_of_samples),
+            "state": ["1-0"] * number_of_samples,
+        }
+    )
+    data.add_data_from_dict(r)
+
     yield data
-    yield calibrate_qubit_states_fit(
-        data, x="i[V]", y="q[V]", nshots=nshots, qubits=qubits
+
+    np.save(
+        "/home/admin/Juan/qibolab/src/qibolab/instruments/Optimal_weights_conj",
+        samples_kernel[0:2495],
     )
