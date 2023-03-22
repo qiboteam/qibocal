@@ -40,9 +40,10 @@ def generate_models(data, test_size=0.25):
     """
     input_data = data[["i", "q"]].values
     output_data = data["state"].values
-    return train_test_split(
+    x_train, x_test, y_train, y_test = train_test_split(
         input_data, output_data, test_size=test_size, random_state=0, shuffle=True
-    )
+    ) #TODO:remove this part and return directly the values 
+    return x_train, y_train, x_test, y_test
 
 
 def plot_qubit(data, save_dir: pathlib.Path):
