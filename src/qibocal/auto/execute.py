@@ -97,7 +97,7 @@ class Executor:
         assert self.head is not None
         return self.graph.task(self.head)
 
-    def run(self, qubits, platform, folder):
+    def run(self, platform, qubits, folder):
         """Actual execution."""
         self.head = self.graph.start
 
