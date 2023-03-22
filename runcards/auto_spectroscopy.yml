@@ -1,6 +1,6 @@
 platform: dummy
 
-qubits: [0, 1]
+qubits: [0, 1, 2 ,3 ,4]
 
 format: csv
 
@@ -11,9 +11,10 @@ actions:
     parameters:
       freq_width: 30_000_000
       freq_step: 1_000_000
+      amplitude: 0.01
       nshots: 1024
       relaxation_time: 0
-      software_averages : 2
+      software_averages : 1
 
   #   main: first
   # - id: first

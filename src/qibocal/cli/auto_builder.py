@@ -4,7 +4,6 @@ import os
 import yaml
 
 from qibocal.auto.execute import Executor
-from qibocal.config import raise_error
 
 from .builders import ActionBuilder, load_yaml
 

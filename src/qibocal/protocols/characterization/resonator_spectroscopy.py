@@ -11,7 +11,7 @@ from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.config import log
-from qibocal.data import Data, DataUnits
+from qibocal.data import DataUnits
 from qibocal.plots.utils import get_color
 
 
@@ -19,6 +19,7 @@ from qibocal.plots.utils import get_color
 class ResonatorSpectroscopyParameters(Parameters):
     freq_width: int
     freq_step: int
+    amplitude: float
     nshots: int
     relaxation_time: int
     software_averages: int
@@ -27,6 +28,7 @@ class ResonatorSpectroscopyParameters(Parameters):
 @dataclass
 class ResonatorSpectroscopyResults(Results):
     frequency: Dict[List[Tuple], str] = field(metadata=dict(update="readout_frequency"))
+    amplitude: Dict[List[Tuple], str] = field(metadata=dict(update="readout_amplitude"))
     fitted_parameters: Dict[List[Tuple], List]
 
 
@@ -35,7 +37,7 @@ class ResonatorSpectroscopyData(DataUnits):
         super().__init__(
             "data",
             {"frequency": "Hz"},
-            options=["qubit", "iteration", "resonator_type"],
+            options=["qubit", "iteration", "resonator_type", "amplitude"],
         )
 
 
@@ -52,6 +54,7 @@ def _acquisition(
     ro_pulses = {}
     for qubit in qubits:
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
+        ro_pulses[qubit].amplitude = params.amplitude
         sequence.add(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:
@@ -86,6 +89,8 @@ def _acquisition(
                     "frequency[Hz]": delta_frequency_range + ro_pulses[qubit].frequency,
                     "qubit": len(delta_frequency_range) * [qubit],
                     "iteration": len(delta_frequency_range) * [iteration],
+                    "amplitude": len(delta_frequency_range)
+                    * [ro_pulses[qubit].amplitude],
                 }
             )
             data.add_data_from_dict(r)
@@ -103,14 +108,15 @@ def lorentzian(frequency, amplitude, center, sigma, offset):
 def _fit(data: ResonatorSpectroscopyData) -> ResonatorSpectroscopyResults:
     qubits = data.df["qubit"].unique()
     resonator_type = data.df["resonator_type"].unique()
-
+    amplitude = data.df["amplitude"].unique()
+    amplitudes = {}
     frequency = {}
     fitted_parameters = {}
 
     for qubit in qubits:
         qubit_data = (
             data.df[data.df["qubit"] == qubit]
-            .drop(columns=["qubit", "iteration", "resonator_type"])
+            .drop(columns=["qubit", "iteration", "resonator_type", "amplitude"])
             .groupby("frequency", as_index=False)
             .mean()
         )
@@ -167,9 +173,10 @@ def _fit(data: ResonatorSpectroscopyData) -> ResonatorSpectroscopyResults:
             log.warning("lorentzian_fit: the fitting was not successful")
 
         frequency[qubit] = f0
+        amplitudes[qubit] = amplitude
         fitted_parameters[qubit] = fit_res.best_values
 
-    return ResonatorSpectroscopyResults(frequency, fitted_parameters)
+    return ResonatorSpectroscopyResults(frequency, amplitudes, fitted_parameters)
 
 
 def _plot(data: ResonatorSpectroscopyData, fit: ResonatorSpectroscopyResults, qubit):
@@ -274,10 +281,10 @@ def _plot(data: ResonatorSpectroscopyData, fit: ResonatorSpectroscopyResults, qu
             row=1,
             col=1,
         )
-
         fitting_report = (
             fitting_report
             + f"q{qubit}/r{report_n} | frequency: {fit.frequency[qubit]*1e9:,.0f} Hz<br>"
+            + f"q{qubit}/r{report_n} | amplitude: {fit.amplitude[qubit][0]} <br>"
         )
 
     fig.update_layout(
