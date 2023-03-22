@@ -72,13 +72,12 @@ class Task:
         return self.operation.parameters_type.load(self.action.parameters)
 
     def datapath(self, base_dir: Path):
-        print(base_dir)
         path = base_dir / "data" / f"{self.id}_{self.iteration}"
         os.makedirs(path)
         return path
 
     def data(self, base_dir: Path) -> Optional[Data]:
-        if not self.datapath(Path(base_dir)).is_file():
+        if not self.datapath(base_dir).is_file():
             return None
         Data = self.operation.data_type
         # print(self.datapath(Path(base_dir)))
