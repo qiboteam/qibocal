@@ -9,6 +9,7 @@ OperationId = NewType("OperationId", str)
 ParameterValue = Union[float, int]
 """Valid value for a routine and runcard parameter."""
 Qubits = Dict[int, Qubit]
+"""Convenient way of passing qubits in the routines."""
 
 
 class Parameters:
@@ -82,15 +83,13 @@ class Results:
 _ParametersT = TypeVar("_ParametersT", bound=Parameters, contravariant=True)
 _DataT = TypeVar("_DataT", bound=Data)
 _ResultsT = TypeVar("_ResultsT", bound=Results)
-_QubitsT = TypeVar("_QubitsT", bound=Qubits, contravariant=True)
-_PlatformT = TypeVar("_PlatformT", bound=AbstractPlatform, contravariant=True)
 
 
 @dataclass
-class Routine(Generic[_PlatformT, _QubitsT, _ParametersT, _DataT, _ResultsT]):
+class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     """A wrapped calibration routine."""
 
-    acquisition: Callable[[_PlatformT, _QubitsT, _ParametersT], _DataT]
+    acquisition: Callable[[AbstractPlatform, Qubits, _ParametersT], _DataT]
     fit: Callable[[_DataT], _ResultsT]
     report: Callable[[_DataT, _ResultsT], None]
 

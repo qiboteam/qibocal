@@ -68,7 +68,7 @@
               {% for routine, iteration in report.history %}
               <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
                 <li><a href="#{{ routine }}" class="link-dark d-inline-flex text-decoration-none rounded">{{
-                    report.get_routine_name(routine, iteration) }}</a></li>
+                    report.routine_name(routine, iteration) }}</a></li>
                 {% for header, method in routine.plots %}
                 <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
                   <li><a class="link-dark d-inline-flex text-decoration-none rounded"
@@ -152,7 +152,7 @@
       <div id="{{ routine }}-{{ iteration}}" style="scroll-margin-top: 4em;">
         <h4
           class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-          {{ report.get_routine_name(routine, iteration) }}</h4>
+          {{ report.routine_name(routine, iteration) }}</h4>
 
         {% for qubit in report.qubits %}
         <div id="{{ routine }}-{{ iteration }}-{{ qubit }}" style="scroll-margin-top: 4em;">
