@@ -4,7 +4,6 @@ import os
 import yaml
 
 from qibocal.auto.execute import Executor
-from qibocal.config import raise_error
 
 from .builders import ActionBuilder, load_yaml
 
@@ -15,7 +14,16 @@ class AutoCalibrationBuilder(ActionBuilder):
         self.executor = Executor.load(self.runcard)
 
     def run(self):
-        self.executor.run(self.qubits, self.platform, self.folder)
+        if self.platform is not None:
+            self.platform.connect()
+            self.platform.setup()
+            self.platform.start()
+
+        self.executor.run(self.platform, self.qubits, self.folder)
+
+        if self.platform is not None:
+            self.platform.stop()
+            self.platform.disconnect()
 
     def dump_report(self):
         from qibocal.web.report import create_autocalibration_report
@@ -57,7 +65,7 @@ class AutoCalibrationReportBuilder:
         data = node.task.operation.data_type.load_data(
             self.path, "data", f"{routine_name}_{iteration}", "csv", "data"
         )
-        figures = node.task.operation.report(data, node.res, qubit)
+        figures, fitting_report = node.task.operation.report(data, node.res, qubit)
         with tempfile.NamedTemporaryFile(delete=False) as temp:
             html_list = []
             for figure in figures:
@@ -67,4 +75,4 @@ class AutoCalibrationReportBuilder:
                 html_list.append(fightml)
 
         all_html = "".join(html_list)
-        return all_html
+        return all_html, fitting_report
