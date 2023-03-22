@@ -42,8 +42,8 @@ class QubitFit:
         self.iq_mean1 = np.array([iq_state1.real, iq_state1.imag])
 
     def rotate(self, v):
-    c, s = np.cos(self.angle), np.sin(self.angle)
-    j = np.matrix([[c, s], [-s, c]])
+        c, s = np.cos(self.angle), np.sin(self.angle)
+        rot = np.matrix([[c, s], [-s, c]])
         return rot @ v
 
     def translate(self, v):
