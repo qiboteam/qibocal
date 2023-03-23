@@ -6,43 +6,55 @@ format: csv
 
 actions:
 
-  - id: qubit_spectroscopy
+  # - id: qubit_spectroscopy
+  #   priority: 0
+  #   operation: qubit_spectroscopy
+  #   next: resonator_spectroscopy
+  #   parameters:
+  #     drive_amplitude: 0.005
+  #     drive_duration: 2000
+  #     freq_width: 100_000_000
+  #     freq_step: 100_000
+  #     nshots: 1000
+  #     relaxation_time: 0
+  #     software_averages: 1
+
+  # - id: resonator_spectroscopy
+  #   priority: 0
+  #   operation: resonator_spectroscopy
+  #   # next: resonator_punchout
+  #   parameters:
+  #     freq_width: 30_000_000
+  #     freq_step: 1_000_000
+  #     amplitude: 0.01
+  #     nshots: 1024
+  #     relaxation_time: 0
+  #     software_averages : 1
+
+  # - id: resonator_punchout
+  #   priority: 20
+  #   operation: resonator_punchout
+  #   next: rabi_amplitude
+  #   parameters:
+  #     freq_width: 1_000_000
+  #     freq_step: 100_000
+  #     min_amp_factor: 0.01
+  #     max_amp_factor: 0.9
+  #     step_amp_factor: 0.02
+  #     nshots: 1000
+  #     relaxation_time: 0
+  #     software_averages: 1
+
+  - id: rabi
     priority: 0
-    operation: qubit_spectroscopy
-    next: resonator_spectroscopy
+    operation: rabi_amplitude
     parameters:
-      drive_amplitude: 0.005
-      drive_duration: 2000
-      freq_width: 100_000_000
-      freq_step: 100_000
+      pulse_amplitude_start: 0.01
+      pulse_amplitude_end: 2.0
+      pulse_amplitude_step: 0.01
+      software_averages: 4
+      relaxation_time: 0
       nshots: 1000
-      relaxation_time: 0
-      software_averages: 1
-
-  - id: resonator_spectroscopy
-    priority: 10
-    operation: resonator_spectroscopy
-    next: resonator_punchout
-    parameters:
-      freq_width: 30_000_000
-      freq_step: 1_000_000
-      amplitude: 0.01
-      nshots: 1024
-      relaxation_time: 0
-      software_averages : 1
-
-  - id: resonator_punchout
-    priority: 20
-    operation: resonator_punchout
-    parameters:
-      freq_width: 1_000_000
-      freq_step: 100_000
-      min_amp_factor: 0.01
-      max_amp_factor: 0.9
-      step_amp_factor: 0.02
-      nshots: 1000
-      relaxation_time: 0
-      software_averages: 1
 
   #   main: first
   # - id: first
