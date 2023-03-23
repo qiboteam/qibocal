@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 
-import lmfit
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -10,101 +9,106 @@ from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.config import log
 from qibocal.data import DataUnits
 from qibocal.plots.utils import get_color
-from .utils import lorentzian_fit, lorentzian
-
+from .utils import lorentzian_fit
 
 @dataclass
-class ResonatorSpectroscopyParameters(Parameters):
+class QubitSpectroscopyParameters(Parameters):
     freq_width: int
     freq_step: int
-    amplitude: float
-    nshots: int
-    relaxation_time: int
-    software_averages: int
-
+    drive_duration: int
+    drive_amplitude: Optional[float] = None
+    nshots: int = 1024
+    relaxation_time: int = 50
+    software_averages: int = 1
 
 @dataclass
-class ResonatorSpectroscopyResults(Results):
-    frequency: Dict[List[Tuple], str] = field(metadata=dict(update="readout_frequency"))
-    amplitude: Dict[List[Tuple], str] = field(metadata=dict(update="readout_amplitude"))
+class QubitSpectroscopyResults(Results):
+    frequency: Dict[List[Tuple], str] = field(metadata=dict(update="drive_frequency"))
     fitted_parameters: Dict[List[Tuple], List]
 
 
-class ResonatorSpectroscopyData(DataUnits):
+class QubitSpectroscopyData(DataUnits):
     def __init__(self):
         super().__init__(
-            "data",
-            {"frequency": "Hz"},
-            options=["qubit", "iteration", "resonator_type", "amplitude"],
+            name="data",
+            quantities={"frequency": "Hz"},
+            options=["qubit", "iteration"],
+
         )
 
-
 def _acquisition(
-    platform: AbstractPlatform, qubits: Qubits, params: ResonatorSpectroscopyParameters
-) -> ResonatorSpectroscopyData:
+    platform: AbstractPlatform,
+    qubits: Qubits,
+    params: QubitSpectroscopyParameters
+) -> QubitSpectroscopyData:
+   
     # reload instrument settings from runcard
     platform.reload_settings()
     # create a sequence of pulses for the experiment:
-    # MZ
+    # long drive probing pulse - MZ
 
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     sequence = PulseSequence()
     ro_pulses = {}
+    qd_pulses = {}
     for qubit in qubits:
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
-        ro_pulses[qubit].amplitude = params.amplitude
+        qd_pulses[qubit] = platform.create_qubit_drive_pulse(
+            qubit, start=0, duration=params.drive_duration
+        )
+        if params.drive_amplitude is not None:
+            qd_pulses[qubit].amplitude = params.drive_amplitude
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+            qubit, start=qd_pulses[qubit].finish
+        )
+        sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:
-    delta_frequency_range = np.arange(
-        -params.freq_width // 2, params.freq_width // 2, params.freq_step
-    )
+    delta_frequency_range = np.arange(-params.freq_width // 2, params.freq_width // 2, params.freq_step)
     sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
-        pulses=[ro_pulses[qubit] for qubit in qubits],
+        pulses=[qd_pulses[qubit] for qubit in qubits],
     )
 
-    data = ResonatorSpectroscopyData()
+    # create a DataUnits object to store the results,
+    # DataUnits stores by default MSR, phase, i, q
+    # additionally include qubit frequency
+    data = QubitSpectroscopyData()
 
     # repeat the experiment as many times as defined by software_averages
     for iteration in range(params.software_averages):
         results = platform.sweep(
-            sequence,
-            sweeper,
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
+            sequence, sweeper, nshots = params.nshots, relaxation_time = params.relaxation_time
         )
 
         # retrieve the results for every qubit
-        for qubit in qubits:
+        for qubit, ro_pulse in ro_pulses.items():
             # average msr, phase, i and q over the number of shots defined in the runcard
-            result = results[ro_pulses[qubit].serial]
+            result = results[ro_pulse.serial]
+            r = result.to_dict(average=False)
             # store the results
-            r = result.to_dict()
             r.update(
                 {
-                    "frequency[Hz]": delta_frequency_range + ro_pulses[qubit].frequency,
+                    "frequency[Hz]": delta_frequency_range + qd_pulses[qubit].frequency,
                     "qubit": len(delta_frequency_range) * [qubit],
                     "iteration": len(delta_frequency_range) * [iteration],
-                    "amplitude": len(delta_frequency_range)
-                    * [ro_pulses[qubit].amplitude],
                 }
             )
             data.add_data_from_dict(r)
-    # finally, save the remaining data
+
+        # finally, save the remaining data and fits
     return data
 
+def _fit (data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
+    results = lorentzian_fit(data)
+    freq = results[0]
+    pars = results[2]
+    return QubitSpectroscopyResults(freq, pars)
 
-def _fit(data: ResonatorSpectroscopyData) -> ResonatorSpectroscopyResults:
-    print("cioa ",lorentzian_fit(data))
-    return ResonatorSpectroscopyResults(*lorentzian_fit(data))
-
-
-def _plot(data: ResonatorSpectroscopyData, fit: ResonatorSpectroscopyResults, qubit):
+def _plot(data: QubitSpectroscopyData, fit: QubitSpectroscopyResults, qubit):
     figures = []
     fig = make_subplots(
         rows=1,
@@ -224,5 +228,4 @@ def _plot(data: ResonatorSpectroscopyData, fit: ResonatorSpectroscopyResults, qu
 
     return figures, fitting_report
 
-
-resonator_spectroscopy = Routine(_acquisition, _fit, _plot)
+qubit_spectroscopy = Routine(_acquisition, _fit, _plot)
