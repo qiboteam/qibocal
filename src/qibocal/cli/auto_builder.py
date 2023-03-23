@@ -11,6 +11,7 @@ from .builders import ActionBuilder, load_yaml
 
 META = "meta.yml"
 RUNCARD = "runcard.yml"
+UPDATED_PLATFORM = "new_platform.yml"
 
 
 class AutoCalibrationBuilder(ActionBuilder):
@@ -45,6 +46,9 @@ class AutoCalibrationBuilder(ActionBuilder):
             yaml.dump(meta, file)
 
         create_autocalibration_report(self.folder, self.executor.history)
+
+    def dump_platform_runcard(self):
+        self.platform.dump(self.folder / UPDATED_PLATFORM)
 
 
 class AutoCalibrationReportBuilder:

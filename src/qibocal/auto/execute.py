@@ -128,5 +128,5 @@ class Executor:
             output = task.run(self.platform, self.qubits, self.folder)
             completed = Completed(task, output, Normal())
             self.history.push(completed)
-
             self.head = self.next()
+            self.platform.update(completed.res.update)

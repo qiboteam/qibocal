@@ -86,6 +86,7 @@ def autocalibration(runcard, folder, force=None):
 
     builder = AutoCalibrationBuilder(runcard, folder, force)
     builder.run()
+    builder.dump_platform_runcard()
     builder.dump_report()
 
 
