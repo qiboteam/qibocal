@@ -90,6 +90,8 @@ def _acquisition(
                     "frequency[Hz]": delta_frequency_range + ro_pulses[qubit].frequency,
                     "qubit": len(delta_frequency_range) * [qubit],
                     "iteration": len(delta_frequency_range) * [iteration],
+                    "resonator_type": len(delta_frequency_range)
+                    * [platform.resonator_type],
                     "amplitude": len(delta_frequency_range)
                     * [ro_pulses[qubit].amplitude],
                 }
