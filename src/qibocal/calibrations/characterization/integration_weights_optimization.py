@@ -46,8 +46,6 @@ def integration_weights_optimization(
     state0_sequence = PulseSequence()
     state1_sequence = PulseSequence()
 
-    # TODO: sequence state0_sequence2 con 2n RX para debuggar los pulsos (pi-pulse-train_routine).
-
     RX_pulses = {}
     ro_pulses = {}
     for qubit in qubits:
@@ -106,26 +104,20 @@ def integration_weights_optimization(
 
     # np.conj to account the two phase-space evolutions of the readout state
     samples_kernel = np.conj(state1 - state0)
+    # Remove nans
+    samples_kernel = samples_kernel[~np.isnan(samples_kernel)]
 
     samples_kernel_origin = (
         samples_kernel - samples_kernel.real.min() - 1j * samples_kernel.imag.min()
     )  # origin offsetted
-    samples_kernel / np.abs(samples_kernel).max()
-
-    samples_kernel.real = samples_kernel.real / abs(max(samples_kernel))
-    samples_kernel.imag = samples_kernel.imag / abs(max(samples_kernel))
-
-    samples_kernel = samples_kernel
-
-    # Remove nans
-    samples_kernel.real = (samples_kernel.real + max(samples_kernel.real)) / 2
-    samples_kernel.imag = (samples_kernel.imag + max(samples_kernel.imag)) / 2
-    samples_kernel = samples_kernel[~np.isnan(samples_kernel)]
+    samples_kernel_normalized = (
+        samples_kernel_origin / np.abs(samples_kernel_origin).max()
+    )  # normalized
 
     r = {}
     r.update(
         {
-            "weights[dimensionless]": abs(samples_kernel),
+            "weights[dimensionless]": abs(samples_kernel_normalized),
             "qubit": [ro_pulse.qubit] * number_of_samples,
             "sample": np.arange(number_of_samples),
             "state": ["1-0"] * number_of_samples,
