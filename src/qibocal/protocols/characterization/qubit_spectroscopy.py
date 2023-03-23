@@ -96,6 +96,8 @@ def _acquisition(
                     "frequency[Hz]": delta_frequency_range + qd_pulses[qubit].frequency,
                     "qubit": len(delta_frequency_range) * [qubit],
                     "iteration": len(delta_frequency_range) * [iteration],
+                    "amplitude": len(delta_frequency_range)
+                    * [ro_pulses[qubit].amplitude],
                 }
             )
             data.add_data_from_dict(r)
@@ -211,9 +213,9 @@ def _plot(data: QubitSpectroscopyData, fit: QubitSpectroscopyResults, qubit):
         fitting_report = (
             fitting_report
             + f"q{qubit}/r{report_n} | frequency: {fit.frequency[qubit]*1e9:,.0f} Hz<br>"
-            + f"q{qubit}/r{report_n} | amplitude: {fit.amplitude[qubit][0]} <br>"
+            + f"q{qubit}/r{report_n} | amplitude: {fit.amplitude[qubit]} <br>"
         )
-
+        
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting

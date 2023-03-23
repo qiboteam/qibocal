@@ -19,7 +19,7 @@ def lorentzian_fit(data: DataUnits) -> list:
     frequency = {}
     fitted_parameters = {}
 
-    for qubit in qubits:
+    for i, qubit in enumerate(qubits):
         qubit_data = (
             data.df[data.df["qubit"] == qubit]
             .drop(columns=["qubit", "iteration", "resonator_type", "amplitude"])
@@ -79,6 +79,7 @@ def lorentzian_fit(data: DataUnits) -> list:
             log.warning("lorentzian_fit: the fitting was not successful")
 
         frequency[qubit] = f0
-        amplitudes[qubit] = amplitude
+        amplitudes[qubit] = amplitude[i]
         fitted_parameters[qubit] = fit_res.best_values
+    
     return [frequency, amplitudes, fitted_parameters]
