@@ -314,7 +314,7 @@ def qubit_spectroscopy_flux(
     bias_max = {}
 
     if fluxlines == "qubits":
-        fluxlines = qubits
+        fluxlines = qubits.keys()
 
     for fluxline in fluxlines:
         # TODO: check if this is correct

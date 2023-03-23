@@ -1,4 +1,5 @@
 import re
+import statistics
 
 import numpy as np
 from scipy.special import mathieu_a, mathieu_b
@@ -131,7 +132,7 @@ def freq_r_mathieu(x, p0, p1, p2, p3, p4, p5, p6, p7=0.499):
 
 
 def find_min_msr_att(data, resonator_type):
-    # Encuentra los valores mínimos de z para cada nivel de atenuación y sus ubicaciones (x, y)
+    # Find the minimum values of z for each level of attenuation and their locations (x, y).
     x = data["frequency"]
     y = data["attenuation"]
     z = data["MSR"]
@@ -152,41 +153,30 @@ def find_min_msr_att(data, resonator_type):
 
 
 def split_list_by_threshold(min_points, threshold):
-    less_than_threshold = [
-        point for point in min_points if point[0] < threshold
-    ]  # Filtramos los puntos cuyo valor X es menor que el threshold
-    greater_than_threshold = [
-        point for point in min_points if point[0] >= threshold
-    ]  # Filtramos los puntos cuyo valor X es mayor o igual que el threshold
+    less_than_threshold = [point for point in min_points if point[0] < threshold]
+    greater_than_threshold = [point for point in min_points if point[0] >= threshold]
     return less_than_threshold, greater_than_threshold
 
 
-def get_max_freq(distribution_points):
-    import statistics
-
+def get_max_freq(distribution_points, middle_point):
     freqs = [point[0] for point in distribution_points]
     max_freq = statistics.mode(freqs)
     return max_freq
 
 
 def get_points_with_max_freq(min_points, max_freq):
-    # Filtra la lista de puntos donde X es igual a max_freq
     matching_points = [point for point in min_points if point[0] == max_freq]
-
-    # Si hay puntos que coinciden exactamente con max_freq, devuelve el punto con el valor Y más alto
     if matching_points:
-        return max(matching_points, key=lambda point: point[1])
-
-    # Si no hay coincidencias exactas, encuentra el valor X más cercano a max_freq
+        return max(matching_points, key=lambda point: point[1]), min(
+            matching_points, key=lambda point: point[1]
+        )
     x_values = [point[0] for point in min_points]
     closest_idx = np.argmin(np.abs(np.array(x_values) - max_freq))
     closest_point = min_points[closest_idx]
-
-    # Filtra la lista de puntos donde X es igual al valor X más cercano encontrado
     matching_points = [point for point in min_points if point[0] == closest_point[0]]
-
-    # Devuelve el punto con el valor Y más alto de los que coinciden con el valor X más cercano
-    return max(matching_points, key=lambda point: point[1])
+    return max(matching_points, key=lambda point: point[1]), min(
+        matching_points, key=lambda point: point[1]
+    )
 
 
 def norm(x_mags):

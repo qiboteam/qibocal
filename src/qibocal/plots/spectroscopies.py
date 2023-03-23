@@ -184,7 +184,7 @@ def frequency_msr_phase(folder, routine, qubit, format):
 # Punchout
 def frequency_attenuation_msr_phase(folder, routine, qubit, format):
     figures = []
-    fitting_report = "No fitting data"
+    fitting_report = ""
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
@@ -200,7 +200,6 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
         ),
     )
 
-    fitting_report = ""
     report_n = 0
     for subfolder in subfolders:
         try:
@@ -219,12 +218,16 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
         except:
             data_fit = Data(
                 quantities=[
-                    "freq@lp",
-                    "att@lp",
-                    "freq@hp",
-                    "att@hp" "qubit",
+                    "freq_lp",
+                    "att_lp_max_att",
+                    "att_lp_min_att",
+                    "freq_hp",
+                    "att_hp_max_att",
+                    "att_hp_min_att",
+                    "qubit",
                 ]
             )
+            fitting_report = "No fitting data"
 
         iterations = data.df["iteration"].unique()
         frequencies = data.df["frequency"].unique()
@@ -241,9 +244,6 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
         normalised_data = averaged_data.groupby(["attenuation"], as_index=False)[
             ["MSR"]
         ].transform(norm)
-
-        # Add fitting trace
-        params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(orient="records")[0]
 
         fig.add_trace(
             go.Heatmap(
@@ -269,27 +269,54 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
             row=1 + report_n,
             col=2,
         )
+
+        if len(data) > 0 and (qubit in data_fit.df["qubit"].values):
+            # Add fitting trace
+            params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(
+                orient="records"
+            )[0]
+            fig.add_trace(
+                go.Scatter(
+                    x=[
+                        params["freq_hp"],
+                        params["freq_hp"],
+                        params["freq_lp"],
+                        params["freq_lp"],
+                    ],
+                    y=[
+                        params["att_hp_max_att"],
+                        params["att_hp_min_att"],
+                        params["att_lp_max_att"],
+                        params["att_lp_min_att"],
+                    ],
+                    mode="markers",
+                    marker=dict(
+                        size=8,
+                        color="gray",
+                        symbol="circle",
+                    ),
+                )
+            )
+
+            title_text = ""
+            title_text += f"q{qubit}/r{report_n} | Freq@Lp: {params['freq_lp']} Hz.<br>"
+            title_text += f"q{qubit}/r{report_n} | Attenuation@Lp Range: {params['att_lp_max_att']} - {params['att_lp_min_att']} db.<br>"
+            title_text += f"q{qubit}/r{report_n} | Freq@Hp: {params['freq_hp']} Hz.<br>"
+            title_text += f"q{qubit}/r{report_n} | Attenuation@Hp: {params['att_hp_max_att']} - {params['att_hp_min_att']} db.<br>"
+            fitting_report = fitting_report + title_text
+
         fig.update_xaxes(
             title_text=f"q{qubit}/r{report_n}: Frequency (Hz)", row=1 + report_n, col=2
         )
         fig.update_yaxes(title_text="Attenuation (dB)", row=1 + report_n, col=2)
+
         fig.update_layout(
             showlegend=False,
             uirevision="0",  # ``uirevision`` allows zooming while live plotting
         )
 
-        title_text = ""
-        title_text += f"q{qubit}/r{report_n} | Freq@Lp: {params['freq_lp']} Hz.<br>"
-        title_text += (
-            f"q{qubit}/r{report_n} | Attenuation@Lp: {params['att_hp']} db.<br>"
-        )
-        title_text += f"q{qubit}/r{report_n} | Freq@Hp: {params['freq_lp']} Hz.<br>"
-        title_text += (
-            f"q{qubit}/r{report_n} | Attenuation@Hp: {params['att_lp']} db.<br>"
-        )
-        fitting_report = fitting_report + title_text
-
         report_n += 1
+
     if report_n > 1:
         fig.update_traces(showscale=False)
 

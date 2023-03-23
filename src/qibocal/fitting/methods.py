@@ -5,7 +5,6 @@ from functools import partial
 import lmfit
 import numpy as np
 from scipy.optimize import curve_fit
-from scipy.signal import savgol_filter
 
 from qibocal.config import log
 from qibocal.data import Data
@@ -1100,7 +1099,7 @@ def punchout_fit(data, qubits, resonator_type, labels):
         labels (list of str): list containing the lables of the quantities computed by this fitting method.
 
     Returns:
-        data_fit (Data): Data file with labels and fit parameters.
+        data_fit (Data): Data file with labels and fit parameters (frequency at low and high power, attenuation range for low and highg power)
     """
 
     data_fit = Data(
@@ -1110,6 +1109,8 @@ def punchout_fit(data, qubits, resonator_type, labels):
             labels[1],
             labels[2],
             labels[3],
+            labels[4],
+            labels[5],
             "qubit",
         ],
     )
@@ -1127,69 +1128,23 @@ def punchout_fit(data, qubits, resonator_type, labels):
             ].transform(norm)
 
             averaged_data_updated = averaged_data.copy()
-            averaged_data_updated["MSR"] = normalised_data["MSR"].apply(
-                lambda x: x.magnitude
-            )
-            averaged_data_updated = averaged_data_updated.applymap(
-                lambda x: x.to_base_units().magnitude if hasattr(x, "magnitude") else x
-            )
+            averaged_data_updated.update(normalised_data["MSR"])
 
             min_points = find_min_msr_att(averaged_data_updated, resonator_type)
             x = [point[0] for point in min_points]
             y = [point[1] for point in min_points]
 
-            window_length = len(x)
-            if window_length % 2 == 0:
-                window_length -= 1
-
-            smoothed_min_points_x = savgol_filter(
-                x,
-                window_length=window_length,
-                polyorder=3,
-            )
-
-            smoothed_min_points_y = savgol_filter(
-                y,
-                window_length=window_length,
-                polyorder=3,
-            )
-
-            log.warning("sm x\n%s", smoothed_min_points_x)
-            log.warning("sm y\n%s", smoothed_min_points_y)
-
-            max_point_x_idx = np.argmax(smoothed_min_points_x)
-            min_point_x_idx = np.argmin(smoothed_min_points_x)
-
-            log.warning("max point X idx\n%s", max_point_x_idx)
-            log.warning("mix point X idx\n%s", min_point_x_idx)
-
-            max_x = smoothed_min_points_x[max_point_x_idx]
-            max_y = smoothed_min_points_y[max_point_x_idx]
-            min_x = smoothed_min_points_x[min_point_x_idx]
-            min_y = smoothed_min_points_y[min_point_x_idx]
-
-            log.warning("max X\n%s", max_x)
-            log.warning("mix X\n%s", min_x)
-            log.warning("max Y\n%s", max_y)
-            log.warning("mix Y\n%s", min_y)
-
+            max_x = x[np.argmax(x)]
+            min_x = x[np.argmin(x)]
             middle_x = (max_x + min_x) / 2
-            middle_y = (max_y + min_y) / 2
-
-            log.warning("middle X\n%s", middle_x)
-            log.warning("middle Y\n%s", middle_y)
+            middle_y = abs(y[np.argmax(y)] - y[np.argmin(y)]) / 2
 
             hp_points, lp_points = split_list_by_threshold(min_points, middle_x)
+            freq_hp = get_max_freq(hp_points, middle_x)
+            freq_lp = get_max_freq(lp_points, middle_x)
 
-            freq_hp = get_max_freq(hp_points)
-            freq_lp = get_max_freq(lp_points)
-
-            point_hp = get_points_with_max_freq(min_points, freq_hp)
-            point_lp = get_points_with_max_freq(min_points, freq_lp)
-
-            log.warning("point hp\n%s", point_hp)
-            log.warning("point lp\n%s", point_lp)
-
+            point_hp_max, point_hp_min = get_points_with_max_freq(min_points, freq_hp)
+            point_lp_max, point_lp_min = get_points_with_max_freq(min_points, freq_lp)
         except:
             log.warning("Punchout_fit: the fitting was not succesful")
             data_fit.add({key: 0 for key in data_fit.df.columns})
@@ -1197,10 +1152,12 @@ def punchout_fit(data, qubits, resonator_type, labels):
 
         data_fit.add(
             {
-                labels[0]: point_hp[0],
-                labels[1]: point_hp[1],
-                labels[2]: point_lp[0],
-                labels[3]: point_lp[1],
+                labels[0]: point_lp_max[0],
+                labels[1]: point_lp_max[1],
+                labels[2]: point_lp_min[1],
+                labels[3]: point_hp_max[0],
+                labels[4]: point_hp_max[1],
+                labels[5]: point_hp_min[1],
                 "qubit": qubit,
             }
         )

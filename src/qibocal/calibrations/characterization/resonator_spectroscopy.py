@@ -334,7 +334,14 @@ def resonator_punchout(
                         data=data,
                         qubits=qubits,
                         resonator_type=platform.resonator_type,
-                        labels=["freq_lp", "att_lp", "freq_hp", "att_hp"],
+                        labels=[
+                            "freq_lp",
+                            "att_lp_max_att",
+                            "att_lp_min_att",
+                            "freq_hp",
+                            "att_hp_max_att",
+                            "att_hp_min_att",
+                        ],
                     )
 
                 # reconfigure the instrument based on the new parameters
