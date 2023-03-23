@@ -79,9 +79,6 @@ def _acquisition(
             - **qubit**: The qubit being tested
     """
 
-    # reload instrument settings from runcard
-    platform.reload_settings()
-
     # create a sequence of pulses for the experiment
     sequence = PulseSequence()
     qd_pulses = {}
