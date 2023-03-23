@@ -13,7 +13,8 @@ from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.config import log
 from qibocal.data import DataUnits
 from qibocal.plots.utils import get_color
-from .utils import lorentzian_fit, lorentzian
+
+from .utils import lorentzian, lorentzian_fit
 
 
 @dataclass

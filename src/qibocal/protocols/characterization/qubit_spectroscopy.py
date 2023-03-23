@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
@@ -11,7 +11,9 @@ from qibolab.sweeper import Parameter, Sweeper
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
 from qibocal.plots.utils import get_color
-from .utils import lorentzian_fit, lorentzian
+
+from .utils import lorentzian, lorentzian_fit
+
 
 @dataclass
 class QubitSpectroscopyParameters(Parameters):
@@ -22,6 +24,7 @@ class QubitSpectroscopyParameters(Parameters):
     nshots: int = 1024
     relaxation_time: int = 50
     software_averages: int = 1
+
 
 @dataclass
 class QubitSpectroscopyResults(Results):
@@ -36,15 +39,12 @@ class QubitSpectroscopyData(DataUnits):
             name="data",
             quantities={"frequency": "Hz"},
             options=["qubit", "iteration", "resonator_type", "amplitude"],
-
         )
 
+
 def _acquisition(
-    platform: AbstractPlatform,
-    qubits: Qubits,
-    params: QubitSpectroscopyParameters
+    platform: AbstractPlatform, qubits: Qubits, params: QubitSpectroscopyParameters
 ) -> QubitSpectroscopyData:
-   
     # reload instrument settings from runcard
     platform.reload_settings()
     # create a sequence of pulses for the experiment:
@@ -67,7 +67,9 @@ def _acquisition(
         sequence.add(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:
-    delta_frequency_range = np.arange(-params.freq_width // 2, params.freq_width // 2, params.freq_step)
+    delta_frequency_range = np.arange(
+        -params.freq_width // 2, params.freq_width // 2, params.freq_step
+    )
     sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
@@ -82,7 +84,10 @@ def _acquisition(
     # repeat the experiment as many times as defined by software_averages
     for iteration in range(params.software_averages):
         results = platform.sweep(
-            sequence, sweeper, nshots = params.nshots, relaxation_time = params.relaxation_time
+            sequence,
+            sweeper,
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
         )
 
         # retrieve the results for every qubit
@@ -105,8 +110,10 @@ def _acquisition(
         # finally, save the remaining data and fits
     return data
 
-def _fit (data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
+
+def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
     return QubitSpectroscopyResults(*lorentzian_fit(data))
+
 
 def _plot(data: QubitSpectroscopyData, fit: QubitSpectroscopyResults, qubit):
     figures = []
@@ -215,7 +222,7 @@ def _plot(data: QubitSpectroscopyData, fit: QubitSpectroscopyResults, qubit):
             + f"q{qubit}/r{report_n} | frequency: {fit.frequency[qubit]*1e9:,.0f} Hz<br>"
             + f"q{qubit}/r{report_n} | amplitude: {fit.amplitude[qubit]} <br>"
         )
-        
+
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
@@ -227,5 +234,6 @@ def _plot(data: QubitSpectroscopyData, fit: QubitSpectroscopyResults, qubit):
     figures.append(fig)
 
     return figures, fitting_report
+
 
 qubit_spectroscopy = Routine(_acquisition, _fit, _plot)
