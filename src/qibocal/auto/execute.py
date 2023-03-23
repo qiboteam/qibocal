@@ -130,4 +130,3 @@ class Executor:
             self.history.push(completed)
             self.head = self.next()
             self.platform.update(completed.res.update)
-            print(self.platform.native_single_qubit_gates[0]["MZ"]["frequency"])

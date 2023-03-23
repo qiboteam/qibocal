@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 
 import numpy as np
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
@@ -108,8 +110,8 @@ def _acquisition(
             data.add_data_from_dict(r)
 
         # save data
-        return data
-        # TODO: calculate and save fit
+    return data
+    # TODO: calculate and save fit
 
 
 def _fit(data):
@@ -117,7 +119,77 @@ def _fit(data):
 
 
 def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
-    return [], ""
+    figures = []
+    fitting_report = "No fitting data"
+
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.2,
+        subplot_titles=(
+            "Normalised MSR",
+            "phase (rad)",
+        ),
+    )
+
+    report_n = 0
+
+    data.df = data.df[data.df["qubit"] == qubit]
+
+    iterations = data.df["iteration"].unique()
+    frequencies = data.df["frequency"].pint.to("Hz").pint.magnitude.unique()
+    amplitudes = data.df["amplitude"].pint.to("dimensionless").pint.magnitude.unique()
+    averaged_data = (
+        data.df.drop(columns=["qubit", "iteration"])
+        .groupby(["frequency", "amplitude"], as_index=False)
+        .mean()
+    )
+
+    def norm(x):
+        x_mags = x.pint.to("V").pint.magnitude
+        return (x_mags - np.min(x_mags)) / (np.max(x_mags) - np.min(x_mags))
+
+    normalised_data = averaged_data.groupby(["amplitude"], as_index=False)[
+        ["MSR"]
+    ].transform(norm)
+
+    fig.add_trace(
+        go.Heatmap(
+            x=averaged_data["frequency"].pint.to("Hz").pint.magnitude,
+            y=averaged_data["amplitude"].pint.to("dimensionless").pint.magnitude,
+            z=normalised_data["MSR"],
+            colorbar_x=0.46,
+        ),
+        row=1 + report_n,
+        col=1,
+    )
+    fig.update_xaxes(
+        title_text=f"q{qubit}/r{report_n}: Frequency (Hz)", row=1 + report_n, col=1
+    )
+    fig.update_yaxes(title_text="Amplitude", row=1 + report_n, col=1)
+    fig.add_trace(
+        go.Heatmap(
+            x=averaged_data["frequency"].pint.to("Hz").pint.magnitude,
+            y=averaged_data["amplitude"].pint.to("dimensionless").pint.magnitude,
+            z=averaged_data["phase"].pint.to("rad").pint.magnitude,
+            colorbar_x=1.01,
+        ),
+        row=1 + report_n,
+        col=2,
+    )
+    fig.update_xaxes(
+        title_text=f"q{qubit}/r{report_n}: Frequency (Hz)", row=1 + report_n, col=2
+    )
+    fig.update_yaxes(title_text="Amplitude", row=1 + report_n, col=2)
+    fig.update_layout(
+        showlegend=False,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+    )
+
+    figures.append(fig)
+
+    return figures, fitting_report
 
 
 resonator_punchout = Routine(_acquisition, _fit, _plot)
