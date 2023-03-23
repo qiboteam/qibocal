@@ -80,7 +80,7 @@ def lorentzian_fit(data: DataUnits) -> list:
         frequency[qubit] = f0
         data_df = data.df
         amplitude = data_df[data_df.qubit == qubit]["amplitude"].unique()
-        amplitudes[qubit] = amplitude
+        amplitudes[qubit] = amplitude[0]
         fitted_parameters[qubit] = fit_res.best_values
     
     return [frequency, amplitudes, fitted_parameters]
