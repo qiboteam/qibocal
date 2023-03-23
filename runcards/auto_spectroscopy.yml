@@ -5,6 +5,7 @@ qubits: [0, 1, 2 ,3 ,4]
 format: csv
 
 actions:
+<<<<<<< HEAD
 
  - id: qubit_spectroscopy
    priority: 0
@@ -29,19 +30,32 @@ actions:
   #     nshots: 1024
   #     relaxation_time: 0
   #     software_averages : 1
+=======
+  - id: resonator_spectroscopy
+    priority: 0
+    operation: resonator_spectroscopy
+    next: resonator_punchout
+    parameters:
+      freq_width: 30_000_000
+      freq_step: 1_000_000
+      amplitude: 0.01
+      nshots: 1024
+      relaxation_time: 0
+      software_averages : 1
+>>>>>>> split_data_fit
 
-  # - id: resonator_punchout
-  #   priority: 10
-  #   operation: resonator_punchout
-  #   parameters:
-  #     freq_width: 10_000_000
-  #     freq_step: 100_000
-  #     min_amp_factor: 0.01
-  #     max_amp_factor: 0.9
-  #     step_amp_factor: 0.02
-  #     nshots: 1000
-  #     relaxation_time: 0
-  #     software_averages: 1
+  - id: resonator_punchout
+    priority: 10
+    operation: resonator_punchout
+    parameters:
+      freq_width: 1_000_000
+      freq_step: 100_000
+      min_amp_factor: 0.01
+      max_amp_factor: 0.9
+      step_amp_factor: 0.02
+      nshots: 1000
+      relaxation_time: 0
+      software_averages: 1
 
   #   main: first
   # - id: first

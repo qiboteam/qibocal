@@ -67,13 +67,11 @@
             <div class="collapse show" id="actions-collapse">
               {% for routine, iteration in report.history %}
               <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
-                <li><a href="#{{ routine }}" class="link-dark d-inline-flex text-decoration-none rounded">{{
-                    report.routine_name(routine, iteration) }}</a></li>
-                {% for header, method in routine.plots %}
+                <!-- <li><a href="#{{ routine }}" class="link-dark d-inline-flex text-decoration-none rounded">{{
+                    report.routine_name(routine, iteration) }}</a></li> -->
                 <ul class="btn-toggle-nav list-unstyled fw-normal pb-1 small">
                   <li><a class="link-dark d-inline-flex text-decoration-none rounded"
-                      href="#{{ routine }}-{{ method }}">- {{ header }}</a></li>
-                {% endfor %}
+                      href="#{{ routine }}-{{ iteration }}">  {{ report.routine_name(routine, iteration) }}</a></li>
                 </ul>
               </ul>
               {% endfor %}
@@ -197,9 +195,6 @@
       </div>
       {% endfor %}
 
-      <p>
-        Please select a report from the <mark>Saved reports</mark> in the sidebar .
-      </p>
       {% endif %}
     </main>
   </div>
