@@ -112,9 +112,9 @@ def spin_echo_time_msr(folder, routine, qubit, format):
                     x=waitrange,
                     y=exp(
                         waitrange,
-                        data_fit.df["popt0"][0],
-                        data_fit.df["popt1"][0],
-                        data_fit.df["popt2"][0],
+                        float(data_fit.df["popt0"]),
+                        float(data_fit.df["popt1"]),
+                        float(data_fit.df["popt2"]),
                     ),
                     name=f"q{qubit}/r{report_n} Fit",
                     line=go.scatter.Line(dash="dot"),

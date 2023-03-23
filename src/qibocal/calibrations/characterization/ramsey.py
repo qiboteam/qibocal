@@ -92,7 +92,7 @@ def ramsey_frequency_detuned(
     # DataUnits stores by default MSR, phase, i, q
     # additionally include wait time and t_max
     data = DataUnits(
-        name=f"data",
+        name="data",
         quantities={"wait": "ns", "t_max": "ns"},
         options=["qubit", "iteration"],
     )
@@ -178,12 +178,11 @@ def ramsey_frequency_detuned(
                     "T2",
                 ],
             )
-
         stop = False
         for qubit in qubits:
-            new_t2 = float(data_fit.df[data_fit.df["qubit"] == qubit]["T2"][0])
+            new_t2 = float(data_fit.df[data_fit.df["qubit"] == qubit]["T2"])
             corrected_qubit_freq = int(
-                data_fit.df[data_fit.df["qubit"] == qubit]["drive_frequency"][0]
+                data_fit.df[data_fit.df["qubit"] == qubit]["drive_frequency"]
             )
 
             if new_t2 > qubits[qubit].T2 and len(delay_between_pulses_end) > 1:
