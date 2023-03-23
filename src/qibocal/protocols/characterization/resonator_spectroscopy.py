@@ -211,7 +211,7 @@ def _plot(data: ResonatorSpectroscopyData, fit: ResonatorSpectroscopyResults, qu
         fitting_report = (
             fitting_report
             + f"q{qubit}/r{report_n} | frequency: {fit.frequency[qubit]*1e9:,.0f} Hz<br>"
-            + f"q{qubit}/r{report_n} | amplitude: {fit.amplitude[qubit][0]} <br>"
+            + f"q{qubit}/r{report_n} | amplitude: {fit.amplitude[qubit]} <br>"
         )
 
     fig.update_layout(
