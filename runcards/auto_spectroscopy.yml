@@ -18,7 +18,7 @@ actions:
       nshots: 1000
       relaxation_time: 0
       software_averages: 1
-    
+
   - id: resonator_spectroscopy
     priority: 10
     operation: resonator_spectroscopy

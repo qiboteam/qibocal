@@ -1,15 +1,17 @@
-import numpy as np
 import lmfit
+import numpy as np
 
 from ...auto.operation import Results
-from ...data import DataUnits
 from ...config import log
+from ...data import DataUnits
+
 
 def lorentzian(frequency, amplitude, center, sigma, offset):
     # http://openafox.com/science/peak-function-derivations.html
     return (amplitude / np.pi) * (
         sigma / ((frequency - center) ** 2 + sigma**2)
     ) + offset
+
 
 def lorentzian_fit(data: DataUnits) -> list:
     qubits = data.df["qubit"].unique()
@@ -82,5 +84,5 @@ def lorentzian_fit(data: DataUnits) -> list:
         amplitude = data_df[data_df.qubit == qubit]["amplitude"].unique()
         amplitudes[qubit] = amplitude[0]
         fitted_parameters[qubit] = fit_res.best_values
-    
+
     return [frequency, amplitudes, fitted_parameters]
