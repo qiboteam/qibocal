@@ -11,7 +11,7 @@ from qibolab.sweeper import Parameter, Sweeper
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
 from qibocal.plots.utils import get_color
-from .utils import lorentzian_fit
+from .utils import lorentzian_fit, lorentzian
 
 @dataclass
 class QubitSpectroscopyParameters(Parameters):
@@ -26,6 +26,7 @@ class QubitSpectroscopyParameters(Parameters):
 @dataclass
 class QubitSpectroscopyResults(Results):
     frequency: Dict[List[Tuple], str] = field(metadata=dict(update="drive_frequency"))
+    amplitude: Dict[List[Tuple], str] = field(metadata=dict(update="drive_amplitude"))
     fitted_parameters: Dict[List[Tuple], List]
 
 
@@ -34,7 +35,7 @@ class QubitSpectroscopyData(DataUnits):
         super().__init__(
             name="data",
             quantities={"frequency": "Hz"},
-            options=["qubit", "iteration"],
+            options=["qubit", "iteration", "resonator_type", "amplitude"],
 
         )
 
@@ -88,7 +89,7 @@ def _acquisition(
         for qubit, ro_pulse in ro_pulses.items():
             # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulse.serial]
-            r = result.to_dict(average=False)
+            r = result.to_dict()
             # store the results
             r.update(
                 {
@@ -103,10 +104,7 @@ def _acquisition(
     return data
 
 def _fit (data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
-    results = lorentzian_fit(data)
-    freq = results[0]
-    pars = results[2]
-    return QubitSpectroscopyResults(freq, pars)
+    return QubitSpectroscopyResults(*lorentzian_fit(data))
 
 def _plot(data: QubitSpectroscopyData, fit: QubitSpectroscopyResults, qubit):
     figures = []

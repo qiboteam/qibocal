@@ -38,7 +38,7 @@ class ResonatorSpectroscopyData(DataUnits):
         super().__init__(
             "data",
             {"frequency": "Hz"},
-            options=["qubit", "iteration", "resonator_type", "amplitude"],
+            options=["qubit", "iteration", "resonator_type"],
         )
 
 
