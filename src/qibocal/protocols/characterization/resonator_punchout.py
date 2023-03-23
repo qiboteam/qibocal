@@ -41,9 +41,6 @@ class ResonatorPunchoutData(DataUnits):
 def _acquisition(
     platform: AbstractPlatform, qubits: Qubits, params: ResonatorPunchoutParameters
 ) -> ResonatorPunchoutData:
-    # reload instrument settings from runcard
-    platform.reload_settings()
-
     # create a sequence of pulses for the experiment:
     # MZ
 

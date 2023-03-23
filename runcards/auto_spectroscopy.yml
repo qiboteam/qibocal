@@ -7,9 +7,9 @@ format: csv
 actions:
 
   - id: qubit_spectroscopy
-    priority: 0
+    priority: 10
     operation: qubit_spectroscopy
-    next: resonator_spectroscopy
+    next: rabi
     parameters:
       drive_amplitude: 0.005
       drive_duration: 2000
@@ -20,7 +20,7 @@ actions:
       software_averages: 1
 
   - id: resonator_spectroscopy
-    priority: 10
+    priority: 0
     operation: resonator_spectroscopy
     next: resonator_punchout
     parameters:
@@ -34,6 +34,7 @@ actions:
   - id: resonator_punchout
     priority: 20
     operation: resonator_punchout
+    next: qubit_spectroscopy
     parameters:
       freq_width: 1_000_000
       freq_step: 100_000
@@ -43,6 +44,17 @@ actions:
       nshots: 1000
       relaxation_time: 0
       software_averages: 1
+
+  - id: rabi
+    priority: 10
+    operation: rabi_amplitude
+    parameters:
+      pulse_amplitude_start: 0.01
+      pulse_amplitude_end: 2.0
+      pulse_amplitude_step: 0.01
+      software_averages: 4
+      relaxation_time: 0
+      nshots: 1000
 
   #   main: first
   # - id: first

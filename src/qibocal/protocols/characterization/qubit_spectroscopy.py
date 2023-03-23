@@ -42,8 +42,6 @@ class QubitSpectroscopyData(DataUnits):
 def _acquisition(
     platform: AbstractPlatform, qubits: Qubits, params: QubitSpectroscopyParameters
 ) -> QubitSpectroscopyData:
-    # reload instrument settings from runcard
-    platform.reload_settings()
     # create a sequence of pulses for the experiment:
     # long drive probing pulse - MZ
 
