@@ -56,11 +56,12 @@ def pi_pulse_train_MSR(
         for qubit in qubits:
             if n > 0:
                 RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
+                sequence.add(RX_pulses[qubit])
                 for i in range(1, n):
                     RX_pulses[qubit] = platform.create_RX_pulse(
                         qubit, start=RX_pulses[qubit].duration * i
                     )
-                sequence.add(RX_pulses[qubit])
+                    sequence.add(RX_pulses[qubit])
 
                 ro_pulses[qubit] = platform.create_qubit_readout_pulse(
                     qubit, start=RX_pulses[qubit].finish
