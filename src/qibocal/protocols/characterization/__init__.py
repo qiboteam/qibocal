@@ -1,5 +1,6 @@
 from enum import Enum
 
+from .classification import single_shot_classification
 from .qubit_spectroscopy import qubit_spectroscopy
 from .rabi import rabi_amplitude
 from .ramsey import ramsey
@@ -15,3 +16,4 @@ class Operation(Enum):
     rabi_amplitude = rabi_amplitude
     ramsey = ramsey
     t1 = t1
+    single_shot_classification = single_shot_classification
