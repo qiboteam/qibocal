@@ -56,15 +56,24 @@ actions:
   #     relaxation_time: 0
   #     nshots: 1000
 
-- id: ramsey
+# - id: ramsey
+#   priority: 0
+#   operation: ramsey
+#   parameters:
+#     delay_between_pulses_start: 16 # must be a multiple of 4 incl 0
+#     delay_between_pulses_end: 100
+#     delay_between_pulses_step: 4 # must be a multiple of 4
+#     software_averages: 1
+#     points: 10
+
+- id: t1
   priority: 0
-  operation: ramsey
+  operation: t1
   parameters:
-    delay_between_pulses_start: 16 # must be a multiple of 4 incl 0
-    delay_between_pulses_end: 100
-    delay_between_pulses_step: 4 # must be a multiple of 4
+    delay_before_readout_start: 16
+    delay_before_readout_end: 500
+    delay_before_readout_step: 20
     software_averages: 1
-    points: 10
 
   #   main: first
   # - id: first

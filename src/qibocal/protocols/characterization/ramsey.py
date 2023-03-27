@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
@@ -160,7 +160,7 @@ def _fit(data: RamseyData):  # TODO: put Platform as input
     fitted_parameters = {}
 
     for qubit in qubits:
-        qubit_data_df = data.df[data.df["qubit"] == 0]
+        qubit_data_df = data.df[data.df["qubit"] == qubit]
         voltages = qubit_data_df["MSR"].pint.to("uV").pint.magnitude
         times = qubit_data_df["wait"].pint.to("ns").pint.magnitude
         qubit_freq = qubit_data_df["qubit_freqs"].pint.to("Hz").pint.magnitude.unique()
@@ -199,7 +199,7 @@ def _fit(data: RamseyData):  # TODO: put Platform as input
         except:
             log.warning("ramsey_fit: the fitting was not succesful")
             popt = [0] * 5
-            t2 = 0
+            t2 = 5.0
             corrected_qubit_frequency = int(qubit_freq)
             delta_phys = 0
 

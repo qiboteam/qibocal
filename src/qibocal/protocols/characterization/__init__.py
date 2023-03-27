@@ -7,6 +7,7 @@ from .rabi.length import rabi_length
 from .ramsey import ramsey
 from .resonator_punchout import resonator_punchout
 from .resonator_spectroscopy import resonator_spectroscopy
+from .t1 import t1
 
 
 class Operation(Enum):
@@ -16,4 +17,5 @@ class Operation(Enum):
     rabi_amplitude = rabi_amplitude
     rabi_length = rabi_length
     ramsey = ramsey
+    t1 = t1
     single_shot_classification = single_shot_classification
