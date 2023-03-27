@@ -14,4 +14,4 @@ class Operation(Enum):
     qubit_spectroscopy = qubit_spectroscopy
     rabi_amplitude = rabi_amplitude
     ramsey = ramsey
-    single_shot_classification = single_shot_classificatio
+    single_shot_classification = single_shot_classification
