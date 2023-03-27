@@ -5,6 +5,7 @@ from .rabi import rabi_amplitude
 from .ramsey import ramsey
 from .resonator_punchout import resonator_punchout
 from .resonator_spectroscopy import resonator_spectroscopy
+from .t1 import t1
 
 
 class Operation(Enum):
@@ -13,3 +14,4 @@ class Operation(Enum):
     qubit_spectroscopy = qubit_spectroscopy
     rabi_amplitude = rabi_amplitude
     ramsey = ramsey
+    t1 = t1
