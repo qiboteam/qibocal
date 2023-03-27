@@ -6,14 +6,12 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
-from qibolab.sweeper import Parameter, Sweeper
 from scipy.optimize import curve_fit
 
 from ...auto.operation import Parameters, Qubits, Results, Routine
 from ...config import log
 from ...data import DataUnits
 from ...plots.utils import get_color
-from .resonator_spectroscopy import ResonatorSpectroscopyParameters
 
 
 @dataclass
