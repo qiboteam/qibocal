@@ -1,5 +1,6 @@
 from enum import Enum
 
+from .allxy import allxy
 from .classification import single_shot_classification
 from .qubit_spectroscopy import qubit_spectroscopy
 from .rabi.amplitude import rabi_amplitude
@@ -19,3 +20,4 @@ class Operation(Enum):
     ramsey = ramsey
     t1 = t1
     single_shot_classification = single_shot_classification
+    allxy = allxy

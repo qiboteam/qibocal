@@ -66,15 +66,22 @@ actions:
 #     software_averages: 1
 #     points: 10
 
-- id: t1
-  priority: 0
-  operation: t1
-  parameters:
-    delay_before_readout_start: 16
-    delay_before_readout_end: 500
-    delay_before_readout_step: 20
-    software_averages: 1
+# - id: t1
+#   priority: 0
+#   operation: t1
+#   parameters:
+#     delay_before_readout_start: 16
+#     delay_before_readout_end: 500
+#     delay_before_readout_step: 20
+#     software_averages: 1
 
+- id: allXY
+  priority: 0
+  operation: allxy
+  parameters:
+    beta_param: null
+    software_averages: 1
+    points: 5
   #   main: first
   # - id: first
   #   priority: 100
