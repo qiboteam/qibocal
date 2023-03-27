@@ -4,6 +4,7 @@ from functools import partial
 import lmfit
 import numpy as np
 from scipy.optimize import curve_fit
+from scipy.signal import savgol_filter
 
 from qibocal.config import log
 from qibocal.data import Data
@@ -1096,7 +1097,9 @@ def calibrate_qubit_states_fit(data, x, y, nshots, qubits):
     return parameters
 
 
-def resonator_spectroscopy_flux_fit(data, x, y, qubits, resonator_type, params_fit):
+def resonator_spectroscopy_flux_fit(
+    data, x, y, qubits, resonator_type, params_fit, savgol=False
+):
     """Fit frequency as a function of current for the flux resonator spectroscopy
         Args:
         data (DataUnits): data file with information on the feature response at each current point.
@@ -1157,31 +1160,33 @@ def resonator_spectroscopy_flux_fit(data, x, y, qubits, resonator_type, params_f
         qubit_data = (
             data.df[data.df["qubit"] == qubit]
             .drop(columns=["qubit", "iteration"])
-            .groupby(bias_keys[0], frequency_keys[0], as_index=False)
+            .groupby([bias_keys[0], frequency_keys[0]], as_index=False)
             .mean()
         )
-        biases = qubit_data[bias_keys[0]].pint.to(bias_keys[1]).pint.magnitude
-
+        qubit_data[bias_keys[0]] = (
+            qubit_data[bias_keys[0]].pint.to(bias_keys[1]).pint.magnitude
+        )
+        qubit_data[frequency_keys[0]] = (
+            qubit_data[frequency_keys[0]].pint.to(frequency_keys[1]).pint.magnitude
+        )
         if resonator_type == "3D":
-            frequencies = (
-                qubit_data.loc[
-                    qubit_data.groupby(bias_keys[0])[frequency_keys[0]].idxmin()
-                ]
-                .pint.to(frequency_keys[1])
-                .pint.magnitude
-            )
+            qubit_data = qubit_data.loc[
+                qubit_data.groupby(bias_keys[0])["MSR"].idxmin()
+            ]
         else:
-            frequencies = (
-                qubit_data.loc[
-                    qubit_data.groupby(bias_keys[0])[frequency_keys[0]].idxmax()
-                ]
-                .pint.to(frequency_keys[1])
-                .pint.magnitude
-            )
+            qubit_data = qubit_data.loc[
+                qubit_data.groupby(bias_keys[0])["MSR"].idxmax()
+            ]
+        biases = qubit_data[bias_keys[0]]
+        frequencies = qubit_data[frequency_keys[0]]
+        if savgol:
+            frequencies = savgol_filter(frequencies, len(frequencies), polyorder=3)
+        import matplotlib.pyplot as plt
 
+        plt.plot(biases, frequencies)
         try:
-            f_rh = params_fit[0]  # Resonator frequency at high power.
-            g = params_fit[1]  # Readout coupling.
+            f_rh = params_fit["f_rh"][str(qubit)]  # Resonator frequency at high power.
+            g = params_fit["g"][str(qubit)]  # Readout coupling.
             max_c = biases[np.argmax(frequencies)]
             min_c = biases[np.argmin(frequencies)]
             xi = 1 / (2 * abs(max_c - min_c))  # Convert bias to flux.
@@ -1191,7 +1196,7 @@ def resonator_spectroscopy_flux_fit(data, x, y, qubits, resonator_type, params_f
                 )  # Initial estimation for resonator frequency at sweet spot.
                 f_q_0 = f_rh - g**2 / (
                     f_r_0 - f_rh
-                )  # Initial estimatio for qubit frequency at sweet spot.
+                )  # Initial estimation for qubit frequency at sweet spot.
                 popt = curve_fit(
                     freq_r_transmon,
                     biases,
@@ -1224,8 +1229,8 @@ def resonator_spectroscopy_flux_fit(data, x, y, qubits, resonator_type, params_f
                     }
                 )
             else:
-                Ec = params_fit[2]  # Charge energy.
-                Ej = params_fit[3]  # Josephson energy
+                Ec = params_fit["Ec"][str(qubit)]  # Charge energy.
+                Ej = params_fit["Ej"][str(qubit)]  # Josephson energy
                 freq_r_mathieu1 = partial(freq_r_mathieu, p7=0.4999)
                 popt = curve_fit(
                     freq_r_mathieu1,
@@ -1269,7 +1274,9 @@ def resonator_spectroscopy_flux_fit(data, x, y, qubits, resonator_type, params_f
     return data_fit
 
 
-def qubit_spectroscopy_flux_fit(data, x, y, qubits, resonator_type, params_fit):
+def qubit_spectroscopy_flux_fit(
+    data, x, y, qubits, resonator_type, params_fit, savgol=True
+):
     """Fit frequency as a function of current for the flux qubit spectroscopy
         Args:
         data (DataUnits): data file with information on the feature response at each current point.
@@ -1325,28 +1332,25 @@ def qubit_spectroscopy_flux_fit(data, x, y, qubits, resonator_type, params_fit):
         qubit_data = (
             data.df[data.df["qubit"] == qubit]
             .drop(columns=["qubit", "iteration"])
-            .groupby(bias_keys[0], frequency_keys[0], as_index=False)
+            .groupby([bias_keys[0], frequency_keys[0]], as_index=False)
             .mean()
         )
         biases = qubit_data[bias_keys[0]].pint.to(bias_keys[1]).pint.magnitude
-
+        qubit_data[frequency_keys[0]] = (
+            qubit_data[frequency_keys[0]].pint.to(frequency_keys[1]).pint.magnitude
+        )
         if resonator_type == "3D":
-            frequencies = (
-                qubit_data.loc[
-                    qubit_data.groupby(bias_keys[0])[frequency_keys[0]].idxmin()
-                ]
-                .pint.to(frequency_keys[1])
-                .pint.magnitude
-            )
+            qubit_data = qubit_data.loc[
+                qubit_data.groupby(bias_keys[0])["MSR"].idxmin()
+            ]
         else:
-            frequencies = (
-                qubit_data.loc[
-                    qubit_data.groupby(bias_keys[0])[frequency_keys[0]].idxmax()
-                ]
-                .pint.to(frequency_keys[1])
-                .pint.magnitude
-            )
-
+            qubit_data = qubit_data.loc[
+                qubit_data.groupby(bias_keys[0])["MSR"].idxmax()
+            ]
+        biases = qubit_data[bias_keys[0]]
+        frequencies = qubit_data[frequency_keys[0]]
+        if savgol:
+            frequencies = savgol_filter(frequencies, len(frequencies), polyorder=3)
         try:
             max_c = biases[np.argmax(frequencies)]
             min_c = biases[np.argmin(frequencies)]
@@ -1380,8 +1384,8 @@ def qubit_spectroscopy_flux_fit(data, x, y, qubits, resonator_type, params_fit):
                     }
                 )
             else:
-                Ec = params_fit[0]  # Charge energy.
-                Ej = params_fit[1]  # Josephson energy
+                Ec = params_fit["Ec"][str(qubit)]  # Charge energy.
+                Ej = params_fit["Ej"][str(qubit)]  # Josephson energy
                 freq_q_mathieu1 = partial(freq_q_mathieu, p7=0.4999)
                 popt = curve_fit(
                     freq_q_mathieu1,
