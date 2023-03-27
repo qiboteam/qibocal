@@ -8,7 +8,7 @@ from qibocal import plots
 from qibocal.config import raise_error
 from qibocal.data import DataUnits
 from qibocal.decorators import plot
-from qibocal.fitting.methods import lorentzian_fit
+from qibocal.fitting.methods import lorentzian_fit, resonator_spectroscopy_flux_fit
 
 
 @plot("MSR and Phase vs Resonator Frequency", plots.frequency_msr_phase)
@@ -373,6 +373,7 @@ def resonator_spectroscopy_flux(
     bias_width,
     bias_step,
     fluxlines,
+    params_fit,
     nshots=1024,
     relaxation_time=50,
     software_averages=1,
@@ -481,6 +482,14 @@ def resonator_spectroscopy_flux(
 
         # save data
         yield data
+        yield resonator_spectroscopy_flux_fit(
+            data,
+            x="bias[dimensionless]",
+            y="frequency[Hz]",
+            qubits=qubits,
+            resonator_type=platform.resonator_type,
+            params_fit=params_fit,
+        )
 
 
 @plot("MSR and Phase vs Resonator Frequency", plots.dispersive_frequency_msr_phase)
