@@ -94,7 +94,6 @@ def signal_0_1(folder, routine, qubit, format):
         opacity = 1
 
         state_data = data.df[data.df["state"] == state]
-        print(state_data)
         fig.add_trace(
             go.Scatter(
                 x=state_data["sample"],

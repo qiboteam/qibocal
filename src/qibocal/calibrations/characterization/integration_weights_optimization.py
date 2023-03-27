@@ -129,5 +129,5 @@ def integration_weights_optimization(
 
     np.save(
         "/home/admin/Juan/qibolab/src/qibolab/instruments/Optimal_weights_conj",
-        samples_kernel[0:2495],
+        samples_kernel_normalized,
     )
