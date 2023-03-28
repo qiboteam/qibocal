@@ -1,12 +1,12 @@
 from enum import Enum
 
 from .classification import single_shot_classification
-from .qubit_flux_dependence import qubit_flux
+from .flux_depedence.qubit_flux_dependence import qubit_flux
+from .flux_depedence.resonator_flux_dependence import resonator_flux
 from .qubit_spectroscopy import qubit_spectroscopy
 from .rabi.amplitude import rabi_amplitude
 from .rabi.length import rabi_length
 from .ramsey import ramsey
-from .resonator_flux_dependence import resonator_flux
 from .resonator_punchout import resonator_punchout
 from .resonator_spectroscopy import resonator_spectroscopy
 from .t1 import t1
