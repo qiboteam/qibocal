@@ -31,9 +31,7 @@ class SingleShotClassificationData(DataUnits):
 @dataclass
 class SingleShotClassificationResults(Results):
     thresold: Dict[List[Tuple], str] = field(metadata=dict(update="thresold"))
-    rotation_angle: Dict[List[Tuple], str] = field(
-        metadata=dict(update="rotation_angle")
-    )
+    rotation_angle: Dict[List[Tuple], str] = field(metadata=dict(update="iq_angle"))
 
 
 def _acquisition(

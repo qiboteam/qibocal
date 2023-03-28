@@ -20,7 +20,6 @@ class T1Parameters(Parameters):
     delay_before_readout_end: list
     delay_before_readout_step: int
     software_averages: int = 1
-    points: int = 10
 
 
 @dataclass
@@ -106,20 +105,6 @@ def _acquisition(
     for iteration in range(params.software_averages):
         # sweep the parameter
         for wait in ro_wait_range:
-            # # save data as often as defined by points
-            # if count % params.points == 0 and count > 0:
-            #     # save data
-            #     yield data
-            #     # calculate and save fit
-            #     yield t1_fit(
-            #         data,
-            #         x="wait[ns]",
-            #         y="MSR[uV]",
-            #         qubits=qubits,
-            #         resonator_type=platform.resonator_type,
-            #         labels=["T1"],
-            #     )
-
             for qubit in qubits:
                 ro_pulses[qubit].start = qd_pulses[qubit].duration + wait
 

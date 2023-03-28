@@ -15,7 +15,6 @@ from ....plots.utils import get_color
 class AllXYParameters(Parameters):
     beta_param: float = None
     software_averages: int = 1
-    points: int = 10
 
 
 @dataclass
@@ -70,7 +69,6 @@ def _acquisition(
         qubits (dict): Dict of target Qubit objects to perform the action
         beta_param (float): Drag pi pulse coefficient. If none, teh default shape defined in the runcard will be used.
         software_averages (int): Number of executions of the routine for averaging results
-        points (int): Save data results in a file every number of points
 
     Returns:
         A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
@@ -248,22 +246,22 @@ def _plot(data: AllXYData, _fit: AllXYResults, qubit):
             col=1,
         )
 
-    fig.add_trace(
-        go.Scatter(
-            x=gate_numbers,
-            y=data.df.groupby("gateNumber", as_index=False)[
-                "probability"
-            ].mean(),  # pylint: disable=E1101
-            name=f"q{qubit}/r{report_n}: Average Probability",
-            marker_color=get_color(report_n),
-            mode="markers",
-            text=gatelist,
-            textposition="bottom center",
-        ),
-        row=1,
-        col=1,
-    )
-    report_n += 1
+    if len(iterations) > 1:
+        fig.add_trace(
+            go.Scatter(
+                x=gate_numbers,
+                y=data.df.groupby("gateNumber", as_index=False)[
+                    "probability"
+                ].mean(),  # pylint: disable=E1101
+                name=f"q{qubit}/r{report_n}: Average Probability",
+                marker_color=get_color(report_n),
+                mode="markers",
+                text=gatelist,
+                textposition="bottom center",
+            ),
+            row=1,
+            col=1,
+        )
 
     fig.add_hline(
         y=0,

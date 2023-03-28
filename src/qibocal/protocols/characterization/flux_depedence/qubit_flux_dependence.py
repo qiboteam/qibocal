@@ -19,9 +19,9 @@ class QubitFluxParameters(ResonatorFluxParameters):
 
 @dataclass
 class QubitFluxResults(Results):
-    ...
-    # sweetspot: Dict[List[Tuple], str] = field(metadata=dict(update="sweetspot"))
-    # fitted_parameters : Dict[List[Tuple], List]
+    sweetspot: Dict[List[Tuple], str] = field(metadata=dict(update="sweetspot"))
+    frequency: Dict[List[Tuple], str] = field(metadata=dict(update="drive_frequency"))
+    fitted_parameters: Dict[List[Tuple], List]
 
 
 class QubitFluxData(ResonatorFluxData):
@@ -112,7 +112,7 @@ def _acquisition(
 
 
 def _fit(data: QubitFluxData) -> QubitFluxResults:
-    return QubitFluxResults()
+    return QubitFluxResults({}, {}, {})
 
 
 def _plot(data: QubitFluxData, fit: QubitFluxResults, qubit):

@@ -79,7 +79,7 @@ def fitting(data: DataUnits, label: str) -> list:
 def plot(data, fit, qubit, label):
     if label == "amplitude":
         quantity = "amplitude"
-        unit = unit
+        unit = "dimensionless"
         title = "Amplitude (dimensionless)"
     elif label == "length":
         quantity = "time"

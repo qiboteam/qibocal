@@ -20,21 +20,21 @@ class RamseyParameters(Parameters):
     delay_between_pulses_end: list
     delay_between_pulses_step: int
     software_averages: int = 1
-    points: int = 10
 
 
 @dataclass
 class RamseyResults(Results):
     frequency: Dict[List[Tuple], str] = field(metadata=dict(update="drive_frequency"))
     t2: Dict[List[Tuple], str] = field(metadata=dict(update="t2"))
-    delta_phys: Dict[List[Tuple], str] = field(metadata=dict(update="freq_detuning"))
+    # TODO: perhaps this is not necessary for the runcard
+    delta_phys: Dict[List[Tuple], str]  # = field(metadata=dict(update="freq_detuning"))
     fitted_parameters: Dict[List[Tuple], List]
 
 
 class RamseyData(DataUnits):
     def __init__(self):
         super().__init__(
-            name=f"data",
+            name="data",
             quantities={"wait": "ns", "t_max": "ns", "qubit_freqs": "Hz"},
             options=[
                 "qubit",
@@ -74,7 +74,7 @@ def _acquisition(
         params.delay_between_pulses_end,
         params.delay_between_pulses_step,
     )
-    sampling_rate = platform.sampling_rate
+    sampling_rate = platform.sampling_rate  # TODO: we may to reset this
     t_max = params.delay_between_pulses_end
 
     # create a DataUnits object to store the results,
