@@ -26,9 +26,9 @@ class ResonatorFluxParameters(Parameters):
 
 @dataclass
 class ResonatorFluxResults(Results):
-    ...
-    # sweetspot: Dict[List[Tuple], str] = field(metadata=dict(update="sweetspot"))
-    # fitted_parameters : Dict[List[Tuple], List]
+    sweetspot: Dict[List[Tuple], str] = field(metadata=dict(update="sweetspot"))
+    frequency: Dict[List[Tuple], str] = field(metadata=dict(update="readout_frequency"))
+    fitted_parameters: Dict[List[Tuple], List]
 
 
 class ResonatorFluxData(DataUnits):
@@ -43,9 +43,6 @@ class ResonatorFluxData(DataUnits):
 def _acquisition(
     platform: AbstractPlatform, qubits: Qubits, params: ResonatorFluxParameters
 ) -> ResonatorFluxData:
-    # reload instrument settings from runcard
-    platform.reload_settings()
-
     # create a sequence of pulses for the experiment:
     # MZ
 
@@ -119,7 +116,7 @@ def _acquisition(
 
 
 def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
-    return ResonatorFluxResults()
+    return ResonatorFluxResults({}, {}, {})
 
 
 def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, qubit):

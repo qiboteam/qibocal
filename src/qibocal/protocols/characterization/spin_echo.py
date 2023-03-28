@@ -41,9 +41,6 @@ def _acquisition(
     qubits: Qubits,
     params: SpinEchoParameters,
 ) -> SpinEchoData:
-    # reload instrument settings from runcard
-    platform.reload_settings()
-
     # create a sequence of pulses for the experiment:
     # Spin Echo 3 Pulses: RX(pi/2) - wait t(rotates z) - RX(pi) - wait t(rotates z) - RX(pi/2) - readout
     ro_pulses = {}
