@@ -9,6 +9,7 @@ from .rabi.length import rabi_length
 from .ramsey import ramsey
 from .resonator_punchout import resonator_punchout
 from .resonator_spectroscopy import resonator_spectroscopy
+from .spin_echo import spin_echo
 from .t1 import t1
 
 
@@ -23,3 +24,4 @@ class Operation(Enum):
     ramsey = ramsey
     t1 = t1
     single_shot_classification = single_shot_classification
+    spin_echo = spin_echo
