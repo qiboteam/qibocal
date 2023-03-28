@@ -1,3 +1,5 @@
+from enum import Enum, auto
+
 import lmfit
 import numpy as np
 import plotly.graph_objects as go
@@ -7,6 +9,11 @@ from ...auto.operation import Results
 from ...config import log
 from ...data import DataUnits
 from ...plots.utils import get_color
+
+
+class PowerLevel(Enum):
+    high = auto()
+    low = auto()
 
 
 def lorentzian(frequency, amplitude, center, sigma, offset):
@@ -19,6 +26,9 @@ def lorentzian(frequency, amplitude, center, sigma, offset):
 def lorentzian_fit(data: DataUnits) -> list:
     qubits = data.df["qubit"].unique()
     resonator_type = data.df["resonator_type"].unique()
+    power_level = data.df["power_level"].unique()
+
+    bare_frequency = {}
     amplitudes = {}
     frequency = {}
     fitted_parameters = {}
@@ -26,7 +36,15 @@ def lorentzian_fit(data: DataUnits) -> list:
     for qubit in qubits:
         qubit_data = (
             data.df[data.df["qubit"] == qubit]
-            .drop(columns=["qubit", "iteration", "resonator_type", "amplitude"])
+            .drop(
+                columns=[
+                    "qubit",
+                    "iteration",
+                    "resonator_type",
+                    "amplitude",
+                    "power_level",
+                ]
+            )
             .groupby("frequency", as_index=False)
             .mean()
         )
@@ -83,12 +101,15 @@ def lorentzian_fit(data: DataUnits) -> list:
             log.warning("lorentzian_fit: the fitting was not successful")
 
         frequency[qubit] = f0
+
+        if power_level == "high":  # TODO: fix this in PowerLevel.low
+            bare_frequency[qubit] = f0
         data_df = data.df
         amplitude = data_df[data_df.qubit == qubit]["amplitude"].unique()
         amplitudes[qubit] = amplitude[0]
         fitted_parameters[qubit] = fit_res.best_values
 
-    return [frequency, amplitudes, fitted_parameters]
+    return frequency, amplitudes, fitted_parameters, bare_frequency
 
 
 def spectroscopy_plot(data: DataUnits, fit: Results, qubit):
@@ -103,7 +124,11 @@ def spectroscopy_plot(data: DataUnits, fit: Results, qubit):
             "phase (rad)",
         ),
     )
-    data.df = data.df[data.df["qubit"] == qubit].drop(columns=["i", "q", "qubit"])
+
+    power_level = data.df["power_level"].unique()
+    data.df = data.df[data.df["qubit"] == qubit].drop(
+        columns=["i", "q", "qubit", "power_level"]
+    )
     iterations = data.df["iteration"].unique()
 
     fitting_report = ""
@@ -193,9 +218,14 @@ def spectroscopy_plot(data: DataUnits, fit: Results, qubit):
             row=1,
             col=1,
         )
+
+        if power_level == "low":  # TODO:change this to PowerLevel.low
+            label = "readout frequency"
+        else:
+            label = "bare resonator frequency"
         fitting_report = (
             fitting_report
-            + f"q{qubit}/r{report_n} | frequency: {fit.frequency[qubit]*1e9:,.0f} Hz<br>"
+            + f"q{qubit}/r{report_n} | {label}: {fit.readout_frequency[qubit]*1e9:,.0f} Hz<br>"
             + f"q{qubit}/r{report_n} | amplitude: {fit.amplitude[qubit]} <br>"
         )
 
