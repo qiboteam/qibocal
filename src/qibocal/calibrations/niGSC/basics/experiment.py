@@ -10,12 +10,7 @@ import pandas as pd
 from qibo.models import Circuit
 from qibo.noise import NoiseModel
 
-from qibocal.calibrations.niGSC.basics.utils import (
-    channel_twirl,
-    copy_circuit,
-    experiment_directory,
-    filtered_rb_validation,
-)
+from qibocal.calibrations.niGSC.basics.utils import experiment_directory
 from qibocal.config import raise_error
 
 
@@ -225,25 +220,3 @@ class Experiment:
             circuit = self.noise_model.apply(circuit)
         samples = circuit(nshots=self.nshots).samples()
         return {"samples": samples}
-
-    def validate(self, N=None, backend=None):
-        """Returns the coefficients and decay parameters
-
-        Either ``self.circuitfactory`` or ``self.data`` cannot be ``None`` and
-        if not ``None`` they have to have the right length.
-
-        Args:
-            sequential_task (callable[[Circuit, dict], dict]): A function applied
-                row by row alterting each datarow.
-        """
-        from qibo.config import PRECISION_TOL
-
-        if backend is None:
-            from qibo.backends import GlobalBackend
-
-            backend = GlobalBackend()
-
-        coefficients, decay_parameters = filtered_rb_validation(
-            self.circuitfactory, self.noise_model, True, N, backend
-        )
-        return coefficients, decay_parameters

@@ -46,13 +46,6 @@ class ModuleFactory(CircuitFactory):
     def gate_group(self):
         return [gates.I(0)]
 
-    def irrep_info(self):
-        from qibo.quantum_info import comp_basis_to_pauli
-
-        basis = np.eye(4)  # comp_basis_to_pauli(self.nqubits, normalize=True)
-
-        return (basis, 0, 1, 4)
-
 
 # Define the experiment class for this specific module.
 class ModuleExperiment(Experiment):
@@ -125,7 +118,7 @@ def post_processing_sequential(experiment: Experiment):
 # After the row by row execution of tasks comes the aggregational task. Something like calculation
 # of means, deviations, fitting data, tasks where the whole data as to be looked at, and not just
 # one instance of circuit + other information.
-def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
+def get_aggregational_data(experiment: Experiment, ndecays: int = 4) -> pd.DataFrame:
     """Computes aggregational tasks, fits data and stores the results in a data frame.
 
     No data is manipulated in the ``experiment`` object.
@@ -140,7 +133,16 @@ def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
     depths, ydata = experiment.extract("filter", "depth", "mean")
     _, ydata_std = experiment.extract("filter", "depth", "std")
     # Fit the filtered signal for each depth, there could be two overlaying exponential functions.
-    popt, perr = fitting_methods.fit_exp4_func(depths, ydata)
+    popt, perr = fitting_methods.fit_expn_func(depths, ydata, n=ndecays)
+    # Create dictionaries with fitting parameters and estimated errors in the form {A1: ..., p1: ..., A2: ..., p2: ...}
+    popt_labels = np.array(
+        [[f"A{k+1}", f"p{k+1}"] for k in range(len(popt) // 2)]
+    ).ravel()
+    popt_dict = dict(zip(popt_labels, popt[::2] + popt[1::2]))
+    perr_labels = np.array(
+        [[f"A{k+1}_err", f"p{k+1}_err"] for k in range(len(popt) // 2)]
+    ).ravel()
+    perr_dict = dict(zip(perr_labels, perr))
     # Check if there can be non-zero imaginary values in the data.
     is_imaginary = np.any(np.iscomplex(ydata))
     popt_key = "popt_imag" if is_imaginary else "popt"
@@ -151,26 +153,8 @@ def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
             "data": ydata,  # The filtred signal.
             "2sigma": 2 * ydata_std,  # The 2 * standard deviation error for each depth.
             "fit_func": "expn_func",  # Which function was used to fit.
-            popt_key: {
-                "A1": popt[0],
-                "p1": popt[4],
-                "A2": popt[1],
-                "p2": popt[5],
-                "A3": popt[2],
-                "p3": popt[6],
-                "A4": popt[3],
-                "p4": popt[7],
-            },  # The real fitting parameters.
-            "perr": {
-                "A1_err": perr[0],
-                "p1_err": perr[4],
-                "A2_err": perr[1],
-                "p2_err": perr[5],
-                "A3_err": perr[2],
-                "p3_err": perr[6],
-                "A4_err": perr[3],
-                "p4_err": perr[7],
-            },  # The estimated errors.
+            popt_key: popt_dict,  # The real fitting parameters.
+            "perr": perr_dict,  # The estimated errors.
         }
     ]
 
@@ -293,6 +277,7 @@ def execute_simulation(
     depths: list,
     nshots: int = 500,
     noise_model: NoiseModel = None,
+    ndecays: int = 4,
     validate: bool = False,
 ):
     """Execute simulation of Id Radomized Benchmarking experiment and generate an html report with the validation of the results
@@ -301,10 +286,12 @@ def execute_simulation(
         depths (list): list of depths for circuits
         nshots (int): number of shots per measurement
         noise_model (:class:`qibo.noise.NoiseModel`): noise model applied to the circuits in the simulation
+        ndecays (int): number of decay parameters to fit. Default is 1.
+        validate (bool): adds theoretical RB signal to the report when `True`. Dafault is `False`.
 
     Example:
         .. testcode::
-            from qibocal.calibrations.niGSC.Idrb.py import execute_simulation
+            from qibocal.calibrations.niGSC.Idrb import execute_simulation
             from qibocal.calibrations.niGSC.basics import noisemodels
             # Build the noise model.
             noise_params = [0.01, 0.02, 0.05]
@@ -323,7 +310,7 @@ def execute_simulation(
 
     # Build a report with validation of the results
     post_processing_sequential(experiment)
-    aggr_df = get_aggregational_data(experiment)
+    aggr_df = get_aggregational_data(experiment, ndecays)
     if validate:
         aggr_df = add_validation(experiment, aggr_df)
     report_figure = build_report(experiment, aggr_df)

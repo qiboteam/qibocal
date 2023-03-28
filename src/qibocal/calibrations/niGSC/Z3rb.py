@@ -111,9 +111,7 @@ def post_processing_sequential(experiment: Experiment):
 # After the row by row execution of tasks comes the aggregational task. Something like calculation
 # of means, deviations, fitting data, tasks where the whole data as to be looked at, and not just
 # one instance of circuit + other information.
-def get_aggregational_data(
-    experiment: Experiment, validate: bool = False, N: int = None
-) -> pd.DataFrame:
+def get_aggregational_data(experiment: Experiment, ndecays: int = 2) -> pd.DataFrame:
     """Computes aggregational tasks, fits data and stores the results in a data frame.
 
     No data is manipulated in the ``experiment`` object.
@@ -227,17 +225,25 @@ def build_report(
     return report.build()
 
 
-def execute_simulation(depths: list, nshots: int = 500, noise_model: NoiseModel = None):
+def execute_simulation(
+    depths: list,
+    nshots: int = 500,
+    noise_model: NoiseModel = None,
+    ndecays: int = 2,
+    validate: bool = False,
+):
     """Execute simulation of Z3 Radomized Benchmarking experiment and generate an html report with the validation of the results
 
     Args:
         depths (list): list of depths for circuits
         nshots (int): number of shots per measurement
         noise_model (:class:`qibo.noise.NoiseModel`): noise model applied to the circuits in the simulation
+        ndecays (int): number of decay parameters to fit. Dafault is 2.
+        validate (bool): adds theoretical RB signal to the report when `True`. Dafault is `False`.
 
     Example:
         .. testcode::
-            from qibocal.calibrations.niGSC.Z3rb.py import execute_simulation
+            from qibocal.calibrations.niGSC.Z3rb import execute_simulation
             from qibocal.calibrations.niGSC.basics import noisemodels
             # Build the noise model.
             noise_params = [0.01, 0.02, 0.05]
@@ -257,7 +263,8 @@ def execute_simulation(depths: list, nshots: int = 500, noise_model: NoiseModel 
 
     # Build a report with validation of the results
     post_processing_sequential(experiment)
-    aggr_df = get_aggregational_data(experiment)
-    aggr_df = add_validation(experiment, aggr_df)
+    aggr_df = get_aggregational_data(experiment, ndecays=ndecays)
+    if validate:
+        aggr_df = add_validation(experiment, aggr_df)
     report_figure = build_report(experiment, aggr_df)
     report_figure.show()

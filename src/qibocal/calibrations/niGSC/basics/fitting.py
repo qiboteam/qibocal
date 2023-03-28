@@ -174,8 +174,8 @@ def fit_expn_func(
 
     Args:
         xdata (Union[np.ndarray, list]): The x-labels.
-        ydata (Union[np.ndarray, list]): The data to be fitted
-        n (int): number of decays to fit. Default is 2
+        ydata (Union[np.ndarray, list]): The data to be fitted.
+        n (int): number of decays to fit. Default is 2.
 
     Returns:
         Tuple[tuple, tuple]: (A1, ..., An, f1, ..., fn) with f* the decay parameters.

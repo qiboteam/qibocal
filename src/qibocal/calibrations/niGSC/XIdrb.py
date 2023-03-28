@@ -26,13 +26,12 @@ from plotly.graph_objects import Figure
 from qibo import gates
 from qibo.models import Circuit
 from qibo.noise import NoiseModel
-from qibo.quantum_info.basis import comp_basis_to_pauli
 
 import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
 from qibocal.calibrations.niGSC.basics.circuitfactory import ZkFilteredCircuitFactory
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
 from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig, update_fig
-from qibocal.config import raise_error
+from qibocal.calibrations.niGSC.basics.rb_validation import filtered_decay_parameters
 
 qibo.set_backend("numpy")
 
@@ -45,10 +44,6 @@ class ModuleFactory(ZkFilteredCircuitFactory):
 
     def gate_group(self):
         return [gates.I(0), gates.X(0)]
-
-    def irrep_info(self):
-        basis = comp_basis_to_pauli(self.nqubits, normalize=True)
-        return (basis, 2, 1, 2)
 
 
 # Define the experiment class for this specific module.
@@ -126,7 +121,7 @@ def post_processing_sequential(experiment: Experiment):
 # After the row by row execution of tasks comes the aggregational task. Something like calculation
 # of means, deviations, fitting data, tasks where the whole data as to be looked at, and not just
 # one instance of circuit + other information.
-def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
+def get_aggregational_data(experiment: Experiment, ndecays: int = 2) -> pd.DataFrame:
     """Computes aggregational tasks, fits data and stores the results in a data frame.
 
     No data is manipulated in the ``experiment`` object.
@@ -141,8 +136,17 @@ def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
     depths, ydata = experiment.extract("filter", "depth", "mean")
     _, ydata_std = experiment.extract("filter", "depth", "std")
     # Fit the filtered signal for each depth, there could be two overlaying exponential functions.
-    popt, perr = fitting_methods.fit_exp2_func(depths, ydata)
-    # Check if there can be non-zero imaginary values in the data.
+    popt, perr = fitting_methods.fit_expn_func(depths, ydata, n=ndecays)
+    # Create dictionaries with fitting parameters and estimated errors in the form {A1: ..., p1: ..., A2: ..., p2: ...}
+    popt_labels = np.array(
+        [[f"A{k+1}", f"p{k+1}"] for k in range(len(popt) // 2)]
+    ).ravel()
+    popt_dict = dict(zip(popt_labels, popt[::2] + popt[1::2]))
+    perr_labels = np.array(
+        [[f"A{k+1}_err", f"p{k+1}_err"] for k in range(len(popt) // 2)]
+    ).ravel()
+    perr_dict = dict(zip(perr_labels, perr))
+    # Check if there are any imaginary values in the data.
     is_imaginary = np.any(np.iscomplex(ydata))
     popt_key = "popt_imag" if is_imaginary else "popt"
     # Build a list of dictionaries with the aggregational information.
@@ -152,18 +156,8 @@ def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
             "data": ydata,  # The filtred signal.
             "2sigma": 2 * ydata_std,  # The 2 * standard deviation error for each depth.
             "fit_func": "expn_func",  # Which function was used to fit.
-            popt_key: {
-                "A1": popt[0],
-                "p1": popt[2],
-                "A2": popt[1],
-                "p2": popt[3],
-            },  # The real fitting parameters.
-            "perr": {
-                "A1_err": perr[0],
-                "p1_err": perr[2],
-                "A2_err": perr[1],
-                "p2_err": perr[3],
-            },  # The estimated errors.
+            popt_key: popt_dict,  # The real fitting parameters.
+            "perr": perr_dict,  # The estimated errors.
         }
     ]
 
@@ -180,6 +174,7 @@ def add_validation(
 
     Args:
         experiment (Experiment): After sequential postprocessing of the experiment data.
+        dataframe (pd.DataFrame): The data where the validation should be added.
 
     Returns:
         pd.DataFrame: The summarized data.
@@ -188,7 +183,9 @@ def add_validation(
 
     data = dataframe.to_dict("records")
     validation_label = "validation_imag" if "popt_imag" in data[0] else "validation"
-    coefficients, decay_parameters = experiment.validate(N=N)
+    coefficients, decay_parameters = filtered_decay_parameters(
+        experiment.circuitfactory, experiment.noise_model, with_coefficients=True, N=N
+    )
     validation_dict = {}
     for i in range(len(coefficients)):
         if np.abs(coefficients[i]) > PRECISION_TOL:
@@ -279,17 +276,25 @@ def build_report(
     return report.build()
 
 
-def execute_simulation(depths: list, nshots: int = 500, noise_model: NoiseModel = None):
-    """Execute simulation of XId Radomized Benchmarking experiment and generate an html report with the validation of the results
+def execute_simulation(
+    depths: list,
+    nshots: int = 500,
+    noise_model: NoiseModel = None,
+    ndecays: int = 2,
+    validate: bool = False,
+):
+    """Execute simulation of XId Radomized Benchmarking experiment and generate an html report.
 
     Args:
         depths (list): list of depths for circuits
         nshots (int): number of shots per measurement
         noise_model (:class:`qibo.noise.NoiseModel`): noise model applied to the circuits in the simulation
+        ndecays (int): number of decay parameters to fit. Default is 2.
+        validate (bool): adds theoretical RB signal to the report when `True`. Dafault is `False`.
 
     Example:
         .. testcode::
-            from qibocal.calibrations.niGSC.XIdrb.py import execute_simulation
+            from qibocal.calibrations.niGSC.XIdrb import execute_simulation
             from qibocal.calibrations.niGSC.basics import noisemodels
             # Build the noise model.
             noise_params = [0.01, 0.02, 0.05]
@@ -309,7 +314,8 @@ def execute_simulation(depths: list, nshots: int = 500, noise_model: NoiseModel 
 
     # Build a report with validation of the results
     post_processing_sequential(experiment)
-    aggr_df = get_aggregational_data(experiment)
-    aggr_df = add_validation(experiment, aggr_df)
+    aggr_df = get_aggregational_data(experiment, ndecays=ndecays)
+    if validate:
+        aggr_df = add_validation(experiment, aggr_df)
     report_figure = build_report(experiment, aggr_df)
     report_figure.show()

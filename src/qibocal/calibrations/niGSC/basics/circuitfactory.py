@@ -68,14 +68,6 @@ class CircuitFactory:
     def gate_group(self):
         return []
 
-    @property
-    def irrep_info(self):
-        index = 0
-        size = 4**self.nqubits
-        multiplicity = 1
-        basis = np.eye(size)
-        return (basis, index, size, multiplicity)
-
     def build_circuit(self, depth: int) -> Circuit:
         """Initiate a ``qibo.models.Circuit`` object and fill it with the wanted gates.
 
@@ -185,10 +177,6 @@ class SingleCliffordsFactory(CircuitFactory):
         ]
         return cliffords_unitaries
 
-    def irrep_info(self):
-        basis = comp_basis_to_pauli(self.nqubits, normalize=True)
-        return (basis, 1, 3, 1)
-
 
 class ZkFilteredCircuitFactory(CircuitFactory):
     """Creates circuits filled with random single qubit gates from the group
@@ -199,12 +187,11 @@ class ZkFilteredCircuitFactory(CircuitFactory):
         self, nqubits: int, depths: list, qubits: list = [], size: int = 1
     ) -> None:
         super().__init__(nqubits, depths, qubits)
-        assert (
-            len(self.qubits) == 1
-        ), """
-        This class is written for gates acting on only one qubit, not {} qubits.""".format(
-            len(self.qubits)
-        )
+        if len(self.qubits) != 1:
+            raise_error(
+                ValueError,
+                f"This class is written for gates acting on only one qubit, not {len(self.qubits)} qubits.",
+            )
         self.name = f"Z{size}"
 
     def build_circuit(self, depth: int):
@@ -222,23 +209,3 @@ class ZkFilteredCircuitFactory(CircuitFactory):
 
     def gate_group(self):
         return [gates.RX(0, 2 * np.pi / self.k * i) for i in range(self.k)]
-
-    def irrep_info(self):
-        from qibo.quantum_info import comp_basis_to_pauli
-
-        basis = comp_basis_to_pauli(self.nqubits, normalize=True)
-        basis = (
-            np.array(
-                [
-                    [1, 0, 0, 0],
-                    [0, 1, 0, 0],
-                    [0, 0, 1 / np.sqrt(2), -1j / np.sqrt(2)],
-                    [0, 0, 1j / np.sqrt(2), -1 / np.sqrt(2)],
-                ]
-            )
-            @ basis
-        )
-        index = 3
-        size = 1
-        multiplicity = 1
-        return (basis, index, size, multiplicity)

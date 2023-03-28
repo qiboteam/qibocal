@@ -157,7 +157,7 @@ def post_processing_sequential(experiment: Experiment):
     experiment.perform(filter_function)
 
 
-def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
+def get_aggregational_data(experiment: Experiment, ndecays: int = 1) -> pd.DataFrame:
     """Computes aggregational tasks, fits data and stores the results in a data frame.
 
     No data is manipulated in the ``experiment`` object.
@@ -179,15 +179,28 @@ def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
         depths, ydata = experiment.extract(ylabel, "depth", "mean")
         _, ydata_std = experiment.extract(ylabel, "depth", "std")
         # Fit an exponential without linear offset.
-        popt, perr = fitting_methods.fit_exp1_func(depths, ydata)
+        if ndecays == 1:
+            popt, perr = fitting_methods.fit_exp1_func(depths, ydata)
+            popt_dict = {"A": popt[0], "p": popt[1]}
+            perr_dict = {"A_err": perr[0], "p_err": perr[1]}
+        else:
+            fitting_methods.fit_expn_func(depths, ydata, ndecays)
+            popt_labels = np.array(
+                [[f"A{k+1}", f"p{k+1}"] for k in range(len(popt) // 2)]
+            ).ravel()
+            popt_dict = dict(zip(popt_labels, popt[::2] + popt[1::2]))
+            perr_labels = np.array(
+                [[f"A{k+1}_err", f"p{k+1}_err"] for k in range(len(popt) // 2)]
+            ).ravel()
+            perr_dict = dict(zip(perr_labels, perr))
         data_list.append(
             {
                 "depth": depths,  # The x-axis.
                 "data": ydata,  # The mean of ground state probability for each depth.
                 "2sigma": 2 * ydata_std,  # The standard deviation error for each depth.
                 "fit_func": "exp1_func",  # Which function was used to fit.
-                "popt": {"A": popt[0], "p": popt[1]},  # The fitting paramters.
-                "perr": {"A_err": perr[0], "p_err": perr[1]},  # The estimated errors.
+                "popt": popt_dict,  # The fitting paramters.
+                "perr": perr_dict,  # The estimated errors.
             }
         )
         # Store the name to set is as row name for the data.
@@ -231,3 +244,47 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
         figdict["subplot_title"] = f"Irrep {l}"
         report.all_figures.append(figdict)
     return report.build()
+
+
+def execute_simulation(
+    nqubits: int,
+    depths: list,
+    nshots: int = 500,
+    noise_model: NoiseModel = None,
+    ndecays: int = 1,
+    validate: bool = False,
+):
+    """Execute simulation of Simultaneous Filtered RB experiment and generate an html report.
+
+    Args:
+        nqubits (int): number of qubits
+        depths (list): list of depths for circuits
+        nshots (int): number of shots per measurement
+        noise_model (:class:`qibo.noise.NoiseModel`): noise model applied to the circuits in the simulation
+        ndecays (int): number of decay parameters to fit. Default is 1.
+
+    Example:
+        .. testcode::
+            from qibocal.calibrations.niGSC.sumulfilteredrb import execute_simulation
+            from qibocal.calibrations.niGSC.basics import noisemodels
+            # Build the noise model.
+            noise_params = [0.01, 0.02, 0.05]
+            pauli_noise_model = noisemodels.PauliErrorOnAll(*noise_params)
+            # Generate the list of depths repeating 20 times
+            nqubits = 2
+            runs = 20
+            depths = list(range(1, 31)) * runs
+            # Run the simulation
+            execute_simulation(nqubits, depths, 500, pauli_noise_model)
+    """
+
+    # Execute an experiment.
+    factory = ModuleFactory(nqubits, depths)
+    experiment = ModuleExperiment(factory, nshots=nshots, noise_model=noise_model)
+    experiment.perform(experiment.execute)
+
+    # Build a report with validation of the results
+    post_processing_sequential(experiment)
+    aggr_df = get_aggregational_data(experiment, ndecays=ndecays)
+    report_figure = build_report(experiment, aggr_df)
+    report_figure.show()

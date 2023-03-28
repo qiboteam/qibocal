@@ -9,12 +9,13 @@ from plotly.graph_objects import Figure
 from qibo import gates, matrices
 from qibo.models import Circuit
 from qibo.noise import NoiseModel
-from qibo.quantum_info.basis import comp_basis_to_pauli
 
 import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
 from qibocal.calibrations.niGSC.basics.circuitfactory import CircuitFactory
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
 from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig, update_fig
+from qibocal.calibrations.niGSC.basics.rb_validation import filtered_decay_parameters
+from qibocal.config import raise_error
 
 qibo.set_backend("numpy")
 
@@ -36,12 +37,11 @@ def is_xy(g):
 class ModuleFactory(CircuitFactory):
     def __init__(self, nqubits: int, depths: list, qubits: list = []) -> None:
         super().__init__(nqubits, depths, qubits)
-        assert (
-            len(self.qubits) == 1
-        ), """
-        This class is written for gates acting on only one qubit, not {} qubits.""".format(
-            len(self.qubits)
-        )
+        if len(self.qubits) != 1:
+            raise_error(
+                ValueError,
+                f"This class is written for gates acting on only one qubit, not {len(self.qubits)} qubits.",
+            )
         self.name = "PauliGroup"
 
     def build_circuit(self, depth: int):
@@ -60,10 +60,6 @@ class ModuleFactory(CircuitFactory):
 
     def gate_group(self):
         return pauli_list
-
-    def irrep_info(self):
-        basis = comp_basis_to_pauli(self.nqubits, normalize=True)
-        return (basis, 3, 1, 1)
 
 
 # Define the experiment class for this specific module.
@@ -145,9 +141,7 @@ def post_processing_sequential(experiment: Experiment):
 # After the row by row execution of tasks comes the aggregational task. Something like calculation
 # of means, deviations, fitting data, tasks where the whole data as to be looked at, and not just
 # one instance of circuit + other information.
-def get_aggregational_data(
-    experiment: Experiment, validate=False, N=None
-) -> pd.DataFrame:
+def get_aggregational_data(experiment: Experiment, ndecays: int = 1) -> pd.DataFrame:
     """Computes aggregational tasks, fits data and stores the results in a data frame.
 
     No data is manipulated in the ``experiment`` object.
@@ -162,7 +156,20 @@ def get_aggregational_data(
     depths, ydata = experiment.extract("filter", "depth", "mean")
     _, ydata_std = experiment.extract("filter", "depth", "std")
     # Fit the filtered signal for each depth, there could be two overlaying exponential functions.
-    popt, perr = fitting_methods.fit_exp1_func(depths, ydata)
+    if ndecays == 1:
+        popt, perr = fitting_methods.fit_exp1_func(depths, ydata)
+        popt_dict = {"A": popt[0], "p": popt[1]}
+        perr_dict = {"A_err": perr[0], "p_err": perr[1]}
+    else:
+        fitting_methods.fit_expn_func(depths, ydata, ndecays)
+        popt_labels = np.array(
+            [[f"A{k+1}", f"p{k+1}"] for k in range(len(popt) // 2)]
+        ).ravel()
+        popt_dict = dict(zip(popt_labels, popt[::2] + popt[1::2]))
+        perr_labels = np.array(
+            [[f"A{k+1}_err", f"p{k+1}_err"] for k in range(len(popt) // 2)]
+        ).ravel()
+        perr_dict = dict(zip(perr_labels, perr))
     # Build a list of dictionaries with the aggregational information.
     data = [
         {
@@ -170,14 +177,8 @@ def get_aggregational_data(
             "data": ydata,  # The filtred signal.
             "2sigma": 2 * ydata_std,  # The 2 * standard deviation error for each depth.
             "fit_func": "exp1_func",  # Which function was used to fit.
-            "popt": {
-                "A": popt[0],
-                "p": popt[1],
-            },  # The fitting parameters.
-            "perr": {
-                "A1_err": perr[0],
-                "p1_err": perr[1],
-            },  # The estimated errors.
+            "popt": popt_dict,  # The fitting parameters.
+            "perr": perr_dict,  # The estimated errors.
         }
     ]
 
@@ -200,7 +201,9 @@ def add_validation(
     """
 
     data = dataframe.to_dict("records")
-    coefficients, decay_parameters = experiment.validate(N=N)
+    coefficients, decay_parameters = filtered_decay_parameters(
+        experiment.circuitfactory, experiment.noise_model, with_coefficients=True, N=N
+    )
     validation_dict = {"A": coefficients[0], "p": decay_parameters[0]}
     data[0].update({"validation": validation_dict})
     # The row name will be displayed as y-axis label.
@@ -244,7 +247,13 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
     return report.build()
 
 
-def execute_simulation(depths: list, nshots: int = 500, noise_model: NoiseModel = None):
+def execute_simulation(
+    depths: list,
+    nshots: int = 500,
+    noise_model: NoiseModel = None,
+    ndecays: int = 1,
+    validate: bool = False,
+):
     """Execute simulation of Paulis Filtered RB experiment
     and generate an html report with the validation of the results
 
@@ -252,10 +261,12 @@ def execute_simulation(depths: list, nshots: int = 500, noise_model: NoiseModel 
         depths (list): list of depths for circuits
         nshots (int): number of shots per measurement
         noise_model (:class:`qibo.noise.NoiseModel`): noise model applied to the circuits in the simulation
+        ndecays (int): number of decay parameters to fit. Default is 1.
+        validate (bool): adds theoretical RB signal to the report when `True`. Dafault is `False`.
 
     Example:
         .. testcode::
-            from qibocal.calibrations.niGSC.paulisfilteredrb.py import execute_simulation
+            from qibocal.calibrations.niGSC.paulisfilteredrb import execute_simulation
             from qibocal.calibrations.niGSC.basics import noisemodels
             # Build the noise model.
             noise_params = [0.01, 0.02, 0.05]
@@ -275,7 +286,8 @@ def execute_simulation(depths: list, nshots: int = 500, noise_model: NoiseModel 
 
     # Build a report with validation of the results
     post_processing_sequential(experiment)
-    aggr_df = get_aggregational_data(experiment)
-    aggr_df = add_validation(experiment, aggr_df)
+    aggr_df = get_aggregational_data(experiment, ndecays)
+    if validate:
+        aggr_df = add_validation(experiment, aggr_df)
     report_figure = build_report(experiment, aggr_df)
     report_figure.show()
