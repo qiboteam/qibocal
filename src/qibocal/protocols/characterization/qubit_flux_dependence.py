@@ -8,41 +8,30 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.data import DataUnits
+from qibocal.auto.operation import Qubits, Results, Routine
+
+from .resonator_flux_dependence import ResonatorFluxData, ResonatorFluxParameters
 
 
 @dataclass
-class ResonatorFluxParameters(Parameters):
-    freq_width: int
-    freq_step: int
-    bias_width: float
-    bias_step: float
-    fluxlines: int
-    nshots: int
-    relaxation_time: int
-    software_averages: int
+class QubitFluxParameters(ResonatorFluxParameters):
+    drive_amplitude: float
 
 
 @dataclass
-class ResonatorFluxResults(Results):
+class QubitFluxResults(Results):
     ...
     # sweetspot: Dict[List[Tuple], str] = field(metadata=dict(update="sweetspot"))
     # fitted_parameters : Dict[List[Tuple], List]
 
 
-class ResonatorFluxData(DataUnits):
-    def __init__(self):
-        super().__init__(
-            "data",
-            {"frequency": "Hz", "bias": "V"},
-            options=["qubit", "fluxline", "iteration"],
-        )
+class QubitFluxData(ResonatorFluxData):
+    ...
 
 
 def _acquisition(
-    platform: AbstractPlatform, qubits: Qubits, params: ResonatorFluxParameters
-) -> ResonatorFluxData:
+    platform: AbstractPlatform, qubits: Qubits, params: QubitFluxParameters
+) -> QubitFluxData:
     # reload instrument settings from runcard
     platform.reload_settings()
 
@@ -52,8 +41,16 @@ def _acquisition(
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     sequence = PulseSequence()
     ro_pulses = {}
+    qd_pulses = {}
     for qubit in qubits:
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
+        qd_pulses[qubit] = platform.create_qubit_drive_pulse(
+            qubit, start=0, duration=2000
+        )
+        qd_pulses[qubit].amplitude = params.drive_amplitude
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+            qubit, start=qd_pulses[qubit].finish
+        )
+        sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
 
     # define the parameters to sweep and their range:
@@ -63,7 +60,7 @@ def _acquisition(
     freq_sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
-        [ro_pulses[qubit] for qubit in qubits],
+        pulses=[qd_pulses[qubit] for qubit in qubits],
     )
 
     # flux bias
@@ -79,7 +76,7 @@ def _acquisition(
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
     # additionally include resonator frequency and flux bias
-    data = ResonatorFluxData()
+    data = QubitFluxData()
 
     # repeat the experiment as many times as defined by software_averages
     for iteration in range(params.software_averages):
@@ -118,11 +115,11 @@ def _acquisition(
     return data
 
 
-def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
-    return ResonatorFluxResults()
+def _fit(data: QubitFluxData) -> QubitFluxResults:
+    return QubitFluxResults()
 
 
-def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, qubit):
+def _plot(data: QubitFluxData, fit: QubitFluxResults, qubit):
     figures = []
     fitting_report = "No fitting data"
 
@@ -234,4 +231,4 @@ def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, qubit):
     return figures, fitting_report
 
 
-resonator_flux = Routine(_acquisition, _fit, _plot)
+qubit_flux = Routine(_acquisition, _fit, _plot)

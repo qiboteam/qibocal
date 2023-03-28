@@ -1,6 +1,7 @@
 from enum import Enum
 
 from .classification import single_shot_classification
+from .qubit_flux_dependence import qubit_flux
 from .qubit_spectroscopy import qubit_spectroscopy
 from .rabi.amplitude import rabi_amplitude
 from .rabi.length import rabi_length
@@ -16,6 +17,7 @@ class Operation(Enum):
     resonator_punchout = resonator_punchout
     resonator_flux = resonator_flux
     qubit_spectroscopy = qubit_spectroscopy
+    qubit_flux = qubit_flux
     rabi_amplitude = rabi_amplitude
     rabi_length = rabi_length
     ramsey = ramsey
