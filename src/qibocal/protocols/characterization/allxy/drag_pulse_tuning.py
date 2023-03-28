@@ -7,12 +7,11 @@ from plotly.subplots import make_subplots
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
-from ....auto.operation import Parameters, Qubits, Results, Routine
+from ....auto.operation import Qubits, Results, Routine
 from ....config import log
 from ....data import DataUnits
 from ....fitting.utils import cos
 from ....plots.utils import get_color
-from .allxy import add_gate_pair_pulses_to_sequence, gatelist
 from .allxy_drag_pulse_tuning import AllXYDragParameters
 
 
