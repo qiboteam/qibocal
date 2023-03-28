@@ -123,7 +123,7 @@ def ramsey_fit(x, p0, p1, p2, p3, p4):
     return p0 + p1 * np.sin(x * p2 + p3) * np.exp(-x * p4)
 
 
-def _fit(data: RamseyData):  # TODO: put Platform as input
+def _fit(data: RamseyData) -> RamseyResults:  # TODO: put Platform as input
     r"""
     Fitting routine for Ramsey experiment. The used model is
     .. math::

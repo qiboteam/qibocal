@@ -6,9 +6,9 @@ from plotly.subplots import make_subplots
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
-from ...auto.operation import Parameters, Qubits, Results, Routine
-from ...data import Data
-from ...plots.utils import get_color
+from ....auto.operation import Parameters, Qubits, Results, Routine
+from ....data import Data
+from ....plots.utils import get_color
 
 
 @dataclass
@@ -98,7 +98,7 @@ def _acquisition(
             ro_pulses = {}
             sequence = PulseSequence()
             for qubit in qubits:
-                sequence, ro_pulses[qubit] = _add_gate_pair_pulses_to_sequence(
+                sequence, ro_pulses[qubit] = add_gate_pair_pulses_to_sequence(
                     platform, gates, qubit, params.beta_param, sequence
                 )
 
@@ -122,7 +122,7 @@ def _acquisition(
     return data
 
 
-def _add_gate_pair_pulses_to_sequence(
+def add_gate_pair_pulses_to_sequence(
     platform: AbstractPlatform, gates, qubit, beta_param, sequence
 ):
     pulse_duration = platform.create_RX_pulse(qubit, start=0).duration
@@ -214,7 +214,7 @@ def _fit(_data: AllXYData) -> AllXYResults:
 
 
 # allXY
-def _plot(data: AllXYData, _fit: AllXYData, qubit):
+def _plot(data: AllXYData, _fit: AllXYResults, qubit):
     figures = []
     fitting_report = "No fitting data"
 

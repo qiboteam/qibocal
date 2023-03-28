@@ -1,6 +1,8 @@
 from enum import Enum
 
-from .allxy import allxy
+from .allxy.allxy import allxy
+from .allxy.allxy_drag_pulse_tuning import allxy_drag_pulse_tuning
+from .allxy.drag_pulse_tuning import drag_pulse_tuning
 from .classification import single_shot_classification
 from .qubit_spectroscopy import qubit_spectroscopy
 from .rabi.amplitude import rabi_amplitude
@@ -21,3 +23,5 @@ class Operation(Enum):
     t1 = t1
     single_shot_classification = single_shot_classification
     allxy = allxy
+    allxy_drag_pulse_tuning = allxy_drag_pulse_tuning
+    drag_pulse_tuning = drag_pulse_tuning

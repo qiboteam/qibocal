@@ -75,13 +75,34 @@ actions:
 #     delay_before_readout_step: 20
 #     software_averages: 1
 
-- id: allXY
+# - id: allXY
+#   priority: 0
+#   operation: allxy
+#   parameters:
+#     beta_param: null
+#     software_averages: 1
+#     points: 5
+
+# - id: allXY_drag_pulse_tuning
+#   priority: 0
+#   operation: allxy_drag_pulse_tuning
+#   parameters:
+#     beta_start: -1
+#     beta_end: 1
+#     beta_step: 0.5
+#     software_averages: 1
+#     points: 3
+
+- id: drag_pulse_tuning
   priority: 0
-  operation: allxy
+  operation: drag_pulse_tuning
   parameters:
-    beta_param: null
+    beta_start: -0.1
+    beta_end: 0.1
+    beta_step: 0.05
     software_averages: 1
-    points: 5
+    points: 1
+
   #   main: first
   # - id: first
   #   priority: 100
