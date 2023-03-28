@@ -95,7 +95,7 @@ def allXY(
                 )
 
             # execute the pulse sequence
-            results = platform.execute_pulse_sequence(sequence)
+            results = platform.execute_pulse_sequence(sequence, acquisition_type = "DISCRIMINATION")
 
             # retrieve the results for every qubit
             for ro_pulse in ro_pulses.values():
@@ -186,7 +186,7 @@ def allXY_drag_pulse_tuning(
                     )
 
                 # execute the pulse sequence
-                results = platform.execute_pulse_sequence(sequence)
+                results = platform.execute_pulse_sequence(sequence, acquisition_type = "DISCRIMINATION")
 
                 # retrieve the results for every qubit
                 for ro_pulse in ro_pulses.values():
@@ -326,8 +326,8 @@ def drag_pulse_tuning(
                 seq2.add(ro_pulses[qubit])
 
             # execute the pulse sequences
-            result1 = platform.execute_pulse_sequence(seq1)
-            result2 = platform.execute_pulse_sequence(seq2)
+            result1 = platform.execute_pulse_sequence(seq1, acquisition_type = "DISCRIMINATION")
+            result2 = platform.execute_pulse_sequence(seq2, acquisition_type = "DISCRIMINATION")
 
             # retrieve the results for every qubit
             for ro_pulse in ro_pulses.values():

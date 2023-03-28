@@ -23,9 +23,8 @@ def calibrate_qubit_states(
     Args:
         platform (:class:`qibolab.platforms.abstract.AbstractPlatform`): custom abstract platform on which we perform the calibration.
         qubits (dict): Dict of target Qubit objects to perform the action
-        nshots (int): number of times the pulse sequence will be repeated.
-        software_averages (int): Number of executions of the routine for averaging results
-        points (int): Save data results in a file every number of points
+        nshots (int) : Number of executions on hardware of the routine for averaging results
+        relaxation_time (float): Wait time for the qubit to decohere back to the `gnd` state 
 
     Returns:
         A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
@@ -34,10 +33,9 @@ def calibrate_qubit_states(
             - **i[V]**: Resonator signal voltage mesurement for the component I in volts
             - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
             - **phase[rad]**: Resonator signal phase mesurement in radians
-            - **iteration[dimensionless]**: Execution number
             - **qubit**: The qubit being tested
-            - **iteration**: The iteration number of the many determined by software_averages
-
+            - **iteration**: The SINGLE software iteration number
+            - **state**: State of the qubit
     """
 
     # reload instrument settings from runcard
@@ -68,7 +66,7 @@ def calibrate_qubit_states(
 
     # execute the first pulse sequence
     state0_results = platform.execute_pulse_sequence(
-        state0_sequence, nshots=nshots, relaxation_time=relaxation_time
+        state0_sequence, nshots=nshots, relaxation_time=relaxation_time, averaging_mode = "SINGLESHOT"
     )
 
     # retrieve and store the results for every qubit
@@ -85,7 +83,7 @@ def calibrate_qubit_states(
 
     # execute the second pulse sequence
     state1_results = platform.execute_pulse_sequence(
-        state1_sequence, nshots=nshots, relaxation_time=relaxation_time
+        state1_sequence, nshots=nshots, relaxation_time=relaxation_time, averaging_mode = "SINGLESHOT"
     )
 
     # retrieve and store the results for every qubit

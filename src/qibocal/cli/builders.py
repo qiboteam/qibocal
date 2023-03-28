@@ -6,6 +6,8 @@ import shutil
 
 import yaml
 
+import numpy as np
+
 from qibocal import calibrations
 from qibocal.config import log, raise_error
 from qibocal.data import Data
@@ -53,7 +55,11 @@ class ActionParser:
         results = self.func(platform, qubits, **self.params)
 
         for data in results:
-            getattr(data, f"to_{data_format}")(self.path)
+            if isinstance(data, tuple):
+                if isinstance(data[0], np.ndarray):
+                    np.save(self.path + self.name + data[1], data)
+            else:
+                getattr(data, f"to_{data_format}")(self.path)
 
 
 class niGSCactionParser(ActionParser):
@@ -260,7 +266,8 @@ class ActionBuilder:
                 parser.execute(self.format, self.platform, self.qubits)
                 for qubit in self.qubits:
                     if self.platform is not None:
-                        self.update_platform_runcard(qubit, action)
+                        pass
+                        # self.update_platform_runcard(qubit, action)
             self.dump_report(actions)
 
         if self.platform is not None:

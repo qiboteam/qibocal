@@ -64,7 +64,7 @@ def time_of_flight(
     # execute the first pulse sequence
     # state0_results = platform.execute_pulse_sequence(state0_sequence, nshots=nshots, relaxation_time=relaxation_time, acquistion = "RAW")
     state0_results = platform.execute_pulse_sequence(
-        state0_sequence, nshots=nshots, relaxation_time=relaxation_time
+        state0_sequence, nshots=nshots, relaxation_time=relaxation_time, acquisition_type = "RAW"
     )
 
     # retrieve and store the results for every qubit
@@ -82,7 +82,7 @@ def time_of_flight(
 
     # # execute the second pulse sequence
     # state1_results = platform.execute_pulse_sequence(state1_sequence, nshots=nshots, acquistion = "RAW")
-    state1_results = platform.execute_pulse_sequence(state1_sequence, nshots=nshots)
+    state1_results = platform.execute_pulse_sequence(state1_sequence, nshots=nshots, acquisition_type = "RAW")
 
     # retrieve and store the results for every qubit
     for ro_pulse in ro_pulses.values():
