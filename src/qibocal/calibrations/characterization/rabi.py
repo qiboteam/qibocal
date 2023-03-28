@@ -1,6 +1,7 @@
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
+from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal import plots
 from qibocal.data import DataUnits
@@ -15,6 +16,7 @@ def rabi_pulse_length(
     pulse_duration_start,
     pulse_duration_end,
     pulse_duration_step,
+    nshots=1024,
     software_averages=1,
     points=10,
 ):
@@ -108,11 +110,11 @@ def rabi_pulse_length(
                 )
 
             # execute the pulse sequence
-            results = platform.execute_pulse_sequence(sequence)
+            results = platform.execute_pulse_sequence(sequence, nshots=nshots)
 
             for ro_pulse in ro_pulses.values():
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                r = results[ro_pulse.serial].to_dict()
+                r = results[ro_pulse.serial].to_dict(average=True)
                 r.update(
                     {
                         "time[ns]": duration,
@@ -211,6 +213,7 @@ def rabi_pulse_gain(
     )
 
     count = 0
+    # TODO: add Sweeper for gain
     for iteration in range(software_averages):
         # sweep the parameter
         for gain in qd_pulse_gain_range:
@@ -239,7 +242,7 @@ def rabi_pulse_gain(
 
             for ro_pulse in ro_pulses.values():
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                r = results[ro_pulse.serial].to_dict()
+                r = results[ro_pulse.serial].to_dict(average=True)
                 r.update(
                     {
                         "gain[dimensionless]": gain,
@@ -270,8 +273,9 @@ def rabi_pulse_amplitude(
     pulse_amplitude_start,
     pulse_amplitude_end,
     pulse_amplitude_step,
+    nshots=1024,
+    relaxation_time=None,
     software_averages=1,
-    points=10,
 ):
     r"""
     In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse amplitude
@@ -329,6 +333,11 @@ def rabi_pulse_amplitude(
     qd_pulse_amplitude_range = np.arange(
         pulse_amplitude_start, pulse_amplitude_end, pulse_amplitude_step
     )
+    sweeper = Sweeper(
+        Parameter.amplitude,
+        qd_pulse_amplitude_range,
+        [qd_pulses[qubit] for qubit in qubits],
+    )
 
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
@@ -339,55 +348,37 @@ def rabi_pulse_amplitude(
         options=["qubit", "iteration"],
     )
 
-    count = 0
     for iteration in range(software_averages):
         # sweep the parameter
-        for amplitude in qd_pulse_amplitude_range:
-            for qubit in qubits:
-                qd_pulses[qubit].amplitude = amplitude
-            # save data as often as defined by points
-            if count % points == 0 and count > 0:
-                yield data
-                # calculate and save fit
-                yield rabi_fit(
-                    data,
-                    x="amplitude[dimensionless]",
-                    y="MSR[uV]",
-                    qubits=qubits,
-                    resonator_type=platform.resonator_type,
-                    labels=[
-                        "pi_pulse_amplitude",
-                        "pi_pulse_peak_voltage",
-                    ],
-                )
+        results = platform.sweep(
+            sequence, sweeper, nshots=nshots, relaxation_time=relaxation_time
+        )
+        for qubit in qubits:
+            # average msr, phase, i and q over the number of shots defined in the runcard
+            result = results[ro_pulses[qubit].serial]
+            r = result.to_dict(average=False)
+            r.update(
+                {
+                    "amplitude[dimensionless]": qd_pulse_amplitude_range,
+                    "qubit": len(qd_pulse_amplitude_range) * [qubit],
+                    "iteration": len(qd_pulse_amplitude_range) * [iteration],
+                }
+            )
+            data.add_data_from_dict(r)
 
-            # execute the pulse sequence
-            results = platform.execute_pulse_sequence(sequence)
-
-            for ro_pulse in ro_pulses.values():
-                # average msr, phase, i and q over the number of shots defined in the runcard
-                r = results[ro_pulse.serial].to_dict()
-                r.update(
-                    {
-                        "amplitude[dimensionless]": amplitude,
-                        "qubit": ro_pulse.qubit,
-                        "iteration": iteration,
-                    }
-                )
-                data.add(r)
-            count += 1
-    yield data
-    yield rabi_fit(
-        data,
-        x="amplitude[dimensionless]",
-        y="MSR[uV]",
-        qubits=qubits,
-        resonator_type=platform.resonator_type,
-        labels=[
-            "pi_pulse_amplitude",
-            "pi_pulse_peak_voltage",
-        ],
-    )
+        yield data
+        # calculate and save fit
+        yield rabi_fit(
+            data,
+            x="amplitude[dimensionless]",
+            y="MSR[uV]",
+            qubits=qubits,
+            resonator_type=platform.resonator_type,
+            labels=[
+                "pi_pulse_amplitude",
+                "pi_pulse_peak_voltage",
+            ],
+        )
 
 
 @plot("MSR vs length and gain", plots.duration_gain_msr_phase)
@@ -465,6 +456,7 @@ def rabi_pulse_length_and_gain(
     )
 
     count = 0
+    # TODO: add sweeper for gain
     for iteration in range(software_averages):
         # sweep the parameters
         for duration in qd_pulse_duration_range:
@@ -482,7 +474,7 @@ def rabi_pulse_length_and_gain(
                 results = platform.execute_pulse_sequence(sequence)
                 for ro_pulse in ro_pulses.values():
                     # average msr, phase, i and q over the number of shots defined in the runcard
-                    r = results[ro_pulse.serial].to_dict()
+                    r = results[ro_pulse.serial].to_dict(average=True)
                     r.update(
                         {
                             "duration[ns]": duration,
@@ -506,6 +498,8 @@ def rabi_pulse_length_and_amplitude(
     pulse_amplitude_start,
     pulse_amplitude_end,
     pulse_amplitude_step,
+    relaxation_time=None,
+    nshots=None,
     software_averages=1,
     points=10,
 ):
@@ -573,6 +567,7 @@ def rabi_pulse_length_and_amplitude(
     )
 
     count = 0
+    # TODO: implement Sweeper for amplitude
     for iteration in range(software_averages):
         # sweep the parameters
         for duration in qd_pulse_duration_range:
@@ -587,10 +582,12 @@ def rabi_pulse_length_and_amplitude(
                     yield data
 
                 # execute the pulse sequence
-                results = platform.execute_pulse_sequence(sequence)
+                results = platform.execute_pulse_sequence(
+                    sequence, relaxation_time=relaxation_time, nshots=nshots
+                )
                 for ro_pulse in ro_pulses.values():
                     # average msr, phase, i and q over the number of shots defined in the runcard
-                    r = results[ro_pulse.serial].to_dict()
+                    r = results[ro_pulse.serial].to_dict(average=True)
                     r.update(
                         {
                             "duration[ns]": duration,
