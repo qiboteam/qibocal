@@ -93,13 +93,22 @@ actions:
 #     software_averages: 1
 #     points: 3
 
-- id: drag_pulse_tuning
+# - id: drag_pulse_tuning
+#   priority: 0
+#   operation: drag_pulse_tuning
+#   parameters:
+#     beta_start: -0.1
+#     beta_end: 0.1
+#     beta_step: 0.05
+#     software_averages: 1
+#     points: 1
+
+- id: flipping
   priority: 0
-  operation: drag_pulse_tuning
+  operation: flipping
   parameters:
-    beta_start: -0.1
-    beta_end: 0.1
-    beta_step: 0.05
+    nflips_max: 2
+    nflips_step: 1
     software_averages: 1
     points: 1
 

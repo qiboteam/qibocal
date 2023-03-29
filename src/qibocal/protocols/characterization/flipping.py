@@ -15,45 +15,41 @@ from ...plots.utils import get_color
 
 
 @dataclass
-class T1Parameters(Parameters):
-    delay_before_readout_start: int
-    delay_before_readout_end: list
-    delay_before_readout_step: int
+class FlippingParameters(Parameters):
+    nflips_max: int
+    nflips_step: int
     software_averages: int = 1
     points: int = 10
 
 
 @dataclass
-class T1Results(Results):
-    t1: Dict[List[Tuple], str] = field(metadata=dict(update="t1"))
+class FlippingResults(Results):
+    amplitudes: Dict[List[Tuple], str] = field(metadata=dict(update="amplitudes"))
+    amplitude_factors: Dict[List[Tuple], str]
     fitted_parameters: Dict[List[Tuple], List]
 
 
-class T1Data(DataUnits):
+class FlippngData(DataUnits):
     def __init__(self):
         super().__init__(
             name="data",
-            quantities={"wait": "ns"},
-            options=["qubit", "iteration", "resonator_type"],
+            quantities={"flips": "dimensionless"},
+            options=["qubit", "iteration", "resonator_type", "pi_pulse_amplitude"],
         )
 
 
 def _acquisition(
-    platform: AbstractPlatform, qubits: Qubits, params: T1Parameters
-) -> T1Data:
+    platform: AbstractPlatform, qubits: Qubits, params: FlippingParameters
+) -> FlippngData:
     r"""
-    In a T1 experiment, we measure an excited qubit after a delay. Due to decoherence processes
-    (e.g. amplitude damping channel), it is possible that, at the time of measurement, after the delay,
-    the qubit will not be excited anymore. The larger the delay time is, the more likely is the qubit to
-    fall to the ground state. The goal of the experiment is to characterize the decay rate of the qubit
-    towards the ground state.
+    The flipping experiment correct the delta amplitude in the qubit drive pulse. We measure a qubit after applying
+    a Rx(pi/2) and N flips (Rx(pi) rotations). After fitting we can obtain the delta amplitude to refine pi pulses.
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
-        qubits (list): List of target qubits to perform the action
-        delay_before_readout_start (int): Initial time delay before ReadOut
-        delay_before_readout_end (list): Maximum time delay before ReadOut
-        delay_before_readout_step (int): Scan range step for the delay before ReadOut
+        qubits (dict): Dict of target Qubit objects to perform the action
+        nflips_max (int): Maximum number of flips introduced in each sequence
+        nflips_step (int): Scan range step for the number of flippings
         software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
 
@@ -64,63 +60,62 @@ def _acquisition(
             - **i[V]**: Resonator signal voltage mesurement for the component I in volts
             - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
             - **phase[rad]**: Resonator signal phase mesurement in radians
-            - **wait[ns]**: Delay before ReadOut used in the current execution
+            - **flips[dimensionless]**: Number of flips applied in the current execution
             - **qubit**: The qubit being tested
             - **iteration**: The iteration number of the many determined by software_averages
 
         - A DataUnits object with the fitted data obtained with the following keys
 
-            - **labels[0]**: T1
+            - **amplitude_correction_factor**: Pi pulse correction factor
+            - **corrected_amplitude**: Corrected pi pulse amplitude
             - **popt0**: p0
             - **popt1**: p1
             - **popt2**: p2
+            - **popt3**: p3
             - **qubit**: The qubit being tested
     """
 
-    # create a sequence of pulses for the experiment
-    # RX - wait t - MZ
-    qd_pulses = {}
-    ro_pulses = {}
-    sequence = PulseSequence()
-    for qubit in qubits:
-        qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulses[qubit].duration
-        )
-        sequence.add(qd_pulses[qubit])
-        sequence.add(ro_pulses[qubit])
-
-    # define the parameter to sweep and its range:
-    # wait time before readout
-    ro_wait_range = np.arange(
-        params.delay_before_readout_start,
-        params.delay_before_readout_end,
-        params.delay_before_readout_step,
-    )
-
-    # create a DataUnits object to store the MSR, phase, i, q and the delay time
-    data = T1Data()
+    # create a DataUnits object to store MSR, phase, i, q and the number of flips
+    data = FlippngData()
 
     # repeat the experiment as many times as defined by software_averages
     count = 0
     for iteration in range(params.software_averages):
         # sweep the parameter
-        for wait in ro_wait_range:
+        for flips in range(0, params.nflips_max, params.nflips_step):
+            # create a sequence of pulses for the experiment
+            sequence = PulseSequence()
+            ro_pulses = {}
             for qubit in qubits:
-                ro_pulses[qubit].start = qd_pulses[qubit].duration + wait
+                RX90_pulse = platform.create_RX90_pulse(qubit, start=0)
+                sequence.add(RX90_pulse)
+                # execute sequence RX(pi/2) - [RX(pi) - RX(pi)] from 0...flips times - RO
+                start1 = RX90_pulse.duration
+                for j in range(flips):
+                    RX_pulse1 = platform.create_RX_pulse(qubit, start=start1)
+                    start2 = start1 + RX_pulse1.duration
+                    RX_pulse2 = platform.create_RX_pulse(qubit, start=start2)
+                    sequence.add(RX_pulse1)
+                    sequence.add(RX_pulse2)
+                    start1 = start2 + RX_pulse2.duration
 
+                # add ro pulse at the end of the sequence
+                ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+                    qubit, start=start1
+                )
+                sequence.add(ro_pulses[qubit])
             # execute the pulse sequence
             results = platform.execute_pulse_sequence(sequence)
-
             for ro_pulse in ro_pulses.values():
                 # average msr, phase, i and q over the number of shots defined in the runcard
                 r = results[ro_pulse.serial].to_dict(average=True)
                 r.update(
                     {
-                        "wait[ns]": wait,
+                        "flips[dimensionless]": flips,
                         "qubit": ro_pulse.qubit,
                         "iteration": iteration,
                         "resonator_type": platform.resonator_type,
+                        "pi_pulse_amplitude": qubits[ro_pulse.qubit].pi_pulse_amplitude,
                     }
                 )
                 data.add(r)
@@ -128,25 +123,32 @@ def _acquisition(
     return data
 
 
-def exp(x, *p):
-    return p[0] - p[1] * np.exp(-1 * x * p[2])
+def flipping_fit(x, p0, p1, p2, p3):
+    # A fit to Flipping Qubit oscillation
+    # Epsilon?? shoule be Amplitude : p[0]
+    # Offset                        : p[1]
+    # Period of oscillation         : p[2]
+    # phase for the first point corresponding to pi/2 rotation   : p[3]
+    return np.sin(x * 2 * np.pi / p2 + p3) * p0 + p1
 
 
-def _fit(data: T1Data) -> T1Results:
-    """
+def _fit(data: FlippngData) -> FlippingResults:
+    r"""
     Fitting routine for T1 experiment. The used model is
 
-        .. math::
+    .. math::
 
-            y = p_0-p_1 e^{-x p_2}.
+        y = p_0 sin\Big(\frac{2 \pi x}{p_2} + p_3\Big).
 
     Args:
 
         data (`DataUnits`): dataset for the fit
-        x (str): name of the input values for the T1 model
-        y (str): name of the output values for the T1 model
+        x (str): name of the input values for the flipping model
+        y (str): name of the output values for the flipping model
         qubit (int): ID qubit number
         nqubits (int): total number of qubits
+        niter(int): Number of times of the flipping sequence applied to the qubit
+        pi_pulse_amplitudes(list): list of corrected pi pulse amplitude
         labels (list of str): list containing the lables of the quantities computed by this fitting method.
 
     Returns:
@@ -156,49 +158,49 @@ def _fit(data: T1Data) -> T1Results:
             - **popt0**: p0
             - **popt1**: p1
             - **popt2**: p2
-            - **labels[0]**: T1.
+            - **popt3**: p3
+            - **labels[0]**: delta amplitude
+            - **labels[1]**: corrected amplitude
+
 
     """
     qubits = data.df["qubit"].unique()
     resonator_type = data.df["resonator_type"].unique()
-    t1s = {}
+    corrected_amplitudes = {}
     fitted_parameters = {}
-
+    amplitude_correction_factors = {}
     for qubit in qubits:
         qubit_data_df = data.df[data.df["qubit"] == qubit]
+        pi_pulse_amplitude = qubit_data_df["pi_pulse_amplitude"].unique()
         voltages = qubit_data_df["MSR"].pint.to("uV").pint.magnitude
-        times = qubit_data_df["wait"].pint.to("ns").pint.magnitude
+        flips = qubit_data_df["flips"].pint.magnitude
 
         if resonator_type == "3D":
-            pguess = [
-                max(voltages.values),
-                (max(voltages.values) - min(voltages.values)),
-                1 / 250,
-            ]
+            pguess = [0.0003, np.mean(voltages), -18, 0]  # epsilon guess parameter
         else:
-            pguess = [
-                min(voltages.values),
-                (max(voltages.values) - min(voltages.values)),
-                1 / 250,
-            ]
+            pguess = [0.0003, np.mean(voltages), 18, 0]  # epsilon guess parameter
 
         try:
-            popt, pcov = curve_fit(
-                exp, times.values, voltages.values, p0=pguess, maxfev=2000000
-            )
-            t1 = abs(1 / popt[2])
+            popt, _ = curve_fit(flipping, flips, voltages, p0=pguess, maxfev=2000000)
+
         except:
-            log.warning("t1_fit: the fitting was not succesful")
-            t1 = 0
-            popt = [0] * 3
+            log.warning("flipping_fit: the fitting was not succesful")
+            popt = [0, 0, 2, 0]
 
-        t1s[qubit] = t1
+        epsilon = -np.pi / popt[2]
+        amplitude_correction_factor = np.pi / (np.pi + epsilon)
+        corrected_amplitude = amplitude_correction_factor * pi_pulse_amplitude
+
+        corrected_amplitudes[qubit] = corrected_amplitude
         fitted_parameters[qubit] = popt
+        amplitude_correction_factors[qubit] = amplitude_correction_factor
 
-    return T1Results(t1s, fitted_parameters)
+    return FlippingResults(
+        corrected_amplitudes, amplitude_correction_factors, fitted_parameters
+    )
 
 
-def _plot(data: T1Data, fit: T1Results, qubit):
+def _plot(data: FlippngData, fit: FlippingResults, qubit):
     figures = []
 
     fig = make_subplots(
@@ -214,18 +216,17 @@ def _plot(data: T1Data, fit: T1Results, qubit):
 
     data.df = data.df.drop(columns=["i", "q", "phase", "qubit"])
     iterations = data.df["iteration"].unique()
-    waits = data.df["wait"].unique()
+    flips = data.df["flips"].unique()
 
     if len(iterations) > 1:
         opacity = 0.3
     else:
         opacity = 1
-
     for iteration in iterations:
         iteration_data = data.df[data.df["iteration"] == iteration]
         fig.add_trace(
             go.Scatter(
-                x=iteration_data["wait"].pint.magnitude,
+                x=iteration_data["flips"].pint.magnitude,
                 y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
                 marker_color=get_color(report_n),
                 opacity=opacity,
@@ -241,8 +242,8 @@ def _plot(data: T1Data, fit: T1Results, qubit):
         data.df = data.df.drop(columns=["iteration"])  # pylint: disable=E1101
         fig.add_trace(
             go.Scatter(
-                x=waits,  # unique_waits,
-                y=data.df.groupby("wait")["MSR"].mean() * 1e6,  # pylint: disable=E1101
+                x=flips,
+                y=data.df.groupby("flips")["MSR"].mean() * 1e6,  # pylint: disable=E1101
                 marker_color=get_color(report_n),
                 name=f"q{qubit}/r{report_n}: Average",
                 showlegend=True,
@@ -252,27 +253,25 @@ def _plot(data: T1Data, fit: T1Results, qubit):
             col=1,
         )
 
-    # # add fitting trace
+    # add fitting trace
     if len(data) > 0:
-        waitrange = np.linspace(
-            min(data.df["wait"]),
-            max(data.df["wait"]),
+        flips_range = np.linspace(
+            min(data.df["flips"]),
+            max(data.df["flips"]),
             2 * len(data),
         )
-        # params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(
-        #     orient="records"
-        # )[0]
 
         fig.add_trace(
             go.Scatter(
-                x=waitrange.magnitude,
-                y=exp(
-                    waitrange.magnitude,
+                x=flips_range,
+                y=flipping_fit(
+                    flips_range.magnitude,
                     float(fit.fitted_parameters[qubit][0]),
                     float(fit.fitted_parameters[qubit][1]),
                     float(fit.fitted_parameters[qubit][2]),
+                    float(fit.fitted_parameters[qubit][3]),
                 ),
-                name=f"q{qubit}/r{report_n} Fit",
+                name=f"q{qubit}/r{report_n}: Fit MSR",
                 line=go.scatter.Line(dash="dot"),
                 marker_color=get_color(4 * report_n + 2),
             ),
@@ -280,7 +279,8 @@ def _plot(data: T1Data, fit: T1Results, qubit):
             col=1,
         )
         fitting_report = fitting_report + (
-            f"q{qubit}/r{report_n} | t1: {fit.t1[qubit]:,.0f} ns.<br><br>"
+            f"q{qubit}/r{report_n} | amplitude_correction_factor: {fit.amplitudes[qubit][0]:.4f}<br>"
+            + f"q{qubit}/r{report_n} | corrected_amplitude: {fit.amplitude_factors[qubit]:.4f}<br><br>"
         )
 
     report_n += 1
@@ -289,7 +289,7 @@ def _plot(data: T1Data, fit: T1Results, qubit):
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Time (ns)",
+        xaxis_title="Flips (dimensionless)",
         yaxis_title="MSR (uV)",
     )
 
@@ -298,4 +298,4 @@ def _plot(data: T1Data, fit: T1Results, qubit):
     return figures, fitting_report
 
 
-t1 = Routine(_acquisition, _fit, _plot)
+flipping = Routine(_acquisition, _fit, _plot)
