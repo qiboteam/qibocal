@@ -21,7 +21,7 @@ class ResonatorPunchoutParameters(Parameters):
     step_amp_factor: float
     nshots: int
     relaxation_time: int
-    software_averages: int
+    software_averages: int = 1
 
 
 @dataclass

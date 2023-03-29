@@ -19,7 +19,6 @@ class FlippingParameters(Parameters):
     nflips_max: int
     nflips_step: int
     software_averages: int = 1
-    points: int = 10
 
 
 @dataclass
@@ -79,7 +78,6 @@ def _acquisition(
     data = FlippngData()
 
     # repeat the experiment as many times as defined by software_averages
-    count = 0
     for iteration in range(params.software_averages):
         # sweep the parameter
         for flips in range(0, params.nflips_max, params.nflips_step):
@@ -119,7 +117,6 @@ def _acquisition(
                     }
                 )
                 data.add(r)
-            count += 1
     return data
 
 
@@ -187,8 +184,8 @@ def _fit(data: FlippngData) -> FlippingResults:
             log.warning("flipping_fit: the fitting was not succesful")
             popt = [0, 0, 2, 0]
 
-        epsilon = -np.pi / popt[2]
-        amplitude_correction_factor = np.pi / (np.pi + epsilon)
+        eps = -1 / popt[2]
+        amplitude_correction_factor = eps / (eps - 1)
         corrected_amplitude = amplitude_correction_factor * pi_pulse_amplitude
 
         corrected_amplitudes[qubit] = corrected_amplitude
@@ -213,10 +210,10 @@ def _plot(data: FlippngData, fit: FlippingResults, qubit):
 
     report_n = 0
     fitting_report = ""
-
+    data.df = data.df[data.df["qubit"] == qubit]
     data.df = data.df.drop(columns=["i", "q", "phase", "qubit"])
     iterations = data.df["iteration"].unique()
-    flips = data.df["flips"].unique()
+    flips = data.df["flips"].pint.to("dimensionless").pint.magnitude
 
     if len(iterations) > 1:
         opacity = 0.3
@@ -242,8 +239,11 @@ def _plot(data: FlippngData, fit: FlippingResults, qubit):
         data.df = data.df.drop(columns=["iteration"])  # pylint: disable=E1101
         fig.add_trace(
             go.Scatter(
-                x=flips,
-                y=data.df.groupby("flips")["MSR"].mean() * 1e6,  # pylint: disable=E1101
+                x=flips.tolist(),
+                y=data.df.groupby("flips")["MSR"]
+                .mean()
+                .pint.to("uV")
+                .pint.magnitude,  # pylint: disable=E1101
                 marker_color=get_color(report_n),
                 name=f"q{qubit}/r{report_n}: Average",
                 showlegend=True,

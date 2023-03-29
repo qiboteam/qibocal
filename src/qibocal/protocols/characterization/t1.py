@@ -210,10 +210,10 @@ def _plot(data: T1Data, fit: T1Results, qubit):
 
     report_n = 0
     fitting_report = ""
-
+    data.df = data.df[data.df["qubit"] == qubit]
     data.df = data.df.drop(columns=["i", "q", "phase", "qubit"])
     iterations = data.df["iteration"].unique()
-    waits = data.df["wait"].unique()
+    waits = data.df["wait"].pint.to("ns").pint.magnitude.unique()
 
     if len(iterations) > 1:
         opacity = 0.3
@@ -224,7 +224,7 @@ def _plot(data: T1Data, fit: T1Results, qubit):
         iteration_data = data.df[data.df["iteration"] == iteration]
         fig.add_trace(
             go.Scatter(
-                x=iteration_data["wait"].pint.magnitude,
+                x=iteration_data["wait"].pint.to("ns").pint.magnitude,
                 y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
                 marker_color=get_color(report_n),
                 opacity=opacity,
@@ -241,7 +241,10 @@ def _plot(data: T1Data, fit: T1Results, qubit):
         fig.add_trace(
             go.Scatter(
                 x=waits,  # unique_waits,
-                y=data.df.groupby("wait")["MSR"].mean() * 1e6,  # pylint: disable=E1101
+                y=data.df.groupby("wait")["MSR"]
+                .mean()
+                .pint.to("uV")
+                .pint.magnitude,  # pylint: disable=E1101
                 marker_color=get_color(report_n),
                 name=f"q{qubit}/r{report_n}: Average",
                 showlegend=True,
@@ -251,36 +254,33 @@ def _plot(data: T1Data, fit: T1Results, qubit):
             col=1,
         )
 
-    # # add fitting trace
-    if len(data) > 0:
-        waitrange = np.linspace(
-            min(data.df["wait"]),
-            max(data.df["wait"]),
-            2 * len(data),
-        )
-        # params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(
-        #     orient="records"
-        # )[0]
+    # # # add fitting trace
+    # if len(data) > 0:
+    #     waitrange = np.linspace(
+    #         min(data.df["wait"]),
+    #         max(data.df["wait"]),
+    #         2 * len(data),
+    #     )
 
-        fig.add_trace(
-            go.Scatter(
-                x=waitrange.magnitude,
-                y=exp(
-                    waitrange.magnitude,
-                    float(fit.fitted_parameters[qubit][0]),
-                    float(fit.fitted_parameters[qubit][1]),
-                    float(fit.fitted_parameters[qubit][2]),
-                ),
-                name=f"q{qubit}/r{report_n} Fit",
-                line=go.scatter.Line(dash="dot"),
-                marker_color=get_color(4 * report_n + 2),
-            ),
-            row=1,
-            col=1,
-        )
-        fitting_report = fitting_report + (
-            f"q{qubit}/r{report_n} | t1: {fit.t1[qubit]:,.0f} ns.<br><br>"
-        )
+    #     fig.add_trace(
+    #         go.Scatter(
+    #             x=waitrange.magnitude,
+    #             y=exp(
+    #                 waitrange.magnitude,
+    #                 float(fit.fitted_parameters[qubit][0]),
+    #                 float(fit.fitted_parameters[qubit][1]),
+    #                 float(fit.fitted_parameters[qubit][2]),
+    #             ),
+    #             name=f"q{qubit}/r{report_n} Fit",
+    #             line=go.scatter.Line(dash="dot"),
+    #             marker_color=get_color(4 * report_n + 2),
+    #         ),
+    #         row=1,
+    #         col=1,
+    #     )
+    #     fitting_report = fitting_report + (
+    #         f"q{qubit}/r{report_n} | t1: {fit.t1[qubit]:,.0f} ns.<br><br>"
+    #     )
 
     report_n += 1
 

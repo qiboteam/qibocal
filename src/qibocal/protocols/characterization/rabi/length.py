@@ -18,7 +18,7 @@ class RabiLengthParameters(Parameters):
     pulse_duration_step: float
     nshots: int
     relaxation_time: float
-    software_averages: float
+    software_averages: int = 1
 
 
 @dataclass

@@ -17,7 +17,6 @@ actions:
       power_level: high
       nshots: 1024
       relaxation_time: 0
-      software_averages : 1
 
   - id: resonator_punchout
     priority: 20
@@ -31,7 +30,6 @@ actions:
       step_amp_factor: 0.02
       nshots: 1000
       relaxation_time: 0
-      software_averages: 1
 
   - id: resonator_spectroscopy low power
     priority: 10
@@ -44,7 +42,6 @@ actions:
       power_level: low
       nshots: 1024
       relaxation_time: 0
-      software_averages : 1
 
   - id: resonator flux dependence
     priority: 10
@@ -58,7 +55,6 @@ actions:
       fluxlines: qubits
       nshots: 1000
       relaxation_time: 0
-      software_averages: 1
 
   - id: qubit spectroscopy
     priority: 10
@@ -71,11 +67,10 @@ actions:
       freq_step: 100_000
       nshots: 1000
       relaxation_time: 0
-      software_averages: 1
 
   - id: qubit flux dependence
     priority: 10
-    main: t1 # rabi
+    main: t1
     operation: qubit_flux
     parameters:
       freq_width: 10_000_000
@@ -86,7 +81,6 @@ actions:
       fluxlines: qubits
       nshots: 1000
       relaxation_time: 0
-      software_averages: 1
 
   # - id: rabi
   #   priority: 10
@@ -108,7 +102,6 @@ actions:
       delay_before_readout_start: 16
       delay_before_readout_end: 500
       delay_before_readout_step: 20
-      software_averages: 1
 
   - id: ramsey
     priority: 1
@@ -118,7 +111,6 @@ actions:
       delay_between_pulses_start: 16 # must be a multiple of 4 incl 0
       delay_between_pulses_end: 100
       delay_between_pulses_step: 4 # must be a multiple of 4
-      software_averages: 1
 
   - id: single shot classification
     priority: 30
@@ -126,7 +118,6 @@ actions:
     operation: single_shot_classification
     parameters:
       nshots: 1024
-      software_averages: 1
 
   - id: allXY
     priority: 10
@@ -134,53 +125,38 @@ actions:
     main: drag_pulse_tuning
     parameters:
       beta_param: null
-      software_averages: 1
 
-# - id: allXY_drag_pulse_tuning
-#   priority: 0
-#   operation: allxy_drag_pulse_tuning
-#   parameters:
-#     beta_start: -1
-#     beta_end: 1
-#     beta_step: 0.5
-#     software_averages: 1
-#     points: 3
-
-# - id: drag_pulse_tuning
-#   priority: 0
-#   operation: drag_pulse_tuning
-#   parameters:
-#     beta_start: -0.1
-#     beta_end: 0.1
-#     beta_step: 0.05
-#     software_averages: 1
-#     points: 1
-
-# - id: flipping
-#   priority: 0
-#   operation: flipping
-#   parameters:
-#     nflips_max: 2
-#     nflips_step: 1
-#     software_averages: 1
-#     points: 1
   - id: drag_pulse_tuning
-    priority: 10
+    priority: 30
     operation: drag_pulse_tuning
-    main: allXY 2
+    main: spin_echo
     parameters:
       beta_start: -0.1
       beta_end: 0.1
       beta_step: 0.05
-      software_averages: 1
 
-  - id: allXY 2 #Ideally this should be repeated with the correct beta
-    priority: 10
-    operation: allxy
-    main: drag_pulse_tuning
+  # - id: allXY 2 #Ideally this should be repeated with the correct beta
+  #   priority: 10
+  #   operation: allxy
+  #   main: drag_pulse_tuning
+  #   parameters:
+  #     beta_param: null
+
+  - id: spin_echo
+    priority: 20
+    operation: spin_echo
+    main: flipping
     parameters:
-      beta_param: null
-      software_averages: 1
+      delay_between_pulses_start: 4
+      delay_between_pulses_end: 10000
+      delay_between_pulses_step: 200
+
+  - id: flipping
+    priority: 20
+    operation: flipping
+    parameters:
+      nflips_max: 2
+      nflips_step: 1
 
   #   main: first
   # - id: first

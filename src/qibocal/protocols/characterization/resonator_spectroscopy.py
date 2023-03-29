@@ -20,7 +20,7 @@ class ResonatorSpectroscopyParameters(Parameters):
     nshots: int
     power_level: PowerLevel
     relaxation_time: int
-    software_averages: int
+    software_averages: int = 1
 
 
 @dataclass

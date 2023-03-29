@@ -21,7 +21,7 @@ class ResonatorFluxParameters(Parameters):
     fluxlines: int
     nshots: int
     relaxation_time: int
-    software_averages: int
+    software_averages: int = 1
 
 
 @dataclass

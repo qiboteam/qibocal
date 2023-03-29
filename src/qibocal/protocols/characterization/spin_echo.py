@@ -197,7 +197,10 @@ def _plot(data: SpinEchoData, fit: SpinEchoResults, qubit: int):
         fig.add_trace(
             go.Scatter(
                 x=waits.tolist(),
-                y=data.df.groupby("wait")["MSR"].mean() * 1e6,  # pylint: disable=E1101
+                y=data.df.groupby("wait")["MSR"]
+                .mean()
+                .pint.to("uV")
+                .pint.magnitude,  # pylint: disable=E1101
                 marker_color=get_color(report_n),
                 name=f"q{qubit}/r{report_n}: Average",
                 showlegend=True,

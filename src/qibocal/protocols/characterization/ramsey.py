@@ -228,7 +228,7 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
 
     data.df = data.df[data.df["qubit"] == qubit]
     iterations = data.df["iteration"].unique()
-    waits = data.df["wait"].unique()
+    waits = data.df["wait"].pint.to("ns").pint.magnitude
     if len(iterations) > 1:
         opacity = 0.3
     else:
@@ -254,7 +254,10 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
         fig.add_trace(
             go.Scatter(
                 x=waits,
-                y=data.df.groupby("wait")["MSR"].mean() * 1e6,  # pylint: disable=E1101
+                y=data.df.groupby("wait")["MSR"]
+                .mean()
+                .pint.to("uV")
+                .pint.magnitude,  # pylint: disable=E1101
                 marker_color=get_color(report_n),
                 name=f"q{qubit}/r{report_n}: Average",
                 showlegend=True,

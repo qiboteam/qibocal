@@ -20,7 +20,7 @@ class RabiAmplitudeParameters(Parameters):
     pulse_amplitude_step: float
     nshots: int
     relaxation_time: float
-    software_averages: float
+    software_averages: int = 1
 
 
 @dataclass
@@ -83,7 +83,7 @@ def _acquisition(
     ro_pulses = {}
     for qubit in qubits:
         qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        qd_pulses[qubit].duration = 40
+        qd_pulses[qubit].duration = 40  # decided by Sergi
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=qd_pulses[qubit].finish
         )

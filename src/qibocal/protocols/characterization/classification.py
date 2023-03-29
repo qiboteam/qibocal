@@ -17,7 +17,6 @@ from ...plots.utils import get_color_state0, get_color_state1
 @dataclass
 class SingleShotClassificationParameters(Parameters):
     nshots: int
-    software_averages: int
 
 
 class SingleShotClassificationData(DataUnits):
@@ -48,7 +47,6 @@ def _acquisition(
         platform (:class:`qibolab.platforms.abstract.AbstractPlatform`): custom abstract platform on which we perform the calibration.
         qubits (dict): Dict of target Qubit objects to perform the action
         nshots (int): number of times the pulse sequence will be repeated.
-        software_averages (int): Number of executions of the routine for averaging results
 
     Returns:
         A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
