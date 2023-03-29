@@ -10,9 +10,7 @@ from qibo import gates
 from qibo.models import Circuit
 from qibo.noise import NoiseModel
 
-import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
 from qibocal.calibrations.niGSC.basics.circuitfactory import (
-    CircuitFactory,
     ZkFilteredCircuitFactory,
 )
 from qibocal.calibrations.niGSC.basics.experiment import Experiment

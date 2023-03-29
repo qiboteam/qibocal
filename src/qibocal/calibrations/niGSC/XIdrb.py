@@ -138,14 +138,12 @@ def get_aggregational_data(experiment: Experiment, ndecays: int = 2) -> pd.DataF
     # Fit the filtered signal for each depth, there could be two overlaying exponential functions.
     popt, perr = fitting_methods.fit_expn_func(depths, ydata, n=ndecays)
     # Create dictionaries with fitting parameters and estimated errors in the form {A1: ..., p1: ..., A2: ..., p2: ...}
-    popt_labels = np.array(
-        [[f"A{k+1}", f"p{k+1}"] for k in range(len(popt) // 2)]
-    ).ravel()
-    popt_dict = dict(zip(popt_labels, popt[::2] + popt[1::2]))
-    perr_labels = np.array(
-        [[f"A{k+1}_err", f"p{k+1}_err"] for k in range(len(popt) // 2)]
-    ).ravel()
-    perr_dict = dict(zip(perr_labels, perr))
+    popt_keys = [f"A{k+1}" for k in range(ndecays)]
+    popt_keys += [f"p{k+1}" for k in range(ndecays)]
+    popt_dict = dict(zip(popt_keys, popt))
+    perr_keys = [f"A{k+1}_err" for k in range(ndecays)]
+    perr_keys += [f"p{k+1}_err" for k in range(ndecays)]
+    perr_dict = dict(zip(perr_keys, perr))
     # Check if there are any imaginary values in the data.
     is_imaginary = np.any(np.iscomplex(ydata))
     popt_key = "popt_imag" if is_imaginary else "popt"
@@ -179,19 +177,18 @@ def add_validation(
     Returns:
         pd.DataFrame: The summarized data.
     """
-    from qibo.config import PRECISION_TOL
-
     data = dataframe.to_dict("records")
     validation_label = "validation_imag" if "popt_imag" in data[0] else "validation"
     coefficients, decay_parameters = filtered_decay_parameters(
         experiment.circuitfactory, experiment.noise_model, with_coefficients=True, N=N
     )
-    validation_dict = {}
-    for i in range(len(coefficients)):
-        if np.abs(coefficients[i]) > PRECISION_TOL:
-            k = len(validation_dict)
-            validation_dict[f"A{k//2+1}"] = coefficients[i]
-            validation_dict[f"p{k//2+1}"] = decay_parameters[i]
+    ndecays = len(coefficients)
+    validation_keys = [f"A{k+1}" for k in range(ndecays)]
+    validation_keys += [f"p{k+1}" for k in range(ndecays)]
+    validation_dict = dict(
+        zip(validation_keys, np.concatenate((coefficients, decay_parameters)))
+    )
+
     data[0].update({validation_label: validation_dict})
     # The row name will be displayed as y-axis label.
     df = pd.DataFrame(data, index=dataframe.index)

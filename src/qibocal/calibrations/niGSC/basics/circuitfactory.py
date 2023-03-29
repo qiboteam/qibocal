@@ -6,8 +6,6 @@ from collections.abc import Iterable
 import numpy as np
 from qibo import gates
 from qibo.models import Circuit
-from qibo.noise import NoiseModel
-from qibo.quantum_info.basis import comp_basis_to_pauli
 from qibo.quantum_info.random_ensembles import _clifford_unitary, random_clifford
 from qibo.quantum_info.utils import ONEQUBIT_CLIFFORD_PARAMS
 
@@ -195,6 +193,7 @@ class ZkFilteredCircuitFactory(CircuitFactory):
                 f"This class is written for gates acting on only one qubit, not {len(self.qubits)} qubits.",
             )
         self.name = f"Z{size}"
+        self.size = size
 
     def build_circuit(self, depth: int):
         # Initiate the empty circuit from qibo with 'self.nqubits'
@@ -210,4 +209,4 @@ class ZkFilteredCircuitFactory(CircuitFactory):
         return circuit
 
     def gate_group(self):
-        return [gates.RX(0, 2 * np.pi / self.k * i) for i in range(self.k)]
+        return [gates.RX(0, 2 * np.pi / self.size * i) for i in range(self.size)]

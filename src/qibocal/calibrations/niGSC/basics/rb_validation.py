@@ -13,6 +13,18 @@ from qibocal.config import raise_error
 pauli_basis_1q = comp_basis_to_pauli(1, normalize=True)
 
 
+def partial_trace(a, n=1):
+    if n == 1:
+        return a
+
+    dim = a.shape[0] // n
+    res = np.zeros((dim, dim), dtype=complex)
+    for i in range(dim):
+        for j in range(dim):
+            res[i][j] = np.sum([a[n * i + k][n * j + k] for k in range(n)])
+    return res
+
+
 def irrep_info(circuitfactory: CircuitFactory):
     """
     Returns necessary information about irrep decomposition of the gate group.
@@ -23,6 +35,11 @@ def irrep_info(circuitfactory: CircuitFactory):
     Returns:
         (basis, position, size, multiplicity) of an irrep
     """
+    if not isinstance(circuitfactory, CircuitFactory):
+        raise_error(
+            TypeError,
+            f"circuitfactory must be of type `CircuitFactory` for `irrep_info'. Got {type(circuitfactory)} instead.",
+        )
 
     if circuitfactory.name == "SingleCliffords":
         return (pauli_basis_1q, 1, 3, 1)
@@ -54,6 +71,71 @@ def irrep_info(circuitfactory: CircuitFactory):
     multiplicity = 1
     basis = np.eye(size)
     return (basis, index, size, multiplicity)
+
+
+def channel_twirl(
+    circuitfactory: Iterable,
+    channel: np.ndarray = None,
+    N: int = None,
+    backend=None,
+):
+    if backend is None:
+        from qibo.backends import GlobalBackend
+
+        backend = GlobalBackend()
+
+    # Get the necessary information about the irreducible representation (irrep)
+    basis, index, size, multiplicity = irrep_info(circuitfactory)
+
+    basis = (
+        basis
+        if basis is not None
+        else np.eye(2**circuitfactory.nqubits, dtype=complex)
+    )
+
+    # Transform the channel to irrep's basis
+    channel_transformed = basis @ channel @ basis.T.conj()
+
+    # Compute the fourier transform onto the irrep
+    twirl = np.zeros(
+        (
+            (4**circuitfactory.nqubits),
+            (4**circuitfactory.nqubits),
+        ),
+        dtype=complex,
+    )
+
+    # If N is None, compute theoretically with Haar measure
+    if N is None:
+        gate_group = circuitfactory.gate_group()
+        for gate in gate_group:
+            gate_matrix = gate.asmatrix(backend)
+            # Compute the superoperator of the gate
+            gate_liouville = np.kron(gate_matrix, gate_matrix.conj())
+            # Get the representation of the gate in the irrep's basis
+            gate_representation = basis @ gate_liouville @ basis.T.conj()
+
+            twirl += (
+                gate_representation @ channel_transformed @ gate_representation.T.conj()
+            )
+        return twirl / len(gate_group)
+
+    # If N is not None, sample gates from the circuitfactory
+    small_factory = circuitfactory.__class__(circuitfactory.nqubits, [1] * N)
+
+    for circuit in small_factory:
+        # Get the gate from the ideal circuit
+        gate = circuit.unitary()
+        # Compute the superoperator of the gate
+        gate_liouville = np.kron(gate, gate.conj())
+        # Get the representation of the gate in the irrep's basis
+        gate_representation = basis @ gate_liouville @ basis.T.conj()
+        #
+        twirl += (
+            gate_representation @ channel_transformed @ gate_representation.T.conj()
+        )
+
+    return twirl / N
 
 
 def fourier_transform(
@@ -186,83 +268,6 @@ def fourier_transform(
     return fourier / N
 
 
-def channel_twirl(
-    circuitfactory: Iterable,
-    channel: np.ndarray = None,
-    N: int = None,
-    backend=None,
-):
-    if backend is None:
-        from qibo.backends import GlobalBackend
-
-        backend = GlobalBackend()
-
-    # Get the necessary information about the irreducible representation (irrep)
-    basis, index, size, multiplicity = irrep_info(circuitfactory)
-
-    basis = (
-        basis
-        if basis is not None
-        else np.eye(2**circuitfactory.nqubits, dtype=complex)
-    )
-
-    # Transform the channel to irrep's basis
-    channel_transformed = basis @ channel @ basis.T.conj()
-
-    # Compute the fourier transform onto the irrep
-    twirl = np.zeros(
-        (
-            (4**circuitfactory.nqubits),
-            (4**circuitfactory.nqubits),
-        ),
-        dtype=complex,
-    )
-
-    # If N is None, compute theoretically with Haar measure
-    if N is None:
-        gate_group = circuitfactory.gate_group()
-        for gate in gate_group:
-            gate_matrix = gate.asmatrix(backend)
-            # Compute the superoperator of the gate
-            gate_liouville = np.kron(gate_matrix, gate_matrix.conj())
-            # Get the representation of the gate in the irrep's basis
-            gate_representation = basis @ gate_liouville @ basis.T.conj()
-
-            twirl += (
-                gate_representation @ channel_transformed @ gate_representation.T.conj()
-            )
-        return twirl / len(gate_group)
-
-    # If N is not None, sample gates from the circuitfactory
-    small_factory = circuitfactory.__class__(circuitfactory.nqubits, [1] * N)
-
-    for circuit in small_factory:
-        # Get the gate from the ideal circuit
-        gate = circuit.unitary()
-        # Compute the superoperator of the gate
-        gate_liouville = np.kron(gate, gate.conj())
-        # Get the representation of the gate in the irrep's basis
-        gate_representation = basis @ gate_liouville @ basis.T.conj()
-        #
-        twirl += (
-            gate_representation @ channel_transformed @ gate_representation.T.conj()
-        )
-
-    return twirl / N
-
-
-def partial_trace(a, n=1):
-    if n == 1:
-        return a
-
-    dim = a.shape[0] // n
-    res = np.zeros((dim, dim), dtype=complex)
-    for i in range(dim):
-        for j in range(dim):
-            res[i][j] = np.sum([a[n * i + k][n * j + k] for k in range(n)])
-    return res
-
-
 def filtered_decay_parameters(
     circuitfactory: CircuitFactory,
     noise_model: NoiseModel,
@@ -298,8 +303,11 @@ def filtered_decay_parameters(
     noise_strength = np.linalg.norm(
         np.abs(noisy_fourier_transform - ideal_fourier_transform), 2
     )
+    # TODO raise warning if noise is too strong and Th8 does not hold
     noise_check = noise_strength < (spectral_gap / 4)
-    number_of_decays = multiplicity if noise_check else noisy_fourier_transform.shape[0]
+    number_of_decays = (
+        multiplicity  # if noise_check else noisy_fourier_transform.shape[0]
+    )
 
     # Return the decay parameters if with_coefficients = False
     if not with_coefficients:

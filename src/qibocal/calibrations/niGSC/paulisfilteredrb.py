@@ -162,14 +162,12 @@ def get_aggregational_data(experiment: Experiment, ndecays: int = 1) -> pd.DataF
         perr_dict = {"A_err": perr[0], "p_err": perr[1]}
     else:
         fitting_methods.fit_expn_func(depths, ydata, ndecays)
-        popt_labels = np.array(
-            [[f"A{k+1}", f"p{k+1}"] for k in range(len(popt) // 2)]
-        ).ravel()
-        popt_dict = dict(zip(popt_labels, popt[::2] + popt[1::2]))
-        perr_labels = np.array(
-            [[f"A{k+1}_err", f"p{k+1}_err"] for k in range(len(popt) // 2)]
-        ).ravel()
-        perr_dict = dict(zip(perr_labels, perr))
+        popt_keys = [f"A{k+1}" for k in range(ndecays)]
+        popt_keys += [f"p{k+1}" for k in range(ndecays)]
+        popt_dict = dict(zip(popt_keys, popt))
+        perr_keys = [f"A{k+1}_err" for k in range(ndecays)]
+        perr_keys += [f"p{k+1}_err" for k in range(ndecays)]
+        perr_dict = dict(zip(perr_keys, perr))
     # Build a list of dictionaries with the aggregational information.
     data = [
         {
@@ -204,7 +202,16 @@ def add_validation(
     coefficients, decay_parameters = filtered_decay_parameters(
         experiment.circuitfactory, experiment.noise_model, with_coefficients=True, N=N
     )
-    validation_dict = {"A": coefficients[0], "p": decay_parameters[0]}
+    if len(coefficients) == 1:
+        validation_dict = {"A": coefficients[0], "p": decay_parameters[0]}
+    else:
+        ndecays = len(coefficients)
+        validation_keys = [f"A{k+1}" for k in range(ndecays)]
+        validation_keys += [f"p{k+1}" for k in range(ndecays)]
+        validation_dict = dict(
+            zip(validation_keys, np.concatenate((coefficients, decay_parameters)))
+        )
+
     data[0].update({"validation": validation_dict})
     # The row name will be displayed as y-axis label.
     df = pd.DataFrame(data, index=dataframe.index)

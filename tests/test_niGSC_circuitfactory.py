@@ -7,10 +7,14 @@ from qibo import gates, models
 
 from qibocal.calibrations.niGSC.basics.circuitfactory import *
 from qibocal.calibrations.niGSC.basics.utils import ONEQ_GATES
+from qibocal.calibrations.niGSC.Idrb import ModuleFactory as IdFactory
+from qibocal.calibrations.niGSC.paulisfilteredrb import ModuleFactory as PauliFactory
 from qibocal.calibrations.niGSC.standardrb import (
     ModuleFactory as SingleCliffordsInvFactory,
 )
 from qibocal.calibrations.niGSC.XIdrb import ModuleFactory as XIdFactory
+from qibocal.calibrations.niGSC.Z3rb import ModuleFactory as Z3Factory
+from qibocal.calibrations.niGSC.Z4rb import ModuleFactory as Z4Factory
 
 
 @pytest.fixture
@@ -20,6 +24,10 @@ def factories_singlequbitgates():
         Qibo1qGatesFactory,
         SingleCliffordsInvFactory,
         XIdFactory,
+        IdFactory,
+        PauliFactory,
+        Z3Factory,
+        Z4Factory,
     ]
     return thelist
 
@@ -70,7 +78,13 @@ def test_general_singlequbitgates_factories(
     else:
         for factory_init in factories_singlequbitgates:
             # XId factory is only defined for 1 qubit.
-            if max(qubits) > 0 and factory_init == XIdFactory:
+            if max(qubits) > 0 and factory_init in [
+                XIdFactory,
+                IdFactory,
+                PauliFactory,
+                Z3Factory,
+                Z4Factory,
+            ]:
                 with pytest.raises(ValueError):
                     factory = factory_init(nqubits, list(depths) * runs, qubits=qubits)
             else:
@@ -112,6 +126,20 @@ def test_general_singlequbitgates_factories(
                             assert isinstance(gate, gates.X) or isinstance(
                                 gate, gates.I
                             )
+                    elif factory.name in ("Id"):
+                        for gate in circuit.queue[:-1]:
+                            assert isinstance(gate, gates.I)
+                    elif factory.name in ("PauliGroup"):
+                        for gate in circuit.queue[:-1]:
+                            assert isinstance(gate, gates.Unitary)
+                    elif factory.name in ("Z3"):
+                        for gate in circuit.queue[:-1]:
+                            assert isinstance(gate, gates.RX) or isinstance(
+                                gate, gates.I
+                            )
+                    elif factory.name in ("Z4"):
+                        for gate in circuit.queue[:-1]:
+                            assert gate.__class__ in [gates.I, gates.X, gates.RX]
                     else:
                         raise_error(
                             ValueError,

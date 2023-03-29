@@ -135,14 +135,12 @@ def get_aggregational_data(experiment: Experiment, ndecays: int = 4) -> pd.DataF
     # Fit the filtered signal for each depth, there could be two overlaying exponential functions.
     popt, perr = fitting_methods.fit_expn_func(depths, ydata, n=ndecays)
     # Create dictionaries with fitting parameters and estimated errors in the form {A1: ..., p1: ..., A2: ..., p2: ...}
-    popt_labels = np.array(
-        [[f"A{k+1}", f"p{k+1}"] for k in range(len(popt) // 2)]
-    ).ravel()
-    popt_dict = dict(zip(popt_labels, popt[::2] + popt[1::2]))
-    perr_labels = np.array(
-        [[f"A{k+1}_err", f"p{k+1}_err"] for k in range(len(popt) // 2)]
-    ).ravel()
-    perr_dict = dict(zip(perr_labels, perr))
+    popt_keys = [f"A{k+1}" for k in range(ndecays)]
+    popt_keys += [f"p{k+1}" for k in range(ndecays)]
+    popt_dict = dict(zip(popt_keys, popt))
+    perr_keys = [f"A{k+1}_err" for k in range(ndecays)]
+    perr_keys += [f"p{k+1}_err" for k in range(ndecays)]
+    perr_dict = dict(zip(perr_keys, perr))
     # Check if there can be non-zero imaginary values in the data.
     is_imaginary = np.any(np.iscomplex(ydata))
     popt_key = "popt_imag" if is_imaginary else "popt"
@@ -175,6 +173,7 @@ def add_validation(
     Returns:
         pd.DataFrame: The summarized data.
     """
+
     from qibocal.calibrations.niGSC.XIdrb import add_validation as addv_xid
 
     df = addv_xid(experiment, dataframe, N)

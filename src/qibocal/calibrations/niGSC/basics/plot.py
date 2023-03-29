@@ -1,9 +1,9 @@
-import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
 from qibocal.calibrations.niGSC.basics import utils
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
 
@@ -150,14 +150,12 @@ def scatter_fit_fig(
             y=y_fit,
             name="".join(
                 [
-                    "{}:{}{}".format(
+                    "{}{}:{}".format(
+                        "<br>"
+                        if len(dfrow[fittingparam_label]) > 4 and key == "p1"
+                        else " ",
                         key,
                         utils.number_to_str(dfrow[fittingparam_label][key]),
-                        (
-                            "<br>"
-                            if len(dfrow[fittingparam_label]) > 4 and "p" in key
-                            else " "
-                        ),
                     )
                     for key in dfrow[fittingparam_label]
                 ]
@@ -190,21 +188,18 @@ def update_fig(
         x_fit, *(dfrow[param_label].values())
     )
     y_fit = np.imag(y_fit) if is_imag else np.real(y_fit)
-
-    name = (
-        name
-        if len(name) != 0
-        else "".join(
+    if len(name) == 0:
+        name = "".join(
             [
-                "{}:{}{}".format(
+                "{}{}:{}".format(
+                    "<br>" if len(dfrow[param_label]) > 4 and key == "p1" else " ",
                     key,
                     utils.number_to_str(dfrow[param_label][key]),
-                    ("<br>" if len(dfrow[param_label]) > 4 and "p" in key else " "),
                 )
                 for key in dfrow[param_label]
             ]
         )
-    )
+
     fig_traces.append(
         go.Scatter(
             x=x_fit,

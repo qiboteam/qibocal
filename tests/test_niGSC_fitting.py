@@ -74,14 +74,14 @@ def test_exp2_fitting():
         else:
             f1, f2 = np.random.uniform(0.1, 0.99, size=2)
         y = A1 * f1**x + A2 * f2**x
-        assert np.allclose(fitting.exp2_func(x, A1, f1, A2, f2), y)
+        assert np.allclose(fitting.exp2_func(x, A1, A2, f1, f2), y)
         # Distort ``y`` a bit.
         y_dist = y + np.random.uniform(-1, 1, size=len(y)) * 0.001
         popt, perr = fitting.fit_exp2_func(x, y_dist)
         worked = np.all(
             np.logical_or(
-                np.allclose(np.array(popt), [A1, f1, A2, f2], atol=0.05, rtol=0.1),
-                np.allclose(np.array(popt), [A2, f1, A1, f2], atol=0.05, rtol=0.1),
+                np.allclose(np.array(popt), [A1, A2, f1, f2], atol=0.05, rtol=0.1),
+                np.allclose(np.array(popt), [A2, A1, f1, f2], atol=0.05, rtol=0.1),
             )
         )
         if not worked:
@@ -98,7 +98,7 @@ def test_exp2_fitting():
 
     with pytest.raises(ValueError):
         x = np.array([1, 2, 3, 5])
-        A1, f1, A2, f2 = np.random.uniform(0.1, 0.99, size=4)
+        A1, A2, f1, f2 = np.random.uniform(0.1, 0.99, size=4)
         y = A1 * f1**x + A2 * f2**x
         # Distort ``y`` a bit.
         y_dist = y + np.random.uniform(-1, 1, size=len(y)) * 0.001
