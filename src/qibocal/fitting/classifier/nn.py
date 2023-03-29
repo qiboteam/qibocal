@@ -8,6 +8,8 @@ from keras.layers import BatchNormalization, Dense, Layer
 from keras.models import Sequential
 from matplotlib import pyplot as plt
 
+from .utils import identity
+
 
 def constructor(hyperpars):
     r"""Return the model class.
@@ -53,13 +55,7 @@ def hyperopt(x_train, y_train, path):
     return best_hps.get_config()
 
 
-def normalize(unnormalized):
-    r"""Return a model that implement a step of data normalisation.
-
-    Args:
-        unormalize: Model.
-    """
-    return unnormalized
+normalize = identity
 
 
 class RBFLayer(Layer):

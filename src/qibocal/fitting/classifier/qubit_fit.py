@@ -4,9 +4,11 @@ from typing import List
 
 import matplotlib.pyplot as plt
 import numpy as np
+import numpy.typing as npt
 
 from ...data import DataUnits
 from ..methods import calibrate_qubit_states_fit
+from .utils import identity
 
 
 def constructor(_hyperparams):
@@ -32,13 +34,7 @@ def hyperopt(_x_train, _y_train, _path):
     return {}
 
 
-def normalize(unormalize):
-    r"""Return a model that implement a step of data normalisation.
-
-    Args:
-        unormalize: Model.
-    """
-    return unormalize
+normalize = identity
 
 
 @dataclass
@@ -75,23 +71,20 @@ class QubitFit:
 
     def rotate(self, v):
         c, s = np.cos(self.angle), np.sin(self.angle)
-        rot = np.matrix([[c, s], [-s, c]])
-        return rot @ v
+        rot = np.array([[c, s], [-s, c]])
+        return v @ rot
 
     def translate(self, v):
         return v - self.iq_mean0
 
-    def predict(self, inputs: List[float]):
+    def predict(self, inputs: npt.NDArray):
         r"""Classify the `inputs`.
 
         Returns:
             List of predictions.
         """
         predictions = []
-
         for input in inputs:
-            input = np.array(input)
-
             input = self.translate(input)
             input = self.rotate(input)
 
