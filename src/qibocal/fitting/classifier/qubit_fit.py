@@ -72,7 +72,7 @@ class QubitFit:
     def rotate(self, v):
         c, s = np.cos(self.angle), np.sin(self.angle)
         rot = np.array([[c, s], [-s, c]])
-        return v @ rot
+        return v @ rot.T
 
     def translate(self, v):
         return v - self.iq_mean0
@@ -83,18 +83,9 @@ class QubitFit:
         Returns:
             List of predictions.
         """
-        predictions = []
-        for input in inputs:
-            input = self.translate(input)
-            input = self.rotate(input)
-
-            if input[0] < self.threshold:
-                predictions.append(0.0)
-
-            else:
-                predictions.append(1.0)
-
-        return predictions
+        translated = self.translate(inputs)
+        rotated = self.rotate(translated)
+        return (rotated[:, 0] > self.threshold).astype(int)
 
 
 def _raw_to_dataunits(iq_couples, states):
