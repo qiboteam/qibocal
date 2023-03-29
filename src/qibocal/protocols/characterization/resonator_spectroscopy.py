@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
@@ -9,7 +9,7 @@ from qibolab.sweeper import Parameter, Sweeper
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
 
-from .utils import lorentzian_fit, spectroscopy_plot
+from .utils import PowerLevel, lorentzian_fit, spectroscopy_plot
 
 
 @dataclass
@@ -18,15 +18,21 @@ class ResonatorSpectroscopyParameters(Parameters):
     freq_step: int
     amplitude: float
     nshots: int
+    power_level: PowerLevel
     relaxation_time: int
     software_averages: int
 
 
 @dataclass
 class ResonatorSpectroscopyResults(Results):
-    frequency: Dict[List[Tuple], str] = field(metadata=dict(update="readout_frequency"))
+    readout_frequency: Dict[List[Tuple], str] = field(
+        metadata=dict(update="readout_frequency")
+    )
     amplitude: Dict[List[Tuple], str] = field(metadata=dict(update="readout_amplitude"))
     fitted_parameters: Dict[List[Tuple], List]
+    bare_frequency: Optional[Dict[List[Tuple], str]] = field(
+        metadata=dict(update="bare_resonator_frequency")
+    )
 
 
 class ResonatorSpectroscopyData(DataUnits):
@@ -34,7 +40,13 @@ class ResonatorSpectroscopyData(DataUnits):
         super().__init__(
             "data",
             {"frequency": "Hz"},
-            options=["qubit", "iteration", "resonator_type", "amplitude"],
+            options=[
+                "qubit",
+                "iteration",
+                "resonator_type",
+                "amplitude",
+                "power_level",
+            ],
         )
 
 
@@ -88,6 +100,7 @@ def _acquisition(
                     * [platform.resonator_type],
                     "amplitude": len(delta_frequency_range)
                     * [ro_pulses[qubit].amplitude],
+                    "power_level": len(delta_frequency_range) * [params.power_level],
                 }
             )
             data.add_data_from_dict(r)

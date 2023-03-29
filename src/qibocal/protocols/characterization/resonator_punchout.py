@@ -9,7 +9,7 @@ from qibolab.sweeper import Parameter, Sweeper
 
 from ...auto.operation import Parameters, Qubits, Results, Routine
 from ...data import DataUnits
-from .resonator_spectroscopy import ResonatorSpectroscopyParameters
+from .resonator_spectroscopy import ResonatorSpectroscopyResults
 
 
 @dataclass
@@ -25,7 +25,7 @@ class ResonatorPunchoutParameters(Parameters):
 
 
 @dataclass
-class ResonatorPunchoutResults(Results):
+class ResonatorPunchoutResults(ResonatorSpectroscopyResults):
     ...
 
 
@@ -111,8 +111,8 @@ def _acquisition(
     # TODO: calculate and save fit
 
 
-def _fit(data):
-    return ResonatorPunchoutResults()
+def _fit(data: ResonatorPunchoutData) -> ResonatorPunchoutResults:
+    return ResonatorPunchoutResults({}, {}, {}, {})
 
 
 def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):

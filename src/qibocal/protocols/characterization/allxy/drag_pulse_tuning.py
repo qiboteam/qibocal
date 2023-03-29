@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
+from scipy.optimize import curve_fit
 
 from ....auto.operation import Qubits, Results, Routine
 from ....config import log
@@ -71,10 +72,6 @@ def _acquisition(
             - **popt3**: phase
             - **qubit**: The qubit being tested
     """
-
-    # reload instrument settings from runcard
-    platform.reload_settings()
-
     # define the parameter to sweep and its range:
     # qubit drive DRAG pulse beta parameter
     beta_param_range = np.arange(

@@ -20,7 +20,6 @@ class T1Parameters(Parameters):
     delay_before_readout_end: list
     delay_before_readout_step: int
     software_averages: int = 1
-    points: int = 10
 
 
 @dataclass
