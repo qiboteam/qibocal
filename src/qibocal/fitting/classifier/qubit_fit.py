@@ -9,6 +9,38 @@ from ...data import DataUnits
 from ..methods import calibrate_qubit_states_fit
 
 
+def constructor(_hyperparams):
+    r"""Return the model class.
+
+    Args:
+        _hyperparams: Model hyperparameters.
+    """
+    return QubitFit()
+
+
+def hyperopt(_x_train, _y_train, _path):
+    r"""Perform an hyperparameter optimization and return the hyperparameters.
+
+    Args:
+        x_train: Training inputs.
+        y_train: Training outputs.
+        path (path): Model save path.
+
+    Returns:
+        Dictionary with model's hyperparameters.
+    """
+    return {}
+
+
+def normalize(unormalize):
+    r"""Return a model that implement a step of data normalisation.
+
+    Args:
+        unormalize: Model.
+    """
+    return unormalize
+
+
 @dataclass
 class QubitFit:
     r"""This class deploys a qubit state classifier.
@@ -88,35 +120,3 @@ def _raw_to_dataunits(iq_couples, states):
     data.load_data_from_dict(data_dict)
 
     return data
-
-
-def hyperopt(_x_train, _y_train, _path):
-    r"""Perform an hyperparameter optimization and return the hyperparameters.
-
-    Args:
-        x_train: Training inputs.
-        y_train: Training outputs.
-        path (path): Model save path.
-
-    Returns:
-        Dictionary with model's hyperparameters.
-    """
-    return {}
-
-
-def constructor(_hyperparams):
-    r"""Return the model class.
-
-    Args:
-        _hyperparams: Model hyperparameters.
-    """
-    return QubitFit()
-
-
-def normalize(unormalize):
-    r"""Return a model that implement a step of data normalisation.
-
-    Args:
-        unormalize: Model.
-    """
-    return unormalize

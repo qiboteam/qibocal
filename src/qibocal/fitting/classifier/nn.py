@@ -9,6 +9,59 @@ from keras.models import Sequential
 from matplotlib import pyplot as plt
 
 
+def constructor(hyperpars):
+    r"""Return the model class.
+
+    Args:
+        _hyperparams: Model hyperparameters.
+    """
+    best_hps = kt.HyperParameters.from_config(hyperpars)
+    tuner = kt.Hyperband(_hypermodel)
+
+    return tuner.hypermodel.build(best_hps)
+
+
+def hyperopt(x_train, y_train, path):
+    r"""Perform an hyperparameter optimization and return the hyperparameters.
+
+    Args:
+        x_train: Training inputs.
+        y_train: Training outputs.
+        path (path): Model save path.
+
+    Returns:
+        Dictionary with model's hyperparameters.
+    """
+    tuner = kt.Hyperband(
+        _hypermodel,
+        objective="val_accuracy",
+        max_epochs=150,
+        directory=path,
+        project_name="NNmodel",
+    )
+    tuner.search_space_summary()
+
+    stop_early = callbacks.EarlyStopping(monitor="val_accuracy", patience=10)
+
+    tuner.search(
+        x_train, y_train, epochs=120, validation_split=0.2, callbacks=[stop_early]
+    )
+
+    # Get the optimal hyperparameters
+    best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
+
+    return best_hps.get_config()
+
+
+def normalize(unnormalized):
+    r"""Return a model that implement a step of data normalisation.
+
+    Args:
+        unormalize: Model.
+    """
+    return unnormalized
+
+
 class RBFLayer(Layer):
     r"""Deploy a neural network layer with RBF activation function.
 
@@ -91,56 +144,3 @@ def _hypermodel(hp):
 
     model.compile(optimizer=optimizer, loss=losses, metrics=["accuracy"])
     return model
-
-
-def hyperopt(x_train, y_train, path):
-    r"""Perform an hyperparameter optimization and return the hyperparameters.
-
-    Args:
-        x_train: Training inputs.
-        y_train: Training outputs.
-        path (path): Model save path.
-
-    Returns:
-        Dictionary with model's hyperparameters.
-    """
-    tuner = kt.Hyperband(
-        _hypermodel,
-        objective="val_accuracy",
-        max_epochs=150,
-        directory=path,
-        project_name="NNmodel",
-    )
-    tuner.search_space_summary()
-
-    stop_early = callbacks.EarlyStopping(monitor="val_accuracy", patience=10)
-
-    tuner.search(
-        x_train, y_train, epochs=120, validation_split=0.2, callbacks=[stop_early]
-    )
-
-    # Get the optimal hyperparameters
-    best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
-
-    return best_hps.get_config()
-
-
-def constructor(hyperpars):
-    r"""Return the model class.
-
-    Args:
-        _hyperparams: Model hyperparameters.
-    """
-    best_hps = kt.HyperParameters.from_config(hyperpars)
-    tuner = kt.Hyperband(_hypermodel)
-
-    return tuner.hypermodel.build(best_hps)
-
-
-def normalize(unnormalized):
-    r"""Return a model that implement a step of data normalisation.
-
-    Args:
-        unormalize: Model.
-    """
-    return unnormalized

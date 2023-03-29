@@ -5,6 +5,15 @@ from sklearn.model_selection import GridSearchCV, RepeatedStratifiedKFold
 from . import utils
 
 
+def constructor(hyperpars):
+    r"""Return the model class.
+
+    Args:
+        _hyperparams: Model hyperparameters.
+    """
+    return RandomForestClassifier().set_params(**hyperpars)
+
+
 def hyperopt(x_train, y_train, _path):
     r"""Perform an hyperparameter optimization and return the hyperparameters.
 
@@ -25,15 +34,6 @@ def hyperopt(x_train, y_train, _path):
     search = GridSearchCV(clf, space, scoring="accuracy", n_jobs=-1, cv=cv)
     _ = search.fit(x_train, y_train)
     return search.best_params_
-
-
-def constructor(hyperpars):
-    r"""Return the model class.
-
-    Args:
-        _hyperparams: Model hyperparameters.
-    """
-    return RandomForestClassifier().set_params(**hyperpars)
 
 
 normalize = utils.scikit_normalize

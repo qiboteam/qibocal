@@ -7,6 +7,15 @@ from . import utils
 GAMMA = "auto"
 
 
+def constructor(hyperpars):
+    r"""Return the model class.
+
+    Args:
+        _hyperparams: Model hyperparameters.
+    """
+    return SVC(gamma=GAMMA).set_params(**hyperpars)
+
+
 def hyperopt(x_train, y_train, _path):
     r"""Perform an hyperparameter optimization and return the hyperparameters.
 
@@ -28,15 +37,6 @@ def hyperopt(x_train, y_train, _path):
     _ = search.fit(x_train, y_train)
 
     return search.best_params_
-
-
-def constructor(hyperpars):
-    r"""Return the model class.
-
-    Args:
-        _hyperparams: Model hyperparameters.
-    """
-    return SVC(gamma=GAMMA).set_params(**hyperpars)
 
 
 normalize = utils.scikit_normalize
