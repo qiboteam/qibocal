@@ -10,7 +10,8 @@ def test_PauliErrorOnUnitary():
         assert isinstance(pauli_onU_error, qibo.noise.NoiseModel)
         errorkeys = pauli_onU_error.errors.keys()
         assert len(errorkeys) == 1 and list(errorkeys)[0] == qibo.gates.gates.Unitary
-        error = pauli_onU_error.errors[qibo.gates.gates.Unitary][0]
+        print(pauli_onU_error.errors)
+        error = pauli_onU_error.errors[qibo.gates.gates.Unitary][0][1]
         assert isinstance(error, qibo.noise.PauliError)
         assert len(error.options) == 3 and np.sum(error.options) < 1
 
@@ -29,7 +30,7 @@ def test_PauliErrorOnX():
         assert isinstance(pauli_onX_error, qibo.noise.NoiseModel)
         errorkeys = pauli_onX_error.errors.keys()
         assert len(errorkeys) == 1 and list(errorkeys)[0] == qibo.gates.gates.X
-        error = pauli_onX_error.errors[qibo.gates.gates.X][0]
+        error = pauli_onX_error.errors[qibo.gates.gates.X][0][1]
         assert isinstance(error, qibo.noise.PauliError)
         assert len(error.options) == 3 and np.sum(error.options) < 1
 
