@@ -1,5 +1,6 @@
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platforms.platform import AcquisitionType
 from qibolab.pulses import PulseSequence
 
 from qibocal import plots
@@ -62,9 +63,11 @@ def time_of_flight(
     data = DataUnits(name="data", options=["qubit", "sample", "state"])
 
     # execute the first pulse sequence
-    # state0_results = platform.execute_pulse_sequence(state0_sequence, nshots=nshots, relaxation_time=relaxation_time, acquistion = "RAW")
     state0_results = platform.execute_pulse_sequence(
-        state0_sequence, nshots=nshots, relaxation_time=relaxation_time, acquisition_type = "RAW"
+        state0_sequence,
+        nshots=nshots,
+        relaxation_time=relaxation_time,
+        acquisition_type=AcquisitionType.RAW,
     )
 
     # retrieve and store the results for every qubit
@@ -81,8 +84,9 @@ def time_of_flight(
         data.add_data_from_dict(r)
 
     # # execute the second pulse sequence
-    # state1_results = platform.execute_pulse_sequence(state1_sequence, nshots=nshots, acquistion = "RAW")
-    state1_results = platform.execute_pulse_sequence(state1_sequence, nshots=nshots, acquisition_type = "RAW")
+    state1_results = platform.execute_pulse_sequence(
+        state1_sequence, nshots=nshots, acquisition_type=AcquisitionType.RAW
+    )
 
     # retrieve and store the results for every qubit
     for ro_pulse in ro_pulses.values():

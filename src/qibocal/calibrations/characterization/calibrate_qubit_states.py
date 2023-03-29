@@ -1,5 +1,6 @@
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platforms.platform import AveragingMode
 from qibolab.pulses import PulseSequence
 
 from qibocal import plots
@@ -24,7 +25,7 @@ def calibrate_qubit_states(
         platform (:class:`qibolab.platforms.abstract.AbstractPlatform`): custom abstract platform on which we perform the calibration.
         qubits (dict): Dict of target Qubit objects to perform the action
         nshots (int) : Number of executions on hardware of the routine for averaging results
-        relaxation_time (float): Wait time for the qubit to decohere back to the `gnd` state 
+        relaxation_time (float): Wait time for the qubit to decohere back to the `gnd` state
 
     Returns:
         A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
@@ -66,7 +67,10 @@ def calibrate_qubit_states(
 
     # execute the first pulse sequence
     state0_results = platform.execute_pulse_sequence(
-        state0_sequence, nshots=nshots, relaxation_time=relaxation_time, averaging_mode = "SINGLESHOT"
+        state0_sequence,
+        nshots=nshots,
+        relaxation_time=relaxation_time,
+        averaging_mode=AveragingMode.SINGLESHOT,
     )
 
     # retrieve and store the results for every qubit
@@ -83,7 +87,10 @@ def calibrate_qubit_states(
 
     # execute the second pulse sequence
     state1_results = platform.execute_pulse_sequence(
-        state1_sequence, nshots=nshots, relaxation_time=relaxation_time, averaging_mode = "SINGLESHOT"
+        state1_sequence,
+        nshots=nshots,
+        relaxation_time=relaxation_time,
+        averaging_mode=AveragingMode.SINGLESHOT,
     )
 
     # retrieve and store the results for every qubit

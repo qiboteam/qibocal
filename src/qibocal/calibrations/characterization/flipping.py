@@ -59,6 +59,7 @@ def flipping(
     )
 
     # repeat the experiment as many times as defined by software_averages
+    pulse_sequences = []
     for flips in range(0, nflips_max, nflips_step):
         # create a sequence of pulses for the experiment
         sequence = PulseSequence()
@@ -79,25 +80,44 @@ def flipping(
             # add ro pulse at the end of the sequence
             ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=start1)
             sequence.add(ro_pulses[qubit])
+            pulse_sequences.append(sequence)
 
-        # execute the pulse sequence
-        results = platform.execute_pulse_sequence(
-            sequence,
-            nshots=nshots,
-            relaxation_time=relaxation_time,
+    results = platform.execute_pulse_sequence(
+        pulse_sequences,
+        nshots=nshots,
+        relaxation_time=relaxation_time,
+    )
+
+    for ro_pulse in ro_pulses.values():
+        # average msr, phase, i and q over the number of shots defined in the runcard
+        r = results[ro_pulse.serial].to_dict(average=True)
+        r.update(
+            {
+                "flips[dimensionless]": flips,
+                "qubit": ro_pulse.qubit,
+                "iteration": [0],
+            }
         )
+        data.add(r)
 
-        for ro_pulse in ro_pulses.values():
-            # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[ro_pulse.serial].to_dict(average=True)
-            r.update(
-                {
-                    "flips[dimensionless]": flips,
-                    "qubit": ro_pulse.qubit,
-                    "iteration": [0],
-                }
-            )
-            data.add(r)
+        # # execute the pulse sequence
+        # results = platform.execute_pulse_sequence(
+        #     sequence,
+        #     nshots=nshots,
+        #     relaxation_time=relaxation_time,
+        # )
+
+        # for ro_pulse in ro_pulses.values():
+        #     # average msr, phase, i and q over the number of shots defined in the runcard
+        #     r = results[ro_pulse.serial].to_dict(average=True)
+        #     r.update(
+        #         {
+        #             "flips[dimensionless]": flips,
+        #             "qubit": ro_pulse.qubit,
+        #             "iteration": [0],
+        #         }
+        #     )
+        #     data.add(r)
     yield data
 
     yield flipping_fit(

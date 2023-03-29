@@ -1,10 +1,12 @@
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platforms.platform import AcquisitionType
 from qibolab.pulses import PulseSequence
 
 from qibocal import plots
 from qibocal.data import DataUnits
 from qibocal.decorators import plot
+
 
 # Cant find VisibleDeprecationWarning: Creating an ndarray from ragged nested sequences
 @plot("Signal_0-1", plots.signal_0_1)
@@ -17,12 +19,12 @@ def integration_weights_optimization(
     """
     Method which implements the calculation of the optimal integration weights for a qubit given by amplifying the parts of the
     signal acquired which maximally distinguish between state 1 and 0.
-    
+
     Args:
         platform (:class:`qibolab.platforms.abstract.AbstractPlatform`): custom abstract platform on which we perform the calibration.
         qubits (dict): Dict of target Qubit objects to perform the action
         nshots (int) : Number of executions on hardware of the routine for averaging results
-        relaxation_time (float): Wait time for the qubit to decohere back to the `gnd` state 
+        relaxation_time (float): Wait time for the qubit to decohere back to the `gnd` state
 
     Returns:
         A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
@@ -35,7 +37,7 @@ def integration_weights_optimization(
             - **qubit**: The qubit being tested
             - **sample**: Sample number of the acquiered signal
             - **state**: State of the qubit
-            
+
     """
 
     # reload instrument settings from runcard
@@ -60,7 +62,7 @@ def integration_weights_optimization(
         state1_sequence.add(RX_pulses[qubit])
         state1_sequence.add(ro_pulses[qubit])
 
-    # create a DataUnits object to store the results
+        # create a DataUnits object to store the results
         data = DataUnits(
             name="data",
             quantities={"weights": "dimensionless"},
@@ -68,7 +70,10 @@ def integration_weights_optimization(
         )
         # execute the first pulse sequence
         state0_results = platform.execute_pulse_sequence(
-            state0_sequence, nshots=nshots, relaxation_time=relaxation_time, acquisition_type = "RAW"
+            state0_sequence,
+            nshots=nshots,
+            relaxation_time=relaxation_time,
+            acquisition_type=AcquisitionType.RAW,
         )
 
         # retrieve and store the results for every qubit
@@ -86,7 +91,12 @@ def integration_weights_optimization(
             data.add_data_from_dict(r)
 
         # execute the second pulse sequence
-        state1_results = platform.execute_pulse_sequence(state1_sequence, nshots=nshots, relaxation_time=relaxation_time, acquisition_type = "RAW")
+        state1_results = platform.execute_pulse_sequence(
+            state1_sequence,
+            nshots=nshots,
+            relaxation_time=relaxation_time,
+            acquisition_type=AcquisitionType.RAW,
+        )
         # retrieve and store the results for every qubit
         for ro_pulse in ro_pulses.values():
             r = state1_results[ro_pulse.serial].to_dict(average=False)
@@ -100,7 +110,7 @@ def integration_weights_optimization(
             )
             data.add_data_from_dict(r)
 
-        #Post-processing
+        # Post-processing
         # np.conj to account the two phase-space evolutions of the readout state
         samples_kernel = np.conj(state1 - state0)
         # Remove nans

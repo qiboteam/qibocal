@@ -1,5 +1,6 @@
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platforms.platform import AcquisitionType
 from qibolab.pulses import PulseSequence
 
 from qibocal import plots
@@ -95,7 +96,9 @@ def allXY(
                 )
 
             # execute the pulse sequence
-            results = platform.execute_pulse_sequence(sequence, acquisition_type = "DISCRIMINATION")
+            results = platform.execute_pulse_sequence(
+                sequence, acquisition_type=AcquisitionType.DISCRIMINATION
+            )
 
             # retrieve the results for every qubit
             for ro_pulse in ro_pulses.values():
@@ -186,7 +189,9 @@ def allXY_drag_pulse_tuning(
                     )
 
                 # execute the pulse sequence
-                results = platform.execute_pulse_sequence(sequence, acquisition_type = "DISCRIMINATION")
+                results = platform.execute_pulse_sequence(
+                    sequence, acquisition_type=AcquisitionType.DISCRIMINATION
+                )
 
                 # retrieve the results for every qubit
                 for ro_pulse in ro_pulses.values():
@@ -326,8 +331,12 @@ def drag_pulse_tuning(
                 seq2.add(ro_pulses[qubit])
 
             # execute the pulse sequences
-            result1 = platform.execute_pulse_sequence(seq1, acquisition_type = "DISCRIMINATION")
-            result2 = platform.execute_pulse_sequence(seq2, acquisition_type = "DISCRIMINATION")
+            result1 = platform.execute_pulse_sequence(
+                seq1, acquisition_type=AcquisitionType.DISCRIMINATION
+            )
+            result2 = platform.execute_pulse_sequence(
+                seq2, acquisition_type=AcquisitionType.DISCRIMINATION
+            )
 
             # retrieve the results for every qubit
             for ro_pulse in ro_pulses.values():

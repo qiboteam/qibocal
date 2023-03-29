@@ -1,5 +1,6 @@
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platforms.platform import AcquisitionType, AveragingMode
 from qibolab.pulses import PulseSequence
 
 from qibocal import plots
@@ -63,8 +64,8 @@ def fast_reset_MSR(
         sequence,
         nshots=nshots,
         relaxation_time=relaxation_time,
-        averaging_mode="SINGLESHOT",
-        acquisition_type="DISCRIMINATION",
+        averaging_mode=AveragingMode.SINGLESHOT,
+        acquisition_type=AcquisitionType.DISCRIMINATION,
         fast_reset=fast_reset,
     )
 
@@ -94,8 +95,8 @@ def fast_reset_MSR(
     #     sequence,
     #     nshots=nshots,
     #     relaxation_time=relaxation_time,
-    #     averaging_mode="SINGLESHOT",
-    #     acquisition_type="DISCRIMINATION",
+    # averaging_mode= AveragingMode.SINGLESHOT,
+    # acquisition_type= AcquisitionType.DISCRIMINATION,,
     #     fast_reset=True,
     # )
 
