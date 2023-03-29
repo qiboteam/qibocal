@@ -30,11 +30,9 @@ def expn_func(x: Union[np.ndarray, list], *params) -> np.ndarray:
     ``Af_list`` is a list of floats :math:`A_1`, :math:`f_1`, :math:`A_2`, :math:`f_2`, etc.
     There is no linear offsett B.
     """
-    A_list = np.array(params[:len(params) // 2], dtype=complex)
-    f_list = np.array(params[len(params) // 2:], dtype=complex)
-    sum_of_exponentials = np.vectorize(
-        lambda m: np.sum(A_list * (f_list ** m))
-    )
+    A_list = np.array(params[: len(params) // 2], dtype=complex)
+    f_list = np.array(params[len(params) // 2 :], dtype=complex)
+    sum_of_exponentials = np.vectorize(lambda m: np.sum(A_list * (f_list**m)))
     return sum_of_exponentials(np.real(x))
 
 
