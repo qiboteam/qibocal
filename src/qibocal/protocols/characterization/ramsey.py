@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
@@ -20,6 +20,7 @@ class RamseyParameters(Parameters):
     delay_between_pulses_end: list
     delay_between_pulses_step: int
     software_averages: int = 1
+    n_osc: Optional[int] = 0
 
 
 @dataclass
@@ -39,8 +40,8 @@ class RamseyData(DataUnits):
             options=[
                 "qubit",
                 "iteration",
+                "n_osc",
                 "sampling_rate",
-                "offset_freq",
                 "resonator_type",
             ],
         )
@@ -74,8 +75,6 @@ def _acquisition(
         params.delay_between_pulses_end,
         params.delay_between_pulses_step,
     )
-    sampling_rate = platform.sampling_rate  # TODO: we may to reset this
-    t_max = params.delay_between_pulses_end
 
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
@@ -90,21 +89,28 @@ def _acquisition(
             for qubit in qubits:
                 RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
                 ro_pulses[qubit].start = RX90_pulses2[qubit].finish
+                if params.n_osc != 0:
+                    RX90_pulses2[qubit].relative_phase = (
+                        RX90_pulses2[qubit].start
+                        * (-2 * np.pi)
+                        * (params.n_osc)
+                        / params.delay_between_pulses_end
+                    )
 
             # execute the pulse sequence
             results = platform.execute_pulse_sequence(sequence)
             for qubit, ro_pulse in ro_pulses.items():
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                r = results[ro_pulse.serial].to_dict(average=True)
+                r = results[ro_pulse.serial].to_dict()
                 r.update(
                     {
                         "wait[ns]": wait,
-                        "t_max[ns]": t_max,
+                        "t_max[ns]": params.delay_between_pulses_end,
                         "qubit_freqs[Hz]": qubits[qubit].drive_frequency,
                         "qubit": qubit,
                         "iteration": iteration,
-                        "sampling_rate": sampling_rate,
-                        "offset_freq": 0,  # pars.n_osc / t_max * sampling_rate  # Hz
+                        "sampling_rate": platform.sampling_rate,
+                        "n_osc": params.n_osc,
                         "resonator_type": platform.resonator_type,
                     }
                 )
@@ -153,7 +159,9 @@ def _fit(data: RamseyData) -> RamseyResults:  # TODO: put Platform as input
     qubits = data.df["qubit"].unique()
     resonator_type = data.df["resonator_type"].unique()
     sampling_rate = data.df["sampling_rate"].unique()
-    offset_freq = data.df["offset_freq"].unique()
+    n_osc = data.df["n_osc"].unique()
+    t_max = data.df["t_max"].pint.to("ns").pint.magnitude
+
     t2s = {}
     corrected_qubit_frequencies = {}
     freqs_detuing = {}
@@ -192,7 +200,7 @@ def _fit(data: RamseyData) -> RamseyResults:  # TODO: put Platform as input
                 popt[4] / (x_max - x_min),
             ]
             delta_fitting = popt[2] / 2 * np.pi
-            delta_phys = int((delta_fitting * sampling_rate) - offset_freq)
+            delta_phys = int((delta_fitting - n_osc / t_max) * sampling_rate)
             corrected_qubit_frequency = int(qubit_freq + delta_phys)
             t2 = 1.0 / popt[4]
 

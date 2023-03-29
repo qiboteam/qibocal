@@ -6,15 +6,23 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
-from qibocal.auto.operation import Qubits, Results, Routine
+from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
-from .resonator_flux_dependence import ResonatorFluxData, ResonatorFluxParameters
+from .resonator_flux_dependence import ResonatorFluxData
 from .utils import flux_dependence_plot
 
 
 @dataclass
-class QubitFluxParameters(ResonatorFluxParameters):
+class QubitFluxParameters(Parameters):
+    freq_width: int
+    freq_step: int
+    bias_width: float
+    bias_step: float
+    fluxlines: int
+    nshots: int
+    relaxation_time: int
     drive_amplitude: float
+    software_averages: int = 1
 
 
 @dataclass

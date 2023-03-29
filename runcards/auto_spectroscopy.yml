@@ -104,10 +104,20 @@ actions:
       delay_before_readout_step: 20
 
   - id: ramsey
-    priority: 1
+    priority: 0
+    operation: ramsey
+    main: ramsey detuned
+    parameters:
+      delay_between_pulses_start: 16 # must be a multiple of 4 incl 0
+      delay_between_pulses_end: 100
+      delay_between_pulses_step: 4 # must be a multiple of 4
+
+  - id: ramsey detuned
+    priority: 10
     operation: ramsey
     main: single shot classification
     parameters:
+      n_osc: 10
       delay_between_pulses_start: 16 # must be a multiple of 4 incl 0
       delay_between_pulses_end: 100
       delay_between_pulses_step: 4 # must be a multiple of 4
@@ -157,12 +167,3 @@ actions:
     parameters:
       nflips_max: 2
       nflips_step: 1
-
-  #   main: first
-  # - id: first
-  #   priority: 100
-  #   main: second
-  # - id: second
-  #   main: third
-  # - id: third
-  #   priority: 50
