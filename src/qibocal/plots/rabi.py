@@ -839,3 +839,68 @@ def time_msr_phase_train(folder, routine, qubit, format):
     figures.append(fig)
 
     return figures, fitting_report
+
+
+# Fast reset oscillations
+def fast_reset_states(folder, routine, qubit, format):
+    figures = []
+
+    fig = make_subplots(
+        rows=1,
+        cols=1,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        subplot_titles=("State",),
+    )
+
+    # iterate over multiple data folders
+    subfolders = get_data_subfolders(folder)
+    report_n = 0
+    fitting_report = ""
+    for subfolder in subfolders:
+        try:
+            data = DataUnits.load_data(folder, subfolder, routine, format, "data")
+            data.df = data.df[data.df["qubit"] == qubit]
+        except:
+            data = DataUnits(options=["qubit", "iteration", "n"])
+
+        iterations = data.df["iteration"]
+        states = data.df["MSR"].pint.to("V").pint.magnitude
+
+        opacity = 1
+
+        state0_count = states.value_counts()[0]
+        state1_count = states.value_counts()[1]
+        error = (state0_count - state1_count) / len(states)
+
+        fig.add_trace(
+            go.Scatter(
+                x=iterations,
+                y=states,
+                marker_color=get_color(report_n),
+                opacity=opacity,
+                name=f"q{qubit}/r{report_n}",
+                showlegend=True,
+                legendgroup=f"q{qubit}/r{report_n}",
+            ),
+            row=1,
+            col=1,
+        )
+
+        title_text = ""
+        title_text += f"q{qubit}/r{report_n} | Error: {error:.6f}<br>"
+
+        fitting_report = fitting_report + title_text
+        report_n += 1
+
+    # last part
+    fig.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Shot",
+        yaxis_title="State",
+    )
+
+    figures.append(fig)
+
+    return figures, fitting_report

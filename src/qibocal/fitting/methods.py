@@ -970,7 +970,7 @@ def spin_echo_fit(data, x, y, qubits, resonator_type, labels):
     return data_fit
 
 
-def calibrate_qubit_states_fit(data, x, y, nshots, qubits):
+def calibrate_qubit_states_fit(data, x, y, nshots, qubits, degree=True):
     parameters = Data(
         name=f"parameters",
         quantities={
@@ -1009,28 +1009,6 @@ def calibrate_qubit_states_fit(data, x, y, nshots, qubits):
             .pint.magnitude
         )
 
-    for qubit in qubits:
-        qubit_data = data.df[data.df["qubit"] == qubit]
-
-        iq_state0 = (
-            qubit_data[qubit_data["state"] == 0][i_keys[0]]
-            .pint.to(i_keys[1])
-            .pint.magnitude
-            + 1.0j
-            * qubit_data[qubit_data["state"] == 0][q_keys[0]]
-            .pint.to(q_keys[1])
-            .pint.magnitude
-        )
-        iq_state1 = (
-            qubit_data[qubit_data["state"] == 1][i_keys[0]]
-            .pint.to(i_keys[1])
-            .pint.magnitude
-            + 1.0j
-            * qubit_data[qubit_data["state"] == 1][q_keys[0]]
-            .pint.to(q_keys[1])
-            .pint.magnitude
-        )
-
         iq_state1 = np.array(iq_state1)
         iq_state0 = np.array(iq_state0)
 
@@ -1042,8 +1020,8 @@ def calibrate_qubit_states_fit(data, x, y, nshots, qubits):
         iq_state1_translated = iq_state1 - origin
         rotation_angle = np.angle(np.mean(iq_state1_translated))
 
-        iq_state1_rotated = iq_state1 * np.exp(-1j * rotation_angle)
-        iq_state0_rotated = iq_state0 * np.exp(-1j * rotation_angle)
+        iq_state1_rotated = iq_state1_translated * np.exp(-1j * rotation_angle)
+        iq_state0_rotated = iq_state0_translated * np.exp(-1j * rotation_angle)
 
         real_values_state1 = iq_state1_rotated.real
         real_values_state0 = iq_state0_rotated.real
@@ -1051,6 +1029,7 @@ def calibrate_qubit_states_fit(data, x, y, nshots, qubits):
         real_values_combined = np.concatenate((real_values_state1, real_values_state0))
         real_values_combined.sort()
 
+        # Fix too slow cum dist pandas
         cum_distribution_state1 = [
             sum(map(lambda x: x.real >= real_value, real_values_state1))
             for real_value in real_values_combined
@@ -1063,6 +1042,7 @@ def calibrate_qubit_states_fit(data, x, y, nshots, qubits):
         cum_distribution_diff = np.abs(
             np.array(cum_distribution_state1) - np.array(cum_distribution_state0)
         )
+
         argmax = np.argmax(cum_distribution_diff)
         threshold = real_values_combined[argmax]
         errors_state1 = nshots - cum_distribution_state1[argmax]
