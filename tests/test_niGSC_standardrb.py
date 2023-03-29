@@ -25,11 +25,13 @@ def theoretical_outcome(noise_model: NoiseModel) -> float:
 
     # TODO This has to be more systematic. Delete it from the branch which will be merged.
     # Check for correctness of noise model and gate independence.
-    errorkeys = noise_model.errors.keys()
-    assert len(errorkeys) == 1 and list(errorkeys)[0] == gates.Unitary
+    errorkeys = [
+        key for key in noise_model.errors.keys() if len(noise_model.errors[key]) != 0
+    ]
+    assert len(errorkeys) == 1 and list(errorkeys)[0] is None
     # Extract the noise acting on unitaries and turn it into the associated
     # error channel.
-    error = noise_model.errors[gates.Unitary][0]
+    error = noise_model.errors[None][0][1]
     errorchannel = error.channel(0, *error.options)
     # Calculate the effective depolarizing parameter.
     return utils.effective_depol(errorchannel)
@@ -174,6 +176,7 @@ def test_build_report():
     noise_params = [0.01, 0.1, 0.05]
     # Build the noise model.
     noise = noisemodels.PauliErrorOnAll(*noise_params)
+    theoretical_outcome(noise)
     # Test exectue an experiment.
     myfactory1 = standardrb.ModuleFactory(nqubits, depths * runs)
     myfaultyexperiment = standardrb.ModuleExperiment(

@@ -174,13 +174,13 @@ It has to be predefined and passed when initiating the experiment object.
 .. code-block:: python
 
     from qibocal.calibrations.protocols import standardrb
-    from qibocal.calibrations.protocols.noisemodels import PauliErrorOnUnitary
+    from qibocal.calibrations.protocols.noisemodels import PauliErrorOnAll
     nqubits = 1
     depths = [0,1,5,10,15]
     runs = 10
     nshots = 128
     # Define the noise model used in the simulation.
-    noisemodel = PauliErrorOnUnitary(0.01, 0.02, 0.04)
+    noisemodel = PauliErrorOnAll(0.01, 0.02, 0.04)
     factory = standardrb.ModuleFactory(nqubits, depths, runs)
     # Add the noise model to the experiment.
     experiment = standardrb.ModuleExperiment(
