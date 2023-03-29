@@ -80,8 +80,8 @@ def test_exp2_fitting():
         popt, perr = fitting.fit_exp2_func(x, y_dist)
         worked = np.all(
             np.logical_or(
+                np.allclose(np.array(popt), [A2, A1, f2, f1], atol=0.05, rtol=0.1),
                 np.allclose(np.array(popt), [A1, A2, f1, f2], atol=0.05, rtol=0.1),
-                np.allclose(np.array(popt), [A2, A1, f1, f2], atol=0.05, rtol=0.1),
             )
         )
         if not worked:

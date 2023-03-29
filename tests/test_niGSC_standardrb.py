@@ -176,7 +176,6 @@ def test_build_report():
     noise_params = [0.01, 0.1, 0.05]
     # Build the noise model.
     noise = noisemodels.PauliErrorOnAll(*noise_params)
-    theoretical_outcome(noise)
     # Test exectue an experiment.
     myfactory1 = standardrb.ModuleFactory(nqubits, depths * runs)
     myfaultyexperiment = standardrb.ModuleExperiment(
