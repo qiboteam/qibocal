@@ -52,6 +52,10 @@ class QubitFit:
     assignment_fidelity: float = None
 
     def fit(self, iq_coordinates, states: list):
+        r"""Evaluate the model's parameters given the
+        `iq_coordinates` and their relative ``states`
+        (reference: <https://arxiv.org/abs/1004.4323>).
+        """
         nshots = len(iq_coordinates)
         iq_state1 = iq_coordinates[(states == 1)]
         iq_state0 = iq_coordinates[(states == 0)]
@@ -109,21 +113,28 @@ class QubitFit:
 
 
 def _check(value, sorted_list):
+    r"""Returns the position of the highest element in
+    `sorted_list` less than `value`.
+    """
     for i, val in enumerate(sorted_list):
         if value < val:
             if i == 0:
                 return 0
-            else:
-                return i - 1
+
+            return i - 1
     return len(sorted_list) - 1
 
 
-def _eval_cumulative(data, points):
+def _eval_cumulative(input_data, points):
+    r"""Evaluates in data the cumulative distribution
+    function of `points`.
+    WARNING: `input_data` and `points` should be sorted data.
+    """
     # data and points sorted
-    prob = np.zeros(len(data))
+    prob = np.zeros(len(input_data))
     app = 0
 
-    for i, val in enumerate(data):
+    for i, val in enumerate(input_data):
         app = app + _check(val, points[app::])
         prob[i] = app + 1
 

@@ -255,7 +255,7 @@ def train_qubit(
     qubit_dir.mkdir(exist_ok=True)
     qubit_data = data.load_qubit(data_path, qubit)
     data.plot_qubit(qubit_data, qubit_dir)
-    x_train, y_train, x_test, y_test = data.generate_models(qubit_data)
+    x_train, x_test, y_train, y_test = data.generate_models(qubit_data)
     models = []
     results_list = []
     names = []
