@@ -205,3 +205,28 @@ actions:
   #   nflips_step: 2
   #   software_averages: 2
   #   points: 1
+
+
+  flux_pulse_timing:
+    flux_pulse_amplitude_start: 0.1
+    flux_pulse_amplitude_end: 0.5
+    flux_pulse_amplitude_step: 0.1
+    flux_pulse_start_start: -200
+    flux_pulse_start_end:  500
+    flux_pulse_start_step: 12
+    flux_pulse_duration: 20
+    time_window: 300
+    software_averages: 1
+    points: 1
+
+  cryoscope:
+    flux_pulse_duration_start: 4
+    flux_pulse_duration_end: 250
+    flux_pulse_duration_step: 1
+    flux_pulse_amplitude_start: 0.065
+    flux_pulse_amplitude_end: 0.0651
+    flux_pulse_amplitude_step: 0.01
+    delay_before_readout: 40
+    flux_pulse_shapes: None
+    software_averages: 1
+    points: 1
