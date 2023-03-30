@@ -268,35 +268,43 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
             params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(
                 orient="records"
             )[0]
-            fig.add_trace(
-                go.Scatter(
-                    x=[
-                        params["freq_hp"],
-                        params["freq_hp"],
-                        params["freq_lp"],
-                        params["freq_lp"],
-                    ],
-                    y=[
-                        params["att_hp_max_att"],
-                        params["att_hp_min_att"],
-                        params["att_lp_max_att"],
-                        params["att_lp_min_att"],
-                    ],
-                    mode="markers",
-                    marker=dict(
-                        size=8,
-                        color="gray",
-                        symbol="circle",
-                    ),
-                )
-            )
 
-            title_text = ""
-            title_text += f"q{qubit}/r{report_n} | Freq@Lp: {params['freq_lp']} Hz.<br>"
-            title_text += f"q{qubit}/r{report_n} | Attenuation@Lp Range: {params['att_lp_max_att']} - {params['att_lp_min_att']} db.<br>"
-            title_text += f"q{qubit}/r{report_n} | Freq@Hp: {params['freq_hp']} Hz.<br>"
-            title_text += f"q{qubit}/r{report_n} | Attenuation@Hp: {params['att_hp_max_att']} - {params['att_hp_min_att']} db.<br>"
-            fitting_report = fitting_report + title_text
+            if all(value != 0 for key, value in params.items() if key != "qubit"):
+                fig.add_trace(
+                    go.Scatter(
+                        x=[
+                            params["freq_hp"],
+                            params["freq_hp"],
+                            params["freq_lp"],
+                            params["freq_lp"],
+                        ],
+                        y=[
+                            params["att_hp_max_att"],
+                            params["att_hp_min_att"],
+                            params["att_lp_max_att"],
+                            params["att_lp_min_att"],
+                        ],
+                        mode="markers",
+                        marker=dict(
+                            size=8,
+                            color="gray",
+                            symbol="circle",
+                        ),
+                    )
+                )
+
+                title_text = ""
+                title_text += (
+                    f"q{qubit}/r{report_n} | Freq@Lp: {params['freq_lp']} Hz.<br>"
+                )
+                title_text += f"q{qubit}/r{report_n} | Attenuation@Lp Range: {params['att_lp_max_att']} - {params['att_lp_min_att']} db.<br>"
+                title_text += (
+                    f"q{qubit}/r{report_n} | Freq@Hp: {params['freq_hp']} Hz.<br>"
+                )
+                title_text += f"q{qubit}/r{report_n} | Attenuation@Hp: {params['att_hp_max_att']} - {params['att_hp_min_att']} db.<br>"
+                fitting_report = fitting_report + title_text
+            else:
+                fitting_report = "No fitting data"
 
         fig.update_xaxes(
             title_text=f"q{qubit}/r{report_n}: Frequency (Hz)", row=1 + report_n, col=2

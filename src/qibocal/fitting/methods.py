@@ -1128,11 +1128,11 @@ def punchout_fit(data, qubits, resonator_type, labels):
 
     for qubit in qubits:
         averaged_data = (
-            data.df.drop(columns=["i", "q", "qubit", "iteration"])
+            data.df[data.df["qubit"] == qubit]
+            .drop(columns=["i", "q", "qubit", "iteration"])
             .groupby(["frequency", "attenuation"], as_index=False)
             .mean()
         )
-
         try:
             normalised_data = averaged_data.groupby(["attenuation"], as_index=False)[
                 ["MSR"]
@@ -1142,6 +1142,7 @@ def punchout_fit(data, qubits, resonator_type, labels):
             averaged_data_updated.update(normalised_data["MSR"])
 
             min_points = find_min_msr_att(averaged_data_updated, resonator_type)
+            min_points = [[q.magnitude for q in tupla] for tupla in min_points]
             x = [point[0] for point in min_points]
             y = [point[1] for point in min_points]
 
@@ -1156,20 +1157,23 @@ def punchout_fit(data, qubits, resonator_type, labels):
 
             point_hp_max, point_hp_min = get_points_with_max_freq(min_points, freq_hp)
             point_lp_max, point_lp_min = get_points_with_max_freq(min_points, freq_lp)
-        except:
-            log.warning("Punchout_fit: the fitting was not succesful")
-            data_fit.add({key: 0 for key in data_fit.df.columns})
-            return data_fit
 
-        data_fit.add(
-            {
-                labels[0]: point_lp_max[0],
-                labels[1]: point_lp_max[1],
-                labels[2]: point_lp_min[1],
-                labels[3]: point_hp_max[0],
-                labels[4]: point_hp_max[1],
-                labels[5]: point_hp_min[1],
-                "qubit": qubit,
-            }
-        )
+            data_fit.add(
+                {
+                    labels[0]: point_lp_max[0],
+                    labels[1]: point_lp_max[1],
+                    labels[2]: point_lp_min[1],
+                    labels[3]: point_hp_max[0],
+                    labels[4]: point_hp_max[1],
+                    labels[5]: point_hp_min[1],
+                    "qubit": qubit,
+                }
+            )
+
+        except:
+            log.warning("spin_echo_fit: the fitting was not succesful")
+            data_fit.add(
+                {key: 0 if key != "qubit" else qubit for key in data_fit.df.columns}
+            )
+
     return data_fit
