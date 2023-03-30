@@ -118,10 +118,7 @@ def _check(value, sorted_list):
     """
     for i, val in enumerate(sorted_list):
         if value < val:
-            if i == 0:
-                return 0
-
-            return i - 1
+            return max(i - 1, 0)
     return len(sorted_list) - 1
 
 
