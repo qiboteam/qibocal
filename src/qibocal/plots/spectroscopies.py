@@ -691,10 +691,10 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
                 row=1 + report_n,
                 col=2,
             )
-            fig.update_yaxes(title_text="Bias (V)", row=1 + report_n, col=2)
+            fig.update_yaxes(title_text="Fluxline Bias (V)", row=1 + report_n, col=2)
 
         if len(fluxlines) > 0:
-            fig.update_yaxes(title_text="Bias (V)", row=1 + report_n, col=1)
+            fig.update_yaxes(title_text="Fluxline Bias (V)", row=1 + report_n, col=1)
             fig.update_layout(
                 showlegend=False,
                 uirevision="0",  # ``uirevision`` allows zooming while live plotting
