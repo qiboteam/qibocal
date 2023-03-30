@@ -1113,20 +1113,20 @@ files = [
 
 [[package]]
 name = "keras-tuner"
-version = "1.3.3"
+version = "1.3.2"
 description = "A Hyperparameter Tuning Library for Keras"
 category = "main"
 optional = true
 python-versions = "*"
 files = [
-    {file = "keras-tuner-1.3.3.tar.gz", hash = "sha256:f72bffb67ddf6db5dcde678108659e3e156c5d8e607dd01e876f2cede5f74ba4"},
-    {file = "keras_tuner-1.3.3-py3-none-any.whl", hash = "sha256:6a7ae65366e8b60baee4d13c8c7418843ab36b1b017084aa17ff91ebd4de0634"},
+    {file = "keras-tuner-1.3.2.tar.gz", hash = "sha256:34efe2bdb072e3cfa60b0a2d04702087a5476105707b8d7081dcc9b6467fec6e"},
+    {file = "keras_tuner-1.3.2-py3-none-any.whl", hash = "sha256:879285f8a3815c4cb836229edbe2dd7122954ab671a997af8db38581e1558e6e"},
 ]
 
 [package.dependencies]
 kt-legacy = "*"
 packaging = "*"
-protobuf = "<=3.20.3"
+protobuf = "<=3.20"
 requests = "*"
 tensorflow = ">=2.0"
 
@@ -3254,4 +3254,4 @@ viz = ["pydot"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<3.12"
-content-hash = "3c3c838feda913c90af9f56d5e048d38994f7c5ec4be3078a65a6c72411e2102"
+content-hash = "fd93c90f36cc3b6cd51b5041cc40999520556962b9f4267205112aeba5bfecbb"
