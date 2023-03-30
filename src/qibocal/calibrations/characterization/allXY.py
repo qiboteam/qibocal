@@ -80,7 +80,7 @@ def allXY(
     for iteration in range(software_averages):
         gateNumber = 1
         # sweep the parameter
-        for gates in gatelist:
+        for gateNumber, gates in enumerate(gatelist):
             # save data as often as defined by points
             if count % points == 0 and count > 0:
                 # save data
@@ -110,7 +110,6 @@ def allXY(
                 }
                 data.add(r)
             count += 1
-            gateNumber += 1
     # finally, save the remaining data
     yield data
 
@@ -360,9 +359,7 @@ def drag_pulse_tuning(
 def _add_gate_pair_pulses_to_sequence(
     platform: AbstractPlatform, gates, qubit, beta_param, sequence
 ):
-    pulse_duration = platform.settings["native_gates"]["single_qubit"][qubit]["RX"][
-        "duration"
-    ]
+    pulse_duration = platform.create_RX_pulse(qubit, start=0).duration
     # All gates have equal pulse duration
 
     sequenceDuration = 0
