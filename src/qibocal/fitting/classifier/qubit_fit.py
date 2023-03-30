@@ -1,13 +1,9 @@
 from dataclasses import dataclass
-from math import cos, sin
-from typing import List
+from math import atan2
 
-import matplotlib.pyplot as plt
 import numpy as np
 import numpy.typing as npt
 
-from ...data import DataUnits
-from ..methods import calibrate_qubit_states_fit
 from .utils import identity
 
 
@@ -52,26 +48,50 @@ class QubitFit:
     iq_mean1: np.ndarray = np.array([0.0, 0.0])
     threshold: float = 0.0
     angle: float = 0.0
+    fidelity: float = None
+    assignment_fidelity: float = None
 
-    def fit(self, x, y):
-        r"""Evaluate the model's parameters given the
-        input data (`x`,`y`).
-        """
-        data = _raw_to_dataunits(x, y)
-        results = calibrate_qubit_states_fit(
-            data, "i[V]", "q[V]", 1, [1], degree=False
-        ).df
-        iq_state0 = results.iloc[0]["average_state0"]  # pylint: disable=E1101
-        iq_state1 = results.iloc[0]["average_state1"]  # pylint: disable=E1101
-        # pylint: disable=E1101
-        self.angle = results.iloc[0]["rotation_angle"]
-        self.threshold = results.iloc[0]["threshold"]  # pylint: disable=E1101
-        self.iq_mean0 = np.array([iq_state0.real, iq_state0.imag])
-        self.iq_mean1 = np.array([iq_state1.real, iq_state1.imag])
+    def fit(self, iq_coordinates, states: list):
+        nshots = len(iq_coordinates)
+        iq_state1 = iq_coordinates[(states == 1)]
+        iq_state0 = iq_coordinates[(states == 0)]
+        self.iq_mean0 = np.mean(iq_state0, axis=0)
+        self.iq_mean1 = np.mean(iq_state1, axis=0)
+
+        # translate
+        iq_coordinates_translated = self.translate(iq_coordinates)
+        iq_state1_trans = self.translate(self.iq_mean1)
+        self.angle = -1 * atan2(iq_state1_trans[1], iq_state1_trans[0])
+
+        # rotate
+        iq_coord_rot = self.rotate(iq_coordinates_translated)
+
+        x_values_state0 = iq_coord_rot[(states == 0)][:, 0]
+        x_values_state1 = iq_coord_rot[(states == 1)][:, 0]
+
+        x_values_state0 = np.sort(x_values_state0)
+        x_values_state1 = np.sort(x_values_state1)
+
+        # evaluate threshold and fidelity
+        x_values = iq_coord_rot[:, 0]
+        x_values.sort()
+        cum_distribution_state0 = _eval_cumulative(x_values, x_values_state0)
+        cum_distribution_state1 = _eval_cumulative(x_values, x_values_state1)
+
+        cum_distribution_diff = np.abs(
+            np.array(cum_distribution_state1) - np.array(cum_distribution_state0)
+        )
+
+        max_index = np.argmax(cum_distribution_diff)
+        self.threshold = x_values[max_index]
+        errors_state1 = nshots - cum_distribution_state1[max_index]
+        errors_state0 = cum_distribution_state0[max_index]
+        self.fidelity = cum_distribution_diff[max_index] / nshots
+        self.assignment_fidelity = 1 - (errors_state1 + errors_state0) / nshots / 2
 
     def rotate(self, v):
         c, s = np.cos(self.angle), np.sin(self.angle)
-        rot = np.array([[c, s], [-s, c]])
+        rot = np.array([[c, -s], [s, c]])
         return v @ rot.T
 
     def translate(self, v):
@@ -88,19 +108,23 @@ class QubitFit:
         return (rotated[:, 0] > self.threshold).astype(int)
 
 
-def _raw_to_dataunits(iq_couples, states):
-    r"""Return a `DataUnits` that stores the data contained in `iq_couples` and `states`."""
-    options = ["qubit", "state"]
-    length = len(states)
-    data = DataUnits(options=options)
-    data_dict = {
-        "MSR[V]": [0] * length,
-        "i[V]": iq_couples[:, 0].tolist(),
-        "q[V]": iq_couples[:, 1].tolist(),
-        "phase[rad]": [0] * length,
-        "state": states.tolist(),
-        "qubit": [1] * length,
-    }
-    data.load_data_from_dict(data_dict)
+def _check(value, sorted_list):
+    for i, val in enumerate(sorted_list):
+        if value < val:
+            if i == 0:
+                return 0
+            else:
+                return i - 1
+    return len(sorted_list) - 1
 
-    return data
+
+def _eval_cumulative(data, points):
+    # data and points sorted
+    prob = np.zeros(len(data))
+    app = 0
+
+    for i, val in enumerate(data):
+        app = app + _check(val, points[app::])
+        prob[i] = app + 1
+
+    return prob / len(points)
