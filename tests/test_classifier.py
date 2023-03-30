@@ -8,9 +8,16 @@ import pytest
 
 from qibocal.fitting.classifier import plots, run
 
+FILES_NAME = [
+    "benchmarks.pdf",
+    "benchmarks.csv",
+    "confusion_matrices.json",
+    "confusion_matrices.pdf",
+]
+
 
 @pytest.fixture
-def data_creation():
+def data_path(tmp_path):
     state0_center = [0.0, 0.0]
     state1_center = [2.0, 2.0]
     cov = 0.1 * np.eye(2)
@@ -25,20 +32,20 @@ def data_creation():
         "qubit": [0, 1] * size,
     }
     data = pd.DataFrame(data)
-    data_path = tempfile.mkstemp(suffix=".csv")[1]
+    data_path = tmp_path / "data.csv"
     data.to_csv(data_path)
     return data_path
 
 
-@pytest.fixture
-def initialization(data_creation):
-    data_path = data_creation
-    data_path = pathlib.Path(data_path)
+def qubit_path(base_dir: pathlib.Path, qubit):
+    return base_dir / f"qubit{qubit}"
+
+
+def initialization(data_path):
     base_dir = pathlib.Path(tempfile.mkdtemp())
     qubits = [0, 1]
     for qubit in qubits:
-        qubit_dir = base_dir / f"qubit{qubit}"
-        print(base_dir)
+        qubit_dir = qubit_path(base_dir, qubit)
         classifiers = ["linear_svm"]
         table, y_test, _x_test = run.train_qubit(
             data_path, base_dir, qubit=qubit, classifiers=classifiers
@@ -49,24 +56,18 @@ def initialization(data_creation):
     return table, base_dir, y_test
 
 
-def test_folders(initialization):
+def test_folders(data_path):
     qubits = [0, 1]
-    _, base_dir, _ = initialization
-    files = [
-        "benchmarks.pdf",
-        "benchmarks.csv",
-        "confusion_matrices.json",
-        "confusion_matrices.pdf",
-    ]
+    _, base_dir, _ = initialization(data_path)
     for qubit in qubits:
-        qubit_dir = base_dir / f"qubit{qubit}"
+        qubit_dir = qubit_path(base_dir, qubit)
         assert os.path.exists(qubit_dir)
-        for file in files:
+        for file in FILES_NAME:
             assert os.path.exists(qubit_dir / file)
 
 
-def test_accuracy(initialization):
-    table, _, y_test = initialization
+def test_accuracy(data_path):
+    table, _, y_test = initialization(data_path)
     real_accuracies = table["accuracy"].tolist()
     # The model is evaluated good if it
     # misclassifys less than two points
