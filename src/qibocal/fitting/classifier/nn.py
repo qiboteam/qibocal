@@ -126,13 +126,13 @@ def _hypermodel(hp):
     model.add(Dense(1, activation="sigmoid"))
 
     if optimizer_choice == "Adam":
-        optimizer = optimizers.legacy.Adam(learning_rate=learning_rate)
+        optimizer = optimizers.Adam(learning_rate=learning_rate)
     elif optimizer_choice == "Adagrad":
-        optimizer = optimizers.legacy.Adagrad(learning_rate=learning_rate)
+        optimizer = optimizers.Adagrad(learning_rate=learning_rate)
     elif optimizer_choice == "SGD":
-        optimizer = optimizers.legacy.SGD(learning_rate=learning_rate)
+        optimizer = optimizers.SGD(learning_rate=learning_rate)
     elif optimizer_choice == "RMSprop":
-        optimizer = optimizers.legacy.RMSprop(learning_rate=learning_rate)
+        optimizer = optimizers.RMSprop(learning_rate=learning_rate)
     else:
         raise ValueError
 
