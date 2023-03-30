@@ -29,12 +29,13 @@ sphinxcontrib-bibtex = { version = "^2.4.1", optional = true }
 recommonmark = { version = "^0.7.1", optional = true }
 sphinx_markdown_tables = { version = "^0.0.17", optional = true }
 scikit-learn = {version = "^1.2.1", optional = true}
-keras-tuner = {version = "^1.3.0,<1.3.3", optional = true}
+keras-tuner = {version = "^1.3.0,<1.3.1", optional = true}
 matplotlib = "^3.7.0"
 seaborn = "^0.12.2"
 networkx = "^3.0"
 pydantic = "^1.10.5"
 pydot = { version = "^1.4.2", optional = true }
+tensorflow-io-gcs-filesystem = "0.31"
 
 [tool.poetry.group.test]
 optional = true
