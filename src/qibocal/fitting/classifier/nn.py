@@ -2,10 +2,10 @@ import json
 import pathlib
 
 import keras_tuner as kt
-from keras import backend as K
-from keras import callbacks, optimizers
-from keras.layers import BatchNormalization, Dense, Layer
-from keras.models import Sequential
+from tensorflow.keras import backend as K
+from tensorflow.keras import callbacks, optimizers
+from tensorflow.keras.layers import BatchNormalization, Dense, Layer
+from tensorflow.keras.models import Sequential
 from matplotlib import pyplot as plt
 
 from .utils import identity
@@ -126,13 +126,13 @@ def _hypermodel(hp):
     model.add(Dense(1, activation="sigmoid"))
 
     if optimizer_choice == "Adam":
-        optimizer = optimizers.Adam(learning_rate=learning_rate)
+        optimizer = optimizers.legacy.Adam(learning_rate=learning_rate)
     elif optimizer_choice == "Adagrad":
-        optimizer = optimizers.Adagrad(learning_rate=learning_rate)
+        optimizer = optimizers.legacy.Adagrad(learning_rate=learning_rate)
     elif optimizer_choice == "SGD":
-        optimizer = optimizers.SGD(learning_rate=learning_rate)
+        optimizer = optimizers.legacy.SGD(learning_rate=learning_rate)
     elif optimizer_choice == "RMSprop":
-        optimizer = optimizers.RMSprop(learning_rate=learning_rate)
+        optimizer = optimizers.legacy.RMSprop(learning_rate=learning_rate)
     else:
         raise ValueError
 
