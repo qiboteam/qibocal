@@ -7,6 +7,7 @@ from keras import callbacks, optimizers
 from keras.layers import BatchNormalization, Dense, Layer
 from keras.models import Sequential
 from matplotlib import pyplot as plt
+from tensorflow import keras
 
 from .utils import identity
 
