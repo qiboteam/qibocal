@@ -17,6 +17,6 @@ jobs:
     with:
       os: ${{ matrix.os }}
       python-version: ${{ matrix.python-version }}
-      poetry-extras: --with test --with docs
       publish: ${{ github.event_name == 'release' && github.event.action == 'published' && matrix.os == 'ubuntu-latest' && matrix.python-version == '3.9' }}
+      poetry-extras: --with test,docs --all-extras
     secrets: inherit

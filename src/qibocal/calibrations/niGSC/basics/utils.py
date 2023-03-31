@@ -83,24 +83,6 @@ def probabilities(allsamples: Union[list, np.ndarray]) -> np.ndarray:
     return probs
 
 
-def copy_circuit(circuit: Circuit) -> Circuit:
-    """Truly deepcopies a given circuit by copying the gates.
-
-
-    Right now, qibos copy function changes properties of the copied circuit.
-
-    Args:
-        circuit (Circuit): The circuit which is copied.
-
-    Returns:
-        (Circuit): The copied circuit
-    """
-    newcircuit = Circuit(circuit.nqubits)
-    for gate in circuit.queue:
-        newcircuit.add(deepcopy(gate))
-    return newcircuit
-
-
 def gate_fidelity(eff_depol: float, primitive=False) -> float:
     """Returns the average gate fidelity given the effective depolarizing parameter for single qubits.
 
