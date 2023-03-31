@@ -18,6 +18,7 @@ ROCFILE = "ROC_curves.json"
 RESULTSFIG = "results.pdf"
 COLOR = ListedColormap(["#FF0000", "#0000FF"])
 
+
 def plot_table(table, path: pathlib.Path):
     r"""Plot the benchmark table and save it as
     `{path}/benchmarks.pdf`.
