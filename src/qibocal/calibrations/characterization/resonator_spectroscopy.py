@@ -189,7 +189,6 @@ def resonator_punchout_attenuation(
         delta_frequency_range,
         [ro_pulses[qubit] for qubit in qubits],
     )
-
     # attenuation
     attenuation_range = np.flip(np.arange(min_att, max_att, step_att))
     att_sweeper = Sweeper(Parameter.attenuation, attenuation_range, qubits=qubits)
@@ -223,7 +222,7 @@ def resonator_punchout_attenuation(
                 len(attenuation_range)
                 * list(delta_frequency_range + ro_pulse.frequency)
             ).flatten()
-            r = result.to_dict(average=False)
+            r = result.to_dict()
             r.update(
                 {
                     "frequency[Hz]": freqs,
