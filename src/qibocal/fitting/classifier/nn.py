@@ -1,8 +1,4 @@
-import json
-import pathlib
-
 import keras_tuner as kt
-from matplotlib import pyplot as plt
 from tensorflow.keras import backend as K
 from tensorflow.keras import callbacks, optimizers
 from tensorflow.keras.layers import BatchNormalization, Dense, Layer

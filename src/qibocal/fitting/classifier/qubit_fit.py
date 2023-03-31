@@ -107,17 +107,7 @@ class QubitFit:
         translated = self.translate(inputs)
         rotated = self.rotate(translated)
         return (rotated[:, 0] > self.threshold).astype(int)
-
-
-def _check(value, sorted_list):
-    r"""Returns the position of the highest element in
-    `sorted_list` less than `value`.
-    """
-    for i, val in enumerate(sorted_list):
-        if value < val:
-            return max(i - 1, 0)
-    return len(sorted_list) - 1
-
+    
 
 def _eval_cumulative(input_data, points):
     r"""Evaluates in data the cumulative distribution
@@ -129,7 +119,7 @@ def _eval_cumulative(input_data, points):
     app = 0
 
     for val in input_data:
-        app += _check(val, points[app::])
+        app += np.max(np.searchsorted(points[app::], val) - 1, 0)
         prob.append(app + 1)
 
     return np.array(prob) / len(points)
