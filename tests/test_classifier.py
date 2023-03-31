@@ -1,5 +1,6 @@
 import os
 import pathlib
+import sys
 import tempfile
 
 import numpy as np
@@ -56,6 +57,10 @@ def initialization(data_path):
     return table, base_dir, y_test
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="no tensorflow-io-0.32.0's wheel available for Windows",
+)
 def test_folders(data_path):
     qubits = [0, 1]
     _, base_dir, _ = initialization(data_path)
@@ -66,6 +71,10 @@ def test_folders(data_path):
             assert os.path.exists(qubit_dir / file)
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="no tensorflow-io-0.32.0's wheel available for Windows",
+)
 def test_accuracy(data_path):
     table, _, y_test = initialization(data_path)
     real_accuracies = table["accuracy"].tolist()
