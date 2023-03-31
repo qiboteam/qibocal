@@ -10,6 +10,13 @@ from sklearn.metrics import RocCurveDisplay, confusion_matrix, roc_curve
 
 from . import run
 
+TABLEFILE = "benchmarks.pdf"
+CONFMATRIXFIG = "confusion_matrices.pdf"
+CONFMATRIXFILE = "confusion_matrices.json"
+ROCFIG = "ROC_curves.pdf"
+ROCFILE = "ROC_curves.json"
+RESULTSFIG = "results.pdf"
+COLOR = ListedColormap(["#FF0000", "#0000FF"])
 
 def plot_table(table, path: pathlib.Path):
     r"""Plot the benchmark table and save it as
@@ -31,7 +38,7 @@ def plot_table(table, path: pathlib.Path):
     g.map(sns.scatterplot)
     plt.xscale("log")
     plt.tight_layout()
-    plt.savefig(path / "benchmarks.pdf")
+    plt.savefig(path / TABLEFILE)
 
 
 def plot_conf_matr(y_test, path: pathlib.Path, classifiers=None):
@@ -69,12 +76,12 @@ def plot_conf_matr(y_test, path: pathlib.Path, classifiers=None):
         ax.set_title(classifier.name)
 
     plt.tight_layout()
-    plt.savefig(path / "confusion_matrices.pdf")
+    plt.savefig(path / CONFMATRIXFIG)
     confusion_dic = {names[i]: matrices[i].tolist() for i in range(len(classifiers))}
     # Save data in JSON
     json.dump(
         confusion_dic,
-        open(path / "confusion_matrices.json", "w"),
+        open(path / CONFMATRIXFILE, "w"),
         separators=(",", ":"),
         sort_keys=True,
         indent=4,
@@ -125,7 +132,7 @@ def plot_roc_curves(x_test, y_test, path: pathlib.Path, models, models_names):
         plt.title(f"{models_names[count]}")
         plt.legend()
         plt.tight_layout()
-        plt.savefig(path / "ROC_curves.pdf")
+        plt.savefig(path / ROCFIG)
 
     # Save data in a dictionary
     roc_dict = {
@@ -133,7 +140,7 @@ def plot_roc_curves(x_test, y_test, path: pathlib.Path, models, models_names):
     }
     json.dump(
         roc_dict,
-        open(path / "ROC_curves.json", "w"),
+        open(path / ROCFILE, "w"),
         separators=(",", ":"),
         sort_keys=True,
         indent=4,
@@ -167,7 +174,7 @@ def plot_models_results(x_train, x_test, y_test, path, models, models_names):
         display = DecisionBoundaryDisplay(xx0=i, xx1=q, response=y_pred)
 
         display.plot(cmap="RdBu", alpha=0.8, ax=ax)
-        cm_bright = ListedColormap(["#FF0000", "#0000FF"])
+        cm_bright = COLOR
         ax.scatter(
             x_test[:, 0],
             x_test[:, 1],
@@ -180,4 +187,4 @@ def plot_models_results(x_train, x_test, y_test, path, models, models_names):
         ax.set_yticks(())
         ax.set_title(models_names[count])
         plt.tight_layout()
-        plt.savefig(path / "results.pdf")
+        plt.savefig(path / RESULTSFIG)
