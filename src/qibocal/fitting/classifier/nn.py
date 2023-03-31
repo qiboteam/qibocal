@@ -1,8 +1,12 @@
 import keras_tuner as kt
-from tensorflow.keras import backend as K
-from tensorflow.keras import callbacks, optimizers
-from tensorflow.keras.layers import BatchNormalization, Dense, Layer
-from tensorflow.keras.models import Sequential
+from tensorflow.keras import backend as K  # pylint: disable=import-error
+from tensorflow.keras import callbacks, optimizers  # pylint: disable=import-error
+from tensorflow.keras.layers import (  # pylint: disable=import-error
+    BatchNormalization,
+    Dense,
+    Layer,
+)
+from tensorflow.keras.models import Sequential  # pylint: disable=import-error
 
 from .utils import identity
 
