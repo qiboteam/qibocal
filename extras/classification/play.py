@@ -12,7 +12,7 @@ for qubit in range(1, 5):
     print(f"QUBIT: {qubit}")
     qubit_dir = base_dir / f"qubit{qubit}"
     table, y_test, x_test = run.train_qubit(
-        data_path, base_dir, qubit, classifiers=["nn"]
+        data_path, base_dir, qubit, classifiers=["qubit_fit"]
     )
     run.dump_benchmarks_table(table, qubit_dir)
     plots.plot_table(table, qubit_dir)
