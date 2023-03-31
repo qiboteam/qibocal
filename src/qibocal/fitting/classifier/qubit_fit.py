@@ -125,11 +125,11 @@ def _eval_cumulative(input_data, points):
     WARNING: `input_data` and `points` should be sorted data.
     """
     # data and points sorted
-    prob = np.zeros(len(input_data))
+    prob = []
     app = 0
 
-    for i, val in enumerate(input_data):
-        app = app + _check(val, points[app::])
-        prob[i] = app + 1
+    for val in input_data:
+        app += _check(val, points[app::])
+        prob.append(app + 1)
 
-    return prob / len(points)
+    return np.array(prob) / len(points)
