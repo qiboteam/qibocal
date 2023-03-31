@@ -16,7 +16,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.8,<3.12"
-qibolab = "^0.0"
+qibolab = "^0.0.2"
 qibo = "^0.1.9"
 pandas = "^1.4.3"
 Pint-Pandas = "^0.3"
