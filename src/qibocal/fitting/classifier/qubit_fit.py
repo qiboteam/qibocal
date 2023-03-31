@@ -70,11 +70,8 @@ class QubitFit:
         # rotate
         iq_coord_rot = self.rotate(iq_coordinates_translated)
 
-        x_values_state0 = iq_coord_rot[(states == 0)][:, 0]
-        x_values_state1 = iq_coord_rot[(states == 1)][:, 0]
-
-        x_values_state0 = np.sort(x_values_state0)
-        x_values_state1 = np.sort(x_values_state1)
+        x_values_state0 = np.sort(iq_coord_rot[(states == 0)][:, 0])
+        x_values_state1 = np.sort(iq_coord_rot[(states == 1)][:, 0])
 
         # evaluate threshold and fidelity
         x_values = iq_coord_rot[:, 0]
@@ -128,11 +125,11 @@ def _eval_cumulative(input_data, points):
     WARNING: `input_data` and `points` should be sorted data.
     """
     # data and points sorted
-    prob = np.zeros(len(input_data))
+    prob = []
     app = 0
 
-    for i, val in enumerate(input_data):
-        app = app + _check(val, points[app::])
-        prob[i] = app + 1
+    for val in input_data:
+        app += _check(val, points[app::])
+        prob.append(app + 1)
 
-    return prob / len(points)
+    return np.array(prob) / len(points)
