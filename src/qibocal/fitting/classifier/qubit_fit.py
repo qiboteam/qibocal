@@ -70,11 +70,8 @@ class QubitFit:
         # rotate
         iq_coord_rot = self.rotate(iq_coordinates_translated)
 
-        x_values_state0 = iq_coord_rot[(states == 0)][:, 0]
-        x_values_state1 = iq_coord_rot[(states == 1)][:, 0]
-
-        x_values_state0 = np.sort(x_values_state0)
-        x_values_state1 = np.sort(x_values_state1)
+        x_values_state0 = np.sort(iq_coord_rot[(states == 0)][:, 0])
+        x_values_state1 = np.sort(iq_coord_rot[(states == 1)][:, 0])
 
         # evaluate threshold and fidelity
         x_values = iq_coord_rot[:, 0]
