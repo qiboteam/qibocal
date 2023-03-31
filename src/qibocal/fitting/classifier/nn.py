@@ -1,4 +1,4 @@
-import keras_tuner as kt
+import keras_tuner as kt  # pylint: disable=import-error
 from tensorflow.keras import backend as K  # pylint: disable=import-error
 from tensorflow.keras import callbacks, optimizers  # pylint: disable=import-error
 from tensorflow.keras.layers import (  # pylint: disable=import-error
