@@ -107,7 +107,7 @@ class QubitFit:
         translated = self.translate(inputs)
         rotated = self.rotate(translated)
         return (rotated[:, 0] > self.threshold).astype(int)
-    
+
 
 def _eval_cumulative(input_data, points):
     r"""Evaluates in data the cumulative distribution
