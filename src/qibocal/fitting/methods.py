@@ -1108,7 +1108,7 @@ def punchout_fit(data, qubits, resonator_type, labels, fit_type):
         qubits (list): qubits coupled to the resonator that we are probing.
         resonator_type (str): the type of readout resonator ['3D', '2D'].
         labels (list of str): list containing the lables of the quantities computed by this fitting method.
-        fit_type (str): the type of punchoute executed ['attenuation', 'amplitude'].
+        fit_type (str): the type of punchout executed ['attenuation', 'amplitude'].
 
     Returns:
         data_fit (Data): Data file with labels and fit parameters (frequency at low and high power, attenuation range for low and highg power)
