@@ -1101,13 +1101,14 @@ def calibrate_qubit_states_fit(data, x, y, nshots, qubits):
     return parameters
 
 
-def punchout_fit(data, qubits, resonator_type, labels):
+def punchout_fit(data, qubits, resonator_type, labels, fit_type):
     """Fit frequency and attenuation at high and low power for a given resonator
         Args:
         data (DataUnits): data file with information on the feature response at each current point.
         qubits (list): qubits coupled to the resonator that we are probing.
         resonator_type (str): the type of readout resonator ['3D', '2D'].
         labels (list of str): list containing the lables of the quantities computed by this fitting method.
+        fit_type (str): the type of punchoute executed ['attenuation', 'amplitude'].
 
     Returns:
         data_fit (Data): Data file with labels and fit parameters (frequency at low and high power, attenuation range for low and highg power)
@@ -1130,11 +1131,11 @@ def punchout_fit(data, qubits, resonator_type, labels):
         averaged_data = (
             data.df[data.df["qubit"] == qubit]
             .drop(columns=["i", "q", "qubit", "iteration"])
-            .groupby(["frequency", "attenuation"], as_index=False)
+            .groupby(["frequency", fit_type], as_index=False)
             .mean()
         )
         try:
-            normalised_data = averaged_data.groupby(["attenuation"], as_index=False)[
+            normalised_data = averaged_data.groupby([fit_type], as_index=False)[
                 ["MSR"]
             ].transform(norm)
 

@@ -235,19 +235,19 @@ def resonator_punchout_attenuation(
 
         # save data
         yield data
-        # TODO: calculate and save fit
         yield punchout_fit(
             data=data,
             qubits=qubits,
             resonator_type=platform.resonator_type,
             labels=[
                 "freq_lp",
-                "att_lp_max_att",
-                "att_lp_min_att",
+                "lp_max_att",
+                "lp_min_att",
                 "freq_hp",
-                "att_hp_max_att",
-                "att_hp_min_att",
+                "hp_max_att",
+                "hp_min_att",
             ],
+            fit_type="attenuation",
         )
 
 
@@ -370,7 +370,20 @@ def resonator_punchout(
 
         # save data
         yield data
-        # TODO: calculate and save fit
+        yield punchout_fit(
+            data=data,
+            qubits=qubits,
+            resonator_type=platform.resonator_type,
+            labels=[
+                "freq_lp",
+                "lp_max_amp",
+                "lp_min_amp",
+                "freq_hp",
+                "hp_max_amp",
+                "hp_min_amp",
+            ],
+            fit_type="amplitude",
+        )
 
 
 @plot(

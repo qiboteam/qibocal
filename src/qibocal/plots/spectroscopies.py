@@ -212,11 +212,11 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
             data_fit = Data(
                 quantities=[
                     "freq_lp",
-                    "att_lp_max_att",
-                    "att_lp_min_att",
+                    "lp_max_att",
+                    "lp_min_att",
                     "freq_hp",
-                    "att_hp_max_att",
-                    "att_hp_min_att",
+                    "hp_max_att",
+                    "hp_min_att",
                     "qubit",
                 ]
             )
@@ -263,6 +263,11 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
             col=2,
         )
 
+        fig.update_xaxes(
+            title_text=f"q{qubit}/r{report_n}: Frequency (Hz)", row=1 + report_n, col=2
+        )
+        fig.update_yaxes(title_text="Attenuation (dB)", row=1 + report_n, col=2)
+
         if len(data) > 0 and (qubit in data_fit.df["qubit"].values):
             # Add fitting trace
             params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(
@@ -279,10 +284,10 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
                             params["freq_lp"],
                         ],
                         y=[
-                            params["att_hp_max_att"],
-                            params["att_hp_min_att"],
-                            params["att_lp_max_att"],
-                            params["att_lp_min_att"],
+                            params["hp_max_att"],
+                            params["hp_min_att"],
+                            params["lp_max_att"],
+                            params["lp_min_att"],
                         ],
                         mode="markers",
                         marker=dict(
@@ -297,19 +302,14 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
                 title_text += (
                     f"q{qubit}/r{report_n} | Freq@Lp: {params['freq_lp']} Hz.<br>"
                 )
-                title_text += f"q{qubit}/r{report_n} | Attenuation@Lp Range: {params['att_lp_max_att']} - {params['att_lp_min_att']} db.<br>"
+                title_text += f"q{qubit}/r{report_n} | Attenuation@Lp Range: {params['lp_max_att']} - {params['lp_min_att']} db.<br>"
                 title_text += (
                     f"q{qubit}/r{report_n} | Freq@Hp: {params['freq_hp']} Hz.<br>"
                 )
-                title_text += f"q{qubit}/r{report_n} | Attenuation@Hp: {params['att_hp_max_att']} - {params['att_hp_min_att']} db.<br>"
+                title_text += f"q{qubit}/r{report_n} | Attenuation@Hp: {params['hp_max_att']} - {params['hp_min_att']} db.<br>"
                 fitting_report = fitting_report + title_text
             else:
                 fitting_report = "No fitting data"
-
-        fig.update_xaxes(
-            title_text=f"q{qubit}/r{report_n}: Frequency (Hz)", row=1 + report_n, col=2
-        )
-        fig.update_yaxes(title_text="Attenuation (dB)", row=1 + report_n, col=2)
 
         fig.update_layout(
             showlegend=False,
@@ -329,7 +329,7 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
 # Punchout
 def frequency_amplitude_msr_phase(folder, routine, qubit, format):
     figures = []
-    fitting_report = "No fitting data"
+    fitting_report = ""
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
 
@@ -355,6 +355,22 @@ def frequency_amplitude_msr_phase(folder, routine, qubit, format):
                 quantities={"frequency": "Hz", "amplitude": "dimensionless"},
                 options=["qubit", "iteration"],
             )
+        try:
+            data_fit = load_data(folder, subfolder, routine, format, "fits")
+            data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
+        except:
+            data_fit = Data(
+                quantities=[
+                    "freq_lp",
+                    "lp_max_amp",
+                    "lp_min_amp",
+                    "freq_hp",
+                    "hp_max_amp",
+                    "hp_min_amp",
+                    "qubit",
+                ]
+            )
+            fitting_report = "No fitting data"
 
         iterations = data.df["iteration"].unique()
         frequencies = data.df["frequency"].pint.to("Hz").pint.magnitude.unique()
@@ -403,6 +419,50 @@ def frequency_amplitude_msr_phase(folder, routine, qubit, format):
             title_text=f"q{qubit}/r{report_n}: Frequency (Hz)", row=1 + report_n, col=2
         )
         fig.update_yaxes(title_text="Amplitude", row=1 + report_n, col=2)
+
+        if len(data) > 0 and (qubit in data_fit.df["qubit"].values):
+            # Add fitting trace
+            params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(
+                orient="records"
+            )[0]
+
+            if all(value != 0 for key, value in params.items() if key != "qubit"):
+                fig.add_trace(
+                    go.Scatter(
+                        x=[
+                            params["freq_hp"],
+                            params["freq_hp"],
+                            params["freq_lp"],
+                            params["freq_lp"],
+                        ],
+                        y=[
+                            params["hp_max_amp"],
+                            params["hp_min_amp"],
+                            params["lp_max_amp"],
+                            params["lp_min_amp"],
+                        ],
+                        mode="markers",
+                        marker=dict(
+                            size=8,
+                            color="gray",
+                            symbol="circle",
+                        ),
+                    )
+                )
+
+                title_text = ""
+                title_text += (
+                    f"q{qubit}/r{report_n} | Freq@Lp: {params['freq_lp']} Hz.<br>"
+                )
+                title_text += f"q{qubit}/r{report_n} | Amplitude@Lp Range: {params['lp_max_amp']} - {params['lp_min_amp']} db.<br>"
+                title_text += (
+                    f"q{qubit}/r{report_n} | Freq@Hp: {params['freq_hp']} Hz.<br>"
+                )
+                title_text += f"q{qubit}/r{report_n} | Amplitude@Hp: {params['hp_max_amp']} - {params['hp_min_amp']} db.<br>"
+                fitting_report = fitting_report + title_text
+            else:
+                fitting_report = "No fitting data"
+
         fig.update_layout(
             showlegend=False,
             uirevision="0",  # ``uirevision`` allows zooming while live plotting
