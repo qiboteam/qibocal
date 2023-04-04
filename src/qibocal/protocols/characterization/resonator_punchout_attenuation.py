@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Optional, Tuple
+
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -28,7 +29,9 @@ class ResonatorPunchoutAttenuationResults(Results):
     readout_frequency: Dict[List[Tuple], str] = field(
         metadata=dict(update="readout_frequency")
     )
-    attenuation: Dict[List[Tuple], str] = field(metadata=dict(update="readout_attenuation"))
+    attenuation: Dict[List[Tuple], str] = field(
+        metadata=dict(update="readout_attenuation")
+    )
     fitted_parameters: Dict[List[Tuple], List]
     bare_frequency: Optional[Dict[List[Tuple], str]] = field(
         metadata=dict(update="bare_resonator_frequency")
@@ -45,7 +48,9 @@ class ResonatorPunchoutAttenuationData(DataUnits):
 
 
 def _acquisition(
-    platform: AbstractPlatform, qubits: Qubits, params: ResonatorPunchoutAttenuationParameters
+    platform: AbstractPlatform,
+    qubits: Qubits,
+    params: ResonatorPunchoutAttenuationParameters,
 ) -> ResonatorPunchoutAttenuationData:
     # create a sequence of pulses for the experiment:
     # MZ
@@ -70,9 +75,7 @@ def _acquisition(
     )
 
     # attenuation
-    attenuation_range = np.arange(
-        params.min_att, params.max_att, params.step_att
-    )
+    attenuation_range = np.arange(params.min_att, params.max_att, params.step_att)
     amp_sweeper = Sweeper(
         Parameter.attenuation, attenuation_range, qubits=[qubit for qubit in qubits]
     )
@@ -99,7 +102,8 @@ def _acquisition(
             result = results[ro_pulse.serial]
             # store the results
             freqs = np.array(
-                len(attenuation_range) * list(delta_frequency_range + ro_pulse.frequency)
+                len(attenuation_range)
+                * list(delta_frequency_range + ro_pulse.frequency)
             ).flatten()
             r = {k: v.ravel() for k, v in result.to_dict().items()}
             r.update(
@@ -121,7 +125,11 @@ def _fit(data: ResonatorPunchoutAttenuationData) -> ResonatorPunchoutAttenuation
     return ResonatorPunchoutAttenuationResults({}, {}, {}, {})
 
 
-def _plot(data: ResonatorPunchoutAttenuationData, fit: ResonatorPunchoutAttenuationResults, qubit):
+def _plot(
+    data: ResonatorPunchoutAttenuationData,
+    fit: ResonatorPunchoutAttenuationResults,
+    qubit,
+):
     figures = []
     fitting_report = "No fitting data"
 
