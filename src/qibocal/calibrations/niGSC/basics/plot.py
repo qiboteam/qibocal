@@ -114,6 +114,22 @@ def scatter_fit_fig(
     fittingparam_label="popt",
     is_imag=False,
 ):
+    """
+    Generate a figure dictionary for plotly.
+
+    Args:
+        experiment (:class:`qibocal.calibrations.niGSC.basics.experiment.Experiment`):
+            an RB experiment that contains a dataframe with the information for the figure.
+        df_aggr (pd.DataFrame): DataFrame containing aggregational data about the RB experiment.
+        xlabel (str): key for x values in experiment.dataframe[xlabel] and df_aggr[xlabel].
+        index (str): key for y values in experiment.dataframe[index] and df_aggr[index].
+        fittingparam_label (str): key in df_aggr with dictionary containing the parameters for the dfrow["fit_func"].
+            Default is "popt".
+        is_imag (bool): Plots imaginary values of the data when True. Default is False.
+
+    Returns:
+        dict: dictionary for the plotly figure.
+    """
     fig_traces = []
     dfrow = df_aggr.loc[index]
 
@@ -176,15 +192,35 @@ def update_fig(
     fig_dict: dict,
     df_aggr: pd.DataFrame,
     param_label="validation",
+    fit_func_key="validation_func",
     name="",
     is_imag=False,
 ):
+    """
+    Add new data to an existing figure dictionary.
+
+    Args:
+        fig_dict (dict): a dictionary corresponding to the Figure. Must contain "figs" (figure traces), "ylabel" and "xlabel".
+        df_aggr (pd.DataFrame): DataFrame containing new data for the figure in the column corresponding to fig_dict["ylabel"].
+        param_label (str): key in df_aggr with dictionary containing the parameters that need to be added to the figure. Default is "validation".
+        fit_func_key (str): key in df_aggr corresponding to a function name from fitting_methods that accepts the parameters from param_label.
+            Default is "validation_func".
+        name (str): label of the new trace on the Figure legend. Default name="" will create a label from df_aggr[param_label] keys and values.
+        is_imag (bool): Plots imaginary values of the data when True. Default is False.
+
+    Returns:
+        dict: updated dictionary with the new trace in fig_dict["figs"].
+    """
     fig_traces = fig_dict["figs"]
     dfrow = df_aggr.loc[fig_dict["ylabel"]]
     xlabel = fig_dict["xlabel"]
 
+    if not isinstance(dfrow[fit_func_key], str):
+        return fig_dict
+
     x_fit = np.linspace(min(dfrow[xlabel]), max(dfrow[xlabel]), len(dfrow[xlabel]) * 20)
-    y_fit = getattr(fitting_methods, dfrow["fit_func"])(
+
+    y_fit = getattr(fitting_methods, dfrow[fit_func_key])(
         x_fit, *(dfrow[param_label].values())
     )
     y_fit = np.imag(y_fit) if is_imag else np.real(y_fit)

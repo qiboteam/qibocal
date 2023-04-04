@@ -9,7 +9,6 @@ from collections.abc import Iterable
 
 import numpy as np
 import pandas as pd
-import qibo
 from plotly.graph_objects import Figure
 from qibo import gates
 from qibo.models import Circuit
@@ -20,8 +19,6 @@ from qibocal.calibrations.niGSC.basics.circuitfactory import SingleCliffordsFact
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
 from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig
 from qibocal.calibrations.niGSC.basics.utils import gate_fidelity
-
-qibo.set_backend("numpy")
 
 
 class ModuleFactory(SingleCliffordsFactory):
@@ -143,40 +140,49 @@ def post_processing_sequential(experiment: Experiment):
     experiment.perform(groundstate_probabilities)
 
 
-def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
+def get_aggregational_data(experiment: Experiment, ndecays: int = None) -> pd.DataFrame:
     """Computes aggregational tasks, fits data and stores the results in a data frame.
 
     No data is manipulated in the ``experiment`` object.
 
     Args:
         experiment (Experiment): After sequential postprocessing of the experiment data.
+        ndecays (int): Number of decay parameters to fit. Default is 1.
 
     Returns:
         pd.DataFrame: The summarized data.
     """
-
+    ndecays = ndecays if ndecays is not None else 1
     # Has to fit the column description from ``groundstate_probabilities``.
     depths, ydata = experiment.extract("groundstate probability", "depth", "mean")
     _, ydata_std = experiment.extract("groundstate probability", "depth", "std")
     # Fit the ground state probabilies mean for each depth.
-    popt, perr = fitting_methods.fit_exp1B_func(depths, ydata)
+    if ndecays == 1:
+        popt, perr = fitting_methods.fit_exp1B_func(depths, ydata)
+        popt_dict = {"A": popt[0], "p": popt[1], "B": popt[2]}
+        perr_dict = {"A_err": perr[0], "p_err": perr[1], "B_err": popt[2]}
+        fit_func_label = "exp1B_func"
+    else:
+        # TODO add fit_expnB_func. Fit ndecays+1 for now to account for B
+        fitting_methods.fit_expn_func(depths, ydata, ndecays + 1)
+        popt_labels = np.array(
+            [[f"A{k+1}", f"p{k+1}"] for k in range(len(popt) // 2)]
+        ).ravel()
+        popt_dict = dict(zip(popt_labels, popt[::2] + popt[1::2]))
+        perr_labels = np.array(
+            [[f"A{k+1}_err", f"p{k+1}_err"] for k in range(len(popt) // 2)]
+        ).ravel()
+        perr_dict = dict(zip(perr_labels, perr))
+        fit_func_label = "expn_func"
     # Build a list of dictionaries with the aggregational information.
     data = [
         {
             "depth": depths,  # The x-axis.
             "data": ydata,  # The mean of ground state probability for each depth.
-            "2sigma": 2 * ydata_std,  # The 2 * standard deviation error for each depth.
-            "fit_func": "exp1B_func",  # Which function was used to fit.
-            "popt": {
-                "A": popt[0],
-                "p": popt[1],
-                "B": popt[2],
-            },  # The fitting paramters.
-            "perr": {
-                "A_err": perr[0],
-                "p_err": perr[1],
-                "B_err": perr[2],
-            },  # The estimated errors.
+            "2sigma": 2 * ydata_std,  # The standard deviation error for each depth.
+            "fit_func": fit_func_label,  # Which function was used to fit.
+            "popt": popt_dict,  # The fitting paramters.
+            "perr": perr_dict,  # The estimated errors.
         }
     ]
     # The row name will be displayed as y-axis label.

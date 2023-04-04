@@ -22,10 +22,10 @@ def test_Experiment_init():
     # All None should work.
     experiment1 = Experiment(cfactory, data=data, noise_model=noise_model)
     with pytest.raises(TypeError):
-        _ = Experiment(1)
-        _ = Experiment(None, 1)
-        _ = Experiment(None, None, True)
-        _ = Experiment(None, None, None, 1)
+        Experiment(1)
+        Experiment(None, 1)
+        Experiment(None, None, True)
+        Experiment(None, None, None, 1)
 
 
 @pytest.mark.parametrize("nqubits", [2, 3])

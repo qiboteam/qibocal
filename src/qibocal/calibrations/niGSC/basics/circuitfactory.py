@@ -6,8 +6,7 @@ from collections.abc import Iterable
 import numpy as np
 from qibo import gates
 from qibo.models import Circuit
-from qibo.quantum_info.random_ensembles import _clifford_unitary, random_clifford
-from qibo.quantum_info.utils import ONEQUBIT_CLIFFORD_PARAMS
+from qibo.quantum_info.random_ensembles import random_clifford
 
 from qibocal.calibrations.niGSC.basics.utils import ONEQ_GATES, ONEQ_GATES_MATRICES
 from qibocal.config import raise_error
@@ -64,10 +63,6 @@ class CircuitFactory:
             self.n += 1
             return bigcircuit
 
-    @property
-    def gate_group(self):
-        return []
-
     def build_circuit(self, depth: int) -> Circuit:
         """Initiate a ``qibo.models.Circuit`` object and fill it with the wanted gates.
 
@@ -122,20 +117,6 @@ class Qibo1qGatesFactory(CircuitFactory):
             gates_list.append(rand_gate(count))
         return gates_list
 
-    def gate_group(self):
-        from itertools import product
-
-        if self.nqubits == 1:
-            return [getattr(gates, p) for p in ONEQ_GATES]
-
-        gates_1q = ONEQ_GATES_MATRICES.values()
-        gates_nq = list(product(gates_1q, repeat=self.nqubits))
-        unitaries = [
-            gates.Unitary(np.kron(*gates_tuple), *self.qubits)
-            for gates_tuple in gates_nq
-        ]
-        return unitaries
-
 
 class SingleCliffordsFactory(CircuitFactory):
     """Creates circuits filled with random  single qubit Clifford gates for
@@ -164,19 +145,6 @@ class SingleCliffordsFactory(CircuitFactory):
             gates_list.append(gates.Unitary(rand_cliff, count))
         return gates_list
 
-    def gate_group(self):
-        from itertools import product
-
-        cliffords_1q = [_clifford_unitary(*p) for p in ONEQUBIT_CLIFFORD_PARAMS]
-        if self.nqubits == 1:
-            return [gates.Unitary(c, *self.qubits) for c in cliffords_1q]
-        cliffords = list(product(cliffords_1q, repeat=self.nqubits))
-        cliffords_unitaries = [
-            gates.Unitary(np.kron(*clifford_layer), *self.qubits)
-            for clifford_layer in cliffords
-        ]
-        return cliffords_unitaries
-
 
 class ZkFilteredCircuitFactory(CircuitFactory):
     """Creates circuits filled with random single qubit gates from the group
@@ -200,13 +168,14 @@ class ZkFilteredCircuitFactory(CircuitFactory):
         # many qubits.
         circuit = Circuit(1, density_matrix=True)
         # Draw sequence length many indices corresponding to the elements of the gate group.
-        random_ints = np.random.randint(0, len(self.gate_group()), size=depth)
+        random_ints = np.random.randint(0, len(self.gate_group), size=depth)
         # Get the gates with random_ints as indices.
-        gate_lists = np.take(self.gate_group(), random_ints)
+        gate_lists = np.take(self.gate_group, random_ints)
         # Add gates to circuit.
         circuit.add(gate_lists)
         circuit.add(gates.M(0))
         return circuit
 
+    @property
     def gate_group(self):
         return [gates.RX(0, 2 * np.pi / self.size * i) for i in range(self.size)]

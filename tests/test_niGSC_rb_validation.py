@@ -1,3 +1,5 @@
+import importlib
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -14,85 +16,77 @@ from qibocal.calibrations.niGSC.basics.circuitfactory import (
 from qibocal.calibrations.niGSC.basics.noisemodels import *
 from qibocal.calibrations.niGSC.basics.rb_validation import *
 
-test_factories_list = [
-    ZkFilteredCircuitFactory(1, [1]),
-    SingleCliffordsFactory(1, [1]),
-    XIdrb.ModuleFactory(1, [1]),
-    Idrb.ModuleFactory(1, [1]),
-    paulisfilteredrb.ModuleFactory(1, [1]),
-    Z3rb.ModuleFactory(1, [1]),
-    Z4rb.ModuleFactory(1, [1]),
+test_module_names = [
+    "Idrb",
+    "paulisfilteredrb",
+    "simulfilteredrb",
+    "XIdrb",
+    "Z3rb",
+    "Z4rb",
 ]
 
 test_noisemodels_list = [
+    None,
     PauliErrorOnAll(),
     UnitaryErrorOnAll(),
     ThermalRelaxationErrorOnAll(),
 ]
 
 
-@pytest.mark.parametrize("factory", test_factories_list)
-def test_irrep_info(factory):
-    basis, index, size, multiplicity = irrep_info(factory)
-    assert isinstance(basis, np.ndarray)
-    assert isinstance(index, int)
-    assert isinstance(size, int)
-    assert isinstance(multiplicity, int)
-    assert basis.shape == (4, 4)
-    with pytest.raises(TypeError):
-        irrep_info(list(factory))
-
-
-@pytest.mark.parametrize("factory", test_factories_list)
+@pytest.mark.parametrize("module_name", test_module_names)
 @pytest.mark.parametrize("noise", test_noisemodels_list)
-@pytest.mark.parametrize("N", [None, 10])
-@pytest.mark.parametrize("ideal", [True, False])
-def test_fourier_transform(factory, noise, N, ideal):
-    noise = noise if ideal else None
+def test_fourier_transform(module_name, noise):
+    nqubits = 1
+    module = importlib.import_module(f"qibocal.calibrations.niGSC.{module_name}")
+    irrep_info = module.irrep_info(nqubits)
+    gate_group = module.gate_group(nqubits)
 
-    size = irrep_info(factory)[2]
-    f_transform = fourier_transform(factory, noise, N, ideal)
-    assert f_transform.shape == (4 * size, 4 * size)
-
-    with pytest.raises(TypeError):
-        fourier_transform(list(factory), noise, N, ideal)
+    f_transform = fourier_transform(gate_group, irrep_info, nqubits, noise)
+    assert f_transform.shape == (4 * irrep_info[2], 4 * irrep_info[2])
 
 
-@pytest.mark.parametrize("factory", test_factories_list)
-@pytest.mark.parametrize("N", [None, 10])
-def test_channel_twirl(factory, N):
+@pytest.mark.parametrize("module_name", test_module_names)
+def test_channel_twirl(module_name):
+    nqubits = 1
+    module = importlib.import_module(f"qibocal.calibrations.niGSC.{module_name}")
+    irrep_info = module.irrep_info(nqubits)
+    gate_group = module.gate_group(nqubits)
+
     dephasing_channel = np.array(
         [[1, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 1]], dtype=complex
     )
 
-    ch_twirl = channel_twirl(factory, dephasing_channel, N)
+    ch_twirl = channel_twirl(gate_group, nqubits, dephasing_channel, irrep_info[0])
     assert ch_twirl.shape == (4, 4)
 
 
-@pytest.mark.parametrize("factory", test_factories_list)
+@pytest.mark.parametrize("module_name", test_module_names)
 @pytest.mark.parametrize("noise", test_noisemodels_list)
 @pytest.mark.parametrize("N", [None, 10])
 @pytest.mark.parametrize("with_coefficients", [True, False])
-def test_filtered_decay_parameters(factory, noise, with_coefficients, N):
-    result_parameters = filtered_decay_parameters(factory, noise, with_coefficients, N)
-    coefficients = result_parameters[0] if with_coefficients else []
-    decays = result_parameters[1] if with_coefficients else result_parameters
+def test_filtered_decay_parameters(module_name, noise, with_coefficients, N):
+    nqubits = 1
+
+    result_parameters = filtered_decay_parameters(
+        module_name, nqubits, noise, with_coefficients, N
+    )
+    coefficients = result_parameters[0]
+    decays = result_parameters[1]
 
     if with_coefficients:
         assert len(coefficients) == len(decays)
-
-    with pytest.raises(TypeError):
-        filtered_decay_parameters(list(factory), noise, with_coefficients, N)
+    else:
+        assert len(coefficients) == 0 and len(decays) > 0
 
 
 def test_pauli_validation():
-    factory = paulisfilteredrb.ModuleFactory(1, [1])
-
+    module_name = "paulisfilteredrb"
+    nqubits = 1
     # Pauli noise: F(m) = 0.5 (1 - px - py)^m
     px, py, pz = np.random.uniform(0, 0.15, size=3)
     noise = PauliErrorOnNonDiagonal(px, py, pz)
     coefficients, decays = filtered_decay_parameters(
-        factory, noise, with_coefficients=True, N=None
+        module_name, nqubits, noise, with_coefficients=True, N=None
     )
     assert len(coefficients) == 1 and len(decays) == 1
     assert np.allclose(coefficients[0], 0.5, rtol=1e-2)
@@ -101,7 +95,7 @@ def test_pauli_validation():
     # Unitary noise: F(m) = 0.5 * r^m
     noise = UnitaryErrorOnNonDiagonal()
     coefficients, decays = filtered_decay_parameters(
-        factory, noise, with_coefficients=True, N=None
+        module_name, nqubits, noise, with_coefficients=True, N=None
     )
     assert len(coefficients) == 1 and len(decays) == 1
     assert np.allclose(coefficients[0], 0.5, rtol=1e-2)
@@ -114,20 +108,21 @@ def test_pauli_validation():
     a0 = np.random.uniform(0.0, 1.0)
     noise = ThermalRelaxationErrorOnNonDiagonal(t1, t2, time, a0)
     coefficients, decays = filtered_decay_parameters(
-        factory, noise, with_coefficients=True, N=None
+        module_name, nqubits, noise, with_coefficients=True, N=None
     )
     assert len(coefficients) == 1 and len(decays) == 1
     assert np.allclose(decays[0], (1 + np.exp(-time / t1)) / 2, rtol=1e-3)
 
 
 def test_id_validation():
-    factory = Idrb.ModuleFactory(1, [1])
+    module_name = "Idrb"
+    nqubits = 1
 
     # Pauli noise: F(m) = 0.5 * 1^m + 0.5 (1 - 2px - 2py)^m
     px, py, pz = np.random.uniform(0, 0.15, size=3)
     noise = PauliErrorOnAll(px, py, pz)
     coefficients, decays = filtered_decay_parameters(
-        factory, noise, with_coefficients=True, N=None
+        module_name, nqubits, noise, with_coefficients=True, N=None
     )
     assert len(coefficients) <= 4 and len(decays) <= 4
     assert np.allclose(np.sum(coefficients), 1.0, rtol=1e-2)
@@ -139,7 +134,7 @@ def test_id_validation():
     # Unitary noise: F(m) = 0.5 * 1^m + ...
     noise = UnitaryErrorOnAll(t=0.1)
     coefficients, decays = filtered_decay_parameters(
-        factory, noise, with_coefficients=True, N=None
+        module_name, nqubits, noise, with_coefficients=True, N=None
     )
     assert len(coefficients) <= 4 and len(decays) <= 4
     assert np.allclose(np.sum(coefficients), 1.0, rtol=1e-2)
@@ -149,20 +144,21 @@ def test_id_validation():
     # Thermal Relaxation: F(m) = 0.5 * 1^m + 0.5 * 1^m
     noise = ThermalRelaxationErrorOnAll()
     coefficients, decays = filtered_decay_parameters(
-        factory, noise, with_coefficients=True, N=None
+        module_name, nqubits, noise, with_coefficients=True, N=None
     )
     assert np.allclose(np.sum(coefficients), 1.0, rtol=1e-2)
     assert np.allclose(np.max(decays), 1.0, rtol=1e-3)
 
 
 def test_xid_validation():
-    factory = XIdrb.ModuleFactory(1, [1])
+    module_name = "XIdrb"
+    nqubits = 1
 
     # Pauli noise: F(m) = 0.5 (1 - px - py)^m
     px, py, pz = np.random.uniform(0, 0.15, size=3)
     noise = PauliErrorOnX(px, py, pz)
     coefficients, decays = filtered_decay_parameters(
-        factory, noise, with_coefficients=True, N=None
+        module_name, nqubits, noise, with_coefficients=True, N=None
     )
     assert np.allclose(np.sum(coefficients), 0.5, rtol=1e-2)
     assert np.allclose(coefficients[0], 0.5, rtol=1e-2)
@@ -171,7 +167,7 @@ def test_xid_validation():
     # Unitary noise: F(m) = a1 * r1^m + a2 * r2^m
     noise = UnitaryErrorOnX(t=0.1)
     coefficients, decays = filtered_decay_parameters(
-        factory, noise, with_coefficients=True, N=None
+        module_name, nqubits, noise, with_coefficients=True, N=None
     )
     assert np.allclose(np.sum(coefficients), 0.5, rtol=0.1)
     assert len(coefficients) == 2
@@ -185,7 +181,7 @@ def test_xid_validation():
     a0 = np.random.uniform(0.0, 1.0)
     noise = ThermalRelaxationErrorOnX(t1, t2, time, a0)
     coefficients, decays = filtered_decay_parameters(
-        factory, noise, with_coefficients=True, N=None
+        module_name, nqubits, noise, with_coefficients=True, N=None
     )
     assert np.allclose(np.sum(coefficients), 0.5, rtol=1e-2)
     assert np.allclose(coefficients[0], 0.5, rtol=1e-2)
@@ -193,13 +189,26 @@ def test_xid_validation():
 
 
 def test_z4_validation():
-    factory = Z4rb.ModuleFactory(1, [1])
+    module_name = "Z4rb"
+    nqubits = 1
 
-    # Pauli noise: F(m) = a * r^m
+    # Gate-independent Pauli noise: F(m) = a * r^m
+    px, py, pz = np.random.uniform(0, 0.15, size=3)
+    noise = PauliErrorOnAll(px, py, pz)
+    coefficients, decays = filtered_decay_parameters(
+        module_name, nqubits, noise, with_coefficients=True, N=None
+    )
+    assert coefficients[0] < 0.5 + PRECISION_TOL
+    expected_decay = 1 - 2 * px - py - pz
+    assert len(coefficients) == 1 and len(decays) == 1
+    assert coefficients[0] < 0.5 + PRECISION_TOL
+    assert np.allclose(decays[0], expected_decay, rtol=1e-3)
+
+    # Gate-dependent Pauli noise: F(m) = a * r^m
     px, py, pz = np.random.uniform(0, 0.15, size=3)
     noise = PauliErrorOnXAndRX(px, py, pz)
     coefficients, decays = filtered_decay_parameters(
-        factory, noise, with_coefficients=True, N=None
+        module_name, nqubits, noise, with_coefficients=True, N=None
     )
     assert coefficients[0] < 0.5 + PRECISION_TOL
     expected_decay = (
@@ -219,14 +228,14 @@ def test_z4_validation():
         if expected_decay < -PRECISION_TOL
         else np.sqrt(np.abs(expected_decay))
     )
-    expected_decay += 0.5 - 0.5 * px - 0.25 * py - 0.25 * pz
+    expected_decay += 0.5 - (0.5 * px) - (0.25 * py) - (0.25 * pz)
     assert len(coefficients) == 1 and len(decays) == 1
     assert np.allclose(decays[0], expected_decay, rtol=1e-3)
 
     # Unitary noise: F(m) = a1 * r1^m
     noise = UnitaryErrorOnXAndRX(t=0.1)
     coefficients, decays = filtered_decay_parameters(
-        factory, noise, with_coefficients=True, N=None
+        module_name, nqubits, noise, with_coefficients=True, N=None
     )
     assert len(coefficients) == 1
     assert len(decays) == 1
@@ -235,20 +244,21 @@ def test_z4_validation():
     # Thermal Relaxation: F(m) = 0.5 * (0.5[1 + exp(-t/T1)])^m
     noise = ThermalRelaxationErrorOnXAndRX()
     coefficients, decays = filtered_decay_parameters(
-        factory, noise, with_coefficients=True, N=None
+        module_name, nqubits, noise, with_coefficients=True, N=None
     )
     assert len(coefficients) == 1
     assert len(decays) == 1
 
 
 def test_z3_validation():
-    factory = Z3rb.ModuleFactory(1, [1])
+    module_name = "Z3rb"
+    nqubits = 1
 
     # Pauli noise: F(m) = a * r^m
     px, py, pz = np.random.uniform(0, 0.15, size=3)
     noise = PauliErrorOnXAndRX(px, py, pz)
     coefficients, decays = filtered_decay_parameters(
-        factory, noise, with_coefficients=True, N=None
+        module_name, nqubits, noise, with_coefficients=True, N=None
     )
     assert coefficients[0] < 0.5 + PRECISION_TOL
     expected_decay = (
@@ -275,7 +285,7 @@ def test_z3_validation():
     # Unitary noise: F(m) = a1 * r1^m
     noise = UnitaryErrorOnXAndRX(t=0.1)
     coefficients, decays = filtered_decay_parameters(
-        factory, noise, with_coefficients=True, N=None
+        module_name, nqubits, noise, with_coefficients=True, N=None
     )
     assert len(coefficients) == 1
     assert len(decays) == 1
@@ -284,7 +294,7 @@ def test_z3_validation():
     # Thermal Relaxation: F(m) = 0.5 * (0.5[1 + exp(-t/T1)])^m
     noise = ThermalRelaxationErrorOnXAndRX()
     coefficients, decays = filtered_decay_parameters(
-        factory, noise, with_coefficients=True, N=None
+        module_name, nqubits, noise, with_coefficients=True, N=None
     )
     assert len(coefficients) == 1
     assert len(decays) == 1

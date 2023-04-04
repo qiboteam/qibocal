@@ -28,7 +28,7 @@ def test_experiment(nqubits: int, depths: list, runs: int, nshots: int, qubits: 
     else:
         myfactory1 = Z4rb.ModuleFactory(nqubits, list(depths) * runs, qubits)
         myexperiment1 = Z4rb.ModuleExperiment(myfactory1, nshots=nshots)
-        assert myexperiment1.name == "Z4RB"
+        assert myexperiment1.name == "Z4rb"
         myexperiment1.perform(myexperiment1.execute)
         assert isinstance(myexperiment1.data, list)
         assert isinstance(myexperiment1.data[0], dict)

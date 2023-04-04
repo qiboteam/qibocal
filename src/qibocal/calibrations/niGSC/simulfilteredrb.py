@@ -10,11 +10,14 @@ import pandas as pd
 from plotly.graph_objects import Figure
 from qibo.models import Circuit
 from qibo.noise import NoiseModel
+from qibo.quantum_info import comp_basis_to_pauli
 
 import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
 from qibocal.calibrations.niGSC.basics.circuitfactory import SingleCliffordsFactory
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
-from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig
+from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig, update_fig
+from qibocal.calibrations.niGSC.basics.rb_validation import filtered_decay_parameters
+from qibocal.config import raise_error
 
 
 class ModuleFactory(SingleCliffordsFactory):
@@ -47,7 +50,7 @@ class ModuleExperiment(Experiment):
         # Make the circuitfactory a list. That way they will be stored when
         # calling the save method and the circuits are not lost once executed.
         self.prebuild()
-        self.name = "CorrelatedRB"
+        self.name = "simulfilteredrb"
 
     def execute(self, circuit: Circuit, datarow: dict) -> dict:
         """Overwrited parents method. Executes a circuit, returns the single shot results and depth.
@@ -157,18 +160,19 @@ def post_processing_sequential(experiment: Experiment):
     experiment.perform(filter_function)
 
 
-def get_aggregational_data(experiment: Experiment, ndecays: int = 1) -> pd.DataFrame:
+def get_aggregational_data(experiment: Experiment, ndecays: int = None) -> pd.DataFrame:
     """Computes aggregational tasks, fits data and stores the results in a data frame.
 
     No data is manipulated in the ``experiment`` object.
 
     Args:
         experiment (Experiment): After sequential postprocessing of the experiment data.
+        ndecays (int): Number of decay parameters to fit. Default is 1.
 
     Returns:
         pd.DataFrame: The summarized data.
     """
-
+    ndecays = ndecays if ndecays is not None else 1
     # Needed for the amount of plots in the report
     nqubits = len(experiment.data[0]["samples"][0])
     data_list, index = [], []
@@ -210,6 +214,76 @@ def get_aggregational_data(experiment: Experiment, ndecays: int = 1) -> pd.DataF
     return df
 
 
+def gate_group(nqubits=1):
+    """
+    Local Cliffords gate group
+    """
+    from itertools import product
+
+    from qibo import gates
+    from qibo.quantum_info.random_ensembles import _clifford_unitary
+    from qibo.quantum_info.utils import ONEQUBIT_CLIFFORD_PARAMS
+
+    cliffords_1q = [_clifford_unitary(*p) for p in ONEQUBIT_CLIFFORD_PARAMS]
+    if nqubits == 1:
+        return [gates.Unitary(c, *range(nqubits)) for c in cliffords_1q]
+    cliffords = list(product(cliffords_1q, repeat=nqubits))
+    cliffords_unitaries = [
+        gates.Unitary(np.kron(*clifford_layer), *range(nqubits))
+        for clifford_layer in cliffords
+    ]
+    return cliffords_unitaries
+
+
+def irrep_info(nqubits=1):
+    """
+    Infromation about the irreducible representation of the Clifford group.
+    
+    Returns:
+        tuple: (basis, index, size, multiplicity) of the sign irrep
+    """
+    basis_c2p_1q = comp_basis_to_pauli(1, normalize=True)
+    return (basis_c2p_1q, 1, 3, 1)
+
+
+def add_validation(
+    experiment: Experiment, dataframe: pd.DataFrame | dict, N: int | None = None
+) -> pd.DataFrame:
+    """Computes theoretical values of coefficients and decay parameters of a given experiment
+    and add validation data to the dataframe.
+    No data is manipulated in the ``experiment`` object.
+
+    Args:
+        experiment (Experiment): After sequential postprocessing of the experiment data.
+        dataframe (pd.DataFrame): The data where the validation should be added.
+
+    Returns:
+        pd.DataFrame: The summarized data.
+    """
+    nqubits = len(experiment.data[0]["samples"][0])
+    if nqubits > 1:
+        raise_error(
+            NotImplementedError,
+            "Theoretical validation for multiple qubits is not implemented.",
+        )
+
+    data = dataframe.to_dict("records")
+    coefficients, decay_parameters = filtered_decay_parameters(
+        experiment.name, nqubits, experiment.noise_model, with_coefficients=True, N=N
+    )
+    ndecays = len(coefficients)
+    validation_keys = [f"A{k+1}" for k in range(ndecays)]
+    validation_keys += [f"p{k+1}" for k in range(ndecays)]
+    validation_dict = dict(
+        zip(validation_keys, np.concatenate((coefficients, decay_parameters)))
+    )
+
+    data[1].update({"validation": validation_dict, "validation_func": "expn_func"})
+    # The row name will be displayed as y-axis label.
+    df = pd.DataFrame(data, index=dataframe.index)
+    return df
+
+
 def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
     """Use data and information from ``experiment`` and the aggregated data dataframe to
     build a reprot as plotly figure.
@@ -243,48 +317,6 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
         # Add a subplot title for each irrep.
         figdict["subplot_title"] = f"Irrep {l}"
         report.all_figures.append(figdict)
+        if "validation" in df_aggr:
+            report.all_figures[-1] = update_fig(report.all_figures[-1], df_aggr)
     return report.build()
-
-
-def execute_simulation(
-    nqubits: int,
-    depths: list,
-    nshots: int = 500,
-    noise_model: NoiseModel = None,
-    ndecays: int = 1,
-    validate: bool = False,
-):
-    """Execute simulation of Simultaneous Filtered RB experiment and generate an html report.
-
-    Args:
-        nqubits (int): number of qubits
-        depths (list): list of depths for circuits
-        nshots (int): number of shots per measurement
-        noise_model (:class:`qibo.noise.NoiseModel`): noise model applied to the circuits in the simulation
-        ndecays (int): number of decay parameters to fit. Default is 1.
-
-    Example:
-        .. testcode::
-            from qibocal.calibrations.niGSC.sumulfilteredrb import execute_simulation
-            from qibocal.calibrations.niGSC.basics import noisemodels
-            # Build the noise model.
-            noise_params = [0.01, 0.02, 0.05]
-            pauli_noise_model = noisemodels.PauliErrorOnAll(*noise_params)
-            # Generate the list of depths repeating 20 times
-            nqubits = 2
-            runs = 20
-            depths = list(range(1, 31)) * runs
-            # Run the simulation
-            execute_simulation(nqubits, depths, 500, pauli_noise_model)
-    """
-
-    # Execute an experiment.
-    factory = ModuleFactory(nqubits, depths)
-    experiment = ModuleExperiment(factory, nshots=nshots, noise_model=noise_model)
-    experiment.perform(experiment.execute)
-
-    # Build a report with validation of the results
-    post_processing_sequential(experiment)
-    aggr_df = get_aggregational_data(experiment, ndecays=ndecays)
-    report_figure = build_report(experiment, aggr_df)
-    report_figure.show()

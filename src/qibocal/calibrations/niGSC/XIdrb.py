@@ -21,19 +21,17 @@ from collections.abc import Iterable
 
 import numpy as np
 import pandas as pd
-import qibo
 from plotly.graph_objects import Figure
 from qibo import gates
 from qibo.models import Circuit
 from qibo.noise import NoiseModel
+from qibo.quantum_info import comp_basis_to_pauli
 
 import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
 from qibocal.calibrations.niGSC.basics.circuitfactory import ZkFilteredCircuitFactory
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
 from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig, update_fig
 from qibocal.calibrations.niGSC.basics.rb_validation import filtered_decay_parameters
-
-qibo.set_backend("numpy")
 
 
 # Define the circuit factory class for this specific module.
@@ -42,6 +40,7 @@ class ModuleFactory(ZkFilteredCircuitFactory):
         super().__init__(nqubits, depths, qubits, size=2)
         self.name = "XId"
 
+    @property
     def gate_group(self):
         return [gates.I(0), gates.X(0)]
 
@@ -56,7 +55,7 @@ class ModuleExperiment(Experiment):
         noise_model: NoiseModel = None,
     ) -> None:
         super().__init__(circuitfactory, data, nshots, noise_model)
-        self.name = "XIdRB"
+        self.name = "XIdrb"
 
     def execute(self, circuit: Circuit, datarow: dict) -> dict:
         datadict = super().execute(circuit, datarow)
@@ -121,17 +120,19 @@ def post_processing_sequential(experiment: Experiment):
 # After the row by row execution of tasks comes the aggregational task. Something like calculation
 # of means, deviations, fitting data, tasks where the whole data as to be looked at, and not just
 # one instance of circuit + other information.
-def get_aggregational_data(experiment: Experiment, ndecays: int = 2) -> pd.DataFrame:
+def get_aggregational_data(experiment: Experiment, ndecays: int = None) -> pd.DataFrame:
     """Computes aggregational tasks, fits data and stores the results in a data frame.
 
     No data is manipulated in the ``experiment`` object.
 
     Args:
         experiment (Experiment): After sequential postprocessing of the experiment data.
+        ndecays (int): Number of decays to fit. Default is 2.
 
     Returns:
         pd.DataFrame: The summarized data.
     """
+    ndecays = ndecays if ndecays is not None else 2
     # Has to fit the column description from ``filter_sign``.
     depths, ydata = experiment.extract("filter", "depth", "mean")
     _, ydata_std = experiment.extract("filter", "depth", "std")
@@ -163,6 +164,24 @@ def get_aggregational_data(experiment: Experiment, ndecays: int = 2) -> pd.DataF
     return df
 
 
+def gate_group(nqubits=1):
+    """
+    XId gate group
+    """
+    return [gates.I(0), gates.X(0)]
+
+
+def irrep_info(nqubits=1):
+    """
+    Infromation corresponding to the irreducible representation of the XId gate group.
+    
+    Returns:
+        tuple: (basis, index, size, multiplicity) of the sign irrep
+    """
+    basis_c2p_1q = comp_basis_to_pauli(1, normalize=True)
+    return (basis_c2p_1q, 2, 1, 2)
+
+
 def add_validation(
     experiment: Experiment, dataframe: pd.DataFrame | dict, N: int | None = None
 ) -> pd.DataFrame:
@@ -180,7 +199,11 @@ def add_validation(
     data = dataframe.to_dict("records")
     validation_label = "validation_imag" if "popt_imag" in data[0] else "validation"
     coefficients, decay_parameters = filtered_decay_parameters(
-        experiment.circuitfactory, experiment.noise_model, with_coefficients=True, N=N
+        experiment.name,
+        experiment.circuitfactory.nqubits,
+        experiment.noise_model,
+        with_coefficients=True,
+        N=N,
     )
     ndecays = len(coefficients)
     validation_keys = [f"A{k+1}" for k in range(ndecays)]
@@ -189,7 +212,7 @@ def add_validation(
         zip(validation_keys, np.concatenate((coefficients, decay_parameters)))
     )
 
-    data[0].update({validation_label: validation_dict})
+    data[0].update({validation_label: validation_dict, "validation_func": "expn_func"})
     # The row name will be displayed as y-axis label.
     df = pd.DataFrame(data, index=dataframe.index)
     return df
@@ -271,48 +294,3 @@ def build_report(
             )
     # Return the figure the report object builds out of all figures added to the report.
     return report.build()
-
-
-def execute_simulation(
-    depths: list,
-    nshots: int = 500,
-    noise_model: NoiseModel = None,
-    ndecays: int = 2,
-    validate: bool = False,
-):
-    """Execute simulation of XId Radomized Benchmarking experiment and generate an html report.
-
-    Args:
-        depths (list): list of depths for circuits
-        nshots (int): number of shots per measurement
-        noise_model (:class:`qibo.noise.NoiseModel`): noise model applied to the circuits in the simulation
-        ndecays (int): number of decay parameters to fit. Default is 2.
-        validate (bool): adds theoretical RB signal to the report when `True`. Dafault is `False`.
-
-    Example:
-        .. testcode::
-            from qibocal.calibrations.niGSC.XIdrb import execute_simulation
-            from qibocal.calibrations.niGSC.basics import noisemodels
-            # Build the noise model.
-            noise_params = [0.01, 0.02, 0.05]
-            pauli_noise_model = noisemodels.PauliErrorOnX(*noise_params)
-            # Generate the list of depths repeating 20 times
-            runs = 20
-            depths = list(range(1, 31)) * runs
-            # Run the simulation
-            execute_simulation(depths, 500, pauli_noise_model)
-    """
-
-    # Execute an experiment.
-    nqubits = 1
-    factory = ModuleFactory(nqubits, depths)
-    experiment = ModuleExperiment(factory, nshots=nshots, noise_model=noise_model)
-    experiment.perform(experiment.execute)
-
-    # Build a report with validation of the results
-    post_processing_sequential(experiment)
-    aggr_df = get_aggregational_data(experiment, ndecays=ndecays)
-    if validate:
-        aggr_df = add_validation(experiment, aggr_df)
-    report_figure = build_report(experiment, aggr_df)
-    report_figure.show()
