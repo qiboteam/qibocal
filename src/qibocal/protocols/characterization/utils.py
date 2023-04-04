@@ -111,9 +111,19 @@ def lorentzian_fit(data: DataUnits) -> list:
         fitted_parameters[qubit] = fit_res.best_values
 
     if power_level is not None:
-        return frequency, amplitudes, fitted_parameters, bare_frequency
+        output = {
+            "frequency": frequency,
+            "fitted_parameters": fitted_parameters,
+            "bare_frequency": bare_frequency,
+            "amplitude": amplitudes,
+        }
     else:
-        return frequency, amplitudes, fitted_parameters
+        output = {
+            "frequency": frequency,
+            "fitted_parameters": fitted_parameters,
+            "amplitude": amplitudes,
+        }
+    return output
 
 
 def spectroscopy_plot(data: DataUnits, fit: Results, qubit):
@@ -234,11 +244,19 @@ def spectroscopy_plot(data: DataUnits, fit: Results, qubit):
         else:
             label = "qubit frequency"
             freq = fit.frequency
-        fitting_report = (
-            fitting_report
-            + f"q{qubit}/r{report_n} | {label}: {freq[qubit]*1e9:,.0f} Hz<br>"
-            + f"q{qubit}/r{report_n} | amplitude: {fit.amplitude[qubit]} <br>"
+        fitting_report += (
+            f"q{qubit}/r{report_n} | {label}: {freq[qubit]*1e9:,.0f} Hz<br>"
         )
+
+        if fit.amplitude:
+            fitting_report += (
+                f"q{qubit}/r{report_n} | amplitude: {fit.amplitude[qubit]} <br>"
+            )
+
+        if fit.attenuation:
+            fitting_report += (
+                f"q{qubit}/r{report_n} | attenuation: {fit.attenuation[qubit]} <br>"
+            )
 
     fig.update_layout(
         showlegend=True,

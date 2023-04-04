@@ -16,22 +16,32 @@ from .utils import PowerLevel, lorentzian_fit, spectroscopy_plot
 class ResonatorSpectroscopyParameters(Parameters):
     freq_width: int
     freq_step: int
-    amplitude: float
     nshots: int
     power_level: PowerLevel
     relaxation_time: int
     software_averages: int = 1
+    amplitude: Optional[float] = None
+    attenuation: Optional[int] = None
+
+    def __post_init__(self):
+        if self.attenuation is not None and self.amplitude is not None:
+            raise ValueError(
+                "Cannot specify attenuation and amplitude at the same time."
+            )
 
 
 @dataclass
 class ResonatorSpectroscopyResults(Results):
-    readout_frequency: Dict[List[Tuple], str] = field(
-        metadata=dict(update="readout_frequency")
-    )
-    amplitude: Dict[List[Tuple], str] = field(metadata=dict(update="readout_amplitude"))
+    frequency: Dict[List[Tuple], str] = field(metadata=dict(update="readout_frequency"))
     fitted_parameters: Dict[List[Tuple], List]
     bare_frequency: Optional[Dict[List[Tuple], str]] = field(
         metadata=dict(update="bare_resonator_frequency")
+    )
+    amplitude: Optional[Dict[List[Tuple], str]] = field(
+        default_factory=dict, metadata=dict(update="readout_amplitude")
+    )
+    attenuation: Optional[Dict[List[Tuple], str]] = field(
+        default_factory=dict, metadata=dict(update="readout_attenuation")
     )
 
 
@@ -45,6 +55,7 @@ class ResonatorSpectroscopyData(DataUnits):
                 "iteration",
                 "resonator_type",
                 "amplitude",
+                "attenuation",
                 "power_level",
             ],
         )
@@ -61,7 +72,11 @@ def _acquisition(
     ro_pulses = {}
     for qubit in qubits:
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
-        ro_pulses[qubit].amplitude = params.amplitude
+        if params.amplitude is not None:
+            ro_pulses[qubit].amplitude = params.amplitude
+        elif params.attenuation is not None:
+            platform.set_attenuation(qubit, params.attenuation)
+
         sequence.add(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:
@@ -98,18 +113,30 @@ def _acquisition(
                     "iteration": len(delta_frequency_range) * [iteration],
                     "resonator_type": len(delta_frequency_range)
                     * [platform.resonator_type],
-                    "amplitude": len(delta_frequency_range)
-                    * [ro_pulses[qubit].amplitude],
                     "power_level": len(delta_frequency_range) * [params.power_level],
                 }
             )
+            if params.amplitude is not None:
+                r.update(
+                    {
+                        "amplitude": len(delta_frequency_range)
+                        * [ro_pulses[qubit].amplitude]
+                    }
+                )
+            elif params.attenuation is not None:
+                r.update(
+                    {
+                        "attenuation": len(delta_frequency_range)
+                        * [platform.get_attenuation(qubit)]
+                    }
+                )
             data.add_data_from_dict(r)
     # finally, save the remaining data
     return data
 
 
 def _fit(data: ResonatorSpectroscopyData) -> ResonatorSpectroscopyResults:
-    return ResonatorSpectroscopyResults(*lorentzian_fit(data))
+    return ResonatorSpectroscopyResults(**lorentzian_fit(data))
 
 
 def _plot(data: ResonatorSpectroscopyData, fit: ResonatorSpectroscopyResults, qubit):

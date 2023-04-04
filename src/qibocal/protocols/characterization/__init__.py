@@ -12,6 +12,7 @@ from .rabi.amplitude import rabi_amplitude
 from .rabi.length import rabi_length
 from .ramsey import ramsey
 from .resonator_punchout import resonator_punchout
+from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
 from .spin_echo import spin_echo
 from .t1 import t1
@@ -20,6 +21,7 @@ from .t1 import t1
 class Operation(Enum):
     resonator_spectroscopy = resonator_spectroscopy
     resonator_punchout = resonator_punchout
+    resonator_punchout_attenuation = resonator_punchout_attenuation
     resonator_flux = resonator_flux
     qubit_spectroscopy = qubit_spectroscopy
     qubit_flux = qubit_flux

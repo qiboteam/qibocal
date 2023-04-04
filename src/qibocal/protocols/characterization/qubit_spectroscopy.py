@@ -28,6 +28,9 @@ class QubitSpectroscopyResults(Results):
     frequency: Dict[List[Tuple], str] = field(metadata=dict(update="drive_frequency"))
     amplitude: Dict[List[Tuple], str] = field(metadata=dict(update="drive_amplitude"))
     fitted_parameters: Dict[List[Tuple], List]
+    attenuation: Optional[Dict[List[Tuple], str]] = field(
+        default_factory=dict, metadata=dict(update="drive_attenuation")
+    )
 
 
 class QubitSpectroscopyData(DataUnits):
@@ -107,7 +110,7 @@ def _acquisition(
 
 
 def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
-    return QubitSpectroscopyResults(*lorentzian_fit(data))
+    return QubitSpectroscopyResults(**lorentzian_fit(data))
 
 
 def _plot(data: QubitSpectroscopyData, fit: QubitSpectroscopyResults, qubit):
