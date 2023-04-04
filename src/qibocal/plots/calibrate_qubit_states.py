@@ -96,8 +96,8 @@ def qubit_states(folder, routine, qubit, format):
                 go.Scatter(
                     x=state0_data["i"].to_list(),
                     y=state0_data["q"].to_list(),
-                    name=f"q{qubit}/r{report_n}: state 0",
-                    legendgroup=f"q{qubit}/r{report_n}: state 0",
+                    name=f"q{qubit}/{models_name[i]}: state 0",
+                    legendgroup=f"q{qubit}/{models_name[i]}: state 0",
                     mode="markers",
                     showlegend=False,
                     opacity=0.7,
@@ -111,8 +111,8 @@ def qubit_states(folder, routine, qubit, format):
                 go.Scatter(
                     x=state1_data["i"].to_list(),
                     y=state1_data["q"].to_list(),
-                    name=f"q{qubit}/r{report_n}: state 1",
-                    legendgroup=f"q{qubit}/r{report_n}: state 1",
+                    name=f"q{qubit}/{models_name[i]}: state 1",
+                    legendgroup=f"q{qubit}/{models_name[i]}: state 1",
                     mode="markers",
                     showlegend=False,
                     opacity=0.7,
@@ -126,8 +126,8 @@ def qubit_states(folder, routine, qubit, format):
                 go.Scatter(
                     x=[average_state0.real],
                     y=[average_state0.imag],
-                    name=f"q{qubit}/r{report_n}: state 0",
-                    legendgroup=f"q{qubit}/r{report_n}: state 0",
+                    name=f"q{qubit}/{models_name[i]}: state 0",
+                    legendgroup=f"q{qubit}/{models_name[i]}: state 0",
                     showlegend=True,
                     mode="markers",
                     marker=dict(size=10, color=get_color_state0(report_n)),
@@ -140,8 +140,8 @@ def qubit_states(folder, routine, qubit, format):
                 go.Scatter(
                     x=[average_state1.real],
                     y=[average_state1.imag],
-                    name=f"q{qubit}/r{report_n}: state 1",
-                    legendgroup=f"q{qubit}/r{report_n}: state 1",
+                    name=f"q{qubit}/{models_name[i]}: state 1",
+                    legendgroup=f"q{qubit}/{models_name[i]}: state 1",
                     showlegend=True,
                     mode="markers",
                     marker=dict(size=10, color=get_color_state1(report_n)),
