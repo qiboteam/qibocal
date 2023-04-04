@@ -1,6 +1,6 @@
 platform: dummy
 
-qubits: [0]
+qubits: [0,1,2,3]
 
 format: csv
 
@@ -157,10 +157,10 @@ actions:
   #   software_averages: 2
   #   points: 5
 
-  # calibrate_qubit_states:
-  #   nshots: 2048
-  #   points: 1
-
+  calibrate_qubit_states:
+    nshots: 2048
+    classifiers: ["qubit_fit", "linear_svm", "naive_bayes"]
+    save_dir: results
   # allXY:
   #   beta_param: Null
   #   software_averages: 2

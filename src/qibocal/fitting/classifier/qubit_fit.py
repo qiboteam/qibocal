@@ -61,7 +61,6 @@ class QubitFit:
         iq_state0 = iq_coordinates[(states == 0)]
         self.iq_mean0 = np.mean(iq_state0, axis=0)
         self.iq_mean1 = np.mean(iq_state1, axis=0)
-
         # translate
         iq_coordinates_translated = self.translate(iq_coordinates)
         iq_state1_trans = self.translate(self.iq_mean1)

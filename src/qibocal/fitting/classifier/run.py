@@ -162,6 +162,7 @@ def benchmarking(model, x_train, y_train, x_test, y_test, **fit_kwargs):
     """
     # Evaluate training time
     start = time.time()
+    y_train = y_train.astype("int")
     fit_info = model.fit(x_train, y_train, **fit_kwargs)
     stop = time.time()
     training_time = stop - start
@@ -171,7 +172,9 @@ def benchmarking(model, x_train, y_train, x_test, y_test, **fit_kwargs):
     stop = time.time()
     test_time = (stop - start) / len(x_test)
     # Evaluate accuracy
-    score = accuracy_score(y_test, np.round(y_pred))
+    y_pred = np.round(y_pred).tolist()
+
+    score = accuracy_score(y_test.tolist(), y_pred)
     logging.info(f"Accuracy: {score}")
     results = BenchmarkResults(score, test_time, training_time)
 
@@ -201,7 +204,11 @@ def plot_history(history, save_dir: pathlib.Path):
 
 
 def train_qubit(
-    data_path: pathlib.Path, base_dir: pathlib.Path, qubit, classifiers=None
+    base_dir: pathlib.Path,
+    qubit: int,
+    data_path=None,
+    qubits_data=None,
+    classifiers=None,
 ):
     r"""Given a dataset in `data_path` with qubits' information, this function performs the benchmarking of some classifiers.
     Each model's prediction `y_pred` is saved in  `basedir/qubit{qubit}/{classifier name}/predictions.npy`.
@@ -249,12 +256,14 @@ def train_qubit(
                     plots.plot_table(table, qubit_dir)
                     plots.plot_conf_matr(y_test, qubit_dir)
     """
+
+    qubit_data = qubits_data[qubits_data["qubit"] == qubit]
     nn_epochs = 200
     nn_val_split = 0.2
     qubit_dir = base_dir / f"qubit{qubit}"
     qubit_dir.mkdir(exist_ok=True)
-    qubit_data = data.load_qubit(data_path, qubit)
-    data.plot_qubit(qubit_data, qubit_dir)
+    # qubit_data = data.load_qubit(data_path, qubit)
+    # data.plot_qubit(qubit_data, qubit_dir)
     x_train, x_test, y_train, y_test = data.generate_models(qubit_data)
     models = []
     results_list = []
@@ -299,7 +308,7 @@ def train_qubit(
     plots.plot_models_results(x_train, x_test, y_test, qubit_dir, models, names)
     plots.plot_roc_curves(x_test, y_test, qubit_dir, models, names)
 
-    return benchmarks_table, y_test, x_test
+    return benchmarks_table, y_test, x_test, models, names
 
 
 def dump_preds(y_pred, dir_path):

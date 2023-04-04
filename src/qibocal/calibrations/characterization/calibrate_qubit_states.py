@@ -1,18 +1,20 @@
+from pathlib import Path
+
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
 from qibocal import plots
-from qibocal.data import DataUnits
+from qibocal.data import Data, DataUnits
 from qibocal.decorators import plot
+from qibocal.fitting.classifier import run
+from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.fitting.methods import calibrate_qubit_states_fit
 
 
 @plot("Qubit States", plots.qubit_states)
 def calibrate_qubit_states(
-    platform: AbstractPlatform,
-    qubits: dict,
-    nshots,
+    platform: AbstractPlatform, qubits: dict, nshots, classifiers, save_dir: str
 ):
     """
     Method which implements the state's calibration of a chosen qubit. Two analogous tests are performed
@@ -95,8 +97,51 @@ def calibrate_qubit_states(
         )
         data.add_data_from_dict(r)
 
-    # finally, save the remaining data and the fits
-    yield data
-    yield calibrate_qubit_states_fit(
-        data, x="i[V]", y="q[V]", nshots=nshots, qubits=qubits
+    # qubit_dir = Path(save_dir )/ f"qubit{qubit}"
+    # qubit_dir.mkdir(exist_ok=True)
+    parameters = Data(
+        name=f"parameters",
+        quantities={
+            "model_name" "rotation_angle",  # in degrees
+            "threshold",
+            "fidelity",
+            "assignment_fidelity",
+            "average_state0",
+            "average_state1",
+            "qubit",
+        },
     )
+    for qubit in qubits:
+        _, _, _, models, names = run.train_qubit(
+            Path(save_dir), qubit, qubits_data=data.df, classifiers=classifiers
+        )
+        for i, model in enumerate(models):
+            print(model, str(type(model)).split(".")[-1])
+            if type(model) is QubitFit:
+                results = {
+                    "model_name": "qubit_fit",
+                    "rotation_angle": model.angle,
+                    "threshold": model.threshold,
+                    "fidelity": model.fidelity,
+                    "assignment_fidelity": model.assignment_fidelity,
+                    "average_state0": complex(*model.iq_mean0),  # transform in complex
+                    "average_state1": complex(*model.iq_mean1),  # transform in complex
+                    "qubit": qubit,
+                }
+            else:
+                results = {
+                    "model_name": names[i],
+                    "rotation_angle": None,
+                    "threshold": None,
+                    "fidelity": None,
+                    "assignment_fidelity": None,
+                    "average_state0": None,  # transform in complex
+                    "average_state1": None,  # transform in complex
+                    "qubit": qubit,
+                }
+            parameters.add(results)
+    yield data
+    yield parameters
+    # yield calibrate_qubit_states_fit(
+    #     data, x="i[V]", y="q[V]", nshots=nshots, qubits=qubits
+    # )
