@@ -11,6 +11,9 @@ from qibocal.fitting.classifier import run
 from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.fitting.methods import calibrate_qubit_states_fit
 
+MESH_SIZE = 50
+MARGIN = 0.25
+
 
 @plot("Qubit States", plots.qubit_states)
 def calibrate_qubit_states(
@@ -102,12 +105,15 @@ def calibrate_qubit_states(
     parameters = Data(
         name=f"parameters",
         quantities={
-            "model_name" "rotation_angle",  # in degrees
+            "model_name",
+            "rotation_angle",  # in degrees
             "threshold",
             "fidelity",
             "assignment_fidelity",
             "average_state0",
             "average_state1",
+            "predictions",
+            "grid",
             "qubit",
         },
     )
@@ -115,8 +121,47 @@ def calibrate_qubit_states(
         _, _, _, models, names = run.train_qubit(
             Path(save_dir), qubit, qubits_data=data.df, classifiers=classifiers
         )
+        state0_data = data.df[data.df["state"] == 0]
+        state1_data = data.df[data.df["state"] == 1]
+        max_x = (
+            max(
+                0,
+                state0_data["i"].max().magnitude,
+                state1_data["i"].max().magnitude,
+            )
+            + MARGIN
+        )
+        max_y = (
+            max(
+                0,
+                state0_data["q"].max().magnitude,
+                state1_data["q"].max().magnitude,
+            )
+            + MARGIN
+        )
+        min_x = (
+            min(
+                0,
+                state0_data["i"].min().magnitude,
+                state1_data["i"].min().magnitude,
+            )
+            - MARGIN
+        )
+        min_y = (
+            min(
+                0,
+                state0_data["q"].min().magnitude,
+                state1_data["q"].min().magnitude,
+            )
+            - MARGIN
+        )
+        i, q = np.meshgrid(
+            np.linspace(min_x, max_x, num=MESH_SIZE),
+            np.linspace(min_y, max_y, num=MESH_SIZE),
+        )
+        grid = np.vstack([i.ravel(), q.ravel()]).T
         for i, model in enumerate(models):
-            print(model, str(type(model)).split(".")[-1])
+            y_pred = np.reshape(model.predict(grid), q.shape)
             if type(model) is QubitFit:
                 results = {
                     "model_name": "qubit_fit",
@@ -126,6 +171,8 @@ def calibrate_qubit_states(
                     "assignment_fidelity": model.assignment_fidelity,
                     "average_state0": complex(*model.iq_mean0),  # transform in complex
                     "average_state1": complex(*model.iq_mean1),  # transform in complex
+                    "predictions": y_pred.tobytes(),
+                    "grid": grid.tobytes(),
                     "qubit": qubit,
                 }
             else:
@@ -137,6 +184,8 @@ def calibrate_qubit_states(
                     "assignment_fidelity": None,
                     "average_state0": None,  # transform in complex
                     "average_state1": None,  # transform in complex
+                    "predictions": y_pred.tobytes(),
+                    "grid": grid.tobytes(),
                     "qubit": qubit,
                 }
             parameters.add(results)

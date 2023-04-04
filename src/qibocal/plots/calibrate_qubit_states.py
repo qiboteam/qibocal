@@ -31,6 +31,11 @@ def qubit_states(folder, routine, qubit, format):
         parameters = load_data(folder, subfolder, routine, format, "parameters")
         parameters.df = parameters.df[parameters.df["qubit"] == qubit]
         models_name = parameters.df["model_name"].to_list()
+        predictions = eval(parameters.df.iloc[0]["predictions"])
+        predictions = np.frombuffer(predictions, dtype=np.int64)
+        grid = eval(parameters.df.iloc[0]["grid"])
+        grid = np.frombuffer(grid, dtype=np.float64).reshape((len(predictions), 2))
+
         state0_data = data.df[data.df["state"] == 0]
         state1_data = data.df[data.df["state"] == 1]
 
@@ -54,6 +59,7 @@ def qubit_states(folder, routine, qubit, format):
             state0_data["q"].min(),
             state1_data["q"].min(),
         )
+
         fig = make_subplots(
             rows=1,
             cols=len(models_name),
@@ -121,6 +127,21 @@ def qubit_states(folder, routine, qubit, format):
                 row=1,
                 col=report_n + 1,
             )
+
+            fig.add_trace(
+                go.Contour(
+                    x=grid[:, 0],
+                    y=grid[:, 1],
+                    z=predictions,
+                    showscale=False,
+                    colorscale=[get_color_state0(report_n), get_color_state1(report_n)],
+                    opacity=0.4,
+                    name="Score",
+                    hoverinfo="skip",
+                ),
+                row=1,
+                col=report_n + 1,
+            )
             # if model == "qubit_fit":
             fig.add_trace(
                 go.Scatter(
@@ -149,7 +170,6 @@ def qubit_states(folder, routine, qubit, format):
                 row=1,
                 col=report_n + 1,
             )
-            # fig.update_xaxes(title_text="i (V)", range=[min_x,max_x], row=report_n+1, col= 1)
             fig.update_xaxes(
                 title_text=f"i (V)",
                 range=[0, 1],

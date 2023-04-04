@@ -159,7 +159,7 @@ actions:
 
   calibrate_qubit_states:
     nshots: 2048
-    classifiers: ["random_forest"] #["qubit_fit", "linear_svm", "naive_bayes"]
+    classifiers: ["qubit_fit", "linear_svm", "naive_bayes"]
     save_dir: results
   # allXY:
   #   beta_param: Null
