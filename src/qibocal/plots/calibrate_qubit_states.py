@@ -30,7 +30,7 @@ def qubit_states(folder, routine, qubit, format):
 
         parameters = load_data(folder, subfolder, routine, format, "parameters")
         parameters.df = parameters.df[parameters.df["qubit"] == qubit]
-        models_name = parameters.df["model_name"]
+        models_name = parameters.df["model_name"].to_list()
         state0_data = data.df[data.df["state"] == 0]
         state1_data = data.df[data.df["state"] == 1]
 
@@ -59,7 +59,7 @@ def qubit_states(folder, routine, qubit, format):
             cols=len(models_name),
             horizontal_spacing=0.1,
             vertical_spacing=0.1,
-            subplot_titles=(models_name.to_list()),
+            subplot_titles=(models_name),
         )
         for i, model in enumerate(models_name):
             try:
@@ -169,29 +169,38 @@ def qubit_states(folder, routine, qubit, format):
             # fig.update_yaxes(title_text="q (V)", range=[min_y, max_y], scaleanchor="x",
             # scaleratio=1,row=report_n+1, col= 1)
             title_text = ""
-            title_text += (
-                f"q{qubit}/{model} | average state 0: ({average_state0:.6f})<br>"
-            )
-            title_text += (
-                f"q{qubit}/{model} | average state 1: ({average_state1:.6f})<br>"
-            )
-            title_text += f"q{qubit}/{model} | rotation angle: {rotation_angle:.3f}<br>"
-            title_text += f"q{qubit}/{model} | threshold: {threshold:.6f}<br>"
-            title_text += f"q{qubit}/{model} | fidelity: {fidelity:.3f}<br>"
-            title_text += (
-                f"q{qubit}/{model} | assignment fidelity: {assignment_fidelity:.3f}<br>"
-            )
+            if models_name[i] == "qubit_fit":
+                title_text += (
+                    f"q{qubit}/{model} | average state 0: ({average_state0:.6f})<br>"
+                )
+                title_text += (
+                    f"q{qubit}/{model} | average state 1: ({average_state1:.6f})<br>"
+                )
+                title_text += (
+                    f"q{qubit}/{model} | rotation angle: {rotation_angle:.3f}<br>"
+                )
+                title_text += f"q{qubit}/{model} | threshold: {threshold:.6f}<br>"
+                title_text += f"q{qubit}/{model} | fidelity: {fidelity:.3f}<br>"
+                title_text += f"q{qubit}/{model} | assignment fidelity: {assignment_fidelity:.3f}<br>"
+
             fitting_report = fitting_report + title_text
             report_n += 1
 
-        fig.update_layout(
-            showlegend=True,
-            uirevision="0",  # ``uirevision`` allows zooming while live plotting
-            # xaxis_title="i (V)",
-            # yaxis_title="q (V)",
-            # xaxis_range=(min_x, max_x),
-            # yaxis_range=(min_y, max_y),
-        )
+            fig.update_layout(
+                showlegend=True,
+                uirevision="0",  # ``uirevision`` allows zooming while live plotting
+                # xaxis_title="i (V)",
+                # yaxis_title="q (V)",
+                # xaxis_range=(min_x, max_x),
+                # yaxis_range=(min_y, max_y),
+            )
+            # fig.update_layout(
+            #     title='title',
+            #     autosize=True,
+            #     height=2000
+            # )
+            # fig.update_xaxes(rangeslider=dict(visible=False))
+            # fig.show()
 
         # fig.update_yaxes(
         #     scaleanchor="x",
