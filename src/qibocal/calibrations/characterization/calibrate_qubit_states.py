@@ -112,13 +112,14 @@ def calibrate_qubit_states(
             "assignment_fidelity",
             "average_state0",
             "average_state1",
+            "accuracy",
             "predictions",
             "grid",
             "qubit",
         },
     )
     for qubit in qubits:
-        _, _, _, models, names = run.train_qubit(
+        benchmark_table, _, _, models, names = run.train_qubit(
             Path(save_dir), qubit, qubits_data=data.df, classifiers=classifiers
         )
         state0_data = data.df[data.df["state"] == 0]
@@ -162,6 +163,7 @@ def calibrate_qubit_states(
         grid = np.vstack([i.ravel(), q.ravel()]).T
         for i, model in enumerate(models):
             y_pred = np.reshape(model.predict(grid), q.shape)
+            accuracy = benchmark_table.iloc[i]["accuracy"].tolist()
             if type(model) is QubitFit:
                 results = {
                     "model_name": "qubit_fit",
@@ -171,6 +173,7 @@ def calibrate_qubit_states(
                     "assignment_fidelity": model.assignment_fidelity,
                     "average_state0": complex(*model.iq_mean0),  # transform in complex
                     "average_state1": complex(*model.iq_mean1),  # transform in complex
+                    "accuracy": accuracy,
                     "predictions": y_pred.tobytes(),
                     "grid": grid.tobytes(),
                     "qubit": qubit,
@@ -184,6 +187,7 @@ def calibrate_qubit_states(
                     "assignment_fidelity": None,
                     "average_state0": None,  # transform in complex
                     "average_state1": None,  # transform in complex
+                    "accuracy": accuracy,
                     "predictions": y_pred.tobytes(),
                     "grid": grid.tobytes(),
                     "qubit": qubit,

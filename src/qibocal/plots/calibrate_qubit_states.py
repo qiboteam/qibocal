@@ -84,6 +84,7 @@ def qubit_states(folder, routine, qubit, format):
                 assignment_fidelity = parameters.df.iloc[i][
                     "assignment_fidelity"
                 ]  # pylint: disable=E1101
+                accuracy = parameters.df.iloc[i]["accuracy"]  # pylint: disable=E1101
             except:
                 parameters = Data(
                     name=f"parameters",
@@ -203,6 +204,7 @@ def qubit_states(folder, routine, qubit, format):
                 title_text += f"q{qubit}/{model} | fidelity: {fidelity:.3f}<br>"
                 title_text += f"q{qubit}/{model} | assignment fidelity: {assignment_fidelity:.3f}<br>"
 
+            title_text += f"q{qubit}/{model} | accuracy: {accuracy:.3f}<br>"
             fitting_report = fitting_report + title_text
             report_n += 1
 
