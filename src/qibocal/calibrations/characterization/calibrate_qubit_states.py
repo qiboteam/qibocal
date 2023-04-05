@@ -124,6 +124,7 @@ def calibrate_qubit_states(
         )
         state0_data = data.df[data.df["state"] == 0]
         state1_data = data.df[data.df["state"] == 1]
+        # Build the grid for the contour plots
         max_x = (
             max(
                 0,
@@ -156,45 +157,32 @@ def calibrate_qubit_states(
             )
             - MARGIN
         )
-        i, q = np.meshgrid(
+        i_values, q_values = np.meshgrid(
             np.linspace(min_x, max_x, num=MESH_SIZE),
             np.linspace(min_y, max_y, num=MESH_SIZE),
         )
-        grid = np.vstack([i.ravel(), q.ravel()]).T
+        grid = np.vstack([i_values.ravel(), q_values.ravel()]).T
+
         for i, model in enumerate(models):
-            y_pred = np.reshape(model.predict(grid), q.shape)
+            y_pred = np.reshape(model.predict(grid), q_values.shape)
             accuracy = benchmark_table.iloc[i]["accuracy"].tolist()
+            results1 = {}
             if type(model) is QubitFit:
-                results = {
-                    "model_name": "qubit_fit",
+                results1 = {
                     "rotation_angle": model.angle,
                     "threshold": model.threshold,
                     "fidelity": model.fidelity,
                     "assignment_fidelity": model.assignment_fidelity,
                     "average_state0": complex(*model.iq_mean0),  # transform in complex
                     "average_state1": complex(*model.iq_mean1),  # transform in complex
-                    "accuracy": accuracy,
-                    "predictions": y_pred.tobytes(),
-                    "grid": grid.tobytes(),
-                    "qubit": qubit,
                 }
-            else:
-                results = {
-                    "model_name": names[i],
-                    "rotation_angle": None,
-                    "threshold": None,
-                    "fidelity": None,
-                    "assignment_fidelity": None,
-                    "average_state0": None,  # transform in complex
-                    "average_state1": None,  # transform in complex
-                    "accuracy": accuracy,
-                    "predictions": y_pred.tobytes(),
-                    "grid": grid.tobytes(),
-                    "qubit": qubit,
-                }
-            parameters.add(results)
+            results2 = {
+                "model_name": names[i],
+                "accuracy": accuracy,
+                "predictions": y_pred.tobytes(),
+                "grid": grid.tobytes(),
+                "qubit": qubit,
+            }
+            parameters.add({**results1, **results2})
     yield data
     yield parameters
-    # yield calibrate_qubit_states_fit(
-    #     data, x="i[V]", y="q[V]", nshots=nshots, qubits=qubits
-    # )

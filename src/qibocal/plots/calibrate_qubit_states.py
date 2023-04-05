@@ -19,7 +19,6 @@ def qubit_states(folder, routine, qubit, format):
     subfolders = get_data_subfolders(folder)
     report_n = 0
     fitting_report = ""
-    max_x, max_y, min_x, min_y = 0, 0, 0, 0
 
     for subfolder in subfolders:
         try:
@@ -39,26 +38,10 @@ def qubit_states(folder, routine, qubit, format):
         state0_data = data.df[data.df["state"] == 0]
         state1_data = data.df[data.df["state"] == 1]
 
-        max_x = max(
-            max_x,
-            state0_data["i"].max(),
-            state1_data["i"].max(),
-        )
-        max_y = max(
-            max_y,
-            state0_data["q"].max(),
-            state1_data["q"].max(),
-        )
-        min_x = min(
-            min_x,
-            state0_data["i"].min(),
-            state1_data["i"].min(),
-        )
-        min_y = min(
-            min_y,
-            state0_data["q"].min(),
-            state1_data["q"].min(),
-        )
+        max_x = max(grid[:, 0])
+        max_y = max(grid[:, 1])
+        min_x = min(grid[:, 0])
+        min_y = min(grid[:, 1])
 
         fig = make_subplots(
             rows=1,
@@ -68,6 +51,7 @@ def qubit_states(folder, routine, qubit, format):
             subplot_titles=(models_name),
         )
         for i, model in enumerate(models_name):
+            print(model)
             try:
                 parameters = load_data(folder, subfolder, routine, format, "parameters")
                 parameters.df = parameters.df[parameters.df["qubit"] == qubit]
@@ -89,7 +73,7 @@ def qubit_states(folder, routine, qubit, format):
                 parameters = Data(
                     name=f"parameters",
                     quantities=[
-                        "rotation_angle",  # in degrees
+                        "rotation_angle",
                         "threshold",
                         "fidelity",
                         "assignment_fidelity",
@@ -103,8 +87,8 @@ def qubit_states(folder, routine, qubit, format):
                 go.Scatter(
                     x=state0_data["i"].to_list(),
                     y=state0_data["q"].to_list(),
-                    name=f"q{qubit}/{models_name[i]}: state 0",
-                    legendgroup=f"q{qubit}/{models_name[i]}: state 0",
+                    name=f"q{qubit}/{model}: state 0",
+                    legendgroup=f"q{qubit}/{model}: state 0",
                     mode="markers",
                     showlegend=False,
                     opacity=0.7,
@@ -118,8 +102,8 @@ def qubit_states(folder, routine, qubit, format):
                 go.Scatter(
                     x=state1_data["i"].to_list(),
                     y=state1_data["q"].to_list(),
-                    name=f"q{qubit}/{models_name[i]}: state 1",
-                    legendgroup=f"q{qubit}/{models_name[i]}: state 1",
+                    name=f"q{qubit}/{model}: state 1",
+                    legendgroup=f"q{qubit}/{model}: state 1",
                     mode="markers",
                     showlegend=False,
                     opacity=0.7,
@@ -143,13 +127,12 @@ def qubit_states(folder, routine, qubit, format):
                 row=1,
                 col=report_n + 1,
             )
-            # if model == "qubit_fit":
             fig.add_trace(
                 go.Scatter(
                     x=[average_state0.real],
                     y=[average_state0.imag],
-                    name=f"q{qubit}/{models_name[i]}: state 0",
-                    legendgroup=f"q{qubit}/{models_name[i]}: state 0",
+                    name=f"q{qubit}/{model}: state 0",
+                    legendgroup=f"q{qubit}/{model}: state 0",
                     showlegend=True,
                     mode="markers",
                     marker=dict(size=10, color=get_color_state0(report_n)),
@@ -162,8 +145,8 @@ def qubit_states(folder, routine, qubit, format):
                 go.Scatter(
                     x=[average_state1.real],
                     y=[average_state1.imag],
-                    name=f"q{qubit}/{models_name[i]}: state 1",
-                    legendgroup=f"q{qubit}/{models_name[i]}: state 1",
+                    name=f"q{qubit}/{model}: state 1",
+                    legendgroup=f"q{qubit}/{model}: state 1",
                     showlegend=True,
                     mode="markers",
                     marker=dict(size=10, color=get_color_state1(report_n)),
@@ -173,7 +156,7 @@ def qubit_states(folder, routine, qubit, format):
             )
             fig.update_xaxes(
                 title_text=f"i (V)",
-                range=[0, 1],
+                range=[min_x, max_x],
                 row=1,
                 col=report_n + 1,
                 autorange=False,
