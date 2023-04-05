@@ -115,13 +115,17 @@ def calibrate_qubit_states(
             "accuracy",
             "predictions",
             "grid",
+            "y_test",
+            "y_pred",
             "qubit",
         },
     )
+
     for qubit in qubits:
-        benchmark_table, _, _, models, names = run.train_qubit(
+        benchmark_table, y_test, x_test, models, names = run.train_qubit(
             Path(save_dir), qubit, qubits_data=data.df, classifiers=classifiers
         )
+        y_test = y_test.astype(np.int64)
         state0_data = data.df[data.df["state"] == 0]
         state1_data = data.df[data.df["state"] == 1]
         # Build the grid for the contour plots
@@ -164,7 +168,8 @@ def calibrate_qubit_states(
         grid = np.vstack([i_values.ravel(), q_values.ravel()]).T
 
         for i, model in enumerate(models):
-            y_pred = np.reshape(model.predict(grid), q_values.shape)
+            grid_pred = np.reshape(model.predict(grid), q_values.shape)
+            y_pred = model.predict(x_test)
             accuracy = benchmark_table.iloc[i]["accuracy"].tolist()
             results1 = {}
             if type(model) is QubitFit:
@@ -179,10 +184,14 @@ def calibrate_qubit_states(
             results2 = {
                 "model_name": names[i],
                 "accuracy": accuracy,
-                "predictions": y_pred.tobytes(),
+                "predictions": grid_pred.tobytes(),
                 "grid": grid.tobytes(),
+                "y_test": y_test.tobytes(),
+                "y_pred": y_pred.tobytes(),
                 "qubit": qubit,
             }
+
             parameters.add({**results1, **results2})
+
     yield data
     yield parameters

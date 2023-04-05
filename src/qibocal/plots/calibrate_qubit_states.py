@@ -1,6 +1,7 @@
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from sklearn.metrics import roc_curve, roc_auc_score
 
 from qibocal.data import Data, DataUnits
 from qibocal.plots.utils import (
@@ -30,18 +31,9 @@ def qubit_states(folder, routine, qubit, format):
         parameters = load_data(folder, subfolder, routine, format, "parameters")
         parameters.df = parameters.df[parameters.df["qubit"] == qubit]
         models_name = parameters.df["model_name"].to_list()
-        predictions = eval(parameters.df.iloc[0]["predictions"])
-        predictions = np.frombuffer(predictions, dtype=np.int64)
-        grid = eval(parameters.df.iloc[0]["grid"])
-        grid = np.frombuffer(grid, dtype=np.float64).reshape((len(predictions), 2))
 
         state0_data = data.df[data.df["state"] == 0]
         state1_data = data.df[data.df["state"] == 1]
-
-        max_x = max(grid[:, 0])
-        max_y = max(grid[:, 1])
-        min_x = min(grid[:, 0])
-        min_y = min(grid[:, 1])
 
         fig = make_subplots(
             rows=1,
@@ -50,8 +42,32 @@ def qubit_states(folder, routine, qubit, format):
             vertical_spacing=0.1,
             subplot_titles=(models_name),
         )
+        fig_roc = go.Figure()
+        fig_roc.add_shape(
+            type='line', line=dict(dash='dash'),
+            x0=0, x1=1, y0=0, y1=1
+        )
         for i, model in enumerate(models_name):
-            print(model)
+            y_test = eval(parameters.df.iloc[i]["y_test"]) #  TODO: write a function that perform this line and the following one
+            y_test = np.frombuffer(y_test, dtype=np.int64)
+            y_pred = eval(parameters.df.iloc[i]["y_pred"])
+            y_pred = np.frombuffer(y_pred, dtype=np.int64)
+
+            fpr, tpr, _ = roc_curve(y_test, y_pred)
+            auc_score = roc_auc_score(y_test, y_pred)
+
+            name = f"{model} (AUC={auc_score:.2f})"
+            fig_roc.add_trace(go.Scatter(x=fpr, y=tpr, name=name, mode='lines'))
+
+            predictions = eval(parameters.df.iloc[i]["predictions"])
+            predictions = np.frombuffer(predictions, dtype=np.int64)
+            grid = eval(parameters.df.iloc[0]["grid"])
+            grid = np.frombuffer(grid, dtype=np.float64).reshape((len(predictions), 2))
+            max_x = max(grid[:, 0])
+            max_y = max(grid[:, 1])
+            min_x = min(grid[:, 0])
+            min_y = min(grid[:, 1])           
+
             try:
                 parameters = load_data(folder, subfolder, routine, format, "parameters")
                 parameters.df = parameters.df[parameters.df["qubit"] == qubit]
@@ -96,6 +112,7 @@ def qubit_states(folder, routine, qubit, format):
                 ),
                 row=1,
                 col=report_n + 1,
+                
             )
 
             fig.add_trace(
@@ -194,25 +211,11 @@ def qubit_states(folder, routine, qubit, format):
             fig.update_layout(
                 showlegend=True,
                 uirevision="0",  # ``uirevision`` allows zooming while live plotting
-                # xaxis_title="i (V)",
-                # yaxis_title="q (V)",
-                # xaxis_range=(min_x, max_x),
-                # yaxis_range=(min_y, max_y),
+                height=800, 
+                width=800*len(models_name)
             )
-            # fig.update_layout(
-            #     title='title',
-            #     autosize=True,
-            #     height=2000
-            # )
-            # fig.update_xaxes(rangeslider=dict(visible=False))
-            # fig.show()
 
-        # fig.update_yaxes(
-        #     scaleanchor="x",
-        #     scaleratio=1,
-        # )
-        # fig.update(layout_xaxis_range = [0,1])
-        # fig.show()
+    figures.append(fig_roc)
     figures.append(fig)
 
     return figures, fitting_report
