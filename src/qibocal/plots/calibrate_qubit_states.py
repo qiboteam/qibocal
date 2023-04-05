@@ -1,7 +1,7 @@
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from sklearn.metrics import roc_curve, roc_auc_score
+from sklearn.metrics import roc_auc_score, roc_curve
 
 from qibocal.data import Data, DataUnits
 from qibocal.plots.utils import (
@@ -43,12 +43,11 @@ def qubit_states(folder, routine, qubit, format):
             subplot_titles=(models_name),
         )
         fig_roc = go.Figure()
-        fig_roc.add_shape(
-            type='line', line=dict(dash='dash'),
-            x0=0, x1=1, y0=0, y1=1
-        )
+        fig_roc.add_shape(type="line", line=dict(dash="dash"), x0=0, x1=1, y0=0, y1=1)
         for i, model in enumerate(models_name):
-            y_test = eval(parameters.df.iloc[i]["y_test"]) #  TODO: write a function that perform this line and the following one
+            y_test = eval(
+                parameters.df.iloc[i]["y_test"]
+            )  #  TODO: write a function that perform this line and the following one
             y_test = np.frombuffer(y_test, dtype=np.int64)
             y_pred = eval(parameters.df.iloc[i]["y_pred"])
             y_pred = np.frombuffer(y_pred, dtype=np.int64)
@@ -57,7 +56,7 @@ def qubit_states(folder, routine, qubit, format):
             auc_score = roc_auc_score(y_test, y_pred)
 
             name = f"{model} (AUC={auc_score:.2f})"
-            fig_roc.add_trace(go.Scatter(x=fpr, y=tpr, name=name, mode='lines'))
+            fig_roc.add_trace(go.Scatter(x=fpr, y=tpr, name=name, mode="lines"))
 
             predictions = eval(parameters.df.iloc[i]["predictions"])
             predictions = np.frombuffer(predictions, dtype=np.int64)
@@ -66,7 +65,7 @@ def qubit_states(folder, routine, qubit, format):
             max_x = max(grid[:, 0])
             max_y = max(grid[:, 1])
             min_x = min(grid[:, 0])
-            min_y = min(grid[:, 1])           
+            min_y = min(grid[:, 1])
 
             try:
                 parameters = load_data(folder, subfolder, routine, format, "parameters")
@@ -112,7 +111,6 @@ def qubit_states(folder, routine, qubit, format):
                 ),
                 row=1,
                 col=report_n + 1,
-                
             )
 
             fig.add_trace(
@@ -211,8 +209,8 @@ def qubit_states(folder, routine, qubit, format):
             fig.update_layout(
                 showlegend=True,
                 uirevision="0",  # ``uirevision`` allows zooming while live plotting
-                height=800, 
-                width=800*len(models_name)
+                height=800,
+                width=800 * len(models_name),
             )
 
     figures.append(fig_roc)
