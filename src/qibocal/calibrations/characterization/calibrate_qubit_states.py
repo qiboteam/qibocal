@@ -169,7 +169,7 @@ def calibrate_qubit_states(
         for i, model in enumerate(models):
             grid_pred = np.reshape(model.predict(grid), q_values.shape)
             y_pred = model.predict(x_test)
-            #accuracy = benchmark_table.iloc[i]["accuracy"].tolist()
+            # accuracy = benchmark_table.iloc[i]["accuracy"].tolist()
             benchmarks = benchmark_table.iloc[i].to_dict()
             results1 = {}
             if type(model) is QubitFit:

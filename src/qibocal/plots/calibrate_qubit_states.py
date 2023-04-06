@@ -35,8 +35,8 @@ def qubit_states(folder, routine, qubit, format):
         state0_data = data.df[data.df["state"] == 0]
         state1_data = data.df[data.df["state"] == 1]
 
-        grid = _bytes_to_np(parameters.df.iloc[0]["grid"], np.float64).reshape((-1,2))
-        
+        grid = _bytes_to_np(parameters.df.iloc[0]["grid"], np.float64).reshape((-1, 2))
+
         accuracy = []
         training_time = []
         testing_time = []
@@ -49,10 +49,7 @@ def qubit_states(folder, routine, qubit, format):
             subplot_titles=(models_name),
         )
         fig_roc = go.Figure()
-        fig_roc.add_shape(
-            type='line', line=dict(dash='dash'),
-            x0=0, x1=1, y0=0, y1=1
-        )
+        fig_roc.add_shape(type="line", line=dict(dash="dash"), x0=0, x1=1, y0=0, y1=1)
         fig_benchmarks = make_subplots(
             rows=1,
             cols=3,
@@ -60,7 +57,7 @@ def qubit_states(folder, routine, qubit, format):
             vertical_spacing=0.1,
             subplot_titles=("accuracy", "training time (s)", "testing time (s)"),
         )
-        
+
         for i, model in enumerate(models_name):
             y_test = _bytes_to_np(parameters.df.iloc[i]["y_test"], np.int64)
             y_pred = _bytes_to_np(parameters.df.iloc[i]["y_pred"], np.int64)
@@ -70,9 +67,16 @@ def qubit_states(folder, routine, qubit, format):
             auc_score = roc_auc_score(y_test, y_pred)
 
             name = f"{model} (AUC={auc_score:.2f})"
-            fig_roc.add_trace(go.Scatter(x=fpr, y=tpr, name=name, mode='lines',marker=dict(size=3, color=get_color_state0(report_n))))
+            fig_roc.add_trace(
+                go.Scatter(
+                    x=fpr,
+                    y=tpr,
+                    name=name,
+                    mode="lines",
+                    marker=dict(size=3, color=get_color_state0(report_n)),
+                )
+            )
 
-            
             max_x = max(grid[:, 0])
             max_y = max(grid[:, 1])
             min_x = min(grid[:, 0])
@@ -97,7 +101,7 @@ def qubit_states(folder, routine, qubit, format):
                 accuracy = parameters.df.iloc[i]["accuracy"]  # pylint: disable=E1101
                 training_time = parameters.df.iloc[i]["training_time"]
                 testing_time = parameters.df.iloc[i]["testing_time"]
-            
+
             except:
                 parameters = Data(
                     name=f"parameters",
@@ -118,7 +122,7 @@ def qubit_states(folder, routine, qubit, format):
                     y=[accuracy],
                     mode="markers",
                     showlegend=False,
-                    #opacity=0.7,
+                    # opacity=0.7,
                     marker=dict(size=10, color=get_color_state1(report_n)),
                 ),
                 row=1,
@@ -131,7 +135,7 @@ def qubit_states(folder, routine, qubit, format):
                     y=[training_time],
                     mode="markers",
                     showlegend=False,
-                    #opacity=0.7,
+                    # opacity=0.7,
                     marker=dict(size=10, color=get_color_state1(report_n)),
                 ),
                 row=1,
@@ -144,7 +148,7 @@ def qubit_states(folder, routine, qubit, format):
                     y=[testing_time],
                     mode="markers",
                     showlegend=False,
-                    #opacity=0.7,
+                    # opacity=0.7,
                     marker=dict(size=10, color=get_color_state1(report_n)),
                 ),
                 row=1,
@@ -263,17 +267,14 @@ def qubit_states(folder, routine, qubit, format):
                 height=800,
                 width=800 * len(models_name),
             )
-            fig_benchmarks.update_layout(
-                width=800*len(models_name)
-            )
-            fig_roc.update_layout(
-                width=800*len(models_name)
-            )
+            fig_benchmarks.update_layout(width=800 * len(models_name))
+            fig_roc.update_layout(width=800 * len(models_name))
 
     figures.append(fig_roc)
     figures.append(fig)
     figures.append(fig_benchmarks)
     return figures, fitting_report
+
 
 def _bytes_to_np(data: bytes, type):
     # This function convert a bytes in numpy array
