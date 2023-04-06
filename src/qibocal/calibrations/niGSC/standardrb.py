@@ -73,6 +73,7 @@ class ModuleExperiment(Experiment):
                         It is used to store all relevant data.
         """
         super().__init__(circuitfactory, data, nshots, noise_model)
+        self.prebuild()
         self.name = "StandardRB"
 
     def execute(self, circuit: Circuit, datarow: dict) -> dict:
@@ -164,7 +165,7 @@ def get_aggregational_data(experiment: Experiment, ndecays: int = None) -> pd.Da
         fit_func_label = "exp1B_func"
     else:
         # TODO add fit_expnB_func. Fit ndecays+1 for now to account for B
-        fitting_methods.fit_expn_func(depths, ydata, ndecays + 1)
+        popt, perr = fitting_methods.fit_expn_func(depths, ydata, ndecays + 1)
         popt_labels = np.array(
             [[f"A{k+1}", f"p{k+1}"] for k in range(len(popt) // 2)]
         ).ravel()

@@ -39,6 +39,7 @@ class ModuleExperiment(Experiment):
         noise_model: NoiseModel = None,
     ) -> None:
         super().__init__(circuitfactory, data, nshots, noise_model)
+        self.prebuild()
         self.name = "Z4rb"
 
     def execute(self, circuit: Circuit, datarow: dict) -> dict:
