@@ -107,9 +107,9 @@ class Experiment:
         obj = cls(circuitfactory, data=data, nshots=nshots)
         return obj
 
-    def save(self, path: str | None = None) -> str:
-        """Creates a path if None given and pickles relevant data from ``self.data``
-        and if ``self.circuitfactory`` is a list that one too.
+    def save_circuits(self, path: str | None = None) -> str:
+        """Creates a path if None given and pickles ``self.circuitfactory``
+        if its a list.
 
         Returns:
             (str): The path of stored experiment.
@@ -125,6 +125,21 @@ class Experiment:
         if isinstance(self.circuitfactory, list):
             with open(f"{self.path}circuits.pkl", "wb") as f:
                 pickle.dump(self.circuitfactory, f)
+
+    def save(self, path: str | None = None) -> str:
+        """Creates a path if None given and pickles relevant data from ``self.data``
+        and if ``self.circuitfactory`` is a list that one too.
+
+        Returns:
+            (str): The path of stored experiment.
+        """
+
+        # Check if path to store is given, if not create one. If yes check if the last character
+        # is a /, if not add it.
+        if path is None:
+            self.path = experiment_directory("rb")
+        else:
+            self.path = path if path[-1] == "/" else f"{path}/"
         # And only if data is not None the data list (full of dicionaries) will be
         # stored.
         if self.data is not None:
