@@ -42,7 +42,7 @@ class ModuleFactory(ZkFilteredCircuitFactory):
 
     @property
     def gate_group(self):
-        return [gates.I(0), gates.X(0)]
+        return [gates.I(0), gates.RX(0, np.pi)]
 
 
 # Define the experiment class for this specific module.
@@ -175,7 +175,7 @@ def gate_group(nqubits=1):
 def irrep_info(nqubits=1):
     """
     Infromation corresponding to the irreducible representation of the XId gate group.
-    
+
     Returns:
         tuple: (basis, index, size, multiplicity) of the sign irrep
     """

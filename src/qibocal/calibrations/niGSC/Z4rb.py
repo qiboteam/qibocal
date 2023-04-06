@@ -24,7 +24,7 @@ class ModuleFactory(ZkFilteredCircuitFactory):
         return [
             gates.I(0),
             gates.RX(0, np.pi / 2),
-            gates.X(0),
+            gates.RX(0, np.pi),
             gates.RX(0, 3 * np.pi / 2),
         ]
 
@@ -145,7 +145,7 @@ def gate_group(nqubits=1):
 def irrep_info(nqubits=1):
     """
     Infromation about the irreducible representation of the Z4 gate group.
-    
+
     Returns:
         tuple: (basis, index, size, multiplicity) of the irrep
     """
