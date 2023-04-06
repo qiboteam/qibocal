@@ -1,7 +1,7 @@
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from sklearn.metrics import roc_curve, roc_auc_score
+from sklearn.metrics import roc_auc_score, roc_curve
 
 from qibocal.data import Data, DataUnits
 from qibocal.plots.utils import (
@@ -76,7 +76,7 @@ def qubit_states(folder, routine, qubit, format):
             max_x = max(grid[:, 0])
             max_y = max(grid[:, 1])
             min_x = min(grid[:, 0])
-            min_y = min(grid[:, 1])           
+            min_y = min(grid[:, 1])
 
             try:
                 parameters = load_data(folder, subfolder, routine, format, "parameters")
@@ -164,7 +164,6 @@ def qubit_states(folder, routine, qubit, format):
                 ),
                 row=1,
                 col=report_n + 1,
-                
             )
 
             fig.add_trace(
@@ -261,8 +260,8 @@ def qubit_states(folder, routine, qubit, format):
             fig.update_layout(
                 showlegend=True,
                 uirevision="0",  # ``uirevision`` allows zooming while live plotting
-                height=800, 
-                width=800*len(models_name)
+                height=800,
+                width=800 * len(models_name),
             )
             fig_benchmarks.update_layout(
                 width=800*len(models_name)
