@@ -37,6 +37,10 @@ def qubit_states(folder, routine, qubit, format):
 
         grid = _bytes_to_np(parameters.df.iloc[0]["grid"], np.float64).reshape((-1,2))
         
+        accuracy = []
+        training_time = []
+        testing_time = []
+
         fig = make_subplots(
             rows=1,
             cols=len(models_name),
@@ -49,6 +53,14 @@ def qubit_states(folder, routine, qubit, format):
             type='line', line=dict(dash='dash'),
             x0=0, x1=1, y0=0, y1=1
         )
+        fig_benchmarks = make_subplots(
+            rows=1,
+            cols=3,
+            horizontal_spacing=0.1,
+            vertical_spacing=0.1,
+            subplot_titles=("accuracy", "training time (s)", "testing time (s)"),
+        )
+        
         for i, model in enumerate(models_name):
             y_test = _bytes_to_np(parameters.df.iloc[i]["y_test"], np.int64)
             y_pred = _bytes_to_np(parameters.df.iloc[i]["y_pred"], np.int64)
@@ -83,6 +95,9 @@ def qubit_states(folder, routine, qubit, format):
                     "assignment_fidelity"
                 ]  # pylint: disable=E1101
                 accuracy = parameters.df.iloc[i]["accuracy"]  # pylint: disable=E1101
+                training_time = parameters.df.iloc[i]["training_time"]
+                testing_time = parameters.df.iloc[i]["testing_time"]
+            
             except:
                 parameters = Data(
                     name=f"parameters",
@@ -96,6 +111,45 @@ def qubit_states(folder, routine, qubit, format):
                         "qubit",
                     ],
                 )
+
+            fig_benchmarks.add_trace(
+                go.Scatter(
+                    x=[model],
+                    y=[accuracy],
+                    mode="markers",
+                    showlegend=False,
+                    #opacity=0.7,
+                    marker=dict(size=10, color=get_color_state1(report_n)),
+                ),
+                row=1,
+                col=1,
+            )
+
+            fig_benchmarks.add_trace(
+                go.Scatter(
+                    x=[model],
+                    y=[training_time],
+                    mode="markers",
+                    showlegend=False,
+                    #opacity=0.7,
+                    marker=dict(size=10, color=get_color_state1(report_n)),
+                ),
+                row=1,
+                col=2,
+            )
+
+            fig_benchmarks.add_trace(
+                go.Scatter(
+                    x=[model],
+                    y=[testing_time],
+                    mode="markers",
+                    showlegend=False,
+                    #opacity=0.7,
+                    marker=dict(size=10, color=get_color_state1(report_n)),
+                ),
+                row=1,
+                col=3,
+            )
 
             fig.add_trace(
                 go.Scatter(
@@ -201,7 +255,6 @@ def qubit_states(folder, routine, qubit, format):
                 title_text += f"q{qubit}/{model} | fidelity: {fidelity:.3f}<br>"
                 title_text += f"q{qubit}/{model} | assignment fidelity: {assignment_fidelity:.3f}<br>"
 
-            title_text += f"q{qubit}/{model} | accuracy: {accuracy:.3f}<br>"
             fitting_report = fitting_report + title_text
             report_n += 1
 
@@ -211,10 +264,16 @@ def qubit_states(folder, routine, qubit, format):
                 height=800, 
                 width=800*len(models_name)
             )
+            fig_benchmarks.update_layout(
+                width=800*len(models_name)
+            )
+            fig_roc.update_layout(
+                width=800*len(models_name)
+            )
 
     figures.append(fig_roc)
     figures.append(fig)
-
+    figures.append(fig_benchmarks)
     return figures, fitting_report
 
 def _bytes_to_np(data: bytes, type):

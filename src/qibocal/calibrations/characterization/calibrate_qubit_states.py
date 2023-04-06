@@ -100,8 +100,6 @@ def calibrate_qubit_states(
         )
         data.add_data_from_dict(r)
 
-    # qubit_dir = Path(save_dir )/ f"qubit{qubit}"
-    # qubit_dir.mkdir(exist_ok=True)
     parameters = Data(
         name=f"parameters",
         quantities={
@@ -125,6 +123,7 @@ def calibrate_qubit_states(
         benchmark_table, y_test, x_test, models, names = run.train_qubit(
             Path(save_dir), qubit, qubits_data=data.df, classifiers=classifiers
         )
+        print(benchmark_table)
         y_test = y_test.astype(np.int64)
         state0_data = data.df[data.df["state"] == 0]
         state1_data = data.df[data.df["state"] == 1]
@@ -170,7 +169,8 @@ def calibrate_qubit_states(
         for i, model in enumerate(models):
             grid_pred = np.reshape(model.predict(grid), q_values.shape)
             y_pred = model.predict(x_test)
-            accuracy = benchmark_table.iloc[i]["accuracy"].tolist()
+            #accuracy = benchmark_table.iloc[i]["accuracy"].tolist()
+            benchmarks = benchmark_table.iloc[i].to_dict()
             results1 = {}
             if type(model) is QubitFit:
                 results1 = {
@@ -183,7 +183,6 @@ def calibrate_qubit_states(
                 }
             results2 = {
                 "model_name": names[i],
-                "accuracy": accuracy,
                 "predictions": grid_pred.tobytes(),
                 "grid": grid.tobytes(),
                 "y_test": y_test.tobytes(),
@@ -191,7 +190,7 @@ def calibrate_qubit_states(
                 "qubit": qubit,
             }
 
-            parameters.add({**results1, **results2})
+            parameters.add({**results1, **results2, **benchmarks})
 
     yield data
     yield parameters
