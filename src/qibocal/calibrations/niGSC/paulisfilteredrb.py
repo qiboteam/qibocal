@@ -220,7 +220,7 @@ def add_validation(
     data = dataframe.to_dict("records")
     coefficients, decay_parameters = filtered_decay_parameters(
         experiment.name,
-        experiment.circuitfactory.nqubits,
+        1,
         experiment.noise_model,
         with_coefficients=True,
         N=N,
