@@ -201,7 +201,7 @@ def add_validation(
     validation_label = "validation_imag" if "popt_imag" in data[0] else "validation"
     coefficients, decay_parameters = filtered_decay_parameters(
         experiment.name,
-        experiment.circuitfactory.nqubits,
+        1,
         experiment.noise_model,
         with_coefficients=True,
         N=N,
