@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 import pytest
 from plotly.graph_objects import Figure
-from qibo import gates
 from qibo.noise import NoiseModel
 
 from qibocal.calibrations.niGSC import standardrb

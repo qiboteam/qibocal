@@ -3,16 +3,8 @@ import importlib
 import numpy as np
 import pandas as pd
 import pytest
-from plotly.graph_objects import Figure
-from qibo import gates
 from qibo.config import PRECISION_TOL
-from qibo.noise import NoiseModel
 
-from qibocal.calibrations.niGSC import Idrb, XIdrb, Z3rb, Z4rb, paulisfilteredrb
-from qibocal.calibrations.niGSC.basics.circuitfactory import (
-    SingleCliffordsFactory,
-    ZkFilteredCircuitFactory,
-)
 from qibocal.calibrations.niGSC.basics.noisemodels import *
 from qibocal.calibrations.niGSC.basics.rb_validation import *
 

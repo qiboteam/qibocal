@@ -50,7 +50,7 @@ def execute_simulation(
     try:
         module = importlib.import_module(f"qibocal.calibrations.niGSC.{module_name}")
     except:
-        module = importlib.import_module("module_name")
+        module = importlib.import_module(module_name)
 
     # Execute an experiment.
     factory = module.ModuleFactory(nqubits, depths)

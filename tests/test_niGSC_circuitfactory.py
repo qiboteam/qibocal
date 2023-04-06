@@ -1,7 +1,5 @@
 from collections.abc import Iterable
-from copy import deepcopy
 
-import numpy as np
 import pytest
 from qibo import gates, models
 
