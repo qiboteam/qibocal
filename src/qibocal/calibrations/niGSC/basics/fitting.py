@@ -86,7 +86,9 @@ def esprit(
     # Calculte the solution.
     spectralMatrix = np.linalg.pinv(U_signal[:-1,]) @ U_signal[1:,]
     # Calculate the poles/eigenvectors and space them right. Return them.
-    return np.linalg.eigvals(spectralMatrix) * sampleRate
+    decays = np.linalg.eigvals(spectralMatrix)
+    decays = np.array(decays, dtype=complex)
+    return decays ** sampleRate
 
 
 def fit_exp1B_func(
@@ -168,14 +170,11 @@ def fit_expn_func(
     xdata: Union[np.ndarray, list], ydata: Union[np.ndarray, list], n: int = 2, **kwargs
 ) -> Tuple[tuple, tuple]:
     """Calculate n exponentials on top of each other, fit to the given ydata.
-
     No linear offset, the ESPRIT algorithm is used to identify ``n`` exponential decays.
-
     Args:
         xdata (Union[np.ndarray, list]): The x-labels.
         ydata (Union[np.ndarray, list]): The data to be fitted.
         n (int): number of decays to fit. Default is 2.
-
     Returns:
         Tuple[tuple, tuple]: (A1, ..., An, f1, ..., fn) with f* the decay parameters.
     """
@@ -183,8 +182,7 @@ def fit_expn_func(
     # TODO how are the errors estimated?
     # TODO the data has to have a sufficiently big size, check that.
     decays = esprit(np.array(xdata), np.array(ydata), n)
-    vandermonde = np.vander(decays, N=xdata[-1] + 1, increasing=True)
-    vandermonde = np.take(vandermonde, xdata, axis=1)
+    vandermonde = np.array([decays**x for x in xdata]).T
     alphas = np.linalg.pinv(vandermonde.T) @ np.array(ydata).reshape(-1, 1).flatten()
     return tuple([*alphas, *decays]), (0,) * (len(alphas) + len(decays))
 
