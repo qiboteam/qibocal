@@ -35,6 +35,8 @@ def qubit_states(folder, routine, qubit, format):
         state0_data = data.df[data.df["state"] == 0]
         state1_data = data.df[data.df["state"] == 1]
 
+        grid = _bytes_to_np(parameters.df.iloc[0]["grid"], np.float64).reshape((-1,2))
+        
         fig = make_subplots(
             rows=1,
             cols=len(models_name),
@@ -48,21 +50,17 @@ def qubit_states(folder, routine, qubit, format):
             x0=0, x1=1, y0=0, y1=1
         )
         for i, model in enumerate(models_name):
-            y_test = eval(parameters.df.iloc[i]["y_test"]) #  TODO: write a function that perform this line and the following one
-            y_test = np.frombuffer(y_test, dtype=np.int64)
-            y_pred = eval(parameters.df.iloc[i]["y_pred"])
-            y_pred = np.frombuffer(y_pred, dtype=np.int64)
-
+            y_test = _bytes_to_np(parameters.df.iloc[i]["y_test"], np.int64)
+            y_pred = _bytes_to_np(parameters.df.iloc[i]["y_pred"], np.int64)
+            predictions = _bytes_to_np(parameters.df.iloc[i]["predictions"], np.int64)
+            # Evaluate the ROC curve
             fpr, tpr, _ = roc_curve(y_test, y_pred)
             auc_score = roc_auc_score(y_test, y_pred)
 
             name = f"{model} (AUC={auc_score:.2f})"
-            fig_roc.add_trace(go.Scatter(x=fpr, y=tpr, name=name, mode='lines'))
+            fig_roc.add_trace(go.Scatter(x=fpr, y=tpr, name=name, mode='lines',marker=dict(size=3, color=get_color_state0(report_n))))
 
-            predictions = eval(parameters.df.iloc[i]["predictions"])
-            predictions = np.frombuffer(predictions, dtype=np.int64)
-            grid = eval(parameters.df.iloc[0]["grid"])
-            grid = np.frombuffer(grid, dtype=np.float64).reshape((len(predictions), 2))
+            
             max_x = max(grid[:, 0])
             max_y = max(grid[:, 1])
             min_x = min(grid[:, 0])
@@ -187,8 +185,7 @@ def qubit_states(folder, routine, qubit, format):
                 row=1,
                 col=report_n + 1,
             )
-            # fig.update_yaxes(title_text="q (V)", range=[min_y, max_y], scaleanchor="x",
-            # scaleratio=1,row=report_n+1, col= 1)
+
             title_text = ""
             if models_name[i] == "qubit_fit":
                 title_text += (
@@ -219,3 +216,7 @@ def qubit_states(folder, routine, qubit, format):
     figures.append(fig)
 
     return figures, fitting_report
+
+def _bytes_to_np(data: bytes, type):
+    # This function convert a bytes in numpy array
+    return np.frombuffer(eval(data), dtype=type)
