@@ -6,7 +6,6 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
-from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
@@ -91,7 +90,7 @@ def _acquisition(
 
     # retrieve and store the results for every qubit
     for ro_pulse in ro_pulses.values():
-        r = state0_results[ro_pulse.serial].to_dict(average=False)
+        r = state0_results[ro_pulse.serial].serial
         r.update(
             {
                 "qubit": [ro_pulse.qubit] * params.nshots,
@@ -107,7 +106,7 @@ def _acquisition(
 
     # retrieve and store the results for every qubit
     for ro_pulse in ro_pulses.values():
-        r = state1_results[ro_pulse.serial].to_dict(average=False)
+        r = state1_results[ro_pulse.serial].serial
         r.update(
             {
                 "qubit": [ro_pulse.qubit] * params.nshots,

@@ -101,7 +101,7 @@ def _acquisition(
             results = platform.execute_pulse_sequence(sequence)
             for qubit, ro_pulse in ro_pulses.items():
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                r = results[ro_pulse.serial].to_dict()
+                r = results[ro_pulse.serial].serial
                 r.update(
                     {
                         "wait[ns]": wait,
@@ -114,7 +114,7 @@ def _acquisition(
                         "resonator_type": platform.resonator_type,
                     }
                 )
-                data.add(r)
+                data.add_data_from_dict(r)
             count += 1
     return data
 

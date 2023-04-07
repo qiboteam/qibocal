@@ -92,7 +92,7 @@ def _acquisition(
         for qubit, ro_pulse in ro_pulses.items():
             # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulse.serial]
-            r = result.to_dict()
+            r = result.serial
             # store the results
             r.update(
                 {
