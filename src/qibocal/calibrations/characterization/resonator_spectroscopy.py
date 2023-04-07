@@ -428,11 +428,15 @@ def resonator_spectroscopy_flux(
     )
 
     # flux bias
-    if fluxlines == "qubits":
-        fluxlines = qubits
+    diagonal_only = fluxlines == "diagonal"
+    if fluxlines in ["qubits", "diagonal"]:
+        fluxlines = qubits.keys()
 
+    sweetspot_biass = {}
+    for fluxline in fluxlines:
+        sweetspot_biass[fluxline] = qubits[fluxline].sweetspot
     delta_bias_range = np.arange(-bias_width / 2, bias_width / 2, bias_step)
-    bias_sweeper = Sweeper(Parameter.bias, delta_bias_range, qubits=fluxlines)
+    
 
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
@@ -445,20 +449,21 @@ def resonator_spectroscopy_flux(
 
     # repeat the experiment as many times as defined by software_averages
     for iteration in range(software_averages):
-        results = platform.sweep(
-            sequence,
-            bias_sweeper,
-            freq_sweeper,
-            nshots=nshots,
-            relaxation_time=relaxation_time,
-        )
+        if diagonal_only:
+            bias_sweeper = Sweeper(Parameter.bias, delta_bias_range, qubits=fluxlines)
+            results = platform.sweep(
+                sequence,
+                bias_sweeper,
+                freq_sweeper,
+                nshots=nshots,
+                relaxation_time=relaxation_time,
+            )
 
         # retrieve the results for every qubit
-        for qubit, fluxline in zip(qubits, fluxlines):
+        for qubit in qubits:
+            fluxline = qubit
             # TODO: Support more fluxlines for QM
-
             result = results[ro_pulses[qubit].serial]
-
             biases = np.repeat(
                 delta_bias_range, len(delta_frequency_range)
             ) + platform.get_bias(fluxline)
@@ -478,6 +483,40 @@ def resonator_spectroscopy_flux(
                 }
             )
             data.add_data_from_dict(r)
+
+        else: 
+            for fluxline in fluxlines:
+                for f in fluxlines:
+                    platform.set_bias(f, sweetspot_biass[f])
+                bias_sweeper = Sweeper(Parameter.bias, delta_bias_range, qubits=[fluxline])
+                fluxline_results = platform.sweep(
+                    sequence,
+                    bias_sweeper,
+                    freq_sweeper,
+                    nshots=nshots,
+                    relaxation_time=relaxation_time,
+                )
+
+                result = fluxline_results[ro_pulses[qubit].serial]
+                biases = np.repeat(
+                    delta_bias_range, len(delta_frequency_range)
+                ) + platform.get_bias(fluxline)
+                freqs = np.array(
+                    len(delta_bias_range)
+                    * list(delta_frequency_range + ro_pulses[qubit].frequency)
+                ).flatten()
+                # store the results
+                r = {k: v.ravel() for k, v in result.to_dict(average=False).items()}
+                r.update(
+                    {
+                        "frequency[Hz]": freqs,
+                        "bias[V]": biases,
+                        "qubit": len(freqs) * [qubit],
+                        "fluxline": len(freqs) * [fluxline],
+                        "iteration": len(freqs) * [iteration],
+                    }
+                )
+                data.add_data_from_dict(r)
 
         # save data
         yield data
