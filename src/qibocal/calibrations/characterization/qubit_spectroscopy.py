@@ -302,3 +302,6 @@ def qubit_spectroscopy_flux(
                     }
                 )
                 data.add_data_from_dict(r)
+
+        # save data
+        yield data
