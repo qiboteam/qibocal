@@ -1073,3 +1073,39 @@ def calibrate_qubit_states_fit(data, x, y, nshots, qubits, degree=True):
         }
         parameters.add(results)
     return parameters
+
+
+def ro_optimization_fit(data, *labels):
+    """
+    Fit the fidelities from parameters swept as labels, and extract rotation angle and threshold
+
+    Args:
+        data (Data): data to fit
+        labels (str): variable used in the routine with format "variable_name[unit]"
+
+    Returns:
+        Data: data with the fit results
+    """
+
+    data_fit = Data(
+        name="fit",
+        quantities={parse(label)[0]: parse(label)[1] for label in labels},
+        options=[
+            "rotation_angle",
+            "threshold",
+            "fidelity",
+            "assignment_fidelity",
+            "average_state0",
+            "average_state1",
+            "qubit",
+        ],
+    )
+
+    qubits = data.df["qubit"].unique()
+
+    # Create a ndarray for i and q shots for all labels
+    # shape=(nshots, 2, *[len(data[label]) for label in labels])
+
+    # for qubit in qubits:
+
+    return data_fit
