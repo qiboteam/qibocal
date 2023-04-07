@@ -237,7 +237,7 @@ def spectroscopy_plot(data: DataUnits, fit: Results, qubit):
 
         if power_level == "low":  # TODO:change this to PowerLevel.low
             label = "readout frequency"
-            freq = fit.readout_frequency
+            freq = fit.frequency
         elif power_level == "high":
             label = "bare resonator frequency"
             freq = fit.bare_frequency
