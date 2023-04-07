@@ -106,7 +106,7 @@ def _acquisition(
             results = platform.execute_pulse_sequence(sequence)
             for ro_pulse in ro_pulses.values():
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                
+
                 r = results[ro_pulse.serial].average.serial
                 # lenght_dataset = len(r['i[V]'])
                 r.update(
@@ -118,9 +118,9 @@ def _acquisition(
                         "pi_pulse_amplitude": qubits[ro_pulse.qubit].pi_pulse_amplitude,
                     }
                 )
-                
+
                 data.add(r)
-                
+
     return data
 
 
