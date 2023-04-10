@@ -11,7 +11,12 @@ from qibocal.plots.utils import (
     load_data,
 )
 
-
+LEGENDSIZE = 50
+COLUMNWIDTH = 600
+ROC_LENGHT = 800
+ROC_WIDTH = 800
+LEGEND_FONT_SIZE = 20
+TITLE_SIZE = 25
 # For calibrate qubit states
 def qubit_states(folder, routine, qubit, format):
     figures = []
@@ -47,6 +52,7 @@ def qubit_states(folder, routine, qubit, format):
             horizontal_spacing=0.1,
             vertical_spacing=0.1,
             subplot_titles=(models_name),
+            # column_width = [COLUMNWIDTH]*len(models_name)
         )
         fig_roc = go.Figure()
         fig_roc.add_shape(
@@ -59,6 +65,7 @@ def qubit_states(folder, routine, qubit, format):
             horizontal_spacing=0.1,
             vertical_spacing=0.1,
             subplot_titles=("accuracy", "training time (s)", "testing time (s)"),
+            # column_width = [COLUMNWIDTH]*3
         )
         
         for i, model in enumerate(models_name):
@@ -158,7 +165,7 @@ def qubit_states(folder, routine, qubit, format):
                     name=f"q{qubit}/{model}: state 0",
                     legendgroup=f"q{qubit}/{model}: state 0",
                     mode="markers",
-                    showlegend=False,
+                    showlegend=True,
                     opacity=0.7,
                     marker=dict(size=3, color=get_color_state0(report_n)),
                 ),
@@ -173,7 +180,7 @@ def qubit_states(folder, routine, qubit, format):
                     name=f"q{qubit}/{model}: state 1",
                     legendgroup=f"q{qubit}/{model}: state 1",
                     mode="markers",
-                    showlegend=False,
+                    showlegend=True,
                     opacity=0.7,
                     marker=dict(size=3, color=get_color_state1(report_n)),
                 ),
@@ -201,7 +208,7 @@ def qubit_states(folder, routine, qubit, format):
                     y=[average_state0.imag],
                     name=f"q{qubit}/{model}: state 0",
                     legendgroup=f"q{qubit}/{model}: state 0",
-                    showlegend=True,
+                    showlegend=False,
                     mode="markers",
                     marker=dict(size=10, color=get_color_state0(report_n)),
                 ),
@@ -215,7 +222,7 @@ def qubit_states(folder, routine, qubit, format):
                     y=[average_state1.imag],
                     name=f"q{qubit}/{model}: state 1",
                     legendgroup=f"q{qubit}/{model}: state 1",
-                    showlegend=True,
+                    showlegend=False,
                     mode="markers",
                     marker=dict(size=10, color=get_color_state1(report_n)),
                 ),
@@ -258,16 +265,34 @@ def qubit_states(folder, routine, qubit, format):
             report_n += 1
 
             fig.update_layout(
-                showlegend=True,
+                # showlegend=False,
                 uirevision="0",  # ``uirevision`` allows zooming while live plotting
-                height=800,
-                width=800 * len(models_name),
+                autosize = False,
+                height=COLUMNWIDTH,
+                width= COLUMNWIDTH * len(models_name),
+                title = dict(text = "Results", font=dict(size=TITLE_SIZE)),
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    xanchor="left",
+                    y = - 0.3,
+                    x = 0,
+                    itemsizing = "constant",
+                    font = dict(size = LEGEND_FONT_SIZE)                
+                ),
+         
             )
             fig_benchmarks.update_layout(
-                width=800*len(models_name)
+                autosize = False,
+                height = COLUMNWIDTH,
+                width=COLUMNWIDTH*3,
+                title = dict(text = "Benchmarks", font=dict(size=TITLE_SIZE)),
             )
             fig_roc.update_layout(
-                width=800*len(models_name)
+                width=ROC_WIDTH,
+                height = ROC_LENGHT,
+                title = dict(text = "ROC curves", font=dict(size=TITLE_SIZE)),
+                legend = dict(font=dict(size=LEGEND_FONT_SIZE))
             )
 
     figures.append(fig_roc)
