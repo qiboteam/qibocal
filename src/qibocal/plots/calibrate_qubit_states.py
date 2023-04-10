@@ -17,12 +17,7 @@ ROC_LENGHT = 800
 ROC_WIDTH = 800
 LEGEND_FONT_SIZE = 20
 TITLE_SIZE = 25
-<<<<<<< HEAD
 SPACING = 0.1
-=======
-
-
->>>>>>> 550bf1e7e775ab8ed6a8f499a5f13e8e5bc5d194
 # For calibrate qubit states
 def qubit_states(folder, routine, qubit, format):
     figures = []
@@ -76,7 +71,6 @@ def qubit_states(folder, routine, qubit, format):
             y_pred = _bytes_to_np(parameters.df.iloc[i]["y_pred"], np.int64)
             predictions = _bytes_to_np(parameters.df.iloc[i]["predictions"], np.int64)
             # Evaluate the ROC curve
-            print(y_pred, y_test)
             fpr, tpr, _ = roc_curve(y_test, y_pred)
             auc_score = roc_auc_score(y_test, y_pred)
 
@@ -278,33 +272,33 @@ def qubit_states(folder, routine, qubit, format):
             fig.update_layout(
                 # showlegend=False,
                 uirevision="0",  # ``uirevision`` allows zooming while live plotting
-                autosize=False,
+                autosize = False,
                 height=COLUMNWIDTH,
-                width=COLUMNWIDTH * len(models_name),
-                title=dict(text="Results", font=dict(size=TITLE_SIZE)),
+                width= COLUMNWIDTH * len(models_name),
+                title = dict(text = "Results", font=dict(size=TITLE_SIZE)),
                 legend=dict(
                     orientation="h",
                     yanchor="bottom",
                     xanchor="left",
-                    y=-0.3,
-                    x=0,
-                    itemsizing="constant",
-                    font=dict(size=LEGEND_FONT_SIZE),
+                    y = - 0.3,
+                    x = 0,
+                    itemsizing = "constant",
+                    font = dict(size = LEGEND_FONT_SIZE)                
                 ),
             )
             fig_benchmarks.update_yaxes(type="log", row = 1, col = 2)
             fig_benchmarks.update_yaxes(type="log", row = 1, col = 3)
             fig_benchmarks.update_layout(
-                autosize=False,
-                height=COLUMNWIDTH,
-                width=COLUMNWIDTH * 3,
-                title=dict(text="Benchmarks", font=dict(size=TITLE_SIZE)),
+                autosize = False,
+                height = COLUMNWIDTH,
+                width=COLUMNWIDTH*3,
+                title = dict(text = "Benchmarks", font=dict(size=TITLE_SIZE)),
             )
             fig_roc.update_layout(
                 width=ROC_WIDTH,
-                height=ROC_LENGHT,
-                title=dict(text="ROC curves", font=dict(size=TITLE_SIZE)),
-                legend=dict(font=dict(size=LEGEND_FONT_SIZE)),
+                height = ROC_LENGHT,
+                title = dict(text = "ROC curves", font=dict(size=TITLE_SIZE)),
+                legend = dict(font=dict(size=LEGEND_FONT_SIZE))
             )
 
     figures.append(fig_roc)
