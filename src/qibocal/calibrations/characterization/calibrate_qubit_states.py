@@ -123,7 +123,7 @@ def calibrate_qubit_states(
         benchmark_table, y_test, x_test, models, names = run.train_qubit(
             Path(save_dir), qubit, qubits_data=data.df, classifiers=classifiers
         )
-        print(benchmark_table)
+
         y_test = y_test.astype(np.int64)
         state0_data = data.df[data.df["state"] == 0]
         state1_data = data.df[data.df["state"] == 1]
@@ -184,7 +184,6 @@ def calibrate_qubit_states(
                     "average_state0": complex(*model.iq_mean0),  # transform in complex
                     "average_state1": complex(*model.iq_mean1),  # transform in complex
                 }
-            print("NNNNNNNN", y_pred, y_pred.dtype)
             results2 = {
                 "model_name": names[i],
                 "predictions": grid_pred.tobytes(),
