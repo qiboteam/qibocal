@@ -167,8 +167,11 @@ def calibrate_qubit_states(
         grid = np.vstack([i_values.ravel(), q_values.ravel()]).T
 
         for i, model in enumerate(models):
-            grid_pred = np.reshape(model.predict(grid), q_values.shape)
+            grid_pred = np.round(np.reshape(model.predict(grid), q_values.shape)).astype(np.int64)
             y_pred = model.predict(x_test)
+            # Useful for NN that return as predictions the probability
+            y_pred = np.round(y_pred)
+            y_pred = y_pred.astype(np.int64)
             # accuracy = benchmark_table.iloc[i]["accuracy"].tolist()
             benchmarks = benchmark_table.iloc[i].to_dict()
             results1 = {}
@@ -181,6 +184,7 @@ def calibrate_qubit_states(
                     "average_state0": complex(*model.iq_mean0),  # transform in complex
                     "average_state1": complex(*model.iq_mean1),  # transform in complex
                 }
+            print("NNNNNNNN", y_pred, y_pred.dtype)
             results2 = {
                 "model_name": names[i],
                 "predictions": grid_pred.tobytes(),

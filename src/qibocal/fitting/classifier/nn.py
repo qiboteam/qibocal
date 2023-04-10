@@ -7,6 +7,7 @@ from tensorflow.keras.layers import (  # pylint: disable=import-error
     Layer,
 )
 from tensorflow.keras.models import Sequential  # pylint: disable=import-error
+import numpy as np
 
 from .utils import identity
 
@@ -44,14 +45,13 @@ def hyperopt(x_train, y_train, path):
     tuner.search_space_summary()
 
     stop_early = callbacks.EarlyStopping(monitor="val_accuracy", patience=10)
-
     tuner.search(
         x_train, y_train, epochs=120, validation_split=0.2, callbacks=[stop_early]
     )
 
     # Get the optimal hyperparameters
     best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
-
+    print("FFFFFFFFFF ", best_hps.get_config())
     return best_hps.get_config()
 
 

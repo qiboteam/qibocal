@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn.model_selection import GridSearchCV, RepeatedStratifiedKFold
 from sklearn.svm import SVC
+import numpy as np
 
 from . import utils
 
@@ -34,7 +35,7 @@ def hyperopt(x_train, y_train, _path):
     space["C"] = np.linspace(0.01, 2, num=50)
     space["degree"] = [2, 3, 4]
     search = GridSearchCV(clf, space, scoring="accuracy", n_jobs=-1, cv=cv)
-    _ = search.fit(x_train, y_train)
+    _ = search.fit(x_train, y_train.astype(np.int))
 
     return search.best_params_
 

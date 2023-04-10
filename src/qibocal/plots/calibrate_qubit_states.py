@@ -17,6 +17,7 @@ ROC_LENGHT = 800
 ROC_WIDTH = 800
 LEGEND_FONT_SIZE = 20
 TITLE_SIZE = 25
+SPACING = 0.1
 # For calibrate qubit states
 def qubit_states(folder, routine, qubit, format):
     figures = []
@@ -49,18 +50,18 @@ def qubit_states(folder, routine, qubit, format):
         fig = make_subplots(
             rows=1,
             cols=len(models_name),
-            horizontal_spacing=0.1,
-            vertical_spacing=0.1,
+            horizontal_spacing=SPACING*3/len(models_name),
+            vertical_spacing=SPACING,
             subplot_titles=(models_name),
-            # column_width = [COLUMNWIDTH]*len(models_name)
+            column_width = [COLUMNWIDTH]*len(models_name)
         )
         fig_roc = go.Figure()
         fig_roc.add_shape(type="line", line=dict(dash="dash"), x0=0, x1=1, y0=0, y1=1)
         fig_benchmarks = make_subplots(
             rows=1,
             cols=3,
-            horizontal_spacing=0.1,
-            vertical_spacing=0.1,
+            horizontal_spacing=SPACING,
+            vertical_spacing=SPACING,
             subplot_titles=("accuracy", "training time (s)", "testing time (s)"),
             # column_width = [COLUMNWIDTH]*3
         )
@@ -70,6 +71,7 @@ def qubit_states(folder, routine, qubit, format):
             y_pred = _bytes_to_np(parameters.df.iloc[i]["y_pred"], np.int64)
             predictions = _bytes_to_np(parameters.df.iloc[i]["predictions"], np.int64)
             # Evaluate the ROC curve
+            print(y_pred, y_test)
             fpr, tpr, _ = roc_curve(y_test, y_pred)
             auc_score = roc_auc_score(y_test, y_pred)
 
@@ -286,6 +288,8 @@ def qubit_states(folder, routine, qubit, format):
                 ),
          
             )
+            fig_benchmarks.update_yaxes(type="log", row = 1, col = 2)
+            fig_benchmarks.update_yaxes(type="log", row = 1, col = 3)
             fig_benchmarks.update_layout(
                 autosize = False,
                 height = COLUMNWIDTH,
