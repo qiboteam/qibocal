@@ -18,6 +18,8 @@ ROC_WIDTH = 800
 LEGEND_FONT_SIZE = 20
 TITLE_SIZE = 25
 SPACING = 0.1
+
+
 # For calibrate qubit states
 def qubit_states(folder, routine, qubit, format):
     figures = []
@@ -50,10 +52,10 @@ def qubit_states(folder, routine, qubit, format):
         fig = make_subplots(
             rows=1,
             cols=len(models_name),
-            horizontal_spacing=SPACING*3/len(models_name),
+            horizontal_spacing=SPACING * 3 / len(models_name),
             vertical_spacing=SPACING,
             subplot_titles=(models_name),
-            column_width = [COLUMNWIDTH]*len(models_name)
+            column_width=[COLUMNWIDTH] * len(models_name),
         )
         fig_roc = go.Figure()
         fig_roc.add_shape(type="line", line=dict(dash="dash"), x0=0, x1=1, y0=0, y1=1)
@@ -272,33 +274,33 @@ def qubit_states(folder, routine, qubit, format):
             fig.update_layout(
                 # showlegend=False,
                 uirevision="0",  # ``uirevision`` allows zooming while live plotting
-                autosize = False,
+                autosize=False,
                 height=COLUMNWIDTH,
-                width= COLUMNWIDTH * len(models_name),
-                title = dict(text = "Results", font=dict(size=TITLE_SIZE)),
+                width=COLUMNWIDTH * len(models_name),
+                title=dict(text="Results", font=dict(size=TITLE_SIZE)),
                 legend=dict(
                     orientation="h",
                     yanchor="bottom",
                     xanchor="left",
-                    y = - 0.3,
-                    x = 0,
-                    itemsizing = "constant",
-                    font = dict(size = LEGEND_FONT_SIZE)                
+                    y=-0.3,
+                    x=0,
+                    itemsizing="constant",
+                    font=dict(size=LEGEND_FONT_SIZE),
                 ),
             )
-            fig_benchmarks.update_yaxes(type="log", row = 1, col = 2)
-            fig_benchmarks.update_yaxes(type="log", row = 1, col = 3)
+            fig_benchmarks.update_yaxes(type="log", row=1, col=2)
+            fig_benchmarks.update_yaxes(type="log", row=1, col=3)
             fig_benchmarks.update_layout(
-                autosize = False,
-                height = COLUMNWIDTH,
-                width=COLUMNWIDTH*3,
-                title = dict(text = "Benchmarks", font=dict(size=TITLE_SIZE)),
+                autosize=False,
+                height=COLUMNWIDTH,
+                width=COLUMNWIDTH * 3,
+                title=dict(text="Benchmarks", font=dict(size=TITLE_SIZE)),
             )
             fig_roc.update_layout(
                 width=ROC_WIDTH,
-                height = ROC_LENGHT,
-                title = dict(text = "ROC curves", font=dict(size=TITLE_SIZE)),
-                legend = dict(font=dict(size=LEGEND_FONT_SIZE))
+                height=ROC_LENGHT,
+                title=dict(text="ROC curves", font=dict(size=TITLE_SIZE)),
+                legend=dict(font=dict(size=LEGEND_FONT_SIZE)),
             )
 
     figures.append(fig_roc)
