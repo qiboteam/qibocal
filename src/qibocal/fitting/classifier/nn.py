@@ -1,4 +1,5 @@
 import keras_tuner as kt  # pylint: disable=import-error
+import numpy as np
 from tensorflow.keras import backend as K  # pylint: disable=import-error
 from tensorflow.keras import callbacks, optimizers  # pylint: disable=import-error
 from tensorflow.keras.layers import (  # pylint: disable=import-error
@@ -7,7 +8,6 @@ from tensorflow.keras.layers import (  # pylint: disable=import-error
     Layer,
 )
 from tensorflow.keras.models import Sequential  # pylint: disable=import-error
-import numpy as np
 
 from .utils import identity
 

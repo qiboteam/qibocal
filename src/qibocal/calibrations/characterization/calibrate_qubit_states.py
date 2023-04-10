@@ -167,7 +167,9 @@ def calibrate_qubit_states(
         grid = np.vstack([i_values.ravel(), q_values.ravel()]).T
 
         for i, model in enumerate(models):
-            grid_pred = np.round(np.reshape(model.predict(grid), q_values.shape)).astype(np.int64)
+            grid_pred = np.round(
+                np.reshape(model.predict(grid), q_values.shape)
+            ).astype(np.int64)
             y_pred = model.predict(x_test)
             # Useful for NN that return as predictions the probability
             y_pred = np.round(y_pred)
