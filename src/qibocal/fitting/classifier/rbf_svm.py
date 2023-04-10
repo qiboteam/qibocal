@@ -1,7 +1,6 @@
 import numpy as np
 from sklearn.model_selection import GridSearchCV, RepeatedStratifiedKFold
 from sklearn.svm import SVC
-import numpy as np
 
 from . import utils
 

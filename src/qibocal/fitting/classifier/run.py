@@ -275,11 +275,13 @@ def train_qubit(
 
     for mod in classifiers:
         classifier = Classifier(mod, qubit_dir)
-        print(classifier.name)#TODO:remmove this line
+        print(classifier.name)  # TODO:remmove this line
         classifier.savedir.mkdir(exist_ok=True)
         logging.info(f"Classification model: {classifier.name}")
-        hyperpars = classifier.hyperopt(x_train, y_train.astype(np.int64), classifier.savedir) 
-       
+        hyperpars = classifier.hyperopt(
+            x_train, y_train.astype(np.int64), classifier.savedir
+        )
+
         classifier.dump_hyper(hyperpars)
         model = classifier.create_model(hyperpars)
 
