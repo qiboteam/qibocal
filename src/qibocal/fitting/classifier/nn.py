@@ -1,5 +1,4 @@
 import keras_tuner as kt  # pylint: disable=import-error
-import numpy as np
 from tensorflow.keras import backend as K  # pylint: disable=import-error
 from tensorflow.keras import callbacks, optimizers  # pylint: disable=import-error
 from tensorflow.keras.layers import (  # pylint: disable=import-error
@@ -51,7 +50,6 @@ def hyperopt(x_train, y_train, path):
 
     # Get the optimal hyperparameters
     best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
-    print("FFFFFFFFFF ", best_hps.get_config())
     return best_hps.get_config()
 
 
