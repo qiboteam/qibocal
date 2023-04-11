@@ -243,7 +243,7 @@ class ActionBuilder:
         except FileNotFoundError:
             return None
 
-        params = data_fit.df.to_dict("index")[qubit if qubit == 0 else qubit - 1]
+        params = data_fit.df[data_fit.df["qubit"] == qubit]
         settings = load_yaml(f"{self.folder}/new_platform.yml")
         for param in params:
             if param in list(self.qubits[qubit].__annotations__.keys()):

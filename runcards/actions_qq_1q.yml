@@ -7,20 +7,16 @@ format: csv
 actions:
 
   # resonator_spectroscopy: # wide
-  #   fast_width: 30_000_000
-  #   fast_step: 1_000_000
-  #   precision_width: 2_000_000
-  #   precision_step: 100_000
+  #   freq_width: 30_000_000
+  #   freq_step: 1_000_000
   #   software_averages: 1
   #   points: 5
 
-  resonator_spectroscopy: # narrow
-    fast_width: 10_000_000
-    fast_step: 500_000
-    precision_width: 1_000_000
-    precision_step: 50_000
-    software_averages: 2
-    points: 5
+  # resonator_spectroscopy: # narrow
+  #   freq_width: 10_000_000
+  #   freq_step: 500_000
+  #   software_averages: 2
+  #   points: 5
 
   # resonator_punchout:
   #   freq_width: 10_000_000
@@ -51,13 +47,11 @@ actions:
 
 
 
-  qubit_spectroscopy: # wide
-    fast_width: 500_000_000
-    fast_step: 2_000_000
-    precision_width: 2_000_000
-    precision_step: 100_000
-    software_averages: 1
-    points: 5
+  # qubit_spectroscopy: # wide
+  #   freq_width: 500_000_000
+  #   freq_step: 2_000_000
+  #   software_averages: 1
+  #   points: 5
 
 
   # qubit_spectroscopy_flux: # precission
@@ -203,4 +197,29 @@ actions:
   #   nflips_max: 30
   #   nflips_step: 2
   #   software_averages: 2
+  #   points: 1
+
+
+  # flux_pulse_timing:
+  #   flux_pulse_amplitude_start: 0.1
+  #   flux_pulse_amplitude_end: 0.5
+  #   flux_pulse_amplitude_step: 0.1
+  #   flux_pulse_start_start: -200
+  #   flux_pulse_start_end:  500
+  #   flux_pulse_start_step: 12
+  #   flux_pulse_duration: 20
+  #   time_window: 300
+  #   software_averages: 1
+  #   points: 1
+
+  # cryoscope:
+  #   flux_pulse_duration_start: 4
+  #   flux_pulse_duration_end: 250
+  #   flux_pulse_duration_step: 1
+  #   flux_pulse_amplitude_start: 0.065
+  #   flux_pulse_amplitude_end: 0.0651
+  #   flux_pulse_amplitude_step: 0.01
+  #   delay_before_readout: 40
+  #   flux_pulse_shapes: None
+  #   software_averages: 1
   #   points: 1
