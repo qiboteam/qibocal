@@ -11,7 +11,7 @@ from qibocal.data import Data
 from qibocal.fitting.utils import (
     cos,
     exp,
-    find_min_msr_att,
+    find_min_msr,
     flipping,
     freq_q_mathieu,
     freq_r_mathieu,
@@ -24,7 +24,6 @@ from qibocal.fitting.utils import (
     parse,
     rabi,
     ramsey,
-    split_list_by_threshold,
 )
 
 
@@ -1122,7 +1121,7 @@ def punchout_fit(data, qubits, resonator_type, labels, fit_type):
             averaged_data_updated = averaged_data.copy()
             averaged_data_updated.update(normalised_data["MSR"])
 
-            min_points = find_min_msr_att(averaged_data_updated, resonator_type)
+            min_points = find_min_msr(averaged_data_updated, resonator_type, fit_type)
             min_points = [[q.magnitude for q in tupla] for tupla in min_points]
             x = [point[0] for point in min_points]
             y = [point[1] for point in min_points]
@@ -1130,9 +1129,10 @@ def punchout_fit(data, qubits, resonator_type, labels, fit_type):
             max_x = x[np.argmax(x)]
             min_x = x[np.argmin(x)]
             middle_x = (max_x + min_x) / 2
-            middle_y = abs(y[np.argmax(y)] - y[np.argmin(y)]) / 2
 
-            hp_points, lp_points = split_list_by_threshold(min_points, middle_x)
+            hp_points = [point for point in min_points if point[0] < middle_x]
+            lp_points = [point for point in min_points if point[0] >= middle_x]
+            
             freq_hp = get_max_freq(hp_points, middle_x)
             freq_lp = get_max_freq(lp_points, middle_x)
 
@@ -1152,7 +1152,7 @@ def punchout_fit(data, qubits, resonator_type, labels, fit_type):
             )
 
         except:
-            log.warning("spin_echo_fit: the fitting was not succesful")
+            log.warning("resonator_punchout_fit: the fitting was not succesful")
             data_fit.add(
                 {key: 0 if key != "qubit" else qubit for key in data_fit.df.columns}
             )

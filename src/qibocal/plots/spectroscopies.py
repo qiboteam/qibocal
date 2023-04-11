@@ -5,7 +5,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
-from qibocal.fitting.utils import freq_r_mathieu, freq_r_transmon, line, lorenzian
+from qibocal.fitting.utils import freq_r_mathieu, freq_r_transmon, line, lorenzian, norm
 from qibocal.plots.utils import get_color, get_data_subfolders, load_data
 
 
@@ -231,9 +231,6 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
             .mean()
         )
 
-        def norm(x_mags):
-            return (x_mags - np.min(x_mags)) / (np.max(x_mags) - np.min(x_mags))
-
         normalised_data = averaged_data.groupby(["attenuation"], as_index=False)[
             ["MSR"]
         ].transform(norm)
@@ -300,13 +297,13 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
 
                 title_text = ""
                 title_text += (
-                    f"q{qubit}/r{report_n} | Freq@Lp: {params['freq_lp']} Hz.<br>"
+                    f"q{qubit}/r{report_n} | Resonator Frequency at Low Power: {params['freq_lp']} Hz.<br>"
                 )
-                title_text += f"q{qubit}/r{report_n} | Attenuation@Lp Range: {params['lp_max_att']} - {params['lp_min_att']} db.<br>"
+                title_text += f"q{qubit}/r{report_n} | Low Power Attenuation Range: {params['lp_max_att']} - {params['lp_min_att']} db.<br>"
                 title_text += (
-                    f"q{qubit}/r{report_n} | Freq@Hp: {params['freq_hp']} Hz.<br>"
+                    f"q{qubit}/r{report_n} | Resonator Frequency at High Power: {params['freq_hp']} Hz.<br>"
                 )
-                title_text += f"q{qubit}/r{report_n} | Attenuation@Hp: {params['hp_max_att']} - {params['hp_min_att']} db.<br>"
+                title_text += f"q{qubit}/r{report_n} | High Power Attenuation Range: {params['hp_max_att']} - {params['hp_min_att']} db.<br>"
                 fitting_report = fitting_report + title_text
             else:
                 fitting_report = "No fitting data"

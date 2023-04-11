@@ -131,10 +131,10 @@ def freq_r_mathieu(x, p0, p1, p2, p3, p4, p5, p6, p7=0.499):
     return f_r
 
 
-def find_min_msr_att(data, resonator_type):
+def find_min_msr(data, resonator_type, fit_type):
     # Find the minimum values of z for each level of attenuation and their locations (x, y).
     x = data["frequency"]
-    y = data["attenuation"]
+    y = data[fit_type]
     z = data["MSR"]
 
     min_msr_per_attenuation = []
@@ -150,12 +150,6 @@ def find_min_msr_att(data, resonator_type):
         min_msr_per_attenuation.append((freq[0], attenuation, min_z))
 
     return min_msr_per_attenuation
-
-
-def split_list_by_threshold(min_points, threshold):
-    less_than_threshold = [point for point in min_points if point[0] < threshold]
-    greater_than_threshold = [point for point in min_points if point[0] >= threshold]
-    return less_than_threshold, greater_than_threshold
 
 
 def get_max_freq(distribution_points, middle_point):
@@ -177,7 +171,6 @@ def get_points_with_max_freq(min_points, max_freq):
     return max(matching_points, key=lambda point: point[1]), min(
         matching_points, key=lambda point: point[1]
     )
-
 
 def norm(x_mags):
     return (x_mags - np.min(x_mags)) / (np.max(x_mags) - np.min(x_mags))
