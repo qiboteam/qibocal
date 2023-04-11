@@ -65,6 +65,17 @@ def tune_transition(
     flux_sequence, _ = platform.create_CZ_pulse_sequence(
         (highfreq, lowfreq), start=initialize_1.finish
     )
+    # find flux pulse that is targeting the ``highfreq`` qubit
+    flux_pulse = next(
+        iter(
+            pulse
+            for pulse in flux_sequence
+            if isinstance(pulse, FluxPulse) and pulse.qubit == highfreq
+        )
+    )
+    # set initial duration to 1 until the QM driver is fixed
+    flux_pulse.duration = 1
+
     measure_lowfreq = platform.create_qubit_readout_pulse(
         lowfreq, start=flux_sequence.finish
     )
@@ -87,50 +98,39 @@ def tune_transition(
     durations = np.arange(
         flux_pulse_duration_start, flux_pulse_duration_end, flux_pulse_duration_step
     )
-    # find flux pulse that is targeting the ``highfreq`` qubit
-    flux_pulse = next(
-        iter(
-            pulse
-            for pulse in flux_sequence
-            if isinstance(pulse, FluxPulse) and pulse.qubit == highfreq
-        )
-    )
-    sweeper = Sweeper(Parameter.amplitude, amplitudes, pulses=[flux_pulse])
 
     sequence = (
         initialize_1 + initialize_2 + flux_sequence + measure_lowfreq + measure_highfreq
     )
-
     # Might want to fix duration to expected time for 2 qubit gate.
-    for duration in durations:
-        for flux_pulse in flux_sequence.qf_pulses:
-            flux_pulse.duration = duration
+    duration_sweeper = Sweeper(Parameter.duration, durations, pulses=[flux_pulse])
+    amplitude_sweeper = Sweeper(Parameter.amplitude, amplitudes, pulses=[flux_pulse])
 
-        results = platform.sweep(
-            sequence, sweeper, nshots=nshots, relaxation_time=relaxation_time
-        )
+    results = platform.sweep(
+        sequence, duration_sweeper, amplitude_sweeper, nshots=1, relaxation_time=0
+    )
 
-        res_temp = results[measure_lowfreq.serial].to_dict(average=False)
-        res_temp.update(
-            {
-                "flux_pulse_duration[ns]": len(amplitudes) * [duration],
-                "flux_pulse_amplitude[dimensionless]": amplitudes,
-                "q_freq": len(amplitudes) * ["low"],
-            }
-        )
-        data.add_data_from_dict(res_temp)
+    res_temp = results[measure_lowfreq.serial].to_dict(average=False)
+    res_durations = np.repeat(durations, len(amplitudes))
+    res_amplitudes = np.array(len(durations) * list(amplitudes)).flatten()
+    res_temp.update(
+        {
+            "flux_pulse_duration[ns]": res_durations,
+            "flux_pulse_amplitude[dimensionless]": res_amplitudes,
+            "q_freq": len(durations) * len(amplitudes) * ["low"],
+        }
+    )
+    data.add_data_from_dict(res_temp)
 
-        res_temp = results[measure_highfreq.serial].to_dict(average=False)
-        res_temp.update(
-            {
-                "flux_pulse_duration[ns]": len(amplitudes) * [duration],
-                "flux_pulse_amplitude[dimensionless]": amplitudes,
-                "q_freq": len(amplitudes) * ["high"],
-            }
-        )
-        data.add_data_from_dict(res_temp)
-        yield data
-
+    res_temp = results[measure_highfreq.serial].to_dict(average=False)
+    res_temp.update(
+        {
+            "flux_pulse_duration[ns]": res_durations,
+            "flux_pulse_amplitude[dimensionless]": res_amplitudes,
+            "q_freq": len(durations) * len(amplitudes) * ["high"],
+        }
+    )
+    data.add_data_from_dict(res_temp)
     yield data
 
 
