@@ -1132,7 +1132,7 @@ def punchout_fit(data, qubits, resonator_type, labels, fit_type):
 
             hp_points = [point for point in min_points if point[0] < middle_x]
             lp_points = [point for point in min_points if point[0] >= middle_x]
-            
+
             freq_hp = get_max_freq(hp_points, middle_x)
             freq_lp = get_max_freq(lp_points, middle_x)
 

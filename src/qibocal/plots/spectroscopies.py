@@ -296,13 +296,9 @@ def frequency_attenuation_msr_phase(folder, routine, qubit, format):
                 )
 
                 title_text = ""
-                title_text += (
-                    f"q{qubit}/r{report_n} | Resonator Frequency at Low Power: {params['freq_lp']} Hz.<br>"
-                )
+                title_text += f"q{qubit}/r{report_n} | Resonator Frequency at Low Power: {params['freq_lp']} Hz.<br>"
                 title_text += f"q{qubit}/r{report_n} | Low Power Attenuation Range: {params['lp_max_att']} - {params['lp_min_att']} db.<br>"
-                title_text += (
-                    f"q{qubit}/r{report_n} | Resonator Frequency at High Power: {params['freq_hp']} Hz.<br>"
-                )
+                title_text += f"q{qubit}/r{report_n} | Resonator Frequency at High Power: {params['freq_hp']} Hz.<br>"
                 title_text += f"q{qubit}/r{report_n} | High Power Attenuation Range: {params['hp_max_att']} - {params['hp_min_att']} db.<br>"
                 fitting_report = fitting_report + title_text
             else:

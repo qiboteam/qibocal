@@ -172,5 +172,6 @@ def get_points_with_max_freq(min_points, max_freq):
         matching_points, key=lambda point: point[1]
     )
 
+
 def norm(x_mags):
     return (x_mags - np.min(x_mags)) / (np.max(x_mags) - np.min(x_mags))
