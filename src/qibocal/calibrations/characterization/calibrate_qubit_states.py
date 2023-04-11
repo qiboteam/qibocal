@@ -45,8 +45,7 @@ def calibrate_qubit_states(
     """
 
     # reload instrument settings from runcard
-    platform.reload_settings()
-
+    # platform.reload_settings()
     # create two sequences of pulses:
     # state0_sequence: I  - MZ
     # state1_sequence: RX - MZ
@@ -121,19 +120,19 @@ def calibrate_qubit_states(
     classifiers_dict = {}
     for qubit in qubits:
         benchmark_table, y_test, x_test, models, names, hpars_list = run.train_qubit(
-            Path(save_dir), qubit, qubits_data=data.df, classifiers=classifiers
+            Path(save_dir), qubits[qubit], qubits_data=data.df, classifiers=classifiers
         )
 
-        clean_hpars_list = []
-        for hpar in hpars_list:
-            try:  # Extract the NN best hyperparameters
-                clean_hpars_list.append(hpar["values"])
-            except KeyError:
-                clean_hpars_list.append(hpar)
+        # clean_hpars_list = []
+        # for hpar in hpars_list:
+        #     try:  # Extract the NN best hyperparameters
+        #         clean_hpars_list.append(hpar["values"])
+        #     except KeyError:
+        #         clean_hpars_list.append(hpar)
 
         classifiers_dict = {
             **classifiers_dict,
-            qubit: {names[j]: clean_hpars_list[j] for j in range(len(names))},
+            qubit: {names[j]: hpars_list[j] for j in range(len(names))},
         }
         y_test = y_test.astype(np.int64)
         state0_data = data.df[data.df["state"] == 0]

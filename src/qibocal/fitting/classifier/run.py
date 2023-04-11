@@ -9,6 +9,7 @@ from typing import List, Optional
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from qibolab.platforms.abstract import Qubit
 from sklearn.metrics import accuracy_score
 
 from . import data, plots
@@ -205,7 +206,7 @@ def plot_history(history, save_dir: pathlib.Path):
 
 def train_qubit(
     base_dir: pathlib.Path,
-    qubit: int,
+    qubit: Qubit,
     data_path=None,
     qubits_data=None,
     classifiers=None,
@@ -257,10 +258,10 @@ def train_qubit(
                     plots.plot_conf_matr(y_test, qubit_dir)
     """
 
-    qubit_data = qubits_data[qubits_data["qubit"] == qubit]
+    qubit_data = qubits_data[qubits_data["qubit"] == qubit.name]
     nn_epochs = 200
     nn_val_split = 0.2
-    qubit_dir = base_dir / f"qubit{qubit}"
+    qubit_dir = base_dir / f"qubit{qubit.name}"
     qubit_dir.mkdir(exist_ok=True)
     # qubit_data = data.load_qubit(data_path, qubit)
     # data.plot_qubit(qubit_data, qubit_dir)
@@ -279,9 +280,13 @@ def train_qubit(
         print(classifier.name)  # TODO:remmove this line
         classifier.savedir.mkdir(exist_ok=True)
         logging.info(f"Classification model: {classifier.name}")
-        hyperpars = classifier.hyperopt(
-            x_train, y_train.astype(np.int64), classifier.savedir
-        )
+        if classifier.name not in qubit.classifiers_hpars:
+            hyperpars = classifier.hyperopt(
+                x_train, y_train.astype(np.int64), classifier.savedir
+            )
+        else:
+            hyperpars = qubit.classifiers_hpars[classifier.name]
+        print(hyperpars)
         hpars_list.append(hyperpars)
         classifier.dump_hyper(hyperpars)
         model = classifier.create_model(hyperpars)
