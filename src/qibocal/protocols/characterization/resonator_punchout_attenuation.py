@@ -76,7 +76,7 @@ def _acquisition(
 
     # attenuation
     attenuation_range = np.arange(params.min_att, params.max_att, params.step_att)
-    amp_sweeper = Sweeper(
+    att_sweeper = Sweeper(
         Parameter.attenuation, attenuation_range, qubits=[qubit for qubit in qubits]
     )
 
@@ -86,11 +86,11 @@ def _acquisition(
     data = ResonatorPunchoutAttenuationData()
 
     # repeat the experiment as many times as defined by software_averages
-    amps = np.repeat(attenuation_range, len(delta_frequency_range))
+    att = np.repeat(attenuation_range, len(delta_frequency_range))
     for iteration in range(params.software_averages):
         results = platform.sweep(
             sequence,
-            amp_sweeper,
+            att_sweeper,
             freq_sweeper,
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
@@ -109,7 +109,7 @@ def _acquisition(
             r.update(
                 {
                     "frequency[Hz]": freqs,
-                    "attenuation[dB]": amps,
+                    "attenuation[dB]": att,
                     "qubit": len(freqs) * [qubit],
                     "iteration": len(freqs) * [iteration],
                 }
