@@ -10,11 +10,11 @@ from qibocal.plots.utils import get_data_subfolders
 
 def landscape_2q_gate(folder, routine, qubit, format):
     fitting_report = "No fitting data"
-    highfreq = 2
+    highfreq = "A3"
     lowfreq = qubit
-    if qubit > 2:
-        highfreq = qubit
-        lowfreq = 2
+    # if qubit > 2:
+    #    highfreq = qubit
+    #    lowfreq = 2
 
     subfolder = get_data_subfolders(folder)[0]
     data = DataUnits.load_data(
@@ -97,11 +97,11 @@ def landscape_2q_gate(folder, routine, qubit, format):
 
 def duration_amplitude_msr_flux_pulse(folder, routine, qubit, format):
     fitting_report = "No fitting data"
-    highfreq = 2
+    highfreq = "A3"
     lowfreq = qubit
-    if qubit > 2:
-        highfreq = qubit
-        lowfreq = 2
+    # if qubit > 2:
+    #    highfreq = qubit
+    #    lowfreq = 2
 
     subfolder = get_data_subfolders(folder)[0]
     data = DataUnits.load_data(
@@ -160,11 +160,11 @@ def duration_amplitude_msr_flux_pulse(folder, routine, qubit, format):
 
 def duration_amplitude_I_flux_pulse(folder, routine, qubit, format):
     fitting_report = "No fitting data"
-    highfreq = 2
+    highfreq = "A3"
     lowfreq = qubit
-    if qubit > 2:
-        highfreq = qubit
-        lowfreq = 2
+    # if qubit > 2:
+    #    highfreq = qubit
+    #    lowfreq = 2
 
     subfolder = get_data_subfolders(folder)[0]
     data = DataUnits.load_data(
@@ -223,11 +223,11 @@ def duration_amplitude_I_flux_pulse(folder, routine, qubit, format):
 
 def duration_amplitude_Q_flux_pulse(folder, routine, qubit, format):
     fitting_report = "No fitting data"
-    highfreq = 2
+    highfreq = "A3"
     lowfreq = qubit
-    if qubit > 2:
-        highfreq = qubit
-        lowfreq = 2
+    # if qubit > 2:
+    #    highfreq = qubit
+    #    lowfreq = 2
 
     subfolder = get_data_subfolders(folder)[0]
     data = DataUnits.load_data(
