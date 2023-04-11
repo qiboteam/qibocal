@@ -515,7 +515,7 @@ def dispersive_shift(
             - **qubit**: The qubit being tested
             - **iteration**: The iteration number of the many determined by software_averages
     """
-
+    # TODO: add sweepers
     # reload instrument settings from runcard
     platform.reload_settings()
 
@@ -595,7 +595,7 @@ def dispersive_shift(
             for data, results in list(zip([data_0, data_1], [results_0, results_1])):
                 for ro_pulse in ro_pulses.values():
                     # average msr, phase, i and q over the number of shots defined in the runcard
-                    r = results[ro_pulse.serial].raw
+                    r = results[ro_pulse.serial].average.raw
                     # store the results
                     r.update(
                         {
