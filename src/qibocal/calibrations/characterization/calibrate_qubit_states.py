@@ -75,7 +75,7 @@ def calibrate_qubit_states(
 
     # retrieve and store the results for every qubit
     for ro_pulse in ro_pulses.values():
-        r = state0_results[ro_pulse.serial].to_dict(average=False)
+        r = state0_results[ro_pulse.serial].serial
         r.update(
             {
                 "qubit": [ro_pulse.qubit] * nshots,
@@ -90,7 +90,7 @@ def calibrate_qubit_states(
 
     # retrieve and store the results for every qubit
     for ro_pulse in ro_pulses.values():
-        r = state1_results[ro_pulse.serial].to_dict(average=False)
+        r = state1_results[ro_pulse.serial].serial
         r.update(
             {
                 "qubit": [ro_pulse.qubit] * nshots,
@@ -118,12 +118,23 @@ def calibrate_qubit_states(
             "qubit",
         },
     )
-
+    classifiers_dict = {}
     for qubit in qubits:
-        benchmark_table, y_test, x_test, models, names = run.train_qubit(
+        benchmark_table, y_test, x_test, models, names, hpars_list = run.train_qubit(
             Path(save_dir), qubit, qubits_data=data.df, classifiers=classifiers
         )
 
+        clean_hpars_list = []
+        for hpar in hpars_list:
+            try:  # Extract the NN best hyperparameters
+                clean_hpars_list.append(hpar["values"])
+            except KeyError:
+                clean_hpars_list.append(hpar)
+
+        classifiers_dict = {
+            **classifiers_dict,
+            qubit: {names[j]: clean_hpars_list[j] for j in range(len(names))},
+        }
         y_test = y_test.astype(np.int64)
         state0_data = data.df[data.df["state"] == 0]
         state1_data = data.df[data.df["state"] == 1]
@@ -196,6 +207,7 @@ def calibrate_qubit_states(
             }
 
             parameters.add({**results1, **results2, **benchmarks})
-
+    platform.update({"classifiers_hpars": classifiers_dict})
+    # platform.dump(Path("test/new_runcard2.yml"))
     yield data
     yield parameters

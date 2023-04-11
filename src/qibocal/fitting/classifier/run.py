@@ -268,6 +268,7 @@ def train_qubit(
     models = []
     results_list = []
     names = []
+    hpars_list = []
     if classifiers is None:
         classifiers = CLS_MODULES
 
@@ -281,7 +282,7 @@ def train_qubit(
         hyperpars = classifier.hyperopt(
             x_train, y_train.astype(np.int64), classifier.savedir
         )
-
+        hpars_list.append(hyperpars)
         classifier.dump_hyper(hyperpars)
         model = classifier.create_model(hyperpars)
 
@@ -311,7 +312,7 @@ def train_qubit(
     plots.plot_models_results(x_train, x_test, y_test, qubit_dir, models, names)
     plots.plot_roc_curves(x_test, y_test, qubit_dir, models, names)
 
-    return benchmarks_table, y_test, x_test, models, names
+    return benchmarks_table, y_test, x_test, models, names, hpars_list
 
 
 def dump_preds(y_pred, dir_path):
