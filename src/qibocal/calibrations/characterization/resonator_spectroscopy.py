@@ -432,9 +432,9 @@ def resonator_spectroscopy_flux(
     if fluxlines in ["qubits", "diagonal"]:
         fluxlines = qubits.keys()
 
-    sweetspot_biass = {}
+    sweetspot_bias = {}
     for fluxline in fluxlines:
-        sweetspot_biass[fluxline] = qubits[fluxline].sweetspot
+        sweetspot_bias[fluxline] = qubits[fluxline].sweetspot
     delta_bias_range = np.arange(-bias_width / 2, bias_width / 2, bias_step)
 
     # create a DataUnits object to store the results,
@@ -463,9 +463,10 @@ def resonator_spectroscopy_flux(
                 fluxline = qubit
                 # TODO: Support more fluxlines for QM
                 result = results[ro_pulses[qubit].serial]
-                biases = np.repeat(
-                    delta_bias_range, len(delta_frequency_range)
-                ) + platform.get_bias(fluxline)
+                biases = (
+                    np.repeat(delta_bias_range, len(delta_frequency_range))
+                    + sweetspot_bias[fluxline]
+                )
                 freqs = np.array(
                     len(delta_bias_range)
                     * list(delta_frequency_range + ro_pulses[qubit].frequency)
@@ -486,7 +487,7 @@ def resonator_spectroscopy_flux(
         else:
             for fluxline in fluxlines:
                 for f in fluxlines:
-                    platform.set_bias(f, sweetspot_biass[f])
+                    platform.set_bias(f, sweetspot_bias[f])
                 bias_sweeper = Sweeper(
                     Parameter.bias, delta_bias_range, qubits=[fluxline]
                 )
@@ -500,9 +501,10 @@ def resonator_spectroscopy_flux(
 
                 for qubit in qubits:
                     result = fluxline_results[ro_pulses[qubit].serial]
-                    biases = np.repeat(
-                        delta_bias_range, len(delta_frequency_range)
-                    ) + platform.get_bias(fluxline)
+                    biases = (
+                        np.repeat(delta_bias_range, len(delta_frequency_range))
+                        + sweetspot_bias[fluxline]
+                    )
                     freqs = np.array(
                         len(delta_bias_range)
                         * list(delta_frequency_range + ro_pulses[qubit].frequency)
@@ -530,8 +532,9 @@ def dispersive_shift(
     qubits: dict,
     freq_width,
     freq_step,
+    nshots: int = 1024,
+    relaxation_time: int = 50,
     software_averages=1,
-    points=10,
 ):
     r"""
     Perform spectroscopy on the readout resonator, with the qubit in ground and excited state, showing
@@ -580,6 +583,11 @@ def dispersive_shift(
 
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(-freq_width // 2, freq_width // 2, freq_step)
+    sweeper = Sweeper(
+        Parameter.frequency,
+        delta_frequency_range,
+        pulses=[ro_pulses[qubit] for qubit in qubits],
+    )
 
     # create a DataUnits objects to store the results
     data_0 = DataUnits(
@@ -590,81 +598,61 @@ def dispersive_shift(
     )
 
     # repeat the experiment as many times as defined by software_averages
-    count = 0
-    # TODO: implement sweeper
     for iteration in range(software_averages):
-        # sweep the parameter
-        for delta_freq in delta_frequency_range:
-            # save data as often as defined by points
-            if count % points == 0 and count > 0:
-                # save data
-                yield data_0
-                yield data_1
-                # calculate and save fit
-                yield lorentzian_fit(
-                    data=data_0,
-                    x="frequency[Hz]",
-                    y="MSR[uV]",
-                    qubits=qubits,
-                    resonator_type=platform.resonator_type,
-                    labels=["readout_frequency", "peak_voltage"],
-                    fit_file_name="fit_data_0",
-                )
-                yield lorentzian_fit(
-                    data=data_1,
-                    x="frequency[Hz]",
-                    y="MSR[uV]",
-                    qubits=qubits,
-                    resonator_type=platform.resonator_type,
-                    labels=["readout_frequency_shifted", "peak_voltage"],
-                    fit_file_name="fit_data_1",
-                )
+        results_0 = platform.sweep(
+            sequence_0, sweeper, nshots=nshots, relaxation_time=relaxation_time
+        )
+        results_1 = platform.sweep(
+            sequence_1, sweeper, nshots=nshots, relaxation_time=relaxation_time
+        )
 
-            # reconfigure the instruments based on the new resonator frequency
-            # in this case setting the local oscillators
-            # the pulse sequence does not need to be modified or recreated between executions
-            for qubit in qubits:
-                ro_pulses[qubit].frequency = (
-                    delta_freq + qubits[qubit].readout_frequency
-                )
+        # retrieve the results for every qubit
+        for qubit in qubits:
+            # average msr, phase, i and q over the number of shots defined in the runcard
+            result_0 = results_0[ro_pulses[qubit].serial]
+            # store the results
+            r_0 = result_0.to_dict(average=False)
+            r_0.update(
+                {
+                    "frequency[Hz]": delta_frequency_range + ro_pulses[qubit].frequency,
+                    "qubit": len(delta_frequency_range) * [qubit],
+                    "iteration": len(delta_frequency_range) * [iteration],
+                }
+            )
+            data_0.add_data_from_dict(r_0)
 
-            # execute the pulse sequences
-            results_0 = platform.execute_pulse_sequence(sequence_0)
-            results_1 = platform.execute_pulse_sequence(sequence_1)
+            # average msr, phase, i and q over the number of shots defined in the runcard
+            result_1 = results_1[ro_pulses[qubit].serial]
+            # store the results
+            r_1 = result_1.to_dict(average=False)
+            r_1.update(
+                {
+                    "frequency[Hz]": delta_frequency_range + ro_pulses[qubit].frequency,
+                    "qubit": len(delta_frequency_range) * [qubit],
+                    "iteration": len(delta_frequency_range) * [iteration],
+                }
+            )
+            data_1.add_data_from_dict(r_1)
 
-            # retrieve the results for every qubit
-            for data, results in list(zip([data_0, data_1], [results_0, results_1])):
-                for ro_pulse in ro_pulses.values():
-                    # average msr, phase, i and q over the number of shots defined in the runcard
-                    r = results[ro_pulse.serial].to_dict(average=True)
-                    # store the results
-                    r.update(
-                        {
-                            "frequency[Hz]": ro_pulse.frequency,
-                            "qubit": ro_pulse.qubit,
-                            "iteration": iteration,
-                        }
-                    )
-                    data.add(r)
-            count += 1
-    # finally, save the remaining data and fits
-    yield data_0
-    yield data_1
-    yield lorentzian_fit(
-        data=data_0,
-        x="frequency[Hz]",
-        y="MSR[uV]",
-        qubits=qubits,
-        resonator_type=platform.resonator_type,
-        labels=["readout_frequency", "peak_voltage"],
-        fit_file_name="fit_data_0",
-    )
-    yield lorentzian_fit(
-        data=data_1,
-        x="frequency[Hz]",
-        y="MSR[uV]",
-        qubits=qubits,
-        resonator_type=platform.resonator_type,
-        labels=["readout_frequency_shifted", "peak_voltage"],
-        fit_file_name="fit_data_1",
-    )
+        # save data
+        yield data_0
+        yield data_1
+        # calculate and save fit
+        yield lorentzian_fit(
+            data=data_0,
+            x="frequency[Hz]",
+            y="MSR[uV]",
+            qubits=qubits,
+            resonator_type=platform.resonator_type,
+            labels=["readout_frequency", "peak_voltage"],
+            fit_file_name="fit_data_0",
+        )
+        yield lorentzian_fit(
+            data=data_1,
+            x="frequency[Hz]",
+            y="MSR[uV]",
+            qubits=qubits,
+            resonator_type=platform.resonator_type,
+            labels=["readout_frequency_shifted", "peak_voltage"],
+            fit_file_name="fit_data_1",
+        )
