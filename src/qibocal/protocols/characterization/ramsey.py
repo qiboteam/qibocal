@@ -101,7 +101,7 @@ def _acquisition(
             results = platform.execute_pulse_sequence(sequence)
             for qubit, ro_pulse in ro_pulses.items():
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                r = results[ro_pulse.serial].serial
+                r = results[ro_pulse.serial].average.raw
                 r.update(
                     {
                         "wait[ns]": wait,

@@ -90,7 +90,7 @@ def _acquisition(
 
     # retrieve and store the results for every qubit
     for ro_pulse in ro_pulses.values():
-        r = state0_results[ro_pulse.serial].serial
+        r = state0_results[ro_pulse.serial].raw
         r.update(
             {
                 "qubit": [ro_pulse.qubit] * params.nshots,
@@ -106,7 +106,7 @@ def _acquisition(
 
     # retrieve and store the results for every qubit
     for ro_pulse in ro_pulses.values():
-        r = state1_results[ro_pulse.serial].serial
+        r = state1_results[ro_pulse.serial].raw
         r.update(
             {
                 "qubit": [ro_pulse.qubit] * params.nshots,
