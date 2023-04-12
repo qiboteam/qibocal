@@ -498,8 +498,8 @@ def resonator_spectroscopy_flux(
                     relaxation_time=relaxation_time,
                 )
 
-                result = fluxline_results[ro_pulses[qubit].serial]
                 for qubit in qubits:
+                    result = fluxline_results[ro_pulses[qubit].serial]
                     biases = np.repeat(
                         delta_bias_range, len(delta_frequency_range)
                     ) + platform.get_bias(fluxline)
