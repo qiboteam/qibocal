@@ -212,7 +212,7 @@ def _fit(data: RamseyData) -> RamseyResults:  # TODO: put Platform as input
             delta_phys = 0
 
         fitted_parameters[qubit] = popt
-        corrected_qubit_frequencies[qubit] = corrected_qubit_frequency
+        corrected_qubit_frequencies[qubit] = corrected_qubit_frequency / 1e9
         t2s[qubit] = t2
         freqs_detuing[qubit] = delta_phys
 
