@@ -30,8 +30,8 @@ class RabiLengthResults(Results):
 class RabiLengthData(DataUnits):
     def __init__(self):
         super().__init__(
-            "data",
-            {"time": "ns"},
+            name="data",
+            quantities={"time": "ns"},
             options=["qubit", "iteration", "resonator_type"],
         )
 
@@ -121,7 +121,7 @@ def _acquisition(
 
             for ro_pulse in ro_pulses.values():
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                r = results[ro_pulse.serial].raw
+                r = results[ro_pulse.serial].average.raw
                 r.update(
                     {
                         "time[ns]": duration,
