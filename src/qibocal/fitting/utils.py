@@ -134,5 +134,60 @@ def freq_r_mathieu(x, p0, p1, p2, p3, p4, p5, p6, p7=0.499):
     # Effective offset charge ng                           : p[7]
     G = G_f_d(x, p2, p3, p4)
     f_q = freq_q_mathieu(x, p2, p3, p4, p5, p6, p7)
-    f_r = p0 + p1**2 * np.sqrt(G) / (p0 - f_q)
+    f_r = p0 + p1**2 * G / (p0 - f_q)
     return f_r
+
+
+def feature(x, order=3):
+    """Generate polynomial feature of the form
+    [1, x, x^2, ..., x^order] where x is the column of x-coordinates
+    and 1 is the column of ones for the intercept.
+    """
+    x = x.reshape(-1, 1)
+    return np.power(x, np.arange(order + 1).reshape(1, -1))
+
+
+def image_to_curve(x, y, z, alpha=0.0001, order=50):
+    min_y = np.min(y)
+    step_y = y[1] - y[0]
+    max_y = np.max(y)
+    leny = int((max_y - min_y) / step_y) + 1
+    lenx = int(len(x) / (leny))
+    max_x = np.max(x)
+    min_x = np.min(x)
+    X = np.linspace(min_x, max_x, lenx)
+    Y = np.linspace(min_y, max_y, leny)
+
+    M = np.zeros((lenx, leny))
+    for j in range(lenx):
+        M[j, :] = z[j * leny : j * leny + leny]
+
+    Mmax, Mmin = M.max(), M.min()
+    Mnorm = (M - Mmin) / (Mmax - Mmin)
+
+    I = Mnorm
+    # Mask out region
+    mask = I < 0.5
+    Z = np.argwhere(mask)
+    weights = I[mask] / float(I.max())
+    W = np.diag(weights)
+    # Column indices
+    x = Y[Z[:, 1].reshape(-1, 1)]
+    # Row indices to predict. Note origin is at top left corner
+    y = X[Z[:, 0]]
+
+    # Ridge regression, i.e., least squares with l2 regularization
+    A = feature(x, order)
+    w_weighted = (
+        np.linalg.pinv(A.T.dot(W).dot(A) + alpha * np.eye(A.shape[1]))
+        .dot(A.T)
+        .dot(W)
+        .dot(y)
+    )
+
+    x_test = Y[range(0, leny)]
+    X_test = feature(x_test, order)
+    y_test = X_test.dot(w_weighted)
+    x = y_test
+    y = x_test
+    return x, y
