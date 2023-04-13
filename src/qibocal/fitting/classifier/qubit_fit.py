@@ -88,10 +88,11 @@ class QubitFit:
         # errors_state0 = cum_distribution_state0[max_index]
         # self.fidelity = cum_distribution_diff[max_index] / nshots
         # self.assignment_fidelity = 1 - (errors_state1 + errors_state0) / nshots / 2
-        errors_state1 = 1-cum_distribution_state1[max_index]
+        errors_state1 = 1 - cum_distribution_state1[max_index]
         errors_state0 = cum_distribution_state0[max_index]
         self.fidelity = cum_distribution_diff[max_index]
         self.assignment_fidelity = (errors_state1 + errors_state0) / 2
+
     def rotate(self, v):
         c, s = np.cos(self.angle), np.sin(self.angle)
         rot = np.array([[c, -s], [s, c]])

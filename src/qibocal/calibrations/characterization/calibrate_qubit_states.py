@@ -185,9 +185,9 @@ def calibrate_qubit_states(
                 y_pred = model.predict_proba(x_test)[:, 1]
             except AttributeError:
                 y_pred = model.predict(x_test)
-            
+
             # Useful for NN that return as predictions the probability
-            #y_pred = np.round(y_pred)
+            # y_pred = np.round(y_pred)
             y_pred = y_pred.astype(np.float)
             # accuracy = benchmark_table.iloc[i]["accuracy"].tolist()
             benchmarks = benchmark_table.iloc[i].to_dict()
