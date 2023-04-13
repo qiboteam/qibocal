@@ -28,7 +28,7 @@ class SingleShotClassificationData(DataUnits):
 
 @dataclass
 class SingleShotClassificationResults(Results):
-    thresold: Dict[List[Tuple], str] = field(metadata=dict(update="thresold"))
+    threshold: Dict[List[Tuple], str] = field(metadata=dict(update="threshold"))
     rotation_angle: Dict[List[Tuple], str] = field(metadata=dict(update="iq_angle"))
 
 
@@ -257,7 +257,7 @@ def _plot(
 
     fitting_report = (
         fitting_report
-        + f"q{qubit}/r{report_n} | thresold: {fit.thresold[qubit]:,.00f} <br>"
+        + f"q{qubit}/r{report_n} | threshold: {fit.threshold[qubit]:,.00f} <br>"
         + f"q{qubit}/r{report_n} | rotation_angle: {fit.rotation_angle[qubit]:,.00f} rad <br>"
     )
 
