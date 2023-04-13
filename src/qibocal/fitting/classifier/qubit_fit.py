@@ -84,11 +84,14 @@ class QubitFit:
 
         max_index = np.argmax(cum_distribution_diff)
         self.threshold = x_values[max_index]
-        errors_state1 = nshots - cum_distribution_state1[max_index]
+        # errors_state1 = nshots - cum_distribution_state1[max_index]
+        # errors_state0 = cum_distribution_state0[max_index]
+        # self.fidelity = cum_distribution_diff[max_index] / nshots
+        # self.assignment_fidelity = 1 - (errors_state1 + errors_state0) / nshots / 2
+        errors_state1 = 1-cum_distribution_state1[max_index]
         errors_state0 = cum_distribution_state0[max_index]
-        self.fidelity = cum_distribution_diff[max_index] / nshots
-        self.assignment_fidelity = 1 - (errors_state1 + errors_state0) / nshots / 2
-
+        self.fidelity = cum_distribution_diff[max_index]
+        self.assignment_fidelity = (errors_state1 + errors_state0) / 2
     def rotate(self, v):
         c, s = np.cos(self.angle), np.sin(self.angle)
         rot = np.array([[c, -s], [s, c]])
@@ -118,7 +121,7 @@ def _eval_cumulative(input_data, points):
     app = 0
 
     for val in input_data:
-        app += np.max(np.searchsorted(points[app::], val) - 1, 0)
+        app += np.amax([np.searchsorted(points[app::], val) - 1, 0])
         prob.append(app + 1)
 
     return np.array(prob) / len(points)

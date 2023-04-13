@@ -1,4 +1,4 @@
-platform: qw5q_gold
+platform: qw5q_gold_qblox
 
 qubits: [0, 1, 2, 3, 4]
 
@@ -6,12 +6,12 @@ format: csv
 
 actions:
 
-  resonator_spectroscopy:
-    freq_width: 40_000_000
-    freq_step: 100_000
-    nshots: 1000
-    relaxation_time: 50
-    software_averages: 1
+  # resonator_spectroscopy:
+  #   freq_width: 40_000_000
+  #   freq_step: 100_000
+  #   nshots: 1000
+  #   relaxation_time: 50
+  #   software_averages: 1
 
   #resonator_punchout:
   #  freq_width: 10_000_000
@@ -33,14 +33,14 @@ actions:
   #  relaxation_time: 50
   #  software_averages: 1
 
-  qubit_spectroscopy:
-    drive_amplitude: 0.005
-    drive_duration: 2000
-    freq_width: 100_000_000
-    freq_step: 100_000
-    nshots: 1000
-    relaxation_time: 20
-    software_averages: 1
+  # qubit_spectroscopy:
+  #   drive_amplitude: 0.005
+  #   drive_duration: 2000
+  #   freq_width: 100_000_000
+  #   freq_step: 100_000
+  #   nshots: 1000
+  #   relaxation_time: 20
+  #   software_averages: 1
 
   #qubit_spectroscopy_flux:
   #  drive_amplitude: 0.005
@@ -53,13 +53,13 @@ actions:
   #  relaxation_time: 20
   #  software_averages: 1
 
-  rabi_pulse_amplitude:
-    pulse_amplitude_start: 0.01
-    pulse_amplitude_end: 2.0
-    pulse_amplitude_step: 0.01
-    software_averages: 1
-    relaxation_time: 50000
-    nshots: 1000
+  # rabi_pulse_amplitude:
+  #   pulse_amplitude_start: 0.01
+  #   pulse_amplitude_end: 2.0
+  #   pulse_amplitude_step: 0.01
+  #   software_averages: 1
+  #   relaxation_time: 50000
+  #   nshots: 1000
 
   #rabi_pulse_length:
   #  pulse_duration_start: 16 # minimum 4ns
@@ -147,3 +147,8 @@ actions:
   #   nflips_step: 2
   #   software_averages: 2
   #   points: 1
+
+  calibrate_qubit_states:
+    nshots: 2048
+    classifiers: ["qubit_fit", "linear_svm","naive_bayes" ] # ["linear_svm","ada_boost","gaussian_process","naive_bayes","nn","qubit_fit","random_forest","rbf_svm"]
+    save_dir: results

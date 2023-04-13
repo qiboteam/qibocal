@@ -12,7 +12,7 @@ from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.fitting.methods import calibrate_qubit_states_fit
 
 MESH_SIZE = 50
-MARGIN = 0.25
+MARGIN = 0
 
 
 @plot("Qubit States", plots.qubit_states)
@@ -135,8 +135,8 @@ def calibrate_qubit_states(
             qubit: {names[j]: hpars_list[j] for j in range(len(names))},
         }
         y_test = y_test.astype(np.int64)
-        state0_data = data.df[data.df["state"] == 0]
-        state1_data = data.df[data.df["state"] == 1]
+        state0_data = data.df[(data.df["qubit"] == qubit) & (data.df["state"] == 0)]
+        state1_data = data.df[(data.df["qubit"] == qubit) & (data.df["state"] == 1)]
         # Build the grid for the contour plots
         max_x = (
             max(
@@ -180,10 +180,15 @@ def calibrate_qubit_states(
             grid_pred = np.round(
                 np.reshape(model.predict(grid), q_values.shape)
             ).astype(np.int64)
-            y_pred = model.predict(x_test)
+
+            try:
+                y_pred = model.predict_proba(x_test)[:, 1]
+            except AttributeError:
+                y_pred = model.predict(x_test)
+            
             # Useful for NN that return as predictions the probability
-            y_pred = np.round(y_pred)
-            y_pred = y_pred.astype(np.int64)
+            #y_pred = np.round(y_pred)
+            y_pred = y_pred.astype(np.float)
             # accuracy = benchmark_table.iloc[i]["accuracy"].tolist()
             benchmarks = benchmark_table.iloc[i].to_dict()
             results1 = {}
