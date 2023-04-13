@@ -140,6 +140,13 @@ Fitting functions
    :undoc-members:
    :show-inheritance:
 
+Classifiers
+^^^^^^^^^^^
+.. automodule:: qibocal.fitting.classifier.run
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Gate set characterization
 -------------------------
 

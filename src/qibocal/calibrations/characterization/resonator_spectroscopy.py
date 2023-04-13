@@ -608,7 +608,7 @@ def dispersive_shift(
                     # store the results
                     r.update(
                         {
-                            "frequency[Hz]": ro_pulses[qubit].frequency,
+                            "frequency[Hz]": ro_pulse.frequency,
                             "qubit": ro_pulse.qubit,
                             "iteration": iteration,
                         }
