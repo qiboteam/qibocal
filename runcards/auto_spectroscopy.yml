@@ -18,18 +18,18 @@ actions:
   #     nshots: 1024
   #     relaxation_time: 0
 
-  # - id: resonator punchout
-  #   priority: 0
-  #   operation: resonator_punchout
-  #   #main: resonator_spectroscopy low power
-  #   parameters:
-  #     freq_width: 5_000_000
-  #     freq_step: 1_000_000
-  #     min_amp_factor: 0.02
-  #     max_amp_factor: 2.4
-  #     step_amp_factor: 0.1
-  #     nshots: 1
-  #     relaxation_time: 0
+  - id: resonator punchout
+    priority: 0
+    operation: resonator_punchout
+    #main: resonator_spectroscopy low power
+    parameters:
+      freq_width: 5_000_000
+      freq_step: 1_000_000
+      min_amp_factor: 0.02
+      max_amp_factor: 2.4
+      step_amp_factor: 0.1
+      nshots: 1
+      relaxation_time: 0
 
   # - id: resonator_punchout_attenuation
   #   priority: 0

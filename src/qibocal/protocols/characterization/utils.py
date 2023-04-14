@@ -1,3 +1,4 @@
+import statistics
 from enum import Enum, auto
 
 import lmfit
@@ -269,3 +270,49 @@ def spectroscopy_plot(data: DataUnits, fit: Results, qubit):
     figures.append(fig)
 
     return figures, fitting_report
+
+
+def find_min_msr(data, resonator_type, fit_type):
+    # Find the minimum values of z for each level of attenuation and their locations (x, y).
+    x = data["frequency"]
+    y = data[fit_type]
+    z = data["MSR"]
+
+    min_msr_per_attenuation = []
+    for attenuation in np.unique(y):
+        mask = y == attenuation
+        if resonator_type == "3D":
+            min_z = np.max(z[mask])
+        else:
+            min_z = np.min(z[mask])
+
+        mask2 = z == min_z
+        freq = np.array(x[mask][mask2])
+        min_msr_per_attenuation.append((freq[0], attenuation, min_z))
+
+    return min_msr_per_attenuation
+
+
+def get_max_freq(distribution_points, middle_point):
+    freqs = [point[0] for point in distribution_points]
+    max_freq = statistics.mode(freqs)
+    return max_freq
+
+
+def get_points_with_max_freq(min_points, max_freq):
+    matching_points = [point for point in min_points if point[0] == max_freq]
+    if matching_points:
+        return max(matching_points, key=lambda point: point[1]), min(
+            matching_points, key=lambda point: point[1]
+        )
+    x_values = [point[0] for point in min_points]
+    closest_idx = np.argmin(np.abs(np.array(x_values) - max_freq))
+    closest_point = min_points[closest_idx]
+    matching_points = [point for point in min_points if point[0] == closest_point[0]]
+    return max(matching_points, key=lambda point: point[1]), min(
+        matching_points, key=lambda point: point[1]
+    )
+
+
+def norm(x_mags):
+    return (x_mags - np.min(x_mags)) / (np.max(x_mags) - np.min(x_mags))
