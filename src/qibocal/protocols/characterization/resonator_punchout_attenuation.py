@@ -116,9 +116,9 @@ def _acquisition(
             )
             data.add_data_from_dict(r)
 
-        #Temporary fixe to force to reset the attenuation to the original value in qblox
-        #sweeper method returning to orig value not working for attenuation
-        #After fitting punchout the reload_settings will be called automatically
+        # Temporary fixe to force to reset the attenuation to the original value in qblox
+        # sweeper method returning to orig value not working for attenuation
+        # After fitting punchout the reload_settings will be called automatically
         platform.reload_settings()
         # save data
     return data
