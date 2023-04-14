@@ -66,10 +66,10 @@ def tune_transition(
         (highfreq, lowfreq), start=initialize_1.finish
     )
     measure_lowfreq = platform.create_qubit_readout_pulse(
-        lowfreq, start=flux_sequence.finish
+        lowfreq, start=flux_sequence.qf_pulses[-1].se_finish
     )
     measure_highfreq = platform.create_qubit_readout_pulse(
-        highfreq, start=flux_sequence.finish
+        highfreq, start=flux_sequence.qf_pulses[-1].se_finish
     )
 
     data = DataUnits(
