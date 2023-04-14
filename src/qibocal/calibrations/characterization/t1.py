@@ -131,7 +131,7 @@ def t1_for_loop(
 
 
 @plot("MSR vs Time", plots.t1_time_msr)
-def t1_for_loop(
+def t1(
     platform: AbstractPlatform,
     qubits: list,
     delay_before_readout_start,
