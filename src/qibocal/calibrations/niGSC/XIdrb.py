@@ -61,7 +61,6 @@ class ModuleExperiment(Experiment):
     def execute(self, circuit: Circuit, datarow: dict) -> dict:
         datadict = super().execute(circuit, datarow)
         datadict["depth"] = circuit.ngates - 1
-        # TODO change that.
         datadict["countX"] = circuit.gate_types["x"]
         return datadict
 

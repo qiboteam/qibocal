@@ -97,7 +97,7 @@ class ModuleExperiment(Experiment):
         return datarow
 
 
-class moduleReport(Report):
+class ModuleReport(Report):
     def __init__(self) -> None:
         super().__init__()
         self.title = "Standard Randomized Benchmarking"
@@ -204,7 +204,7 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
     """
 
     # Initiate a report object.
-    report = moduleReport()
+    report = ModuleReport()
     # Add general information to the object.
     report.info_dict["Number of qubits"] = len(experiment.data[0]["samples"][0])
     report.info_dict["Number of shots"] = len(experiment.data[0]["samples"])

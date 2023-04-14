@@ -68,7 +68,7 @@ class ModuleExperiment(Experiment):
         return datadict
 
 
-class moduleReport(Report):
+class ModuleReport(Report):
     def __init__(self) -> None:
         super().__init__()
         self.title = "Correlated Filtered Randomized Benchmarking"
@@ -238,7 +238,7 @@ def gate_group(nqubits=1):
 def irrep_info(nqubits=1):
     """
     Infromation about the irreducible representation of the Clifford group.
-    
+
     Returns:
         tuple: (basis, index, size, multiplicity) of the sign irrep
     """
@@ -297,7 +297,7 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
     """
 
     # Initiate a report object.
-    report = moduleReport()
+    report = ModuleReport()
     # Add general information to the object.
     report.info_dict["Number of qubits"] = len(experiment.data[0]["samples"][0])
     report.info_dict["Number of shots"] = len(experiment.data[0]["samples"])

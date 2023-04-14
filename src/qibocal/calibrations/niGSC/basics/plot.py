@@ -59,13 +59,19 @@ class Report:
             cols=1 if l == 1 else divide_by,
             subplot_titles=subplot_titles,
         )
+        total_legend_size = 0
         for count, fig_dict in enumerate(self.all_figures):
             plot_list = fig_dict["figs"]
+            total_legend_size += (
+                len(plot_list) + (0 if fig_dict.get("subplot_title") is None else 1)
+            ) * 55
             for plot in plot_list:
+                plot["legendgrouptitle"] = {
+                    "font": {"size": 16},
+                    "text": fig_dict.get("subplot_title"),
+                }
                 fig.add_trace(
-                    plot,
-                    row=count // divide_by + 1,
-                    col=count % divide_by + 1,
+                    plot, row=count // divide_by + 1, col=count % divide_by + 1
                 )
 
         fig.add_annotation(
@@ -88,6 +94,9 @@ class Report:
         )
         fig.update_xaxes(title_font_size=18, tickfont_size=16)
         fig.update_yaxes(title_font_size=18, tickfont_size=16)
+        figure_height = (
+            500 * (int(l / divide_by) + l % divide_by) if l > divide_by else 1000
+        )
         fig.update_layout(
             font_family="Averta",
             hoverlabel_font_family="Averta",
@@ -95,11 +104,16 @@ class Report:
             title_font_size=24,
             legend_font_size=16,
             hoverlabel_font_size=16,
-            # legend_entrywidth=30,
             showlegend=True,
-            height=500 * (int(l / divide_by) + l % divide_by)
-            if l > divide_by
-            else 1000,
+            legend_tracegroupgap=200
+            if l < 3
+            else (
+                (figure_height - total_legend_size) / (l - 1)
+                if total_legend_size < figure_height
+                else 0
+            ),
+            legend_groupclick="toggleitem",
+            height=figure_height,
             width=1000,
         )
 
@@ -133,6 +147,8 @@ def scatter_fit_fig(
     fig_traces = []
     dfrow = df_aggr.loc[index]
 
+    legend_group_title = ("Imaginary " if is_imag else "") + index
+
     fig_traces.append(
         go.Scatter(
             x=experiment.dataframe[xlabel],
@@ -143,6 +159,7 @@ def scatter_fit_fig(
             mode="markers",
             marker={"opacity": 0.2, "symbol": "square"},
             name="runs",
+            legendgroup=legend_group_title,
         )
     )
     fig_traces.append(
@@ -152,6 +169,7 @@ def scatter_fit_fig(
             line=dict(color="#aa6464"),
             mode="markers",
             name="average",
+            legendgroup=legend_group_title,
         )
     )
     x_fit = np.linspace(min(dfrow[xlabel]), max(dfrow[xlabel]), len(dfrow[xlabel]) * 20)
@@ -160,22 +178,22 @@ def scatter_fit_fig(
         x_fit, *(dfrow[fittingparam_label].values())
     )
     y_fit = np.imag(y_fit) if is_imag else np.real(y_fit)
+    name = "".join(
+        [
+            "{}{}:{}".format(
+                "<br>" if len(dfrow[fittingparam_label]) > 4 and key == "p1" else " ",
+                key,
+                utils.number_to_str(dfrow[fittingparam_label][key]),
+            )
+            for key in dfrow[fittingparam_label]
+        ]
+    )
     fig_traces.append(
         go.Scatter(
             x=x_fit,
             y=y_fit,
-            name="".join(
-                [
-                    "{}{}:{}".format(
-                        "<br>"
-                        if len(dfrow[fittingparam_label]) > 4 and key == "p1"
-                        else " ",
-                        key,
-                        utils.number_to_str(dfrow[fittingparam_label][key]),
-                    )
-                    for key in dfrow[fittingparam_label]
-                ]
-            ),
+            name=name,
+            legendgroup=legend_group_title,
             line=go.scatter.Line(dash="dot"),
         )
     )
@@ -218,6 +236,8 @@ def update_fig(
     if not isinstance(dfrow[fit_func_key], str):
         return fig_dict
 
+    legend_group_title = ("Imaginary " if is_imag else "") + fig_dict["ylabel"]
+
     x_fit = np.linspace(min(dfrow[xlabel]), max(dfrow[xlabel]), len(dfrow[xlabel]) * 20)
 
     y_fit = getattr(fitting_methods, dfrow[fit_func_key])(
@@ -241,6 +261,7 @@ def update_fig(
             x=x_fit,
             y=y_fit,
             name=name,
+            legendgroup=legend_group_title,
             line=go.scatter.Line(dash="dot"),
         )
     )
