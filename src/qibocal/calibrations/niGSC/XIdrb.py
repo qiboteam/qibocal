@@ -42,7 +42,7 @@ class ModuleFactory(ZkFilteredCircuitFactory):
 
     @property
     def gate_group(self):
-        return [gates.I(0), gates.RX(0, np.pi)]
+        return [gates.I(0), gates.X(0)]
 
 
 # Define the experiment class for this specific module.

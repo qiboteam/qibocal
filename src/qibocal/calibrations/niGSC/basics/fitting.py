@@ -88,7 +88,7 @@ def esprit(
     # Calculate the poles/eigenvectors and space them right. Return them.
     decays = np.linalg.eigvals(spectralMatrix)
     decays = np.array(decays, dtype=complex)
-    return decays ** sampleRate
+    return decays**sampleRate
 
 
 def fit_exp1B_func(
@@ -110,21 +110,30 @@ def fit_exp1B_func(
     if np.all(ydata == ydata[0]):
         popt, perr = (ydata[0], 1.0, 0), (0, 0, 0)
     else:
+        popt, perr = (0, 0, 0), (0, 0, 0)
         # Get a guess for the exponential function.
-        guess = kwargs.get("p0", [0.5, 0.9, 0.8])
-        # If the search for fitting parameters does not work just return
-        # fixed parameters where one can see that the fit did not work
-        try:
-            popt, pcov = curve_fit(
-                exp1B_func,
-                xdata,
-                ydata,
-                p0=guess,
-                method="lm",
-            )
-            perr = tuple(np.sqrt(np.diag(pcov)))
-        except:
-            popt, perr = (0, 0, 0), (0, 0, 0)
+        for guess in [
+            kwargs.get("p0", [0.5, 0.9, 0.5]),
+            [0.5, 0.99, 0.5],
+            [0.5, 0.9, 0.8],
+            [0.4, 0.9, 0.6],
+            [0.3, 0.7, 0.6],
+            [0.2, 1.0, 0.5],
+        ]:
+            # If the search for fitting parameters does not work just return
+            # fixed parameters where one can see that the fit did not work
+            try:
+                popt, pcov = curve_fit(
+                    exp1B_func,
+                    xdata,
+                    ydata,
+                    p0=guess,
+                    method="lm",
+                )
+                perr = tuple(np.sqrt(np.diag(pcov)))
+                break
+            except:
+                continue
     return popt, perr
 
 

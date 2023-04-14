@@ -24,7 +24,7 @@ class ModuleFactory(ZkFilteredCircuitFactory):
         return [
             gates.I(0),
             gates.RX(0, np.pi / 2),
-            gates.RX(0, np.pi),
+            gates.X(0),
             gates.RX(0, 3 * np.pi / 2),
         ]
 

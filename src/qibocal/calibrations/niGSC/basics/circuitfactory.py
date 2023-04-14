@@ -76,7 +76,7 @@ class CircuitFactory:
             Circuit: the circuit with ``depth`` many layers.
         """
         # Initiate the ``Circuit`` object with the amount of active qubits.
-        circuit = Circuit(len(self.qubits))
+        circuit = Circuit(len(self.qubits), density_matrix=True)
         # Go throught the depth/layers of the circuit and add gate layers.
         for _ in range(depth):
             circuit.add(self.gate_layer())
