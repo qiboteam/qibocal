@@ -274,26 +274,20 @@ def spectroscopy_plot(data: DataUnits, fit: Results, qubit):
 
 def find_min_msr(data, resonator_type, fit_type):
     # Find the minimum values of z for each level of attenuation and their locations (x, y).
-    x = data["frequency"]
-    y = data[fit_type]
-    z = data["MSR"]
-
+    data = data[["frequency", fit_type, "MSR"]].to_numpy()
+    if resonator_type == "3D":
+        func = np.argmax
+    else:
+        func = np.argmin
     min_msr_per_attenuation = []
-    for attenuation in np.unique(y):
-        mask = y == attenuation
-        if resonator_type == "3D":
-            min_z = np.max(z[mask])
-        else:
-            min_z = np.min(z[mask])
+    for i in np.unique(data[:, 1]):
+        selected = data[data[:, 1] == i]
+        min_msr_per_attenuation.append(selected[func(selected[:, 2])])
 
-        mask2 = z == min_z
-        freq = np.array(x[mask][mask2])
-        min_msr_per_attenuation.append((freq[0], attenuation, min_z))
-
-    return min_msr_per_attenuation
+    return np.array(min_msr_per_attenuation)
 
 
-def get_max_freq(distribution_points, middle_point):
+def get_max_freq(distribution_points):
     freqs = [point[0] for point in distribution_points]
     max_freq = statistics.mode(freqs)
     return max_freq

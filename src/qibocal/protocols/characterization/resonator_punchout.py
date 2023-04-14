@@ -140,18 +140,6 @@ def _fit(data: ResonatorPunchoutData, fit_type="amplitude") -> ResonatorPunchout
         data_fit (Data): Data file with labels and fit parameters (frequency at low and high power, attenuation range for low and highg power)
     """
 
-    # data_fit = Data(
-    #     name=f"fits",
-    #     quantities=[
-    #         labels[0],
-    #         labels[1],
-    #         labels[2],
-    #         labels[3],
-    #         labels[4],
-    #         labels[5],
-    #         "qubit",
-    #     ],
-    # )
     qubits = data.df["qubit"].unique()
     resonator_type = data.df["resonator_type"].unique()
 
@@ -169,47 +157,47 @@ def _fit(data: ResonatorPunchoutData, fit_type="amplitude") -> ResonatorPunchout
             .groupby(["frequency", fit_type], as_index=False)
             .mean()
         )
-        # try:
-        normalised_data = averaged_data.groupby([fit_type], as_index=False)[
-            ["MSR"]
-        ].transform(norm)
+        try:
+            normalised_data = averaged_data.groupby([fit_type], as_index=False)[
+                ["MSR"]
+            ].transform(norm)
 
-        averaged_data_updated = averaged_data.copy()
-        averaged_data_updated.update(normalised_data["MSR"])
+            averaged_data_updated = averaged_data.copy()
+            averaged_data_updated.update(normalised_data["MSR"])
 
-        min_points = find_min_msr(averaged_data_updated, resonator_type, fit_type)
-        min_points = [[q.magnitude for q in tupla] for tupla in min_points]
-        x = [point[0] for point in min_points]
-        y = [point[1] for point in min_points]
+            min_points = find_min_msr(averaged_data_updated, resonator_type, fit_type)
+            vfunc = np.vectorize(lambda x: x.magnitude)
+            min_points = vfunc(min_points)
 
-        max_x = x[np.argmax(x)]
-        min_x = x[np.argmin(x)]
-        middle_x = (max_x + min_x) / 2
+            max_x = np.amax(min_points[:, 0])
+            min_x = np.amin(min_points[:, 0])
+            middle_x = (max_x + min_x) / 2
 
-        hp_points = [point for point in min_points if point[0] < middle_x]
-        lp_points = [point for point in min_points if point[0] >= middle_x]
+            hp_points = min_points[min_points[:, 0] < middle_x]
+            lp_points = min_points[min_points[:, 0] >= middle_x]
 
-        freq_hp = get_max_freq(hp_points, middle_x)
-        freq_lp = get_max_freq(lp_points, middle_x)
+            freq_hp = get_max_freq(hp_points)
+            freq_lp = get_max_freq(lp_points)
 
-        point_hp_max, point_hp_min = get_points_with_max_freq(min_points, freq_hp)
-        point_lp_max, point_lp_min = get_points_with_max_freq(min_points, freq_lp)
-        print("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFF", point_hp_max, type(point_hp_max[0]))
-        freq_lp = point_lp_max[0]
-        lp_max_att = point_lp_max[1]
-        lp_min_att = point_lp_min[1]
-        freq_hp = point_hp_max[0]
-        hp_max_att = point_hp_max[1]
-        hp_min_att = point_hp_min[1]
+            point_hp_max, point_hp_min = get_points_with_max_freq(min_points, freq_hp)
+            point_lp_max, point_lp_min = get_points_with_max_freq(min_points, freq_lp)
 
-        # except:
-        #     log.warning("resonator_punchout_fit: the fitting was not succesful")
-        #     freq_lp = 0.
-        #     lp_max_att = 0.
-        #     lp_min_att = 0.
-        #     freq_hp = 0.
-        #     hp_max_att = 0.
-        #     hp_min_att = 0.
+            freq_lp = point_lp_max[0]
+            lp_max_att = point_lp_max[1]
+            lp_min_att = point_lp_min[1]
+            freq_hp = point_hp_max[0]
+            hp_max_att = point_hp_max[1]
+            hp_min_att = point_hp_min[1]
+
+        except:
+            log.warning("resonator_punchout_fit: the fitting was not succesful")
+            freq_lp = 0.0
+            lp_max_att = 0.0
+            lp_min_att = 0.0
+            freq_hp = 0.0
+            hp_max_att = 0.0
+            hp_min_att = 0.0
+
         freq_lp_dict[qubit] = freq_lp
         lp_max_att_dict[qubit] = lp_max_att
         lp_min_att_dict[qubit] = lp_min_att
@@ -246,9 +234,6 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
 
     data.df = data.df[data.df["qubit"] == qubit]
 
-    iterations = data.df["iteration"].unique()
-    frequencies = data.df["frequency"].pint.to("Hz").pint.magnitude.unique()
-    amplitudes = data.df["amplitude"].pint.to("dimensionless").pint.magnitude.unique()
     averaged_data = (
         data.df.drop(columns=["qubit", "iteration"])
         .groupby(["frequency", "amplitude"], as_index=False)
