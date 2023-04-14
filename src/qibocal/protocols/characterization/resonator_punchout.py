@@ -36,10 +36,10 @@ class ResonatorPunchoutResults(Results):
     bare_frequency: Optional[Dict[List[Tuple], str]] = field(
         metadata=dict(update="bare_resonator_frequency")
     )
-    lp_max_att: Dict[List[Tuple], str]
-    lp_min_att: Dict[List[Tuple], str]
-    hp_max_att: Dict[List[Tuple], str]
-    hp_min_att: Dict[List[Tuple], str]
+    lp_max_amp: Dict[List[Tuple], str]
+    lp_min_amp: Dict[List[Tuple], str]
+    hp_max_amp: Dict[List[Tuple], str]
+    hp_min_amp: Dict[List[Tuple], str]
 
 
 class ResonatorPunchoutData(DataUnits):
@@ -291,6 +291,39 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
         title_text=f"q{qubit}/r{report_n}: Frequency (Hz)", row=1 + report_n, col=2
     )
     fig.update_yaxes(title_text="Amplitude", row=1 + report_n, col=2)
+
+    if len(data) > 0:
+        fig.add_trace(
+            go.Scatter(
+                x=[
+                    fit.readout_frequency[qubit],
+                    fit.readout_frequency[qubit],
+                    fit.bare_frequency[qubit],
+                    fit.bare_frequency[qubit],
+                ],
+                y=[
+                    fit.hp_max_amp[qubit],
+                    fit.hp_min_amp[qubit],
+                    fit.lp_max_amp[qubit],
+                    fit.lp_min_amp[qubit],
+                ],
+                mode="markers",
+                marker=dict(
+                    size=8,
+                    color="gray",
+                    symbol="circle",
+                ),
+            )
+        )
+        title_text = ""
+        title_text += f"q{qubit}/r{report_n} | Resonator Frequency at Low Power:  {fit.bare_frequency[qubit]} Hz.<br>"
+        title_text += f"q{qubit}/r{report_n} | Low Power Attenuation Range: {fit.lp_max_amp[qubit]} - {fit.lp_min_amp[qubit]} db.<br>"
+        title_text += f"q{qubit}/r{report_n} | Resonator Frequency at High Power: {fit.readout_frequency[qubit]} Hz.<br>"
+        title_text += f"q{qubit}/r{report_n} | High Power Attenuation Range: {fit.hp_max_amp[qubit]} - {fit.hp_min_amp[qubit]} db.<br>"
+
+        fitting_report = fitting_report + title_text
+    # else:
+    #     fitting_report = "No fitting data"
     fig.update_layout(
         showlegend=False,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
