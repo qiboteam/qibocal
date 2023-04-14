@@ -109,6 +109,7 @@ def _acquisition(
     data = RabiAmplitudeData()
 
     for iteration in range(params.software_averages):
+        print("HERE")
         # sweep the parameter
         results = platform.sweep(
             sequence,
@@ -116,13 +117,15 @@ def _acquisition(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
         )
+        print("THERE")
         for qubit in qubits:
             # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulses[qubit].serial]
             r = result.raw
             r.update(
                 {
-                    "amplitude[dimensionless]": qd_pulse_amplitude_range,
+                    "amplitude[dimensionless]": qd_pulses[qubit].amplitude
+                    * qd_pulse_amplitude_range,
                     "qubit": len(qd_pulse_amplitude_range) * [qubit],
                     "iteration": len(qd_pulse_amplitude_range) * [iteration],
                     "resonator_type": len(qd_pulse_amplitude_range)

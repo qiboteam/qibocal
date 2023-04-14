@@ -100,7 +100,7 @@ def _acquisition(
                     "qubit": len(delta_frequency_range) * [qubit],
                     "iteration": len(delta_frequency_range) * [iteration],
                     "amplitude": len(delta_frequency_range)
-                    * [ro_pulses[qubit].amplitude],
+                    * [qd_pulses[qubit].amplitude],
                 }
             )
             data.add_data_from_dict(r)
