@@ -656,3 +656,144 @@ def dispersive_shift(
             labels=["readout_frequency_shifted", "peak_voltage"],
             fit_file_name="fit_data_1",
         )
+
+
+@plot(
+    "MSR and Phase vs Resonator Frequency and Flux",
+    plots.frequency_flux_msr_phase,
+)
+def resonator_spectroscopy_flux_pulse(
+    platform: AbstractPlatform,
+    qubits: dict,
+    freq_width,
+    freq_step,
+    gain_min,
+    gain_max,
+    gain_step,
+    amplitude,
+    fluxlines,
+    nshots=1024,
+    relaxation_time=50,
+    software_averages=1,
+):
+    r"""
+    Perform spectroscopy on the readout resonator modifying the bias applied in the flux control line.
+    This routine works for quantum devices flux controlled.
+
+    Args:
+        platform (AbstractPlatform): Qibolab platform object
+        qubits (dict): List of target qubits to perform the action
+        freq_width (int): Width frequency in HZ to perform the spectroscopy sweep
+        freq_step (int): Step frequency in HZ for the spectroscopy sweep
+        bias_width (float): Width bias in A for the flux bias sweep
+        bias_step (float): Step bias in A for the flux bias sweep
+        fluxlines (list): List of flux lines to use to perform the experiment. If it is set to "qubits", it uses each of
+                        flux lines associated with the target qubits.
+        software_averages (int): Number of executions of the routine for averaging results
+        points (int): Save data results in a file every number of points
+
+    Returns:
+        A DataUnits object with the raw data obtained with the following keys
+
+            - **MSR[V]**: Resonator signal voltage mesurement in volts
+            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
+            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
+            - **phase[rad]**: Resonator signal phase mesurement in radians
+            - **frequency[Hz]**: Resonator frequency value in Hz
+            - **bias[V]**: Current value in A applied to the flux line
+            - **qubit**: The qubit being tested
+            - **fluxline**: The fluxline being tested
+            - **iteration**: The iteration number of the many determined by software_averages
+    """
+    # reload instrument settings from runcard
+    platform.reload_settings()
+    from qibolab.platforms.multiqubit import MultiqubitPlatform
+    from qibolab.pulses import FluxPulse, Rectangular
+
+    p: MultiqubitPlatform = platform
+
+    # create a sequence of pulses for the experiment:
+    # MZ
+
+    # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
+    sequence = PulseSequence()
+    ro_pulses = {}
+    flux_pulses = {}
+    for qubit in qubits:
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=1000)
+        sequence.add(ro_pulses[qubit])
+        flux_pulses[qubit] = FluxPulse(
+            0, 4000, amplitude, Rectangular(), p.qubit_channel_map[qubit][2], qubit
+        )
+        sequence.add(flux_pulses[qubit])
+
+    # define the parameters to sweep and their range:
+    delta_frequency_range = np.arange(-freq_width // 2, freq_width // 2, freq_step)
+    frequency_sweeper = Sweeper(
+        Parameter.frequency,
+        delta_frequency_range,
+        [ro_pulses[qubit] for qubit in qubits],
+    )
+
+    # flux bias
+    diagonal_only = fluxlines == "diagonal"
+    if fluxlines in ["qubits", "diagonal"]:
+        fluxlines = qubits.keys()
+
+    # sweetspot_bias = {}
+    # for fluxline in fluxlines:
+    #     sweetspot_bias[fluxline] = qubits[fluxline].sweetspot
+    # delta_bias_range = np.arange(-bias_width / 2, bias_width / 2, bias_step)
+
+    gain_range = np.arange(gain_min, gain_max, gain_step)
+
+    # create a DataUnits object to store the results,
+    # DataUnits stores by default MSR, phase, i, q
+    # additionally include resonator frequency and flux bias
+    data = DataUnits(
+        name=f"data",
+        quantities={"frequency": "Hz", "bias": "V"},
+        options=["qubit", "fluxline", "iteration"],
+    )
+
+    # repeat the experiment as many times as defined by software_averages
+    for iteration in range(software_averages):
+        if diagonal_only:
+            gain_sweeper = Sweeper(
+                Parameter.amplitude,
+                gain_range,
+                [flux_pulses[qubit] for qubit in qubits],
+            )
+            results = platform.sweep(
+                sequence,
+                gain_sweeper,
+                frequency_sweeper,
+                nshots=nshots,
+                relaxation_time=relaxation_time,
+            )
+
+            # retrieve the results for every qubit
+            for qubit in qubits:
+                fluxline = qubit
+                # TODO: Support more fluxlines for QM
+                result = results[ro_pulses[qubit].serial]
+                biases = np.repeat(gain_range, len(delta_frequency_range))
+                freqs = np.array(
+                    len(gain_range)
+                    * list(delta_frequency_range + ro_pulses[qubit].frequency)
+                ).flatten()
+                # store the results
+                r = {k: v.ravel() for k, v in result.to_dict(average=False).items()}
+                r.update(
+                    {
+                        "frequency[Hz]": freqs,
+                        "bias[V]": biases,
+                        "qubit": len(freqs) * [qubit],
+                        "fluxline": len(freqs) * [fluxline],
+                        "iteration": len(freqs) * [iteration],
+                    }
+                )
+                data.add_data_from_dict(r)
+
+        # save data
+        yield data
