@@ -2,6 +2,7 @@ import re
 
 import numpy as np
 from scipy.special import mathieu_a, mathieu_b
+from sklearn.linear_model import Ridge
 
 
 def lorenzian(frequency, amplitude, center, sigma, offset):
@@ -148,46 +149,33 @@ def feature(x, order=3):
 
 
 def image_to_curve(x, y, z, alpha=0.0001, order=50):
-    min_y = np.min(y)
-    step_y = y[1] - y[0]
     max_y = np.max(y)
-    leny = int((max_y - min_y) / step_y) + 1
-    lenx = int(len(x) / (leny))
+    min_y = np.min(y)
+    leny = int((max_y - min_y) / (y[1] - y[0])) + 1
     max_x = np.max(x)
     min_x = np.min(x)
-    X = np.linspace(min_x, max_x, lenx)
-    Y = np.linspace(min_y, max_y, leny)
+    lenx = int(len(x) / (leny))
+    x = np.linspace(min_x, max_x, lenx)
+    y = np.linspace(min_y, max_y, leny)
+    z = np.array(z, float)
+    z = np.reshape(z, (lenx, leny))
+    zmax, zmin = z.max(), z.min()
+    znorm = (z - zmin) / (zmax - zmin)
 
-    M = np.zeros((lenx, leny))
-    for j in range(lenx):
-        M[j, :] = z[j * leny : j * leny + leny]
-
-    Mmax, Mmin = M.max(), M.min()
-    Mnorm = (M - Mmin) / (Mmax - Mmin)
-
-    I = Mnorm
     # Mask out region
-    mask = I < 0.5
-    Z = np.argwhere(mask)
-    weights = I[mask] / float(I.max())
-    W = np.diag(weights)
+    mask = znorm < 0.5
+    z = np.argwhere(mask)
+    weights = znorm[mask] / float(znorm.max())
     # Column indices
-    x = Y[Z[:, 1].reshape(-1, 1)]
-    # Row indices to predict. Note origin is at top left corner
-    y = X[Z[:, 0]]
+    x_fit = y[z[:, 1].reshape(-1, 1)]
+    # Row indices to predict.
+    y_fit = x[z[:, 0]]
 
     # Ridge regression, i.e., least squares with l2 regularization
-    A = feature(x, order)
-    w_weighted = (
-        np.linalg.pinv(A.T.dot(W).dot(A) + alpha * np.eye(A.shape[1]))
-        .dot(A.T)
-        .dot(W)
-        .dot(y)
-    )
-
-    x_test = Y[range(0, leny)]
-    X_test = feature(x_test, order)
-    y_test = X_test.dot(w_weighted)
-    x = y_test
-    y = x_test
-    return x, y
+    A = feature(x_fit, order)
+    model = Ridge(alpha=alpha)
+    model.fit(A, y_fit, sample_weight=weights)
+    x_pred = y
+    X_pred = feature(x_pred, order)
+    y_pred = model.predict(X_pred)
+    return y_pred, x_pred
