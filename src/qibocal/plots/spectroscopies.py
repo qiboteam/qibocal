@@ -5,7 +5,13 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
-from qibocal.fitting.utils import freq_r_mathieu, freq_r_transmon, line, lorenzian
+from qibocal.fitting.utils import (
+    freq_r_mathieu,
+    freq_r_transmon,
+    image_to_curve,
+    line,
+    lorenzian,
+)
 from qibocal.plots.utils import get_color, get_data_subfolders, load_data
 
 
@@ -581,7 +587,7 @@ def frequency_amplitude_msr_phase_cut(folder, routine, qubit, format):
 # Resonator spectroscopy flux
 def frequency_flux_msr_phase(folder, routine, qubit, format):
     figures = []
-    fitting_report = "No fitting data"
+    fitting_report = ""
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
@@ -598,6 +604,30 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
                 options=["qubit", "fluxline", "iteration"],
             )
 
+        try:
+            data_fit = load_data(folder, subfolder, routine, format, "fits")
+            data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
+        except:
+            data_fit = Data(
+                quantities=[
+                    "curr_sp",
+                    "xi",
+                    "d",
+                    "g",
+                    "f_rh",
+                    "f_qs",
+                    "f_rs",
+                    "f_offset",
+                    "C_ii",
+                    "qubit",
+                    "fluxline",
+                    "popt0",
+                    "popt1",
+                    "type",
+                ]
+            )
+            fitting_report = "No fitting data"
+
         iterations = data.df["iteration"].unique()
         fluxlines = data.df["fluxline"].unique()
         frequencies = data.df["frequency"].unique()
@@ -612,34 +642,7 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
                     [f"MSR [V] - fluxline {fluxline}" for fluxline in fluxlines]
                 ),
             )
-
-            for fluxline_n, fluxline in enumerate(fluxlines):
-                fluxline_df = data.df[data.df["fluxline"] == fluxline]
-                fluxline_df = fluxline_df.drop(
-                    columns=["i", "q", "qubit", "fluxline", "iteration"]
-                )
-
-                fluxline_df = fluxline_df.groupby(
-                    ["frequency", "bias"], as_index=False
-                ).mean()
-
-                fig.add_trace(
-                    go.Heatmap(
-                        x=fluxline_df["frequency"],
-                        y=fluxline_df["bias"],
-                        z=fluxline_df["MSR"] * 1e6,
-                        showscale=False,
-                    ),
-                    row=1 + report_n,
-                    col=1 + fluxline_n,
-                )
-                fig.update_xaxes(
-                    title_text=f"q{qubit}/r{report_n}: Frequency (GHz)",
-                    row=1 + report_n,
-                    col=1 + fluxline_n,
-                )
-
-        elif len(fluxlines) == 1:
+        else:
             fig = make_subplots(
                 rows=len(subfolders),
                 cols=2,
@@ -651,7 +654,8 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
                 ),
             )
 
-            fluxline_df = data.df[data.df["fluxline"] == fluxlines[0]]
+        for fluxline_n, fluxline in enumerate(fluxlines):
+            fluxline_df = data.df[data.df["fluxline"] == fluxline]
             fluxline_df = fluxline_df.drop(
                 columns=["i", "q", "qubit", "fluxline", "iteration"]
             )
@@ -660,39 +664,147 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
                 ["frequency", "bias"], as_index=False
             ).mean()
 
-            fig.add_trace(
-                go.Heatmap(
-                    x=fluxline_df["frequency"],
-                    y=fluxline_df["bias"],
-                    z=fluxline_df["MSR"] * 1e6,
-                    colorbar_x=0.46,
-                ),
-                row=1 + report_n,
-                col=1,
-            )
-            fig.update_xaxes(
-                title_text=f"q{qubit}/r{report_n}: Frequency (Hz)",
-                row=1 + report_n,
-                col=1,
+            frequencies, biases = image_to_curve(
+                fluxline_df["frequency"], fluxline_df["bias"], fluxline_df["MSR"] * 1e6
             )
 
-            fig.add_trace(
-                go.Heatmap(
-                    x=fluxline_df["frequency"],
-                    y=fluxline_df["bias"],
-                    z=fluxline_df["phase"],
-                    colorbar_x=1.01,
-                ),
-                row=1 + report_n,
-                col=2,
-            )
-            fig.update_xaxes(
-                title_text=f"q{qubit}/r{report_n}: Frequency (Hz)",
-                row=1 + report_n,
-                col=2,
-            )
-            fig.update_yaxes(title_text="Bias (V)", row=1 + report_n, col=2)
+            if len(fluxlines) > 1:
+                fig.add_trace(
+                    go.Heatmap(
+                        x=fluxline_df["frequency"],
+                        y=fluxline_df["bias"],
+                        z=fluxline_df["MSR"] * 1e6,
+                        showscale=False,
+                    ),
+                    row=1 + report_n,
+                    col=1 + fluxline_n,
+                )
+                fig.add_trace(
+                    go.Scatter(
+                        x=frequencies,
+                        y=biases,
+                        mode="markers",
+                        marker_color="green",
+                    ),
+                    row=1 + report_n,
+                    col=1 + fluxline_n,
+                )
+                fig.update_xaxes(
+                    title_text=f"q{qubit}/r{report_n}: Frequency (GHz)",
+                    row=1 + report_n,
+                    col=1 + fluxline_n,
+                )
+            else:
+                fig.add_trace(
+                    go.Heatmap(
+                        x=fluxline_df["frequency"],
+                        y=fluxline_df["bias"],
+                        z=fluxline_df["MSR"] * 1e6,
+                        colorbar_x=0.46,
+                    ),
+                    row=1 + report_n,
+                    col=1,
+                )
+                fig.add_trace(
+                    go.Scatter(
+                        x=frequencies,
+                        y=biases,
+                        mode="markers",
+                        marker_color="green",
+                    ),
+                    row=1 + report_n,
+                    col=1,
+                )
+                fig.update_xaxes(
+                    title_text=f"q{qubit}/r{report_n}: Frequency (Hz)",
+                    row=1 + report_n,
+                    col=1,
+                )
+                fig.add_trace(
+                    go.Heatmap(
+                        x=fluxline_df["frequency"],
+                        y=fluxline_df["bias"],
+                        z=fluxline_df["phase"],
+                        colorbar_x=1.01,
+                    ),
+                    row=1 + report_n,
+                    col=2,
+                )
+                fig.update_xaxes(
+                    title_text=f"q{qubit}/r{report_n}: Frequency (Hz)",
+                    row=1 + report_n,
+                    col=2,
+                )
+                fig.update_yaxes(title_text="Bias (V)", row=1 + report_n, col=2)
 
+            if len(data) > 0 and (qubit in data_fit.df["qubit"].values):
+                biases_fit = np.linspace(np.min(biases), np.max(biases), 100)
+                params = data_fit.df[data_fit.df["qubit"] == qubit].to_dict(
+                    orient="records"
+                )[0]
+                if all(value != 0 for key, value in params.items() if key != "qubit"):
+                    if params["type"] == 1:
+                        f = freq_r_transmon
+                        popt = [
+                            params["curr_sp"],
+                            params["xi"],
+                            params["d"],
+                            params["f_q/f_rh"],
+                            params["g"],
+                            params["f_rh"],
+                        ]
+                    elif params["type"] == 2:
+                        f = freq_r_mathieu
+                        popt = [
+                            params["f_rh"],
+                            params["g"],
+                            params["curr_sp"],
+                            params["xi"],
+                            params["d"],
+                            params["Ec"],
+                            params["Ej"],
+                        ]
+                    else:
+                        f = line
+                        popt = [params["popt0"], params["popt1"]]
+                    frequencies_fit = f(biases_fit, *popt)
+                    fig.add_trace(
+                        go.Scatter(
+                            x=frequencies_fit,
+                            y=biases_fit,
+                            marker_color="red",
+                        ),
+                        row=1 + report_n,
+                        col=1,
+                    )
+                    title_text = ""
+                    if params["type"] == 1 or params["type"] == 2:
+                        title_text += f"q{qubit}/r{report_n} | Resonator Frequency at sweet spot: {params['f_rs']} Hz.<br>"
+                        title_text += f"q{qubit}/r{report_n} | Bias at sweet spot: {params['curr_sp']} V.<br>"
+                        title_text += (
+                            f"q{qubit}/r{report_n} | Asymmetry: {params['d']}.<br>"
+                        )
+                        title_text += f"q{qubit}/r{report_n} | Readout coupling: {params['g']} Hz.<br>"
+                        title_text += f"q{qubit}/r{report_n} | Resonator Frequency at high power: {params['f_rh']} Hz.<br>"
+                        title_text += f"q{qubit}/r{report_n} | Qubit Frequency at sweet spot: {params['f_qs']} Hz.<br>"
+                        title_text += f"q{qubit}/r{report_n} | Frequency offset: {params['f_offset']} Hz.<br>"
+                        title_text += (
+                            f"q{qubit}/r{report_n} | C_ii: {params['C_ii']} Hz/V.<br>"
+                        )
+                        if params["type"] == 2:
+                            title_text += (
+                                f"q{qubit}/r{report_n} | Ec: {params['Ec']} Hz.<br>"
+                            )
+                            title_text += (
+                                f"q{qubit}/r{report_n} | Ej: {params['Ej']} Hz.<br>"
+                            )
+                    else:
+                        title_text += (
+                            f"q{qubit}/r{report_n} | C_ij: {params['popt0']} Hz/V.<br>"
+                        )
+                    fitting_report = fitting_report + title_text
+                else:
+                    fitting_report = "No fitting data"
         fig.update_yaxes(title_text="Bias (V)", row=1 + report_n, col=1)
         fig.update_layout(
             showlegend=False,
