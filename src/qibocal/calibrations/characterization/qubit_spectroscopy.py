@@ -275,9 +275,10 @@ def qubit_spectroscopy_flux(
         yield data
         yield qubit_spectroscopy_flux_fit(
             data,
-            x="bias[dimensionless]",
+            x="bias[V]",
             y="frequency[Hz]",
             qubits=qubits,
+            fluxlines=fluxlines,
             resonator_type=platform.resonator_type,
             params_fit=params_fit,
         )
