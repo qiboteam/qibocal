@@ -186,7 +186,7 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         fidelity = cum_distribution_diff[argmax] / nshots
         assignment_fidelity = 1 - (errors_state1 + errors_state0) / nshots / 2
         thresholds[qubit] = threshold
-        rotation_angles[qubit] = np.rad2deg(rotation_angle)
+        rotation_angles[qubit] = rotation_angle
         fidelities[qubit] = fidelity[0]
         assignment_fidelities[qubit] = assignment_fidelity[0]
 
