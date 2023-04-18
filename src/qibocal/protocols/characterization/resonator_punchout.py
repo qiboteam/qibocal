@@ -202,9 +202,9 @@ def _fit(data: ResonatorPunchoutData, fit_type="amplitude") -> ResonatorPunchout
             hp_max_amp = 0.0
             hp_min_amp = 0.0
 
-        freq_lp_dict[qubit] = freq_lp
+        freq_lp_dict[qubit] = freq_lp / 1e9
+        freq_hp_dict[qubit] = freq_hp / 1e9
         ro_amp_dict[qubit] = ro_amp
-        freq_hp_dict[qubit] = freq_hp
         lp_max_amp_dict[qubit] = lp_max_amp
         lp_min_amp_dict[qubit] = lp_min_amp
         hp_max_amp_dict[qubit] = hp_max_amp
@@ -287,10 +287,10 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
         fig.add_trace(
             go.Scatter(
                 x=[
-                    fit.readout_frequency[qubit],
-                    fit.readout_frequency[qubit],
-                    fit.bare_frequency[qubit],
-                    fit.bare_frequency[qubit],
+                    fit.readout_frequency[qubit] * 1e9,
+                    fit.readout_frequency[qubit] * 1e9,
+                    fit.bare_frequency[qubit] * 1e9,
+                    fit.bare_frequency[qubit] * 1e9,
                 ],
                 y=[
                     fit.hp_max_amp[qubit],

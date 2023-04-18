@@ -208,8 +208,8 @@ def _fit(data: ResonatorPunchoutAttenuationData, fit_type="attenuation") -> Reso
             hp_max_att = 0.0
             hp_min_att = 0.0
 
-        freq_lp_dict[qubit] = freq_lp
-        freq_hp_dict[qubit] = freq_hp
+        freq_lp_dict[qubit] = freq_lp / 1e9
+        freq_hp_dict[qubit] = freq_hp / 1e9
         ro_att_dict[qubit] = ro_att
         lp_max_att_dict[qubit] = lp_max_att
         lp_min_att_dict[qubit] = lp_min_att
@@ -296,10 +296,10 @@ def _plot(data: ResonatorPunchoutAttenuationData, fit: ResonatorPunchoutAttenuat
         fig.add_trace(
             go.Scatter(
                 x=[
-                    fit.readout_frequency[qubit],
-                    fit.readout_frequency[qubit],
-                    fit.bare_frequency[qubit],
-                    fit.bare_frequency[qubit],
+                    fit.readout_frequency[qubit] * 1e9,
+                    fit.readout_frequency[qubit] * 1e9,
+                    fit.bare_frequency[qubit] * 1e9,
+                    fit.bare_frequency[qubit] * 1e9,
                 ],
                 y=[
                     fit.lp_max_att[qubit],
@@ -316,9 +316,9 @@ def _plot(data: ResonatorPunchoutAttenuationData, fit: ResonatorPunchoutAttenuat
             )
         )
         title_text = ""
-        title_text += f"q{qubit}/r{report_n} | Resonator Frequency at Low Power:  {fit.bare_frequency[qubit]} Hz.<br>"
+        title_text += f"q{qubit}/r{report_n} | Resonator Frequency at Low Power:  {fit.readout_frequency[qubit]} Hz.<br>"
         title_text += f"q{qubit}/r{report_n} | Low Power Attenuation Range: {fit.lp_max_att[qubit]} - {fit.lp_min_att[qubit]} db.<br>"
-        title_text += f"q{qubit}/r{report_n} | Resonator Frequency at High Power: {fit.readout_frequency[qubit]} Hz.<br>"
+        title_text += f"q{qubit}/r{report_n} | Resonator Frequency at High Power: {fit.bare_frequency[qubit]} Hz.<br>"
         title_text += f"q{qubit}/r{report_n} | High Power Attenuation Range: {fit.hp_max_att[qubit]} - {fit.hp_min_att[qubit]} db.<br>"
 
         fitting_report = fitting_report + title_text
