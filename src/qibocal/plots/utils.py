@@ -41,3 +41,7 @@ def load_data(folder, subfolder, routine, data_format, name):
         data.df = pd.read_csv(file, header=[0], skiprows=[1], index_col=[0])
 
     return data
+
+
+def get_color_pair(number):
+    return (get_color_state0(number), get_color_state1(number))

@@ -1,5 +1,5 @@
 import numpy as np
-from qibolab.pulses import FluxPulse, Rectangular
+from qibolab.pulses import IIR, FluxPulse, Rectangular
 from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal import plots
@@ -65,6 +65,7 @@ def tune_transition(
     flux_sequence, _ = platform.create_CZ_pulse_sequence(
         (highfreq, lowfreq), start=initialize_1.finish
     )
+
     measure_lowfreq = platform.create_qubit_readout_pulse(
         lowfreq, start=flux_sequence.qf_pulses[-1].se_finish
     )
@@ -190,6 +191,7 @@ def tune_landscape(
     flux_sequence, _ = platform.create_CZ_pulse_sequence(
         (highfreq, lowfreq), start=y90_pulse.finish
     )
+
     theta_pulse = platform.create_RX90_pulse(
         lowfreq, start=flux_sequence.finish, relative_phase=theta_start
     )
@@ -260,5 +262,159 @@ def tune_landscape(
             }
         )
         data.add_data_from_dict(result_high)
+
+    yield data
+
+
+@plot("Chevron CZ", plots.duration_amplitude_msr_flux_pulse)
+@plot("Chevron CZ - I", plots.duration_amplitude_I_flux_pulse)
+@plot("Chevron CZ - Q", plots.duration_amplitude_Q_flux_pulse)
+def tune_transition_sweepers(
+    platform,
+    qubits: dict,
+    flux_pulse_duration_start,
+    flux_pulse_duration_end,
+    flux_pulse_duration_step,
+    flux_pulse_amplitude_start,
+    flux_pulse_amplitude_end,
+    flux_pulse_amplitude_step,
+    dt=1,
+    nshots=1024,
+    relaxation_time=None,
+):
+    """Perform a Chevron-style plot for the flux pulse designed to apply a CZ (CPhase) gate.
+    This experiment probes the |11> to i|02> transition by preparing the |11> state with
+    pi-pulses, applying a flux pulse to the high frequency qubit to engage its 1 -> 2 transition
+    with varying interaction duration and amplitude. We then measure both the high and low frequency qubit.
+
+    We aim to find the spot where the transition goes from |11> -> i|02> -> -|11>.
+
+    Args:
+        platform: platform where the experiment is meant to be run.
+        qubit (int): qubit that will interact with center qubit 2.
+        flux_pulse_duration_start (int): minimum flux pulse duration in nanoseconds.
+        flux_pulse_duration_end (int): maximum flux pulse duration in nanoseconds.
+        flux_pulse_duration_step (int): step for the duration sweep in nanoseconds.
+        flux_pulse_amplitude_start (float): minimum flux pulse amplitude.
+        flux_pulse_amplitude_end (float): maximum flux pulse amplitude.
+        flux_pulse_amplitude_step (float): step for the amplitude sweep.
+        dt (int): time delay between the two flux pulses if enabled.
+
+    Returns:
+        data (DataSet): Measurement data for both the high and low frequency qubits.
+
+    """
+    from qibolab.pulses import PulseSequence
+
+    if len(qubits) > 1:
+        raise NotImplementedError
+
+    qubit = list(qubits.keys())[0]
+
+    platform.reload_settings()
+
+    highfreq = 2
+    lowfreq = qubit
+    if qubit > 2:
+        highfreq = qubit
+        lowfreq = 2
+
+    initialize_lowfreq = platform.create_RX_pulse(lowfreq, start=0, relative_phase=0)
+    initialize_highfreq = platform.create_RX_pulse(highfreq, start=0, relative_phase=0)
+    flux_sequence: PulseSequence
+    # flux_sequence, _ = platform.create_CZ_pulse_sequence(
+    #     (highfreq, lowfreq), start=initialize_highfreq.finish
+    # )
+
+    # flux_sequence = PulseSequence(FluxPulse(start=initialize_highfreq.finish, duration=32, amplitude = 1, shape=(
+    #     IIR(b=[0.6509331609661549, -0.6254097068092762], a=[1, -0.9744765458431213], target=Rectangular())
+    # ), channel = 'L4-3' , qubit = 3))
+
+    from qibolab.pulses import Exponential
+
+    flux_sequence = PulseSequence(
+        FluxPulse(
+            start=initialize_highfreq.finish,
+            duration=32,
+            amplitude=0.5,
+            shape=Exponential(12, 0.1),
+            channel="L4-3",
+            qubit=3,
+        )
+    )
+    #                                         # channel = 'L4-4' , qubit = 4))
+
+    measure_lowfreq = platform.create_qubit_readout_pulse(
+        lowfreq, start=initialize_highfreq.finish + flux_pulse_duration_end
+    )
+    measure_highfreq = platform.create_qubit_readout_pulse(
+        highfreq, start=initialize_highfreq.finish + flux_pulse_duration_end
+    )
+
+    data = DataUnits(
+        name=f"data_q{lowfreq}{highfreq}",
+        quantities={
+            "flux_pulse_duration": "ns",
+            "flux_pulse_amplitude": "dimensionless",
+        },
+        options=["q_freq"],
+    )
+
+    amplitudes_range = np.arange(
+        flux_pulse_amplitude_start, flux_pulse_amplitude_end, flux_pulse_amplitude_step
+    )
+    amplitude_sweeper = Sweeper(
+        Parameter.amplitude,
+        amplitudes_range,
+        pulses=flux_sequence.get_qubit_pulses(highfreq).qf_pulses,
+    )
+
+    durations_range = np.arange(
+        flux_pulse_duration_start, flux_pulse_duration_end, flux_pulse_duration_step
+    )
+    duration_sweeper = Sweeper(
+        Parameter.duration,
+        durations_range,
+        pulses=flux_sequence.get_qubit_pulses(highfreq).qf_pulses,
+    )
+
+    sequence = (
+        initialize_highfreq
+        + initialize_lowfreq
+        + flux_sequence
+        + measure_lowfreq
+        + measure_highfreq
+    )
+
+    results = platform.sweep(
+        sequence,
+        duration_sweeper,
+        amplitude_sweeper,
+        nshots=nshots,
+        relaxation_time=relaxation_time,
+    )
+
+    amplitudes = np.tile(amplitudes_range, len(durations_range))
+    durations = np.repeat(durations_range, len(amplitudes_range))
+
+    res_temp = results[measure_lowfreq.serial].raw
+    res_temp.update(
+        {
+            "flux_pulse_duration[ns]": durations,
+            "flux_pulse_amplitude[dimensionless]": amplitudes,
+            "q_freq": np.repeat("low", len(durations_range) * len(amplitudes_range)),
+        }
+    )
+    data.add_data_from_dict(res_temp)
+
+    res_temp = results[measure_highfreq.serial].raw
+    res_temp.update(
+        {
+            "flux_pulse_duration[ns]": durations,
+            "flux_pulse_amplitude[dimensionless]": amplitudes,
+            "q_freq": np.repeat("high", len(durations_range) * len(amplitudes_range)),
+        }
+    )
+    data.add_data_from_dict(res_temp)
 
     yield data

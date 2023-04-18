@@ -221,7 +221,7 @@ def t1(
             # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulses[qubit].serial]
             # store the results
-            r = result.to_dict(average=False)
+            r = result.raw
             r.update(
                 {
                     "wait[ns]": ro_wait_range,
