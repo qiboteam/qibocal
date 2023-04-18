@@ -13,6 +13,7 @@ from ...config import log
 from ...data import DataUnits
 from .utils import find_min_msr, get_max_freq, get_points_with_max_freq, norm
 
+
 @dataclass
 class ResonatorPunchoutAttenuationParameters(Parameters):
     freq_width: int
@@ -48,7 +49,7 @@ class ResonatorPunchoutAttenuationData(DataUnits):
             "data",
             {"frequency": "Hz", "attenuation": "dB"},
             options=[
-                "qubit", 
+                "qubit",
                 "iteration",
                 "resonator_type",
             ],
@@ -133,7 +134,10 @@ def _acquisition(
     return data
     # TODO: calculate and save fit
 
-def _fit(data: ResonatorPunchoutAttenuationData, fit_type="attenuation") -> ResonatorPunchoutAttenuationResults:
+
+def _fit(
+    data: ResonatorPunchoutAttenuationData, fit_type="attenuation"
+) -> ResonatorPunchoutAttenuationResults:
     """Fit frequency and attenuation at high and low power for a given resonator
         Args:
         data (DataUnits): data file with information on the feature response at each current point.
@@ -215,7 +219,9 @@ def _fit(data: ResonatorPunchoutAttenuationData, fit_type="attenuation") -> Reso
         lp_min_att_dict[qubit] = lp_min_att
         hp_max_att_dict[qubit] = hp_max_att
         hp_min_att_dict[qubit] = hp_min_att
-        log.warning(f"max att: {lp_max_att} -  min att: {lp_min_att} -  readout_attenuation: {ro_att}")
+        log.warning(
+            f"max att: {lp_max_att} -  min att: {lp_min_att} -  readout_attenuation: {ro_att}"
+        )
 
     return ResonatorPunchoutAttenuationResults(
         freq_lp_dict,
@@ -228,8 +234,11 @@ def _fit(data: ResonatorPunchoutAttenuationData, fit_type="attenuation") -> Reso
     )
 
 
-
-def _plot(data: ResonatorPunchoutAttenuationData, fit: ResonatorPunchoutAttenuationResults, qubit):
+def _plot(
+    data: ResonatorPunchoutAttenuationData,
+    fit: ResonatorPunchoutAttenuationResults,
+    qubit,
+):
     figures = []
     fitting_report = ""
 
@@ -283,7 +292,6 @@ def _plot(data: ResonatorPunchoutAttenuationData, fit: ResonatorPunchoutAttenuat
             z=averaged_data["phase"].pint.to("rad").pint.magnitude,
             colorbar_x=1.01,
         ),
-
         row=1 + report_n,
         col=2,
     )
@@ -324,7 +332,7 @@ def _plot(data: ResonatorPunchoutAttenuationData, fit: ResonatorPunchoutAttenuat
         fitting_report = fitting_report + title_text
     else:
         fitting_report = "No fitting data"
-    
+
     fig.update_layout(
         showlegend=False,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
@@ -333,7 +341,6 @@ def _plot(data: ResonatorPunchoutAttenuationData, fit: ResonatorPunchoutAttenuat
     figures.append(fig)
 
     return figures, fitting_report
-
 
 
 resonator_punchout_attenuation = Routine(_acquisition, _fit, _plot)
