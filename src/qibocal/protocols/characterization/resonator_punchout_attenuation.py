@@ -9,8 +9,9 @@ from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
 from ...auto.operation import Parameters, Qubits, Results, Routine
+from ...config import log
 from ...data import DataUnits
-
+from .utils import find_min_msr, get_max_freq, get_points_with_max_freq, norm
 
 @dataclass
 class ResonatorPunchoutAttenuationParameters(Parameters):
@@ -29,13 +30,16 @@ class ResonatorPunchoutAttenuationResults(Results):
     readout_frequency: Dict[List[Tuple], str] = field(
         metadata=dict(update="readout_frequency")
     )
-    attenuation: Dict[List[Tuple], str] = field(
+    readout_attenuation: Dict[List[Tuple], str] = field(
         metadata=dict(update="readout_attenuation")
     )
-    fitted_parameters: Dict[List[Tuple], List]
     bare_frequency: Optional[Dict[List[Tuple], str]] = field(
         metadata=dict(update="bare_resonator_frequency")
     )
+    lp_max_att: Dict[List[Tuple], str]
+    lp_min_att: Dict[List[Tuple], str]
+    hp_max_att: Dict[List[Tuple], str]
+    hp_min_att: Dict[List[Tuple], str]
 
 
 class ResonatorPunchoutAttenuationData(DataUnits):
@@ -43,7 +47,11 @@ class ResonatorPunchoutAttenuationData(DataUnits):
         super().__init__(
             "data",
             {"frequency": "Hz", "attenuation": "dB"},
-            options=["qubit", "iteration"],
+            options=[
+                "qubit", 
+                "iteration",
+                "resonator_type",
+            ],
         )
 
 
@@ -112,6 +120,7 @@ def _acquisition(
                     "attenuation[dB]": att,
                     "qubit": len(freqs) * [qubit],
                     "iteration": len(freqs) * [iteration],
+                    "resonator_type": len(freqs) * [platform.resonator_type],
                 }
             )
             data.add_data_from_dict(r)
@@ -124,18 +133,105 @@ def _acquisition(
     return data
     # TODO: calculate and save fit
 
+def _fit(data: ResonatorPunchoutAttenuationData, fit_type="attenuation") -> ResonatorPunchoutAttenuationResults:
+    """Fit frequency and attenuation at high and low power for a given resonator
+        Args:
+        data (DataUnits): data file with information on the feature response at each current point.
+        qubits (list): qubits coupled to the resonator that we are probing.
+        resonator_type (str): the type of readout resonator ['3D', '2D'].
+        labels (list of str): list containing the lables of the quantities computed by this fitting method.
+        fit_type (str): the type of punchout executed ['attenuation', 'amplitude'].
 
-def _fit(data: ResonatorPunchoutAttenuationData) -> ResonatorPunchoutAttenuationResults:
-    return ResonatorPunchoutAttenuationResults({}, {}, {}, {})
+    Returns:
+        data_fit (Data): Data file with labels and fit parameters (frequency at low and high power, attenuation range for low and highg power)
+    """
+
+    qubits = data.df["qubit"].unique()
+    resonator_type = data.df["resonator_type"].unique()
+
+    freq_lp_dict = {}
+    lp_max_att_dict = {}
+    lp_min_att_dict = {}
+    freq_hp_dict = {}
+    hp_max_att_dict = {}
+    hp_min_att_dict = {}
+    ro_att_dict = {}
+
+    for qubit in qubits:
+        averaged_data = (
+            data.df[data.df["qubit"] == qubit]
+            .drop(columns=["i", "q", "qubit", "iteration"])
+            .groupby(["frequency", fit_type], as_index=False)
+            .mean()
+        )
+        try:
+            normalised_data = averaged_data.groupby([fit_type], as_index=False)[
+                ["MSR"]
+            ].transform(norm)
+
+            averaged_data_updated = averaged_data.copy()
+            averaged_data_updated.update(normalised_data["MSR"])
+
+            min_points = find_min_msr(averaged_data_updated, resonator_type, fit_type)
+            vfunc = np.vectorize(lambda x: x.magnitude)
+            min_points = vfunc(min_points)
+
+            max_x = np.amax(min_points[:, 0])
+            min_x = np.amin(min_points[:, 0])
+            middle_x = (max_x + min_x) / 2
+
+            hp_points = min_points[min_points[:, 0] < middle_x]
+            lp_points = min_points[min_points[:, 0] >= middle_x]
+
+            freq_hp = get_max_freq(hp_points)
+            freq_lp = get_max_freq(lp_points)
+
+            point_hp_max, point_hp_min = get_points_with_max_freq(min_points, freq_hp)
+            point_lp_max, point_lp_min = get_points_with_max_freq(min_points, freq_lp)
+
+            freq_lp = point_lp_max[0]
+            lp_max_att = point_lp_max[1]
+            lp_min_att = point_lp_min[1]
+            freq_hp = point_hp_max[0]
+            hp_max_att = point_hp_max[1]
+            hp_min_att = point_hp_min[1]
+            ro_att = round((lp_max_att + lp_min_att) / 2)
+            ro_att = ro_att + 1 if ro_att % 2 == 1 else ro_att
+
+        except:
+            log.warning("resonator_punchout_fit: the fitting was not succesful")
+            freq_lp = 0.0
+            freq_hp = 0.0
+            ro_att = 0.0
+            lp_max_att = 0.0
+            lp_min_att = 0.0
+            hp_max_att = 0.0
+            hp_min_att = 0.0
+
+        freq_lp_dict[qubit] = freq_lp
+        freq_hp_dict[qubit] = freq_hp
+        ro_att_dict[qubit] = ro_att
+        lp_max_att_dict[qubit] = lp_max_att
+        lp_min_att_dict[qubit] = lp_min_att
+        hp_max_att_dict[qubit] = hp_max_att
+        hp_min_att_dict[qubit] = hp_min_att
+        log.warning(f"max att: {lp_max_att} -  min att: {lp_min_att} -  readout_attenuation: {ro_att}")
+
+    return ResonatorPunchoutAttenuationResults(
+        freq_lp_dict,
+        ro_att_dict,
+        freq_hp_dict,
+        lp_max_att_dict,
+        lp_min_att_dict,
+        hp_max_att_dict,
+        hp_min_att_dict,
+    )
 
 
-def _plot(
-    data: ResonatorPunchoutAttenuationData,
-    fit: ResonatorPunchoutAttenuationResults,
-    qubit,
-):
+
+def _plot(data: ResonatorPunchoutAttenuationData, fit: ResonatorPunchoutAttenuationResults, qubit):
     figures = []
-    fitting_report = "No fitting data"
+    fitting_report = ""
 
     fig = make_subplots(
         rows=1,
@@ -152,9 +248,6 @@ def _plot(
 
     data.df = data.df[data.df["qubit"] == qubit]
 
-    iterations = data.df["iteration"].unique()
-    frequencies = data.df["frequency"].pint.to("Hz").pint.magnitude.unique()
-    attenuations = data.df["attenuation"].pint.to("dB").pint.magnitude.unique()
     averaged_data = (
         data.df.drop(columns=["qubit", "iteration"])
         .groupby(["frequency", "attenuation"], as_index=False)
@@ -190,6 +283,7 @@ def _plot(
             z=averaged_data["phase"].pint.to("rad").pint.magnitude,
             colorbar_x=1.01,
         ),
+
         row=1 + report_n,
         col=2,
     )
@@ -197,6 +291,40 @@ def _plot(
         title_text=f"q{qubit}/r{report_n}: Frequency (Hz)", row=1 + report_n, col=2
     )
     fig.update_yaxes(title_text="Attenuation", row=1 + report_n, col=2)
+
+    if len(data) > 0:
+        fig.add_trace(
+            go.Scatter(
+                x=[
+                    fit.readout_frequency[qubit],
+                    fit.readout_frequency[qubit],
+                    fit.bare_frequency[qubit],
+                    fit.bare_frequency[qubit],
+                ],
+                y=[
+                    fit.lp_max_att[qubit],
+                    fit.lp_min_att[qubit],
+                    fit.hp_max_att[qubit],
+                    fit.hp_min_att[qubit],
+                ],
+                mode="markers",
+                marker=dict(
+                    size=8,
+                    color="gray",
+                    symbol="circle",
+                ),
+            )
+        )
+        title_text = ""
+        title_text += f"q{qubit}/r{report_n} | Resonator Frequency at Low Power:  {fit.bare_frequency[qubit]} Hz.<br>"
+        title_text += f"q{qubit}/r{report_n} | Low Power Attenuation Range: {fit.lp_max_att[qubit]} - {fit.lp_min_att[qubit]} db.<br>"
+        title_text += f"q{qubit}/r{report_n} | Resonator Frequency at High Power: {fit.readout_frequency[qubit]} Hz.<br>"
+        title_text += f"q{qubit}/r{report_n} | High Power Attenuation Range: {fit.hp_max_att[qubit]} - {fit.hp_min_att[qubit]} db.<br>"
+
+        fitting_report = fitting_report + title_text
+    else:
+        fitting_report = "No fitting data"
+    
     fig.update_layout(
         showlegend=False,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
@@ -205,6 +333,7 @@ def _plot(
     figures.append(fig)
 
     return figures, fitting_report
+
 
 
 resonator_punchout_attenuation = Routine(_acquisition, _fit, _plot)
