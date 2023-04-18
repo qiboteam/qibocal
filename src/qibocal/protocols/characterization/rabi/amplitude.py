@@ -85,7 +85,7 @@ def _acquisition(
     ro_pulses = {}
     for qubit in qubits:
         qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        qd_pulses[qubit].duration = 40  # decided by Sergi
+        qd_pulses[qubit].duration = params.pulse_length
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=qd_pulses[qubit].finish
         )
