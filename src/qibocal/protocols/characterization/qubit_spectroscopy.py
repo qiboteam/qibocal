@@ -26,10 +26,10 @@ class QubitSpectroscopyParameters(Parameters):
 @dataclass
 class QubitSpectroscopyResults(Results):
     frequency: Dict[List[Tuple], str] = field(metadata=dict(update="drive_frequency"))
-    amplitude: Dict[List[Tuple], str] = field(metadata=dict(update="drive_amplitude"))
+    amplitude: Dict[List[Tuple], str]
     fitted_parameters: Dict[List[Tuple], List]
     attenuation: Optional[Dict[List[Tuple], str]] = field(
-        default_factory=dict, metadata=dict(update="drive_attenuation")
+        default_factory=dict,
     )
 
 
