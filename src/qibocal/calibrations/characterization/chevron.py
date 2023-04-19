@@ -172,6 +172,8 @@ def tune_landscape(
         data (DataSet): Measurement data for both the high and low frequency qubits for the two setups of Id/X.
 
     """
+    from qibolab.pulses import PulseSequence
+
     # TODO: generalize this for more qubits?
     if len(qubits) > 1:
         raise NotImplementedError
@@ -185,19 +187,41 @@ def tune_landscape(
         highfreq = qubit
         lowfreq = 2
 
-    x_pulse_start = platform.create_RX_pulse(highfreq, start=0, relative_phase=0)
-    y90_pulse = platform.create_RX90_pulse(lowfreq, start=0, relative_phase=np.pi / 2)
+    x_pulse_start = platform.create_RX_pulse(lowfreq, start=0, relative_phase=0)
+    y90_pulse = platform.create_RX90_pulse(highfreq, start=0, relative_phase=np.pi / 2)
 
-    flux_sequence, _ = platform.create_CZ_pulse_sequence(
+    # x_pulse_start = platform.create_RX_pulse(highfreq, start=0, relative_phase=0)
+    # y90_pulse = platform.create_RX90_pulse(lowfreq, start=0, relative_phase=np.pi / 2)
+
+    flux_sequence, virtual_z_phase = platform.create_CZ_pulse_sequence(
         (highfreq, lowfreq), start=y90_pulse.finish
     )
 
+    from qibolab.pulses import Exponential
+
+    flux_sequence = PulseSequence(
+        FluxPulse(
+            start=y90_pulse.finish,
+            duration=33,
+            amplitude=0.5475,
+            shape=Exponential(12, 0.1),
+            channel="L4-3",
+            qubit=3,
+        )
+    )
+
     theta_pulse = platform.create_RX90_pulse(
-        lowfreq, start=flux_sequence.finish, relative_phase=theta_start
+        highfreq, start=flux_sequence.finish, relative_phase=virtual_z_phase[highfreq]
     )
     x_pulse_end = platform.create_RX_pulse(
-        highfreq, start=flux_sequence.finish, relative_phase=0
+        lowfreq, start=flux_sequence.finish, relative_phase=virtual_z_phase[lowfreq]
     )
+    # theta_pulse = platform.create_RX90_pulse(
+    #     lowfreq, start=flux_sequence.finish, relative_phase=theta_start
+    # )
+    # x_pulse_end = platform.create_RX_pulse(
+    #     highfreq, start=flux_sequence.finish, relative_phase=0
+    # )
 
     measure_lowfreq = platform.create_qubit_readout_pulse(
         lowfreq, start=theta_pulse.finish
@@ -214,7 +238,7 @@ def tune_landscape(
         options=["q_freq", "setup"],
     )
 
-    thetas = np.arange(theta_start + np.pi / 2, theta_end + np.pi / 2, theta_step)
+    thetas = np.arange(theta_start, theta_end, theta_step)
     sweeper = Sweeper(Parameter.relative_phase, thetas, [theta_pulse])
 
     setups = ["I", "X"]
