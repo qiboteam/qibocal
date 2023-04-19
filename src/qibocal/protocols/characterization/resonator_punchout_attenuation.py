@@ -324,9 +324,9 @@ def _plot(
             )
         )
         title_text = ""
-        title_text += f"q{qubit}/r{report_n} | Resonator Frequency at Low Power:  {fit.readout_frequency[qubit]} Hz.<br>"
+        title_text += f"q{qubit}/r{report_n} | Resonator Frequency at Low Power:  {fit.readout_frequency[qubit] * 1e9} Hz.<br>"
         title_text += f"q{qubit}/r{report_n} | Low Power Attenuation Range: {fit.lp_max_att[qubit]} - {fit.lp_min_att[qubit]} db.<br>"
-        title_text += f"q{qubit}/r{report_n} | Resonator Frequency at High Power: {fit.bare_frequency[qubit]} Hz.<br>"
+        title_text += f"q{qubit}/r{report_n} | Resonator Frequency at High Power: {fit.bare_frequency[qubit] * 1e9} Hz.<br>"
         title_text += f"q{qubit}/r{report_n} | High Power Attenuation Range: {fit.hp_max_att[qubit]} - {fit.hp_min_att[qubit]} db.<br>"
 
         fitting_report = fitting_report + title_text
