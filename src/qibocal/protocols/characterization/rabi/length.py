@@ -16,6 +16,7 @@ class RabiLengthParameters(Parameters):
     pulse_duration_start: float
     pulse_duration_end: float
     pulse_duration_step: float
+    pulse_amplitude: float
     nshots: int
     relaxation_time: float
     software_averages: int = 1
@@ -24,6 +25,7 @@ class RabiLengthParameters(Parameters):
 @dataclass
 class RabiLengthResults(Results):
     length: Dict[List[Tuple], str] = field(metadata=dict(update="drive_length"))
+    amplitude: Dict[List[Tuple], str] = field(metadata=dict(update="drive_amplitude"))
     fitted_parameters: Dict[List[Tuple], List]
 
 
@@ -31,7 +33,7 @@ class RabiLengthData(DataUnits):
     def __init__(self):
         super().__init__(
             name="data",
-            quantities={"time": "ns"},
+            quantities={"time": "ns", "amplitude": "dimensionless"},
             options=["qubit", "iteration", "resonator_type"],
         )
 
@@ -89,7 +91,10 @@ def _acquisition(
     qd_pulses = {}
     ro_pulses = {}
     for qubit in qubits:
+        # TODO: made duration optional for qd pulse?
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
+        qd_pulses[qubit].amplitude = params.pulse_amplitude
+
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=qd_pulses[qubit].finish
         )
@@ -125,6 +130,7 @@ def _acquisition(
                 r.update(
                     {
                         "time[ns]": duration,
+                        "amplitude[dimensionless]": float(qd_pulses[qubit].amplitude),
                         "qubit": ro_pulse.qubit,
                         "iteration": iteration,
                         "resonator_type": platform.resonator_type,

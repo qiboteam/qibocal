@@ -18,6 +18,7 @@ class RabiAmplitudeParameters(Parameters):
     pulse_amplitude_start: float
     pulse_amplitude_end: float
     pulse_amplitude_step: float
+    pulse_length: float
     nshots: int
     relaxation_time: float
     software_averages: int = 1
@@ -26,6 +27,7 @@ class RabiAmplitudeParameters(Parameters):
 @dataclass
 class RabiAmplitudeResults(Results):
     amplitude: Dict[List[Tuple], str] = field(metadata=dict(update="drive_amplitude"))
+    length: Dict[List[Tuple], str] = field(metadata=dict(update="drive_length"))
     fitted_parameters: Dict[List[Tuple], List]
 
 
@@ -33,7 +35,7 @@ class RabiAmplitudeData(DataUnits):
     def __init__(self):
         super().__init__(
             "data",
-            {"amplitude": "dimensionless"},
+            {"amplitude": "dimensionless", "length": "ns"},
             options=["qubit", "iteration", "resonator_type"],
         )
 
@@ -83,7 +85,7 @@ def _acquisition(
     ro_pulses = {}
     for qubit in qubits:
         qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        qd_pulses[qubit].duration = 40  # decided by Sergi
+        qd_pulses[qubit].duration = params.pulse_length
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=qd_pulses[qubit].finish
         )
@@ -109,7 +111,6 @@ def _acquisition(
     data = RabiAmplitudeData()
 
     for iteration in range(params.software_averages):
-        print("HERE")
         # sweep the parameter
         results = platform.sweep(
             sequence,
@@ -117,7 +118,6 @@ def _acquisition(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
         )
-        print("THERE")
         for qubit in qubits:
             # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulses[qubit].serial]
@@ -126,6 +126,8 @@ def _acquisition(
                 {
                     "amplitude[dimensionless]": qd_pulses[qubit].amplitude
                     * qd_pulse_amplitude_range,
+                    "length[ns]": len(qd_pulse_amplitude_range)
+                    * [qd_pulses[qubit].duration],
                     "qubit": len(qd_pulse_amplitude_range) * [qubit],
                     "iteration": len(qd_pulse_amplitude_range) * [iteration],
                     "resonator_type": len(qd_pulse_amplitude_range)

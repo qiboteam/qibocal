@@ -24,13 +24,19 @@ def fitting(data: DataUnits, label: str) -> list:
 
     rabi_parameters = {}
     fitted_parameters = {}
+    rabi_not_fitted_parameters = {}
 
     if label == "amplitude":
         quantity = "amplitude"
         unit = "dimensionless"
+        other_quanity = "length"
+        other_unit = "ns"
+
     elif label == "length":
         quantity = "time"
         unit = "ns"
+        other_quanity = "amplitude"
+        other_unit = "dimensionless"
 
     for qubit in qubits:
         qubit_data = (
@@ -42,7 +48,9 @@ def fitting(data: DataUnits, label: str) -> list:
 
         rabi_parameter = qubit_data[quantity].pint.to(unit).pint.magnitude
         voltages = qubit_data["MSR"].pint.to("uV").pint.magnitude
-
+        rabi_not_fitted_parameters[qubit] = (
+            qubit_data[other_quanity].pint.to(other_unit).pint.magnitude.unique()
+        )
         if resonator_type == "3D":
             pguess = [
                 np.mean(voltages.values),
@@ -73,10 +81,12 @@ def fitting(data: DataUnits, label: str) -> list:
         rabi_parameters[qubit] = pi_pulse_parameter
         fitted_parameters[qubit] = popt
 
-    return rabi_parameters, fitted_parameters
+    return rabi_parameters, rabi_not_fitted_parameters, fitted_parameters
 
 
 def plot(data, fit, qubit, label):
+    print(fit.amplitude)
+    print(fit.length)
     if label == "amplitude":
         quantity = "amplitude"
         unit = "dimensionless"
@@ -194,14 +204,8 @@ def plot(data, fit, qubit, label):
             col=1,
         )
 
-        if label == "amplitude":
-            fitting_report = fitting_report + (
-                f"q{qubit}/r{report_n} | pi_pulse_amplitude: {fit.amplitude[qubit]:.3f}<br>"
-            )
-        elif label == "length":
-            fitting_report = fitting_report + (
-                f"q{qubit}/r{report_n} | pi_pulse_length: {fit.length[qubit]:.3f}<br>"
-            )
+        fitting_report += f"q{qubit}/r{report_n} | pi_pulse_amplitude: {float(fit.amplitude[qubit]):.3f}<br>"
+        fitting_report += f"q{qubit}/r{report_n} | pi_pulse_length: {float(fit.length[qubit]):.3f}<br>"
 
     fig.update_layout(
         showlegend=True,

@@ -258,6 +258,7 @@ def spectroscopy_plot(data: DataUnits, fit: Results, qubit):
             fitting_report += (
                 f"q{qubit}/r{report_n} | attenuation: {fit.attenuation[qubit]} <br>"
             )
+        fig.add_vline(x=np.mean(frequencies))
 
     fig.update_layout(
         showlegend=True,

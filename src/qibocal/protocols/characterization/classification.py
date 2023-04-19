@@ -22,7 +22,7 @@ class SingleShotClassificationData(DataUnits):
     def __init__(self):
         super().__init__(
             "data",
-            options=["qubit", "state"],
+            options=["qubit", "state", "nshots"],
         )
 
 
@@ -30,6 +30,8 @@ class SingleShotClassificationData(DataUnits):
 class SingleShotClassificationResults(Results):
     threshold: Dict[List[Tuple], str] = field(metadata=dict(update="threshold"))
     rotation_angle: Dict[List[Tuple], str] = field(metadata=dict(update="iq_angle"))
+    fidelity: Dict[List[Tuple], str]
+    assignment_fidelity: Dict[List[Tuple], str]
 
 
 def _acquisition(
@@ -95,6 +97,7 @@ def _acquisition(
             {
                 "qubit": [ro_pulse.qubit] * params.nshots,
                 "state": [0] * params.nshots,
+                "nshots": [params.nshots] * params.nshots,
             }
         )
         data.add_data_from_dict(r)
@@ -111,6 +114,7 @@ def _acquisition(
             {
                 "qubit": [ro_pulse.qubit] * params.nshots,
                 "state": [1] * params.nshots,
+                "nshots": [params.nshots] * params.nshots,
             }
         )
         data.add_data_from_dict(r)
@@ -124,11 +128,13 @@ def _acquisition(
 
 def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
     qubits = data.df["qubit"].unique()
+    nshots = data.df["nshots"].unique()
     thresholds, rotation_angles = {}, {}
+    fidelities, assignment_fidelities = {}, {}
 
     for qubit in qubits:
         qubit_data = data.df[data.df["qubit"] == qubit].drop(
-            columns=["qubit", "MSR", "phase"]
+            columns=["qubit", "MSR", "phase", "nshots"]
         )
 
         iq_state0 = (
@@ -175,11 +181,18 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         )
         argmax = np.argmax(cum_distribution_diff)
         threshold = real_values_combined[argmax]
-
+        errors_state1 = nshots - cum_distribution_state1[argmax]
+        errors_state0 = cum_distribution_state0[argmax]
+        fidelity = cum_distribution_diff[argmax] / nshots
+        assignment_fidelity = 1 - (errors_state1 + errors_state0) / nshots / 2
         thresholds[qubit] = threshold
         rotation_angles[qubit] = rotation_angle
+        fidelities[qubit] = fidelity[0]
+        assignment_fidelities[qubit] = assignment_fidelity[0]
 
-    return SingleShotClassificationResults(thresholds, rotation_angles)
+    return SingleShotClassificationResults(
+        thresholds, rotation_angles, fidelities, assignment_fidelities
+    )
 
 
 def _plot(
@@ -257,8 +270,10 @@ def _plot(
 
     fitting_report = (
         fitting_report
-        + f"q{qubit}/r{report_n} | threshold: {fit.threshold[qubit]:,.00f} <br>"
-        + f"q{qubit}/r{report_n} | rotation_angle: {fit.rotation_angle[qubit]:,.00f} rad <br>"
+        + f"q{qubit}/r{report_n} | threshold: {fit.threshold[qubit]:.3f} <br>"
+        + f"q{qubit}/r{report_n} | rotation_angle: {fit.rotation_angle[qubit]:.3f} rad <br>"
+        + f"q{qubit}/r{report_n} | fidelity: {fit.fidelity[qubit]:.3f} <br>"
+        + f"q{qubit}/r{report_n} | assignment_fidelity: {fit.assignment_fidelity[qubit]:.3f} <br>"
     )
 
     fig.update_layout(
