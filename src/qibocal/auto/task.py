@@ -71,6 +71,10 @@ class Task:
     def parameters(self):
         return self.operation.parameters_type.load(self.action.parameters)
 
+    @property
+    def data_acquired(self):
+        return self._data_acquired
+
     def datapath(self, base_dir: Path):
         path = base_dir / "data" / f"{self.id}_{self.iteration}"
         os.makedirs(path)
@@ -95,8 +99,9 @@ class Task:
             parameters = DummyPars()
 
         path = self.datapath(folder)
-        data: Data = operation.acquisition(platform, qubits, parameters)
-        data.to_csv(path)
+        # TODO: fix data attributes
+        self._data_acquired: Data = operation.acquisition(platform, qubits, parameters)
+        self._data_acquired.to_csv(path)
         # TODO: data dump
         # path.write_text(yaml.dump(pydantic_encoder(self.data(base_dir))))
-        return operation.fit(data)
+        return operation.fit(self._data_acquired)
