@@ -92,9 +92,7 @@ def _acquisition(
         for qubit, fluxline in zip(qubits, params.fluxlines):
             result = results[ro_pulses[qubit].serial]
 
-            biases = np.repeat(
-                delta_bias_range, len(delta_frequency_range)
-            ) + platform.get_bias(fluxline)
+            biases = np.repeat(delta_bias_range, len(delta_frequency_range))
             freqs = np.array(
                 len(delta_bias_range)
                 * list(delta_frequency_range + ro_pulses[qubit].frequency)
