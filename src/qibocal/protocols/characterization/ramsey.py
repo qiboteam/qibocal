@@ -26,9 +26,8 @@ class RamseyParameters(Parameters):
 @dataclass
 class RamseyResults(Results):
     frequency: Dict[List[Tuple], str] = field(metadata=dict(update="drive_frequency"))
-    t2: Dict[List[Tuple], str] = field(metadata=dict(update="t2"))
-    # TODO: perhaps this is not necessary for the runcard
-    delta_phys: Dict[List[Tuple], str]  # = field(metadata=dict(update="freq_detuning"))
+    t2: Dict[List[Tuple], str]
+    delta_phys: Dict[List[Tuple], str]
     fitted_parameters: Dict[List[Tuple], List]
 
 
@@ -161,6 +160,7 @@ def _fit(data: RamseyData) -> RamseyResults:  # TODO: put Platform as input
     sampling_rate = data.df["sampling_rate"].unique()
     n_osc = data.df["n_osc"].unique()
     t_max = data.df["t_max"].pint.to("ns").pint.magnitude
+    t_max = np.unique(t_max)
 
     t2s = {}
     corrected_qubit_frequencies = {}
@@ -204,17 +204,21 @@ def _fit(data: RamseyData) -> RamseyResults:  # TODO: put Platform as input
             corrected_qubit_frequency = int(qubit_freq + delta_phys)
             t2 = 1.0 / popt[4]
 
-        except:
-            log.warning("ramsey_fit: the fitting was not succesful")
+        except Exception as e:
+            log.warning(f"ramsey_fit: the fitting was not succesful. {e}")
             popt = [0] * 5
             t2 = 5.0
             corrected_qubit_frequency = int(qubit_freq)
             delta_phys = 0
 
+        log.warning(f"delta phys {delta_phys}")
+        log.warning(f"corrected qubit freq {corrected_qubit_frequency}")
+    
         fitted_parameters[qubit] = popt
         corrected_qubit_frequencies[qubit] = corrected_qubit_frequency / 1e9
         t2s[qubit] = t2
         freqs_detuing[qubit] = delta_phys
+
 
     return RamseyResults(
         corrected_qubit_frequencies, t2s, freqs_detuing, fitted_parameters
@@ -222,6 +226,7 @@ def _fit(data: RamseyData) -> RamseyResults:  # TODO: put Platform as input
 
 
 def _plot(data: RamseyData, fit: RamseyResults, qubit):
+    log.warning("plotting")
     figures = []
 
     fig = make_subplots(
@@ -304,10 +309,10 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
         fitting_report = (
             fitting_report
             + (
-                f"q{qubit}/r{report_n} | delta_frequency: {fit.delta_phys[qubit]:,.0f} Hz<br>"
+                f"q{qubit}/r{report_n} | delta_frequency: {fit.delta_phys[qubit]:,.1f} Hz<br>"
             )
             + (
-                f"q{qubit}/r{report_n} | drive_frequency: {fit.frequency[qubit]:,.0f} Hz<br>"
+                f"q{qubit}/r{report_n} | drive_frequency: {fit.frequency[qubit] * 1e9} Hz<br>"
             )
             + (f"q{qubit}/r{report_n} | T2: {fit.t2[qubit]:,.0f} ns.<br><br>")
         )
