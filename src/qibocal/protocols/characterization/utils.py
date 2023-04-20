@@ -24,9 +24,41 @@ def lorentzian(frequency, amplitude, center, sigma, offset):
     ) + offset
 
 
-def lorentzian_fit(data: DataUnits) -> list:
+def lorentzian_fit(data: DataUnits, spec_label: str) -> list:
+    r"""
+    Fitting routine for resonator/qubit spectroscopy.
+    The used model is
+
+    .. math::
+
+        y = \frac{A}{\pi} \Big[ \frac{\sigma}{(f-f_0)^2 + \sigma^2} \Big] + y_0.
+
+    Args:
+
+    Args:
+        data (`DataUnits`): dataset for the fit
+        spec_label (str): Id for fitting resonator or qubit spectroscopies
+            -   When using ``resonator_spectroscopy`` the expected label is "rs"
+            -   when using ``qubit_spectroscopy`` the expected label is "qs"
+
+        fit_file_name (str): file name, ``None`` is the default value.
+
+    Returns:
+
+        A list with the following keys
+
+            - **labels[0]**: peak voltage
+            - **labels[1]**: frequency
+            - **popt0**: Lorentzian's amplitude
+            - **popt1**: Lorentzian's center
+            - **popt2**: Lorentzian's sigma
+            - **popt3**: Lorentzian's offset
+            - **qubit**: The qubit being tested
+    """
+
     qubits = data.df["qubit"].unique()
     resonator_type = data.df["resonator_type"].unique()
+    print(f"type: {resonator_type}")
 
     power_level = data.df["power_level"].unique() if "power_level" in data.df else None
 
@@ -57,7 +89,8 @@ def lorentzian_fit(data: DataUnits) -> list:
 
         model_Q = lmfit.Model(lorentzian)
 
-        if resonator_type == "3D":
+        # Guess parameters for Lorentzian max or min
+        if (resonator_type == "3D" and spec_label == "rs") or (resonator_type == "2D" and spec_label == "qs"):
             guess_center = frequencies[
                 np.argmax(voltages)
             ]  # Argmax = Returns the indices of the maximum values along an axis.
@@ -66,6 +99,7 @@ def lorentzian_fit(data: DataUnits) -> list:
             )
             guess_sigma = abs(frequencies[np.argmin(voltages)] - guess_center)
             guess_amp = (np.max(voltages) - guess_offset) * guess_sigma * np.pi
+
         else:
             guess_center = frequencies[
                 np.argmin(voltages)

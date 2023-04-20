@@ -136,7 +136,7 @@ def _acquisition(
 
 
 def _fit(data: ResonatorSpectroscopyData) -> ResonatorSpectroscopyResults:
-    return ResonatorSpectroscopyResults(**lorentzian_fit(data))
+    return ResonatorSpectroscopyResults(**lorentzian_fit(data, "rs"))
 
 
 def _plot(data: ResonatorSpectroscopyData, fit: ResonatorSpectroscopyResults, qubit):
