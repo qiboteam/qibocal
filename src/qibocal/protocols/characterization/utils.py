@@ -1,5 +1,5 @@
 import statistics
-from enum import Enum, auto
+from enum import Enum
 
 import lmfit
 import numpy as np
@@ -8,13 +8,12 @@ from plotly.subplots import make_subplots
 
 from ...auto.operation import Results
 from ...config import log
-from ...data import DataUnits
 from ...plots.utils import get_color
 
 
 class PowerLevel(Enum):
-    high = auto()
-    low = auto()
+    high = "high"
+    low = "low"
 
 
 def lorentzian(frequency, amplitude, center, sigma, offset):
@@ -24,40 +23,22 @@ def lorentzian(frequency, amplitude, center, sigma, offset):
     ) + offset
 
 
-def lorentzian_fit(data: DataUnits) -> list:
+def lorentzian_fit(data) -> list:
     qubits = data.df["qubit"].unique()
-    resonator_type = data.df["resonator_type"].unique()
-
-    power_level = data.df["power_level"].unique() if "power_level" in data.df else None
-
     bare_frequency = {}
     amplitudes = {}
+    attenuations = {}
     frequency = {}
     fitted_parameters = {}
-
     for qubit in qubits:
-        drop_columns = [
-            "qubit",
-            "iteration",
-            "resonator_type",
-            "amplitude",
-        ]
-        if power_level is not None:
-            drop_columns += ["power_level"]
         qubit_data = (
-            data.df[data.df["qubit"] == qubit]
-            .drop(columns=drop_columns)
-            .groupby("frequency", as_index=False)
-            .mean()
+            data.df[data.df["qubit"] == qubit].drop(columns=["qubit"]).reset_index()
         )
-
         frequencies = qubit_data["frequency"].pint.to("GHz").pint.magnitude
-
         voltages = qubit_data["MSR"].pint.to("uV").pint.magnitude
-
         model_Q = lmfit.Model(lorentzian)
 
-        if resonator_type == "3D":
+        if data.resonator_type == "3D":
             guess_center = frequencies[
                 np.argmax(voltages)
             ]  # Argmax = Returns the indices of the maximum values along an axis.
@@ -90,44 +71,35 @@ def lorentzian_fit(data: DataUnits) -> list:
             )
             # get the values for postprocessing and for legend.
             f0 = fit_res.best_values["center"]
-            BW = fit_res.best_values["sigma"] * 2
-            Q = abs(f0 / BW)
-            peak_voltage = (
-                fit_res.best_values["amplitude"]
-                / (fit_res.best_values["sigma"] * np.pi)
-                + fit_res.best_values["offset"]
-            )
-            freq = f0
 
         except:
             log.warning("lorentzian_fit: the fitting was not successful")
 
         frequency[qubit] = f0
 
-        if power_level == "high":  # TODO: fix this in PowerLevel.low
+        if data.power_level is PowerLevel.high:
             bare_frequency[qubit] = f0
-        data_df = data.df
-        amplitude = data_df[data_df.qubit == qubit]["amplitude"].unique()
-        amplitudes[qubit] = amplitude[0]
+
+        amplitudes[qubit] = data.amplitude
+        attenuations[qubit] = data.attenuation
         fitted_parameters[qubit] = fit_res.best_values
 
-    if power_level is not None:
-        output = {
+    if data.power_level is PowerLevel.high:
+        return {
             "frequency": frequency,
             "fitted_parameters": fitted_parameters,
             "bare_frequency": bare_frequency,
             "amplitude": amplitudes,
         }
     else:
-        output = {
+        return {
             "frequency": frequency,
             "fitted_parameters": fitted_parameters,
             "amplitude": amplitudes,
         }
-    return output
 
 
-def spectroscopy_plot(data: DataUnits, fit: Results, qubit):
+def spectroscopy_plot(data, fit: Results, qubit):
     figures = []
     fig = make_subplots(
         rows=1,
@@ -139,126 +111,73 @@ def spectroscopy_plot(data: DataUnits, fit: Results, qubit):
             "phase (rad)",
         ),
     )
-
-    power_level = data.df["power_level"].unique() if "power_level" in data.df else None
-    drop_columns = ["i", "q", "qubit"]
-    if power_level is not None:
-        drop_columns += ["power_level"]
-
-    data.df = data.df[data.df["qubit"] == qubit].drop(columns=drop_columns)
-    iterations = data.df["iteration"].unique()
+    qubit_data = data.df[data.df["qubit"] == qubit].drop(columns=["i", "q", "qubit"])
 
     fitting_report = ""
-    report_n = 0
 
-    if len(iterations) > 1:
-        opacity = 0.3
+    frequencies = qubit_data["frequency"].pint.to("GHz").pint.magnitude.unique()
+    fig.add_trace(
+        go.Scatter(
+            x=qubit_data["frequency"].pint.to("GHz").pint.magnitude,
+            y=qubit_data["MSR"].pint.to("uV").pint.magnitude,
+            marker_color=get_color(0),
+            opacity=1,
+            name="Frequency",
+            showlegend=True,
+            legendgroup="Frequency",
+        ),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=qubit_data["frequency"].pint.to("GHz").pint.magnitude,
+            y=qubit_data["phase"].pint.to("rad").pint.magnitude,
+            marker_color=get_color(1),
+            opacity=1,
+            name="Phase",
+            showlegend=True,
+            legendgroup="Phase",
+        ),
+        row=1,
+        col=2,
+    )
+
+    freqrange = np.linspace(
+        min(frequencies),
+        max(frequencies),
+        2 * len(frequencies),
+    )
+    params = fit.fitted_parameters[qubit]
+
+    fig.add_trace(
+        go.Scatter(
+            x=freqrange,
+            y=lorentzian(freqrange, **params),
+            name="Fit",
+            line=go.scatter.Line(dash="dot"),
+            marker_color=get_color(2),
+        ),
+        row=1,
+        col=1,
+    )
+    if data.power_level is PowerLevel.low:
+        label = "readout frequency"
+        freq = fit.frequency
+    elif data.power_level is PowerLevel.high:
+        label = "bare resonator frequency"
+        freq = fit.bare_frequency
     else:
-        opacity = 1
-    for iteration in iterations:
-        frequencies = data.df["frequency"].pint.to("GHz").pint.magnitude.unique()
-        iteration_data = data.df[data.df["iteration"] == iteration]
-        fig.add_trace(
-            go.Scatter(
-                x=iteration_data["frequency"].pint.to("GHz").pint.magnitude,
-                y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
-                marker_color=get_color(2 * report_n),
-                opacity=opacity,
-                name=f"q{qubit}/r{report_n}: Data",
-                showlegend=not bool(iteration),
-                legendgroup=f"q{qubit}/r{report_n}: Data",
-            ),
-            row=1,
-            col=1,
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=iteration_data["frequency"].pint.to("GHz").pint.magnitude,
-                y=iteration_data["phase"].pint.to("rad").pint.magnitude,
-                marker_color=get_color(2 * report_n),
-                opacity=opacity,
-                name=f"q{qubit}/r{report_n}: Data",
-                showlegend=False,
-                legendgroup=f"q{qubit}/r{report_n}: Data",
-            ),
-            row=1,
-            col=2,
-        )
-    if len(iterations) > 1:
-        data.df = data.df.drop(columns=["iteration"])  # pylint: disable=E1101
-        fig.add_trace(
-            go.Scatter(
-                x=frequencies,
-                y=data.df.groupby("frequency")["MSR"]
-                .mean()
-                .pint.to("uV")
-                .pint.magnitude,
-                marker_color=get_color(2 * report_n),
-                name=f"q{qubit}/r{report_n}: Average",
-                showlegend=True,
-                legendgroup=f"q{qubit}/r{report_n}: Average",
-            ),
-            row=1,
-            col=1,
-        )
+        label = "qubit frequency"
+        freq = fit.frequency
 
-        fig.add_trace(
-            go.Scatter(
-                x=frequencies,
-                y=data.df.groupby("frequency")["phase"]
-                .mean()
-                .pint.to("rad")
-                .pint.magnitude,
-                marker_color=get_color(2 * report_n),
-                showlegend=False,
-                legendgroup=f"q{qubit}/r{report_n}: Average",
-            ),
-            row=1,
-            col=2,
-        )
-    if len(data) > 0:
-        freqrange = np.linspace(
-            min(frequencies),
-            max(frequencies),
-            2 * len(frequencies),
-        )
-        params = fit.fitted_parameters[qubit]
+    fitting_report += f"{qubit} | {label}: {freq[qubit]*1e9:,.0f} Hz<br>"
 
-        fig.add_trace(
-            go.Scatter(
-                x=freqrange,
-                y=lorentzian(freqrange, **params),
-                name=f"q{qubit}/r{report_n} Fit",
-                line=go.scatter.Line(dash="dot"),
-                marker_color=get_color(4 * report_n + 2),
-            ),
-            row=1,
-            col=1,
-        )
+    if fit.amplitude:
+        fitting_report += f"{qubit} | amplitude: {fit.amplitude[qubit]} <br>"
 
-        if power_level == "low":  # TODO:change this to PowerLevel.low
-            label = "readout frequency"
-            freq = fit.frequency
-        elif power_level == "high":
-            label = "bare resonator frequency"
-            freq = fit.bare_frequency
-        else:
-            label = "qubit frequency"
-            freq = fit.frequency
-        fitting_report += (
-            f"q{qubit}/r{report_n} | {label}: {freq[qubit]*1e9:,.0f} Hz<br>"
-        )
-
-        if fit.amplitude:
-            fitting_report += (
-                f"q{qubit}/r{report_n} | amplitude: {fit.amplitude[qubit]} <br>"
-            )
-
-        if fit.attenuation:
-            fitting_report += (
-                f"q{qubit}/r{report_n} | attenuation: {fit.attenuation[qubit]} <br>"
-            )
-        fig.add_vline(x=np.mean(frequencies))
+    if fit.attenuation:
+        fitting_report += f"{qubit} | attenuation: {fit.attenuation[qubit]} <br>"
 
     fig.update_layout(
         showlegend=True,

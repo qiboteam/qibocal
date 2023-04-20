@@ -9,6 +9,7 @@ from qibolab.sweeper import Parameter, Sweeper
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
 
+from .resonator_spectroscopy import ResonatorSpectroscopyData
 from .utils import lorentzian_fit, spectroscopy_plot
 
 
@@ -33,13 +34,8 @@ class QubitSpectroscopyResults(Results):
     )
 
 
-class QubitSpectroscopyData(DataUnits):
-    def __init__(self):
-        super().__init__(
-            name="data",
-            quantities={"frequency": "Hz"},
-            options=["qubit", "iteration", "resonator_type", "amplitude"],
-        )
+class QubitSpectroscopyData(ResonatorSpectroscopyData):
+    """Data Structure for qubit spectroscopy"""
 
 
 def _acquisition(
@@ -77,33 +73,30 @@ def _acquisition(
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
     # additionally include qubit frequency
-    data = QubitSpectroscopyData()
+    data = QubitSpectroscopyData(
+        platform.resonator_type, amplitude=params.drive_amplitude
+    )
 
-    # repeat the experiment as many times as defined by software_averages
-    for iteration in range(params.software_averages):
-        results = platform.sweep(
-            sequence,
-            sweeper,
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
+    results = platform.sweep(
+        sequence,
+        sweeper,
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+    )
+
+    # retrieve the results for every qubit
+    for qubit, ro_pulse in ro_pulses.items():
+        # average msr, phase, i and q over the number of shots defined in the runcard
+        result = results[ro_pulse.serial]
+        r = result.raw
+        # store the results
+        r.update(
+            {
+                "frequency[Hz]": delta_frequency_range + qd_pulses[qubit].frequency,
+                "qubit": len(delta_frequency_range) * [qubit],
+            }
         )
-
-        # retrieve the results for every qubit
-        for qubit, ro_pulse in ro_pulses.items():
-            # average msr, phase, i and q over the number of shots defined in the runcard
-            result = results[ro_pulse.serial]
-            r = result.raw
-            # store the results
-            r.update(
-                {
-                    "frequency[Hz]": delta_frequency_range + qd_pulses[qubit].frequency,
-                    "qubit": len(delta_frequency_range) * [qubit],
-                    "iteration": len(delta_frequency_range) * [iteration],
-                    "amplitude": len(delta_frequency_range)
-                    * [qd_pulses[qubit].amplitude],
-                }
-            )
-            data.add_data_from_dict(r)
+        data.add_data_from_dict(r)
 
         # finally, save the remaining data and fits
     return data
