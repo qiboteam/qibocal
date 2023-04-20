@@ -21,7 +21,6 @@ class QubitSpectroscopyParameters(Parameters):
     drive_amplitude: Optional[float] = None
     nshots: int = 1024
     relaxation_time: int = 50
-    software_averages: int = 1
 
 
 @dataclass
