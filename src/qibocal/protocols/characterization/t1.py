@@ -255,32 +255,32 @@ def _plot(data: T1Data, fit: T1Results, qubit):
         )
 
     # # # add fitting trace
-    # if len(data) > 0:
-    #     waitrange = np.linspace(
-    #         min(data.df["wait"]),
-    #         max(data.df["wait"]),
-    #         2 * len(data),
-    #     )
+    if len(data) > 0:
+        waitrange = np.linspace(
+            min(data.df["wait"]),
+            max(data.df["wait"]),
+            2 * len(data),
+        )
 
-    #     fig.add_trace(
-    #         go.Scatter(
-    #             x=waitrange.magnitude,
-    #             y=exp(
-    #                 waitrange.magnitude,
-    #                 float(fit.fitted_parameters[qubit][0]),
-    #                 float(fit.fitted_parameters[qubit][1]),
-    #                 float(fit.fitted_parameters[qubit][2]),
-    #             ),
-    #             name=f"q{qubit}/r{report_n} Fit",
-    #             line=go.scatter.Line(dash="dot"),
-    #             marker_color=get_color(4 * report_n + 2),
-    #         ),
-    #         row=1,
-    #         col=1,
-    #     )
-    #     fitting_report = fitting_report + (
-    #         f"q{qubit}/r{report_n} | t1: {fit.t1[qubit]:,.0f} ns.<br><br>"
-    #     )
+        fig.add_trace(
+            go.Scatter(
+                x=waitrange.magnitude,
+                y=exp(
+                    waitrange.magnitude,
+                    float(fit.fitted_parameters[qubit][0]),
+                    float(fit.fitted_parameters[qubit][1]),
+                    float(fit.fitted_parameters[qubit][2]),
+                ),
+                name=f"q{qubit}/r{report_n} Fit",
+                line=go.scatter.Line(dash="dot"),
+                marker_color=get_color(4 * report_n + 2),
+            ),
+            row=1,
+            col=1,
+        )
+        fitting_report = fitting_report + (
+            f"q{qubit}/r{report_n} | t1: {fit.t1[qubit]:,.0f} ns.<br><br>"
+        )
 
     report_n += 1
 
