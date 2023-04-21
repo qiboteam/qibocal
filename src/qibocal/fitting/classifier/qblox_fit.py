@@ -38,10 +38,11 @@ class QbloxFit:
     Args:
         threshold (float): Classifier's threshold.
         angle (float): Rotational angle.
+    
     """
-   
-    angle: float = 0.
+    
     threshold: float = 0.
+    angle: float = 0.
 
     def fit(self, iq_coordinates, states: list):
         state1 = [complex(*i) for i in iq_coordinates[(states == 1)]]
