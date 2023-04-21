@@ -31,9 +31,10 @@ def hyperopt(_x_train, _y_train, _path):
 
 normalize = identity
 
+
 @dataclass
 class QbloxFit:
-   r"""This class deploys the Qblox qubit state classifier.
+    r"""This class deploys the Qblox qubit state classifier.
 
     Args:
         threshold (float): Classifier's threshold.
@@ -41,16 +42,17 @@ class QbloxFit:
 
     """
 
-    threshold: float = 0.
-    angle: float = 0.
+    threshold: float = 0.0
+    angle: float = 0.0
 
     def fit(self, iq_coordinates, states: list):
         state1 = [complex(*i) for i in iq_coordinates[(states == 1)]]
         state0 = [complex(*i) for i in iq_coordinates[(states == 0)]]
-        self. angle = np.mod(-np.angle(np.mean(state1)-np.mean(state0)), 2*np.pi)
-        self.threshold = (np.exp(1j*self.angle)*(np.mean(state1)+np.mean(state0))).real/2
+        self.angle = np.mod(-np.angle(np.mean(state1) - np.mean(state0)), 2 * np.pi)
+        self.threshold = (
+            np.exp(1j * self.angle) * (np.mean(state1) + np.mean(state0))
+        ).real / 2
 
-
-    def predict(self, inputs:npt.NDArray):
-        inputs =np.array( [complex(*i) for i in inputs])
-        return ((np.exp(1j*self.angle)*inputs).real > self.threshold).astype(int)
+    def predict(self, inputs: npt.NDArray):
+        inputs = np.array([complex(*i) for i in inputs])
+        return ((np.exp(1j * self.angle) * inputs).real > self.threshold).astype(int)
