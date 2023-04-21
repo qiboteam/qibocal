@@ -38,9 +38,9 @@ class QbloxFit:
     Args:
         threshold (float): Classifier's threshold.
         angle (float): Rotational angle.
-    
+
     """
-    
+
     threshold: float = 0.
     angle: float = 0.
 
