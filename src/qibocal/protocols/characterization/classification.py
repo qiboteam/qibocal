@@ -30,8 +30,12 @@ class SingleShotClassificationData(DataUnits):
 class SingleShotClassificationResults(Results):
     threshold: Dict[List[Tuple], str] = field(metadata=dict(update="threshold"))
     rotation_angle: Dict[List[Tuple], str] = field(metadata=dict(update="iq_angle"))
-    average_state0: Dict[List[Tuple], str]
-    average_state1: Dict[List[Tuple], str]
+    mean_gnd_state: Dict[List[Tuple], str] = field(
+        metadata=dict(update="mean_gnd_state")
+    )
+    mean_exc_state: Dict[List[Tuple], str] = field(
+        metadata=dict(update="mean_exc_state")
+    )
     fidelity: Dict[List[Tuple], str]
     assignment_fidelity: Dict[List[Tuple], str]
 
@@ -133,8 +137,8 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
     nshots = data.df["nshots"].unique()
     thresholds, rotation_angles = {}, {}
     fidelities, assignment_fidelities = {}, {}
-    average_state0 = {}
-    average_state1 = {}
+    mean_gnd_state = {}
+    mean_exc_state = {}
 
     for qubit in qubits:
         qubit_data = data.df[data.df["qubit"] == qubit].drop(
@@ -190,17 +194,15 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         errors_state0 = cum_distribution_state0[argmax]
         fidelity = cum_distribution_diff[argmax] / nshots
         assignment_fidelity = 1 - (errors_state1 + errors_state0) / nshots / 2
-        rotation_angle = (rotation_angle * 360 / (2 * np.pi)) % 360
-
         thresholds[qubit] = threshold
         rotation_angles[qubit] = rotation_angle
         fidelities[qubit] = fidelity[0]
-        average_state0[qubit] = iq_mean_state0
-        average_state1[qubit] = iq_mean_state1
+        mean_gnd_state[qubit] = iq_mean_state0
+        mean_exc_state[qubit] = iq_mean_state1
         assignment_fidelities[qubit] = assignment_fidelity[0]
 
     return SingleShotClassificationResults(
-        thresholds, rotation_angles, average_state0, average_state1, fidelities, assignment_fidelities
+        thresholds, rotation_angles, mean_gnd_state, mean_exc_state, fidelities, assignment_fidelities
     )
 
 
@@ -279,9 +281,9 @@ def _plot(
 
     fitting_report = (
         fitting_report
-        + f"q{qubit}/r{report_n} | average state 0: {fit.average_state0[qubit]:.7f} <br>"
-        + f"q{qubit}/r{report_n} | average state 1: {fit.average_state1[qubit]:.7f} <br>"
-        + f"q{qubit}/r{report_n} | rotation_angle: {fit.rotation_angle[qubit]:.3f} degrees <br>"
+        + f"q{qubit}/r{report_n} | average state 0: {fit.mean_gnd_state[qubit]:.7f} <br>"
+        + f"q{qubit}/r{report_n} | average state 1: {fit.mean_exc_state[qubit]:.7f} <br>"
+        + f"q{qubit}/r{report_n} | rotation_angle: {fit.rotation_angle[qubit]:.3f} rad <br>"
         + f"q{qubit}/r{report_n} | threshold: {fit.threshold[qubit]:.6f} <br>"
         + f"q{qubit}/r{report_n} | fidelity: {fit.fidelity[qubit]:.3f} <br>"
         + f"q{qubit}/r{report_n} | assignment fidelity: {fit.assignment_fidelity[qubit]:.3f} <br>"
