@@ -187,11 +187,11 @@ def tune_landscape(
         highfreq = qubit
         lowfreq = 2
 
-    x_pulse_start = platform.create_RX_pulse(lowfreq, start=0, relative_phase=0)
-    y90_pulse = platform.create_RX90_pulse(highfreq, start=0, relative_phase=np.pi / 2)
+    # x_pulse_start = platform.create_RX_pulse(lowfreq, start=0, relative_phase=0)
+    # y90_pulse = platform.create_RX90_pulse(highfreq, start=0, relative_phase=np.pi / 2)
 
-    # x_pulse_start = platform.create_RX_pulse(highfreq, start=0, relative_phase=0)
-    # y90_pulse = platform.create_RX90_pulse(lowfreq, start=0, relative_phase=np.pi / 2)
+    x_pulse_start = platform.create_RX_pulse(highfreq, start=0, relative_phase=0)
+    y90_pulse = platform.create_RX90_pulse(lowfreq, start=0, relative_phase=np.pi / 2)
 
     flux_sequence, virtual_z_phase = platform.create_CZ_pulse_sequence(
         (highfreq, lowfreq), start=y90_pulse.finish
@@ -210,18 +210,18 @@ def tune_landscape(
         )
     )
 
-    theta_pulse = platform.create_RX90_pulse(
-        highfreq, start=flux_sequence.finish, relative_phase=virtual_z_phase[highfreq]
-    )
-    x_pulse_end = platform.create_RX_pulse(
-        lowfreq, start=flux_sequence.finish, relative_phase=virtual_z_phase[lowfreq]
-    )
     # theta_pulse = platform.create_RX90_pulse(
-    #     lowfreq, start=flux_sequence.finish, relative_phase=theta_start
+    #     highfreq, start=flux_sequence.finish, relative_phase=virtual_z_phase[highfreq]
     # )
     # x_pulse_end = platform.create_RX_pulse(
-    #     highfreq, start=flux_sequence.finish, relative_phase=0
+    #     lowfreq, start=flux_sequence.finish, relative_phase=virtual_z_phase[lowfreq]
     # )
+    theta_pulse = platform.create_RX90_pulse(
+        lowfreq, start=flux_sequence.finish, relative_phase=virtual_z_phase[lowfreq]
+    )
+    x_pulse_end = platform.create_RX_pulse(
+        highfreq, start=flux_sequence.finish, relative_phase=virtual_z_phase[highfreq]
+    )
 
     measure_lowfreq = platform.create_qubit_readout_pulse(
         lowfreq, start=theta_pulse.finish

@@ -145,8 +145,9 @@ def rabi_pulse_gain(
     pulse_gain_start,
     pulse_gain_end,
     pulse_gain_step,
+    nshots=1024,
+    relaxation_time=None,
     software_averages=1,
-    points=10,
 ):
     r"""
     In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse gain
@@ -202,6 +203,11 @@ def rabi_pulse_gain(
     # define the parameter to sweep and its range:
     # qubit drive pulse gain
     qd_pulse_gain_range = np.arange(pulse_gain_start, pulse_gain_end, pulse_gain_step)
+    sweeper = Sweeper(
+        Parameter.gain,
+        qd_pulse_gain_range,
+        [qd_pulses[qubit] for qubit in qubits],
+    )
 
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
@@ -212,58 +218,37 @@ def rabi_pulse_gain(
         options=["qubit", "iteration"],
     )
 
-    count = 0
-    # TODO: add Sweeper for gain
     for iteration in range(software_averages):
         # sweep the parameter
-        for gain in qd_pulse_gain_range:
-            for qubit in qubits:
-                platform.set_gain(qubit, gain)
-            # save data as often as defined by points
-            if count % points == 0 and count > 0:
-                # save data
-                yield data
-                # calculate and save fit
-                yield data
-                yield rabi_fit(
-                    data,
-                    x="gain[dimensionless]",
-                    y="MSR[uV]",
-                    qubits=qubits,
-                    resonator_type=platform.resonator_type,
-                    labels=[
-                        "pi_pulse_gain",
-                        "pi_pulse_peak_voltage",
-                    ],
-                )
+        results = platform.sweep(
+            sequence, sweeper, nshots=nshots, relaxation_time=relaxation_time
+        )
+        for qubit in qubits:
+            # average msr, phase, i and q over the number of shots defined in the runcard
+            result = results[ro_pulses[qubit].serial]
+            r = result.raw
+            r.update(
+                {
+                    "gain[dimensionless]": qd_pulse_gain_range,
+                    "qubit": len(qd_pulse_gain_range) * [qubit],
+                    "iteration": len(qd_pulse_gain_range) * [iteration],
+                }
+            )
+            data.add_data_from_dict(r)
 
-            # execute the pulse sequence
-            results = platform.execute_pulse_sequence(sequence)
-
-            for ro_pulse in ro_pulses.values():
-                # average msr, phase, i and q over the number of shots defined in the runcard
-                r = results[ro_pulse.serial].average.raw
-                r.update(
-                    {
-                        "gain[dimensionless]": gain,
-                        "qubit": ro_pulse.qubit,
-                        "iteration": iteration,
-                    }
-                )
-                data.add(r)
-            count += 1
-    yield data
-    yield rabi_fit(
-        data,
-        x="gain[dimensionless]",
-        y="MSR[uV]",
-        qubits=qubits,
-        resonator_type=platform.resonator_type,
-        labels=[
-            "pi_pulse_gain",
-            "pi_pulse_peak_voltage",
-        ],
-    )
+        yield data
+        # calculate and save fit
+        yield rabi_fit(
+            data,
+            x="gain[dimensionless]",
+            y="MSR[uV]",
+            qubits=qubits,
+            resonator_type=platform.resonator_type,
+            labels=[
+                "pi_pulse_gain",
+                "pi_pulse_peak_voltage",
+            ],
+        )
 
 
 @plot("MSR vs Amplitude", plots.amplitude_msr_phase)

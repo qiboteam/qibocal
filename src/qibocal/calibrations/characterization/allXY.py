@@ -39,7 +39,7 @@ def allXY(
     qubits: dict,
     beta_param=None,
     software_averages=1,
-    points=10,
+    points=1,
 ):
     r"""
     The AllXY experiment is a simple test of the calibration of single qubit gatesThe qubit (initialized in the |0> state)
@@ -70,9 +70,9 @@ def allXY(
     platform.reload_settings()
 
     # create a Data object to store the results
-    data = Data(
+    data = DataUnits(
         name="data",
-        quantities={"probability", "gateNumber", "qubit", "iteration"},
+        options=["probability", "gateNumber", "qubit", "iteration"],
     )
 
     count = 0
@@ -101,13 +101,17 @@ def allXY(
             for ro_pulse in ro_pulses.values():
                 z_proj = 2 * results[ro_pulse.serial].ground_state_probability - 1
                 # store the results
-                r = {
-                    "probability": z_proj,
-                    "gateNumber": gateNumber,
-                    "beta_param": beta_param,
-                    "qubit": ro_pulse.qubit,
-                    "iteration": iteration,
-                }
+                result = results[ro_pulse.serial]
+                r = result.raw
+                r.update(
+                    {
+                        "probability": z_proj,
+                        "gateNumber": gateNumber,
+                        "beta_param": beta_param,
+                        "qubit": ro_pulse.qubit,
+                        "iteration": iteration,
+                    }
+                )
                 data.add(r)
             count += 1
     # finally, save the remaining data
@@ -184,6 +188,9 @@ def allXY_drag_pulse_tuning(
                     sequence, ro_pulses[qubit] = _add_gate_pair_pulses_to_sequence(
                         platform, gates, qubit, beta_param, sequence
                     )
+
+                # DEBUG
+                sequence.plot("debug.png")
 
                 # execute the pulse sequence
                 results = platform.execute_pulse_sequence(sequence)
