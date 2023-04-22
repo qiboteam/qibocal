@@ -24,12 +24,42 @@ def lorentzian(frequency, amplitude, center, sigma, offset):
 
 
 def lorentzian_fit(data) -> list:
+    r"""
+    Fitting routine for resonator/qubit spectroscopy.
+    The used model is
+
+    .. math::
+
+        y = \frac{A}{\pi} \Big[ \frac{\sigma}{(f-f_0)^2 + \sigma^2} \Big] + y_0.
+
+    Args:
+
+    Args:
+        data (`DataUnits`): dataset for the fit
+
+        fit_file_name (str): file name, ``None`` is the default value.
+
+    Returns:
+
+        A list with the following keys
+
+            - **labels[0]**: peak voltage
+            - **labels[1]**: frequency
+            - **popt0**: Lorentzian's amplitude
+            - **popt1**: Lorentzian's center
+            - **popt2**: Lorentzian's sigma
+            - **popt3**: Lorentzian's offset
+            - **qubit**: The qubit being tested
+    """
+
     qubits = data.df["qubit"].unique()
+
     bare_frequency = {}
     amplitudes = {}
     attenuations = {}
     frequency = {}
     fitted_parameters = {}
+
     for qubit in qubits:
         qubit_data = (
             data.df[data.df["qubit"] == qubit].drop(columns=["qubit"]).reset_index()
@@ -38,7 +68,14 @@ def lorentzian_fit(data) -> list:
         voltages = qubit_data["MSR"].pint.to("uV").pint.magnitude
         model_Q = lmfit.Model(lorentzian)
 
-        if data.resonator_type == "3D":
+        # Guess parameters for Lorentzian max or min
+        if (
+            data.resonator_type == "3D"
+            and data.__class__.__name__ == "ResonatorSpectroscopyData"
+        ) or (
+            data.resonator_type == "2D"
+            and data.__class__.__name__ == "QubitSpectroscopyData"
+        ):
             guess_center = frequencies[
                 np.argmax(voltages)
             ]  # Argmax = Returns the indices of the maximum values along an axis.
@@ -47,6 +84,7 @@ def lorentzian_fit(data) -> list:
             )
             guess_sigma = abs(frequencies[np.argmin(voltages)] - guess_center)
             guess_amp = (np.max(voltages) - guess_offset) * guess_sigma * np.pi
+
         else:
             guess_center = frequencies[
                 np.argmin(voltages)
