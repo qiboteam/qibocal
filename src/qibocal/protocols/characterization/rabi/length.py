@@ -6,9 +6,9 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.data import DataUnits
 
-from .utils import fitting, plot, rabi
+from .amplitude import RabiAmplitudeData
+from .utils import fitting, plot
 
 
 @dataclass
@@ -19,7 +19,6 @@ class RabiLengthParameters(Parameters):
     pulse_amplitude: float
     nshots: int
     relaxation_time: float
-    software_averages: int = 1
 
 
 @dataclass
@@ -29,13 +28,8 @@ class RabiLengthResults(Results):
     fitted_parameters: Dict[List[Tuple], List]
 
 
-class RabiLengthData(DataUnits):
-    def __init__(self):
-        super().__init__(
-            name="data",
-            quantities={"time": "ns", "amplitude": "dimensionless"},
-            options=["qubit", "iteration", "resonator_type"],
-        )
+class RabiLengthData(RabiAmplitudeData):
+    ...
 
 
 def _acquisition(
@@ -112,40 +106,38 @@ def _acquisition(
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
     # additionally include qubit drive pulse length
-    data = RabiLengthData()
+    data = RabiLengthData(platform.resonator_type)
 
-    for iteration in range(params.software_averages):
-        # sweep the parameter
-        for duration in qd_pulse_duration_range:
-            for qubit in qubits:
-                qd_pulses[qubit].duration = duration
-                ro_pulses[qubit].start = duration
+    # sweep the parameter
+    for duration in qd_pulse_duration_range:
+        for qubit in qubits:
+            qd_pulses[qubit].duration = duration
+            ro_pulses[qubit].start = duration
 
-            # execute the pulse sequence
-            results = platform.execute_pulse_sequence(sequence, nshots=params.nshots)
+        # execute the pulse sequence
+        results = platform.execute_pulse_sequence(sequence, nshots=params.nshots)
 
-            for ro_pulse in ro_pulses.values():
-                # average msr, phase, i and q over the number of shots defined in the runcard
-                r = results[ro_pulse.serial].average.raw
-                r.update(
-                    {
-                        "time[ns]": duration,
-                        "amplitude[dimensionless]": float(qd_pulses[qubit].amplitude),
-                        "qubit": ro_pulse.qubit,
-                        "iteration": iteration,
-                        "resonator_type": platform.resonator_type,
-                    }
-                )
-                data.add(r)
+        for qubit in qubits:
+            # average msr, phase, i and q over the number of shots defined in the runcard
+            r = results[qubit].average.raw
+            r.update(
+                {
+                    "length[ns]": duration,
+                    "amplitude[dimensionless]": float(qd_pulses[qubit].amplitude),
+                    "qubit": qubit,
+                }
+            )
+            data.add(r)
+
     return data
 
 
 def _fit(data: RabiLengthData) -> RabiLengthResults:
-    return RabiLengthResults(*fitting(data, "length"))
+    return RabiLengthResults(*fitting(data))
 
 
 def _plot(data: RabiLengthData, fit: RabiLengthResults, qubit):
-    return plot(data, fit, qubit, "length")
+    return plot(data, fit, qubit)
 
 
 rabi_length = Routine(_acquisition, _fit, _plot)

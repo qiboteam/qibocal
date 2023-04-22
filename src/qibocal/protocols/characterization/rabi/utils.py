@@ -18,40 +18,34 @@ def rabi(x, p0, p1, p2, p3, p4):
     return p0 + p1 * np.sin(2 * np.pi * x * p2 + p3) * np.exp(-x * p4)
 
 
-def fitting(data: DataUnits, label: str) -> list:
+def fitting(data: DataUnits) -> list:
     qubits = data.df["qubit"].unique()
-    resonator_type = data.df["resonator_type"].unique()
 
     rabi_parameters = {}
     fitted_parameters = {}
     rabi_not_fitted_parameters = {}
 
-    if label == "amplitude":
+    if data.__class__.__name__ == "RabiAmplitudeData":
         quantity = "amplitude"
         unit = "dimensionless"
         other_quanity = "length"
         other_unit = "ns"
 
-    elif label == "length":
-        quantity = "time"
+    elif data.__class__.__name__ == "RabiLengthData":
+        quantity = "length"
         unit = "ns"
         other_quanity = "amplitude"
         other_unit = "dimensionless"
 
     for qubit in qubits:
-        qubit_data = (
-            data.df[data.df["qubit"] == qubit]
-            .drop(columns=["qubit", "iteration", "resonator_type"])
-            .groupby(quantity, as_index=False)
-            .mean()
-        )
+        qubit_data = data.df[data.df["qubit"] == qubit]
 
         rabi_parameter = qubit_data[quantity].pint.to(unit).pint.magnitude
         voltages = qubit_data["MSR"].pint.to("uV").pint.magnitude
         rabi_not_fitted_parameters[qubit] = (
             qubit_data[other_quanity].pint.to(other_unit).pint.magnitude.unique()
         )
-        if resonator_type == "3D":
+        if data.resonator_type == "3D":
             pguess = [
                 np.mean(voltages.values),
                 np.max(voltages.values) - np.min(voltages.values),
@@ -72,27 +66,22 @@ def fitting(data: DataUnits, label: str) -> list:
                 rabi, rabi_parameter.values, voltages.values, p0=pguess, maxfev=10000
             )
             pi_pulse_parameter = np.abs((1.0 / popt[2]) / 2)
-            # pi_pulse_peak_voltage = smooth_dataset.max()
-            # t2 = 1.0 / popt[4]  # double check T1
+            rabi_parameters[qubit] = pi_pulse_parameter
+            fitted_parameters[qubit] = popt
 
         except:
             log.warning("rabi_fit: the fitting was not succesful")
 
-        rabi_parameters[qubit] = pi_pulse_parameter
-        fitted_parameters[qubit] = popt
-
     return rabi_parameters, rabi_not_fitted_parameters, fitted_parameters
 
 
-def plot(data, fit, qubit, label):
-    print(fit.amplitude)
-    print(fit.length)
-    if label == "amplitude":
+def plot(data, fit, qubit):
+    if data.__class__.__name__ == "RabiAmplitudeData":
         quantity = "amplitude"
         unit = "dimensionless"
         title = "Amplitude (dimensionless)"
-    elif label == "length":
-        quantity = "time"
+    elif data.__class__.__name__ == "RabiLengthData":
+        quantity = "length"
         unit = "ns"
         title = "Time (ns)"
 
@@ -110,78 +99,35 @@ def plot(data, fit, qubit, label):
         ),
     )
 
-    # iterate over multiple data folders
-    report_n = 0
+    qubit_data = data.df[data.df["qubit"] == qubit]
 
-    data.df = data.df[data.df["qubit"] == qubit]
-    iterations = data.df["iteration"].unique()
-    data.df = data.df.drop(columns=["i", "q", "qubit", "resonator_type"])
-
-    if len(iterations) > 1:
-        opacity = 0.3
-    else:
-        opacity = 1
-    for iteration in iterations:
-        rabi_parameters = data.df[quantity].pint.to(unit).pint.magnitude.unique()
-        iteration_data = data.df[data.df["iteration"] == iteration]
-        fig.add_trace(
-            go.Scatter(
-                x=iteration_data[quantity].pint.to(unit).pint.magnitude,
-                y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
-                marker_color=get_color(report_n),
-                opacity=opacity,
-                name=f"q{qubit}/r{report_n}",
-                showlegend=not bool(iteration),
-                legendgroup=f"q{qubit}/r{report_n}",
-            ),
-            row=1,
-            col=1,
-        )
-        fig.add_trace(
-            go.Scatter(
-                x=iteration_data[quantity].pint.to(unit).pint.magnitude,
-                y=iteration_data["phase"].pint.to("rad").pint.magnitude,
-                marker_color=get_color(report_n),
-                opacity=opacity,
-                name=f"q{qubit}/r{report_n}",
-                showlegend=False,
-                legendgroup=f"q{qubit}/r{report_n}",
-            ),
-            row=1,
-            col=2,
-        )
-    if len(iterations) > 1:
-        data.df = data.df.drop(columns=["iteration"])  # pylint: disable=E1101
-        fig.add_trace(
-            go.Scatter(
-                x=rabi_parameters,
-                y=data.df.groupby(quantity)["MSR"]  # pylint: disable=E1101
-                .mean()
-                .pint.to("uV")
-                .pint.magnitude,
-                marker_color=get_color(report_n),
-                name=f"q{qubit}/r{report_n}: Average",
-                showlegend=True,
-                legendgroup=f"q{qubit}/r{report_n}: Average",
-            ),
-            row=1,
-            col=1,
-        )
-
-        fig.add_trace(
-            go.Scatter(
-                x=rabi_parameters,
-                y=data.df.groupby(quantity)["phase"]  # pylint: disable=E1101
-                .mean()
-                .pint.to("rad")
-                .pint.magnitude,
-                marker_color=get_color(report_n),
-                showlegend=False,
-                legendgroup=f"q{qubit}/r{report_n}: Average",
-            ),
-            row=1,
-            col=2,
-        )
+    rabi_parameters = qubit_data[quantity].pint.to(unit).pint.magnitude.unique()
+    fig.add_trace(
+        go.Scatter(
+            x=qubit_data[quantity].pint.to(unit).pint.magnitude,
+            y=qubit_data["MSR"].pint.to("uV").pint.magnitude,
+            marker_color=get_color(0),
+            opacity=1,
+            name="Voltage",
+            showlegend=True,
+            legendgroup="Voltage",
+        ),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=qubit_data[quantity].pint.to(unit).pint.magnitude,
+            y=qubit_data["phase"].pint.to("rad").pint.magnitude,
+            marker_color=get_color(1),
+            opacity=1,
+            name="Phase",
+            showlegend=True,
+            legendgroup="Phase",
+        ),
+        row=1,
+        col=2,
+    )
 
     # add fitting trace
     if len(data) > 0:
@@ -196,7 +142,7 @@ def plot(data, fit, qubit, label):
             go.Scatter(
                 x=rabi_parameter_range,
                 y=rabi(rabi_parameter_range, *params),
-                name=f"q{qubit}/r{report_n} Fit",
+                name="Fit",
                 line=go.scatter.Line(dash="dot"),
                 marker_color="rgb(255, 130, 67)",
             ),
@@ -204,8 +150,12 @@ def plot(data, fit, qubit, label):
             col=1,
         )
 
-        fitting_report += f"q{qubit}/r{report_n} | pi_pulse_amplitude: {float(fit.amplitude[qubit]):.3f}<br>"
-        fitting_report += f"q{qubit}/r{report_n} | pi_pulse_length: {float(fit.length[qubit]):.3f}<br>"
+        fitting_report += (
+            f"{qubit} | pi_pulse_amplitude: {float(fit.amplitude[qubit]):.3f}<br>"
+        )
+        fitting_report += (
+            f"{qubit} | pi_pulse_length: {float(fit.length[qubit]):.3f}<br>"
+        )
 
     fig.update_layout(
         showlegend=True,
