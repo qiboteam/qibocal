@@ -25,7 +25,7 @@ class AllXYData(Data):
     def __init__(self):
         super().__init__(
             name="data",
-            quantities={"probability", "gateNumber", "qubit", "iteration"},
+            quantities={"probability", "gateNumber", "qubit"},
         )
 
 
@@ -213,15 +213,7 @@ def _plot(data: AllXYData, _fit: AllXYResults, qubit):
     figures = []
     fitting_report = "No fitting data"
 
-    fig = make_subplots(
-        rows=1,
-        cols=1,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
-        subplot_titles=(f"allXY",),
-    )
-    report_n = 0
-    gate_numbers = data.df["gateNumber"].unique()
+    fig = go.Figure()
 
     qubit_data = data.df[data.df["qubit"] == qubit].drop(columns=["qubit"])
 
@@ -229,17 +221,15 @@ def _plot(data: AllXYData, _fit: AllXYResults, qubit):
         go.Scatter(
             x=qubit_data["gateNumber"],
             y=qubit_data["probability"],
-            marker_color=get_color(report_n),
+            marker_color=get_color(0),
             mode="markers",
             text=gatelist,
             textposition="bottom center",
             opacity=0.3,
-            name=f"q{qubit}/r{report_n}: Probability",
+            name=f"{qubit}: Probability",
             showlegend=True,
             legendgroup="group1",
         ),
-        row=1,
-        col=1,
     )
 
     fig.add_hline(
@@ -247,16 +237,12 @@ def _plot(data: AllXYData, _fit: AllXYResults, qubit):
         line_width=2,
         line_dash="dash",
         line_color="grey",
-        row=1,
-        col=1,
     )
     fig.add_hline(
         y=1,
         line_width=2,
         line_dash="dash",
         line_color="grey",
-        row=1,
-        col=1,
     )
 
     fig.add_hline(
@@ -264,8 +250,6 @@ def _plot(data: AllXYData, _fit: AllXYResults, qubit):
         line_width=2,
         line_dash="dash",
         line_color="grey",
-        row=1,
-        col=1,
     )
 
     fig.update_layout(

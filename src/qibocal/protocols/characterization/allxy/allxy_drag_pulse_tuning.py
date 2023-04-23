@@ -17,8 +17,6 @@ class AllXYDragParameters(Parameters):
     beta_start: float
     beta_end: float
     beta_step: float
-    software_averages: int = 1
-    points: int = 10
 
 
 @dataclass
@@ -35,7 +33,6 @@ class AllXYDragData(Data):
                 "gateNumber",
                 "beta_param",
                 "qubit",
-                "iteration",
             },
         )
 
@@ -81,40 +78,35 @@ def _acquisition(
 
     data = AllXYDragData()
 
-    # repeat the experiment as many times as defined by software_averages
-    count = 0
-    for iteration in range(params.software_averages):
-        # sweep the parameters
-        for beta_param in np.arange(
-            params.beta_start, params.beta_end, params.beta_step
-        ).round(4):
-            gateNumber = 1
-            for gates in gatelist:
-                # create a sequence of pulses
-                ro_pulses = {}
-                sequence = PulseSequence()
-                for qubit in qubits:
-                    sequence, ro_pulses[qubit] = add_gate_pair_pulses_to_sequence(
-                        platform, gates, qubit, beta_param, sequence
-                    )
+    # sweep the parameters
+    for beta_param in np.arange(
+        params.beta_start, params.beta_end, params.beta_step
+    ).round(4):
+        gateNumber = 1
+        for gates in gatelist:
+            # create a sequence of pulses
+            ro_pulses = {}
+            sequence = PulseSequence()
+            for qubit in qubits:
+                sequence, ro_pulses[qubit] = add_gate_pair_pulses_to_sequence(
+                    platform, gates, qubit, beta_param, sequence
+                )
 
-                # execute the pulse sequence
-                results = platform.execute_pulse_sequence(sequence)
+            # execute the pulse sequence
+            results = platform.execute_pulse_sequence(sequence)
 
-                # retrieve the results for every qubit
-                for ro_pulse in ro_pulses.values():
-                    z_proj = 2 * results[ro_pulse.serial].ground_state_probability - 1
-                    # store the results
-                    r = {
-                        "probability": z_proj,
-                        "gateNumber": gateNumber,
-                        "beta_param": beta_param,
-                        "qubit": ro_pulse.qubit,
-                        "iteration": iteration,
-                    }
-                    data.add(r)
-                count += 1
-                gateNumber += 1
+            # retrieve the results for every qubit
+            for ro_pulse in ro_pulses.values():
+                z_proj = 2 * results[ro_pulse.serial].ground_state_probability - 1
+                # store the results
+                r = {
+                    "probability": z_proj,
+                    "gateNumber": gateNumber,
+                    "beta_param": beta_param,
+                    "qubit": ro_pulse.qubit,
+                }
+                data.add(r)
+            gateNumber += 1
     # finally, save the remaining data
     return data
 
@@ -127,53 +119,39 @@ def _plot(data: AllXYDragData, _fit: AllXYDragResults, qubit):
     figures = []
     fitting_report = "No fitting data"
 
-    fig = make_subplots(
-        rows=1,
-        cols=1,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
-        subplot_titles=(f"allXY",),
-    )
-    iterations = data.df["iteration"].unique()
+    fig = go.Figure()
     beta_params = data.df["beta_param"].unique()
-    report_n = 0
 
-    for iteration in iterations:
-        iteration_data = data.df[data.df["iteration"] == iteration]
-        for j, beta_param in enumerate(beta_params):
-            beta_param_data = iteration_data[iteration_data["beta_param"] == beta_param]
-            fig.add_trace(
-                go.Scatter(
-                    x=beta_param_data["gateNumber"],
-                    y=beta_param_data["probability"],
-                    marker_color=get_color(report_n * len(beta_params) + j),
-                    mode="markers+lines",
-                    opacity=0.5,
-                    name=f"q{qubit}/r{report_n}: beta {beta_param}",
-                    showlegend=not bool(iteration),
-                    legendgroup=f"group{j}",
-                    text=gatelist,
-                    textposition="bottom center",
-                ),
-                row=1,
-                col=1,
-            )
+    qubit_data = data.df[data.df["qubit"] == qubit]
+
+    for j, beta_param in enumerate(beta_params):
+        beta_param_data = qubit_data[qubit_data["beta_param"] == beta_param]
+        fig.add_trace(
+            go.Scatter(
+                x=beta_param_data["gateNumber"],
+                y=beta_param_data["probability"],
+                marker_color=get_color(j),
+                mode="markers+lines",
+                opacity=0.5,
+                name=f"Beta {beta_param}",
+                showlegend=True,
+                legendgroup=f"group{j}",
+                text=gatelist,
+                textposition="bottom center",
+            ),
+        )
 
     fig.add_hline(
         y=0,
         line_width=2,
         line_dash="dash",
         line_color="grey",
-        row=1,
-        col=1,
     )
     fig.add_hline(
         y=1,
         line_width=2,
         line_dash="dash",
         line_color="grey",
-        row=1,
-        col=1,
     )
 
     fig.add_hline(
@@ -181,8 +159,6 @@ def _plot(data: AllXYDragData, _fit: AllXYDragResults, qubit):
         line_width=2,
         line_dash="dash",
         line_color="grey",
-        row=1,
-        col=1,
     )
 
     fig.update_layout(

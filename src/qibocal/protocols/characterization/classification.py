@@ -19,23 +19,25 @@ class SingleShotClassificationParameters(Parameters):
 
 
 class SingleShotClassificationData(DataUnits):
-    def __init__(self):
+    def __init__(self, nshots):
         super().__init__(
             "data",
-            options=["qubit", "state", "nshots"],
+            options=["qubit", "state"],
         )
+
+        self._nshots = nshots
+
+    @property
+    def nshots(self):
+        return self._nshots
 
 
 @dataclass
 class SingleShotClassificationResults(Results):
     threshold: Dict[List[Tuple], str] = field(metadata=dict(update="threshold"))
     rotation_angle: Dict[List[Tuple], str] = field(metadata=dict(update="iq_angle"))
-    mean_gnd_state: Dict[List[Tuple], str] = field(
-        metadata=dict(update="mean_gnd_state")
-    )
-    mean_exc_state: Dict[List[Tuple], str] = field(
-        metadata=dict(update="mean_exc_state")
-    )
+    mean_gnd_state: Dict[List[Tuple], str]
+    mean_exc_state: Dict[List[Tuple], str]
     fidelity: Dict[List[Tuple], str]
     assignment_fidelity: Dict[List[Tuple], str]
 
@@ -89,7 +91,7 @@ def _acquisition(
         state1_sequence.add(ro_pulses[qubit])
 
     # create a DataUnits object to store the results
-    data = SingleShotClassificationData()
+    data = SingleShotClassificationData(params.nshots)
 
     # execute the first pulse sequence
     state0_results = platform.execute_pulse_sequence(
@@ -103,7 +105,6 @@ def _acquisition(
             {
                 "qubit": [ro_pulse.qubit] * params.nshots,
                 "state": [0] * params.nshots,
-                "nshots": [params.nshots] * params.nshots,
             }
         )
         data.add_data_from_dict(r)
@@ -120,21 +121,15 @@ def _acquisition(
             {
                 "qubit": [ro_pulse.qubit] * params.nshots,
                 "state": [1] * params.nshots,
-                "nshots": [params.nshots] * params.nshots,
             }
         )
         data.add_data_from_dict(r)
 
-    # finally, save the remaining data and the fits
     return data
-    # yield calibrate_qubit_states_fit(
-    #     data, x="i[V]", y="q[V]", nshots=nshots, qubits=qubits
-    # )
 
 
 def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
     qubits = data.df["qubit"].unique()
-    nshots = data.df["nshots"].unique()
     thresholds, rotation_angles = {}, {}
     fidelities, assignment_fidelities = {}, {}
     mean_gnd_state = {}
@@ -142,7 +137,7 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
 
     for qubit in qubits:
         qubit_data = data.df[data.df["qubit"] == qubit].drop(
-            columns=["qubit", "MSR", "phase", "nshots"]
+            columns=["qubit", "MSR", "phase"]
         )
 
         iq_state0 = (
@@ -167,8 +162,8 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         iq_state0_translated = iq_state0 - origin
         rotation_angle = np.angle(np.mean(iq_state1_translated))
 
-        iq_state1_rotated = iq_state1_translated * np.exp(-1j * rotation_angle)
-        iq_state0_rotated = iq_state0_translated * np.exp(-1j * rotation_angle)
+        iq_state1_rotated = iq_state1 * np.exp(-1j * rotation_angle)
+        iq_state0_rotated = iq_state0 * np.exp(-1j * rotation_angle)
 
         real_values_state1 = iq_state1_rotated.real
         real_values_state0 = iq_state0_rotated.real
@@ -190,19 +185,24 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         )
         argmax = np.argmax(cum_distribution_diff)
         threshold = real_values_combined[argmax]
-        errors_state1 = nshots - cum_distribution_state1[argmax]
+        errors_state1 = data.nshots - cum_distribution_state1[argmax]
         errors_state0 = cum_distribution_state0[argmax]
-        fidelity = cum_distribution_diff[argmax] / nshots
-        assignment_fidelity = 1 - (errors_state1 + errors_state0) / nshots / 2
+        fidelity = cum_distribution_diff[argmax] / data.nshots
+        assignment_fidelity = 1 - (errors_state1 + errors_state0) / data.nshots / 2
         thresholds[qubit] = threshold
-        rotation_angles[qubit] = rotation_angle
-        fidelities[qubit] = fidelity[0]
+        rotation_angles[qubit] = np.rad2deg(-rotation_angle)
+        fidelities[qubit] = fidelity
         mean_gnd_state[qubit] = iq_mean_state0
         mean_exc_state[qubit] = iq_mean_state1
-        assignment_fidelities[qubit] = assignment_fidelity[0]
+        assignment_fidelities[qubit] = assignment_fidelity
 
     return SingleShotClassificationResults(
-        thresholds, rotation_angles, mean_gnd_state, mean_exc_state, fidelities, assignment_fidelities
+        thresholds,
+        rotation_angles,
+        mean_gnd_state,
+        mean_exc_state,
+        fidelities,
+        assignment_fidelities,
     )
 
 
@@ -211,51 +211,67 @@ def _plot(
 ):
     figures = []
 
-    fig = make_subplots(
-        rows=1,
-        cols=1,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
-        # subplot_titles=("Calibrate qubit states"),
-    )
+    fig = go.Figure()
 
-    # iterate over multiple data folders
-    report_n = 0
     fitting_report = ""
     max_x, max_y, min_x, min_y = 0, 0, 0, 0
 
-    data.df = data.df[data.df["qubit"] == qubit]
-    state0_data = data.df[data.df["state"] == 0].drop(columns=["MSR", "phase", "qubit"])
-    state1_data = data.df[data.df["state"] == 1].drop(columns=["MSR", "phase", "qubit"])
+    qubit_data = data.df[data.df["qubit"] == qubit]
+    state0_data = qubit_data[data.df["state"] == 0].drop(
+        columns=["MSR", "phase", "qubit"]
+    )
+    state1_data = qubit_data[data.df["state"] == 1].drop(
+        columns=["MSR", "phase", "qubit"]
+    )
 
     fig.add_trace(
         go.Scatter(
             x=state0_data["i"].pint.to("V").pint.magnitude,
             y=state0_data["q"].pint.to("V").pint.magnitude,
-            name=f"q{qubit}/r{report_n}: state 0",
-            legendgroup=f"q{qubit}/r{report_n}: state 0",
+            name="Ground State",
+            legendgroup="Ground State",
             mode="markers",
-            showlegend=False,
+            showlegend=True,
             opacity=0.7,
-            marker=dict(size=3, color=get_color_state0(report_n)),
+            marker=dict(size=3, color=get_color_state0(0)),
         ),
-        row=1,
-        col=1,
     )
 
     fig.add_trace(
         go.Scatter(
             x=state1_data["i"].pint.to("V").pint.magnitude,
             y=state1_data["q"].pint.to("V").pint.magnitude,
-            name=f"q{qubit}/r{report_n}: state 1",
-            legendgroup=f"q{qubit}/r{report_n}: state 1",
+            name="Excited State",
+            legendgroup="Excited State",
             mode="markers",
-            showlegend=False,
+            showlegend=True,
             opacity=0.7,
-            marker=dict(size=3, color=get_color_state1(report_n)),
+            marker=dict(size=3, color=get_color_state1(0)),
         ),
-        row=1,
-        col=1,
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=[state0_data["i"].pint.to("V").pint.magnitude.mean()],
+            y=[state0_data["q"].pint.to("V").pint.magnitude.mean()],
+            name="Average Ground State",
+            legendgroup="Average Ground State",
+            showlegend=True,
+            mode="markers",
+            marker=dict(size=10, color=get_color_state0(0)),
+        ),
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=[state1_data["i"].pint.to("V").pint.magnitude.mean()],
+            y=[state1_data["q"].pint.to("V").pint.magnitude.mean()],
+            name="Average Excited State",
+            legendgroup="Average Excited State",
+            showlegend=True,
+            mode="markers",
+            marker=dict(size=10, color=get_color_state1(0)),
+        ),
     )
 
     max_x = max(
@@ -281,12 +297,12 @@ def _plot(
 
     fitting_report = (
         fitting_report
-        + f"q{qubit}/r{report_n} | average state 0: {fit.mean_gnd_state[qubit]:.7f} <br>"
-        + f"q{qubit}/r{report_n} | average state 1: {fit.mean_exc_state[qubit]:.7f} <br>"
-        + f"q{qubit}/r{report_n} | rotation_angle: {fit.rotation_angle[qubit]:.3f} rad <br>"
-        + f"q{qubit}/r{report_n} | threshold: {fit.threshold[qubit]:.6f} <br>"
-        + f"q{qubit}/r{report_n} | fidelity: {fit.fidelity[qubit]:.3f} <br>"
-        + f"q{qubit}/r{report_n} | assignment fidelity: {fit.assignment_fidelity[qubit]:.3f} <br>"
+        + f"{qubit} | Average Ground State: {fit.mean_gnd_state[qubit]:.4f} <br>"
+        + f"{qubit} | Average Excited State: {fit.mean_exc_state[qubit]:.4f} <br>"
+        + f"{qubit} | Rotation Angle: {fit.rotation_angle[qubit]:.3f} deg <br>"
+        + f"{qubit} | Thresold: {fit.threshold[qubit]:.4f} <br>"
+        + f"{qubit} | Fidelity: {fit.fidelity[qubit]:.3f} <br>"
+        + f"{qubit} | Assignment Fidelity: {fit.assignment_fidelity[qubit]:.3f} <br>"
     )
 
     fig.update_layout(
