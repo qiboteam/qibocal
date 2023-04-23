@@ -1,4 +1,4 @@
-platform: dummy
+platform: qw5q_gold_qblox
 
 qubits: [0, 1, 2, 3, 4]
 
@@ -6,12 +6,12 @@ format: csv
 
 actions:
 
-  # resonator_spectroscopy:
-  #   freq_width: 40_000_000
-  #   freq_step: 100_000
-  #   nshots: 1000
-  #   relaxation_time: 0
-  #   software_averages: 1
+  resonator_spectroscopy:
+    freq_width: 10_000_000
+    freq_step: 500_000
+    nshots: 1025
+    relaxation_time: 50
+    software_averages: 1
 
   #resonator_punchout:
   #  freq_width: 10_000_000

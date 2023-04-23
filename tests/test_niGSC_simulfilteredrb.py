@@ -4,8 +4,8 @@ import pytest
 from plotly.graph_objects import Figure
 from qibo import gates, models
 
-from qibocal.protocols.characterization.gateset.niGSC import simulfilteredrb
-from qibocal.protocols.characterization.gateset.niGSC.basics import noisemodels, utils
+from qibocal.calibrations.niGSC import simulfilteredrb
+from qibocal.calibrations.niGSC.basics import noisemodels, utils
 
 
 @pytest.fixture

@@ -2,9 +2,11 @@ import numpy as np
 import pandas as pd
 import pytest
 from plotly.graph_objects import Figure
+from qibo import gates
+from qibo.noise import NoiseModel
 
-from qibocal.protocols.characterization.gateset.niGSC import XIdrb
-from qibocal.protocols.characterization.gateset.niGSC.basics import noisemodels, utils
+from qibocal.calibrations.niGSC import XIdrb
+from qibocal.calibrations.niGSC.basics import noisemodels, utils
 
 
 @pytest.fixture
