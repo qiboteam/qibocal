@@ -28,12 +28,18 @@ class SpinEchoResults(Results):
 
 
 class SpinEchoData(DataUnits):
-    def __init__(self):
+    def __init__(self, resonator_type):
         super().__init__(
             "data",
             quantities={"wait": "ns"},
-            options=["qubit", "iteration", "resonator_type"],
+            options=["qubit"],
         )
+
+        self._resonator_type = resonator_type
+
+    @property
+    def resonator_type(self):
+        return self._resonator_type
 
 
 def _acquisition(
@@ -72,34 +78,30 @@ def _acquisition(
         params.delay_between_pulses_step,
     )
 
-    data = SpinEchoData()
+    data = SpinEchoData(platform.resonator_type)
 
-    # repeat the experiment as many times as defined by software_averages
-    for iteration in range(params.software_averages):
-        # sweep the parameter
-        for wait in ro_wait_range:
-            # save data as often as defined by points
+    # sweep the parameter
+    for wait in ro_wait_range:
+        # save data as often as defined by points
 
-            for qubit in qubits:
-                RX_pulses[qubit].start = RX90_pulses1[qubit].finish + wait
-                RX90_pulses2[qubit].start = RX_pulses[qubit].finish + wait
-                ro_pulses[qubit].start = RX90_pulses2[qubit].finish
+        for qubit in qubits:
+            RX_pulses[qubit].start = RX90_pulses1[qubit].finish + wait
+            RX90_pulses2[qubit].start = RX_pulses[qubit].finish + wait
+            ro_pulses[qubit].start = RX90_pulses2[qubit].finish
 
-            # execute the pulse sequence
-            results = platform.execute_pulse_sequence(sequence)
+        # execute the pulse sequence
+        results = platform.execute_pulse_sequence(sequence)
 
-            for ro_pulse in ro_pulses.values():
-                # average msr, phase, i and q over the number of shots defined in the runcard
-                r = results[ro_pulse.serial].average.raw
-                r.update(
-                    {
-                        "wait[ns]": wait,
-                        "qubit": ro_pulse.qubit,
-                        "iteration": iteration,
-                        "resonator_type": platform.resonator_type,
-                    }
-                )
-                data.add(r)
+        for ro_pulse in ro_pulses.values():
+            # average msr, phase, i and q over the number of shots defined in the runcard
+            r = results[ro_pulse.serial].average.raw
+            r.update(
+                {
+                    "wait[ns]": wait,
+                    "qubit": ro_pulse.qubit,
+                }
+            )
+            data.add(r)
     return data
 
 
@@ -109,22 +111,16 @@ def exp(x, *p):
 
 def _fit(data: SpinEchoData) -> SpinEchoResults:
     qubits = data.df["qubit"].unique()
-    resonator_type = data.df["resonator_type"].unique()
-
     fitted_parameters = {}
     t2s = {}
 
     for qubit in qubits:
-        qubit_data = (
-            data.df[data.df["qubit"] == qubit]
-            .drop(columns=["qubit", "iteration", "resonator_type"])
-            .groupby("wait", as_index=False)
-            .mean()
-        )
+        qubit_data = data.df[data.df["qubit"] == qubit]
+
         times = qubit_data["wait"].pint.to("ns").pint.magnitude
         voltages = qubit_data["MSR"].pint.to("uV").pint.magnitude
 
-        if resonator_type == "3D":
+        if data.resonator_type == "3D":
             pguess = [
                 max(voltages.values),
                 (max(voltages.values) - min(voltages.values)),
@@ -154,61 +150,25 @@ def _fit(data: SpinEchoData) -> SpinEchoResults:
 def _plot(data: SpinEchoData, fit: SpinEchoResults, qubit: int):
     figures = []
 
-    fig = make_subplots(
-        rows=1,
-        cols=1,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
-        subplot_titles=("MSR (V)",),
-    )
+    fig = go.Figure()
 
     # iterate over multiple data folders
-    report_n = 0
     fitting_report = ""
 
-    data.df = data.df[data.df["qubit"] == qubit]
-
-    data.df = data.df.drop(columns=["i", "q", "phase", "qubit"])
-    iterations = data.df["iteration"].unique()
+    qubit_data = data.df[data.df["qubit"] == qubit]
     waits = data.df["wait"].pint.to("ns").pint.magnitude
 
-    if len(iterations) > 1:
-        opacity = 0.3
-    else:
-        opacity = 1
-    for iteration in iterations:
-        iteration_data = data.df[data.df["iteration"] == iteration]
-        fig.add_trace(
-            go.Scatter(
-                x=iteration_data["wait"].pint.to("ns").pint.magnitude,
-                y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
-                marker_color=get_color(report_n),
-                opacity=opacity,
-                name=f"q{qubit}/r{report_n}",
-                showlegend=not bool(iteration),
-                legendgroup=f"q{qubit}/r{report_n}",
-            ),
-            row=1,
-            col=1,
-        )
-
-    if len(iterations) > 1:
-        data.df = data.df.drop(columns=["iteration"])  # pylint: disable=E1101
-        fig.add_trace(
-            go.Scatter(
-                x=waits.tolist(),
-                y=data.df.groupby("wait")["MSR"]
-                .mean()
-                .pint.to("uV")
-                .pint.magnitude,  # pylint: disable=E1101
-                marker_color=get_color(report_n),
-                name=f"q{qubit}/r{report_n}: Average",
-                showlegend=True,
-                legendgroup=f"q{qubit}/r{report_n}: Average",
-            ),
-            row=1,
-            col=1,
-        )
+    fig.add_trace(
+        go.Scatter(
+            x=qubit_data["wait"].pint.to("ns").pint.magnitude,
+            y=qubit_data["MSR"].pint.to("uV").pint.magnitude,
+            marker_color=get_color(0),
+            opacity=1,
+            name="Voltage",
+            showlegend=True,
+            legendgroup="Voltage",
+        ),
+    )
 
     # add fitting trace
     if len(data) > 0:
@@ -223,16 +183,14 @@ def _plot(data: SpinEchoData, fit: SpinEchoResults, qubit: int):
             go.Scatter(
                 x=waitrange,
                 y=exp(waitrange, *params),
-                name=f"q{qubit}/r{report_n} Fit",
+                name="Fit",
                 line=go.scatter.Line(dash="dot"),
-                marker_color=get_color(4 * report_n + 2),
+                marker_color=get_color(1),
             ),
-            row=1,
-            col=1,
         )
 
         fitting_report = fitting_report + (
-            f"q{qubit}/r{report_n} | t2_spin_echo: {fit.t2_spin_echo[qubit]:,.0f} ns.<br><br>"
+            f"{qubit} | T2 Spin Echo: {fit.t2_spin_echo[qubit]:,.0f} ns.<br><br>"
         )
 
     fig.update_layout(
