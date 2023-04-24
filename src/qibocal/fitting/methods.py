@@ -1086,26 +1086,179 @@ def ro_optimization_fit(data, *labels):
     Returns:
         Data: data with the fit results
     """
-
+    quantities = [
+        *labels,
+        "rotation_angle",
+        "threshold",
+        "fidelity",
+        "assignment_fidelity",
+        "average_state0",
+        "average_state1",
+        "qubit",
+    ]
     data_fit = Data(
         name="fit",
-        quantities={parse(label)[0]: parse(label)[1] for label in labels},
-        options=[
-            "rotation_angle",
-            "threshold",
-            "fidelity",
-            "assignment_fidelity",
-            "average_state0",
-            "average_state1",
-            "qubit",
-        ],
+        quantities=quantities,
     )
 
-    qubits = data.df["qubit"].unique()
+    # DEBUG: subplots
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+
+    fig = make_subplots(rows=3, cols=1)
 
     # Create a ndarray for i and q shots for all labels
-    # shape=(nshots, 2, *[len(data[label]) for label in labels])
+    # shape=(i + j*q, qubit, state, label1, label2, ...)
 
-    # for qubit in qubits:
+    shape = [
+        2,
+        len(data.df["qubit"].unique()),
+        *[len(data.df[label].unique()) for label in labels],
+    ]
+    nb_shots = len(data.df["i"]) // np.prod(shape)
+    shape = tuple(shape[0:2] + [nb_shots] + shape[2:])
+    axis = -(1 + len(labels))
+    iq_complex = np.zeros(shape, dtype=np.complex128)
+    iq_complex = data.df["i"].pint.magnitude.to_numpy().reshape(shape) + 1j * data.df[
+        "q"
+    ].pint.magnitude.to_numpy().reshape(shape)
+
+    # Debug plot
+    fig = make_subplots(rows=3, cols=1)
+    fig.add_trace(
+        go.Scatter(
+            x=iq_complex[0, 1, :, 0].real,
+            y=iq_complex[0, 1, :, 0].imag,
+            name="state 0",
+            mode="markers",
+        ),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=iq_complex[1, 1, :, 0].real,
+            y=iq_complex[1, 1, :, 0].imag,
+            name="state 1",
+            mode="markers",
+        ),
+        row=1,
+        col=1,
+    )
+    fig.write_image("debug.png")
+    # Take the mean ground state
+    mean_gnd_state = np.mean(iq_complex[0, ...], axis=axis, keepdims=True)
+    mean_exc_state = np.mean(iq_complex[1, ...], axis=axis, keepdims=True)
+    angle = np.angle(mean_exc_state - mean_gnd_state)
+
+    # Rotate the data
+    iq_complex = iq_complex * np.exp(-1j * angle)
+
+    # Debug plot
+    fig.add_trace(
+        go.Scatter(
+            x=iq_complex[0, 1, :, 0].real,
+            y=iq_complex[0, 1, :, 0].imag,
+            name="state 0",
+            mode="markers",
+        ),
+        row=2,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=iq_complex[1, 1, :, 0].real,
+            y=iq_complex[1, 1, :, 0].imag,
+            name="state 1",
+            mode="markers",
+        ),
+        row=2,
+        col=1,
+    )
+    fig.write_image("debug.png")
+    # Take the cumulative distribution of the real part of the data
+    iq_complex_sorted = np.sort(iq_complex.real, axis=axis)
+    cum_dist = (
+        np.apply_along_axis(
+            lambda x: np.searchsorted(
+                x, np.linspace(x.min(), x.max(), nb_shots), side="left"
+            ),
+            axis=axis,
+            arr=iq_complex_sorted,
+        )
+        / nb_shots
+    )
+
+    # Debug plot
+    fig.add_trace(
+        go.Scatter(
+            x=np.linspace(
+                iq_complex_sorted[0, 1, :, 0].min(),
+                iq_complex_sorted[0, 1, :, 0].max(),
+                nb_shots,
+            ),
+            y=cum_dist[0, 1, :, 0],
+            name="state 0",
+        ),
+        row=3,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=np.linspace(
+                iq_complex_sorted[1, 1, :, 0].min(),
+                iq_complex_sorted[1, 1, :, 0].max(),
+                nb_shots,
+            ),
+            y=cum_dist[1, 1, :, 0],
+            name="state 1",
+        ),
+        row=3,
+        col=1,
+    )
+    fig.write_image("debug.png")
+    # Find the threshold for which the difference between the cumulative distribution of the two states is maximum
+    argmax = np.argmax(
+        np.abs(cum_dist[0, ...] - cum_dist[1, ...]), axis=axis, keepdims=True
+    )
+
+    # Use np.take_along_axis to get the correct indices for the threshold calculation
+    threshold = (
+        np.take_along_axis(iq_complex_sorted[0, ...], argmax, axis=axis)
+        + np.take_along_axis(iq_complex_sorted[1, ...], argmax, axis=axis)
+    ) / 2
+    # Debug plot, add as a vertical line on the x axis on subplot 3
+    fig.add_trace(
+        go.Scatter(
+            x=[threshold[0, 0, 0], threshold[0, 0, 0]], y=[0, 1], name="threshold"
+        ),
+        row=3,
+        col=1,
+    )
+
+    # Calculate the fidelity
+    fidelity = np.take_along_axis(
+        np.abs(cum_dist[0, ...] - cum_dist[1, ...]), argmax, axis=axis
+    )
+    assignment_fidelity = (
+        1
+        - (
+            np.take_along_axis(cum_dist[0, ...], argmax, axis=axis)
+            + np.take_along_axis(cum_dist[1, ...], argmax, axis=axis)
+        )
+        / 2
+    )
+    fig.write_image("debug.png")
+
+    # Add all the results to the data
+    data_fit.df = data.df.drop_duplicates(subset=list(labels) + ["qubit"]).reset_index(
+        drop=True
+    )
+    data_fit.df["rotation_angle"] = angle.flatten()
+    data_fit.df["threshold"] = threshold.flatten()
+    data_fit.df["fidelity"] = fidelity.flatten()
+    data_fit.df["assignment_fidelity"] = assignment_fidelity.flatten()
+    data_fit.df["average_state0"] = mean_gnd_state.flatten()
+    data_fit.df["average_state1"] = mean_exc_state.flatten()
 
     return data_fit
