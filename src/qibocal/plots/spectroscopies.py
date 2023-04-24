@@ -1,4 +1,5 @@
 import os
+from functools import partial
 
 import numpy as np
 import plotly.graph_objects as go
@@ -6,6 +7,8 @@ from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
 from qibocal.fitting.utils import (
+    freq_q_mathieu,
+    freq_q_transmon,
     freq_r_mathieu,
     freq_r_transmon,
     image_to_curve,
@@ -585,7 +588,7 @@ def frequency_amplitude_msr_phase_cut(folder, routine, qubit, format):
 
 
 # Resonator spectroscopy flux
-def frequency_flux_msr_phase(folder, routine, qubit, format):
+def frequency_flux_msr_phase(folder, routine, qubit, format, method):
     figures = []
     fitting_report = ""
 
@@ -744,26 +747,31 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
                 )[0]
                 if all(value != 0 for key, value in params.items() if key != "qubit"):
                     if params["type"] == 1:
-                        f = freq_r_transmon
-                        popt = [
-                            params["curr_sp"],
-                            params["xi"],
-                            params["d"],
-                            params["f_q/f_rh"],
-                            params["g"],
-                            params["f_rh"],
-                        ]
+                        popt = [params["curr_sp"], params["xi"], params["d"]]
+                        if method == "resonator":
+                            f = freq_r_transmon
+                            popt.extend(
+                                (params["f_q/f_rh"], params["g"], params["f_rh"])
+                            )
+                        elif method == "qubit":
+                            f = freq_q_transmon
+                            popt.append(params["f_qs"])
                     elif params["type"] == 2:
-                        f = freq_r_mathieu
                         popt = [
-                            params["f_rh"],
-                            params["g"],
                             params["curr_sp"],
                             params["xi"],
                             params["d"],
                             params["Ec"],
                             params["Ej"],
                         ]
+                        if method == "resonator":
+                            f = freq_r_mathieu
+                            popt[:0] = [
+                                params["f_rh"],
+                                params["g"],
+                            ]
+                        elif method == "qubit":
+                            f = freq_q_mathieu
                     else:
                         f = line
                         popt = [params["popt0"], params["popt1"]]
@@ -779,15 +787,19 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
                     )
                     title_text = ""
                     if params["type"] == 1 or params["type"] == 2:
-                        title_text += f"q{qubit}/r{report_n} | Resonator Frequency at sweet spot: {params['f_rs']} Hz.<br>"
-                        title_text += f"q{qubit}/r{report_n} | Bias at sweet spot: {params['curr_sp']} V.<br>"
+                        if method == "resonator":
+                            title_text += f"q{qubit}/r{report_n} | resonator frequency at sweet spot: {params['f_rs']} Hz.<br>"
+                            title_text += f"q{qubit}/r{report_n} | bias at sweet spot: {params['curr_sp']} V.<br>"
+                            title_text += f"q{qubit}/r{report_n} | readout coupling: {params['g']} Hz.<br>"
+                            title_text += f"q{qubit}/r{report_n} | resonator frequency at high power: {params['f_rh']} Hz.<br>"
+                            title_text += f"q{qubit}/r{report_n} | qubit frequency at sweet spot: {params['f_qs']} Hz.<br>"
+                        elif method == "qubit":
+                            title_text += f"q{qubit}/r{report_n} | qubit frequency at sweet spot: {params['f_qs']} Hz.<br>"
+                            title_text += f"q{qubit}/r{report_n} | bias at sweet spot: {params['curr_sp']} V.<br>"
                         title_text += (
-                            f"q{qubit}/r{report_n} | Asymmetry: {params['d']}.<br>"
+                            f"q{qubit}/r{report_n} | asymmetry: {params['d']}.<br>"
                         )
-                        title_text += f"q{qubit}/r{report_n} | Readout coupling: {params['g']} Hz.<br>"
-                        title_text += f"q{qubit}/r{report_n} | Resonator Frequency at high power: {params['f_rh']} Hz.<br>"
-                        title_text += f"q{qubit}/r{report_n} | Qubit Frequency at sweet spot: {params['f_qs']} Hz.<br>"
-                        title_text += f"q{qubit}/r{report_n} | Frequency offset: {params['f_offset']} Hz.<br>"
+                        title_text += f"q{qubit}/r{report_n} | frequency offset: {params['f_offset']} Hz.<br>"
                         title_text += (
                             f"q{qubit}/r{report_n} | C_ii: {params['C_ii']} Hz/V.<br>"
                         )
@@ -818,6 +830,13 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
     figures.append(fig)
 
     return figures, fitting_report
+
+
+frequency_flux_msr_phase_resonator = partial(
+    frequency_flux_msr_phase, method="resonator"
+)
+
+frequency_flux_msr_phase_qubit = partial(frequency_flux_msr_phase, method="qubit")
 
 
 # Dispersive shift

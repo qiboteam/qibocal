@@ -131,7 +131,7 @@ def qubit_spectroscopy(
 
 @plot(
     "MSR and Phase vs Qubit Drive Frequency and Flux Current",
-    plots.frequency_flux_msr_phase,
+    plots.frequency_flux_msr_phase_qubit,
 )
 def qubit_spectroscopy_flux(
     platform: AbstractPlatform,
@@ -160,6 +160,9 @@ def qubit_spectroscopy_flux(
         bias_step (float): Step bias in A for the flux bias sweep
         fluxlines (list): List of flux lines to use to perform the experiment. If it is set to "qubits", it uses each of
                         flux lines associated with the target qubits.
+        params_fit (dict): Dictionary of parameters for the fit. {"Ec":{"q_i":Ec_i,...}, "Ej":{"q_i":Ej_i,...}.
+                        If Ec and Ej are missing, the fit is valid in the transmon limit and if they are indicated,
+                        contains the next-order correction.
         software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
 
