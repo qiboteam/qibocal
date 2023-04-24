@@ -190,7 +190,9 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         fidelity = cum_distribution_diff[argmax] / data.nshots
         assignment_fidelity = 1 - (errors_state1 + errors_state0) / data.nshots / 2
         thresholds[qubit] = threshold
-        rotation_angles[qubit] = np.rad2deg(-rotation_angle)
+        rotation_angles[
+            qubit
+        ] = -rotation_angle  # TODO: qblox driver np.rad2deg(-rotation_angle)
         fidelities[qubit] = fidelity
         mean_gnd_state[qubit] = iq_mean_state0
         mean_exc_state[qubit] = iq_mean_state1
@@ -299,8 +301,8 @@ def _plot(
         fitting_report
         + f"{qubit} | Average Ground State: {fit.mean_gnd_state[qubit]:.4f} <br>"
         + f"{qubit} | Average Excited State: {fit.mean_exc_state[qubit]:.4f} <br>"
-        + f"{qubit} | Rotation Angle: {fit.rotation_angle[qubit]:.3f} deg <br>"
-        + f"{qubit} | Thresold: {fit.threshold[qubit]:.4f} <br>"
+        + f"{qubit} | Rotation Angle: {fit.rotation_angle[qubit]:.3f} rad <br>"
+        + f"{qubit} | Threshold: {fit.threshold[qubit]:.4f} <br>"
         + f"{qubit} | Fidelity: {fit.fidelity[qubit]:.3f} <br>"
         + f"{qubit} | Assignment Fidelity: {fit.assignment_fidelity[qubit]:.3f} <br>"
     )
