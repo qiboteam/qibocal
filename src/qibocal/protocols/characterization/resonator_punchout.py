@@ -257,8 +257,8 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
         )
     )
     title_text = ""
-    title_text += f"{qubit} | Resonator Frequency at Low Power:  {fit.bare_frequency[qubit]*1e9:,.0f} Hz<br>"
-    title_text += f"{qubit} | Resonator Frequency at High Power: {fit.readout_frequency[qubit]*1e9:,.0f} Hz<br>"
+    title_text += f"{qubit} | Resonator Frequency at Low Power:  {fit.readout_frequency[qubit]*1e9:,.0f} Hz<br>"
+    title_text += f"{qubit} | Resonator Frequency at High Power: {fit.bare_frequency[qubit]*1e9:,.0f} Hz<br>"
     title_text += f"{qubit} | Readout Amplitude at Low Power: {fit.readout_amplitude[qubit]:,.3f} <br>"
 
     fitting_report = fitting_report + title_text

@@ -112,7 +112,7 @@ def _acquisition(
     for duration in qd_pulse_duration_range:
         for qubit in qubits:
             qd_pulses[qubit].duration = duration
-            ro_pulses[qubit].start = duration
+            ro_pulses[qubit].start = qd_pulses[qubit].finish
 
         # execute the pulse sequence
         results = platform.execute_pulse_sequence(sequence, nshots=params.nshots)
