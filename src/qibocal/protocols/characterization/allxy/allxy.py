@@ -226,7 +226,7 @@ def _plot(data: AllXYData, _fit: AllXYResults, qubit):
             text=gatelist,
             textposition="bottom center",
             opacity=0.3,
-            name=f"{qubit}: Probability",
+            name="Expectation value",
             showlegend=True,
             legendgroup="group1",
         ),
