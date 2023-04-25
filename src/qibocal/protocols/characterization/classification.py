@@ -167,8 +167,8 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         iq_state0_translated = iq_state0 - origin
         rotation_angle = np.angle(np.mean(iq_state1_translated))
 
-        iq_state1_rotated = iq_state1_translated * np.exp(-1j * rotation_angle)
-        iq_state0_rotated = iq_state0_translated * np.exp(-1j * rotation_angle)
+        iq_state1_rotated = iq_state1 * np.exp(-1j * rotation_angle)
+        iq_state0_rotated = iq_state0 * np.exp(-1j * rotation_angle)
 
         real_values_state1 = iq_state1_rotated.real
         real_values_state0 = iq_state0_rotated.real
