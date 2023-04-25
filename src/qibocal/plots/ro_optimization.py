@@ -33,8 +33,9 @@ def ro_frequency(folder, routine, qubit, format):
         except:
             data_fit = Data(
                 name="fit",
-                quantities={"frequency": "Hz", "delta_frequency": "Hz"},
-                options=[
+                quantities=[
+                    "frequency",
+                    "delta_frequency",
                     "rotation_angle",
                     "threshold",
                     "fidelity",
@@ -213,11 +214,9 @@ def ro_amplitude(folder, routine, qubit, format):
         except:
             data_fit = Data(
                 name="fit",
-                quantities={
-                    "amplitude": "dimensionless",
-                    "delta_amplitude": "dimensionless",
-                },
-                options=[
+                quantities=[
+                    "amplitude",
+                    "delta_amplitude",
                     "rotation_angle",
                     "threshold",
                     "fidelity",
