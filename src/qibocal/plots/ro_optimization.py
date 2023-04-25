@@ -273,8 +273,6 @@ def ro_amplitude(folder, routine, qubit, format):
                     visible=False,
                 ),
             )
-            # print([float(fit_data["average_state1"].apply(lambda x: np.real(x)))])
-            # print([float(fit_data["average_state0"].apply(lambda x: np.imag(x)))])
             fig.add_trace(
                 go.Scatter(
                     x=fit_data["average_state0"].apply(lambda x: np.real(x)).to_numpy(),

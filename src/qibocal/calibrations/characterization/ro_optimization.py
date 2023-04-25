@@ -268,10 +268,6 @@ def ro_amplitude(
         r = {
             k: v.ravel() for k, v in state0_results[ro_pulses[qubit].serial].raw.items()
         }
-        print(f" {qubit}: State0 amplitude: {ro_pulses[qubit].amplitude}")
-        print(
-            f" {qubit}: amplitude unique: {np.unique(np.repeat(np.vstack(delta_amplitude_range).T,len(np.arange(nshots)),axis=0).flatten()* ro_pulses[qubit].amplitude)}"
-        )
         r.update(
             {
                 "amplitude[dimensionless]": np.repeat(
@@ -307,10 +303,6 @@ def ro_amplitude(
         r = {
             k: v.ravel() for k, v in state1_results[ro_pulses[qubit].serial].raw.items()
         }
-        print(f" {qubit}: State1 amplitude: {ro_pulses[qubit].amplitude}")
-        print(
-            f" {qubit}: amplitude unique: {np.unique(np.repeat(np.vstack(delta_amplitude_range).T,len(np.arange(nshots)),axis=0).flatten()* ro_pulses[qubit].amplitude)}"
-        )
         r.update(
             {
                 "amplitude[dimensionless]": np.repeat(
