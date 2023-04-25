@@ -1,10 +1,10 @@
 # platform: qili1q_os2
 
-# platform: dummy
+platform: qw5q_gold_qblox
 
 # Instructions: Uncomment whatever you would like to run!
 
-qubits: [0]
+qubits: [0, 1, 2, 3, 4]
 #qubits: [1]
 
 format: csv
@@ -12,13 +12,10 @@ format: csv
 actions:
 
   # resonator_spectroscopy:
-  #  fast_width: 30_000_000
-  #  fast_step: 1_000_000
-  #  precision_width: 10_000_000
-  #  precision_step: 50_000
+  #  freq_width: 10_000_000
+  #  freq_step: 500_000
   #  relaxation_time: 10
   #  nshots: 1024
-  #  software_averages: 1
 
   # resonator_punchout_attenuation:
   #   freq_width: 10_000_000
@@ -31,66 +28,52 @@ actions:
   #   nshots: 100
 
   # resonator_punchout:
-  #   freq_width: 10_000_000
+  #   freq_width: 5_000_000
   #   freq_step: 1_000_000
-  #   min_amp_factor: 0.01
-  #   max_amp_factor: 2
-  #   step_amp_factor: 0.01
+  #   min_amp_factor: 0.02
+  #   max_amp_factor: 2.4
+  #   step_amp_factor: 0.1
   #   software_averages: 1
   #   relaxation_time: 50
   #   nshots: 1024
 
-  # resonator_spectroscopy_flux: #NOT WORKING WITH DUMMY OR QBLOX
+  # resonator_spectroscopy_flux:
   #  freq_width: 5_000_000
-  #  freq_step: 100_000
+  #  freq_step: 500_000
   #  bias_width: 0.1
-  #  bias_step:  0.002
+  #  bias_step:  0.01
   #  fluxlines: qubits
   #  relaxation_time: 50
-  #  nshots: 1000
+  #  nshots: 1024
   #  software_averages: 1
 
   # qubit_spectroscopy:
-  #   fast_width: 5_000_000
-  #   fast_step: 100_000
-  #   precision_width: 1_000_000
-  #   precision_step: 50_000
-  #   drive_duration: 5000
-  #   drive_amplitude: 0.457
-  #   relaxation_time: 20
-  #   nshots: 1024
-  #   software_averages: 2
+  #   drive_amplitude: 0.5
+  #   drive_duration: 2000
+  #   freq_width: 5_000_000
+  #   freq_step: 500_000
+  #   nshots: 1000
+  #   relaxation_time: 0
 
-  # qubit_spectroscopy_flux: #NOT WORKING WITH DUMMY OR QBLOX
+  # qubit_spectroscopy_flux:
   #  drive_amplitude: 0.457
-  #  freq_width: 400_000_000
+  #  freq_width: 5_000_000
   #  freq_step: 500_000
   #  bias_width: 0.1
-  #  bias_step:  0.001
+  #  bias_step:  0.01
   #  fluxlines: "qubits"
   #  relaxation_time: 20
-  #  nshots: 1000
+  #  nshots: 1024
   #  software_averages: 1
 
   # rabi_pulse_amplitude:
-    # pulse_amplitude_start: 0 # 0<=a<=1
-    # pulse_amplitude_end: 1.11
-    # pulse_amplitude_step: 0.044
-    # software_averages: 1
-    # relaxation_time: 200_000
-    # nshots: 1024
-
-  # rabi_pulse_length_and_amplitude:
-  #   pulse_duration_start: 4 # minimum 4ns
-  #   pulse_duration_end: 200
-  #   pulse_duration_step: 100
-  #   pulse_amplitude_start: 0 # -1.0<= amplitude <=1.0
-  #   pulse_amplitude_end: 1
-  #   pulse_amplitude_step: 0.3
+  #   pulse_amplitude_start: 0 # 0<=a<=1
+  #   pulse_amplitude_end: 1.11
+  #   pulse_amplitude_step: 0.044
   #   software_averages: 1
-  #   relaxation_time: 5
+  #   relaxation_time: 200_000
   #   nshots: 1024
-  #   points: 10
+
 
   # rabi_pulse_length:
   #  pulse_duration_start: 4 # minimum 4ns
@@ -98,7 +81,6 @@ actions:
   #  pulse_duration_step: 4
   #  nshots: 1024
   #  software_averages: 1
-  #  points: 4
 
   # rabi_pulse_gain:
   #   pulse_gain_start: 0 # -1.0<=g<=1.0
@@ -116,26 +98,26 @@ actions:
   #  beta_start: -1
   #  beta_end: 1
   #  beta_step: 0.5
-  #  software_averages: 2
+  #  software_averages: 1
   #  points: 3
 
   # drag_pulse_tuning:
   #  beta_start: -0.1
   #  beta_end: 0.1
-  #  beta_step: 0.01
-  #  software_averages: 5
+  #  beta_step: 0.02
+  #  software_averages: 1
   #  points: 2
 
   # t1:
   #  delay_before_readout_start: 4
-  #  delay_before_readout_end: 10_000
+  #  delay_before_readout_end: 1000
   #  delay_before_readout_step: 200
   #  software_averages: 1
   #  points: 5
 
   # ramsey:
   #  delay_between_pulses_start: 16 # must be a multiple of 4 incl 0
-  #  delay_between_pulses_end: 8000
+  #  delay_between_pulses_end: 800
   #  delay_between_pulses_step: 20 # must be a multiple of 4
   #  software_averages: 1
   #  points: 10
@@ -145,17 +127,17 @@ actions:
 
   # ramsey_frequency_detuned:
   #   delay_between_pulses_start: 4
-  #   delay_between_pulses_end: [1000, 2000] #t_end (optimal) = 3.5 * T2
+  #   delay_between_pulses_end: [100, 200] #t_end (optimal) = 3.5 * T2
   #   delay_between_pulses_step: 32
   #   n_osc: 4
   #   software_averages: 1
   #   points: 1
 
-  # dispersive_shift:
-  #   freq_width: 10_000_000
-  #   freq_step: 400_000
-  #   software_averages: 2
-  #   points: 5
+  dispersive_shift:
+    freq_width: 10_000_000
+    freq_step: 400_000
+    software_averages: 2
+    points: 5
 
   #tune_transition:
   #  flux_pulse_duration_start: 0
@@ -185,15 +167,15 @@ actions:
 
 
 
-  rabi_pulse_length_and_gain:
-    pulse_duration_start: 4 # minimum 4ns
-    pulse_duration_end: 20
-    pulse_duration_step: 4
-    pulse_gain_start: 0 # -1.0<=g<=1.0
-    pulse_gain_end: 1
-    pulse_gain_step: 0.1
-    software_averages: 1
-    points: 10
+  # rabi_pulse_length_and_gain:
+  #   pulse_duration_start: 4 # minimum 4ns
+  #   pulse_duration_end: 20
+  #   pulse_duration_step: 4
+  #   pulse_gain_start: 0 # -1.0<=g<=1.0
+  #   pulse_gain_end: 1
+  #   pulse_gain_step: 0.1
+  #   software_averages: 1
+  #   points: 10
 
   # rabi_pulse_length_and_amplitude:
   #   pulse_duration_start: 4 # minimum 4ns
