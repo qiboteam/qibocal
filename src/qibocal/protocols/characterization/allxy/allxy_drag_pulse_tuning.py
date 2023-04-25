@@ -18,8 +18,6 @@ class AllXYDragParameters(Parameters):
     beta_end: float
     beta_step: float
     software_averages: int = 1
-    points: int = 10
-
 
 @dataclass
 class AllXYDragResults(Results):
@@ -59,7 +57,6 @@ def _acquisition(
         beta_end (float): Maximum drag pulse beta parameter
         beta_step (float): Scan range step for the drag pulse beta parameter
         software_averages (int): Number of executions of the routine for averaging results
-        points (int): Save data results in a file every number of points
 
     Returns:
         A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
@@ -85,9 +82,7 @@ def _acquisition(
     count = 0
     for iteration in range(params.software_averages):
         # sweep the parameters
-        for beta_param in np.arange(
-            params.beta_start, params.beta_end, params.beta_step
-        ).round(4):
+        for beta_param in np.arange(params.beta_start, params.beta_end, params.beta_step).round(4):
             gateNumber = 1
             for gates in gatelist:
                 # create a sequence of pulses
@@ -95,7 +90,7 @@ def _acquisition(
                 sequence = PulseSequence()
                 for qubit in qubits:
                     sequence, ro_pulses[qubit] = add_gate_pair_pulses_to_sequence(
-                        platform, gates, qubit, beta_param, sequence
+                        platform, gates, qubit, sequence, beta_param
                     )
 
                 # execute the pulse sequence

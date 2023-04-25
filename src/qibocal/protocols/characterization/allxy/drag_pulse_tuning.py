@@ -160,7 +160,6 @@ def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
         .. math::
 
             y = p_1 cos \Big(\frac{2 \pi x}{p_2} + p_3 \Big) + p_0.
-
     Args:
 
         data (`DataUnits`): dataset for the fit
@@ -201,7 +200,8 @@ def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
         try:
             popt, pcov = curve_fit(cos, beta_params.values, voltages.values)
             smooth_dataset = cos(beta_params.values, popt[0], popt[1], popt[2], popt[3])
-            beta_optimal = beta_params.values[np.argmin(smooth_dataset)]
+            min_abs_index = np.abs(smooth_dataset).argmin()
+            beta_optimal = beta_params.values[min_abs_index]    
         except:
             log.warning("drag_tuning_fit: the fitting was not succesful")
             popt = [0, 0, 1, 0]
