@@ -13,7 +13,7 @@ def ro_frequency(folder, routine, qubit, format):
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
     report_n = 0
-    fitting_report = "No fitting data"
+    fitting_report = ""
 
     for subfolder in subfolders:
         try:
@@ -195,13 +195,13 @@ def ro_frequency(folder, routine, qubit, format):
     )
     # Add fitting report for the best fidelity
     fit_data = data_fit.df[data_fit.df["fidelity"] == data_fit.df["fidelity"].max()]
-    title_text = f"q{qubit}/r{report_n}/r{frequency}<br>"
+    title_text = f"q{qubit}/r{report_n}<br>"
     title_text += f"average state 0: ({complex(fit_data['average_state0'].to_numpy()[0]):.6f})<br>"
     title_text += f"average state 1: ({complex(fit_data['average_state1'].to_numpy()[0]):.6f})<br>"
     title_text += f"rotation angle = {float(fit_data['rotation_angle'].to_numpy()[0]):.3f} / threshold = {float(fit_data['threshold'].to_numpy()[0]):.6f}<br>"
     title_text += f"fidelity = {float(fit_data['fidelity'].to_numpy()[0]):.3f} / assignment fidelity = {float(fit_data['assignment_fidelity'].to_numpy()[0]):.3f}<br><br>"
     fitting_report = fitting_report + title_text
-
+    print()
     return [fig, fig_fidelity], fitting_report
 
 
