@@ -3,6 +3,8 @@ from functools import partial
 
 import lmfit
 import numpy as np
+import pandas as pd
+import pint
 from scipy.optimize import curve_fit
 
 from qibocal.config import log
@@ -1081,7 +1083,7 @@ def ro_optimization_fit(data, *labels):
 
     Args:
         data (Data): data to fit
-        labels (str): variable used in the routine with format "variable_name[unit]"
+        labels (str): variable used in the routine with format "variable_name"
 
     Returns:
         Data: data with the fit results
@@ -1101,12 +1103,6 @@ def ro_optimization_fit(data, *labels):
         quantities=quantities,
     )
 
-    # DEBUG: subplots
-    import plotly.graph_objects as go
-    from plotly.subplots import make_subplots
-
-    fig = make_subplots(rows=3, cols=1)
-
     # Create a ndarray for i and q shots for all labels
     # shape=(i + j*q, qubit, state, label1, label2, ...)
 
@@ -1123,29 +1119,6 @@ def ro_optimization_fit(data, *labels):
         "q"
     ].pint.magnitude.to_numpy().reshape(shape)
 
-    # Debug plot
-    fig = make_subplots(rows=3, cols=1)
-    fig.add_trace(
-        go.Scatter(
-            x=iq_complex[0, 1, :, 0].real,
-            y=iq_complex[0, 1, :, 0].imag,
-            name="state 0",
-            mode="markers",
-        ),
-        row=1,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=iq_complex[1, 1, :, 0].real,
-            y=iq_complex[1, 1, :, 0].imag,
-            name="state 1",
-            mode="markers",
-        ),
-        row=1,
-        col=1,
-    )
-    fig.write_image("debug.png")
     # Take the mean ground state
     mean_gnd_state = np.mean(iq_complex[0, ...], axis=axis, keepdims=True)
     mean_exc_state = np.mean(iq_complex[1, ...], axis=axis, keepdims=True)
@@ -1154,28 +1127,6 @@ def ro_optimization_fit(data, *labels):
     # Rotate the data
     iq_complex = iq_complex * np.exp(-1j * angle)
 
-    # Debug plot
-    fig.add_trace(
-        go.Scatter(
-            x=iq_complex[0, 1, :, 0].real,
-            y=iq_complex[0, 1, :, 0].imag,
-            name="state 0",
-            mode="markers",
-        ),
-        row=2,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=iq_complex[1, 1, :, 0].real,
-            y=iq_complex[1, 1, :, 0].imag,
-            name="state 1",
-            mode="markers",
-        ),
-        row=2,
-        col=1,
-    )
-    fig.write_image("debug.png")
     # Take the cumulative distribution of the real part of the data
     iq_complex_sorted = np.sort(iq_complex.real, axis=axis)
     cum_dist = (
@@ -1189,34 +1140,6 @@ def ro_optimization_fit(data, *labels):
         / nb_shots
     )
 
-    # Debug plot
-    fig.add_trace(
-        go.Scatter(
-            x=np.linspace(
-                iq_complex_sorted[0, 1, :, 0].min(),
-                iq_complex_sorted[0, 1, :, 0].max(),
-                nb_shots,
-            ),
-            y=cum_dist[0, 1, :, 0],
-            name="state 0",
-        ),
-        row=3,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=np.linspace(
-                iq_complex_sorted[1, 1, :, 0].min(),
-                iq_complex_sorted[1, 1, :, 0].max(),
-                nb_shots,
-            ),
-            y=cum_dist[1, 1, :, 0],
-            name="state 1",
-        ),
-        row=3,
-        col=1,
-    )
-    fig.write_image("debug.png")
     # Find the threshold for which the difference between the cumulative distribution of the two states is maximum
     argmax = np.argmax(
         np.abs(cum_dist[0, ...] - cum_dist[1, ...]), axis=axis, keepdims=True
@@ -1227,14 +1150,6 @@ def ro_optimization_fit(data, *labels):
         np.take_along_axis(iq_complex_sorted[0, ...], argmax, axis=axis)
         + np.take_along_axis(iq_complex_sorted[1, ...], argmax, axis=axis)
     ) / 2
-    # Debug plot, add as a vertical line on the x axis on subplot 3
-    fig.add_trace(
-        go.Scatter(
-            x=[threshold[0, 0, 0], threshold[0, 0, 0]], y=[0, 1], name="threshold"
-        ),
-        row=3,
-        col=1,
-    )
 
     # Calculate the fidelity
     fidelity = np.take_along_axis(
@@ -1248,11 +1163,12 @@ def ro_optimization_fit(data, *labels):
         )
         / 2
     )
-    fig.write_image("debug.png")
 
     # Add all the results to the data
-    data_fit.df = data.df.drop_duplicates(subset=list(labels) + ["qubit"]).reset_index(
-        drop=True
+    data_fit.df = (
+        data.df.drop_duplicates(subset=list(labels) + ["qubit"])
+        .reset_index(drop=True)
+        .apply(pint_to_float)
     )
     data_fit.df["rotation_angle"] = angle.flatten()
     data_fit.df["threshold"] = threshold.flatten()
@@ -1262,3 +1178,12 @@ def ro_optimization_fit(data, *labels):
     data_fit.df["average_state1"] = mean_exc_state.flatten()
 
     return data_fit
+
+
+def pint_to_float(x):
+    if isinstance(x, pd.Series):
+        return x.apply(pint_to_float)
+    elif isinstance(x, pint.Quantity):
+        return x.to(x.units).magnitude
+    else:
+        return x

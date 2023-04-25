@@ -22,7 +22,7 @@ def ro_frequency(folder, routine, qubit, format):
         except:
             data = DataUnits(
                 name="data",
-                quantities={"frequency": "Hz"},
+                quantities={"frequency": "Hz", "delta_frequency": "Hz"},
                 options=["iteration", "state"],
             )
 
@@ -33,7 +33,7 @@ def ro_frequency(folder, routine, qubit, format):
         except:
             data_fit = Data(
                 name="fit",
-                quantities={"frequency": "Hz"},
+                quantities={"frequency": "Hz", "delta_frequency": "Hz"},
                 options=[
                     "rotation_angle",
                     "threshold",
@@ -46,14 +46,16 @@ def ro_frequency(folder, routine, qubit, format):
 
         # Plot raw results with sliders
         annotations_dict = []
-        for frequency in data.df["frequency"].unique():
+        for frequency in data.df["delta_frequency"].unique():
             state0_data = data.df[
-                (data.df["frequency"] == frequency) & (data.df["state"] == 0)
+                (data.df["delta_frequency"] == frequency) & (data.df["state"] == 0)
             ]
             state1_data = data.df[
-                (data.df["frequency"] == frequency) & (data.df["state"] == 1)
+                (data.df["delta_frequency"] == frequency) & (data.df["state"] == 1)
             ]
-            fit_data = data_fit.df[data_fit.df["frequency"] == frequency.magnitude]
+            fit_data = data_fit.df[
+                data_fit.df["delta_frequency"] == frequency.magnitude
+            ]
             fit_data["average_state0"] = data_fit.df["average_state0"].apply(
                 lambda x: complex(x)
             )
@@ -93,8 +95,8 @@ def ro_frequency(folder, routine, qubit, format):
             # print([float(fit_data["average_state0"].apply(lambda x: np.imag(x)))])
             fig.add_trace(
                 go.Scatter(
-                    x=[float(fit_data["average_state0"].apply(lambda x: np.real(x)))],
-                    y=[float(fit_data["average_state0"].apply(lambda x: np.imag(x)))],
+                    x=fit_data["average_state0"].apply(lambda x: np.real(x)).to_numpy(),
+                    y=fit_data["average_state0"].apply(lambda x: np.imag(x)).to_numpy(),
                     name=f"q{qubit}/r{report_n}: mean state 0",
                     # legendgroup=f"q{qubit}/r{report_n}",
                     showlegend=True,
@@ -106,8 +108,8 @@ def ro_frequency(folder, routine, qubit, format):
 
             fig.add_trace(
                 go.Scatter(
-                    x=[float(fit_data["average_state1"].apply(lambda x: np.real(x)))],
-                    y=[float(fit_data["average_state1"].apply(lambda x: np.imag(x)))],
+                    x=fit_data["average_state1"].apply(lambda x: np.real(x)).to_numpy(),
+                    y=fit_data["average_state1"].apply(lambda x: np.imag(x)).to_numpy(),
                     name=f"avg q{qubit}/r{report_n}: mean state 1",
                     # legendgroup=f"q{qubit}/r{report_n}",
                     showlegend=True,
@@ -116,16 +118,6 @@ def ro_frequency(folder, routine, qubit, format):
                     marker=dict(size=10, color=get_color_state1(report_n)),
                 ),
             )
-
-            # Add fitting report
-            title_text = f"q{qubit}/r{report_n}/r{frequency}<br>"
-            # title_text += f"average state 0: ({fit_data['average_state0'][0]:.6f})<br>"
-            # title_text += f"average state 1: ({fit_data['average_state1'][0]:.6f})<br>"
-            # title_text += (
-            #     f"rotation angle = {fit_data['rotation_angle'][0]:.3f} / threshold = {fit_data['threshold'][0]:.6f}<br>"
-            # )
-            # title_text += f"fidelity = {fit_data['fidelity'][0]:.3f} / assignment fidelity = {fit_data['assignment_fidelity'][0]:.3f}<br><br>"
-            fitting_report = fitting_report + title_text
 
             annotations_dict.append(
                 dict(
@@ -151,7 +143,6 @@ def ro_frequency(folder, routine, qubit, format):
     fig.data[1].visible = True
     fig.data[2].visible = True
     fig.data[3].visible = True
-    # TODO: Show annotations for the first frequency
 
     # Add slider
     steps = []
@@ -162,7 +153,7 @@ def ro_frequency(folder, routine, qubit, format):
                 {"visible": [False] * len(fig.data)},
                 {"annotations": [[False] * len(fig.data), annotations_dict[i]]},
             ],
-            label=f"{data.df['frequency'].unique()[i]:.6f}",
+            label=f"{freq:.6f}",
         )
         for j in range(4):
             step["args"][0]["visible"][i * 4 + j] = True
@@ -202,6 +193,14 @@ def ro_frequency(folder, routine, qubit, format):
         yaxis_title="fidelity (ratio)",
         title=f"q{qubit}",
     )
+    # Add fitting report for the best fidelity
+    fit_data = data_fit.df[data_fit.df["fidelity"] == data_fit.df["fidelity"].max()]
+    title_text = f"q{qubit}/r{report_n}/r{frequency}<br>"
+    title_text += f"average state 0: ({complex(fit_data['average_state0'].to_numpy()[0]):.6f})<br>"
+    title_text += f"average state 1: ({complex(fit_data['average_state1'].to_numpy()[0]):.6f})<br>"
+    title_text += f"rotation angle = {float(fit_data['rotation_angle'].to_numpy()[0]):.3f} / threshold = {float(fit_data['threshold'].to_numpy()[0]):.6f}<br>"
+    title_text += f"fidelity = {float(fit_data['fidelity'].to_numpy()[0]):.3f} / assignment fidelity = {float(fit_data['assignment_fidelity'].to_numpy()[0]):.3f}<br><br>"
+    fitting_report = fitting_report + title_text
 
     return [fig, fig_fidelity], fitting_report
 

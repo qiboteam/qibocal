@@ -10,7 +10,7 @@ from qibolab.sweeper import Parameter, Sweeper
 from qibocal import plots
 from qibocal.data import Data, DataUnits
 from qibocal.decorators import plot
-from qibocal.fitting.methods import calibrate_qubit_states_fit
+from qibocal.fitting.methods import calibrate_qubit_states_fit, ro_optimization_fit
 
 
 @plot("Qubit States", plots.ro_frequency)
@@ -106,16 +106,16 @@ def ro_frequency(
 
     for qubit in qubits:
         r = {
-            k: v.ravel()
-            for k, v in state0_results[ro_pulses[qubit].serial]
-            .to_dict(average=False)
-            .items()
+            k: v.ravel() for k, v in state0_results[ro_pulses[qubit].serial].raw.items()
         }
         r.update(
             {
-                "frequency[Hz]": [ro_pulses[qubit].frequency]
-                * nshots
-                * len(delta_frequency_range),
+                "frequency[Hz]": np.repeat(
+                    np.vstack(delta_frequency_range).T,
+                    len(np.arange(nshots)),
+                    axis=0,
+                ).flatten()
+                + ro_pulses[qubit].frequency,
                 "delta_frequency[Hz]": np.repeat(
                     np.vstack(delta_frequency_range).T,
                     len(np.arange(nshots)),
@@ -141,16 +141,16 @@ def ro_frequency(
     # retrieve and store the results for every qubit)
     for qubit in qubits:
         r = {
-            k: v.ravel()
-            for k, v in state1_results[ro_pulses[qubit].serial]
-            .to_dict(average=False)
-            .items()
+            k: v.ravel() for k, v in state1_results[ro_pulses[qubit].serial].raw.items()
         }
         r.update(
             {
-                "frequency[Hz]": [ro_pulses[qubit].frequency]
-                * nshots
-                * len(delta_frequency_range),
+                "frequency[Hz]": np.repeat(
+                    np.vstack(delta_frequency_range).T,
+                    len(np.arange(nshots)),
+                    axis=0,
+                ).flatten()
+                + ro_pulses[qubit].frequency,
                 "delta_frequency[Hz]": np.repeat(
                     np.vstack(delta_frequency_range).T,
                     len(np.arange(nshots)),
@@ -169,20 +169,7 @@ def ro_frequency(
 
     # finally, save the remaining data and the fits
     yield data
-
-    # fit the data
-    for delta_freq in delta_frequency_range:
-        data_trim = copy.deepcopy(data)
-        data_trim.df = data_trim.df[
-            data_trim.get_values("delta_frequency", "Hz") == delta_freq
-        ]
-
-        fits = calibrate_qubit_states_fit(
-            data_trim, x="i[V]", y="q[V]", nshots=nshots, qubits=qubits
-        )
-        fits.df["delta_frequency"] = [delta_freq] * len(qubits)
-        data_fit.df = pd.concat([data_fit.df, fits.df], ignore_index=True)
-        yield data_fit
+    yield ro_optimization_fit(data, "delta_frequency")
 
 
 @plot("Qubit States", plots.ro_amplitude)
