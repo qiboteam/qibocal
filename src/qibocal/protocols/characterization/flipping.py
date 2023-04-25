@@ -188,9 +188,15 @@ def _fit(data: FlippngData) -> FlippingResults:
             log.warning("flipping_fit: the fitting was not succesful")
             popt = [0, 0, 2, 0]
 
-        eps = -1 / popt[2]
-        amplitude_correction_factor = eps / (eps - 1)
-        corrected_amplitude = amplitude_correction_factor * pi_pulse_amplitude
+        #sen fitting succesful
+        if(popt[2] != 2):
+            eps = -1 / popt[2]
+            amplitude_correction_factor = eps / (eps - 1)
+            corrected_amplitude = amplitude_correction_factor * pi_pulse_amplitude
+        #sen fitting not succesful = amplitude well adjusted
+        else:
+            amplitude_correction_factor = 1
+            corrected_amplitude = amplitude_correction_factor * pi_pulse_amplitude
 
         corrected_amplitudes[qubit] = corrected_amplitude
         fitted_parameters[qubit] = popt
@@ -283,8 +289,8 @@ def _plot(data: FlippngData, fit: FlippingResults, qubit):
             col=1,
         )
         fitting_report = fitting_report + (
-            f"q{qubit}/r{report_n} | amplitude_correction_factor: {fit.amplitudes[qubit][0]:.4f}<br>"
-            + f"q{qubit}/r{report_n} | corrected_amplitude: {fit.amplitude_factors[qubit]:.4f}<br><br>"
+            f"q{qubit}/r{report_n} | amplitude_correction_factor: {fit.amplitude_factors[qubit][0]:.4f}<br>"
+            + f"q{qubit}/r{report_n} | corrected_amplitude: {fit.amplitudes[qubit]:.4f}<br><br>"
         )
 
     report_n += 1
