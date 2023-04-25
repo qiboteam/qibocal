@@ -37,7 +37,9 @@ class DragPulseTuningData(DataUnits):
 
 
 def _acquisition(
-    platform: AbstractPlatform, qubits: Qubits, params: DragPulseTuningParameters
+    params: DragPulseTuningParameters,
+    platform: AbstractPlatform,
+    qubits: Qubits,
 ) -> DragPulseTuningData:
     r"""
     In this experiment, we apply two sequences in a given qubit: Rx(pi/2) - Ry(pi) and Ry(pi) - Rx(pi/2) for a range

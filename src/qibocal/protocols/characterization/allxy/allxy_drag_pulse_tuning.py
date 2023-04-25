@@ -38,7 +38,9 @@ class AllXYDragData(Data):
 
 
 def _acquisition(
-    platform: AbstractPlatform, qubits: Qubits, params: AllXYDragParameters
+    params: AllXYDragParameters,
+    platform: AbstractPlatform,
+    qubits: Qubits,
 ) -> AllXYDragData:
     r"""
     The AllXY experiment is a simple test of the calibration of single qubit gatesThe qubit (initialized in the |0> state)

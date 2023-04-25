@@ -33,7 +33,7 @@ class RabiLengthData(RabiAmplitudeData):
 
 
 def _acquisition(
-    platform: AbstractPlatform, qubits: Qubits, params: RabiLengthParameters
+    params: RabiLengthParameters, platform: AbstractPlatform, qubits: Qubits
 ) -> RabiLengthData:
     r"""
     In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse length

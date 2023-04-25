@@ -42,7 +42,7 @@ class T1Data(DataUnits):
 
 
 def _acquisition(
-    platform: AbstractPlatform, qubits: Qubits, params: T1Parameters
+    params: T1Parameters, platform: AbstractPlatform, qubits: Qubits
 ) -> T1Data:
     r"""
     In a T1 experiment, we measure an excited qubit after a delay. Due to decoherence processes

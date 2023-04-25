@@ -36,7 +36,9 @@ class QubitFluxData(ResonatorFluxData):
 
 
 def _acquisition(
-    platform: AbstractPlatform, qubits: Qubits, params: QubitFluxParameters
+    params: QubitFluxParameters,
+    platform: AbstractPlatform,
+    qubits: Qubits,
 ) -> QubitFluxData:
     # create a sequence of pulses for the experiment:
     # MZ

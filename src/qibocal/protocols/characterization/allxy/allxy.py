@@ -55,7 +55,9 @@ gatelist = [
 
 
 def _acquisition(
-    platform: AbstractPlatform, qubits: Qubits, params: AllXYParameters
+    params: AllXYParameters,
+    platform: AbstractPlatform,
+    qubits: Qubits,
 ) -> AllXYData:
     r"""
     The AllXY experiment is a simple test of the calibration of single qubit gatesThe qubit (initialized in the |0> state)

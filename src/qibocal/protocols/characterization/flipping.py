@@ -43,7 +43,9 @@ class FlippngData(DataUnits):
 
 
 def _acquisition(
-    platform: AbstractPlatform, qubits: Qubits, params: FlippingParameters
+    params: FlippingParameters,
+    platform: AbstractPlatform,
+    qubits: Qubits,
 ) -> FlippngData:
     r"""
     The flipping experiment correct the delta amplitude in the qubit drive pulse. We measure a qubit after applying

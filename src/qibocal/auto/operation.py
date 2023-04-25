@@ -1,6 +1,6 @@
 import inspect
 from dataclasses import dataclass, field, fields
-from typing import Callable, Dict, Generic, NewType, TypeVar, Union
+from typing import Callable, Dict, Generic, NewType, Optional, TypeVar, Union
 
 from qibolab.platforms.abstract import AbstractPlatform, Qubit
 
@@ -89,14 +89,15 @@ _ResultsT = TypeVar("_ResultsT", bound=Results)
 class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     """A wrapped calibration routine."""
 
-    acquisition: Callable[[AbstractPlatform, Qubits, _ParametersT], _DataT]
+    acquisition: Callable[[_ParametersT], _DataT]
     fit: Callable[[_DataT], _ResultsT]
     report: Callable[[_DataT, _ResultsT], None]
 
     @property
     def parameters_type(self):
         sig = inspect.signature(self.acquisition)
-        param = list(sig.parameters.values())[2]  # skipping platform and qubits
+        # we are assuming that params is the last argument, maybe should be the first(?)
+        param = list(sig.parameters.values())[0]
         return param.annotation
 
     @property

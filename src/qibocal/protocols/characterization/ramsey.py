@@ -58,7 +58,9 @@ class RamseyData(DataUnits):
 
 
 def _acquisition(
-    platform: AbstractPlatform, qubits: Qubits, params: RamseyParameters
+    params: RamseyParameters,
+    platform: AbstractPlatform,
+    qubits: Qubits,
 ) -> RamseyData:
     # create a sequence of pulses for the experiment
     # RX90 - t - RX90 - MZ

@@ -38,7 +38,7 @@ class QubitSpectroscopyData(ResonatorSpectroscopyData):
 
 
 def _acquisition(
-    platform: AbstractPlatform, qubits: Qubits, params: QubitSpectroscopyParameters
+    params: QubitSpectroscopyParameters, platform: AbstractPlatform, qubits: Qubits
 ) -> QubitSpectroscopyData:
     # create a sequence of pulses for the experiment:
     # long drive probing pulse - MZ

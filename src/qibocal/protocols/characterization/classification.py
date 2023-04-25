@@ -43,9 +43,9 @@ class SingleShotClassificationResults(Results):
 
 
 def _acquisition(
+    params: SingleShotClassificationParameters,
     platform: AbstractPlatform,
     qubits: Qubits,
-    params: SingleShotClassificationParameters,
 ) -> SingleShotClassificationData:
     """
     Method which implements the state's calibration of a chosen qubit. Two analogous tests are performed

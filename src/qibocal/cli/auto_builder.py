@@ -21,7 +21,10 @@ class AutoCalibrationBuilder(ActionBuilder):
         # TODO: modify folder in Path in ActionBuilder
         self.folder = Path(self.folder)
         self.executor = Executor.load(
-            self.runcard, self.platform, self.qubits, self.folder
+            self.runcard,
+            self.folder,
+            self.platform,
+            self.qubits,
         )
 
     def run(self):
