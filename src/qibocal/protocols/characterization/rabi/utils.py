@@ -8,7 +8,17 @@ from qibocal.data import DataUnits
 from qibocal.plots.utils import get_color
 
 
-def rabi(x, p0, p1, p2, p3, p4):
+def rabi_amplitude_fit(x, p0, p1, p2, p3):
+    # A fit to Superconducting Qubit Rabi Oscillation
+    #   Offset                       : p[0]
+    #   Oscillation amplitude        : p[1]
+    #   Period    T                  : 1/p[2]
+    #   Phase                        : p[3]
+    #   Arbitrary parameter T_2      : 1/p[4]
+    return p0 + p1 * np.sin(2 * np.pi * x * p2 + p3)
+
+
+def rabi_length_fit(x, p0, p1, p2, p3, p4):
     # A fit to Superconducting Qubit Rabi Oscillation
     #   Offset                       : p[0]
     #   Oscillation amplitude        : p[1]
@@ -18,72 +28,17 @@ def rabi(x, p0, p1, p2, p3, p4):
     return p0 + p1 * np.sin(2 * np.pi * x * p2 + p3) * np.exp(-x * p4)
 
 
-def fitting(data: DataUnits) -> list:
-    qubits = data.df["qubit"].unique()
-
-    rabi_parameters = {}
-    fitted_parameters = {}
-    rabi_not_fitted_parameters = {}
-
-    if data.__class__.__name__ == "RabiAmplitudeData":
-        quantity = "amplitude"
-        unit = "dimensionless"
-        other_quanity = "length"
-        other_unit = "ns"
-
-    elif data.__class__.__name__ == "RabiLengthData":
-        quantity = "length"
-        unit = "ns"
-        other_quanity = "amplitude"
-        other_unit = "dimensionless"
-
-    for qubit in qubits:
-        qubit_data = data.df[data.df["qubit"] == qubit]
-
-        rabi_parameter = qubit_data[quantity].pint.to(unit).pint.magnitude
-        voltages = qubit_data["MSR"].pint.to("uV").pint.magnitude
-        rabi_not_fitted_parameters[qubit] = (
-            qubit_data[other_quanity].pint.to(other_unit).pint.magnitude.unique()
-        )
-        if data.resonator_type == "3D":
-            pguess = [
-                np.mean(voltages.values),
-                np.max(voltages.values) - np.min(voltages.values),
-                0.5 / rabi_parameter.values[np.argmin(voltages.values)],
-                np.pi / 2,
-                0.1e-6,
-            ]
-        else:
-            pguess = [
-                np.mean(voltages.values),
-                np.max(voltages.values) - np.min(voltages.values),
-                0.5 / rabi_parameter.values[np.argmax(voltages.values)],
-                np.pi / 2,
-                0.1e-6,
-            ]
-        try:
-            popt, pcov = curve_fit(
-                rabi, rabi_parameter.values, voltages.values, p0=pguess, maxfev=10000
-            )
-            pi_pulse_parameter = np.abs((1.0 / popt[2]) / 2)
-            rabi_parameters[qubit] = pi_pulse_parameter
-            fitted_parameters[qubit] = popt
-
-        except:
-            log.warning("rabi_fit: the fitting was not succesful")
-
-    return rabi_parameters, rabi_not_fitted_parameters, fitted_parameters
-
-
 def plot(data, fit, qubit):
     if data.__class__.__name__ == "RabiAmplitudeData":
         quantity = "amplitude"
         unit = "dimensionless"
         title = "Amplitude (dimensionless)"
+        fitting = rabi_amplitude_fit
     elif data.__class__.__name__ == "RabiLengthData":
         quantity = "length"
         unit = "ns"
         title = "Time (ns)"
+        fitting = rabi_length_fit
 
     figures = []
     fitting_report = ""
@@ -137,11 +92,10 @@ def plot(data, fit, qubit):
             2 * len(data),
         )
         params = fit.fitted_parameters[qubit]
-
         fig.add_trace(
             go.Scatter(
                 x=rabi_parameter_range,
-                y=rabi(rabi_parameter_range, *params),
+                y=fitting(rabi_parameter_range, *params),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
                 marker_color="rgb(255, 130, 67)",
