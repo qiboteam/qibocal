@@ -71,10 +71,25 @@ class AutoCalibrationReportBuilder:
         name = routine.replace("_", " ").title()
         return f"{name} - {iteration}"
 
-    def plot(self, routine_name, iteration, qubit):
+    def single_qubit_plot(self, routine_name, iteration, qubit):
         node = self.history[(routine_name, iteration)]
         data = node.task.data
         figures, fitting_report = node.task.operation.report(data, node.res, qubit)
+        with tempfile.NamedTemporaryFile(delete=False) as temp:
+            html_list = []
+            for figure in figures:
+                figure.write_html(temp.name, include_plotlyjs=False, full_html=False)
+                temp.seek(0)
+                fightml = temp.read().decode("utf-8")
+                html_list.append(fightml)
+
+        all_html = "".join(html_list)
+        return all_html, fitting_report
+
+    def plot(self, routine_name, iteration):
+        node = self.history[(routine_name, iteration)]
+        data = node.task.data
+        figures, fitting_report = node.task.operation.report(data)
         with tempfile.NamedTemporaryFile(delete=False) as temp:
             html_list = []
             for figure in figures:

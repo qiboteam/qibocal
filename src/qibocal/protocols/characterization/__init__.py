@@ -14,6 +14,7 @@ from .ramsey import ramsey
 from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
+from .rotation import rotation
 from .spin_echo import spin_echo
 from .t1 import t1
 
@@ -35,3 +36,4 @@ class Operation(Enum):
     allxy_drag_pulse_tuning = allxy_drag_pulse_tuning
     drag_pulse_tuning = drag_pulse_tuning
     flipping = flipping
+    rotation = rotation
