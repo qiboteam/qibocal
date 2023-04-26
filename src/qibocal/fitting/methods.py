@@ -1027,9 +1027,7 @@ def calibrate_qubit_states_fit(data, x, y, nshots, qubits, degree=True):
         iq_mean_state0 = np.mean(iq_state0)
         origin = iq_mean_state0
 
-        iq_state0_translated = iq_state0 - origin
-        iq_state1_translated = iq_state1 - origin
-        rotation_angle = np.angle(np.mean(iq_state1_translated))
+        rotation_angle = np.angle(np.mean(iq_state1 - origin))
 
         iq_state1_rotated = iq_state1 * np.exp(-1j * rotation_angle)
         iq_state0_rotated = iq_state0 * np.exp(-1j * rotation_angle)
