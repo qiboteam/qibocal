@@ -198,12 +198,12 @@ def _fit(data: FlippngData) -> FlippingResults:
             log.warning("flipping_fit: the fitting was not succesful")
             popt = [0, 0, 2, 0]
 
-        #sen fitting succesful
-        if(popt[2] != 2):
+        # sen fitting succesful
+        if popt[2] != 2:
             eps = -1 / popt[2]
             amplitude_correction_factor = eps / (eps - 1)
             corrected_amplitude = amplitude_correction_factor * pi_pulse_amplitude
-        #sen fitting not succesful = amplitude well adjusted
+        # sen fitting not succesful = amplitude well adjusted
         else:
             amplitude_correction_factor = 1
             corrected_amplitude = amplitude_correction_factor * pi_pulse_amplitude
