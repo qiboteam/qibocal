@@ -320,7 +320,7 @@ def ramsey(
     sweeper = Sweeper(
         Parameter.delay,
         waits,
-        [RX90_pulses1[qubit] for qubit in qubits],
+        [RX90_pulses2[qubit] for qubit in qubits],
     )
 
     # repeat the experiment as many times as defined by software_averages
