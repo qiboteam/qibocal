@@ -73,7 +73,7 @@ class AutoCalibrationReportBuilder:
 
     def plot(self, routine_name, iteration, qubit):
         node = self.history[(routine_name, iteration)]
-        data = node.task.data_acquired
+        data = node.task.data
         figures, fitting_report = node.task.operation.report(data, node.res, qubit)
         with tempfile.NamedTemporaryFile(delete=False) as temp:
             html_list = []
