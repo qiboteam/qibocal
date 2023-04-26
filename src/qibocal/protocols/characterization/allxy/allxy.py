@@ -121,7 +121,11 @@ def _acquisition(
 
 
 def add_gate_pair_pulses_to_sequence(
-    platform: AbstractPlatform, gates, qubit, sequence, beta_param=None,
+    platform: AbstractPlatform,
+    gates,
+    qubit,
+    sequence,
+    beta_param=None,
 ):
     pulse_duration = platform.create_RX_pulse(qubit, start=0).duration
     # All gates have equal pulse duration

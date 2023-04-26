@@ -32,7 +32,7 @@ actions:
   # #     step_amp_factor: 0.3
   # #     nshots: 1000
   # #     relaxation_time: 50
-  
+
   - id: resonator_punchout_attenuation
     priority: 10
     operation: resonator_punchout_attenuation

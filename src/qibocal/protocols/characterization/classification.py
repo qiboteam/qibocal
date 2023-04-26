@@ -201,7 +201,12 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         assignment_fidelities[qubit] = assignment_fidelity[0]
 
     return SingleShotClassificationResults(
-        thresholds, rotation_angles, mean_gnd_states, mean_exc_states, fidelities, assignment_fidelities
+        thresholds,
+        rotation_angles,
+        mean_gnd_states,
+        mean_exc_states,
+        fidelities,
+        assignment_fidelities,
     )
 
 

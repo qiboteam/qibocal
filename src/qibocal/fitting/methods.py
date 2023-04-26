@@ -1060,7 +1060,7 @@ def calibrate_qubit_states_fit(data, x, y, nshots, qubits, degree=True):
         assignment_fidelity = 1 - (errors_state1 + errors_state0) / nshots / 2
 
         results = {
-            "rotation_angle": rotation_angle, #in rad
+            "rotation_angle": rotation_angle,  # in rad
             "threshold": threshold,
             "fidelity": fidelity,
             "assignment_fidelity": assignment_fidelity,

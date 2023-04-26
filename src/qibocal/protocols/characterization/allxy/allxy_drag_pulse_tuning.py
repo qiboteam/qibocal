@@ -19,6 +19,7 @@ class AllXYDragParameters(Parameters):
     beta_step: float
     software_averages: int = 1
 
+
 @dataclass
 class AllXYDragResults(Results):
     ...
@@ -83,7 +84,9 @@ def _acquisition(
     count = 0
     for iteration in range(params.software_averages):
         # sweep the parameters
-        for beta_param in np.arange(params.beta_start, params.beta_end, params.beta_step).round(4):
+        for beta_param in np.arange(
+            params.beta_start, params.beta_end, params.beta_step
+        ).round(4):
             gateNumber = 1
             for gates in gatelist:
                 # create a sequence of pulses
