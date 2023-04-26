@@ -1096,7 +1096,6 @@ def ro_optimization_fit(data, *labels):
         "assignment_fidelity",
         "average_state0",
         "average_state1",
-        "qubit",
     ]
     data_fit = Data(
         name="fit",
@@ -1106,35 +1105,37 @@ def ro_optimization_fit(data, *labels):
     # Create a ndarray for i and q shots for all labels
     # shape=(i + j*q, qubit, state, label1, label2, ...)
 
-    shape = [
-        2,
-        len(data.df["qubit"].unique()),
-        *[len(data.df[label].unique()) for label in labels],
-    ]
-    nb_shots = len(data.df["i"]) // np.prod(shape)
-    shape = tuple(shape[0:2] + [nb_shots] + shape[2:])
-    axis = -(1 + len(labels))
+    shape = (*[len(data.df[label].unique()) for label in labels],)
+    nb_shots = max(data.df["iteration"].unique()) + 1
+
     iq_complex = np.zeros(shape, dtype=np.complex128)
     iq_complex = data.df["i"].pint.magnitude.to_numpy().reshape(shape) + 1j * data.df[
         "q"
     ].pint.magnitude.to_numpy().reshape(shape)
 
+    # Move state to 0, and iteration to -1
+    labels = list(labels)
+    iq_complex = np.moveaxis(iq_complex, labels.index("state"), 0)
+    labels.remove("state")
+    labels = ["state"] + labels
+    iq_complex = np.moveaxis(iq_complex, labels.index("iteration"), -1)
+
     # Take the mean ground state
-    mean_gnd_state = np.mean(iq_complex[0, ...], axis=axis, keepdims=True)
-    mean_exc_state = np.mean(iq_complex[1, ...], axis=axis, keepdims=True)
+    mean_gnd_state = np.mean(iq_complex[0, ...], axis=-1, keepdims=True)
+    mean_exc_state = np.mean(iq_complex[1, ...], axis=-1, keepdims=True)
     angle = np.angle(mean_exc_state - mean_gnd_state)
 
     # Rotate the data
     iq_complex = iq_complex * np.exp(-1j * angle)
 
     # Take the cumulative distribution of the real part of the data
-    iq_complex_sorted = np.sort(iq_complex.real, axis=axis)
+    iq_complex_sorted = np.sort(iq_complex.real, axis=-1)
     cum_dist = (
         np.apply_along_axis(
             lambda x: np.searchsorted(
                 x, np.linspace(x.min(), x.max(), nb_shots), side="left"
             ),
-            axis=axis,
+            axis=-1,
             arr=iq_complex_sorted,
         )
         / nb_shots
@@ -1142,31 +1143,33 @@ def ro_optimization_fit(data, *labels):
 
     # Find the threshold for which the difference between the cumulative distribution of the two states is maximum
     argmax = np.argmax(
-        np.abs(cum_dist[0, ...] - cum_dist[1, ...]), axis=axis, keepdims=True
+        np.abs(cum_dist[0, ...] - cum_dist[1, ...]), axis=-1, keepdims=True
     )
 
     # Use np.take_along_axis to get the correct indices for the threshold calculation
     threshold = (
-        np.take_along_axis(iq_complex_sorted[0, ...], argmax, axis=axis)
-        + np.take_along_axis(iq_complex_sorted[1, ...], argmax, axis=axis)
+        np.take_along_axis(iq_complex_sorted[0, ...], argmax, axis=-1)
+        + np.take_along_axis(iq_complex_sorted[1, ...], argmax, axis=-1)
     ) / 2
 
     # Calculate the fidelity
     fidelity = np.take_along_axis(
-        np.abs(cum_dist[0, ...] - cum_dist[1, ...]), argmax, axis=axis
+        np.abs(cum_dist[0, ...] - cum_dist[1, ...]), argmax, axis=-1
     )
     assignment_fidelity = (
         1
         - (
-            np.take_along_axis(cum_dist[0, ...], argmax, axis=axis)
-            + np.take_along_axis(cum_dist[1, ...], argmax, axis=axis)
+            np.take_along_axis(cum_dist[0, ...], argmax, axis=-1)
+            + np.take_along_axis(cum_dist[1, ...], argmax, axis=-1)
         )
         / 2
     )
 
-    # Add all the results to the data
+    # Add all the results to the data with labels as subnet without "state", "iteration"
     data_fit.df = (
-        data.df.drop_duplicates(subset=list(labels) + ["qubit"])
+        data.df.drop_duplicates(
+            subset=[i for i in labels if i not in ["state", "iteration"]]
+        )
         .reset_index(drop=True)
         .apply(pint_to_float)
     )
