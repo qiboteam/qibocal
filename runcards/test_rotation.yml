@@ -1,0 +1,12 @@
+platform: tii1q_b1 #qw5q_gold_qblox
+
+actions:
+
+  - id: rotation experiment
+    priority: 0
+    operation: rotation
+    parameters:
+      nshots: 1024
+      theta_start: 0
+      theta_end: 6
+      samples: 50
