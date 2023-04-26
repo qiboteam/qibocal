@@ -1041,9 +1041,12 @@ def calibrate_qubit_states_fit(data, x, y, nshots, qubits, degree=True):
         real_values_combined = np.concatenate((real_values_state1, real_values_state0))
         real_values_combined.sort()
 
+        cum_distribution_state1 = cumulative(real_values_combined, real_values_state1)
         cum_distribution_state0 = cumulative(real_values_combined, real_values_state0)
-        cum_distribution_diff = cumulative(real_values_combined, real_values_state1)
 
+        cum_distribution_diff = np.abs(
+            np.array(cum_distribution_state1) - np.array(cum_distribution_state0)
+        )
         argmax = np.argmax(cum_distribution_diff)
         threshold = real_values_combined[argmax]
         errors_state1 = nshots - cum_distribution_state1[argmax]
