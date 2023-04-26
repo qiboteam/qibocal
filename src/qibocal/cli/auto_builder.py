@@ -52,7 +52,8 @@ class AutoCalibrationBuilder(ActionBuilder):
         create_autocalibration_report(self.folder, self.executor.history)
 
     def dump_platform_runcard(self):
-        self.platform.dump(self.folder / UPDATED_PLATFORM)
+        if self.platform is not None:
+            self.platform.dump(self.folder / UPDATED_PLATFORM)
 
 
 class AutoCalibrationReportBuilder:
