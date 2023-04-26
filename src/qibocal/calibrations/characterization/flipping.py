@@ -15,7 +15,7 @@ def flipping(
     nflips_max,
     nflips_step,
     software_averages=1,
-    points=10,
+    points=1,
 ):
     r"""
     The flipping experiment correct the delta amplitude in the qubit drive pulse. We measure a qubit after applying
@@ -128,6 +128,6 @@ def flipping(
         y="MSR[uV]",
         qubits=qubits,
         resonator_type=platform.resonator_type,
-        pi_pulse_amplitudes={q: qubits[qubit].pi_pulse_amplitude for q in qubits},
+        pi_pulse_amplitudes={q: qubits[q].pi_pulse_amplitude for q in qubits},
         labels=["amplitude_correction_factor", "corrected_amplitude"],
     )

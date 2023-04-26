@@ -413,18 +413,23 @@ def ramsey_fit(
             x_min = np.min(times.values)
             x = (times.values - x_min) / (x_max - x_min)
             if resonator_type == "3D":
-                index = np.argmin(y)
+                # FIXME: with this normalization the min will be a 0 causing error when guessing parameters
+                index = (
+                    np.argmin(y)
+                    if np.min(y) != 0
+                    else np.where(y == np.partition(y, 1)[1])
+                )
             else:
                 index = np.argmax(y)
 
             p0 = [
                 np.mean(y),
                 y_max - y_min,
-                0.5 / x[index],
+                float(0.5 / x[index]),
                 np.pi / 2,
                 0,
             ]
-            popt = curve_fit(ramsey, x, y, method="lm", p0=p0)[0]
+            popt = curve_fit(ramsey, x, y, method="lm", p0=p0, maxfev=2000000)[0]
             popt = [
                 (y_max - y_min) * popt[0] + y_min,
                 (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
