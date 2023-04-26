@@ -163,7 +163,7 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
         # Guessing period using fourier transform
         ft = np.fft.rfft(y)
         mags = abs(ft)
-        index = np.argmax(mags) if np.argmax(mags) != 0 else np.argmax(mags[1:])
+        index = np.argmax(mags) if np.argmax(mags) != 0 else np.argmax(mags[1:]) + 1
         f = x[index] / (x[1] - x[0])
 
         pguess = [0.5, 1, f, np.pi / 2]
