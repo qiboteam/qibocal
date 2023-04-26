@@ -8,17 +8,17 @@ format: csv
 
 actions:
 
-  - id: resonator_spectroscopy high power
-    priority: 0
-    operation: resonator_spectroscopy
-    next: resonator_punchout_attenuation
-    parameters:
-      freq_width: 7_000_000
-      freq_step: 300_000
-      #amplitude: 0.4
-      power_level: high
-      nshots: 1024
-      relaxation_time: 0
+  # - id: resonator_spectroscopy high power
+  #   priority: 0
+  #   operation: resonator_spectroscopy
+  #   next: resonator_punchout_attenuation
+  #   parameters:
+  #     freq_width: 7_000_000
+  #     freq_step: 300_000
+  #     #amplitude: 0.4
+  #     power_level: high
+  #     nshots: 1024
+  #     relaxation_time: 0
 
   # # - id: resonator punchout
   # #   priority: 0
@@ -33,31 +33,31 @@ actions:
   # #     nshots: 1000
   # #     relaxation_time: 50
   
-  - id: resonator_punchout_attenuation
-    priority: 10
-    operation: resonator_punchout_attenuation
-    next: resonator spectroscopy low power
-    parameters:
-      freq_width: 7_000_000
-      freq_step: 300_000
-      min_att: 4
-      max_att: 50
-      step_att: 2
-      nshots: 1024
-      relaxation_time: 0
+  # - id: resonator_punchout_attenuation
+  #   priority: 10
+  #   operation: resonator_punchout_attenuation
+  #   next: resonator spectroscopy low power
+  #   parameters:
+  #     freq_width: 7_000_000
+  #     freq_step: 300_000
+  #     min_att: 4
+  #     max_att: 50
+  #     step_att: 2
+  #     nshots: 1024
+  #     relaxation_time: 0
 
-  - id: resonator spectroscopy low power
-    priority: 20
-    operation: resonator_spectroscopy
-    # main: resonator flux dependence
-    next: qubit spectroscopy
-    parameters:
-      freq_width: 7_000_000
-      freq_step: 300_000
-      #amplitude: 0.4
-      power_level: low
-      nshots: 1024
-      relaxation_time: 0
+  # - id: resonator spectroscopy low power
+  #   priority: 20
+  #   operation: resonator_spectroscopy
+  #   # main: resonator flux dependence
+  #   next: qubit spectroscopy
+  #   parameters:
+  #     freq_width: 7_000_000
+  #     freq_step: 300_000
+  #     #amplitude: 0.4
+  #     power_level: low
+  #     nshots: 1024
+  #     relaxation_time: 0
 
   # - id: resonator flux dependence
   #   priority: 30
@@ -72,18 +72,18 @@ actions:
   #     nshots: 1024
   #     relaxation_time: 0
 
-  - id: qubit spectroscopy
-    priority: 40
-    operation: qubit_spectroscopy
-    # next: qubit flux dependence
-    next: rabi amplitude
-    parameters:
-      drive_amplitude: 0.5
-      drive_duration: 2000
-      freq_width: 100_000_000
-      freq_step: 100_000
-      nshots: 1024
-      relaxation_time: 0
+  # - id: qubit spectroscopy
+  #   priority: 40
+  #   operation: qubit_spectroscopy
+  #   # next: qubit flux dependence
+  #   next: rabi amplitude
+  #   parameters:
+  #     drive_amplitude: 0.5
+  #     drive_duration: 2000
+  #     freq_width: 100_000_000
+  #     freq_step: 100_000
+  #     nshots: 1024
+  #     relaxation_time: 0
 
   # - id: qubit flux dependence
   #   priority: 50
@@ -100,15 +100,14 @@ actions:
   #     relaxation_time: 2000
 
   - id: rabi amplitude
-    priority: 60
+    priority: 0
     operation: rabi_amplitude
     # next: rabi length
     parameters:
-      pulse_amplitude_start: 0.01
-      pulse_amplitude_end: 2.0
-      pulse_amplitude_step: 0.01
+      min_amp_factor: 0.01
+      max_amp_factor: 2.0
+      step_amp_factor: 0.01
       pulse_length: 40
-      software_averages: 1
       relaxation_time: 0
       nshots: 1024
 
