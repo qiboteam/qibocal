@@ -90,7 +90,6 @@ class Task:
             parameters = DummyPars()
 
         path = self.datapath(folder)
-        # TODO: fix data attributes
 
         if operation.platform_dependent and operation.qubits_dependent:
             self._data: Data = operation.acquisition(

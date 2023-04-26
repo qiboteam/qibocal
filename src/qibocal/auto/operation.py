@@ -114,6 +114,7 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     def results_type(self):
         return inspect.signature(self.fit).return_annotation
 
+    # TODO: I don't like these properties but it seems to work
     @property
     def platform_dependent(self):
         return "platform" in inspect.signature(self.acquisition).parameters
