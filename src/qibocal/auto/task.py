@@ -72,23 +72,13 @@ class Task:
         return self.operation.parameters_type.load(self.action.parameters)
 
     @property
-    def data_acquired(self):
-        return self._data_acquired
+    def data(self):
+        return self._data
 
     def datapath(self, base_dir: Path):
         path = base_dir / "data" / f"{self.id}_{self.iteration}"
         os.makedirs(path)
         return path
-
-    def data(self, base_dir: Path) -> Optional[Data]:
-        if not self.datapath(base_dir).is_file():
-            return None
-        Data = self.operation.data_type
-        # print(self.datapath(Path(base_dir)))
-        return Data.load_data(
-            base_dir, "data", f"{self.id}_{self.iteration}", "csv", "data"
-        )
-        # return Data(yaml.safe_load(self.datapath(base_dir).read_text(encoding="utf-8")))
 
     def run(self, folder: Path, platform: AbstractPlatform, qubits: Qubits) -> Results:
         try:
@@ -100,10 +90,10 @@ class Task:
 
         path = self.datapath(folder)
         # TODO: fix data attributes
-        self._data_acquired: Data = operation.acquisition(
+        self._data: Data = operation.acquisition(
             parameters, platform=platform, qubits=qubits
         )
-        self._data_acquired.to_csv(path)
+        self._data.save(path)
         # TODO: data dump
         # path.write_text(yaml.dump(pydantic_encoder(self.data(base_dir))))
-        return operation.fit(self._data_acquired)
+        return operation.fit(self._data)
