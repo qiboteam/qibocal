@@ -11,115 +11,107 @@ def ro_frequency(folder, routine, qubit, format):
     fig = go.Figure()
 
     # iterate over multiple data folders
-    subfolders = get_data_subfolders(folder)
+    subfolder = get_data_subfolders(folder)[0]
     report_n = 0
     fitting_report = ""
 
-    for subfolder in subfolders:
-        try:
-            data = DataUnits.load_data(folder, subfolder, routine, format, "data")
-            data.df = data.df[data.df["qubit"] == qubit]
-        except:
-            data = DataUnits(
-                name="data",
-                quantities={"frequency": "Hz", "delta_frequency": "Hz"},
-                options=["iteration", "state"],
-            )
+    try:
+        data = DataUnits.load_data(folder, subfolder, routine, format, "data")
+        data.df = data.df[data.df["qubit"] == qubit]
+    except:
+        data = DataUnits(
+            name="data",
+            quantities={"frequency": "Hz", "delta_frequency": "Hz"},
+            options=["iteration", "state"],
+        )
 
-        try:
-            data_fit = Data.load_data(folder, subfolder, routine, format, "fit")
-            data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
+    try:
+        data_fit = Data.load_data(folder, subfolder, routine, format, "fit")
+        data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
 
-        except:
-            data_fit = Data(
-                name="fit",
-                quantities=[
-                    "frequency",
-                    "delta_frequency",
-                    "rotation_angle",
-                    "threshold",
-                    "fidelity",
-                    "assignment_fidelity",
-                    "average_state0",
-                    "average_state1",
-                ],
-            )
+    except:
+        data_fit = Data(
+            name="fit",
+            quantities=[
+                "frequency",
+                "delta_frequency",
+                "rotation_angle",
+                "threshold",
+                "fidelity",
+                "assignment_fidelity",
+                "average_state0",
+                "average_state1",
+            ],
+        )
 
-        # Plot raw results with sliders
-        annotations_dict = []
-        for frequency in data.df["delta_frequency"].unique():
-            state0_data = data.df[
-                (data.df["delta_frequency"] == frequency) & (data.df["state"] == 0)
-            ]
-            state1_data = data.df[
-                (data.df["delta_frequency"] == frequency) & (data.df["state"] == 1)
-            ]
-            fit_data = data_fit.df[
-                data_fit.df["delta_frequency"] == frequency.magnitude
-            ]
-            fit_data["average_state0"] = data_fit.df["average_state0"].apply(
-                lambda x: complex(x)
-            )
-            fit_data["average_state1"] = data_fit.df["average_state1"].apply(
-                lambda x: complex(x)
-            )
+    # Plot raw results with sliders
+    annotations_dict = []
+    for frequency in data.df["delta_frequency"].unique():
+        state0_data = data.df[
+            (data.df["delta_frequency"] == frequency) & (data.df["state"] == 0)
+        ]
+        state1_data = data.df[
+            (data.df["delta_frequency"] == frequency) & (data.df["state"] == 1)
+        ]
+        fit_data = data_fit.df[data_fit.df["delta_frequency"] == frequency.magnitude]
+        fit_data["average_state0"] = data_fit.df["average_state0"].apply(
+            lambda x: complex(x)
+        )
+        fit_data["average_state1"] = data_fit.df["average_state1"].apply(
+            lambda x: complex(x)
+        )
 
-            # print(fit_data)
-            fig.add_trace(
-                go.Scatter(
-                    x=state0_data["i"].pint.to("V").pint.magnitude,
-                    y=state0_data["q"].pint.to("V").pint.magnitude,
-                    name=f"q{qubit}/r{report_n}: state 0",
-                    # legendgroup=f"q{qubit}/r{report_n}",
-                    mode="markers",
-                    showlegend=True,
-                    opacity=0.7,
-                    marker=dict(size=3, color=get_color_state0(report_n)),
-                    visible=False,
-                ),
-            )
+        # print(fit_data)
+        fig.add_trace(
+            go.Scatter(
+                x=state0_data["i"].pint.to("V").pint.magnitude,
+                y=state0_data["q"].pint.to("V").pint.magnitude,
+                name=f"q{qubit}/r{report_n}: state 0",
+                mode="markers",
+                showlegend=True,
+                opacity=0.7,
+                marker=dict(size=3, color=get_color_state0(report_n)),
+                visible=False,
+            ),
+        )
 
-            fig.add_trace(
-                go.Scatter(
-                    x=state1_data["i"].pint.to("V").pint.magnitude,
-                    y=state1_data["q"].pint.to("V").pint.magnitude,
-                    name=f"q{qubit}/r{report_n}: state 1",
-                    # legendgroup=f"q{qubit}/r{report_n}",
-                    mode="markers",
-                    showlegend=True,
-                    opacity=0.7,
-                    marker=dict(size=3, color=get_color_state1(report_n)),
-                    visible=False,
-                ),
-            )
+        fig.add_trace(
+            go.Scatter(
+                x=state1_data["i"].pint.to("V").pint.magnitude,
+                y=state1_data["q"].pint.to("V").pint.magnitude,
+                name=f"q{qubit}/r{report_n}: state 1",
+                mode="markers",
+                showlegend=True,
+                opacity=0.7,
+                marker=dict(size=3, color=get_color_state1(report_n)),
+                visible=False,
+            ),
+        )
 
-            fig.add_trace(
-                go.Scatter(
-                    x=fit_data["average_state0"].apply(lambda x: np.real(x)).to_numpy(),
-                    y=fit_data["average_state0"].apply(lambda x: np.imag(x)).to_numpy(),
-                    name=f"q{qubit}/r{report_n}: mean state 0",
-                    # legendgroup=f"q{qubit}/r{report_n}",
-                    showlegend=True,
-                    visible=False,
-                    mode="markers",
-                    marker=dict(size=10, color=get_color_state0(report_n)),
-                ),
-            )
+        fig.add_trace(
+            go.Scatter(
+                x=fit_data["average_state0"].apply(lambda x: np.real(x)).to_numpy(),
+                y=fit_data["average_state0"].apply(lambda x: np.imag(x)).to_numpy(),
+                name=f"q{qubit}/r{report_n}: mean state 0",
+                showlegend=True,
+                visible=False,
+                mode="markers",
+                marker=dict(size=10, color=get_color_state0(report_n)),
+            ),
+        )
 
-            fig.add_trace(
-                go.Scatter(
-                    x=fit_data["average_state1"].apply(lambda x: np.real(x)).to_numpy(),
-                    y=fit_data["average_state1"].apply(lambda x: np.imag(x)).to_numpy(),
-                    name=f"avg q{qubit}/r{report_n}: mean state 1",
-                    # legendgroup=f"q{qubit}/r{report_n}",
-                    showlegend=True,
-                    visible=False,
-                    mode="markers",
-                    marker=dict(size=10, color=get_color_state1(report_n)),
-                ),
-            )
+        fig.add_trace(
+            go.Scatter(
+                x=fit_data["average_state1"].apply(lambda x: np.real(x)).to_numpy(),
+                y=fit_data["average_state1"].apply(lambda x: np.imag(x)).to_numpy(),
+                name=f"avg q{qubit}/r{report_n}: mean state 1",
+                showlegend=True,
+                visible=False,
+                mode="markers",
+                marker=dict(size=10, color=get_color_state1(report_n)),
+            ),
+        )
 
-        report_n += 1
     # Show data for the first frequency
     fig.data[0].visible = True
     fig.data[1].visible = True
@@ -189,116 +181,110 @@ def ro_amplitude(folder, routine, qubit, format):
     fig = go.Figure()
 
     # iterate over multiple data folders
-    subfolders = get_data_subfolders(folder)
+    subfolder = get_data_subfolders(folder)[0]
     report_n = 0
     fitting_report = ""
 
-    for subfolder in subfolders:
-        try:
-            data = DataUnits.load_data(folder, subfolder, routine, format, "data")
-            data.df = data.df[data.df["qubit"] == qubit]
-        except:
-            data = DataUnits(
-                name="data",
-                quantities={
-                    "amplitude": "dBm",
-                    "delta_amplitude": "dBm",
-                },
-                options=["iteration", "state"],
-            )
+    try:
+        data = DataUnits.load_data(folder, subfolder, routine, format, "data")
+        data.df = data.df[data.df["qubit"] == qubit]
+    except:
+        data = DataUnits(
+            name="data",
+            quantities={
+                "amplitude": "dBm",
+                "delta_amplitude": "dBm",
+            },
+            options=["iteration", "state"],
+        )
 
-        try:
-            data_fit = Data.load_data(folder, subfolder, routine, format, "fit")
-            data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
+    try:
+        data_fit = Data.load_data(folder, subfolder, routine, format, "fit")
+        data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
 
-        except:
-            data_fit = Data(
-                name="fit",
-                quantities=[
-                    "amplitude",
-                    "delta_amplitude",
-                    "rotation_angle",
-                    "threshold",
-                    "fidelity",
-                    "assignment_fidelity",
-                    "average_state0",
-                    "average_state1",
-                ],
-            )
+    except:
+        data_fit = Data(
+            name="fit",
+            quantities=[
+                "amplitude",
+                "delta_amplitude",
+                "rotation_angle",
+                "threshold",
+                "fidelity",
+                "assignment_fidelity",
+                "average_state0",
+                "average_state1",
+            ],
+        )
 
-        # Plot raw results with sliders
-        for amplitude in data.df["delta_amplitude"].unique():
-            state0_data = data.df[
-                (data.df["delta_amplitude"] == amplitude) & (data.df["state"] == 0)
-            ]
-            state1_data = data.df[
-                (data.df["delta_amplitude"] == amplitude) & (data.df["state"] == 1)
-            ]
-            fit_data = data_fit.df[
-                data_fit.df["delta_amplitude"] == amplitude.magnitude
-            ]
-            fit_data["average_state0"] = data_fit.df["average_state0"].apply(
-                lambda x: complex(x)
-            )
-            fit_data["average_state1"] = data_fit.df["average_state1"].apply(
-                lambda x: complex(x)
-            )
+    # Plot raw results with sliders
+    for amplitude in data.df["delta_amplitude"].unique():
+        state0_data = data.df[
+            (data.df["delta_amplitude"] == amplitude) & (data.df["state"] == 0)
+        ]
+        state1_data = data.df[
+            (data.df["delta_amplitude"] == amplitude) & (data.df["state"] == 1)
+        ]
+        fit_data = data_fit.df[data_fit.df["delta_amplitude"] == amplitude.magnitude]
+        fit_data["average_state0"] = data_fit.df["average_state0"].apply(
+            lambda x: complex(x)
+        )
+        fit_data["average_state1"] = data_fit.df["average_state1"].apply(
+            lambda x: complex(x)
+        )
 
-            # print(fit_data)
-            fig.add_trace(
-                go.Scatter(
-                    x=state0_data["i"].pint.to("V").pint.magnitude,
-                    y=state0_data["q"].pint.to("V").pint.magnitude,
-                    name=f"q{qubit}/r{report_n}: state 0",
-                    # legendgroup=f"q{qubit}/r{report_n}",
-                    mode="markers",
-                    showlegend=True,
-                    opacity=0.7,
-                    marker=dict(size=3, color=get_color_state0(report_n)),
-                    visible=False,
-                ),
-            )
+        # print(fit_data)
+        fig.add_trace(
+            go.Scatter(
+                x=state0_data["i"].pint.to("V").pint.magnitude,
+                y=state0_data["q"].pint.to("V").pint.magnitude,
+                name=f"q{qubit}/r{report_n}: state 0",
+                mode="markers",
+                showlegend=True,
+                opacity=0.7,
+                marker=dict(size=3, color=get_color_state0(report_n)),
+                visible=False,
+            ),
+        )
 
-            fig.add_trace(
-                go.Scatter(
-                    x=state1_data["i"].pint.to("V").pint.magnitude,
-                    y=state1_data["q"].pint.to("V").pint.magnitude,
-                    name=f"q{qubit}/r{report_n}: state 1",
-                    # legendgroup=f"q{qubit}/r{report_n}",
-                    mode="markers",
-                    showlegend=True,
-                    opacity=0.7,
-                    marker=dict(size=3, color=get_color_state1(report_n)),
-                    visible=False,
-                ),
-            )
-            fig.add_trace(
-                go.Scatter(
-                    x=fit_data["average_state0"].apply(lambda x: np.real(x)).to_numpy(),
-                    y=fit_data["average_state0"].apply(lambda x: np.imag(x)).to_numpy(),
-                    name=f"q{qubit}/r{report_n}: mean state 0",
-                    # legendgroup=f"q{qubit}/r{report_n}",
-                    showlegend=True,
-                    visible=False,
-                    mode="markers",
-                    marker=dict(size=10, color=get_color_state0(report_n)),
-                ),
-            )
+        fig.add_trace(
+            go.Scatter(
+                x=state1_data["i"].pint.to("V").pint.magnitude,
+                y=state1_data["q"].pint.to("V").pint.magnitude,
+                name=f"q{qubit}/r{report_n}: state 1",
+                mode="markers",
+                showlegend=True,
+                opacity=0.7,
+                marker=dict(size=3, color=get_color_state1(report_n)),
+                visible=False,
+            ),
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=fit_data["average_state0"].apply(lambda x: np.real(x)).to_numpy(),
+                y=fit_data["average_state0"].apply(lambda x: np.imag(x)).to_numpy(),
+                name=f"q{qubit}/r{report_n}: mean state 0",
+                showlegend=True,
+                visible=False,
+                mode="markers",
+                marker=dict(size=10, color=get_color_state0(report_n)),
+            ),
+        )
 
-            fig.add_trace(
-                go.Scatter(
-                    x=fit_data["average_state1"].apply(lambda x: np.real(x)).to_numpy(),
-                    y=fit_data["average_state1"].apply(lambda x: np.imag(x)).to_numpy(),
-                    name=f"avg q{qubit}/r{report_n}: mean state 1",
-                    # legendgroup=f"q{qubit}/r{report_n}",
-                    showlegend=True,
-                    visible=False,
-                    mode="markers",
-                    marker=dict(size=10, color=get_color_state1(report_n)),
-                ),
-            )
+        fig.add_trace(
+            go.Scatter(
+                x=fit_data["average_state1"].apply(lambda x: np.real(x)).to_numpy(),
+                y=fit_data["average_state1"].apply(lambda x: np.imag(x)).to_numpy(),
+                name=f"avg q{qubit}/r{report_n}: mean state 1",
+                showlegend=True,
+                visible=False,
+                mode="markers",
+                marker=dict(size=10, color=get_color_state1(report_n)),
+            ),
+        )
 
-        report_n += 1
+    report_n += 1
+
     # Show data for the first amplitude
     fig.data[0].visible = True
     fig.data[1].visible = True
@@ -369,114 +355,110 @@ def ro_power(folder, routine, qubit, format):
     fig = go.Figure()
 
     # iterate over multiple data folders
-    subfolders = get_data_subfolders(folder)
+    subfolder = get_data_subfolders(folder)[0]
     report_n = 0
     fitting_report = ""
 
-    for subfolder in subfolders:
-        try:
-            data = DataUnits.load_data(folder, subfolder, routine, format, "data")
-            data.df = data.df[data.df["qubit"] == qubit]
-        except:
-            data = DataUnits(
-                name="data",
-                quantities={
-                    "power": "dBm",
-                    "delta_power": "dBm",
-                },
-                options=["iteration", "state"],
-            )
+    try:
+        data = DataUnits.load_data(folder, subfolder, routine, format, "data")
+        data.df = data.df[data.df["qubit"] == qubit]
+    except:
+        data = DataUnits(
+            name="data",
+            quantities={
+                "power": "dBm",
+                "delta_power": "dBm",
+            },
+            options=["iteration", "state"],
+        )
 
-        try:
-            data_fit = Data.load_data(folder, subfolder, routine, format, "fit")
-            data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
+    try:
+        data_fit = Data.load_data(folder, subfolder, routine, format, "fit")
+        data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
 
-        except:
-            data_fit = Data(
-                name="fit",
-                quantities=[
-                    "power",
-                    "delta_power",
-                    "rotation_angle",
-                    "threshold",
-                    "fidelity",
-                    "assignment_fidelity",
-                    "average_state0",
-                    "average_state1",
-                ],
-            )
+    except:
+        data_fit = Data(
+            name="fit",
+            quantities=[
+                "power",
+                "delta_power",
+                "rotation_angle",
+                "threshold",
+                "fidelity",
+                "assignment_fidelity",
+                "average_state0",
+                "average_state1",
+            ],
+        )
 
-        # Plot raw results with sliders
-        for power in data.df["delta_power"].unique():
-            state0_data = data.df[
-                (data.df["delta_power"] == power) & (data.df["state"] == 0)
-            ]
-            state1_data = data.df[
-                (data.df["delta_power"] == power) & (data.df["state"] == 1)
-            ]
-            fit_data = data_fit.df[data_fit.df["delta_power"] == power.magnitude]
-            fit_data["average_state0"] = data_fit.df["average_state0"].apply(
-                lambda x: complex(x)
-            )
-            fit_data["average_state1"] = data_fit.df["average_state1"].apply(
-                lambda x: complex(x)
-            )
+    # Plot raw results with sliders
+    for power in data.df["delta_power"].unique():
+        state0_data = data.df[
+            (data.df["delta_power"] == power) & (data.df["state"] == 0)
+        ]
+        state1_data = data.df[
+            (data.df["delta_power"] == power) & (data.df["state"] == 1)
+        ]
+        fit_data = data_fit.df[data_fit.df["delta_power"] == power.magnitude]
+        fit_data["average_state0"] = data_fit.df["average_state0"].apply(
+            lambda x: complex(x)
+        )
+        fit_data["average_state1"] = data_fit.df["average_state1"].apply(
+            lambda x: complex(x)
+        )
 
-            # print(fit_data)
-            fig.add_trace(
-                go.Scatter(
-                    x=state0_data["i"].pint.to("V").pint.magnitude,
-                    y=state0_data["q"].pint.to("V").pint.magnitude,
-                    name=f"q{qubit}/r{report_n}: state 0",
-                    # legendgroup=f"q{qubit}/r{report_n}",
-                    mode="markers",
-                    showlegend=True,
-                    opacity=0.7,
-                    marker=dict(size=3, color=get_color_state0(report_n)),
-                    visible=False,
-                ),
-            )
+        # print(fit_data)
+        fig.add_trace(
+            go.Scatter(
+                x=state0_data["i"].pint.to("V").pint.magnitude,
+                y=state0_data["q"].pint.to("V").pint.magnitude,
+                name=f"q{qubit}/r{report_n}: state 0",
+                mode="markers",
+                showlegend=True,
+                opacity=0.7,
+                marker=dict(size=3, color=get_color_state0(report_n)),
+                visible=False,
+            ),
+        )
 
-            fig.add_trace(
-                go.Scatter(
-                    x=state1_data["i"].pint.to("V").pint.magnitude,
-                    y=state1_data["q"].pint.to("V").pint.magnitude,
-                    name=f"q{qubit}/r{report_n}: state 1",
-                    # legendgroup=f"q{qubit}/r{report_n}",
-                    mode="markers",
-                    showlegend=True,
-                    opacity=0.7,
-                    marker=dict(size=3, color=get_color_state1(report_n)),
-                    visible=False,
-                ),
-            )
-            fig.add_trace(
-                go.Scatter(
-                    x=fit_data["average_state0"].apply(lambda x: np.real(x)).to_numpy(),
-                    y=fit_data["average_state0"].apply(lambda x: np.imag(x)).to_numpy(),
-                    name=f"q{qubit}/r{report_n}: mean state 0",
-                    # legendgroup=f"q{qubit}/r{report_n}",
-                    showlegend=True,
-                    visible=False,
-                    mode="markers",
-                    marker=dict(size=10, color=get_color_state0(report_n)),
-                ),
-            )
+        fig.add_trace(
+            go.Scatter(
+                x=state1_data["i"].pint.to("V").pint.magnitude,
+                y=state1_data["q"].pint.to("V").pint.magnitude,
+                name=f"q{qubit}/r{report_n}: state 1",
+                mode="markers",
+                showlegend=True,
+                opacity=0.7,
+                marker=dict(size=3, color=get_color_state1(report_n)),
+                visible=False,
+            ),
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=fit_data["average_state0"].apply(lambda x: np.real(x)).to_numpy(),
+                y=fit_data["average_state0"].apply(lambda x: np.imag(x)).to_numpy(),
+                name=f"q{qubit}/r{report_n}: mean state 0",
+                showlegend=True,
+                visible=False,
+                mode="markers",
+                marker=dict(size=10, color=get_color_state0(report_n)),
+            ),
+        )
 
-            fig.add_trace(
-                go.Scatter(
-                    x=fit_data["average_state1"].apply(lambda x: np.real(x)).to_numpy(),
-                    y=fit_data["average_state1"].apply(lambda x: np.imag(x)).to_numpy(),
-                    name=f"avg q{qubit}/r{report_n}: mean state 1",
-                    # legendgroup=f"q{qubit}/r{report_n}",
-                    showlegend=True,
-                    visible=False,
-                    mode="markers",
-                    marker=dict(size=10, color=get_color_state1(report_n)),
-                ),
-            )
+        fig.add_trace(
+            go.Scatter(
+                x=fit_data["average_state1"].apply(lambda x: np.real(x)).to_numpy(),
+                y=fit_data["average_state1"].apply(lambda x: np.imag(x)).to_numpy(),
+                name=f"avg q{qubit}/r{report_n}: mean state 1",
+                showlegend=True,
+                visible=False,
+                mode="markers",
+                marker=dict(size=10, color=get_color_state1(report_n)),
+            ),
+        )
 
-        report_n += 1
+    report_n += 1
+
     # Show data for the first power
     fig.data[0].visible = True
     fig.data[1].visible = True
