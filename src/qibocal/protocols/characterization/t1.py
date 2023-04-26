@@ -19,7 +19,6 @@ class T1Parameters(Parameters):
     delay_before_readout_start: int
     delay_before_readout_end: list
     delay_before_readout_step: int
-    software_averages: int = 1
 
 
 @dataclass
@@ -29,16 +28,21 @@ class T1Results(Results):
 
 
 class T1Data(DataUnits):
-    def __init__(self):
+    def __init__(self, resonator_type):
         super().__init__(
             name="data",
             quantities={"wait": "ns"},
-            options=["qubit", "iteration", "resonator_type"],
+            options=["qubit"],
         )
+        self._resonator_type = resonator_type
+
+    @property
+    def resonator_type(self):
+        return self._resonator_type
 
 
 def _acquisition(
-    platform: AbstractPlatform, qubits: Qubits, params: T1Parameters
+    params: T1Parameters, platform: AbstractPlatform, qubits: Qubits
 ) -> T1Data:
     r"""
     In a T1 experiment, we measure an excited qubit after a delay. Due to decoherence processes
@@ -98,32 +102,27 @@ def _acquisition(
     )
 
     # create a DataUnits object to store the MSR, phase, i, q and the delay time
-    data = T1Data()
+    data = T1Data(platform.resonator_type)
 
     # repeat the experiment as many times as defined by software_averages
-    count = 0
-    for iteration in range(params.software_averages):
-        # sweep the parameter
-        for wait in ro_wait_range:
-            for qubit in qubits:
-                ro_pulses[qubit].start = qd_pulses[qubit].duration + wait
+    # sweep the parameter
+    for wait in ro_wait_range:
+        for qubit in qubits:
+            ro_pulses[qubit].start = qd_pulses[qubit].duration + wait
 
-            # execute the pulse sequence
-            results = platform.execute_pulse_sequence(sequence)
+        # execute the pulse sequence
+        results = platform.execute_pulse_sequence(sequence)
 
-            for ro_pulse in ro_pulses.values():
-                # average msr, phase, i and q over the number of shots defined in the runcard
-                r = results[ro_pulse.serial].average.raw
-                r.update(
-                    {
-                        "wait[ns]": wait,
-                        "qubit": ro_pulse.qubit,
-                        "iteration": iteration,
-                        "resonator_type": platform.resonator_type,
-                    }
-                )
-                data.add(r)
-            count += 1
+        for ro_pulse in ro_pulses.values():
+            # average msr, phase, i and q over the number of shots defined in the runcard
+            r = results[ro_pulse.serial].average.raw
+            r.update(
+                {
+                    "wait[ns]": wait,
+                    "qubit": ro_pulse.qubit,
+                }
+            )
+            data.add(r)
     return data
 
 
@@ -159,7 +158,6 @@ def _fit(data: T1Data) -> T1Results:
 
     """
     qubits = data.df["qubit"].unique()
-    resonator_type = data.df["resonator_type"].unique()
     t1s = {}
     fitted_parameters = {}
 
@@ -168,7 +166,7 @@ def _fit(data: T1Data) -> T1Results:
         voltages = qubit_data_df["MSR"].pint.to("uV").pint.magnitude
         times = qubit_data_df["wait"].pint.to("ns").pint.magnitude
 
-        if resonator_type == "3D":
+        if data.resonator_type == "3D":
             pguess = [
                 max(voltages.values),
                 (max(voltages.values) - min(voltages.values)),
@@ -208,58 +206,29 @@ def _plot(data: T1Data, fit: T1Results, qubit):
         subplot_titles=("MSR (V)",),
     )
 
-    report_n = 0
     fitting_report = ""
-    data.df = data.df[data.df["qubit"] == qubit]
-    data.df = data.df.drop(columns=["i", "q", "phase", "qubit"])
-    iterations = data.df["iteration"].unique()
-    waits = data.df["wait"].pint.to("ns").pint.magnitude.unique()
+    qubit_data = data.df[data.df["qubit"] == qubit]
 
-    if len(iterations) > 1:
-        opacity = 0.3
-    else:
-        opacity = 1
+    fig.add_trace(
+        go.Scatter(
+            x=qubit_data["wait"].pint.to("ns").pint.magnitude,
+            y=qubit_data["MSR"].pint.to("uV").pint.magnitude,
+            marker_color=get_color(0),
+            opacity=1,
+            name="Voltage",
+            showlegend=True,
+            legendgroup="Voltage",
+        ),
+        row=1,
+        col=1,
+    )
 
-    for iteration in iterations:
-        iteration_data = data.df[data.df["iteration"] == iteration]
-        fig.add_trace(
-            go.Scatter(
-                x=iteration_data["wait"].pint.to("ns").pint.magnitude,
-                y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
-                marker_color=get_color(report_n),
-                opacity=opacity,
-                name=f"q{qubit}/r{report_n}",
-                showlegend=not bool(iteration),
-                legendgroup=f"q{qubit}/r{report_n}",
-            ),
-            row=1,
-            col=1,
-        )
-
-    if len(iterations) > 1:
-        data.df = data.df.drop(columns=["iteration"])  # pylint: disable=E1101
-        fig.add_trace(
-            go.Scatter(
-                x=waits,  # unique_waits,
-                y=data.df.groupby("wait")["MSR"]
-                .mean()
-                .pint.to("uV")
-                .pint.magnitude,  # pylint: disable=E1101
-                marker_color=get_color(report_n),
-                name=f"q{qubit}/r{report_n}: Average",
-                showlegend=True,
-                legendgroup=f"q{qubit}/r{report_n}: Average",
-            ),
-            row=1,
-            col=1,
-        )
-
-    # # # add fitting trace
+    #  add fitting trace
     if len(data) > 0:
         waitrange = np.linspace(
-            min(data.df["wait"]),
-            max(data.df["wait"]),
-            2 * len(data),
+            min(qubit_data["wait"]),
+            max(qubit_data["wait"]),
+            2 * len(qubit_data),
         )
 
         fig.add_trace(
@@ -271,18 +240,16 @@ def _plot(data: T1Data, fit: T1Results, qubit):
                     float(fit.fitted_parameters[qubit][1]),
                     float(fit.fitted_parameters[qubit][2]),
                 ),
-                name=f"q{qubit}/r{report_n} Fit",
+                name="Fit",
                 line=go.scatter.Line(dash="dot"),
-                marker_color=get_color(4 * report_n + 2),
+                marker_color=get_color(2),
             ),
             row=1,
             col=1,
         )
         fitting_report = fitting_report + (
-            f"q{qubit}/r{report_n} | t1: {fit.t1[qubit]:,.0f} ns.<br><br>"
+            f"{qubit} | t1: {fit.t1[qubit]:,.0f} ns.<br><br>"
         )
-
-    report_n += 1
 
     # last part
     fig.update_layout(

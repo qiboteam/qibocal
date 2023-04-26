@@ -71,6 +71,10 @@ class Task:
     def parameters(self):
         return self.operation.parameters_type.load(self.action.parameters)
 
+    @property
+    def data_acquired(self):
+        return self._data_acquired
+
     def datapath(self, base_dir: Path):
         path = base_dir / "data" / f"{self.id}_{self.iteration}"
         os.makedirs(path)
@@ -86,7 +90,7 @@ class Task:
         )
         # return Data(yaml.safe_load(self.datapath(base_dir).read_text(encoding="utf-8")))
 
-    def run(self, platform: AbstractPlatform, qubits: Qubits, folder: Path) -> Results:
+    def run(self, folder: Path, platform: AbstractPlatform, qubits: Qubits) -> Results:
         try:
             operation: Routine = self.operation
             parameters = self.parameters
@@ -95,8 +99,11 @@ class Task:
             parameters = DummyPars()
 
         path = self.datapath(folder)
-        data: Data = operation.acquisition(platform, qubits, parameters)
-        data.to_csv(path)
+        # TODO: fix data attributes
+        self._data_acquired: Data = operation.acquisition(
+            parameters, platform=platform, qubits=qubits
+        )
+        self._data_acquired.to_csv(path)
         # TODO: data dump
         # path.write_text(yaml.dump(pydantic_encoder(self.data(base_dir))))
-        return operation.fit(data)
+        return operation.fit(self._data_acquired)

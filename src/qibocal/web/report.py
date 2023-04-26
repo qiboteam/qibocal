@@ -34,7 +34,6 @@ def create_report(path, actions=None):
 
 def create_autocalibration_report(path, history):
     """Creates an HTML report for the data in the given path."""
-
     with open(STYLES) as file:
         css_styles = f"<style>\n{file.read()}\n</style>"
 

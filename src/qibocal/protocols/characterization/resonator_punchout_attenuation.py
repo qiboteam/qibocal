@@ -57,9 +57,9 @@ class ResonatorPunchoutAttenuationData(DataUnits):
 
 
 def _acquisition(
+    params: ResonatorPunchoutAttenuationParameters,
     platform: AbstractPlatform,
     qubits: Qubits,
-    params: ResonatorPunchoutAttenuationParameters,
 ) -> ResonatorPunchoutAttenuationData:
     # create a sequence of pulses for the experiment:
     # MZ

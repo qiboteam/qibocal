@@ -5,13 +5,9 @@ import numpy as np
 import pytest
 from qibo.models import Circuit
 
-from qibocal.protocols.characterization.gateset.niGSC.basics.circuitfactory import (
-    Qibo1qGatesFactory,
-)
-from qibocal.protocols.characterization.gateset.niGSC.basics.experiment import *
-from qibocal.protocols.characterization.gateset.niGSC.basics.noisemodels import (
-    PauliErrorOnX,
-)
+from qibocal.calibrations.niGSC.basics.circuitfactory import Qibo1qGatesFactory
+from qibocal.calibrations.niGSC.basics.experiment import *
+from qibocal.calibrations.niGSC.basics.noisemodels import PauliErrorOnX
 
 
 @pytest.fixture

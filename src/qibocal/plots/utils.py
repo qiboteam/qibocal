@@ -34,17 +34,10 @@ def load_data(folder, subfolder, routine, data_format, name):
     file = f"{folder}/{subfolder}/{routine}/{name}.csv"
     data = DataUnits()
     all_columns = pd.read_csv(file, nrows=1).columns.tolist()
-    dtype_dict = {
-        col: "float64"
-        for col in all_columns
-        if col not in ["Unnamed: 0", "qubit", "iteration"]
-    }
     if "fit" in name or "parameters" in name:
         data.df = pd.read_csv(file, header=[0], index_col=[0])
 
     else:
-        data.df = pd.read_csv(
-            file, dtype=dtype_dict, header=[0], skiprows=[1], index_col=[0]
-        )
+        data.df = pd.read_csv(file, header=[0], skiprows=[1], index_col=[0])
 
     return data

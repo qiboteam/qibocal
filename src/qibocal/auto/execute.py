@@ -20,12 +20,12 @@ class Executor:
     """The graph to be executed."""
     history: History
     """The execution history, with results and exit states."""
-    qubits: Qubits
-    """Qubits to be calibrated."""
-    platform: AbstractPlatform
-    """Qubits' platform."""
     folder: Path
     """Output path."""
+    qubits: Optional[Qubits] = None
+    """Qubits to be calibrated."""
+    platform: Optional[AbstractPlatform] = None
+    """Qubits' platform."""
     head: Optional[Id] = None
     """The current position."""
     pending: Set[Id] = field(default_factory=set)
@@ -36,9 +36,9 @@ class Executor:
     def load(
         cls,
         card: Union[dict, Path],
-        platform: AbstractPlatform,
-        qubits: Qubits,
         folder: Path,
+        platform: AbstractPlatform = None,
+        qubits: Qubits = None,
     ):
         """Load execution graph and associated executor from a runcard."""
         runcard = Runcard.load(card)
@@ -46,9 +46,9 @@ class Executor:
         return cls(
             graph=Graph.from_actions(runcard.actions),
             history=History({}),
+            folder=folder,
             platform=platform,
             qubits=qubits,
-            folder=folder,
         )
 
     def available(self, task: Task):
@@ -125,7 +125,7 @@ class Executor:
         while self.head is not None:
             task = self.current
 
-            output = task.run(self.platform, self.qubits, self.folder)
+            output = task.run(self.folder, platform=self.platform, qubits=self.qubits)
             completed = Completed(task, output, Normal())
             self.history.push(completed)
             self.head = self.next()

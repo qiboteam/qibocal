@@ -19,11 +19,17 @@ class SingleShotClassificationParameters(Parameters):
 
 
 class SingleShotClassificationData(DataUnits):
-    def __init__(self):
+    def __init__(self, nshots):
         super().__init__(
             "data",
-            options=["qubit", "state", "nshots"],
+            options=["qubit", "state"],
         )
+
+        self._nshots = nshots
+
+    @property
+    def nshots(self):
+        return self._nshots
 
 
 @dataclass
@@ -41,9 +47,9 @@ class SingleShotClassificationResults(Results):
 
 
 def _acquisition(
+    params: SingleShotClassificationParameters,
     platform: AbstractPlatform,
     qubits: Qubits,
-    params: SingleShotClassificationParameters,
 ) -> SingleShotClassificationData:
     """
     Method which implements the state's calibration of a chosen qubit. Two analogous tests are performed
@@ -89,7 +95,7 @@ def _acquisition(
         state1_sequence.add(ro_pulses[qubit])
 
     # create a DataUnits object to store the results
-    data = SingleShotClassificationData()
+    data = SingleShotClassificationData(params.nshots)
 
     # execute the first pulse sequence
     state0_results = platform.execute_pulse_sequence(
@@ -103,7 +109,6 @@ def _acquisition(
             {
                 "qubit": [ro_pulse.qubit] * params.nshots,
                 "state": [0] * params.nshots,
-                "nshots": [params.nshots] * params.nshots,
             }
         )
         data.add_data_from_dict(r)
@@ -120,21 +125,15 @@ def _acquisition(
             {
                 "qubit": [ro_pulse.qubit] * params.nshots,
                 "state": [1] * params.nshots,
-                "nshots": [params.nshots] * params.nshots,
             }
         )
         data.add_data_from_dict(r)
 
-    # finally, save the remaining data and the fits
     return data
-    # yield calibrate_qubit_states_fit(
-    #     data, x="i[V]", y="q[V]", nshots=nshots, qubits=qubits
-    # )
 
 
 def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
     qubits = data.df["qubit"].unique()
-    nshots = data.df["nshots"].unique()
     thresholds, rotation_angles = {}, {}
     fidelities, assignment_fidelities = {}, {}
     mean_gnd_states = {}
@@ -142,7 +141,7 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
 
     for qubit in qubits:
         qubit_data = data.df[data.df["qubit"] == qubit].drop(
-            columns=["qubit", "MSR", "phase", "nshots"]
+            columns=["qubit", "MSR", "phase"]
         )
 
         iq_state0 = (
@@ -190,10 +189,10 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         )
         argmax = np.argmax(cum_distribution_diff)
         threshold = real_values_combined[argmax]
-        errors_state1 = nshots - cum_distribution_state1[argmax]
+        errors_state1 = data.nshots - cum_distribution_state1[argmax]
         errors_state0 = cum_distribution_state0[argmax]
-        fidelity = cum_distribution_diff[argmax] / nshots
-        assignment_fidelity = 1 - (errors_state1 + errors_state0) / nshots / 2
+        fidelity = cum_distribution_diff[argmax] / data.nshots
+        assignment_fidelity = 1 - (errors_state1 + errors_state0) / data.nshots / 2
         thresholds[qubit] = threshold
         rotation_angles[qubit] = rotation_angle
         fidelities[qubit] = fidelity[0]
@@ -211,51 +210,67 @@ def _plot(
 ):
     figures = []
 
-    fig = make_subplots(
-        rows=1,
-        cols=1,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
-        # subplot_titles=("Calibrate qubit states"),
-    )
+    fig = go.Figure()
 
-    # iterate over multiple data folders
-    report_n = 0
     fitting_report = ""
     max_x, max_y, min_x, min_y = 0, 0, 0, 0
 
-    data.df = data.df[data.df["qubit"] == qubit]
-    state0_data = data.df[data.df["state"] == 0].drop(columns=["MSR", "phase", "qubit"])
-    state1_data = data.df[data.df["state"] == 1].drop(columns=["MSR", "phase", "qubit"])
+    qubit_data = data.df[data.df["qubit"] == qubit]
+    state0_data = qubit_data[data.df["state"] == 0].drop(
+        columns=["MSR", "phase", "qubit"]
+    )
+    state1_data = qubit_data[data.df["state"] == 1].drop(
+        columns=["MSR", "phase", "qubit"]
+    )
 
     fig.add_trace(
         go.Scatter(
             x=state0_data["i"].pint.to("V").pint.magnitude,
             y=state0_data["q"].pint.to("V").pint.magnitude,
-            name=f"q{qubit}/r{report_n}: state 0",
-            legendgroup=f"q{qubit}/r{report_n}: state 0",
+            name="Ground State",
+            legendgroup="Ground State",
             mode="markers",
-            showlegend=False,
+            showlegend=True,
             opacity=0.7,
-            marker=dict(size=3, color=get_color_state0(report_n)),
+            marker=dict(size=3, color=get_color_state0(0)),
         ),
-        row=1,
-        col=1,
     )
 
     fig.add_trace(
         go.Scatter(
             x=state1_data["i"].pint.to("V").pint.magnitude,
             y=state1_data["q"].pint.to("V").pint.magnitude,
-            name=f"q{qubit}/r{report_n}: state 1",
-            legendgroup=f"q{qubit}/r{report_n}: state 1",
+            name="Excited State",
+            legendgroup="Excited State",
             mode="markers",
-            showlegend=False,
+            showlegend=True,
             opacity=0.7,
-            marker=dict(size=3, color=get_color_state1(report_n)),
+            marker=dict(size=3, color=get_color_state1(0)),
         ),
-        row=1,
-        col=1,
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=[state0_data["i"].pint.to("V").pint.magnitude.mean()],
+            y=[state0_data["q"].pint.to("V").pint.magnitude.mean()],
+            name="Average Ground State",
+            legendgroup="Average Ground State",
+            showlegend=True,
+            mode="markers",
+            marker=dict(size=10, color=get_color_state0(0)),
+        ),
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=[state1_data["i"].pint.to("V").pint.magnitude.mean()],
+            y=[state1_data["q"].pint.to("V").pint.magnitude.mean()],
+            name="Average Excited State",
+            legendgroup="Average Excited State",
+            showlegend=True,
+            mode="markers",
+            marker=dict(size=10, color=get_color_state1(0)),
+        ),
     )
 
     max_x = max(

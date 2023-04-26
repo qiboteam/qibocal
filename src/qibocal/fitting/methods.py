@@ -981,7 +981,7 @@ def spin_echo_fit(data, x, y, qubits, resonator_type, labels):
     return data_fit
 
 
-def calibrate_qubit_states_fit(data, x, y, nshots, qubits):
+def calibrate_qubit_states_fit(data, x, y, nshots, qubits, degree=True):
     parameters = Data(
         name=f"parameters",
         quantities={
@@ -997,28 +997,6 @@ def calibrate_qubit_states_fit(data, x, y, nshots, qubits):
 
     i_keys = parse(x)
     q_keys = parse(y)
-
-    for qubit in qubits:
-        qubit_data = data.df[data.df["qubit"] == qubit]
-
-        iq_state0 = (
-            qubit_data[qubit_data["state"] == 0][i_keys[0]]
-            .pint.to(i_keys[1])
-            .pint.magnitude
-            + 1.0j
-            * qubit_data[qubit_data["state"] == 0][q_keys[0]]
-            .pint.to(q_keys[1])
-            .pint.magnitude
-        )
-        iq_state1 = (
-            qubit_data[qubit_data["state"] == 1][i_keys[0]]
-            .pint.to(i_keys[1])
-            .pint.magnitude
-            + 1.0j
-            * qubit_data[qubit_data["state"] == 1][q_keys[0]]
-            .pint.to(q_keys[1])
-            .pint.magnitude
-        )
 
     for qubit in qubits:
         qubit_data = data.df[data.df["qubit"] == qubit]
@@ -1089,5 +1067,11 @@ def calibrate_qubit_states_fit(data, x, y, nshots, qubits):
             "average_state0": iq_mean_state0,
             "average_state1": iq_mean_state1,
             "qubit": qubit,
+            "fidelity": fidelity,
+            "assignment_fidelity": assignment_fidelity,
+            "average_state0": iq_mean_state0,
+            "average_state1": iq_mean_state1,
+            "qubit": qubit,
         }
+        parameters.add(results)
     return parameters

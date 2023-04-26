@@ -159,7 +159,6 @@
               {{ header }} - Qubit {{ qubit }}</h5>
 
 
-            <!-- {{report.plot(routine, iteration, qubit)}} -->
             {% set figures, fitting_report = report.plot(routine, iteration, qubit) %}
             {% if "No fitting data" not in fitting_report %}
                                     {% set fitting_params= fitting_report.split('<br>') %}
@@ -167,7 +166,7 @@
                                         <table class="fitting-table">
                                           <thead>
                                             <tr>
-                                              <th class="th_styles">qubit # / report #</th>
+                                              <th class="th_styles">qubit </th>
                                               <th class="th_styles">Fitting Parameter	</th>
                                               <th class="th_styles">Value</th>
                                             </tr>

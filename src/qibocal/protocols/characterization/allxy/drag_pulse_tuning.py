@@ -32,12 +32,14 @@ class DragPulseTuningData(DataUnits):
         super().__init__(
             name="data",
             quantities={"beta_param": "dimensionless"},
-            options=["qubit", "iteration"],
+            options=["qubit"],
         )
 
 
 def _acquisition(
-    platform: AbstractPlatform, qubits: Qubits, params: DragPulseTuningParameters
+    params: DragPulseTuningParameters,
+    platform: AbstractPlatform,
+    qubits: Qubits,
 ) -> DragPulseTuningData:
     r"""
     In this experiment, we apply two sequences in a given qubit: Rx(pi/2) - Ry(pi) and Ry(pi) - Rx(pi/2) for a range
@@ -81,74 +83,69 @@ def _acquisition(
     # create a DataUnits object to store the MSR, phase, i, q and the beta parameter
     data = DragPulseTuningData()
 
-    count = 0
-    # repeat the experiment as many times as defined by software_averages
-    for iteration in range(params.software_averages):
-        for beta_param in beta_param_range:
-            # create two sequences of pulses
-            # seq1: RX(pi/2) - RY(pi) - MZ
-            # seq1: RY(pi/2) - RX(pi) - MZ
+    for beta_param in beta_param_range:
+        # create two sequences of pulses
+        # seq1: RX(pi/2) - RY(pi) - MZ
+        # seq1: RY(pi/2) - RX(pi) - MZ
 
-            ro_pulses = {}
-            seq1 = PulseSequence()
-            seq2 = PulseSequence()
-            for qubit in qubits:
-                # drag pulse RX(pi/2)
-                RX90_drag_pulse = platform.create_RX90_drag_pulse(
-                    qubit, start=0, beta=beta_param
-                )
-                # drag pulse RY(pi)
-                RY_drag_pulse = platform.create_RX_drag_pulse(
-                    qubit,
-                    start=RX90_drag_pulse.finish,
-                    relative_phase=+np.pi / 2,
-                    beta=beta_param,
-                )
-                # drag pulse RY(pi/2)
-                RY90_drag_pulse = platform.create_RX90_drag_pulse(
-                    qubit, start=0, relative_phase=np.pi / 2, beta=beta_param
-                )
-                # drag pulse RX(pi)
-                RX_drag_pulse = platform.create_RX_drag_pulse(
-                    qubit, start=RY90_drag_pulse.finish, beta=beta_param
-                )
+        ro_pulses = {}
+        seq1 = PulseSequence()
+        seq2 = PulseSequence()
+        for qubit in qubits:
+            # drag pulse RX(pi/2)
+            RX90_drag_pulse = platform.create_RX90_drag_pulse(
+                qubit, start=0, beta=beta_param
+            )
+            # drag pulse RY(pi)
+            RY_drag_pulse = platform.create_RX_drag_pulse(
+                qubit,
+                start=RX90_drag_pulse.finish,
+                relative_phase=+np.pi / 2,
+                beta=beta_param,
+            )
+            # drag pulse RY(pi/2)
+            RY90_drag_pulse = platform.create_RX90_drag_pulse(
+                qubit, start=0, relative_phase=np.pi / 2, beta=beta_param
+            )
+            # drag pulse RX(pi)
+            RX_drag_pulse = platform.create_RX_drag_pulse(
+                qubit, start=RY90_drag_pulse.finish, beta=beta_param
+            )
 
-                # RO pulse
-                ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-                    qubit,
-                    start=2
-                    * RX90_drag_pulse.duration,  # assumes all single-qubit gates have same duration
-                )
-                # RX(pi/2) - RY(pi) - RO
-                seq1.add(RX90_drag_pulse)
-                seq1.add(RY_drag_pulse)
-                seq1.add(ro_pulses[qubit])
+            # RO pulse
+            ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+                qubit,
+                start=2
+                * RX90_drag_pulse.duration,  # assumes all single-qubit gates have same duration
+            )
+            # RX(pi/2) - RY(pi) - RO
+            seq1.add(RX90_drag_pulse)
+            seq1.add(RY_drag_pulse)
+            seq1.add(ro_pulses[qubit])
 
-                # RX(pi/2) - RY(pi) - RO
-                seq2.add(RY90_drag_pulse)
-                seq2.add(RX_drag_pulse)
-                seq2.add(ro_pulses[qubit])
+            # RX(pi/2) - RY(pi) - RO
+            seq2.add(RY90_drag_pulse)
+            seq2.add(RX_drag_pulse)
+            seq2.add(ro_pulses[qubit])
 
-            # execute the pulse sequences
-            result1 = platform.execute_pulse_sequence(seq1)
-            result2 = platform.execute_pulse_sequence(seq2)
+        # execute the pulse sequences
+        result1 = platform.execute_pulse_sequence(seq1)
+        result2 = platform.execute_pulse_sequence(seq2)
 
-            # retrieve the results for every qubit
-            for ro_pulse in ro_pulses.values():
-                r1 = result1[ro_pulse.serial]
-                r2 = result2[ro_pulse.serial]
-                # store the results
-                r = {
-                    "MSR[V]": r1.measurement.mean() - r2.measurement.mean(),
-                    "i[V]": r1.i.mean() - r2.i.mean(),
-                    "q[V]": r1.q.mean() - r2.q.mean(),
-                    "phase[rad]": r1.phase.mean() - r2.phase.mean(),
-                    "beta_param[dimensionless]": beta_param,
-                    "qubit": ro_pulse.qubit,
-                    "iteration": iteration,
-                }
-                data.add(r)
-            count += 1
+        # retrieve the results for every qubit
+        for ro_pulse in ro_pulses.values():
+            r1 = result1[ro_pulse.serial]
+            r2 = result2[ro_pulse.serial]
+            # store the results
+            r = {
+                "MSR[V]": r1.measurement.mean() - r2.measurement.mean(),
+                "i[V]": r1.i.mean() - r2.i.mean(),
+                "q[V]": r1.q.mean() - r2.q.mean(),
+                "phase[rad]": r1.phase.mean() - r2.phase.mean(),
+                "beta_param[dimensionless]": beta_param,
+                "qubit": ro_pulse.qubit,
+            }
+            data.add(r)
 
     return data
 
@@ -222,39 +219,19 @@ def _plot(data: DragPulseTuningData, fit: DragPulseTuningResults, qubit):
         horizontal_spacing=0.01,
         vertical_spacing=0.01,
     )
-    report_n = 0
-    iterations = data.df["iteration"].unique()
     beta_params = [i.magnitude for i in data.df["beta_param"].unique()]
-    for iteration in iterations:
-        iteration_data = data.df[data.df["iteration"] == iteration]
-        fig.add_trace(
-            go.Scatter(
-                x=iteration_data["beta_param"].pint.magnitude,
-                y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
-                marker_color=get_color(report_n),
-                mode="markers",
-                opacity=0.3,
-                name=f"q{qubit}/r{report_n}: Probability",
-                showlegend=not bool(iteration),
-                legendgroup="group1",
-            ),
-            row=1,
-            col=1,
-        )
-
+    qubit_data = data.df[data.df["qubit"] == qubit]
     fig.add_trace(
         go.Scatter(
-            x=beta_params,
-            y=data.df.groupby("beta_param", as_index=False)
-            .mean()["MSR"]
-            .pint.to("uV")
-            .pint.magnitude,  # pylint: disable=E1101
-            name=f"q{qubit}/r{report_n}: Average MSR",
-            marker_color=get_color(report_n),
+            x=qubit_data["beta_param"].pint.magnitude,
+            y=qubit_data["MSR"].pint.to("uV").pint.magnitude,
+            marker_color=get_color(0),
             mode="markers",
+            opacity=0.3,
+            name="Probability",
+            showlegend=True,
+            legendgroup="group1",
         ),
-        row=1,
-        col=1,
     )
 
     # add fitting traces
@@ -276,17 +253,14 @@ def _plot(data: DragPulseTuningData, fit: DragPulseTuningResults, qubit):
                     float(fit.fitted_parameters[qubit][2]),
                     float(fit.fitted_parameters[qubit][3]),
                 ),
-                name=f"q{qubit}/r{report_n}: Fit",
+                name="Fit",
                 line=go.scatter.Line(dash="dot"),
-                marker_color=get_color(4 * report_n + 2),
+                marker_color=get_color(1),
             ),
-            row=1,
-            col=1,
         )
         fitting_report = fitting_report + (
-            f"q{qubit}/r{report_n} | optimal_beta_param: {fit.betas[qubit]:.4f}<br><br>"
+            f"{qubit} | Optimal Beta Param: {fit.betas[qubit]:.4f}<br><br>"
         )
-        report_n += 1
 
     fig.update_layout(
         showlegend=True,

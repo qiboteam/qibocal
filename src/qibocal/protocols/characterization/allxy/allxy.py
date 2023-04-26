@@ -14,7 +14,6 @@ from ....plots.utils import get_color
 @dataclass
 class AllXYParameters(Parameters):
     beta_param: float = None
-    software_averages: int = 1
 
 
 @dataclass
@@ -26,7 +25,7 @@ class AllXYData(Data):
     def __init__(self):
         super().__init__(
             name="data",
-            quantities={"probability", "gateNumber", "qubit", "iteration"},
+            quantities={"probability", "gateNumber", "qubit"},
         )
 
 
@@ -56,7 +55,9 @@ gatelist = [
 
 
 def _acquisition(
-    platform: AbstractPlatform, qubits: Qubits, params: AllXYParameters
+    params: AllXYParameters,
+    platform: AbstractPlatform,
+    qubits: Qubits,
 ) -> AllXYData:
     r"""
     The AllXY experiment is a simple test of the calibration of single qubit gatesThe qubit (initialized in the |0> state)
@@ -100,22 +101,21 @@ def _acquisition(
                     platform, gates, qubit, sequence, params.beta_param
                 )
 
-            # execute the pulse sequence
-            results = platform.execute_pulse_sequence(sequence)
+        # execute the pulse sequence
+        results = platform.execute_pulse_sequence(sequence)
 
-            # retrieve the results for every qubit
-            for ro_pulse in ro_pulses.values():
-                z_proj = 2 * results[ro_pulse.serial].ground_state_probability - 1
-                # store the results
-                r = {
-                    "probability": z_proj,
-                    "gateNumber": gateNumber,
-                    "beta_param": params.beta_param,
-                    "qubit": ro_pulse.qubit,
-                    "iteration": iteration,
-                }
-                data.add(r)
-            count += 1
+        # retrieve the results for every qubit
+        for ro_pulse in ro_pulses.values():
+            z_proj = 2 * results[ro_pulse.serial].ground_state_probability - 1
+            # store the results
+            r = {
+                "probability": z_proj,
+                "gateNumber": gateNumber,
+                "beta_param": params.beta_param,
+                "qubit": ro_pulse.qubit,
+            }
+            data.add(r)
+        count += 1
     # finally, save the remaining data
     return data
 
@@ -216,68 +216,36 @@ def _plot(data: AllXYData, _fit: AllXYResults, qubit):
     figures = []
     fitting_report = "No fitting data"
 
-    fig = make_subplots(
-        rows=1,
-        cols=1,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
-        subplot_titles=(f"allXY",),
+    fig = go.Figure()
+
+    qubit_data = data.df[data.df["qubit"] == qubit].drop(columns=["qubit"])
+
+    fig.add_trace(
+        go.Scatter(
+            x=qubit_data["gateNumber"],
+            y=qubit_data["probability"],
+            marker_color=get_color(0),
+            mode="markers",
+            text=gatelist,
+            textposition="bottom center",
+            opacity=0.3,
+            name="Expectation value",
+            showlegend=True,
+            legendgroup="group1",
+        ),
     )
-    report_n = 0
-    iterations = data.df["iteration"].unique()
-    gate_numbers = data.df["gateNumber"].unique()
-
-    for iteration in iterations:
-        iteration_data = data.df[data.df["iteration"] == iteration]
-        fig.add_trace(
-            go.Scatter(
-                x=iteration_data["gateNumber"],
-                y=iteration_data["probability"],
-                marker_color=get_color(report_n),
-                mode="markers",
-                text=gatelist,
-                textposition="bottom center",
-                opacity=0.3,
-                name=f"q{qubit}/r{report_n}: Probability",
-                showlegend=not bool(iteration),
-                legendgroup="group1",
-            ),
-            row=1,
-            col=1,
-        )
-
-    if len(iterations) > 1:
-        fig.add_trace(
-            go.Scatter(
-                x=gate_numbers,
-                y=data.df.groupby("gateNumber", as_index=False)[
-                    "probability"
-                ].mean(),  # pylint: disable=E1101
-                name=f"q{qubit}/r{report_n}: Average Probability",
-                marker_color=get_color(report_n),
-                mode="markers",
-                text=gatelist,
-                textposition="bottom center",
-            ),
-            row=1,
-            col=1,
-        )
 
     fig.add_hline(
         y=0,
         line_width=2,
         line_dash="dash",
         line_color="grey",
-        row=1,
-        col=1,
     )
     fig.add_hline(
         y=1,
         line_width=2,
         line_dash="dash",
         line_color="grey",
-        row=1,
-        col=1,
     )
 
     fig.add_hline(
@@ -285,8 +253,6 @@ def _plot(data: AllXYData, _fit: AllXYResults, qubit):
         line_width=2,
         line_dash="dash",
         line_color="grey",
-        row=1,
-        col=1,
     )
 
     fig.update_layout(

@@ -6,6 +6,7 @@ from pathlib import Path
 import yaml
 
 from qibocal.auto.execute import Executor, History
+from qibocal.auto.runcard import Runcard
 
 from .builders import ActionBuilder, load_yaml
 
@@ -20,7 +21,10 @@ class AutoCalibrationBuilder(ActionBuilder):
         # TODO: modify folder in Path in ActionBuilder
         self.folder = Path(self.folder)
         self.executor = Executor.load(
-            self.runcard, self.platform, self.qubits, self.folder
+            self.runcard,
+            self.folder,
+            self.platform,
+            self.qubits,
         )
 
     def run(self):
@@ -53,17 +57,12 @@ class AutoCalibrationBuilder(ActionBuilder):
 
 class AutoCalibrationReportBuilder:
     def __init__(self, path: Path, history: History):
-        self.path = path
+        # FIXME: currently the title of the report is the output folder
+        self.path = self.title = path
         self.metadata = yaml.safe_load((path / META).read_text())
-
-        # find proper path title
-        base, self.title = os.getcwd() / path, ""
-        while self.title in ("", "."):
-            base, self.title = os.path.split(base)
-
-        self.runcard = yaml.safe_load((path / RUNCARD).read_text())
-        self.format = self.runcard.get("format")
-        self.qubits = self.runcard.get("qubits")
+        self.runcard = Runcard.load(path / RUNCARD)
+        self.format = self.runcard.format
+        self.qubits = self.runcard.qubits
 
         self.history = history
 
@@ -74,9 +73,7 @@ class AutoCalibrationReportBuilder:
 
     def plot(self, routine_name, iteration, qubit):
         node = self.history[(routine_name, iteration)]
-        data = node.task.operation.data_type.load_data(
-            self.path, "data", f"{routine_name}_{iteration}", "csv", "data"
-        )
+        data = node.task.data_acquired
         figures, fitting_report = node.task.operation.report(data, node.res, qubit)
         with tempfile.NamedTemporaryFile(delete=False) as temp:
             html_list = []

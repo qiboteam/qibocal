@@ -4,11 +4,13 @@ from typing import Dict, List, Tuple
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
+from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.data import DataUnits
+from qibocal.config import log
 
-from .utils import fitting, plot, rabi
+from .amplitude import RabiAmplitudeData
+from .utils import plot, rabi_length_fit
 
 
 @dataclass
@@ -19,7 +21,6 @@ class RabiLengthParameters(Parameters):
     pulse_amplitude: float
     nshots: int
     relaxation_time: float
-    software_averages: int = 1
 
 
 @dataclass
@@ -29,17 +30,12 @@ class RabiLengthResults(Results):
     fitted_parameters: Dict[List[Tuple], List]
 
 
-class RabiLengthData(DataUnits):
-    def __init__(self):
-        super().__init__(
-            name="data",
-            quantities={"time": "ns", "amplitude": "dimensionless"},
-            options=["qubit", "iteration", "resonator_type"],
-        )
+class RabiLengthData(RabiAmplitudeData):
+    ...
 
 
 def _acquisition(
-    platform: AbstractPlatform, qubits: Qubits, params: RabiLengthParameters
+    params: RabiLengthParameters, platform: AbstractPlatform, qubits: Qubits
 ) -> RabiLengthData:
     r"""
     In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse length
@@ -112,40 +108,83 @@ def _acquisition(
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
     # additionally include qubit drive pulse length
-    data = RabiLengthData()
+    data = RabiLengthData(platform.resonator_type)
 
-    for iteration in range(params.software_averages):
-        # sweep the parameter
-        for duration in qd_pulse_duration_range:
-            for qubit in qubits:
-                qd_pulses[qubit].duration = duration
-                ro_pulses[qubit].start = duration
+    # sweep the parameter
+    for duration in qd_pulse_duration_range:
+        for qubit in qubits:
+            qd_pulses[qubit].duration = duration
+            ro_pulses[qubit].start = qd_pulses[qubit].finish
 
-            # execute the pulse sequence
-            results = platform.execute_pulse_sequence(sequence, nshots=params.nshots)
+        # execute the pulse sequence
+        results = platform.execute_pulse_sequence(sequence, nshots=params.nshots)
 
-            for ro_pulse in ro_pulses.values():
-                # average msr, phase, i and q over the number of shots defined in the runcard
-                r = results[ro_pulse.serial].average.raw
-                r.update(
-                    {
-                        "time[ns]": duration,
-                        "amplitude[dimensionless]": float(qd_pulses[qubit].amplitude),
-                        "qubit": ro_pulse.qubit,
-                        "iteration": iteration,
-                        "resonator_type": platform.resonator_type,
-                    }
-                )
-                data.add(r)
+        for qubit in qubits:
+            # average msr, phase, i and q over the number of shots defined in the runcard
+            r = results[qubit].average.raw
+            r.update(
+                {
+                    "length[ns]": duration,
+                    "amplitude[dimensionless]": float(qd_pulses[qubit].amplitude),
+                    "qubit": qubit,
+                }
+            )
+            data.add(r)
+
     return data
 
 
 def _fit(data: RabiLengthData) -> RabiLengthResults:
-    return RabiLengthResults(*fitting(data, "length"))
+    qubits = data.df["qubit"].unique()
+
+    pi_pulse_amplitudes = {}
+    fitted_parameters = {}
+    durations = {}
+
+    for qubit in qubits:
+        qubit_data = data.df[data.df["qubit"] == qubit]
+
+        rabi_parameter = qubit_data["length"].pint.to("ns").pint.magnitude
+        voltages = qubit_data["MSR"].pint.to("uV").pint.magnitude
+        pi_pulse_amplitudes[qubit] = (
+            qubit_data["amplitude"].pint.to("dimensionless").pint.magnitude.unique()
+        )
+
+        y_min = np.min(voltages.values)
+        y_max = np.max(voltages.values)
+        x_min = np.min(rabi_parameter.values)
+        x_max = np.max(rabi_parameter.values)
+        x = (rabi_parameter.values - x_min) / (x_max - x_min)
+        y = (voltages.values - y_min) / (y_max - y_min)
+
+        # Guessing period using fourier transform
+        ft = np.fft.rfft(y)
+        mags = abs(ft)
+        index = np.argmax(mags) if np.argmax(mags) != 0 else np.argmax(mags[1:])
+        f = x[index] / (x[1] - x[0])
+
+        pguess = [0.5, 1, f, np.pi / 2, 0]
+
+        try:
+            popt, pcov = curve_fit(rabi_length_fit, x, y, p0=pguess, maxfev=100000)
+            translated_popt = [
+                (y_max - y_min) * popt[0] + y_min,
+                (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
+                popt[2] / (x_max - x_min),
+                popt[3] - 2 * np.pi * x_min * popt[2] / (x_max - x_min),
+                popt[4] / (x_max - x_min),
+            ]
+            pi_pulse_parameter = np.abs((1.0 / translated_popt[2]) / 2)
+            durations[qubit] = pi_pulse_parameter
+            fitted_parameters[qubit] = translated_popt
+        except:
+            log.warning("rabi_fit: the fitting was not succesful")
+
+    return RabiLengthResults(durations, pi_pulse_amplitudes, fitted_parameters)
 
 
 def _plot(data: RabiLengthData, fit: RabiLengthResults, qubit):
-    return plot(data, fit, qubit, "length")
+    return plot(data, fit, qubit)
 
 
 rabi_length = Routine(_acquisition, _fit, _plot)

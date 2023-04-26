@@ -1,16 +1,16 @@
 from collections.abc import Iterable
+from copy import deepcopy
 
+import numpy as np
 import pytest
 from qibo import gates, models
 
-from qibocal.protocols.characterization.gateset.niGSC.basics.circuitfactory import *
-from qibocal.protocols.characterization.gateset.niGSC.basics.utils import ONEQ_GATES
-from qibocal.protocols.characterization.gateset.niGSC.standardrb import (
+from qibocal.calibrations.niGSC.basics.circuitfactory import *
+from qibocal.calibrations.niGSC.basics.utils import ONEQ_GATES
+from qibocal.calibrations.niGSC.standardrb import (
     ModuleFactory as SingleCliffordsInvFactory,
 )
-from qibocal.protocols.characterization.gateset.niGSC.XIdrb import (
-    ModuleFactory as XIdFactory,
-)
+from qibocal.calibrations.niGSC.XIdrb import ModuleFactory as XIdFactory
 
 
 @pytest.fixture

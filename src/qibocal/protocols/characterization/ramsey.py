@@ -19,7 +19,6 @@ class RamseyParameters(Parameters):
     delay_between_pulses_start: int
     delay_between_pulses_end: list
     delay_between_pulses_step: int
-    software_averages: int = 1
     n_osc: Optional[int] = 0
 
 
@@ -32,22 +31,36 @@ class RamseyResults(Results):
 
 
 class RamseyData(DataUnits):
-    def __init__(self):
+    def __init__(self, n_osc, duration_step, resonator_type):
         super().__init__(
             name="data",
             quantities={"wait": "ns", "t_max": "ns", "qubit_freqs": "Hz"},
             options=[
                 "qubit",
-                "iteration",
-                "n_osc",
-                "sampling_rate",
-                "resonator_type",
             ],
         )
 
+        self._n_osc = n_osc
+        self._duration_step = duration_step
+        self._resonator_type = resonator_type
+
+    @property
+    def n_osc(self):
+        return self._n_osc
+
+    @property
+    def duration_step(self):
+        return self._duration_step
+
+    @property
+    def resonator_type(self):
+        return self._resonator_type
+
 
 def _acquisition(
-    platform: AbstractPlatform, qubits: Qubits, params: RamseyParameters
+    params: RamseyParameters,
+    platform: AbstractPlatform,
+    qubits: Qubits,
 ) -> RamseyData:
     # create a sequence of pulses for the experiment
     # RX90 - t - RX90 - MZ
@@ -78,43 +91,37 @@ def _acquisition(
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
     # additionally include wait time and t_max
-    data = RamseyData()
+    data = RamseyData(
+        params.n_osc, params.delay_between_pulses_step, platform.resonator_type
+    )
 
-    # repeat the experiment as many times as defined by software_averages
-    count = 0
-    for iteration in range(params.software_averages):
-        # sweep the parameter
-        for wait in waits:
-            for qubit in qubits:
-                RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
-                ro_pulses[qubit].start = RX90_pulses2[qubit].finish
-                if params.n_osc != 0:
-                    RX90_pulses2[qubit].relative_phase = (
-                        RX90_pulses2[qubit].start
-                        * (-2 * np.pi)
-                        * (params.n_osc)
-                        / params.delay_between_pulses_end
-                    )
-
-            # execute the pulse sequence
-            results = platform.execute_pulse_sequence(sequence)
-            for qubit, ro_pulse in ro_pulses.items():
-                # average msr, phase, i and q over the number of shots defined in the runcard
-                r = results[ro_pulse.serial].average.raw
-                r.update(
-                    {
-                        "wait[ns]": wait,
-                        "t_max[ns]": params.delay_between_pulses_end,
-                        "qubit_freqs[Hz]": qubits[qubit].drive_frequency,
-                        "qubit": qubit,
-                        "iteration": iteration,
-                        "sampling_rate": platform.sampling_rate,
-                        "n_osc": params.n_osc,
-                        "resonator_type": platform.resonator_type,
-                    }
+    # sweep the parameter
+    for wait in waits:
+        for qubit in qubits:
+            RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
+            ro_pulses[qubit].start = RX90_pulses2[qubit].finish
+            if params.n_osc != 0:
+                RX90_pulses2[qubit].relative_phase = (
+                    RX90_pulses2[qubit].start
+                    * (-2 * np.pi)
+                    * (params.n_osc)
+                    / params.delay_between_pulses_end
                 )
-                data.add_data_from_dict(r)
-            count += 1
+
+        # execute the pulse sequence
+        results = platform.execute_pulse_sequence(sequence)
+        for qubit, ro_pulse in ro_pulses.items():
+            # average msr, phase, i and q over the number of shots defined in the runcard
+            r = results[ro_pulse.serial].average.raw
+            r.update(
+                {
+                    "wait[ns]": wait,
+                    "t_max[ns]": params.delay_between_pulses_end,
+                    "qubit_freqs[Hz]": qubits[qubit].drive_frequency,
+                    "qubit": qubit,
+                }
+            )
+            data.add_data_from_dict(r)
     return data
 
 
@@ -128,7 +135,7 @@ def ramsey_fit(x, p0, p1, p2, p3, p4):
     return p0 + p1 * np.sin(x * p2 + p3) * np.exp(-x * p4)
 
 
-def _fit(data: RamseyData) -> RamseyResults:  # TODO: put Platform as input
+def _fit(data: RamseyData) -> RamseyResults:
     r"""
     Fitting routine for Ramsey experiment. The used model is
     .. math::
@@ -156,9 +163,6 @@ def _fit(data: RamseyData) -> RamseyResults:  # TODO: put Platform as input
             - **qubit**: The qubit being tested
     """
     qubits = data.df["qubit"].unique()
-    resonator_type = data.df["resonator_type"].unique()
-    sampling_rate = data.df["sampling_rate"].unique()
-    n_osc = data.df["n_osc"].unique()
     t_max = data.df["t_max"].pint.to("ns").pint.magnitude
     t_max = np.unique(t_max)
 
@@ -172,6 +176,7 @@ def _fit(data: RamseyData) -> RamseyResults:  # TODO: put Platform as input
         voltages = qubit_data_df["MSR"].pint.to("uV").pint.magnitude
         times = qubit_data_df["wait"].pint.to("ns").pint.magnitude
         qubit_freq = qubit_data_df["qubit_freqs"].pint.to("Hz").pint.magnitude.unique()
+
         try:
             y_max = np.max(voltages.values)
             y_min = np.min(voltages.values)
@@ -179,19 +184,24 @@ def _fit(data: RamseyData) -> RamseyResults:  # TODO: put Platform as input
             x_max = np.max(times.values)
             x_min = np.min(times.values)
             x = (times.values - x_min) / (x_max - x_min)
-            if resonator_type == "3D":
-                index = np.argmin(y)
+            if data.resonator_type == "3D":
+                # FIXME: with this normalization the min will be a 0 causing error when guessing parameters
+                index = (
+                    np.argmin(y)
+                    if np.min(y) != 0
+                    else np.where(y == np.partition(y, 1)[1])
+                )
             else:
                 index = np.argmax(y)
 
             p0 = [
                 np.mean(y),
                 y_max - y_min,
-                0.5 / x[index],
+                float(0.5 / x[index]),
                 np.pi / 2,
                 0,
             ]
-            popt = curve_fit(ramsey_fit, x, y, method="lm", p0=p0)[0]
+            popt = curve_fit(ramsey_fit, x, y, method="lm", p0=p0, maxfev=2000000)[0]
             popt = [
                 (y_max - y_min) * popt[0] + y_min,
                 (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
@@ -200,7 +210,9 @@ def _fit(data: RamseyData) -> RamseyResults:  # TODO: put Platform as input
                 popt[4] / (x_max - x_min),
             ]
             delta_fitting = popt[2] / 2 * np.pi
-            delta_phys = int((delta_fitting - n_osc / t_max) * sampling_rate)
+            delta_phys = int(
+                (delta_fitting - data.n_osc / t_max) * 1 / (data.duration_step * 1e-9)
+            )
             corrected_qubit_frequency = int(qubit_freq + delta_phys)
             t2 = 1.0 / popt[4]
 
@@ -211,14 +223,10 @@ def _fit(data: RamseyData) -> RamseyResults:  # TODO: put Platform as input
             corrected_qubit_frequency = int(qubit_freq)
             delta_phys = 0
 
-        log.warning(f"delta phys {delta_phys}")
-        log.warning(f"corrected qubit freq {corrected_qubit_frequency}")
-    
         fitted_parameters[qubit] = popt
         corrected_qubit_frequencies[qubit] = corrected_qubit_frequency / 1e9
         t2s[qubit] = t2
         freqs_detuing[qubit] = delta_phys
-
 
     return RamseyResults(
         corrected_qubit_frequencies, t2s, freqs_detuing, fitted_parameters
@@ -226,7 +234,6 @@ def _fit(data: RamseyData) -> RamseyResults:  # TODO: put Platform as input
 
 
 def _plot(data: RamseyData, fit: RamseyResults, qubit):
-    log.warning("plotting")
     figures = []
 
     fig = make_subplots(
@@ -236,55 +243,29 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
         vertical_spacing=0.1,
         subplot_titles=("MSR (V)",),
     )
-    report_n = 0
     fitting_report = ""
 
-    data.df = data.df[data.df["qubit"] == qubit]
-    iterations = data.df["iteration"].unique()
-    waits = data.df["wait"].pint.to("ns").pint.magnitude
-    if len(iterations) > 1:
-        opacity = 0.3
-    else:
-        opacity = 1
-    for iteration in iterations:
-        iteration_data = data.df[data.df["iteration"] == iteration]
-        fig.add_trace(
-            go.Scatter(
-                x=iteration_data["wait"].pint.magnitude,
-                y=iteration_data["MSR"].pint.to("uV").pint.magnitude,
-                marker_color=get_color(report_n),
-                opacity=opacity,
-                name=f"q{qubit}/r{report_n}",
-                showlegend=not bool(iteration),
-                legendgroup=f"q{qubit}/r{report_n}",
-            ),
-            row=1,
-            col=1,
-        )
+    qubit_data = data.df[data.df["qubit"] == qubit]
 
-    if len(iterations) > 1:
-        data.df = data.df.drop(columns=["iteration"])  # pylint: disable=E1101
-        fig.add_trace(
-            go.Scatter(
-                x=waits,
-                y=data.df.groupby("wait")["MSR"]
-                .mean()
-                .pint.to("uV")
-                .pint.magnitude,  # pylint: disable=E1101
-                marker_color=get_color(report_n),
-                name=f"q{qubit}/r{report_n}: Average",
-                showlegend=True,
-                legendgroup=f"q{qubit}/r{report_n}: Average",
-            ),
-            row=1,
-            col=1,
-        )
+    fig.add_trace(
+        go.Scatter(
+            x=qubit_data["wait"].pint.magnitude,
+            y=qubit_data["MSR"].pint.to("uV").pint.magnitude,
+            marker_color=get_color(0),
+            opacity=1,
+            name="Voltage",
+            showlegend=True,
+            legendgroup="Voltage",
+        ),
+        row=1,
+        col=1,
+    )
 
     # add fitting trace
     if len(data) > 0:
         waitrange = np.linspace(
-            min(data.df["wait"]),
-            max(data.df["wait"]),
+            min(qubit_data["wait"]),
+            max(qubit_data["wait"]),
             2 * len(data),
         )
 
@@ -299,24 +280,19 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
                     float(fit.fitted_parameters[qubit][3]),
                     float(fit.fitted_parameters[qubit][4]),
                 ),
-                name=f"q{qubit}/r{report_n} Fit",
+                name="Fit",
                 line=go.scatter.Line(dash="dot"),
-                marker_color=get_color(4 * report_n + 2),
+                marker_color=get_color(1),
             ),
             row=1,
             col=1,
         )
         fitting_report = (
             fitting_report
-            + (
-                f"q{qubit}/r{report_n} | delta_frequency: {fit.delta_phys[qubit]:,.1f} Hz<br>"
-            )
-            + (
-                f"q{qubit}/r{report_n} | drive_frequency: {fit.frequency[qubit] * 1e9} Hz<br>"
-            )
-            + (f"q{qubit}/r{report_n} | T2: {fit.t2[qubit]:,.0f} ns.<br><br>")
+            + (f"{qubit} | delta_frequency: {fit.delta_phys[qubit]:,.1f} Hz<br>")
+            + (f"{qubit} | drive_frequency: {fit.frequency[qubit] * 1e9} Hz<br>")
+            + (f"{qubit} | T2: {fit.t2[qubit]:,.0f} ns.<br><br>")
         )
-    report_n += 1
 
     fig.update_layout(
         showlegend=True,
