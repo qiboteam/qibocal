@@ -94,6 +94,7 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     report: Callable[[_DataT, _ResultsT], None] = None
 
     def __post_init__(self):
+        # TODO: this could be improved
         if self.fit == None:
             self.fit = _dummy_fit
         if self.report == None:
@@ -102,7 +103,6 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     @property
     def parameters_type(self):
         sig = inspect.signature(self.acquisition)
-        # we are assuming that params is the last argument, maybe should be the first(?)
         param = list(sig.parameters.values())[0]
         return param.annotation
 
