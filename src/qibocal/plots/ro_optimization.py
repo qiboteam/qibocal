@@ -171,7 +171,8 @@ def ro_frequency(folder, routine, qubit, format):
     title_text += f"q{qubit}/r{report_n} | average state 1: ({complex(fit_data['average_state1'].to_numpy()[0]):.6f})<br>"
     title_text += f"q{qubit}/r{report_n} | rotation angle: {float(fit_data['rotation_angle'].to_numpy()[0]):.3f} | threshold = {float(fit_data['threshold'].to_numpy()[0]):.6f}<br>"
     title_text += f"q{qubit}/r{report_n} | fidelity: {float(fit_data['fidelity'].to_numpy()[0]):.3f}<br>"
-    title_text += f"q{qubit}/r{report_n} | assignment fidelity: {float(fit_data['assignment_fidelity'].to_numpy()[0]):.3f}<br><br>"
+    title_text += f"q{qubit}/r{report_n} | assignment fidelity: {float(fit_data['assignment_fidelity'].to_numpy()[0]):.3f}<br>"
+    title_text += f"q{qubit}/r{report_n} | optimal frequency: {float(fit_data['frequency'].to_numpy()[0]):.3f} Hz<br><br>"
     fitting_report = fitting_report + title_text
     return [fig, fig_fidelity], fitting_report
 
@@ -192,8 +193,8 @@ def ro_amplitude(folder, routine, qubit, format):
         data = DataUnits(
             name="data",
             quantities={
-                "amplitude": "dBm",
-                "delta_amplitude": "dBm",
+                "amplitude": "dimensionless",
+                "delta_amplitude": "dimensionless",
             },
             options=["iteration", "state"],
         )
@@ -334,7 +335,7 @@ def ro_amplitude(folder, routine, qubit, format):
     fig_fidelity.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="delta amplitude (dBm)",
+        xaxis_title="delta amplitude (dimensionless)",
         yaxis_title="fidelity (ratio)",
         title=f"q{qubit}",
     )
@@ -344,7 +345,8 @@ def ro_amplitude(folder, routine, qubit, format):
     title_text += f"q{qubit}/r{report_n} | average state 1: ({complex(fit_data['average_state1'].to_numpy()[0]):.6f})<br>"
     title_text += f"q{qubit}/r{report_n} | rotation angle: {float(fit_data['rotation_angle'].to_numpy()[0]):.3f} | threshold = {float(fit_data['threshold'].to_numpy()[0]):.6f}<br>"
     title_text += f"q{qubit}/r{report_n} | fidelity: {float(fit_data['fidelity'].to_numpy()[0]):.3f}<br>"
-    title_text += f"q{qubit}/r{report_n} | assignment fidelity: {float(fit_data['assignment_fidelity'].to_numpy()[0]):.3f}<br><br>"
+    title_text += f"q{qubit}/r{report_n} | assignment fidelity: {float(fit_data['assignment_fidelity'].to_numpy()[0]):.3f}<br>"
+    title_text += f"q{qubit}/r{report_n} | optimal amplitude: {float(fit_data['amplitude'].to_numpy()[0]):.3f}<br><br>"
     fitting_report = fitting_report + title_text
     return [fig, fig_fidelity], fitting_report
 
@@ -518,6 +520,7 @@ def ro_power(folder, routine, qubit, format):
     title_text += f"q{qubit}/r{report_n} | average state 1: ({complex(fit_data['average_state1'].to_numpy()[0]):.6f})<br>"
     title_text += f"q{qubit}/r{report_n} | rotation angle: {float(fit_data['rotation_angle'].to_numpy()[0]):.3f} | threshold = {float(fit_data['threshold'].to_numpy()[0]):.6f}<br>"
     title_text += f"q{qubit}/r{report_n} | fidelity: {float(fit_data['fidelity'].to_numpy()[0]):.3f}<br>"
-    title_text += f"q{qubit}/r{report_n} | assignment fidelity: {float(fit_data['assignment_fidelity'].to_numpy()[0]):.3f}<br><br>"
+    title_text += f"q{qubit}/r{report_n} | assignment fidelity: {float(fit_data['assignment_fidelity'].to_numpy()[0]):.3f}<br>"
+    title_text += f"q{qubit}/r{report_n} | optimal power: {float(fit_data['power'].to_numpy()[0]):.3f} dBm<br><br>"
     fitting_report = fitting_report + title_text
     return [fig, fig_fidelity], fitting_report
