@@ -88,36 +88,18 @@ def flipping(
         relaxation_time=relaxation_time,
     )
 
-    for ro_pulse in ro_pulses.values():
-        # average msr, phase, i and q over the number of shots defined in the runcard
-        r = results[ro_pulse.serial].to_dict(average=True)
-        r.update(
-            {
-                "flips[dimensionless]": flips,
-                "qubit": ro_pulse.qubit,
-                "iteration": [0],
-            }
-        )
-        data.add(r)
-
-        # # execute the pulse sequence
-        # results = platform.execute_pulse_sequence(
-        #     sequence,
-        #     nshots=nshots,
-        #     relaxation_time=relaxation_time,
-        # )
-
-        # for ro_pulse in ro_pulses.values():
-        #     # average msr, phase, i and q over the number of shots defined in the runcard
-        #     r = results[ro_pulse.serial].to_dict(average=True)
-        #     r.update(
-        #         {
-        #             "flips[dimensionless]": flips,
-        #             "qubit": ro_pulse.qubit,
-        #             "iteration": [0],
-        #         }
-        #     )
-        #     data.add(r)
+            for ro_pulse in ro_pulses.values():
+                # average msr, phase, i and q over the number of shots defined in the runcard
+                r = results[ro_pulse.serial].raw
+                r.update(
+                    {
+                        "flips[dimensionless]": flips,
+                        "qubit": ro_pulse.qubit,
+                        "iteration": iteration,
+                    }
+                )
+                data.add(r)
+            count += 1
     yield data
 
     yield flipping_fit(
