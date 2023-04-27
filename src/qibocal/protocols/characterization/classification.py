@@ -12,6 +12,8 @@ from qibocal.data import DataUnits
 
 from ...plots.utils import get_color_state0, get_color_state1
 
+MESH_SIZE = 50
+
 
 @dataclass
 class SingleShotClassificationParameters(Parameters):
@@ -35,7 +37,7 @@ class SingleShotClassificationData(DataUnits):
 @dataclass
 class SingleShotClassificationResults(Results):
     threshold: Dict[List[Tuple], str] = field(metadata=dict(update="threshold"))
-    rotation_angle: Dict[List[Tuple], str] = field(metadata=dict(update="iq_angle"))
+    rotation_angle: Dict[List[Tuple], str]  # = field(metadata=dict(update="iq_angle"))
     mean_gnd_state: Dict[List[Tuple], str]
     mean_exc_state: Dict[List[Tuple], str]
     fidelity: Dict[List[Tuple], str]
@@ -278,23 +280,45 @@ def _plot(
 
     max_x = max(
         max_x,
-        state0_data["i"].max(),
-        state1_data["i"].max(),
+        state0_data["i"].pint.to("V").pint.magnitude.max(),
+        state1_data["i"].pint.to("V").pint.magnitude.max(),
     )
     max_y = max(
         max_y,
-        state0_data["q"].max(),
-        state1_data["q"].max(),
+        state0_data["q"].pint.to("V").pint.magnitude.max(),
+        state1_data["q"].pint.to("V").pint.magnitude.max(),
     )
     min_x = min(
         min_x,
-        state0_data["i"].min(),
-        state1_data["i"].min(),
+        state0_data["i"].pint.to("V").pint.magnitude.min(),
+        state1_data["i"].pint.to("V").pint.magnitude.min(),
     )
     min_y = min(
         min_y,
-        state0_data["q"].min(),
-        state1_data["q"].min(),
+        state0_data["q"].pint.to("V").pint.magnitude.min(),
+        state1_data["q"].pint.to("V").pint.magnitude.min(),
+    )
+
+    feature_x = np.linspace(min_x, max_x, MESH_SIZE)
+    feature_y = np.linspace(min_y, max_y, MESH_SIZE)
+
+    [x, y] = np.meshgrid(feature_x, feature_y)
+
+    z = (
+        (np.exp(1j * fit.rotation_angle[qubit]) * (x + 1j * y)).real
+        > fit.threshold[qubit]
+    ).astype(int)
+    fig.add_trace(
+        go.Contour(
+            x=feature_x,
+            y=feature_y,
+            z=z,
+            showscale=False,
+            colorscale=[get_color_state0(0), get_color_state1(0)],
+            opacity=0.4,
+            name="Score",
+            hoverinfo="skip",
+        ),
     )
 
     fitting_report = (
