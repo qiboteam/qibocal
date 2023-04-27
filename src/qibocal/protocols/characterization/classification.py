@@ -158,11 +158,9 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
 
         iq_mean_state1 = np.mean(iq_state1)
         iq_mean_state0 = np.mean(iq_state0)
-        origin = iq_mean_state0
 
-        iq_state1_translated = iq_state1 - origin
-        iq_state0_translated = iq_state0 - origin
-        rotation_angle = np.angle(np.mean(iq_state1_translated))
+        vector01 = iq_mean_state1 - iq_mean_state0
+        rotation_angle = np.angle(vector01)
 
         iq_state1_rotated = iq_state1 * np.exp(-1j * rotation_angle)
         iq_state0_rotated = iq_state0 * np.exp(-1j * rotation_angle)
