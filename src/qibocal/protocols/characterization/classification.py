@@ -37,7 +37,7 @@ class SingleShotClassificationData(DataUnits):
 @dataclass
 class SingleShotClassificationResults(Results):
     threshold: Dict[List[Tuple], str] = field(metadata=dict(update="threshold"))
-    rotation_angle: Dict[List[Tuple], str]  # = field(metadata=dict(update="iq_angle"))
+    rotation_angle: Dict[List[Tuple], str] = field(metadata=dict(update="iq_angle"))
     mean_gnd_state: Dict[List[Tuple], str]
     mean_exc_state: Dict[List[Tuple], str]
     fidelity: Dict[List[Tuple], str]
