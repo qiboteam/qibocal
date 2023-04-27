@@ -9,7 +9,7 @@ from qibocal.decorators import plot
 from qibocal.fitting.methods import lorentzian_fit
 
 
-@plot("MSR and Phase vs Qubit Drive Frequency", plots.frequency_msr_phase)
+@plot("MSR and Phase vs Qubit Drive Frequency", plots.coupler_frequency_msr_phase)
 def coupler_spectroscopy(
     platform: AbstractPlatform,
     qubits: dict,
@@ -76,13 +76,17 @@ def coupler_spectroscopy(
     cd_pulses[qubit_drive] = platform.create_qubit_drive_pulse(
         qubit_drive, start=0, duration=coupler_drive_duration
     )
+    
+    qubits[4].drive.local_oscillator.frequency = coupler_frequency - 100_000_000
+    qubits[4].drive_frequency = coupler_frequency
     cd_pulses[qubit_drive].frequency = coupler_frequency
+    
     if coupler_drive_amplitude is not None:
         cd_pulses[qubit_drive].amplitude = coupler_drive_amplitude
 
     qd_pulses[qubit_readout] = platform.create_qubit_drive_pulse(
         qubit_readout,
-        start=cd_pulses[qubit_drive].finish - 2000,
+        start=0,
         duration=qubit_drive_duration,
     )
 
@@ -214,6 +218,8 @@ def coupler_spectroscopy_double_freq(
     cd_pulses = {}
     # for qubit in qubits:
 
+    #FIXME: Frequency results may be wrong
+    
     qubit_drive = qubits[4].name
     # qubit_drive = qubits[0].name
     qubit_readout = qubits[2].name  # Make general
@@ -221,13 +227,18 @@ def coupler_spectroscopy_double_freq(
     cd_pulses[qubit_drive] = platform.create_qubit_drive_pulse(
         qubit_drive, start=0, duration=coupler_drive_duration
     )
+    
+    qubits[4].drive.local_oscillator.frequency = coupler_frequency
+    qubits[4].drive_frequency = coupler_frequency
     cd_pulses[qubit_drive].frequency = coupler_frequency
+    
     if coupler_drive_amplitude is not None:
         cd_pulses[qubit_drive].amplitude = coupler_drive_amplitude
 
     qd_pulses[qubit_readout] = platform.create_qubit_drive_pulse(
         qubit_readout,
-        start=cd_pulses[qubit_drive].finish,
+        # start=cd_pulses[qubit_drive].finish,
+        start=0,
         duration=qubit_drive_duration,
     )
 
@@ -241,6 +252,7 @@ def coupler_spectroscopy_double_freq(
     sequence.add(qd_pulses[qubit_readout])
     sequence.add(cd_pulses[qubit_drive])
     sequence.add(ro_pulses[qubit_readout])
+
 
     # define the parameter to sweep and its range:
     delta_coupler_frequency_range = np.arange(
@@ -259,7 +271,7 @@ def coupler_spectroscopy_double_freq(
         pulses=[cd_pulses[qubit_drive]],
     )
 
-    #Memory limitations on Zurich so I run the 2D scan on software
+    # Hardware frequency sweep may drive only a single oscillator (workaround ?)
     # sweeper_drive = Sweeper(
     #     Parameter.frequency,
     #     delta_drive_frequency_range,
@@ -278,7 +290,7 @@ def coupler_spectroscopy_double_freq(
     og_freq = qd_pulses[qubit_readout].frequency
     for freq in delta_drive_frequency_range:
         # platform.connect()
-
+        
         platform.qubits[2].drive_frequency = og_freq + freq
         qd_pulses[qubit_readout].frequency = og_freq + freq
 
@@ -298,8 +310,6 @@ def coupler_spectroscopy_double_freq(
             {
                 "frequency_coupler[Hz]": delta_coupler_frequency_range
                 + cd_pulses[qubit_drive].frequency,
-                # "frequency_drive[Hz]": delta_drive_frequency_range
-                # + qd_pulses[qubit_readout].frequency,
                 "frequency_drive[Hz]": len(delta_coupler_frequency_range)
                 * [qd_pulses[qubit_readout].frequency],
                 "qubit": len(delta_coupler_frequency_range) * [qubit_drive],
@@ -397,7 +407,7 @@ def coupler_spectroscopy_flux(
     qubit_readout = qubits[2].name  # Make general
 
     qd_pulses[qubit_readout] = platform.create_qubit_drive_pulse(
-        qubit_readout, start=500, duration=qubit_drive_duration
+        qubit_readout, start=0, duration=qubit_drive_duration
     )
 
     if qubit_drive_amplitude is not None:
@@ -406,7 +416,11 @@ def coupler_spectroscopy_flux(
     cd_pulses[qubit_drive] = platform.create_qubit_drive_pulse(
         qubit_drive, start=0, duration=coupler_drive_duration
     )
+    
+    qubits[4].drive.local_oscillator.frequency = coupler_frequency
+    qubits[4].drive_frequency = coupler_frequency
     cd_pulses[qubit_drive].frequency = coupler_frequency
+    
     if coupler_drive_amplitude is not None:
         cd_pulses[qubit_drive].amplitude = coupler_drive_amplitude
 
@@ -420,7 +434,7 @@ def coupler_spectroscopy_flux(
 
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(
-        -frequency_width // 2, frequency_width // 4, frequency_step
+        -frequency_width // 2, frequency_width // 2, frequency_step
     )
 
     sweeper = Sweeper(
