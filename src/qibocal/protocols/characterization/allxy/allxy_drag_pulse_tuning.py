@@ -17,8 +17,6 @@ class AllXYDragParameters(Parameters):
     beta_start: float
     beta_end: float
     beta_step: float
-    software_averages: int = 1
-
 
 @dataclass
 class AllXYDragResults(Results):
@@ -82,36 +80,35 @@ def _acquisition(
 
     # repeat the experiment as many times as defined by software_averages
     count = 0
-    for iteration in range(params.software_averages):
-        # sweep the parameters
-        for beta_param in np.arange(
-            params.beta_start, params.beta_end, params.beta_step
-        ).round(4):
-            gateNumber = 1
-            for gates in gatelist:
-                # create a sequence of pulses
-                ro_pulses = {}
-                sequence = PulseSequence()
-                for qubit in qubits:
-                    sequence, ro_pulses[qubit] = add_gate_pair_pulses_to_sequence(
-                        platform, gates, qubit, sequence, beta_param
-                    )
+    # sweep the parameters
+    for beta_param in np.arange(
+        params.beta_start, params.beta_end, params.beta_step
+    ).round(4):
+        gateNumber = 1
+        for gates in gatelist:
+            # create a sequence of pulses
+            ro_pulses = {}
+            sequence = PulseSequence()
+            for qubit in qubits:
+                sequence, ro_pulses[qubit] = add_gate_pair_pulses_to_sequence(
+                    platform, gates, qubit, sequence, beta_param
+                )
 
-            # execute the pulse sequence
-            results = platform.execute_pulse_sequence(sequence)
+        # execute the pulse sequence
+        results = platform.execute_pulse_sequence(sequence)
 
-            # retrieve the results for every qubit
-            for ro_pulse in ro_pulses.values():
-                z_proj = 2 * results[ro_pulse.serial].ground_state_probability - 1
-                # store the results
-                r = {
-                    "probability": z_proj,
-                    "gateNumber": gateNumber,
-                    "beta_param": beta_param,
-                    "qubit": ro_pulse.qubit,
-                }
-                data.add(r)
-            gateNumber += 1
+        # retrieve the results for every qubit
+        for ro_pulse in ro_pulses.values():
+            z_proj = 2 * results[ro_pulse.serial].ground_state_probability - 1
+            # store the results
+            r = {
+                "probability": z_proj,
+                "gateNumber": gateNumber,
+                "beta_param": beta_param,
+                "qubit": ro_pulse.qubit,
+            }
+            data.add(r)
+        gateNumber += 1
     # finally, save the remaining data
     return data
 

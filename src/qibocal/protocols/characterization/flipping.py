@@ -261,8 +261,8 @@ def _plot(data: FlippngData, fit: FlippingResults, qubit):
             ),
         )
         fitting_report = fitting_report + (
-            f"q{qubit}/r{report_n} | amplitude_correction_factor: {fit.amplitude_factors[qubit]:.4f}<br>"
-            + f"q{qubit}/r{report_n} | corrected_amplitude: {fit.amplitudes[qubit][0]:.4f}<br><br>"
+            f"q{qubit} | amplitude_correction_factor: {fit.amplitude_factors[qubit]:.4f}<br>"
+            + f"q{qubit} | corrected_amplitude: {fit.amplitudes[qubit][0]:.4f}<br><br>"
         )
 
     # last part
