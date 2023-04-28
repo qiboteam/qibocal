@@ -1,8 +1,8 @@
 import inspect
-from dataclasses import dataclass, field, fields
-from typing import Callable, Dict, Generic, NewType, Optional, TypeVar, Union
+from dataclasses import dataclass, fields
+from typing import Callable, Dict, Generic, NewType, TypeVar, Union
 
-from qibolab.platforms.abstract import AbstractPlatform, Qubit
+from qibolab.platforms.abstract import Qubit
 
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
