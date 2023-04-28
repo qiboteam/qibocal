@@ -96,26 +96,6 @@ def esprit(
     return decays**sampleRate
 
 
-def guess_exp1B(xdata, ydata):
-    """Calculate an initial guess for single exponential A*p^m+B fit to the given ydata.
-
-    Args:
-        xdata (Union[np.ndarray, list]): The x-labels.
-        ydata (Union[np.ndarray, list]): The data to be fitted.
-
-    Returns:
-        Tuple[tuple, tuple]: The initial guess of fitting parameters (A, p, B)
-    """
-    y_fft = fft(ydata)
-    freq = np.fft.fftfreq(len(ydata), xdata[1] - xdata[0])
-    max_idx = np.argmax(np.abs(y_fft))
-    max_freq = np.abs(freq[max_idx])
-    b_est = np.mean(ydata)
-    a_est = np.max(ydata) - b_est
-    p_est = np.exp(-max_freq * xdata[-1])
-    return (a_est, p_est, b_est)
-
-
 def fit_exp1B_func(
     xdata: Union[np.ndarray, list], ydata: Union[np.ndarray, list], **kwargs
 ) -> Tuple[tuple, tuple]:
@@ -136,7 +116,7 @@ def fit_exp1B_func(
         popt, perr = (ydata[0], 1.0, 0), (0, 0, 0)
     else:
         # Get a guess for the exponential function.
-        guess = kwargs.get("p0", guess_exp1B(xdata, ydata))
+        guess = kwargs.get("p0", (np.max(ydata) - np.mean(ydata), 0.9, np.mean(ydata)))
         # If the search for fitting parameters does not work just return
         # fixed parameters where one can see that the fit did not work
         try:
@@ -209,10 +189,7 @@ def fit_expn_func(
     # TODO how are the errors estimated?
     # TODO the data has to have a sufficiently big size, check that.
     decays = esprit(np.array(xdata), np.array(ydata), n)
-    # sampleRate = 1 / ((xdata[1]) - xdata[0])
     vandermonde = np.array([decays**x for x in xdata])
-    # vandermonde = np.vander(decays ** (1 / sampleRate), N=len(xdata), increasing=True)
-    # vandermonde = np.take(vandermonde, np.array(xdata * sampleRate, dtype=int), axis=1)
     alphas = np.linalg.pinv(vandermonde) @ np.array(ydata).reshape(-1, 1).flatten()
     return tuple([*alphas, *decays]), (0,) * (len(alphas) + len(decays))
 
