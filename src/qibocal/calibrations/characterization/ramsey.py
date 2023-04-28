@@ -233,15 +233,12 @@ def ramsey(
     delay_between_pulses_start,
     delay_between_pulses_end,
     delay_between_pulses_step,
-    nshots=1024,
-    relaxation_time=None,
     software_averages=1,
+    points=10,
 ):
     r"""
     The purpose of the Ramsey experiment is to determine two of the qubit's properties: Ramsey or detuning frequency and T2.
-
     Ramsey sequence: Rx(pi/2) - wait time - Rx(pi/2) - ReadOut
-
     Args:
         platform (AbstractPlatform): Qibolab platform object
         qubits (dict): Dict of target Qubit objects to perform the action
@@ -250,10 +247,8 @@ def ramsey(
         delay_between_pulses_step (int): Scan range step for the time delay between drive pulses in the Ramsey sequence
         software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
-
     Returns:
         - A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
-
             - **MSR[V]**: Resonator signal voltage mesurement in volts
             - **i[V]**: Resonator signal voltage mesurement for the component I in volts
             - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
@@ -262,9 +257,7 @@ def ramsey(
             - **t_max[ns]**: Maximum time delay between drive pulses in the Ramsey sequence
             - **qubit**: The qubit being tested
             - **iteration**: The iteration number of the many determined by software_averages
-
         - A DataUnits object with the fitted data obtained with the following keys
-
             - **delta_frequency**: Physical detunning of the actual qubit frequency
             - **drive_frequency**:
             - **T2**: New qubit frequency after correcting the actual qubit frequency with the detunning calculated
@@ -312,17 +305,12 @@ def ramsey(
     # additionally include wait time and t_max
     data = DataUnits(
         name=f"data",
-        quantities={"wait": "ns"},
+        quantities={"wait": "ns", "t_max": "ns"},
         options=["qubit", "iteration"],
     )
 
-    sweeper = Sweeper(
-        Parameter.delay,
-        waits,
-        [RX90_pulses2[qubit] for qubit in qubits],
-    )
-
     # repeat the experiment as many times as defined by software_averages
+    count = 0
     for iteration in range(software_averages):
         # sweep the parameter
         for wait in waits:
@@ -385,3 +373,128 @@ def ramsey(
             "T2",
         ],
     )
+
+
+@plot("MSR vs Time", plots.time_msr)
+def ramsey_sweep(
+    platform: AbstractPlatform,
+    qubits: dict,
+    delay_between_pulses_start,
+    delay_between_pulses_end,
+    delay_between_pulses_step,
+    nshots=1024,
+    relaxation_time=None,
+    software_averages=1,
+):
+    r"""
+    The purpose of the Ramsey experiment is to determine two of the qubit's properties: Ramsey or detuning frequency and T2.
+    Ramsey sequence: Rx(pi/2) - wait time - Rx(pi/2) - ReadOut
+    Args:
+        platform (AbstractPlatform): Qibolab platform object
+        qubits (dict): Dict of target Qubit objects to perform the action
+        delay_between_pulses_start (int): Initial time delay between drive pulses in the Ramsey sequence
+        delay_between_pulses_end (list): Maximum time delay between drive pulses in the Ramsey sequence
+        delay_between_pulses_step (int): Scan range step for the time delay between drive pulses in the Ramsey sequence
+        software_averages (int): Number of executions of the routine for averaging results
+        points (int): Save data results in a file every number of points
+    Returns:
+        - A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
+            - **MSR[V]**: Resonator signal voltage mesurement in volts
+            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
+            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
+            - **phase[rad]**: Resonator signal phase mesurement in radians
+            - **wait[ns]**: Wait time used in the current Ramsey execution
+            - **t_max[ns]**: Maximum time delay between drive pulses in the Ramsey sequence
+            - **qubit**: The qubit being tested
+            - **iteration**: The iteration number of the many determined by software_averages
+        - A DataUnits object with the fitted data obtained with the following keys
+            - **delta_frequency**: Physical detunning of the actual qubit frequency
+            - **drive_frequency**:
+            - **T2**: New qubit frequency after correcting the actual qubit frequency with the detunning calculated
+            - **popt0**: offset
+            - **popt1**: oscillation amplitude
+            - **popt2**: frequency
+            - **popt3**: phase
+            - **popt4**: T2
+            - **qubit**: The qubit being tested
+    """
+
+    # reload instrument settings from runcard
+    platform.reload_settings()
+
+    # create a sequence of pulses for the experiment
+    # RX90 - t - RX90 - MZ
+    ro_pulses = {}
+    RX90_pulses1 = {}
+    RX90_pulses2 = {}
+    sequence = PulseSequence()
+    for qubit in qubits:
+        RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
+        RX90_pulses2[qubit] = platform.create_RX90_pulse(
+            qubit, start=RX90_pulses1[qubit].finish
+        )
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+            qubit, start=RX90_pulses2[qubit].finish
+        )
+        sequence.add(RX90_pulses1[qubit])
+        sequence.add(RX90_pulses2[qubit])
+        sequence.add(ro_pulses[qubit])
+
+    # define the parameter to sweep and its range:
+    # wait time between RX90 pulses
+    waits = np.arange(
+        delay_between_pulses_start,
+        delay_between_pulses_end,
+        delay_between_pulses_step,
+    )
+
+    sampling_rate = platform.sampling_rate
+
+    # create a DataUnits object to store the results,
+    # DataUnits stores by default MSR, phase, i, q
+    # additionally include wait time and t_max
+    data = DataUnits(
+        name=f"data",
+        quantities={"wait": "ns"},
+        options=["qubit", "iteration"],
+    )
+
+    sweeper = Sweeper(
+        Parameter.delay,
+        waits,
+        [RX90_pulses1[qubit] for qubit in qubits],
+    )
+
+    # repeat the experiment as many times as defined by software_averages
+    for iteration in range(software_averages):
+        # sweep the parameter
+        results = platform.sweep(
+            sequence, sweeper, nshots=nshots, relaxation_time=relaxation_time
+        )
+        for qubit in qubits:
+            result = results[ro_pulses[qubit].serial]
+            r = result.to_dict(average=False)
+            r.update(
+                {
+                    "wait[ns]": waits,
+                    "qubit": len(waits) * [qubit],
+                    "iteration": len(waits) * [iteration],
+                }
+            )
+            data.add_data_from_dict(r)
+        yield data
+        # yield ramsey_fit(
+        #     data,
+        #     x="wait[ns]",
+        #     y="MSR[uV]",
+        #     qubits=qubits,
+        #     resonator_type=platform.resonator_type,
+        #     qubit_freqs={qubit: qubits[qubit].drive_frequency for qubit in qubits},
+        #     sampling_rate=sampling_rate,
+        #     offset_freq=0,
+        #     labels=[
+        #         "delta_frequency",
+        #         "drive_frequency",
+        #         "T2",
+        #     ],
+        # )

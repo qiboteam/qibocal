@@ -92,48 +92,30 @@ def t1_sweep(
     # repeat the experiment as many times as defined by software_averages
     for iteration in range(software_averages):
         # sweep the parameter
-        for wait in ro_wait_range:
-            # save data as often as defined by points
-            if count % points == 0 and count > 0:
-                # save data
-                yield data
-                # calculate and save fit
-                yield t1_fit(
-                    data,
-                    x="wait[ns]",
-                    y="MSR[uV]",
-                    qubits=qubits,
-                    resonator_type=platform.resonator_type,
-                    labels=["T1"],
-                )
+        results = platform.sweep(
+            sequence, sweeper, nshots=nshots, relaxation_time=relaxation_time
+        )
+        for qubit in qubits:
+            result = results[ro_pulses[qubit].serial]
+            r = result.to_dict(average=False)
+            r.update(
+                {
+                    "wait[ns]": ro_wait_range,
+                    "qubit": len(ro_wait_range) * [qubit],
+                    "iteration": len(ro_wait_range) * [iteration],
+                }
+            )
+            data.add_data_from_dict(r)
+        yield data
 
-            for qubit in qubits:
-                ro_pulses[qubit].start = qd_pulses[qubit].duration + wait
-
-            # execute the pulse sequence
-            results = platform.execute_pulse_sequence(sequence)
-
-            for ro_pulse in ro_pulses.values():
-                # average msr, phase, i and q over the number of shots defined in the runcard
-                r = results[ro_pulse.serial].to_dict(average=True)
-                r.update(
-                    {
-                        "wait[ns]": wait,
-                        "qubit": ro_pulse.qubit,
-                        "iteration": iteration,
-                    }
-                )
-                data.add(r)
-            count += 1
-    yield data
-    yield t1_fit(
-        data,
-        x="wait[ns]",
-        y="MSR[uV]",
-        qubits=qubits,
-        resonator_type=platform.resonator_type,
-        labels=["T1"],
-    )
+        yield t1_fit(
+            data,
+            x="wait[ns]",
+            y="MSR[uV]",
+            qubits=qubits,
+            resonator_type=platform.resonator_type,
+            labels=["T1"],
+        )
 
 
 @plot("MSR vs Time", plots.t1_time_msr)

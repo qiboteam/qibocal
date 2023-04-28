@@ -981,7 +981,7 @@ def spin_echo_fit(data, x, y, qubits, resonator_type, labels):
     return data_fit
 
 
-def calibrate_qubit_states_fit(data, x, y, nshots, qubits, degree=True, degree=True):
+def calibrate_qubit_states_fit(data, x, y, nshots, qubits, degree=True):
     parameters = Data(
         name=f"parameters",
         quantities={
@@ -1065,7 +1065,7 @@ def calibrate_qubit_states_fit(data, x, y, nshots, qubits, degree=True, degree=T
             rotation_angle = (rotation_angle * 360 / (2 * np.pi)) % 360
 
         results = {
-            "rotation_angle": rotation_angle, #Check if some devices work with + or -
+            "rotation_angle": rotation_angle,  # Check if some devices work with + or -
             "threshold": threshold,
             "fidelity": fidelity,
             "assignment_fidelity": assignment_fidelity,

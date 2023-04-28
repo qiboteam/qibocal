@@ -9,7 +9,7 @@ from qibocal.decorators import plot
 from qibocal.fitting.methods import lorentzian_fit
 
 
-@plot("MSR and Phase vs Qubit Drive Frequency", plots.coupler_frequency_msr_phase)
+@plot("MSR and Phase vs Qubit Drive Frequency", plots.frequency_msr_phase)
 def coupler_spectroscopy(
     platform: AbstractPlatform,
     qubits: dict,
@@ -37,7 +37,7 @@ def coupler_spectroscopy(
         coupler_drive_amplitude (float) : Amplitude in A.U. of the coupler driving pulse
         qubit_drive_amplitude (float) : Amplitude in A.U. of the qubit driving pulse
         nshots (int) : Number of executions on hardware of the routine for averaging results
-        relaxation_time (float): Wait time for the qubit to decohere back to the `gnd` state 
+        relaxation_time (float): Wait time for the qubit to decohere back to the `gnd` state
 
     Returns:
         - DataUnits object with the raw data obtained for the sweep with the following keys
@@ -60,7 +60,7 @@ def coupler_spectroscopy(
             - **popt2**: Lorentzian's sigma
             - **popt3**: Lorentzian's offset
     """
-    
+
     # create a sequence of pulses for the experiment:
     # long weak drive probing pulse - MZ
 
@@ -76,11 +76,11 @@ def coupler_spectroscopy(
     cd_pulses[qubit_drive] = platform.create_qubit_drive_pulse(
         qubit_drive, start=0, duration=coupler_drive_duration
     )
-    
+
     qubits[4].drive.local_oscillator.frequency = coupler_frequency - 100_000_000
     qubits[4].drive_frequency = coupler_frequency
     cd_pulses[qubit_drive].frequency = coupler_frequency
-    
+
     if coupler_drive_amplitude is not None:
         cd_pulses[qubit_drive].amplitude = coupler_drive_amplitude
 
@@ -128,12 +128,11 @@ def coupler_spectroscopy(
     # retrieve the results for every qubit
     ro_pulse = ro_pulses[qubit_readout]
     result = results[ro_pulse.serial]
-    r = result.to_dict(average=False)
+    r = result.raw
     # store the results
     r.update(
         {
-            "frequency[Hz]": delta_frequency_range
-            + cd_pulses[qubit_drive].frequency,
+            "frequency[Hz]": delta_frequency_range + cd_pulses[qubit_drive].frequency,
             "qubit": len(delta_frequency_range) * [qubit_drive],
             "iteration": len(delta_frequency_range) * [iteration],
         }
@@ -141,7 +140,7 @@ def coupler_spectroscopy(
     sweep_data.add_data_from_dict(r)
 
     yield sweep_data
-    
+
     # calculate and save fit
     # yield lorentzian_fit(
     #     sweep_data,
@@ -218,8 +217,8 @@ def coupler_spectroscopy_double_freq(
     cd_pulses = {}
     # for qubit in qubits:
 
-    #FIXME: Frequency results may be wrong
-    
+    # FIXME: Frequency results may be wrong
+
     qubit_drive = qubits[4].name
     # qubit_drive = qubits[0].name
     qubit_readout = qubits[2].name  # Make general
@@ -227,11 +226,11 @@ def coupler_spectroscopy_double_freq(
     cd_pulses[qubit_drive] = platform.create_qubit_drive_pulse(
         qubit_drive, start=0, duration=coupler_drive_duration
     )
-    
+
     qubits[4].drive.local_oscillator.frequency = coupler_frequency
     qubits[4].drive_frequency = coupler_frequency
     cd_pulses[qubit_drive].frequency = coupler_frequency
-    
+
     if coupler_drive_amplitude is not None:
         cd_pulses[qubit_drive].amplitude = coupler_drive_amplitude
 
@@ -253,7 +252,6 @@ def coupler_spectroscopy_double_freq(
     sequence.add(cd_pulses[qubit_drive])
     sequence.add(ro_pulses[qubit_readout])
 
-
     # define the parameter to sweep and its range:
     delta_coupler_frequency_range = np.arange(
         -frequency_coupler_width // 2,
@@ -272,11 +270,11 @@ def coupler_spectroscopy_double_freq(
     )
 
     # Hardware frequency sweep may drive only a single oscillator (workaround ?)
-    # sweeper_drive = Sweeper(
-    #     Parameter.frequency,
-    #     delta_drive_frequency_range,
-    #     pulses=[qd_pulses[qubit_readout]],
-    # )
+    sweeper_drive = Sweeper(
+        Parameter.frequency,
+        delta_drive_frequency_range,
+        pulses=[qd_pulses[qubit_readout]],
+    )
 
     # create a DataUnits object to store the results,
     sweep_data = DataUnits(
@@ -288,39 +286,79 @@ def coupler_spectroscopy_double_freq(
     # repeat the experiment as many times as defined by nshots
     iteration = [0]
     og_freq = qd_pulses[qubit_readout].frequency
-    for freq in delta_drive_frequency_range:
-        # platform.connect()
-        
-        platform.qubits[2].drive_frequency = og_freq + freq
-        qd_pulses[qubit_readout].frequency = og_freq + freq
 
-        results = platform.sweep(
-            sequence,
-            sweeper_coupler,
-            nshots=nshots,
-            relaxation_time=relaxation_time,
-        )
+    platform.qubits[2].drive_frequency = og_freq
+    qd_pulses[qubit_readout].frequency = og_freq
 
-        # retrieve the results for every qubit
-        ro_pulse = ro_pulses[qubit_readout]
-        result = results[ro_pulse.serial]
-        r = result.to_dict(average=False)
-        # store the results
-        r.update(
-            {
-                "frequency_coupler[Hz]": delta_coupler_frequency_range
-                + cd_pulses[qubit_drive].frequency,
-                "frequency_drive[Hz]": len(delta_coupler_frequency_range)
-                * [qd_pulses[qubit_readout].frequency],
-                "qubit": len(delta_coupler_frequency_range) * [qubit_drive],
-                "iteration": len(delta_coupler_frequency_range) * [iteration],
-            }
-        )
-        sweep_data.add_data_from_dict(r)
-        # platform.disconnect()
+    results = platform.sweep(
+        sequence,
+        sweeper_coupler,
+        sweeper_drive,
+        nshots=nshots,
+        relaxation_time=relaxation_time,
+    )
+
+    # retrieve the results for every qubit
+    ro_pulse = ro_pulses[qubit_readout]
+    result = results[ro_pulse.serial]
+    # r = result.to_dict(average=False)
+
+    # store the results
+    drive_freqs = (
+        np.repeat(delta_drive_frequency_range, len(delta_coupler_frequency_range))
+        + qd_pulses[qubit_readout].frequency
+    )
+    coupler_freqs = np.array(
+        len(delta_drive_frequency_range)
+        * list(delta_coupler_frequency_range + cd_pulses[qubit_drive].frequency)
+    ).flatten()
+    r = {k: v.ravel() for k, v in result.raw.items()}
+    r.update(
+        {
+            "frequency_coupler[Hz]": coupler_freqs,
+            "frequency_drive[Hz]": drive_freqs,
+            "qubit": len(coupler_freqs) * [qubit_drive],
+            "iteration": len(coupler_freqs) * [iteration],
+        }
+    )
+    sweep_data.add_data_from_dict(r)
+    # platform.disconnect()
 
     yield sweep_data
-    
+
+    # for freq in delta_drive_frequency_range:
+    #     # platform.connect()
+
+    #     platform.qubits[2].drive_frequency = og_freq + freq
+    #     qd_pulses[qubit_readout].frequency = og_freq + freq
+
+    #     results = platform.sweep(
+    #         sequence,
+    #         sweeper_coupler,
+    #         nshots=nshots,
+    #         relaxation_time=relaxation_time,
+    #     )
+
+    #     # retrieve the results for every qubit
+    #     ro_pulse = ro_pulses[qubit_readout]
+    #     result = results[ro_pulse.serial]
+    #     r = result.to_dict(average=False)
+    #     # store the results
+    #     r.update(
+    #         {
+    #             "frequency_coupler[Hz]": delta_coupler_frequency_range
+    #             + cd_pulses[qubit_drive].frequency,
+    #             "frequency_drive[Hz]": len(delta_coupler_frequency_range)
+    #             * [qd_pulses[qubit_readout].frequency],
+    #             "qubit": len(delta_coupler_frequency_range) * [qubit_drive],
+    #             "iteration": len(delta_coupler_frequency_range) * [iteration],
+    #         }
+    #     )
+    #     sweep_data.add_data_from_dict(r)
+    #     # platform.disconnect()
+
+    # yield sweep_data
+
     # calculate and save fit
     # yield lorentzian_fit(
     #     sweep_data,
@@ -370,7 +408,7 @@ def coupler_spectroscopy_flux(
         coupler_line (str): Name of the coupler qubit
         nshots (int) : Number of executions on hardware of the routine for averaging results
         relaxation_time (float): Wait time for the qubit to decohere back to the `gnd` state
-    
+
     Returns:
         - DataUnits object with the raw data obtained for the sweep with the following keys
 
@@ -416,11 +454,11 @@ def coupler_spectroscopy_flux(
     cd_pulses[qubit_drive] = platform.create_qubit_drive_pulse(
         qubit_drive, start=0, duration=coupler_drive_duration
     )
-    
+
     qubits[4].drive.local_oscillator.frequency = coupler_frequency
     qubits[4].drive_frequency = coupler_frequency
     cd_pulses[qubit_drive].frequency = coupler_frequency
-    
+
     if coupler_drive_amplitude is not None:
         cd_pulses[qubit_drive].amplitude = coupler_drive_amplitude
 
@@ -504,7 +542,7 @@ def coupler_spectroscopy_flux(
     sweep_data.add_data_from_dict(r)
 
     yield sweep_data
-    
+
     # calculate and save fit
     # yield lorentzian_fit(
     #     sweep_data,
