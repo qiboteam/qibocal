@@ -271,7 +271,8 @@ def update_meta(metadata, metadata_new):
     metadata["backend"] = metadata["backend"] + " , " + metadata_new["backend"]
     metadata["date"] = metadata["date"] + " , " + metadata_new["date"]
     metadata["end-time"] = metadata["end-time"] + " , " + metadata_new["end-time"]
-    metadata["platform"] = metadata["platform"] + " , " + metadata_new["platform"]
+    if "platform" in metadata:
+        metadata["platform"] = metadata["platform"] + " , " + metadata_new["platform"]
     metadata["start-time"] = metadata["start-time"] + " , " + metadata_new["start-time"]
     metadata["title"] = metadata["title"] + " , " + metadata_new["title"]
     metadata["versions"]["numpy"] = (
@@ -283,9 +284,12 @@ def update_meta(metadata, metadata_new):
     metadata["versions"]["qibocal"] = (
         metadata["versions"]["qibocal"] + " , " + metadata_new["versions"]["qibocal"]
     )
-    metadata["versions"]["qibolab"] = (
-        metadata["versions"]["qibolab"] + " , " + metadata_new["versions"]["qibolab"]
-    )
+    if "qibolab" in metadata["versions"]:
+        metadata["versions"]["qibolab"] = (
+            metadata["versions"]["qibolab"]
+            + " , "
+            + metadata_new["versions"]["qibolab"]
+        )
     with open(f"{TARGET_COMPARE_DIR}/meta.yml", "w") as file:
         yaml.safe_dump(metadata, file)
 

@@ -1,4 +1,4 @@
-""" Costum error models are build here for making it possible to pass
+""" Custom error models are build here for making it possible to pass
 strings describing the error model via runcards in qibocal.
 They inherit from the qibo noise NoiseModel module and are prebuild.
 """
@@ -10,9 +10,9 @@ from qibo.noise import NoiseModel, PauliError
 from qibocal.config import raise_error
 
 
-class PauliErrorOnUnitary(NoiseModel):
-    """Builds a noise model with pauli flips acting on unitaries.
-
+class PauliErrorOnAll(NoiseModel):
+    """Builds a noise model with pauli flips
+    acting on all gates in a Circuit.
     If no initial parameters for px, py, pz are given, random values
     are drawn (in sum not bigger than 1).
     """
@@ -34,14 +34,13 @@ class PauliErrorOnUnitary(NoiseModel):
         self.build(*params)
 
     def build(self, *params):
-        # Add PauliError to gates.Unitary
-        self.add(PauliError(*params), gates.Unitary)
+        # Add PauliError to gates.Gate
+        self.add(PauliError(*params))
 
 
-class PauliErrorOnX(PauliErrorOnUnitary):
+class PauliErrorOnX(PauliErrorOnAll):
     """Builds a noise model with pauli flips acting on X gates.
-
-    Inherited from ``PauliErrorOnUnitary`` but the ``build`` method is
+    Inherited from ``PauliErrorOnAll`` but the ``build`` method is
     overwritten to act on X gates.
     If no initial parameters for px, py, pz are given, random values
     are drawn (in sum not bigger than 1).

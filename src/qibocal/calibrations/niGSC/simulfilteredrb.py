@@ -65,7 +65,7 @@ class ModuleExperiment(Experiment):
         return datadict
 
 
-class moduleReport(Report):
+class ModuleReport(Report):
     def __init__(self) -> None:
         super().__init__()
         self.title = "Correlated Filtered Randomized Benchmarking"
@@ -210,7 +210,8 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
     """
 
     # Initiate a report object.
-    report = moduleReport()
+    report = ModuleReport()
+    fitting_report = ""
     # Add general information to the object.
     report.info_dict["Number of qubits"] = len(experiment.data[0]["samples"][0])
     report.info_dict["Number of shots"] = len(experiment.data[0]["samples"])
@@ -218,7 +219,7 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
     lambdas = iter(product([0, 1], repeat=int(report.info_dict["Number of qubits"])))
     for kk, l in enumerate(lambdas):
         # Add the fitting errors which will be displayed in a box under the plots.
-        report.info_dict[f"Fitting daviations irrep {l}"] = "".join(
+        report.info_dict[f"Fitting deviations irrep {l}"] = "".join(
             [
                 "{}:{:.3f} ".format(key, df_aggr.loc[f"irrep{kk}"]["perr"][key])
                 for key in df_aggr.loc[f"irrep{kk}"]["perr"]
@@ -230,4 +231,4 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
         # Add a subplot title for each irrep.
         figdict["subplot_title"] = f"Irrep {l}"
         report.all_figures.append(figdict)
-    return report.build()
+    return report.build(), fitting_report

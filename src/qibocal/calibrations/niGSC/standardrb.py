@@ -96,7 +96,7 @@ class ModuleExperiment(Experiment):
         return datarow
 
 
-class moduleReport(Report):
+class ModuleReport(Report):
     def __init__(self) -> None:
         super().__init__()
         self.title = "Standard Randomized Benchmarking"
@@ -194,12 +194,13 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
     """
 
     # Initiate a report object.
-    report = moduleReport()
+    report = ModuleReport()
+    fitting_report = ""
     # Add general information to the object.
     report.info_dict["Number of qubits"] = len(experiment.data[0]["samples"][0])
     report.info_dict["Number of shots"] = len(experiment.data[0]["samples"])
     report.info_dict["runs"] = experiment.extract("samples", "depth", "count")[1][0]
-    report.info_dict["Fitting daviations"] = "".join(
+    report.info_dict["Fitting deviations"] = "".join(
         [
             "{}:{:.3f} ".format(key, df_aggr.iloc[0]["perr"][key])
             for key in df_aggr.iloc[0]["perr"]
@@ -218,4 +219,4 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
         scatter_fit_fig(experiment, df_aggr, "depth", "groundstate probability")
     )
     # Return the figure the report object builds out of all figures added to the report.
-    return report.build()
+    return report.build(), fitting_report

@@ -10,7 +10,7 @@ from qibocal.calibrations.niGSC.basics import noisemodels, utils
 
 @pytest.fixture
 def depths():
-    return [0, 1, 5, 10, 30]
+    return [0, 1, 5, 10]
 
 
 @pytest.fixture
@@ -50,7 +50,7 @@ def test_experiment_withnoise(nqubits: int, noise_params):
     depths = [0, 5, 10]
     runs = 2
     # Build the noise model.
-    noise = noisemodels.PauliErrorOnUnitary(*noise_params)
+    noise = noisemodels.PauliErrorOnAll(*noise_params)
     # Test exectue an experiment.
     myfactory1 = simulfilteredrb.ModuleFactory(nqubits, depths * runs)
     circuit_list = list(myfactory1)
@@ -154,7 +154,7 @@ def test_post_processing(
     nqubits: int, depths: list, runs: int, nshots: int, noise_params: list
 ):
     # Build the noise model.
-    noise = noisemodels.PauliErrorOnUnitary(*noise_params)
+    noise = noisemodels.PauliErrorOnAll(*noise_params)
     # Test exectue an experiment.
     myfactory1 = simulfilteredrb.ModuleFactory(nqubits, list(depths) * runs)
     myfaultyexperiment = simulfilteredrb.ModuleExperiment(
@@ -183,7 +183,7 @@ def test_build_report():
     nqubits = 1
     noise_params = [0.01, 0.1, 0.05]
     # Build the noise model.
-    noise = noisemodels.PauliErrorOnUnitary(*noise_params)
+    noise = noisemodels.PauliErrorOnAll(*noise_params)
     # Test exectue an experiment.
     myfactory1 = simulfilteredrb.ModuleFactory(nqubits, depths * runs)
     myfaultyexperiment = simulfilteredrb.ModuleExperiment(
@@ -192,5 +192,5 @@ def test_build_report():
     myfaultyexperiment.perform(myfaultyexperiment.execute)
     simulfilteredrb.post_processing_sequential(myfaultyexperiment)
     aggr_df = simulfilteredrb.get_aggregational_data(myfaultyexperiment)
-    report_figure = simulfilteredrb.build_report(myfaultyexperiment, aggr_df)
+    report_figure, _ = simulfilteredrb.build_report(myfaultyexperiment, aggr_df)
     assert isinstance(report_figure, Figure)

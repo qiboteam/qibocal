@@ -49,13 +49,9 @@ class ModuleFactory(CircuitFactory):
     def build_circuit(self, depth: int):
         # Initiate the empty circuit from qibo with 'self.nqubits'
         # many qubits.
-        circuit = Circuit(1, density_matrix=True)
-        # There are only two gates to choose from for every qubit.
-        a = [gates.I(0), gates.X(0)]
-        # Draw sequence length many zeros and ones.
-        random_ints = np.random.randint(0, 2, size=depth)
-        # Get the Xs and Ids with random_ints as indices.
-        gate_lists = np.take(a, random_ints)
+        circuit = Circuit(1)
+        # Draw sequence length many I and X gates.
+        gate_lists = np.random.choice([gates.I(0), gates.X(0)], size=depth)
         # Add gates to circuit.
         circuit.add(gate_lists)
         circuit.add(gates.M(0))
@@ -72,18 +68,20 @@ class ModuleExperiment(Experiment):
         noise_model: NoiseModel = None,
     ) -> None:
         super().__init__(circuitfactory, data, nshots, noise_model)
+        # Make the circuitfactory a list be able to store them using save_circuits method.
+        self.prebuild()
         self.name = "XIdRB"
 
     def execute(self, circuit: Circuit, datarow: dict) -> dict:
         datadict = super().execute(circuit, datarow)
         datadict["depth"] = circuit.ngates - 1
-        # TODO change that.
-        datadict["countX"] = circuit.gate_types["x"]
+        # TODO change to circuit.gate_types["x"] for next Qibo version
+        datadict["countX"] = len(circuit.gates_of_type("x"))
         return datadict
 
 
 # Define the result class for this specific module.
-class moduleReport(Report):
+class ModuleReport(Report):
     def __init__(self) -> None:
         super().__init__()
         self.title = "X-Id Benchmarking"
@@ -137,13 +135,14 @@ def post_processing_sequential(experiment: Experiment):
 # After the row by row execution of tasks comes the aggregational task. Something like calculation
 # of means, deviations, fitting data, tasks where the whole data as to be looked at, and not just
 # one instance of circuit + other information.
-def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
+def get_aggregational_data(experiment: Experiment, ndecays: int = 2) -> pd.DataFrame:
     """Computes aggregational tasks, fits data and stores the results in a data frame.
 
     No data is manipulated in the ``experiment`` object.
 
     Args:
         experiment (Experiment): After sequential postprocessing of the experiment data.
+        ndecays (int): Number of decays to be fitted. Default is 2.
 
     Returns:
         pd.DataFrame: The summarized data.
@@ -152,39 +151,26 @@ def get_aggregational_data(experiment: Experiment) -> pd.DataFrame:
     depths, ydata = experiment.extract("filter", "depth", "mean")
     _, ydata_std = experiment.extract("filter", "depth", "std")
     # Fit the filtered signal for each depth, there could be two overlaying exponential functions.
-    popt, perr = fitting_methods.fit_exp2_func(depths, ydata)
+    popt, perr = fitting_methods.fit_expn_func(depths, ydata, n=ndecays)
+    # Create dictionaries with fitting parameters and estimated errors in the form {A1: ..., p1: ..., A2: ..., p2: ...}
+    popt_keys = [f"A{k+1}" for k in range(ndecays)]
+    popt_keys += [f"p{k+1}" for k in range(ndecays)]
+    popt_dict = dict(zip(popt_keys, popt))
+    perr_keys = [f"A{k+1}_err" for k in range(ndecays)]
+    perr_keys += [f"p{k+1}_err" for k in range(ndecays)]
+    perr_dict = dict(zip(perr_keys, perr))
     # Build a list of dictionaries with the aggregational information.
     data = [
         {
             "depth": depths,  # The x-axis.
             "data": ydata,  # The filtred signal.
             "2sigma": 2 * ydata_std,  # The 2 * standard deviation error for each depth.
-            "fit_func": "exp2_func",  # Which function was used to fit.
-            "popt_real": {
-                "A1_real": np.real(
-                    popt[0]
-                ),  # The complex prefactors would lead to imaginary data.
-                "A2_real": np.real(
-                    popt[1]
-                ),  # That's why they have to be stored seperatly.
-                "p1": popt[2],
-                "p2": popt[3],
-            },  # The real fitting parameters.
-            "perr": {
-                "A1_err": perr[0],
-                "A2_err": perr[1],
-                "p1_err": perr[2],
-                "p2_err": perr[3],
-            },  # The estimated errors.
+            "fit_func": "expn_func",  # Which function was used to fit.
+            "popt": popt_dict,  # The real fitting parameters.
+            "perr": perr_dict,  # The estimated errors.
         }
     ]
-    if np.iscomplex(popt[0]) or np.iscomplex(popt[1]):
-        data[0]["popt_imag"] = {
-            "A1_imag": np.imag(popt[0]),
-            "A2_imag": np.imag(popt[1]),
-            "p1": popt[2],
-            "p2": popt[3],
-        }  # The imaginary fitting parameters.
+
     df = pd.DataFrame(data, index=["filter"])
     return df
 
@@ -204,12 +190,13 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
     """
 
     # Initiate a report object.
-    report = moduleReport()
+    report = ModuleReport()
+    fitting_report = ""
     # Add general information to the object.
     report.info_dict["Number of qubits"] = len(experiment.data[0]["samples"][0])
     report.info_dict["Number of shots"] = len(experiment.data[0]["samples"])
     report.info_dict["runs"] = experiment.extract("samples", "depth", "count")[1][0]
-    report.info_dict["Fitting daviations"] = "".join(
+    report.info_dict["Fitting deviations"] = "".join(
         [
             "{}:{:.3f} ".format(key, df_aggr.loc["filter"]["perr"][key])
             for key in df_aggr.loc["filter"]["perr"]
@@ -218,16 +205,6 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
     # Use the predefined ``scatter_fit_fig`` function from ``basics.utils`` to build the wanted
     # plotly figure with the scattered filtered data along with the mean for
     # each depth and the exponential fit for the means.
-    report.all_figures.append(
-        scatter_fit_fig(
-            experiment, df_aggr, "depth", "filter", fittingparam_label="popt_real"
-        )
-    )
-    if "popt_imag" in df_aggr:
-        report.all_figures.append(
-            scatter_fit_fig(
-                experiment, df_aggr, "depth", "filter", fittingparam_label="popt_imag"
-            )
-        )
+    report.all_figures.append(scatter_fit_fig(experiment, df_aggr, "depth", "filter"))
     # Return the figure the report object builds out of all figures added to the report.
-    return report.build()
+    return report.build(), fitting_report

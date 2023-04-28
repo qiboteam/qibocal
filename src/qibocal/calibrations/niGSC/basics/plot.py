@@ -4,14 +4,11 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
-from qibocal.calibrations.niGSC.basics import utils
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
 
 
 def plot_qq(folder: str, routine: str, qubit, format):
-    fitting_report = ""
     """Load the module for which the plot has to be done.
-
 
     Args:
         folder (str): The folder path where the data was stored.
@@ -33,7 +30,7 @@ def plot_qq(folder: str, routine: str, qubit, format):
     # parameters for fitting and plotting are stored.
     aggr_df = pd.read_pickle(f"{folder}/data/{routine}/fit_plot.pkl")
     # Build the figure/report using the responsible module.
-    plotly_figure = module.build_report(experiment, aggr_df)
+    plotly_figure, fitting_report = module.build_report(experiment, aggr_df)
     return [plotly_figure], fitting_report
 
 
@@ -110,12 +107,27 @@ def scatter_fit_fig(
     index: str,
     fittingparam_label="popt",
 ):
+    """
+    Generate a figure dictionary for plotly.
+
+    Args:
+        experiment (:class:`qibocal.calibrations.niGSC.basics.experiment.Experiment`):
+            an RB experiment that contains a dataframe with the information for the figure.
+        df_aggr (pd.DataFrame): DataFrame containing aggregational data about the RB experiment.
+        xlabel (str): key for x values in experiment.dataframe[xlabel] and df_aggr[xlabel].
+        index (str): key for y values in experiment.dataframe[index] and df_aggr[index].
+        fittingparam_label (str): key in df_aggr with a dictionary containing the parameters
+        for the dfrow["fit_func"]. Default is "popt".
+
+    Returns:
+        dict: dictionary for the plotly figure.
+    """
     fig_traces = []
     dfrow = df_aggr.loc[index]
     fig_traces.append(
         go.Scatter(
             x=experiment.dataframe[xlabel],
-            y=experiment.dataframe[index],
+            y=np.real(experiment.dataframe[index]),
             line=dict(color="#6597aa"),
             mode="markers",
             marker={"opacity": 0.2, "symbol": "square"},
@@ -125,34 +137,25 @@ def scatter_fit_fig(
     fig_traces.append(
         go.Scatter(
             x=dfrow[xlabel],
-            y=dfrow["data"],
+            y=np.real(dfrow["data"]),
             line=dict(color="#aa6464"),
             mode="markers",
             name="average",
         )
     )
     x_fit = np.linspace(min(dfrow[xlabel]), max(dfrow[xlabel]), len(dfrow[xlabel]) * 20)
-    if "imag" in fittingparam_label:
-        y_fit = np.imag(
-            getattr(fitting_methods, dfrow["fit_func"])(
-                x_fit, *dfrow[fittingparam_label].values()
-            )
+    y_fit = np.real(
+        getattr(fitting_methods, dfrow["fit_func"])(
+            x_fit, *dfrow[fittingparam_label].values()
         )
-    else:
-        y_fit = np.real(
-            getattr(fitting_methods, dfrow["fit_func"])(
-                x_fit, *dfrow[fittingparam_label].values()
-            )
-        )
+    )
     fig_traces.append(
         go.Scatter(
             x=x_fit,
             y=y_fit,
             name="".join(
                 [
-                    "{}:{} ".format(
-                        key, utils.number_to_str(dfrow[fittingparam_label][key])
-                    )
+                    f"{key}:{dfrow[fittingparam_label][key]:.3f} "
                     for key in dfrow[fittingparam_label]
                 ]
             ),

@@ -4,10 +4,10 @@ import re
 import time
 
 import pandas as pd
-import yaml
 from dash import Dash, Input, Output, dcc, html
 
 from qibocal import plots
+from qibocal.calibrations.niGSC.basics.plot import plot_qq
 from qibocal.data import DataUnits
 from qibocal.web.server import server
 
@@ -95,6 +95,12 @@ def get_graph(interval, url, value):
         # # should be changed to:
         # # return getattr(getattr(plots, routine), method)(data)
         figs, fitting_report = getattr(plots, method)(folder, routine, qubit, format)
+        if hasattr(plots, method):
+            figs, fitting_report = getattr(plots, method)(
+                folder, routine, qubit, format
+            )
+        else:
+            figs, fitting_report = plot_qq(folder, routine, qubit, format)
         et = time.time()
 
         if value == 0:
