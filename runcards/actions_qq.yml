@@ -1,21 +1,20 @@
-# platform: qili1q_os2
+platform: qblox
 
-platform: qw5q_gold_qblox
+runcard: /home/users/david.fuentes/qibolab/src/qibolab/runcards/qw5q_gold_qblox.yml
 
 # Instructions: Uncomment whatever you would like to run!
 
-qubits: [0, 1, 2, 3, 4]
-#qubits: [1]
+qubits: [2]
 
 format: csv
 
 actions:
 
-  # resonator_spectroscopy:
-  #  freq_width: 10_000_000
-  #  freq_step: 500_000
-  #  relaxation_time: 10
-  #  nshots: 1024
+  resonator_spectroscopy:
+   freq_width: 2_500_000
+   freq_step: 100_000
+   relaxation_time: 0
+   nshots: 1024
 
   # resonator_punchout_attenuation:
   #   freq_width: 10_000_000
@@ -133,11 +132,11 @@ actions:
   #   software_averages: 1
   #   points: 1
 
-  dispersive_shift:
-    freq_width: 10_000_000
-    freq_step: 400_000
-    software_averages: 2
-    points: 5
+  # dispersive_shift:
+  #   freq_width: 10_000_000
+  #   freq_step: 400_000
+  #   software_averages: 2
+  #   points: 5
 
   #tune_transition:
   #  flux_pulse_duration_start: 0
@@ -197,7 +196,7 @@ actions:
   #   delay_between_pulses_start: 4
   #   delay_between_pulses_end: 10000
   #   delay_between_pulses_step: 200
-  #   software_averages: 2
+  #   software_averages: 1
   #   points: 5
 
   # flipping:

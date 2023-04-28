@@ -20,18 +20,18 @@ actions:
   #     nshots: 1024
   #     relaxation_time: 0
 
-  # # - id: resonator punchout
-  # #   priority: 0
-  # #   operation: resonator_punchout
-  # #   # main: resonator_spectroscopy low power
-  # #   parameters:
-  # #     freq_width: 5_000_000
-  # #     freq_step: 300_000
-  # #     min_amp_factor: 0.02
-  # #     max_amp_factor: 2.4
-  # #     step_amp_factor: 0.3
-  # #     nshots: 1000
-  # #     relaxation_time: 50
+  # - id: resonator punchout
+  #   priority: 0
+  #   operation: resonator_punchout
+  #   # main: resonator_spectroscopy low power
+  #   parameters:
+  #     freq_width: 5_000_000
+  #     freq_step: 300_000
+  #     min_amp_factor: 0.02
+  #     max_amp_factor: 2.4
+  #     step_amp_factor: 0.3
+  #     nshots: 1000
+  #     relaxation_time: 50
 
   # - id: resonator_punchout_attenuation
   #   priority: 10
@@ -58,18 +58,18 @@ actions:
   #     nshots: 1024
   #     relaxation_time: 0
 
-  # # - id: resonator flux dependence
-  # #   priority: 30
-  # #   operation: resonator_flux
-  # #   main: qubit spectroscopy
-  # #   parameters:
-  # #     freq_width: 10_000_000
-  # #     freq_step: 500_000
-  # #     bias_width: 2
-  # #     bias_step:  0.1
-  # #     fluxlines: qubits
-  # #     nshots: 1024
-  # #     relaxation_time: 0
+  # - id: resonator flux dependence
+  #   priority: 30
+  #   operation: resonator_flux
+  #   main: qubit spectroscopy
+  #   parameters:
+  #     freq_width: 10_000_000
+  #     freq_step: 500_000
+  #     bias_width: 2
+  #     bias_step:  0.1
+  #     fluxlines: qubits
+  #     nshots: 1024
+  #     relaxation_time: 0
 
   # - id: qubit spectroscopy
   #   priority: 40
@@ -83,19 +83,19 @@ actions:
   #     nshots: 1024
   #     relaxation_time: 0
 
-  # # - id: qubit flux dependence
-  # #   priority: 50
-  # #   main: rabi
-  # #   operation: qubit_flux
-  # #   parameters:
-  # #     freq_width: 500_000_000
-  # #     freq_step: 1_000_000
-  # #     bias_width: 0.5
-  # #     bias_step:  0.01
-  # #     drive_amplitude: 0.5
-  # #     fluxlines: qubits #diagonal?
-  # #     nshots: 1000
-  # #     relaxation_time: 2000
+  # - id: qubit flux dependence
+  #   priority: 50
+  #   main: rabi
+  #   operation: qubit_flux
+  #   parameters:
+  #     freq_width: 500_000_000
+  #     freq_step: 1_000_000
+  #     bias_width: 0.5
+  #     bias_step:  0.01
+  #     drive_amplitude: 0.5
+  #     fluxlines: qubits #diagonal?
+  #     nshots: 1000
+  #     relaxation_time: 2000
 
   # - id: rabi amplitude
   #   priority: 60
@@ -112,9 +112,9 @@ actions:
   # - id: flipping
   #   priority: 70
   #   operation: flipping
-  #   next: ramsey
+  #   next: t1
   #   parameters:
-  #     nflips_max: 40
+  #     nflips_max: 30
   #     nflips_step: 1
 
   # - id: rabi length
@@ -130,15 +130,15 @@ actions:
   #     relaxation_time: 0
   #     nshots: 1024
 
-  - id: ramsey
-    priority: 0
-    operation: ramsey
-    # next: t1
-    parameters:
-      delay_between_pulses_start: 4 # must be a multiple of 4 incl 0
-      delay_between_pulses_end: 200
-      delay_between_pulses_step: 4 # must be a multiple of 4
-      n_osc: 10
+  # - id: ramsey
+  #   priority: 0
+  #   operation: ramsey
+  #   next: single shot classification
+  #   parameters:
+  #     delay_between_pulses_start: 4 # must be a multiple of 4 incl 0
+  #     delay_between_pulses_end: 200
+  #     delay_between_pulses_step: 4 # must be a multiple of 4
+  #     n_osc: 10
 
   # - id: ramsey detuned
   #   priority: 0 #80
@@ -190,11 +190,11 @@ actions:
   #   parameters:
   #     beta_param: null
 
-  # - id: spin_echo
-  #   priority: 0
-  #   operation: spin_echo
-  #   # main: flipping
-  #   parameters:
-  #     delay_between_pulses_start: 4
-  #     delay_between_pulses_end: 10000
-  #     delay_between_pulses_step: 200
+  - id: spin_echo
+    priority: 0
+    operation: spin_echo
+    # main: flipping
+    parameters:
+      delay_between_pulses_start: 4
+      delay_between_pulses_end: 10000
+      delay_between_pulses_step: 200
