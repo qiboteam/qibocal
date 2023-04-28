@@ -76,21 +76,12 @@ def gate_fidelity(eff_depol: float, primitive=False) -> float:
 def number_to_str(number: Union[int, float, complex]) -> str:
     """Converts a number into a string.
 
-    Necessary when storing a complex number in JASON format.
-
     Args:
         number (int | float | complex)
 
     Returns:
-        str: The number expressed as a string, with two floating points when
-        complex or three when real.
+        str: The number expressed as a string, with three floating points.
     """
-    if np.iscomplex(number):
-        the_str = "{:.2f}{}{:.2f}j".format(
-            np.real(number),
-            "+" if np.imag(number) >= 0 else "-",
-            np.abs(np.imag(number)),
-        )
-    else:
-        the_str = "{:.3f}".format(number)
-    return the_str
+    return (
+        f"{np.real(number):.3f}" if np.abs(np.imag(number)) < 1e-3 else f"{number:.3f}"
+    )

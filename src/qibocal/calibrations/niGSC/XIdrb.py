@@ -30,6 +30,7 @@ import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
 from qibocal.calibrations.niGSC.basics.circuitfactory import CircuitFactory
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
 from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig
+from qibocal.calibrations.niGSC.basics.utils import number_to_str
 from qibocal.config import raise_error
 
 
@@ -191,20 +192,22 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
 
     # Initiate a report object.
     report = ModuleReport()
-    fitting_report = ""
-    # Add general information to the object.
+    # Add general information to the table.
     report.info_dict["Number of qubits"] = len(experiment.data[0]["samples"][0])
     report.info_dict["Number of shots"] = len(experiment.data[0]["samples"])
     report.info_dict["runs"] = experiment.extract("samples", "depth", "count")[1][0]
+    dfrow = df_aggr.loc["filter"]
+    popt_pairs = list(dfrow["popt"].items())[::2] + list(dfrow["popt"].items())[1::2]
+    report.info_dict["Fit"] = "".join(
+        [f"{key}={number_to_str(value)} " for key, value in popt_pairs]
+    )
+    perr_pairs = list(dfrow["perr"].items())[::2] + list(dfrow["popt"].items())[1::2]
     report.info_dict["Fitting deviations"] = "".join(
-        [
-            "{}:{:.3f} ".format(key, df_aggr.loc["filter"]["perr"][key])
-            for key in df_aggr.loc["filter"]["perr"]
-        ]
+        [f"{key}={number_to_str(value)} " for key, value in perr_pairs]
     )
     # Use the predefined ``scatter_fit_fig`` function from ``basics.utils`` to build the wanted
     # plotly figure with the scattered filtered data along with the mean for
     # each depth and the exponential fit for the means.
     report.all_figures.append(scatter_fit_fig(experiment, df_aggr, "depth", "filter"))
     # Return the figure the report object builds out of all figures added to the report.
-    return report.build(), fitting_report
+    return report.build()

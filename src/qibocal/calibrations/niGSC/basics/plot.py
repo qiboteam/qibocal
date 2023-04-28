@@ -63,24 +63,6 @@ class Report:
                     plot, row=count // divide_by + 1, col=count % divide_by + 1
                 )
 
-        fig.add_annotation(
-            dict(
-                bordercolor="black",
-                font=dict(color="black", size=16),
-                x=0.0,
-                y=1.0 / (int(l / divide_by) + l % divide_by + 1)
-                - len(self.info_dict) * 0.005,
-                showarrow=False,
-                text="<br>".join(
-                    [f"{key} : {value}\n" for key, value in self.info_dict.items()]
-                ),
-                align="left",
-                textangle=0,
-                yanchor="top",
-                xref="paper",
-                yref="paper",
-            )
-        )
         fig.update_xaxes(title_font_size=18, tickfont_size=16)
         fig.update_yaxes(title_font_size=18, tickfont_size=16)
         fig.update_layout(
@@ -97,7 +79,12 @@ class Report:
             width=1000,
         )
 
-        return fig
+        return fig, self.info_table()
+
+    def info_table(self):
+        return "".join(
+            [f"q{0}/r{0} | {key}: {value}<br>" for key, value in self.info_dict.items()]
+        )
 
 
 def scatter_fit_fig(
@@ -153,12 +140,7 @@ def scatter_fit_fig(
         go.Scatter(
             x=x_fit,
             y=y_fit,
-            name="".join(
-                [
-                    f"{key}:{dfrow[fittingparam_label][key]:.3f} "
-                    for key in dfrow[fittingparam_label]
-                ]
-            ),
+            name="Fit",
             line=go.scatter.Line(dash="dot"),
         )
     )
