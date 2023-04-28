@@ -34,7 +34,8 @@ normalize = identity
 
 @dataclass
 class QbloxFit:
-    r"""This class deploys the Qblox qubit state classifier.
+    r"""This class deploys the Qblox qubit state classifier described
+    in the [documentation](https://qblox-qblox-instruments.readthedocs-hosted.com/en/master/tutorials/conditional_playback.html#Measure-qubit-histogram).
 
     Args:
         threshold (float): Classifier's threshold.
