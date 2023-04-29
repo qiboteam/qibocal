@@ -25,8 +25,7 @@ def theoretical_outcome(noise_model: NoiseModel) -> float:
 
     # TODO This has to be more systematic. Delete it from the branch which will be merged.
     # Check for correctness of noise model and gate independence.
-    errorkeys = noise_model.errors.keys()
-    assert len(errorkeys) == 3 and list(errorkeys)[0] == gates.Unitary
+    assert None in noise_model.errors
     # Extract the noise acting on unitaries and turn it into the associated
     # error channel.
     error = noise_model.errors[None][0][1]
