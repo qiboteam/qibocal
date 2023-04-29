@@ -1,9 +1,17 @@
 from pathlib import Path
 
+import numpy as np
+import onnxruntime as rt
 from skl2onnx import convert_sklearn
 from skl2onnx.common.data_types import FloatTensorType
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
+
+
+def scikit_predict(loading_path: Path, input: np.typing.NDArray):
+    sess = rt.InferenceSession(loading_path)
+    input_name = sess.get_inputs()[0].name
+    return sess.run(None, {input_name: input.astype(np.float32)})[0]
 
 
 def scikit_normalize(constructor):

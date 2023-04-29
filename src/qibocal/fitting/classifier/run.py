@@ -58,6 +58,7 @@ class Classifier:
     def __init__(self, mod, base_dir: pathlib.Path) -> None:
         self.mod = mod
         self.base_dir = base_dir
+        self.trainable_model = None
 
     @property
     def name(self):
@@ -96,9 +97,8 @@ class Classifier:
         r"""The path where the hyperparameters are stored."""
         return self.savedir / HYPERFILE
 
-    @property
-    def dump(self):
-        return self.mod.dump
+    def dump(self, path: pathlib.Path):
+        return self.mod.dump(self.trainable_model, path)
 
     @classmethod
     def load_model(cls, name: str, base_dir: pathlib.Path):
@@ -137,7 +137,8 @@ class Classifier:
         Returns:
             Classification model.
         """
-        return self.normalize(self.constructor(hyperpars))
+        self.trainable_model = self.normalize(self.constructor(hyperpars))
+        return self.trainable_model
 
 
 @dataclass
@@ -314,7 +315,7 @@ def train_qubit(
         results_list.append(results)
         names.append(classifier.name)
         dump_preds(y_pred, classifier.savedir)
-        classifier.dump(model, classifier.savedir / classifier.name)
+        classifier.dump(classifier.savedir / classifier.name)
 
     benchmarks_table = pd.DataFrame([asdict(res) for res in results_list])
     plots.plot_models_results(x_train, x_test, y_test, qubit_dir, models, names)

@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import keras_tuner as kt  # pylint: disable=import-error
+import numpy as np
 from tensorflow.keras import backend as K  # pylint: disable=import-error
 from tensorflow.keras import callbacks, optimizers  # pylint: disable=import-error
 from tensorflow.keras.layers import (  # pylint: disable=import-error
@@ -8,7 +9,10 @@ from tensorflow.keras.layers import (  # pylint: disable=import-error
     Dense,
     Layer,
 )
-from tensorflow.keras.models import Sequential  # pylint: disable=import-error
+from tensorflow.keras.models import (  # pylint: disable=import-error
+    Sequential,
+    load_model,
+)
 
 from .utils import identity
 
@@ -60,6 +64,11 @@ normalize = identity
 
 def dump(model, save_path: Path):
     model.save(save_path)
+
+
+def predict_from_file(loading_path: Path, input: np.typing.NDArray):
+    model = load_model(loading_path)
+    return model.predict(input)
 
 
 class RBFLayer(Layer):

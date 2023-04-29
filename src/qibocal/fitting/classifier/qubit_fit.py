@@ -39,6 +39,11 @@ def dump(model, save_path: Path):
     sio.dump(model, save_path.with_suffix(".skops"))
 
 
+def predict_from_file(loading_path: Path, input: np.typing.NDArray):
+    model = sio.load(loading_path, trusted=True)
+    return model.predict(input)
+
+
 @dataclass
 class QubitFit:
     r"""This class deploys a qubit state classifier.
