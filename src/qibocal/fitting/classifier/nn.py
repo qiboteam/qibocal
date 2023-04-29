@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import keras_tuner as kt  # pylint: disable=import-error
 from tensorflow.keras import backend as K  # pylint: disable=import-error
 from tensorflow.keras import callbacks, optimizers  # pylint: disable=import-error
@@ -54,6 +56,10 @@ def hyperopt(x_train, y_train, path):
 
 
 normalize = identity
+
+
+def dump(model, save_path: Path):
+    model.save(save_path)
 
 
 class RBFLayer(Layer):

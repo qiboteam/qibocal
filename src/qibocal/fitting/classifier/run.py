@@ -96,6 +96,10 @@ class Classifier:
         r"""The path where the hyperparameters are stored."""
         return self.savedir / HYPERFILE
 
+    @property
+    def dump(self):
+        return self.mod.dump
+
     @classmethod
     def load_model(cls, name: str, base_dir: pathlib.Path):
         r"""
@@ -286,7 +290,6 @@ def train_qubit(
             )
         else:
             hyperpars = qubit.classifiers_hpars[classifier.name]
-        print(hyperpars)
         hpars_list.append(hyperpars)
         classifier.dump_hyper(hyperpars)
         model = classifier.create_model(hyperpars)
@@ -306,17 +309,16 @@ def train_qubit(
             results, y_pred, model, _ = benchmarking(
                 model, x_train, y_train, x_test, y_test
             )
-
         models.append(model)  # save trained model
         results.name = classifier.name
         results_list.append(results)
         names.append(classifier.name)
         dump_preds(y_pred, classifier.savedir)
+        classifier.dump(model, classifier.savedir / classifier.name)
 
     benchmarks_table = pd.DataFrame([asdict(res) for res in results_list])
     plots.plot_models_results(x_train, x_test, y_test, qubit_dir, models, names)
     plots.plot_roc_curves(x_test, y_test, qubit_dir, models, names)
-
     return benchmarks_table, y_test, x_test, models, names, hpars_list
 
 

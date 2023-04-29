@@ -37,3 +37,4 @@ def hyperopt(x_train, y_train, _path):
 
 
 normalize = utils.scikit_normalize
+dump = utils.scikit_dump

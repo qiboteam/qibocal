@@ -1,8 +1,10 @@
 from dataclasses import dataclass
 from math import atan2
+from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
+import skops.io as sio
 
 from .utils import identity
 
@@ -31,6 +33,10 @@ def hyperopt(_x_train, _y_train, _path):
 
 
 normalize = identity
+
+
+def dump(model, save_path: Path):
+    sio.dump(model, save_path.with_suffix(".skops"))
 
 
 @dataclass
