@@ -87,7 +87,7 @@ def _acquisition(
     # attenuation
     attenuation_range = np.arange(params.min_att, params.max_att, params.step_att)
     att_sweeper = Sweeper(
-        Parameter.attenuation, attenuation_range, qubits=[qubit for qubit in qubits]
+        Parameter.attenuation, attenuation_range, qubits=list(qubits.values())
     )
 
     # create a DataUnits object to store the results,
