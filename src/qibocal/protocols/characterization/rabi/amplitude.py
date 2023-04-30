@@ -178,12 +178,16 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
                 popt[3] - 2 * np.pi * x_min / (x_max - x_min) * popt[2],
             ]
             pi_pulse_parameter = np.abs((1.0 / translated_popt[2]) / 2)
-            pi_pulse_amplitudes[qubit] = pi_pulse_parameter
-            fitted_parameters[qubit] = translated_popt
+
         except:
             log.warning("rabi_fit: the fitting was not succesful")
+            pi_pulse_parameter = 0
+            fitted_parameters = [0] * 4
 
-        return RabiAmplitudeResults(pi_pulse_amplitudes, durations, fitted_parameters)
+        pi_pulse_amplitudes[qubit] = pi_pulse_parameter
+        fitted_parameters[qubit] = translated_popt
+
+    return RabiAmplitudeResults(pi_pulse_amplitudes, durations, fitted_parameters)
 
 
 def _plot(data: RabiAmplitudeData, fit: RabiAmplitudeResults, qubit):

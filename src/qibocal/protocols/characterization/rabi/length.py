@@ -176,10 +176,13 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
                 popt[4] / (x_max - x_min),
             ]
             pi_pulse_parameter = np.abs((1.0 / translated_popt[2]) / 2)
-            durations[qubit] = pi_pulse_parameter
-            fitted_parameters[qubit] = translated_popt
         except:
             log.warning("rabi_fit: the fitting was not succesful")
+            pi_pulse_parameter = 0
+            fitted_parameters = [0] * 4
+
+        durations[qubit] = pi_pulse_parameter
+        fitted_parameters[qubit] = translated_popt
 
     return RabiLengthResults(durations, pi_pulse_amplitudes, fitted_parameters)
 
