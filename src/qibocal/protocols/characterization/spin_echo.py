@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
@@ -11,14 +11,14 @@ from scipy.optimize import curve_fit
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.config import log
 from qibocal.data import DataUnits
-
-from ...plots.utils import get_color
-from .ramsey import RamseyParameters
+from qibocal.plots.utils import get_color
 
 
 @dataclass
-class SpinEchoParameters(RamseyParameters):
-    ...
+class SpinEchoParameters(Parameters):
+    delay_between_pulses_start: int
+    delay_between_pulses_end: list
+    delay_between_pulses_step: int
 
 
 @dataclass

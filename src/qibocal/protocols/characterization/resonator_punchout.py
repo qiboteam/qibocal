@@ -8,10 +8,11 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
-from ...auto.operation import Parameters, Qubits, Results, Routine
-from ...config import log
-from ...data import DataUnits
-from .utils import find_min_msr, get_max_freq, get_points_with_max_freq, norm
+from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.config import log
+from qibocal.data import DataUnits
+
+from . import utils
 
 
 @dataclass
@@ -153,12 +154,12 @@ def _fit(data: ResonatorPunchoutData, fit_type="amplitude") -> ResonatorPunchout
         try:
             normalised_data = qubit_data.groupby([fit_type], as_index=False)[
                 ["MSR"]
-            ].transform(norm)
+            ].transform(utils.norm)
 
             averaged_data_updated = qubit_data.copy()
             averaged_data_updated.update(normalised_data["MSR"])
 
-            min_points = find_min_msr(
+            min_points = utils.find_min_msr(
                 averaged_data_updated, data.resonator_type, fit_type
             )
             vfunc = np.vectorize(lambda x: x.magnitude)
@@ -171,11 +172,15 @@ def _fit(data: ResonatorPunchoutData, fit_type="amplitude") -> ResonatorPunchout
             hp_points = min_points[min_points[:, 0] < middle_x]
             lp_points = min_points[min_points[:, 0] >= middle_x]
 
-            freq_hp = get_max_freq(hp_points)
-            freq_lp = get_max_freq(lp_points)
+            freq_hp = utils.get_max_freq(hp_points)
+            freq_lp = utils.get_max_freq(lp_points)
 
-            point_hp_max, point_hp_min = get_points_with_max_freq(min_points, freq_hp)
-            point_lp_max, point_lp_min = get_points_with_max_freq(min_points, freq_lp)
+            point_hp_max, point_hp_min = utils.get_points_with_max_freq(
+                min_points, freq_hp
+            )
+            point_lp_max, point_lp_min = utils.get_points_with_max_freq(
+                min_points, freq_lp
+            )
 
             freq_lp = point_lp_max[0]
             ro_amp = point_lp_max[1]
@@ -217,7 +222,7 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
 
     normalised_data = qubit_data.groupby(["amplitude"], as_index=False)[
         ["MSR"]
-    ].transform(norm)
+    ].transform(utils.norm)
 
     fig.add_trace(
         go.Heatmap(

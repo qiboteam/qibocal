@@ -9,7 +9,7 @@ from qibolab.sweeper import Parameter, Sweeper
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
 
-from .utils import flux_dependence_plot
+from . import utils
 
 
 # TODO: implement cross-talk (maybe separate routine?)
@@ -111,7 +111,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
 
 
 def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, qubit):
-    return flux_dependence_plot(data, fit, qubit)
+    return utils.flux_dependence_plot(data, fit, qubit)
 
 
 resonator_flux = Routine(_acquisition, _fit, _plot)

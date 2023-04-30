@@ -9,8 +9,7 @@ from scipy.optimize import curve_fit
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.config import log
 
-from .amplitude import RabiAmplitudeData
-from .utils import plot, rabi_length_fit
+from . import amplitude, utils
 
 
 @dataclass
@@ -30,7 +29,7 @@ class RabiLengthResults(Results):
     fitted_parameters: Dict[List[Tuple], List]
 
 
-class RabiLengthData(RabiAmplitudeData):
+class RabiLengthData(amplitude.RabiAmplitudeData):
     ...
 
 
@@ -166,7 +165,9 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
         pguess = [0.5, 1, f, np.pi / 2, 0]
 
         try:
-            popt, pcov = curve_fit(rabi_length_fit, x, y, p0=pguess, maxfev=100000)
+            popt, pcov = curve_fit(
+                utils.rabi_length_fit, x, y, p0=pguess, maxfev=100000
+            )
             translated_popt = [
                 (y_max - y_min) * popt[0] + y_min,
                 (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
@@ -184,7 +185,7 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
 
 
 def _plot(data: RabiLengthData, fit: RabiLengthResults, qubit):
-    return plot(data, fit, qubit)
+    return utils.plot(data, fit, qubit)
 
 
 rabi_length = Routine(_acquisition, _fit, _plot)

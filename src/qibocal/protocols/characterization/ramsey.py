@@ -8,10 +8,10 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
 
-from ...auto.operation import Parameters, Qubits, Results, Routine
-from ...config import log
-from ...data import DataUnits
-from ...plots.utils import get_color
+from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.config import log
+from qibocal.data import DataUnits
+from qibocal.plots.utils import get_color
 
 
 @dataclass
@@ -271,9 +271,9 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
 
         fig.add_trace(
             go.Scatter(
-                x=waitrange.magnitude,
+                x=waitrange,
                 y=ramsey_fit(
-                    waitrange.magnitude,
+                    waitrange,
                     float(fit.fitted_parameters[qubit][0]),
                     float(fit.fitted_parameters[qubit][1]),
                     float(fit.fitted_parameters[qubit][2]),

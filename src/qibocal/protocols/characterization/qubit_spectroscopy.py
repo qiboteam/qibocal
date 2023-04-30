@@ -102,7 +102,25 @@ def _acquisition(
 
 
 def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
-    return QubitSpectroscopyResults(**lorentzian_fit(data))
+    qubits = data.df["qubit"].unique()
+    bare_frequency = {}
+    amplitudes = {}
+    attenuations = {}
+    frequency = {}
+    fitted_parameters = {}
+    for qubit in qubits:
+        freq, fitted_params = lorentzian_fit(data, qubit)
+        frequency[qubit] = freq
+        amplitudes[qubit] = data.amplitude
+        attenuations[qubit] = data.attenuation
+        fitted_parameters[qubit] = fitted_params
+
+    return QubitSpectroscopyResults(
+        frequency=frequency,
+        fitted_parameters=fitted_parameters,
+        amplitude=amplitudes,
+        attenuation=attenuations,
+    )
 
 
 def _plot(data: QubitSpectroscopyData, fit: QubitSpectroscopyResults, qubit):

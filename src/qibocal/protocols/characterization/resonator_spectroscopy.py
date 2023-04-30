@@ -141,7 +141,37 @@ def _acquisition(
 
 
 def _fit(data: ResonatorSpectroscopyData) -> ResonatorSpectroscopyResults:
-    return ResonatorSpectroscopyResults(**lorentzian_fit(data))
+    qubits = data.df["qubit"].unique()
+    bare_frequency = {}
+    amplitudes = {}
+    attenuations = {}
+    frequency = {}
+    fitted_parameters = {}
+    for qubit in qubits:
+        freq, fitted_params = lorentzian_fit(data, qubit)
+        if data.power_level is PowerLevel.high:
+            bare_frequency[qubit] = freq
+
+        frequency[qubit] = freq
+        amplitudes[qubit] = data.amplitude
+        attenuations[qubit] = data.attenuation
+        fitted_parameters[qubit] = fitted_params
+
+    if data.power_level is PowerLevel.high:
+        return ResonatorSpectroscopyResults(
+            frequency=frequency,
+            fitted_parameters=fitted_parameters,
+            bare_frequency=bare_frequency,
+            amplitude=amplitudes,
+            attenuation=attenuations,
+        )
+    else:
+        return ResonatorSpectroscopyResults(
+            frequency=frequency,
+            fitted_parameters=fitted_parameters,
+            amplitude=amplitudes,
+            attenuation=attenuations,
+        )
 
 
 def _plot(data: ResonatorSpectroscopyData, fit: ResonatorSpectroscopyResults, qubit):

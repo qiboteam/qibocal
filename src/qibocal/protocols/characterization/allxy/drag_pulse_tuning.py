@@ -8,16 +8,17 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
 
-from ....auto.operation import Qubits, Results, Routine
-from ....config import log
-from ....data import DataUnits
-from ....fitting.utils import cos
-from ....plots.utils import get_color
-from .allxy_drag_pulse_tuning import AllXYDragParameters
+from qibocal.auto.operation import Qubits, Results, Routine
+from qibocal.config import log
+from qibocal.data import DataUnits
+from qibocal.fitting.utils import cos
+from qibocal.plots.utils import get_color
+
+from . import allxy_drag_pulse_tuning
 
 
 @dataclass
-class DragPulseTuningParameters(AllXYDragParameters):
+class DragPulseTuningParameters(allxy_drag_pulse_tuning.AllXYDragParameters):
     ...
 
 

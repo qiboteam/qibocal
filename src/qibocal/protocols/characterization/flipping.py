@@ -3,15 +3,14 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
 
-from ...auto.operation import Parameters, Qubits, Results, Routine
-from ...config import log
-from ...data import DataUnits
-from ...plots.utils import get_color
+from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.config import log
+from qibocal.data import DataUnits
+from qibocal.plots.utils import get_color
 
 
 @dataclass
@@ -243,7 +242,7 @@ def _plot(data: FlippngData, fit: FlippingResults, qubit):
             go.Scatter(
                 x=flips_range,
                 y=flipping_fit(
-                    flips_range.magnitude,
+                    flips_range,
                     float(fit.fitted_parameters[qubit][0]),
                     float(fit.fitted_parameters[qubit][1]),
                     float(fit.fitted_parameters[qubit][2]),

@@ -2,13 +2,12 @@ from dataclasses import dataclass
 
 import numpy as np
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
-from ....auto.operation import Parameters, Qubits, Results, Routine
-from ....data import Data
-from ....plots.utils import get_color
+from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.data import Data
+from qibocal.plots.utils import get_color
 
 
 @dataclass

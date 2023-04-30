@@ -2,14 +2,14 @@ from dataclasses import dataclass
 
 import numpy as np
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
-from ....auto.operation import Parameters, Qubits, Results, Routine
-from ....data import Data
-from ....plots.utils import get_color
-from .allxy import add_gate_pair_pulses_to_sequence, gatelist
+from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.data import Data
+from qibocal.plots.utils import get_color
+
+from . import allxy
 
 
 @dataclass
@@ -85,12 +85,12 @@ def _acquisition(
         params.beta_start, params.beta_end, params.beta_step
     ).round(4):
         gateNumber = 1
-        for gates in gatelist:
+        for gates in allxy.gatelist:
             # create a sequence of pulses
             ro_pulses = {}
             sequence = PulseSequence()
             for qubit in qubits:
-                sequence, ro_pulses[qubit] = add_gate_pair_pulses_to_sequence(
+                sequence, ro_pulses[qubit] = allxy.add_gate_pair_pulses_to_sequence(
                     platform, gates, qubit, beta_param, sequence
                 )
 
@@ -138,7 +138,7 @@ def _plot(data: AllXYDragData, _fit: AllXYDragResults, qubit):
                 name=f"Beta {beta_param}",
                 showlegend=True,
                 legendgroup=f"group{j}",
-                text=gatelist,
+                text=allxy.gatelist,
                 textposition="bottom center",
             ),
         )

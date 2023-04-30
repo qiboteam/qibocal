@@ -11,7 +11,7 @@ from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.config import log
 from qibocal.data import DataUnits
 
-from .utils import plot, rabi_amplitude_fit
+from . import utils
 
 
 @dataclass
@@ -168,7 +168,9 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
 
         pguess = [0.5, 1, f, np.pi / 2]
         try:
-            popt, pcov = curve_fit(rabi_amplitude_fit, x, y, p0=pguess, maxfev=100000)
+            popt, pcov = curve_fit(
+                utils.rabi_amplitude_fit, x, y, p0=pguess, maxfev=100000
+            )
             translated_popt = [
                 y_min + (y_max - y_min) * popt[0],
                 (y_max - y_min) * popt[1],
@@ -185,7 +187,7 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
 
 
 def _plot(data: RabiAmplitudeData, fit: RabiAmplitudeResults, qubit):
-    return plot(data, fit, qubit)
+    return utils.plot(data, fit, qubit)
 
 
 rabi_amplitude = Routine(_acquisition, _fit, _plot)
