@@ -264,8 +264,8 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
     # add fitting trace
     if len(data) > 0:
         waitrange = np.linspace(
-            min(qubit_data["wait"]),
-            max(qubit_data["wait"]),
+            min(qubit_data["wait"].pint.to("ns").pint.magnitude),
+            max(qubit_data["wait"].pint.to("ns").pint.magnitude),
             2 * len(data),
         )
 

@@ -163,14 +163,12 @@ def _fit(data: ResonatorSpectroscopyData) -> ResonatorSpectroscopyResults:
             fitted_parameters=fitted_parameters,
             bare_frequency=bare_frequency,
             amplitude=amplitudes,
-            attenuation=attenuations,
         )
     else:
         return ResonatorSpectroscopyResults(
             frequency=frequency,
             fitted_parameters=fitted_parameters,
             amplitude=amplitudes,
-            attenuation=attenuations,
         )
 
 

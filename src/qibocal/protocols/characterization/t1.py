@@ -198,13 +198,7 @@ def _fit(data: T1Data) -> T1Results:
 def _plot(data: T1Data, fit: T1Results, qubit):
     figures = []
 
-    fig = make_subplots(
-        rows=1,
-        cols=1,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
-        subplot_titles=("MSR (V)",),
-    )
+    fig = go.Figure()
 
     fitting_report = ""
     qubit_data = data.df[data.df["qubit"] == qubit]
@@ -218,16 +212,14 @@ def _plot(data: T1Data, fit: T1Results, qubit):
             name="Voltage",
             showlegend=True,
             legendgroup="Voltage",
-        ),
-        row=1,
-        col=1,
+        )
     )
 
     #  add fitting trace
     if len(data) > 0:
         waitrange = np.linspace(
-            min(qubit_data["wait"]),
-            max(qubit_data["wait"]),
+            min(qubit_data["wait"].pint.to("ns").pint.magnitude),
+            max(qubit_data["wait"].pint.to("ns").pint.magnitude),
             2 * len(qubit_data),
         )
 
@@ -243,9 +235,7 @@ def _plot(data: T1Data, fit: T1Results, qubit):
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
                 marker_color=get_color(2),
-            ),
-            row=1,
-            col=1,
+            )
         )
         fitting_report = fitting_report + (
             f"{qubit} | t1: {fit.t1[qubit]:,.0f} ns.<br><br>"
