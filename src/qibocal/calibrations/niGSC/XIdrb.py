@@ -152,7 +152,6 @@ def get_aggregational_data(experiment: Experiment, ndecays: int = 2) -> pd.DataF
     # Fit the filtered signal for each depth, there could be two overlaying exponential functions.
     popt, perr = fitting_methods.fit_expn_func(depths, ydata, n=ndecays)
     # Create dictionaries with fitting parameters and estimated errors
-    # in the form {A1: ..., p1: ..., A2: ..., p2: ...}
     popt_keys = [f"A{k+1}" for k in range(ndecays)]
     popt_keys += [f"p{k+1}" for k in range(ndecays)]
     popt_dict = dict(zip(popt_keys, popt))
@@ -200,7 +199,7 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
     report.info_dict["Fit"] = "".join(
         [f"{key}={number_to_str(value)} " for key, value in popt_pairs]
     )
-    perr_pairs = list(dfrow["perr"].items())[::2] + list(dfrow["popt"].items())[1::2]
+    perr_pairs = list(dfrow["perr"].items())[::2] + list(dfrow["perr"].items())[1::2]
     report.info_dict["Fitting deviations"] = "".join(
         [f"{key}={number_to_str(value)} " for key, value in perr_pairs]
     )

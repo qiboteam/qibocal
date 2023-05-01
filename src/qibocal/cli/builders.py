@@ -69,7 +69,7 @@ class niGSCactionParser(ActionParser):
         try:
             self.noise_params = self.runcard["actions"][self.name]["noise_params"]
         except KeyError:
-            self.noise_params = None
+            self.noise_params = []
         try:
             self.noise_model = getattr(
                 noisemodels, self.runcard["actions"][self.name]["noise_model"]
