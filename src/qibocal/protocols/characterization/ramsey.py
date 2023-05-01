@@ -31,30 +31,25 @@ class RamseyResults(Results):
 
 
 class RamseyData(DataUnits):
-    def __init__(self, n_osc, duration_step, resonator_type):
+    def __init__(self, n_osc, t_max):
         super().__init__(
             name="data",
-            quantities={"wait": "ns", "t_max": "ns", "qubit_freqs": "Hz"},
+            quantities={"wait": "ns", "qubit_freqs": "Hz"},
             options=[
                 "qubit",
             ],
         )
 
         self._n_osc = n_osc
-        self._duration_step = duration_step
-        self._resonator_type = resonator_type
+        self._t_max = t_max
 
     @property
     def n_osc(self):
         return self._n_osc
 
     @property
-    def duration_step(self):
-        return self._duration_step
-
-    @property
-    def resonator_type(self):
-        return self._resonator_type
+    def t_max(self):
+        return self._t_max
 
 
 def _acquisition(
@@ -71,7 +66,8 @@ def _acquisition(
     for qubit in qubits:
         RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
         RX90_pulses2[qubit] = platform.create_RX90_pulse(
-            qubit, start=RX90_pulses1[qubit].finish
+            qubit,
+            start=RX90_pulses1[qubit].finish,
         )
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=RX90_pulses2[qubit].finish
@@ -91,9 +87,7 @@ def _acquisition(
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
     # additionally include wait time and t_max
-    data = RamseyData(
-        params.n_osc, params.delay_between_pulses_step, platform.resonator_type
-    )
+    data = RamseyData(params.n_osc, params.delay_between_pulses_end)
 
     # sweep the parameter
     for wait in waits:
@@ -116,7 +110,6 @@ def _acquisition(
             r.update(
                 {
                     "wait[ns]": wait,
-                    "t_max[ns]": params.delay_between_pulses_end,
                     "qubit_freqs[Hz]": qubits[qubit].drive_frequency,
                     "qubit": qubit,
                 }
@@ -163,8 +156,6 @@ def _fit(data: RamseyData) -> RamseyResults:
             - **qubit**: The qubit being tested
     """
     qubits = data.df["qubit"].unique()
-    t_max = data.df["t_max"].pint.to("ns").pint.magnitude
-    t_max = np.unique(t_max)
 
     t2s = {}
     corrected_qubit_frequencies = {}
@@ -184,24 +175,30 @@ def _fit(data: RamseyData) -> RamseyResults:
             x_max = np.max(times.values)
             x_min = np.min(times.values)
             x = (times.values - x_min) / (x_max - x_min)
-            if data.resonator_type == "3D":
-                # FIXME: with this normalization the min will be a 0 causing error when guessing parameters
-                index = (
-                    np.argmin(y)
-                    if np.min(y) != 0
-                    else np.where(y == np.partition(y, 1)[1])
-                )
-            else:
-                index = np.argmax(y)
 
+            ft = np.fft.rfft(y)
+            freqs = np.fft.rfftfreq(len(y), x[1] - x[0])
+            mags = abs(ft)
+            index = np.argmax(mags) if np.argmax(mags) != 0 else np.argmax(mags[1:]) + 1
+            f = freqs[index] * 2 * np.pi
             p0 = [
-                np.mean(y),
-                y_max - y_min,
-                float(0.5 / x[index]),
-                np.pi / 2,
+                0.5,
+                0.5,
+                f,
+                0,
                 0,
             ]
-            popt = curve_fit(ramsey_fit, x, y, method="lm", p0=p0, maxfev=2000000)[0]
+            popt = curve_fit(
+                ramsey_fit,
+                x,
+                y,
+                p0=p0,
+                maxfev=2000000,
+                bounds=(
+                    [0, 0, -np.inf, -np.pi / 2, 0],
+                    [1, 1, np.inf, np.pi / 2, np.inf],
+                ),
+            )[0]
             popt = [
                 (y_max - y_min) * popt[0] + y_min,
                 (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
@@ -209,9 +206,10 @@ def _fit(data: RamseyData) -> RamseyResults:
                 popt[3] - x_min * popt[2] / (x_max - x_min),
                 popt[4] / (x_max - x_min),
             ]
-            delta_fitting = popt[2] / 2 * np.pi
-            delta_phys = int(
-                (delta_fitting - data.n_osc / t_max) * 1 / (data.duration_step * 1e-9)
+            delta_fitting = popt[2] / (2 * np.pi)
+            # FIXME: check this formula
+            delta_phys = +int(
+                (delta_fitting + data.n_osc / data.t_max / 2 / np.pi) * 1e9
             )
             corrected_qubit_frequency = int(qubit_freq + delta_phys)
             t2 = 1.0 / popt[4]

@@ -110,6 +110,7 @@ def exp(x, *p):
 
 
 def _fit(data: SpinEchoData) -> SpinEchoResults:
+    # TODO: improve this fitting
     qubits = data.df["qubit"].unique()
     fitted_parameters = {}
     t2s = {}

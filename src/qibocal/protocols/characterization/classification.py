@@ -10,6 +10,8 @@ from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
 from qibocal.plots.utils import get_color_state0, get_color_state1
 
+MESH_SIZE = 50
+
 
 @dataclass
 class SingleShotClassificationParameters(Parameters):
@@ -154,11 +156,9 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
 
         iq_mean_state1 = np.mean(iq_state1)
         iq_mean_state0 = np.mean(iq_state0)
-        origin = iq_mean_state0
 
-        iq_state1_translated = iq_state1 - origin
-        iq_state0_translated = iq_state0 - origin
-        rotation_angle = np.angle(np.mean(iq_state1_translated))
+        vector01 = iq_mean_state1 - iq_mean_state0
+        rotation_angle = np.angle(vector01)
 
         iq_state1_rotated = iq_state1 * np.exp(-1j * rotation_angle)
         iq_state0_rotated = iq_state0 * np.exp(-1j * rotation_angle)
@@ -276,23 +276,45 @@ def _plot(
 
     max_x = max(
         max_x,
-        state0_data["i"].max(),
-        state1_data["i"].max(),
+        state0_data["i"].pint.to("V").pint.magnitude.max(),
+        state1_data["i"].pint.to("V").pint.magnitude.max(),
     )
     max_y = max(
         max_y,
-        state0_data["q"].max(),
-        state1_data["q"].max(),
+        state0_data["q"].pint.to("V").pint.magnitude.max(),
+        state1_data["q"].pint.to("V").pint.magnitude.max(),
     )
     min_x = min(
         min_x,
-        state0_data["i"].min(),
-        state1_data["i"].min(),
+        state0_data["i"].pint.to("V").pint.magnitude.min(),
+        state1_data["i"].pint.to("V").pint.magnitude.min(),
     )
     min_y = min(
         min_y,
-        state0_data["q"].min(),
-        state1_data["q"].min(),
+        state0_data["q"].pint.to("V").pint.magnitude.min(),
+        state1_data["q"].pint.to("V").pint.magnitude.min(),
+    )
+
+    feature_x = np.linspace(min_x, max_x, MESH_SIZE)
+    feature_y = np.linspace(min_y, max_y, MESH_SIZE)
+
+    [x, y] = np.meshgrid(feature_x, feature_y)
+
+    z = (
+        (np.exp(1j * fit.rotation_angle[qubit]) * (x + 1j * y)).real
+        > fit.threshold[qubit]
+    ).astype(int)
+    fig.add_trace(
+        go.Contour(
+            x=feature_x,
+            y=feature_y,
+            z=z,
+            showscale=False,
+            colorscale=[get_color_state0(0), get_color_state1(0)],
+            opacity=0.4,
+            name="Score",
+            hoverinfo="skip",
+        ),
     )
 
     fitting_report = (

@@ -21,7 +21,7 @@ class FlippingParameters(Parameters):
 
 @dataclass
 class FlippingResults(Results):
-    amplitudes: Dict[List[Tuple], str] = field(metadata=dict(update="amplitudes"))
+    amplitudes: Dict[List[Tuple], str] = field(metadata=dict(update="drive_amplitude"))
     amplitude_factors: Dict[List[Tuple], str]
     fitted_parameters: Dict[List[Tuple], List]
 
