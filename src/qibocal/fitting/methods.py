@@ -1032,11 +1032,8 @@ def calibrate_qubit_states_fit(data, x, y, nshots, qubits, degree=True):
 
         iq_mean_state1 = np.mean(iq_state1)
         iq_mean_state0 = np.mean(iq_state0)
-        origin = iq_mean_state0
 
-        iq_state0_translated = iq_state0 - origin
-        iq_state1_translated = iq_state1 - origin
-        rotation_angle = np.angle(np.mean(iq_state1_translated))
+        rotation_angle = np.angle(iq_mean_state1 - iq_mean_state0)
 
         iq_state1_rotated = iq_state1 * np.exp(-1j * rotation_angle)
         iq_state0_rotated = iq_state0 * np.exp(-1j * rotation_angle)
@@ -1107,65 +1104,83 @@ def ro_optimization_fit(data, *labels):
         quantities=quantities,
     )
 
-    # Create a ndarray for i and q shots for all labels
-    # shape=(i + j*q, qubit, state, label1, label2, ...)
-
+    # Create a ndarray of i + 1j * q complex values with shape (qubit, parameter, state, shot)
+    num_shots = len(data.df["iteration"].unique())
     shape = (*[len(data.df[label].unique()) for label in labels],)
-    nb_shots = max(data.df["iteration"].unique()) + 1
+    iq_complex = (
+        data.df["i"].pint.magnitude.to_numpy()
+        + 1j * data.df["q"].pint.magnitude.to_numpy()
+    ).reshape(shape)
 
-    iq_complex = np.zeros(shape, dtype=np.complex128)
-    iq_complex = data.df["i"].pint.magnitude.to_numpy().reshape(shape) + 1j * data.df[
-        "q"
-    ].pint.magnitude.to_numpy().reshape(shape)
-
-    # Move state to 0, and iteration to -1
+    # Rearrange axes
     labels = list(labels)
-    iq_complex = np.moveaxis(iq_complex, labels.index("state"), 0)
-    labels.remove("state")
-    labels = ["state"] + labels
-    iq_complex = np.moveaxis(iq_complex, labels.index("iteration"), -1)
-
-    # Take the mean ground state
-    mean_gnd_state = np.mean(iq_complex[0, ...], axis=-1, keepdims=True)
-    mean_exc_state = np.mean(iq_complex[1, ...], axis=-1, keepdims=True)
-    angle = np.angle(mean_exc_state - mean_gnd_state)
-
-    # Rotate the data
-    iq_complex = iq_complex * np.exp(-1j * angle)
-
-    # Take the cumulative distribution of the real part of the data
-    iq_complex_sorted = np.sort(iq_complex.real, axis=-1)
-    cum_dist = (
-        np.apply_along_axis(
-            lambda x: np.searchsorted(
-                x, np.linspace(x.min(), x.max(), nb_shots), side="left"
-            ),
-            axis=-1,
-            arr=iq_complex_sorted,
-        )
-        / nb_shots
+    iq_complex = np.moveaxis(
+        iq_complex, [labels.index("state"), labels.index("iteration")], [-2, -1]
     )
+    shape = iq_complex.shape
 
-    # Find the threshold for which the difference between the cumulative distribution of the two states is maximum
+    # Calculate mean ground and excited states
+    iq_mean_state0 = np.mean(np.take(iq_complex, 0, axis=-2), axis=-1, keepdims=True)
+    iq_mean_state1 = np.mean(np.take(iq_complex, 1, axis=-2), axis=-1, keepdims=True)
+
+    # Calculate rotation angle
+    rotation_angle = np.expand_dims(np.angle(iq_mean_state1 - iq_mean_state0), axis=-2)
+
+    # Rotate the data so that the mean of both states have the same imaginary component
+    iq_complex_rotated = iq_complex * np.exp(-1j * rotation_angle)
+
+    def calculate_cumulative_distributions(real_values_combined):
+        """
+        Calculates the cumulative distributions for state 0 and state 1
+
+        Args:
+            real_values_combined (np.ndarray): a flattened array of size (2 x num_shots)
+        """
+        sorted_real_values_state = np.sort(np.split(real_values_combined, 2))
+        sorted_real_values_combined = np.sort(real_values_combined)
+
+        cumulative_distributions = [[], []]
+        for state in [0, 1]:
+            app = 0
+            for val in sorted_real_values_combined:
+                app += np.max(
+                    np.searchsorted(sorted_real_values_state[state][app:], val), 0
+                )
+                cumulative_distributions[state].append(app)
+        return np.array(cumulative_distributions)
+
+    # Select the real components and combine the data of both states
+    iq_real = iq_complex_rotated.copy().real.reshape(*shape[:-2], 2 * num_shots)
+
+    # Calculate the cumulative distributions
+    cumulative_distributions = (
+        np.apply_along_axis(calculate_cumulative_distributions, axis=-1, arr=iq_real)
+        / num_shots
+    )
+    cumulative_distribution_0 = np.take(cumulative_distributions, 0, axis=-2)
+    cumulative_distribution_1 = np.take(cumulative_distributions, 1, axis=-2)
+
+    # Find the index of the threshold for which the difference between the cumulative distributions
+    # of the two states is maximum
     argmax = np.argmax(
-        np.abs(cum_dist[0, ...] - cum_dist[1, ...]), axis=-1, keepdims=True
+        np.abs(cumulative_distribution_0 - cumulative_distribution_1),
+        axis=-1,
+        keepdims=True,
     )
 
-    # Use np.take_along_axis to get the correct indices for the threshold calculation
-    threshold = (
-        np.take_along_axis(iq_complex_sorted[0, ...], argmax, axis=-1)
-        + np.take_along_axis(iq_complex_sorted[1, ...], argmax, axis=-1)
-    ) / 2
+    # Get threshold value
+    threshold = np.take_along_axis(iq_real, argmax, axis=-1)
 
     # Calculate the fidelity
     fidelity = np.take_along_axis(
-        np.abs(cum_dist[0, ...] - cum_dist[1, ...]), argmax, axis=-1
+        np.abs(cumulative_distribution_0 - cumulative_distribution_1), argmax, axis=-1
     )
+
     assignment_fidelity = (
         1
         - (
-            np.take_along_axis(cum_dist[0, ...], argmax, axis=-1)
-            + np.take_along_axis(cum_dist[1, ...], argmax, axis=-1)
+            (1 - np.take_along_axis(cumulative_distribution_0, argmax, axis=-1))
+            + np.take_along_axis(cumulative_distribution_1, argmax, axis=-1)
         )
         / 2
     )
@@ -1178,12 +1193,12 @@ def ro_optimization_fit(data, *labels):
         .reset_index(drop=True)
         .apply(pint_to_float)
     )
-    data_fit.df["rotation_angle"] = angle.flatten()
+    data_fit.df["rotation_angle"] = rotation_angle.flatten()
     data_fit.df["threshold"] = threshold.flatten()
     data_fit.df["fidelity"] = fidelity.flatten()
     data_fit.df["assignment_fidelity"] = assignment_fidelity.flatten()
-    data_fit.df["average_state0"] = mean_gnd_state.flatten()
-    data_fit.df["average_state1"] = mean_exc_state.flatten()
+    data_fit.df["average_state0"] = iq_mean_state0.flatten()
+    data_fit.df["average_state1"] = iq_mean_state1.flatten()
 
     return data_fit
 
