@@ -39,33 +39,25 @@ class Experiment:
         if circuitfactory is not None and not isinstance(circuitfactory, Iterable):
             raise_error(
                 TypeError,
-                "given circuit factory has wrong type {}, must be Iterable | None.".format(
-                    type(circuitfactory)
-                ),
+                f"given circuit factory has wrong type {type(circuitfactory)}, must be Iterable | None.",
             )
         self.circuitfactory = circuitfactory
         if data is not None and not isinstance(data, Iterable):
             raise_error(
                 TypeError,
-                "given data has wrong type {}, must be Iterable | None ".format(
-                    type(data)
-                ),
+                f"given data has wrong type {type(data)}, must be Iterable | None ",
             )
         self.data = data
         if nshots is not None and not isinstance(nshots, int):
             raise_error(
                 TypeError,
-                "given nshots has wrong type {}, must be int | None".format(
-                    type(nshots)
-                ),
+                f"given nshots has wrong type {type(nshots)}, must be int | None",
             )
         self.nshots = nshots
         if noise_model is not None and not isinstance(noise_model, NoiseModel):
             raise_error(
                 TypeError,
-                "given circuit factory has wrong type {}, must be qibo NoiseModel | None .".format(
-                    type(noise_model)
-                ),
+                f"given circuit factory has wrong type {type(noise_model)}, must be qibo NoiseModel | None .",
             )
         self.__noise_model = noise_model
         self.name = "Abstract"

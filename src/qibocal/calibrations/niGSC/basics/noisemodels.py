@@ -29,7 +29,7 @@ class PauliErrorOnAll(NoiseModel):
             # Raise ValueError if given paramters are wrong.
             raise_error(
                 ValueError,
-                "Wrong number of error parameters, 3 != {}.".format(len(args)),
+                f"Wrong number of error parameters, 3 != {len(args)}.",
             )
         self.build(*params)
 
@@ -45,9 +45,6 @@ class PauliErrorOnX(PauliErrorOnAll):
     If no initial parameters for px, py, pz are given, random values
     are drawn (in sum not bigger than 1).
     """
-
-    def __init__(self, *args) -> None:
-        super().__init__(*args)
 
     def build(self, *params):
         self.add(PauliError(*params), gates.X)

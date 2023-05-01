@@ -5,7 +5,6 @@ They consist mostly of exponential decay fitting.
 from typing import Optional, Tuple, Union
 
 import numpy as np
-from scipy.fft import fft
 from scipy.linalg import hankel, svd
 from scipy.optimize import curve_fit
 

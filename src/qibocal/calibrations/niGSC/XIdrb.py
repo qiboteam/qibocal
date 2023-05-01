@@ -41,9 +41,7 @@ class ModuleFactory(CircuitFactory):
         if not len(self.qubits) == 1:
             raise_error(
                 ValueError,
-                "This class is written for gates acting on only one qubit, not {} qubits.".format(
-                    len(self.qubits)
-                ),
+                f"This class is written for gates acting on only one qubit, not {len(self.qubits)} qubits.",
             )
         self.name = "XId"
 
@@ -153,7 +151,8 @@ def get_aggregational_data(experiment: Experiment, ndecays: int = 2) -> pd.DataF
     _, ydata_std = experiment.extract("filter", "depth", "std")
     # Fit the filtered signal for each depth, there could be two overlaying exponential functions.
     popt, perr = fitting_methods.fit_expn_func(depths, ydata, n=ndecays)
-    # Create dictionaries with fitting parameters and estimated errors in the form {A1: ..., p1: ..., A2: ..., p2: ...}
+    # Create dictionaries with fitting parameters and estimated errors
+    # in the form {A1: ..., p1: ..., A2: ..., p2: ...}
     popt_keys = [f"A{k+1}" for k in range(ndecays)]
     popt_keys += [f"p{k+1}" for k in range(ndecays)]
     popt_dict = dict(zip(popt_keys, popt))
