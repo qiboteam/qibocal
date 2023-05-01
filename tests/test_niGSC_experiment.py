@@ -113,7 +113,6 @@ def test_Experiment_save_load(nqubits: int, depths: list, runs: int, qubits: lis
     path = "_test_rb"
     if not os.path.exists(path):
         os.makedirs(path)
-    path1 = experiment1.save_circuits(path)
     path1 = experiment1.save(path)
     experiment2 = Experiment.load(path1)
     for datarow1, datarow2 in zip(experiment1.data, experiment2.data):
@@ -134,8 +133,6 @@ def test_Experiment_save_load(nqubits: int, depths: list, runs: int, qubits: lis
         experiment3.circuitfactory, experiment4.circuitfactory
     ):
         assert np.array_equal(circuit3.unitary(), circuit4.unitary())
-    rmtree(path)
-
     rmtree(path)
 
     cfactory5 = Qibo1qGatesFactory(nqubits, depths * runs, qubits=qubits)

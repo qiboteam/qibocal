@@ -239,10 +239,5 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
         # Add a subplot title for each irrep.
         figdict["subplot_title"] = f"Irrep {l[0]}"
         report.all_figures.append(figdict)
-
-    for key, value in report.info_dict.items():
-        if isinstance(value, str):
-            fitting_report += f"q{0}/r{0} | {key}: {value}<br>"
-        else:
-            fitting_report += f"q{0}/r{0} | {key}: {value:,.0f}<br>"
-    return report.build(), fitting_report
+    # Return the figure of the report object and the corresponding table.
+    return report.build()
