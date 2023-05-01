@@ -115,7 +115,7 @@ class Experiment:
             (str): The path of stored experiment.
         """
 
-        # Check if path to store is given, if not create one. 
+        # Check if path to store is given, if not create one.
         if path is None:
             self.path = generate_output_folder(path, force)
         else:

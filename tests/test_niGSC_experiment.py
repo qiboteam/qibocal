@@ -146,7 +146,7 @@ def test_Experiment_save_load(nqubits: int, depths: list, runs: int, qubits: lis
         os.makedirs(path)
     path5 = experiment5.save_circuits(path)
     path5 = experiment5.save(path)
-    
+
     experiment6 = Experiment.load(path5)
     assert experiment6.data is None
     for circuit5, circuit6 in zip(

@@ -221,4 +221,3 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
     )
     # Return the figure the report object builds out of all figures added to the report.
     return report.build()
-
