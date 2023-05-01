@@ -5,7 +5,6 @@ from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal import plots
-from qibocal.config import raise_error
 from qibocal.data import DataUnits
 from qibocal.decorators import plot
 from qibocal.fitting.methods import lorentzian_fit

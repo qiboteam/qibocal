@@ -209,5 +209,6 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
     # plotly figure with the scattered filtered data along with the mean for
     # each depth and the exponential fit for the means.
     report.all_figures.append(scatter_fit_fig(experiment, df_aggr, "depth", "filter"))
+
     # Return the figure the report object builds out of all figures added to the report.
-    return report.build()
+    return report.build(), fitting_report

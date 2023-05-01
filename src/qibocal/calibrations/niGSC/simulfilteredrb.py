@@ -213,6 +213,7 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
     # Initiate a report object.
     report = ModuleReport()
     # Add general information to the table.
+
     report.info_dict["Number of qubits"] = len(experiment.data[0]["samples"][0])
     report.info_dict["Number of shots"] = len(experiment.data[0]["samples"])
     report.info_dict["runs"] = experiment.extract("samples", "depth", "count")[1][0]
@@ -236,6 +237,12 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
         # plotly figure with the scattered filter function points and then mean per depth.
         figdict = scatter_fit_fig(experiment, df_aggr, "depth", f"irrep{kk}")
         # Add a subplot title for each irrep.
-        figdict["subplot_title"] = f"Irrep {l}"
+        figdict["subplot_title"] = f"Irrep {l[0]}"
         report.all_figures.append(figdict)
-    return report.build()
+
+    for key, value in report.info_dict.items():
+        if isinstance(value, str):
+            fitting_report += f"q{0}/r{0} | {key}: {value}<br>"
+        else:
+            fitting_report += f"q{0}/r{0} | {key}: {value:,.0f}<br>"
+    return report.build(), fitting_report

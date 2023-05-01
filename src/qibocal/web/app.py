@@ -94,7 +94,6 @@ def get_graph(interval, url, value):
         # # multiple routines with different names in one folder
         # # should be changed to:
         # # return getattr(getattr(plots, routine), method)(data)
-        figs, fitting_report = getattr(plots, method)(folder, routine, qubit, format)
         if hasattr(plots, method):
             figs, fitting_report = getattr(plots, method)(
                 folder, routine, qubit, format

@@ -8,15 +8,8 @@ import yaml
 
 from qibocal import calibrations
 from qibocal.cli.utils import generate_output_folder, load_yaml
-from qibocal.config import log, raise_error
+from qibocal.config import raise_error
 from qibocal.data import Data
-
-
-def load_yaml(path):
-    """Load yaml file from disk."""
-    with open(path) as file:
-        data = yaml.safe_load(file)
-    return data
 
 
 class ActionParser:
@@ -146,8 +139,10 @@ class ActionBuilder:
     def __init__(self, runcard, folder=None, force=False):
         # setting output folder
         self.folder = generate_output_folder(folder, force)
+
         # parse runcard
         self.runcard = load_yaml(runcard)
+
         # backend and platform allocation
         backend_name = self.runcard.get("backend", "qibolab")
         platform_name = self.runcard.get("platform", "dummy")
@@ -303,7 +298,6 @@ class ReportBuilder:
         self.routines = []
         if actions is None:
             actions = self.runcard.get("actions")
-
         for action in actions:
             if hasattr(calibrations, action):
                 routine = getattr(calibrations, action)

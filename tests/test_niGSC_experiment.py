@@ -136,6 +136,8 @@ def test_Experiment_save_load(nqubits: int, depths: list, runs: int, qubits: lis
         assert np.array_equal(circuit3.unitary(), circuit4.unitary())
     rmtree(path)
 
+    rmtree(path)
+
     cfactory5 = Qibo1qGatesFactory(nqubits, depths * runs, qubits=qubits)
     experiment5 = Experiment(cfactory5)
     experiment5.prebuild()
@@ -144,7 +146,7 @@ def test_Experiment_save_load(nqubits: int, depths: list, runs: int, qubits: lis
         os.makedirs(path)
     path5 = experiment5.save_circuits(path)
     path5 = experiment5.save(path)
-
+    
     experiment6 = Experiment.load(path5)
     assert experiment6.data is None
     for circuit5, circuit6 in zip(

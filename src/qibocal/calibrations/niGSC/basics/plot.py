@@ -5,6 +5,7 @@ from plotly.subplots import make_subplots
 
 import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
+from qibocal.plots.utils import get_data_subfolders
 
 
 def plot_qq(folder: str, routine: str, qubit, format):
@@ -31,6 +32,7 @@ def plot_qq(folder: str, routine: str, qubit, format):
     aggr_df = pd.read_pickle(f"{folder}/data/{routine}/fit_plot.pkl")
     # Build the figure/report using the responsible module.
     plotly_figure, fitting_report = module.build_report(experiment, aggr_df)
+
     return [plotly_figure], fitting_report
 
 
