@@ -228,7 +228,7 @@ def _fit(data: RamseyData) -> RamseyResults:
 
 
 def _plot(data: RamseyData, fit: RamseyResults, qubit):
-    """ Plotting function for Ramsey Experiment."""
+    """Plotting function for Ramsey Experiment."""
 
     figures = []
     fig = go.Figure()
