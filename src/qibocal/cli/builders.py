@@ -4,9 +4,8 @@ import inspect
 import os
 import shutil
 
-import yaml
-
 import numpy as np
+import yaml
 
 from qibocal import calibrations
 from qibocal.config import log, raise_error
