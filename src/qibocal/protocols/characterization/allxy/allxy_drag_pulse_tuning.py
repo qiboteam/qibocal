@@ -14,17 +14,24 @@ from . import allxy
 
 @dataclass
 class AllXYDragParameters(Parameters):
+    """AllXYDrag runcard inputs."""
+
     beta_start: float
+    """Initial beta parameter for Drag pulse."""
     beta_end: float
+    """Final beta parameter for Drag pulse."""
     beta_step: float
+    """Step beta parameter for Drag pulse."""
 
 
 @dataclass
 class AllXYDragResults(Results):
-    ...
+    """AllXYDrag outputs."""
 
 
 class AllXYDragData(Data):
+    """AllXYDrag acquisition outputs."""
+
     def __init__(self):
         super().__init__(
             name="data",
@@ -43,6 +50,7 @@ def _acquisition(
     qubits: Qubits,
 ) -> AllXYDragData:
     r"""
+    Data acquisition for allXY experiment varying beta.
     The AllXY experiment is a simple test of the calibration of single qubit gatesThe qubit (initialized in the |0> state)
     is subjected to two back-to-back single-qubit gates and measured. In each round, we run 21 different gate pairs:
     ideally, the first 5 return the qubit to |0>, the next 12 drive it to superposition state, and the last 4 put the
@@ -50,33 +58,7 @@ def _acquisition(
 
     The AllXY iteration method allows the user to execute iteratively the list of gates playing with the drag pulse shape
     in order to find the optimal drag pulse coefficient for pi pulses.
-
-    Args:
-        platform (AbstractPlatform): Qibolab platform object
-        qubits (dict): Dict of target Qubit objects to perform the action
-        beta_start (float): Initial drag pulse beta parameter
-        beta_end (float): Maximum drag pulse beta parameter
-        beta_step (float): Scan range step for the drag pulse beta parameter
-        software_averages (int): Number of executions of the routine for averaging results
-        points (int): Save data results in a file every number of points
-
-    Returns:
-        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
-
-            - **MSR[V]**: Difference between resonator signal voltage mesurement in volts from sequence 1 and 2
-            - **i[V]**: Difference between resonator signal voltage mesurement for the component I in volts from sequence 1 and 2
-            - **q[V]**: Difference between resonator signal voltage mesurement for the component Q in volts from sequence 1 and 2
-            - **phase[rad]**: Difference between resonator signal phase mesurement in radians from sequence 1 and 2
-            - **probability[dimensionless]**: Probability of being in |0> state
-            - **gateNumber[dimensionless]**: Gate number applied from the list of gates
-            - **beta_param[dimensionless]**: Beta paramter applied in the current execution
-            - **qubit**: The qubit being tested
-            - **iteration**: The iteration number of the many determined by software_averages
-
     """
-
-    # reload instrument settings from runcard
-    platform.reload_settings()
 
     data = AllXYDragData()
 
@@ -114,10 +96,13 @@ def _acquisition(
 
 
 def _fit(_data: AllXYDragData) -> AllXYDragResults:
+    """Post-processing for allXYDrag."""
     return AllXYDragResults()
 
 
 def _plot(data: AllXYDragData, _fit: AllXYDragResults, qubit):
+    """Plotting function for allXYDrag."""
+
     figures = []
     fitting_report = "No fitting data"
 
@@ -176,3 +161,4 @@ def _plot(data: AllXYDragData, _fit: AllXYDragResults, qubit):
 
 
 allxy_drag_pulse_tuning = Routine(_acquisition, _fit, _plot)
+"""AllXYDrag Routine object."""

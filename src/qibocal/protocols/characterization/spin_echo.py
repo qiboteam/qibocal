@@ -1,9 +1,8 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
@@ -16,18 +15,29 @@ from qibocal.plots.utils import get_color
 
 @dataclass
 class SpinEchoParameters(Parameters):
+    """SpinEcho runcard inputs."""
+
     delay_between_pulses_start: int
-    delay_between_pulses_end: list
+    """Initial delay between pulses (ns)."""
+    delay_between_pulses_end: int
+    """Final delay between pulses (ns)."""
     delay_between_pulses_step: int
+    """Step delay between pulses (ns)."""
 
 
 @dataclass
 class SpinEchoResults(Results):
+    """SpinEcho outputs."""
+
     t2_spin_echo: Dict[List[Tuple], str] = field(metadata=dict(update="t2_spin_echo"))
+    """T2 echo for each qubit."""
     fitted_paramters: Dict[List[Tuple], List]
+    """Raw fitting output."""
 
 
 class SpinEchoData(DataUnits):
+    """SpinEcho acquisition outputs."""
+
     def __init__(self, resonator_type):
         super().__init__(
             "data",
@@ -39,6 +49,7 @@ class SpinEchoData(DataUnits):
 
     @property
     def resonator_type(self):
+        """Type of resonator (2D or 3D)."""
         return self._resonator_type
 
 
@@ -47,6 +58,7 @@ def _acquisition(
     platform: AbstractPlatform,
     qubits: Qubits,
 ) -> SpinEchoData:
+    """Data acquisition for SpinEcho"""
     # create a sequence of pulses for the experiment:
     # Spin Echo 3 Pulses: RX(pi/2) - wait t(rotates z) - RX(pi) - wait t(rotates z) - RX(pi/2) - readout
     ro_pulses = {}
@@ -110,6 +122,7 @@ def exp(x, *p):
 
 
 def _fit(data: SpinEchoData) -> SpinEchoResults:
+    """Post-processing for SpinEcho."""
     # TODO: improve this fitting
     qubits = data.df["qubit"].unique()
     fitted_parameters = {}
@@ -149,8 +162,9 @@ def _fit(data: SpinEchoData) -> SpinEchoResults:
 
 
 def _plot(data: SpinEchoData, fit: SpinEchoResults, qubit: int):
-    figures = []
+    """Plotting for SpinEcho"""
 
+    figures = []
     fig = go.Figure()
 
     # iterate over multiple data folders
@@ -207,3 +221,4 @@ def _plot(data: SpinEchoData, fit: SpinEchoResults, qubit: int):
 
 
 spin_echo = Routine(_acquisition, _fit, _plot)
+"""SpinEcho Routine object."""

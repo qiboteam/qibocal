@@ -15,23 +15,37 @@ from . import utils
 # TODO: implement cross-talk (maybe separate routine?)
 @dataclass
 class ResonatorFluxParameters(Parameters):
+    """ResonatorFlux runcard inputs."""
+
     freq_width: int
+    """Width for frequency sweep relative to the readout frequency (Hz)."""
     freq_step: int
+    """Frequency step for sweep (Hz)."""
     bias_width: float
+    """Width for bias sweep (V)."""
     bias_step: float
-    # fluxlines: int
+    """Bias step for sweep (V)."""
     nshots: int
+    """Number of shots."""
     relaxation_time: int
+    """Relaxation time (ns)."""
 
 
 @dataclass
 class ResonatorFluxResults(Results):
+    """ResonatoFlux outputs."""
+
     sweetspot: Dict[List[Tuple], str] = field(metadata=dict(update="sweetspot"))
+    """Sweetspot for each qubit."""
     frequency: Dict[List[Tuple], str] = field(metadata=dict(update="readout_frequency"))
+    """Readout frequency for each qubit."""
     fitted_parameters: Dict[List[Tuple], List]
+    """Raw fitting output."""
 
 
 class ResonatorFluxData(DataUnits):
+    """ResonatorFlux acquisition outputs."""
+
     def __init__(self):
         super().__init__(
             "data",
@@ -43,6 +57,7 @@ class ResonatorFluxData(DataUnits):
 def _acquisition(
     params: ResonatorFluxParameters, platform: AbstractPlatform, qubits: Qubits
 ) -> ResonatorFluxData:
+    """Data acquisition for ResonatorFlux experiment."""
     # create a sequence of pulses for the experiment:
     # MZ
 
@@ -107,11 +122,14 @@ def _acquisition(
 
 
 def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
+    """Post-processing for ResonatorFlux experiment."""
     return ResonatorFluxResults({}, {}, {})
 
 
 def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, qubit):
+    """Plotting function for ResonatorFlux Experiment."""
     return utils.flux_dependence_plot(data, fit, qubit)
 
 
 resonator_flux = Routine(_acquisition, _fit, _plot)
+"""ResonatorFlux Routine object."""

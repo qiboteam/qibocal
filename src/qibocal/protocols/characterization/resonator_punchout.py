@@ -17,29 +17,45 @@ from . import utils
 
 @dataclass
 class ResonatorPunchoutParameters(Parameters):
+    """ "ResonatorPunchout runcard inputs."""
+
     freq_width: int
+    """Width for frequency sweep relative  to the readout frequency (hz)."""
     freq_step: int
+    """Frequency step for sweep (Hz)."""
     min_amp_factor: float
+    """Minimum amplitude multiplicative factor."""
     max_amp_factor: float
+    """Maximum amplitude multiplicative factor."""
     step_amp_factor: float
+    """Step amplitude multiplicative factor."""
     nshots: int
+    """Number of shots."""
     relaxation_time: int
+    """Relaxation time (ns)."""
 
 
 @dataclass
 class ResonatorPunchoutResults(Results):
+    """ResonatorPunchout outputs."""
+
     readout_frequency: Dict[List[Tuple], str] = field(
         metadata=dict(update="readout_frequency")
     )
+    """Readout frequency for each qubit."""
     readout_amplitude: Dict[List[Tuple], str] = field(
         metadata=dict(update="readout_amplitude")
     )
+    """Readout amplitude for each qubit."""
     bare_frequency: Optional[Dict[List[Tuple], str]] = field(
         metadata=dict(update="bare_resonator_frequency")
     )
+    """Bare resonator frequency for each qubit."""
 
 
 class ResonatorPunchoutData(DataUnits):
+    """ResonatorPunchout data acquisition."""
+
     def __init__(self, resonator_type=None):
         super().__init__(
             "data",
@@ -50,6 +66,7 @@ class ResonatorPunchoutData(DataUnits):
 
     @property
     def resonator_type(self):
+        """Type of resonator (2D or 3D)."""
         return self._resonator_type
 
 
@@ -58,6 +75,7 @@ def _acquisition(
     platform: AbstractPlatform,
     qubits: Qubits,
 ) -> ResonatorPunchoutData:
+    """Data acquisition for Punchout over amplitude."""
     # create a sequence of pulses for the experiment:
     # MZ
 
@@ -126,19 +144,7 @@ def _acquisition(
 
 
 def _fit(data: ResonatorPunchoutData, fit_type="amplitude") -> ResonatorPunchoutResults:
-    # def punchout_fit(data: DataUnits, fit_type: str) -> Results:
-    # def punchout_fit(data, qubits, resonator_type, labels, fit_type):
-    """Fit frequency and attenuation at high and low power for a given resonator
-        Args:
-        data (DataUnits): data file with information on the feature response at each current point.
-        qubits (list): qubits coupled to the resonator that we are probing.
-        resonator_type (str): the type of readout resonator ['3D', '2D'].
-        labels (list of str): list containing the lables of the quantities computed by this fitting method.
-        fit_type (str): the type of punchout executed ['attenuation', 'amplitude'].
-
-    Returns:
-        data_fit (Data): Data file with labels and fit parameters (frequency at low and high power, attenuation range for low and highg power)
-    """
+    """Fit frequency and attenuation at high and low power for a given resonator."""
 
     qubits = data.df["qubit"].unique()
 
@@ -204,6 +210,7 @@ def _fit(data: ResonatorPunchoutData, fit_type="amplitude") -> ResonatorPunchout
 
 
 def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
+    """Plotting function for ResonatorPunchout."""
     figures = []
     fitting_report = ""
 
@@ -281,3 +288,4 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
 
 
 resonator_punchout = Routine(_acquisition, _fit, _plot)
+"""ResonatorPunchout Routine object."""

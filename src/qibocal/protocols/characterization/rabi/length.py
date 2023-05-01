@@ -14,71 +14,45 @@ from . import amplitude, utils
 
 @dataclass
 class RabiLengthParameters(Parameters):
+    """RabiLength runcard inputs."""
+
     pulse_duration_start: float
+    """Initial pi pulse duration (ns)."""
     pulse_duration_end: float
+    """Final pi pulse duration (ns)."""
     pulse_duration_step: float
+    """Step pi pulse duration (ns)."""
     pulse_amplitude: float
+    """Pi pulse amplitude. Same for all qubits."""
     nshots: int
+    """Number of shots."""
     relaxation_time: float
+    """Relxation time (ns)."""
 
 
 @dataclass
 class RabiLengthResults(Results):
+    """RabiLength outputs."""
+
     length: Dict[List[Tuple], str] = field(metadata=dict(update="drive_length"))
+    """Pi pulse duration for each qubit."""
     amplitude: Dict[List[Tuple], str] = field(metadata=dict(update="drive_amplitude"))
+    """Pi pulse amplitude. Same for all qubits."""
     fitted_parameters: Dict[List[Tuple], List]
+    """Raw fitting output."""
 
 
 class RabiLengthData(amplitude.RabiAmplitudeData):
-    ...
+    """RabiLength acquisition outputs."""
 
 
 def _acquisition(
     params: RabiLengthParameters, platform: AbstractPlatform, qubits: Qubits
 ) -> RabiLengthData:
     r"""
+    Data acquisition for RabiLength Experiment.
     In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse length
     to find the drive pulse length that creates a rotation of a desired angle.
-
-    Args:
-        platform (AbstractPlatform): Qibolab platform object
-        qubits (dict): Dict of target Qubit objects to perform the action
-        pulse_duration_start (int): Initial drive pulse length for the Rabi experiment
-        pulse_duration_end (int): Maximum drive pulse length for the Rabi experiment
-        pulse_duration_step (int): Scan range step for the drive pulse length for the Rabi experiment
-        software_averages (int): Number of executions of the routine for averaging results
-        points (int): Save data results in a file every number of points
-
-    Args:
-        platform (AbstractPlatform): Qibolab platform object
-        qubits (dict): Dict of target Qubit objects to perform the action
-        pulse_duration_start (int): Initial drive pulse duration for the Rabi experiment
-        pulse_duration_end (int): Maximum drive pulse duration for the Rabi experiment
-        pulse_duration_step (int): Scan range step for the drive pulse duration for the Rabi experiment
-        software_averages (int): Number of executions of the routine for averaging results
-        points (int): Save data results in a file every number of points
-
-    Returns:
-        - A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
-
-            - **MSR[V]**: Resonator signal voltage mesurement in volts
-            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
-            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
-            - **phase[rad]**: Resonator signal phase mesurement in radians
-            - **time[ns]**: Drive pulse duration in ns
-            - **qubit**: The qubit being tested
-            - **iteration**: The iteration number of the many determined by software_averages
-
-        - A DataUnits object with the fitted data obtained with the following keys
-
-            - **pi_pulse_duration**: pi pulse duration
-            - **pi_pulse_peak_voltage**: pi pulse's maximum voltage
-            - **popt0**: offset
-            - **popt1**: oscillation length
-            - **popt2**: frequency
-            - **popt3**: phase
-            - **popt4**: T2
-            - **qubit**: The qubit being tested
     """
 
     # create a sequence of pulses for the experiment
@@ -134,8 +108,9 @@ def _acquisition(
 
 
 def _fit(data: RabiLengthData) -> RabiLengthResults:
-    qubits = data.df["qubit"].unique()
+    """Post-processing for RabiLength experiment."""
 
+    qubits = data.df["qubit"].unique()
     pi_pulse_amplitudes = {}
     fitted_parameters = {}
     durations = {}
@@ -188,7 +163,9 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
 
 
 def _plot(data: RabiLengthData, fit: RabiLengthResults, qubit):
+    """Plotting function for RabiLength experiment."""
     return utils.plot(data, fit, qubit)
 
 
 rabi_length = Routine(_acquisition, _fit, _plot)
+"""RabiLength Routine object."""

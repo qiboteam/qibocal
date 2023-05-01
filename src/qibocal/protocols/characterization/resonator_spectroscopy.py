@@ -14,13 +14,23 @@ from .utils import PowerLevel, lorentzian_fit, spectroscopy_plot
 
 @dataclass
 class ResonatorSpectroscopyParameters(Parameters):
+    """ResonatorSpectroscopy runcard inputs."""
+
     freq_width: int
+    """Width for frequency sweep relative  to the readout frequency (Hz)."""
     freq_step: int
+    """Frequency step for sweep (Hz)."""
     nshots: int
+    """Number of shots."""
     power_level: PowerLevel
+    """Power regime (low or high). If low the readout frequency will be updated.
+    If high both the readout frequency and the bare resonator frequency will be updated."""
     relaxation_time: int
+    """Relaxation time (ns)."""
     amplitude: Optional[float] = None
+    """Readout amplitude (optional). Same for all qubits."""
     attenuation: Optional[int] = None
+    """Readout attenuation (optional). Same for all qubits."""
 
     def __post_init__(self):
         if self.attenuation is not None and self.amplitude is not None:
@@ -33,20 +43,29 @@ class ResonatorSpectroscopyParameters(Parameters):
 
 @dataclass
 class ResonatorSpectroscopyResults(Results):
+    """ResonatorSpectroscopy outputs."""
+
     frequency: Dict[List[Tuple], str] = field(metadata=dict(update="readout_frequency"))
+    """Readout frequency for each qubit."""
     fitted_parameters: Dict[List[Tuple], List]
+    """Raw fitted parameters."""
     bare_frequency: Optional[Dict[List[Tuple], str]] = field(
         default_factory=dict, metadata=dict(update="bare_resonator_frequency")
     )
+    """Bare resonator frequency for each qubit."""
     amplitude: Optional[Dict[List[Tuple], str]] = field(
         default_factory=dict, metadata=dict(update="readout_amplitude")
     )
+    """Readout amplitude for each qubit."""
     attenuation: Optional[Dict[List[Tuple], str]] = field(
         default_factory=dict, metadata=dict(update="readout_attenuation")
     )
+    """Readout attenuation for each qubit."""
 
 
 class ResonatorSpectroscopyData(DataUnits):
+    """ResonatorSpectroscopy acquisition outputs."""
+
     def __init__(
         self, resonator_type, power_level=None, amplitude=None, attenuation=None
     ):
@@ -84,6 +103,7 @@ class ResonatorSpectroscopyData(DataUnits):
 def _acquisition(
     params: ResonatorSpectroscopyParameters, platform: AbstractPlatform, qubits: Qubits
 ) -> ResonatorSpectroscopyData:
+    """Data acquisition for resonator spectroscopy."""
     # create a sequence of pulses for the experiment:
     # MZ
 
@@ -141,6 +161,7 @@ def _acquisition(
 
 
 def _fit(data: ResonatorSpectroscopyData) -> ResonatorSpectroscopyResults:
+    """Post-processing function for ResonatorSpectroscopy."""
     qubits = data.df["qubit"].unique()
     bare_frequency = {}
     amplitudes = {}
@@ -173,7 +194,9 @@ def _fit(data: ResonatorSpectroscopyData) -> ResonatorSpectroscopyResults:
 
 
 def _plot(data: ResonatorSpectroscopyData, fit: ResonatorSpectroscopyResults, qubit):
+    """Plotting function for ResonatorSpectroscopy."""
     return spectroscopy_plot(data, fit, qubit)
 
 
 resonator_spectroscopy = Routine(_acquisition, _fit, _plot)
+"""ResonatorSpectroscopy Routine object."""

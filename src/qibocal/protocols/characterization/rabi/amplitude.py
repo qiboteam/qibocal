@@ -16,72 +16,52 @@ from . import utils
 
 @dataclass
 class RabiAmplitudeParameters(Parameters):
+    """RabiAmplitude runcard inputs."""
+
     min_amp_factor: float
+    """Minimum amplitude multiplicative factor."""
     max_amp_factor: float
+    """Maximum amplitude multiplicative factor."""
     step_amp_factor: float
+    """Step amplitude multiplicative factor."""
     pulse_length: float
+    """RX pulse duration (ns)."""
     nshots: int
+    """Number of shots."""
     relaxation_time: float
+    """Relaxation time (ns)."""
 
 
 @dataclass
 class RabiAmplitudeResults(Results):
+    """RabiAmplitude outputs."""
+
     amplitude: Dict[List[Tuple], str] = field(metadata=dict(update="drive_amplitude"))
+    """Drive amplitude for each qubit."""
     length: Dict[List[Tuple], str] = field(metadata=dict(update="drive_length"))
+    """Drive pulse duration. Same for all qubits."""
     fitted_parameters: Dict[List[Tuple], List]
+    """Raw fitted parameters."""
 
 
 class RabiAmplitudeData(DataUnits):
-    def __init__(self, resonator_type):
+    """RabiAmplitude data acquisition."""
+
+    def __init__(self):
         super().__init__(
             "data",
             {"amplitude": "dimensionless", "length": "ns"},
             options=["qubit"],
         )
-        self._resonator_type = resonator_type
-
-    @property
-    def resonator_type(self):
-        return self._resonator_type
 
 
 def _acquisition(
     params: RabiAmplitudeParameters, platform: AbstractPlatform, qubits: Qubits
 ) -> RabiAmplitudeData:
     r"""
+    Data acquisition for Rabi experiment sweeping amplitude.
     In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse amplitude
     to find the drive pulse amplitude that creates a rotation of a desired angle.
-
-    Args:
-        platform (AbstractPlatform): Qibolab platform object
-        qubits (dict): Dict of target Qubit objects to perform the action
-        pulse_amplitude_start (int): Initial drive pulse amplitude for the Rabi experiment
-        pulse_amplitude_end (int): Maximum drive pulse amplitude for the Rabi experiment
-        pulse_amplitude_step (int): Scan range step for the drive pulse amplitude for the Rabi experiment
-        software_averages (int): Number of executions of the routine for averaging results
-        points (int): Save data results in a file every number of points
-
-    Returns:
-        - A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
-
-            - **MSR[V]**: Resonator signal voltage mesurement in volts
-            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
-            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
-            - **phase[rad]**: Resonator signal phase mesurement in radians
-            - **amplitude[dimensionless]**: Drive pulse amplitude
-            - **qubit**: The qubit being tested
-            - **iteration**: The iteration number of the many determined by software_averages
-
-        - A DataUnits object with the fitted data obtained with the following keys
-
-            - **pi_pulse_amplitude**: pi pulse amplitude
-            - **pi_pulse_peak_voltage**: pi pulse's maximum voltage
-            - **popt0**: offset
-            - **popt1**: oscillation amplitude
-            - **popt2**: frequency
-            - **popt3**: phase
-            - **popt4**: T2
-            - **qubit**: The qubit being tested
     """
 
     # create a sequence of pulses for the experiment
@@ -113,7 +93,7 @@ def _acquisition(
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
     # additionally include qubit drive pulse amplitude
-    data = RabiAmplitudeData(platform.resonator_type)
+    data = RabiAmplitudeData()
 
     # sweep the parameter
     results = platform.sweep(
@@ -140,6 +120,7 @@ def _acquisition(
 
 
 def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
+    """Post-processing for RabiAmplitude."""
     qubits = data.df["qubit"].unique()
 
     pi_pulse_amplitudes = {}
@@ -191,7 +172,9 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
 
 
 def _plot(data: RabiAmplitudeData, fit: RabiAmplitudeResults, qubit):
+    """Plotting function for RabiAmplitude."""
     return utils.plot(data, fit, qubit)
 
 
 rabi_amplitude = Routine(_acquisition, _fit, _plot)
+"""RabiAmplitude Routine object."""

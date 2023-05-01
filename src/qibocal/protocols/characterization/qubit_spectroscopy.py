@@ -7,7 +7,6 @@ from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.data import DataUnits
 
 from .resonator_spectroscopy import ResonatorSpectroscopyData
 from .utils import lorentzian_fit, spectroscopy_plot
@@ -15,31 +14,46 @@ from .utils import lorentzian_fit, spectroscopy_plot
 
 @dataclass
 class QubitSpectroscopyParameters(Parameters):
+    """QubitSpectroscopy runcard inputs."""
+
     freq_width: int
+    """Width for frequency sweep relative  to the qubit frequency."""
     freq_step: int
+    """Frequency step for sweep."""
     drive_duration: int
+    """Drive pulse duration. Same for all qubits."""
     drive_amplitude: Optional[float] = None
+    """Drive pulse amplitude (optional). Same for all qubits."""
     nshots: int = 1024
+    """Number of shots."""
     relaxation_time: int = 50
+    """Relaxation time (ns)."""
 
 
 @dataclass
 class QubitSpectroscopyResults(Results):
+    """QubitSpectroscopy outputs."""
+
     frequency: Dict[List[Tuple], str] = field(metadata=dict(update="drive_frequency"))
+    """Drive frequecy for each qubit."""
     amplitude: Dict[List[Tuple], str]
+    """Input drive amplitude. Same for all qubits."""
     fitted_parameters: Dict[List[Tuple], List]
+    """Raw fitting output."""
     attenuation: Optional[Dict[List[Tuple], str]] = field(
         default_factory=dict,
     )
+    """Input attenuation for each qubit (optional)."""
 
 
 class QubitSpectroscopyData(ResonatorSpectroscopyData):
-    """Data Structure for qubit spectroscopy"""
+    """QubitSpectroscopy acquisition outputs."""
 
 
 def _acquisition(
     params: QubitSpectroscopyParameters, platform: AbstractPlatform, qubits: Qubits
 ) -> QubitSpectroscopyData:
+    """Data acquisition for qubit spectroscopy."""
     # create a sequence of pulses for the experiment:
     # long drive probing pulse - MZ
 
@@ -69,9 +83,7 @@ def _acquisition(
         pulses=[qd_pulses[qubit] for qubit in qubits],
     )
 
-    # create a DataUnits object to store the results,
-    # DataUnits stores by default MSR, phase, i, q
-    # additionally include qubit frequency
+    # Create data structure for data acquisition.
     data = QubitSpectroscopyData(
         platform.resonator_type, amplitude=params.drive_amplitude
     )
@@ -96,14 +108,12 @@ def _acquisition(
             }
         )
         data.add_data_from_dict(r)
-
-        # finally, save the remaining data and fits
     return data
 
 
 def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
+    """Post-processing function for QubitSpectroscopy."""
     qubits = data.df["qubit"].unique()
-    bare_frequency = {}
     amplitudes = {}
     attenuations = {}
     frequency = {}
@@ -124,7 +134,9 @@ def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
 
 
 def _plot(data: QubitSpectroscopyData, fit: QubitSpectroscopyResults, qubit):
+    """Plotting function for QubitSpectroscopy."""
     return spectroscopy_plot(data, fit, qubit)
 
 
 qubit_spectroscopy = Routine(_acquisition, _fit, _plot)
+"""QubitSpectroscopy Routine object."""

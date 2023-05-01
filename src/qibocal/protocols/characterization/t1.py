@@ -3,7 +3,6 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
@@ -16,18 +15,29 @@ from qibocal.plots.utils import get_color
 
 @dataclass
 class T1Parameters(Parameters):
+    """T1 runcard inputs."""
+
     delay_before_readout_start: int
-    delay_before_readout_end: list
+    """Initial delay before readout (ns)."""
+    delay_before_readout_end: int
+    """Final delay before readout (ns)."""
     delay_before_readout_step: int
+    """Step delay before readout (ns)."""
 
 
 @dataclass
 class T1Results(Results):
+    """T1 outputs."""
+
     t1: Dict[List[Tuple], str] = field(metadata=dict(update="t1"))
+    """T1 for each qubit."""
     fitted_parameters: Dict[List[Tuple], List]
+    """Raw fitting output."""
 
 
 class T1Data(DataUnits):
+    """T1 acquisition outputs."""
+
     def __init__(self, resonator_type):
         super().__init__(
             name="data",
@@ -38,13 +48,14 @@ class T1Data(DataUnits):
 
     @property
     def resonator_type(self):
+        """Type of resonator (2D or 3D)."""
         return self._resonator_type
 
 
 def _acquisition(
     params: T1Parameters, platform: AbstractPlatform, qubits: Qubits
 ) -> T1Data:
-    r"""
+    r"""Data acquisition for T1 experiment.
     In a T1 experiment, we measure an excited qubit after a delay. Due to decoherence processes
     (e.g. amplitude damping channel), it is possible that, at the time of measurement, after the delay,
     the qubit will not be excited anymore. The larger the delay time is, the more likely is the qubit to
@@ -52,6 +63,7 @@ def _acquisition(
     towards the ground state.
 
     Args:
+        params:
         platform (AbstractPlatform): Qibolab platform object
         qubits (list): List of target qubits to perform the action
         delay_before_readout_start (int): Initial time delay before ReadOut
@@ -59,25 +71,6 @@ def _acquisition(
         delay_before_readout_step (int): Scan range step for the delay before ReadOut
         software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
-
-    Returns:
-        - A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
-
-            - **MSR[V]**: Resonator signal voltage mesurement in volts
-            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
-            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
-            - **phase[rad]**: Resonator signal phase mesurement in radians
-            - **wait[ns]**: Delay before ReadOut used in the current execution
-            - **qubit**: The qubit being tested
-            - **iteration**: The iteration number of the many determined by software_averages
-
-        - A DataUnits object with the fitted data obtained with the following keys
-
-            - **labels[0]**: T1
-            - **popt0**: p0
-            - **popt1**: p1
-            - **popt2**: p2
-            - **qubit**: The qubit being tested
     """
 
     # create a sequence of pulses for the experiment
@@ -137,25 +130,6 @@ def _fit(data: T1Data) -> T1Results:
         .. math::
 
             y = p_0-p_1 e^{-x p_2}.
-
-    Args:
-
-        data (`DataUnits`): dataset for the fit
-        x (str): name of the input values for the T1 model
-        y (str): name of the output values for the T1 model
-        qubit (int): ID qubit number
-        nqubits (int): total number of qubits
-        labels (list of str): list containing the lables of the quantities computed by this fitting method.
-
-    Returns:
-
-        A ``Data`` object with the following keys
-
-            - **popt0**: p0
-            - **popt1**: p1
-            - **popt2**: p2
-            - **labels[0]**: T1.
-
     """
     qubits = data.df["qubit"].unique()
     t1s = {}
@@ -196,8 +170,9 @@ def _fit(data: T1Data) -> T1Results:
 
 
 def _plot(data: T1Data, fit: T1Results, qubit):
-    figures = []
+    """Plotting function for T1 experiment."""
 
+    figures = []
     fig = go.Figure()
 
     fitting_report = ""
@@ -255,3 +230,4 @@ def _plot(data: T1Data, fit: T1Results, qubit):
 
 
 t1 = Routine(_acquisition, _fit, _plot)
+"""T1 Routine object."""

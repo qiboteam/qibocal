@@ -19,16 +19,22 @@ from . import allxy_drag_pulse_tuning
 
 @dataclass
 class DragPulseTuningParameters(allxy_drag_pulse_tuning.AllXYDragParameters):
-    ...
+    """DragPulseTuning runcard inputs."""
 
 
 @dataclass
 class DragPulseTuningResults(Results):
+    """DragPulseTuning outputs."""
+
     betas: Dict[List[Tuple], str] = field(metadata=dict(update="beta"))
+    """Optimal beta paramter for each qubit."""
     fitted_parameters: Dict[List[Tuple], List]
+    """Raw fitting output."""
 
 
 class DragPulseTuningData(DataUnits):
+    """DragPulseTuning acquisition outputs."""
+
     def __init__(self):
         super().__init__(
             name="data",
@@ -43,37 +49,9 @@ def _acquisition(
     qubits: Qubits,
 ) -> DragPulseTuningData:
     r"""
+    Data acquisition for drag pulse tuning experiment.
     In this experiment, we apply two sequences in a given qubit: Rx(pi/2) - Ry(pi) and Ry(pi) - Rx(pi/2) for a range
     of different beta parameter values. After fitting, we obtain the best coefficient value for a pi pulse with drag shape.
-
-    Args:
-        platform (AbstractPlatform): Qibolab platform object
-        qubits (dict): Dict of target Qubit objects to perform the action
-        beta_start (float): Initial drag pulse beta parameter
-        beta_end (float): Maximum drag pulse beta parameter
-        beta_step (float): Scan range step for the drag pulse beta parameter
-        software_averages (int): Number of executions of the routine for averaging results
-        points (int): Save data results in a file every number of points
-
-    Returns:
-        - A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
-
-            - **MSR[V]**: Difference between resonator signal voltage mesurement in volts from sequence 1 and 2
-            - **i[V]**: Difference between resonator signal voltage mesurement for the component I in volts from sequence 1 and 2
-            - **q[V]**: Difference between resonator signal voltage mesurement for the component Q in volts from sequence 1 and 2
-            - **phase[rad]**: Difference between resonator signal phase mesurement in radians from sequence 1 and 2
-            - **beta_param[dimensionless]**: Optimal drag coefficient
-            - **qubit**: The qubit being tested
-            - **iteration**: The iteration number of the many determined by software_averages
-
-        - A DataUnits object with the fitted data obtained with the following keys
-
-            - **optimal_beta_param**: Best drag pulse coefficent
-            - **popt0**: offset
-            - **popt1**: oscillation amplitude
-            - **popt2**: period
-            - **popt3**: phase
-            - **qubit**: The qubit being tested
     """
     # define the parameter to sweep and its range:
     # qubit drive DRAG pulse beta parameter
@@ -159,25 +137,6 @@ def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
 
             y = p_1 cos \Big(\frac{2 \pi x}{p_2} + p_3 \Big) + p_0.
 
-    Args:
-
-        data (`DataUnits`): dataset for the fit
-        x (str): name of the input values for the model
-        y (str): name of the output values for the model
-        qubit (int): ID qubit number
-        labels (list of str): list containing the lables of the quantities computed by this fitting method.
-
-    Returns:
-
-        A ``Data`` object with the following keys
-
-            - **popt0**: offset
-            - **popt1**: oscillation amplitude
-            - **popt2**: period
-            - **popt3**: phase
-            - **labels[0]**: optimal beta.
-
-
     """
     qubits = data.df["qubit"].unique()
     betas_optimal = {}
@@ -211,6 +170,8 @@ def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
 
 
 def _plot(data: DragPulseTuningData, fit: DragPulseTuningResults, qubit):
+    """Plottin function for DragPulseTuning."""
+
     figures = []
     fitting_report = ""
 
@@ -276,3 +237,4 @@ def _plot(data: DragPulseTuningData, fit: DragPulseTuningResults, qubit):
 
 
 drag_pulse_tuning = Routine(_acquisition, _fit, _plot)
+"""DragPulseTuning Routine object."""
