@@ -1077,7 +1077,7 @@ def calibrate_qubit_states_fit(data, x, y, nshots, qubits, degree=True):
     return parameters
 
 
-def ro_optimization_fit(data, *labels):
+def ro_optimization_fit(data, *labels, debug=False):
     """
     Fit the fidelities from parameters swept as labels, and extract rotation angle and threshold
 
@@ -1130,37 +1130,43 @@ def ro_optimization_fit(data, *labels):
 
     # Take the cumulative distribution of the real part of the data
     iq_complex_sorted = np.sort(iq_complex.real, axis=-1)
+
+    print(iq_complex_sorted.shape)  # is (2, 3, 20, 2000)
+
+    def cum_dist(complex_row):
+        state0 = complex_row.real
+        state1 = complex_row.imag
+        combined = np.sort(np.concatenate((state0, state1)))
+        # Count the number of elements in state0 and state1 that are lower than each element in combined using numpy
+        return np.searchsorted(combined, state0, side="left") + 1j * np.searchsorted(
+            combined, state1, side="left"
+        )
+
     cum_dist = (
         np.apply_along_axis(
-            lambda x: np.searchsorted(
-                x, np.linspace(x.min(), x.max(), nb_shots), side="left"
-            ),
+            func1d=cum_dist,
             axis=-1,
-            arr=iq_complex_sorted,
+            arr=iq_complex_sorted[0, ...] + 1j * iq_complex_sorted[1, ...],
         )
         / nb_shots
     )
 
     # Find the threshold for which the difference between the cumulative distribution of the two states is maximum
-    argmax = np.argmax(
-        np.abs(cum_dist[0, ...] - cum_dist[1, ...]), axis=-1, keepdims=True
-    )
+    argmax = np.argmax(np.abs(cum_dist.real - cum_dist.imag), axis=-1, keepdims=True)
 
     # Use np.take_along_axis to get the correct indices for the threshold calculation
-    threshold = (
-        np.take_along_axis(iq_complex_sorted[0, ...], argmax, axis=-1)
-        + np.take_along_axis(iq_complex_sorted[1, ...], argmax, axis=-1)
-    ) / 2
+    threshold = np.take_along_axis(iq_complex_sorted[0, ...], argmax, axis=-1)
 
     # Calculate the fidelity
     fidelity = np.take_along_axis(
-        np.abs(cum_dist[0, ...] - cum_dist[1, ...]), argmax, axis=-1
+        np.abs(cum_dist.real - cum_dist.imag), argmax, axis=-1
     )
     assignment_fidelity = (
         1
         - (
-            np.take_along_axis(cum_dist[0, ...], argmax, axis=-1)
-            + np.take_along_axis(cum_dist[1, ...], argmax, axis=-1)
+            1
+            - np.take_along_axis(cum_dist.real, argmax, axis=-1)
+            + np.take_along_axis(cum_dist.imag, argmax, axis=-1)
         )
         / 2
     )
@@ -1180,7 +1186,10 @@ def ro_optimization_fit(data, *labels):
     data_fit.df["average_state0"] = mean_gnd_state.flatten()
     data_fit.df["average_state1"] = mean_exc_state.flatten()
 
-    return data_fit
+    if debug:
+        return data_fit, cum_dist, iq_complex
+    else:
+        return data_fit
 
 
 def pint_to_float(x):

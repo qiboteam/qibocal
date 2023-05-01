@@ -66,7 +66,7 @@ def ro_frequency(
         state0_sequence.add(ro_pulses[qubit])
         state1_sequence.add(RX_pulses[qubit])
         state1_sequence.add(ro_pulses[qubit])
-
+    sequences = {0: state0_sequence, 1: state1_sequence}
     # create a DataUnits object to store the results
     data = DataUnits(
         name="data",
@@ -99,77 +99,44 @@ def ro_frequency(
         pulses=[ro_pulses[qubit] for qubit in qubits],
     )
 
-    # execute the first pulse sequence
-    state0_results = platform.sweep(
-        state0_sequence, frequency_sweeper, nshots=nshots, average=False
-    )
-
-    for qubit in qubits:
-        r = {
-            k: v.ravel() for k, v in state0_results[ro_pulses[qubit].serial].raw.items()
-        }
-        r.update(
-            {
-                "frequency[Hz]": np.repeat(
-                    np.vstack(delta_frequency_range).T,
-                    len(np.arange(nshots)),
-                    axis=0,
-                ).flatten()
-                + ro_pulses[qubit].frequency,
-                "delta_frequency[Hz]": np.repeat(
-                    np.vstack(delta_frequency_range).T,
-                    len(np.arange(nshots)),
-                    axis=0,
-                ).flatten(),
-                "qubit": [qubit] * nshots * len(delta_frequency_range),
-                "iteration": np.repeat(
-                    np.vstack(np.arange(nshots)).T,
-                    len(delta_frequency_range),
-                    axis=1,
-                ).flatten(),  # Might be the other way depending on how is result happening. Axis=0 gives 123123 and axis=1 gives 1112233
-                "state": [0] * nshots * len(delta_frequency_range),
-            }
+    # Execute sequences for both states
+    for state in [0, 1]:
+        results = platform.sweep(
+            sequences[state], frequency_sweeper, nshots=nshots, average=False
         )
-        data.add_data_from_dict(r)
-    yield data
 
-    # execute the second pulse sequence
-    state1_results = platform.sweep(
-        state1_sequence, frequency_sweeper, nshots=nshots, average=False
-    )
+        # retrieve and store the results for every qubit)
+        for qubit in qubits:
+            r = {k: v.ravel() for k, v in results[ro_pulses[qubit].serial].raw.items()}
+            r.update(
+                {
+                    "frequency[Hz]": np.repeat(
+                        np.vstack(delta_frequency_range).T,
+                        len(np.arange(nshots)),
+                        axis=0,
+                    ).flatten()
+                    + ro_pulses[qubit].frequency,
+                    "delta_frequency[Hz]": np.repeat(
+                        np.vstack(delta_frequency_range).T,
+                        len(np.arange(nshots)),
+                        axis=0,
+                    ).flatten(),
+                    "qubit": [qubit] * nshots * len(delta_frequency_range),
+                    "iteration": np.repeat(
+                        np.vstack(np.arange(nshots)).T,
+                        len(delta_frequency_range),
+                        axis=1,
+                    ).flatten(),  # Might be the other way depending on how is result happening. Axis=0 gives 123123 and axis=1 gives 1112233
+                    "state": [state] * nshots * len(delta_frequency_range),
+                }
+            )
+            data.add_data_from_dict(r)
 
-    # retrieve and store the results for every qubit)
-    for qubit in qubits:
-        r = {
-            k: v.ravel() for k, v in state1_results[ro_pulses[qubit].serial].raw.items()
-        }
-        r.update(
-            {
-                "frequency[Hz]": np.repeat(
-                    np.vstack(delta_frequency_range).T,
-                    len(np.arange(nshots)),
-                    axis=0,
-                ).flatten()
-                + ro_pulses[qubit].frequency,
-                "delta_frequency[Hz]": np.repeat(
-                    np.vstack(delta_frequency_range).T,
-                    len(np.arange(nshots)),
-                    axis=0,
-                ).flatten(),
-                "qubit": [qubit] * nshots * len(delta_frequency_range),
-                "iteration": np.repeat(
-                    np.vstack(np.arange(nshots)).T,
-                    len(delta_frequency_range),
-                    axis=1,
-                ).flatten(),  # Might be the other way depending on how is result happening. Axis=0 gives 123123 and axis=1 gives 1112233
-                "state": [1] * nshots * len(delta_frequency_range),
-            }
+        # finally, save the remaining data and the fits
+        yield data
+        yield ro_optimization_fit(
+            data, "state", "qubit", "iteration", "delta_frequency"
         )
-        data.add_data_from_dict(r)
-
-    # finally, save the remaining data and the fits
-    yield data
-    yield ro_optimization_fit(data, "state", "qubit", "iteration", "delta_frequency")
 
 
 @plot("Qubit States", plots.ro_amplitude)
@@ -226,7 +193,7 @@ def ro_amplitude(
         state0_sequence.add(ro_pulses[qubit])
         state1_sequence.add(RX_pulses[qubit])
         state1_sequence.add(ro_pulses[qubit])
-
+    sequences = {0: state0_sequence, 1: state1_sequence}
     # create a DataUnits object to store the results
     data = DataUnits(
         name="data",
@@ -259,77 +226,44 @@ def ro_amplitude(
         pulses=[ro_pulses[qubit] for qubit in qubits],
     )
 
-    # execute the first pulse sequence
-    state0_results = platform.sweep(
-        state0_sequence, amplitude_sweeper, nshots=nshots, average=False
-    )
-
-    for qubit in qubits:
-        r = {
-            k: v.ravel() for k, v in state0_results[ro_pulses[qubit].serial].raw.items()
-        }
-        r.update(
-            {
-                "amplitude[dimensionless]": np.repeat(
-                    np.vstack(delta_amplitude_range).T,
-                    len(np.arange(nshots)),
-                    axis=0,
-                ).flatten()
-                * ro_pulses[qubit].amplitude,
-                "delta_amplitude[dimensionless]": np.repeat(
-                    np.vstack(delta_amplitude_range).T,
-                    len(np.arange(nshots)),
-                    axis=0,
-                ).flatten(),
-                "qubit": [qubit] * nshots * len(delta_amplitude_range),
-                "iteration": np.repeat(
-                    np.vstack(np.arange(nshots)).T,
-                    len(delta_amplitude_range),
-                    axis=1,
-                ).flatten(),  # Might be the other way depending on how is result happening. Axis=0 gives 123123 and axis=1 gives 1112233
-                "state": [0] * nshots * len(delta_amplitude_range),
-            }
+    # Execute sequences for both states
+    for state in [0, 1]:
+        results = platform.sweep(
+            sequences[state], amplitude_sweeper, nshots=nshots, average=False
         )
-        data.add_data_from_dict(r)
-    yield data
 
-    # execute the second pulse sequence
-    state1_results = platform.sweep(
-        state1_sequence, amplitude_sweeper, nshots=nshots, average=False
-    )
+        # retrieve and store the results for every qubit)
+        for qubit in qubits:
+            r = {k: v.ravel() for k, v in results[ro_pulses[qubit].serial].raw.items()}
+            r.update(
+                {
+                    "amplitude[dimensionless]": np.repeat(
+                        np.vstack(delta_amplitude_range).T,
+                        len(np.arange(nshots)),
+                        axis=0,
+                    ).flatten()
+                    * ro_pulses[qubit].amplitude,
+                    "delta_amplitude[dimensionless]": np.repeat(
+                        np.vstack(delta_amplitude_range).T,
+                        len(np.arange(nshots)),
+                        axis=0,
+                    ).flatten(),
+                    "qubit": [qubit] * nshots * len(delta_amplitude_range),
+                    "iteration": np.repeat(
+                        np.vstack(np.arange(nshots)).T,
+                        len(delta_amplitude_range),
+                        axis=1,
+                    ).flatten(),  # Might be the other way depending on how is result happening. Axis=0 gives 123123 and axis=1 gives 1112233
+                    "state": [state] * nshots * len(delta_amplitude_range),
+                }
+            )
+            data.add_data_from_dict(r)
 
-    # retrieve and store the results for every qubit)
-    for qubit in qubits:
-        r = {
-            k: v.ravel() for k, v in state1_results[ro_pulses[qubit].serial].raw.items()
-        }
-        r.update(
-            {
-                "amplitude[dimensionless]": np.repeat(
-                    np.vstack(delta_amplitude_range).T,
-                    len(np.arange(nshots)),
-                    axis=0,
-                ).flatten()
-                * ro_pulses[qubit].amplitude,
-                "delta_amplitude[dimensionless]": np.repeat(
-                    np.vstack(delta_amplitude_range).T,
-                    len(np.arange(nshots)),
-                    axis=0,
-                ).flatten(),
-                "qubit": [qubit] * nshots * len(delta_amplitude_range),
-                "iteration": np.repeat(
-                    np.vstack(np.arange(nshots)).T,
-                    len(delta_amplitude_range),
-                    axis=1,
-                ).flatten(),  # Might be the other way depending on how is result happening. Axis=0 gives 123123 and axis=1 gives 1112233
-                "state": [1] * nshots * len(delta_amplitude_range),
-            }
+        # finally, save the remaining data and the fits
+        yield data
+        yield ro_optimization_fit(
+            data, "state", "qubit", "iteration", "delta_amplitude"
         )
-        data.add_data_from_dict(r)
-
-    # finally, save the remaining data and the fits
-    yield data
-    yield ro_optimization_fit(data, "state", "qubit", "iteration", "delta_amplitude")
 
 
 @plot("TWPA frequency", plots.ro_frequency)
@@ -389,7 +323,7 @@ def twpa_frequency(
         state0_sequence.add(ro_pulses[qubit])
         state1_sequence.add(RX_pulses[qubit])
         state1_sequence.add(ro_pulses[qubit])
-
+    sequences = {0: state0_sequence, 1: state1_sequence}
     # create a DataUnits object to store the results
     data = DataUnits(
         name="data",
@@ -421,39 +355,28 @@ def twpa_frequency(
         for qubit in qubits:
             platform.set_lo_twpa_frequency(qubit, initial_frequency[qubit] + frequency)
 
-        state0_results = platform.execute_pulse_sequence(state0_sequence, nshots=nshots)
-        for qubit in qubits:
-            r = state0_results[ro_pulses[qubit].serial].raw
-            r.update(
-                {
-                    "frequency[Hz]": [platform.get_lo_twpa_frequency(qubit)] * nshots,
-                    "delta_frequency[Hz]": [frequency] * nshots,
-                    "qubit": [qubit] * nshots,
-                    "iteration": np.arange(nshots),
-                    "state": [0] * nshots,
-                }
-            )
-            data.add_data_from_dict(r)
+        # Execute the sequences for both states
+        for state in [0, 1]:
+            results = platform.execute_pulse_sequence(sequences[state], nshots=nshots)
+            for qubit in qubits:
+                r = results[ro_pulses[qubit].serial].raw
+                r.update(
+                    {
+                        "frequency[Hz]": [platform.get_lo_twpa_frequency(qubit)]
+                        * nshots,
+                        "delta_frequency[Hz]": [frequency] * nshots,
+                        "qubit": [qubit] * nshots,
+                        "iteration": np.arange(nshots),
+                        "state": [state] * nshots,
+                    }
+                )
+                data.add_data_from_dict(r)
 
-        state1_results = platform.execute_pulse_sequence(state1_sequence, nshots=nshots)
-        for qubit in qubits:
-            r = state1_results[ro_pulses[qubit].serial].raw
-            r.update(
-                {
-                    "frequency[Hz]": [platform.get_lo_twpa_frequency(qubit)] * nshots,
-                    "delta_frequency[Hz]": [frequency] * nshots,
-                    "qubit": [qubit] * nshots,
-                    "iteration": np.arange(nshots),
-                    "state": [1] * nshots,
-                }
+            # finally, save the remaining data and the fits
+            yield data
+            yield ro_optimization_fit(
+                data, "delta_frequency", "state", "qubit", "iteration"
             )
-            data.add_data_from_dict(r)
-
-        # finally, save the remaining data and the fits
-        yield data
-        yield ro_optimization_fit(
-            data, "delta_frequency", "state", "qubit", "iteration"
-        )
 
 
 @plot("TWPA power", plots.ro_power)
@@ -513,7 +436,7 @@ def twpa_power(
         state0_sequence.add(ro_pulses[qubit])
         state1_sequence.add(RX_pulses[qubit])
         state1_sequence.add(ro_pulses[qubit])
-
+    sequences = {0: state0_sequence, 1: state1_sequence}
     # create a DataUnits object to store the results
     data = DataUnits(
         name="data",
@@ -543,34 +466,24 @@ def twpa_power(
         for qubit in qubits:
             platform.set_lo_twpa_power(qubit, initial_power[qubit] + power)
 
-        state0_results = platform.execute_pulse_sequence(state0_sequence, nshots=nshots)
-        for qubit in qubits:
-            r = state0_results[ro_pulses[qubit].serial].raw
-            r.update(
-                {
-                    "power[dBm]": [platform.get_lo_twpa_power(qubit)] * nshots,
-                    "delta_power[dBm]": [power] * nshots,
-                    "qubit": [qubit] * nshots,
-                    "iteration": np.arange(nshots),
-                    "state": [0] * nshots,
-                }
-            )
-            data.add_data_from_dict(r)
+        # Execute the sequences for both states
+        for state in [0, 1]:
+            results = platform.execute_pulse_sequence(sequences[state], nshots=nshots)
+            for qubit in qubits:
+                r = results[ro_pulses[qubit].serial].raw
+                r.update(
+                    {
+                        "power[dBm]": [platform.get_lo_twpa_power(qubit)] * nshots,
+                        "delta_power[dBm]": [power] * nshots,
+                        "qubit": [qubit] * nshots,
+                        "iteration": np.arange(nshots),
+                        "state": [state] * nshots,
+                    }
+                )
+                data.add_data_from_dict(r)
 
-        state1_results = platform.execute_pulse_sequence(state1_sequence, nshots=nshots)
-        for qubit in qubits:
-            r = state1_results[ro_pulses[qubit].serial].raw
-            r.update(
-                {
-                    "power[dBm]": [platform.get_lo_twpa_power(qubit)] * nshots,
-                    "delta_power[dBm]": [power] * nshots,
-                    "qubit": [qubit] * nshots,
-                    "iteration": np.arange(nshots),
-                    "state": [1] * nshots,
-                }
+            # finally, save the remaining data and the fits
+            yield data
+            yield ro_optimization_fit(
+                data, "delta_power", "state", "qubit", "iteration"
             )
-            data.add_data_from_dict(r)
-
-        # finally, save the remaining data and the fits
-        yield data
-        yield ro_optimization_fit(data, "delta_power", "state", "qubit", "iteration")
