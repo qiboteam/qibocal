@@ -218,6 +218,11 @@ def qubit_spectroscopy_flux(
     if fluxlines == "qubits":
         fluxlines = qubits
 
+    if fluxlines == 2:
+        fluxlines = {}
+        fluxlines[0] = qubits[2]
+        sweetspot = 0
+
     # flux bias
     delta_bias_range = np.arange(-bias_width / 2, bias_width / 2, bias_step)
     bias_sweeper = Sweeper(
@@ -251,9 +256,8 @@ def qubit_spectroscopy_flux(
             # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulses[qubit].serial]
             # store the results
-            biases = np.repeat(
-                delta_bias_range, len(delta_frequency_range)
-            ) + platform.get_bias(fluxline)
+            biases = np.repeat(delta_bias_range, len(delta_frequency_range)) + sweetspot
+            # ) + platform.get_bias(fluxline)
             freqs = np.array(
                 len(delta_bias_range)
                 * list(delta_frequency_range + qd_pulses[qubit].frequency)

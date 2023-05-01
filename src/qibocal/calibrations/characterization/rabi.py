@@ -216,7 +216,7 @@ def rabi_pulse_length_sweep(
         for qubit in qubits:
             # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulses[qubit].serial]
-            r = result.to_dict(average=False)
+            r = result.raw
             r.update(
                 {
                     "time[ns]": qd_pulse_duration_range,
@@ -564,7 +564,7 @@ def rabi_pulse_amplitude_sweep(
         for qubit in qubits:
             # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulses[qubit].serial]
-            r = result.to_dict(average=False)
+            r = result.raw
             r.update(
                 {
                     "amplitude[dimensionless]": qd_pulse_amplitude_range,

@@ -9,7 +9,7 @@ from qibocal.decorators import plot
 from qibocal.fitting.methods import lorentzian_fit
 
 
-@plot("MSR and Phase vs Qubit Drive Frequency", plots.frequency_msr_phase)
+@plot("MSR and Phase vs Qubit Drive Frequency", plots.coupler_frequency_msr_phase)
 def coupler_spectroscopy(
     platform: AbstractPlatform,
     qubits: dict,

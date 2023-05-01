@@ -78,7 +78,7 @@ def integration_weights_optimization(
 
         # retrieve and store the results for every qubit
         for ro_pulse in ro_pulses.values():
-            r = state0_results[ro_pulse.serial].to_dict(average=False)
+            r = state0_results[ro_pulse.serial].raw
             state0 = r["i[V]"] + 1j * r["q[V]"]
             number_of_samples = len(r["MSR[V]"])
             r.update(
@@ -99,7 +99,7 @@ def integration_weights_optimization(
         )
         # retrieve and store the results for every qubit
         for ro_pulse in ro_pulses.values():
-            r = state1_results[ro_pulse.serial].to_dict(average=False)
+            r = state1_results[ro_pulse.serial].raw
             state1 = r["i[V]"] + 1j * r["q[V]"]
             r.update(
                 {
