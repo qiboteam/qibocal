@@ -1141,15 +1141,12 @@ def ro_optimization_fit(data, *labels, debug=False):
         idx_state0 = np.searchsorted(combined, state0, side="left")
         idx_state1 = np.searchsorted(combined, state1, side="left")
 
-        # Create output arrays of the same size as combined
-        cum_dist_state0 = np.zeros_like(combined)
-        cum_dist_state1 = np.zeros_like(combined)
+        # Create a combined histogram for state0 and state1
+        hist_combined = np.bincount(
+            idx_state0, minlength=len(combined)
+        ) + 1j * np.bincount(idx_state1, minlength=len(combined))
 
-        # Count the number of elements in state0 and state1 that are lower than each element in combined
-        np.add.at(cum_dist_state0, idx_state0, 1)
-        np.add.at(cum_dist_state1, idx_state1, 1)
-
-        return cum_dist_state0.cumsum() + 1j * cum_dist_state1.cumsum()
+        return hist_combined.cumsum()
 
     cum_dist = (
         np.apply_along_axis(
