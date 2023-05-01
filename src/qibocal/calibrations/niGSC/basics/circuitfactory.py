@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import abc
+from copy import deepcopy
 
 import numpy as np
 from qibo import gates
@@ -49,15 +50,15 @@ class CircuitFactory:
         # Check if the stop critarion is met.
         if self.n >= len(self.depths):
             raise StopIteration
-        else:
-            circuit = self.build_circuit(self.depths[self.n])
-            self.n += 1
-            # Distribute the circuit onto the given support.
-            circuit_init_kwargs = circuit.init_kwargs
-            del circuit_init_kwargs["nqubits"]
-            bigcircuit = Circuit(self.nqubits, **circuit_init_kwargs)
-            bigcircuit.add(circuit.on_qubits(*self.qubits))
-            return bigcircuit
+
+        circuit = self.build_circuit(self.depths[self.n])
+        self.n += 1
+        # Distribute the circuit onto the given support.
+        circuit_init_kwargs = deepcopy(circuit.init_kwargs)
+        del circuit_init_kwargs["nqubits"]
+        bigcircuit = Circuit(self.nqubits, **circuit_init_kwargs)
+        bigcircuit.add(circuit.on_qubits(*self.qubits))
+        return bigcircuit
 
     def build_circuit(self, depth: int) -> Circuit:
         """Initiate a ``qibo.models.Circuit`` object and fill it with the wanted gates.

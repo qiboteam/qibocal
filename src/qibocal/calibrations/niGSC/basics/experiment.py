@@ -109,7 +109,7 @@ class Experiment:
 
     def save_circuits(self, path: str | None = None, force: bool = False) -> str:
         """Creates a path if None given and pickles ``self.circuitfactory``
-        if its a list.
+        if it is a list.
 
         Returns:
             (str): The path of stored experiment.
@@ -132,8 +132,7 @@ class Experiment:
             (str): The path of stored experiment.
         """
 
-        # Check if path to store is given, if not create one. If yes check if the last character
-        # is a /, if not add it.
+        # Check if path to store is given, if not create one.
         if path is None:
             self.path = generate_output_folder(path, force)
         else:

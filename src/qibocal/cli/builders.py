@@ -124,7 +124,6 @@ class niGSCactionParser(ActionParser):
             f"{self.path}/fit_plot.pkl"
         )
         # Store the experiment.
-        experiment.save_circuits(self.path)
         experiment.save(self.path)
 
 

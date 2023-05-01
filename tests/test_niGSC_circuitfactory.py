@@ -38,8 +38,7 @@ def abstract_factorytest(gfactory):
 def test_abstract_factory():
     cfactory = CircuitFactory(1, [1, 2] * 3, qubits=[0])
     with pytest.raises(NotImplementedError):
-        for circuit in cfactory:
-            circuit.draw()
+        list(cfactory)
     cfactory = CircuitFactory(1, 3, qubits=[0])
     assert cfactory.depths == [3]
 
