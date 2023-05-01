@@ -55,8 +55,8 @@ class CircuitFactory:
         self.n += 1
         # Distribute the circuit onto the given support.
         circuit_init_kwargs = deepcopy(circuit.init_kwargs)
-        del circuit_init_kwargs["nqubits"]
-        bigcircuit = Circuit(self.nqubits, **circuit_init_kwargs)
+        circuit_init_kwargs['nqubits'] = self.nqubits
+        bigcircuit = Circuit(**circuit_init_kwargs)
         bigcircuit.add(circuit.on_qubits(*self.qubits))
         return bigcircuit
 
