@@ -56,7 +56,6 @@ class CircuitFactory:
             circuit_init_kwargs = circuit.init_kwargs
             del circuit_init_kwargs["nqubits"]
             bigcircuit = Circuit(self.nqubits, **circuit_init_kwargs)
-            bigcircuit = Circuit(self.nqubits)
             bigcircuit.add(circuit.on_qubits(*self.qubits))
             return bigcircuit
 
