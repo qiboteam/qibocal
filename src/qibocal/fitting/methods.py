@@ -1106,19 +1106,20 @@ def ro_optimization_fit(data, *labels, debug=False):
     # shape=(i + j*q, qubit, state, label1, label2, ...)
 
     shape = (*[len(data.df[label].unique()) for label in labels],)
-    nb_shots = max(data.df["iteration"].unique()) + 1
+    nb_shots = len(data.df["iteration"].unique())
 
-    iq_complex = np.zeros(shape, dtype=np.complex128)
     iq_complex = data.df["i"].pint.magnitude.to_numpy().reshape(shape) + 1j * data.df[
         "q"
     ].pint.magnitude.to_numpy().reshape(shape)
 
     # Move state to 0, and iteration to -1
     labels = list(labels)
-    iq_complex = np.moveaxis(iq_complex, labels.index("state"), 0)
+    iq_complex = np.moveaxis(
+        iq_complex, [labels.index("state"), labels.index("iteration")], [0, -1]
+    )
     labels.remove("state")
-    labels = ["state"] + labels
-    iq_complex = np.moveaxis(iq_complex, labels.index("iteration"), -1)
+    labels.remove("iteration")
+    labels = ["state"] + labels + ["iteration"]
 
     # Take the mean ground state
     mean_gnd_state = np.mean(iq_complex[0, ...], axis=-1, keepdims=True)
@@ -1131,16 +1132,24 @@ def ro_optimization_fit(data, *labels, debug=False):
     # Take the cumulative distribution of the real part of the data
     iq_complex_sorted = np.sort(iq_complex.real, axis=-1)
 
-    print(iq_complex_sorted.shape)  # is (2, 3, 20, 2000)
-
     def cum_dist(complex_row):
         state0 = complex_row.real
         state1 = complex_row.imag
         combined = np.sort(np.concatenate((state0, state1)))
-        # Count the number of elements in state0 and state1 that are lower than each element in combined using numpy
-        return np.searchsorted(combined, state0, side="left") + 1j * np.searchsorted(
-            combined, state1, side="left"
-        )
+
+        # Compute the indices where elements in state0 and state1 would be inserted in combined
+        idx_state0 = np.searchsorted(combined, state0, side="left")
+        idx_state1 = np.searchsorted(combined, state1, side="left")
+
+        # Create output arrays of the same size as combined
+        cum_dist_state0 = np.zeros_like(combined)
+        cum_dist_state1 = np.zeros_like(combined)
+
+        # Count the number of elements in state0 and state1 that are lower than each element in combined
+        np.add.at(cum_dist_state0, idx_state0, 1)
+        np.add.at(cum_dist_state1, idx_state1, 1)
+
+        return cum_dist_state0.cumsum() + 1j * cum_dist_state1.cumsum()
 
     cum_dist = (
         np.apply_along_axis(
@@ -1155,7 +1164,11 @@ def ro_optimization_fit(data, *labels, debug=False):
     argmax = np.argmax(np.abs(cum_dist.real - cum_dist.imag), axis=-1, keepdims=True)
 
     # Use np.take_along_axis to get the correct indices for the threshold calculation
-    threshold = np.take_along_axis(iq_complex_sorted[0, ...], argmax, axis=-1)
+    threshold = np.take_along_axis(
+        np.concatenate((iq_complex_sorted[0, ...], iq_complex_sorted[1, ...]), axis=-1),
+        argmax,
+        axis=-1,
+    )
 
     # Calculate the fidelity
     fidelity = np.take_along_axis(
