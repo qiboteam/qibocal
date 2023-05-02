@@ -19,6 +19,7 @@ from qibocal.fitting.utils import (
     line,
     lorenzian,
     parse,
+    pint_to_float,
     rabi,
     ramsey,
 )
@@ -1200,12 +1201,3 @@ def ro_optimization_fit(data, *labels, debug=False):
         return data_fit, cum_dist, iq_complex
     else:
         return data_fit
-
-
-def pint_to_float(x):
-    if isinstance(x, pd.Series):
-        return x.apply(pint_to_float)
-    elif isinstance(x, pint.Quantity):
-        return x.to(x.units).magnitude
-    else:
-        return x

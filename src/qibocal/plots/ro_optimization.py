@@ -1,6 +1,5 @@
 import numpy as np
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
 from qibocal.data import Data, DataUnits
 from qibocal.plots.utils import get_color_state0, get_color_state1, get_data_subfolders
@@ -45,7 +44,6 @@ def ro_frequency(folder, routine, qubit, format):
         )
 
     # Plot raw results with sliders
-    annotations_dict = []
     for frequency in data.df["delta_frequency"].unique():
         state0_data = data.df[
             (data.df["delta_frequency"] == frequency) & (data.df["state"] == 0)
@@ -113,10 +111,8 @@ def ro_frequency(folder, routine, qubit, format):
         )
 
     # Show data for the first frequency
-    fig.data[0].visible = True
-    fig.data[1].visible = True
-    fig.data[2].visible = True
-    fig.data[3].visible = True
+    for i in range(4):
+        fig.data[i].visible = True
 
     # Add slider
     steps = []
@@ -287,10 +283,8 @@ def ro_amplitude(folder, routine, qubit, format):
     report_n += 1
 
     # Show data for the first amplitude
-    fig.data[0].visible = True
-    fig.data[1].visible = True
-    fig.data[2].visible = True
-    fig.data[3].visible = True
+    for i in range(4):
+        fig.data[i].visible = True
 
     # Add slider
     steps = []
@@ -462,10 +456,8 @@ def ro_power(folder, routine, qubit, format):
     report_n += 1
 
     # Show data for the first power
-    fig.data[0].visible = True
-    fig.data[1].visible = True
-    fig.data[2].visible = True
-    fig.data[3].visible = True
+    for i in range(4):
+        fig.data[i].visible = True
 
     # Add slider
     steps = []
