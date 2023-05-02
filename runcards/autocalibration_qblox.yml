@@ -137,22 +137,22 @@ actions:
   #     delay_between_pulses_step: 4 # must be a multiple of 4
   #     n_osc: 10
 
-  # - id: ramsey detuned
-  #   priority: 0
-  #   operation: ramsey
-  #   #main: single shot classification
-  #   parameters:
-  #     n_osc: 10
-  #     delay_between_pulses_start: 16 # must be a multiple of 4 incl 0
-  #     delay_between_pulses_end: 100
-  #     delay_between_pulses_step: 4 # must be a multiple of 4
-
-  - id: single shot classification
+  - id: ramsey detuned
     priority: 0
-    # main: allXY
-    operation: single_shot_classification
+    operation: ramsey
+    #main: single shot classification
     parameters:
-      nshots: 1024
+      n_osc: 0
+      delay_between_pulses_start: 4 # must be a multiple of 4 incl 0
+      delay_between_pulses_end: 200
+      delay_between_pulses_step: 4 # must be a multiple of 4
+
+  # - id: single shot classification
+  #   priority: 0
+  #   # main: allXY
+  #   operation: single_shot_classification
+  #   parameters:
+  #     nshots: 1024
 
   # - id: allXY
   #   priority: 0
