@@ -1,5 +1,6 @@
 """Test graph execution."""
 import pathlib
+import tempfile
 from typing import List
 
 import pytest
@@ -36,7 +37,9 @@ def test_execution(card: pathlib.Path):
 
     """
     testcard = TestCard(**yaml.safe_load(card.read_text(encoding="utf-8")))
-    executor = Executor.load(pydantic_encoder(testcard.runcard))
+    executor = Executor.load(
+        pydantic_encoder(testcard.runcard), folder=pathlib.Path(tempfile.mkdtemp())
+    )
     executor.run()
 
     assert testcard.validation.result == [step[0] for step in executor.history]

@@ -133,6 +133,9 @@ class DummyPars(Parameters):
 class DummyData(Data):
     """Dummy data."""
 
+    def save(self, path):
+        """Dummy method for saving data"""
+
 
 @dataclass
 class DummyRes(Results):

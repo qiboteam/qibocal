@@ -1,10 +1,8 @@
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from scipy.optimize import curve_fit
 
 from qibocal.config import log
-from qibocal.data import DataUnits
 from qibocal.plots.utils import get_color
 
 

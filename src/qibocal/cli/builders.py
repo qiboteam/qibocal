@@ -161,7 +161,7 @@ class ActionBuilder:
                 self.qubits = self.runcard.get("qubits")
         else:
             self.qubits = []
-        if "format" in runcard:
+        if "format" in self.runcard:
             self.format = self.runcard["format"]
 
         # Saving runcard
