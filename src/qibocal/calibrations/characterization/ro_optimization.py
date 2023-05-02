@@ -110,11 +110,7 @@ def ro_frequency(
             r = {k: v.ravel() for k, v in results[ro_pulses[qubit].serial].raw.items()}
             r.update(
                 {
-                    "frequency[Hz]": np.repeat(
-                        np.vstack(delta_frequency_range).T,
-                        len(np.arange(nshots)),
-                        axis=0,
-                    ).flatten()
+                    "frequency[Hz]": np.tile(delta_frequency_range,nshots)
                     + ro_pulses[qubit].frequency,
                     "delta_frequency[Hz]": np.repeat(
                         np.vstack(delta_frequency_range).T,
