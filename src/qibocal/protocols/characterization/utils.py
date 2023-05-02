@@ -106,12 +106,19 @@ def lorentzian_fit(data) -> list:
         try:
             fit_res = model_Q.fit(
                 data=voltages, frequency=frequencies, params=guess_parameters
-            )
+            ).best_values
             # get the values for postprocessing and for legend.
             f0 = fit_res.best_values["center"]
 
         except:
             log.warning("lorentzian_fit: the fitting was not successful")
+            f0 = 0.0
+            fit_res = {
+                "center": 0.0,
+                "sigma": 0.0,
+                "amplitude": 0.0,
+                "offset": 0.0,
+            }
 
         frequency[qubit] = f0
 
@@ -120,7 +127,7 @@ def lorentzian_fit(data) -> list:
 
         amplitudes[qubit] = data.amplitude
         attenuations[qubit] = data.attenuation
-        fitted_parameters[qubit] = fit_res.best_values
+        fitted_parameters[qubit] = fit_res
 
     if data.power_level is PowerLevel.high:
         return {

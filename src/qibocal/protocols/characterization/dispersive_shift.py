@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
+from qibolab.sweeper import Parameter, Sweeper
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -42,22 +43,14 @@ class DispersiveShiftResults(Results):
 
 
 class DispersiveShiftData(DataUnits):
-    def __init__(
-        self,
-        resonator_type,
-        power_level=PowerLevel.low,
-        amplitude=None,
-        attenuation=None,
-    ):
+    def __init__(self, resonator_type, power_level=PowerLevel.low):
         super().__init__(
             name="data",
             quantities={"frequency": "Hz"},
             options=["qubit", "state"],
         )
         self.resonator_type = resonator_type
-        self._power_level = power_level
-        self._amplitude = amplitude
-        self._attenuation = attenuation
+        self.power_level = power_level
 
 
 def _acquisition(
@@ -86,7 +79,6 @@ def _acquisition(
             - **qubit**: The qubit being tested
             - **iteration**: The iteration number of the many determined by software_averages
     """
-    # TODO: add sweepers
 
     # create 2 sequences of pulses for the experiment:
     # sequence_0: I  - MZ
@@ -114,32 +106,30 @@ def _acquisition(
     # create a DataUnits objects to store the results
     data = DispersiveShiftData(platform.resonator_type)
 
-    # TODO: implement sweeper
+    sweeper = Sweeper(
+        Parameter.frequency,
+        delta_frequency_range,
+        pulses=[ro_pulses[qubit] for qubit in qubits],
+    )
 
-    for delta_freq in delta_frequency_range:
-        # reconfigure the instruments based on the new resonator frequency
-        # in this case setting the local oscillators
-        # the pulse sequence does not need to be modified or recreated between executions
-        for qubit in qubits:
-            ro_pulses[qubit].frequency = delta_freq + qubits[qubit].readout_frequency
+    results_0 = platform.sweep(sequence_0, sweeper)
 
-        results_0 = platform.execute_pulse_sequence(sequence_0)
-        results_1 = platform.execute_pulse_sequence(sequence_1)
-
-        # retrieve the results for every qubit
+    results_1 = platform.sweep(sequence_1, sweeper)
+    # retrieve the results for every qubit
+    for qubit in qubits:
+        # average msr, phase, i and q over the number of shots defined in the runcard
         for i, results in enumerate([results_0, results_1]):
-            for ro_pulse in ro_pulses.values():
-                # average msr, phase, i and q over the number of shots defined in the runcard
-                r = results[ro_pulse.serial].average.raw
-                # store the results
-                r.update(
-                    {
-                        "frequency[Hz]": ro_pulse.frequency,
-                        "qubit": ro_pulse.qubit,
-                        "state": i,
-                    }
-                )
-                data.add_data_from_dict(r)
+            result = results[ro_pulses[qubit].serial]
+            # store the results
+            r = result.raw
+            r.update(
+                {
+                    "frequency[Hz]": delta_frequency_range + ro_pulses[qubit].frequency,
+                    "qubit": len(delta_frequency_range) * [qubit],
+                    "state": len(delta_frequency_range) * [i],
+                }
+            )
+            data.add_data_from_dict(r)
 
     return data
 
@@ -171,15 +161,13 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
     )
 
     # iterate over multiple data folders
+    qubit_data = data.df[data.df["qubit"] == qubit]
 
-    qubit_data = data.df[data.df["qubit"] == qubit].reset_index()
+    # frequencies =  data.df["frequency"].pint.to("GHz").pint.magnitude.unique()
     fitting_report = ""
 
     data_0 = ResonatorSpectroscopyData(data.resonator_type)
-    data_0.df = (
-        qubit_data[qubit_data["state"] == 0].drop(columns=["state"]).reset_index()
-    )
-
+    data_0.df = qubit_data[qubit_data["state"] == 0].drop(columns=["state"])
     data_1 = ResonatorSpectroscopyData(data.resonator_type)
     data_1.df = (
         qubit_data[qubit_data["state"] == 1].drop(columns=["state"]).reset_index()
@@ -189,7 +177,7 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
     fit_data_1 = fit.results_1
 
     resonator_freqs = {}
-    for i, label, data, data_fit in list(
+    for i, label, q_data, data_fit in list(
         zip(
             (0, 1),
             ("State 0", "State 1"),
@@ -197,14 +185,12 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
             (fit_data_0, fit_data_1),
         )
     ):
-        frequencies = data.df["frequency"].pint.to("GHz").pint.magnitude.unique()
-
         opacity = 1
-
+        frequencies = q_data.df["frequency"].pint.to("GHz").pint.magnitude.unique()
         fig.add_trace(
             go.Scatter(
-                x=data.df["frequency"].pint.to("GHz").pint.magnitude,
-                y=data.df["MSR"].pint.to("uV").pint.magnitude,
+                x=q_data.df["frequency"].pint.to("GHz").pint.magnitude,
+                y=q_data.df["MSR"].pint.to("uV").pint.magnitude,
                 marker_color=get_color(3 * i),
                 opacity=opacity,
                 name=f"q{qubit}: {label}",
@@ -216,8 +202,8 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
         )
         fig.add_trace(
             go.Scatter(
-                x=data.df["frequency"].pint.to("GHz").pint.magnitude,
-                y=data.df["phase"].pint.to("rad").pint.magnitude,
+                x=q_data.df["frequency"].pint.to("GHz").pint.magnitude,
+                y=q_data.df["phase"].pint.to("rad").pint.magnitude,
                 marker_color=get_color(3 * i + 1),
                 opacity=opacity,
                 showlegend=False,
@@ -234,7 +220,6 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
         )
 
         params = data_fit.fitted_parameters[qubit]
-
         fig.add_trace(
             go.Scatter(
                 x=freqrange,
