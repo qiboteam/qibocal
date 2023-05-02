@@ -25,12 +25,16 @@ from qibocal.protocols.characterization.utils import (
 
 @dataclass
 class DispersiveShiftParameters(Parameters):
+    """Disersive shift inputs."""
+
     freq_width: int
     freq_step: int
 
 
 @dataclass
 class StateResults(Results):
+    """Resonator spectroscopy outputs."""
+
     frequency: Dict[List[Tuple], str]
     fitted_parameters: Dict[List[Tuple], List]
     amplitude: Optional[Dict[List[Tuple], str]]
@@ -38,11 +42,15 @@ class StateResults(Results):
 
 @dataclass
 class DispersiveShiftResults(Results):
+    """Dispersive shift outputs."""
+
     results_0: StateResults
     results_1: StateResults
 
 
 class DispersiveShiftData(DataUnits):
+    """Dipsersive shift acquisition outputs."""
+
     def __init__(self, resonator_type, power_level=PowerLevel.low):
         super().__init__(
             name="data",
@@ -57,27 +65,15 @@ def _acquisition(
     params: DispersiveShiftParameters, platform: AbstractPlatform, qubits: Qubits
 ) -> DispersiveShiftData:
     r"""
+    Data acquisition for dispersive shift experiment.
     Perform spectroscopy on the readout resonator, with the qubit in ground and excited state, showing
     the resonator shift produced by the coupling between the resonator and the qubit.
 
     Args:
+        params (DispersiveShiftParameters): experiment's parameters
         platform (AbstractPlatform): Qibolab platform object
         qubits (dict): List of target qubits to perform the action
-        freq_width (int): Width frequency in HZ to perform the spectroscopy sweep
-        freq_step (int): Step frequency in HZ for the spectroscopy sweep
-        software_averages (int): Number of executions of the routine for averaging results
-        points (int): Save data results in a file every number of points
 
-    Returns:
-        A DataUnits object with the raw data obtained for the normal and shifted sweeps with the following keys
-
-            - **MSR[V]**: Resonator signal voltage mesurement in volts
-            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
-            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
-            - **phase[rad]**: Resonator signal phase mesurement in radians
-            - **frequency[Hz]**: Resonator frequency value in Hz
-            - **qubit**: The qubit being tested
-            - **iteration**: The iteration number of the many determined by software_averages
     """
 
     # create 2 sequences of pulses for the experiment:
@@ -135,6 +131,7 @@ def _acquisition(
 
 
 def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
+    """Post-Processing for dispersive shift"""
     data_0 = ResonatorSpectroscopyData(data.resonator_type)
     data_0.df = data.df[data.df["state"] == 0].drop(columns=["state"]).reset_index()
 
@@ -147,6 +144,7 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
 
 
 def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
+    """Plotting function for dispersive shift."""
     figures = []
 
     fig = make_subplots(
