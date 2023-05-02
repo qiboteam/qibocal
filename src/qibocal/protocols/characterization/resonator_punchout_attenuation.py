@@ -99,8 +99,8 @@ def _acquisition(
     for iteration in range(params.software_averages):
         results = platform.sweep(
             sequence,
-            att_sweeper,
             freq_sweeper,
+            att_sweeper,
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
         )
