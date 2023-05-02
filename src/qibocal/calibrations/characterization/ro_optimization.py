@@ -118,11 +118,7 @@ def ro_frequency(
                         axis=0,
                     ).flatten(),
                     "qubit": [qubit] * nshots * len(delta_frequency_range),
-                    "iteration": np.repeat(
-                        np.vstack(np.arange(nshots)).T,
-                        len(delta_frequency_range),
-                        axis=1,
-                    ).flatten(),  # Might be the other way depending on how is result happening. Axis=0 gives 123123 and axis=1 gives 1112233
+                    "iteration": np.repeat([0,1], len(delta_amplitude_range))
                     "state": [state] * nshots * len(delta_frequency_range),
                 }
             )
