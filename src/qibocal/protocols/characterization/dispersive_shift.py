@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -7,7 +7,7 @@ from plotly.subplots import make_subplots
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
-from scipy.optimize import curve_fit
+
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
@@ -19,7 +19,6 @@ from qibocal.protocols.characterization.utils import (
     PowerLevel,
     lorentzian,
     lorentzian_fit,
-    spectroscopy_plot,
 )
 
 
