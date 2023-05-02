@@ -156,13 +156,13 @@ def ro_frequency(folder, routine, qubit, format):
     fig_fidelity = go.Figure()
 
     fig_fidelity.add_trace(
-        go.Scatter(x=data_fit.df["frequency"], y=data_fit.df["fidelity"])
+        go.Scatter(x=data_fit.df["frequency"], y=data_fit.df["assignment_fidelity"])
     )
     fig_fidelity.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="delta frequency (Hz)",
-        yaxis_title="fidelity (ratio)",
+        yaxis_title="assignment fidelity (ratio)",
         title=f"q{qubit}",
     )
     # Add fitting report for the best fidelity
@@ -330,13 +330,13 @@ def ro_amplitude(folder, routine, qubit, format):
     fig_fidelity = go.Figure()
 
     fig_fidelity.add_trace(
-        go.Scatter(x=data_fit.df["amplitude"], y=data_fit.df["fidelity"])
+        go.Scatter(x=data_fit.df["amplitude"], y=data_fit.df["assignment_fidelity"])
     )
     fig_fidelity.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="delta amplitude (dimensionless)",
-        yaxis_title="fidelity (ratio)",
+        yaxis_title="assignment fidelity (ratio)",
         title=f"q{qubit}",
     )
     # Add fitting report for the best fidelity
@@ -505,13 +505,13 @@ def ro_power(folder, routine, qubit, format):
     fig_fidelity = go.Figure()
 
     fig_fidelity.add_trace(
-        go.Scatter(x=data_fit.df["power"], y=data_fit.df["fidelity"])
+        go.Scatter(x=data_fit.df["power"], y=data_fit.df["assignment_fidelity"])
     )
     fig_fidelity.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="delta power (dBm)",
-        yaxis_title="fidelity (ratio)",
+        yaxis_title="assignment fidelity (ratio)",
         title=f"q{qubit}",
     )
     # Add fitting report for the best fidelity

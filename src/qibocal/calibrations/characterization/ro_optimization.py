@@ -132,11 +132,9 @@ def ro_frequency(
             )
             data.add_data_from_dict(r)
 
-        # finally, save the remaining data and the fits
-        yield data
-        yield ro_optimization_fit(
-            data, "state", "qubit", "iteration", "delta_frequency"
-        )
+    # finally, save the remaining data and the fits
+    yield data
+    yield ro_optimization_fit(data, "state", "qubit", "iteration", "delta_frequency")
 
 
 @plot("Qubit States", plots.ro_amplitude)
@@ -259,11 +257,9 @@ def ro_amplitude(
             )
             data.add_data_from_dict(r)
 
-        # finally, save the remaining data and the fits
-        yield data
-        yield ro_optimization_fit(
-            data, "state", "qubit", "iteration", "delta_amplitude"
-        )
+    # finally, save the remaining data and the fits
+    yield data
+    yield ro_optimization_fit(data, "state", "qubit", "iteration", "delta_amplitude")
 
 
 @plot("TWPA frequency", plots.ro_frequency)
@@ -372,11 +368,11 @@ def twpa_frequency(
                 )
                 data.add_data_from_dict(r)
 
-            # finally, save the remaining data and the fits
-            yield data
-            yield ro_optimization_fit(
-                data, "delta_frequency", "state", "qubit", "iteration"
-            )
+        # finally, save the remaining data and the fits
+        yield data
+        yield ro_optimization_fit(
+            data, "delta_frequency", "state", "qubit", "iteration"
+        )
 
 
 @plot("TWPA power", plots.ro_power)
@@ -482,8 +478,6 @@ def twpa_power(
                 )
                 data.add_data_from_dict(r)
 
-            # finally, save the remaining data and the fits
-            yield data
-            yield ro_optimization_fit(
-                data, "delta_power", "state", "qubit", "iteration"
-            )
+        # finally, save the remaining data and the fits
+        yield data
+        yield ro_optimization_fit(data, "delta_power", "state", "qubit", "iteration")
