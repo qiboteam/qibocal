@@ -3,6 +3,8 @@ from functools import partial
 
 import lmfit
 import numpy as np
+import pandas as pd
+import pint
 from scipy.optimize import curve_fit
 
 from qibocal.config import log
@@ -1075,3 +1077,118 @@ def calibrate_qubit_states_fit(data, x, y, nshots, qubits, degree=False):
         }
         parameters.add(results)
     return parameters
+
+
+def ro_optimization_fit(data, *labels):
+    """
+    Fit the fidelities from parameters swept as labels, and extract rotation angle and threshold
+
+    Args:
+        data (Data): data to fit
+        labels (str): variable used in the routine with format "variable_name"
+
+    Returns:
+        Data: data with the fit results
+    """
+    quantities = [
+        *labels,
+        "rotation_angle",
+        "threshold",
+        "fidelity",
+        "assignment_fidelity",
+        "average_state0",
+        "average_state1",
+    ]
+    data_fit = Data(
+        name="fit",
+        quantities=quantities,
+    )
+
+    # Create a ndarray for i and q shots for all labels
+    # shape=(i + j*q, qubit, state, label1, label2, ...)
+
+    shape = (*[len(data.df[label].unique()) for label in labels],)
+    nb_shots = max(data.df["iteration"].unique()) + 1
+
+    iq_complex = np.zeros(shape, dtype=np.complex128)
+    iq_complex = data.df["i"].pint.magnitude.to_numpy().reshape(shape) + 1j * data.df[
+        "q"
+    ].pint.magnitude.to_numpy().reshape(shape)
+
+    # Move state to 0, and iteration to -1
+    labels = list(labels)
+    iq_complex = np.moveaxis(iq_complex, labels.index("state"), 0)
+    labels.remove("state")
+    labels = ["state"] + labels
+    iq_complex = np.moveaxis(iq_complex, labels.index("iteration"), -1)
+
+    # Take the mean ground state
+    mean_gnd_state = np.mean(iq_complex[0, ...], axis=-1, keepdims=True)
+    mean_exc_state = np.mean(iq_complex[1, ...], axis=-1, keepdims=True)
+    angle = np.angle(mean_exc_state - mean_gnd_state)
+
+    # Rotate the data
+    iq_complex = iq_complex * np.exp(-1j * angle)
+
+    # Take the cumulative distribution of the real part of the data
+    iq_complex_sorted = np.sort(iq_complex.real, axis=-1)
+    cum_dist = (
+        np.apply_along_axis(
+            lambda x: np.searchsorted(
+                x, np.linspace(x.min(), x.max(), nb_shots), side="left"
+            ),
+            axis=-1,
+            arr=iq_complex_sorted,
+        )
+        / nb_shots
+    )
+
+    # Find the threshold for which the difference between the cumulative distribution of the two states is maximum
+    argmax = np.argmax(
+        np.abs(cum_dist[0, ...] - cum_dist[1, ...]), axis=-1, keepdims=True
+    )
+
+    # Use np.take_along_axis to get the correct indices for the threshold calculation
+    threshold = (
+        np.take_along_axis(iq_complex_sorted[0, ...], argmax, axis=-1)
+        + np.take_along_axis(iq_complex_sorted[1, ...], argmax, axis=-1)
+    ) / 2
+
+    # Calculate the fidelity
+    fidelity = np.take_along_axis(
+        np.abs(cum_dist[0, ...] - cum_dist[1, ...]), argmax, axis=-1
+    )
+    assignment_fidelity = (
+        1
+        - (
+            np.take_along_axis(cum_dist[0, ...], argmax, axis=-1)
+            + np.take_along_axis(cum_dist[1, ...], argmax, axis=-1)
+        )
+        / 2
+    )
+
+    # Add all the results to the data with labels as subnet without "state", "iteration"
+    data_fit.df = (
+        data.df.drop_duplicates(
+            subset=[i for i in labels if i not in ["state", "iteration"]]
+        )
+        .reset_index(drop=True)
+        .apply(pint_to_float)
+    )
+    data_fit.df["rotation_angle"] = angle.flatten()
+    data_fit.df["threshold"] = threshold.flatten()
+    data_fit.df["fidelity"] = fidelity.flatten()
+    data_fit.df["assignment_fidelity"] = assignment_fidelity.flatten()
+    data_fit.df["average_state0"] = mean_gnd_state.flatten()
+    data_fit.df["average_state1"] = mean_exc_state.flatten()
+
+    return data_fit
+
+
+def pint_to_float(x):
+    if isinstance(x, pd.Series):
+        return x.apply(pint_to_float)
+    elif isinstance(x, pint.Quantity):
+        return x.to(x.units).magnitude
+    else:
+        return x
