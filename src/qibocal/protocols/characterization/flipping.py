@@ -3,31 +3,41 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
 
-from ...auto.operation import Parameters, Qubits, Results, Routine
-from ...config import log
-from ...data import DataUnits
-from ...plots.utils import get_color
+from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.config import log
+from qibocal.data import DataUnits
+from qibocal.plots.utils import get_color
 
 
 @dataclass
 class FlippingParameters(Parameters):
+    """Flipping runcard inputs."""
+
     nflips_max: int
+    """Maximum number of flips ([RX(pi) - RX(pi)] sequences). """
     nflips_step: int
+    """Flip step."""
 
 
 @dataclass
 class FlippingResults(Results):
-    amplitudes: Dict[List[Tuple], str] = field(metadata=dict(update="drive_amplitude"))
+    """Flipping outputs."""
+
+    amplitude: Dict[List[Tuple], str] = field(metadata=dict(update="drive amplitude"))
+    """Drive amplitude for each qubit."""
     amplitude_factors: Dict[List[Tuple], str]
+    """Drive amplitude correction factor for each qubit."""
     fitted_parameters: Dict[List[Tuple], List]
+    """Raw fitting output."""
 
 
 class FlippngData(DataUnits):
+    """Flipping acquisition outputs."""
+
     def __init__(self, resonator_type):
         super().__init__(
             name="data",
@@ -39,6 +49,7 @@ class FlippngData(DataUnits):
 
     @property
     def resonator_type(self):
+        """Type of resonator (2D or 3D)."""
         return self._resonator_type
 
 
@@ -48,37 +59,18 @@ def _acquisition(
     qubits: Qubits,
 ) -> FlippngData:
     r"""
+    Data acquisition for flipping.
+
     The flipping experiment correct the delta amplitude in the qubit drive pulse. We measure a qubit after applying
     a Rx(pi/2) and N flips (Rx(pi) rotations). After fitting we can obtain the delta amplitude to refine pi pulses.
 
     Args:
-        platform (AbstractPlatform): Qibolab platform object
-        qubits (dict): Dict of target Qubit objects to perform the action
-        nflips_max (int): Maximum number of flips introduced in each sequence
-        nflips_step (int): Scan range step for the number of flippings
-        software_averages (int): Number of executions of the routine for averaging results
-        points (int): Save data results in a file every number of points
+        params (:class:`SingleShotClassificationParameters`): input parameters
+        platform (:class:`AbstractPlatform`): Qibolab's platform
+        qubits (dict): Dict of target :class:`Qubit` objects to be characterized
 
     Returns:
-        - A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
-
-            - **MSR[V]**: Resonator signal voltage mesurement in volts
-            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
-            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
-            - **phase[rad]**: Resonator signal phase mesurement in radians
-            - **flips[dimensionless]**: Number of flips applied in the current execution
-            - **qubit**: The qubit being tested
-            - **iteration**: The iteration number of the many determined by software_averages
-
-        - A DataUnits object with the fitted data obtained with the following keys
-
-            - **amplitude_correction_factor**: Pi pulse correction factor
-            - **corrected_amplitude**: Corrected pi pulse amplitude
-            - **popt0**: p0
-            - **popt1**: p1
-            - **popt2**: p2
-            - **popt3**: p3
-            - **qubit**: The qubit being tested
+        data (:class:`FlippingData`)
     """
 
     # create a DataUnits object to store MSR, phase, i, q and the number of flips
@@ -135,36 +127,13 @@ def flipping_fit(x, p0, p1, p2, p3):
 
 # FIXME: not working
 def _fit(data: FlippngData) -> FlippingResults:
-    r"""
-    Fitting routine for T1 experiment. The used model is
+    r"""Post-processing function for Flipping.
+
+    The used model is
 
     .. math::
 
-        y = p_0 sin\Big(\frac{2 \pi x}{p_2} + p_3\Big).
-
-    Args:
-
-        data (`DataUnits`): dataset for the fit
-        x (str): name of the input values for the flipping model
-        y (str): name of the output values for the flipping model
-        qubit (int): ID qubit number
-        nqubits (int): total number of qubits
-        niter(int): Number of times of the flipping sequence applied to the qubit
-        pi_pulse_amplitudes(list): list of corrected pi pulse amplitude
-        labels (list of str): list containing the lables of the quantities computed by this fitting method.
-
-    Returns:
-
-        A ``Data`` object with the following keys
-
-            - **popt0**: p0
-            - **popt1**: p1
-            - **popt2**: p2
-            - **popt3**: p3
-            - **labels[0]**: delta amplitude
-            - **labels[1]**: corrected amplitude
-
-
+        y = p_0 sin\Big(\frac{2 \pi x}{p_2} + p_3\Big) + p_1.
     """
     qubits = data.df["qubit"].unique()
     corrected_amplitudes = {}
@@ -218,8 +187,9 @@ def _fit(data: FlippngData) -> FlippingResults:
 
 
 def _plot(data: FlippngData, fit: FlippingResults, qubit):
-    figures = []
+    """Plotting function for Flipping."""
 
+    figures = []
     fig = go.Figure()
 
     fitting_report = ""
@@ -249,7 +219,7 @@ def _plot(data: FlippngData, fit: FlippingResults, qubit):
             go.Scatter(
                 x=flips_range,
                 y=flipping_fit(
-                    flips_range.magnitude,
+                    flips_range,
                     float(fit.fitted_parameters[qubit][0]),
                     float(fit.fitted_parameters[qubit][1]),
                     float(fit.fitted_parameters[qubit][2]),
@@ -279,3 +249,4 @@ def _plot(data: FlippngData, fit: FlippingResults, qubit):
 
 
 flipping = Routine(_acquisition, _fit, _plot)
+"""Flipping Routine  object."""
