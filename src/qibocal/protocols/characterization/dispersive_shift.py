@@ -173,7 +173,6 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
     # iterate over multiple data folders
 
     qubit_data = data.df[data.df["qubit"] == qubit].reset_index()
-    report_n = 0
     fitting_report = ""
 
     data_0 = ResonatorSpectroscopyData(data.resonator_type)
@@ -206,11 +205,11 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
             go.Scatter(
                 x=data.df["frequency"].pint.to("GHz").pint.magnitude,
                 y=data.df["MSR"].pint.to("uV").pint.magnitude,
-                marker_color=get_color(2 * report_n + i),
+                marker_color=get_color(3 * i),
                 opacity=opacity,
-                name=f"q{qubit}/r{report_n}: {label}",
+                name=f"q{qubit}: {label}",
                 showlegend=True,
-                legendgroup=f"q{qubit}/r{report_n}: {label}",
+                legendgroup=f"q{qubit}: {label}",
             ),
             row=1,
             col=1,
@@ -219,10 +218,10 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
             go.Scatter(
                 x=data.df["frequency"].pint.to("GHz").pint.magnitude,
                 y=data.df["phase"].pint.to("rad").pint.magnitude,
-                marker_color=get_color(2 * report_n + i),
+                marker_color=get_color(3 * i + 1),
                 opacity=opacity,
                 showlegend=False,
-                legendgroup=f"q{qubit}/r{report_n}: {label}",
+                legendgroup=f"q{qubit}: {label}",
             ),
             row=1,
             col=2,
@@ -240,22 +239,22 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
             go.Scatter(
                 x=freqrange,
                 y=lorentzian(freqrange, **params),
-                name=f"q{qubit}/r{report_n}: {label} Fit",
+                name=f"q{qubit}: {label} Fit",
                 line=go.scatter.Line(dash="dot"),
-                marker_color=get_color(3 * report_n + i),
+                marker_color=get_color(3 * i + 2),
             ),
             row=1,
             col=1,
         )
 
     fitting_report = fitting_report + (
-        f"q{qubit}/r{report_n} | state zero freq : {fit_data_0.frequency[qubit]:,.0f} Hz.<br>"
+        f"q{qubit} | state zero freq : {fit_data_0.frequency[qubit]:,.0f} Hz.<br>"
     )
     fitting_report = fitting_report + (
-        f"q{qubit}/r{report_n} | state one freq : {fit_data_1.frequency[qubit]:,.0f} Hz.<br>"
+        f"q{qubit} | state one freq : {fit_data_1.frequency[qubit]:,.0f} Hz.<br>"
     )
     fitting_report = fitting_report + (
-        f"q{qubit}/r{report_n} | frequency shift : {fit_data_1.frequency[qubit] - fit_data_0.frequency[qubit]:,.0f} Hz.<br>"
+        f"q{qubit} | frequency shift : {fit_data_1.frequency[qubit] - fit_data_0.frequency[qubit]:,.0f} Hz.<br>"
     )
 
     fig.update_layout(
