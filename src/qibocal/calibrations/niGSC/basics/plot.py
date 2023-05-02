@@ -53,9 +53,11 @@ class Report:
             divide_by = 2
         subplot_titles = [figdict.get("subplot_title") for figdict in self.all_figures]
         fig = make_subplots(
-            rows=int(l / divide_by) + l % divide_by + 1,
+            rows=int(l / divide_by) + l % divide_by,
             cols=1 if l == 1 else divide_by,
             subplot_titles=subplot_titles,
+            horizontal_spacing = 0.1,
+            vertical_spacing = 0.1
         )
         for count, fig_dict in enumerate(self.all_figures):
             plot_list = fig_dict["figs"]
@@ -74,9 +76,9 @@ class Report:
             legend_font_size=16,
             hoverlabel_font_size=16,
             showlegend=True,
-            height=500 * (int(l / divide_by) + l % divide_by)
+            height=300 * (int(l / divide_by) + l % divide_by)
             if l > divide_by
-            else 1000,
+            else 500,
             width=1000,
         )
 
