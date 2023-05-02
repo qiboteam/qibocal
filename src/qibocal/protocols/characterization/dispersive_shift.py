@@ -24,7 +24,7 @@ from qibocal.protocols.characterization.utils import (
 
 @dataclass
 class DispersiveShiftParameters(Parameters):
-    """Disersive shift inputs."""
+    """Dispersive shift inputs."""
 
     freq_width: int
     freq_step: int
