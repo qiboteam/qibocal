@@ -5,12 +5,13 @@ import numpy as np
 import plotly.graph_objects as go
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
-from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.config import log
-from qibocal.data import DataUnits
 from qibocal.plots.utils import get_color
+
+from .t1 import T1Data
+from .utils import exp_decay, exponential_fit
 
 
 @dataclass
@@ -31,26 +32,12 @@ class SpinEchoResults(Results):
 
     t2_spin_echo: Dict[List[Tuple], str] = field(metadata=dict(update="t2_spin_echo"))
     """T2 echo for each qubit."""
-    fitted_paramters: Dict[List[Tuple], List]
+    fitted_parameters: Dict[List[Tuple], List]
     """Raw fitting output."""
 
 
-class SpinEchoData(DataUnits):
+class SpinEchoData(T1Data):
     """SpinEcho acquisition outputs."""
-
-    def __init__(self, resonator_type):
-        super().__init__(
-            "data",
-            quantities={"wait": "ns"},
-            options=["qubit"],
-        )
-
-        self._resonator_type = resonator_type
-
-    @property
-    def resonator_type(self):
-        """Type of resonator (2D or 3D)."""
-        return self._resonator_type
 
 
 def _acquisition(
@@ -90,7 +77,7 @@ def _acquisition(
         params.delay_between_pulses_step,
     )
 
-    data = SpinEchoData(platform.resonator_type)
+    data = SpinEchoData()
 
     # sweep the parameter
     for wait in ro_wait_range:
@@ -117,48 +104,11 @@ def _acquisition(
     return data
 
 
-def exp(x, *p):
-    return p[0] - p[1] * np.exp(-1 * x * p[2])
-
-
 def _fit(data: SpinEchoData) -> SpinEchoResults:
     """Post-processing for SpinEcho."""
-    # TODO: improve this fitting
-    qubits = data.df["qubit"].unique()
-    fitted_parameters = {}
-    t2s = {}
+    t2Echos, fitted_parameters = exponential_fit(data)
 
-    for qubit in qubits:
-        qubit_data = data.df[data.df["qubit"] == qubit]
-
-        times = qubit_data["wait"].pint.to("ns").pint.magnitude
-        voltages = qubit_data["MSR"].pint.to("uV").pint.magnitude
-
-        if data.resonator_type == "3D":
-            pguess = [
-                max(voltages.values),
-                (max(voltages.values) - min(voltages.values)),
-                1 / 250,
-            ]
-        else:
-            pguess = [
-                min(voltages.values),
-                (max(voltages.values) - min(voltages.values)),
-                1 / 250,
-            ]
-
-        try:
-            popt, pcov = curve_fit(
-                exp, times.values, voltages.values, p0=pguess, maxfev=2000000
-            )
-            t2 = abs(1 / popt[2])
-        except:
-            log.warning("spin_echo_fit: the fitting was not successful")
-
-        t2s[qubit] = t2
-        fitted_parameters[qubit] = popt
-
-    return SpinEchoResults(t2s, fitted_parameters)
+    return SpinEchoResults(t2Echos, fitted_parameters)
 
 
 def _plot(data: SpinEchoData, fit: SpinEchoResults, qubit: int):
@@ -192,12 +142,12 @@ def _plot(data: SpinEchoData, fit: SpinEchoResults, qubit: int):
             max(waits),
             2 * len(data),
         )
-        params = fit.fitted_paramters[qubit]
+        params = fit.fitted_parameters[qubit]
 
         fig.add_trace(
             go.Scatter(
                 x=waitrange,
-                y=exp(waitrange, *params),
+                y=exp_decay(waitrange, *params),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
                 marker_color=get_color(1),

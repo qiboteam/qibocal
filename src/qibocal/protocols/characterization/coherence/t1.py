@@ -5,12 +5,13 @@ import numpy as np
 import plotly.graph_objects as go
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
-from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.config import log
 from qibocal.data import DataUnits
 from qibocal.plots.utils import get_color
+
+from .utils import exp_decay, exponential_fit
 
 
 @dataclass
@@ -38,18 +39,12 @@ class T1Results(Results):
 class T1Data(DataUnits):
     """T1 acquisition outputs."""
 
-    def __init__(self, resonator_type):
+    def __init__(self):
         super().__init__(
             name="data",
             quantities={"wait": "ns"},
             options=["qubit"],
         )
-        self._resonator_type = resonator_type
-
-    @property
-    def resonator_type(self):
-        """Type of resonator (2D or 3D)."""
-        return self._resonator_type
 
 
 def _acquisition(
@@ -95,7 +90,7 @@ def _acquisition(
     )
 
     # create a DataUnits object to store the MSR, phase, i, q and the delay time
-    data = T1Data(platform.resonator_type)
+    data = T1Data()
 
     # repeat the experiment as many times as defined by software_averages
     # sweep the parameter
@@ -119,10 +114,6 @@ def _acquisition(
     return data
 
 
-def exp(x, *p):
-    return p[0] - p[1] * np.exp(-1 * x * p[2])
-
-
 def _fit(data: T1Data) -> T1Results:
     """
     Fitting routine for T1 experiment. The used model is
@@ -131,40 +122,7 @@ def _fit(data: T1Data) -> T1Results:
 
             y = p_0-p_1 e^{-x p_2}.
     """
-    qubits = data.df["qubit"].unique()
-    t1s = {}
-    fitted_parameters = {}
-
-    for qubit in qubits:
-        qubit_data_df = data.df[data.df["qubit"] == qubit]
-        voltages = qubit_data_df["MSR"].pint.to("uV").pint.magnitude
-        times = qubit_data_df["wait"].pint.to("ns").pint.magnitude
-
-        if data.resonator_type == "3D":
-            pguess = [
-                max(voltages.values),
-                (max(voltages.values) - min(voltages.values)),
-                1 / 250,
-            ]
-        else:
-            pguess = [
-                min(voltages.values),
-                (max(voltages.values) - min(voltages.values)),
-                1 / 250,
-            ]
-
-        try:
-            popt, pcov = curve_fit(
-                exp, times.values, voltages.values, p0=pguess, maxfev=2000000
-            )
-            t1 = abs(1 / popt[2])
-        except:
-            log.warning("t1_fit: the fitting was not succesful")
-            t1 = 0
-            popt = [0] * 3
-
-        t1s[qubit] = t1
-        fitted_parameters[qubit] = popt
+    t1s, fitted_parameters = exponential_fit(data)
 
     return T1Results(t1s, fitted_parameters)
 
@@ -198,15 +156,11 @@ def _plot(data: T1Data, fit: T1Results, qubit):
             2 * len(qubit_data),
         )
 
+        params = fit.fitted_parameters[qubit]
         fig.add_trace(
             go.Scatter(
                 x=waitrange,
-                y=exp(
-                    waitrange,
-                    float(fit.fitted_parameters[qubit][0]),
-                    float(fit.fitted_parameters[qubit][1]),
-                    float(fit.fitted_parameters[qubit][2]),
-                ),
+                y=exp_decay(waitrange, *params),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
                 marker_color=get_color(2),
