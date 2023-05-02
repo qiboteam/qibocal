@@ -8,37 +8,54 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
-from ...auto.operation import Parameters, Qubits, Results, Routine
-from ...config import log
-from ...data import DataUnits
-from .utils import find_min_msr, get_max_freq, get_points_with_max_freq, norm
+from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.config import log
+from qibocal.data import DataUnits
+
+from . import utils
 
 
 @dataclass
 class ResonatorPunchoutParameters(Parameters):
+    """ "ResonatorPunchout runcard inputs."""
+
     freq_width: int
+    """Width for frequency sweep relative  to the readout frequency (hz)."""
     freq_step: int
+    """Frequency step for sweep (Hz)."""
     min_amp_factor: float
+    """Minimum amplitude multiplicative factor."""
     max_amp_factor: float
+    """Maximum amplitude multiplicative factor."""
     step_amp_factor: float
+    """Step amplitude multiplicative factor."""
     nshots: int
+    """Number of shots."""
     relaxation_time: int
+    """Relaxation time (ns)."""
 
 
 @dataclass
 class ResonatorPunchoutResults(Results):
+    """ResonatorPunchout outputs."""
+
     readout_frequency: Dict[List[Tuple], str] = field(
         metadata=dict(update="readout_frequency")
     )
+    """Readout frequency for each qubit."""
     readout_amplitude: Dict[List[Tuple], str] = field(
         metadata=dict(update="readout_amplitude")
     )
+    """Readout amplitude for each qubit."""
     bare_frequency: Optional[Dict[List[Tuple], str]] = field(
         metadata=dict(update="bare_resonator_frequency")
     )
+    """Bare resonator frequency for each qubit."""
 
 
 class ResonatorPunchoutData(DataUnits):
+    """ResonatorPunchout data acquisition."""
+
     def __init__(self, resonator_type=None):
         super().__init__(
             "data",
@@ -49,6 +66,7 @@ class ResonatorPunchoutData(DataUnits):
 
     @property
     def resonator_type(self):
+        """Type of resonator (2D or 3D)."""
         return self._resonator_type
 
 
@@ -57,6 +75,7 @@ def _acquisition(
     platform: AbstractPlatform,
     qubits: Qubits,
 ) -> ResonatorPunchoutData:
+    """Data acquisition for Punchout over amplitude."""
     # create a sequence of pulses for the experiment:
     # MZ
 
@@ -125,19 +144,7 @@ def _acquisition(
 
 
 def _fit(data: ResonatorPunchoutData, fit_type="amplitude") -> ResonatorPunchoutResults:
-    # def punchout_fit(data: DataUnits, fit_type: str) -> Results:
-    # def punchout_fit(data, qubits, resonator_type, labels, fit_type):
-    """Fit frequency and attenuation at high and low power for a given resonator
-        Args:
-        data (DataUnits): data file with information on the feature response at each current point.
-        qubits (list): qubits coupled to the resonator that we are probing.
-        resonator_type (str): the type of readout resonator ['3D', '2D'].
-        labels (list of str): list containing the lables of the quantities computed by this fitting method.
-        fit_type (str): the type of punchout executed ['attenuation', 'amplitude'].
-
-    Returns:
-        data_fit (Data): Data file with labels and fit parameters (frequency at low and high power, attenuation range for low and highg power)
-    """
+    """Fit frequency and attenuation at high and low power for a given resonator."""
 
     qubits = data.df["qubit"].unique()
 
@@ -153,12 +160,12 @@ def _fit(data: ResonatorPunchoutData, fit_type="amplitude") -> ResonatorPunchout
         try:
             normalised_data = qubit_data.groupby([fit_type], as_index=False)[
                 ["MSR"]
-            ].transform(norm)
+            ].transform(utils.norm)
 
             averaged_data_updated = qubit_data.copy()
             averaged_data_updated.update(normalised_data["MSR"])
 
-            min_points = find_min_msr(
+            min_points = utils.find_min_msr(
                 averaged_data_updated, data.resonator_type, fit_type
             )
             vfunc = np.vectorize(lambda x: x.magnitude)
@@ -171,11 +178,15 @@ def _fit(data: ResonatorPunchoutData, fit_type="amplitude") -> ResonatorPunchout
             hp_points = min_points[min_points[:, 0] < middle_x]
             lp_points = min_points[min_points[:, 0] >= middle_x]
 
-            freq_hp = get_max_freq(hp_points)
-            freq_lp = get_max_freq(lp_points)
+            freq_hp = utils.get_max_freq(hp_points)
+            freq_lp = utils.get_max_freq(lp_points)
 
-            point_hp_max, point_hp_min = get_points_with_max_freq(min_points, freq_hp)
-            point_lp_max, point_lp_min = get_points_with_max_freq(min_points, freq_lp)
+            point_hp_max, point_hp_min = utils.get_points_with_max_freq(
+                min_points, freq_hp
+            )
+            point_lp_max, point_lp_min = utils.get_points_with_max_freq(
+                min_points, freq_lp
+            )
 
             freq_lp = point_lp_max[0]
             ro_amp = point_lp_max[1]
@@ -199,6 +210,7 @@ def _fit(data: ResonatorPunchoutData, fit_type="amplitude") -> ResonatorPunchout
 
 
 def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
+    """Plotting function for ResonatorPunchout."""
     figures = []
     fitting_report = ""
 
@@ -217,7 +229,7 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
 
     normalised_data = qubit_data.groupby(["amplitude"], as_index=False)[
         ["MSR"]
-    ].transform(norm)
+    ].transform(utils.norm)
 
     fig.add_trace(
         go.Heatmap(
@@ -276,3 +288,4 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
 
 
 resonator_punchout = Routine(_acquisition, _fit, _plot)
+"""ResonatorPunchout Routine object."""

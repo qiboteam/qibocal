@@ -8,52 +8,76 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
-from ...auto.operation import Parameters, Qubits, Results, Routine
-from ...config import log
-from ...data import DataUnits
+from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.config import log
+from qibocal.data import DataUnits
+
 from .utils import find_min_msr, get_max_freq, get_points_with_max_freq, norm
 
 
 @dataclass
 class ResonatorPunchoutAttenuationParameters(Parameters):
+    """ResonatorPunchoutAttenuation runcard inputs."""
+
     freq_width: int
+    """Width for frequency sweep relative  to the readout frequency (Hz)."""
     freq_step: int
+    """Frequency step for sweep (Hz)."""
     min_att: int
+    """Attenuation minimum value (dB)."""
     max_att: int
+    """Attenuation maximum value (dB)."""
     step_att: int
+    """Attenuation step (dB)."""
     nshots: int
+    """Number of shots."""
     relaxation_time: int
-    software_averages: int = 1
+    """Relaxation time (ns)."""
 
 
 @dataclass
 class ResonatorPunchoutAttenuationResults(Results):
+    """ResonatorPunchoutAttenation outputs."""
+
     readout_frequency: Dict[List[Tuple], str] = field(
         metadata=dict(update="readout_frequency")
     )
+    """Readout frequency for each qubit."""
     readout_attenuation: Dict[List[Tuple], str] = field(
         metadata=dict(update="readout_attenuation")
     )
+    """Readout attenuation for each qubit."""
     bare_frequency: Optional[Dict[List[Tuple], str]] = field(
         metadata=dict(update="bare_resonator_frequency")
     )
+    """Bare resonator frequency for each qubit."""
     lp_max_att: Dict[List[Tuple], str]
+    """Maximum attenuation at low power for each qubit."""
     lp_min_att: Dict[List[Tuple], str]
+    """Minimum attenuation at low power for each qubit."""
     hp_max_att: Dict[List[Tuple], str]
+    """Maximum attenuation at high power for each qubit."""
     hp_min_att: Dict[List[Tuple], str]
+    """Minimum attenuation at high power for each qubit."""
 
 
 class ResonatorPunchoutAttenuationData(DataUnits):
-    def __init__(self):
+    """ResonatorPunchoutAttenuation data acquisition."""
+
+    def __init__(self, resonator_type):
         super().__init__(
             "data",
             {"frequency": "Hz", "attenuation": "dB"},
             options=[
                 "qubit",
-                "iteration",
-                "resonator_type",
             ],
         )
+        self._resonator_type = resonator_type
+
+    @property
+    def resonator_type(self):
+        """Type of resonator (2D or 3D)."""
+        return self._resonator_type
 
 
 def _acquisition(
@@ -61,6 +85,7 @@ def _acquisition(
     platform: AbstractPlatform,
     qubits: Qubits,
 ) -> ResonatorPunchoutAttenuationData:
+    """Data acquisition for Punchout over attenuation."""
     # create a sequence of pulses for the experiment:
     # MZ
 
@@ -86,45 +111,42 @@ def _acquisition(
     # attenuation
     attenuation_range = np.arange(params.min_att, params.max_att, params.step_att)
     att_sweeper = Sweeper(
-        Parameter.attenuation, attenuation_range, qubits=[qubit for qubit in qubits]
+        Parameter.attenuation, attenuation_range, qubits=list(qubits.values())
     )
 
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
     # additionally include resonator frequency and attenuation
-    data = ResonatorPunchoutAttenuationData()
+    data = ResonatorPunchoutAttenuationData(platform.resonator_type)
 
     # repeat the experiment as many times as defined by software_averages
     att = np.repeat(attenuation_range, len(delta_frequency_range))
-    for iteration in range(params.software_averages):
-        results = platform.sweep(
-            sequence,
-            att_sweeper,
-            freq_sweeper,
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-        )
 
-        # retrieve the results for every qubit
-        for qubit, ro_pulse in ro_pulses.items():
-            # average msr, phase, i and q over the number of shots defined in the runcard
-            result = results[ro_pulse.serial]
-            # store the results
-            freqs = np.array(
-                len(attenuation_range)
-                * list(delta_frequency_range + ro_pulse.frequency)
-            ).flatten()
-            r = {k: v.ravel() for k, v in result.raw.items()}
-            r.update(
-                {
-                    "frequency[Hz]": freqs,
-                    "attenuation[dB]": att,
-                    "qubit": len(freqs) * [qubit],
-                    "iteration": len(freqs) * [iteration],
-                    "resonator_type": len(freqs) * [platform.resonator_type],
-                }
-            )
-            data.add_data_from_dict(r)
+    results = platform.sweep(
+        sequence,
+        att_sweeper,
+        freq_sweeper,
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+    )
+
+    # retrieve the results for every qubit
+    for qubit, ro_pulse in ro_pulses.items():
+        # average msr, phase, i and q over the number of shots defined in the runcard
+        result = results[ro_pulse.serial]
+        # store the results
+        freqs = np.array(
+            len(attenuation_range) * list(delta_frequency_range + ro_pulse.frequency)
+        ).flatten()
+        r = {k: v.ravel() for k, v in result.raw.items()}
+        r.update(
+            {
+                "frequency[Hz]": freqs,
+                "attenuation[dB]": att,
+                "qubit": len(freqs) * [qubit],
+            }
+        )
+        data.add_data_from_dict(r)
 
         # Temporary fixe to force to reset the attenuation to the original value in qblox
         # sweeper method returning to orig value not working for attenuation
@@ -132,26 +154,14 @@ def _acquisition(
         platform.reload_settings()
         # save data
     return data
-    # TODO: calculate and save fit
 
 
 def _fit(
     data: ResonatorPunchoutAttenuationData, fit_type="attenuation"
 ) -> ResonatorPunchoutAttenuationResults:
-    """Fit frequency and attenuation at high and low power for a given resonator
-        Args:
-        data (DataUnits): data file with information on the feature response at each current point.
-        qubits (list): qubits coupled to the resonator that we are probing.
-        resonator_type (str): the type of readout resonator ['3D', '2D'].
-        labels (list of str): list containing the lables of the quantities computed by this fitting method.
-        fit_type (str): the type of punchout executed ['attenuation', 'amplitude'].
-
-    Returns:
-        data_fit (Data): Data file with labels and fit parameters (frequency at low and high power, attenuation range for low and highg power)
-    """
+    """Fit frequency and attenuation at high and low power for a given resonator."""
 
     qubits = data.df["qubit"].unique()
-    resonator_type = data.df["resonator_type"].unique()
 
     freq_lp_dict = {}
     lp_max_att_dict = {}
@@ -164,7 +174,7 @@ def _fit(
     for qubit in qubits:
         averaged_data = (
             data.df[data.df["qubit"] == qubit]
-            .drop(columns=["i", "q", "qubit", "iteration"])
+            .drop(columns=["i", "q", "qubit"])
             .groupby(["frequency", fit_type], as_index=False)
             .mean()
         )
@@ -176,7 +186,9 @@ def _fit(
             averaged_data_updated = averaged_data.copy()
             averaged_data_updated.update(normalised_data["MSR"])
 
-            min_points = find_min_msr(averaged_data_updated, resonator_type, fit_type)
+            min_points = find_min_msr(
+                averaged_data_updated, data.resonator_type, fit_type
+            )
             vfunc = np.vectorize(lambda x: x.magnitude)
             min_points = vfunc(min_points)
 
@@ -239,9 +251,10 @@ def _plot(
     fit: ResonatorPunchoutAttenuationResults,
     qubit,
 ):
+    """Plotting for ResonatorPunchoutAttenuation."""
+
     figures = []
     fitting_report = ""
-
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -253,12 +266,10 @@ def _plot(
         ),
     )
 
-    report_n = 0
+    qubit_data = data.df[data.df["qubit"] == qubit]
 
-    data.df = data.df[data.df["qubit"] == qubit]
-
-    averaged_data = (
-        data.df.drop(columns=["qubit", "iteration"])
+    qubit_data = (
+        data.df.drop(columns=["qubit"])
         .groupby(["frequency", "attenuation"], as_index=False)
         .mean()
     )
@@ -267,38 +278,34 @@ def _plot(
         x_mags = x.pint.to("V").pint.magnitude
         return (x_mags - np.min(x_mags)) / (np.max(x_mags) - np.min(x_mags))
 
-    normalised_data = averaged_data.groupby(["attenuation"], as_index=False)[
+    normalised_data = qubit_data.groupby(["attenuation"], as_index=False)[
         ["MSR"]
     ].transform(norm)
 
     fig.add_trace(
         go.Heatmap(
-            x=averaged_data["frequency"].pint.to("Hz").pint.magnitude,
-            y=averaged_data["attenuation"].pint.to("dB").pint.magnitude,
+            x=qubit_data["frequency"].pint.to("Hz").pint.magnitude,
+            y=qubit_data["attenuation"].pint.to("dB").pint.magnitude,
             z=normalised_data["MSR"],
             colorbar_x=0.46,
         ),
-        row=1 + report_n,
+        row=1,
         col=1,
     )
-    fig.update_xaxes(
-        title_text=f"q{qubit}/r{report_n}: Frequency (Hz)", row=1 + report_n, col=1
-    )
-    fig.update_yaxes(title_text="Attenuation", row=1 + report_n, col=1)
+    fig.update_xaxes(title_text=f"{qubit}: Frequency (Hz)", row=1, col=1)
+    fig.update_yaxes(title_text="Attenuation", row=1, col=1)
     fig.add_trace(
         go.Heatmap(
-            x=averaged_data["frequency"].pint.to("Hz").pint.magnitude,
-            y=averaged_data["attenuation"].pint.to("dB").pint.magnitude,
-            z=averaged_data["phase"].pint.to("rad").pint.magnitude,
+            x=qubit_data["frequency"].pint.to("Hz").pint.magnitude,
+            y=qubit_data["attenuation"].pint.to("dB").pint.magnitude,
+            z=qubit_data["phase"].pint.to("rad").pint.magnitude,
             colorbar_x=1.01,
         ),
-        row=1 + report_n,
+        row=1,
         col=2,
     )
-    fig.update_xaxes(
-        title_text=f"q{qubit}/r{report_n}: Frequency (Hz)", row=1 + report_n, col=2
-    )
-    fig.update_yaxes(title_text="Attenuation", row=1 + report_n, col=2)
+    fig.update_xaxes(title_text=f"{qubit}/: Frequency (Hz)", row=1, col=2)
+    fig.update_yaxes(title_text="Attenuation", row=1, col=2)
 
     if len(data) > 0:
         fig.add_trace(
@@ -324,10 +331,10 @@ def _plot(
             )
         )
         title_text = ""
-        title_text += f"q{qubit}/r{report_n} | Resonator Frequency at Low Power:  {fit.readout_frequency[qubit] * 1e9} Hz.<br>"
-        title_text += f"q{qubit}/r{report_n} | Low Power Attenuation Range: {fit.lp_max_att[qubit]} - {fit.lp_min_att[qubit]} db.<br>"
-        title_text += f"q{qubit}/r{report_n} | Resonator Frequency at High Power: {fit.bare_frequency[qubit] * 1e9} Hz.<br>"
-        title_text += f"q{qubit}/r{report_n} | High Power Attenuation Range: {fit.hp_max_att[qubit]} - {fit.hp_min_att[qubit]} db.<br>"
+        title_text += f"{qubit} | Resonator Frequency at Low Power:  {fit.readout_frequency[qubit] * 1e9} Hz.<br>"
+        title_text += f"{qubit} | Low Power Attenuation Range: {fit.lp_max_att[qubit]} - {fit.lp_min_att[qubit]} db.<br>"
+        title_text += f"{qubit} | Resonator Frequency at High Power: {fit.bare_frequency[qubit] * 1e9} Hz.<br>"
+        title_text += f"{qubit} | High Power Attenuation Range: {fit.hp_max_att[qubit]} - {fit.hp_min_att[qubit]} db.<br>"
 
         fitting_report = fitting_report + title_text
     else:
@@ -344,3 +351,4 @@ def _plot(
 
 
 resonator_punchout_attenuation = Routine(_acquisition, _fit, _plot)
+"""ResonatorPunchoutAttenuation Routine object."""
