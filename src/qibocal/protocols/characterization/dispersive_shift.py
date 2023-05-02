@@ -8,11 +8,18 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
 
-from ...auto.operation import Parameters, Qubits, Results, Routine
-from ...data import DataUnits
-from ...plots.utils import get_color
-from .resonator_spectroscopy import ResonatorSpectroscopyData
-from .utils import PowerLevel, lorentzian, lorentzian_fit, spectroscopy_plot
+from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.data import DataUnits
+from qibocal.plots.utils import get_color
+from qibocal.protocols.characterization.resonator_spectroscopy import (
+    ResonatorSpectroscopyData,
+)
+from qibocal.protocols.characterization.utils import (
+    PowerLevel,
+    lorentzian,
+    lorentzian_fit,
+    spectroscopy_plot,
+)
 
 
 @dataclass
