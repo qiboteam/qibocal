@@ -32,9 +32,7 @@ class DispersiveShiftParameters(Parameters):
 class StateResults(Results):
     frequency: Dict[List[Tuple], str]
     fitted_parameters: Dict[List[Tuple], List]
-    # bare_frequency: Optional[Dict[List[Tuple], str]]
     amplitude: Optional[Dict[List[Tuple], str]]
-    # attenuation: Optional[Dict[List[Tuple], str]]
 
 
 @dataclass
@@ -89,8 +87,6 @@ def _acquisition(
             - **iteration**: The iteration number of the many determined by software_averages
     """
     # TODO: add sweepers
-    # reload instrument settings from runcard
-    # platform.reload_settings()
 
     # create 2 sequences of pulses for the experiment:
     # sequence_0: I  - MZ
