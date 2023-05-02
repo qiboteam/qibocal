@@ -192,7 +192,7 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
     for i, label, data, data_fit in list(
         zip(
             (0, 1),
-            ("Spectroscopy", "Shifted spectroscopy"),
+            ("State 0", "State 1"),
             (data_0, data_1),
             (fit_data_0, fit_data_1),
         )
