@@ -56,8 +56,8 @@ class Report:
             rows=int(l / divide_by) + l % divide_by,
             cols=1 if l == 1 else divide_by,
             subplot_titles=subplot_titles,
-            horizontal_spacing = 0.1,
-            vertical_spacing = 0.1
+            horizontal_spacing=0.1,
+            vertical_spacing=0.1,
         )
         for count, fig_dict in enumerate(self.all_figures):
             plot_list = fig_dict["figs"]
@@ -76,9 +76,7 @@ class Report:
             legend_font_size=16,
             hoverlabel_font_size=16,
             showlegend=True,
-            height=300 * (int(l / divide_by) + l % divide_by)
-            if l > divide_by
-            else 500,
+            height=300 * (int(l / divide_by) + l % divide_by) if l > divide_by else 500,
             width=1000,
         )
 
