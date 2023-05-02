@@ -149,6 +149,13 @@ actions:
       delay_before_readout_end: 20_000
       delay_before_readout_step: 2000
 
+  - id: t2
+    priority: 0
+    operation: t2
+    parameters:
+      delay_between_pulses_start: 16
+      delay_between_pulses_end: 20000
+      delay_between_pulses_step: 100
 
   - id: ramsey
     priority: 0

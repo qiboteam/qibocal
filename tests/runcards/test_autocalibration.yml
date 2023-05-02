@@ -121,22 +121,21 @@ actions:
   - id: t1
     priority: 0
     operation: t1
-    main: ramsey
+    main: t2
     parameters:
       delay_before_readout_start: 0
       delay_before_readout_end: 20_000
       delay_before_readout_step: 2000
 
 
-  - id: ramsey
+  - id: t2
     priority: 0
-    operation: ramsey
-    main: ramsey detuned
+    operation: t2
+    main: ramsey
     parameters:
-      delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
-      delay_between_pulses_end: 5000
-      delay_between_pulses_step: 500 # must be a multiple of 4
-      n_osc: 0
+      delay_between_pulses_start: 16
+      delay_between_pulses_end: 20000
+      delay_between_pulses_step: 100
 
   - id: ramsey detuned
     priority: 0
@@ -146,7 +145,7 @@ actions:
       delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
       delay_between_pulses_end: 5000
       delay_between_pulses_step: 500 # must be a multiple of 4
-      n_osc: 0
+      n_osc: 10
 
   - id: single shot classification
     priority: 0
