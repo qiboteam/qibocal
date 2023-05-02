@@ -8,6 +8,8 @@ from qibocal.data import DataUnits
 from qibocal.decorators import plot
 from qibocal.fitting.methods import rabi_fit
 
+from qibolab.platforms.platform import AcquisitionType, AveragingMode
+
 
 @plot("MSR vs Time", plots.time_msr_phase)
 def rabi_pulse_length(
@@ -211,7 +213,7 @@ def rabi_pulse_length_sweep(
     for iteration in range(software_averages):
         # sweep the parameter
         results = platform.sweep(
-            sequence, sweeper, nshots=nshots, relaxation_time=relaxation_time
+            sequence, sweeper, nshots=nshots, relaxation_time=relaxation_time, acquisition_type=AcquisitionType.INTEGRATION, averaging_mode=AveragingMode.CYCLIC
         )
         for qubit in qubits:
             # average msr, phase, i and q over the number of shots defined in the runcard
@@ -559,7 +561,7 @@ def rabi_pulse_amplitude_sweep(
     for iteration in range(software_averages):
         # sweep the parameter
         results = platform.sweep(
-            sequence, sweeper, nshots=nshots, relaxation_time=relaxation_time
+            sequence, sweeper, nshots=nshots, relaxation_time=relaxation_time, acquisition_type=AcquisitionType.INTEGRATION, averaging_mode=AveragingMode.CYCLIC
         )
         for qubit in qubits:
             # average msr, phase, i and q over the number of shots defined in the runcard

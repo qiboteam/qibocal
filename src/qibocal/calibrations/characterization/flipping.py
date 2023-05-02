@@ -1,6 +1,8 @@
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
+from qibolab.platforms.platform import AcquisitionType, AveragingMode
+
 
 from qibocal import plots
 from qibocal.data import DataUnits
@@ -104,9 +106,9 @@ def flipping(
 
             # execute the pulse sequence
             results = platform.execute_pulse_sequence(
-                sequence, nshots=nshots, relaxation_time=relaxation_time
+                sequence, nshots=nshots, relaxation_time=relaxation_time, acquisition_type=AcquisitionType.INTEGRATION, averaging_mode=AveragingMode.CYCLIC
             )
-
+            
             for ro_pulse in ro_pulses.values():
                 # average msr, phase, i and q over the number of shots defined in the runcard
                 r = results[ro_pulse.serial].raw
