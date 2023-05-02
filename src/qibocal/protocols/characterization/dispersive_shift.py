@@ -161,7 +161,6 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
     # iterate over multiple data folders
     qubit_data = data.df[data.df["qubit"] == qubit]
 
-    # frequencies =  data.df["frequency"].pint.to("GHz").pint.magnitude.unique()
     fitting_report = ""
 
     data_0 = ResonatorSpectroscopyData(data.resonator_type)
