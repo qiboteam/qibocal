@@ -98,13 +98,13 @@ def ro_frequency(
                 {
                     "frequency[Hz]": np.repeat(
                         np.vstack(delta_frequency_range).T,
-                        len(np.arange(nshots)),
+                        nshots,
                         axis=0,
                     ).flatten()
                     + ro_pulses[qubit].frequency,
                     "delta_frequency[Hz]": np.repeat(
                         np.vstack(delta_frequency_range).T,
-                        len(np.arange(nshots)),
+                        nshots,
                         axis=0,
                     ).flatten(),
                     "qubit": [qubit] * nshots * len(delta_frequency_range),
@@ -214,13 +214,13 @@ def ro_amplitude(
                 {
                     "amplitude[dimensionless]": np.repeat(
                         np.vstack(delta_amplitude_range).T,
-                        len(np.arange(nshots)),
+                        nshots,
                         axis=0,
                     ).flatten()
                     * ro_pulses[qubit].amplitude,
                     "delta_amplitude[dimensionless]": np.repeat(
                         np.vstack(delta_amplitude_range).T,
-                        len(np.arange(nshots)),
+                        nshots,
                         axis=0,
                     ).flatten(),
                     "qubit": [qubit] * nshots * len(delta_amplitude_range),
