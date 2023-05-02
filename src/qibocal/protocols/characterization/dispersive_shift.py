@@ -52,7 +52,7 @@ class DispersiveShiftData(DataUnits):
         super().__init__(
             name="data",
             quantities={"frequency": "Hz"},
-            options=["qubit", "iteration", "state"],
+            options=["qubit", "state"],
         )
         self.resonator_type = resonator_type
         self._power_level = power_level
