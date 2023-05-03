@@ -51,7 +51,7 @@ class Experiment:
         if nshots is not None and not isinstance(nshots, int):
             raise_error(
                 TypeError,
-                f"given nshots has wrong type {type(nshots)}, must be int | None",
+                f"Invalid nshots type {type(nshots)}. Nshots must be int or None.",
             )
         self.nshots = nshots
         if noise_model is not None and not isinstance(noise_model, NoiseModel):
