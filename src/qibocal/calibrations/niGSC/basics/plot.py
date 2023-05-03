@@ -5,6 +5,7 @@ from plotly.subplots import make_subplots
 
 import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
+from qibocal.calibrations.niGSC.basics.utils import number_to_str
 
 
 def plot_qq(folder: str, routine: str, qubit, format):
@@ -84,7 +85,7 @@ class Report:
 
     def info_table(self):
         return "".join(
-            [f"q{0}/r{0} | {key}: {value}<br>" for key, value in self.info_dict.items()]
+            [f"q/r | {key}: {value}<br>" for key, value in self.info_dict.items()]
         )
 
 
@@ -141,7 +142,12 @@ def scatter_fit_fig(
         go.Scatter(
             x=x_fit,
             y=y_fit,
-            name="Fit",
+            name="".join(
+                [
+                    f"{key}={number_to_str(value)} "
+                    for key, value in dfrow[fittingparam_label].items()
+                ]
+            ),
             line=go.scatter.Line(dash="dot"),
         )
     )
