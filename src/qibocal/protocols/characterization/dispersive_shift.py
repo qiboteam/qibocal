@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -7,7 +7,7 @@ from plotly.subplots import make_subplots
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
-from scipy.optimize import curve_fit
+
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
@@ -19,13 +19,12 @@ from qibocal.protocols.characterization.utils import (
     PowerLevel,
     lorentzian,
     lorentzian_fit,
-    spectroscopy_plot,
 )
 
 
 @dataclass
 class DispersiveShiftParameters(Parameters):
-    """Disersive shift inputs."""
+    """Dispersive shift inputs."""
 
     freq_width: int
     """Width for frequency sweep relative to the readout frequency (Hz)."""
@@ -236,21 +235,21 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
         )
 
     fitting_report = fitting_report + (
-        f"q{qubit} | state zero freq : {fit_data_0.frequency[qubit]:,.0f} Hz.<br>"
+        f"{qubit} | State zero freq : {fit_data_0.frequency[qubit]*1e9:,.0f} Hz.<br>"
     )
     fitting_report = fitting_report + (
-        f"q{qubit} | state one freq : {fit_data_1.frequency[qubit]:,.0f} Hz.<br>"
+        f"{qubit} | State one freq : {fit_data_1.frequency[qubit]*1e9:,.0f} Hz.<br>"
     )
     fitting_report = fitting_report + (
-        f"q{qubit} | frequency shift : {fit_data_1.frequency[qubit] - fit_data_0.frequency[qubit]:,.0f} Hz.<br>"
+        f"{qubit} | Frequency shift : {(fit_data_1.frequency[qubit] - fit_data_0.frequency[qubit])*1e9:,.0f} Hz.<br>"
     )
 
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Frequency (Hz)",
+        xaxis_title="Frequency (GHz)",
         yaxis_title="MSR (uV)",
-        xaxis2_title="Frequency (Hz)",
+        xaxis2_title="Frequency (GHz)",
         yaxis2_title="Phase (rad)",
     )
 

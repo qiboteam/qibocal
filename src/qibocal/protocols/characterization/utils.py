@@ -108,7 +108,7 @@ def lorentzian_fit(data) -> list:
                 data=voltages, frequency=frequencies, params=guess_parameters
             ).best_values
             # get the values for postprocessing and for legend.
-            f0 = fit_res.best_values["center"]
+            f0 = fit_res["center"]
 
         except:
             log.warning("lorentzian_fit: the fitting was not successful")
