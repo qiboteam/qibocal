@@ -108,10 +108,10 @@
 
 .div-fitting
 {
-  margin: 0 0 0 50px;
+  margin: 0 0 0 -100px;
   display: flex;
   align-items: center;
-  /* justify-content: center; */
+  justify-content: center;
   margin-top: 40px;
   font-family: Verdana;
   font-size: 0.8em;
@@ -141,7 +141,7 @@
 
 .fitting-table
 {
-  width: 50%;
+  width: 30%;
   border-collapse: collapse;
   text-align: center;
   margin-left: 15px;
