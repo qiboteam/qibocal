@@ -3,6 +3,7 @@ import shutil
 
 from qibocal.plots.utils import get_data_subfolders
 
+
 def test_get_data_subfolders():
     number_of_subfolders = 3
     parent_folder = "test_plots"
