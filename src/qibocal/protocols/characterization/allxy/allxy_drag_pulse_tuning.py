@@ -12,6 +12,7 @@ from qibocal.plots.utils import get_color
 from . import allxy
 
 
+
 @dataclass
 class AllXYDragParameters(Parameters):
     """AllXYDrag runcard inputs."""
@@ -64,35 +65,32 @@ def _acquisition(
     # repeat the experiment as many times as defined by software_averages
     count = 0
     # sweep the parameters
-    for beta_param in np.arange(
-        params.beta_start, params.beta_end, params.beta_step
-    ).round(4):
+    for beta_param in np.arange(params.beta_start, params.beta_end, params.beta_step).round(4):
         gateNumber = 1
         for gates in allxy.gatelist:
             # create a sequence of pulses
             ro_pulses = {}
             sequence = PulseSequence()
             for qubit in qubits:
-                sequence, ro_pulses[qubit] = add_gate_pair_pulses_to_sequence(
+                sequence, ro_pulses[qubit] = allxy.add_gate_pair_pulses_to_sequence(
                     platform, gates, qubit, sequence, beta_param
                 )
 
-        # execute the pulse sequence
-        results = platform.execute_pulse_sequence(sequence)
+            # execute the pulse sequence
+            results = platform.execute_pulse_sequence(sequence)
 
-        # retrieve the results for every qubit
-        for ro_pulse in ro_pulses.values():
-            z_proj = 2 * results[ro_pulse.serial].ground_state_probability - 1
-            # store the results
-            r = {
-                "probability": z_proj,
-                "gateNumber": gateNumber,
-                "beta_param": beta_param,
-                "qubit": ro_pulse.qubit,
-            }
-            data.add(r)
-        gateNumber += 1
-    # finally, save the remaining data
+            # retrieve the results for every qubit
+            for ro_pulse in ro_pulses.values():
+                z_proj = 2 * results[ro_pulse.serial].ground_state_probability - 1
+                # store the results
+                r = {
+                    "probability": z_proj,
+                    "gateNumber": gateNumber,
+                    "beta_param": beta_param,
+                    "qubit": ro_pulse.qubit,
+                }
+                data.add(r)
+            gateNumber += 1
     return data
 
 

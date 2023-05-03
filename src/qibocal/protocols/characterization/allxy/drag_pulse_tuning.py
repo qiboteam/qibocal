@@ -171,7 +171,7 @@ def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
 
 
 def _plot(data: DragPulseTuningData, fit: DragPulseTuningResults, qubit):
-    """Plottin function for DragPulseTuning."""
+    """Plotting function for DragPulseTuning."""
 
     figures = []
     fitting_report = ""

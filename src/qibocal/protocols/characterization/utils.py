@@ -87,7 +87,7 @@ def lorentzian_fit(data, qubit):
 
         amplitudes[qubit] = data.amplitude
         attenuations[qubit] = data.attenuation
-        fitted_parameters[qubit] = fit_res.params.valuesdict() #fit_res.best_values
+        fitted_parameters[qubit] = fit_res.params.valuesdict()
 
     if data.power_level is PowerLevel.high:
         return {

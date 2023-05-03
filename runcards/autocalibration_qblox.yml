@@ -2,7 +2,7 @@ platform: qblox
 
 runcard: /home/users/david.fuentes/qibolab/src/qibolab/runcards/qw5q_gold_qblox.yml
 
-qubits: [2]
+qubits: [1, 2]
 
 format: csv
 
@@ -33,18 +33,18 @@ actions:
   #     nshots: 1000
   #     relaxation_time: 2000
 
-  # - id: resonator_punchout_attenuation
-  #   priority: 10
-  #   operation: resonator_punchout_attenuation
-  #   # next: resonator spectroscopy low power
-  #   parameters:
-  #     freq_width: 10_000_000
-  #     freq_step: 100_000
-  #     min_att: 2
-  #     max_att: 50
-  #     step_att: 2
-  #     nshots: 1024
-  #     relaxation_time: 2000 #in qblox should be > than the acquisition_hold_off
+  - id: resonator_punchout_attenuation
+    priority: 0 #10
+    operation: resonator_punchout_attenuation
+    # next: resonator spectroscopy low power
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 100_000
+      min_att: 2
+      max_att: 50
+      step_att: 2
+      nshots: 1024
+      relaxation_time: 2000 #in qblox should be > than the acquisition_hold_off
 
   # - id: resonator spectroscopy low power
   #   priority: 20
@@ -199,14 +199,14 @@ actions:
   #     beta_end: 1
   #     beta_step: 0.1
 
-  - id: allXY drag pulse tuning
-    priority: 0 #140
-    operation: allxy_drag_pulse_tuning
-    # next: allXY 2
-    parameters:
-      beta_start: -1
-      beta_end: 1
-      beta_step: 0.1
+  # - id: allXY drag pulse tuning
+  #   priority: 0 #140
+  #   operation: allxy_drag_pulse_tuning
+  #   # next: allXY 2
+  #   parameters:
+  #     beta_start: -1
+  #     beta_end: 1
+  #     beta_step: 0.1
 
   # - id: allXY 2 #Ideally this should be repeated with the correct beta
   #   priority: 130
