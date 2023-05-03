@@ -227,3 +227,10 @@ actions:
     parameters:
       nflips_max: 5
       nflips_step: 1
+
+  - id: dispersive shift
+    priority: 0
+    operation: dispersive_shift
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 100_000

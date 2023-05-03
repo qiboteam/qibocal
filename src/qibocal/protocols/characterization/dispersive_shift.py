@@ -151,7 +151,7 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
 
         results.append(StateResults(frequency, fitted_parameters))
 
-    return DispersiveShiftResults(*results)
+    return DispersiveShiftResults(results_0=results[0], results_1=results[1])
 
 
 def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):

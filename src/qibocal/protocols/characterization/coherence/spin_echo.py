@@ -96,7 +96,7 @@ def _acquisition(
             r = results[ro_pulse.serial].average.raw
             r.update(
                 {
-                    "wait[ns]": wait,
+                    "wait[ns]": 2 * wait,
                     "qubit": ro_pulse.qubit,
                 }
             )
