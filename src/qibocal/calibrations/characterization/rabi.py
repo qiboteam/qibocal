@@ -10,6 +10,7 @@ from qibocal.decorators import plot
 from qibocal.fitting.methods import rabi_fit
 
 
+
 @plot("MSR vs Time", plots.time_msr_phase)
 def rabi_pulse_length(
     platform: AbstractPlatform,
