@@ -2,26 +2,30 @@ from dataclasses import dataclass
 
 import numpy as np
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
-from ....auto.operation import Parameters, Qubits, Results, Routine
-from ....data import Data
-from ....plots.utils import get_color
+from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.data import Data
+from qibocal.plots.utils import get_color
 
 
 @dataclass
 class AllXYParameters(Parameters):
+    """AllXY runcard inputs."""
+
     beta_param: float = None
+    """Beta parameter for drag pulse."""
 
 
 @dataclass
 class AllXYResults(Results):
-    ...
+    """AllXY outputs."""
 
 
 class AllXYData(Data):
+    """AllXY acquisition outputs."""
+
     def __init__(self):
         super().__init__(
             name="data",
@@ -60,28 +64,11 @@ def _acquisition(
     qubits: Qubits,
 ) -> AllXYData:
     r"""
+    Data acquisition for allXY experiment.
     The AllXY experiment is a simple test of the calibration of single qubit gatesThe qubit (initialized in the |0> state)
     is subjected to two back-to-back single-qubit gates and measured. In each round, we run 21 different gate pairs:
     ideally, the first 5 return the qubit to |0>, the next 12 drive it to superposition state, and the last 4 put the
     qubit in |1> state.
-
-    Args:
-        platform (AbstractPlatform): Qibolab platform object
-        qubits (dict): Dict of target Qubit objects to perform the action
-        beta_param (float): Drag pi pulse coefficient. If none, teh default shape defined in the runcard will be used.
-        software_averages (int): Number of executions of the routine for averaging results
-
-    Returns:
-        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
-
-            - **MSR[V]**: Difference between resonator signal voltage mesurement in volts from sequence 1 and 2
-            - **i[V]**: Difference between resonator signal voltage mesurement for the component I in volts from sequence 1 and 2
-            - **q[V]**: Difference between resonator signal voltage mesurement for the component Q in volts from sequence 1 and 2
-            - **phase[rad]**: Difference between resonator signal phase mesurement in radians from sequence 1 and 2
-            - **probability[dimensionless]**: Probability of being in |0> state
-            - **gateNumber[dimensionless]**: Gate number applied from the list of gates
-            - **qubit**: The qubit being tested
-            - **iteration**: The iteration number of the many determined by software_averages
     """
 
     # create a Data object to store the results
@@ -207,14 +194,16 @@ def add_gate_pair_pulses_to_sequence(
 
 
 def _fit(_data: AllXYData) -> AllXYResults:
+    """Post-Processing for allXY"""
     return AllXYResults()
 
 
 # allXY
 def _plot(data: AllXYData, _fit: AllXYResults, qubit):
+    """Plotting function for allXY."""
+
     figures = []
     fitting_report = "No fitting data"
-
     fig = go.Figure()
 
     qubit_data = data.df[data.df["qubit"] == qubit].drop(columns=["qubit"])
@@ -267,3 +256,4 @@ def _plot(data: AllXYData, _fit: AllXYResults, qubit):
 
 
 allxy = Routine(_acquisition, _fit, _plot)
+"""AllXY Routine object."""

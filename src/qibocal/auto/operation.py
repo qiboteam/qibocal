@@ -1,8 +1,8 @@
 import inspect
-from dataclasses import dataclass, field, fields
-from typing import Callable, Dict, Generic, NewType, Optional, TypeVar, Union
+from dataclasses import dataclass, fields
+from typing import Callable, Dict, Generic, NewType, TypeVar, Union
 
-from qibolab.platforms.abstract import AbstractPlatform, Qubit
+from qibolab.platforms.abstract import Qubit
 
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
@@ -90,13 +90,19 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     """A wrapped calibration routine."""
 
     acquisition: Callable[[_ParametersT], _DataT]
-    fit: Callable[[_DataT], _ResultsT]
-    report: Callable[[_DataT, _ResultsT], None]
+    fit: Callable[[_DataT], _ResultsT] = None
+    report: Callable[[_DataT, _ResultsT], None] = None
+
+    def __post_init__(self):
+        # TODO: this could be improved
+        if self.fit == None:
+            self.fit = _dummy_fit
+        if self.report == None:
+            self.report = _dummy_report
 
     @property
     def parameters_type(self):
         sig = inspect.signature(self.acquisition)
-        # we are assuming that params is the last argument, maybe should be the first(?)
         param = list(sig.parameters.values())[0]
         return param.annotation
 
@@ -108,6 +114,15 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     def results_type(self):
         return inspect.signature(self.fit).return_annotation
 
+    # TODO: I don't like these properties but it seems to work
+    @property
+    def platform_dependent(self):
+        return "platform" in inspect.signature(self.acquisition).parameters
+
+    @property
+    def qubits_dependent(self):
+        return "qubits" in inspect.signature(self.acquisition).parameters
+
 
 @dataclass
 class DummyPars(Parameters):
@@ -117,6 +132,9 @@ class DummyPars(Parameters):
 @dataclass
 class DummyData(Data):
     """Dummy data."""
+
+    def save(self, path):
+        """Dummy method for saving data"""
 
 
 @dataclass
@@ -133,7 +151,7 @@ def _dummy_fit(data: DummyData) -> DummyRes:
 
 
 def _dummy_report(data: DummyData, result: DummyRes):
-    return
+    return [], ""
 
 
 dummy_operation = Routine(_dummy_acquisition, _dummy_fit, _dummy_report)

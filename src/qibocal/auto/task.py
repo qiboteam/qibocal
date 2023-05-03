@@ -1,4 +1,5 @@
 """Action execution tracker."""
+import inspect
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -89,10 +90,15 @@ class Task:
             parameters = DummyPars()
 
         path = self.datapath(folder)
-        # TODO: fix data attributes
-        self._data: Data = operation.acquisition(
-            parameters, platform=platform, qubits=qubits
-        )
+
+        if operation.platform_dependent and operation.qubits_dependent:
+            self._data: Data = operation.acquisition(
+                parameters, platform=platform, qubits=qubits
+            )
+        else:
+            self._data: Data = operation.acquisition(
+                parameters,
+            )
         self._data.save(path)
         # TODO: data dump
         # path.write_text(yaml.dump(pydantic_encoder(self.data(base_dir))))

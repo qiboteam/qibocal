@@ -150,15 +150,19 @@ class ActionBuilder:
         self.backend, self.platform = self._allocate_backend(
             backend_name, platform_name, path, platform_runcard
         )
-        if self.platform is not None:
-            self.qubits = {
-                q: self.platform.qubits[q]
-                for q in self.runcard["qubits"]
-                if q in self.platform.qubits
-            }
+        if "qubits" in self.runcard:
+            if self.platform is not None:
+                self.qubits = {
+                    q: self.platform.qubits[q]
+                    for q in self.runcard["qubits"]
+                    if q in self.platform.qubits
+                }
+            else:
+                self.qubits = self.runcard.get("qubits")
         else:
-            self.qubits = self.runcard.get("qubits")
-        self.format = self.runcard["format"]
+            self.qubits = []
+        if "format" in self.runcard:
+            self.format = self.runcard["format"]
 
         # Saving runcard
         shutil.copy(runcard, f"{path}/runcard.yml")

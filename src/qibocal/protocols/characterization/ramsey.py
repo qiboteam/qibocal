@@ -3,34 +3,48 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
 
-from ...auto.operation import Parameters, Qubits, Results, Routine
-from ...config import log
-from ...data import DataUnits
-from ...plots.utils import get_color
+from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.config import log
+from qibocal.data import DataUnits
+from qibocal.plots.utils import get_color
 
 
 @dataclass
 class RamseyParameters(Parameters):
+    """Ramsey runcard inputs."""
+
     delay_between_pulses_start: int
-    delay_between_pulses_end: list
+    """Initial delay between RX(pi/2) pulses in ns."""
+    delay_between_pulses_end: int
+    """Final delay between RX(pi/2) pulses in ns."""
     delay_between_pulses_step: int
+    """Step delay between RX(pi/2) pulses in ns."""
     n_osc: Optional[int] = 0
+    """Number of oscillations to induce detuning (optional).
+        If 0 standard Ramsey experiment is performed."""
 
 
 @dataclass
 class RamseyResults(Results):
+    """Ramsey outputs."""
+
     frequency: Dict[List[Tuple], str] = field(metadata=dict(update="drive_frequency"))
+    """Drive frequency for each qubit."""
     t2: Dict[List[Tuple], str]
+    """T2 for each qubit (ns)."""
     delta_phys: Dict[List[Tuple], str]
+    """Drive frequency correction for each qubit."""
     fitted_parameters: Dict[List[Tuple], List]
+    """Raw fitting output."""
 
 
 class RamseyData(DataUnits):
+    """Ramsey acquisition outputs."""
+
     def __init__(self, n_osc, t_max):
         super().__init__(
             name="data",
@@ -45,10 +59,12 @@ class RamseyData(DataUnits):
 
     @property
     def n_osc(self):
+        """Number of oscillations for detuning."""
         return self._n_osc
 
     @property
     def t_max(self):
+        """Final delay between RX(pi/2) pulses in ns."""
         return self._t_max
 
 
@@ -57,6 +73,7 @@ def _acquisition(
     platform: AbstractPlatform,
     qubits: Qubits,
 ) -> RamseyData:
+    """Data acquisition for Ramsey Experiment (detuned)."""
     # create a sequence of pulses for the experiment
     # RX90 - t - RX90 - MZ
     ro_pulses = {}
@@ -133,27 +150,6 @@ def _fit(data: RamseyData) -> RamseyResults:
     Fitting routine for Ramsey experiment. The used model is
     .. math::
         y = p_0 + p_1 sin \Big(p_2 x + p_3 \Big) e^{-x p_4}.
-    Args:
-        data (`DataUnits`): dataset for the fit
-        x (str): name of the input values for the Ramsey model
-        y (str): name of the output values for the Ramsey model
-        qubits (list): A list with the IDs of the qubits
-        qubits_freq (float): frequency of the qubit
-        sampling_rate (float): Platform sampling rate
-        offset_freq (float): Total qubit frequency offset. It contains the artificial detunning applied
-                             by the experimentalist + the inherent offset in the actual qubit frequency stored in the runcard.
-        labels (list of str): list containing the lables of the quantities computed by this fitting method.
-    Returns:
-        A ``Data`` object with the following keys
-            - **popt0**: offset
-            - **popt1**: oscillation amplitude
-            - **popt2**: frequency
-            - **popt3**: phase
-            - **popt4**: T2
-            - **labels[0]**: Physical detunning of the actual qubit frequency
-            - **labels[1]**: New qubit frequency after correcting the actual qubit frequency with the detunning calculated (labels[0])
-            - **labels[2]**: T2
-            - **qubit**: The qubit being tested
     """
     qubits = data.df["qubit"].unique()
 
@@ -195,8 +191,8 @@ def _fit(data: RamseyData) -> RamseyResults:
                 p0=p0,
                 maxfev=2000000,
                 bounds=(
-                    [0, 0, -np.inf, -np.pi / 2, 0],
-                    [1, 1, np.inf, np.pi / 2, np.inf],
+                    [0, 0, 0, -np.pi, 0],
+                    [1, 1, np.inf, np.pi, np.inf],
                 ),
             )[0]
             popt = [
@@ -208,9 +204,7 @@ def _fit(data: RamseyData) -> RamseyResults:
             ]
             delta_fitting = popt[2] / (2 * np.pi)
             # FIXME: check this formula
-            delta_phys = +int(
-                (delta_fitting + data.n_osc / data.t_max / 2 / np.pi) * 1e9
-            )
+            delta_phys = +int((delta_fitting - data.n_osc / data.t_max) * 1e9)
             corrected_qubit_frequency = int(qubit_freq + delta_phys)
             t2 = 1.0 / popt[4]
 
@@ -232,15 +226,10 @@ def _fit(data: RamseyData) -> RamseyResults:
 
 
 def _plot(data: RamseyData, fit: RamseyResults, qubit):
-    figures = []
+    """Plotting function for Ramsey Experiment."""
 
-    fig = make_subplots(
-        rows=1,
-        cols=1,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
-        subplot_titles=("MSR (V)",),
-    )
+    figures = []
+    fig = go.Figure()
     fitting_report = ""
 
     qubit_data = data.df[data.df["qubit"] == qubit]
@@ -254,24 +243,22 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
             name="Voltage",
             showlegend=True,
             legendgroup="Voltage",
-        ),
-        row=1,
-        col=1,
+        )
     )
 
     # add fitting trace
     if len(data) > 0:
         waitrange = np.linspace(
-            min(qubit_data["wait"]),
-            max(qubit_data["wait"]),
+            min(qubit_data["wait"].pint.to("ns").pint.magnitude),
+            max(qubit_data["wait"].pint.to("ns").pint.magnitude),
             2 * len(data),
         )
 
         fig.add_trace(
             go.Scatter(
-                x=waitrange.magnitude,
+                x=waitrange,
                 y=ramsey_fit(
-                    waitrange.magnitude,
+                    waitrange,
                     float(fit.fitted_parameters[qubit][0]),
                     float(fit.fitted_parameters[qubit][1]),
                     float(fit.fitted_parameters[qubit][2]),
@@ -281,9 +268,7 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
                 marker_color=get_color(1),
-            ),
-            row=1,
-            col=1,
+            )
         )
         fitting_report = (
             fitting_report
@@ -305,3 +290,4 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
 
 
 ramsey = Routine(_acquisition, _fit, _plot)
+"""Ramsey Routine object."""

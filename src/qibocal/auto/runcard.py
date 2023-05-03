@@ -56,6 +56,6 @@ class Runcard:
         )
         return cls(
             actions=content["actions"],
-            qubits=content["qubits"],
-            format=content["format"],
+            qubits=content["qubits"] if "qubits" in content else [],
+            format=content["format"] if "format" in content else None,
         )

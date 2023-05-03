@@ -8,31 +8,44 @@ from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
-from .resonator_flux_dependence import ResonatorFluxData
-from .utils import flux_dependence_plot
+from . import resonator_flux_dependence, utils
 
 
 # TODO: implement cross-talk
 @dataclass
 class QubitFluxParameters(Parameters):
+    """QubitFlux runcard inputs."""
+
     freq_width: int
+    """Width for frequency sweep relative to the qubit frequency (Hz)."""
     freq_step: int
+    """Frequency step for sweep (Hz)."""
     bias_width: float
+    """Width for bias sweep (V)."""
     bias_step: float
+    """Bias step for sweep (V)."""
     nshots: int
+    """Number of shots."""
     relaxation_time: int
+    """Relaxation time (ns)."""
     drive_amplitude: float
+    """Drive pulse amplitude. Same for all qubits."""
 
 
 @dataclass
 class QubitFluxResults(Results):
+    """QubitFlux outputs."""
+
     sweetspot: Dict[List[Tuple], str] = field(metadata=dict(update="sweetspot"))
+    """Sweetspot for each qubit."""
     frequency: Dict[List[Tuple], str] = field(metadata=dict(update="drive_frequency"))
+    """Drive frequency for each qubit."""
     fitted_parameters: Dict[List[Tuple], List]
+    """Raw fitting output."""
 
 
-class QubitFluxData(ResonatorFluxData):
-    ...
+class QubitFluxData(resonator_flux_dependence.ResonatorFluxData):
+    """QubitFlux acquisition outputs."""
 
 
 def _acquisition(
@@ -40,6 +53,7 @@ def _acquisition(
     platform: AbstractPlatform,
     qubits: Qubits,
 ) -> QubitFluxData:
+    """Data acquisition for QubitFlux Experiment."""
     # create a sequence of pulses for the experiment:
     # MZ
 
@@ -112,11 +126,14 @@ def _acquisition(
 
 
 def _fit(data: QubitFluxData) -> QubitFluxResults:
+    """Post-processing for QubitFlux Experiment."""
     return QubitFluxResults({}, {}, {})
 
 
 def _plot(data: QubitFluxData, fit: QubitFluxResults, qubit):
-    return flux_dependence_plot(data, fit, qubit)
+    """Plotting function for QubitFlux Experiment."""
+    return utils.flux_dependence_plot(data, fit, qubit)
 
 
 qubit_flux = Routine(_acquisition, _fit, _plot)
+"""QubitFlux Routine object."""

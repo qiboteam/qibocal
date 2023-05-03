@@ -6,12 +6,14 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from ...auto.operation import Results
-from ...config import log
-from ...plots.utils import get_color
+from qibocal.auto.operation import Results
+from qibocal.config import log
+from qibocal.plots.utils import get_color
 
 
 class PowerLevel(Enum):
+    """Power Regime for Resonator Spectroscopy"""
+
     high = "high"
     low = "low"
 
@@ -23,50 +25,30 @@ def lorentzian(frequency, amplitude, center, sigma, offset):
     ) + offset
 
 
-def lorentzian_fit(data) -> list:
-    r"""
-    Fitting routine for resonator/qubit spectroscopy.
-    The used model is
+def lorentzian_fit(data, qubit):
+    qubit_data = (
+        data.df[data.df["qubit"] == qubit].drop(columns=["qubit"]).reset_index()
+    )
+    frequencies = qubit_data["frequency"].pint.to("GHz").pint.magnitude
+    voltages = qubit_data["MSR"].pint.to("uV").pint.magnitude
+    model_Q = lmfit.Model(lorentzian)
 
-    .. math::
-
-        y = \frac{A}{\pi} \Big[ \frac{\sigma}{(f-f_0)^2 + \sigma^2} \Big] + y_0.
-
-    Args:
-
-    Args:
-        data (`DataUnits`): dataset for the fit
-
-        fit_file_name (str): file name, ``None`` is the default value.
-
-    Returns:
-
-        A list with the following keys
-
-            - **labels[0]**: peak voltage
-            - **labels[1]**: frequency
-            - **popt0**: Lorentzian's amplitude
-            - **popt1**: Lorentzian's center
-            - **popt2**: Lorentzian's sigma
-            - **popt3**: Lorentzian's offset
-            - **qubit**: The qubit being tested
-    """
-
-    qubits = data.df["qubit"].unique()
-
-    bare_frequency = {}
-    amplitudes = {}
-    attenuations = {}
-    frequency = {}
-    fitted_parameters = {}
-
-    for qubit in qubits:
-        qubit_data = (
-            data.df[data.df["qubit"] == qubit].drop(columns=["qubit"]).reset_index()
+    # Guess parameters for Lorentzian max or min
+    if (
+        data.resonator_type == "3D"
+        and data.__class__.__name__ == "ResonatorSpectroscopyData"
+    ) or (
+        data.resonator_type == "2D"
+        and data.__class__.__name__ == "QubitSpectroscopyData"
+    ):
+        guess_center = frequencies[
+            np.argmax(voltages)
+        ]  # Argmax = Returns the indices of the maximum values along an axis.
+        guess_offset = np.mean(
+            voltages[np.abs(voltages - np.mean(voltages) < np.std(voltages))]
         )
-        frequencies = qubit_data["frequency"].pint.to("GHz").pint.magnitude
-        voltages = qubit_data["MSR"].pint.to("uV").pint.magnitude
-        model_Q = lmfit.Model(lorentzian)
+        guess_sigma = abs(frequencies[np.argmin(voltages)] - guess_center)
+        guess_amp = (np.max(voltages) - guess_offset) * guess_sigma * np.pi
 
         # Guess parameters for Lorentzian max or min
         if (
@@ -137,11 +119,33 @@ def lorentzian_fit(data) -> list:
             "amplitude": amplitudes,
         }
     else:
-        return {
-            "frequency": frequency,
-            "fitted_parameters": fitted_parameters,
-            "amplitude": amplitudes,
-        }
+        guess_center = frequencies[
+            np.argmin(voltages)
+        ]  # Argmin = Returns the indices of the minimum values along an axis.
+        guess_offset = np.mean(
+            voltages[np.abs(voltages - np.mean(voltages) < np.std(voltages))]
+        )
+        guess_sigma = abs(frequencies[np.argmax(voltages)] - guess_center)
+        guess_amp = (np.min(voltages) - guess_offset) * guess_sigma * np.pi
+
+    # Add guessed parameters to the model
+    model_Q.set_param_hint("center", value=guess_center, vary=True)
+    model_Q.set_param_hint("sigma", value=guess_sigma, vary=True)
+    model_Q.set_param_hint("amplitude", value=guess_amp, vary=True)
+    model_Q.set_param_hint("offset", value=guess_offset, vary=True)
+    guess_parameters = model_Q.make_params()
+
+    # fit the model with the data and guessed parameters
+    try:
+        fit_res = model_Q.fit(
+            data=voltages, frequency=frequencies, params=guess_parameters
+        )
+        # get the values for postprocessing and for legend.
+        return fit_res.best_values["center"], fit_res.best_values
+
+    except:
+        log.warning("lorentzian_fit: the fitting was not successful")
+        return {"center": 0}, {"center": 0, "sigma": 0, "amplitude": 0, "offset": 0}
 
 
 def spectroscopy_plot(data, fit: Results, qubit):
