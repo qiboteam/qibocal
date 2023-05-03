@@ -1,4 +1,4 @@
-platform: tii1q_b1 
+platform: tii1q_b1
 
 qubits: [0] #[0, 1, 2, 3, 4]
 
