@@ -28,7 +28,9 @@ class DispersiveShiftParameters(Parameters):
     """Disersive shift inputs."""
 
     freq_width: int
+    """Width for frequency sweep relative to the readout frequency (Hz)."""
     freq_step: int
+    """Frequency step for sweep (Hz)."""
 
 
 @dataclass
@@ -36,8 +38,11 @@ class StateResults(Results):
     """Resonator spectroscopy outputs."""
 
     frequency: Dict[List[Tuple], str]
+    """Readout frequency for each qubit."""
     fitted_parameters: Dict[List[Tuple], List]
+    """Raw fitted parameters."""
     amplitude: Optional[Dict[List[Tuple], str]]
+    """Readout amplitude for each qubit."""
 
 
 @dataclass
@@ -45,7 +50,9 @@ class DispersiveShiftResults(Results):
     """Dispersive shift outputs."""
 
     results_0: StateResults
+    """Resonator spectroscopy outputs in the ground state."""
     results_1: StateResults
+    """Resonator spectroscopy outputs in the excited state"""
 
 
 class DispersiveShiftData(DataUnits):
@@ -173,7 +180,6 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
     fit_data_0 = fit.results_0
     fit_data_1 = fit.results_1
 
-    resonator_freqs = {}
     for i, label, q_data, data_fit in list(
         zip(
             (0, 1),
@@ -254,3 +260,4 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
 
 
 dispersive_shift = Routine(_acquisition, _fit, _plot)
+"""Dispersive shift Routine object."""
