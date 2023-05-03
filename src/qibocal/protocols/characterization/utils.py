@@ -77,7 +77,7 @@ def lorentzian_fit(data, qubit):
 
     except:
         log.warning("lorentzian_fit: the fitting was not successful")
-        return {"center": 0}, {"center": 0, "sigma": 0, "amplitude": 0, "offset": 0}
+        return 0, {"center": 0, "sigma": 0, "amplitude": 0, "offset": 0}
 
 
 def spectroscopy_plot(data, fit: Results, qubit):

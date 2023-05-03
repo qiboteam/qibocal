@@ -7,6 +7,7 @@ from .classification import single_shot_classification
 from .coherence.spin_echo import spin_echo
 from .coherence.t1 import t1
 from .coherence.t2 import t2
+from .dispersive_shift import dispersive_shift
 from .flipping import flipping
 from .flux_depedence.qubit_flux_dependence import qubit_flux
 from .flux_depedence.resonator_flux_dependence import resonator_flux
@@ -37,3 +38,4 @@ class Operation(Enum):
     allxy_drag_pulse_tuning = allxy_drag_pulse_tuning
     drag_pulse_tuning = drag_pulse_tuning
     flipping = flipping
+    dispersive_shift = dispersive_shift
