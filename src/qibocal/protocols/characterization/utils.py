@@ -75,10 +75,10 @@ def lorentzian_fit(data, qubit):
         # get the values for postprocessing and for legend.
         return fit_res.best_values["center"], fit_res.best_values
 
-        except:
-            log.warning("lorentzian_fit: the fitting was not successful")
-            f0 = guess_center
-            fit_res = lmfit.model.ModelResult(model=model_Q, params=guess_parameters)
+    except:
+        log.warning("lorentzian_fit: the fitting was not successful")
+        f0 = guess_center
+        fit_res = lmfit.model.ModelResult(model=model_Q, params=guess_parameters)
 
         frequency[qubit] = f0
 

@@ -109,13 +109,13 @@ actions:
   #     relaxation_time: 0
   #     nshots: 1024
 
-  - id: flipping
-    priority: 0 #70
-    operation: flipping
-    # next: t1
-    parameters:
-      nflips_max: 30
-      nflips_step: 1
+  # - id: flipping
+  #   priority: 0 #70
+  #   operation: flipping
+  #   # next: t1
+  #   parameters:
+  #     nflips_max: 30
+  #     nflips_step: 1
 
   # - id: rabi length
   #   priority: 70
@@ -140,9 +140,9 @@ actions:
   #     n_osc: 10
 
   # - id: ramsey detuned
-  #   priority: 0 #80
+  #   priority: 80
   #   operation: ramsey
-  #   next: single shot classification #t1
+  #   # next: single shot classification #t1
   #   parameters:
   #     n_osc: 10
   #     delay_between_pulses_start: 4 # must be a multiple of 4 incl 0
@@ -152,35 +152,61 @@ actions:
   # - id: t1
   #   priority: 90
   #   operation: t1
-  #   main: single shot classification
+  #   main: t2
   #   parameters:
   #     delay_before_readout_start: 4
-  #     delay_before_readout_end: 16000
+  #     delay_before_readout_end: 8000
   #     delay_before_readout_step: 20
 
+  # - id: t2
+  #   priority: 0 #100
+  #   operation: t2
+  #   next: spin_echo
+  #   parameters:
+  #     delay_between_pulses_start: 4
+  #     delay_between_pulses_end: 5000
+  #     delay_between_pulses_step: 200
+
+  # - id: spin_echo
+  #   priority: 200
+  #   operation: spin_echo
+  #   # next: flipping
+  #   parameters:
+  #     delay_between_pulses_start: 4
+  #     delay_between_pulses_end: 5000
+  #     delay_between_pulses_step: 200
+
   # - id: single shot classification
-  #   priority: 100
+  #   priority: 0 #110
   #   next: allXY
   #   operation: single_shot_classification
   #   parameters:
   #     nshots: 4096
 
   # - id: allXY
-  #   priority: 110
+  #   priority: 120
   #   operation: allxy
   #   # next: drag pulse tuning
   #   parameters:
   #     beta_param: null
 
   # - id: drag pulse tuning
-  #   priority: 120
+  #   priority: 0 #130
   #   operation: drag_pulse_tuning
-  #   next: allXY 2
+  #   # next: allXY 2
   #   parameters:
   #     beta_start: -1
   #     beta_end: 1
   #     beta_step: 0.1
 
+  - id: allXY drag pulse tuning
+    priority: 0 #140
+    operation: allxy_drag_pulse_tuning
+    # next: allXY 2
+    parameters:
+      beta_start: -1
+      beta_end: 1
+      beta_step: 0.1
 
   # - id: allXY 2 #Ideally this should be repeated with the correct beta
   #   priority: 130
@@ -188,12 +214,3 @@ actions:
   #   # next: flipping
   #   parameters:
   #     beta_param: null
-
-  # - id: spin_echo
-  #   priority: 0
-  #   operation: spin_echo
-  #   # main: flipping
-  #   parameters:
-  #     delay_between_pulses_start: 4
-  #     delay_between_pulses_end: 10000
-  #     delay_between_pulses_step: 200
