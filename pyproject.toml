@@ -40,6 +40,7 @@ tensorflow = { version = "^2.12.0", optional = true, markers = "sys_platform == 
 # the tensorflow requirements
 skl2onnx = { version = "^1.14.0", optional = true }
 skops = { version = "^0.6.0", optional = true }
+onnxruntime = { version = "^1.14.1", optional = true }
 
 
 [tool.poetry.group.test]
@@ -70,7 +71,7 @@ devtools = "^0.10.0"
 
 [tool.poetry.extras]
 
-classify = ["scikit-learn", "tensorflow", "keras-tuner", "matplotlib", "seaborn", "skl2onnx", "skops"]
+classify = ["scikit-learn", "tensorflow", "keras-tuner", "matplotlib", "seaborn", "skl2onnx", "skops", "onnxruntime"]
 docs = [
   "sphinx",
   "furo",

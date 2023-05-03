@@ -188,7 +188,7 @@ def calibrate_qubit_states(
 
             # Useful for NN that return as predictions the probability
             # y_pred = np.round(y_pred)
-            y_pred = y_pred.astype(np.float)
+            y_pred = y_pred.astype(np.float64)
             # accuracy = benchmark_table.iloc[i]["accuracy"].tolist()
             benchmarks = benchmark_table.iloc[i].to_dict()
             results1 = {}
