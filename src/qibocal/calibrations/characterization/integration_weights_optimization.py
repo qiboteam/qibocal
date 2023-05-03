@@ -1,6 +1,6 @@
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
-from qibolab.platforms.platform import AcquisitionType
+from qibolab.platforms.platform import AcquisitionType, AveragingMode
 from qibolab.pulses import PulseSequence
 
 from qibocal import plots
@@ -74,6 +74,7 @@ def integration_weights_optimization(
             nshots=nshots,
             relaxation_time=relaxation_time,
             acquisition_type=AcquisitionType.RAW,
+            averaging_mode=AveragingMode.CYCLIC,
         )
 
         # retrieve and store the results for every qubit
@@ -96,6 +97,7 @@ def integration_weights_optimization(
             nshots=nshots,
             relaxation_time=relaxation_time,
             acquisition_type=AcquisitionType.RAW,
+            averaging_mode=AveragingMode.CYCLIC,
         )
         # retrieve and store the results for every qubit
         for ro_pulse in ro_pulses.values():

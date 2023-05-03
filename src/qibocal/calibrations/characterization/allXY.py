@@ -1,6 +1,6 @@
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
-from qibolab.platforms.platform import AcquisitionType
+from qibolab.platforms.platform import AveragingMode
 from qibolab.pulses import PulseSequence
 
 from qibocal import plots
@@ -97,7 +97,7 @@ def allXY(
 
             # execute the pulse sequence
             results = platform.execute_pulse_sequence(
-                sequence, acquisition_type=AcquisitionType.DISCRIMINATION
+                sequence, averaging_mode=AveragingMode.CYCLIC
             )
 
             # retrieve the results for every qubit
@@ -190,7 +190,7 @@ def allXY_drag_pulse_tuning(
 
                 # execute the pulse sequence
                 results = platform.execute_pulse_sequence(
-                    sequence, acquisition_type=AcquisitionType.DISCRIMINATION
+                    sequence, averaging_mode=AveragingMode.CYCLIC
                 )
 
                 # retrieve the results for every qubit
@@ -332,10 +332,10 @@ def drag_pulse_tuning(
 
             # execute the pulse sequences
             result1 = platform.execute_pulse_sequence(
-                seq1, acquisition_type=AcquisitionType.DISCRIMINATION
+                seq1, averaging_mode=AveragingMode.CYCLIC
             )
             result2 = platform.execute_pulse_sequence(
-                seq2, acquisition_type=AcquisitionType.DISCRIMINATION
+                seq2, averaging_mode=AveragingMode.CYCLIC
             )
 
             # retrieve the results for every qubit

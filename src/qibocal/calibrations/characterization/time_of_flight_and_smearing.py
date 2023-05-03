@@ -1,6 +1,6 @@
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
-from qibolab.platforms.platform import AcquisitionType
+from qibolab.platforms.platform import AcquisitionType, AveragingMode
 from qibolab.pulses import PulseSequence
 
 from qibocal import plots
@@ -68,12 +68,13 @@ def time_of_flight(
         nshots=nshots,
         relaxation_time=relaxation_time,
         acquisition_type=AcquisitionType.RAW,
+        averaging_mode=AveragingMode.CYCLIC,
     )
 
     # retrieve and store the results for every qubit
     # TODO: Something with iteration
     for ro_pulse in ro_pulses.values():
-        r = state0_results[ro_pulse.serial].to_dict(average=False)
+        r = state0_results[ro_pulse.serial].raw
         r.update(
             {
                 "qubit": [ro_pulse.qubit] * len(r["MSR[V]"]),
@@ -85,12 +86,16 @@ def time_of_flight(
 
     # # execute the second pulse sequence
     state1_results = platform.execute_pulse_sequence(
-        state1_sequence, nshots=nshots, acquisition_type=AcquisitionType.RAW
+        state1_sequence,
+        nshots=nshots,
+        relaxation_time=relaxation_time,
+        acquisition_type=AcquisitionType.RAW,
+        averaging_mode=AveragingMode.CYCLIC,
     )
 
     # retrieve and store the results for every qubit
     for ro_pulse in ro_pulses.values():
-        r = state1_results[ro_pulse.serial].to_dict(average=False)
+        r = state1_results[ro_pulse.serial].raw
         r.update(
             {
                 "qubit": [ro_pulse.qubit] * len(r["MSR[V]"]),

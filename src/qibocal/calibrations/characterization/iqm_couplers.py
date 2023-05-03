@@ -1,5 +1,6 @@
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platforms.platform import AcquisitionType, AveragingMode
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -122,7 +123,12 @@ def coupler_spectroscopy(
     # repeat the experiment as many times as defined by nshots
     iteration = 0
     results = platform.sweep(
-        sequence, sweeper, nshots=nshots, relaxation_time=relaxation_time
+        sequence,
+        sweeper,
+        nshots=nshots,
+        relaxation_time=relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=AveragingMode.CYCLIC,
     )
 
     # retrieve the results for every qubit
@@ -296,6 +302,8 @@ def coupler_spectroscopy_double_freq(
         sweeper_drive,
         nshots=nshots,
         relaxation_time=relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=AveragingMode.CYCLIC,
     )
 
     # retrieve the results for every qubit
@@ -511,6 +519,8 @@ def coupler_spectroscopy_flux(
         sweeper,
         nshots=nshots,
         relaxation_time=relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=AveragingMode.CYCLIC,
     )
 
     # retrieve the results for every qubit

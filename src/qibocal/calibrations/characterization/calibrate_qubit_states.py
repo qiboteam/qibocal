@@ -1,6 +1,6 @@
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
-from qibolab.platforms.platform import AveragingMode
+from qibolab.platforms.platform import AcquisitionType, AveragingMode
 from qibolab.pulses import PulseSequence
 
 from qibocal import plots
@@ -70,7 +70,7 @@ def calibrate_qubit_states(
         state0_sequence,
         nshots=nshots,
         relaxation_time=relaxation_time,
-        averaging_mode=AveragingMode.SINGLESHOT,
+        acquisition_type=AcquisitionType.INTEGRATION,
     )
 
     # retrieve and store the results for every qubit
@@ -90,7 +90,7 @@ def calibrate_qubit_states(
         state1_sequence,
         nshots=nshots,
         relaxation_time=relaxation_time,
-        averaging_mode=AveragingMode.SINGLESHOT,
+        acquisition_type=AcquisitionType.INTEGRATION,
     )
 
     # retrieve and store the results for every qubit

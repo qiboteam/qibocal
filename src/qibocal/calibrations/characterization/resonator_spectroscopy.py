@@ -89,15 +89,19 @@ def resonator_spectroscopy(
     # repeat the experiment as many times as defined by software_averages
     for iteration in range(software_averages):
         results = platform.sweep(
-            sequence, sweeper, nshots=nshots, relaxation_time=relaxation_time, acquisition_type = AcquisitionType.INTEGRATION, averaging_mode = AveragingMode.CYCLIC
+            sequence,
+            sweeper,
+            nshots=nshots,
+            relaxation_time=relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
         )
 
         # retrieve the results for every qubit
         for qubit in qubits:
             # average msr, phase, i and q over the number of shots defined in the runcard
-            result = results[ro_pulses[qubit].serial]
+            r = results[ro_pulses[qubit].serial].raw
             # store the results
-            r = result.raw
             r.update(
                 {
                     "frequency[Hz]": delta_frequency_range + ro_pulses[qubit].frequency,
@@ -213,8 +217,8 @@ def resonator_punchout_attenuation(
             freq_sweeper,
             nshots=nshots,
             relaxation_time=relaxation_time,
-            acquisition_type = AcquisitionType.INTEGRATION, 
-            averaging_mode = AveragingMode.CYCLIC,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
         )
 
         # retrieve the results for every qubit
@@ -338,8 +342,8 @@ def resonator_punchout(
             freq_sweeper,
             nshots=nshots,
             relaxation_time=relaxation_time,
-            acquisition_type = AcquisitionType.INTEGRATION, 
-            averaging_mode = AveragingMode.CYCLIC,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
         )
 
         # retrieve the results for every qubit
@@ -347,9 +351,14 @@ def resonator_punchout(
             # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulse.serial]
             # store the results
-            freqs = np.array(
-                len(amplitude_range) * list(delta_frequency_range + ro_pulse.frequency)
+            freqs = (
+                np.repeat(delta_frequency_range, len(amplitude_range))
+                + ro_pulses[qubit].frequency
+            )
+            amps = np.array(
+                len(delta_frequency_range) * list(amplitude_range)
             ).flatten()
+
             r = {k: v.ravel() for k, v in result.raw.items()}
             r.update(
                 {
@@ -426,25 +435,20 @@ def resonator_spectroscopy_flux(
 
     # define the parameters to sweep and their range:
     delta_frequency_range = np.arange(-freq_width // 2, freq_width // 2, freq_step)
-    freq_sweeper = Sweeper(
+    frequency_sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
         [ro_pulses[qubit] for qubit in qubits],
     )
 
-    # flux bias
+    # flux bias(all/single qubits)
     if fluxlines == "qubits":
         fluxlines = qubits
-
-    if fluxlines == 2:
+    else:
+        qubit = fluxlines
         fluxlines = {}
-        fluxlines[0] = qubits[2]
-        sweetspot = 0
-    
-    if fluxlines == 4:
-        fluxlines = {}
-        fluxlines[0] = qubits[4]
-        sweetspot = 0
+        fluxlines[0] = qubits[qubit]
+        sweetspot = 0  # FIXME:
 
     delta_bias_range = np.arange(-bias_width / 2, bias_width / 2, bias_step)
     bias_sweeper = Sweeper(Parameter.bias, delta_bias_range, qubits=fluxlines)
@@ -463,31 +467,28 @@ def resonator_spectroscopy_flux(
         results = platform.sweep(
             sequence,
             bias_sweeper,
-            freq_sweeper,
+            frequency_sweeper,
             nshots=nshots,
             relaxation_time=relaxation_time,
-            acquisition_type = AcquisitionType.INTEGRATION, 
-            averaging_mode = AveragingMode.CYCLIC, 
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
         )
 
         # retrieve the results for every qubit
         for qubit, fluxline in zip(qubits, fluxlines):
             # TODO: Support more fluxlines for QM
-
+            # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulses[qubit].serial]
-
-            freqs = np.repeat(delta_frequency_range, len(delta_bias_range))+ ro_pulses[qubit].frequency
-            
-            biases = np.array(len(delta_frequency_range) * list(delta_bias_range + sweetspot)).flatten() 
-            # ) + platform.get_bias(fluxline)
-            
-            # biases = np.repeat(delta_bias_range, len(delta_frequency_range)) + sweetspot
-            # # ) + platform.get_bias(fluxline)
-            # freqs = np.array(
-            #     len(delta_bias_range)
-            #     * list(delta_frequency_range + ro_pulses[qubit].frequency)
-            # ).flatten()
             # store the results
+            freqs = (
+                np.repeat(delta_frequency_range, len(delta_bias_range))
+                + ro_pulses[qubit].frequency
+            )
+            biases = np.array(
+                len(delta_frequency_range) * list(delta_bias_range + sweetspot)
+            ).flatten()
+            # ) + platform.get_bias(fluxline)
+
             r = {k: v.ravel() for k, v in result.raw.items()}
             r.update(
                 {
@@ -615,15 +616,15 @@ def dispersive_shift(
                 sequence_0,
                 nshots=nshots,
                 relaxation_time=relaxation_time,
-                acquisition_type = AcquisitionType.INTEGRATION, 
-                averaging_mode = AveragingMode.CYCLIC, 
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
             )
             results_1 = platform.execute_pulse_sequence(
                 sequence_1,
                 nshots=nshots,
                 relaxation_time=relaxation_time,
-                acquisition_type = AcquisitionType.INTEGRATION, 
-                averaging_mode = AveragingMode.CYCLIC, 
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
             )
             # retrieve the results for every qubit
             for data, results in list(zip([data_0, data_1], [results_0, results_1])):
@@ -638,7 +639,7 @@ def dispersive_shift(
                             "iteration": iteration,
                         }
                     )
-                    data.add(r)
+                    data.add_data_from_dict(r)
             count += 1
     # finally, save the remaining data and fits
     yield data_0

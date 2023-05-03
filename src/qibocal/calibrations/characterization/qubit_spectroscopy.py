@@ -2,6 +2,7 @@ from typing import Optional
 
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platforms.platform import AcquisitionType, AveragingMode
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -99,7 +100,12 @@ def qubit_spectroscopy(
     # repeat the experiment as many times as defined by software_averages
     for iteration in range(software_averages):
         results = platform.sweep(
-            sequence, sweeper, nshots=nshots, relaxation_time=relaxation_time
+            sequence,
+            sweeper,
+            nshots=nshots,
+            relaxation_time=relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
         )
 
         # retrieve the results for every qubit
@@ -215,13 +221,14 @@ def qubit_spectroscopy_flux(
         pulses=[qd_pulses[qubit] for qubit in qubits],
     )
 
+    # flux bias(all/single qubits)
     if fluxlines == "qubits":
         fluxlines = qubits
-
-    if fluxlines == 2:
+    else:
+        qubit = fluxlines
         fluxlines = {}
-        fluxlines[0] = qubits[2]
-        sweetspot = 0
+        fluxlines[0] = qubits[qubit]
+        sweetspot = 0  # FIXME:
 
     # flux bias
     delta_bias_range = np.arange(-bias_width / 2, bias_width / 2, bias_step)
@@ -241,7 +248,6 @@ def qubit_spectroscopy_flux(
     )
 
     # repeat the experiment as many times as defined by software_averages
-    count = 0
     for iteration in range(software_averages):
         results = platform.sweep(
             sequence,
@@ -249,6 +255,8 @@ def qubit_spectroscopy_flux(
             frequency_sweeper,
             nshots=nshots,
             relaxation_time=relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
         )
 
         # retrieve the results for every qubit
@@ -256,12 +264,14 @@ def qubit_spectroscopy_flux(
             # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulses[qubit].serial]
             # store the results
-            biases = np.repeat(delta_bias_range, len(delta_frequency_range)) + sweetspot
-            # ) + platform.get_bias(fluxline)
-            freqs = np.array(
-                len(delta_bias_range)
-                * list(delta_frequency_range + qd_pulses[qubit].frequency)
+            freqs = (
+                np.repeat(delta_frequency_range, len(delta_bias_range))
+                + ro_pulses[qubit].frequency
+            )
+            biases = np.array(
+                len(delta_frequency_range) * list(delta_bias_range + sweetspot)
             ).flatten()
+            # ) + platform.get_bias(fluxline)
             r = {k: v.ravel() for k, v in result.raw.items()}
             r.update(
                 {
