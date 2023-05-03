@@ -8,7 +8,6 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
-
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
 from qibocal.plots.utils import get_color
@@ -40,8 +39,6 @@ class StateResults(Results):
     """Readout frequency for each qubit."""
     fitted_parameters: Dict[List[Tuple], List]
     """Raw fitted parameters."""
-    amplitude: Optional[Dict[List[Tuple], str]]
-    """Readout amplitude for each qubit."""
 
 
 @dataclass
@@ -138,15 +135,23 @@ def _acquisition(
 
 def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
     """Post-Processing for dispersive shift"""
-    data_0 = ResonatorSpectroscopyData(data.resonator_type)
-    data_0.df = data.df[data.df["state"] == 0].drop(columns=["state"]).reset_index()
+    qubits = data.df["qubit"].unique()
+    results = []
 
-    data_1 = ResonatorSpectroscopyData(data.resonator_type)
-    data_1.df = data.df[data.df["state"] == 1].drop(columns=["state"]).reset_index()
+    for _ in range(2):
+        frequency = {}
+        fitted_parameters = {}
+        data_i = ResonatorSpectroscopyData(data.resonator_type)
+        data_i.df = data.df[data.df["state"] == 0].drop(columns=["state"]).reset_index()
 
-    results_0 = StateResults(**lorentzian_fit(data_0))
-    results_1 = StateResults(**lorentzian_fit(data_1))
-    return DispersiveShiftResults(results_0, results_1)
+        for qubit in qubits:
+            freq, fitted_params = lorentzian_fit(data, qubit)
+            frequency[qubit] = freq
+            fitted_parameters[qubit] = fitted_params
+
+        results.append(StateResults(frequency, fitted_parameters))
+
+    return DispersiveShiftResults(*results)
 
 
 def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
