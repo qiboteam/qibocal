@@ -36,10 +36,14 @@ normalize = identity
 
 
 def dump(model, save_path: Path):
+    r"""Dumps the `model` in `save_path`"""
     sio.dump(model, save_path.with_suffix(".skops"))
 
 
 def predict_from_file(loading_path: Path, input: np.typing.NDArray):
+    r"""This function loads the model saved in `loading_path`
+    and returns the predictions of `input`.
+    """
     model = sio.load(loading_path, trusted=True)
     return model.predict(input)
 

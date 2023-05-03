@@ -63,10 +63,14 @@ normalize = identity
 
 
 def dump(model, save_path: Path):
+    r"""Dumps the `model` in `save_path`"""
     model.save(save_path)
 
 
 def predict_from_file(loading_path: Path, input: np.typing.NDArray):
+    r"""This function loads the model saved in `loading_path`
+    and returns the predictions of `input`.
+    """
     model = load_model(loading_path)
     return model.predict(input)
 
