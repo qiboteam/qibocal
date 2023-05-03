@@ -26,10 +26,10 @@ def test_command_niGSC():
     for filename_list in files_to_check:
         for filename in filename_list:
             assert os.path.isfile(filename)
-    # The circuits data is only stored with correlated rb.
+    # The circuits data is not stored for standard rb.
     assert os.path.isfile(f"{test_folder}/data/simulfilteredrb/circuits.pkl")
+    assert os.path.isfile(f"{test_folder}/data/XIdrb/circuits.pkl")
     assert not os.path.isfile(f"{test_folder}/data/standardrb/circuits.pkl")
-    assert not os.path.isfile(f"{test_folder}/data/XIdrb/circuits.pkl")
     assert os.path.isfile(f"{test_folder}index.html")
     assert os.path.isfile(f"{test_folder}meta.yml")
     assert os.path.isfile(f"{test_folder}runcard.yml")

@@ -20,12 +20,13 @@ def test_Experiment_init():
     data = None
     noise_model = None
     # All None should work.
-    experiment1 = Experiment(cfactory, data=data, noise_model=noise_model)
+    experiment = Experiment(cfactory, data=data, noise_model=noise_model)
+    assert experiment.name == "Abstract"
     with pytest.raises(TypeError):
-        _ = Experiment(1)
-        _ = Experiment(None, 1)
-        _ = Experiment(None, None, True)
-        _ = Experiment(None, None, None, 1)
+        Experiment(1)
+        Experiment(None, 1)
+        Experiment(None, None, True)
+        Experiment(None, None, None, 1)
 
 
 @pytest.mark.parametrize("nqubits", [2, 3])
@@ -109,7 +110,6 @@ def test_Experiment_save_load(nqubits: int, depths: list, runs: int, qubits: lis
     cfactory1 = Qibo1qGatesFactory(nqubits, depths * runs, qubits=qubits)
     experiment1 = Experiment(cfactory1)
     experiment1.perform(experiment1.execute)
-
     path = "_test_rb"
     if not os.path.exists(path):
         os.makedirs(path)
@@ -126,13 +126,13 @@ def test_Experiment_save_load(nqubits: int, depths: list, runs: int, qubits: lis
     path = "_test_rb_1"
     if not os.path.exists(path):
         os.makedirs(path)
+    path3 = experiment3.save_circuits(path)
     path3 = experiment3.save(path)
     experiment4 = Experiment.load(path3)
     for circuit3, circuit4 in zip(
         experiment3.circuitfactory, experiment4.circuitfactory
     ):
         assert np.array_equal(circuit3.unitary(), circuit4.unitary())
-
     rmtree(path)
 
     cfactory5 = Qibo1qGatesFactory(nqubits, depths * runs, qubits=qubits)
@@ -141,7 +141,9 @@ def test_Experiment_save_load(nqubits: int, depths: list, runs: int, qubits: lis
     path = "_test_rb_2"
     if not os.path.exists(path):
         os.makedirs(path)
+    path5 = experiment5.save_circuits(path)
     path5 = experiment5.save(path)
+
     experiment6 = Experiment.load(path5)
     assert experiment6.data is None
     for circuit5, circuit6 in zip(

@@ -69,7 +69,7 @@ class niGSCactionParser(ActionParser):
         try:
             self.noise_params = self.runcard["actions"][self.name]["noise_params"]
         except KeyError:
-            self.noise_params = None
+            self.noise_params = []
         try:
             self.noise_model = getattr(
                 noisemodels, self.runcard["actions"][self.name]["noise_model"]
@@ -112,6 +112,8 @@ class niGSCactionParser(ActionParser):
         experiment = self.module.ModuleExperiment(
             factory, nshots=self.nshots, noise_model=self.noise_model
         )
+        # Store the circuits.
+        experiment.save_circuits(self.path)
         # Execute the circuits in the experiment.
         experiment.perform(experiment.execute)
         # Run the row by row postprocessing.
@@ -147,7 +149,6 @@ class ActionBuilder:
         self.backend, self.platform = self._allocate_backend(
             backend_name, platform_name, platform_runcard
         )
-
         # qubits allocation
         if self.platform is not None:
             self.qubits = {
@@ -157,7 +158,6 @@ class ActionBuilder:
             }
         else:
             self.qubits = self.runcard.get("qubits")
-
         # Setting format. If None csv is used.
         self.format = self.runcard.get("format", "csv")
         # Saving runcard
@@ -303,8 +303,6 @@ class ReportBuilder:
             else:
                 routine = niGSCactionParser(self.runcard, self.path, action)
                 routine.load_plot()
-            # else:
-            #     raise_error(ValueError, f"Undefined action {action} in report.")
 
             if not hasattr(routine, "plots"):
                 routine.plots = []

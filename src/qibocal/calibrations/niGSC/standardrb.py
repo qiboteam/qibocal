@@ -18,7 +18,7 @@ import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
 from qibocal.calibrations.niGSC.basics.circuitfactory import SingleCliffordsFactory
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
 from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig
-from qibocal.calibrations.niGSC.basics.utils import gate_fidelity
+from qibocal.calibrations.niGSC.basics.utils import gate_fidelity, number_to_str
 
 
 class ModuleFactory(SingleCliffordsFactory):
@@ -96,7 +96,7 @@ class ModuleExperiment(Experiment):
         return datarow
 
 
-class moduleReport(Report):
+class ModuleReport(Report):
     def __init__(self) -> None:
         super().__init__()
         self.title = "Standard Randomized Benchmarking"
@@ -194,25 +194,24 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
     """
 
     # Initiate a report object.
-    report = moduleReport()
-    # Add general information to the object.
+    report = ModuleReport()
+
+    # Add general information to the table.
     report.info_dict["Number of qubits"] = len(experiment.data[0]["samples"][0])
     report.info_dict["Number of shots"] = len(experiment.data[0]["samples"])
     report.info_dict["runs"] = experiment.extract("samples", "depth", "count")[1][0]
-    report.info_dict[
-        "A"
-    ] = f"{df_aggr['popt'][0]['A']:.3f} +/- {df_aggr['perr'][0]['A_err']:.3f}"
-    report.info_dict[
-        "p"
-    ] = f"{df_aggr['popt'][0]['p']:.3f} +/- {df_aggr['perr'][0]['p_err']:.3f}"
-    report.info_dict[
-        "B"
-    ] = f"{df_aggr['popt'][0]['B']:.3f} +/- {df_aggr['perr'][0]['B_err']:.3f}"
     report.info_dict["Gate fidelity"] = "{:.4f}".format(
         gate_fidelity(df_aggr.iloc[0]["popt"]["p"])
     )
     report.info_dict["Gate fidelity primitive"] = "{:.4f}".format(
         gate_fidelity(df_aggr.iloc[0]["popt"]["p"], primitive=True)
+    )
+    dfrow = df_aggr.loc["groundstate probability"]
+    report.info_dict["Fit"] = "".join(
+        [f"{key}={number_to_str(value)} " for key, value in dfrow["popt"].items()]
+    )
+    report.info_dict["Fitting deviations"] = "".join(
+        [f"{key}={number_to_str(value)} " for key, value in dfrow["perr"].items()]
     )
     # Use the predefined ``scatter_fit_fig`` function from ``basics.plot`` to build the wanted
     # plotly figure with the scattered ground state probability data along with the mean for
@@ -220,12 +219,5 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
     report.all_figures.append(
         scatter_fit_fig(experiment, df_aggr, "depth", "groundstate probability")
     )
-
-    fitting_report = ""
-    for key, value in report.info_dict.items():
-        if isinstance(value, str):
-            fitting_report += f"q{0}/r{0} | {key}: {value}<br>"
-        else:
-            fitting_report += f"q{0}/r{0} | {key}: {value:,.0f}<br>"
-    # Return the figure the report object builds out of all figures added to the report.
-    return report.build(), fitting_report
+    # Return the figure of the report object and the corresponding table.
+    return report.build()
