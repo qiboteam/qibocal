@@ -45,7 +45,7 @@ class Experiment:
         if data is not None and not isinstance(data, Iterable):
             raise_error(
                 TypeError,
-                f"given data has wrong type {type(data)}, must be Iterable | None ",
+                f"Invalid data type  {type(data)}. Data must be Iterable or None.",
             )
         self.data = data
         if nshots is not None and not isinstance(nshots, int):
