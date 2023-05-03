@@ -11,8 +11,8 @@ actions:
     operation: resonator_spectroscopy
     main: resonator punchout
     parameters:
-      freq_width: 10_000_000 # 20_000_000
-      freq_step: 100_000 # 500_00
+      freq_width: 10_000_000
+      freq_step: 100_000
       amplitude: 0.4
       power_level: high
       nshots: 1024
@@ -22,7 +22,7 @@ actions:
   - id: resonator punchout
     priority: 0
     operation: resonator_punchout
-    main: resonator spectroscopy low power
+    main: resonator_punchout_attenuation
     parameters:
       freq_width: 10_000_000
       freq_step: 1_000_000
@@ -35,6 +35,7 @@ actions:
   - id: resonator_punchout_attenuation
     priority: 0
     operation: resonator_punchout_attenuation
+    main: resonator spectroscopy low power
     parameters:
       freq_width: 10_000_000
       freq_step: 500_000
@@ -131,7 +132,7 @@ actions:
   - id: t2
     priority: 0
     operation: t2
-    main: ramsey
+    main: ramsey detuned
     parameters:
       delay_between_pulses_start: 16
       delay_between_pulses_end: 20000

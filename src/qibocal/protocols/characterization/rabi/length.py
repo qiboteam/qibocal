@@ -81,7 +81,7 @@ def _acquisition(
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
     # additionally include qubit drive pulse length
-    data = RabiLengthData(platform.resonator_type)
+    data = RabiLengthData()
 
     # sweep the parameter
     for duration in qd_pulse_duration_range:
