@@ -138,14 +138,14 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
     qubits = data.df["qubit"].unique()
     results = []
 
-    for _ in range(2):
+    for i in range(2):
         frequency = {}
         fitted_parameters = {}
         data_i = ResonatorSpectroscopyData(data.resonator_type)
-        data_i.df = data.df[data.df["state"] == 0].drop(columns=["state"]).reset_index()
+        data_i.df = data.df[data.df["state"] == i].drop(columns=["state"]).reset_index()
 
         for qubit in qubits:
-            freq, fitted_params = lorentzian_fit(data, qubit)
+            freq, fitted_params = lorentzian_fit(data_i, qubit)
             frequency[qubit] = freq
             fitted_parameters[qubit] = fitted_params
 
