@@ -39,7 +39,7 @@ class Experiment:
         if circuitfactory is not None and not isinstance(circuitfactory, Iterable):
             raise_error(
                 TypeError,
-                f"given circuit factory has wrong type {type(circuitfactory)}, must be Iterable | None.",
+                f"Invalid type {type(circuitfactory)} for CircuitFactory,  must be Iterable or None.",
             )
         self.circuitfactory = circuitfactory
         if data is not None and not isinstance(data, Iterable):
