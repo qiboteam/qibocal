@@ -57,7 +57,7 @@ class Experiment:
         if noise_model is not None and not isinstance(noise_model, NoiseModel):
             raise_error(
                 TypeError,
-                f"given circuit factory has wrong type {type(noise_model)}, must be qibo NoiseModel | None .",
+                f"NoiseModel has wrong type {type(noise_model)}. NoiseModel must be qibo NoiseModel or None .",
             )
         self.__noise_model = noise_model
         self.name = "Abstract"
