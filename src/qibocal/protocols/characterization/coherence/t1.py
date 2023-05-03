@@ -11,7 +11,7 @@ from qibocal.config import log
 from qibocal.data import DataUnits
 from qibocal.plots.utils import get_color
 
-from .utils import exp_decay, exponential_fit
+from . import utils
 
 
 @dataclass
@@ -122,7 +122,7 @@ def _fit(data: T1Data) -> T1Results:
 
             y = p_0-p_1 e^{-x p_2}.
     """
-    t1s, fitted_parameters = exponential_fit(data)
+    t1s, fitted_parameters = utils.exponential_fit(data)
 
     return T1Results(t1s, fitted_parameters)
 
@@ -160,7 +160,7 @@ def _plot(data: T1Data, fit: T1Results, qubit):
         fig.add_trace(
             go.Scatter(
                 x=waitrange,
-                y=exp_decay(waitrange, *params),
+                y=utils.exp_decay(waitrange, *params),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
                 marker_color=get_color(2),

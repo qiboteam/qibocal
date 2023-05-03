@@ -10,8 +10,7 @@ from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.config import log
 from qibocal.plots.utils import get_color
 
-from .t1 import T1Data
-from .utils import exp_decay, exponential_fit
+from . import t1, utils
 
 
 @dataclass
@@ -36,7 +35,7 @@ class T2Results(Results):
     """Raw fitting output."""
 
 
-class T2Data(T1Data):
+class T2Data(t1.T1Data):
     """T2 acquisition outputs."""
 
 
@@ -105,7 +104,7 @@ def _fit(data: T2Data) -> T2Results:
     .. math::
         y = p_0 - p_1 e^{-x p_2}.
     """
-    t2s, fitted_parameters = exponential_fit(data)
+    t2s, fitted_parameters = utils.exponential_fit(data)
     return T2Results(t2s, fitted_parameters)
 
 
@@ -142,7 +141,7 @@ def _plot(data: T2Data, fit: T2Results, qubit):
         fig.add_trace(
             go.Scatter(
                 x=waitrange,
-                y=exp_decay(
+                y=utils.exp_decay(
                     waitrange,
                     *params,
                 ),
