@@ -259,38 +259,13 @@ class ActionBuilder:
                 parser = ActionParser(self.runcard, self.folder, action)
                 parser.build()
                 parser.execute(self.format, self.platform, self.qubits)
-                # TODO: remove the following commented part
-                # for qubit in self.qubits:
-                #     if self.platform is not None:
-                #         self.update_platform_runcard(qubit, action)
+
             self.dump_report(actions)
 
         if self.platform is not None:
             self.platform.stop()
             self.platform.disconnect()
             self.platform.dump(Path(f"{self.folder}/new_platform.yml"))
-
-    # TODO: remove the following commented part
-    # def update_platform_runcard(self, qubit, routine):
-    #     try:
-    #         data_fit = Data.load_data(self.folder, "data", routine, self.format, "fits")
-    #         data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
-    #     except FileNotFoundError:
-    #         return None
-
-    #     params = data_fit.df[data_fit.df["qubit"] == qubit]
-    #     settings = load_yaml(f"{self.folder}/new_platform.yml")
-    #     for param in params:
-    #         if param in list(self.qubits[qubit].__annotations__.keys()):
-    #             setattr(self.qubits[qubit], param, params[param])
-    #             settings["characterization"]["single_qubit"][qubit][param] = int(
-    #                 data_fit.get_values(param)
-    #             )
-
-    # with open(f"{self.folder}/new_platform.yml", "w") as file:
-    #     yaml.dump(
-    #         settings, file, sort_keys=False, indent=4, default_flow_style=None
-    #     )
 
     def dump_report(self, actions=None):
         from qibocal.web.report import create_report

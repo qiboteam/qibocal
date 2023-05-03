@@ -123,13 +123,6 @@ def calibrate_qubit_states(
             Path(save_dir), qubits[qubit], qubits_data=data.df, classifiers=classifiers
         )
 
-        # clean_hpars_list = []
-        # for hpar in hpars_list:
-        #     try:  # Extract the NN best hyperparameters
-        #         clean_hpars_list.append(hpar["values"])
-        #     except KeyError:
-        #         clean_hpars_list.append(hpar)
-
         classifiers_dict = {
             **classifiers_dict,
             qubit: {names[j]: hpars_list[j] for j in range(len(names))},
@@ -187,9 +180,7 @@ def calibrate_qubit_states(
                 y_pred = model.predict(x_test)
 
             # Useful for NN that return as predictions the probability
-            # y_pred = np.round(y_pred)
             y_pred = y_pred.astype(np.float64)
-            # accuracy = benchmark_table.iloc[i]["accuracy"].tolist()
             benchmarks = benchmark_table.iloc[i].to_dict()
             results1 = {}
             if type(model) is QubitFit:
@@ -212,6 +203,5 @@ def calibrate_qubit_states(
 
             parameters.add({**results1, **results2, **benchmarks})
     platform.update({"classifiers_hpars": classifiers_dict})
-    # platform.dump(Path("test/new_runcard2.yml"))
     yield data
     yield parameters
