@@ -45,7 +45,7 @@ def calibrate_qubit_states(
     """
 
     # reload instrument settings from runcard
-    # platform.reload_settings()
+    platform.reload_settings()
     # create two sequences of pulses:
     # state0_sequence: I  - MZ
     # state1_sequence: RX - MZ
