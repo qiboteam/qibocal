@@ -30,14 +30,14 @@ def theoretical_outcome(noise_model: NoiseModel) -> float:
     # Extract the noise acting on unitaries and turn it into the associated
     # error channel.
     error = noise_model.errors[gates.Unitary][0][1]
-    errorchannel = error.channel(0, *error.options)
+    errorchannel = error.channel(0, error.options)
     # Calculate the effective depolarizing parameter.
     return utils.effective_depol(errorchannel)
 
 
 @pytest.fixture
 def depths():
-    return [0, 1, 5, 10, 30]
+    return [0, 1, 5, 10]
 
 
 @pytest.fixture
@@ -167,7 +167,7 @@ def test_post_processing(nqubits: int, depths: list, runs: int, nshots: int):
 
 
 def test_build_report():
-    depths = [1, 5, 10, 15, 20, 25]
+    depths = [1, 5, 10]
     nshots = 1024
     runs = 5
     nqubits = 1

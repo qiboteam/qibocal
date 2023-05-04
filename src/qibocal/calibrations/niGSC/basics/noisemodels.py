@@ -35,7 +35,7 @@ class PauliErrorOnUnitary(NoiseModel):
 
     def build(self, *params):
         # Add PauliError to gates.Unitary
-        self.add(PauliError(*params), gates.Unitary)
+        self.add(PauliError(list(zip(["X", "Y", "Z"], params))), gates.Unitary)
 
 
 class PauliErrorOnX(PauliErrorOnUnitary):
@@ -51,4 +51,4 @@ class PauliErrorOnX(PauliErrorOnUnitary):
         super().__init__(*args)
 
     def build(self, *params):
-        self.add(PauliError(*params), gates.X)
+        self.add(PauliError(list(zip(["X", "Y", "Z"], params))), gates.X)
