@@ -17,7 +17,7 @@ MARGIN = 0
 
 @plot("Qubit States", plots.qubit_states)
 def calibrate_qubit_states(
-    platform: AbstractPlatform, qubits: dict, nshots, classifiers, save_dir: str
+    platform: AbstractPlatform, qubits: dict, nshots: int, classifiers, save_dir: str
 ):
     """
     Method which implements the state's calibration of a chosen qubit. Two analogous tests are performed
@@ -28,8 +28,8 @@ def calibrate_qubit_states(
         platform (:class:`qibolab.platforms.abstract.AbstractPlatform`): custom abstract platform on which we perform the calibration.
         qubits (dict): Dict of target Qubit objects to perform the action
         nshots (int): number of times the pulse sequence will be repeated.
-        software_averages (int): Number of executions of the routine for averaging results
-        points (int): Save data results in a file every number of points
+        classifiers (list): list of classifiers
+        save_dir (str): save path
 
     Returns:
         A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
@@ -38,9 +38,9 @@ def calibrate_qubit_states(
             - **i[V]**: Resonator signal voltage mesurement for the component I in volts
             - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
             - **phase[rad]**: Resonator signal phase mesurement in radians
-            - **iteration[dimensionless]**: Execution number
             - **qubit**: The qubit being tested
             - **iteration**: The iteration number of the many determined by software_averages
+            - **state**: qubit state
 
     """
 
