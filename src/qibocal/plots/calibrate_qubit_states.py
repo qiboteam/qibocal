@@ -64,20 +64,20 @@ def qubit_states(folder, routine, qubit, format):
             cols=3,
             horizontal_spacing=SPACING,
             vertical_spacing=SPACING,
-            subplot_titles=("accuracy", "training time (s)", "testing time (s)"),
+            # pylint: disable=E1101
             # column_width = [COLUMNWIDTH]*3
         )
 
         for i, model in enumerate(models_name):
             y_test = _bytes_to_np(
-                parameters.df.iloc[i]["y_test"], np.int64
-            )  # pylint: disable=E1101
+                parameters.df.iloc[i]["y_test"], np.int64  # pylint: disable=E1101
+            )
             y_pred = _bytes_to_np(
-                parameters.df.iloc[i]["y_pred"], float
-            )  # pylint: disable=E1101
+                parameters.df.iloc[i]["y_pred"], float  # pylint: disable=E1101
+            )
             predictions = _bytes_to_np(
-                parameters.df.iloc[i]["predictions"], np.int64
-            )  # pylint: disable=E1101
+                parameters.df.iloc[i]["predictions"], np.int64  # pylint: disable=E1101
+            )
             # Evaluate the ROC curve
             fpr, tpr, _ = roc_curve(y_test, y_pred)
             auc_score = roc_auc_score(y_test, y_pred)
