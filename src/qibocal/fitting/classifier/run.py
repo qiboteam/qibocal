@@ -246,8 +246,6 @@ def train_qubit(
     nn_val_split = 0.2
     qubit_dir = base_dir / f"qubit{qubit.name}"
     qubit_dir.mkdir(exist_ok=True)
-    # qubit_data = data.load_qubit(data_path, qubit)
-    # data.plot_qubit(qubit_data, qubit_dir)
     x_train, x_test, y_train, y_test = data.generate_models(qubit_data)
     models = []
     results_list = []
@@ -260,7 +258,6 @@ def train_qubit(
 
     for mod in classifiers:
         classifier = Classifier(mod, qubit_dir)
-        print(classifier.name)  # TODO:remmove this line
         classifier.savedir.mkdir(exist_ok=True)
         logging.info(f"Classification model: {classifier.name}")
         if classifier.name not in qubit.classifiers_hpars:
