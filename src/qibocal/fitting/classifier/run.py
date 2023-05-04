@@ -213,17 +213,16 @@ def plot_history(history, save_dir: pathlib.Path):
 def train_qubit(
     base_dir: pathlib.Path,
     qubit: Qubit,
-    data_path=None,
     qubits_data=None,
     classifiers=None,
 ):
-    r"""Given a dataset in `data_path` with qubits' information, this function performs the benchmarking of some classifiers.
+    r"""Given a dataset `qubits_data` with qubits' information, this function performs the benchmarking of some classifiers.
     Each model's prediction `y_pred` is saved in  `basedir/qubit{qubit}/{classifier name}/predictions.npy`.
 
     Args:
-        data_path(path): Where the qubits' data are stored.
         base_dir (path): Where save the results.
         qubit (int): Qubit ID.
+        qubits_data (DataFrame): data about the qubits` states.
         classifiers (list | None, optional): List of classification models. It must be a subset of `CLS_MODULES`.
 
     Returns:
@@ -235,33 +234,11 @@ def train_qubit(
             - **testing_time**: testing time per item in seconds.
 
         - y_test (list): List of test outputs.
+        - x_test (list): Tests inputs.
+        - models (list): List of trained models.
+        - Names (list): Models' names
+        - hpars_list(list): Models' hyper-parameters.
 
-    Example:
-        The code below shows how to benchmark the state classifiers with `train_qubit` function:
-
-            .. code-block:: python
-
-                import logging
-                from pathlib import Path
-
-                from qibocal.fitting.classifier import plots, run
-
-                logging.basicConfig(level=logging.INFO)
-                # Define the data path
-                data_path = Path("calibrate_qubit_states/data.csv")
-                # Define the save path
-                base_dir = Path("results")
-                base_dir.mkdir(exist_ok=True)
-                # Define the list of classifiers (not mandatory)
-                classifiers = ["ada_boost", "linear_svm"]
-                for qubit in range(1, 5):
-                    print(f"QUBIT: {qubit}")
-                    qubit_dir = base_dir / f"qubit{qubit}"
-                    table, y_test, x_test = run.train_qubit(data_path, base_dir, qubit)
-                    run.dump_benchmarks_table(table, qubit_dir)
-                    # Plots
-                    plots.plot_table(table, qubit_dir)
-                    plots.plot_conf_matr(y_test, qubit_dir)
     """
 
     qubit_data = qubits_data[qubits_data["qubit"] == qubit.name]
