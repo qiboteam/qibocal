@@ -96,12 +96,6 @@ class QubitFit:
         cum_distribution_diff = np.abs(
             np.array(cum_distribution_state1) - np.array(cum_distribution_state0)
         )
-        import matplotlib.pyplot as plt
-
-        # plt.scatter(x_values, cum_distribution_state0)
-        # plt.scatter(x_values, cum_distribution_state1)
-        plt.scatter(x_values, cum_distribution_diff)
-        plt.show()
         max_index = np.argmax(cum_distribution_diff)
         self.threshold = x_values[max_index]
         errors_state1 = 1 - cum_distribution_state1[max_index]
