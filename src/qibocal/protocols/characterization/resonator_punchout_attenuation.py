@@ -121,8 +121,8 @@ def _acquisition(
 
     results = platform.sweep(
         sequence,
-        freq_sweeper,
         att_sweeper,
+        freq_sweeper,
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
     )
