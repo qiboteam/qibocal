@@ -10,7 +10,7 @@ from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
-from qibocal.plots.utils import get_color
+from qibocal.plots.utils import get_color, get_color_state0, get_color_state1
 from qibocal.protocols.characterization.resonator_spectroscopy import (
     ResonatorSpectroscopyData,
 )
@@ -50,6 +50,7 @@ class DispersiveShiftResults(Results):
     results_1: StateResults
     """Resonator spectroscopy outputs in the excited state"""
     best_freq: Dict[List[Tuple], str] = field(metadata=dict(update="readout_frequency"))
+    best_iqs: Dict[List[Tuple], str]
 
 
 class DispersiveShiftData(DataUnits):
@@ -175,6 +176,7 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
 
     nshots = len(iq_couples[0][0])  # number of shots
     best_freqs = {}
+    best_iqs = {}
     for qubit in qubits:
         distances = []
         for i, state0 in enumerate(iq_couples[0][qubit]):
@@ -199,11 +201,14 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
             marker="+",
         )
         best_freqs[qubit] = iq_couples[0][qubit][max_index][2]
-
-        print(best_freqs)
-    plt.show()
+        best_iqs[qubit] = [iq_couples[k][qubit][max_index][:2] for k in range(2)]
+        print(best_iqs)
+    # plt.show()
     return DispersiveShiftResults(
-        results_0=results[0], results_1=results[1], best_freq=best_freqs
+        results_0=results[0],
+        results_1=results[1],
+        best_freq=best_freqs,
+        best_iqs=best_iqs,
     )
 
 
@@ -221,7 +226,7 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
             "phase (rad)",
         ),
     )
-
+    fig2 = go.Figure()
     # iterate over multiple data folders
     qubit_data = data.df[data.df["qubit"] == qubit]
 
@@ -291,7 +296,66 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
             row=1,
             col=1,
         )
+    fig2.add_trace(
+        go.Scatter(
+            x=data_0.df["i"].pint.to("V").pint.magnitude,
+            y=data_0.df["q"].pint.to("V").pint.magnitude,
+            name="Ground State",
+            legendgroup="Ground State",
+            mode="markers",
+            showlegend=True,
+            opacity=0.7,
+            marker=dict(size=3, color=get_color_state0(0)),
+        ),
+    )
 
+    fig2.add_trace(
+        go.Scatter(
+            x=data_1.df["i"].pint.to("V").pint.magnitude,
+            y=data_1.df["q"].pint.to("V").pint.magnitude,
+            name="Excited State",
+            legendgroup="Excited State",
+            mode="markers",
+            showlegend=True,
+            opacity=0.7,
+            marker=dict(size=3, color=get_color_state1(0)),
+        ),
+    )
+    fig2.add_trace(
+        go.Scatter(
+            x=[fit.best_iqs[qubit][0][0]],
+            y=[fit.best_iqs[qubit][0][1]],
+            name="Best Ground State",
+            legendgroup="Best Ground State",
+            mode="markers",
+            showlegend=True,
+            opacity=0.7,
+            marker=dict(size=10, color=get_color_state0(1)),
+        ),
+    )
+
+    fig2.add_trace(
+        go.Scatter(
+            x=[fit.best_iqs[qubit][1][0]],
+            y=[fit.best_iqs[qubit][1][1]],
+            name="Best Excited State",
+            legendgroup="Best Excited State",
+            mode="markers",
+            showlegend=True,
+            opacity=0.7,
+            marker=dict(size=10, color=get_color_state1(1)),
+        ),
+    )
+    fig2.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="i (V)",
+        yaxis_title="q (V)",
+    )
+    fig2.update_yaxes(
+        scaleanchor="x",
+        scaleratio=1,
+    )
     fitting_report = fitting_report + (
         f"{qubit} | State zero freq : {fit_data_0.frequency[qubit]*1e9:,.0f} Hz.<br>"
     )
@@ -312,6 +376,7 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
     )
 
     figures.append(fig)
+    figures.append(fig2)
 
     return figures, fitting_report
 
