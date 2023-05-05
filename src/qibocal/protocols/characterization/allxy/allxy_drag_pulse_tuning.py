@@ -12,7 +12,6 @@ from qibocal.plots.utils import get_color
 from . import allxy
 
 
-
 @dataclass
 class AllXYDragParameters(Parameters):
     """AllXYDrag runcard inputs."""
@@ -23,6 +22,7 @@ class AllXYDragParameters(Parameters):
     """Final beta parameter for Drag pulse."""
     beta_step: float
     """Step beta parameter for Drag pulse."""
+
 
 @dataclass
 class AllXYDragResults(Results):
@@ -65,7 +65,9 @@ def _acquisition(
     # repeat the experiment as many times as defined by software_averages
     count = 0
     # sweep the parameters
-    for beta_param in np.arange(params.beta_start, params.beta_end, params.beta_step).round(4):
+    for beta_param in np.arange(
+        params.beta_start, params.beta_end, params.beta_step
+    ).round(4):
         gateNumber = 1
         for gates in allxy.gatelist:
             # create a sequence of pulses
