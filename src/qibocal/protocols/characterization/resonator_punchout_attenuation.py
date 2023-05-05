@@ -119,9 +119,6 @@ def _acquisition(
     # additionally include resonator frequency and attenuation
     data = ResonatorPunchoutAttenuationData(platform.resonator_type)
 
-    # repeat the experiment as many times as defined by software_averages
-    att = np.repeat(attenuation_range, len(delta_frequency_range))
-
     results = platform.sweep(
         sequence,
         freq_sweeper,
@@ -131,12 +128,14 @@ def _acquisition(
     )
 
     # retrieve the results for every qubit
-    for qubit, ro_pulse in ro_pulses.items():
+    for qubit in qubits:
         # average msr, phase, i and q over the number of shots defined in the runcard
-        result = results[ro_pulse.serial]
+        result = results[ro_pulses[qubit].serial]
+        att = np.repeat(attenuation_range, len(delta_frequency_range))
         # store the results
         freqs = np.array(
-            len(attenuation_range) * list(delta_frequency_range + ro_pulse.frequency)
+            len(attenuation_range)
+            * list(delta_frequency_range + ro_pulses[qubit].frequency)
         ).flatten()
         r = {k: v.ravel() for k, v in result.raw.items()}
         r.update(
@@ -148,10 +147,10 @@ def _acquisition(
         )
         data.add_data_from_dict(r)
 
-        # Temporary fixe to force to reset the attenuation to the original value in qblox
-        # sweeper method returning to orig value not working for attenuation
-        # After fitting punchout the reload_settings will be called automatically
-        platform.reload_settings()
+        # # Temporary fixe to force to reset the attenuation to the original value in qblox
+        # # sweeper method returning to orig value not working for attenuation
+        # # After fitting punchout the reload_settings will be called automatically
+        # platform.reload_settings()
         # save data
     return data
 
@@ -266,17 +265,12 @@ def _plot(
         ),
     )
 
-    qubit_data = data.df[data.df["qubit"] == qubit]
-
-    qubit_data = (
-        data.df.drop(columns=["qubit"])
-        .groupby(["frequency", "attenuation"], as_index=False)
-        .mean()
-    )
-
+    # TODO: remove this function
     def norm(x):
         x_mags = x.pint.to("V").pint.magnitude
         return (x_mags - np.min(x_mags)) / (np.max(x_mags) - np.min(x_mags))
+
+    qubit_data = data.df[data.df["qubit"] == qubit].drop(columns=["qubit"])
 
     normalised_data = qubit_data.groupby(["attenuation"], as_index=False)[
         ["MSR"]

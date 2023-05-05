@@ -55,7 +55,7 @@ def exponential_fit(data):
             popt = [0] * 3
             t2 = 5.0
 
-    fitted_parameters[qubit] = popt
-    decay[qubit] = t2
+        fitted_parameters[qubit] = popt
+        decay[qubit] = t2
 
     return decay, fitted_parameters
