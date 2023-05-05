@@ -47,7 +47,7 @@ def initialization(data_path):
     qubits = [0, 1]
     for qubit in qubits:
         qubit_dir = qubit_path(base_dir, qubit)
-        classifiers = ["linear_svm"]
+        classifiers = ["linear_svm", "qblox_fit"]
         table, y_test, _x_test = run.train_qubit(
             data_path, base_dir, qubit=qubit, classifiers=classifiers
         )

@@ -139,3 +139,20 @@ def pint_to_float(x):
         return x.to(x.units).magnitude
     else:
         return x
+
+
+def cumulative(input_data, points):
+    r"""Evaluates in `input_data` the cumulative distribution
+    function of `points`.
+    WARNING: `input_data` and `points` should be sorted data.
+    """
+    input_data_sort = np.sort(input_data)
+    points_sort = np.sort(points)
+
+    prob = []
+    app = 0
+    for val in input_data_sort:
+        app += np.max(np.searchsorted(points_sort[app::], val), 0)
+        prob.append(app)
+
+    return np.array(prob)
