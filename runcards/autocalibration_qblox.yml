@@ -38,7 +38,7 @@ actions:
     operation: resonator_punchout_attenuation
     # next: resonator spectroscopy low power
     parameters:
-      freq_width: 10_000_000
+      freq_width: 5_000_000
       freq_step: 100_000
       min_att: 2
       max_att: 50

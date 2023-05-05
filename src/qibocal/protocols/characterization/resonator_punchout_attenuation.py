@@ -121,14 +121,14 @@ def _acquisition(
 
     # repeat the experiment as many times as defined by software_averages
     att = np.repeat(attenuation_range, len(delta_frequency_range))
-    for iteration in range(params.software_averages):
-        results = platform.sweep(
-            sequence,
-            freq_sweeper,
-            att_sweeper,
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-        )
+
+    results = platform.sweep(
+        sequence,
+        freq_sweeper,
+        att_sweeper,
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+    )
 
     # retrieve the results for every qubit
     for qubit, ro_pulse in ro_pulses.items():
