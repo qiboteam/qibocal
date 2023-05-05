@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
@@ -49,6 +49,7 @@ class DispersiveShiftResults(Results):
     """Resonator spectroscopy outputs in the ground state."""
     results_1: StateResults
     """Resonator spectroscopy outputs in the excited state"""
+    best_freq: Dict[List[Tuple], str] = field(metadata=dict(update="readout_frequency"))
 
 
 class DispersiveShiftData(DataUnits):
@@ -172,35 +173,38 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
 
     # for each qubit find the iq couple of 0-1 states that maximize the distance
 
-    nrows = len(iq_couples[0][0])  # number of shots
-    best_freqs = []
+    nshots = len(iq_couples[0][0])  # number of shots
+    best_freqs = {}
     for qubit in qubits:
-        distance_matrix = np.zeros((nrows, nrows))
+        distances = []
         for i, state0 in enumerate(iq_couples[0][qubit]):
-            for j, state1 in enumerate(iq_couples[1][qubit]):
-                # print(state0, type(state0))
-                print(state0[:2])
-                distance_matrix[i][j] = np.linalg.norm(state0[:2] - state1[:2])
+            # print(state0, type(state0))
+            distances.append(
+                np.linalg.norm(
+                    iq_couples[0][qubit][i][:2] - iq_couples[1][qubit][i][:2]
+                )
+            )
         # print(distance_matrix)
-        max_index = np.unravel_index(
-            np.argmax(distance_matrix, axis=None), distance_matrix.shape
-        )
-        print(max_index, iq_couples[0][qubit][max_index[0]][2])
-        print(max_index, iq_couples[1][qubit][max_index[1]][2])
+        max_index = np.argmax(distances)
+        print(max_index, iq_couples[0][qubit][max_index][2])
+        print(max_index, iq_couples[1][qubit][max_index][2])
         plt.scatter(
-            iq_couples[0][qubit][max_index[0]][0],
-            iq_couples[0][qubit][max_index[0]][1],
+            iq_couples[0][qubit][max_index][0],
+            iq_couples[0][qubit][max_index][1],
             marker="+",
         )
         plt.scatter(
-            iq_couples[1][qubit][max_index[1]][0],
-            iq_couples[1][qubit][max_index[1]][1],
+            iq_couples[1][qubit][max_index][0],
+            iq_couples[1][qubit][max_index][1],
             marker="+",
         )
-        best_freqs = [iq_couples[k][qubit][max_index[k]][2] for k in [0, 1]]
+        best_freqs[qubit] = iq_couples[0][qubit][max_index][2]
+
         print(best_freqs)
     plt.show()
-    return DispersiveShiftResults(results_0=results[0], results_1=results[1])
+    return DispersiveShiftResults(
+        results_0=results[0], results_1=results[1], best_freq=best_freqs
+    )
 
 
 def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
