@@ -4,7 +4,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal import plots
-from qibocal.data import Data, DataUnits
+from qibocal.data import DataUnits
 from qibocal.decorators import plot
 from qibocal.fitting.methods import ro_optimization_fit
 
@@ -25,7 +25,7 @@ def ro_frequency(
 
     Args:
         platform (:class:`qibolab.platforms.abstract.AbstractPlatform`): custom abstract platform on which we perform the calibration.
-        qubits (list): List of target qubits to perform the action
+        qubits (dict): List of target qubits to perform the action
         nshots (int): number of times the pulse sequence will be repeated.
         frequency_width (float): width of the frequency range to be swept in Hz.
         frequency_step (float): step of the frequency range to be swept in Hz.
@@ -140,7 +140,7 @@ def ro_amplitude(
 
     Args:
         platform (:class:`qibolab.platforms.abstract.AbstractPlatform`): custom abstract platform on which we perform the calibration.
-        qubits (list): List of target qubits to perform the action
+        qubits (dict): List of target qubits to perform the action
         nshots (int): number of times the pulse sequence will be repeated.
         amplitude_factor_min (float): minimum amplitude factor to be swept.
         amplitude_factor_max (float): maximum amplitude factor to be swept.
@@ -255,7 +255,7 @@ def twpa_frequency(
 
     Args:
         platform (:class:`qibolab.platforms.abstract.AbstractPlatform`): custom abstract platform on which we perform the calibration.
-        qubits (list): List of target qubits to perform the action
+        qubits (dict): List of target qubits to perform the action
         frequency_width (float): Frequency range to sweep in Hz
         frequency_step (float): Frequency step to sweep in Hz
         nshots (int): number of times the pulse sequence will be repeated.
@@ -356,7 +356,7 @@ def twpa_power(
 
     Args:
         platform (:class:`qibolab.platforms.abstract.AbstractPlatform`): custom abstract platform on which we perform the calibration.
-        qubits (list): List of target qubits to perform the action
+        qubits (dict): List of target qubits to perform the action
         power_width (float): width of the power range to be scanned in dBm
         power_step (float): step of the power range to be scanned in dBm
         nshots (int): number of times the pulse sequence will be repeated.
