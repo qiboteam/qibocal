@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
+import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab.platforms.abstract import AbstractPlatform
@@ -296,31 +297,36 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
             row=1,
             col=1,
         )
-    fig2.add_trace(
-        go.Scatter(
-            x=data_0.df["i"].pint.to("V").pint.magnitude,
-            y=data_0.df["q"].pint.to("V").pint.magnitude,
-            name="Ground State",
-            legendgroup="Ground State",
-            mode="markers",
-            showlegend=True,
-            opacity=0.7,
-            marker=dict(size=3, color=get_color_state0(0)),
-        ),
-    )
 
-    fig2.add_trace(
-        go.Scatter(
-            x=data_1.df["i"].pint.to("V").pint.magnitude,
-            y=data_1.df["q"].pint.to("V").pint.magnitude,
-            name="Excited State",
-            legendgroup="Excited State",
-            mode="markers",
-            showlegend=True,
-            opacity=0.7,
-            marker=dict(size=3, color=get_color_state1(0)),
-        ),
+    colors = px.colors.sample_colorscale(
+        "turbo", [n / (len(frequencies) - 1) for n in range(len(frequencies))]
     )
+    for i in range(len(frequencies)):
+        fig2.add_trace(
+            go.Scatter(
+                x=[data_0.df["i"].pint.to("V").pint.magnitude[i]],
+                y=[data_0.df["q"].pint.to("V").pint.magnitude[i]],
+                name="Ground State",
+                legendgroup="Ground State",
+                mode="markers",
+                showlegend=True,
+                opacity=0.7,
+                marker=dict(size=5, color=colors[i]),
+            ),
+        )
+
+        fig2.add_trace(
+            go.Scatter(
+                x=[data_1.df["i"].pint.to("V").pint.magnitude[i]],
+                y=[data_1.df["q"].pint.to("V").pint.magnitude[i]],
+                name="Excited State",
+                legendgroup="Excited State",
+                mode="markers",
+                showlegend=True,
+                opacity=0.7,
+                marker=dict(size=5, symbol="cross", color=colors[i]),
+            ),
+        )
     fig2.add_trace(
         go.Scatter(
             x=[fit.best_iqs[qubit][0][0]],
@@ -328,9 +334,8 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
             name="Best Ground State",
             legendgroup="Best Ground State",
             mode="markers",
-            showlegend=True,
             opacity=0.7,
-            marker=dict(size=10, color=get_color_state0(1)),
+            marker=dict(size=10, color=get_color_state0(0)),
         ),
     )
 
@@ -341,9 +346,8 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
             name="Best Excited State",
             legendgroup="Best Excited State",
             mode="markers",
-            showlegend=True,
             opacity=0.7,
-            marker=dict(size=10, color=get_color_state1(1)),
+            marker=dict(size=10, symbol="cross", color=get_color_state0(0)),
         ),
     )
     fig2.update_layout(
@@ -351,6 +355,7 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="i (V)",
         yaxis_title="q (V)",
+        height=800,
     )
     fig2.update_yaxes(
         scaleanchor="x",
