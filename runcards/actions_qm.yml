@@ -135,7 +135,7 @@ actions:
   #   nshots: 2048
   #   points: 1
 
-  # spin_echo_3pulses:
+  # t2_echo:
   #   delay_between_pulses_start: 4
   #   delay_between_pulses_end: 10000
   #   delay_between_pulses_step: 200

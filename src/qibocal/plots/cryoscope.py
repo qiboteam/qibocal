@@ -207,6 +207,7 @@ def get_values(df: pd.DataFrame, component=None, duration=None, amplitude=None):
 
 def flux_pulse_timing(folder, routine, qubit, format):
     figs = {}
+
     figs["flux_pulse_timing"] = make_subplots(
         rows=1,
         cols=1,
@@ -219,10 +220,10 @@ def flux_pulse_timing(folder, routine, qubit, format):
     report_n = 0
     for subfolder in subfolders:
         try:
-            df = load_data(folder, subfolder, routine, format, "data")
-            df.df = (
-                df.df[df.df["qubit"] == qubit]
-                .drop(columns=["qubit", "iteration"])
+            data = DataUnits.load_data(folder, subfolder, routine, format, "data")
+            data.df = (
+                data.df[data.df["qubit"] == qubit]
+                .drop(columns=["qubit", "iteration", "i", "q", "phase"])
                 .groupby(
                     ["flux_pulse_amplitude", "flux_pulse_start"],
                     as_index=False,
@@ -230,7 +231,7 @@ def flux_pulse_timing(folder, routine, qubit, format):
                 .mean()
             )
         except:
-            df = DataUnits(
+            data = DataUnits(
                 name=f"data",
                 quantities={
                     "flux_pulse_amplitude": "dimensionless",
@@ -240,14 +241,20 @@ def flux_pulse_timing(folder, routine, qubit, format):
                 options=["qubit", "iteration"],
             )
 
-        amplitudes = df.df["flux_pulse_amplitude"].unique()
-        starts = df.df["flux_pulse_start"].unique()
+        amplitudes = (
+            data.df["flux_pulse_amplitude"]
+            .pint.to("dimensionless")
+            .pint.magnitude.unique()
+        )
+        starts = data.df["flux_pulse_start"].pint.to("ns").pint.magnitude.unique()
 
     for amp in amplitudes:
         figs["flux_pulse_timing"].add_trace(
             go.Scatter(
                 x=starts,
-                y=get_values(df, amplitude=amp),
+                y=data.df[data.df["flux_pulse_amplitude"] == amp]["MSR"]
+                .pint.to("V")
+                .pint.magnitude.to_numpy(),
                 name=f"q{qubit}: <X> | A = {amp:.3f}",
             ),
             row=1,
@@ -258,7 +265,8 @@ def flux_pulse_timing(folder, routine, qubit, format):
         xaxis_title="Flux start time (ns)",
         yaxis_title="Magnitude X component (dimensionless)",
     )
-    return [figs["flux_pulse_timing"]]
+    fitting_report = "No fitting data"
+    return [figs["flux_pulse_timing"]], fitting_report
 
 
 def cryoscope_raw(folder, routine, qubit, format):

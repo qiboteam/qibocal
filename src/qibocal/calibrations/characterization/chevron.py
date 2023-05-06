@@ -5,6 +5,7 @@ from qibolab.sweeper import Parameter, Sweeper
 from qibocal import plots
 from qibocal.data import DataUnits
 from qibocal.decorators import plot
+from qibocal.fitting.methods import landscape_fit
 
 
 @plot("Chevron CZ", plots.duration_amplitude_msr_flux_pulse)
@@ -187,107 +188,111 @@ def tune_landscape(
         highfreq = qubit
         lowfreq = 2
 
-    # x_pulse_start = platform.create_RX_pulse(lowfreq, start=0, relative_phase=0)
-    # y90_pulse = platform.create_RX90_pulse(highfreq, start=0, relative_phase=np.pi / 2)
-
-    x_pulse_start = platform.create_RX_pulse(highfreq, start=0, relative_phase=0)
-    y90_pulse = platform.create_RX90_pulse(lowfreq, start=0, relative_phase=np.pi / 2)
-
-    flux_sequence, virtual_z_phase = platform.create_CZ_pulse_sequence(
-        (highfreq, lowfreq), start=y90_pulse.finish
-    )
-
-    from qibolab.pulses import Exponential
-
-    flux_sequence = PulseSequence(
-        FluxPulse(
-            start=y90_pulse.finish,
-            duration=33,
-            amplitude=0.5475,
-            shape=Exponential(12, 0.1),
-            channel="L4-3",
-            qubit=3,
-        )
-    )
-
-    # theta_pulse = platform.create_RX90_pulse(
-    #     highfreq, start=flux_sequence.finish, relative_phase=virtual_z_phase[highfreq]
-    # )
-    # x_pulse_end = platform.create_RX_pulse(
-    #     lowfreq, start=flux_sequence.finish, relative_phase=virtual_z_phase[lowfreq]
-    # )
-    theta_pulse = platform.create_RX90_pulse(
-        lowfreq, start=flux_sequence.finish, relative_phase=virtual_z_phase[lowfreq]
-    )
-    x_pulse_end = platform.create_RX_pulse(
-        highfreq, start=flux_sequence.finish, relative_phase=virtual_z_phase[highfreq]
-    )
-
-    measure_lowfreq = platform.create_qubit_readout_pulse(
-        lowfreq, start=theta_pulse.finish
-    )
-    measure_highfreq = platform.create_qubit_readout_pulse(
-        highfreq, start=theta_pulse.finish
-    )
-
     data = DataUnits(
         name=f"data_q{lowfreq}{highfreq}",
         quantities={
             "theta": "rad",
         },
-        options=["q_freq", "setup"],
+        options=["target_qubit", "qubit", "setup"],
     )
 
-    thetas = np.arange(theta_start, theta_end, theta_step)
-    sweeper = Sweeper(Parameter.relative_phase, thetas, [theta_pulse])
+    for target_qubit, control_qubit in ((lowfreq, highfreq), (highfreq, lowfreq)):
+        sequence = PulseSequence()
+        Y90_pulse = {}
+        RX_pulse_start = {}
+        flux_sequence = {}
+        theta_pulse = {}
+        RX_pulse_end = {}
+        measure_target = {}
+        measure_control = {}
+        start = 0
 
-    setups = ["I", "X"]
+        for setup in ("I", "X"):
+            Y90_pulse[setup] = platform.create_RX90_pulse(
+                target_qubit, start=start, relative_phase=np.pi / 2
+            )
+            RX_pulse_start[setup] = platform.create_RX_pulse(
+                control_qubit, start=start, relative_phase=0
+            )
 
-    for setup in setups:
-        if setup == "I":
-            sequence = (
-                y90_pulse
-                + flux_sequence
-                + theta_pulse
-                + measure_lowfreq
-                + measure_highfreq
+            flux_sequence[setup], virtual_z_phase = platform.create_CZ_pulse_sequence(
+                (highfreq, lowfreq), start=Y90_pulse[setup].finish
             )
-        elif setup == "X":
-            sequence = (
-                x_pulse_start
-                + y90_pulse
-                + flux_sequence
-                + theta_pulse
-                + x_pulse_end
-                + measure_lowfreq
-                + measure_highfreq
+
+            theta_pulse[setup] = platform.create_RX90_pulse(
+                target_qubit,
+                start=flux_sequence[setup].finish,
+                relative_phase=virtual_z_phase[target_qubit],
             )
+
+            RX_pulse_end[setup] = platform.create_RX_pulse(
+                control_qubit,
+                start=flux_sequence[setup].finish,
+                relative_phase=virtual_z_phase[control_qubit],
+            )
+
+            measure_target[setup] = platform.create_qubit_readout_pulse(
+                target_qubit, start=theta_pulse[setup].finish
+            )
+            measure_control[setup] = platform.create_qubit_readout_pulse(
+                control_qubit, start=theta_pulse[setup].finish
+            )
+
+            sequence.add(
+                Y90_pulse[setup],
+                flux_sequence[setup],
+                theta_pulse[setup],
+                measure_target[setup],
+                measure_control[setup],
+            )
+            if setup == "X":
+                sequence.add(
+                    RX_pulse_start[setup],
+                    RX_pulse_end[setup],
+                )
+            start = sequence.finish + relaxation_time
+
+        thetas = (
+            np.arange(theta_start, theta_end, theta_step)
+            + virtual_z_phase[target_qubit]
+        )
+        sweeper = Sweeper(Parameter.relative_phase, thetas, theta_pulse.values())
 
         results = platform.sweep(
             sequence, sweeper, nshots=nshots, relaxation_time=relaxation_time
         )
 
-        result_low = results[measure_lowfreq.serial].raw
-        result_low.update(
-            {
-                "theta[rad]": thetas,
-                "q_freq": len(thetas) * ["low"],
-                "setup": len(thetas) * [setup],
-            }
-        )
-        data.add_data_from_dict(result_low)
+        for setup in ("I", "X"):
+            result_target = results[measure_target[setup].serial].raw
+            result_target.update(
+                {
+                    "theta[rad]": thetas,
+                    "target_qubit": len(thetas) * [target_qubit],
+                    "qubit": len(thetas) * [target_qubit],
+                    "setup": len(thetas) * [setup],
+                }
+            )
+            data.add_data_from_dict(result_target)
 
-        result_high = results[measure_highfreq.serial].raw
-        result_high.update(
-            {
-                "theta[rad]": thetas,
-                "q_freq": len(thetas) * ["high"],
-                "setup": len(thetas) * [setup],
-            }
-        )
-        data.add_data_from_dict(result_high)
+            result_control = results[measure_control[setup].serial].raw
+            result_control.update(
+                {
+                    "theta[rad]": thetas,
+                    "target_qubit": len(thetas) * [target_qubit],
+                    "qubit": len(thetas) * [control_qubit],
+                    "setup": len(thetas) * [setup],
+                }
+            )
+            data.add_data_from_dict(result_control)
 
     yield data
+    yield landscape_fit(
+        data=data,
+        x="theta[rad]",
+        y="MSR[uV]",
+        qubits=(lowfreq, highfreq),
+        resonator_type=platform.resonator_type,
+    )
 
 
 @plot("Chevron CZ", plots.duration_amplitude_msr_flux_pulse)
@@ -302,7 +307,7 @@ def tune_transition_sweepers(
     flux_pulse_amplitude_start,
     flux_pulse_amplitude_end,
     flux_pulse_amplitude_step,
-    dt=1,
+    # flux_pulse_shape = Rectangular(),
     nshots=1024,
     relaxation_time=None,
 ):
@@ -346,27 +351,10 @@ def tune_transition_sweepers(
     initialize_lowfreq = platform.create_RX_pulse(lowfreq, start=0, relative_phase=0)
     initialize_highfreq = platform.create_RX_pulse(highfreq, start=0, relative_phase=0)
     flux_sequence: PulseSequence
-    # flux_sequence, _ = platform.create_CZ_pulse_sequence(
-    #     (highfreq, lowfreq), start=initialize_highfreq.finish
-    # )
 
-    # flux_sequence = PulseSequence(FluxPulse(start=initialize_highfreq.finish, duration=32, amplitude = 1, shape=(
-    #     IIR(b=[0.6509331609661549, -0.6254097068092762], a=[1, -0.9744765458431213], target=Rectangular())
-    # ), channel = 'L4-3' , qubit = 3))
-
-    from qibolab.pulses import Exponential
-
-    flux_sequence = PulseSequence(
-        FluxPulse(
-            start=initialize_highfreq.finish,
-            duration=32,
-            amplitude=0.5,
-            shape=Exponential(12, 0.1),
-            channel="L4-3",
-            qubit=3,
-        )
+    flux_sequence, _ = platform.create_CZ_pulse_sequence(
+        (highfreq, lowfreq), start=initialize_highfreq.finish
     )
-    #                                         # channel = 'L4-4' , qubit = 4))
 
     measure_lowfreq = platform.create_qubit_readout_pulse(
         lowfreq, start=initialize_highfreq.finish + flux_pulse_duration_end
@@ -418,8 +406,8 @@ def tune_transition_sweepers(
         relaxation_time=relaxation_time,
     )
 
-    amplitudes = np.tile(amplitudes_range, len(durations_range))
     durations = np.repeat(durations_range, len(amplitudes_range))
+    amplitudes = np.tile(amplitudes_range, len(durations_range))
 
     res_temp = results[measure_lowfreq.serial].raw
     res_temp.update(

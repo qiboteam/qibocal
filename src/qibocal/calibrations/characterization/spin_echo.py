@@ -9,7 +9,7 @@ from qibocal.fitting.methods import spin_echo_fit
 
 
 @plot("MSR vs Time", plots.spin_echo_time_msr)
-def spin_echo_3pulses(
+def t2_echo(
     platform: AbstractPlatform,
     qubits: list,
     delay_between_pulses_start,

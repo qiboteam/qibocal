@@ -128,3 +128,11 @@ def freq_r_mathieu(x, p0, p1, p2, p3, p4, p5, p6, p7=0.499):
     f_q = freq_q_mathieu(x, p2, p3, p4, p5, p6, p7)
     f_r = p0 + p1**2 * np.sqrt(G) / (p0 - f_q)
     return f_r
+
+
+def landscape(x, p0, p1, p2):
+    #
+    # Amplitude                     : p[0]
+    # Offset                        : p[1]
+    # Phase offset                  : p[2]
+    return np.sin(x + p2) * p0 + p1

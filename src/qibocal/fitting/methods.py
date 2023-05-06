@@ -16,6 +16,7 @@ from qibocal.fitting.utils import (
     freq_q_mathieu,
     freq_r_mathieu,
     freq_r_transmon,
+    landscape,
     line,
     lorenzian,
     parse,
@@ -1210,3 +1211,92 @@ def pint_to_float(x):
         return x.to(x.units).magnitude
     else:
         return x
+
+
+def landscape_fit(data, x, y, qubits, resonator_type):
+    r"""
+    Fitting routine for T1 experiment. The used model is
+
+    .. math::
+
+        y = p_0 sin\Big(2 \pi x + p_2\Big) + p_1.
+
+    Args:
+
+        data (`DataUnits`): dataset for the fit
+        x (str): name of the input values for the flipping model
+        y (str): name of the output values for the flipping model
+        qubit (int): ID qubit number
+
+    Returns:
+
+        A ``Data`` object with the following keys
+
+            - **popt0**: p0
+            - **popt1**: p1
+            - **popt2**: p2
+
+    """
+    data_fit = Data(
+        name="fits",
+        quantities=[
+            "popt0",
+            "popt1",
+            "popt2",
+            "qubit",
+            "setup",
+        ],
+    )
+
+    for qubit in qubits:
+        qubit_data = (
+            data.df[(data.df["target_qubit"] == qubit) & (data.df["qubit"] == qubit)]
+            .drop(columns=["target_qubit", "qubit"])
+            .groupby(["setup", "theta"], as_index=False)
+            .mean()
+        )
+        thetas_keys = parse(x)
+        voltages_keys = parse(y)
+        thetas = qubit_data[thetas_keys[0]].pint.to(thetas_keys[1]).pint.magnitude
+        voltages = qubit_data[voltages_keys[0]].pint.to(voltages_keys[1]).pint.magnitude
+        for setup in ("I", "X"):
+            setup_voltages = voltages[qubit_data["setup"] == setup]
+            setup_thetas = thetas[qubit_data["setup"] == setup]
+
+            if resonator_type == "3D":
+                pguess = [
+                    np.max(setup_voltages) - np.min(setup_voltages),
+                    np.mean(setup_voltages),
+                    3.14,
+                ]
+            else:
+                pguess = [
+                    np.max(setup_voltages) - np.min(setup_voltages),
+                    np.mean(setup_voltages),
+                    3.14,
+                ]
+
+            try:
+                popt, pcov = curve_fit(
+                    landscape,
+                    setup_thetas,
+                    setup_voltages,
+                    p0=pguess,
+                    bounds=((0, 0, 0), (2.5e6, 2.5e6, 2 * np.pi)),
+                )
+                data_fit.add(
+                    {
+                        "popt0": popt[0],
+                        "popt1": popt[1],
+                        "popt2": popt[2],
+                        "qubit": qubit,
+                        "setup": setup,
+                    }
+                )
+            except:
+                log.warning("landscape_fit: the fitting was not succesful")
+                data_fit.add(
+                    {"popt0": 0, "popt1": 0, "popt2": 0, "qubit": qubit, "setup": setup}
+                )
+
+    return data_fit
