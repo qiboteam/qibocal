@@ -1,6 +1,8 @@
 import re
 
 import numpy as np
+import pandas as pd
+import pint
 from scipy.special import mathieu_a, mathieu_b
 
 
@@ -136,6 +138,14 @@ def landscape(x, p0, p1, p2):
     # Offset                        : p[1]
     # Phase offset                  : p[2]
     return np.sin(x + p2) * p0 + p1
+
+def pint_to_float(x):
+    if isinstance(x, pd.Series):
+        return x.apply(pint_to_float)
+    elif isinstance(x, pint.Quantity):
+        return x.to(x.units).magnitude
+    else:
+        return x
 
 
 def cumulative(input_data, points):

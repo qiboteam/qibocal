@@ -21,6 +21,7 @@ from qibocal.fitting.utils import (
     line,
     lorenzian,
     parse,
+    pint_to_float,
     rabi,
     ramsey,
 )
@@ -1075,7 +1076,7 @@ def calibrate_qubit_states_fit(data, x, y, nshots, qubits, degree=True):
     return parameters
 
 
-def ro_optimization_fit(data, *labels):
+def ro_optimization_fit(data, *labels, debug=False):
     """
     Fit the fidelities from parameters swept as labels, and extract rotation angle and threshold
 
@@ -1196,14 +1197,8 @@ def ro_optimization_fit(data, *labels):
     data_fit.df["average_state0"] = iq_mean_state0.flatten()
     data_fit.df["average_state1"] = iq_mean_state1.flatten()
 
-    return data_fit
-
-
-def pint_to_float(x):
-    if isinstance(x, pd.Series):
-        return x.apply(pint_to_float)
-    elif isinstance(x, pint.Quantity):
-        return x.to(x.units).magnitude
+    if debug:
+        return data_fit, cum_dist, iq_complex
     else:
         return x
 
