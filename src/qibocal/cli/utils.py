@@ -19,6 +19,7 @@ def load_yaml(path):
 
 def generate_output_folder(folder, force):
     """Generation of qq output folder
+
     Args:
         folder (path): path for the output folder. If None it will be created a folder automatically
         force (bool): option to overwrite the output folder if it exists already.

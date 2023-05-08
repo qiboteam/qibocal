@@ -237,7 +237,7 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
         # plotly figure with the scattered filter function points and then mean per depth.
         figdict = scatter_fit_fig(experiment, df_aggr, "depth", f"irrep{kk}")
         # Add a subplot title for each irrep.
-        figdict["subplot_title"] = f"Irrep {l[0]}"
+        figdict["subplot_title"] = f"Irrep {l}"
         report.all_figures.append(figdict)
     # Return the figure of the report object and the corresponding table.
     return report.build()

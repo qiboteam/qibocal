@@ -35,6 +35,7 @@ def exp2_func(x: np.ndarray, A1: float, A2: float, f1: float, f2: float) -> np.n
 
 def expn_func(x: Union[np.ndarray, list], *args) -> np.ndarray:
     """Compute the sum of exponentials :math:`\\sum A_i\\cdot f_i^x`
+
     Args:
         x (np.ndarray | list): list of exponents.
         *args: Parameters of type `float` in the order
