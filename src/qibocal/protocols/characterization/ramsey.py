@@ -49,9 +49,7 @@ class RamseyData(DataUnits):
         super().__init__(
             name="data",
             quantities={"wait": "ns", "qubit_freqs": "Hz"},
-            options=[
-                "qubit",
-            ],
+            options=["qubit", "errors"],
         )
 
         self._n_osc = n_osc
@@ -124,14 +122,19 @@ def _acquisition(
         for qubit, ro_pulse in ro_pulses.items():
             # average msr, phase, i and q over the number of shots defined in the runcard
             r = results[ro_pulse.serial].average.raw
+            msr_raw = (results[ro_pulse.serial].raw["MSR[V]"] * 1e6,)
+            error = np.std(msr_raw)
+            # print(error)
             r.update(
                 {
                     "wait[ns]": wait,
                     "qubit_freqs[Hz]": qubits[qubit].drive_frequency,
                     "qubit": qubit,
+                    "errors": error,
                 }
             )
             data.add_data_from_dict(r)
+        # print(data.df["errors"])
     return data
 
 
@@ -161,6 +164,7 @@ def _fit(data: RamseyData) -> RamseyResults:
     for qubit in qubits:
         qubit_data_df = data.df[data.df["qubit"] == qubit]
         voltages = qubit_data_df["MSR"].pint.to("uV").pint.magnitude
+        print(voltages)
         times = qubit_data_df["wait"].pint.to("ns").pint.magnitude
         qubit_freq = qubit_data_df["qubit_freqs"].pint.to("Hz").pint.magnitude.unique()
 
@@ -233,11 +237,17 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
     fitting_report = ""
 
     qubit_data = data.df[data.df["qubit"] == qubit]
-
+    errors = qubit_data["errors"].to_numpy()
+    print(errors, len(qubit_data["wait"].pint.magnitude), len(errors))
     fig.add_trace(
         go.Scatter(
             x=qubit_data["wait"].pint.magnitude,
             y=qubit_data["MSR"].pint.to("uV").pint.magnitude,
+            error_y=dict(
+                # type='data', # value of error bar given in data coordinates
+                array=errors,
+                visible=True,
+            ),
             marker_color=get_color(0),
             opacity=1,
             name="Voltage",
