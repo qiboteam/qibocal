@@ -338,8 +338,8 @@ def resonator_punchout(
     for iteration in range(software_averages):
         results = platform.sweep(
             sequence,
-            amp_sweeper,
             freq_sweeper,
+            amp_sweeper,
             nshots=nshots,
             relaxation_time=relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
@@ -351,12 +351,10 @@ def resonator_punchout(
             # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulse.serial]
             # store the results
-            freqs = (
-                np.repeat(delta_frequency_range, len(amplitude_range))
-                + ro_pulses[qubit].frequency
-            )
-            amps = np.array(
-                len(delta_frequency_range) * list(amplitude_range)
+
+            amps = np.repeat(amplitude_range, len(delta_frequency_range))
+            freqs = np.array(
+                len(amplitude_range) * list(delta_frequency_range)
             ).flatten()
 
             r = {k: v.ravel() for k, v in result.raw.items()}
