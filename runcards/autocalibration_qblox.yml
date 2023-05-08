@@ -1,6 +1,6 @@
-platform: tii1q_b1
+platform: qw5q_gold_qblox
 
-qubits: [0] #[0, 1, 2, 3, 4]
+qubits: [0, 1, 2, 3, 4]
 
 format: csv
 
@@ -137,23 +137,22 @@ actions:
   #     delay_between_pulses_step: 4 # must be a multiple of 4
   #     n_osc: 10
 
-  # - id: ramsey detuned
-  #  priority: 0
-  #  operation: ramsey
-  #  #main: single shot classification
-  #  parameters:
-  #    n_osc: 0
-  #    delay_between_pulses_start: 4 # must be a multiple of 4 incl 0
-  #    delay_between_pulses_end: 200
-  #    delay_between_pulses_step: 4 # must be a multiple of 4
-
-  - id: single_shot_classification_1
+  - id: ramsey detuned
     priority: 0
-     # main: allXY
-    next: dispersive_shift
-    operation: single_shot_classification
+    operation: ramsey
+    #main: single shot classification
     parameters:
-      nshots: 1024
+      n_osc: 0
+      delay_between_pulses_start: 4 # must be a multiple of 4 incl 0
+      delay_between_pulses_end: 200
+      delay_between_pulses_step: 4 # must be a multiple of 4
+
+  # - id: single shot classification
+  #   priority: 0
+  #   # main: allXY
+  #   operation: single_shot_classification
+  #   parameters:
+  #     nshots: 1024
 
   # - id: allXY
   #   priority: 0
@@ -202,19 +201,3 @@ actions:
   #   parameters:
   #     nflips_max: 20
   #     nflips_step: 1
-
-  - id: dispersive_shift
-    priority: 10
-    next: single_shot_classification_2
-    operation: dispersive_shift
-    parameters:
-      freq_width: 10_000_000
-      freq_step: 400_000
-
-  - id: single_shot_classification_2
-    priority: 20
-     # main: allXY
-    # next: dispersive_shift
-    operation: single_shot_classification
-    parameters:
-      nshots: 1024
