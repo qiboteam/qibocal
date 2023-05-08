@@ -370,7 +370,9 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
     fitting_report = fitting_report + (
         f"{qubit} | Frequency shift : {(fit_data_1.frequency[qubit] - fit_data_0.frequency[qubit])*1e9:,.0f} Hz.<br>"
     )
-
+    fitting_report = fitting_report + (
+        f"{qubit} | Best frequency : {fit.best_freq[qubit]*1e9:,.0f} Hz.<br>"
+    )
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
