@@ -22,6 +22,11 @@ class Parameters:
 
     """
 
+    nshots: int
+    """Number of executions on hardware"""
+    relaxation_time: float
+    """Wait time for the qubit to decohere back to the `gnd` state"""
+
     @classmethod
     def load(cls, parameters):
         """Load parameters from runcard.

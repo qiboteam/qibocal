@@ -3,6 +3,7 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platforms.platform import AcquisitionType, AveragingMode
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -141,6 +142,8 @@ def _acquisition(
         sweeper,
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=AveragingMode.CYCLIC,
     )
 
     # retrieve the results for every qubit

@@ -5,6 +5,7 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platforms.platform import AcquisitionType, AveragingMode
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -111,9 +112,24 @@ def _acquisition(
         pulses=[ro_pulses[qubit] for qubit in qubits],
     )
 
-    results_0 = platform.sweep(sequence_0, sweeper)
+    results_0 = platform.sweep(
+        sequence_0,
+        sweeper,
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=AveragingMode.CYCLIC,
+    )
 
-    results_1 = platform.sweep(sequence_1, sweeper)
+    results_1 = platform.sweep(
+        sequence_1,
+        sweeper,
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=AveragingMode.CYCLIC,
+    )
+
     # retrieve the results for every qubit
     for qubit in qubits:
         # average msr, phase, i and q over the number of shots defined in the runcard

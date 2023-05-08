@@ -3,6 +3,7 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platforms.platform import AcquisitionType, AveragingMode
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 from scipy.optimize import curve_fit
@@ -101,6 +102,8 @@ def _acquisition(
         sweeper,
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=AveragingMode.CYCLIC,
     )
     for qubit in qubits:
         # average msr, phase, i and q over the number of shots defined in the runcard
