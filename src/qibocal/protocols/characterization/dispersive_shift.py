@@ -298,9 +298,6 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
             col=1,
         )
 
-    colors = px.colors.sample_colorscale(
-        "turbo", [n / (len(frequencies) - 1) for n in range(len(frequencies))]
-    )
     for i in range(len(frequencies)):
         fig2.add_trace(
             go.Scatter(
@@ -311,7 +308,7 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
                 mode="markers",
                 showlegend=True,
                 opacity=0.7,
-                marker=dict(size=5, color=colors[i]),
+                marker=dict(size=5, color=get_color_state0(0)),
             ),
         )
 
@@ -324,7 +321,7 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
                 mode="markers",
                 showlegend=True,
                 opacity=0.7,
-                marker=dict(size=5, symbol="cross", color=colors[i]),
+                marker=dict(size=5, symbol="cross", color=get_color_state1(0)),
             ),
         )
     fig2.add_trace(
@@ -335,7 +332,7 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
             legendgroup="Best Ground State",
             mode="markers",
             opacity=0.7,
-            marker=dict(size=10, color=get_color_state0(0)),
+            marker=dict(size=10, color=get_color_state0(1)),
         ),
     )
 
@@ -347,7 +344,7 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
             legendgroup="Best Excited State",
             mode="markers",
             opacity=0.7,
-            marker=dict(size=10, symbol="cross", color=get_color_state0(0)),
+            marker=dict(size=10, symbol="cross", color=get_color_state0(1)),
         ),
     )
     fig2.update_layout(
