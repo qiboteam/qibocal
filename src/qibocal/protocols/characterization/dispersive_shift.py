@@ -292,38 +292,37 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
                 y=lorentzian(freqrange, **params),
                 name=f"q{qubit}: {label} Fit",
                 line=go.scatter.Line(dash="dot"),
-                marker_color=get_color(3 * i + 2),
+                markercolor=get_color(3 * i + 2),
             ),
             row=1,
             col=1,
         )
 
-    for i in range(len(frequencies)):
-        fig2.add_trace(
-            go.Scatter(
-                x=[data_0.df["i"].pint.to("V").pint.magnitude[i]],
-                y=[data_0.df["q"].pint.to("V").pint.magnitude[i]],
-                name="Ground State",
-                legendgroup="Ground State",
-                mode="markers",
-                showlegend=(i == 0),
-                opacity=0.7,
-                marker=dict(size=5, color=get_color_state0(0)),
-            ),
-        )
+    fig2.add_trace(
+        go.Scatter(
+            x=data_0.df["i"].pint.to("V").pint.magnitude,
+            y=data_0.df["q"].pint.to("V").pint.magnitude,
+            name="Ground State",
+            legendgroup="Ground State",
+            mode="markers",
+            showlegend=(i == 0),
+            opacity=0.7,
+            marker=dict(size=5, color=get_color_state0(0)),
+        ),
+    )
 
-        fig2.add_trace(
-            go.Scatter(
-                x=[data_1.df["i"].pint.to("V").pint.magnitude[i]],
-                y=[data_1.df["q"].pint.to("V").pint.magnitude[i]],
-                name="Excited State",
-                legendgroup="Excited State",
-                mode="markers",
-                showlegend=(i == 0),
-                opacity=0.7,
-                marker=dict(size=5, symbol="cross", color=get_color_state1(0)),
-            ),
-        )
+    fig2.add_trace(
+        go.Scatter(
+            x=data_1.df["i"].pint.to("V").pint.magnitude,
+            y=data_1.df["q"].pint.to("V").pint.magnitude,
+            name="Excited State",
+            legendgroup="Excited State",
+            mode="markers",
+            showlegend=(i == 0),
+            opacity=0.7,
+            marker=dict(size=5, symbol="cross", color=get_color_state1(0)),
+        ),
+    )
     fig2.add_trace(
         go.Scatter(
             x=[fit.best_iqs[qubit][0][0]],
