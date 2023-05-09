@@ -1,5 +1,6 @@
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platforms.platform import AveragingMode
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -88,7 +89,10 @@ def ro_frequency(
     # Execute sequences for both states
     for state in [0, 1]:
         results = platform.sweep(
-            sequences[state], frequency_sweeper, nshots=nshots, average=False
+            sequences[state],
+            frequency_sweeper,
+            nshots=nshots,
+            acquisition_type=AveragingMode.SINGLESHOT,
         )
 
         # retrieve and store the results for every qubit)
@@ -204,7 +208,10 @@ def ro_amplitude(
     # Execute sequences for both states
     for state in [0, 1]:
         results = platform.sweep(
-            sequences[state], amplitude_sweeper, nshots=nshots, average=False
+            sequences[state],
+            amplitude_sweeper,
+            nshots=nshots,
+            acquisition_type=AveragingMode.SINGLESHOT,
         )
 
         # retrieve and store the results for every qubit)
