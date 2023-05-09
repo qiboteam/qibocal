@@ -76,6 +76,7 @@ def _acquisition(
 
     count = 0
     # repeat the experiment as many times as defined by software_averages
+    # for iteration in range(params.software_averages):
     gateNumber = 1
     # sweep the parameter
     for gateNumber, gates in enumerate(gatelist):
@@ -84,30 +85,34 @@ def _acquisition(
         sequence = PulseSequence()
         for qubit in qubits:
             sequence, ro_pulses[qubit] = add_gate_pair_pulses_to_sequence(
-                platform, gates, qubit, params.beta_param, sequence
+                platform, gates, qubit, sequence, params.beta_param
             )
 
-        # execute the pulse sequence
-        results = platform.execute_pulse_sequence(sequence)
+            # execute the pulse sequence
+            results = platform.execute_pulse_sequence(sequence)
 
-        # retrieve the results for every qubit
-        for ro_pulse in ro_pulses.values():
-            z_proj = 2 * results[ro_pulse.serial].ground_state_probability - 1
-            # store the results
-            r = {
-                "probability": z_proj,
-                "gateNumber": gateNumber,
-                "beta_param": params.beta_param,
-                "qubit": ro_pulse.qubit,
-            }
-            data.add(r)
-        count += 1
+            # retrieve the results for every qubit
+            for ro_pulse in ro_pulses.values():
+                z_proj = 2 * results[ro_pulse.serial].ground_state_probability - 1
+                # store the results
+                r = {
+                    "probability": z_proj,
+                    "gateNumber": gateNumber,
+                    "beta_param": params.beta_param,
+                    "qubit": ro_pulse.qubit,
+                }
+                data.add(r)
+            count += 1
     # finally, save the remaining data
     return data
 
 
 def add_gate_pair_pulses_to_sequence(
-    platform: AbstractPlatform, gates, qubit, beta_param, sequence
+    platform: AbstractPlatform,
+    gates,
+    qubit,
+    sequence,
+    beta_param=None,
 ):
     pulse_duration = platform.create_RX_pulse(qubit, start=0).duration
     # All gates have equal pulse duration

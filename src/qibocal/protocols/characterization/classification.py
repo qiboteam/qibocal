@@ -36,8 +36,12 @@ class SingleShotClassificationData(DataUnits):
 class SingleShotClassificationResults(Results):
     threshold: Dict[List[Tuple], str] = field(metadata=dict(update="threshold"))
     rotation_angle: Dict[List[Tuple], str] = field(metadata=dict(update="iq_angle"))
-    mean_gnd_state: Dict[List[Tuple], str]
-    mean_exc_state: Dict[List[Tuple], str]
+    mean_gnd_states: Dict[List[Tuple], str] = field(
+        metadata=dict(update="mean_gnd_states")
+    )
+    mean_exc_states: Dict[List[Tuple], str] = field(
+        metadata=dict(update="mean_exc_states")
+    )
     fidelity: Dict[List[Tuple], str]
     assignment_fidelity: Dict[List[Tuple], str]
 
@@ -105,6 +109,7 @@ def _acquisition(
             {
                 "qubit": [ro_pulse.qubit] * params.nshots,
                 "state": [0] * params.nshots,
+                "nshots": [params.nshots] * params.nshots,
             }
         )
         data.add_data_from_dict(r)
@@ -121,6 +126,7 @@ def _acquisition(
             {
                 "qubit": [ro_pulse.qubit] * params.nshots,
                 "state": [1] * params.nshots,
+                "nshots": [params.nshots] * params.nshots,
             }
         )
         data.add_data_from_dict(r)
@@ -130,14 +136,15 @@ def _acquisition(
 
 def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
     qubits = data.df["qubit"].unique()
+    nshots = data.df["nshots"].unique()
     thresholds, rotation_angles = {}, {}
     fidelities, assignment_fidelities = {}, {}
-    mean_gnd_state = {}
-    mean_exc_state = {}
+    mean_gnd_states = {}
+    mean_exc_states = {}
 
     for qubit in qubits:
         qubit_data = data.df[data.df["qubit"] == qubit].drop(
-            columns=["qubit", "MSR", "phase"]
+            columns=["qubit", "MSR", "phase", "nshots"]
         )
 
         iq_state0 = (
@@ -183,24 +190,22 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         )
         argmax = np.argmax(cum_distribution_diff)
         threshold = real_values_combined[argmax]
-        errors_state1 = data.nshots - cum_distribution_state1[argmax]
+        errors_state1 = nshots - cum_distribution_state1[argmax]
         errors_state0 = cum_distribution_state0[argmax]
-        fidelity = cum_distribution_diff[argmax] / data.nshots
-        assignment_fidelity = 1 - (errors_state1 + errors_state0) / data.nshots / 2
+        fidelity = cum_distribution_diff[argmax] / nshots
+        assignment_fidelity = 1 - (errors_state1 + errors_state0) / nshots / 2
         thresholds[qubit] = threshold
-        rotation_angles[
-            qubit
-        ] = -rotation_angle  # TODO: qblox driver np.rad2deg(-rotation_angle)
-        fidelities[qubit] = fidelity
-        mean_gnd_state[qubit] = iq_mean_state0
-        mean_exc_state[qubit] = iq_mean_state1
-        assignment_fidelities[qubit] = assignment_fidelity
+        rotation_angles[qubit] = rotation_angle
+        fidelities[qubit] = fidelity[0]
+        mean_gnd_states[qubit] = iq_mean_state0
+        mean_exc_states[qubit] = iq_mean_state1
+        assignment_fidelities[qubit] = assignment_fidelity[0]
 
     return SingleShotClassificationResults(
         thresholds,
         rotation_angles,
-        mean_gnd_state,
-        mean_exc_state,
+        mean_gnd_states,
+        mean_exc_states,
         fidelities,
         assignment_fidelities,
     )
@@ -319,12 +324,12 @@ def _plot(
 
     fitting_report = (
         fitting_report
-        + f"{qubit} | Average Ground State: {fit.mean_gnd_state[qubit]:.4f} <br>"
-        + f"{qubit} | Average Excited State: {fit.mean_exc_state[qubit]:.4f} <br>"
-        + f"{qubit} | Rotation Angle: {fit.rotation_angle[qubit]:.3f} rad <br>"
-        + f"{qubit} | Threshold: {fit.threshold[qubit]:.4f} <br>"
-        + f"{qubit} | Fidelity: {fit.fidelity[qubit]:.3f} <br>"
-        + f"{qubit} | Assignment Fidelity: {fit.assignment_fidelity[qubit]:.3f} <br>"
+        + f"q{qubit} | average state 0: {fit.mean_gnd_states[qubit]:.7f} <br>"
+        + f"q{qubit} | average state 1: {fit.mean_exc_states[qubit]:.7f} <br>"
+        + f"q{qubit} | rotation_angle: {fit.rotation_angle[qubit]:.3f} rad <br>"
+        + f"q{qubit} | threshold: {fit.threshold[qubit]:.6f} <br>"
+        + f"q{qubit} | fidelity: {fit.fidelity[qubit]:.3f} <br>"
+        + f"q{qubit} | assignment fidelity: {fit.assignment_fidelity[qubit]:.3f} <br>"
     )
 
     fig.update_layout(

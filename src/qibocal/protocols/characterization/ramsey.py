@@ -274,7 +274,7 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
             fitting_report
             + (f"{qubit} | delta_frequency: {fit.delta_phys[qubit]:,.1f} Hz<br>")
             + (f"{qubit} | drive_frequency: {fit.frequency[qubit] * 1e9} Hz<br>")
-            + (f"{qubit} | T2: {fit.t2[qubit]:,.0f} ns.<br><br>")
+            # + (f"{qubit} | T2: {fit.t2[qubit]:,.0f} ns.<br><br>")
         )
 
     fig.update_layout(
