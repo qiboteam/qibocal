@@ -105,6 +105,9 @@ def _acquisition(
     data = RamseyData(params.n_osc, params.delay_between_pulses_end)
 
     # sweep the parameter
+    import matplotlib.pyplot as plt  # TODO: remove plotting lines
+
+    fig, (ax1, ax2) = plt.subplots(2, 1)  # TODO: remove plotting lines
     for wait in waits:
         for qubit in qubits:
             RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
@@ -119,11 +122,33 @@ def _acquisition(
 
         # execute the pulse sequence
         results = platform.execute_pulse_sequence(sequence)
+
         for qubit, ro_pulse in ro_pulses.items():
             # average msr, phase, i and q over the number of shots defined in the runcard
             r = results[ro_pulse.serial].average.raw
-            msr_raw = (results[ro_pulse.serial].raw["MSR[V]"] * 1e6,)
-            error = np.std(msr_raw)
+            msr_raw = results[ro_pulse.serial].raw["MSR[V]"] * 1e6
+            # TODO: remove plotting lines
+            print(results[ro_pulse.serial].raw.keys(), len(msr_raw))
+            if wait % 10 == 0:
+                ax1.scatter(
+                    [wait] * len(msr_raw), msr_raw, s=1, color=str(wait / len(waits))
+                )
+                ax1.scatter(
+                    wait,
+                    np.average(msr_raw),
+                    s=15,
+                    color=str(wait / len(waits)),
+                    marker="+",
+                )
+                if wait < 150:
+                    ax2.hist(
+                        msr_raw,
+                        bins=100,
+                        histtype="step",
+                        density=True,
+                        color=str(wait / len(waits)),
+                    )
+            error = np.std(msr_raw) / np.sqrt(len(msr_raw))
             # print(error)
             r.update(
                 {
@@ -134,7 +159,9 @@ def _acquisition(
                 }
             )
             data.add_data_from_dict(r)
-        # print(data.df["errors"])
+
+    plt.savefig("ramsey.pdf")
+    # print(data.df["errors"])
     return data
 
 
