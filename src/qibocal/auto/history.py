@@ -3,7 +3,7 @@ import copy
 from dataclasses import dataclass
 from typing import Dict, Tuple
 
-from .operation import Results
+from .operation import Data, Results
 from .runcard import Id
 from .status import Status
 from .task import Task
