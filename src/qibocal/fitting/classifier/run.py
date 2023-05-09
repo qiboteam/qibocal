@@ -22,6 +22,7 @@ CLS_MODULES = [
     "qubit_fit",
     "random_forest",
     "rbf_svm",
+    "qblox_fit",
 ]
 
 
