@@ -221,22 +221,16 @@ def qubit_spectroscopy_flux(
         pulses=[qd_pulses[qubit] for qubit in qubits],
     )
 
-    # flux bias(all/single qubits)
+    # flux bias
     if fluxlines == "qubits":
+        fluxlines = [None]
+    elif fluxlines == "all":
+        fluxlines = platform.qubits
+    elif fluxlines == "used":
         fluxlines = qubits
-    else:
-        qubit = fluxlines
-        fluxlines = {}
-        fluxlines[0] = qubits[qubit]
-        sweetspot = 0  # FIXME:
 
     # flux bias
     delta_bias_range = np.arange(-bias_width / 2, bias_width / 2, bias_step)
-    bias_sweeper = Sweeper(
-        Parameter.bias,
-        delta_bias_range,
-        qubits=fluxlines,
-    )
 
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
@@ -248,41 +242,50 @@ def qubit_spectroscopy_flux(
     )
 
     # repeat the experiment as many times as defined by software_averages
-    for iteration in range(software_averages):
-        results = platform.sweep(
-            sequence,
-            bias_sweeper,
-            frequency_sweeper,
-            nshots=nshots,
-            relaxation_time=relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
-        )
-
-        # retrieve the results for every qubit
-        for qubit, fluxline in zip(qubits, fluxlines):
-            # average msr, phase, i and q over the number of shots defined in the runcard
-            result = results[ro_pulses[qubit].serial]
-            # store the results
-            freqs = (
-                np.repeat(delta_frequency_range, len(delta_bias_range))
-                + ro_pulses[qubit].frequency
+    for fluxline in fluxlines:
+        if fluxline is None:
+            bias_sweeper = Sweeper(Parameter.bias, delta_bias_range, qubits=qubits)
+        else:
+            bias_sweeper = Sweeper(Parameter.bias, delta_bias_range, qubits=[fluxline])
+        for iteration in range(software_averages):
+            results = platform.sweep(
+                sequence,
+                bias_sweeper,
+                frequency_sweeper,
+                nshots=nshots,
+                relaxation_time=relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
             )
-            biases = np.array(
-                len(delta_frequency_range) * list(delta_bias_range + sweetspot)
-            ).flatten()
-            # ) + platform.get_bias(fluxline)
-            r = {k: v.ravel() for k, v in result.raw.items()}
-            r.update(
-                {
-                    "frequency[Hz]": freqs,
-                    "bias[V]": biases,
-                    "qubit": len(freqs) * [qubit],
-                    "fluxline": len(freqs) * [fluxline],
-                    "iteration": len(freqs) * [iteration],
-                }
-            )
-            data.add_data_from_dict(r)
 
-        # finally, save the remaining data and fits
-        yield data
+            # retrieve the results for every qubit
+            for qubit in qubits:
+                if fluxline is None:
+                    f = qubit
+                else:
+                    f = fluxline
+                # average msr, phase, i and q over the number of shots defined in the runcard
+                result = results[ro_pulses[qubit].serial]
+                # store the results
+                freqs = (
+                    np.repeat(delta_frequency_range, len(delta_bias_range))
+                    + qd_pulses[qubit].frequency
+                )
+                biases = np.array(
+                    len(delta_frequency_range) * list(delta_bias_range)
+                ).flatten() + platform.get_bias(f)
+                print(platform.get_bias(f))
+                r = {k: v.ravel() for k, v in result.raw.items()}
+                r.update(
+                    {
+                        "frequency[Hz]": freqs,
+                        "bias[V]": biases,
+                        "qubit": len(freqs) * [qubit],
+                        "fluxline": len(freqs) * [f],
+                        "iteration": len(freqs) * [iteration],
+                    }
+                )
+                data.add_data_from_dict(r)
+
+            # finally, save the remaining data and fits
+            yield data
