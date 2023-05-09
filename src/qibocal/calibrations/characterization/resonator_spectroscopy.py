@@ -706,14 +706,10 @@ def resonator_spectroscopy_flux_pulse(
     """
     # reload instrument settings from runcard
     platform.reload_settings()
-    from qibolab.platforms.multiqubit import MultiqubitPlatform
     from qibolab.pulses import Exponential, FluxPulse, Rectangular
-
-    p: MultiqubitPlatform = platform
 
     # create a sequence of pulses for the experiment:
     # MZ
-
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     sequence = PulseSequence()
     ro_pulses = {}
