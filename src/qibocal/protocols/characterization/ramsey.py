@@ -131,13 +131,13 @@ def _acquisition(
             print(results[ro_pulse.serial].raw.keys(), len(msr_raw))
             if wait % 10 == 0:
                 ax1.scatter(
-                    [wait] * len(msr_raw), msr_raw, s=1, color=str(wait / len(waits))
+                    [wait] * len(msr_raw), msr_raw, s=1, color=f"C{int(wait/10)}"
                 )
                 ax1.scatter(
                     wait,
                     np.average(msr_raw),
-                    s=15,
-                    color=str(wait / len(waits)),
+                    s=10,
+                    color=f"C{int(wait/10)}",
                     marker="+",
                 )
                 if wait < 150:
@@ -146,7 +146,7 @@ def _acquisition(
                         bins=100,
                         histtype="step",
                         density=True,
-                        color=str(wait / len(waits)),
+                        color=f"C{int(wait/10)}",
                     )
             error = np.std(msr_raw) / np.sqrt(len(msr_raw))
             # print(error)
