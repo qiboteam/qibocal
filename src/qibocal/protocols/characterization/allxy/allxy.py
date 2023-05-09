@@ -74,7 +74,6 @@ def _acquisition(
     # create a Data object to store the results
     data = AllXYData()
 
-    count = 0
     # repeat the experiment as many times as defined by software_averages
     # for iteration in range(params.software_averages):
     gateNumber = 1
@@ -102,7 +101,6 @@ def _acquisition(
                     "qubit": ro_pulse.qubit,
                 }
                 data.add(r)
-            count += 1
     # finally, save the remaining data
     return data
 

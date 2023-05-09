@@ -77,31 +77,8 @@ def lorentzian_fit(data, qubit):
 
     except:
         log.warning("lorentzian_fit: the fitting was not successful")
-        f0 = guess_center
         fit_res = lmfit.model.ModelResult(model=model_Q, params=guess_parameters)
-
-        frequency[qubit] = f0
-
-        if data.power_level is PowerLevel.high:
-            bare_frequency[qubit] = f0
-
-        amplitudes[qubit] = data.amplitude
-        attenuations[qubit] = data.attenuation
-        fitted_parameters[qubit] = fit_res.params.valuesdict()
-
-    if data.power_level is PowerLevel.high:
-        return {
-            "frequency": frequency,
-            "fitted_parameters": fitted_parameters,
-            "bare_frequency": bare_frequency,
-            "amplitude": amplitudes,
-        }
-    else:
-        return {
-            "frequency": frequency,
-            "fitted_parameters": fitted_parameters,
-            "amplitude": amplitudes,
-        }
+        return guess_center, fit_res.params.valuesdict()
 
 
 def spectroscopy_plot(data, fit: Results, qubit):

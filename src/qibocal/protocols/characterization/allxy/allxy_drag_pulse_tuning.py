@@ -62,7 +62,6 @@ def _acquisition(
 
     data = AllXYDragData()
 
-    # repeat the experiment as many times as defined by software_averages
     count = 0
     # sweep the parameters
     for beta_param in np.arange(params.beta_start, params.beta_end, params.beta_step).round(4):
