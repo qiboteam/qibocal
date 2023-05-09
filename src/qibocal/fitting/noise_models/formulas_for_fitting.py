@@ -19,7 +19,9 @@ def single_exp_decay(t, offset, amplitude, frequency, phase, t2s):
     """
 
     # Calculate predicted values
-    y_pred = offset + amplitude * np.cos(2 * np.pi * frequency * t + phase) * np.exp(-t / t2s)
+    y_pred = offset + amplitude * np.cos(2 * np.pi * frequency * t + phase) * np.exp(
+        -t / t2s
+    )
 
     # Return predicted values
     return y_pred
@@ -44,7 +46,9 @@ def gaussian_decay(t, offset, amplitude, frequency, phase, t2s):
     - y_pred (numpy.ndarray): Predicted values of the model.
     """
     # Calculate predicted values
-    y_pred = offset + amplitude * np.cos(2 * np.pi * frequency * t + phase) * np.exp(-(t / t2s) ** 2)
+    y_pred = offset + amplitude * np.cos(2 * np.pi * frequency * t + phase) * np.exp(
+        -((t / t2s) ** 2)
+    )
 
     # Return predicted values
     return y_pred
@@ -70,7 +74,9 @@ def stretched_exp_decay(t, offset, amplitude, frequency, phase, t2s, beta):
     """
 
     # Calculate predicted values
-    y_pred = offset + amplitude * np.cos(2 * np.pi * frequency * t + phase) * np.exp(-(t / t2s) ** beta)
+    y_pred = offset + amplitude * np.cos(2 * np.pi * frequency * t + phase) * np.exp(
+        -((t / t2s) ** beta)
+    )
 
     # Return predicted values
     return y_pred
@@ -95,7 +101,9 @@ def lorentzian_decay(t, offset, amplitude, frequency, phase, t2s):
     """
 
     # Calculate predicted values
-    y_pred = offset + amplitude * np.cos(2 * np.pi * frequency * t + phase) / (1 + (t / t2s) ** 2)
+    y_pred = offset + amplitude * np.cos(2 * np.pi * frequency * t + phase) / (
+        1 + (t / t2s) ** 2
+    )
 
     # Return predicted values
     return y_pred
@@ -121,7 +129,9 @@ def inverse_gaussian_decay(t, offset, amplitude, frequency, phase, t2s, beta):
     """
 
     # Calculate predicted values
-    y_pred = offset + amplitude * np.cos(2 * np.pi * frequency * t + phase) / np.sqrt(1 + (beta * t / t2s) ** 2)
+    y_pred = offset + amplitude * np.cos(2 * np.pi * frequency * t + phase) / np.sqrt(
+        1 + (beta * t / t2s) ** 2
+    )
 
     # Return predicted values
     return y_pred
