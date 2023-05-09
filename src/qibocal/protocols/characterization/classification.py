@@ -4,7 +4,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 import plotly.graph_objects as go
 from qibolab.platforms.abstract import AbstractPlatform
-from qibolab.platforms.platform import AcquisitionType
+from qibolab.platforms.platform import AcquisitionType, ExecutionParameters
 from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -97,9 +97,11 @@ def _acquisition(
     # execute the first pulse sequence
     state0_results = platform.execute_pulse_sequence(
         state0_sequence,
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.INTEGRATION,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+        ),
     )
 
     # retrieve and store the results for every qubit

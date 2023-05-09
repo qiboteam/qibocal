@@ -5,7 +5,7 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab.platforms.abstract import AbstractPlatform
-from qibolab.platforms.platform import AveragingMode
+from qibolab.platforms.platform import AveragingMode, ExecutionParameters
 from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
 
@@ -111,15 +111,19 @@ def _acquisition(
         # execute the pulse sequences
         result1 = platform.execute_pulse_sequence(
             seq1,
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            averaging_mode=AveragingMode.CYCLIC,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
         )
         result2 = platform.execute_pulse_sequence(
             seq2,
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            averaging_mode=AveragingMode.CYCLIC,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
         )
 
         # retrieve the results for every qubit

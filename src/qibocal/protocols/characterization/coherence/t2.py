@@ -4,7 +4,11 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import plotly.graph_objects as go
 from qibolab.platforms.abstract import AbstractPlatform
-from qibolab.platforms.platform import AcquisitionType, AveragingMode
+from qibolab.platforms.platform import (
+    AcquisitionType,
+    AveragingMode,
+    ExecutionParameters,
+)
 from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -87,10 +91,12 @@ def _acquisition(
         # execute the pulse sequence
         results = platform.execute_pulse_sequence(
             sequence,
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
         )
         for qubit, ro_pulse in ro_pulses.items():
             # average msr, phase, i and q over the number of shots defined in the runcard

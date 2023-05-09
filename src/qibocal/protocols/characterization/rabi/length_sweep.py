@@ -3,7 +3,11 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
-from qibolab.platforms.platform import AcquisitionType, AveragingMode
+from qibolab.platforms.platform import (
+    AcquisitionType,
+    AveragingMode,
+    ExecutionParameters,
+)
 from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
 
@@ -94,10 +98,12 @@ def _acquisition(
     results = platform.execute_pulse_sequence(
         sequence,
         sweeper,
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.INTEGRATION,
-        averaging_mode=AveragingMode.CYCLIC,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
+        ),
     )
 
     for qubit in qubits:
