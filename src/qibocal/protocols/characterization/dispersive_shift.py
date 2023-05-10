@@ -167,11 +167,7 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
             iq_couples[i].append(
                 np.stack((i_measures, q_measures, freq_measures), axis=-1)
             )
-            import matplotlib.pyplot as plt
-
-            plt.scatter(i_measures, q_measures)
-
-        results.append(StateResults(frequency, fitted_parameters))
+            results.append(StateResults(frequency, fitted_parameters))
 
     # for each qubit find the iq couple of 0-1 states that maximize the distance
 
