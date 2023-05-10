@@ -10,10 +10,13 @@ from qibocal.decorators import plot
 
 def calculate_probabilities(result1, result2):
     """Calculates two-qubit outcome probabilities from individual shots."""
-    shots = np.stack([result1.shots, result2.shots]).T
+    probs = {f"probability{v}": 0.0 for v in ["00", "01", "10", "11"]}
+    shots = np.stack([result1.shots, result2.shots]).T.astype(int)
     values, counts = np.unique(shots, axis=0, return_counts=True)
     nshots = np.sum(counts)
-    return {f"probability{v1}{v2}": c / nshots for (v1, v2), c in zip(values, counts)}
+    for (v1, v2), c in zip(values, counts):
+        probs[f"probability{v1}{v2}"] = c / nshots
+    return probs
 
 
 @plot("Measurement probabilities", plots.probabilities_bar_chart)
@@ -23,7 +26,6 @@ def state_tomography(
     qubits,
     sequence,
     nshots=1024,
-    relaxation_time=50000,
 ):
     """State tomography for two qubits.
 
@@ -51,10 +53,9 @@ def state_tomography(
                 # pulses given in the same row are played in parallel
                 - [["RX", 1]]
                 - [["RY90", 1], ["RY90", 2]]
-                - [["FluxPulse", 2, 30, 0.2782]]
+                - [["CZ", [1, 2]]]
                 - [["RY90", 1]]
             nshots: 50000
-            relaxation_time: 50000
 
     Args:
         platform (AbstractPlatform): Qibolab platform object
@@ -62,7 +63,6 @@ def state_tomography(
         sequence (list): List describing the pulse sequence to be used for state preperation.
             See example for more details.
         nshots (int): Number of shots to perform for each measurement.
-        relaxation_time (int): Time to wait (in ns) for the qubit to relax between each shot.
     """
     if len(qubits) != 2:
         raise NotImplementedError("Tomography is only implemented for two qubits.")
@@ -140,9 +140,7 @@ def state_tomography(
                 total_sequence.add(measure1)
                 total_sequence.add(measure2)
 
-                results = platform.execute_pulse_sequence(
-                    total_sequence, nshots=nshots, relaxation_time=relaxation_time
-                )
+                results = platform.execute_pulse_sequence(total_sequence, nshots=nshots)
 
                 # store the results
                 r = calculate_probabilities(
