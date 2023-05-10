@@ -201,7 +201,6 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
             "phase (rad)",
         ),
     )
-    fig2 = go.Figure()
     # iterate over multiple data folders
     qubit_data = data.df[data.df["qubit"] == qubit]
 
@@ -227,6 +226,7 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
     ):
         opacity = 1
         frequencies = q_data.df["frequency"].pint.to("GHz").pint.magnitude.unique()
+
         fig.add_trace(
             go.Scatter(
                 x=q_data.df["frequency"].pint.to("GHz").pint.magnitude,
@@ -272,65 +272,6 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
             col=1,
         )
 
-    fig2.add_trace(
-        go.Scatter(
-            x=data_0.df["i"].pint.to("V").pint.magnitude,
-            y=data_0.df["q"].pint.to("V").pint.magnitude,
-            name="Ground State",
-            legendgroup="Ground State",
-            mode="markers",
-            showlegend=True,
-            opacity=0.7,
-            marker=dict(size=5, color=get_color_state0(0)),
-        ),
-    )
-
-    fig2.add_trace(
-        go.Scatter(
-            x=data_1.df["i"].pint.to("V").pint.magnitude,
-            y=data_1.df["q"].pint.to("V").pint.magnitude,
-            name="Excited State",
-            legendgroup="Excited State",
-            mode="markers",
-            showlegend=True,
-            opacity=0.7,
-            marker=dict(size=5, color=get_color_state1(0)),
-        ),
-    )
-    fig2.add_trace(
-        go.Scatter(
-            x=[fit.best_iqs[qubit][0][0]],
-            y=[fit.best_iqs[qubit][0][1]],
-            name="Best Ground State",
-            legendgroup="Best Ground State",
-            mode="markers",
-            opacity=0.7,
-            marker=dict(size=10, color=get_color_state0(1)),
-        ),
-    )
-
-    fig2.add_trace(
-        go.Scatter(
-            x=[fit.best_iqs[qubit][1][0]],
-            y=[fit.best_iqs[qubit][1][1]],
-            name="Best Excited State",
-            legendgroup="Best Excited State",
-            mode="markers",
-            opacity=0.7,
-            marker=dict(size=10, symbol="cross", color=get_color_state0(1)),
-        ),
-    )
-    fig2.update_layout(
-        showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="i (V)",
-        yaxis_title="q (V)",
-        height=800,
-    )
-    fig2.update_yaxes(
-        scaleanchor="x",
-        scaleratio=1,
-    )
     fitting_report = fitting_report + (
         f"{qubit} | State zero freq : {fit_data_0.frequency[qubit]*1e9:,.0f} Hz.<br>"
     )
@@ -351,9 +292,20 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
         xaxis2_title="Frequency (GHz)",
         yaxis2_title="Phase (rad)",
     )
+    fig.add_shape(
+        type="line",
+        y0=np.min(qubit_data["MSR"].pint.to("uV").pint.magnitude),
+        y1=np.max(qubit_data["MSR"].pint.to("uV").pint.magnitude),
+        x0=fit.best_freq[qubit],
+        x1=fit.best_freq[qubit],
+        line=dict(color="RoyalBlue", width=3, line_dash="dash"),
+        xref="x",
+        yref="y",
+        row=1,
+        col=1,
+    )
 
     figures.append(fig)
-    figures.append(fig2)
 
     return figures, fitting_report
 
