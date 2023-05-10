@@ -581,7 +581,7 @@ def frequency_amplitude_msr_phase_cut(folder, routine, qubit, format):
 # Resonator spectroscopy flux
 def frequency_flux_msr_phase(folder, routine, qubit, format):
     figures = []
-    fitting_report = "No fitting data"
+    fitting_report = ""
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
@@ -596,6 +596,20 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
                 name=f"data",
                 quantities={"frequency": "Hz", "bias": "V"},
                 options=["qubit", "fluxline", "iteration"],
+            )
+
+        try:
+            data_fit = load_data(folder, subfolder, routine, format, "fits")
+            data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
+        except:
+            data_fit = Data(
+                quantities=[
+                    "popt0",
+                    "popt1",
+                    "popt2",
+                    "qubit",
+                    "fluxline",
+                ]
             )
 
         iterations = data.df["iteration"].unique()
@@ -633,6 +647,63 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
                     row=1 + report_n,
                     col=1 + fluxline_n,
                 )
+                if fluxline == qubit:
+                    fit_bias = fluxline_df["bias"].unique()
+                    p = data_fit.df[
+                        (data_fit.df["qubit"] == qubit)
+                        & (data_fit.df["fluxline"] == fluxline)
+                    ].to_dict(orient="records")[0]
+                    fit_frequency = (
+                        float(p["popt0"]) * fit_bias**2
+                        + float(p["popt1"]) * fit_bias
+                        + float(p["popt2"])
+                    )
+
+                    fig.add_trace(
+                        go.Scatter(
+                            x=fit_frequency,
+                            y=fit_bias,
+                            name=f"q{qubit}/r{report_n} Fit",
+                            line=go.scatter.Line(dash="dot"),
+                            marker_color="LightGrey",
+                        ),
+                        row=1 + report_n,
+                        col=1 + fluxline_n,
+                    )
+
+                    ss = -p["popt1"] / 2 / p["popt0"]
+                    ss_freq = -p["popt1"] ** 2 / 4 / p["popt0"] + p["popt2"]
+
+                    fig.add_trace(
+                        go.Scatter(
+                            x=[ss_freq],
+                            y=[ss],
+                            name=f"q{qubit}/r{report_n} sweet spot",
+                            mode="markers",
+                            marker=dict(
+                                size=5,
+                                color="LightGrey",
+                                symbol="circle",
+                            ),
+                        ),
+                        row=1 + report_n,
+                        col=1 + fluxline_n,
+                    )
+
+                    fitting_report += (
+                        f"q{qubit}/r{report_n} | sweetspot bias: {ss:,.4f} V<br>"
+                    )
+                    fitting_report += f"q{qubit}/r{report_n} | sweetspot frequency: {ss_freq:,.0f} Hz<br>"
+                    fitting_report += (
+                        f"q{qubit}/r{report_n} | p0: {p['popt0']:,.0f} Hz/V**2<br>"
+                    )
+                    fitting_report += (
+                        f"q{qubit}/r{report_n} | p1: {p['popt1']:,.0f} Hz/V<br>"
+                    )
+                    fitting_report += (
+                        f"q{qubit}/r{report_n} | p2: {p['popt2']:,.0f} Hz<br>"
+                    )
+
                 fig.update_xaxes(
                     title_text=f"q{qubit}/r{report_n}: Frequency (GHz)",
                     row=1 + report_n,
@@ -670,6 +741,62 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
                 row=1 + report_n,
                 col=1,
             )
+
+            fluxline = fluxlines[0]
+            if fluxline == qubit:
+                fit_bias = fluxline_df["bias"].unique()
+                p = data_fit.df[
+                    (data_fit.df["qubit"] == qubit)
+                    & (data_fit.df["fluxline"] == fluxline)
+                ].to_dict(orient="records")[0]
+                fit_frequency = (
+                    p["popt0"] * fit_bias**2 + p["popt1"] * fit_bias + p["popt2"]
+                )
+
+                fig.add_trace(
+                    go.Scatter(
+                        x=fit_frequency,
+                        y=fit_bias,
+                        name=f"q{qubit}/r{report_n} Fit",
+                        line=go.scatter.Line(dash="dot"),
+                        marker_color="LightGrey",
+                    ),
+                    row=1 + report_n,
+                    col=1,
+                )
+                ss = -p["popt1"] / 2 / p["popt0"]
+                ss_freq = -p["popt1"] ** 2 / 4 / p["popt0"] + p["popt2"]
+
+                fig.add_trace(
+                    go.Scatter(
+                        x=[ss_freq],
+                        y=[ss],
+                        name=f"q{qubit}/r{report_n} sweet spot",
+                        mode="markers",
+                        marker=dict(
+                            size=5,
+                            color="LightGrey",
+                            symbol="circle",
+                        ),
+                    ),
+                    row=1 + report_n,
+                    col=1,
+                )
+
+                fitting_report += (
+                    f"q{qubit}/r{report_n} | sweetspot bias: {ss:,.4f} V<br>"
+                )
+                fitting_report += (
+                    f"q{qubit}/r{report_n} | sweetspot frequency: {ss_freq:,.0f} Hz<br>"
+                )
+                fitting_report += (
+                    f"q{qubit}/r{report_n} | p0: {p['popt0']:,.0f} Hz/V**2<br>"
+                )
+                fitting_report += (
+                    f"q{qubit}/r{report_n} | p1: {p['popt1']:,.0f} Hz/V<br>"
+                )
+                fitting_report += f"q{qubit}/r{report_n} | p2: {p['popt2']:,.0f} Hz<br>"
+
             fig.update_xaxes(
                 title_text=f"q{qubit}/r{report_n}: Frequency (Hz)",
                 row=1 + report_n,
@@ -696,7 +823,7 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
         if len(fluxlines) > 0:
             fig.update_yaxes(title_text="Fluxline Bias (V)", row=1 + report_n, col=1)
             fig.update_layout(
-                showlegend=False,
+                showlegend=True,
                 uirevision="0",  # ``uirevision`` allows zooming while live plotting
             )
 
