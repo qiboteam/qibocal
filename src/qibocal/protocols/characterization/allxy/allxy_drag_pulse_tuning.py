@@ -62,6 +62,7 @@ def _acquisition(
 
     data = AllXYDragData()
 
+    count = 0
     # sweep the parameters
     for beta_param in np.arange(
         params.beta_start, params.beta_end, params.beta_step
@@ -73,7 +74,7 @@ def _acquisition(
             sequence = PulseSequence()
             for qubit in qubits:
                 sequence, ro_pulses[qubit] = allxy.add_gate_pair_pulses_to_sequence(
-                    platform, gates, qubit, beta_param, sequence
+                    platform, gates, qubit, sequence, beta_param
                 )
 
             # execute the pulse sequence
@@ -91,7 +92,6 @@ def _acquisition(
                 }
                 data.add(r)
             gateNumber += 1
-    # finally, save the remaining data
     return data
 
 
