@@ -141,7 +141,8 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
     """Post-Processing for dispersive shift"""
     qubits = data.df["qubit"].unique()
     results = []
-    iq_couples = [[], []]  # axis 0: states, axis 1: qubits
+    iq_couples = [[], []]  # axis 0: states, axis 1: qubit
+
     for i in range(2):
         frequency = {}
         fitted_parameters = {}
@@ -164,26 +165,25 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
                 .pint.magnitude.to_numpy()
             )
 
-            iq_couples[i].append(
-                np.stack((i_measures, q_measures, freq_measures), axis=-1)
-            )
+            iq_couples[i].append(np.stack((i_measures, q_measures), axis=-1))
             results.append(StateResults(frequency, fitted_parameters))
 
     # for each qubit find the iq couple of 0-1 states that maximize the distance
-
+    iq_couples = np.array(iq_couples)
     best_freqs = {}
     best_iqs = {}
     for qubit in qubits:
-        distances = []
-        for i in range(len(iq_couples[0][qubit])):
-            distances.append(
-                np.linalg.norm(
-                    iq_couples[0][qubit][i][:2] - iq_couples[1][qubit][i][:2]
-                )
-            )
-        max_index = np.argmax(distances)
-        best_freqs[qubit] = iq_couples[0][qubit][max_index][2]
-        best_iqs[qubit] = [iq_couples[k][qubit][max_index][:2] for k in range(2)]
+        frequencies = (
+            data.df[data.df["qubit"] == qubit]["frequency"]
+            .pint.to("GHz")
+            .pint.magnitude.unique()
+        )
+
+        max_index = np.argmax(
+            np.linalg.norm(iq_couples[0][qubit] - iq_couples[1][qubit], axis=-1)
+        )
+        best_freqs[qubit] = frequencies[max_index]
+        best_iqs[qubit] = iq_couples[:, qubit, max_index]
     return DispersiveShiftResults(
         results_0=results[0],
         results_1=results[1],
