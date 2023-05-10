@@ -42,7 +42,10 @@ class ActionParser:
         sig = inspect.signature(self.func)
         self.params = self.runcard["actions"][self.name]
         for param in list(sig.parameters)[2:-1]:
-            if param not in self.params:
+            if (
+                param not in self.params
+                and sig.parameters[param].default == inspect.Parameter.empty
+            ):
                 raise_error(AttributeError, f"Missing parameter {param} in runcard.")
 
     def execute(self, data_format, platform, qubits):
