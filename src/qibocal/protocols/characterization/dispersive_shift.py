@@ -159,11 +159,6 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
             q_measures = data_i.df[data_i.df["qubit"] == qubit][
                 "q"
             ].pint.magnitude.to_numpy()
-            freq_measures = (
-                data_i.df[data_i.df["qubit"] == qubit]["frequency"]
-                .pint.to("GHz")
-                .pint.magnitude.to_numpy()
-            )
 
             iq_couples[i].append(np.stack((i_measures, q_measures), axis=-1))
             results.append(StateResults(frequency, fitted_parameters))
