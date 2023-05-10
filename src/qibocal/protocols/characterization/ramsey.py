@@ -36,6 +36,8 @@ class RamseyResults(Results):
     """Drive frequency for each qubit."""
     t2: Dict[List[Tuple], str]
     """T2 for each qubit (ns)."""
+    t2_err: Dict[List[Tuple], str]
+    """T2 error for each qubit (ns)."""
     delta_phys: Dict[List[Tuple], str]
     """Drive frequency correction for each qubit."""
     fitted_parameters: Dict[List[Tuple], List]
@@ -172,14 +174,14 @@ def ramsey_fit(x, p0, p1, p2, p3, p4):
     #   DeltaFreq                    : p[2]
     #   Phase                        : p[3]
     #   Arbitrary parameter T_2      : 1/p[4]
-    return p0 + p1 * np.sin(x * p2 + p3) * np.exp(-x * p4)
+    return p0 + p1 * np.sin(x * p2 + p3) * np.exp(-x / p4)
 
 
 def _fit(data: RamseyData) -> RamseyResults:
     r"""
     Fitting routine for Ramsey experiment. The used model is
     .. math::
-        y = p_0 + p_1 sin \Big(p_2 x + p_3 \Big) e^{-x p_4}.
+        y = p_0 + p_1 sin \Big(p_2 x + p_3 \Big) e^{-x / p_4}.
     """
     qubits = data.df["qubit"].unique()
 
@@ -187,11 +189,12 @@ def _fit(data: RamseyData) -> RamseyResults:
     corrected_qubit_frequencies = {}
     freqs_detuing = {}
     fitted_parameters = {}
+    t2s_err = {}
 
     for qubit in qubits:
         qubit_data_df = data.df[data.df["qubit"] == qubit]
         voltages = qubit_data_df["MSR"].pint.to("uV").pint.magnitude
-        print(voltages)
+        errors = qubit_data_df["errors"]
         times = qubit_data_df["wait"].pint.to("ns").pint.magnitude
         qubit_freq = qubit_data_df["qubit_freqs"].pint.to("Hz").pint.magnitude.unique()
 
@@ -213,9 +216,9 @@ def _fit(data: RamseyData) -> RamseyResults:
                 0.5,
                 f,
                 0,
-                0,
+                0.5,
             ]
-            popt = curve_fit(
+            popt, pcov = curve_fit(
                 ramsey_fit,
                 x,
                 y,
@@ -225,34 +228,42 @@ def _fit(data: RamseyData) -> RamseyResults:
                     [0, 0, 0, -np.pi, 0],
                     [1, 1, np.inf, np.pi, np.inf],
                 ),
-            )[0]
+                sigma=np.array(errors, dtype=float) / (y_max - y_min),
+                # absolute_sigma=True
+            )
+            err_popt = np.sqrt(np.diag(pcov))
+            print("FFFFFF ", popt, pcov, err_popt)
             popt = [
                 (y_max - y_min) * popt[0] + y_min,
-                (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
+                (y_max - y_min) * popt[1] * np.exp(x_min / ((x_max - x_min) * popt[4])),
                 popt[2] / (x_max - x_min),
                 popt[3] - x_min * popt[2] / (x_max - x_min),
-                popt[4] / (x_max - x_min),
+                popt[4] * (x_max - x_min),
             ]
             delta_fitting = popt[2] / (2 * np.pi)
             # FIXME: check this formula
             delta_phys = +int((delta_fitting - data.n_osc / data.t_max) * 1e9)
             corrected_qubit_frequency = int(qubit_freq + delta_phys)
-            t2 = 1.0 / popt[4]
-
+            t2 = popt[4]
+            print("HHHHHH", t2, err_popt)
+            t2_error = err_popt[4] * (x_max - x_min)
+            print("GGGGGG ", t2_error)
         except Exception as e:
             log.warning(f"ramsey_fit: the fitting was not succesful. {e}")
             popt = [0] * 5
             t2 = 5.0
             corrected_qubit_frequency = int(qubit_freq)
             delta_phys = 0
+            t2_error = 0
 
         fitted_parameters[qubit] = popt
         corrected_qubit_frequencies[qubit] = corrected_qubit_frequency / 1e9
         t2s[qubit] = t2
+        t2s_err[qubit] = t2_error
         freqs_detuing[qubit] = delta_phys
 
     return RamseyResults(
-        corrected_qubit_frequencies, t2s, freqs_detuing, fitted_parameters
+        corrected_qubit_frequencies, t2s, t2s_err, freqs_detuing, fitted_parameters
     )
 
 
@@ -311,7 +322,9 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
             fitting_report
             + (f"{qubit} | delta_frequency: {fit.delta_phys[qubit]:,.1f} Hz<br>")
             + (f"{qubit} | drive_frequency: {fit.frequency[qubit] * 1e9} Hz<br>")
-            + (f"{qubit} | T2: {fit.t2[qubit]:,.0f} ns.<br><br>")
+            + (
+                f"{qubit} | T2: {fit.t2[qubit]:,.0f} {chr(177)} {fit.t2_err[qubit]:,.0f} ns.<br><br>"
+            )
         )
 
     fig.update_layout(
