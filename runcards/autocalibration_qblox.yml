@@ -1,6 +1,6 @@
 platform: qw5q_gold_qblox
 
-qubits: [0, 1, 2, 3, 4]
+qubits: [1, 2]
 
 format: csv
 
@@ -9,53 +9,53 @@ actions:
   # - id: resonator_spectroscopy high power
   #   priority: 0
   #   operation: resonator_spectroscopy
-  #   main: resonator punchout
+  #   main: resonator_punchout_attenuation
   #   parameters:
-  #     freq_width: 10_000_000
-  #     freq_step: 500_000
-  #     amplitude: 0.4
+  #     freq_width: 7_000_000
+  #     freq_step: 200_000
+  #     # amplitude: 0.4
   #     power_level: high
-  #     nshots: 1024
-  #     relaxation_time: 0
+  #     nshots: 4000
+  #     relaxation_time: 2000
 
-  # - id: resonator punchout
-  #   priority: 10
-  #   operation: resonator_punchout
-  #   #main: resonator_spectroscopy low power
-  #   parameters:
-  #     freq_width: 5_000_000
-  #     freq_step: 1_000_000
-  #     min_amp_factor: 0.02
-  #     max_amp_factor: 2.4
-  #     step_amp_factor: 0.1
-  #     nshots: 1
-  #     relaxation_time: 50
+  # # - id: resonator punchout
+  # #   priority: 10
+  # #   operation: resonator_punchout
+  # #   #main: resonator_spectroscopy low power
+  # #   parameters:
+  # #     freq_width: 5_000_000
+  # #     freq_step: 1_000_000
+  # #     min_amp_factor: 0.02
+  # #     max_amp_factor: 2.4
+  # #     step_amp_factor: 0.1
+  # #     nshots: 1024
+  # #     relaxation_time: 2000
 
   # - id: resonator_punchout_attenuation
-  #   priority: 0
+  #   priority: 10
   #   operation: resonator_punchout_attenuation
-  #   # main: resonator_spectroscopy low power
-  #   next: resonator_punchout
+  #   main: resonator_spectroscopy low power
+  #   # next: resonator_punchout
   #   parameters:
-  #     freq_width: 10_000_000
-  #     freq_step: 500_000
-  #     min_att: 4
-  #     max_att: 60
-  #     step_att: 4
-  #     nshots: 1000
-  #     relaxation_time: 0
+  #     freq_width: 6_500_000
+  #     freq_step: 100_000
+  #     min_att: 2
+  #     max_att: 50
+  #     step_att: 2
+  #     nshots: 4000
+  #     relaxation_time: 2000
 
   # - id: resonator spectroscopy low power
-  #   priority: 0
+  #   priority: 20
   #   operation: resonator_spectroscopy
-  #   #main: qubit_spectroscopy
+  #   main: qubit_spectroscopy
   #   parameters:
-  #     freq_width: 10_000_000
-  #     freq_step: 1_000_000
-  #     amplitude: 0.2
+  #     freq_width: 7_000_000
+  #     freq_step: 200_000
+  #     # amplitude: 0.2
   #     power_level: low
-  #     nshots: 1024
-  #     relaxation_time: 50
+  #     nshots: 4000
+  #     relaxation_time: 2000
 
   # - id: resonator flux dependence
   #   priority: 0
@@ -69,17 +69,17 @@ actions:
   #     nshots: 1024
   #     relaxation_time: 0
 
-  # - id: qubit spectroscopy
-  #   priority: 0
-  #   operation: qubit_spectroscopy
-  #   # next: rabi
-  #   parameters:
-  #     drive_amplitude: 0.005
-  #     drive_duration: 2000
-  #     freq_width: 10_000_000
-  #     freq_step: 100_000
-  #     nshots: 1024
-  #     relaxation_time: 0
+  - id: qubit spectroscopy
+    priority: 0 #30
+    operation: qubit_spectroscopy
+    # next: rabi
+    parameters:
+      drive_amplitude: 0.5
+      drive_duration: 2000
+      freq_width: 5_000_000
+      freq_step: 300_000
+      nshots: 4000
+      relaxation_time: 2000
 
   # - id: qubit flux dependence
   #   priority: 0
@@ -137,15 +137,15 @@ actions:
   #     delay_between_pulses_step: 4 # must be a multiple of 4
   #     n_osc: 10
 
-  - id: ramsey detuned
-    priority: 0
-    operation: ramsey
-    #main: single shot classification
-    parameters:
-      n_osc: 0
-      delay_between_pulses_start: 4 # must be a multiple of 4 incl 0
-      delay_between_pulses_end: 200
-      delay_between_pulses_step: 4 # must be a multiple of 4
+  # - id: ramsey detuned
+  #   priority: 0
+  #   operation: ramsey
+  #   #main: single shot classification
+  #   parameters:
+  #     n_osc: 0
+  #     delay_between_pulses_start: 4 # must be a multiple of 4 incl 0
+  #     delay_between_pulses_end: 200
+  #     delay_between_pulses_step: 4 # must be a multiple of 4
 
   # - id: single shot classification
   #   priority: 0
