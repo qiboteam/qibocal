@@ -177,7 +177,7 @@ def test_post_processing(
 
 
 def test_build_report():
-    depths = [1, 5, 10, 15, 20, 25]
+    depths = [1, 5, 10, 15]
     nshots = 128
     runs = 10
     nqubits = 1

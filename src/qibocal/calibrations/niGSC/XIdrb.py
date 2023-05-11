@@ -74,7 +74,7 @@ class ModuleExperiment(Experiment):
     def execute(self, circuit: Circuit, datarow: dict) -> dict:
         datadict = super().execute(circuit, datarow)
         datadict["depth"] = circuit.ngates - 1
-        # TODO change to circuit.gate_types["x"] for next Qibo version
+        # TODO change that.
         datadict["countX"] = len(circuit.gates_of_type("x"))
         return datadict
 
