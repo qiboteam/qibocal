@@ -140,8 +140,8 @@ def _acquisition(
     data = ResonatorSpectroscopyData(
         platform.resonator_type,
         params.power_level,
-        amplitudes, #params.amplitude,
-        attenuations, #params.attenuation,
+        amplitudes,
+        attenuations,
     )
     results = platform.sweep(
         sequence,
