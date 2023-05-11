@@ -38,7 +38,7 @@ def test_execution(card: pathlib.Path):
     """
     testcard = TestCard(**yaml.safe_load(card.read_text(encoding="utf-8")))
     executor = Executor.load(
-        pydantic_encoder(testcard.runcard), folder=pathlib.Path(tempfile.mkdtemp())
+        pydantic_encoder(testcard.runcard), output=pathlib.Path(tempfile.mkdtemp())
     )
     executor.run()
 
