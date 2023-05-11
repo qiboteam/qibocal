@@ -1055,8 +1055,8 @@ def calibrate_qubit_states_fit(data, x, y, nshots, qubits, degree=True):
         )
         argmax = np.argmax(cum_distribution_diff)
         threshold = real_values_combined[argmax]
-        errors_state1 = nshots - cum_distribution_state1[argmax]
-        errors_state0 = cum_distribution_state0[argmax]
+        errors_state1 = cum_distribution_state1[argmax]
+        errors_state0 = nshots - cum_distribution_state0[argmax]
         fidelity = cum_distribution_diff[argmax] / nshots
         assignment_fidelity = 1 - (errors_state1 + errors_state0) / nshots / 2
         # assignment_fidelity = 1/2 + (cum_distribution_state1[argmax] - cum_distribution_state0[argmax])/nshots/2
