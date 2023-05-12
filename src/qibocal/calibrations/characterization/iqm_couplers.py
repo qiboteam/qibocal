@@ -18,7 +18,6 @@ def coupler_spectroscopy(
     frequency_width,
     frequency_step,
     coupler_drive_duration,
-    qubit_drive_duration,
     coupler_drive_amplitude=None,
     qubit_drive_amplitude=None,
     nshots=1024,
@@ -70,16 +69,17 @@ def coupler_spectroscopy(
     qd_pulses = {}
     cd_pulses = {}
     # for qubit in qubits:
-
-    qubit_drive = qubits[4].name
-    qubit_readout = qubits[2].name  # Make general
+    qubit_drive = platform.qubits[qubits[0].name].name
+    qubit_readout = platform.qubits[2].name  # Make general
 
     cd_pulses[qubit_drive] = platform.create_qubit_drive_pulse(
         qubit_drive, start=0, duration=coupler_drive_duration
     )
 
-    qubits[4].drive.local_oscillator.frequency = coupler_frequency - 100_000_000
-    qubits[4].drive_frequency = coupler_frequency
+    platform.qubits[qubits[0].name].drive.local_oscillator.frequency = (
+        coupler_frequency - 100_000_000
+    )
+    platform.qubits[qubits[0].name].drive_frequency = coupler_frequency
     cd_pulses[qubit_drive].frequency = coupler_frequency
 
     if coupler_drive_amplitude is not None:
@@ -88,7 +88,7 @@ def coupler_spectroscopy(
     qd_pulses[qubit_readout] = platform.create_qubit_drive_pulse(
         qubit_readout,
         start=0,
-        duration=qubit_drive_duration,
+        duration=coupler_drive_duration,
     )
 
     if qubit_drive_amplitude is not None:
@@ -225,16 +225,16 @@ def coupler_spectroscopy_double_freq(
 
     # FIXME: Frequency results may be wrong
 
-    qubit_drive = qubits[4].name
+    qubit_drive = platform.qubits[qubits[0]].name
     # qubit_drive = qubits[0].name
-    qubit_readout = qubits[2].name  # Make general
+    qubit_readout = platform.qubits[2].name  # Make general
 
     cd_pulses[qubit_drive] = platform.create_qubit_drive_pulse(
         qubit_drive, start=0, duration=coupler_drive_duration
     )
 
-    qubits[4].drive.local_oscillator.frequency = coupler_frequency
-    qubits[4].drive_frequency = coupler_frequency
+    platform.qubits[qubits[0]].drive.local_oscillator.frequency = coupler_frequency
+    platform.qubits[qubits[0]].drive_frequency = coupler_frequency
     cd_pulses[qubit_drive].frequency = coupler_frequency
 
     if coupler_drive_amplitude is not None:
@@ -449,8 +449,8 @@ def coupler_spectroscopy_flux(
     cd_pulses = {}
     # for qubit in qubits:
 
-    qubit_drive = qubits[4].name
-    qubit_readout = qubits[2].name  # Make general
+    qubit_drive = platform.qubits[qubits[0].name].name
+    qubit_readout = platform.qubits[2].name  # Make general
 
     qd_pulses[qubit_readout] = platform.create_qubit_drive_pulse(
         qubit_readout, start=0, duration=qubit_drive_duration
@@ -463,8 +463,8 @@ def coupler_spectroscopy_flux(
         qubit_drive, start=0, duration=coupler_drive_duration
     )
 
-    qubits[4].drive.local_oscillator.frequency = coupler_frequency
-    qubits[4].drive_frequency = coupler_frequency
+    platform.qubits[qubits[0].name].drive.local_oscillator.frequency = coupler_frequency
+    platform.qubits[qubits[0].name].drive_frequency = coupler_frequency
     cd_pulses[qubit_drive].frequency = coupler_frequency
 
     if coupler_drive_amplitude is not None:
@@ -489,12 +489,12 @@ def coupler_spectroscopy_flux(
         pulses=[cd_pulses[qubit_drive]],
     )
 
-    if coupler_line == "qubits":
-        fluxlines = qubits
-    if coupler_line == "c4":
-        fluxlines = {}
-        fluxlines[0] = qubits["c4"]
-        sweetspot = coupler_sweetspot
+    # if coupler_line == "qubits":
+    #     fluxlines = qubits
+    # if coupler_line == f"c{qubits[0].name}":
+    fluxlines = {}
+    fluxlines[0] = platform.qubits[f"c{qubits[0].name}"]
+    sweetspot = coupler_sweetspot
 
     # flux bias
     delta_bias_range = np.arange(-bias_width / 2, bias_width / 2, bias_step) + sweetspot
@@ -538,14 +538,14 @@ def coupler_spectroscopy_flux(
         len(delta_bias_range),
     )
 
-    r = {k: v.ravel() for k, v in result.to_dict(average=False).items()}
+    r = {k: v.ravel() for k, v in result.raw.items()}
     # store the results
     r.update(
         {
             "frequency[Hz]": freqs,
             "bias[dimensionless]": biases,
             "qubit": len(freqs) * [qubit_readout],
-            "fluxline": len(freqs) * [coupler_line],
+            "fluxline": len(freqs) * ["c0"],
             "iteration": len(freqs) * [iteration],
         }
     )

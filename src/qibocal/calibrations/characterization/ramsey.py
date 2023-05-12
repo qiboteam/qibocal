@@ -227,19 +227,22 @@ def ramsey_frequency_detuned(
     )
 
 
-@plot("MSR vs Time", plots.time_msr)
+@plot("MSR vs Time", plots.time_msr_prob)
 def ramsey(
     platform: AbstractPlatform,
     qubits: dict,
     delay_between_pulses_start,
     delay_between_pulses_end,
     delay_between_pulses_step,
+    nshots=1024,
+    relaxation_time=None,
     software_averages=1,
-    points=10,
 ):
     r"""
     The purpose of the Ramsey experiment is to determine two of the qubit's properties: Ramsey or detuning frequency and T2.
+
     Ramsey sequence: Rx(pi/2) - wait time - Rx(pi/2) - ReadOut
+
     Args:
         platform (AbstractPlatform): Qibolab platform object
         qubits (dict): Dict of target Qubit objects to perform the action
@@ -248,8 +251,10 @@ def ramsey(
         delay_between_pulses_step (int): Scan range step for the time delay between drive pulses in the Ramsey sequence
         software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
+
     Returns:
         - A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
+
             - **MSR[V]**: Resonator signal voltage mesurement in volts
             - **i[V]**: Resonator signal voltage mesurement for the component I in volts
             - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
@@ -258,7 +263,9 @@ def ramsey(
             - **t_max[ns]**: Maximum time delay between drive pulses in the Ramsey sequence
             - **qubit**: The qubit being tested
             - **iteration**: The iteration number of the many determined by software_averages
+
         - A DataUnits object with the fitted data obtained with the following keys
+
             - **delta_frequency**: Physical detunning of the actual qubit frequency
             - **drive_frequency**:
             - **T2**: New qubit frequency after correcting the actual qubit frequency with the detunning calculated
@@ -282,7 +289,7 @@ def ramsey(
     for qubit in qubits:
         RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
         RX90_pulses2[qubit] = platform.create_RX90_pulse(
-            qubit, start=RX90_pulses1[qubit].finish
+            qubit, start=RX90_pulses1[qubit].finish, relative_phase=np.pi / 2
         )
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=RX90_pulses2[qubit].finish
@@ -306,74 +313,39 @@ def ramsey(
     # additionally include wait time and t_max
     data = DataUnits(
         name=f"data",
-        quantities={"wait": "ns", "t_max": "ns"},
-        options=["qubit", "iteration"],
+        quantities={"wait": "ns"},
+        options=["qubit", "iteration", "probability"],
+    )
+
+    sweeper = Sweeper(
+        Parameter.delay,
+        waits,
+        [RX90_pulses2[qubit] for qubit in qubits],
     )
 
     # repeat the experiment as many times as defined by software_averages
-    count = 0
     for iteration in range(software_averages):
         # sweep the parameter
-        for wait in waits:
-            # save data as often as defined by points
-            if count % points == 0 and count > 0:
-                # save data
-                yield data
-                # calculate and save fit
-                yield ramsey_fit(
-                    data,
-                    x="wait[ns]",
-                    y="MSR[uV]",
-                    qubits=qubits,
-                    resonator_type=platform.resonator_type,
-                    qubit_freqs={
-                        qubit: qubits[qubit].drive_frequency for qubit in qubits
-                    },
-                    sampling_rate=sampling_rate,
-                    offset_freq=0,
-                    labels=[
-                        "delta_frequency",
-                        "drive_frequency",
-                        "T2",
-                    ],
-                )
-
-            for qubit in qubits:
-                RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
-                ro_pulses[qubit].start = RX90_pulses2[qubit].finish
-
-            # execute the pulse sequence
-            results = platform.execute_pulse_sequence(sequence)
-
-            for ro_pulse in ro_pulses.values():
-                # average msr, phase, i and q over the number of shots defined in the runcard
-                r = results[ro_pulse.serial].average.raw
-                r.update(
-                    {
-                        "wait[ns]": wait,
-                        "t_max[ns]": delay_between_pulses_end,
-                        "qubit": ro_pulse.qubit,
-                        "iteration": iteration,
-                    }
-                )
-                data.add(r)
-            count += 1
-    yield data
-    yield ramsey_fit(
-        data,
-        x="wait[ns]",
-        y="MSR[uV]",
-        qubits=qubits,
-        resonator_type=platform.resonator_type,
-        qubit_freqs={qubit: qubits[qubit].drive_frequency for qubit in qubits},
-        sampling_rate=sampling_rate,
-        offset_freq=0,
-        labels=[
-            "delta_frequency",
-            "drive_frequency",
-            "T2",
-        ],
-    )
+        results = platform.sweep(
+            sequence,
+            sweeper,
+            nshots=nshots,
+            relaxation_time=relaxation_time,
+            acquisition_type=AcquisitionType.DISCRIMINATION,
+            averaging_mode=AveragingMode.CYCLIC,
+        )
+        for qubit in qubits:
+            result = results[ro_pulses[qubit].serial].raw
+            r = {k: np.mean(result[k], axis=0) for k in result}
+            r.update(
+                {
+                    "wait[ns]": waits,
+                    "qubit": len(waits) * [qubit],
+                    "iteration": len(waits) * [iteration],
+                }
+            )
+            data.add_data_from_dict(r)
+        yield data
 
 
 @plot("MSR vs Time", plots.time_msr)
@@ -565,7 +537,7 @@ def ramsey_frequency_detuned_sweep(
     )
 
 
-@plot("MSR vs Time", plots.time_msr)
+@plot("MSR vs Time", plots.time_msr_prob)
 def ramsey_sweep(
     platform: AbstractPlatform,
     qubits: dict,
@@ -621,7 +593,7 @@ def ramsey_sweep(
     for qubit in qubits:
         RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
         RX90_pulses2[qubit] = platform.create_RX90_pulse(
-            qubit, start=RX90_pulses1[qubit].finish
+            qubit, start=RX90_pulses1[qubit].finish, relative_phase=np.pi / 2
         )
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=RX90_pulses2[qubit].finish
@@ -668,7 +640,7 @@ def ramsey_sweep(
         )
         for qubit in qubits:
             result = results[ro_pulses[qubit].serial]
-            r = result.to_dict(average=False)
+            r = result.raw
             r.update(
                 {
                     "wait[ns]": waits,

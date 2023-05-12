@@ -712,7 +712,6 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
 def coupler_frequency_flux_msr_phase(folder, routine, qubit, format):
     figures = []
     fitting_report = "No fitting data"
-    qubit = [2]
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
 
@@ -720,7 +719,7 @@ def coupler_frequency_flux_msr_phase(folder, routine, qubit, format):
     for subfolder in subfolders:
         try:
             data = DataUnits.load_data(folder, subfolder, routine, format, f"data")
-            # data.df = data.df[data.df["qubit"] == qubit]
+            # data.df = data.df[data.df["qubit"] == 2]
         except:
             data = DataUnits(
                 name=f"data",
@@ -732,7 +731,7 @@ def coupler_frequency_flux_msr_phase(folder, routine, qubit, format):
         fluxlines = data.df["fluxline"].unique()
         print(fluxlines)
         fluxlines = [2]
-        fluxlines = ["c4"]
+        fluxlines = [f"c{qubit}"]
         frequencies = data.df["frequency"].pint.to("Hz").pint.magnitude.unique()
         bias = data.df["bias"].pint.to("dimensionless").pint.magnitude.unique()
 
@@ -768,7 +767,7 @@ def coupler_frequency_flux_msr_phase(folder, routine, qubit, format):
                     col=1 + fluxline_n,
                 )
                 fig.update_xaxes(
-                    title_text=f"q{qubit}/r{report_n}: Frequency (GHz)",
+                    title_text=f"q{2}/r{report_n}: Frequency (GHz)",
                     row=1 + report_n,
                     col=1 + fluxline_n,
                 )
@@ -805,7 +804,7 @@ def coupler_frequency_flux_msr_phase(folder, routine, qubit, format):
                 col=1,
             )
             fig.update_xaxes(
-                title_text=f"q{qubit}/r{report_n}: Frequency (Hz)",
+                title_text=f"q{2}/r{report_n}: Frequency (Hz)",
                 row=1 + report_n,
                 col=1,
             )
@@ -821,7 +820,7 @@ def coupler_frequency_flux_msr_phase(folder, routine, qubit, format):
                 col=2,
             )
             fig.update_xaxes(
-                title_text=f"q{qubit}/r{report_n}: Frequency (Hz)",
+                title_text=f"q{2}/r{report_n}: Frequency (Hz)",
                 row=1 + report_n,
                 col=2,
             )
@@ -847,7 +846,7 @@ def coupler_frequency_msr_phase(folder, routine, qubit, format):
     figures = []
 
     fitting_report = ""
-    qubit = [4]
+    qubit = [0]
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
@@ -930,7 +929,6 @@ def coupler_frequency_msr_phase(folder, routine, qubit, format):
 def coupler_frequencies_msr_phase(folder, routine, qubit, format):
     figures = []
     fitting_report = "No fitting data"
-    qubit = [4]
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)
