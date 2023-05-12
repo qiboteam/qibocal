@@ -1,0 +1,244 @@
+format: csv
+platform: iqm5q
+
+#Checks phases so check if they are ok
+# qubits: [0,1,2,3,4]
+qubits: [4]
+# qubits: [4,2,"c4"] #For Coupler 4
+# qubits: [0,2,"c0"] #For Coupler 0
+
+format: csv
+
+# acquisition_type=self.acquisition_type,by default (Chooses Spectroscopy or Integration correctly)
+# averaging_mode=lo.AveragingMode.CYCLIC by default
+
+#In seconds by default
+
+actions:
+
+  # time_of_flight:
+  #   nshots: 1024
+  #   relaxation_time: 10.0e-6
+
+  # resonator_spectroscopy:
+  #  freq_width: 200_000_000
+  #  freq_step: 2_000_000
+  #  nshots: 1024
+  #  relaxation_time: 3.0e-6
+  #  software_averages: 1
+
+  # Make resonator peaks slim
+  # resonator_spectroscopy:
+  #  fast_width: 100_000_000
+  #  fast_step: 1_000_000
+  #  precision_width: 5_000_000
+  #  precision_step: 500_000
+  #  nshots: 1024
+  #  relaxation_time: 30.0e-6
+  #  software_averages: 1
+
+  # resonator_punchout:
+  #  freq_width: 200_000_000
+  #  freq_step: 2_000_000
+  #  min_amp_factor: 0.1
+  #  max_amp_factor: 1
+  #  step_amp_factor: 0.05
+  #  nshots: 1024
+  #  relaxation_time: 1.0e-6
+  #  software_averages: 1
+
+  # resonator_spectroscopy_flux:
+  #  freq_width: 300_000_000
+  #  freq_step: 1_000_000
+  #  bias_width: 2
+  #  bias_step:  0.05
+  #  fluxlines: 2 #qubits
+  #  relaxation_time: 3.e-6
+  #  nshots: 1000
+  #  software_averages: 1
+
+  # qubit_spectroscopy:
+  #  drive_amplitude: .3 #.3
+  #  drive_duration: 750 #750
+  #  freq_width: 200_000_000 #600_000_000
+  #  freq_step: 500_000 #1_000_000
+  #  nshots: 1024
+  #  relaxation_time: 3.0e-6
+  #  software_averages: 1
+
+  # qubit_spectroscopy_flux:
+  #  drive_amplitude: 0.3
+  #  freq_width: 200_000_000
+  #  freq_step: 250_000 #3_000_000
+  #  bias_width: 0.3
+  #  bias_step:  0.02
+  #  fluxlines: 2 # "qubits"
+  #  nshots: 1000
+  #  relaxation_time: 5.e-6
+  #  software_averages: 1
+
+  # rabi_pulse_amplitude:
+  #  pulse_amplitude_start: 0.0
+  #  pulse_amplitude_end: .5
+  #  pulse_amplitude_step: 0.03
+  #  software_averages: 1
+  #  relaxation_time: 300.0e-6
+  #  nshots: 1024
+
+  # rabi_pulse_length:
+  #  pulse_duration_start: 20.0 # minimum 16ns or the zh baking will do stuff I havent checked
+  #  pulse_duration_end: 150.0
+  #  pulse_duration_step: 5.0
+  #  software_averages: 1
+  #  relaxation_time: 300.0e-6
+  #  nshots: 1024
+
+  # flipping:
+  #   nflips_max: 10
+  #   nflips_step: 2
+  #   nshots: 1024
+  #   relaxation_time: 300.0e-6
+  #   software_averages: 1
+
+# Play together for state 0 and 1 visualization
+  # time_of_flight:
+  #   nshots: 1024
+  #   relaxation_time: 300.0e-6
+
+  # integration_weights_optimization:
+  #   nshots: 8192
+  #   relaxation_time: 300.0e-6
+
+# # In nanoseconds
+  # t1:
+  #  delay_before_readout_start: 100
+  #  delay_before_readout_end: 100_000
+  #  delay_before_readout_step: 1000
+  #  nshots: 1024
+  #  relaxation_time: 300.0e-6
+  #  software_averages: 1
+
+# # # In nanoseconds
+  # ramsey:
+  #  delay_between_pulses_start: 0
+  #  delay_between_pulses_end: 30_000
+  #  delay_between_pulses_step: 1_000
+  #  nshots: 1024
+  #  relaxation_time: 300.0e-6
+  #  software_averages: 1
+
+  # calibrate_qubit_states:
+  #  nshots: 2500
+  #  relaxation_time: 300.0e-6
+
+  # no_fast_reset_MSR:
+  #   nshots: 5000
+  #   fast_reset: True #If True errors are the state 1, if false errors are the state 0
+  #   relaxation_time: 300.0e-9
+
+  # fast_reset_MSR:
+  #   nshots: 5000
+  #   fast_reset: True #If True errors are the state 1, if false errors are the state 0
+  #   relaxation_time: 3.0e-9
+
+  # allXY:
+  #  beta_param: null
+  #  software_averages: 1
+  #  points: 5
+
+  # allXY_drag_pulse_tuning:
+  #  beta_start: 0.00
+  #  beta_end: 0.03
+  #  beta_step: 0.01
+  #  software_averages: 1
+  #  points: 10
+
+########## Fix ##########
+
+#Fix 2 sweeps on a single pulse
+  # rabi_pulse_length_and_amplitude:
+  #   pulse_duration_start: 32 # minimum 16ns
+  #   pulse_duration_end: 200
+  #   pulse_duration_step: 10
+  #   pulse_amplitude_start: 0.1 # -1.0<= amplitude <=1.0
+  #   pulse_amplitude_end: 1
+  #   pulse_amplitude_step: 0.1
+  #   nshots: 1024
+  #   relaxation_time: 30.0e-6
+  #   software_averages: 1
+
+
+########## 2Q ##########
+
+# Give the qubit that is going to recieve the drive
+# [0,1,3,4]
+  # coupler_spectroscopy:
+  #   coupler_frequency: 4_050_000_000
+  #   frequency_width: 200_000_000
+  #   frequency_step: 250_000
+  #   coupler_drive_duration: 16000 #qubit drive ( + RO)
+  #   qubit_drive_duration: 15000
+  #   coupler_drive_amplitude: .4 #0.54 pi
+  #   qubit_drive_amplitude: 0.03
+  #   nshots: 1000
+  #   relaxation_time: 5.0e-6
+
+  # Give the qubit that is going to recieve the drive
+# [0,1,3,4]
+  # coupler_spectroscopy_flux:
+  #   coupler_frequency: 3_950_000_000
+  #   coupler_sweetspot: 0.0
+  #   frequency_width: 100_000_000
+  #   frequency_step: 250_000
+  #   coupler_drive_duration: 100 #qubit drive ( + RO)
+  #   qubit_drive_duration: 90
+  #   coupler_drive_amplitude: .7 #0.54 pi
+  #   qubit_drive_amplitude: 0.3
+  #   bias_width: 0.4
+  #   bias_step:  0.1
+  #   coupler_line: "c4"
+  #   nshots: 10000
+  #   relaxation_time: 5.0e-6
+
+  # coupler_spectroscopy_double_freq:
+  #   coupler_frequency: 4_050_000_000
+  #   frequency_coupler_width: 200_000_000
+  #   frequency_coupler_step: 250_000
+  #   frequency_drive_width: 3_000_000
+  #   frequency_drive_step: 125_000 #125_000
+  #   coupler_drive_duration: 16000 #qubit drive ( + RO)
+  #   qubit_drive_duration: 15000
+  #   coupler_drive_amplitude: 1
+  #   qubit_drive_amplitude: .03
+  #   nshots: 1024
+  #   relaxation_time: 5.0e-6
+
+########## NOT TESTED ##########
+
+  # drag_pulse_tuning:
+  #  beta_start: -0.1
+  #  beta_end: 0.1
+  #  beta_step: 0.01
+  #  software_averages: 5
+  #  points: 2
+
+  # ramsey_frequency_detuned:
+  #   delay_between_pulses_start: 4
+  #   delay_between_pulses_end: [1000, 2000] #t_end (optimal) = 3.5 * T2
+  #   delay_between_pulses_step: 32
+  #   n_osc: 4
+  #   software_averages: 1
+  #   points: 1
+
+  # dispersive_shift:
+  #   freq_width: 10_000_000
+  #   freq_step: 400_000
+  #   software_averages: 1
+  #   points: 5
+
+  # spin_echo_3pulses:
+  #   delay_between_pulses_start: 4
+  #   delay_between_pulses_end: 10000
+  #   delay_between_pulses_step: 200
+  #   software_averages: 2
+  #   points: 5
