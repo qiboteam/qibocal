@@ -323,8 +323,8 @@ def _plot(
 
     fitting_report = (
         fitting_report
-        + f"{qubit} | Average Ground State: {fit.mean_gnd_state[qubit]:.4f} <br>"
-        + f"{qubit} | Average Excited State: {fit.mean_exc_state[qubit]:.4f} <br>"
+        + f"{qubit} | Average Ground State: {fit.mean_gnd_states[qubit]:.4f} <br>"
+        + f"{qubit} | Average Excited State: {fit.mean_exc_states[qubit]:.4f} <br>"
         + f"{qubit} | Rotation Angle: {fit.rotation_angle[qubit]:.3f} rad <br>"
         + f"{qubit} | Threshold: {fit.threshold[qubit]:.4f} <br>"
         + f"{qubit} | Fidelity: {fit.fidelity[qubit]:.3f} <br>"
