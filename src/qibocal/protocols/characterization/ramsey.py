@@ -6,7 +6,6 @@ import plotly.graph_objects as go
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
-from scipy.stats import chisquare
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.config import log
@@ -130,6 +129,8 @@ def _acquisition(
             # average msr, phase, i and q over the number of shots defined in the runcard
             r = results[ro_pulse.serial].average.raw
             msr_raw = results[ro_pulse.serial].raw["MSR[V]"] * 1e6
+            # TODO: remove plotting lines
+            print(results[ro_pulse.serial].raw.keys(), len(msr_raw))
             if wait % 10 == 0:
                 ax1.scatter(
                     [wait] * len(msr_raw), msr_raw, s=1, color=f"C{int(wait/10)}"
@@ -150,6 +151,7 @@ def _acquisition(
                         color=f"C{int(wait/10)}",
                     )
             error = np.std(msr_raw) / np.sqrt(len(msr_raw))
+            # print(error)
             r.update(
                 {
                     "wait[ns]": wait,
@@ -161,6 +163,7 @@ def _acquisition(
             data.add_data_from_dict(r)
 
     plt.savefig("ramsey.pdf")
+    # print(data.df["errors"])
     return data
 
 
@@ -228,8 +231,8 @@ def _fit(data: RamseyData) -> RamseyResults:
                 sigma=np.array(errors, dtype=float) / (y_max - y_min),
                 # absolute_sigma=True
             )
-            print(chisquare(y, ramsey_fit(x, *popt)))
             err_popt = np.sqrt(np.diag(pcov))
+            print("FFFFFF ", popt, pcov, err_popt)
             popt = [
                 (y_max - y_min) * popt[0] + y_min,
                 (y_max - y_min) * popt[1] * np.exp(x_min / ((x_max - x_min) * popt[4])),
@@ -240,10 +243,11 @@ def _fit(data: RamseyData) -> RamseyResults:
             delta_fitting = popt[2] / (2 * np.pi)
             # FIXME: check this formula
             delta_phys = +int((delta_fitting - data.n_osc / data.t_max) * 1e9)
-            err_delta_phys = err_popt[2] * 1e9 / (2 * np.pi)
             corrected_qubit_frequency = int(qubit_freq + delta_phys)
             t2 = popt[4]
+            print("HHHHHH", t2, err_popt)
             t2_error = err_popt[4] * (x_max - x_min)
+            print("GGGGGG ", t2_error)
         except Exception as e:
             log.warning(f"ramsey_fit: the fitting was not succesful. {e}")
             popt = [0] * 5
