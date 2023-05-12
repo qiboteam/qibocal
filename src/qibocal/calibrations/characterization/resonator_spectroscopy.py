@@ -1,7 +1,11 @@
 import numpy as np
 from qibo.config import log
 from qibolab.platforms.abstract import AbstractPlatform
-from qibolab.platforms.platform import AcquisitionType, AveragingMode
+from qibolab.platforms.platform import (
+    AcquisitionType,
+    AveragingMode,
+    ExecutionParameters,
+)
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -90,18 +94,22 @@ def resonator_spectroscopy(
     for iteration in range(software_averages):
         results = platform.sweep(
             sequence,
+            ExecutionParameters(
+                nshots=nshots,
+                relaxation_time=relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
             sweeper,
-            nshots=nshots,
-            relaxation_time=relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
         )
 
         # retrieve the results for every qubit
         for qubit in qubits:
             # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[ro_pulses[qubit].serial].raw
+            # r = results[ro_pulses[qubit].serial].raw
+            r = results[ro_pulses[qubit].serial].serialize
             # store the results
+            print(r)
             r.update(
                 {
                     "frequency[Hz]": delta_frequency_range + ro_pulses[qubit].frequency,
@@ -338,12 +346,14 @@ def resonator_punchout(
     for iteration in range(software_averages):
         results = platform.sweep(
             sequence,
+            ExecutionParameters(
+                nshots=nshots,
+                relaxation_time=relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
             freq_sweeper,
             amp_sweeper,
-            nshots=nshots,
-            relaxation_time=relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
         )
 
         # retrieve the results for every qubit
@@ -357,7 +367,7 @@ def resonator_punchout(
                 len(amplitude_range) * list(delta_frequency_range)
             ).flatten()
 
-            r = {k: v.ravel() for k, v in result.raw.items()}
+            r = {k: v.ravel() for k, v in result.serialize.items()}
             r.update(
                 {
                     "frequency[Hz]": freqs,
@@ -464,12 +474,14 @@ def resonator_spectroscopy_flux(
     for iteration in range(software_averages):
         results = platform.sweep(
             sequence,
-            bias_sweeper,
+            ExecutionParameters(
+                nshots=nshots,
+                relaxation_time=relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
             frequency_sweeper,
-            nshots=nshots,
-            relaxation_time=relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
+            bias_sweeper,
         )
 
         # retrieve the results for every qubit
@@ -487,7 +499,7 @@ def resonator_spectroscopy_flux(
             ).flatten()
             # ) + platform.get_bias(fluxline)
 
-            r = {k: v.ravel() for k, v in result.raw.items()}
+            r = {k: v.ravel() for k, v in result.serialize.items()}
             r.update(
                 {
                     "frequency[Hz]": freqs,

@@ -2,7 +2,11 @@ from typing import Optional
 
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
-from qibolab.platforms.platform import AcquisitionType, AveragingMode
+from qibolab.platforms.platform import (
+    AcquisitionType,
+    AveragingMode,
+    ExecutionParameters,
+)
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -101,18 +105,20 @@ def qubit_spectroscopy(
     for iteration in range(software_averages):
         results = platform.sweep(
             sequence,
+            ExecutionParameters(
+                nshots=nshots,
+                relaxation_time=relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
             sweeper,
-            nshots=nshots,
-            relaxation_time=relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
         )
 
         # retrieve the results for every qubit
         for qubit, ro_pulse in ro_pulses.items():
             # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulse.serial]
-            r = result.raw
+            r = result.serialize
             # store the results
             r.update(
                 {
@@ -228,7 +234,7 @@ def qubit_spectroscopy_flux(
         qubit = fluxlines
         fluxlines = {}
         fluxlines[0] = qubits[qubit]
-        sweetspot = 0  # FIXME:
+        sweetspot = qubits[qubit].sweetspot
 
     # flux bias
     delta_bias_range = np.arange(-bias_width / 2, bias_width / 2, bias_step)
@@ -251,12 +257,14 @@ def qubit_spectroscopy_flux(
     for iteration in range(software_averages):
         results = platform.sweep(
             sequence,
-            bias_sweeper,
+            ExecutionParameters(
+                nshots=nshots,
+                relaxation_time=relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
             frequency_sweeper,
-            nshots=nshots,
-            relaxation_time=relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
+            bias_sweeper,
         )
 
         # retrieve the results for every qubit
@@ -266,13 +274,13 @@ def qubit_spectroscopy_flux(
             # store the results
             freqs = (
                 np.repeat(delta_frequency_range, len(delta_bias_range))
-                + ro_pulses[qubit].frequency
+                + qd_pulses[qubit].frequency
             )
             biases = np.array(
                 len(delta_frequency_range) * list(delta_bias_range + sweetspot)
             ).flatten()
             # ) + platform.get_bias(fluxline)
-            r = {k: v.ravel() for k, v in result.raw.items()}
+            r = {k: v.ravel() for k, v in result.serialize.items()}
             r.update(
                 {
                     "frequency[Hz]": freqs,

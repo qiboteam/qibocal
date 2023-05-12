@@ -1,6 +1,6 @@
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
-from qibolab.platforms.platform import AveragingMode
+from qibolab.platforms.platform import AveragingMode, ExecutionParameters
 from qibolab.pulses import PulseSequence
 
 from qibocal import plots
@@ -40,7 +40,6 @@ def allXY(
     qubits: dict,
     beta_param=None,
     software_averages=1,
-    points=10,
 ):
     r"""
     The AllXY experiment is a simple test of the calibration of single qubit gatesThe qubit (initialized in the |0> state)
@@ -67,8 +66,6 @@ def allXY(
             - **qubit**: The qubit being tested
             - **iteration**: The iteration number of the many determined by software_averages
     """
-    # reload instrument settings from runcard
-    platform.reload_settings()
 
     # create a Data object to store the results
     data = Data(
@@ -76,17 +73,12 @@ def allXY(
         quantities={"probability", "gateNumber", "qubit", "iteration"},
     )
 
-    count = 0
     # repeat the experiment as many times as defined by software_averages
     for iteration in range(software_averages):
         gateNumber = 1
         # sweep the parameter
         for gateNumber, gates in enumerate(gatelist):
             # save data as often as defined by points
-            if count % points == 0 and count > 0:
-                # save data
-                yield data
-
             # create a sequence of pulses
             ro_pulses = {}
             sequence = PulseSequence()
@@ -97,12 +89,15 @@ def allXY(
 
             # execute the pulse sequence
             results = platform.execute_pulse_sequence(
-                sequence, averaging_mode=AveragingMode.CYCLIC
+                sequence,
+                ExecutionParameters(averaging_mode=AveragingMode.CYCLIC),
             )
+
+            print("resutls", results)
 
             # retrieve the results for every qubit
             for ro_pulse in ro_pulses.values():
-                z_proj = 2 * results[ro_pulse.serial].ground_state_probability - 1
+                z_proj = 2 * results[ro_pulse.serial].state_0_probability - 1
                 # store the results
                 r = {
                     "probability": z_proj,
@@ -112,7 +107,8 @@ def allXY(
                     "iteration": iteration,
                 }
                 data.add(r)
-            count += 1
+
+            print(data.df)
     # finally, save the remaining data
     yield data
 

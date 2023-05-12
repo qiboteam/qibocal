@@ -732,7 +732,7 @@ def coupler_frequency_flux_msr_phase(folder, routine, qubit, format):
         fluxlines = data.df["fluxline"].unique()
         print(fluxlines)
         fluxlines = [2]
-        fluxlines = ["c4"]
+        fluxlines = ["c0"]
         frequencies = data.df["frequency"].pint.to("Hz").pint.magnitude.unique()
         bias = data.df["bias"].pint.to("dimensionless").pint.magnitude.unique()
 
@@ -847,7 +847,7 @@ def coupler_frequency_msr_phase(folder, routine, qubit, format):
     figures = []
 
     fitting_report = ""
-    qubit = [4]
+    qubit = [0]
 
     # iterate over multiple data folders
     subfolders = get_data_subfolders(folder)

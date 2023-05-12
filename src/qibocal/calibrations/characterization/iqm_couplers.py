@@ -71,15 +71,18 @@ def coupler_spectroscopy(
     cd_pulses = {}
     # for qubit in qubits:
 
-    qubit_drive = qubits[4].name
+    # qubit_drive = qubits[4].name
+    qubit_drive = qubits[0].name
     qubit_readout = qubits[2].name  # Make general
 
     cd_pulses[qubit_drive] = platform.create_qubit_drive_pulse(
         qubit_drive, start=0, duration=coupler_drive_duration
     )
 
-    qubits[4].drive.local_oscillator.frequency = coupler_frequency - 100_000_000
-    qubits[4].drive_frequency = coupler_frequency
+    # qubits[4].drive.local_oscillator.frequency = coupler_frequency - 100_000_000
+    # qubits[4].drive_frequency = coupler_frequency
+    qubits[0].drive.local_oscillator.frequency = coupler_frequency - 100_000_000
+    qubits[0].drive_frequency = coupler_frequency
     cd_pulses[qubit_drive].frequency = coupler_frequency
 
     if coupler_drive_amplitude is not None:
@@ -88,7 +91,8 @@ def coupler_spectroscopy(
     qd_pulses[qubit_readout] = platform.create_qubit_drive_pulse(
         qubit_readout,
         start=0,
-        duration=qubit_drive_duration,
+        # duration=qubit_drive_duration,
+        duration=coupler_drive_duration,
     )
 
     if qubit_drive_amplitude is not None:
@@ -225,16 +229,18 @@ def coupler_spectroscopy_double_freq(
 
     # FIXME: Frequency results may be wrong
 
-    qubit_drive = qubits[4].name
-    # qubit_drive = qubits[0].name
+    # qubit_drive = qubits[4].name
+    qubit_drive = qubits[0].name
     qubit_readout = qubits[2].name  # Make general
 
     cd_pulses[qubit_drive] = platform.create_qubit_drive_pulse(
         qubit_drive, start=0, duration=coupler_drive_duration
     )
 
-    qubits[4].drive.local_oscillator.frequency = coupler_frequency
-    qubits[4].drive_frequency = coupler_frequency
+    # qubits[4].drive.local_oscillator.frequency = coupler_frequency - 100_000_000
+    # qubits[4].drive_frequency = coupler_frequency
+    qubits[0].drive.local_oscillator.frequency = coupler_frequency - 100_000_000
+    qubits[0].drive_frequency = coupler_frequency
     cd_pulses[qubit_drive].frequency = coupler_frequency
 
     if coupler_drive_amplitude is not None:
@@ -276,11 +282,11 @@ def coupler_spectroscopy_double_freq(
     )
 
     # Hardware frequency sweep may drive only a single oscillator (workaround ?)
-    sweeper_drive = Sweeper(
-        Parameter.frequency,
-        delta_drive_frequency_range,
-        pulses=[qd_pulses[qubit_readout]],
-    )
+    # sweeper_drive = Sweeper(
+    #     Parameter.frequency,
+    #     delta_drive_frequency_range,
+    #     pulses=[qd_pulses[qubit_readout]],
+    # )
 
     # create a DataUnits object to store the results,
     sweep_data = DataUnits(
@@ -293,79 +299,78 @@ def coupler_spectroscopy_double_freq(
     iteration = [0]
     og_freq = qd_pulses[qubit_readout].frequency
 
-    platform.qubits[2].drive_frequency = og_freq
-    qd_pulses[qubit_readout].frequency = og_freq
+    # platform.qubits[2].drive_frequency = og_freq
+    # qd_pulses[qubit_readout].frequency = og_freq
 
-    results = platform.sweep(
-        sequence,
-        sweeper_coupler,
-        sweeper_drive,
-        nshots=nshots,
-        relaxation_time=relaxation_time,
-        acquisition_type=AcquisitionType.INTEGRATION,
-        averaging_mode=AveragingMode.CYCLIC,
-    )
+    # results = platform.sweep(
+    #     sequence,
+    #     sweeper_coupler,
+    #     sweeper_drive,
+    #     nshots=nshots,
+    #     relaxation_time=relaxation_time,
+    #     acquisition_type=AcquisitionType.INTEGRATION,
+    #     averaging_mode=AveragingMode.CYCLIC,
+    # )
 
-    # retrieve the results for every qubit
-    ro_pulse = ro_pulses[qubit_readout]
-    result = results[ro_pulse.serial]
-    # r = result.to_dict(average=False)
+    # # retrieve the results for every qubit
+    # ro_pulse = ro_pulses[qubit_readout]
+    # result = results[ro_pulse.serial]
+    # # r = result.to_dict(average=False)
 
-    # store the results
-    drive_freqs = (
-        np.repeat(delta_drive_frequency_range, len(delta_coupler_frequency_range))
-        + qd_pulses[qubit_readout].frequency
-    )
-    coupler_freqs = np.array(
-        len(delta_drive_frequency_range)
-        * list(delta_coupler_frequency_range + cd_pulses[qubit_drive].frequency)
-    ).flatten()
-    r = {k: v.ravel() for k, v in result.raw.items()}
-    r.update(
-        {
-            "frequency_coupler[Hz]": coupler_freqs,
-            "frequency_drive[Hz]": drive_freqs,
-            "qubit": len(coupler_freqs) * [qubit_drive],
-            "iteration": len(coupler_freqs) * [iteration],
-        }
-    )
-    sweep_data.add_data_from_dict(r)
-    # platform.disconnect()
-
-    yield sweep_data
-
-    # for freq in delta_drive_frequency_range:
-    #     # platform.connect()
-
-    #     platform.qubits[2].drive_frequency = og_freq + freq
-    #     qd_pulses[qubit_readout].frequency = og_freq + freq
-
-    #     results = platform.sweep(
-    #         sequence,
-    #         sweeper_coupler,
-    #         nshots=nshots,
-    #         relaxation_time=relaxation_time,
-    #     )
-
-    #     # retrieve the results for every qubit
-    #     ro_pulse = ro_pulses[qubit_readout]
-    #     result = results[ro_pulse.serial]
-    #     r = result.to_dict(average=False)
-    #     # store the results
-    #     r.update(
-    #         {
-    #             "frequency_coupler[Hz]": delta_coupler_frequency_range
-    #             + cd_pulses[qubit_drive].frequency,
-    #             "frequency_drive[Hz]": len(delta_coupler_frequency_range)
-    #             * [qd_pulses[qubit_readout].frequency],
-    #             "qubit": len(delta_coupler_frequency_range) * [qubit_drive],
-    #             "iteration": len(delta_coupler_frequency_range) * [iteration],
-    #         }
-    #     )
-    #     sweep_data.add_data_from_dict(r)
-    #     # platform.disconnect()
+    # # store the results
+    # drive_freqs = (
+    #     np.repeat(delta_drive_frequency_range, len(delta_coupler_frequency_range))
+    #     + qd_pulses[qubit_readout].frequency
+    # )
+    # coupler_freqs = np.array(
+    #     len(delta_drive_frequency_range)
+    #     * list(delta_coupler_frequency_range + cd_pulses[qubit_drive].frequency)
+    # ).flatten()
+    # r = {k: v.ravel() for k, v in result.raw.items()}
+    # r.update(
+    #     {
+    #         "frequency_coupler[Hz]": coupler_freqs,
+    #         "frequency_drive[Hz]": drive_freqs,
+    #         "qubit": len(coupler_freqs) * [qubit_drive],
+    #         "iteration": len(coupler_freqs) * [iteration],
+    #     }
+    # )
+    # sweep_data.add_data_from_dict(r)
+    # # platform.disconnect()
 
     # yield sweep_data
+
+    for freq in delta_drive_frequency_range:
+        # platform.connect()
+
+        platform.qubits[2].drive_frequency = og_freq + freq
+        qd_pulses[qubit_readout].frequency = og_freq + freq
+
+        results = platform.sweep(
+            sequence,
+            sweeper_coupler,
+            nshots=nshots,
+            relaxation_time=relaxation_time,
+        )
+
+        # retrieve the results for every qubit
+        ro_pulse = ro_pulses[qubit_readout]
+        r = results[ro_pulses[qubit_readout].serial].raw
+        # store the results
+        r.update(
+            {
+                "frequency_coupler[Hz]": delta_coupler_frequency_range
+                + cd_pulses[qubit_drive].frequency,
+                "frequency_drive[Hz]": len(delta_coupler_frequency_range)
+                * [qd_pulses[qubit_readout].frequency],
+                "qubit": len(delta_coupler_frequency_range) * [qubit_drive],
+                "iteration": len(delta_coupler_frequency_range) * [iteration],
+            }
+        )
+        sweep_data.add_data_from_dict(r)
+        # platform.disconnect()
+
+    yield sweep_data
 
     # calculate and save fit
     # yield lorentzian_fit(
@@ -449,8 +454,10 @@ def coupler_spectroscopy_flux(
     cd_pulses = {}
     # for qubit in qubits:
 
-    qubit_drive = qubits[4].name
+    # qubit_drive = qubits[4].name
+    qubit_drive = qubits[0].name
     qubit_readout = qubits[2].name  # Make general
+    qubit_coupler = qubits["c0"].name
 
     qd_pulses[qubit_readout] = platform.create_qubit_drive_pulse(
         qubit_readout, start=0, duration=qubit_drive_duration
@@ -463,8 +470,10 @@ def coupler_spectroscopy_flux(
         qubit_drive, start=0, duration=coupler_drive_duration
     )
 
-    qubits[4].drive.local_oscillator.frequency = coupler_frequency
-    qubits[4].drive_frequency = coupler_frequency
+    # qubits[4].drive.local_oscillator.frequency = coupler_frequency
+    # qubits[4].drive_frequency = coupler_frequency
+    qubits[0].drive.local_oscillator.frequency = coupler_frequency
+    qubits[0].drive_frequency = coupler_frequency
     cd_pulses[qubit_drive].frequency = coupler_frequency
 
     if coupler_drive_amplitude is not None:
@@ -491,13 +500,24 @@ def coupler_spectroscopy_flux(
 
     if coupler_line == "qubits":
         fluxlines = qubits
+
+    if coupler_line == 0:
+        fluxlines = {}
+        fluxlines[0] = qubits[0]
+        qubits[0].flux.bias = coupler_sweetspot
+
+    if coupler_line == "c0":
+        fluxlines = {}
+        fluxlines["c0"] = qubits["c0"]
+        qubits["c0"].flux.bias = coupler_sweetspot
+
     if coupler_line == "c4":
         fluxlines = {}
         fluxlines[0] = qubits["c4"]
-        sweetspot = coupler_sweetspot
+        qubit_coupler.flux.bias = coupler_sweetspot
 
     # flux bias
-    delta_bias_range = np.arange(-bias_width / 2, bias_width / 2, bias_step) + sweetspot
+    delta_bias_range = np.arange(-bias_width / 2, bias_width / 2, bias_step)
     bias_sweeper = Sweeper(
         Parameter.bias,
         delta_bias_range,
@@ -538,7 +558,7 @@ def coupler_spectroscopy_flux(
         len(delta_bias_range),
     )
 
-    r = {k: v.ravel() for k, v in result.to_dict(average=False).items()}
+    r = {k: v.ravel() for k, v in result.raw.items()}
     # store the results
     r.update(
         {
