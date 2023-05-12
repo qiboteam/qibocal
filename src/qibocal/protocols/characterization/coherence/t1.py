@@ -5,6 +5,7 @@ import numpy as np
 import plotly.graph_objects as go
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
+from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.config import log
@@ -24,6 +25,10 @@ class T1Parameters(Parameters):
     """Final delay before readout (ns)."""
     delay_before_readout_step: int
     """Step delay before readout (ns)."""
+    nshots: int
+    """Number of shots."""
+    relaxation_time: float
+    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -68,7 +73,7 @@ def _acquisition(
         points (int): Save data results in a file every number of points
     """
 
-    # create a sequence of pulses for the experiment
+    # create a sequence of pulses for the explen(ro_wait_range) * [qubit]eriment
     # RX - wait t - MZ
     qd_pulses = {}
     ro_pulses = {}
@@ -89,28 +94,33 @@ def _acquisition(
         params.delay_before_readout_step,
     )
 
+    sweeper = Sweeper(
+        Parameter.start,
+        ro_wait_range,
+        pulses=[ro_pulses[qubit] for qubit in qubits],
+    )
+
     # create a DataUnits object to store the MSR, phase, i, q and the delay time
     data = T1Data()
 
-    # repeat the experiment as many times as defined by software_averages
-    # sweep the parameter
-    for wait in ro_wait_range:
-        for qubit in qubits:
-            ro_pulses[qubit].start = qd_pulses[qubit].duration + wait
 
-        # execute the pulse sequence
-        results = platform.execute_pulse_sequence(sequence)
+    results = platform.sweep(
+        sequence, sweeper, nshots=params.nshots, relaxation_time=params.relaxation_time
+    )
 
-        for ro_pulse in ro_pulses.values():
-            # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[ro_pulse.serial].average.raw
-            r.update(
-                {
-                    "wait[ns]": wait,
-                    "qubit": ro_pulse.qubit,
-                }
-            )
-            data.add(r)
+    for qubit in qubits:
+        # average msr, phase, i and q over the number of shots defined in the runcard
+        # r = results[ro_pulse.serial].average.raw
+        result = results[ro_pulses[qubit].serial]
+        # store the results
+        r = result.raw
+        r.update(
+            {
+                "wait[ns]": ro_wait_range,
+                "qubit": len(ro_wait_range) * [qubit],
+            }
+        )
+        data.add_data_from_dict(r)
     return data
 
 

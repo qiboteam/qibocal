@@ -187,8 +187,10 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         )
         argmax = np.argmax(cum_distribution_diff)
         threshold = real_values_combined[argmax]
-        errors_state1 = data.nshots - cum_distribution_state1[argmax]
-        errors_state0 = cum_distribution_state0[argmax]
+
+        errors_state1 = cum_distribution_state1[argmax]
+        errors_state0 = data.nshots - cum_distribution_state0[argmax]
+        
         fidelity = cum_distribution_diff[argmax] / data.nshots
         assignment_fidelity = 1 - (errors_state1 + errors_state0) / data.nshots / 2
         thresholds[qubit] = threshold
