@@ -272,6 +272,22 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
             col=1,
         )
 
+        fig.add_trace(
+            go.Scatter(
+                x=[fit.best_freq[qubit]] * 2,
+                y=[
+                    np.min(qubit_data["MSR"].pint.to("uV").pint.magnitude),
+                    np.max(qubit_data["MSR"].pint.to("uV").pint.magnitude),
+                ],
+                mode="lines",
+                line=dict(color="green", width=3, dash="dash"),
+                name="Best frequency",
+                legendgroup=f"q{qubit}: {label}",
+            ),
+            row=1,
+            col=1,
+        )
+
     fitting_report = fitting_report + (
         f"{qubit} | State zero freq : {fit_data_0.frequency[qubit]*1e9:,.0f} Hz.<br>"
     )
@@ -291,18 +307,6 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
         yaxis_title="MSR (uV)",
         xaxis2_title="Frequency (GHz)",
         yaxis2_title="Phase (rad)",
-    )
-    fig.add_shape(
-        type="line",
-        y0=np.min(qubit_data["MSR"].pint.to("uV").pint.magnitude),
-        y1=np.max(qubit_data["MSR"].pint.to("uV").pint.magnitude),
-        x0=fit.best_freq[qubit],
-        x1=fit.best_freq[qubit],
-        line=dict(color="RoyalBlue", width=3, line_dash="dash"),
-        xref="x",
-        yref="y",
-        row=1,
-        col=1,
     )
 
     figures.append(fig)
