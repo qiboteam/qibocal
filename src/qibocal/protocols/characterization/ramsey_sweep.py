@@ -135,13 +135,13 @@ def _acquisition(
     # execute the sweep
     results = platform.execute_pulse_sequence(
         sequence,
-        sweeper,
         ExecutionParameters(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
             averaging_mode=AveragingMode.CYCLIC,
         ),
+        sweeper,
     )
     for qubit in qubits:
         # average msr, phase, i and q over the number of shots defined in the runcard

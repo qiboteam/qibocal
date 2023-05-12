@@ -96,10 +96,12 @@ def _acquisition(
         # execute the pulse sequence
         results = platform.execute_pulse_sequence(
             sequence,
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
         )
 
         for ro_pulse in ro_pulses.values():

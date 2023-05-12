@@ -101,14 +101,14 @@ def _acquisition(
     # repeat the experiment as many times as defined by software_averages
     results = platform.sweep(
         sequence,
-        bias_sweeper,
-        freq_sweeper,
         ExecutionParameters(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
             averaging_mode=AveragingMode.CYCLIC,
         ),
+        bias_sweeper,
+        freq_sweeper,
     )
 
     # retrieve the results for every qubit

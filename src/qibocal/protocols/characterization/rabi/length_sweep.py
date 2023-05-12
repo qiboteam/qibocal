@@ -9,6 +9,7 @@ from qibolab.platforms.platform import (
     ExecutionParameters,
 )
 from qibolab.pulses import PulseSequence
+from qibolab.sweeper import Parameter, Sweeper
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -95,15 +96,15 @@ def _acquisition(
     data = RabiLengthData()
 
     # execute the sweep
-    results = platform.execute_pulse_sequence(
+    results = platform.sweep(
         sequence,
-        sweeper,
         ExecutionParameters(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
             averaging_mode=AveragingMode.CYCLIC,
         ),
+        sweeper,
     )
 
     for qubit in qubits:

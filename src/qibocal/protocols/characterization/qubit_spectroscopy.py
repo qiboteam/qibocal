@@ -95,13 +95,13 @@ def _acquisition(
 
     results = platform.sweep(
         sequence,
-        sweeper,
         ExecutionParameters(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
             averaging_mode=AveragingMode.CYCLIC,
         ),
+        sweeper,
     )
 
     # retrieve the results for every qubit

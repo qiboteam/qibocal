@@ -108,13 +108,13 @@ def _acquisition(
     # execute the pulse sequence
     results = platform.sweep(
         sequence,
-        sweeper,
         ExecutionParameters(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
             averaging_mode=AveragingMode.CYCLIC,
         ),
+        sweeper,
     )
     for qubit in qubits:
         r = results[ro_pulses[qubit].serial].average.serialize
