@@ -144,7 +144,7 @@ def _acquisition(
         for i, results in enumerate([results_0, results_1]):
             result = results[ro_pulses[qubit].serial]
             # store the results
-            r = result.raw
+            r = result.serialize
             r.update(
                 {
                     "frequency[Hz]": delta_frequency_range + ro_pulses[qubit].frequency,

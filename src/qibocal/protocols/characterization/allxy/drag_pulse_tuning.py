@@ -128,14 +128,14 @@ def _acquisition(
 
         # retrieve the results for every qubit
         for ro_pulse in ro_pulses.values():
-            r1 = result1[ro_pulse.serial]
-            r2 = result2[ro_pulse.serial]
+            r1 = result1[ro_pulse.serial].average
+            r2 = result2[ro_pulse.serial].average
             # store the results
             r = {
-                "MSR[V]": r1.measurement.mean() - r2.measurement.mean(),
-                "i[V]": r1.i.mean() - r2.i.mean(),
-                "q[V]": r1.q.mean() - r2.q.mean(),
-                "phase[rad]": r1.phase.mean() - r2.phase.mean(),
+                "MSR[V]": r1.magnitude - r2.magnitude,
+                "i[V]": r1.i - r2.i,
+                "q[V]": r1.q - r2.q,
+                "phase[rad]": r1.phase - r2.phase,
                 "beta_param[dimensionless]": beta_param,
                 "qubit": ro_pulse.qubit,
             }

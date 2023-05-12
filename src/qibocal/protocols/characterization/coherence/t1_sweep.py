@@ -117,7 +117,7 @@ def _acquisition(
         ),
     )
     for qubit in qubits:
-        r = results[ro_pulses[qubit].serial].average.raw
+        r = results[ro_pulses[qubit].serial].average.serialize
         r.update(
             {
                 "wait[ns]": ro_wait_range,

@@ -157,7 +157,7 @@ def _acquisition(
         # average msr, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulses[qubit].serial]
         # store the results
-        r = result.raw
+        r = result.serialize
         r.update(
             {
                 "frequency[Hz]": delta_frequency_range + ro_pulses[qubit].frequency,

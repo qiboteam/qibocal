@@ -117,7 +117,7 @@ def _acquisition(
             * list(delta_frequency_range + ro_pulses[qubit].frequency)
         ).flatten()
         # store the results
-        r = {k: v.ravel() for k, v in result.raw.items()}
+        r = {k: v.ravel() for k, v in result.serialize.items()}
         r.update(
             {
                 "frequency[Hz]": freqs,

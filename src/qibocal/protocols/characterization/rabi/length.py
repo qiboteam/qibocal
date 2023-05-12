@@ -107,7 +107,7 @@ def _acquisition(
 
         for qubit in qubits:
             # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[qubit].average.raw
+            r = results[ro_pulses[qubit].serial].average.serialize
             r.update(
                 {
                     "length[ns]": duration,

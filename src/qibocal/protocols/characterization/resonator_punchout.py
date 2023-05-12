@@ -139,7 +139,7 @@ def _acquisition(
         freqs = np.array(
             len(amplitude_range) * list(delta_frequency_range + ro_pulse.frequency)
         ).flatten()
-        r = {k: v.ravel() for k, v in result.raw.items()}
+        r = {k: v.ravel() for k, v in result.serialize.items()}
         r.update(
             {
                 "frequency[Hz]": freqs,

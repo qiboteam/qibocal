@@ -100,7 +100,7 @@ def _acquisition(
 
         # retrieve the results for every qubit
         for ro_pulse in ro_pulses.values():
-            z_proj = 2 * results[ro_pulse.serial].ground_state_probability - 1
+            z_proj = 2 * results[ro_pulse.serial].state_0_probability - 1
             # store the results
             r = {
                 "probability": z_proj,

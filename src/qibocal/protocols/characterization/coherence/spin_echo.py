@@ -104,7 +104,7 @@ def _acquisition(
 
         for ro_pulse in ro_pulses.values():
             # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[ro_pulse.serial].average.raw
+            r = results[ro_pulse.serial].average.serialize
             r.update(
                 {
                     "wait[ns]": 2 * wait,
