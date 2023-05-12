@@ -119,14 +119,13 @@ def _acquisition(
             ro_pulses[qubit].amplitude = params.amplitude
 
         amplitudes[qubit] = ro_pulses[qubit].amplitude
-        
+
         if params.attenuation is not None:
             platform.set_attenuation(platform.qubits[qubit], params.attenuation)
-        
+
         attenuations[qubit] = platform.get_attenuation(platform.qubits[qubit])
 
         sequence.add(ro_pulses[qubit])
-
 
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(
