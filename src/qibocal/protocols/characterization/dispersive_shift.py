@@ -287,6 +287,13 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
         col=1,
     )
 
+    fig.add_vline(
+        x=fit.best_freq[qubit],
+        line=dict(color="orange", width=3, dash="dash"),
+        row=1,
+        col=2,
+    )
+
     fitting_report = fitting_report + (
         f"{qubit} | State zero freq : {fit_data_0.frequency[qubit]*1e9:,.0f} Hz.<br>"
     )
