@@ -103,7 +103,7 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     @property
     def parameters_type(self):
         sig = inspect.signature(self.acquisition)
-        param = list(sig.parameters.values())[0]
+        param = next(iter(sig.parameters.values()))
         return param.annotation
 
     @property
