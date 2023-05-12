@@ -95,9 +95,9 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
 
     def __post_init__(self):
         # TODO: this could be improved
-        if self.fit == None:
+        if self.fit is None:
             self.fit = _dummy_fit
-        if self.report == None:
+        if self.report is None:
             self.report = _dummy_report
 
     @property
