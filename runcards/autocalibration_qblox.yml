@@ -1,4 +1,5 @@
-platform: dummy #qw5q_gold_qblox
+platform: qw5q_gold_qblox
+
 
 qubits: [0, 1, 2, 3, 4]
 
