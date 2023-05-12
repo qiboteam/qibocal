@@ -138,31 +138,45 @@ actions:
   #     delay_between_pulses_end: 2000
   #     delay_between_pulses_step: 4 # must be a multiple of 4
 
-  - id: single shot classification
+  - id: flipping  
     priority: 0
-    main: allXY
-    operation: single_shot_classification
+    operation: flipping
     parameters:
-      nshots: 4000
+      nflips_max: 30
+      nflips_step: 1
 
-  - id: allXY
-    priority: 70
-    operation: allxy
-    #main: drag_pulse_tuning
-    parameters:
-      beta_param: null
-
-  # - id: t1
-  #   priority: 0
-  #   operation: t1
-  #   #main: ramsey
+  # - id: single shot classification
+  #   priority: 60
+  #   main: allXY
+  #   operation: single_shot_classification
   #   parameters:
-  #     delay_before_readout_start: 16
-  #     delay_before_readout_end: 2000
-  #     delay_before_readout_step: 20
+  #     nshots: 4000
+
+  # - id: allXY
+  #   priority: 70
+  #   operation: allxy
+  #   #main: drag_pulse_tuning
+  #   parameters:
+  #     beta_param: null
 
   # - id: drag_pulse_tuning
-  #   priority: 0
+  #   priority: 80
+  #   operation: drag_pulse_tuning
+  #   #main: spin_echo
+  #   parameters:
+  #     beta_start: -1
+  #     beta_end: 1
+  #     beta_step: 0.01
+
+  # - id: allXY 2 #Ideally this should be repeated with the correct beta
+  #   priority: 90
+  #   operation: allxy
+  #   main: drag_pulse_tuning
+  #   parameters:
+  #     beta_param: null
+
+  # - id: drag_pulse_tuning
+  #   priority: 80
   #   operation: allxy_drag_pulse_tuning
   #   #main: spin_echo
   #   parameters:
@@ -170,21 +184,14 @@ actions:
   #     beta_end: 0.2
   #     beta_step: 0.1
 
-  # - id: drag_pulse_tuning
-  #   priority: 0
-  #   operation: drag_pulse_tuning
-  #   #main: spin_echo
+  # - id: t1
+  #   priority: 90
+  #   operation: t1
+  #   #main: ramsey
   #   parameters:
-  #     beta_start: -0.5
-  #     beta_end: 0.5
-  #     beta_step: 0.05
-
-  # - id: allXY 2 #Ideally this should be repeated with the correct beta
-  #   priority: 10
-  #   operation: allxy
-  #   main: drag_pulse_tuning
-  #   parameters:
-  #     beta_param: null
+  #     delay_before_readout_start: 4
+  #     delay_before_readout_end: 2000
+  #     delay_before_readout_step: 20
 
   # - id: spin_echo
   #   priority: 0
@@ -194,10 +201,3 @@ actions:
   #     delay_between_pulses_start: 4
   #     delay_between_pulses_end: 10000
   #     delay_between_pulses_step: 200
-
-  # - id: flipping
-  #   priority: 0
-  #   operation: flipping
-  #   parameters:
-  #     nflips_max: 20
-  #     nflips_step: 1
