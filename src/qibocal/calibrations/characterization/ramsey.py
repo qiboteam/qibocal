@@ -441,7 +441,9 @@ def ramsey_sweepers(
     RX90_pulses2 = {}
     sequence = PulseSequence()
     for qubit in qubits:
-        RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
+        RX90_pulses1[qubit] = platform.create_RX90_pulse(
+            qubit, start=0, relative_phase=np.pi / 2
+        )
         RX90_pulses2[qubit] = platform.create_RX90_pulse(
             qubit, start=RX90_pulses1[qubit].finish, relative_phase=0
         )

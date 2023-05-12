@@ -434,3 +434,106 @@ def twpa_power(
         # finally, save the remaining data and the fits
         yield data
         yield ro_optimization_fit(data, "delta_power", "state", "qubit", "iteration")
+
+
+@plot("Readout Duration", plots.ro_power)
+def ro_duration(
+    platform: AbstractPlatform,
+    qubits: dict,
+    duration_width: float,
+    duration_step: float,
+    nshots: int,
+):
+    """
+    Method which optimizes the Read-out fidelity by varying the power of the TWPA.
+    Two analogous tests are performed for calibrate the ground state and the excited state of the oscillator.
+    The subscripts `exc` and `gnd` will represent the excited state |1> and the ground state |0>.
+    Their distinctiveness is then associated to the fidelity.
+
+    Args:
+        platform (:class:`qibolab.platforms.abstract.AbstractPlatform`): custom abstract platform on which we perform the calibration.
+        qubits (dict): List of target qubits to perform the action
+        power_width (float): width of the power range to be scanned in dBm
+        power_step (float): step of the power range to be scanned in dBm
+        nshots (int): number of times the pulse sequence will be repeated.
+    Returns:
+        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
+
+            - **MSR[V]**: Resonator signal voltage mesurement in volts
+            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
+            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
+            - **phase[rad]**: Resonator signal phase mesurement in radians
+            - **qubit**: The qubit being tested
+            - **iteration**: Execution number
+            - **state**: The state of the qubit being tested
+            - **power**: The power of the TWPA being tested
+            - **delta_power**: The power offset from the runcard value
+
+    """
+
+    # reload instrument settings from runcard
+    platform.reload_settings()
+
+    # create two sequences of pulses:
+    # state0_sequence: I  - MZ
+    # state1_sequence: RX - MZ
+
+    # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
+    state0_sequence = PulseSequence()
+    state1_sequence = PulseSequence()
+
+    RX_pulses = {}
+    ro_pulses = {}
+    initial_duration = {}
+    for qubit in qubits:
+        RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+            qubit, start=RX_pulses[qubit].finish
+        )
+        initial_duration[qubit] = platform.qrm[qubit].ports["i1"].acquisition_duration
+
+        state0_sequence.add(ro_pulses[qubit])
+        state1_sequence.add(RX_pulses[qubit])
+        state1_sequence.add(ro_pulses[qubit])
+    sequences = {0: state0_sequence, 1: state1_sequence}
+    # create a DataUnits object to store the results
+    data = DataUnits(
+        name="data",
+        quantities={"power": "dBm", "delta_power": "dBm"},
+        options=["qubit", "iteration", "state"],
+    )
+
+    # iterate over the power range
+    delta_duration_range = np.arange(
+        -duration_width / 2, duration_width / 2, duration_step
+    )
+
+    # retrieve and store the results for every qubit
+    for duration in delta_duration_range:
+        for qubit in qubits:
+            platform.qrm[qubit].ports["i1"].acquisition_duration = int(
+                initial_duration[qubit] + duration
+            )
+
+        # Execute the sequences for both states
+        for state in [0, 1]:
+            results = platform.execute_pulse_sequence(sequences[state], nshots=nshots)
+            for qubit in qubits:
+                r = results[ro_pulses[qubit].serial].raw
+                r.update(
+                    {
+                        "power[dBm]": [
+                            platform.qrm[qubit].ports["i1"].acquisition_duration
+                        ]
+                        * nshots,
+                        "delta_power[dBm]": [duration] * nshots,
+                        "qubit": [qubit] * nshots,
+                        "iteration": np.arange(nshots),
+                        "state": [state] * nshots,
+                    }
+                )
+                data.add_data_from_dict(r)
+
+        # finally, save the remaining data and the fits
+        yield data
+        yield ro_optimization_fit(data, "delta_power", "state", "qubit", "iteration")

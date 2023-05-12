@@ -478,7 +478,7 @@ def amplitude_msr_phase(folder, routine, qubit, format):
             fitting_report = (
                 fitting_report
                 + (
-                    f"q{qubit}/r{report_n} | pi_pulse_amplitude: {params['pi_pulse_amplitude']:.3f}<br>"
+                    f"q{qubit}/r{report_n} | pi_pulse_amplitude: {params['pi_pulse_amplitude']:.4f}<br>"
                 )
                 + (
                     f"q{qubit}/r{report_n} | pi_pulse_peak_voltage: {params['pi_pulse_peak_voltage']:,.0f} uV.<br><br>"
