@@ -12,7 +12,7 @@ def get_data_subfolders(folder):
     subfolders = []
     for file in os.listdir(folder):
         d = os.path.join(folder, file)
-        if os.path.isdir(d):
+        if os.path.isdir(d) and not file in ["debug"]:
             subfolders.append(os.path.basename(d))
 
     return subfolders[::-1]
