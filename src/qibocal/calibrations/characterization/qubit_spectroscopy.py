@@ -349,6 +349,41 @@ def qubit_spectroscopy_flux(
 
         # save data
         yield data
+
+
+@plot(
+    "MSR and Phase vs Qubit Drive Frequency and Flux Current - Transition 0->1",
+    plots.frequency_flux_msr_phase,
+)
+def qubit_spectroscopy_flux_01(
+    platform: AbstractPlatform,
+    qubits: dict,
+    freq_width,
+    freq_step,
+    bias_width,
+    bias_step,
+    fluxlines,
+    drive_amplitude_factor: Optional[float] = 1,
+    nshots=1024,
+    relaxation_time=50,
+    software_averages=1,
+):
+    transition = "0->1"
+    for data in qubit_spectroscopy_flux(
+        platform,
+        qubits,
+        freq_width,
+        freq_step,
+        bias_width,
+        bias_step,
+        fluxlines,
+        drive_amplitude_factor,
+        transition,
+        nshots,
+        relaxation_time,
+        software_averages,
+    ):
+        yield data
         yield qubit_spectroscopy_flux_fit(
             data,
             x="bias[V]",
@@ -377,7 +412,7 @@ def qubit_spectroscopy_flux_02(
     software_averages=1,
 ):
     transition = "0->2"
-    yield from qubit_spectroscopy_flux(
+    for data in qubit_spectroscopy_flux(
         platform,
         qubits,
         freq_width,
@@ -390,4 +425,13 @@ def qubit_spectroscopy_flux_02(
         nshots,
         relaxation_time,
         software_averages,
-    )
+    ):
+        yield data
+        yield qubit_spectroscopy_flux_fit(
+            data,
+            x="bias[V]",
+            y="frequency[Hz]",
+            qubits=qubits,
+            resonator_type=platform.resonator_type,
+            transition=transition,
+        )

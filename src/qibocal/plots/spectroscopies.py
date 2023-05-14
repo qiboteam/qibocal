@@ -836,6 +836,8 @@ def frequency_flux_msr_phase(folder, routine, qubit, format):
         fig.update_traces(showscale=False)
 
     figures.append(fig)
+    if fitting_report == "":
+        fitting_report = "No fitting data"
 
     return figures, fitting_report
 
