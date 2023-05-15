@@ -21,20 +21,14 @@ def folders_exists(folders):
     return foldernames
 
 
-def check_folder_structure(folderList):
+def check_folder_structure(folders):
     """Check if a list of folders share structure between them
 
     Args:
         folders (list): list of absolute or relative path to folders
     """
-    all_subdirList = []
-    for folder in folderList:
-        folder_subdirList = []
-        for dirName, subdirList, fileList in os.walk(folder):
-            folder_subdirList.append(subdirList)
-        all_subdirList.append(folder_subdirList)
-
-    return all(x == all_subdirList[0] for x in all_subdirList)
+    subdirs = [[p for p in Path(folder).glob("**") if p.is_dir()] for folder in folders]
+    return all(x == subdirs[0] for x in subdirs)
 
 
 def update_meta(metadata, metadata_new, target_dir="qq-compare"):
