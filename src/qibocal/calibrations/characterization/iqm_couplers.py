@@ -95,7 +95,7 @@ def coupler_spectroscopy(
         qd_pulses[qubit_readout].amplitude = qubit_drive_amplitude
 
     ro_pulses[qubit_readout] = platform.create_qubit_readout_pulse(
-        qubit_readout, start=qd_pulses[qubit_readout].finish
+        qubit_readout, start=0  # qd_pulses[qubit_readout].finish
     )
 
     sequence.add(qd_pulses[qubit_readout])
