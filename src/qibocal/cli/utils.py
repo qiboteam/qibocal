@@ -1,5 +1,5 @@
-import os
 from glob import glob
+from pathlib import Path
 
 import click
 import yaml
