@@ -39,24 +39,13 @@ def update_meta(metadata, metadata_new, target_dir="qq-compare"):
         metadata_new (dict): dictionary with the new parameters and values to update in the actual meta.yml
     """
 
-    metadata["backend"] = metadata["backend"] + " , " + metadata_new["backend"]
-    metadata["date"] = metadata["date"] + " , " + metadata_new["date"]
-    metadata["end-time"] = metadata["end-time"] + " , " + metadata_new["end-time"]
-    metadata["platform"] = metadata["platform"] + " , " + metadata_new["platform"]
-    metadata["start-time"] = metadata["start-time"] + " , " + metadata_new["start-time"]
-    metadata["title"] = metadata["title"] + " , " + metadata_new["title"]
-    metadata["versions"]["numpy"] = (
-        metadata["versions"]["numpy"] + " , " + metadata_new["versions"]["numpy"]
-    )
-    metadata["versions"]["qibo"] = (
-        metadata["versions"]["qibo"] + " , " + metadata_new["versions"]["qibo"]
-    )
-    metadata["versions"]["qibocal"] = (
-        metadata["versions"]["qibocal"] + " , " + metadata_new["versions"]["qibocal"]
-    )
-    metadata["versions"]["qibolab"] = (
-        metadata["versions"]["qibolab"] + " , " + metadata_new["versions"]["qibolab"]
-    )
+    def update(old, new, key):
+        old[key] += " , " + new[key]
+    
+    for key in ("backend", "date", "end-time", "platform", "start-time", "title"):
+        update(metadata, metadata_new, key)
+    for key in ("numpy", "qibo", "qibocal", "qibolab"):
+        update(metadata["versions"], metadata_new["versions"], key)
     with open(f"{target_dir}/meta.yml", "w") as file:
         yaml.safe_dump(metadata, file)
 
