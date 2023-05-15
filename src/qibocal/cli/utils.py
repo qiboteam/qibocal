@@ -41,7 +41,7 @@ def update_meta(metadata, metadata_new, target_dir="qq-compare"):
 
     def update(old, new, key):
         old[key] += " , " + new[key]
-    
+
     for key in ("backend", "date", "end-time", "platform", "start-time", "title"):
         update(metadata, metadata_new, key)
     for key in ("numpy", "qibo", "qibocal", "qibolab"):
@@ -58,7 +58,7 @@ def update_runcard(rundata, rundata_new, target_compare_dir):
         rundata_new (dict): dictionary with the new parameters and values to update in the actual runcard.yml
     """
 
-    rundata["platform"] = rundata["platform"] + " , " + rundata_new["platform"]
+    rundata["platform"] += " , " + rundata_new["platform"]
     unique = list(set(rundata["qubits"] + rundata_new["qubits"]))
     rundata["qubits"] = unique
     with open(f"{target_compare_dir}/runcard.yml", "w") as file:
