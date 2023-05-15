@@ -38,6 +38,8 @@ class Runcard:
     """Structure of an execution runcard."""
 
     actions: List[Action]
+    qubits: Optional[List[int]] = None
+    format: Optional[str] = None
 
     @classmethod
     def load(cls, card: Union[dict, Path]):
@@ -52,4 +54,8 @@ class Runcard:
             if isinstance(card, Path)
             else card
         )
-        return cls(**content)
+        return cls(
+            actions=content["actions"],
+            qubits=content["qubits"] if "qubits" in content else [],
+            format=content["format"] if "format" in content else None,
+        )

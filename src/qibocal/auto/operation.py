@@ -1,12 +1,15 @@
 import inspect
-from dataclasses import dataclass, field, fields
-from enum import Enum
+from dataclasses import dataclass, fields
 from typing import Callable, Dict, Generic, NewType, TypeVar, Union
+
+from qibolab.platforms.abstract import Qubit
 
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
 ParameterValue = Union[float, int]
 """Valid value for a routine and runcard parameter."""
+Qubits = Dict[int, Qubit]
+"""Convenient way of passing qubits in the routines."""
 
 
 class Parameters:
@@ -18,6 +21,11 @@ class Parameters:
     The actual parameters structure is only used inside the routines themselves.
 
     """
+
+    nshots: int
+    """Number of executions on hardware"""
+    relaxation_time: float
+    """Wait time for the qubit to decohere back to the `gnd` state"""
 
     @classmethod
     def load(cls, parameters):
@@ -31,7 +39,7 @@ class Parameters:
             the linked outputs
 
         """
-        return cls()
+        return cls(**parameters)
 
 
 class Data:
@@ -79,7 +87,7 @@ class Results:
 # contravariance on parameter type
 _ParametersT = TypeVar("_ParametersT", bound=Parameters, contravariant=True)
 _DataT = TypeVar("_DataT", bound=Data)
-_ResultsT = TypeVar("_ResultsT", bound=Results, covariant=True)
+_ResultsT = TypeVar("_ResultsT", bound=Results)
 
 
 @dataclass
@@ -87,12 +95,20 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     """A wrapped calibration routine."""
 
     acquisition: Callable[[_ParametersT], _DataT]
-    fit: Callable[[_DataT], _ResultsT]
+    fit: Callable[[_DataT], _ResultsT] = None
+    report: Callable[[_DataT, _ResultsT], None] = None
+
+    def __post_init__(self):
+        # TODO: this could be improved
+        if self.fit == None:
+            self.fit = _dummy_fit
+        if self.report == None:
+            self.report = _dummy_report
 
     @property
     def parameters_type(self):
         sig = inspect.signature(self.acquisition)
-        param = next(iter(sig.parameters.values()))
+        param = list(sig.parameters.values())[0]
         return param.annotation
 
     @property
@@ -103,6 +119,15 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     def results_type(self):
         return inspect.signature(self.fit).return_annotation
 
+    # TODO: I don't like these properties but it seems to work
+    @property
+    def platform_dependent(self):
+        return "platform" in inspect.signature(self.acquisition).parameters
+
+    @property
+    def qubits_dependent(self):
+        return "qubits" in inspect.signature(self.acquisition).parameters
+
 
 @dataclass
 class DummyPars(Parameters):
@@ -112,6 +137,9 @@ class DummyPars(Parameters):
 @dataclass
 class DummyData(Data):
     """Dummy data."""
+
+    def save(self, path):
+        """Dummy method for saving data"""
 
 
 @dataclass
@@ -127,64 +155,8 @@ def _dummy_fit(data: DummyData) -> DummyRes:
     return DummyRes()
 
 
-dummy_operation = Routine(_dummy_acquisition, _dummy_fit)
-
-#  --- from here on start the examples ---
-
-
-@dataclass
-class Cmd1Pars(Parameters):
-    a: int
-    b: int
+def _dummy_report(data: DummyData, result: DummyRes):
+    return [], ""
 
 
-@dataclass
-class Cmd1Data(Data):
-    c: float
-
-
-@dataclass
-class Cmd1Res(Results):
-    res: str = field(metadata=dict(update="myres"))
-    num: int
-
-
-def _cmd1_acq(args: Cmd1Pars) -> Cmd1Data:
-    print("command_1")
-    return Cmd1Data(3.4)
-
-
-def _cmd1_fit(args: Cmd1Data) -> Cmd1Res:
-    return Cmd1Res("command_1", 3)
-
-
-command_1 = Routine(_cmd1_acq, _cmd1_fit)
-
-
-@dataclass
-class Cmd2Res(Results):
-    res: str = field(metadata=dict(update="res2"))
-
-
-def _cmd2_acq(*args: Cmd1Pars) -> Cmd1Data:
-    print("command_2")
-    return Cmd1Data(1.8)
-
-
-def _cmd2_fit(*args: Cmd1Data) -> Cmd2Res:
-    return Cmd2Res("command_2")
-
-
-command_2 = Routine(_cmd1_acq, _cmd1_fit)
-
-
-#  ---
-#  the following enum should exist, with this name, so only its content is
-#  supposed to be an example, but it should not be exported by this module, and
-#  instead should be placed inside `qibocal.calibrations.__init__.py`
-#  ---
-
-
-class Operation(Enum):
-    command_1 = command_1
-    command_2 = command_2
+dummy_operation = Routine(_dummy_acquisition, _dummy_fit, _dummy_report)
