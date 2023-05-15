@@ -1,22 +1,22 @@
 platform: qw5q_gold_qblox
 
-qubits: [2]
+qubits: [1, 2]
 
 format: csv
 
 actions:
 
-  # - id: resonator_spectroscopy high power
-  #   priority: 0
-  #   operation: resonator_spectroscopy
-  #   main: resonator_punchout_attenuation
-  #   parameters:
-  #     freq_width: 5_000_000
-  #     freq_step: 100_000
-  #     # amplitude: 0.4
-  #     power_level: high
-  #     nshots: 4000
-  #     relaxation_time: 2000
+  - id: resonator_spectroscopy high power
+    priority: 0
+    operation: resonator_spectroscopy
+    main: resonator_punchout_attenuation
+    parameters:
+      freq_width: 5_000_000
+      freq_step: 100_000
+      # amplitude: 0.4
+      power_level: high
+      nshots: 4000
+      relaxation_time: 2000
 
   # # - id: resonator punchout
   # #   priority: 10
@@ -31,19 +31,19 @@ actions:
   # #     nshots: 1
   # #     relaxation_time: 50
 
-  # - id: resonator_punchout_attenuation
-  #   priority: 10
-  #   operation: resonator_punchout_attenuation
-  #   main: resonator spectroscopy low power
-  #   # next: resonator_punchout
-  #   parameters:
-  #     freq_width: 7_000_000
-  #     freq_step: 200_000
-  #     min_att: 4
-  #     max_att: 50
-  #     step_att: 4
-  #     nshots: 4000
-  #     relaxation_time: 2000
+  - id: resonator_punchout_attenuation
+    priority: 10
+    operation: resonator_punchout_attenuation
+    # main: resonator spectroscopy low power
+    # next: resonator_punchout
+    parameters:
+      freq_width: 7_000_000
+      freq_step: 200_000
+      min_att: 4
+      max_att: 50
+      step_att: 4
+      nshots: 4000
+      relaxation_time: 2000
 
   # - id: resonator spectroscopy low power
   #   priority: 20
@@ -178,16 +178,16 @@ actions:
   #   parameters:
   #     beta_param: null
 
-  - id: t1
-    priority: 0 #110
-    operation: t1
-    # main: spin_echo
-    parameters:
-      delay_before_readout_start: 4
-      delay_before_readout_end: 16000
-      delay_before_readout_step: 100
-      relaxation_time: 2000
-      nshots: 1024  
+  # - id: t1
+  #   priority: 0 #110
+  #   operation: t1
+  #   # main: spin_echo
+  #   parameters:
+  #     delay_before_readout_start: 4
+  #     delay_before_readout_end: 16000
+  #     delay_before_readout_step: 100
+  #     relaxation_time: 2000
+  #     nshots: 1024  
 
   # - id: t2
   #   priority: 120
