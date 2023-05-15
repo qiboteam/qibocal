@@ -101,11 +101,11 @@ actions:
     next: rabi length
     parameters:
       min_amp_factor: 0.0
-      max_amp_factor: 4.0
+      max_amp_factor: 0.0
       step_amp_factor: 0.1
       pulse_length: 30
       relaxation_time: 0
-      nshots: 1024
+      nshots: 0
 
   - id: rabi length
     priority: 0
@@ -117,7 +117,7 @@ actions:
       pulse_duration_step: 8
       pulse_amplitude: 0.5
       relaxation_time: 0
-      nshots: 1024
+      nshots: 0
 
   - id: t1
     priority: 0
