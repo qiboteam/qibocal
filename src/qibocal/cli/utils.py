@@ -15,7 +15,7 @@ def folders_exists(folders):
     for foldername in folders:
         expanded = list(glob(foldername))
         if len(expanded) == 0 and "*" not in foldername:
-            raise (click.BadParameter("file '{}' not found".format(foldername)))
+            raise (click.BadParameter(f"file '{foldername}' not found"))
         foldernames.extend(expanded)
 
     return foldernames
