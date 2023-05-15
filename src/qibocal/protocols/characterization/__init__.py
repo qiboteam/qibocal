@@ -19,6 +19,7 @@ from .rabi.length import rabi_length
 from .rabi.length_sweep import rabi_length_sweep
 from .ramsey import ramsey
 from .ramsey_sweep import ramsey_sweep
+from .RB.std_rb import StdRB
 from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
@@ -47,3 +48,4 @@ class Operation(Enum):
     drag_pulse_tuning = drag_pulse_tuning
     flipping = flipping
     dispersive_shift = dispersive_shift
+    StdRB = StdRB
