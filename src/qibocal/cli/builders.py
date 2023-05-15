@@ -161,8 +161,7 @@ class ActionBuilder:
                 self.qubits = self.runcard.get("qubits")
         else:
             self.qubits = []
-        if "format" in self.runcard:
-            self.format = self.runcard["format"]
+        self.format = self.runcard.get("format")
 
         # Saving runcard
         shutil.copy(runcard, f"{path}/runcard.yml")
