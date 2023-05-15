@@ -1,14 +1,12 @@
 """Action execution tracker."""
-import inspect
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 from qibolab.platforms.abstract import AbstractPlatform
 
-from qibocal.protocols.characterization import Operation
-
+from ..protocols.characterization import Operation
 from .operation import Data, DummyPars, Qubits, Results, Routine, dummy_operation
 from .runcard import Action, Id
 
