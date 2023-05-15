@@ -41,7 +41,7 @@ def update_meta(metadata, metadata_new, target_dir="qq-compare"):
 
     def update(old, new, key):
         old[key] += " , " + new[key]
-    
+
     for key in ("backend", "date", "end-time", "platform", "start-time", "title"):
         update(metadata, metadata_new, key)
     for key in ("numpy", "qibo", "qibocal", "qibolab"):
