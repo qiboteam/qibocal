@@ -7,15 +7,9 @@ import shutil
 import yaml
 
 from qibocal import calibrations
-from qibocal.config import log, raise_error
+from qibocal.cli.utils import generate_output_folder, load_yaml
+from qibocal.config import raise_error
 from qibocal.data import Data
-
-
-def load_yaml(path):
-    """Load yaml file from disk."""
-    with open(path) as file:
-        data = yaml.safe_load(file)
-    return data
 
 
 class ActionParser:
@@ -38,7 +32,6 @@ class ActionParser:
             os.makedirs(self.path)
         # collect function from module
         self.func = getattr(calibrations, self.name)
-
         sig = inspect.signature(self.func)
         self.params = self.runcard["actions"][self.name]
         for param in list(sig.parameters)[2:-1]:
@@ -76,7 +69,7 @@ class niGSCactionParser(ActionParser):
         try:
             self.noise_params = self.runcard["actions"][self.name]["noise_params"]
         except KeyError:
-            self.noise_params = None
+            self.noise_params = []
         try:
             self.noise_model = getattr(
                 noisemodels, self.runcard["actions"][self.name]["noise_model"]
@@ -119,6 +112,8 @@ class niGSCactionParser(ActionParser):
         experiment = self.module.ModuleExperiment(
             factory, nshots=self.nshots, noise_model=self.noise_model
         )
+        # Store the circuits.
+        experiment.save_circuits(self.path)
         # Execute the circuits in the experiment.
         experiment.perform(experiment.execute)
         # Run the row by row postprocessing.
@@ -141,15 +136,20 @@ class ActionBuilder:
     """
 
     def __init__(self, runcard, folder=None, force=False):
-        path, self.folder = self._generate_output_folder(folder, force)
+        # setting output folder
+        self.folder = generate_output_folder(folder, force)
+
+        # parse runcard
         self.runcard = load_yaml(runcard)
-        # Qibolab default backend if not provided in runcard.
+
+        # backend and platform allocation
         backend_name = self.runcard.get("backend", "qibolab")
         platform_name = self.runcard.get("platform", "dummy")
         platform_runcard = self.runcard.get("runcard", None)
         self.backend, self.platform = self._allocate_backend(
-            backend_name, platform_name, path, platform_runcard
+            backend_name, platform_name, platform_runcard
         )
+        # qubits allocation
         if self.platform is not None:
             self.qubits = {
                 q: self.platform.qubits[q]
@@ -158,44 +158,13 @@ class ActionBuilder:
             }
         else:
             self.qubits = self.runcard.get("qubits")
-        self.format = self.runcard["format"]
-
+        # Setting format. If None csv is used.
+        self.format = self.runcard.get("format", "csv")
         # Saving runcard
-        shutil.copy(runcard, f"{path}/runcard.yml")
-        self.save_meta(path, self.folder)
+        shutil.copy(runcard, f"{self.folder}/runcard.yml")
+        self.save_meta()
 
-    @staticmethod
-    def _generate_output_folder(folder, force):
-        """Static method for generating the output folder.
-        Args:
-            folder (path): path for the output folder. If None it will be created a folder automatically
-            force (bool): option to overwrite the output folder if it exists already.
-        """
-        if folder is None:
-            import getpass
-
-            e = datetime.datetime.now()
-            user = getpass.getuser().replace(".", "-")
-            date = e.strftime("%Y-%m-%d")
-            folder = f"{date}-{'000'}-{user}"
-            num = 0
-            while os.path.exists(folder):
-                log.info(f"Directory {folder} already exists.")
-                num += 1
-                folder = f"{date}-{str(num).rjust(3, '0')}-{user}"
-                log.info(f"Trying to create directory {folder}")
-        elif os.path.exists(folder) and not force:
-            raise_error(RuntimeError, f"Directory {folder} already exists.")
-        elif os.path.exists(folder) and force:
-            log.warning(f"Deleting previous directory {folder}.")
-            shutil.rmtree(os.path.join(os.getcwd(), folder))
-
-        path = os.path.join(os.getcwd(), folder)
-        log.info(f"Creating directory {folder}.")
-        os.makedirs(path)
-        return path, folder
-
-    def _allocate_backend(self, backend_name, platform_name, path, platform_runcard):
+    def _allocate_backend(self, backend_name, platform_name, platform_runcard):
         """Allocate the platform using Qibolab."""
         from qibo.backends import GlobalBackend, set_backend
 
@@ -207,7 +176,7 @@ class ActionBuilder:
             else:
                 original_runcard = platform_runcard
             # copy of the original runcard that will stay unmodified
-            shutil.copy(original_runcard, f"{path}/platform.yml")
+            shutil.copy(original_runcard, f"{self.folder}/platform.yml")
             # copy of the original runcard that will be modified during calibration
             updated_runcard = f"{self.folder}/new_platform.yml"
             shutil.copy(original_runcard, updated_runcard)
@@ -222,12 +191,12 @@ class ActionBuilder:
             backend = GlobalBackend()
             return backend, None
 
-    def save_meta(self, path, folder):
+    def save_meta(self):
         import qibocal
 
         e = datetime.datetime.now(datetime.timezone.utc)
         meta = {}
-        meta["title"] = folder
+        meta["title"] = self.folder
         meta["backend"] = str(self.backend)
         meta["platform"] = str(self.backend.platform)
         meta["date"] = e.strftime("%Y-%m-%d")
@@ -236,7 +205,7 @@ class ActionBuilder:
         meta["versions"] = self.backend.versions  # pylint: disable=E1101
         meta["versions"]["qibocal"] = qibocal.__version__
 
-        with open(f"{path}/meta.yml", "w") as file:
+        with open(f"{self.folder}/meta.yml", "w") as file:
             yaml.dump(meta, file)
 
     def execute(self):
@@ -249,18 +218,18 @@ class ActionBuilder:
         actions = []
         for action in self.runcard["actions"]:
             actions.append(action)
-            try:
-                parser = niGSCactionParser(self.runcard, self.folder, action)
-                parser.build()
-                parser.execute(self.format, self.platform)
-            # TODO: find a better way to choose between the two parsers
-            except (ModuleNotFoundError, KeyError):
+            if hasattr(calibrations, action):
                 parser = ActionParser(self.runcard, self.folder, action)
                 parser.build()
                 parser.execute(self.format, self.platform, self.qubits)
-                for qubit in self.qubits:
-                    if self.platform is not None:
-                        self.update_platform_runcard(qubit, action)
+            else:
+                parser = niGSCactionParser(self.runcard, self.folder, action)
+                parser.build()
+                parser.execute(self.format, self.platform)
+
+            for qubit in self.qubits:
+                if self.platform is not None:
+                    self.update_platform_runcard(qubit, action)
             self.dump_report(actions)
 
         if self.platform is not None:
@@ -328,15 +297,12 @@ class ReportBuilder:
         self.routines = []
         if actions is None:
             actions = self.runcard.get("actions")
-
         for action in actions:
             if hasattr(calibrations, action):
                 routine = getattr(calibrations, action)
-            elif hasattr(calibrations.niGSC, action):
+            else:
                 routine = niGSCactionParser(self.runcard, self.path, action)
                 routine.load_plot()
-            else:
-                raise_error(ValueError, f"Undefined action {action} in report.")
 
             if not hasattr(routine, "plots"):
                 routine.plots = []

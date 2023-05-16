@@ -10,7 +10,7 @@ actions:
     depths: [1,3,5,7,10]
     runs: 2
     nshots: 1024
-    noise_model: PauliErrorOnUnitary
+    noise_model: PauliErrorOnAll
     noise_params: [0.01, 0.01, 0.01]
   XIdrb:
     nqubits: 1
@@ -24,5 +24,5 @@ actions:
     depths: [1,3,5,7,10]
     runs: 2
     nshots: 1024
-    noise_model: PauliErrorOnUnitary
+    noise_model: PauliErrorOnAll
     noise_params: [0.01, 0.01, 0.01]
