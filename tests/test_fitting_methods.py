@@ -1,11 +1,7 @@
 """Testing fitting functions"""
-
-import logging
-
 import numpy as np
 import pytest
 
-from qibocal.config import log
 from qibocal.data import DataUnits
 from qibocal.fitting.methods import (
     drag_tuning_fit,
@@ -18,6 +14,7 @@ from qibocal.fitting.methods import (
 )
 from qibocal.fitting.utils import (
     cos,
+    cumulative,
     exp,
     flipping,
     freq_r_mathieu,
@@ -535,3 +532,9 @@ def test_drag_tunning_fit(label, caplog):
         data, "beta_param[dimensionless]", "MSR[V]", [0], labels=label
     )
     assert "drag_tuning_fit: the fitting was not succesful" in caplog.text
+
+
+def test_cumulative():
+    points = x = np.linspace(0, 9, 10)
+    cum = cumulative(x, points)
+    assert np.array_equal(cum, points)

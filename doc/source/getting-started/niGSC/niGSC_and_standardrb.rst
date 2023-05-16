@@ -91,10 +91,10 @@ Now build the circuit factory, and check out how it works.
 
 .. code-block:: python
 
-    from qibocal.calibrations.protocols import standardrb
+    from qibocal.calibrations.niGSC import standardrb
     # To not alter the iterator when using it, make deep copies.
     from copy import deepcopy
-    factory = standardrb.ModuleFactory(nqubits, depths, runs)
+    factory = standardrb.ModuleFactory(nqubits, depths * runs)
     # ``factory`` is an iterator class object generating single clifford
     # gates with the last gate always the inverse of the whole gate sequence.
     # There are mainly three ways how to extract the circuits.
@@ -123,7 +123,7 @@ The experiment
 
     # Initiate the standard RB experiment. To make it simpler
     # first without simulated noise on the circuits.
-    experiment = standardrb.ModuleExperiment(factory, nshots)
+    experiment = standardrb.ModuleExperiment(factory, nshots=nshots)
     # Nothing happened yet. The experiment has to be executed
     # to execute the single circuits and store the samples along
     # with the number of applied gates.
@@ -173,18 +173,19 @@ It has to be predefined and passed when initiating the experiment object.
 
 .. code-block:: python
 
-    from qibocal.calibrations.protocols import standardrb
-    from qibocal.calibrations.protocols.noisemodels import PauliErrorOnUnitary
+    # To not alter the iterator when using it, make deep copies.
+    from qibocal.calibrations.niGSC import standardrb
+    from qibocal.calibrations.niGSC.basics.noisemodels import PauliErrorOnUnitary
+
     nqubits = 1
-    depths = [0,1,5,10,15]
     runs = 10
+    depths = [0, 1, 5, 10, 15]
     nshots = 128
     # Define the noise model used in the simulation.
     noisemodel = PauliErrorOnUnitary(0.01, 0.02, 0.04)
-    factory = standardrb.ModuleFactory(nqubits, depths, runs)
+    factory = standardrb.ModuleFactory(nqubits, depths * runs)
     # Add the noise model to the experiment.
-    experiment = standardrb.ModuleExperiment(
-        factory, nshots, noisemodel = noisemodel)
+    experiment = standardrb.ModuleExperiment(factory, nshots=nshots, noise_model=noisemodel)
     experiment.perform(experiment.execute)
     experiment.perform(standardrb.groundstate_probabilities)
     df_aggr = standardrb.get_aggregational_data(experiment)

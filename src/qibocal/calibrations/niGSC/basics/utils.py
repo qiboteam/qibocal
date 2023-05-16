@@ -1,47 +1,20 @@
-from copy import deepcopy
-from os import mkdir
-from os.path import isdir
 from typing import Union
 
 import numpy as np
-from qibo.models import Circuit
 
 # Gates, without having to define any paramters
 ONEQ_GATES = ["I", "X", "Y", "Z", "H", "S", "SDG", "T", "TDG"]
 
 
-def experiment_directory(name: str):
-    """Make the directory where the experiment will be stored."""
-    from datetime import datetime
-
-    overall_dir = "experiments/"
-    # Check if the overall directory exists. If not create it.
-    if not isdir(overall_dir):
-        mkdir(overall_dir)
-    # Get the current date and time.
-    dt_string = datetime.now().strftime("%y%b%d_%H%M%S")
-    # Every script name ``name`` gets its own directory.
-    subdirectory = f"{overall_dir}{name}/"
-    if not isdir(subdirectory):  # pragma: no cover
-        mkdir(subdirectory)
-    # Name the final directory for this experiment.
-    final_directory = f"{subdirectory}experiment{dt_string}/"
-    if not isdir(final_directory):  # pragma: no cover
-        mkdir(final_directory)
-    else:
-        already_file, count = True, 1
-        while already_file:
-            final_directory = f"{subdirectory}experiment{dt_string}_{count}/"
-            if not isdir(final_directory):
-                mkdir(final_directory)
-                already_file = False
-            else:
-                count += 1
-    return final_directory
-
-
 def effective_depol(error_channel, **kwargs):
-    """ """
+    """Computes the effective depolarizing error of a channel.
+
+    Args:
+        error_channel (qibo.gates.Channel): Noise channel with `to_pauli_liouville` representation.
+
+    Returns:
+        float: Effective depolarizing error of a given error_channel.
+    """
     liouvillerep = error_channel.to_pauli_liouville(normalize=True)
     d = int(np.sqrt(len(liouvillerep)))
     depolp = (np.trace(liouvillerep) - 1) / (d**2 - 1)
@@ -84,7 +57,8 @@ def probabilities(allsamples: Union[list, np.ndarray]) -> np.ndarray:
 
 
 def gate_fidelity(eff_depol: float, primitive=False) -> float:
-    """Returns the average gate fidelity given the effective depolarizing parameter for single qubits.
+    """Returns the average gate fidelity given the effective
+    depolarizing parameter for single qubits.
 
     If primitive is True, divide by additional 1.875 as convetion in RB reporting.
     (The original reasoning was that Clifford gates are typically
@@ -105,22 +79,14 @@ def gate_fidelity(eff_depol: float, primitive=False) -> float:
 
 def number_to_str(number: Union[int, float, complex]) -> str:
     """Converts a number into a string.
-
-    Necessary when storing a complex number in JASON format.
+    Returns only the real number if imaginary part is < 1e-3.
 
     Args:
         number (int | float | complex)
 
     Returns:
-        str: The number expressed as a string, with two floating points when
-        complex or three when real.
+        str: The number expressed as a string, with three floating points.
     """
-    if np.iscomplex(number):
-        the_str = "{:.2f}{}{:.2f}j".format(
-            np.real(number),
-            "+" if np.imag(number) >= 0 else "-",
-            np.abs(np.imag(number)),
-        )
-    else:
-        the_str = "{:.3f}".format(number)
-    return the_str
+    return (
+        f"{np.real(number):.3f}" if np.abs(np.imag(number)) < 1e-3 else f"{number:.3f}"
+    )

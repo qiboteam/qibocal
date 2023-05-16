@@ -1,14 +1,12 @@
 """Action execution tracker."""
-import inspect
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 from qibolab.platforms.abstract import AbstractPlatform
 
-from qibocal.protocols.characterization import Operation
-
+from ..protocols.characterization import Operation
 from .operation import Data, DummyPars, Qubits, Results, Routine, dummy_operation
 from .runcard import Action, Id
 
@@ -99,7 +97,7 @@ class Task:
             self._data: Data = operation.acquisition(
                 parameters,
             )
-        self._data.save(path)
+        self._data.to_csv(path)
         # TODO: data dump
         # path.write_text(yaml.dump(pydantic_encoder(self.data(base_dir))))
         return operation.fit(self._data)

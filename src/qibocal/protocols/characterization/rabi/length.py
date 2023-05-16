@@ -86,6 +86,7 @@ def _acquisition(
     # sweep the parameter
     for duration in qd_pulse_duration_range:
         for qubit in qubits:
+            print(duration)
             qd_pulses[qubit].duration = duration
             ro_pulses[qubit].start = qd_pulses[qubit].finish
 
@@ -137,11 +138,19 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
         index = np.argmax(mags) if np.argmax(mags) != 0 else np.argmax(mags[1:]) + 1
         f = x[index] / (x[1] - x[0])
 
-        pguess = [0.5, 1, f, np.pi / 2, 0]
+        pguess = [1, 1, f, np.pi / 2, 0]
 
         try:
             popt, pcov = curve_fit(
-                utils.rabi_length_fit, x, y, p0=pguess, maxfev=100000
+                utils.rabi_length_fit,
+                x,
+                y,
+                p0=pguess,
+                maxfev=100000,
+                bounds=(
+                    [0, 0, 0, -np.pi, 0],
+                    [1, 1, np.inf, np.pi, np.inf],
+                ),
             )
             translated_popt = [
                 (y_max - y_min) * popt[0] + y_min,

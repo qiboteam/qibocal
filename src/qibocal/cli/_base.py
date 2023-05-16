@@ -13,9 +13,8 @@ from urllib.parse import urljoin
 import click
 from qibo.config import log, raise_error
 
-from qibocal.cli.auto_builder import AutoCalibrationBuilder
-from qibocal.cli.builders import ActionBuilder, load_yaml
-
+from ..cli.auto_builder import AutoCalibrationBuilder
+from ..cli.builders import ActionBuilder, load_yaml
 from .utils import check_folder_structure, folders_exists, update_meta, update_runcard
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
