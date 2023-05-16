@@ -1,11 +1,7 @@
 """Testing fitting functions"""
-
-import logging
-
 import numpy as np
 import pytest
 
-from qibocal.config import log
 from qibocal.data import DataUnits
 from qibocal.fitting.methods import (
     drag_tuning_fit,
