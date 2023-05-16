@@ -28,10 +28,10 @@ class ResonatorSpectroscopyParameters(Parameters):
     relaxation_time: int
     """Relaxation time (ns)."""
     amplitude: Optional[float] = None
-    """Readout amplitude (optional). If defined, same amplitude will be used in all qubits. 
+    """Readout amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
     attenuation: Optional[int] = None
-    """Readout attenuation (optional). If defined, same attenuation will be used in all qubits. 
+    """Readout attenuation (optional). If defined, same attenuation will be used in all qubits.
     Otherwise the default attenuation defined on the platform runcard will be used""""
 
     def __post_init__(self):
