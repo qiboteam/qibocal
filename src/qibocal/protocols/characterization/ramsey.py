@@ -3,6 +3,7 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
+from qibo.config import raise_error
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.platforms.platform import (
     AcquisitionType,
@@ -10,6 +11,7 @@ from qibolab.platforms.platform import (
     ExecutionParameters,
 )
 from qibolab.pulses import PulseSequence
+from qibolab.sweeper import Parameter, Sweeper
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -22,6 +24,10 @@ from qibocal.plots.utils import get_color
 class RamseyParameters(Parameters):
     """Ramsey runcard inputs."""
 
+    nshots: int
+    """Number of shots."""
+    relaxation_time: float
+    """Relxation time (ns)."""
     delay_between_pulses_start: int
     """Initial delay between RX(pi/2) pulses in ns."""
     delay_between_pulses_end: int
@@ -106,45 +112,52 @@ def _acquisition(
         params.delay_between_pulses_step,
     )
 
+    sweeper = Sweeper(
+        Parameter.delay,
+        waits,
+        [RX90_pulses1[qubit] for qubit in qubits],
+    )
+
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
     # additionally include wait time and t_max
     data = RamseyData(params.n_osc, params.delay_between_pulses_end)
 
     # sweep the parameter
-    for wait in waits:
-        for qubit in qubits:
-            RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
-            ro_pulses[qubit].start = RX90_pulses2[qubit].finish
-            if params.n_osc != 0:
-                RX90_pulses2[qubit].relative_phase = (
-                    RX90_pulses2[qubit].start
-                    * (-2 * np.pi)
-                    * (params.n_osc)
-                    / params.delay_between_pulses_end
-                )
+    if params.n_osc != 0:
+        raise ValueError(f"Not implemented n_osc > 1.")
+        # RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
+        # ro_pulses[qubit].start = RX90_pulses2[qubit].finish
+        # if params.n_osc != 0:
+        #     RX90_pulses2[qubit].relative_phase = (
+        #         RX90_pulses2[qubit].start
+        #         * (-2 * np.pi)
+        #         * (params.n_osc)
+        #         / params.delay_between_pulses_end
+        #     )
 
-        # execute the pulse sequence
-        results = platform.execute_pulse_sequence(
-            sequence,
-            ExecutionParameters(
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.INTEGRATION,
-                averaging_mode=AveragingMode.CYCLIC,
-            ),
+    # execute the sweep
+    results = platform.sweep(
+        sequence,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
+        ),
+        sweeper,
+    )
+    for qubit in qubits:
+        # average msr, phase, i and q over the number of shots defined in the runcard
+        r = results[ro_pulses[qubit].serial].serialize
+        r.update(
+            {
+                "wait[ns]": waits,
+                "qubit_freqs[Hz]": len(waits) * [qubits[qubit].drive_frequency],
+                "qubit": len(waits) * [qubit],
+            }
         )
-        for qubit, ro_pulse in ro_pulses.items():
-            # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[ro_pulse.serial].average.serialize
-            r.update(
-                {
-                    "wait[ns]": wait,
-                    "qubit_freqs[Hz]": qubits[qubit].drive_frequency,
-                    "qubit": qubit,
-                }
-            )
-            data.add_data_from_dict(r)
+        data.add_data_from_dict(r)
     return data
 
 
@@ -176,6 +189,8 @@ def _fit(data: RamseyData) -> RamseyResults:
         voltages = qubit_data_df["MSR"].pint.to("uV").pint.magnitude
         times = qubit_data_df["wait"].pint.to("ns").pint.magnitude
         qubit_freq = qubit_data_df["qubit_freqs"].pint.to("Hz").pint.magnitude.unique()
+
+        print("qubit_freq", qubit_freq)
 
         try:
             y_max = np.max(voltages.values)
@@ -225,6 +240,7 @@ def _fit(data: RamseyData) -> RamseyResults:
             log.warning(f"ramsey_fit: the fitting was not succesful. {e}")
             popt = [0] * 5
             t2 = 5.0
+            print(qubit_freq)
             corrected_qubit_frequency = int(qubit_freq)
             delta_phys = 0
 

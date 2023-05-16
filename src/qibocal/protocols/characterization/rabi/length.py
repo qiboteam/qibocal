@@ -9,6 +9,7 @@ from qibolab.platforms.platform import (
     ExecutionParameters,
 )
 from qibolab.pulses import PulseSequence
+from qibolab.sweeper import Parameter, Sweeper
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -83,40 +84,42 @@ def _acquisition(
         params.pulse_duration_step,
     )
 
+    sweeper = Sweeper(
+        Parameter.duration,
+        qd_pulse_duration_range,
+        [qd_pulses[qubit] for qubit in qubits],
+    )
+
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
     # additionally include qubit drive pulse length
     data = RabiLengthData()
 
-    # sweep the parameter
-    for duration in qd_pulse_duration_range:
-        for qubit in qubits:
-            qd_pulses[qubit].duration = duration
-            ro_pulses[qubit].start = qd_pulses[qubit].finish
+    # execute the sweep
+    results = platform.sweep(
+        sequence,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
+        ),
+        sweeper,
+    )
 
-        # execute the pulse sequence
-        results = platform.execute_pulse_sequence(
-            sequence,
-            ExecutionParameters(
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.INTEGRATION,
-                averaging_mode=AveragingMode.CYCLIC,
-            ),
+    for qubit in qubits:
+        # average msr, phase, i and q over the number of shots defined in the runcard
+        result = results[ro_pulses[qubit].serial]
+        r = result.serialize
+        r.update(
+            {
+                "time[ns]": qd_pulse_duration_range,
+                "amplitude[dimensionless]": len(qd_pulse_duration_range)
+                * [float(qd_pulses[qubit].amplitude)],
+                "qubit": len(qd_pulse_duration_range) * [qubit],
+            }
         )
-
-        for qubit in qubits:
-            # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[ro_pulses[qubit].serial].average.serialize
-            r.update(
-                {
-                    "length[ns]": duration,
-                    "amplitude[dimensionless]": float(qd_pulses[qubit].amplitude),
-                    "qubit": qubit,
-                }
-            )
-            data.add(r)
-
+        data.add_data_from_dict(r)
     return data
 
 
