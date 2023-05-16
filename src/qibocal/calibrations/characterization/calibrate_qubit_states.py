@@ -1,6 +1,10 @@
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
-from qibolab.platforms.platform import AcquisitionType, AveragingMode
+from qibolab.platforms.platform import (
+    AcquisitionType,
+    AveragingMode,
+    ExecutionParameters,
+)
 from qibolab.pulses import PulseSequence
 
 from qibocal import plots
@@ -68,14 +72,16 @@ def calibrate_qubit_states(
     # execute the first pulse sequence
     state0_results = platform.execute_pulse_sequence(
         state0_sequence,
-        nshots=nshots,
-        relaxation_time=relaxation_time,
-        acquisition_type=AcquisitionType.INTEGRATION,
+        ExecutionParameters(
+            nshots=nshots,
+            relaxation_time=relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+        ),
     )
 
     # retrieve and store the results for every qubit
     for ro_pulse in ro_pulses.values():
-        r = state0_results[ro_pulse.serial].raw
+        r = state0_results[ro_pulse.serial].serialize
         r.update(
             {
                 "qubit": [ro_pulse.qubit] * nshots,
@@ -88,14 +94,16 @@ def calibrate_qubit_states(
     # execute the second pulse sequence
     state1_results = platform.execute_pulse_sequence(
         state1_sequence,
-        nshots=nshots,
-        relaxation_time=relaxation_time,
-        acquisition_type=AcquisitionType.INTEGRATION,
+        ExecutionParameters(
+            nshots=nshots,
+            relaxation_time=relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+        ),
     )
 
     # retrieve and store the results for every qubit
     for ro_pulse in ro_pulses.values():
-        r = state1_results[ro_pulse.serial].raw
+        r = state1_results[ro_pulse.serial].serialize
         r.update(
             {
                 "qubit": [ro_pulse.qubit] * nshots,
