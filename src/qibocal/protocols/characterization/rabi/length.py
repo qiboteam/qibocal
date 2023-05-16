@@ -113,7 +113,7 @@ def _acquisition(
         r = result.serialize
         r.update(
             {
-                "time[ns]": qd_pulse_duration_range,
+                "length[ns]": qd_pulse_duration_range,
                 "amplitude[dimensionless]": len(qd_pulse_duration_range)
                 * [float(qd_pulses[qubit].amplitude)],
                 "qubit": len(qd_pulse_duration_range) * [qubit],
@@ -170,7 +170,7 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
         except:
             log.warning("rabi_fit: the fitting was not succesful")
             pi_pulse_parameter = 0
-            fitted_parameters = [0] * 4
+            translated_popt = [0] * 5
 
         durations[qubit] = pi_pulse_parameter
         fitted_parameters[qubit] = translated_popt
