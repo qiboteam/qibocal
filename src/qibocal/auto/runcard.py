@@ -39,7 +39,7 @@ class Runcard:
     """Structure of an execution runcard."""
 
     actions: List[Action]
-    qubits: Optional[List[int]] = Field(default_factory=list)
+    qubits: Optional[List[Union[int, str]]] = Field(default_factory=list)
     format: Optional[str] = None
 
     @classmethod
