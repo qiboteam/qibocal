@@ -161,7 +161,7 @@ class ActionBuilder:
         else:
             self.qubits = []
 
-        # Setting format. If None csv is used.
+        # Setting format. If absent csv is used.
         self.format = self.runcard.get("format", "csv")
         # Saving runcard
         shutil.copy(runcard, f"{self.folder}/runcard.yml")
