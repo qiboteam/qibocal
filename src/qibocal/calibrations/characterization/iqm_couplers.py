@@ -1,3 +1,5 @@
+import itertools
+
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.platforms.platform import AcquisitionType, AveragingMode
@@ -562,3 +564,338 @@ def coupler_spectroscopy_flux(
     #     resonator_type=platform.resonator_type,
     #     labels=["drive_frequency", "peak_voltage"],
     # )
+
+
+def iq_to_probability(i, q, mean_gnd, mean_exc):
+    state = i + 1j * q
+    state = state - mean_gnd
+    mean_exc = mean_exc - mean_gnd
+    state = state * np.exp(-1j * np.angle(mean_exc))
+    mean_exc = mean_exc * np.exp(-1j * np.angle(mean_exc))
+    return np.real(state) / np.real(mean_exc)
+
+
+@plot("coupler_swap", plots.coupler_swap)
+def coupler_swap(
+    platform: AbstractPlatform,
+    qubits: dict,
+    coupler_frequency: float,
+    coupler_drive_duration: float,
+    coupler_drive_amplitude: float,
+    frequency_width: float,
+    frequency_step: float,
+    nshots: int,
+):
+    r"""
+    Perform a SWAP experiment between two qubits through the coupler by changing its frequency.
+
+    Args:
+        platform (AbstractPlatform): The quantum platform to run the experiment on.
+        qubits (dict): The qubits to perform the experiment on.
+        coupler_frequency (float): The frequency of the coupler.
+        coupler_drive_duration (float): The duration of the coupler drive pulse.
+        coupler_drive_amplitude (float): The amplitude of the coupler drive pulse.
+        frequency_width (float): The width of the frequency sweep.
+        frequency_step (float): The step size of the frequency sweep.
+        nshots (int): The number of shots to average over.
+
+    Returns:
+        - DataUnits: The results of the experiment.
+            - **frequency[Hz]**: The frequency of the coupler.
+            - **coupler** (str): The name of the coupler.
+            - **qubit** (str): The name of the qubit measured.
+            - **probability** (float): The probability of the qubit being in the excited state.
+            - **state** (str): The state of the qubit.
+    """
+    # define the qubit to measure
+    # FIXME: make general for multiple qubits
+    if 2 in qubits:
+        qubits.pop(2)
+    qubit_pairs = list([qubit, 2] for qubit in qubits)
+
+    # create a sequence
+    sequence = PulseSequence()
+    ro_pulses = {}
+    cd_pulses = {}
+    qd_pulses = {}
+
+    for pair in qubit_pairs:
+        qd_pulses[pair[1]] = platform.create_RX_pulse(pair[1], start=0)
+        cd_pulses[pair[0]] = platform.create_qubit_drive_pulse(
+            pair[0], start=qd_pulses[pair[1]].se_finish, duration=coupler_drive_duration
+        )
+        cd_pulses[pair[0]].amplitude = coupler_drive_amplitude
+        platform.qubits[pair[0]].drive_frequency = coupler_frequency
+        platform.qubits[pair[0]].drive.local_oscillator.frequency = (
+            coupler_frequency - 100_000_000
+        )
+
+        ro_pulses[pair[1]] = platform.create_MZ_pulse(
+            pair[1], start=cd_pulses[pair[0]].se_finish
+        )
+        # ro_pulses[pair[0]] = platform.create_MZ_pulse(pair[0], start=ro_pulses[pair[1]].se_finish) # Multiplex not working yet
+
+        sequence.add(qd_pulses[pair[1]])
+        sequence.add(cd_pulses[pair[0]])
+        sequence.add(ro_pulses[pair[1]])
+        # sequence.add(ro_pulses[pair[0]])
+
+    # define the parameter to sweep and its range:
+    delta_frequency_range = np.arange(
+        -frequency_width // 2, frequency_width // 2, frequency_step
+    )
+
+    sweeper = Sweeper(
+        Parameter.frequency,
+        delta_frequency_range,
+        pulses=[cd_pulses[pair[0]] for pair in qubit_pairs],
+    )
+
+    # create a DataUnits object to store the results,
+    sweep_data = DataUnits(
+        name="data",
+        quantities={"frequency": "Hz"},
+        options=["coupler", "qubit", "state", "probability"],
+    )
+
+    # repeat the experiment as many times as defined by nshots
+    results = platform.sweep(
+        sequence,
+        sweeper,
+        nshots=nshots,
+        acquisition_type=AcquisitionType.INTEGRATION,  # AcquisitionType.DISCRIMINATION
+        averaging_mode=AveragingMode.CYCLIC,  # AcquisitionMode.CYCLIC
+        relaxation_time=300e-6,
+    )
+
+    # retrieve the results for every qubit
+    for pair in qubit_pairs:
+        # WHEN MULTIPLEXING IS WORKING
+        # for state, qubit in zip([0, 1], pair):
+        for state, qubit in zip([1], [pair[1]]):
+            # average msr, phase, i and q over the number of shots defined in the runcard
+            ro_pulse = ro_pulses[qubit]
+            result = results[ro_pulse.serial]
+
+            prob = np.abs(
+                result.i
+                + 1j * result.q
+                - complex(platform.qubits[qubit].mean_gnd_states)
+            ) / np.abs(
+                complex(platform.qubits[qubit].mean_exc_states)
+                - complex(platform.qubits[qubit].mean_gnd_states)
+            )
+            # prob = iq_to_probability(result.i, result.q, complex(platform.qubits[qubit].mean_exc_states), complex(platform.qubits[qubit].mean_gnd_states))
+            # store the results
+            r = {
+                "frequency[Hz]": delta_frequency_range + coupler_frequency,
+                "coupler": len(delta_frequency_range) * [f"c{pair[0]}"],
+                "qubit": len(delta_frequency_range) * [qubit],
+                "state": len(delta_frequency_range) * [state],
+                "probability": prob,
+            }
+            sweep_data.add_data_from_dict(r)
+
+    # Temporary fix for multiplexing, repeat the experiment for the second qubit
+    ro_pulses[pair[0]] = platform.create_MZ_pulse(
+        pair[0], start=ro_pulses[pair[1]].se_finish
+    )  # Multiplex not working yet
+    sequence.add(ro_pulses[pair[0]])
+    sequence.remove(ro_pulses[pair[1]])
+    results = platform.sweep(
+        sequence,
+        sweeper,
+        nshots=nshots,
+        acquisition_type=AcquisitionType.INTEGRATION,  # AcquisitionType.DISCRIMINATION
+        averaging_mode=AveragingMode.CYCLIC,  # AcquisitionMode.CYCLIC
+        relaxation_time=300e-6,
+    )
+    for pair in qubit_pairs:
+        # WHEN MULTIPLEXING IS WORKING
+        # for state, qubit in zip([0, 1], pair):
+        for state, qubit in zip([0], [pair[0]]):
+            # average msr, phase, i and q over the number of shots defined in the runcard
+            ro_pulse = ro_pulses[qubit]
+            result = results[ro_pulse.serial]
+
+            prob = np.abs(
+                result.i
+                + 1j * result.q
+                - complex(platform.qubits[qubit].mean_gnd_states)
+            ) / np.abs(
+                complex(platform.qubits[qubit].mean_exc_states)
+                - complex(platform.qubits[qubit].mean_gnd_states)
+            )
+            # store the results
+            r = {
+                "frequency[Hz]": delta_frequency_range + coupler_frequency,
+                "coupler": len(delta_frequency_range) * [f"c{pair[0]}"],
+                "qubit": len(delta_frequency_range) * [qubit],
+                "state": len(delta_frequency_range) * [state],
+                "probability": prob,
+            }
+            sweep_data.add_data_from_dict(r)
+
+    yield sweep_data
+
+
+@plot("coupler_swap", plots.coupler_swap_amplitude)
+def coupler_swap_amplitude(
+    platform: AbstractPlatform,
+    qubits: dict,
+    coupler_frequency: float,
+    coupler_drive_duration: float,
+    amplitude_min: float,
+    amplitude_max: float,
+    amplitude_step: float,
+    nshots: int,
+):
+    r"""
+    Perform a SWAP experiment between two qubits through the coupler by changing its amplitude.
+
+    Args:
+        platform (AbstractPlatform): The quantum platform to run the experiment on.
+        qubits (dict): The qubits to perform the experiment on.
+        coupler_frequency (float): The frequency of the coupler.
+        coupler_drive_duration (float): The duration of the coupler drive pulse.
+        amplitude_min (float): The minimum amplitude of the coupler drive pulse.
+        amplitude_max (float): The maximum amplitude of the coupler drive pulse.
+        amplitude_step (float): The step size of the amplitude of the coupler drive pulse.
+        nshots (int): The number of shots to average over.
+
+    Returns:
+        - DataUnits: The results of the experiment.
+            - **amplitude[dimensionless]**: The amplitude of the coupler.
+            - **coupler** (str): The name of the coupler.
+            - **qubit** (str): The name of the qubit measured.
+            - **probability** (float): The probability of the qubit being in the excited state.
+            - **state** (str): The state of the qubit.
+    """
+    # define the qubit to measure
+    # FIXME: make general for multiple qubits
+    if 2 in qubits:
+        qubits.pop(2)
+    qubit_pairs = list([qubit, 2] for qubit in qubits)
+
+    # create a sequence
+    sequence = PulseSequence()
+    ro_pulses = {}
+    cd_pulses = {}
+    qd_pulses = {}
+
+    for pair in qubit_pairs:
+        qd_pulses[pair[1]] = platform.create_RX_pulse(pair[1], start=0)
+        cd_pulses[pair[0]] = platform.create_qubit_drive_pulse(
+            pair[0], start=qd_pulses[pair[1]].se_finish, duration=coupler_drive_duration
+        )
+        cd_pulses[pair[0]].frequency = coupler_frequency
+        platform.qubits[pair[0]].drive_frequency = coupler_frequency
+        platform.qubits[pair[0]].drive.local_oscillator.frequency = (
+            coupler_frequency - 100_000_000
+        )
+
+        ro_pulses[pair[1]] = platform.create_MZ_pulse(
+            pair[1], start=cd_pulses[pair[0]].se_finish
+        )
+        # ro_pulses[pair[0]] = platform.create_MZ_pulse(pair[0], start=ro_pulses[pair[1]].se_finish) # Multiplex not working yet
+
+        sequence.add(qd_pulses[pair[1]])
+        sequence.add(cd_pulses[pair[0]])
+        sequence.add(ro_pulses[pair[1]])
+        # sequence.add(ro_pulses[pair[0]])
+
+    # define the parameter to sweep and its range:
+    amplitude_range = np.arange(amplitude_min, amplitude_max, amplitude_step)
+
+    sweeper = Sweeper(
+        Parameter.amplitude,
+        amplitude_range,
+        pulses=[cd_pulses[pair[0]] for pair in qubit_pairs],
+    )
+
+    # create a DataUnits object to store the results,
+    sweep_data = DataUnits(
+        name="data",
+        quantities={"amplitude": "dimensionless"},
+        options=["coupler", "qubit", "state", "probability"],
+    )
+
+    # repeat the experiment as many times as defined by nshots
+    results = platform.sweep(
+        sequence,
+        sweeper,
+        nshots=nshots,
+        acquisition_type=AcquisitionType.INTEGRATION,  # AcquisitionType.DISCRIMINATION
+        averaging_mode=AveragingMode.CYCLIC,  # AcquisitionMode.CYCLIC
+        relaxation_time=300e-6,
+    )
+
+    # retrieve the results for every qubit
+    for pair in qubit_pairs:
+        # WHEN MULTIPLEXING IS WORKING
+        # for state, qubit in zip([0, 1], pair):
+        for state, qubit in zip([1], [pair[1]]):
+            # average msr, phase, i and q over the number of shots defined in the runcard
+            ro_pulse = ro_pulses[qubit]
+            result = results[ro_pulse.serial]
+
+            prob = np.abs(
+                result.i
+                + 1j * result.q
+                - complex(platform.qubits[qubit].mean_gnd_states)
+            ) / np.abs(
+                complex(platform.qubits[qubit].mean_exc_states)
+                - complex(platform.qubits[qubit].mean_gnd_states)
+            )
+            # prob = iq_to_probability(result.i, result.q, complex(platform.qubits[qubit].mean_exc_states), complex(platform.qubits[qubit].mean_gnd_states))
+            # store the results
+            r = {
+                "amplitude[dimensionless]": amplitude_range,
+                "coupler": len(amplitude_range) * [f"c{pair[0]}"],
+                "qubit": len(amplitude_range) * [qubit],
+                "state": len(amplitude_range) * [state],
+                "probability": prob,
+            }
+            sweep_data.add_data_from_dict(r)
+
+    # Temporary fix for multiplexing, repeat the experiment for the second qubit
+    ro_pulses[pair[0]] = platform.create_MZ_pulse(
+        pair[0], start=ro_pulses[pair[1]].se_finish
+    )  # Multiplex not working yet
+    sequence.add(ro_pulses[pair[0]])
+    sequence.remove(ro_pulses[pair[1]])
+    results = platform.sweep(
+        sequence,
+        sweeper,
+        nshots=nshots,
+        acquisition_type=AcquisitionType.INTEGRATION,  # AcquisitionType.DISCRIMINATION
+        averaging_mode=AveragingMode.CYCLIC,  # AcquisitionMode.CYCLIC
+        relaxation_time=300e-6,
+    )
+    for pair in qubit_pairs:
+        # WHEN MULTIPLEXING IS WORKING
+        # for state, qubit in zip([0, 1], pair):
+        for state, qubit in zip([0], [pair[0]]):
+            # average msr, phase, i and q over the number of shots defined in the runcard
+            ro_pulse = ro_pulses[qubit]
+            result = results[ro_pulse.serial]
+
+            prob = np.abs(
+                result.i
+                + 1j * result.q
+                - complex(platform.qubits[qubit].mean_gnd_states)
+            ) / np.abs(
+                complex(platform.qubits[qubit].mean_exc_states)
+                - complex(platform.qubits[qubit].mean_gnd_states)
+            )
+            # store the results
+            r = {
+                "amplitude[dimensionless]": amplitude_range,
+                "coupler": len(amplitude_range) * [f"c{pair[0]}"],
+                "qubit": len(amplitude_range) * [qubit],
+                "state": len(amplitude_range) * [state],
+                "probability": prob,
+            }
+            sweep_data.add_data_from_dict(r)
+
+    yield sweep_data
