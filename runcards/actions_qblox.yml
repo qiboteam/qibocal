@@ -1,0 +1,433 @@
+platform: qw5q_gold_qblox
+runcard: qibolab/src/qibolab/runcards/qw5q_gold_qblox.yml
+qubits: [0, 1, 2, 3, 4]
+
+format: csv
+
+actions:
+
+  # resonator_spectroscopy: # wide
+  #   freq_width: 500_000_000
+  #   freq_step: 100_000
+  #   nshots: 1000
+  #   relaxation_time: 2000
+  #   software_averages: 1
+
+  # resonator_spectroscopy: # narrow
+  #   freq_width: 6_000_000
+  #   freq_step: 5_000
+  #   nshots: 1000
+  #   relaxation_time: 5_000
+  #   software_averages: 1
+
+  # resonator_spectroscopy: # ultra narrow
+  #   freq_width: 1_000_000
+  #   freq_step: 5_000
+  #   nshots: 1000
+  #   relaxation_time: 5_000
+  #   software_averages: 1
+
+
+  # resonator_punchout: # new (does not work well)
+  #   freq_width: 10_000_000
+  #   freq_step: 100_000
+  #   min_amp_factor: 0
+  #   max_amp_factor: 1
+  #   step_amp_factor: 0.01
+  #   nshots: 1000
+  #   relaxation_time: 2000
+  #   software_averages: 1
+
+
+  # resonator_punchout_attenuation: # high resolution FOR LOOP
+  #   freq_width: 10_000_000
+  #   freq_step: 100_000
+  #   min_att: 0
+  #   max_att: 60
+  #   step_att: 2
+  #   nshots: 1000
+  #   relaxation_time: 2000
+  #   software_averages: 1
+
+
+  # resonator_spectroscopy_flux: # fast diagonal
+  #   freq_width: 8_000_000
+  #   freq_step: 500_000
+  #   bias_width: 2
+  #   bias_step:  0.1
+  #   fluxlines: diagonal
+  #   nshots: 1000
+  #   relaxation_time: 2000
+  #   software_averages: 1
+
+  # resonator_spectroscopy_flux: # fast matrix
+  #   freq_width: 9_000_000
+  #   freq_step: 300_000
+  #   bias_width: 3
+  #   bias_step:  0.25
+  #   fluxlines: qubits
+  #   nshots: 1000
+  #   relaxation_time: 20000
+  #   software_averages: 1
+
+  # resonator_spectroscopy_flux: # precision diagonal
+  #   freq_width: 8_000_000
+  #   freq_step: 50_000
+  #   bias_width: 1
+  #   bias_step:  0.01
+  #   fluxlines: diagonal
+  #   nshots: 1000
+  #   relaxation_time: 2000
+  #   software_averages: 1
+
+
+  # qubit_spectroscopy: # wide
+  #   freq_width: 500_000_000
+  #   freq_step: 1_000_000
+  #   drive_duration: 5_000
+  #   drive_amplitude_factor: 1
+  #   nshots: 20000
+  #   relaxation_time: 2000
+  #   software_averages: 1
+
+
+  # qubit_spectroscopy: # narrow
+  #   freq_width: 50_000_000
+  #   freq_step: 100_000
+  #   drive_duration: 5_000
+  #   drive_amplitude_factor: 1
+  #   nshots: 10000
+  #   relaxation_time: 5_000
+  #   software_averages: 1
+
+  # qubit_spectroscopy: # ultra narrow
+  #   freq_width: 10_000_000
+  #   freq_step: 20_000
+  #   drive_duration: 5_000
+  #   drive_amplitude_factor: 1
+  #   nshots: 10000
+  #   relaxation_time: 5_000
+  #   software_averages: 1
+
+  # qubit_spectroscopy_02: # narrow 2photon w02
+  #   freq_width: 50_000_000
+  #   freq_step: 100_000
+  #   drive_duration: 5_000
+  #   drive_amplitude_factor: 1
+  #   nshots: 10000
+  #   relaxation_time: 5_000
+  #   software_averages: 1
+
+
+  # qubit_spectroscopy_flux: # wide
+  #   freq_width: 400_000_000
+  #   freq_step: 1_000_000
+  #   bias_width: 0.3
+  #   bias_step:  0.01
+  #   drive_amplitude_factor: 1
+  #   fluxlines: diagonal
+  #   nshots: 1000
+  #   relaxation_time: 2000
+  #   software_averages: 1
+
+  # qubit_spectroscopy_flux: # narrow
+  #   freq_width: 16_500_000
+  #   freq_step: 400_000
+  #   bias_width: 0.060
+  #   bias_step:  0.002
+  #   drive_amplitude_factor: 1
+  #   fluxlines: diagonal
+  #   nshots: 4096
+  #   relaxation_time: 2000
+  #   software_averages: 1
+
+  # qubit_spectroscopy_flux: # precision
+  #   freq_width: 10_000_000
+  #   freq_step: 100_000
+  #   bias_width: 0.030
+  #   bias_step:  0.0005
+  #   drive_amplitude_factor: 1
+  #   fluxlines: diagonal
+  #   nshots: 4096
+  #   relaxation_time: 2000
+  #   software_averages: 1
+
+
+  # qubit_spectroscopy_flux: # matrix
+  #   freq_width: 400_000_000
+  #   freq_step: 1_000_000
+  #   bias_width: 0.3
+  #   bias_step:  0.01
+  #   drive_amplitude_factor: 1
+  #   fluxlines: qubits
+  #   nshots: 4096
+  #   relaxation_time: 2000
+  #   software_averages: 1
+
+
+  qubit_spectroscopy_flux_01: # w01
+    freq_width: 150_000_000
+    freq_step: 500_000
+    bias_width: 0.2
+    bias_step:  0.005
+    drive_amplitude_factor: 0.05
+    fluxlines: diagonal
+    nshots: 1000
+    relaxation_time: 2000
+    software_averages: 1
+
+  # qubit_spectroscopy_flux_02: # w02
+  #   freq_width: 120_000_000
+  #   freq_step: 400_000
+  #   bias_width: 0.18
+  #   bias_step:  0.005
+  #   drive_amplitude_factor: 1
+  #   fluxlines: diagonal
+  #   nshots: 1000
+  #   relaxation_time: 2000
+  #   software_averages: 1
+
+
+  # rabi_pulse_length: # FOR_LOOP
+  #   pulse_duration_start: 4 # minimum 4ns
+  #   pulse_duration_end: 200
+  #   pulse_duration_step: 4
+  #   nshots: 2000
+  #   software_averages: 1
+  #   # relaxation_time: 20_000
+
+
+  # rabi_pulse_gain:
+  #   pulse_gain_start: 0 # -1.0<=g<=1.0
+  #   pulse_gain_end: 1
+  #   pulse_gain_step: 0.02
+  #   nshots: 5000
+  #   relaxation_time: 20_000
+  #   software_averages: 1
+
+
+  # rabi_pulse_amplitude:
+  #   pulse_amplitude_start: 0 # 0<=a<=1
+  #   pulse_amplitude_end: 1
+  #   pulse_amplitude_step: 0.01
+  #   nshots: 5000
+  #   relaxation_time: 20_000
+  #   software_averages: 1
+
+
+  # rabi_pi_half_pulse_amplitude:
+  #   pulse_amplitude_start: 0 # 0<=a<=1
+  #   pulse_amplitude_end: 1
+  #   pulse_amplitude_step: 0.005
+  #   nshots: 10000
+  #   relaxation_time: 20_000
+  #   software_averages: 1
+
+
+  # ramsey: # FOR LOOP
+  #   delay_between_pulses_start: 4 # must be a multiple of 4 incl 0
+  #   delay_between_pulses_end: 8000
+  #   delay_between_pulses_step: 80 # must be a multiple of 4
+  #   # nshots: 4000
+  #   # relaxation_time: 20_000
+  #   software_averages: 1
+
+  # ramsey_sweepers:
+  #   delay_between_pulses_start: 4 # must be a multiple of 4 incl 0
+  #   delay_between_pulses_end: 8000
+  #   delay_between_pulses_step: 20 # must be a multiple of 4
+  #   nshots: 4000
+  #   relaxation_time: 20_000
+  #   software_averages: 1
+
+  # flipping:
+  #   nflips_max: 60
+  #   nflips_step: 2
+  #   # nshots: 4000
+  #   # relaxation_time: 20_000
+  #   software_averages: 1
+
+  # flipping_2pulses:
+  #   nflips_max: 30
+  #   nflips_step: 1
+  #   # nshots: 4000
+  #   # relaxation_time: 20_000
+  #   software_averages: 1
+
+
+  # t1:
+  #   delay_before_readout_start: 4
+  #   delay_before_readout_end: 15_000
+  #   delay_before_readout_step: 20
+  #   nshots: 2000
+  #   relaxation_time: 20_000
+  #   software_averages: 1
+
+
+  # t1: # t1 monitor every 6s
+  #   delay_before_readout_start: 4
+  #   delay_before_readout_end: 15_000
+  #   delay_before_readout_step: 100
+  #   nshots: 2000
+  #   relaxation_time: 20_000
+  #   software_averages: 600 # ~1h
+
+  # t1_for_loop:
+  #   delay_before_readout_start: 4
+  #   delay_before_readout_end: 5_000
+  #   delay_before_readout_step: 20
+  #   # nshots: 1000
+  #   # relaxation_time: 20_000
+  #   software_averages: 1
+
+
+  # dispersive_shift:
+  #   freq_width: 5_000_000
+  #   freq_step: 100_000
+  #   nshots: 2000
+  #   relaxation_time: 20_000
+  #   software_averages: 1
+
+
+
+  # calibrate_qubit_states:
+  #   nshots: 5000
+
+  # ro_amplitude:
+  #   amplitude_factor_min: 0
+  #   amplitude_factor_max: 0.5
+  #   amplitude_factor_step: 0.01
+  #   nshots: 10000
+
+  # ro_frequency:
+  #   frequency_width: 2_000_000
+  #   frequency_step: 40_000
+  #   nshots: 10000
+
+  # twpa_frequency:
+  #   frequency_width: 2_000_000
+  #   frequency_step: 40_000
+  #   nshots: 5000
+
+  # twpa_power:
+  #   power_width: 2
+  #   power_step: 0.05
+  #   nshots: 2000
+
+  # ro_duration: # TEST
+  #   duration_width: 400
+  #   duration_step: 12
+  #   nshots: 10000
+
+  # allXY:
+  #   beta_param: Null
+  #   # nshots: 1000
+  #   # relaxation_time: 20_000
+  #   software_averages: 1
+
+
+  # allXY_drag_pulse_tuning:
+  #   beta_start: -0.5
+  #   beta_end: 0.5
+  #   beta_step: 0.02
+  #   # nshots: 1000
+  #   # relaxation_time: 20_000
+  #   software_averages: 1
+
+
+  # drag_pulse_tuning:
+  #   beta_start: -0.1
+  #   beta_end: 0.1
+  #   beta_step: 0.01
+  #   nshots: 1000
+  #   relaxation_time: 20_000
+  #   software_averages: 1
+
+
+  # t2_echo:
+  #   delay_between_pulses_start: 4
+  #   delay_between_pulses_end: 8000
+  #   delay_between_pulses_step: 40
+  #   # nshots: 1000
+  #   # relaxation_time: 20_000
+  #   software_averages: 1
+
+
+#############################################################################################################################
+
+#   tune_transition_sweepers: # wide
+#     flux_pulse_duration_start: 1
+#     flux_pulse_duration_end: 60
+#     flux_pulse_duration_step: 1
+#     flux_pulse_amplitude_start: -1
+#     flux_pulse_amplitude_end: 1
+#     flux_pulse_amplitude_step: 0.02
+#     nshots: 1000
+#     relaxation_time: 20_000
+
+# qubits: [3]
+
+#   tune_transition_sweepers: # narrow
+#     flux_pulse_duration_start: 1
+#     flux_pulse_duration_end: 160
+#     flux_pulse_duration_step: 1
+#     flux_pulse_amplitude_start: -0.65
+#     flux_pulse_amplitude_end: -0.56
+#     flux_pulse_amplitude_step: 0.001
+#     nshots: 1000
+#     relaxation_time: 20_000
+
+# qubits: [3]
+
+#   tune_transition_sweepers: # narrow UHD
+#     flux_pulse_duration_start: 1
+#     flux_pulse_duration_end: 160
+#     flux_pulse_duration_step: 1
+#     flux_pulse_amplitude_start: -0.65
+#     flux_pulse_amplitude_end: -0.57
+#     flux_pulse_amplitude_step: 0.0004
+#     nshots: 4000
+#     relaxation_time: 20_000
+
+# qubits: [3]
+
+#   tune_landscape: # narrow
+#     theta_start: 0
+#     theta_end: 6.28
+#     theta_step: 0.12
+#     nshots: 10000
+#     relaxation_time: 20000
+
+# qubits: [3]
+
+#   flux_pulse_timing:
+#     flux_pulse_amplitude_start: -0.60
+#     flux_pulse_amplitude_end: -0.52
+#     flux_pulse_amplitude_step: 0.005
+#     flux_pulse_start_start: -200
+#     flux_pulse_start_end:  200
+#     flux_pulse_start_step: 4
+#     flux_pulse_duration: 64
+#     time_window: 100
+#     nshots: 10000
+#     relaxation_time: 20000
+#     software_averages: 1
+
+# qubits: [3]
+
+#   cryoscope:
+#     flux_pulse_duration_start: 1
+#     flux_pulse_duration_end: 160
+#     flux_pulse_duration_step: 1
+#     flux_pulse_amplitude: 0
+#     flux_pulse_amplitude_start: -0.76
+#     flux_pulse_amplitude_end: -0.57
+#     flux_pulse_amplitude_step: 0.01
+#     delay_before_flux: 0
+#     delay_after_flux: 20
+#     flux_pulse_shapes: Rectangular()
+#     nshots: 4000
+#     relaxation_time: 20000
+#     software_averages: 1
+
+# qubits: [3]
