@@ -1,6 +1,10 @@
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
-from qibolab.platforms.platform import AcquisitionType, AveragingMode
+from qibolab.platforms.platform import (
+    AcquisitionType,
+    AveragingMode,
+    ExecutionParameters,
+)
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -484,24 +488,26 @@ def ramsey_frequency_detuned_sweep(
         # execute the pulse sequence
         results = platform.sweep(
             sequence,
+            ExecutionParameters(
+                nshots=nshots,
+                relaxation_time=relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
             sweeper,
-            nshots=nshots,
-            relaxation_time=relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
         )
         for ro_pulse in ro_pulses.values():
             # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[ro_pulse.serial].average.raw
+            r = results[ro_pulse.serial].serialize
             r.update(
                 {
                     "wait[ns]": waits,
-                    "t_max[ns]": delay_between_pulses_end,
-                    "qubit": ro_pulse.qubit,
-                    "iteration": iteration,
+                    "t_max[ns]": len(waits) * [delay_between_pulses_end],
+                    "qubit": len(waits) * [ro_pulse.qubit],
+                    "iteration": len(waits) * [iteration],
                 }
             )
-            data.add(r)
+            data.add_data_from_dict(r)
 
             data_fit = ramsey_fit(
                 data,
@@ -668,6 +674,7 @@ def ramsey_sweep(
         )
         for qubit in qubits:
             result = results[ro_pulses[qubit].serial]
+            r = result.to_dict(average=False)
             r = result.to_dict(average=False)
             r.update(
                 {
