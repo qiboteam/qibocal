@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
@@ -33,7 +33,7 @@ class QubitFluxParameters(Parameters):
     """Number of shots."""
     relaxation_time: int
     """Relaxation time (ns)."""
-    drive_amplitude: float
+    drive_amplitude: Optional[float] = None
     """Drive pulse amplitude. Same for all qubits."""
 
 
@@ -70,7 +70,8 @@ def _acquisition(
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=2000
         )
-        qd_pulses[qubit].amplitude = params.drive_amplitude
+        if params.drive_amplitude is not None:
+            qd_pulses[qubit].amplitude = params.drive_amplitude
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=qd_pulses[qubit].finish
         )
