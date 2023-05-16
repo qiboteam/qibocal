@@ -45,11 +45,7 @@ class StdRBParameters(Parameters):
 class StdRBResults(Results):
     """Standard RB outputs."""
 
-    sequence: Dict[List[PulseSequence], str]
-    """Sequences ran on the experiment"""
-    lenght: Dict[List[int], str]
-    """Lenght of the sequences ran on the experiment"""
-    probabilities: Dict[List[float], str]
+    fidelities: Dict[List[float], List]
     """Probabilities obtained for each sequence"""
     fitted_parameters: Dict[List[Tuple], List]
     """Raw fitted parameters."""
@@ -61,7 +57,7 @@ class StdRBData(DataUnits):
     def __init__(self):
         super().__init__(
             "data",
-            {"sequence": "dimensionless", "probabilities": "dimensionless"},
+            {"sequence": "dimensionless", "lenght": "dimensionless", "probabilities": "dimensionless"},
             options=["qubit"],
         )
 
@@ -92,11 +88,10 @@ def _acquisition(
 
     # sweep the parameter
     for qubit in qubits.values():
-        sequences = rb_sequencer.get_sequences(qubit)
-        for sequence in sequences.values():
-            print(sequence[0])
+        sequences, circuits = rb_sequencer.get_sequences(qubit.name)
+        for sequence, circuit in zip(sequences.values(), circuits.values()):
             results = platform.execute_pulse_sequence(
-                sequence,
+                sequence[0],
                 ExecutionParameters(
                     nshots=params.nshots,
                     relaxation_time=params.relaxation_time,
@@ -105,17 +100,20 @@ def _acquisition(
                 ),
             )
 
-            ro_pulses = sequence.ro_pulses
-
+            ro_pulses = sequence[0].ro_pulses
             # average msr, phase, i and q over the number of shots defined in the runcard
-            result = results[ro_pulses[qubit].serial]
+            result = results[ro_pulses[0].serial]
             r = result.serialize
+            
+            print(circuit[0])
+            
             r.update(
                 {
-                    "sequence[dimensionless]": sequence,
-                    "lenght[dimensionless]": len(sequence),
-                    "probability[dimensionless]": results.state_0_probability,
-                    "qubit": qubit,
+                    # "sequence[dimensionless]": [int(x) for x in circuit[0]],
+                    "sequence[dimensionless]": 420,
+                    "lenght[dimensionless]": len(circuit[0]),
+                    "probabilities[dimensionless]": r["state_0"][0],
+                    "qubit": qubit.name,
                 }
             )
             data.add_data_from_dict(r)
@@ -136,39 +134,46 @@ def _fit(data: StdRBData) -> StdRBResults:
 
         sequence_lenght = qubit_data["lenght"].pint.to("dimensionless").pint.magnitude
         probabilities = (
-            qubit_data["probability"].pint.to("dimensionless").pint.magnitude
+            qubit_data["probabilities"].pint.to("dimensionless").pint.magnitude
         )
 
-        y_min = np.min(probabilities.values)
-        y_max = np.max(probabilities.values)
-        x_min = np.min(sequence_lenght.values)
-        x_max = np.max(sequence_lenght.values)
-        x = (sequence_lenght.values - x_min) / (x_max - x_min)
-        y = (probabilities.values - y_min) / (y_max - y_min)
+        # TODO: Translate ?
+        # y_min = np.min(probabilities.values)
+        # y_max = np.max(probabilities.values)
+        # x_min = np.min(sequence_lenght.values)
+        # x_max = np.max(sequence_lenght.values)
+        # x = (sequence_lenght.values - x_min) / (x_max - x_min)
+        # y = (probabilities.values - y_min) / (y_max - y_min)
+        
+        x = sequence_lenght.values
+        y = probabilities.values
 
         pguess = [0.5, 0.9, 0.8]
         try:
-            popt, pcov = curve_fit(utils.fit, x, y, p0=pguess, maxfev=100000)
+            popt, pcov = curve_fit(utils.RB_fit, x, y, p0=pguess, maxfev=100000)
 
             # TODO: Translate properly
-            translated_popt = [
-                y_min + (y_max - y_min) * popt[0],
-                (y_max - y_min) * popt[1],
-                popt[2] * (y_max - y_min) + y_max,
-            ]
-            fidelity = popt[1]
+            # translated_popt = [
+            #     y_min + (y_max - y_min) * popt[0],
+            #     (y_max - y_min) * popt[1],
+            #     popt[2] * (y_max - y_min) + y_max,
+            # ]
+            translated_popt = popt
+            p = popt[1]
 
-            # r=1−p−(1−p)/sequence_lenght  ???
+            fidelity = 1 - (sequence_lenght-1)/sequence_lenght*(1-p)
+            
+            fitted_parameters[qubit] = translated_popt
+            fidelities[qubit] = fidelity
+            print("sucess", fitted_parameters)
 
         except:
-            log.warning("rabi_fit: the fitting was not succesful")
-            fidelity = 0
-            fitted_parameters = [0] * 4
-
-        fidelities[qubit] = fidelity
-        fitted_parameters[qubit] = translated_popt
-
-    return StdRBResults(fitted_parameters, fidelities)
+            log.warning("RB_fit: the fitting was not succesful")
+            fidelities[qubit] = 0
+            fitted_parameters[qubit] = [0] * 3
+            print("failed", fitted_parameters)
+        
+    return StdRBResults(fidelities, fitted_parameters)
 
 
 def _plot(data: StdRBData, fit: StdRBResults, qubit):

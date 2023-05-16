@@ -16,70 +16,62 @@ from qibocal.config import log
 from qibocal.plots.utils import get_color
 
 
-def fit(x, A, B, p):
+def RB_fit(x, A, B, p):
     """A*p^x+B fit"""
     return A * p**x + B
 
 
 def plot(data, fit, qubit):
     if data.__class__.__name__ == "StdRBData":
-        quantity = "amplitude"
+        quantity = "lenght"
         unit = "dimensionless"
-        title = "Amplitude (dimensionless)"
-        fitting = fit
+        title = "Sequence lenght"
+        fitting = RB_fit
 
     figures = []
     fitting_report = ""
 
     fig = make_subplots(
         rows=1,
-        cols=2,
+        cols=1,
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
         subplot_titles=(
-            "MSR (V)",
-            "phase (rad)",
+            "Standard RB",
         ),
     )
-
-    runs_data = [
-        data[d][r]["hardware_probabilities"]
-        for d in data["depths"]
-        for r in range(data["runs"])
-    ]
+    
+    
+    qubit_data = data.df[data.df["qubit"] == qubit]
+    RB_parameters = qubit_data[quantity].pint.to(unit).pint.magnitude.unique()
 
     fig.add_trace(
         go.Scatter(
-            x=data["depths"] * data["runs"],
-            y=runs_data,
-            line=dict(color="#6597aa"),
+            x=qubit_data[quantity].pint.to(unit).pint.magnitude,
+            y=qubit_data["probabilities"].pint.to("dimensionless").pint.magnitude,
+            marker_color=get_color(0),
             mode="markers",
-            marker={"opacity": 0.2, "symbol": "square"},
-            name="runs",
-        )
+            opacity=0.3,
+            name="StandardRB",
+            showlegend=True,
+            legendgroup="StandardRB",
+        ),
+        row=1,
+        col=1,
     )
-    fig.add_trace(
-        go.Scatter(
-            x=data["depths"],
-            y=data["groundstate probabilities"],
-            line=dict(color="#aa6464"),
-            mode="markers",
-            name="average",
-        )
-    )
-
+    
     # add fitting trace
     if len(data) > 0:
-        rabi_parameter_range = np.linspace(
-            min(rabi_parameters),
-            max(rabi_parameters),
+        RB_parameter_range = np.linspace(
+            min(RB_parameters),
+            max(RB_parameters),
             2 * len(data),
         )
         params = fit.fitted_parameters[qubit]
         fig.add_trace(
             go.Scatter(
-                x=rabi_parameter_range,
-                y=fit(rabi_parameter_range, *params),
+                x=RB_parameter_range,
+                y=fitting(RB_parameter_range, *params),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
                 marker_color="rgb(255, 130, 67)",
@@ -88,23 +80,18 @@ def plot(data, fit, qubit):
             col=1,
         )
 
+        fidelity = np.mean(fit.fidelities[qubit])
+        
         fitting_report += (
-            f"{qubit} | pi_pulse_amplitude: {float(fit.amplitude[qubit]):.3f}<br>"
+            f"{qubit} | fidelity: {float(fidelity):.3f}<br>"
         )
 
-    fig.update_layout(
-        {
-            "title": f"Gate fidelity: {data['Gate fidelity']}. Gate fidelity primitive: {data['Gate fidelity primitive']}."
-        }
-    )
 
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title=title,
-        yaxis_title="MSR (uV)",
-        xaxis2_title=title,
-        yaxis2_title="Phase (rad)",
+        yaxis_title="Survival probability",
     )
 
     figures.append(fig)
@@ -155,13 +142,16 @@ class RBSequence:
 
     def get_sequences(self, qubit):
         sequences = defaultdict(list)
+        circuits = defaultdict(list)
         for depth in self.depths:
             for run in range(self.runs):
                 circuit = list(np.random.randint(0, len(INT_TO_GATE), depth))
                 sequences[f"{depth}_{run}"].append(
                     self.circuit_to_sequence(self.platform, qubit, circuit)
                 )
-        return sequences
+                circuits[f"{depth}_{run}"].append(circuit)
+                
+        return sequences, circuits
 
     def circuit_to_sequence(self, platform: AbstractPlatform, qubit, circuit):
         # Define PulseSequence
