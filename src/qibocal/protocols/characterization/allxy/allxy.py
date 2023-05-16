@@ -15,6 +15,8 @@ from qibocal.plots.utils import get_color
 class AllXYParameters(Parameters):
     """AllXY runcard inputs."""
 
+    nshots: int
+    """Number of shots."""
     beta_param: float = None
     """Beta parameter for drag pulse."""
 
@@ -93,7 +95,6 @@ def _acquisition(
             sequence,
             ExecutionParameters(
                 nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
                 averaging_mode=AveragingMode.CYCLIC,
             ),
         )

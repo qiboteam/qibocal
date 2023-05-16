@@ -17,6 +17,9 @@ MESH_SIZE = 50
 @dataclass
 class SingleShotClassificationParameters(Parameters):
     nshots: int
+    """Number of shots."""
+    relaxation_time: int
+    """Relaxation time (ns)."""
 
 
 class SingleShotClassificationData(DataUnits):
@@ -118,9 +121,11 @@ def _acquisition(
     # execute the second pulse sequence
     state1_results = platform.execute_pulse_sequence(
         state1_sequence,
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.INTEGRATION,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+        ),
     )
 
     # retrieve and store the results for every qubit
