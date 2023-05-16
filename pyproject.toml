@@ -16,7 +16,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.8,<3.12"
-qibolab = "^0.0.2"
+qibolab = { git = "https://github.com/qiboteam/qibolab.git" }
 qibo = "^0.1.9"
 pandas = "^1.4.3"
 Pint-Pandas = "^0.3"
@@ -38,6 +38,7 @@ pydot = { version = "^1.4.2", optional = true }
 tensorflow = { version = "^2.12.0", optional = true, markers = "sys_platform == 'linux' or sys_platform == 'darwin'"}
 # TODO: the marker is a temporary solution due to the lack of the tensorflow-io 0.32.0's wheels for Windows, this package is one of
 # the tensorflow requirements
+pint = "^0.20.1" # The new version of pint (0.21) is incompatible with Pint-Pandas
 
 [tool.poetry.group.test]
 optional = true
@@ -86,6 +87,7 @@ qq = "qibocal:command"
 qq-live = "qibocal:live_plot"
 qq-upload = "qibocal:upload"
 qq-compare = "qibocal:compare"
+qq-auto = "qibocal:autocalibration"
 
 [tool.poe.tasks]
 test = "pytest"

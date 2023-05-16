@@ -149,16 +149,19 @@ class ActionBuilder:
         self.backend, self.platform = self._allocate_backend(
             backend_name, platform_name, platform_runcard
         )
-        # qubits allocation
-        if self.platform is not None:
-            self.qubits = {
-                q: self.platform.qubits[q]
-                for q in self.runcard["qubits"]
-                if q in self.platform.qubits
-            }
+        if "qubits" in self.runcard:
+            if self.platform is not None:
+                self.qubits = {
+                    q: self.platform.qubits[q]
+                    for q in self.runcard["qubits"]
+                    if q in self.platform.qubits
+                }
+            else:
+                self.qubits = self.runcard.get("qubits")
         else:
-            self.qubits = self.runcard.get("qubits")
-        # Setting format. If None csv is used.
+            self.qubits = []
+
+        # Setting format. If absent csv is used.
         self.format = self.runcard.get("format", "csv")
         # Saving runcard
         shutil.copy(runcard, f"{self.folder}/runcard.yml")

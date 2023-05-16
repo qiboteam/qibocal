@@ -3,11 +3,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional, Set, Union
 
+from qibolab.platforms.abstract import AbstractPlatform
+
 from .graph import Graph
 from .history import Completed, History
 from .runcard import Id, Runcard
 from .status import Normal
-from .task import Task
+from .task import Qubits, Task
 
 
 @dataclass
@@ -18,17 +20,36 @@ class Executor:
     """The graph to be executed."""
     history: History
     """The execution history, with results and exit states."""
+    output: Path
+    """Output path."""
+    qubits: Optional[Qubits] = None
+    """Qubits to be calibrated."""
+    platform: Optional[AbstractPlatform] = None
+    """Qubits' platform."""
     head: Optional[Id] = None
     """The current position."""
     pending: Set[Id] = field(default_factory=set)
     """The branched off tasks, not yet executed."""
 
+    # TODO: find a more elegant way to pass everything
     @classmethod
-    def load(cls, card: Union[dict, Path]):
+    def load(
+        cls,
+        card: Union[dict, Path],
+        output: Path,
+        platform: AbstractPlatform = None,
+        qubits: Qubits = None,
+    ):
         """Load execution graph and associated executor from a runcard."""
         runcard = Runcard.load(card)
 
-        return cls(graph=Graph.from_actions(runcard.actions), history=History({}))
+        return cls(
+            graph=Graph.from_actions(runcard.actions),
+            history=History({}),
+            output=output,
+            platform=platform,
+            qubits=qubits,
+        )
 
     def available(self, task: Task):
         """Check if a task has all dependencies satisfied."""
@@ -103,9 +124,9 @@ class Executor:
 
         while self.head is not None:
             task = self.current
-
-            output = task.run()
+            output = task.run(self.output, platform=self.platform, qubits=self.qubits)
             completed = Completed(task, output, Normal())
             self.history.push(completed)
-
             self.head = self.next()
+            if self.platform is not None:
+                self.platform.update(completed.res.update)

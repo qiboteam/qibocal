@@ -1,4 +1,5 @@
 import os
+import tempfile
 from pathlib import Path
 from shutil import rmtree
 
@@ -9,8 +10,8 @@ here = Path(__file__).parent
 
 def test_command_niGSC():
     path_to_runcard = here / "niGSC.yml"
-    test_folder = "test_and_delete/"
-    builder = ActionBuilder(path_to_runcard, test_folder, force=None)
+    test_folder = tempfile.mkdtemp()
+    builder = ActionBuilder(path_to_runcard, test_folder, force=True)
     builder.execute()
     builder.dump_report()
     paths_to_protocols = [
@@ -18,7 +19,7 @@ def test_command_niGSC():
         "data/standardrb/",
         "data/XIdrb/",
     ]
-    paths_to_check = [f"{test_folder}{path}" for path in paths_to_protocols]
+    paths_to_check = [f"{test_folder}/{path}" for path in paths_to_protocols]
     for path in paths_to_check:
         assert os.path.isdir(path)
     inside = ["experiment_data.pkl", "fit_plot.pkl"]
@@ -30,7 +31,6 @@ def test_command_niGSC():
     assert os.path.isfile(f"{test_folder}/data/simulfilteredrb/circuits.pkl")
     assert os.path.isfile(f"{test_folder}/data/XIdrb/circuits.pkl")
     assert not os.path.isfile(f"{test_folder}/data/standardrb/circuits.pkl")
-    assert os.path.isfile(f"{test_folder}index.html")
-    assert os.path.isfile(f"{test_folder}meta.yml")
-    assert os.path.isfile(f"{test_folder}runcard.yml")
-    rmtree(test_folder)
+    assert os.path.isfile(f"{test_folder}/index.html")
+    assert os.path.isfile(f"{test_folder}/meta.yml")
+    assert os.path.isfile(f"{test_folder}/runcard.yml")
