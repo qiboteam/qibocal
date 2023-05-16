@@ -110,7 +110,7 @@ def _acquisition(
     import matplotlib.pyplot as plt  # TODO: remove plotting lines
 
     fig, (ax1, ax2) = plt.subplots(2, 1)  # TODO: remove plotting lines
-    for wait in waits:
+    for i, wait in enumerate(waits):
         for qubit in qubits:
             RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
             ro_pulses[qubit].start = RX90_pulses2[qubit].finish
@@ -130,25 +130,23 @@ def _acquisition(
             r = results[ro_pulse.serial].average.raw
             msr_raw = results[ro_pulse.serial].raw["MSR[V]"] * 1e6
             # TODO: remove plotting lines
-            print(results[ro_pulse.serial].raw.keys(), len(msr_raw))
-            if wait % 10 == 0:
+            print(wait)
+            if i % 10 == 0:
+                ax1.scatter([wait] * len(msr_raw), msr_raw, s=1, color=f"C{int(i/10)}")
                 ax1.scatter(
-                    [wait] * len(msr_raw), msr_raw, s=1, color=f"C{int(wait/10)}"
-                )
-                ax1.scatter(
-                    wait,
+                    [wait],
                     np.average(msr_raw),
                     s=10,
-                    color=f"C{int(wait/10)}",
+                    color=f"C{int(i/10)}",
                     marker="+",
                 )
-                if wait < 150:
+                if i < 150:
                     ax2.hist(
                         msr_raw,
                         bins=100,
                         histtype="step",
                         density=True,
-                        color=f"C{int(wait/10)}",
+                        color=f"C{int(i/10)}",
                     )
             error = np.std(msr_raw) / np.sqrt(len(msr_raw))
             # print(error)
@@ -162,7 +160,7 @@ def _acquisition(
             )
             data.add_data_from_dict(r)
 
-    plt.savefig("ramsey.pdf")
+    fig.savefig("ramsey.pdf")
     # print(data.df["errors"])
     return data
 
