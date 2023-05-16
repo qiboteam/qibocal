@@ -85,7 +85,7 @@ actions:
   - id: qubit flux dependence
     priority: 0
     operation: qubit_flux
-    next: rabi
+    next: t1
     parameters:
       freq_width: 10_000_000
       freq_step: 1_000_000
@@ -94,30 +94,6 @@ actions:
       drive_amplitude: 0.005
       nshots: 1000
       relaxation_time: 0
-
-  - id: rabi
-    priority: 0
-    operation: rabi_amplitude
-    next: rabi length
-    parameters:
-      min_amp_factor: 0.0
-      max_amp_factor: 4.0
-      step_amp_factor: 0.1
-      pulse_length: 30
-      relaxation_time: 0
-      nshots: 1024
-
-  - id: rabi length
-    priority: 0
-    operation: rabi_length
-    next: t1
-    parameters:
-      pulse_duration_start: 4
-      pulse_duration_end: 84
-      pulse_duration_step: 8
-      pulse_amplitude: 0.5
-      relaxation_time: 0
-      nshots: 1024
 
   - id: t1
     priority: 0
