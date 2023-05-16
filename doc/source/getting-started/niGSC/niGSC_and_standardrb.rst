@@ -161,37 +161,70 @@ base of the exponent to calculate the average gate fidelity.
     df_aggr = standardrb.get_aggregational_data(experiment)
     # The build_report functions knows how to plot the aggregated data along
     # with the sequential data and returns the report figure.
-    fig = standardrb.build_report(experiment, df_aggr)
+    fig, _ = standardrb.build_report(experiment, df_aggr)
     fig.show()
 
 .. image:: images/Example_standardRB_report.png
   :width: 600
   :alt: Screenshot of Report when executing the code from above
 
-When simulating the standard RB scheme noise can be added using the qibo.noise module.
+Noise models and runcards
+"""""""""""""""""""""""""
+
+When simulating the standard RB scheme noise can be added using :class:`qibo.noise.NoiseModel` object.
 It has to be predefined and passed when initiating the experiment object.
+One of the predefined examples is :class:`qibocal.calibrations.niGSC.basics.noisemodels.PauliErrorOnAll`
 
 .. code-block:: python
 
     # To not alter the iterator when using it, make deep copies.
     from qibocal.calibrations.niGSC import standardrb
-    from qibocal.calibrations.niGSC.basics.noisemodels import PauliErrorOnUnitary
+    from qibocal.calibrations.niGSC.basics.noisemodels import PauliErrorOnAll
 
     nqubits = 1
     runs = 10
     depths = [0, 1, 5, 10, 15]
     nshots = 128
     # Define the noise model used in the simulation.
-    noisemodel = PauliErrorOnUnitary(0.01, 0.02, 0.04)
+    noisemodel = PauliErrorOnAll(0.01, 0.02, 0.04)
     factory = standardrb.ModuleFactory(nqubits, depths * runs)
     # Add the noise model to the experiment.
     experiment = standardrb.ModuleExperiment(factory, nshots=nshots, noise_model=noisemodel)
     experiment.perform(experiment.execute)
     experiment.perform(standardrb.groundstate_probabilities)
     df_aggr = standardrb.get_aggregational_data(experiment)
-    fig = standardrb.build_report(experiment, df_aggr)
+    fig, _ = standardrb.build_report(experiment, df_aggr)
     fig.show()
+
 
 .. image:: images/Example_standardRBerror_report.png
   :width: 600
   :alt: Screenshot of Report when executing the code from above
+
+
+To create a Qibocal report, one can also create a runcard `niGSC.yml` (see :ref:`example` for more details).
+
+.. code-block:: yaml
+
+    backend: numpy
+
+    qubits: [0]
+
+    format: pickle
+
+    actions:
+    standardrb:
+        nqubits: 1
+        depths: [0, 1, 5, 10, 15]
+        runs: 10
+        nshots: 128
+        noise_model: PauliErrorOnAll
+        noise_params: [0.01, 0.02, 0.04]
+
+More examples of instructions are available in `niGSC.yml <https://github.com/qiboteam/qibocal/blob/main/runcards/niGSC.yml>`_ .
+
+Then the command ``qq niGSC.yml -o standard_rb`` will generate a ``standard_rb`` directory with all the data saved in a ``pickle`` format and a report ``index.html`` with the fitting plot and the following report table.
+
+.. image:: images/Example_standardRB_qq_report.png
+  :width: 600
+  :alt: Screenshot of Report table when executing the code from above

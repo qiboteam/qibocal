@@ -3,14 +3,21 @@ It is a great example on how to write an own niGSC protocol. The single function
 little descriptions for the purpose of that function and what is important to include.
 
 1. Step:
+
   Define the two module specific classes which are used in defining and executing an experiment,
   the circuit factory and experiment class.
   They can also just inherit everything from another module.
+
 2. Step:
+
   Write the sequential post processing functions.
+
 3. Step:
+
   Write the aggregational post processing function.
+
 4. Step:
+
   Write the function to build a report. When using the qq module, a plotly figure has to be returned.
 """
 
@@ -185,7 +192,7 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
         df_aggr (pd.DataFrame): Normally build with ``get_aggregational_data`` function.
 
     Returns:
-        (Figure): A plotly.graphical_object.Figure object.
+        (tuple): A `plotly.graphical_object.Figure` object and a string corresponding to a table.
     """
 
     # Initiate a report object.
