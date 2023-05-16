@@ -1,6 +1,10 @@
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
-from qibolab.platforms.platform import AcquisitionType, AveragingMode
+from qibolab.platforms.platform import (
+    AcquisitionType,
+    AveragingMode,
+    ExecutionParameters,
+)
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -89,16 +93,18 @@ def rabi_pulse_length(
         # sweep the parameter
         results = platform.sweep(
             sequence,
+            ExecutionParameters(
+                nshots=nshots,
+                relaxation_time=relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
             sweeper,
-            nshots=nshots,
-            relaxation_time=relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
         )
         for qubit in qubits:
             # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulses[qubit].serial]
-            r = result.raw
+            r = result.serialize
             r.update(
                 {
                     "time[ns]": qd_pulse_duration_range,
@@ -204,16 +210,18 @@ def rabi_pulse_amplitude(
         # sweep the parameter
         results = platform.sweep(
             sequence,
+            ExecutionParameters(
+                nshots=nshots,
+                relaxation_time=relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
             sweeper,
-            nshots=nshots,
-            relaxation_time=relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
         )
         for qubit in qubits:
             # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulses[qubit].serial]
-            r = result.raw
+            r = result.serialize
             r.update(
                 {
                     "amplitude[dimensionless]": qd_pulse_amplitude_range,
