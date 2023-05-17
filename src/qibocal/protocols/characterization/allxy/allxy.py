@@ -87,20 +87,20 @@ def _acquisition(
                 platform, gates, qubit, sequence, params.beta_param
             )
 
-            # execute the pulse sequence
-            results = platform.execute_pulse_sequence(sequence)
+        # execute the pulse sequence
+        results = platform.execute_pulse_sequence(sequence)
 
-            # retrieve the results for every qubit
-            for ro_pulse in ro_pulses.values():
-                z_proj = 2 * results[ro_pulse.serial].ground_state_probability - 1
-                # store the results
-                r = {
-                    "probability": z_proj,
-                    "gateNumber": gateNumber,
-                    "beta_param": params.beta_param,
-                    "qubit": ro_pulse.qubit,
-                }
-                data.add(r)
+        # retrieve the results for every qubit
+        for ro_pulse in ro_pulses.values():
+            z_proj = 2 * results[ro_pulse.serial].ground_state_probability - 1
+            # store the results
+            r = {
+                "probability": z_proj,
+                "gateNumber": gateNumber,
+                # "beta_param": params.beta_param,
+                "qubit": ro_pulse.qubit,
+            }
+            data.add(r)
     # finally, save the remaining data
     return data
 

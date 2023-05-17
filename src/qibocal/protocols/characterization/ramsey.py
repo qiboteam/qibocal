@@ -205,7 +205,8 @@ def _fit(data: RamseyData) -> RamseyResults:
             delta_fitting = popt[2] / (2 * np.pi)
             # FIXME: check this formula
             delta_phys = +int((delta_fitting - data.n_osc / data.t_max) * 1e9)
-            corrected_qubit_frequency = int(qubit_freq + delta_phys)
+            # corrected_qubit_frequency = int(qubit_freq + delta_phys)
+            corrected_qubit_frequency = int(qubit_freq - delta_phys)
             t2 = 1.0 / popt[4]
 
         except Exception as e:
