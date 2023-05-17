@@ -9,9 +9,10 @@ from .coherence.t1 import t1
 from .coherence.t1_sweep import t1_sweep
 from .coherence.t2 import t2
 from .coherence.t2_sweep import t2_sweep
-from .coupler_frequency import coupler_frequency
-from .coupler_frequency_flux import coupler_frequency_flux
-from .coupler_swap_frequency import coupler_swap_frequency
+from .couplers.coupler_frequency import coupler_frequency
+from .couplers.coupler_frequency_flux import coupler_frequency_flux
+from .couplers.coupler_swap_frequency import coupler_swap_frequency
+from .couplers.coupler_swap_frequency_flux import coupler_swap_frequency_flux
 from .dispersive_shift import dispersive_shift
 from .flipping import flipping
 from .flux_depedence.qubit_flux_dependence import qubit_flux
@@ -53,3 +54,4 @@ class Operation(Enum):
     coupler_swap_frequency = coupler_swap_frequency
     coupler_frequency = coupler_frequency
     coupler_frequency_flux = coupler_frequency_flux
+    coupler_swap_frequency_flux = coupler_swap_frequency_flux
