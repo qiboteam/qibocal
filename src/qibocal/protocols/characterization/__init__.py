@@ -9,6 +9,9 @@ from .coherence.t1 import t1
 from .coherence.t1_sweep import t1_sweep
 from .coherence.t2 import t2
 from .coherence.t2_sweep import t2_sweep
+from .coupler_frequency import coupler_frequency
+from .coupler_frequency_flux import coupler_frequency_flux
+from .coupler_swap_frequency import coupler_swap_frequency
 from .dispersive_shift import dispersive_shift
 from .flipping import flipping
 from .flux_depedence.qubit_flux_dependence import qubit_flux
@@ -18,7 +21,7 @@ from .rabi.amplitude import rabi_amplitude
 from .rabi.length import rabi_length
 from .rabi.length_sweep import rabi_length_sweep
 from .ramsey import ramsey
-from .ramsey_sweep import ramsey_sweep
+from .ramsey_sweep import ramsey as ramsey_sweep
 from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
@@ -47,3 +50,6 @@ class Operation(Enum):
     drag_pulse_tuning = drag_pulse_tuning
     flipping = flipping
     dispersive_shift = dispersive_shift
+    coupler_swap_frequency = coupler_swap_frequency
+    coupler_frequency = coupler_frequency
+    coupler_frequency_flux = coupler_frequency_flux
