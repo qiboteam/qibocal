@@ -145,11 +145,26 @@ def _fit(data: StdRBData) -> StdRBResults:
         x = sequence_lenght.values
         y = probabilities.values
 
-        pguess = [0.5, 0.9, 0.8]
+        a_guess = np.max(y) - np.mean(y)
+        p_guess = 0.9
+        b_guess = np.mean(y)
+
+        # # Another guess liza would use is:
+        # a_guess = ydata[0]-ydata[-1] # (assuming p is close to 1)
+        # p_guess = 0.9
+        # b_guess = ydata[-1] # (because we assume p^m goes to 0 for large m)
+
+        pguess = [a_guess, p_guess, b_guess]
         try:
             popt, pcov = curve_fit(
-                utils.RB_fit, x, y, p0=pguess, maxfev=100000
-            )  # TODO: bounds on p [0,1] for A and B
+                utils.RB_fit,
+                x,
+                y,
+                p0=pguess,
+                maxfev=100000,
+                bounds=((-np.inf, 0, -np.inf), (np.inf, 1, np.inf)),
+            )  # bounds = [(),(0,1),(0,1)]
+            # TODO: bounds for A and B ???
 
             # TODO: remove translate
 
