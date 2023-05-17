@@ -92,8 +92,6 @@ def _acquisition(
         results = platform.execute_pulse_sequence(
             sequence,
             ExecutionParameters(
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
                 averaging_mode=AveragingMode.CYCLIC,
             ),
         )

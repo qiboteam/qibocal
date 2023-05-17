@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
@@ -29,12 +29,12 @@ class RabiAmplitudeParameters(Parameters):
     """Maximum amplitude multiplicative factor."""
     step_amp_factor: float
     """Step amplitude multiplicative factor."""
-    pulse_length: float
-    """RX pulse duration (ns)."""
     nshots: int
     """Number of shots."""
     relaxation_time: float
     """Relaxation time (ns)."""
+    pulse_length: Optional[float] = None
+    """RX pulse duration (ns)."""
 
 
 @dataclass
@@ -75,7 +75,8 @@ def _acquisition(
     ro_pulses = {}
     for qubit in qubits:
         qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        qd_pulses[qubit].duration = params.pulse_length
+        if params.pulse_length is not None:
+            qd_pulses[qubit].duration = params.pulse_length
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=qd_pulses[qubit].finish
         )

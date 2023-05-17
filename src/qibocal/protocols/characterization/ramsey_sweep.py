@@ -33,6 +33,10 @@ class RamseyParameters(Parameters):
     n_osc: Optional[int] = 0
     """Number of oscillations to induce detuning (optional).
         If 0 standard Ramsey experiment is performed."""
+    nshots: Optional[int] = None
+    """Number of shots."""
+    relaxation_time: Optional[float] = None
+    """Relxation time (ns)."""
 
 
 @dataclass
@@ -133,7 +137,7 @@ def _acquisition(
         #     )
 
     # execute the sweep
-    results = platform.execute_pulse_sequence(
+    results = platform.sweep(
         sequence,
         ExecutionParameters(
             nshots=params.nshots,
@@ -145,15 +149,15 @@ def _acquisition(
     )
     for qubit in qubits:
         # average msr, phase, i and q over the number of shots defined in the runcard
-        r = results[ro_pulse.serial].average.serialize
+        r = results[ro_pulses[qubit].serial].serialize
         r.update(
             {
                 "wait[ns]": waits,
-                "qubit_freqs[Hz]": qubits[qubit].drive_frequency,
+                "qubit_freqs[Hz]": len(waits) * [qubits[qubit].drive_frequency],
                 "qubit": len(waits) * [qubit],
             }
         )
-        data.add(r)
+        data.add_data_from_dict(r)
     return data
 
 
@@ -185,6 +189,8 @@ def _fit(data: RamseyData) -> RamseyResults:
         voltages = qubit_data_df["MSR"].pint.to("uV").pint.magnitude
         times = qubit_data_df["wait"].pint.to("ns").pint.magnitude
         qubit_freq = qubit_data_df["qubit_freqs"].pint.to("Hz").pint.magnitude.unique()
+
+        print("qubit_freq", qubit_freq)
 
         try:
             y_max = np.max(voltages.values)
@@ -234,6 +240,7 @@ def _fit(data: RamseyData) -> RamseyResults:
             log.warning(f"ramsey_fit: the fitting was not succesful. {e}")
             popt = [0] * 5
             t2 = 5.0
+            print(qubit_freq)
             corrected_qubit_frequency = int(qubit_freq)
             delta_phys = 0
 
@@ -311,5 +318,5 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
     return figures, fitting_report
 
 
-ramsey_sweep = Routine(_acquisition, _fit, _plot)
+ramsey = Routine(_acquisition, _fit, _plot)
 """Ramsey Routine object."""

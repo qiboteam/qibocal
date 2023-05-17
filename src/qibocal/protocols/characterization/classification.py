@@ -99,7 +99,6 @@ def _acquisition(
         state0_sequence,
         ExecutionParameters(
             nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
         ),
     )
@@ -118,9 +117,10 @@ def _acquisition(
     # execute the second pulse sequence
     state1_results = platform.execute_pulse_sequence(
         state1_sequence,
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.INTEGRATION,
+        ExecutionParameters(
+            nshots=params.nshots,
+            acquisition_type=AcquisitionType.INTEGRATION,
+        ),
     )
 
     # retrieve and store the results for every qubit
