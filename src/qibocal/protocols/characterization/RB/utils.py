@@ -9,6 +9,7 @@ from qibo.config import log
 from qibolab import Platform
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
+from qibolab.transpilers.unitary_decompositions import u3_decomposition
 
 from qibocal.calibrations.niGSC.basics.fitting import exp1B_func, fit_exp1B_func
 from qibocal.calibrations.niGSC.basics.utils import gate_fidelity
@@ -36,12 +37,9 @@ def plot(data, fit, qubit):
         cols=1,
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
-        subplot_titles=(
-            "Standard RB",
-        ),
+        subplot_titles=("Standard RB",),
     )
-    
-    
+
     qubit_data = data.df[data.df["qubit"] == qubit]
     RB_parameters = qubit_data[quantity].pint.to(unit).pint.magnitude.unique()
 
@@ -59,7 +57,7 @@ def plot(data, fit, qubit):
         row=1,
         col=1,
     )
-    
+
     # add fitting trace
     if len(data) > 0:
         RB_parameter_range = np.linspace(
@@ -81,11 +79,16 @@ def plot(data, fit, qubit):
         )
 
         fidelity = np.mean(fit.fidelities[qubit])
-        
+
+        fitting_report += f"{qubit} | fidelity: {float(fidelity):.3f}<br>"
+
         fitting_report += (
-            f"{qubit} | fidelity: {float(fidelity):.3f}<br>"
+            f"{qubit} | p: {float(fit.fitted_parameters[qubit][1]):.3f}<br>"
         )
 
+        fidelity_magic = 1 - ((1 - fidelity) / 1.875)
+
+        fitting_report += f"{qubit} | fidelity_magic: {float(fidelity_magic):.3f}<br>"
 
     fig.update_layout(
         showlegend=True,
@@ -106,13 +109,13 @@ INT_TO_GATE = {
     2: lambda q: gates.RZ(q, np.pi / 2),
     3: lambda q: gates.RZ(q, -np.pi / 2),
     # pi rotations
-    4: lambda q: gates.X(q),
-    5: lambda q: gates.Y(q),
+    4: lambda q: gates.U3(q, np.pi, 0, np.pi),  # X(q)
+    5: lambda q: gates.U3(q, np.pi, 0, 0),  # Y(q)
     # pi/2 rotations
-    6: lambda q: gates.RX(q, np.pi / 2),
-    7: lambda q: gates.RX(q, -np.pi / 2),
-    8: lambda q: gates.RY(q, np.pi / 2),
-    9: lambda q: gates.RY(q, -np.pi / 2),
+    6: lambda q: gates.U3(q, np.pi / 2, -np.pi / 2, np.pi / 2),  # RX(q, np.pi / 2)
+    7: lambda q: gates.U3(q, -np.pi / 2, -np.pi / 2, np.pi / 2),  # RX(q, -np.pi / 2)
+    8: lambda q: gates.U3(q, np.pi / 2, 0, 0),  # RY(q, np.pi / 2)
+    9: lambda q: gates.U3(q, -np.pi / 2, 0, 0),  # RY(q, -np.pi / 2)
     # 2pi/3 rotations
     10: lambda q: gates.U3(q, np.pi / 2, -np.pi / 2, 0),  # Rx(pi/2)Ry(pi/2)
     11: lambda q: gates.U3(q, np.pi / 2, -np.pi / 2, np.pi),  # Rx(pi/2)Ry(-pi/2)
@@ -150,8 +153,13 @@ class RBSequence:
                     self.circuit_to_sequence(self.platform, qubit, circuit)
                 )
                 circuits[f"{depth}_{run}"].append(circuit)
-                
         return sequences, circuits
+
+    def inverse(self, ints, q=0):
+        unitary = np.linalg.multi_dot([INT_TO_GATE[i](q).matrix for i in ints[::-1]])
+        inverse_unitary = np.transpose(np.conj(unitary))
+        theta, phi, lam = u3_decomposition(inverse_unitary)
+        return gates.U3(q, theta, phi, lam)
 
     def circuit_to_sequence(self, platform: AbstractPlatform, qubit, circuit):
         # Define PulseSequence
@@ -188,27 +196,29 @@ class RBSequence:
                     )
                 )
                 virtual_z_phases[qubit] += phi
-            if isinstance(gate, (gates.X, gates.Y)):
-                phase = 0 if isinstance(gate, gates.X) else np.pi / 2
-                sequence.add(
-                    platform.create_RX_pulse(
-                        qubit,
-                        start=next_pulse_start,
-                        relative_phase=virtual_z_phases[qubit] + phase,
-                    )
-                )
-            if isinstance(gate, (gates.RX, gates.RY)):
-                phase = 0 if isinstance(gate, gates.RX) else np.pi / 2
-                phase -= 0 if gate.parameters[0] > 0 else np.pi
-                sequence.add(
-                    platform.create_RX90_pulse(
-                        qubit,
-                        start=next_pulse_start,
-                        relative_phase=virtual_z_phases[qubit] + phase,
-                    )
-                )
-
             next_pulse_start = sequence.finish
+
+        invert_gate = self.inverse(circuit, qubit)
+        # U3 pulses
+        if isinstance(invert_gate, gates.U3):
+            theta, phi, lam = invert_gate.parameters
+            virtual_z_phases[qubit] += lam
+            sequence.add(
+                platform.create_RX90_pulse(
+                    qubit,
+                    start=next_pulse_start,
+                    relative_phase=virtual_z_phases[qubit],
+                )
+            )
+            virtual_z_phases[qubit] += theta
+            sequence.add(
+                platform.create_RX90_pulse(
+                    qubit,
+                    start=sequence.finish,
+                    relative_phase=virtual_z_phases[qubit] - np.pi,
+                )
+            )
+            virtual_z_phases[qubit] += phi
 
         # Add measurement pulse
         measurement_start = sequence.finish

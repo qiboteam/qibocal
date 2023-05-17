@@ -57,7 +57,11 @@ class StdRBData(DataUnits):
     def __init__(self):
         super().__init__(
             "data",
-            {"sequence": "dimensionless", "lenght": "dimensionless", "probabilities": "dimensionless"},
+            {
+                "sequence": "dimensionless",
+                "lenght": "dimensionless",
+                "probabilities": "dimensionless",
+            },
             options=["qubit"],
         )
 
@@ -104,9 +108,9 @@ def _acquisition(
             # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulses[0].serial]
             r = result.serialize
-            
+
             print(circuit[0])
-            
+
             r.update(
                 {
                     # "sequence[dimensionless]": [int(x) for x in circuit[0]],
@@ -137,32 +141,25 @@ def _fit(data: StdRBData) -> StdRBResults:
             qubit_data["probabilities"].pint.to("dimensionless").pint.magnitude
         )
 
-        # TODO: Translate ?
-        # y_min = np.min(probabilities.values)
-        # y_max = np.max(probabilities.values)
-        # x_min = np.min(sequence_lenght.values)
-        # x_max = np.max(sequence_lenght.values)
-        # x = (sequence_lenght.values - x_min) / (x_max - x_min)
-        # y = (probabilities.values - y_min) / (y_max - y_min)
-        
+        # TODO: Translate no
         x = sequence_lenght.values
         y = probabilities.values
 
         pguess = [0.5, 0.9, 0.8]
         try:
-            popt, pcov = curve_fit(utils.RB_fit, x, y, p0=pguess, maxfev=100000)
+            popt, pcov = curve_fit(
+                utils.RB_fit, x, y, p0=pguess, maxfev=100000
+            )  # TODO: bounds on p [0,1] for A and B
 
-            # TODO: Translate properly
-            # translated_popt = [
-            #     y_min + (y_max - y_min) * popt[0],
-            #     (y_max - y_min) * popt[1],
-            #     popt[2] * (y_max - y_min) + y_max,
-            # ]
+            # TODO: remove translate
+
             translated_popt = popt
             p = popt[1]
 
-            fidelity = 1 - (sequence_lenght-1)/sequence_lenght*(1-p)
-            
+            fidelity = 1 - ((1 - p) / 2)
+            # Divide by magic number
+            magic_number = 1.875
+
             fitted_parameters[qubit] = translated_popt
             fidelities[qubit] = fidelity
             print("sucess", fitted_parameters)
@@ -172,7 +169,7 @@ def _fit(data: StdRBData) -> StdRBResults:
             fidelities[qubit] = 0
             fitted_parameters[qubit] = [0] * 3
             print("failed", fitted_parameters)
-        
+
     return StdRBResults(fidelities, fitted_parameters)
 
 
