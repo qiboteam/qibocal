@@ -31,6 +31,10 @@ class RamseyParameters(Parameters):
     n_osc: Optional[int] = 0
     """Number of oscillations to induce detuning (optional).
         If 0 standard Ramsey experiment is performed."""
+    nshots: int = 1024
+    """Number of shots."""
+    relaxation_time: int = 50
+    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -136,7 +140,8 @@ def _acquisition(
         )
         for qubit, ro_pulse in ro_pulses.items():
             # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[ro_pulse.serial].average.serialize
+            # r = results[ro_pulse.serial].average.serialize
+            r = results[ro_pulse.serial].serialize
             r.update(
                 {
                     "wait[ns]": wait,
