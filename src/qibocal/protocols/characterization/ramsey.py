@@ -32,7 +32,9 @@ class RamseyParameters(Parameters):
 class RamseyResults(Results):
     """Ramsey outputs."""
 
-    delta_frequency: Dict[List[Tuple], str] = field(metadata=dict(update="delta_frequency"))
+    delta_frequency: Dict[List[Tuple], str] = field(
+        metadata=dict(update="delta_frequency")
+    )
     """Drive frequency correction for each qubit."""
     t2: Dict[List[Tuple], str]
     """T2 for each qubit (ns)."""
@@ -214,9 +216,7 @@ def _fit(data: RamseyData) -> RamseyResults:
         t2s[qubit] = t2
         fitted_parameters[qubit] = popt
 
-    return RamseyResults(
-        delta_frequencies, t2s, fitted_parameters
-    )
+    return RamseyResults(delta_frequencies, t2s, fitted_parameters)
 
 
 def _plot(data: RamseyData, fit: RamseyResults, qubit):
