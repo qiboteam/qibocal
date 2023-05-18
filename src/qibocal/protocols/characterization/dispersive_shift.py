@@ -10,7 +10,7 @@ from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
-from qibocal.plots.utils import get_color, get_color_state0, get_color_state1
+from qibocal.plots.utils import get_color
 from qibocal.protocols.characterization.resonator_spectroscopy import (
     ResonatorSpectroscopyData,
 )
