@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
@@ -26,6 +26,8 @@ class FlippingParameters(Parameters):
     """Maximum number of flips ([RX(pi) - RX(pi)] sequences). """
     nflips_step: int
     """Flip step."""
+    nshots: Optional[int] = 1024
+    """Number of shots per sequence."""
 
 
 @dataclass
@@ -92,12 +94,18 @@ def _acquisition(
             # execute sequence RX(pi/2) - [RX(pi) - RX(pi)] from 0...flips times - RO
             start1 = RX90_pulse.duration
             for j in range(flips):
-                RX_pulse1 = platform.create_RX_pulse(qubit, start=start1)
-                start2 = start1 + RX_pulse1.duration
-                RX_pulse2 = platform.create_RX_pulse(qubit, start=start2)
-                sequence.add(RX_pulse1)
-                sequence.add(RX_pulse2)
-                start1 = start2 + RX_pulse2.duration
+                RX90_pulse1 = platform.create_RX90_pulse(qubit, start=start1)
+                start2 = start1 + RX90_pulse1.duration
+                RX90_pulse2 = platform.create_RX90_pulse(qubit, start=start2)
+                start3 = start2 + RX90_pulse2.duration
+                RX90_pulse3 = platform.create_RX90_pulse(qubit, start=start3)
+                start4 = start3 + RX90_pulse3.duration
+                RX90_pulse4 = platform.create_RX90_pulse(qubit, start=start4)
+                sequence.add(RX90_pulse1)
+                sequence.add(RX90_pulse2)
+                sequence.add(RX90_pulse3)
+                sequence.add(RX90_pulse4)
+                start1 = start2 + RX90_pulse4.duration
 
             # add ro pulse at the end of the sequence
             ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=start1)
@@ -107,7 +115,6 @@ def _acquisition(
             sequence,
             ExecutionParameters(
                 nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
                 acquisition_type=AcquisitionType.INTEGRATION,
                 averaging_mode=AveragingMode.CYCLIC,
             ),
