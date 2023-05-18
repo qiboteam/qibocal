@@ -150,22 +150,9 @@ def _acquisition(
             ),
         )
         for qubit, ro_pulse in ro_pulses.items():
-            # average msr, phase, i and q over the number of shots defined in the runcard
-            # r = results[ro_pulse.serial].average.serialize
-            # print(results[ro_pulse.serial].average.std)
-            # msr_raw = results[ro_pulse.serial].serialize["MSR[V]"] * 1e6
             raws = results[ro_pulse.serial].serialize
             raws["waits"] = [wait] * len(raws["i[V]"])
-            # print("KKKKKKK",results[ro_pulse.serial].raw.keys())
-            # i_raw = results[ro_pulse.serial].serialize["i[V]"]
-            # q_raw = results[ro_pulse.serial].serialize["q[V]"]
-            # results[ro_pulse.serial].serialize["waits[dim]"] = [wait] * len(i_raw)
-            # raws = {
-            #     "i": np.concatenate((raws["i"], i_raw)),
-            #     "MSR": np.concatenate((raws["MSR"], msr_raw)),
-            #     "q": np.concatenate((raws["q"], q_raw)),
-            #     "waits": np.concatenate((raws["waits"], [wait] * len(i_raw))),
-            # }
+
             data.errors.append(results[ro_pulse.serial].average.std)
 
             pd.DataFrame.from_dict(raws).to_csv(
@@ -175,7 +162,6 @@ def _acquisition(
                 index=False,
                 header=(i == 0),
             )
-        for qubit, ro_pulse in ro_pulses.items():
             # average msr, phase, i and q over the number of shots defined in the runcard
             r = results[ro_pulse.serial].average.serialize
             r.update(
