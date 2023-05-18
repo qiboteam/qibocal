@@ -1,5 +1,5 @@
-from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import Dict, List, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
@@ -49,6 +49,10 @@ class DispersiveShiftResults(Results):
     """Resonator spectroscopy outputs in the ground state."""
     results_1: StateResults
     """Resonator spectroscopy outputs in the excited state"""
+    best_freq: Dict[List[Tuple], str] = field(metadata=dict(update="readout_frequency"))
+    """Readout frequency that maximizes the distance of ground and excited states in iq-plane"""
+    best_iqs: Dict[List[Tuple], str]
+    """iq-couples of ground and excited states with best frequency"""
 
 
 class DispersiveShiftData(DataUnits):
@@ -137,6 +141,7 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
     """Post-Processing for dispersive shift"""
     qubits = data.df["qubit"].unique()
     results = []
+    iq_couples = [[], []]  # axis 0: states, axis 1: qubit
 
     for i in range(2):
         frequency = {}
@@ -148,10 +153,38 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
             freq, fitted_params = lorentzian_fit(data_i, qubit)
             frequency[qubit] = freq
             fitted_parameters[qubit] = fitted_params
+            i_measures = data_i.df[data_i.df["qubit"] == qubit][
+                "i"
+            ].pint.magnitude.to_numpy()
+            q_measures = data_i.df[data_i.df["qubit"] == qubit][
+                "q"
+            ].pint.magnitude.to_numpy()
 
-        results.append(StateResults(frequency, fitted_parameters))
+            iq_couples[i].append(np.stack((i_measures, q_measures), axis=-1))
+            results.append(StateResults(frequency, fitted_parameters))
 
-    return DispersiveShiftResults(results_0=results[0], results_1=results[1])
+    # for each qubit find the iq couple of 0-1 states that maximize the distance
+    iq_couples = np.array(iq_couples)
+    best_freqs = {}
+    best_iqs = {}
+    for qubit in qubits:
+        frequencies = (
+            data.df[data.df["qubit"] == qubit]["frequency"]
+            .pint.to("GHz")
+            .pint.magnitude.unique()
+        )
+
+        max_index = np.argmax(
+            np.linalg.norm(iq_couples[0][qubit] - iq_couples[1][qubit], axis=-1)
+        )
+        best_freqs[qubit] = frequencies[max_index]
+        best_iqs[qubit] = iq_couples[:, qubit, max_index]
+    return DispersiveShiftResults(
+        results_0=results[0],
+        results_1=results[1],
+        best_freq=best_freqs,
+        best_iqs=best_iqs,
+    )
 
 
 def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
@@ -168,7 +201,6 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
             "phase (rad)",
         ),
     )
-
     # iterate over multiple data folders
     qubit_data = data.df[data.df["qubit"] == qubit]
 
@@ -194,6 +226,7 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
     ):
         opacity = 1
         frequencies = q_data.df["frequency"].pint.to("GHz").pint.magnitude.unique()
+
         fig.add_trace(
             go.Scatter(
                 x=q_data.df["frequency"].pint.to("GHz").pint.magnitude,
@@ -239,6 +272,28 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
             col=1,
         )
 
+    fig.add_trace(
+        go.Scatter(
+            x=[fit.best_freq[qubit], fit.best_freq[qubit]],
+            y=[
+                np.min(qubit_data["MSR"].pint.to("uV").pint.magnitude),
+                np.max(qubit_data["MSR"].pint.to("uV").pint.magnitude),
+            ],
+            mode="lines",
+            line=go.scatter.Line(color="orange", width=3, dash="dash"),
+            name="Best frequency",
+        ),
+        row=1,
+        col=1,
+    )
+
+    fig.add_vline(
+        x=fit.best_freq[qubit],
+        line=dict(color="orange", width=3, dash="dash"),
+        row=1,
+        col=2,
+    )
+
     fitting_report = fitting_report + (
         f"{qubit} | State zero freq : {fit_data_0.frequency[qubit]*1e9:,.0f} Hz.<br>"
     )
@@ -248,7 +303,9 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
     fitting_report = fitting_report + (
         f"{qubit} | Frequency shift : {(fit_data_1.frequency[qubit] - fit_data_0.frequency[qubit])*1e9:,.0f} Hz.<br>"
     )
-
+    fitting_report = fitting_report + (
+        f"{qubit} | Best frequency : {fit.best_freq[qubit]*1e9:,.0f} Hz.<br>"
+    )
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
