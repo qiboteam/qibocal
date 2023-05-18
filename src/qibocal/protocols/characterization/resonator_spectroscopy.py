@@ -35,10 +35,6 @@ class ResonatorSpectroscopyParameters(Parameters):
     Otherwise the default attenuation defined on the platform runcard will be used"""
 
     def __post_init__(self):
-        if self.attenuation is not None and self.amplitude is not None:
-            raise ValueError(
-                "Cannot specify attenuation and amplitude at the same time."
-            )
         # TODO: ask Alessandro if there is a proper way to pass Enum to class
         self.power_level = PowerLevel(self.power_level)
 
