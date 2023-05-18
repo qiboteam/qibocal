@@ -5,6 +5,11 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platforms.platform import (
+    AcquisitionType,
+    AveragingMode,
+    ExecutionParameters,
+)
 from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
 
@@ -20,6 +25,10 @@ FONTSIZE = 15
 class RamseyParameters(Parameters):
     """Ramsey runcard inputs."""
 
+    nshots: int
+    """Number of shots."""
+    relaxation_time: int
+    """Relaxation time (ns)."""
     delay_between_pulses_start: int
     """Initial delay between RX(pi/2) pulses in ns."""
     delay_between_pulses_end: int
@@ -54,11 +63,12 @@ class RamseyData(DataUnits):
         super().__init__(
             name="data",
             quantities={"wait": "ns", "qubit_freqs": "Hz"},
-            options=["qubit", "errors"],
+            options=["qubit"],
         )
 
         self._n_osc = n_osc
         self._t_max = t_max
+        self.errors = []
 
     @property
     def n_osc(self):
@@ -115,7 +125,7 @@ def _acquisition(
     plt.rcParams["figure.dpi"] = 600
 
     fig, ax = plt.subplots(2, 2, figsize=(14, 7))  # TODO: remove plotting lines
-    raws = {"i": [], "q": [], "waits": [], "MSR": []}
+    # raws = {"i": [], "q": [], "waits": [], "MSR": []}
     for i, wait in enumerate(waits):
         for qubit in qubits:
             RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
@@ -129,33 +139,53 @@ def _acquisition(
                 )
 
         # execute the pulse sequence
-        results = platform.execute_pulse_sequence(sequence)
 
+        results = platform.execute_pulse_sequence(
+            sequence,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.SINGLESHOT,
+            ),
+        )
         for qubit, ro_pulse in ro_pulses.items():
             # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[ro_pulse.serial].average.raw
-            msr_raw = results[ro_pulse.serial].raw["MSR[V]"] * 1e6
+            # r = results[ro_pulse.serial].average.serialize
+            # print(results[ro_pulse.serial].average.std)
+            # msr_raw = results[ro_pulse.serial].serialize["MSR[V]"] * 1e6
+            raws = results[ro_pulse.serial].serialize
+            raws["waits"] = [wait] * len(raws["i[V]"])
             # print("KKKKKKK",results[ro_pulse.serial].raw.keys())
-            i_raw = results[ro_pulse.serial].raw["i[V]"]
-            q_raw = results[ro_pulse.serial].raw["q[V]"]
-            results[ro_pulse.serial].raw["waits[dim]"] = [wait] * len(i_raw)
-            raws = {
-                "i": np.concatenate((raws["i"], i_raw)),
-                "MSR": np.concatenate((raws["MSR"], msr_raw)),
-                "q": np.concatenate((raws["q"], q_raw)),
-                "waits": np.concatenate((raws["waits"], [wait] * len(i_raw))),
-            }
-            error = np.std(msr_raw) / np.sqrt(len(msr_raw))
+            # i_raw = results[ro_pulse.serial].serialize["i[V]"]
+            # q_raw = results[ro_pulse.serial].serialize["q[V]"]
+            # results[ro_pulse.serial].serialize["waits[dim]"] = [wait] * len(i_raw)
+            # raws = {
+            #     "i": np.concatenate((raws["i"], i_raw)),
+            #     "MSR": np.concatenate((raws["MSR"], msr_raw)),
+            #     "q": np.concatenate((raws["q"], q_raw)),
+            #     "waits": np.concatenate((raws["waits"], [wait] * len(i_raw))),
+            # }
+            data.errors.append(results[ro_pulse.serial].average.std)
+
+            pd.DataFrame.from_dict(raws).to_csv(
+                "ramsey_raw.csv",
+                encoding="utf-8",
+                mode="a",
+                index=False,
+                header=(i == 0),
+            )
+        for qubit, ro_pulse in ro_pulses.items():
+            # average msr, phase, i and q over the number of shots defined in the runcard
+            r = results[ro_pulse.serial].average.serialize
             r.update(
                 {
                     "wait[ns]": wait,
                     "qubit_freqs[Hz]": qubits[qubit].drive_frequency,
                     "qubit": qubit,
-                    "errors": error,
                 }
             )
             data.add_data_from_dict(r)
-    pd.DataFrame.from_dict(raws).to_csv("ramsey_raw.csv", encoding="utf-8")
     return data
 
 
@@ -186,10 +216,10 @@ def _fit(data: RamseyData) -> RamseyResults:
     for qubit in qubits:
         qubit_data_df = data.df[data.df["qubit"] == qubit]
         voltages = qubit_data_df["MSR"].pint.to("uV").pint.magnitude
-        errors = qubit_data_df["errors"]
+        errors = data.errors
         times = qubit_data_df["wait"].pint.to("ns").pint.magnitude
         qubit_freq = qubit_data_df["qubit_freqs"].pint.to("Hz").pint.magnitude.unique()
-
+        print(voltages.values)
         try:
             y_max = np.max(voltages.values)
             y_min = np.min(voltages.values)
@@ -224,7 +254,6 @@ def _fit(data: RamseyData) -> RamseyResults:
                 # absolute_sigma=True
             )
             err_popt = np.sqrt(np.diag(pcov))
-            print("FFFFFF ", popt, pcov, err_popt)
             popt = [
                 (y_max - y_min) * popt[0] + y_min,
                 (y_max - y_min) * popt[1] * np.exp(x_min / ((x_max - x_min) * popt[4])),
@@ -237,13 +266,12 @@ def _fit(data: RamseyData) -> RamseyResults:
             delta_phys = +int((delta_fitting - data.n_osc / data.t_max) * 1e9)
             corrected_qubit_frequency = int(qubit_freq + delta_phys)
             t2 = popt[4]
-            print("HHHHHH", t2, err_popt)
             t2_error = err_popt[4] * (x_max - x_min)
-            print("GGGGGG ", t2_error)
         except Exception as e:
             log.warning(f"ramsey_fit: the fitting was not succesful. {e}")
             popt = [0] * 5
             t2 = 5.0
+
             corrected_qubit_frequency = int(qubit_freq)
             delta_phys = 0
             t2_error = 0
@@ -267,7 +295,7 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
     fitting_report = ""
 
     qubit_data = data.df[data.df["qubit"] == qubit]
-    errors = qubit_data["errors"].to_numpy()
+    errors = data.errors
     print(errors, len(qubit_data["wait"].pint.magnitude), len(errors))
     fig.add_trace(
         go.Scatter(

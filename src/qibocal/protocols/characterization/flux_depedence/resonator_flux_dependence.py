@@ -3,6 +3,11 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platforms.platform import (
+    AcquisitionType,
+    AveragingMode,
+    ExecutionParameters,
+)
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -92,10 +97,14 @@ def _acquisition(
     # repeat the experiment as many times as defined by software_averages
     results = platform.sweep(
         sequence,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
+        ),
         bias_sweeper,
         freq_sweeper,
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
     )
 
     # retrieve the results for every qubit
@@ -108,7 +117,7 @@ def _acquisition(
             * list(delta_frequency_range + ro_pulses[qubit].frequency)
         ).flatten()
         # store the results
-        r = {k: v.ravel() for k, v in result.raw.items()}
+        r = {k: v.ravel() for k, v in result.serialize.items()}
         r.update(
             {
                 "frequency[Hz]": freqs,

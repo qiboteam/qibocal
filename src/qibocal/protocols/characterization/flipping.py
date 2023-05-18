@@ -4,6 +4,11 @@ from typing import Dict, List, Tuple
 import numpy as np
 import plotly.graph_objects as go
 from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platforms.platform import (
+    AcquisitionType,
+    AveragingMode,
+    ExecutionParameters,
+)
 from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
 
@@ -98,11 +103,19 @@ def _acquisition(
             ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=start1)
             sequence.add(ro_pulses[qubit])
         # execute the pulse sequence
-        results = platform.execute_pulse_sequence(sequence)
+        results = platform.execute_pulse_sequence(
+            sequence,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
+        )
         for ro_pulse in ro_pulses.values():
             # average msr, phase, i and q over the number of shots defined in the runcard
 
-            r = results[ro_pulse.serial].average.raw
+            r = results[ro_pulse.serial].average.serialize
             r.update(
                 {
                     "flips[dimensionless]": flips,

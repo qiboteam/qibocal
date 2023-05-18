@@ -3,6 +3,11 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platforms.platform import (
+    AcquisitionType,
+    AveragingMode,
+    ExecutionParameters,
+)
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -90,16 +95,20 @@ def _acquisition(
 
     results = platform.sweep(
         sequence,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
+        ),
         sweeper,
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
     )
 
     # retrieve the results for every qubit
     for qubit, ro_pulse in ro_pulses.items():
         # average msr, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulse.serial]
-        r = result.raw
+        r = result.serialize
         # store the results
         r.update(
             {

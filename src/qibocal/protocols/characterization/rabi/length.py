@@ -3,6 +3,11 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platforms.platform import (
+    AcquisitionType,
+    AveragingMode,
+    ExecutionParameters,
+)
 from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
 
@@ -90,11 +95,19 @@ def _acquisition(
             ro_pulses[qubit].start = qd_pulses[qubit].finish
 
         # execute the pulse sequence
-        results = platform.execute_pulse_sequence(sequence, nshots=params.nshots)
+        results = platform.execute_pulse_sequence(
+            sequence,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
+        )
 
         for qubit in qubits:
             # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[qubit].average.raw
+            r = results[ro_pulses[qubit].serial].average.serialize
             r.update(
                 {
                     "length[ns]": duration,

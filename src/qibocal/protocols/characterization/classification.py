@@ -4,6 +4,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 import plotly.graph_objects as go
 from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platforms.platform import AcquisitionType, ExecutionParameters
 from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -16,6 +17,9 @@ MESH_SIZE = 50
 @dataclass
 class SingleShotClassificationParameters(Parameters):
     nshots: int
+    """Number of shots."""
+    relaxation_time: int
+    """Relaxation time (ns)."""
 
 
 class SingleShotClassificationData(DataUnits):
@@ -95,12 +99,17 @@ def _acquisition(
 
     # execute the first pulse sequence
     state0_results = platform.execute_pulse_sequence(
-        state0_sequence, nshots=params.nshots
+        state0_sequence,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+        ),
     )
 
     # retrieve and store the results for every qubit
     for ro_pulse in ro_pulses.values():
-        r = state0_results[ro_pulse.serial].raw
+        r = state0_results[ro_pulse.serial].serialize
         r.update(
             {
                 "qubit": [ro_pulse.qubit] * params.nshots,
@@ -111,12 +120,17 @@ def _acquisition(
 
     # execute the second pulse sequence
     state1_results = platform.execute_pulse_sequence(
-        state1_sequence, nshots=params.nshots
+        state1_sequence,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+        ),
     )
 
     # retrieve and store the results for every qubit
     for ro_pulse in ro_pulses.values():
-        r = state1_results[ro_pulse.serial].raw
+        r = state1_results[ro_pulse.serial].serialize
         r.update(
             {
                 "qubit": [ro_pulse.qubit] * params.nshots,
