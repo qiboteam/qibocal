@@ -112,6 +112,7 @@ def _acquisition(
             RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
             ro_pulses[qubit].start = RX90_pulses2[qubit].finish
             if params.n_osc != 0:
+                # FIXME: qblox will induce a positive detuning with minus sign
                 RX90_pulses2[qubit].relative_phase = (
                     RX90_pulses2[qubit].start
                     * (-2 * np.pi)
@@ -203,9 +204,8 @@ def _fit(data: RamseyData) -> RamseyResults:
                 popt[4] / (x_max - x_min),
             ]
             delta_fitting = popt[2] / (2 * np.pi)
-            # FIXME: check this formula
-            delta_phys = +int((delta_fitting - data.n_osc / data.t_max) * 1e9)
-            corrected_qubit_frequency = int(qubit_freq + delta_phys)
+            delta_phys = -int((delta_fitting - data.n_osc / data.t_max) * 1e9)
+            corrected_qubit_frequency = int(qubit_freq - delta_phys)
             t2 = 1.0 / popt[4]
 
         except Exception as e:
