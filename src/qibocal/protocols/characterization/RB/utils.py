@@ -24,9 +24,9 @@ def RB_fit(x, A, p, B):
 
 def plot(data, fit, qubit):
     if data.__class__.__name__ == "StdRBData":
-        quantity = "lenght"
+        quantity = "length"
         unit = "dimensionless"
-        title = "Sequence lenght"
+        title = "Sequence length"
         fitting = RB_fit
 
     figures = []
@@ -66,11 +66,12 @@ def plot(data, fit, qubit):
             2 * len(data),
         )
         params = fit.fitted_parameters[qubit]
+
         fig.add_trace(
             go.Scatter(
                 x=RB_parameter_range,
                 y=fitting(RB_parameter_range, *params),
-                name="Fit",
+                name=f"A: {params[0]:.3f}, p: {params[1]:.3f}, B: {params[2]:.3f}",
                 line=go.scatter.Line(dash="dot"),
                 marker_color="rgb(255, 130, 67)",
             ),
@@ -78,15 +79,15 @@ def plot(data, fit, qubit):
             col=1,
         )
 
-        fitting_report += (
-            f"{qubit} | p: {float(fit.fitted_parameters[qubit][1]):.3f}<br>"
-        )
+        fidelity = np.mean(fit.fidelities[qubit])
+
+        fitting_report += f"{qubit} | fidelity: {float(fidelity):.3f}<br>"
+
+        fitting_report += f"{qubit} | p: {float(params[1]):.3f}<br>"
 
         fitting_report += f"{qubit} | fidelity primitive: {float(fit.fidelities_primitive[qubit]):.3f}<br>"
 
-        fitting_report += (
-            f"{qubit} | fidelity: {float(fit.fidelities_primitive[qubit]):.3f}<br>"
-        )
+        fitting_report += f"{qubit} | fidelity: {float(fit.fidelities[qubit]):.3f}<br>"
 
         fitting_report += f"{qubit} | Average error per gate(%): {float(fit.average_errors_gate[qubit]):.3f}<br>"
 
@@ -109,13 +110,13 @@ INT_TO_GATE = {
     2: lambda q: gates.RZ(q, np.pi / 2),
     3: lambda q: gates.RZ(q, -np.pi / 2),
     # pi rotations
-    4: lambda q: gates.U3(q, np.pi, 0, np.pi),  # X(q)
-    5: lambda q: gates.U3(q, np.pi, 0, 0),  # Y(q)
+    4: lambda q: gates.X(q),  # gates.U3(q, np.pi, 0, np.pi),
+    5: lambda q: gates.Y(q),  # U3(q, np.pi, 0, 0),
     # pi/2 rotations
-    6: lambda q: gates.U3(q, np.pi / 2, -np.pi / 2, np.pi / 2),  # RX(q, np.pi / 2)
-    7: lambda q: gates.U3(q, -np.pi / 2, -np.pi / 2, np.pi / 2),  # RX(q, -np.pi / 2)
-    8: lambda q: gates.U3(q, np.pi / 2, 0, 0),  # RY(q, np.pi / 2)
-    9: lambda q: gates.U3(q, -np.pi / 2, 0, 0),  # RY(q, -np.pi / 2)
+    6: lambda q: gates.RX(q, np.pi / 2),  # U3(q, np.pi / 2, -np.pi / 2, np.pi / 2),
+    7: lambda q: gates.RX(q, -np.pi / 2),  # U3(q, -np.pi / 2, -np.pi / 2, np.pi / 2),
+    8: lambda q: gates.RY(q, np.pi / 2),  # U3(q, np.pi / 2, 0, 0),
+    9: lambda q: gates.RY(q, np.pi / 2),  # U3(q, -np.pi / 2, 0, 0),
     # 2pi/3 rotations
     10: lambda q: gates.U3(q, np.pi / 2, -np.pi / 2, 0),  # Rx(pi/2)Ry(pi/2)
     11: lambda q: gates.U3(q, np.pi / 2, -np.pi / 2, np.pi),  # Rx(pi/2)Ry(-pi/2)
@@ -176,6 +177,27 @@ class RBSequence:
                 virtual_z_phases[qubit] += np.pi
             if isinstance(gate, gates.RZ):
                 virtual_z_phases[qubit] += gate.parameters[0]
+            # X
+            if isinstance(gate, (gates.X, gates.Y)):
+                phase = 0 if isinstance(gate, gates.X) else -np.pi / 2
+                sequence.add(
+                    platform.create_RX_pulse(
+                        qubit,
+                        start=next_pulse_start,
+                        relative_phase=virtual_z_phases[qubit] + phase,
+                    )
+                )
+            # RX
+            if isinstance(gate, (gates.RX, gates.RY)):
+                phase = 0 if isinstance(gate, gates.RX) else -np.pi / 2
+                phase += 0 if gate.parameters[0] > 0 else -np.pi
+                sequence.add(
+                    platform.create_RX90_pulse(
+                        qubit,
+                        start=next_pulse_start,
+                        relative_phase=virtual_z_phases[qubit] + phase,
+                    )
+                )
             # U3 pulses
             if isinstance(gate, gates.U3):
                 theta, phi, lam = gate.parameters
