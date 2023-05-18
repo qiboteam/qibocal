@@ -169,7 +169,9 @@ def _aquisition(
         )
         # prob = iq_to_probability(result.voltage_i, result.voltage_q, complex(platform.qubits[qubit].mean_exc_states), complex(platform.qubits[qubit].mean_gnd_states))
         # store the results
-        freq, offset = np.meshgrid(delta_frequency_range, delta_offset_range)
+        freq, offset = np.meshgrid(
+            delta_frequency_range, delta_offset_range, indexing="ij"
+        )
         r = {
             "frequency[Hz]": freq.flatten() + params.coupler_frequency,
             "offset[V]": offset.flatten() + platform.qubits[f"c{pair[0]}"].sweetspot,

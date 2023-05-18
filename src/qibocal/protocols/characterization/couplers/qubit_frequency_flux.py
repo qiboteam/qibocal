@@ -33,7 +33,7 @@ class QubitFrequencyFluxParameters(Parameters):
     """Number of shots per point."""
     relaxation_time: Optional[float] = 0
     """Relaxation time."""
-    drive_duration: Optional[float] = 5000
+    drive_duration: Optional[float] = 2000
     """Drive duration."""
     drive_amplitude: Optional[float] = 0.1
     """Drive amplitude."""
@@ -89,7 +89,6 @@ def _aquisition(
     ro_pulses = {}
     qd_pulses = {}
 
-    # FIXME: add coupler pulses in the runcard
     for qubit in qubits:
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=params.drive_duration
@@ -116,9 +115,10 @@ def _aquisition(
         delta_frequency_range,
         pulses=[qd_pulses[qubit] for qubit in qubits],
     )
+
     sweeper_offset = Sweeper(
         Parameter.bias,
-        delta_offset_range * 0,
+        delta_offset_range,
         qubits=[platform.qubits[f"c{qubit}"] for qubit in qubits],
     )
 
@@ -156,7 +156,10 @@ def _aquisition(
         )
         # prob = iq_to_probability(result.voltage_i, result.voltage_q, complex(platform.qubits[qubit].mean_exc_states), complex(platform.qubits[qubit].mean_gnd_states))
         # store the results
-        freq, offset = np.meshgrid(delta_frequency_range, delta_offset_range)
+        freq, offset = np.meshgrid(
+            delta_frequency_range, delta_offset_range, indexing="ij"
+        )
+
         r.update(
             {
                 "frequency[Hz]": freq.flatten()

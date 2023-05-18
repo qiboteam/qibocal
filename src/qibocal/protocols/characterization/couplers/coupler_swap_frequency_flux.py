@@ -176,6 +176,7 @@ def _aquisition(
             freq, offset = np.meshgrid(
                 delta_frequency_range + params.coupler_frequency,
                 delta_offset_range + platform.qubits[f"c{pair[0]}"].sweetspot,
+                indexing="ij",
             )
             # store the results
             r = {
