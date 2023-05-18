@@ -3,7 +3,7 @@ import shutil
 import time
 
 import numpy as np
-from bell_functions import ReadoutErrorMitigation, BellExperiment
+from bell_functions import BellExperiment, ReadoutErrorMitigation
 from qibo import set_backend
 from qibo.config import log
 from qibolab import Platform
