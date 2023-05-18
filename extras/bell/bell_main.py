@@ -1,16 +1,14 @@
 import json
-import numpy as np
-from qibo.config import log
-from qibo import set_backend
+import shutil
+import time
 
+import numpy as np
+from bell_functions import ReadoutErrorMitigation, BellExperiment
+from qibo import set_backend
+from qibo.config import log
 from qibolab import Platform
 from qibolab.backends import QibolabBackend
 from qibolab.paths import qibolab_folder
-import time
-import shutil
-
-from bell_functions import *
-
 
 nqubits = 5
 qubits = [2, 3]
@@ -22,7 +20,7 @@ ntheta = 20
 
 bell_basis = [0, 1, 2, 3]
 
-thetas = np.linspace(0, 2*np.pi, ntheta)
+thetas = np.linspace(0, 2 * np.pi, ntheta)
 
 platform = Platform("qblox", runcard)
 
@@ -32,14 +30,16 @@ calibration_matrix = readout_mitigation.get_calibration_matrix(nshots)
 
 bell = BellExperiment(platform, nqubits)
 
-bell.execute(qubits, 
-	bell_basis,
-	thetas,
-	nshots,
-	pulses=True,
-	native=True,
-	readout_mitigation=readout_mitigation,
-	exact=True)
+bell.execute(
+    qubits,
+    bell_basis,
+    thetas,
+    nshots,
+    pulses=True,
+    native=True,
+    readout_mitigation=readout_mitigation,
+    exact=True,
+)
 
 """
 Simulation version:
@@ -63,7 +63,7 @@ calibration_matrix = readout_mitigation.get_calibration_matrix(nshots)
 
 bell = BellExperiment(None, nqubits, rerr)
 
-bell.execute(qubits, 
+bell.execute(qubits,
 	bell_basis,
 	thetas,
 	nshots,
@@ -73,5 +73,3 @@ bell.execute(qubits,
 	exact=True)
 
 """
-
-
