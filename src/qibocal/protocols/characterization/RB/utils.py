@@ -17,7 +17,7 @@ from qibocal.config import log
 from qibocal.plots.utils import get_color
 
 
-def RB_fit(x, A, B, p):
+def RB_fit(x, A, p, B):
     """A*p^x+B fit"""
     return A * p**x + B
 
@@ -78,17 +78,17 @@ def plot(data, fit, qubit):
             col=1,
         )
 
-        fidelity = np.mean(fit.fidelities[qubit])
-
-        fitting_report += f"{qubit} | fidelity: {float(fidelity):.3f}<br>"
-
         fitting_report += (
             f"{qubit} | p: {float(fit.fitted_parameters[qubit][1]):.3f}<br>"
         )
 
-        fidelity_magic = 1 - ((1 - fidelity) / 1.875)
+        fitting_report += f"{qubit} | fidelity primitive: {float(fit.fidelities_primitive[qubit]):.3f}<br>"
 
-        fitting_report += f"{qubit} | fidelity_magic: {float(fidelity_magic):.3f}<br>"
+        fitting_report += (
+            f"{qubit} | fidelity: {float(fit.fidelities_primitive[qubit]):.3f}<br>"
+        )
+
+        fitting_report += f"{qubit} | Average error per gate(%): {float(fit.average_errors_gate[qubit]):.3f}<br>"
 
     fig.update_layout(
         showlegend=True,

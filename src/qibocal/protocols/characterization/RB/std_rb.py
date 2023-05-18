@@ -46,7 +46,11 @@ class StdRBResults(Results):
     """Standard RB outputs."""
 
     fidelities: Dict[List[float], List]
-    """Probabilities obtained for each sequence"""
+    """Fidelity after magic number"""
+    fidelities_primitive: Dict[List[float], List]
+    """Primitive for fidelity after magic number"""
+    average_errors_gate: Dict[List[float], List]
+    """Error per average gate as a percentage"""
     fitted_parameters: Dict[List[Tuple], List]
     """Raw fitted parameters."""
 
@@ -109,12 +113,9 @@ def _acquisition(
             result = results[ro_pulses[0].serial]
             r = result.serialize
 
-            print(circuit[0])
-
             r.update(
                 {
-                    # "sequence[dimensionless]": [int(x) for x in circuit[0]],
-                    "sequence[dimensionless]": 420,
+                    "sequence[dimensionless]": 0,  # TODO: Store sequences
                     "lenght[dimensionless]": len(circuit[0]),
                     "probabilities[dimensionless]": r["state_0"][0],
                     "qubit": qubit.name,
@@ -131,7 +132,9 @@ def _fit(data: StdRBData) -> StdRBResults:
     qubits = data.df["qubit"].unique()
 
     fitted_parameters = {}
+    fidelities_primitive = {}
     fidelities = {}
+    average_errors_gate = {}
 
     for qubit in qubits:
         qubit_data = data.df[data.df["qubit"] == qubit]
@@ -141,18 +144,12 @@ def _fit(data: StdRBData) -> StdRBResults:
             qubit_data["probabilities"].pint.to("dimensionless").pint.magnitude
         )
 
-        # TODO: Translate no
         x = sequence_lenght.values
         y = probabilities.values
 
         a_guess = np.max(y) - np.mean(y)
         p_guess = 0.9
         b_guess = np.mean(y)
-
-        # # Another guess liza would use is:
-        # a_guess = ydata[0]-ydata[-1] # (assuming p is close to 1)
-        # p_guess = 0.9
-        # b_guess = ydata[-1] # (because we assume p^m goes to 0 for large m)
 
         pguess = [a_guess, p_guess, b_guess]
         try:
@@ -162,30 +159,33 @@ def _fit(data: StdRBData) -> StdRBResults:
                 y,
                 p0=pguess,
                 maxfev=100000,
-                bounds=((-np.inf, 0, -np.inf), (np.inf, 1, np.inf)),
-            )  # bounds = [(),(0,1),(0,1)]
-            # TODO: bounds for A and B ???
+                # bounds=((-np.inf, 0, -np.inf), (np.inf, 1, np.inf)),
+                bounds=((0, 0, 0), (1, 1, 1)),
+            )
 
-            # TODO: remove translate
-
-            translated_popt = popt
             p = popt[1]
-
-            fidelity = 1 - ((1 - p) / 2)
-            # Divide by magic number
+            fidelity_primitive = 1 - ((1 - p) / 2)
+            # Divide infidelity by magic number
             magic_number = 1.875
+            infidelity = (1 - p) / magic_number
+            fidelity = 1 - infidelity
+            average_error_gate = infidelity * 100
 
-            fitted_parameters[qubit] = translated_popt
+            fitted_parameters[qubit] = popt
             fidelities[qubit] = fidelity
-            print("sucess", fitted_parameters)
+            fidelities_primitive[qubit] = fidelity_primitive
+            average_errors_gate[qubit] = average_error_gate
 
         except:
             log.warning("RB_fit: the fitting was not succesful")
-            fidelities[qubit] = 0
+            fidelities[qubit] = 0.0
+            fidelities_primitive[qubit] = 0.0
+            average_errors_gate[qubit] = 0.0
             fitted_parameters[qubit] = [0] * 3
-            print("failed", fitted_parameters)
 
-    return StdRBResults(fidelities, fitted_parameters)
+    return StdRBResults(
+        fidelities, fidelities_primitive, average_errors_gate, fitted_parameters
+    )
 
 
 def _plot(data: StdRBData, fit: StdRBResults, qubit):
