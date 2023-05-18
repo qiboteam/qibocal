@@ -10,6 +10,7 @@ from qibolab.platforms.platform import (
     ExecutionParameters,
 )
 from qibolab.pulses import PulseSequence
+from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.config import log
@@ -82,32 +83,32 @@ def _acquisition(
     # additionally include wait time and t_max
     data = T2Data()
 
-    # sweep the parameter
-    for wait in waits:
-        for qubit in qubits:
-            RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
-            ro_pulses[qubit].start = RX90_pulses2[qubit].finish
+    sweeper = Sweeper(
+        Parameter.delay,
+        waits,
+        [RX90_pulses1[qubit] for qubit in qubits],
+    )
 
-        # execute the pulse sequence
-        results = platform.execute_pulse_sequence(
-            sequence,
-            ExecutionParameters(
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.INTEGRATION,
-                averaging_mode=AveragingMode.CYCLIC,
-            ),
+    # execute the sweep
+    results = platform.sweep(
+        sequence,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
+        ),
+        sweeper,
+    )
+    for qubit in qubits:
+        r = results[ro_pulses[qubit].serial].average.serialize
+        r.update(
+            {
+                "wait[ns]": waits,
+                "qubit": len(waits) * [qubit],
+            }
         )
-        for qubit, ro_pulse in ro_pulses.items():
-            # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[ro_pulse.serial].average.serialize
-            r.update(
-                {
-                    "wait[ns]": wait,
-                    "qubit": qubit,
-                }
-            )
-            data.add_data_from_dict(r)
+        data.add(r)
     return data
 
 

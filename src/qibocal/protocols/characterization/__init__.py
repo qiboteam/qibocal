@@ -6,7 +6,6 @@ from .allxy.drag_pulse_tuning import drag_pulse_tuning
 from .classification import single_shot_classification
 from .coherence.spin_echo import spin_echo
 from .coherence.t1 import t1
-from .coherence.t1_sweep import t1_sweep
 from .coherence.t2 import t2
 from .coherence.t2_sweep import t2_sweep
 from .couplers.coupler_frequency import coupler_frequency
@@ -21,7 +20,6 @@ from .flux_depedence.resonator_flux_dependence import resonator_flux
 from .qubit_spectroscopy import qubit_spectroscopy
 from .rabi.amplitude import rabi_amplitude
 from .rabi.length import rabi_length
-from .rabi.length_sweep import rabi_length_sweep
 from .ramsey import ramsey
 from .ramsey_sweep import ramsey as ramsey_sweep
 from .resonator_punchout import resonator_punchout
@@ -38,13 +36,9 @@ class Operation(Enum):
     qubit_flux = qubit_flux
     rabi_amplitude = rabi_amplitude
     rabi_length = rabi_length
-    rabi_length_sweep = rabi_length_sweep
     ramsey = ramsey
-    ramsey_sweep = ramsey_sweep
     t1 = t1
-    t1_sweep = t1_sweep
     t2 = t2
-    t2_sweep = t2_sweep
     single_shot_classification = single_shot_classification
     spin_echo = spin_echo
     allxy = allxy
