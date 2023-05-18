@@ -32,12 +32,10 @@ class RamseyParameters(Parameters):
 class RamseyResults(Results):
     """Ramsey outputs."""
 
-    frequency: Dict[List[Tuple], str] = field(metadata=dict(update="drive_frequency"))
-    """Drive frequency for each qubit."""
+    delta_frequency: Dict[List[Tuple], str] = field(metadata=dict(update="delta_frequency"))
+    """Drive frequency correction for each qubit."""
     t2: Dict[List[Tuple], str]
     """T2 for each qubit (ns)."""
-    delta_phys: Dict[List[Tuple], str]
-    """Drive frequency correction for each qubit."""
     fitted_parameters: Dict[List[Tuple], List]
     """Raw fitting output."""
 
@@ -154,8 +152,7 @@ def _fit(data: RamseyData) -> RamseyResults:
     qubits = data.df["qubit"].unique()
 
     t2s = {}
-    corrected_qubit_frequencies = {}
-    freqs_detuing = {}
+    delta_frequencies = {}
     fitted_parameters = {}
 
     for qubit in qubits:
@@ -205,23 +202,20 @@ def _fit(data: RamseyData) -> RamseyResults:
             delta_fitting = popt[2] / (2 * np.pi)
             # FIXME: check this formula
             delta_phys = +int((delta_fitting - data.n_osc / data.t_max) * 1e9)
-            corrected_qubit_frequency = int(qubit_freq + delta_phys)
             t2 = 1.0 / popt[4]
 
         except Exception as e:
             log.warning(f"ramsey_fit: the fitting was not succesful. {e}")
             popt = [0] * 5
             t2 = 5.0
-            corrected_qubit_frequency = int(qubit_freq)
             delta_phys = 0
 
-        fitted_parameters[qubit] = popt
-        corrected_qubit_frequencies[qubit] = corrected_qubit_frequency / 1e9
+        delta_frequencies[qubit] = delta_phys
         t2s[qubit] = t2
-        freqs_detuing[qubit] = delta_phys
+        fitted_parameters[qubit] = popt
 
     return RamseyResults(
-        corrected_qubit_frequencies, t2s, freqs_detuing, fitted_parameters
+        delta_frequencies, t2s, fitted_parameters
     )
 
 
@@ -272,8 +266,7 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
         )
         fitting_report = (
             fitting_report
-            + (f"{qubit} | Delta_frequency: {fit.delta_phys[qubit]:,.1f} Hz<br>")
-            + (f"{qubit} | Drive_frequency: {fit.frequency[qubit] * 1e9} Hz<br>")
+            + (f"{qubit} | Delta_frequency: {fit.delta_frequency[qubit]:,.1f} Hz<br>")
             + (f"{qubit} | T2: {fit.t2[qubit]:,.0f} ns.<br><br>")
         )
 
