@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
@@ -11,6 +12,8 @@ from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.config import log
 from qibocal.data import DataUnits
 from qibocal.plots.utils import get_color
+
+FONTSIZE = 15
 
 
 @dataclass
@@ -109,7 +112,10 @@ def _acquisition(
     # sweep the parameter
     import matplotlib.pyplot as plt  # TODO: remove plotting lines
 
-    fig, (ax1, ax2) = plt.subplots(2, 1)  # TODO: remove plotting lines
+    plt.rcParams["figure.dpi"] = 600
+
+    fig, ax = plt.subplots(2, 2, figsize=(14, 7))  # TODO: remove plotting lines
+    raws = {"i": [], "q": [], "waits": [], "MSR": []}
     for i, wait in enumerate(waits):
         for qubit in qubits:
             RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
@@ -129,27 +135,17 @@ def _acquisition(
             # average msr, phase, i and q over the number of shots defined in the runcard
             r = results[ro_pulse.serial].average.raw
             msr_raw = results[ro_pulse.serial].raw["MSR[V]"] * 1e6
-            # TODO: remove plotting lines
-            print(wait)
-            if i % 10 == 0:
-                ax1.scatter([wait] * len(msr_raw), msr_raw, s=1, color=f"C{int(i/10)}")
-                ax1.scatter(
-                    [wait],
-                    np.average(msr_raw),
-                    s=10,
-                    color=f"C{int(i/10)}",
-                    marker="+",
-                )
-                if i < 150:
-                    ax2.hist(
-                        msr_raw,
-                        bins=100,
-                        histtype="step",
-                        density=True,
-                        color=f"C{int(i/10)}",
-                    )
+            # print("KKKKKKK",results[ro_pulse.serial].raw.keys())
+            i_raw = results[ro_pulse.serial].raw["i[V]"]
+            q_raw = results[ro_pulse.serial].raw["q[V]"]
+            results[ro_pulse.serial].raw["waits[dim]"] = [wait] * len(i_raw)
+            raws = {
+                "i": np.concatenate((raws["i"], i_raw)),
+                "MSR": np.concatenate((raws["MSR"], msr_raw)),
+                "q": np.concatenate((raws["q"], q_raw)),
+                "waits": np.concatenate((raws["waits"], [wait] * len(i_raw))),
+            }
             error = np.std(msr_raw) / np.sqrt(len(msr_raw))
-            # print(error)
             r.update(
                 {
                     "wait[ns]": wait,
@@ -159,9 +155,7 @@ def _acquisition(
                 }
             )
             data.add_data_from_dict(r)
-
-    fig.savefig("ramsey.pdf")
-    # print(data.df["errors"])
+    pd.DataFrame.from_dict(raws).to_csv("ramsey_raw.csv", encoding="utf-8")
     return data
 
 

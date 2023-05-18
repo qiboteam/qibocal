@@ -1,6 +1,6 @@
-platform: qw5q_gold_qblox
+platform: tii1q_b1 #qw5q_gold_qblox
 
-qubits: [0, 1, 2, 3, 4]
+qubits: [0] #[0, 1, 2, 3, 4]
 
 format: csv
 
