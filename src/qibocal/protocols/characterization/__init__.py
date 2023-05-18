@@ -13,6 +13,7 @@ from .couplers.coupler_frequency import coupler_frequency
 from .couplers.coupler_frequency_flux import coupler_frequency_flux
 from .couplers.coupler_swap_frequency import coupler_swap_frequency
 from .couplers.coupler_swap_frequency_flux import coupler_swap_frequency_flux
+from .couplers.qubit_frequency_flux import qubit_frequency_flux
 from .dispersive_shift import dispersive_shift
 from .flipping import flipping
 from .flux_depedence.qubit_flux_dependence import qubit_flux
@@ -55,3 +56,4 @@ class Operation(Enum):
     coupler_frequency = coupler_frequency
     coupler_frequency_flux = coupler_frequency_flux
     coupler_swap_frequency_flux = coupler_swap_frequency_flux
+    qubit_frequency_flux = qubit_frequency_flux
