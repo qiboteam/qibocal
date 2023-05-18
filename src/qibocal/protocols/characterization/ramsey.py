@@ -45,7 +45,7 @@ class RamseyResults(Results):
 class RamseyData(DataUnits):
     """Ramsey acquisition outputs."""
 
-    def __init__(self, n_osc, t_max):
+    def __init__(self, n_osc, t_max, detuning_sign):
         super().__init__(
             name="data",
             quantities={"wait": "ns", "qubit_freqs": "Hz"},
@@ -56,6 +56,7 @@ class RamseyData(DataUnits):
 
         self._n_osc = n_osc
         self._t_max = t_max
+        self._detuning_sign = detuning_sign
 
     @property
     def n_osc(self):
@@ -66,6 +67,11 @@ class RamseyData(DataUnits):
     def t_max(self):
         """Final delay between RX(pi/2) pulses in ns."""
         return self._t_max
+
+    @property
+    def detuning_sign(self):
+        """Sign for induced detuning."""
+        return self._detuning_sign
 
 
 def _acquisition(
@@ -104,7 +110,7 @@ def _acquisition(
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
     # additionally include wait time and t_max
-    data = RamseyData(params.n_osc, params.delay_between_pulses_end)
+    data = RamseyData(params.n_osc, params.delay_between_pulses_end, detuning_sign=+1)
 
     # sweep the parameter
     for wait in waits:
@@ -115,7 +121,9 @@ def _acquisition(
                 # FIXME: qblox will induce a positive detuning with minus sign
                 RX90_pulses2[qubit].relative_phase = (
                     RX90_pulses2[qubit].start
-                    * (-2 * np.pi)
+                    * data.detuning_sign
+                    * 2
+                    * np.pi
                     * (params.n_osc)
                     / params.delay_between_pulses_end
                 )
@@ -204,7 +212,11 @@ def _fit(data: RamseyData) -> RamseyResults:
                 popt[4] / (x_max - x_min),
             ]
             delta_fitting = popt[2] / (2 * np.pi)
-            delta_phys = -int((delta_fitting - data.n_osc / data.t_max) * 1e9)
+            delta_phys = data.detuning_sign * int(
+                (delta_fitting - data.n_osc / data.t_max) * 1e9
+            )
+            # FIXME: for qblox the correct formula is
+            # corrected_qubit_frequency = int(qubit_freq + delta_phys)
             corrected_qubit_frequency = int(qubit_freq - delta_phys)
             t2 = 1.0 / popt[4]
 
