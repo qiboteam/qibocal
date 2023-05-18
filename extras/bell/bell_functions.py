@@ -365,6 +365,7 @@ class BellExperiment():
 			exact_chsh_values_basis = []
 
 		if pulses:
+			platform = self.platform
 			platform.connect()
 			platform.setup()
 			platform.start()
