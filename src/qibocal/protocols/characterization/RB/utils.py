@@ -79,10 +79,6 @@ def plot(data, fit, qubit):
             col=1,
         )
 
-        fidelity = np.mean(fit.fidelities[qubit])
-
-        fitting_report += f"{qubit} | fidelity: {float(fidelity):.3f}<br>"
-
         fitting_report += f"{qubit} | p: {float(params[1]):.3f}<br>"
 
         fitting_report += f"{qubit} | fidelity primitive: {float(fit.fidelities_primitive[qubit]):.3f}<br>"

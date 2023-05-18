@@ -63,7 +63,7 @@ class StdRBData(DataUnits):
             "data",
             {
                 "sequence": "dimensionless",
-                "lenght": "dimensionless",
+                "length": "dimensionless",
                 "probabilities": "dimensionless",
             },
             options=["qubit"],
@@ -116,7 +116,7 @@ def _acquisition(
             r.update(
                 {
                     "sequence[dimensionless]": 0,  # TODO: Store sequences
-                    "lenght[dimensionless]": len(circuit[0]),
+                    "length[dimensionless]": len(circuit[0]),
                     "probabilities[dimensionless]": r["state_0"][0],
                     "qubit": qubit.name,
                 }
@@ -139,12 +139,12 @@ def _fit(data: StdRBData) -> StdRBResults:
     for qubit in qubits:
         qubit_data = data.df[data.df["qubit"] == qubit]
 
-        sequence_lenght = qubit_data["lenght"].pint.to("dimensionless").pint.magnitude
+        sequence_length = qubit_data["length"].pint.to("dimensionless").pint.magnitude
         probabilities = (
             qubit_data["probabilities"].pint.to("dimensionless").pint.magnitude
         )
 
-        x = sequence_lenght.values
+        x = sequence_length.values
         y = probabilities.values
 
         a_guess = np.max(y) - np.mean(y)
