@@ -149,8 +149,16 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
 
         pguess = [0.5, 1, f, np.pi / 2]
         try:
-            popt, pcov = curve_fit(
-                utils.rabi_amplitude_fit, x, y, p0=pguess, maxfev=100000
+            popt, _ = curve_fit(
+                utils.rabi_amplitude_fit,
+                x,
+                y,
+                p0=pguess,
+                maxfev=100000,
+                bounds=(
+                    [0, 0, 0, -np.pi],
+                    [1, 1, np.inf, np.pi],
+                ),
             )
             translated_popt = [
                 y_min + (y_max - y_min) * popt[0],

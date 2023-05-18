@@ -4,14 +4,12 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
-from qibocal.calibrations.niGSC.basics import utils
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
+from qibocal.calibrations.niGSC.basics.utils import number_to_str
 
 
 def plot_qq(folder: str, routine: str, qubit, format):
-    fitting_report = ""
     """Load the module for which the plot has to be done.
-
 
     Args:
         folder (str): The folder path where the data was stored.
@@ -33,7 +31,8 @@ def plot_qq(folder: str, routine: str, qubit, format):
     # parameters for fitting and plotting are stored.
     aggr_df = pd.read_pickle(f"{folder}/data/{routine}/fit_plot.pkl")
     # Build the figure/report using the responsible module.
-    plotly_figure = module.build_report(experiment, aggr_df)
+    plotly_figure, fitting_report = module.build_report(experiment, aggr_df)
+
     return [plotly_figure], fitting_report
 
 
@@ -55,9 +54,11 @@ class Report:
             divide_by = 2
         subplot_titles = [figdict.get("subplot_title") for figdict in self.all_figures]
         fig = make_subplots(
-            rows=int(l / divide_by) + l % divide_by + 1,
+            rows=int(l / divide_by) + l % divide_by,
             cols=1 if l == 1 else divide_by,
             subplot_titles=subplot_titles,
+            horizontal_spacing=0.1,
+            vertical_spacing=0.1,
         )
         for count, fig_dict in enumerate(self.all_figures):
             plot_list = fig_dict["figs"]
@@ -66,24 +67,6 @@ class Report:
                     plot, row=count // divide_by + 1, col=count % divide_by + 1
                 )
 
-        fig.add_annotation(
-            dict(
-                bordercolor="black",
-                font=dict(color="black", size=16),
-                x=0.0,
-                y=1.0 / (int(l / divide_by) + l % divide_by + 1)
-                - len(self.info_dict) * 0.005,
-                showarrow=False,
-                text="<br>".join(
-                    [f"{key} : {value}\n" for key, value in self.info_dict.items()]
-                ),
-                align="left",
-                textangle=0,
-                yanchor="top",
-                xref="paper",
-                yref="paper",
-            )
-        )
         fig.update_xaxes(title_font_size=18, tickfont_size=16)
         fig.update_yaxes(title_font_size=18, tickfont_size=16)
         fig.update_layout(
@@ -94,13 +77,16 @@ class Report:
             legend_font_size=16,
             hoverlabel_font_size=16,
             showlegend=True,
-            height=500 * (int(l / divide_by) + l % divide_by)
-            if l > divide_by
-            else 1000,
+            height=300 * (int(l / divide_by) + l % divide_by) if l > divide_by else 500,
             width=1000,
         )
 
-        return fig
+        return fig, self.info_table()
+
+    def info_table(self):
+        return "".join(
+            [f"q/r | {key}: {value}<br>" for key, value in self.info_dict.items()]
+        )
 
 
 def scatter_fit_fig(
@@ -110,12 +96,27 @@ def scatter_fit_fig(
     index: str,
     fittingparam_label="popt",
 ):
+    """
+    Generate a figure dictionary for plotly.
+
+    Args:
+        experiment (:class:`qibocal.calibrations.niGSC.basics.experiment.Experiment`):
+            an RB experiment that contains a dataframe with the information for the figure.
+        df_aggr (pd.DataFrame): DataFrame containing aggregational data about the RB experiment.
+        xlabel (str): key for x values in experiment.dataframe[xlabel] and df_aggr[xlabel].
+        index (str): key for y values in experiment.dataframe[index] and df_aggr[index].
+        fittingparam_label (str): key in df_aggr with a dictionary containing the parameters
+        for the dfrow["fit_func"]. Default is "popt".
+
+    Returns:
+        dict: dictionary for the plotly figure.
+    """
     fig_traces = []
     dfrow = df_aggr.loc[index]
     fig_traces.append(
         go.Scatter(
             x=experiment.dataframe[xlabel],
-            y=experiment.dataframe[index],
+            y=np.real(experiment.dataframe[index]),
             line=dict(color="#6597aa"),
             mode="markers",
             marker={"opacity": 0.2, "symbol": "square"},
@@ -125,35 +126,26 @@ def scatter_fit_fig(
     fig_traces.append(
         go.Scatter(
             x=dfrow[xlabel],
-            y=dfrow["data"],
+            y=np.real(dfrow["data"]),
             line=dict(color="#aa6464"),
             mode="markers",
             name="average",
         )
     )
     x_fit = np.linspace(min(dfrow[xlabel]), max(dfrow[xlabel]), len(dfrow[xlabel]) * 20)
-    if "imag" in fittingparam_label:
-        y_fit = np.imag(
-            getattr(fitting_methods, dfrow["fit_func"])(
-                x_fit, *dfrow[fittingparam_label].values()
-            )
+    y_fit = np.real(
+        getattr(fitting_methods, dfrow["fit_func"])(
+            x_fit, *dfrow[fittingparam_label].values()
         )
-    else:
-        y_fit = np.real(
-            getattr(fitting_methods, dfrow["fit_func"])(
-                x_fit, *dfrow[fittingparam_label].values()
-            )
-        )
+    )
     fig_traces.append(
         go.Scatter(
             x=x_fit,
             y=y_fit,
             name="".join(
                 [
-                    "{}:{} ".format(
-                        key, utils.number_to_str(dfrow[fittingparam_label][key])
-                    )
-                    for key in dfrow[fittingparam_label]
+                    f"{key}={number_to_str(value)} "
+                    for key, value in dfrow[fittingparam_label].items()
                 ]
             ),
             line=go.scatter.Line(dash="dot"),

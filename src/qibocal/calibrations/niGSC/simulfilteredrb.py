@@ -15,6 +15,7 @@ import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
 from qibocal.calibrations.niGSC.basics.circuitfactory import SingleCliffordsFactory
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
 from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig
+from qibocal.calibrations.niGSC.basics.utils import number_to_str
 
 
 class ModuleFactory(SingleCliffordsFactory):
@@ -65,7 +66,7 @@ class ModuleExperiment(Experiment):
         return datadict
 
 
-class moduleReport(Report):
+class ModuleReport(Report):
     def __init__(self) -> None:
         super().__init__()
         self.title = "Correlated Filtered Randomized Benchmarking"
@@ -210,19 +211,27 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
     """
 
     # Initiate a report object.
-    report = moduleReport()
-    # Add general information to the object.
+    report = ModuleReport()
+    # Add general information to the table.
+
     report.info_dict["Number of qubits"] = len(experiment.data[0]["samples"][0])
     report.info_dict["Number of shots"] = len(experiment.data[0]["samples"])
     report.info_dict["runs"] = experiment.extract("samples", "depth", "count")[1][0]
     lambdas = iter(product([0, 1], repeat=int(report.info_dict["Number of qubits"])))
     for kk, l in enumerate(lambdas):
-        # Add the fitting errors which will be displayed in a box under the plots.
-        report.info_dict[f"Fitting daviations irrep {l}"] = "".join(
-            [
-                "{}:{:.3f} ".format(key, df_aggr.loc[f"irrep{kk}"]["perr"][key])
-                for key in df_aggr.loc[f"irrep{kk}"]["perr"]
-            ]
+        # Add the fitting parameters and  errors.
+        dfrow = df_aggr.loc[f"irrep{kk}"]
+        popt_pairs = (
+            list(dfrow["popt"].items())[::2] + list(dfrow["popt"].items())[1::2]
+        )
+        report.info_dict[f"Irrep {l} Fit"] = "".join(
+            [f"{key}={number_to_str(value)} " for key, value in popt_pairs]
+        )
+        perr_pairs = (
+            list(dfrow["perr"].items())[::2] + list(dfrow["perr"].items())[1::2]
+        )
+        report.info_dict[f"Irrep {l} Deviations"] = "".join(
+            [f"{key}={number_to_str(value)} " for key, value in perr_pairs]
         )
         # Use the predefined ``scatter_fit_fig`` function from ``basics.utils`` to build the wanted
         # plotly figure with the scattered filter function points and then mean per depth.
@@ -230,4 +239,5 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
         # Add a subplot title for each irrep.
         figdict["subplot_title"] = f"Irrep {l}"
         report.all_figures.append(figdict)
+    # Return the figure of the report object and the corresponding table.
     return report.build()

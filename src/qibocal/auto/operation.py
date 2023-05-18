@@ -95,15 +95,15 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
 
     def __post_init__(self):
         # TODO: this could be improved
-        if self.fit == None:
+        if self.fit is None:
             self.fit = _dummy_fit
-        if self.report == None:
+        if self.report is None:
             self.report = _dummy_report
 
     @property
     def parameters_type(self):
         sig = inspect.signature(self.acquisition)
-        param = list(sig.parameters.values())[0]
+        param = next(iter(sig.parameters.values()))
         return param.annotation
 
     @property
@@ -133,7 +133,7 @@ class DummyPars(Parameters):
 class DummyData(Data):
     """Dummy data."""
 
-    def save(self, path):
+    def to_csv(self, path):
         """Dummy method for saving data"""
 
 
