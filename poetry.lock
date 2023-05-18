@@ -2431,7 +2431,7 @@ qibo = "^0.1.12"
 type = "git"
 url = "https://github.com/qiboteam/qibolab.git"
 reference = "dummy_attenuation"
-resolved_reference = "e2af6f9f2b59c6a7385b93113658d4808f00a228"
+resolved_reference = "d2f963d0289a95f8c49e5c00c88036f342e9b79c"
 
 [[package]]
 name = "recommonmark"
