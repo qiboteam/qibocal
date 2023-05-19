@@ -231,9 +231,6 @@ class ActionBuilder:
                 parser.build()
                 parser.execute(self.format, self.platform)
 
-            for qubit in self.qubits:
-                if self.platform is not None:
-                    self.update_platform_runcard(qubit, action)
             self.dump_report(actions)
 
         if self.platform is not None:
