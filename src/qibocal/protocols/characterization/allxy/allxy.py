@@ -17,6 +17,8 @@ class AllXYParameters(Parameters):
 
     nshots: int
     """Number of shots."""
+    relaxation_time: int
+    """Relaxation time (ns)."""
     beta_param: float = None
     """Beta parameter for drag pulse."""
 
@@ -101,7 +103,7 @@ def _acquisition(
 
         # retrieve the results for every qubit
         for ro_pulse in ro_pulses.values():
-            z_proj = 2 * results[ro_pulse.serial].state_0_probability - 1
+            z_proj = 2 * results[ro_pulse.serial].probability(0) - 1
             # store the results
             r = {
                 "probability": z_proj,

@@ -5,7 +5,7 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab.platforms.abstract import AbstractPlatform
-from qibolab.platforms.platform import AveragingMode, ExecutionParameters
+from qibolab.platforms.platform import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
 
@@ -31,6 +31,10 @@ class DragPulseTuningResults(Results):
     """Optimal beta paramter for each qubit."""
     fitted_parameters: Dict[List[Tuple], List]
     """Raw fitting output."""
+    nshots: int
+    """Number of shots."""
+    relaxation_time: int
+    """Relaxation time (ns)."""
 
 
 class DragPulseTuningData(DataUnits):
@@ -114,6 +118,7 @@ def _acquisition(
             ExecutionParameters(
                 nshots=params.nshots,
                 relaxation_time=params.relaxation_time,
+                acquisition_type = AcquisitionType.INTEGRATION,
                 averaging_mode=AveragingMode.CYCLIC,
             ),
         )
@@ -122,24 +127,25 @@ def _acquisition(
             ExecutionParameters(
                 nshots=params.nshots,
                 relaxation_time=params.relaxation_time,
+                acquisition_type = AcquisitionType.INTEGRATION,
                 averaging_mode=AveragingMode.CYCLIC,
             ),
         )
 
         # retrieve the results for every qubit
         for ro_pulse in ro_pulses.values():
-            r1 = result1[ro_pulse.serial].average
-            r2 = result2[ro_pulse.serial].average
+            r1 = result1[ro_pulse.serial]
+            r2 = result2[ro_pulse.serial]
             # store the results
             r = {
                 "MSR[V]": r1.magnitude - r2.magnitude,
-                "i[V]": r1.i - r2.i,
-                "q[V]": r1.q - r2.q,
+                "i[V]": r1.voltage_i - r2.voltage_i,
+                "q[V]": r1.voltage_q - r2.voltage_q,
                 "phase[rad]": r1.phase - r2.phase,
                 "beta_param[dimensionless]": beta_param,
                 "qubit": ro_pulse.qubit,
             }
-            data.add(r)
+            data.add_data_from_dict(r)
 
     return data
 

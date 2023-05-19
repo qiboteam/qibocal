@@ -26,7 +26,10 @@ class FlippingParameters(Parameters):
     """Maximum number of flips ([RX(pi) - RX(pi)] sequences). """
     nflips_step: int
     """Flip step."""
-
+    nshots: int
+    """Number of shots."""
+    relaxation_time: int
+    """Relaxation time (ns)."""
 
 @dataclass
 class FlippingResults(Results):
@@ -115,7 +118,7 @@ def _acquisition(
         for ro_pulse in ro_pulses.values():
             # average msr, phase, i and q over the number of shots defined in the runcard
 
-            r = results[ro_pulse.serial].average.serialize
+            r = results[ro_pulse.serial].serialize
             r.update(
                 {
                     "flips[dimensionless]": flips,
@@ -124,7 +127,7 @@ def _acquisition(
                 }
             )
 
-            data.add(r)
+            data.add_data_from_dict(r)
 
     return data
 

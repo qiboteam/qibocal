@@ -34,6 +34,10 @@ class DispersiveShiftParameters(Parameters):
     """Width for frequency sweep relative to the readout frequency (Hz)."""
     freq_step: int
     """Frequency step for sweep (Hz)."""
+    nshots: int
+    """Number of shots."""
+    relaxation_time: int
+    """Relaxation time (ns)."""
 
 
 @dataclass
