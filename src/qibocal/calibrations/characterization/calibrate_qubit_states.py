@@ -182,7 +182,7 @@ def calibrate_qubit_states(
             y_pred = y_pred.astype(np.float64)
             benchmarks = benchmark_table.iloc[i].to_dict()
             results1 = {}
-            if type(model) is QubitFit:
+            if isinstance(model, QubitFit):
                 results1 = {
                     "rotation_angle": model.angle,
                     "threshold": model.threshold,
