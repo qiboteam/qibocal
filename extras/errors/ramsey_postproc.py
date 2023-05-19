@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt  # TODO: remove plotting lines
 import numpy as np
 import pandas as pd
 from scipy.optimize import curve_fit
+from scipy.stats import bootstrap
 
 plt.rcParams["figure.dpi"] = 600
 FONTSIZE = 15
@@ -19,6 +20,16 @@ def plot_hist(ax, data, color_index, xlabel, xlim, wait):
     ax.set_xlim(xlim)
     ax.set_xlabel(f"{xlabel}", fontsize=FONTSIZE)
     ax.set_title(f"distribution of the {xlabel} ({wait} ns)", fontsize=FONTSIZE)
+    ax.axvline(
+        x=np.median(data), linestyle="--", linewidth=2, label="median", color="navy"
+    )
+    ax.axvline(
+        x=np.average(data),
+        linestyle="--",
+        linewidth=2,
+        label="average",
+        color="firebrick",
+    )
 
 
 data = pd.read_csv("ramsey_raw.csv", skiprows=[1])
@@ -37,14 +48,26 @@ for i, wait in enumerate(waits):
     msr_raw = np.sort(msr_raw)
     median_index = int(len(msr_raw) / 2)
     median = np.median(msr_raw)
-    # Evaluate the error bars as the 68% confidence interval
-    low_error = [median - np.percentile(msr_raw[:median_index], 66)]
-    high_error = [np.percentile(msr_raw[median_index:], 34) - median]
-    # ax[0, 0].scatter([wait] * len(msr_raw), msr_raw, s=1, color=f"C{int(i/10)}")
+
+    # Evaluate the asymetric error bars as the 68% confidence interval
+    low_error = [median - np.percentile(msr_raw[:median_index], 100 - 68)]
+    high_error = [np.percentile(msr_raw[median_index:], 68) - median]
+
+    # Evaluate the symmetric intervals
+    # median_distances = np.unique(abs(msr_raw-median))
+    # percentiles = np.array([np.count_nonzero(abs(msr_raw-median)<k)/len(msr_raw) for k in median_distances])
+    # confidence_interval = np.max(percentiles[percentiles<0.68])
+
+    # Try the bootstrap
+    # msr_res = (msr_raw,)
+    # res = bootstrap(msr_res, np.median, confidence_level=0.68, method = "percentile")
+    # print(res.confidence_interval)
+    # print(abs(median -res.confidence_interval.low), abs(median - res.confidence_interval.high))
+
     ax[0, 0].errorbar(
         [wait],
         median,
-        yerr=np.stack((low_error, high_error), axis=0),
+        yerr=np.stack((low_error, high_error), axis=0),  #   yerr = confidence_interval,
         ms=10,
         color=f"C{i}",
         marker="x",
@@ -58,6 +81,7 @@ for i, wait in enumerate(waits):
     plot_hist(ax[0, 1], i_raw, i, "I[V]", (-5, 5), wait)
     plot_hist(ax[1, 1], q_raw, i, "Q[V]", (-5, 5), wait)
 
+    ax[1, 0].legend()
     plt.tight_layout()
     fig.savefig(f"ramsey_plots/ramsey_{int(i)}.png")
     ax[0, 1].clear()
