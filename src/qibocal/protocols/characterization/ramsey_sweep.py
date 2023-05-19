@@ -62,6 +62,7 @@ class RamseyData(DataUnits):
             quantities={"wait": "ns", "qubit_freqs": "Hz"},
             options=[
                 "qubit",
+                "probability",
             ],
         )
 

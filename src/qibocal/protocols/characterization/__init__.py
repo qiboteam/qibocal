@@ -7,7 +7,6 @@ from .classification import single_shot_classification
 from .coherence.spin_echo import spin_echo
 from .coherence.t1 import t1
 from .coherence.t2 import t2
-from .coherence.t2_sweep import t2_sweep
 from .couplers.coupler_frequency import coupler_frequency
 from .couplers.coupler_frequency_flux import coupler_frequency_flux
 from .couplers.coupler_swap_frequency import coupler_swap_frequency
@@ -37,6 +36,7 @@ class Operation(Enum):
     rabi_amplitude = rabi_amplitude
     rabi_length = rabi_length
     ramsey = ramsey
+    ramsey_sweep = ramsey_sweep
     t1 = t1
     t2 = t2
     single_shot_classification = single_shot_classification

@@ -97,8 +97,6 @@ def _acquisition(
         results = platform.execute_pulse_sequence(
             sequence,
             ExecutionParameters(
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
                 acquisition_type=AcquisitionType.INTEGRATION,
                 averaging_mode=AveragingMode.CYCLIC,
             ),
@@ -106,7 +104,7 @@ def _acquisition(
 
         for ro_pulse in ro_pulses.values():
             # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[ro_pulse.serial].average.serialize
+            r = results[ro_pulse.serial].serialize
             r.update(
                 {
                     "wait[ns]": 2 * wait,

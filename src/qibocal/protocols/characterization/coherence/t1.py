@@ -49,7 +49,7 @@ class T1Data(DataUnits):
         super().__init__(
             name="data",
             quantities={"wait": "ns"},
-            options=["qubit"],
+            options=["qubit", "probability"],
         )
 
 
@@ -109,22 +109,29 @@ def _acquisition(
     results = platform.sweep(
         sequence,
         ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
             averaging_mode=AveragingMode.CYCLIC,
         ),
         sweeper,
     )
     for qubit in qubits:
-        r = results[ro_pulses[qubit].serial].average.serialize
+        r = results[ro_pulses[qubit].serial].serialize
         r.update(
             {
                 "wait[ns]": ro_wait_range,
                 "qubit": len(ro_wait_range) * [qubit],
+                "probability": np.abs(
+                    r.voltage_i
+                    + 1j * r.voltage_q
+                    - complex(platform.qubits[qubit].mean_gnd_states)
+                )
+                / np.abs(
+                    complex(platform.qubits[qubit].mean_exc_states)
+                    - complex(platform.qubits[qubit].mean_gnd_states)
+                ),
             }
         )
-        data.add(r)
+        data.add_data_from_dict(r)
     return data
 
 
@@ -193,6 +200,27 @@ def _plot(data: T1Data, fit: T1Results, qubit):
     )
 
     figures.append(fig)
+
+    # Plot the probability
+    fig2 = go.Figure()
+    fig2.add_trace(
+        go.Scatter(
+            x=qubit_data["wait"].pint.to("ns").pint.magnitude,
+            y=qubit_data["probability"],
+            marker_color=get_color(0),
+            opacity=1,
+            name="Probability",
+            showlegend=True,
+            legendgroup="Probability",
+        )
+    )
+    fig2.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Time (ns)",
+        yaxis_title="Probability",
+    )
+    figures.append(fig2)
 
     return figures, fitting_report
 

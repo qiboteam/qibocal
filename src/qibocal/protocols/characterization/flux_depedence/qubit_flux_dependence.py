@@ -121,7 +121,7 @@ def _acquisition(
         ) + platform.get_bias(qubit)
         freqs = np.array(
             len(delta_bias_range)
-            * list(delta_frequency_range + ro_pulses[qubit].frequency)
+            * list(delta_frequency_range + qd_pulses[qubit].frequency)
         ).flatten()
         # store the results
         r = {k: v.ravel() for k, v in result.serialize.items()}
