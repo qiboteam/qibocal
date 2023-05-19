@@ -7,123 +7,7 @@ import numpy as np
 from qibo import gates
 from qibo.models import Circuit
 from qibolab.pulses import PulseSequence
-
-
-def calculate_frequencies(result1, result2):
-    """Calculates two-qubit outcome probabilities from individual shots."""
-    shots = np.stack([result1.shots, result2.shots]).T
-    values, counts = np.unique(shots, axis=0, return_counts=True)
-    nshots = np.sum(counts)
-    return {f"{int(v1)}{int(v2)}": cnt for (v1, v2), cnt in zip(values, counts)}
-
-
-def calculate_probabilities(result1, result2):
-    """Calculates two-qubit outcome probabilities from individual shots."""
-    shots = np.stack([result1.shots, result2.shots]).T
-    values, counts = np.unique(shots, axis=0, return_counts=True)
-    nshots = np.sum(counts)
-    return {
-        f"{int(v1)}{int(v2)}": cnt / nshots for (v1, v2), cnt in zip(values, counts)
-    }
-
-
-class ReadoutErrorMitigation:
-    def __init__(self, platform, nqubits, qubits, readout_error_model=(0.0, 0.0)):
-        """Platform should be left None to default to simulation. nqubits should be the total
-        number of qubits in the chip, while qubits are the qubits that are targetted.
-        """
-        self.platform = platform
-        self.nqubits = nqubits
-        self.qubits = qubits
-        self.calibration_matrix = None
-        self.rerr = readout_error_model
-
-    def get_calibration_matrix(self, nshots=1024):
-        """Self explanatory. Prepare states and measure in order to get the readout
-        matrix for error correction.
-        """
-        nqubits = self.nqubits
-        qubits = self.qubits
-
-        nq = len(qubits)
-
-        matrix = np.zeros((2**nq, 2**nq))
-
-        platform = self.platform
-
-        if nq != 2:
-            raise ValueError("Only 2 qubits supported for now.")
-
-        for i in range(2**nq):
-            state = format(i, f"0{nq}b")
-            if platform:
-                sequence = PulseSequence()
-                for q, bit in enumerate(state):
-                    if bit == "1":
-                        sequence.add(
-                            platform.create_RX_pulse(
-                                qubits[q], start=0, relative_phase=0
-                            )
-                        )
-                measurement_start = sequence.finish
-                for qubit in qubits:
-                    MZ_pulse = platform.create_MZ_pulse(qubit, start=measurement_start)
-                    sequence.add(MZ_pulse)
-                results = platform.execute_pulse_sequence(sequence, nshots=nshots)
-                freqs = calculate_frequencies(results[qubits[0]], results[qubits[1]])
-            else:
-                c = Circuit(nqubits)
-                for q, bit in enumerate(state):
-                    if bit == "1":
-                        c.add(gates.X(qubits[q]))
-                for qubit in qubits:
-                    c.add(gates.M(qubit, p0=self.rerr[0], p1=self.rerr[1]))
-                results = c(nshots=nshots)
-                freqs = results.frequencies()
-
-            column = np.zeros(2**nq)
-            for key in freqs.keys():
-                f = freqs[key]
-                column[int(key, 2)] = f / nshots
-            matrix[:, i] = column
-
-        self.calibration_matrix = np.linalg.inv(matrix)
-
-        return self.calibration_matrix
-
-    def apply_readout_mitigation(self, frequencies, calibration_matrix=None):
-        """Updates the frequencies of the input state with the mitigated ones obtained with `calibration_matrix`*`state.frequencies()`.
-
-        Args:
-                state (qibo.states.CircuitResult): Input state to be updated.
-                calibration_matrix (np.ndarray): Calibration matrix for readout mitigation.
-
-        Returns:
-                qibo.states.CircuitResult : The input state with the updated frequencies.
-        """
-        qubits = self.qubits
-        nqubits = self.nqubits
-        nq = len(qubits)
-
-        if calibration_matrix == None:
-            if self.calibration_matrix is None:
-                raise ValueError(
-                    "Readout Mitigation Matrix has not been calibrated yet!"
-                )
-            else:
-                calibration_matrix = self.calibration_matrix
-
-        freq = np.zeros(2**nq)
-
-        for k, v in frequencies.items():
-            freq[int(k, 2)] = v
-
-        freq = freq.reshape(-1, 1)
-        new_freq = {}
-        for i, val in enumerate(calibration_matrix @ freq):
-            new_freq[format(i, f"0{nq}b")] = float(val)
-
-        return new_freq
+from utils import calculate_frequencies
 
 
 class BellExperiment:
@@ -211,68 +95,29 @@ class BellExperiment:
 
         platform = self.platform
 
-        sequence00, virtual_z_phases = self.create_bell_sequence(
-            qubits, theta, bell_state
-        )
-        measurement_start = sequence00.finish
-        for qubit in qubits:
-            MZ_pulse = platform.create_MZ_pulse(qubit, start=measurement_start)
-            sequence00.add(MZ_pulse)
+        readout_basis = [['Z','Z'], ['Z','X'], ['X','Z'], ['X','X']]
 
-        sequence01, virtual_z_phases = self.create_bell_sequence(
-            qubits, theta, bell_state
-        )
-        sequence01.add(
-            platform.create_RX90_pulse(
-                qubits[1],
-                start=sequence01.finish,
-                relative_phase=virtual_z_phases[qubits[1]] + np.pi / 2,
-            )
-        )
-        measurement_start = sequence01.finish
-        for qubit in qubits:
-            MZ_pulse = platform.create_MZ_pulse(qubit, start=measurement_start)
-            sequence01.add(MZ_pulse)
+        chsh_sequences = []
 
-        sequence10, virtual_z_phases = self.create_bell_sequence(
-            qubits, theta, bell_state
-        )
-        sequence10.add(
-            platform.create_RX90_pulse(
-                qubits[0],
-                start=sequence10.finish,
-                relative_phase=virtual_z_phases[qubits[0]] + np.pi / 2,
+        for basis in readout_basis:
+            sequence, virtual_z_phases = self.create_bell_sequence(
+                qubits, theta, bell_state
             )
-        )
-        measurement_start = sequence10.finish
-        for qubit in qubits:
-            MZ_pulse = platform.create_MZ_pulse(qubit, start=measurement_start)
-            sequence10.add(MZ_pulse)
-
-        sequence11, virtual_z_phases = self.create_bell_sequence(
-            qubits, theta, bell_state
-        )
-        t = sequence11.finish
-        sequence11.add(
-            platform.create_RX90_pulse(
-                qubits[0],
-                start=t,
-                relative_phase=virtual_z_phases[qubits[0]] + np.pi / 2,
-            )
-        )
-        sequence11.add(
-            platform.create_RX90_pulse(
-                qubits[1],
-                start=t,
-                relative_phase=virtual_z_phases[qubits[1]] + np.pi / 2,
-            )
-        )
-        measurement_start = sequence11.finish
-        for qubit in qubits:
-            MZ_pulse = platform.create_MZ_pulse(qubit, start=measurement_start)
-            sequence11.add(MZ_pulse)
-
-        chsh_sequences = [sequence00, sequence01, sequence10, sequence11]
+            t = sequence.finish
+            for i, base in enumerate(basis):
+                if base == 'X':
+                    sequence.add(
+                        platform.create_RX90_pulse(
+                            qubits[i],
+                            start=t,
+                            relative_phase=virtual_z_phases[qubits[i]] + np.pi / 2,
+                        )
+                    )
+            measurement_start = sequence.finish
+            for qubit in qubits:
+                MZ_pulse = platform.create_MZ_pulse(qubit, start=measurement_start)
+                sequence.add(MZ_pulse)
+            chsh_sequences.append(sequence)
 
         return chsh_sequences
 
@@ -288,26 +133,26 @@ class BellExperiment:
         nqubits = self.nqubits
 
         c = Circuit(nqubits)
-        p = 0
+        p = [0, 0]
         if native:
             c.add(gates.GPI2(qubits[0], np.pi / 2))
             c.add(gates.GPI2(qubits[1], np.pi / 2))
             c.add(gates.CZ(qubits[0], qubits[1]))
             c.add(gates.GPI2(qubits[1], -np.pi / 2))
             if bell_state == 0:
-                p += np.pi
+                p[0] += np.pi
             elif bell_state == 1:
-                p += 0
+                p[0] += 0
             elif bell_state == 2:
-                p += 0
-                c.add(gates.GPI(qubits[0], p))
+                p[0] += 0
+                c.add(gates.GPI(qubits[0], p[0]))
             elif bell_state == 3:
-                p += np.pi
-                c.add(gates.GPI(qubits[0], p))
+                p[0] += np.pi
+                c.add(gates.GPI(qubits[0], p[0]))
 
-            c.add(gates.GPI2(qubits[0], p))
+            c.add(gates.GPI2(qubits[0], p[0]))
             p += theta
-            c.add(gates.GPI2(qubits[0], p + np.pi))
+            c.add(gates.GPI2(qubits[0], p[0] + np.pi))
 
         else:
             c.add(gates.H(qubits[0]))
@@ -336,37 +181,21 @@ class BellExperiment:
         if not rerr:
             rerr = self.rerr
 
-        c00, p = self.create_bell_circuit(qubits, theta, bell_state, native)
-        for qubit in qubits:
-            c00.add(gates.M(qubit, p0=rerr[0], p1=rerr[1]))
+        readout_basis = [['Z','Z'], ['Z','X'], ['X','Z'], ['X','X']]
 
-        c01, p = self.create_bell_circuit(qubits, theta, bell_state, native)
-        if native:
-            c01.add(gates.GPI2(qubits[1], np.pi / 2))
-        else:
-            c01.add(gates.H(qubits[1]))
-        for qubit in qubits:
-            c01.add(gates.M(qubit, p0=rerr[0], p1=rerr[1]))
+        chsh_circuits = []
 
-        c10, p = self.create_bell_circuit(qubits, theta, bell_state, native)
-        if native:
-            c10.add(gates.GPI2(qubits[0], p + np.pi / 2))
-        else:
-            c10.add(gates.H(qubits[0]))
-        for qubit in qubits:
-            c10.add(gates.M(qubit, p0=rerr[0], p1=rerr[1]))
-
-        c11, p = self.create_bell_circuit(qubits, theta, bell_state, native)
-        if native:
-            c11.add(gates.GPI2(qubits[0], p + np.pi / 2))
-            c11.add(gates.GPI2(qubits[1], np.pi / 2))
-        else:
-            c11.add(gates.H(qubits[0]))
-            c11.add(gates.H(qubits[1]))
-        for qubit in qubits:
-            c11.add(gates.M(qubit, p0=rerr[0], p1=rerr[1]))
-
-        chsh_circuits = [c00, c01, c10, c11]
+        for basis in readout_basis:
+            c, p = self.create_bell_circuit(qubits, theta, bell_state, native)
+            for i, base in enumerate(basis):
+                if base == 'X':
+                    if native:
+                        c.add(gates.GPI2(qubits[i], p[i] + np.pi / 2))
+                    else:
+                        c.add(gates.H(qubits[i]))
+            for qubit in qubits:
+                c.add(gates.M(qubit, p0=rerr[0], p1=rerr[1]))
+            chsh_circuits.add(c)
 
         return chsh_circuits
 
