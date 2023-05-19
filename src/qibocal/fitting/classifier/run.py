@@ -245,7 +245,7 @@ def train_qubit(
     nn_epochs = 200
     nn_val_split = 0.2
     qubit_dir = base_dir / f"qubit{qubit.name}"
-    qubit_dir.mkdir(exist_ok=True)
+    qubit_dir.mkdir(parents=True, exist_ok=True)
     x_train, x_test, y_train, y_test = data.generate_models(qubit_data)
     models = []
     results_list = []
