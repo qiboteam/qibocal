@@ -2432,7 +2432,7 @@ qibo = "^0.1.12"
 type = "git"
 url = "https://github.com/qiboteam/qibolab.git"
 reference = "execute_branch"
-resolved_reference = "a908b8a8fd01b776536e0c4a9f197ad0ee4af689"
+resolved_reference = "f7fda27cc115d2f1fcf4ab535fae54b3981dcab6"
 
 [[package]]
 name = "recommonmark"
