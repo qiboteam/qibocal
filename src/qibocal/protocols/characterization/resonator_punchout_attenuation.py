@@ -230,7 +230,6 @@ def _fit(
         lp_min_att_dict[qubit] = lp_min_att
         hp_max_att_dict[qubit] = hp_max_att
         hp_min_att_dict[qubit] = hp_min_att
-    print(hp_min_att_dict)
 
     return ResonatorPunchoutAttenuationResults(
         freq_lp_dict,
