@@ -10,7 +10,7 @@ import pandas as pd
 from qibo.models import Circuit
 from qibo.noise import NoiseModel
 
-from qibocal.calibrations.niGSC.basics.utils import experiment_directory
+from qibocal.cli.utils import generate_output_folder
 from qibocal.config import raise_error
 
 
@@ -39,33 +39,25 @@ class Experiment:
         if circuitfactory is not None and not isinstance(circuitfactory, Iterable):
             raise_error(
                 TypeError,
-                "given circuit factory has wrong type {}, must be Iterable | None.".format(
-                    type(circuitfactory)
-                ),
+                f"Invalid type {type(circuitfactory)} for CircuitFactory,  must be Iterable or None.",
             )
         self.circuitfactory = circuitfactory
         if data is not None and not isinstance(data, Iterable):
             raise_error(
                 TypeError,
-                "given data has wrong type {}, must be Iterable | None ".format(
-                    type(data)
-                ),
+                f"Invalid data type  {type(data)}. Data must be Iterable or None.",
             )
         self.data = data
         if nshots is not None and not isinstance(nshots, int):
             raise_error(
                 TypeError,
-                "given nshots has wrong type {}, must be int | None".format(
-                    type(nshots)
-                ),
+                f"Invalid nshots type {type(nshots)}. Nshots must be int or None.",
             )
         self.nshots = nshots
         if noise_model is not None and not isinstance(noise_model, NoiseModel):
             raise_error(
                 TypeError,
-                "given circuit factory has wrong type {}, must be qibo NoiseModel | None .".format(
-                    type(noise_model)
-                ),
+                f"NoiseModel has wrong type {type(noise_model)}. NoiseModel must be qibo NoiseModel or None .",
             )
         self.__noise_model = noise_model
         self.name = "Abstract"
@@ -88,8 +80,8 @@ class Experiment:
         Returns:
             Experiment: The object with data (and circuitfactory).
         """
-        datapath = f"{path}experiment_data.pkl"
-        circuitspath = f"{path}circuits.pkl"
+        datapath = f"{path}/experiment_data.pkl"
+        circuitspath = f"{path}/circuits.pkl"
         if isfile(datapath):
             with open(datapath, "rb") as f:
                 data = pickle.load(f)
@@ -107,28 +99,40 @@ class Experiment:
         obj = cls(circuitfactory, data=data, nshots=nshots)
         return obj
 
-    def save(self, path: str | None = None) -> str:
-        """Creates a path if None given and pickles relevant data from ``self.data``
-        and if ``self.circuitfactory`` is a list that one too.
+    def save_circuits(self, path: str | None = None, force: bool = False) -> str:
+        """Creates a path if None given and pickles ``self.circuitfactory``
+        if it is a list.
 
         Returns:
             (str): The path of stored experiment.
         """
 
-        # Check if path to store is given, if not create one. If yes check if the last character
-        # is a /, if not add it.
+        # Check if path to store is given, if not create one.
         if path is None:
-            self.path = experiment_directory("rb")
+            self.path = generate_output_folder(path, force)
         else:
-            self.path = path if path[-1] == "/" else f"{path}/"
-        # Only if the circuit factory is a list it will be stored.
+            self.path = path
         if isinstance(self.circuitfactory, list):
-            with open(f"{self.path}circuits.pkl", "wb") as f:
+            with open(f"{self.path}/circuits.pkl", "wb") as f:
                 pickle.dump(self.circuitfactory, f)
+        return self.path
+
+    def save(self, path: str | None = None, force: bool = False) -> str:
+        """Creates a path if None given and pickles relevant data from ``self.data``.
+
+        Returns:
+            (str): The path of stored experiment.
+        """
+
+        # Check if path to store is given, if not create one.
+        if path is None:
+            self.path = generate_output_folder(path, force)
+        else:
+            self.path = path
         # And only if data is not None the data list (full of dicionaries) will be
         # stored.
         if self.data is not None:
-            with open(f"{self.path}experiment_data.pkl", "wb") as f:
+            with open(f"{self.path}/experiment_data.pkl", "wb") as f:
                 pickle.dump(self.data, f)
         # It is convenient to know the path after storing, so return it.
         return self.path

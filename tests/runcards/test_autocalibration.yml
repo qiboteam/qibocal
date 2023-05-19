@@ -1,0 +1,181 @@
+platform: dummy
+
+qubits: [0, 1, 2, 3, 4]
+
+format: csv
+
+actions:
+
+  - id: resonator high power high amplitude
+    priority: 0
+    operation: resonator_spectroscopy
+    next: resonator punchout
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 100_000
+      amplitude: 0.4
+      power_level: high
+      nshots: 1024
+      relaxation_time: 0
+
+
+  - id: resonator punchout
+    priority: 0
+    operation: resonator_punchout
+    next: resonator_punchout_attenuation
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 1_000_000
+      min_amp_factor: 0.005
+      max_amp_factor: 0.3
+      step_amp_factor: 0.005
+      nshots: 100
+      relaxation_time: 0
+
+  - id: resonator_punchout_attenuation
+    priority: 0
+    operation: resonator_punchout_attenuation
+    next: resonator spectroscopy low power
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 500_000
+      min_att: 4
+      max_att: 60
+      step_att: 4
+      nshots: 1000
+      relaxation_time: 0
+
+
+  - id: resonator spectroscopy low power
+    priority: 0
+    operation: resonator_spectroscopy
+    next: resonator flux dependence
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 50_000
+      amplitude: 0.022
+      power_level: low
+      nshots: 1024
+      relaxation_time: 0
+
+  - id: resonator flux dependence
+    priority: 0
+    operation: resonator_flux
+    next: qubit spectroscopy
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 500_000
+      bias_width: 0.8
+      bias_step:  0.1
+      nshots: 1024
+      relaxation_time: 0
+
+  - id: qubit spectroscopy
+    priority: 0
+    operation: qubit_spectroscopy
+    next: qubit flux dependence
+    parameters:
+      drive_amplitude: 0.001
+      drive_duration: 1000
+      freq_width: 2_000_000
+      freq_step: 500_000
+      nshots: 1024
+      relaxation_time: 0
+
+  - id: qubit flux dependence
+    priority: 0
+    operation: qubit_flux
+    next: t1
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 1_000_000
+      bias_width: 0.8 #0.1
+      bias_step:  0.1 # 0.001
+      drive_amplitude: 0.005
+      nshots: 1000
+      relaxation_time: 0
+
+  - id: t1
+    priority: 0
+    operation: t1
+    next: t2
+    parameters:
+      delay_before_readout_start: 0
+      delay_before_readout_end: 20_000
+      delay_before_readout_step: 2000
+
+
+  - id: t2
+    priority: 0
+    operation: t2
+    next: ramsey detuned
+    parameters:
+      delay_between_pulses_start: 16
+      delay_between_pulses_end: 20000
+      delay_between_pulses_step: 100
+
+  - id: ramsey detuned
+    priority: 0
+    operation: ramsey
+    next: single shot classification
+    parameters:
+      delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
+      delay_between_pulses_end: 5000
+      delay_between_pulses_step: 500 # must be a multiple of 4
+      n_osc: 10
+
+  - id: single shot classification
+    priority: 0
+    next: allXY
+    operation: single_shot_classification
+    parameters:
+      nshots: 100
+
+  - id: allXY
+    priority: 0
+    operation: allxy
+    next: allxy_drag_pulse_tuning
+    parameters:
+      beta_param: null
+
+  - id: allxy_drag_pulse_tuning
+    priority: 0
+    operation: allxy_drag_pulse_tuning
+    next: drag_pulse_tuning
+    parameters:
+      beta_start: 0
+      beta_end: 0.02
+      beta_step: 0.01
+
+  - id: drag_pulse_tuning
+    priority: 0
+    operation: drag_pulse_tuning
+    next: spin_echo
+    parameters:
+      beta_start: 0
+      beta_end: 0.02
+      beta_step: 0.01
+
+  - id: spin_echo
+    priority: 0
+    operation: spin_echo
+    next: flipping
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 20000
+      delay_between_pulses_step: 2000
+
+  - id: flipping
+    priority: 0
+    next: dispersive shift
+    operation: flipping
+    parameters:
+      nflips_max: 5
+      nflips_step: 1
+
+  - id: dispersive shift
+    priority: 0
+    operation: dispersive_shift
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 100_000

@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, Dict, List, NewType, Optional, Union
 
 import yaml
+from pydantic import Field
 from pydantic.dataclasses import dataclass
 
 from .operation import OperationId
@@ -38,6 +39,8 @@ class Runcard:
     """Structure of an execution runcard."""
 
     actions: List[Action]
+    qubits: Optional[List[Union[int, str]]] = Field(default_factory=list)
+    format: Optional[str] = None
 
     @classmethod
     def load(cls, card: Union[dict, Path]):

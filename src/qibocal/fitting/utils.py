@@ -1,6 +1,8 @@
 import re
 
 import numpy as np
+import pandas as pd
+import pint
 from scipy.special import mathieu_a, mathieu_b
 
 
@@ -128,6 +130,15 @@ def freq_r_mathieu(x, p0, p1, p2, p3, p4, p5, p6, p7=0.499):
     f_q = freq_q_mathieu(x, p2, p3, p4, p5, p6, p7)
     f_r = p0 + p1**2 * np.sqrt(G) / (p0 - f_q)
     return f_r
+
+
+def pint_to_float(x):
+    if isinstance(x, pd.Series):
+        return x.apply(pint_to_float)
+    elif isinstance(x, pint.Quantity):
+        return x.to(x.units).magnitude
+    else:
+        return x
 
 
 def cumulative(input_data, points):

@@ -1,0 +1,211 @@
+platform: dummy
+
+qubits: [0, 1, 2, 3, 4]
+
+format: csv
+
+actions:
+
+  # - id: resonator_spectroscopy high power
+  #   priority: 0
+  #   operation: resonator_spectroscopy
+  #   main: resonator punchout
+  #   parameters:
+  #     freq_width: 10_000_000
+  #     freq_step: 500_000
+  #     amplitude: 0.4
+  #     power_level: high
+  #     nshots: 1024
+  #     relaxation_time: 0
+
+  # - id: resonator punchout
+  #   priority: 10
+  #   operation: resonator_punchout
+  #   #main: resonator_spectroscopy low power
+  #   parameters:
+  #     freq_width: 5_000_000
+  #     freq_step: 1_000_000
+  #     min_amp_factor: 0.02
+  #     max_amp_factor: 2.4
+  #     step_amp_factor: 0.1
+  #     nshots: 1
+  #     relaxation_time: 50
+
+  # - id: resonator_punchout_attenuation
+  #   priority: 0
+  #   operation: resonator_punchout_attenuation
+  #   # main: resonator_spectroscopy low power
+  #   next: resonator spectroscopy low power
+  #   parameters:
+  #     freq_width: 10_000_000
+  #     freq_step: 500_000
+  #     min_att: 4
+  #     max_att: 60
+  #     step_att: 4
+  #     nshots: 1000
+  #     relaxation_time: 0
+
+  # - id: resonator spectroscopy low power
+  #   priority: 0
+  #   operation: resonator_spectroscopy
+  #   #main: qubit_spectroscopy
+  #   parameters:
+  #     freq_width: 10_000_000
+  #     freq_step: 1_000_000
+  #     # amplitude: 0.2
+  #     power_level: low
+  #     nshots: 1024
+  #     relaxation_time: 50
+  #     attenuation: 20
+
+  # - id: resonator flux dependence
+  #   priority: 0
+  #   operation: resonator_flux
+  #   # main: qubit spectroscopy
+  #   parameters:
+  #     freq_width: 10_000_000
+  #     freq_step: 500_000
+  #     bias_width: 0.8
+  #     bias_step:  0.1
+  #     nshots: 1024
+  #     relaxation_time: 0
+
+  # - id: qubit spectroscopy
+  #   priority: 0
+  #   operation: qubit_spectroscopy
+  #   # next: rabi
+  #   parameters:
+  #     drive_amplitude: 0.005
+  #     drive_duration: 2000
+  #     freq_width: 10_000_000
+  #     freq_step: 100_000
+  #     nshots: 1024
+  #     relaxation_time: 0
+
+  # - id: qubit flux dependence
+  #   priority: 0
+  #   # main: t1
+  #   operation: qubit_flux
+  #   parameters:
+  #     freq_width: 10_000_000
+  #     freq_step: 1_000_000
+  #     bias_width: 0.8 #0.1
+  #     bias_step:  0.1 # 0.001
+  #     drive_amplitude: 0.005
+  #     nshots: 1000
+  #     relaxation_time: 0
+
+  # - id: rabi
+  #   priority: 0
+  #   operation: rabi_amplitude
+  #   # main: single shot classification
+  #   parameters:
+  #     min_amp_factor: 0.0
+  #     max_amp_factor: 2.0
+  #     step_amp_factor: 0.02
+  #     pulse_length: 40
+  #     relaxation_time: 100_000
+  #     nshots: 1024
+
+  # - id: rabi length
+  #   priority: 0
+  #   operation: rabi_length
+  #   # main: single shot classification
+  #   parameters:
+  #     pulse_duration_start: 4
+  #     pulse_duration_end: 84
+  #     pulse_duration_step: 8
+  #     pulse_amplitude: 0.5
+  #     relaxation_time: 100_000
+  #     nshots: 1024
+
+  # - id: t1
+  #   priority: 0
+  #   operation: t1
+  #   #main: ramsey
+  #   parameters:
+  #     delay_before_readout_start: 16
+  #     delay_before_readout_end: 2000
+  #     delay_before_readout_step: 20
+
+  # - id: ramsey
+  #   priority: 0
+  #   operation: ramsey
+  #   # main: ramsey detuned
+  #   parameters:
+  #     delay_between_pulses_start: 16 # must be a multiple of 4 incl 0
+  #     delay_between_pulses_end: 1000
+  #     delay_between_pulses_step: 4 # must be a multiple of 4
+  #     n_osc: 10
+
+  # - id: ramsey detuned
+  #   priority: 0
+  #   operation: ramsey
+  #   #main: single shot classification
+  #   parameters:
+  #     n_osc: 0
+  #     delay_between_pulses_start: 4 # must be a multiple of 4 incl 0
+  #     delay_between_pulses_end: 200
+  #     delay_between_pulses_step: 4 # must be a multiple of 4
+
+  # - id: single shot classification
+  #   priority: 0
+  #   # main: allXY
+  #   operation: single_shot_classification
+  #   parameters:
+  #     nshots: 1024
+
+  # - id: allXY
+  #   priority: 0
+  #   operation: allxy
+  #   #main: drag_pulse_tuning
+  #   parameters:
+  #     beta_param: null
+
+  # - id: drag_pulse_tuning
+  #   priority: 0
+  #   operation: allxy_drag_pulse_tuning
+  #   #main: spin_echo
+  #   parameters:
+  #     beta_start: -0.2
+  #     beta_end: 0.2
+  #     beta_step: 0.1
+
+  # - id: drag_pulse_tuning
+  #   priority: 0
+  #   operation: drag_pulse_tuning
+  #   #main: spin_echo
+  #   parameters:
+  #     beta_start: -0.5
+  #     beta_end: 0.5
+  #     beta_step: 0.05
+
+  # - id: allXY 2 #Ideally this should be repeated with the correct beta
+  #   priority: 10
+  #   operation: allxy
+  #   main: drag_pulse_tuning
+  #   parameters:
+  #     beta_param: null
+
+  # - id: spin_echo
+  #   priority: 0
+  #   operation: spin_echo
+  #   # main: flipping
+  #   parameters:
+  #     delay_between_pulses_start: 4
+  #     delay_between_pulses_end: 10000
+  #     delay_between_pulses_step: 200
+
+  # - id: flipping
+  #   priority: 0
+  #   operation: flipping
+  #   parameters:
+  #     nflips_max: 20
+  #     nflips_step: 1
+
+  # - id: dispersive_shift
+  #   priority: 0
+  #   operation: dispersive_shift
+  #   parameters:
+  #     freq_width: 10_000_000
+  #     freq_step: 400_000

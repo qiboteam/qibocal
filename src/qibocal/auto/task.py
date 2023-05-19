@@ -1,19 +1,13 @@
 """Action execution tracker."""
+import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
-import yaml
+from qibolab.platforms.abstract import AbstractPlatform
 
-from .operation import (
-    Data,
-    DummyPars,
-    Operation,
-    Parameters,
-    Results,
-    Routine,
-    dummy_operation,
-)
+from ..protocols.characterization import Operation
+from .operation import Data, DummyPars, Qubits, Results, Routine, dummy_operation
 from .runcard import Action, Id
 
 MAX_PRIORITY = int(1e9)
@@ -23,7 +17,7 @@ But not so insanely big not to fit in a native integer.
 
 """
 
-DATAFILE = "data.yaml"
+DATAFILE = "data.csv"
 """Name of the file where data acquired by calibration are dumped."""
 
 
@@ -74,20 +68,18 @@ class Task:
 
     @property
     def parameters(self):
-        return Parameters.load(self.action.parameters)
+        return self.operation.parameters_type.load(self.action.parameters)
+
+    @property
+    def data(self):
+        return self._data
 
     def datapath(self, base_dir: Path):
-        return base_dir / f"{self.id}_{self.iteration}" / DATAFILE
+        path = base_dir / "data" / f"{self.id}_{self.iteration}"
+        os.makedirs(path)
+        return path
 
-    def data(self, base_dir) -> Optional[Data]:
-        if not self.datapath(base_dir).is_file():
-            return None
-
-        Data = self.operation.data_type
-
-        return Data(yaml.safe_load(self.datapath(base_dir).read_text(encoding="utf-8")))
-
-    def run(self) -> Results:
+    def run(self, folder: Path, platform: AbstractPlatform, qubits: Qubits) -> Results:
         try:
             operation: Routine = self.operation
             parameters = self.parameters
@@ -95,7 +87,17 @@ class Task:
             operation = dummy_operation
             parameters = DummyPars()
 
-        data: Data = operation.acquisition(parameters)
+        path = self.datapath(folder)
+
+        if operation.platform_dependent and operation.qubits_dependent:
+            self._data: Data = operation.acquisition(
+                parameters, platform=platform, qubits=qubits
+            )
+        else:
+            self._data: Data = operation.acquisition(
+                parameters,
+            )
+        self._data.to_csv(path)
         # TODO: data dump
         # path.write_text(yaml.dump(pydantic_encoder(self.data(base_dir))))
-        return operation.fit(data)
+        return operation.fit(self._data)
