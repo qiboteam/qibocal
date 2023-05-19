@@ -26,6 +26,17 @@ from . import allxy_drag_pulse_tuning
 class DragPulseTuningParameters(allxy_drag_pulse_tuning.AllXYDragParameters):
     """DragPulseTuning runcard inputs."""
 
+    beta_start: float
+    """DRAG pulse beta start sweep parameter."""
+    beta_end: float
+    """DRAG pulse beta end sweep parameter."""
+    beta_step: float
+    """DRAG pulse beta sweep step parameter."""
+    nshots: int
+    """Number of shots."""
+    relaxation_time: int
+    """Relaxation time (ns)."""
+
 
 @dataclass
 class DragPulseTuningResults(Results):
@@ -35,10 +46,6 @@ class DragPulseTuningResults(Results):
     """Optimal beta paramter for each qubit."""
     fitted_parameters: Dict[List[Tuple], List]
     """Raw fitting output."""
-    nshots: int
-    """Number of shots."""
-    relaxation_time: int
-    """Relaxation time (ns)."""
 
 
 class DragPulseTuningData(DataUnits):
