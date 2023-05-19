@@ -98,6 +98,8 @@ def _acquisition(
     for qubit in qubits.values():
         sequences, circuits = rb_sequencer.get_sequences(qubit.name)
         for sequence, circuit in zip(sequences.values(), circuits.values()):
+            print("size = 20", "depth", len(sequence[0]))
+            print("known limit 1340 pulses")
             results = platform.execute_pulse_sequence(
                 sequence[0],
                 ExecutionParameters(
@@ -110,18 +112,20 @@ def _acquisition(
 
             ro_pulses = sequence[0].ro_pulses
             # average msr, phase, i and q over the number of shots defined in the runcard
-            result = results[ro_pulses[0].serial]
-            r = result.serialize
 
-            r.update(
-                {
-                    "sequence[dimensionless]": 0,  # TODO: Store sequences
-                    "length[dimensionless]": len(circuit[0]),
-                    "probabilities[dimensionless]": r["state_0"][0],
-                    "qubit": qubit.name,
-                }
-            )
-            data.add_data_from_dict(r)
+            for ro_pulse in ro_pulses:
+                result = results[ro_pulse.serial]
+                r = result.serialize
+
+                r.update(
+                    {
+                        "sequence[dimensionless]": 0,  # TODO: Store sequences
+                        "length[dimensionless]": len(circuit[0]),
+                        "probabilities[dimensionless]": r["state_0"][0],
+                        "qubit": qubit.name,
+                    }
+                )
+                data.add_data_from_dict(r)
 
     return data
 
