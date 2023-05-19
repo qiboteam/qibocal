@@ -1,4 +1,5 @@
 import json
+import math
 from collections import defaultdict
 
 import numpy as np
@@ -144,12 +145,19 @@ class RBSequence:
         sequences = defaultdict(list)
         circuits = defaultdict(list)
         for depth in self.depths:
-            for run in range(self.runs):
+            size = 1250 // (2 * depth)
+            unrolling_runs = math.ceil(self.runs / size)
+            print(size, unrolling_runs)
+            for run in range(unrolling_runs):
                 circuit = list(np.random.randint(0, len(INT_TO_GATE), depth))
+
                 sequences[f"{depth}_{run}"].append(
-                    self.circuit_to_sequence(self.platform, qubit, circuit, size=10)
+                    self.circuit_to_sequence(self.platform, qubit, circuit, size=size)
                 )
                 circuits[f"{depth}_{run}"].append(circuit)
+
+                print(len(sequences[f"{depth}_{run}"]))
+
         return sequences, circuits
 
     def inverse(self, ints, q=0):

@@ -19,6 +19,7 @@ from .rabi.length import rabi_length
 from .rabi.length_sweep import rabi_length_sweep
 from .ramsey import ramsey
 from .ramsey_sweep import ramsey_sweep
+from .ramsey_unrolling import ramsey_unrolling
 from .RB.std_rb import StdRB
 from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
@@ -37,6 +38,7 @@ class Operation(Enum):
     rabi_length_sweep = rabi_length_sweep
     ramsey = ramsey
     ramsey_sweep = ramsey_sweep
+    ramsey_unrolling = ramsey_unrolling
     t1 = t1
     t1_sweep = t1_sweep
     t2 = t2

@@ -98,8 +98,6 @@ def _acquisition(
     for qubit in qubits.values():
         sequences, circuits = rb_sequencer.get_sequences(qubit.name)
         for sequence, circuit in zip(sequences.values(), circuits.values()):
-            print("size = 20", "depth", len(sequence[0]))
-            print("known limit 1340 pulses")
             results = platform.execute_pulse_sequence(
                 sequence[0],
                 ExecutionParameters(
