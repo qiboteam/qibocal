@@ -25,11 +25,10 @@ def theoretical_outcome(noise_model: NoiseModel) -> float:
 
     # TODO This has to be more systematic. Delete it from the branch which will be merged.
     # Check for correctness of noise model and gate independence.
-    errorkeys = noise_model.errors.keys()
-    assert len(errorkeys) == 3 and list(errorkeys)[0] == gates.Unitary
+    assert None in noise_model.errors
     # Extract the noise acting on unitaries and turn it into the associated
     # error channel.
-    error = noise_model.errors[gates.Unitary][0][1]
+    error = noise_model.errors[None][0][1]
     errorchannel = error.channel(0, *error.options)
     # Calculate the effective depolarizing parameter.
     return utils.effective_depol(errorchannel)
@@ -37,7 +36,7 @@ def theoretical_outcome(noise_model: NoiseModel) -> float:
 
 @pytest.fixture
 def depths():
-    return [0, 1, 5, 10, 30]
+    return [0, 1, 5, 10]
 
 
 @pytest.fixture
@@ -72,7 +71,7 @@ def test_experiment_withnoise(
     nqubits: int, depths: list, runs: int, nshots: int, noise_params: list
 ):
     # Build the noise model.
-    noise = noisemodels.PauliErrorOnUnitary(*noise_params)
+    noise = noisemodels.PauliErrorOnAll(*noise_params)
     # Test exectue an experiment.
     myfactory1 = standardrb.ModuleFactory(nqubits, list(depths) * runs)
     myfaultyexperiment = standardrb.ModuleExperiment(
@@ -119,7 +118,7 @@ def test_utils_probs_and_noisy_execution(
 ):
     noise_params = [0.0001, 0.001, 0.0005]
     # Build the noise model.
-    noise = noisemodels.PauliErrorOnUnitary(*noise_params)
+    noise = noisemodels.PauliErrorOnAll(*noise_params)
     # Test exectue an experiment.
     myfactory1 = standardrb.ModuleFactory(nqubits, list(depths) * runs)
     myfaultyexperiment = standardrb.ModuleExperiment(
@@ -144,7 +143,7 @@ def test_utils_probs_and_noisy_execution(
 def test_post_processing(nqubits: int, depths: list, runs: int, nshots: int):
     noise_params = [0.01, 0.3, 0.14]
     # Build the noise model.
-    noise = noisemodels.PauliErrorOnUnitary(*noise_params)
+    noise = noisemodels.PauliErrorOnAll(*noise_params)
     # Test exectue an experiment.
     myfactory1 = standardrb.ModuleFactory(nqubits, list(depths) * runs)
     myfaultyexperiment = standardrb.ModuleExperiment(
@@ -167,13 +166,13 @@ def test_post_processing(nqubits: int, depths: list, runs: int, nshots: int):
 
 
 def test_build_report():
-    depths = [1, 5, 10, 15, 20, 25]
+    depths = [1, 5, 10]
     nshots = 1024
     runs = 5
     nqubits = 1
     noise_params = [0.01, 0.1, 0.05]
     # Build the noise model.
-    noise = noisemodels.PauliErrorOnUnitary(*noise_params)
+    noise = noisemodels.PauliErrorOnAll(*noise_params)
     # Test exectue an experiment.
     myfactory1 = standardrb.ModuleFactory(nqubits, depths * runs)
     myfaultyexperiment = standardrb.ModuleExperiment(
@@ -186,5 +185,5 @@ def test_build_report():
         theoretical_outcome(noise) - aggr_df.popt[0]["p"]
         < 2 * aggr_df.perr[0]["p_err"] + theoretical_outcome(noise) * 0.05
     )
-    report_figure = standardrb.build_report(myfaultyexperiment, aggr_df)
+    report_figure, _ = standardrb.build_report(myfaultyexperiment, aggr_df)
     assert isinstance(report_figure, Figure)

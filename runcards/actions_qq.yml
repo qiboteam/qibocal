@@ -1,11 +1,8 @@
-# platform: qili1q_os2
-
-platform: qw5q_gold_qblox
+platform: dummy
 
 # Instructions: Uncomment whatever you would like to run!
 
 qubits: [0, 1, 2, 3, 4]
-#qubits: [1]
 
 format: csv
 
@@ -133,11 +130,11 @@ actions:
   #   software_averages: 1
   #   points: 1
 
-  dispersive_shift:
-    freq_width: 10_000_000
-    freq_step: 400_000
-    software_averages: 2
-    points: 5
+  # dispersive_shift:
+  #   freq_width: 10_000_000
+  #   freq_step: 400_000
+  #   software_averages: 2
+  #   points: 5
 
   #tune_transition:
   #  flux_pulse_duration_start: 0
@@ -161,33 +158,6 @@ actions:
   #  single_flux: True
   #  nshots: 1024
   #  dt: 1
-
-
-########## NOT TESTED ##########
-
-
-
-  # rabi_pulse_length_and_gain:
-  #   pulse_duration_start: 4 # minimum 4ns
-  #   pulse_duration_end: 20
-  #   pulse_duration_step: 4
-  #   pulse_gain_start: 0 # -1.0<=g<=1.0
-  #   pulse_gain_end: 1
-  #   pulse_gain_step: 0.1
-  #   software_averages: 1
-  #   points: 10
-
-  # rabi_pulse_length_and_amplitude:
-  #   pulse_duration_start: 4 # minimum 4ns
-  #   pulse_duration_end: 200
-  #   pulse_duration_step: 4
-  #   pulse_amplitude_start: 0 # -1.0<= amplitude <=1.0
-  #   pulse_amplitude_end: 1
-  #   pulse_amplitude_step: 0.1
-  #   software_averages: 1
-  #   points: 10
-
-
 
   # calibrate_qubit_states:
   #   nshots: 2048

@@ -2,11 +2,9 @@ import numpy as np
 import pandas as pd
 import pytest
 from plotly.graph_objects import Figure
-from qibo import gates
-from qibo.noise import NoiseModel
 
 from qibocal.calibrations.niGSC import XIdrb
-from qibocal.calibrations.niGSC.basics import noisemodels, utils
+from qibocal.calibrations.niGSC.basics import noisemodels
 
 
 @pytest.fixture
@@ -96,9 +94,8 @@ def test_post_processing(
     if max(qubits) > nqubits - 1:
         pass
     else:
-        noise_params = [0.01, 0.3, 0.14]
         # Build the noise model.
-        noise = noisemodels.PauliErrorOnX(*noise_params)
+        noise = noisemodels.PauliErrorOnX()
         # Test exectue an experiment.
         myfactory1 = XIdrb.ModuleFactory(nqubits, list(depths) * runs, qubits)
         myfaultyexperiment = XIdrb.ModuleExperiment(
@@ -112,7 +109,7 @@ def test_post_processing(
         assert "data" in aggr_df.columns
         assert "2sigma" in aggr_df.columns
         assert "fit_func" in aggr_df.columns
-        assert "popt_real" in aggr_df.columns
+        assert "popt" in aggr_df.columns
         assert "perr" in aggr_df.columns
 
 
@@ -134,5 +131,5 @@ def test_build_report(depths: list, nshots: int, nqubits: int, runs: int, qubits
         myfaultyexperiment.perform(myfaultyexperiment.execute)
         XIdrb.post_processing_sequential(myfaultyexperiment)
         aggr_df = XIdrb.get_aggregational_data(myfaultyexperiment)
-        report_figure = XIdrb.build_report(myfaultyexperiment, aggr_df)
+        report_figure, _ = XIdrb.build_report(myfaultyexperiment, aggr_df)
         assert isinstance(report_figure, Figure)

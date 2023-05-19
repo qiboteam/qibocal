@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, Dict, List, NewType, Optional, Union
 
 import yaml
+from pydantic import Field
 from pydantic.dataclasses import dataclass
 
 from .operation import OperationId
@@ -38,7 +39,7 @@ class Runcard:
     """Structure of an execution runcard."""
 
     actions: List[Action]
-    qubits: Optional[List[int]] = None
+    qubits: Optional[List[Union[int, str]]] = Field(default_factory=list)
     format: Optional[str] = None
 
     @classmethod
@@ -54,8 +55,4 @@ class Runcard:
             if isinstance(card, Path)
             else card
         )
-        return cls(
-            actions=content["actions"],
-            qubits=content["qubits"] if "qubits" in content else [],
-            format=content["format"] if "format" in content else None,
-        )
+        return cls(**content)
