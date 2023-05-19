@@ -31,6 +31,7 @@ class FlippingParameters(Parameters):
     relaxation_time: int
     """Relaxation time (ns)."""
 
+
 @dataclass
 class FlippingResults(Results):
     """Flipping outputs."""

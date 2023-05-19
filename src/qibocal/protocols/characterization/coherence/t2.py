@@ -33,6 +33,7 @@ class T2Parameters(Parameters):
     relaxation_time: int
     """Relaxation time (ns)."""
 
+
 @dataclass
 class T2Results(Results):
     """T2 outputs."""
