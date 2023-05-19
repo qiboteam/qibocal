@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Union
 
 import numpy as np
 import plotly.graph_objects as go
@@ -39,25 +39,25 @@ class ResonatorPunchoutAttenuationParameters(Parameters):
 class ResonatorPunchoutAttenuationResults(Results):
     """ResonatorPunchoutAttenation outputs."""
 
-    readout_frequency: Dict[List[Tuple], str] = field(
+    readout_frequency: Dict[Union[str, int], float] = field(
         metadata=dict(update="readout_frequency")
     )
-    """Readout frequency for each qubit."""
-    readout_attenuation: Dict[List[Tuple], str] = field(
+    """Readout frequency [GHz] for each qubit."""
+    readout_attenuation: Dict[Union[str, int], int] = field(
         metadata=dict(update="readout_attenuation")
     )
-    """Readout attenuation for each qubit."""
-    bare_frequency: Optional[Dict[List[Tuple], str]] = field(
+    """Readout attenuation [dB] for each qubit."""
+    bare_frequency: Optional[Dict[Union[str, int], float]] = field(
         metadata=dict(update="bare_resonator_frequency")
     )
-    """Bare resonator frequency for each qubit."""
-    lp_max_att: Dict[List[Tuple], str]
+    """Bare resonator frequency [GHz] for each qubit."""
+    lp_max_att: Dict[Union[str, int], int]
     """Maximum attenuation at low power for each qubit."""
-    lp_min_att: Dict[List[Tuple], str]
+    lp_min_att: Dict[Union[str, int], int]
     """Minimum attenuation at low power for each qubit."""
-    hp_max_att: Dict[List[Tuple], str]
+    hp_max_att: Dict[Union[str, int], int]
     """Maximum attenuation at high power for each qubit."""
-    hp_min_att: Dict[List[Tuple], str]
+    hp_min_att: Dict[Union[str, int], int]
     """Minimum attenuation at high power for each qubit."""
 
 
@@ -230,9 +230,7 @@ def _fit(
         lp_min_att_dict[qubit] = lp_min_att
         hp_max_att_dict[qubit] = hp_max_att
         hp_min_att_dict[qubit] = hp_min_att
-        log.warning(
-            f"max att: {lp_max_att} -  min att: {lp_min_att} -  readout_attenuation: {ro_att}"
-        )
+    print(hp_min_att_dict)
 
     return ResonatorPunchoutAttenuationResults(
         freq_lp_dict,

@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Union
 
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
@@ -19,7 +19,7 @@ class ResonatorSpectroscopyParameters(Parameters):
     freq_width: int
     """Width for frequency sweep relative  to the readout frequency (Hz)."""
     freq_step: int
-    """Frequency step for sweep (Hz)."""
+    """Frequency step for sweep [Hz]."""
     nshots: int
     """Number of shots."""
     power_level: PowerLevel
@@ -45,22 +45,24 @@ class ResonatorSpectroscopyParameters(Parameters):
 class ResonatorSpectroscopyResults(Results):
     """ResonatorSpectroscopy outputs."""
 
-    frequency: Dict[List[Tuple], str] = field(metadata=dict(update="readout_frequency"))
-    """Readout frequency for each qubit."""
-    fitted_parameters: Dict[List[Tuple], List]
+    frequency: Dict[Union[str, int], float] = field(
+        metadata=dict(update="readout_frequency")
+    )
+    """Readout frequency [GHz] for each qubit."""
+    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
     """Raw fitted parameters."""
-    bare_frequency: Optional[Dict[List[Tuple], str]] = field(
+    bare_frequency: Optional[Dict[Union[str, int], float]] = field(
         default_factory=dict, metadata=dict(update="bare_resonator_frequency")
     )
-    """Bare resonator frequency for each qubit."""
-    amplitude: Optional[Dict[List[Tuple], str]] = field(
+    """Bare resonator frequency [GHz] for each qubit."""
+    amplitude: Optional[Dict[Union[str, int], float]] = field(
         default_factory=dict, metadata=dict(update="readout_amplitude")
     )
     """Readout amplitude for each qubit."""
-    attenuation: Optional[Dict[List[Tuple], str]] = field(
+    attenuation: Optional[Dict[Union[str, int], int]] = field(
         default_factory=dict, metadata=dict(update="readout_attenuation")
     )
-    """Readout attenuation for each qubit."""
+    """Readout attenuation [dB] for each qubit."""
 
 
 class ResonatorSpectroscopyData(DataUnits):
@@ -177,7 +179,6 @@ def _fit(data: ResonatorSpectroscopyData) -> ResonatorSpectroscopyResults:
         amplitudes[qubit] = data.amplitude
         attenuations[qubit] = data.attenuation
         fitted_parameters[qubit] = fitted_params
-
     if data.power_level is PowerLevel.high:
         return ResonatorSpectroscopyResults(
             frequency=frequency,

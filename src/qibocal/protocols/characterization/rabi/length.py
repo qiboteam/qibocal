@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, Union
 
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
@@ -34,11 +34,13 @@ class RabiLengthParameters(Parameters):
 class RabiLengthResults(Results):
     """RabiLength outputs."""
 
-    length: Dict[List[Tuple], str] = field(metadata=dict(update="drive_length"))
+    length: Dict[Union[str, int], int] = field(metadata=dict(update="drive_length"))
     """Pi pulse duration for each qubit."""
-    amplitude: Dict[List[Tuple], str] = field(metadata=dict(update="drive_amplitude"))
+    amplitude: Dict[Union[str, int], float] = field(
+        metadata=dict(update="drive_amplitude")
+    )
     """Pi pulse amplitude. Same for all qubits."""
-    fitted_parameters: Dict[List[Tuple], List]
+    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
     """Raw fitting output."""
 
 
@@ -86,7 +88,6 @@ def _acquisition(
     # sweep the parameter
     for duration in qd_pulse_duration_range:
         for qubit in qubits:
-            print(duration)
             qd_pulses[qubit].duration = duration
             ro_pulses[qubit].start = qd_pulses[qubit].finish
 
