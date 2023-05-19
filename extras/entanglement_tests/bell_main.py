@@ -2,14 +2,13 @@ import shutil
 import time
 
 import numpy as np
+from bell_functions import BellExperiment
 from qibo import set_backend
 from qibo.config import log
 from qibolab import Platform
 from qibolab.backends import QibolabBackend
 from qibolab.paths import qibolab_folder
 from readout_mitigation import ReadoutErrorMitigation
-from bell_functions import BellExperiment
-
 
 nqubits = 5
 qubits = [2, 3]

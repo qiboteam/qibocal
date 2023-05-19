@@ -95,7 +95,7 @@ class BellExperiment:
 
         platform = self.platform
 
-        readout_basis = [['Z','Z'], ['Z','X'], ['X','Z'], ['X','X']]
+        readout_basis = [["Z", "Z"], ["Z", "X"], ["X", "Z"], ["X", "X"]]
 
         chsh_sequences = []
 
@@ -105,7 +105,7 @@ class BellExperiment:
             )
             t = sequence.finish
             for i, base in enumerate(basis):
-                if base == 'X':
+                if base == "X":
                     sequence.add(
                         platform.create_RX90_pulse(
                             qubits[i],
@@ -181,14 +181,14 @@ class BellExperiment:
         if not rerr:
             rerr = self.rerr
 
-        readout_basis = [['Z','Z'], ['Z','X'], ['X','Z'], ['X','X']]
+        readout_basis = [["Z", "Z"], ["Z", "X"], ["X", "Z"], ["X", "X"]]
 
         chsh_circuits = []
 
         for basis in readout_basis:
             c, p = self.create_bell_circuit(qubits, theta, bell_state, native)
             for i, base in enumerate(basis):
-                if base == 'X':
+                if base == "X":
                     if native:
                         c.add(gates.GPI2(qubits[i], p[i] + np.pi / 2))
                     else:
