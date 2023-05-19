@@ -876,11 +876,13 @@ def res_spectroscopy_flux_fit(data, x, y, qubit, fluxline, params_fit):
 
 
 def res_spectroscopy_flux_matrix(folder, fluxlines):
-    """Calculation of the resonator flux matrix, Mf.
+    """
+    Calculation of the resonator flux matrix, Mf.
        curr = Mf*freq + offset_c.
        Mf = Mc^-1, offset_c = -Mc^-1 * offset_f
        freq = Mc*curr + offset_f
-        Args:
+
+    Args:
         folder (str): Folder where the data files with the experimental and fit data are.
         fluxlines (list): ids of the current line used for the experiment.
 

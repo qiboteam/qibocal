@@ -39,7 +39,7 @@ def expn_func(x: Union[np.ndarray, list], *args) -> np.ndarray:
     Args:
         x (np.ndarray | list): list of exponents.
         *args: Parameters of type `float` in the order
-        :math:`A_1`, :math:`A_2`, :math:`f_1`, :math:`f_2`,...
+            :math:`A_1`, :math:`A_2`, :math:`f_1`, :math:`f_2`,...
 
     Returns:
         The resulting sum of exponentials.
