@@ -125,8 +125,6 @@ actions:
       pulse_length: 30
       relaxation_time: 0
       nshots: 1024
-      relaxation_time:
-
 
   - id: rabi length
     priority: 0
@@ -138,8 +136,6 @@ actions:
       pulse_amplitude: 0.5
       relaxation_time: 0
       nshots: 1024
-      relaxation_time:
-
 
   - id: t1
     priority: 0
