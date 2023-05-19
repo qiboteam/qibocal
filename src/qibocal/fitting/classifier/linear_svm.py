@@ -1,4 +1,3 @@
-import joblib
 from sklearn.svm import SVC
 
 from . import utils

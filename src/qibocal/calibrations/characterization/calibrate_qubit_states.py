@@ -9,7 +9,6 @@ from qibocal.data import Data, DataUnits
 from qibocal.decorators import plot
 from qibocal.fitting.classifier import run
 from qibocal.fitting.classifier.qubit_fit import QubitFit
-from qibocal.fitting.methods import calibrate_qubit_states_fit
 
 MESH_SIZE = 50
 MARGIN = 0
