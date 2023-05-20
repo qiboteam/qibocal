@@ -121,14 +121,14 @@ def _acquisition(
         sweeper,
     )
     for qubit in qubits:
-        r = results[ro_pulses[qubit].serial].average.serialize
+        r = results[ro_pulses[qubit].serial].serialize
         r.update(
             {
                 "wait[ns]": ro_wait_range,
                 "qubit": len(ro_wait_range) * [qubit],
             }
         )
-        data.add(r)
+        data.add_data_from_dict(r)
     return data
 
 

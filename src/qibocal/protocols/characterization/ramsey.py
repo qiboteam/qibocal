@@ -112,52 +112,77 @@ def _acquisition(
         params.delay_between_pulses_step,
     )
 
-    sweeper = Sweeper(
-        Parameter.delay,
-        waits,
-        [RX90_pulses1[qubit] for qubit in qubits],
-    )
-
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
     # additionally include wait time and t_max
     data = RamseyData(params.n_osc, params.delay_between_pulses_end)
 
-    # sweep the parameter
     if params.n_osc != 0:
-        raise ValueError(f"Not implemented n_osc > 1.")
-        # RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
-        # ro_pulses[qubit].start = RX90_pulses2[qubit].finish
-        # if params.n_osc != 0:
-        #     RX90_pulses2[qubit].relative_phase = (
-        #         RX90_pulses2[qubit].start
-        #         * (-2 * np.pi)
-        #         * (params.n_osc)
-        #         / params.delay_between_pulses_end
-        #     )
+        # sweep the parameter
+        for wait in waits:
+            for qubit in qubits:
+                RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
+                ro_pulses[qubit].start = RX90_pulses2[qubit].finish
+                if params.n_osc != 0:
+                    RX90_pulses2[qubit].relative_phase = (
+                        RX90_pulses2[qubit].start
+                        * (-2 * np.pi)
+                        * (params.n_osc)
+                        / params.delay_between_pulses_end
+                    )
 
-    # execute the sweep
-    results = platform.sweep(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
-        ),
-        sweeper,
-    )
-    for qubit in qubits:
-        # average msr, phase, i and q over the number of shots defined in the runcard
-        r = results[ro_pulses[qubit].serial].serialize
-        r.update(
-            {
-                "wait[ns]": waits,
-                "qubit_freqs[Hz]": len(waits) * [qubits[qubit].drive_frequency],
-                "qubit": len(waits) * [qubit],
-            }
+            # execute the pulse sequence
+            results = platform.execute_pulse_sequence(
+                sequence,
+                ExecutionParameters(
+                    nshots=params.nshots,
+                    relaxation_time=params.relaxation_time,
+                    acquisition_type=AcquisitionType.INTEGRATION,
+                    averaging_mode=AveragingMode.CYCLIC,
+                ),
+            )
+            for qubit, ro_pulse in ro_pulses.items():
+                # average msr, phase, i and q over the number of shots defined in the runcard
+                r = results[ro_pulse.serial].serialize
+                r.update(
+                    {
+                        "wait[ns]": wait,
+                        "qubit_freqs[Hz]": qubits[qubit].drive_frequency,
+                        "qubit": qubit,
+                    }
+                )
+                data.add_data_from_dict(r)
+
+    else:
+        sweeper = Sweeper(
+            Parameter.delay,
+            waits,
+            [RX90_pulses1[qubit] for qubit in qubits],
         )
-        data.add_data_from_dict(r)
+
+        # execute the sweep
+        results = platform.sweep(
+            sequence,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
+            sweeper,
+        )
+        for qubit in qubits:
+            # average msr, phase, i and q over the number of shots defined in the runcard
+            r = results[ro_pulses[qubit].serial].serialize
+            r.update(
+                {
+                    "wait[ns]": waits,
+                    "qubit_freqs[Hz]": len(waits) * [qubits[qubit].drive_frequency],
+                    "qubit": len(waits) * [qubit],
+                }
+            )
+            data.add_data_from_dict(r)
+
     return data
 
 
