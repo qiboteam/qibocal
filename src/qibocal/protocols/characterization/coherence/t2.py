@@ -29,6 +29,10 @@ class T2Parameters(Parameters):
     """Final delay between RX(pi/2) pulses in ns."""
     delay_between_pulses_step: int
     """Step delay between RX(pi/2) pulses in ns."""
+    nshots: int
+    """Number of shots."""
+    relaxation_time: int
+    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -108,7 +112,7 @@ def _acquisition(
                 "qubit": len(waits) * [qubit],
             }
         )
-        data.add(r)
+        data.add_data_from_dict(r)
     return data
 
 

@@ -30,6 +30,10 @@ class T1Parameters(Parameters):
     """Final delay before readout (ns)."""
     delay_before_readout_step: int
     """Step delay before readout (ns)."""
+    nshots: int
+    """Number of shots."""
+    relaxation_time: int
+    """Relaxation time (ns)."""
 
 
 @dataclass

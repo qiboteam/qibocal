@@ -26,8 +26,8 @@ class RamseyParameters(Parameters):
 
     nshots: int
     """Number of shots."""
-    relaxation_time: float
-    """Relxation time (ns)."""
+    relaxation_time: int
+    """Relaxation time (ns)."""
     delay_between_pulses_start: int
     """Initial delay between RX(pi/2) pulses in ns."""
     delay_between_pulses_end: int
@@ -232,8 +232,13 @@ def _fit(data: RamseyData) -> RamseyResults:
             ]
             delta_fitting = popt[2] / (2 * np.pi)
             # FIXME: check this formula
-            delta_phys = +int((delta_fitting - data.n_osc / data.t_max) * 1e9)
-            corrected_qubit_frequency = int(qubit_freq + delta_phys)
+
+            delta_phys = -int((delta_fitting - data.n_osc / data.t_max) * 1e9)
+            corrected_qubit_frequency = int(qubit_freq - delta_phys)
+
+            # delta_phys = +int((delta_fitting - data.n_osc / data.t_max) * 1e9)
+            # corrected_qubit_frequency = int(qubit_freq + delta_phys)
+
             t2 = 1.0 / popt[4]
 
         except Exception as e:
@@ -301,8 +306,8 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
         )
         fitting_report = (
             fitting_report
-            + (f"{qubit} | delta_frequency: {fit.delta_phys[qubit]:,.1f} Hz<br>")
-            + (f"{qubit} | drive_frequency: {fit.frequency[qubit] * 1e9} Hz<br>")
+            + (f"{qubit} | Delta_frequency: {fit.delta_phys[qubit]:,.1f} Hz<br>")
+            + (f"{qubit} | Drive_frequency: {fit.frequency[qubit] * 1e9} Hz<br>")
             + (f"{qubit} | T2: {fit.t2[qubit]:,.0f} ns.<br><br>")
         )
 

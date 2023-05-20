@@ -20,7 +20,7 @@ class Executor:
     """The graph to be executed."""
     history: History
     """The execution history, with results and exit states."""
-    folder: Path
+    output: Path
     """Output path."""
     qubits: Optional[Qubits] = None
     """Qubits to be calibrated."""
@@ -36,7 +36,7 @@ class Executor:
     def load(
         cls,
         card: Union[dict, Path],
-        folder: Path,
+        output: Path,
         platform: AbstractPlatform = None,
         qubits: Qubits = None,
     ):
@@ -46,7 +46,7 @@ class Executor:
         return cls(
             graph=Graph.from_actions(runcard.actions),
             history=History({}),
-            folder=folder,
+            output=output,
             platform=platform,
             qubits=qubits,
         )
@@ -124,7 +124,7 @@ class Executor:
 
         while self.head is not None:
             task = self.current
-            output = task.run(self.folder, platform=self.platform, qubits=self.qubits)
+            output = task.run(self.output, platform=self.platform, qubits=self.qubits)
             completed = Completed(task, output, Normal())
             self.history.push(completed)
             self.head = self.next()
