@@ -15,7 +15,7 @@ actions:
       amplitude: 0.4
       power_level: high
       nshots: 1024
-      relaxation_time: 0
+      relaxation_time:
 
   - id: resonator high power low attenuation
     priority: 0
@@ -26,7 +26,7 @@ actions:
       attenuation: 15
       power_level: high
       nshots: 1024
-      relaxation_time: 0
+      relaxation_time:
 
   - id: resonator low power high attenuation
     priority: 0
@@ -37,8 +37,7 @@ actions:
       attenuation: 60
       power_level: low
       nshots: 1024
-      relaxation_time: 0
-
+      relaxation_time:
 
   - id: resonator punchout
     priority: 0
@@ -50,7 +49,7 @@ actions:
       max_amp_factor: 0.3
       step_amp_factor: 0.005
       nshots: 100
-      relaxation_time: 0
+      relaxation_time:
 
   - id: resonator_punchout_attenuation
     priority: 0
@@ -62,7 +61,7 @@ actions:
       max_att: 60
       step_att: 4
       nshots: 1000
-      relaxation_time: 0
+      relaxation_time:
 
 
   - id: resonator spectroscopy low power
@@ -74,7 +73,7 @@ actions:
       amplitude: 0.022
       power_level: low
       nshots: 1024
-      relaxation_time: 0
+      relaxation_time:
 
 
   - id: qubit spectroscopy
@@ -87,7 +86,7 @@ actions:
       freq_width: 2_000_000
       freq_step: 500_000
       nshots: 1024
-      relaxation_time: 0
+      relaxation_time:
 
 
   - id: resonator flux dependence
@@ -99,7 +98,7 @@ actions:
       bias_width: 0.8
       bias_step:  0.1
       nshots: 1024
-      relaxation_time: 0
+      relaxation_time:
 
 
   - id: qubit flux dependence
@@ -111,8 +110,8 @@ actions:
       bias_width: 0.8 #0.1
       bias_step:  0.1 # 0.001
       drive_amplitude: 0.005
-      nshots: 1000
-      relaxation_time: 0
+      nshots: 1024
+      relaxation_time:
 
 
   - id: rabi
@@ -127,7 +126,6 @@ actions:
       relaxation_time: 0
       nshots: 1024
 
-
   - id: rabi length
     priority: 0
     operation: rabi_length
@@ -139,7 +137,6 @@ actions:
       relaxation_time: 0
       nshots: 1024
 
-
   - id: t1
     priority: 0
     operation: t1
@@ -148,6 +145,8 @@ actions:
       delay_before_readout_start: 0
       delay_before_readout_end: 20_000
       delay_before_readout_step: 2000
+      nshots: 1024
+      relaxation_time:
 
   - id: t2
     priority: 0
@@ -156,6 +155,8 @@ actions:
       delay_between_pulses_start: 16
       delay_between_pulses_end: 20000
       delay_between_pulses_step: 100
+      nshots: 1024
+      relaxation_time:
 
   - id: ramsey
     priority: 0
@@ -166,6 +167,8 @@ actions:
       delay_between_pulses_end: 5000
       delay_between_pulses_step: 500 # must be a multiple of 4
       n_osc: 10
+      nshots: 1024
+      relaxation_time:
 
 
   - id: ramsey
@@ -177,6 +180,8 @@ actions:
       delay_between_pulses_end: 5000
       delay_between_pulses_step: 500 # must be a multiple of 4
       n_osc: 10
+      nshots: 1024
+      relaxation_time:
 
 
   - id: single shot classification
@@ -185,6 +190,7 @@ actions:
     operation: single_shot_classification
     parameters:
       nshots: 5000
+      relaxation_time:
 
 
   - id: allXY
@@ -193,6 +199,8 @@ actions:
     main: allxy_drag_pulse_tuning
     parameters:
       beta_param: null
+      nshots: 1024
+      relaxation_time:
 
 
   - id: allxy_drag_pulse_tuning
@@ -203,6 +211,8 @@ actions:
       beta_start: 0
       beta_end: 0.02
       beta_step: 0.01
+      nshots: 1024
+      relaxation_time:
 
 
   - id: drag_pulse_tuning
@@ -212,6 +222,8 @@ actions:
       beta_start: 0
       beta_end: 0.02
       beta_step: 0.01
+      nshots: 1024
+      relaxation_time:
 
   - id: spin_echo
     priority: 0
@@ -220,6 +232,8 @@ actions:
       delay_between_pulses_start: 0
       delay_between_pulses_end: 20000
       delay_between_pulses_step: 2000
+      nshots: 1024
+      relaxation_time:
 
   - id: flipping
     priority: 0
@@ -227,6 +241,8 @@ actions:
     parameters:
       nflips_max: 5
       nflips_step: 1
+      nshots: 1024
+      relaxation_time:
 
   - id: dispersive shift
     priority: 0
@@ -234,3 +250,17 @@ actions:
     parameters:
       freq_width: 10_000_000
       freq_step: 100_000
+      nshots: 1024
+      relaxation_time:
+
+  - id: StdRB
+    priority: 0
+    operation: StdRB
+    parameters:
+      min_depth: 5
+      max_depth: 200 # Aim for a 100
+      step_depth: 25 # Around 5 to 10 steps in total 
+      runs: 5 # At least 20
+      nshots: 1024
+      relaxation_time:
+

@@ -56,7 +56,7 @@ def qubit_states(folder, routine, qubit, format):
             parameters = Data(
                 name=f"parameters",
                 quantities=[
-                    "rotation_angle",  # in degrees
+                    "rotation_angle",  # in rad
                     "threshold",
                     "fidelity",
                     "assignment_fidelity",

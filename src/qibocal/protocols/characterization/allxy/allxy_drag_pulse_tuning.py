@@ -23,6 +23,10 @@ class AllXYDragParameters(Parameters):
     """Final beta parameter for Drag pulse."""
     beta_step: float
     """Step beta parameter for Drag pulse."""
+    nshots: int
+    """Number of shots."""
+    relaxation_time: int
+    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -63,6 +67,7 @@ def _acquisition(
 
     data = AllXYDragData()
 
+    count = 0
     # sweep the parameters
     for beta_param in np.arange(
         params.beta_start, params.beta_end, params.beta_step
@@ -74,7 +79,7 @@ def _acquisition(
             sequence = PulseSequence()
             for qubit in qubits:
                 sequence, ro_pulses[qubit] = allxy.add_gate_pair_pulses_to_sequence(
-                    platform, gates, qubit, beta_param, sequence
+                    platform, gates, qubit, sequence, beta_param
                 )
 
             # execute the pulse sequence
@@ -89,7 +94,7 @@ def _acquisition(
 
             # retrieve the results for every qubit
             for ro_pulse in ro_pulses.values():
-                z_proj = 2 * results[ro_pulse.serial].state_0_probability - 1
+                z_proj = 2 * results[ro_pulse.serial].probability(0) - 1
                 # store the results
                 r = {
                     "probability": z_proj,
@@ -99,7 +104,6 @@ def _acquisition(
                 }
                 data.add(r)
             gateNumber += 1
-    # finally, save the remaining data
     return data
 
 
