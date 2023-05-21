@@ -14,8 +14,7 @@ from scipy.optimize import curve_fit
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.config import log
 from qibocal.data import DataUnits
-
-from . import utils
+from qibocal.protocols.characterization.RB import utils
 
 """
 For info check

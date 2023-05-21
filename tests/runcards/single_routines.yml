@@ -259,8 +259,7 @@ actions:
     parameters:
       min_depth: 5
       max_depth: 200 # Aim for a 100
-      step_depth: 25 # Around 5 to 10 steps in total 
+      step_depth: 25 # Around 5 to 10 steps in total
       runs: 5 # At least 20
       nshots: 1024
       relaxation_time:
-
