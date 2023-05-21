@@ -1,7 +1,5 @@
 from collections.abc import Iterable
-from copy import deepcopy
 
-import numpy as np
 import pytest
 from qibo import gates, models
 
@@ -40,8 +38,7 @@ def abstract_factorytest(gfactory):
 def test_abstract_factory():
     cfactory = CircuitFactory(1, [1, 2] * 3, qubits=[0])
     with pytest.raises(NotImplementedError):
-        for circuit in cfactory:
-            print(circuit.draw())
+        list(cfactory)
     cfactory = CircuitFactory(1, 3, qubits=[0])
     assert cfactory.depths == [3]
 
@@ -109,9 +106,7 @@ def test_general_singlequbitgates_factories(
                             assert isinstance(gate, gates.Unitary)
                     elif factory.name in ("XId"):
                         for gate in circuit.queue[:-1]:
-                            assert isinstance(gate, gates.X) or isinstance(
-                                gate, gates.I
-                            )
+                            assert isinstance(gate, (gates.X, gates.I))
                     else:
                         raise_error(
                             ValueError,

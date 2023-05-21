@@ -28,6 +28,10 @@ class T2Parameters(Parameters):
     """Final delay between RX(pi/2) pulses in ns."""
     delay_between_pulses_step: int
     """Step delay between RX(pi/2) pulses in ns."""
+    nshots: int
+    """Number of shots."""
+    relaxation_time: int
+    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -100,7 +104,7 @@ def _acquisition(
         )
         for qubit, ro_pulse in ro_pulses.items():
             # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[ro_pulse.serial].average.serialize
+            r = results[ro_pulse.serial].serialize
             r.update(
                 {
                     "wait[ns]": wait,

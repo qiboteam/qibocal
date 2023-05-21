@@ -5,7 +5,11 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab.platforms.abstract import AbstractPlatform
-from qibolab.platforms.platform import AveragingMode, ExecutionParameters
+from qibolab.platforms.platform import (
+    AcquisitionType,
+    AveragingMode,
+    ExecutionParameters,
+)
 from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
 
@@ -21,6 +25,17 @@ from . import allxy_drag_pulse_tuning
 @dataclass
 class DragPulseTuningParameters(allxy_drag_pulse_tuning.AllXYDragParameters):
     """DragPulseTuning runcard inputs."""
+
+    beta_start: float
+    """DRAG pulse beta start sweep parameter."""
+    beta_end: float
+    """DRAG pulse beta end sweep parameter."""
+    beta_step: float
+    """DRAG pulse beta sweep step parameter."""
+    nshots: int
+    """Number of shots."""
+    relaxation_time: int
+    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -114,6 +129,7 @@ def _acquisition(
             ExecutionParameters(
                 nshots=params.nshots,
                 relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
                 averaging_mode=AveragingMode.CYCLIC,
             ),
         )
@@ -122,24 +138,25 @@ def _acquisition(
             ExecutionParameters(
                 nshots=params.nshots,
                 relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
                 averaging_mode=AveragingMode.CYCLIC,
             ),
         )
 
         # retrieve the results for every qubit
         for ro_pulse in ro_pulses.values():
-            r1 = result1[ro_pulse.serial].average
-            r2 = result2[ro_pulse.serial].average
+            r1 = result1[ro_pulse.serial]
+            r2 = result2[ro_pulse.serial]
             # store the results
             r = {
                 "MSR[V]": r1.magnitude - r2.magnitude,
-                "i[V]": r1.i - r2.i,
-                "q[V]": r1.q - r2.q,
+                "i[V]": r1.voltage_i - r2.voltage_i,
+                "q[V]": r1.voltage_q - r2.voltage_q,
                 "phase[rad]": r1.phase - r2.phase,
                 "beta_param[dimensionless]": beta_param,
                 "qubit": ro_pulse.qubit,
             }
-            data.add(r)
+            data.add_data_from_dict(r)
 
     return data
 
@@ -173,7 +190,8 @@ def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
         try:
             popt, pcov = curve_fit(cos, beta_params.values, voltages.values)
             smooth_dataset = cos(beta_params.values, popt[0], popt[1], popt[2], popt[3])
-            beta_optimal = beta_params.values[np.argmin(smooth_dataset)]
+            min_abs_index = np.abs(smooth_dataset).argmin()
+            beta_optimal = beta_params.values[min_abs_index]
         except:
             log.warning("drag_tuning_fit: the fitting was not succesful")
             popt = [0, 0, 1, 0]
@@ -185,7 +203,7 @@ def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
 
 
 def _plot(data: DragPulseTuningData, fit: DragPulseTuningResults, qubit):
-    """Plottin function for DragPulseTuning."""
+    """Plotting function for DragPulseTuning."""
 
     figures = []
     fitting_report = ""

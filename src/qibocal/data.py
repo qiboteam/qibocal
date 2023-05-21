@@ -57,9 +57,6 @@ class AbstractData:
             path (str): Path containing output folder."""
         self.df.to_pickle(f"{path}/{self.name}.pkl")
 
-    def save(self, path):
-        return self.to_csv(path)
-
 
 class DataUnits(AbstractData):
     """Class to store the data measured during the calibration routines.

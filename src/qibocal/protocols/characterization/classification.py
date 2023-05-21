@@ -17,6 +17,9 @@ MESH_SIZE = 50
 @dataclass
 class SingleShotClassificationParameters(Parameters):
     nshots: int
+    """Number of shots."""
+    relaxation_time: int
+    """Relaxation time (ns)."""
 
 
 class SingleShotClassificationData(DataUnits):
@@ -37,8 +40,12 @@ class SingleShotClassificationData(DataUnits):
 class SingleShotClassificationResults(Results):
     threshold: Dict[List[Tuple], str] = field(metadata=dict(update="threshold"))
     rotation_angle: Dict[List[Tuple], str] = field(metadata=dict(update="iq_angle"))
-    mean_gnd_state: Dict[List[Tuple], str]
-    mean_exc_state: Dict[List[Tuple], str]
+    mean_gnd_states: Dict[List[Tuple], str] = field(
+        metadata=dict(update="mean_gnd_states")
+    )
+    mean_exc_states: Dict[List[Tuple], str] = field(
+        metadata=dict(update="mean_exc_states")
+    )
     fidelity: Dict[List[Tuple], str]
     assignment_fidelity: Dict[List[Tuple], str]
 
@@ -118,9 +125,11 @@ def _acquisition(
     # execute the second pulse sequence
     state1_results = platform.execute_pulse_sequence(
         state1_sequence,
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.INTEGRATION,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+        ),
     )
 
     # retrieve and store the results for every qubit
@@ -141,8 +150,8 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
     qubits = data.df["qubit"].unique()
     thresholds, rotation_angles = {}, {}
     fidelities, assignment_fidelities = {}, {}
-    mean_gnd_state = {}
-    mean_exc_state = {}
+    mean_gnd_states = {}
+    mean_exc_states = {}
 
     for qubit in qubits:
         qubit_data = data.df[data.df["qubit"] == qubit].drop(
@@ -201,15 +210,15 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
             qubit
         ] = -rotation_angle  # TODO: qblox driver np.rad2deg(-rotation_angle)
         fidelities[qubit] = fidelity
-        mean_gnd_state[qubit] = iq_mean_state0
-        mean_exc_state[qubit] = iq_mean_state1
+        mean_gnd_states[qubit] = iq_mean_state0
+        mean_exc_states[qubit] = iq_mean_state1
         assignment_fidelities[qubit] = assignment_fidelity
 
     return SingleShotClassificationResults(
         thresholds,
         rotation_angles,
-        mean_gnd_state,
-        mean_exc_state,
+        mean_gnd_states,
+        mean_exc_states,
         fidelities,
         assignment_fidelities,
     )
@@ -328,8 +337,8 @@ def _plot(
 
     fitting_report = (
         fitting_report
-        + f"{qubit} | Average Ground State: {fit.mean_gnd_state[qubit]:.4f} <br>"
-        + f"{qubit} | Average Excited State: {fit.mean_exc_state[qubit]:.4f} <br>"
+        + f"{qubit} | Average Ground State: {fit.mean_gnd_states[qubit]:.4f} <br>"
+        + f"{qubit} | Average Excited State: {fit.mean_exc_states[qubit]:.4f} <br>"
         + f"{qubit} | Rotation Angle: {fit.rotation_angle[qubit]:.3f} rad <br>"
         + f"{qubit} | Threshold: {fit.threshold[qubit]:.4f} <br>"
         + f"{qubit} | Fidelity: {fit.fidelity[qubit]:.3f} <br>"
