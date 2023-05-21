@@ -158,10 +158,10 @@ actions:
       nshots: 1024
       relaxation_time:
 
-  - id: ramsey
+  - id: ramsey_detuned
     priority: 0
     operation: ramsey
-    main: single shot classification
+    main: ramsey
     parameters:
       delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
       delay_between_pulses_end: 5000
@@ -170,7 +170,6 @@ actions:
       nshots: 1024
       relaxation_time:
 
-
   - id: ramsey
     priority: 0
     operation: ramsey
@@ -179,9 +178,10 @@ actions:
       delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
       delay_between_pulses_end: 5000
       delay_between_pulses_step: 500 # must be a multiple of 4
-      n_osc: 10
+      n_osc: 0
       nshots: 1024
       relaxation_time:
+
 
 
   - id: single shot classification
