@@ -3,12 +3,12 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab.platforms.abstract import AbstractPlatform
-from qibolab.platforms.platform import (
+from qibolab.executionparameters import (
     AcquisitionType,
     AveragingMode,
     ExecutionParameters,
 )
+from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
