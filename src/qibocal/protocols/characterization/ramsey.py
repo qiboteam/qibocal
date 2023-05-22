@@ -32,12 +32,12 @@ class RamseyParameters(Parameters):
     """Final delay between RX(pi/2) pulses in ns."""
     delay_between_pulses_step: int
     """Step delay between RX(pi/2) pulses in ns."""
-    n_osc: Optional[int] = 0
+    n_osc: Optional[int]
     """Number of oscillations to induce detuning (optional).
         If 0 standard Ramsey experiment is performed."""
-    nshots: int = 1024
+    nshots: int
     """Number of shots."""
-    relaxation_time: int = 50
+    relaxation_time: int
     """Relaxation time (ns)."""
 
 

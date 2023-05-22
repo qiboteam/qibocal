@@ -136,7 +136,7 @@ def _acquisition(
             ExecutionParameters(
                 nshots=params.nshots,
                 relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.DISCRIMINATION,
+                acquisition_type=AcquisitionType.INTEGRATION,
                 averaging_mode=AveragingMode.CYCLIC,
             ),
         )
