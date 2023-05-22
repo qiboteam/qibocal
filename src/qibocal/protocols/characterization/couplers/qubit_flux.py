@@ -18,39 +18,31 @@ from qibocal.data import DataUnits
 
 
 @dataclass
-class QubitFrequencyFluxParameters(Parameters):
-    """QubitFrequencyFlux runcard inputs."""
+class QubitFluxParameters(Parameters):
+    """QubitFlux runcard inputs."""
 
-    frequency_width: float
-    """Frequency width."""
-    frequency_step: float
-    """Frequency step."""
     offset_width: float
-    """Flux offset width in volt."""
+    """Width of the offset range."""
     offset_step: float
-    """Flux offset step in volt."""
+    """Step of the offset range."""
     nshots: Optional[int] = 1024
     """Number of shots per point."""
     relaxation_time: Optional[float] = 0
     """Relaxation time."""
-    drive_duration: Optional[float] = 2000
-    """Drive duration."""
-    drive_amplitude: Optional[float] = 0.1
-    """Drive amplitude."""
 
 
 @dataclass
-class QubitFrequencyFluxResults(Results):
-    """QubitFrequencyFlux outputs when fitting will be done."""
+class QubitFluxResults(Results):
+    """QubitFlux outputs when fitting will be done."""
 
 
-class QubitFrequencyFluxData(DataUnits):
-    """QubitFrequencyFlux acquisition outputs."""
+class QubitFluxData(DataUnits):
+    """QubitFlux acquisition outputs."""
 
     def __init__(self):
         super().__init__(
             name="data",
-            quantities={"frequency": "Hz", "offset": "V"},
+            quantities={"frequency": "Hz"},
             options=[
                 "coupler",
                 "qubit",
@@ -60,10 +52,10 @@ class QubitFrequencyFluxData(DataUnits):
 
 
 def _aquisition(
-    params: QubitFrequencyFluxParameters,
+    params: QubitFluxParameters,
     platform: AbstractPlatform,
     qubits: Qubits,
-) -> QubitFrequencyFluxData:
+) -> QubitFluxData:
     r"""
     Perform a spectrocopy experiment on the coupler.
 
@@ -91,29 +83,17 @@ def _aquisition(
 
     for qubit in qubits:
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
-            qubit, start=0, duration=params.drive_duration
+            qubit, start=0, duration=2000
         )
-        qd_pulses[qubit].amplitude = params.drive_amplitude
-
-        ro_pulses[qubit] = platform.create_MZ_pulse(
-            qubit, start=qd_pulses[qubit].finish
-        )
+        ro_pulses[qubit] = platform.create_MZ_pulse(qubit, start=0)
+        ro_pulses[qubit].duration = qd_pulses[qubit].duration
 
         sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:
-    delta_frequency_range = np.arange(
-        -params.frequency_width // 2, params.frequency_width // 2, params.frequency_step
-    )
     delta_offset_range = np.arange(
         -params.offset_width / 2, params.offset_width / 2, params.offset_step
-    )
-
-    sweeper_frequency = Sweeper(
-        Parameter.frequency,
-        delta_frequency_range,
-        pulses=[qd_pulses[qubit] for qubit in qubits],
     )
 
     sweeper_offset = Sweeper(
@@ -123,7 +103,7 @@ def _aquisition(
     )
 
     # create a DataUnits object to store the results,
-    sweep_data = QubitFrequencyFluxData()
+    sweep_data = QubitFluxData()
 
     # repeat the experiment as many times as defined by nshots
     results = platform.sweep(
@@ -134,7 +114,6 @@ def _aquisition(
             acquisition_type=AcquisitionType.INTEGRATION,
             averaging_mode=AveragingMode.CYCLIC,
         ),
-        sweeper_frequency,
         sweeper_offset,
     )
 
@@ -156,19 +135,13 @@ def _aquisition(
         )
         # prob = iq_to_probability(result.voltage_i, result.voltage_q, complex(platform.qubits[qubit].mean_exc_states), complex(platform.qubits[qubit].mean_gnd_states))
         # store the results
-        freq, offset = np.meshgrid(
-            delta_frequency_range, delta_offset_range, indexing="ij"
-        )
 
         r.update(
             {
-                "frequency[Hz]": freq.flatten()
-                + platform.qubits[qubit].drive_frequency,
-                "offset[V]": offset.flatten() + platform.qubits[f"c{qubit}"].sweetspot,
-                "coupler": len(delta_frequency_range)
-                * len(delta_offset_range)
-                * [f"c{qubit}"],
-                "qubit": len(delta_frequency_range) * len(delta_offset_range) * [qubit],
+                "offset[V]": delta_offset_range
+                + platform.qubits[f"c{qubit}"].sweetspot,
+                "coupler": len(delta_offset_range) * [f"c{qubit}"],
+                "qubit": len(delta_offset_range) * [qubit],
                 "probability": prob.flatten(),
             }
         )
@@ -176,51 +149,41 @@ def _aquisition(
     return sweep_data
 
 
-def _plot(data: QubitFrequencyFluxData, fit: QubitFrequencyFluxResults, qubit):
+def _plot(data: QubitFluxData, fit: QubitFluxResults, qubit):
     figs = []
 
     fig = go.Figure()
 
     # Plot data
     fig.add_trace(
-        go.Heatmap(
+        go.Scatter(
             x=data.df[
-                (data.df["qubit"] == qubit) & (data.df["coupler"] == f"c{qubit}")
-            ]["frequency"]
-            .pint.to("Hz")
-            .pint.magnitude,
-            y=data.df[
                 (data.df["qubit"] == qubit) & (data.df["coupler"] == f"c{qubit}")
             ]["offset"]
             .pint.to("V")
             .pint.magnitude,
-            z=data.df[
+            y=data.df[
                 (data.df["qubit"] == qubit) & (data.df["coupler"] == f"c{qubit}")
             ]["probability"],
             name=f"Qubit {qubit}",
         )
     )
     fig.update_layout(
-        title=f"Qubit {qubit} flux map",
-        xaxis_title="Frequency [Hz]",
-        yaxis_title="Offset [V]",
+        title=f"Resonator {qubit} flux",
+        xaxis_title="Offset (V)",
+        yaxis_title="Probability",
     )
 
     fig_2 = make_subplots(rows=1, cols=2, subplot_titles=("MSR", "Phase"))
     # Plot MSR and phase
     fig_2.add_trace(
-        go.Heatmap(
+        go.Scatter(
             x=data.df[
-                (data.df["qubit"] == qubit) & (data.df["coupler"] == f"c{qubit}")
-            ]["frequency"]
-            .pint.to("Hz")
-            .pint.magnitude,
-            y=data.df[
                 (data.df["qubit"] == qubit) & (data.df["coupler"] == f"c{qubit}")
             ]["offset"]
             .pint.to("V")
             .pint.magnitude,
-            z=data.df[
+            y=data.df[
                 (data.df["qubit"] == qubit) & (data.df["coupler"] == f"c{qubit}")
             ]["MSR"]
             .pint.to("V")
@@ -231,18 +194,13 @@ def _plot(data: QubitFrequencyFluxData, fit: QubitFrequencyFluxResults, qubit):
         col=1,
     )
     fig_2.add_trace(
-        go.Heatmap(
+        go.Scatter(
             x=data.df[
-                (data.df["qubit"] == qubit) & (data.df["coupler"] == f"c{qubit}")
-            ]["frequency"]
-            .pint.to("Hz")
-            .pint.magnitude,
-            y=data.df[
                 (data.df["qubit"] == qubit) & (data.df["coupler"] == f"c{qubit}")
             ]["offset"]
             .pint.to("V")
             .pint.magnitude,
-            z=data.df[
+            y=data.df[
                 (data.df["qubit"] == qubit) & (data.df["coupler"] == f"c{qubit}")
             ]["phase"]
             .pint.to("rad")
@@ -252,10 +210,11 @@ def _plot(data: QubitFrequencyFluxData, fit: QubitFrequencyFluxResults, qubit):
         row=1,
         col=2,
     )
+
     fig_2.update_layout(
-        title=f"Qubit {qubit} flux map",
-        xaxis_title="Frequency [Hz]",
-        yaxis_title="Offset [V]",
+        title=f"Resonator {qubit} flux map",
+        xaxis_title="Offset [V]",
+        yaxis_title="phase [rad]",
     )
 
     figs.append(fig)
@@ -263,9 +222,9 @@ def _plot(data: QubitFrequencyFluxData, fit: QubitFrequencyFluxResults, qubit):
     return figs, "No fitting data."
 
 
-def _fit(data: QubitFrequencyFluxData):
-    return QubitFrequencyFluxResults()
+def _fit(data: QubitFluxData):
+    return QubitFluxResults()
 
 
-qubit_frequency_flux = Routine(_aquisition, _fit, _plot)
+qubit_flux = Routine(_aquisition, _fit, _plot)
 """Coupler frequency flux routine."""

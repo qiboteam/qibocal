@@ -18,8 +18,8 @@ from qibocal.data import DataUnits
 
 
 @dataclass
-class QubitFrequencyFluxParameters(Parameters):
-    """QubitFrequencyFlux runcard inputs."""
+class ResonatorFrequencyFluxParameters(Parameters):
+    """ResonatorFrequencyFlux runcard inputs."""
 
     frequency_width: float
     """Frequency width."""
@@ -33,19 +33,15 @@ class QubitFrequencyFluxParameters(Parameters):
     """Number of shots per point."""
     relaxation_time: Optional[float] = 0
     """Relaxation time."""
-    drive_duration: Optional[float] = 2000
-    """Drive duration."""
-    drive_amplitude: Optional[float] = 0.1
-    """Drive amplitude."""
 
 
 @dataclass
-class QubitFrequencyFluxResults(Results):
-    """QubitFrequencyFlux outputs when fitting will be done."""
+class ResonatorFrequencyFluxResults(Results):
+    """ResonatorFrequencyFlux outputs when fitting will be done."""
 
 
-class QubitFrequencyFluxData(DataUnits):
-    """QubitFrequencyFlux acquisition outputs."""
+class ResonatorFrequencyFluxData(DataUnits):
+    """ResonatorFrequencyFlux acquisition outputs."""
 
     def __init__(self):
         super().__init__(
@@ -60,10 +56,10 @@ class QubitFrequencyFluxData(DataUnits):
 
 
 def _aquisition(
-    params: QubitFrequencyFluxParameters,
+    params: ResonatorFrequencyFluxParameters,
     platform: AbstractPlatform,
     qubits: Qubits,
-) -> QubitFrequencyFluxData:
+) -> ResonatorFrequencyFluxData:
     r"""
     Perform a spectrocopy experiment on the coupler.
 
@@ -87,19 +83,10 @@ def _aquisition(
     # create a sequence
     sequence = PulseSequence()
     ro_pulses = {}
-    qd_pulses = {}
 
     for qubit in qubits:
-        qd_pulses[qubit] = platform.create_qubit_drive_pulse(
-            qubit, start=0, duration=params.drive_duration
-        )
-        qd_pulses[qubit].amplitude = params.drive_amplitude
+        ro_pulses[qubit] = platform.create_MZ_pulse(qubit, start=0)
 
-        ro_pulses[qubit] = platform.create_MZ_pulse(
-            qubit, start=qd_pulses[qubit].finish
-        )
-
-        sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:
@@ -113,7 +100,7 @@ def _aquisition(
     sweeper_frequency = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
-        pulses=[qd_pulses[qubit] for qubit in qubits],
+        pulses=[ro_pulses[qubit] for qubit in qubits],
     )
 
     sweeper_offset = Sweeper(
@@ -123,7 +110,7 @@ def _aquisition(
     )
 
     # create a DataUnits object to store the results,
-    sweep_data = QubitFrequencyFluxData()
+    sweep_data = ResonatorFrequencyFluxData()
 
     # repeat the experiment as many times as defined by nshots
     results = platform.sweep(
@@ -162,11 +149,10 @@ def _aquisition(
 
         r.update(
             {
-                "frequency[Hz]": freq.flatten()
-                + platform.qubits[qubit].drive_frequency,
+                "frequency[Hz]": freq.flatten() + ro_pulses[qubit].frequency,
                 "offset[V]": offset.flatten() + platform.qubits[f"c{qubit}"].sweetspot,
-                "coupler": len(delta_frequency_range)
-                * len(delta_offset_range)
+                "coupler": len(delta_offset_range)
+                * len(delta_frequency_range)
                 * [f"c{qubit}"],
                 "qubit": len(delta_frequency_range) * len(delta_offset_range) * [qubit],
                 "probability": prob.flatten(),
@@ -176,7 +162,7 @@ def _aquisition(
     return sweep_data
 
 
-def _plot(data: QubitFrequencyFluxData, fit: QubitFrequencyFluxResults, qubit):
+def _plot(data: ResonatorFrequencyFluxData, fit: ResonatorFrequencyFluxResults, qubit):
     figs = []
 
     fig = go.Figure()
@@ -201,7 +187,7 @@ def _plot(data: QubitFrequencyFluxData, fit: QubitFrequencyFluxResults, qubit):
         )
     )
     fig.update_layout(
-        title=f"Qubit {qubit} flux map",
+        title=f"Resonator {qubit} flux map",
         xaxis_title="Frequency [Hz]",
         yaxis_title="Offset [V]",
     )
@@ -253,7 +239,7 @@ def _plot(data: QubitFrequencyFluxData, fit: QubitFrequencyFluxResults, qubit):
         col=2,
     )
     fig_2.update_layout(
-        title=f"Qubit {qubit} flux map",
+        title=f"Resonator {qubit} flux map",
         xaxis_title="Frequency [Hz]",
         yaxis_title="Offset [V]",
     )
@@ -263,9 +249,9 @@ def _plot(data: QubitFrequencyFluxData, fit: QubitFrequencyFluxResults, qubit):
     return figs, "No fitting data."
 
 
-def _fit(data: QubitFrequencyFluxData):
-    return QubitFrequencyFluxResults()
+def _fit(data: ResonatorFrequencyFluxData):
+    return ResonatorFrequencyFluxResults()
 
 
-qubit_frequency_flux = Routine(_aquisition, _fit, _plot)
+resonator_frequency_flux = Routine(_aquisition, _fit, _plot)
 """Coupler frequency flux routine."""

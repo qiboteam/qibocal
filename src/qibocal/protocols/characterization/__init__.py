@@ -9,9 +9,13 @@ from .coherence.t1 import t1
 from .coherence.t2 import t2
 from .couplers.coupler_frequency import coupler_frequency
 from .couplers.coupler_frequency_flux import coupler_frequency_flux
+from .couplers.coupler_swap_flux import coupler_swap_flux
 from .couplers.coupler_swap_frequency import coupler_swap_frequency
 from .couplers.coupler_swap_frequency_flux import coupler_swap_frequency_flux
+from .couplers.qubit_flux import qubit_flux as coupler_qubit_flux
 from .couplers.qubit_frequency_flux import qubit_frequency_flux
+from .couplers.resonator_flux import resonator_flux as coupler_resonator_flux
+from .couplers.resonator_frequency_flux import resonator_frequency_flux
 from .dispersive_shift import dispersive_shift
 from .flipping import flipping
 from .flux_depedence.qubit_flux_dependence import qubit_flux
@@ -30,7 +34,7 @@ class Operation(Enum):
     resonator_spectroscopy = resonator_spectroscopy
     resonator_punchout = resonator_punchout
     resonator_punchout_attenuation = resonator_punchout_attenuation
-    resonator_flux = resonator_flux
+    resonator_sp_flux = resonator_flux
     qubit_spectroscopy = qubit_spectroscopy
     qubit_flux = qubit_flux
     rabi_amplitude = rabi_amplitude
@@ -50,4 +54,8 @@ class Operation(Enum):
     coupler_frequency = coupler_frequency
     coupler_frequency_flux = coupler_frequency_flux
     coupler_swap_frequency_flux = coupler_swap_frequency_flux
+    coupler_swap_flux = coupler_swap_flux
     qubit_frequency_flux = qubit_frequency_flux
+    resonator_frequency_flux = resonator_frequency_flux
+    resonator_flux = coupler_resonator_flux
+    coupler_qubit_flux = coupler_qubit_flux

@@ -121,8 +121,8 @@ def _acquisition(
                 "wait[ns]": ro_wait_range,
                 "qubit": len(ro_wait_range) * [qubit],
                 "probability": np.abs(
-                    r.voltage_i
-                    + 1j * r.voltage_q
+                    results[ro_pulses[qubit].serial].voltage_i
+                    + 1j * results[ro_pulses[qubit].serial].voltage_q
                     - complex(platform.qubits[qubit].mean_gnd_states)
                 )
                 / np.abs(

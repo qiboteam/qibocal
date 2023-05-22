@@ -122,7 +122,7 @@ def _acquisition(
         for ro_pulse in ro_pulses.values():
             # average msr, phase, i and q over the number of shots defined in the runcard
 
-            r = results[ro_pulse.serial].average.serialize
+            r = results[ro_pulse.serial].serialize
             r.update(
                 {
                     "flips[dimensionless]": flips,
@@ -131,7 +131,7 @@ def _acquisition(
                 }
             )
 
-            data.add(r)
+            data.add_data_from_dict(r)
 
     return data
 

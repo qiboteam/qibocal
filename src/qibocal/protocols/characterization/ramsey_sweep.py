@@ -156,6 +156,15 @@ def _acquisition(
                 "wait[ns]": waits,
                 "qubit_freqs[Hz]": len(waits) * [qubits[qubit].drive_frequency],
                 "qubit": len(waits) * [qubit],
+                "probability": np.abs(
+                    results[ro_pulses[qubit].serial].voltage_i
+                    + 1j * results[ro_pulses[qubit].serial].voltage_q
+                    - complex(platform.qubits[qubit].mean_gnd_states)
+                )
+                / np.abs(
+                    complex(platform.qubits[qubit].mean_exc_states)
+                    - complex(platform.qubits[qubit].mean_gnd_states)
+                ),
             }
         )
         data.add_data_from_dict(r)
@@ -315,6 +324,31 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
     )
 
     figures.append(fig)
+
+    # Plot probability
+    fig_prob = go.Figure()
+
+    fig_prob.add_trace(
+        go.Scatter(
+            x=qubit_data["wait"].pint.magnitude,
+            y=qubit_data["probability"],
+            marker_color=get_color(0),
+            opacity=1,
+            name="Probability",
+            showlegend=True,
+            legendgroup="Probability",
+        )
+    )
+
+    # layout
+    fig_prob.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Time (ns)",
+        yaxis_title="Probability",
+    )
+
+    figures.append(fig_prob)
 
     return figures, fitting_report
 
