@@ -107,6 +107,6 @@ def plot_hists_result(
             y=bins_array.flatten(),
             color=count_array.flatten(),
             # symbol = 'square'
-        )
+        ).data[0]
     )
     return fig
