@@ -26,23 +26,23 @@ def extract_from_data(
         Either one or two np.ndarrays. If no grouping wanted, just the data. If grouping
         wanted, the values after which where grouped and the grouped data.
     """
-
-    dataframe = DataFrame(data)
+    if isinstance(data, list):
+        data = DataFrame(data)
     # Check what parameters where given.
     if not groupby_key and not agg_type:
         # No grouping and no aggreagtion is wanted. Just return the wanted output key.
-        return np.array(dataframe[output_key].tolist())
+        return np.array(data[output_key].tolist())
     elif not groupby_key and agg_type:
         # No grouping wanted, just an aggregational task on all the data.
-        return dataframe[output_key].apply(agg_type)
+        return data[output_key].apply(agg_type)
     elif groupby_key and not agg_type:
-        df = dataframe.get([output_key, groupby_key])
+        df = data.get([output_key, groupby_key])
         # Sort by the output key for making reshaping consistent.
         df.sort_values(by=output_key)
         # Grouping is wanted but no aggregation, use a linear function.
         grouped_df = df.groupby(groupby_key, group_keys=True).apply(lambda x: x)
         return grouped_df[groupby_key].to_numpy(), grouped_df[output_key].to_numpy()
     else:
-        df = dataframe.get([output_key, groupby_key])
+        df = data.get([output_key, groupby_key])
         grouped_df = df.groupby(groupby_key, group_keys=True).apply(agg_type)
         return grouped_df.index.to_numpy(), grouped_df[output_key].to_numpy()

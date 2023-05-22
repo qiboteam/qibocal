@@ -36,16 +36,37 @@ class DecayResult(Results):
         self.B: numeric = B if B is not None else np.mean(y)
         self.Berr: Union[numeric, NoneType] = Berr
         self.hists: Union[Tuple[List[numeric], List[numeric]], NoneType] = hists
+        self.fig = None
 
-    def _fit(self):
-        params, errs = fit_exp1B_func(self.m, self.y, p0=(self.A, self.p, self.B))
+    def reset_fittingparams(
+        self,
+        A=None,
+        p=None,
+        B=None,
+        Aerr=None,
+        perr=None,
+        Berr=None,
+    ):
+        self.A: numeric = A if A is not None else np.max(self.y) - np.mean(self.y)
+        self.Aerr: Union[numeric, NoneType] = Aerr
+        self.p: numeric = p if p is not None else 0.9
+        self.perr: Union[numeric, NoneType] = perr
+        self.B: numeric = B if B is not None else np.mean(self.y)
+        self.Berr: Union[numeric, NoneType] = Berr
+
+    def fit(self, **kwargs):
+        kwargs.setdefault("bounds", ((0, 0, 0), (1, 1, 1)))
+        kwargs.setdefault("p0", (self.A, self.p, self.B))
+        params, errs = fit_exp1B_func(
+            self.m, self.y, **kwargs
+        )  # , bounds = (([0,0,0]),([10,1,10])))
         self.A, self.p, self.B = params
         self.Aerr, self.perr, self.Berr = errs
 
-    def _plot(self):
-        self.fig = plot_decay_result(self)
+    def plot(self):
         if self.hists is not None:
-            self.fig = plot_hists_result(self, self.fig)
+            self.fig = plot_hists_result(self)
+        self.fig = plot_decay_result(self, self.fig)
         return self.fig
 
     def __str__(self):
@@ -55,10 +76,6 @@ class DecayResult(Results):
             )
         else:
             return "DecayResult: Ap^m+B"
-
-    # def __repr__(self):
-    #     return u"({:.3f}\u00B1{:.3f})({:.3f}\u00B1{:.3f})^m + ({:.3f}\u00B1{:.3f})".format(
-    #             self.A, self.Aerr, self.p, self.perr, self.B, self.Berr)
 
     def get_tables(self):
         pass
@@ -86,27 +103,25 @@ def plot_decay_result(
     fig.add_trace(
         go.Scatter(x=m_fit, y=y_fit, name=str(result), line=go.scatter.Line(dash="dot"))
     )
+    # print(fig)
     return fig
 
 
-def plot_hists_result(
-    result: DecayResult, fig: Union[go.Figure, None] = None
-) -> go.Figure:
-    if fig is None:
-        fig = go.Figure()
-    count, bins = result.hists
-    bins_array = np.array(bins)
-    count_array = np.array(count)
-    bins_array = (
-        bins_array[::, :-1]
-        + (np.array(bins_array[::, 1] - bins_array[::, 0]).reshape(-1, 1)) / 2
+def plot_hists_result(result: DecayResult) -> go.Figure:
+    count_array, bins_array = np.array(result.hists[0]), np.array(result.hists[1])
+    if bins_array.shape[1] - count_array.shape[1]:
+        bins_array = (
+            bins_array[::, :-1]
+            + (np.array(bins_array[::, 1] - bins_array[::, 0]).reshape(-1, 1)) / 2
+        )
+    fig_hist = px.scatter(
+        x=np.repeat(result.m, bins_array.shape[-1]),
+        y=bins_array.flatten(),
+        color=count_array.flatten() if not np.all(count_array == 1) else None,
+        color_continuous_scale=px.colors.sequential.Tealgrn,
     )
-    fig.add_trace(
-        px.scatter(
-            x=np.repeat(result.m, bins_array.shape[-1]),
-            y=bins_array.flatten(),
-            color=count_array.flatten(),
-            # symbol = 'square'
-        ).data[0]
+    fig_hist.update_traces(marker=dict(symbol="square"))
+    fig_hist.update_layout(
+        coloraxis_colorbar_x=-0.15, coloraxis_colorbar_title_text="count"
     )
-    return fig
+    return fig_hist

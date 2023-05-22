@@ -1,85 +1,19 @@
+# from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import List, NoneType, Tuple, Union
+from typing import Iterable, Union
 
 import numpy as np
-import plotly.graph_objects as go
-from pandas import DataFrame
+import pandas as pd
 from qibo.noise import NoiseModel
 from qibolab.platforms.abstract import AbstractPlatform
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.calibrations.niGSC.standardrb import ModuleFactory as StandardRBScan
+from qibocal.protocols.characterization.RB.result import DecayResult
+from qibocal.protocols.characterization.RB.utils import extract_from_data
 
-# from types import NoneType
-from qibocal.calibrations.niGSC.basics.fitting import exp1B_func, fit_exp1B_func
-from qibocal.calibrations.niGSC.basics.plot import plot_qq
-from qibocal.calibrations.niGSC.standardrb import (
-    ModuleExperiment,
-    ModuleFactory,
-    build_report,
-    get_aggregational_data,
-    post_processing_sequential,
-)
-
-real_numeric = Union[int, float, np.number]
-numeric = Union[int, float, complex, np.number]
-
-
-class DecayResult(Results):
-    """
-    y[i] = (A +- Aerr) (p +- perr)^m[i] + (B +- Berr)
-    # for later: y= sum_i A_i p_i^m (needs m integer)
-    """
-
-    def __init__(self, m, y, A=None, p=None, B=None, Aerr=None, perr=None, Berr=None):
-        self.m: List[numeric] = m
-        self.y: List[numeric] = y
-        #    model: SingleDecayModel
-        self.A: numeric = A if A is not None else np.max(y) - np.mean(y)
-        self.Aerr: Union[numeric, NoneType] = Aerr
-        self.p: numeric = p if p is not None else 0.9
-        self.perr: Union[numeric, NoneType] = perr
-        self.B: numeric = B if B is not None else np.mean(y)
-        self.Berr: Union[numeric, NoneType] = Berr
-        hist: Tuple[List[numeric], List[numeric], List[numeric]] = field(
-            default_factory=lambda: (list(), list(), list())
-        )
-        fig: go.Figure = field(default_factory=go.Figure)
-
-    def __post_init__(self):
-        if len(self.m) == 0:
-            self.m = list(range(len(self.y)))
-        if len(self.y) != len(self.m):
-            raise ValueError(
-                "Lenght of y and m must agree. len(m)={} != len(y)={}".format(
-                    len(self.m), len(self.y)
-                )
-            )
-
-    def __str__(self):
-        return "DecayResult: y = A p^m + B"
-
-    def _fit(self):
-        params, errs = fit_exp1B_func(self.m, self.y, p0=(self.A, self.p, self.B))
-        self.A, self.p, self.B = params
-        self.Aerr, self.perr, self.Berr = errs
-
-    # can be defined by quicker by dataclass
-    def _plot(self):
-        self.fig = plot_decay_result(self)
-        return self.fig
-
-    def __str__(self):
-        return (
-            "({:.3f}\u00B1{:.3f})({:.3f}\u00B1{:.3f})^m + ({:.3f}\u00B1{:.3f})".format(
-                self.A, self.Aerr, self.p, self.perr, self.B, self.Berr
-            )
-        )
-
-    def get_tables(self):
-        return ["{} | {} ".format(self.name, str(self))]
-
-    def get_figures(self):
-        return [self.fig]
+NoneType = type(None)
 
 
 @dataclass
@@ -89,62 +23,125 @@ class StandardRBParameters(Parameters):
     nqubits: int
     qubits: list
     depths: list
-    runs: int
+    niter: int
     nshots: int
-    noise_model: NoiseModel = field(default_factory=NoiseModel)
+    noise_model: str = ""
     noise_params: list = field(default_factory=list)
 
-
-@dataclass
-class StandardRBResults(Results):
-    """Standard RB outputs."""
-
-    df: DataFrame
-
-    def save(self, path):
-        self.df.to_pickle(path)
+    def __post_init__(self):
+        # TODO
+        if self.noise_model is not None:
+            pass
 
 
-class StandardRBData:
-    """Standard RB data acquisition."""
+class StandardRBData(pd.DataFrame):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.save_func = self.to_csv
+        self.to_csv = self.to_csv_helper
 
-    def __init__(self, experiment: ModuleExperiment):
-        self.experiment = experiment
-
-    def save(self, path):
-        self.experiment.save(path)
-
-    def to_csv(self, path):
-        self.save(path)
-
-    def load(self, path):
-        self.experiment.load(path)
+    def to_csv_helper(self, path):
+        self.save_func(f"{path}/{self.__class__.__name__}.csv")
 
 
-def _acquisition(
+class StandardRBResult(DecayResult):
+    # def __init__(self, m, y, A=None, p=None, B=None, Aerr=None, perr=None, Berr=None, hists=None):
+    # super().__init__(m, y, A, p, B, Aerr, perr, Berr, hists)
+    def calculate_fidelities(self):
+        # Divide infidelity by magic number
+        magic_number = 1.875
+        infidelity = (1 - self.p) / magic_number
+        self.fidelity_dict = {
+            "fidelity_primitive": 1 - ((1 - self.p) / 2),
+            "fidelity": 1 - infidelity,
+            "average_error_gate": infidelity * 100,
+        }
+
+
+def setup_scan(params: StandardRBParameters) -> Iterable:
+    return StandardRBScan(params.nqubits, params.depths * params.niter, params.qubits)
+
+
+def execute(
+    scan: Iterable,
+    nshots: Union[int, NoneType] = None,
+    noise_model: Union[NoiseModel, NoneType] = None,
+):
+    # Execute
+    data_list = []
+    for c in scan:
+        depth = (c.depth - 2) if c.depth > 1 else 0
+        if noise_model is not None:
+            c = noise_model.apply(c)
+        samples = c.execute(nshots=nshots).samples()
+        data_list.append({"depth": depth, "samples": samples})
+    return data_list
+
+
+def choose_bins(niter):
+    if niter <= 10:
+        return niter
+    else:
+        return int(np.log10(niter) * 10)
+
+
+def get_hists(data_agg: StandardRBData):
+    p0 = extract_from_data(data_agg, "p0", "depth")[1].reshape(
+        -1, data_agg.attrs["niter"]
+    )
+    if data_agg.attrs["niter"] > 10:
+        nbins = choose_bins(data_agg.attrs["niter"])
+        counts_list, bins_list = zip(*[np.histogram(x, bins=nbins) for x in p0])
+    else:
+        counts_list, bins_list = np.ones(p0.shape), p0
+    return counts_list, bins_list
+
+
+def aggregate(data: StandardRBData):
+    data_agg = data.assign(p0=lambda x: 1 - np.mean(x.samples.to_list(), axis=1))
+    # Histogram
+    hists = get_hists(data_agg)
+    # Build the result object
+    return StandardRBResult(
+        *extract_from_data(data_agg, "p0", "depth", "mean"), hists=hists
+    )
+
+
+def aquire(
     params: StandardRBParameters,
     platform: AbstractPlatform,
     qubits: Qubits,
 ) -> StandardRBData:
-    factory = ModuleFactory(
-        params.nqubits, params.depths * params.runs, qubits=params.qubits
+    scan = setup_scan(params)
+    if params.noise_model:
+        from qibocal.calibrations.niGSC.basics import noisemodels
+
+        noise_model = getattr(noisemodels, params.noise_model)(*params.noise_params)
+    else:
+        noise_model = None
+    # Here the platform can be connected
+    data = execute(scan, params.nshots, noise_model)
+    standardrb_data = StandardRBData(data)
+    standardrb_data.attrs = params.__dict__
+    return standardrb_data
+
+
+def extract(data: StandardRBData):
+    result = aggregate(data)
+    result.fit()
+    result.calculate_fidelities()
+    return result
+
+
+def plot(data: StandardRBData, result: StandardRBResult, qubit):
+    table_str = "".join(
+        [
+            f" | {key}: {value}<br>"
+            for key, value in {**data.attrs, **result.fidelity_dict}.items()
+        ]
     )
-    experiment = ModuleExperiment(
-        factory, nshots=params.nshots, noise_model=params.noise_model
-    )
-    experiment.perform(experiment.execute)
-    post_processing_sequential(experiment)
-    return StandardRBData(experiment)
+    fig = result.plot()
+    return [fig], table_str
 
 
-def _fit(data: StandardRBData) -> StandardRBResults:
-    df = get_aggregational_data(data.experiment)
-    return StandardRBResults(df)
-
-
-def _plot(data: StandardRBData, fit: StandardRBResults, qubit):
-    """Plotting function for StandardRB."""
-    return build_report(data.experiment, fit.df)
-
-
-standardrb = Routine(_acquisition, _fit, _plot)
+standard_rb = Routine(aquire, extract, plot)

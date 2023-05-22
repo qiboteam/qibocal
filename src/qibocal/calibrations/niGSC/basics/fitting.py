@@ -116,7 +116,9 @@ def fit_exp1B_func(
         popt, perr = (ydata[0], 1.0, 0), (0, 0, 0)
     else:
         # Get a guess for the exponential function.
-        guess = kwargs.get("p0", (np.max(ydata) - np.mean(ydata), 0.9, np.mean(ydata)))
+        kwargs["p0"] = kwargs.get(
+            "p0", (np.max(ydata) - np.mean(ydata), 0.9, np.mean(ydata))
+        )
         # If the search for fitting parameters does not work just return
         # fixed parameters where one can see that the fit did not work
         try:
@@ -124,11 +126,10 @@ def fit_exp1B_func(
                 exp1B_func,
                 xdata,
                 ydata,
-                p0=guess,
-                method="lm",
+                **kwargs,
             )
             perr = tuple(np.sqrt(np.diag(pcov)))
-        except:
+        except RuntimeError:
             popt, perr = (0, 0, 0), (0, 0, 0)
     return popt, perr
 
@@ -165,7 +166,7 @@ def fit_exp1_func(
                 method="lm",
             )
             perr = tuple(np.sqrt(np.diag(pcov)))
-        except:
+        except RuntimeError:
             popt, perr = (0, 0), (0, 0)
 
     return popt, perr
