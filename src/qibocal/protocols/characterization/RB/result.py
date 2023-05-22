@@ -1,0 +1,112 @@
+from typing import List, Tuple, Union
+
+import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
+
+from qibocal.auto.operation import Results
+from qibocal.calibrations.niGSC.basics.fitting import exp1B_func, fit_exp1B_func
+
+real_numeric = Union[int, float, np.number]
+numeric = Union[int, float, complex, np.number]
+NoneType = type(None)
+
+
+class DecayResult(Results):
+    """
+    y[i] = (A +- Aerr) (p +- perr)^m[i] + (B +- Berr)
+    # for later: y= sum_i A_i p_i^m (needs m integer)
+    """
+
+    def __init__(
+        self, m, y, A=None, p=None, B=None, Aerr=None, perr=None, Berr=None, hists=None
+    ):
+        if len(y) != len(m):
+            raise ValueError(
+                "Lenght of y and m must agree. len(m)={} != len(y)={}".format(
+                    len(self.m), len(self.y)
+                )
+            )
+        self.m: List[numeric] = m
+        self.y: List[numeric] = y
+        self.A: numeric = A if A is not None else np.max(y) - np.mean(y)
+        self.Aerr: Union[numeric, NoneType] = Aerr
+        self.p: numeric = p if p is not None else 0.9
+        self.perr: Union[numeric, NoneType] = perr
+        self.B: numeric = B if B is not None else np.mean(y)
+        self.Berr: Union[numeric, NoneType] = Berr
+        self.hists: Union[Tuple[List[numeric], List[numeric]], NoneType] = hists
+
+    def _fit(self):
+        params, errs = fit_exp1B_func(self.m, self.y, p0=(self.A, self.p, self.B))
+        self.A, self.p, self.B = params
+        self.Aerr, self.perr, self.Berr = errs
+
+    def _plot(self):
+        self.fig = plot_decay_result(self)
+        if self.hists is not None:
+            self.fig = plot_hists_result(self, self.fig)
+        return self.fig
+
+    def __str__(self):
+        if self.perr is not None:
+            return "({:.3f}\u00B1{:.3f})({:.3f}\u00B1{:.3f})^m + ({:.3f}\u00B1{:.3f})".format(
+                self.A, self.Aerr, self.p, self.perr, self.B, self.Berr
+            )
+        else:
+            return "DecayResult: Ap^m+B"
+
+    # def __repr__(self):
+    #     return u"({:.3f}\u00B1{:.3f})({:.3f}\u00B1{:.3f})^m + ({:.3f}\u00B1{:.3f})".format(
+    #             self.A, self.Aerr, self.p, self.perr, self.B, self.Berr)
+
+    def get_tables(self):
+        pass
+
+    def get_figures(self):
+        return [self.fig]
+
+
+def plot_decay_result(
+    result: DecayResult, fig: Union[go.Figure, None] = None
+) -> go.Figure:
+    if fig is None:
+        fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=result.m,
+            y=result.y,
+            line=dict(color="#aa6464"),
+            mode="markers",
+            name="average",
+        )
+    )
+    m_fit = np.linspace(min(result.m), max(result.m), 100)
+    y_fit = exp1B_func(m_fit, result.A, result.p, result.B)
+    fig.add_trace(
+        go.Scatter(x=m_fit, y=y_fit, name=str(result), line=go.scatter.Line(dash="dot"))
+    )
+    return fig
+
+
+def plot_hists_result(
+    result: DecayResult, fig: Union[go.Figure, None] = None
+) -> go.Figure:
+    if fig is None:
+        fig = go.Figure()
+    count, bins = result.hists
+    bins_array = np.array(bins)
+    count_array = np.array(count)
+    bins_array = (
+        bins_array[::, :-1]
+        + (np.array(bins_array[::, 1] - bins_array[::, 0]).reshape(-1, 1)) / 2
+    )
+    fig.add_trace(
+        px.scatter(
+            x=np.repeat(result.m, bins_array.shape[-1]),
+            y=bins_array.flatten(),
+            color=count_array.flatten(),
+            # symbol = 'square'
+        )
+    )
+    return fig
