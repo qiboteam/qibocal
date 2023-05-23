@@ -775,6 +775,7 @@ def frequency_flux_msr_phase(folder, routine, qubit, format, method):
                     else:
                         func = line
                         popt = [params["popt0"], params["popt1"]]
+                    # pylint: disable=E1120
                     frequencies_fit = func(biases_fit, *popt)
                     fig.add_trace(
                         go.Scatter(

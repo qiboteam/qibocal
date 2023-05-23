@@ -1283,6 +1283,7 @@ def resonator_spectroscopy_flux_fit(
                     )
                 except:
                     log.warning("The fitting was not successful")
+                    # pylint: disable=E1101
                     data_fit.add({key: 0 for key in data_fit.df.columns})
                     return data_fit
     return data_fit
