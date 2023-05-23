@@ -1,4 +1,4 @@
-platform: tii1q_b1 #qw5q_gold_qblox
+platform: dummy #tii1q_b1 #qw5q_gold_qblox
 
 qubits: [0] #[0, 1, 2, 3, 4]
 
@@ -136,6 +136,8 @@ actions:
       delay_between_pulses_end: 1000
       delay_between_pulses_step: 4 # must be a multiple of 4
       n_osc: 10
+      nshots:
+      relaxation_time:
 
   # - id: ramsey detuned
   #   priority: 0

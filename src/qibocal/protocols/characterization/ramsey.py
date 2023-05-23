@@ -153,6 +153,8 @@ def _acquisition(
             raws = results[ro_pulse.serial].serialize
             raws["waits"] = [wait] * len(raws["i[V]"])
 
+            print(qubit, ro_pulse)
+
             data.errors.append(results[ro_pulse.serial].average.std)
 
             pd.DataFrame.from_dict(raws).to_csv(

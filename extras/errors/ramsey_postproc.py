@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt  # TODO: remove plotting lines
 import numpy as np
 import pandas as pd
+import seaborn as sns
 from scipy.optimize import curve_fit
 from scipy.stats import bootstrap
 
@@ -60,27 +61,34 @@ def fit(times, voltages):
         0.5,
         f,
         0,
-        0,
+        0.5,
     ]
-    popt = curve_fit(
-        ramsey_fit,
-        x,
-        y,
-        p0=p0,
-        maxfev=2000000,
-        bounds=(
-            [0, 0, 0, -np.pi, 0],
-            [1, 1, np.inf, np.pi, np.inf],
-        ),
-    )[0]
-    popt = [
-        (y_max - y_min) * popt[0] + y_min,
-        (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
-        popt[2] / (x_max - x_min),
-        popt[3] - x_min * popt[2] / (x_max - x_min),
-        popt[4] / (x_max - x_min),
-    ]
-    return 1.0 / popt[4]  # T2
+    try:
+        popt, pcov = curve_fit(
+            ramsey_fit,
+            x,
+            y,
+            p0=p0,
+            maxfev=20000,
+            bounds=(
+                [0, 0, 0, -np.pi, -1e6],
+                [1, 1, np.inf, np.pi, 1e6],
+            ),
+            # sigma=np.array(errors, dtype=float) / (y_max - y_min),
+            # absolute_sigma=True
+        )
+        err_popt = np.sqrt(np.diag(pcov))
+        popt = [
+            (y_max - y_min) * popt[0] + y_min,
+            (y_max - y_min) * popt[1] * np.exp(x_min / ((x_max - x_min) * popt[4])),
+            popt[2] / (x_max - x_min),
+            popt[3] - x_min * popt[2] / (x_max - x_min),
+            popt[4] * (x_max - x_min),
+        ]
+        t2 = popt[4]
+    except RuntimeError:
+        t2 = None
+    return t2
 
 
 def plots_distribution_gif(file_data="ramsey_raw.csv"):
@@ -100,7 +108,6 @@ def plots_distribution_gif(file_data="ramsey_raw.csv"):
         msr_raw = np.sort(msr_raw)
         median_index = int(len(msr_raw) / 2)
         median = np.median(msr_raw)
-
         # Evaluate the asymetric error bars as the 68% confidence interval
         low_error = [median - np.percentile(msr_raw[:median_index], 100 - 68)]
         high_error = [np.percentile(msr_raw[median_index:], 68) - median]
@@ -146,51 +153,74 @@ def plots_distribution_gif(file_data="ramsey_raw.csv"):
 def t2(data):
     waits = data["waits"].unique()
     voltages = np.array(
-        [np.random.shuffle(data[data["waits"] == wait]["MSR[V]"]) for wait in waits]
+        [data[data["waits"] == wait]["MSR[V]"].to_list() for wait in waits]
     )
+    print(len(voltages))
+    for i in voltages:
+        print(len(i))
+    print(voltages)
+    rng = np.random.default_rng()
+    rng.shuffle(voltages, axis=1)
+    print(voltages)
+    fig, ax = plt.subplots(1, 1)
+    # plt.hist(voltages[0])
     t2s = []
-    for i in range(voltages.shape[0]):
-        y = voltages[i]
-        t2s.append(fit(waits, y))
+    print("GGGGGG", voltages.shape[1])
+    for i in range(1000):  # (voltages.shape[1]):
+        y = voltages[:, i]
 
-    return np.mean(t2s), np.std(t2s)
+        print(fit(waits, y))
+        t2s.append(fit(waits, y))
+        # if i in [1,2,3]:
+        # plt.scatter(waits,y)
+    t2s = t2s[t2s != None]
+    plt.hist(t2s, bins=1000, density=True)
+    plt.savefig("t2.png")
+    return np.median(t2s), np.std(t2s)
 
 
 def plots(file_data="ramsey_raw.csv"):
-    data = pd.read_csv(file_data, skiprows=[1])
+    data = pd.read_csv(file_data, dtype=float)
 
-    waits = data["waits"].unique()
-    fig, ax = plt.subplots(1, 1, figsize=(14, 7))
-    for i, wait in enumerate(waits):
-        print(wait)
-        # Select data for each wait time
-        data_wait = data[data["waits"] == wait]
-        msr_raw = data_wait["MSR[V]"]
+    # waits = data["waits"].unique()
+    # fig, ax = plt.subplots(1, 1, figsize=(14, 7))
+    # medians = []
+    # msr_raws = []
+    # for i, wait in enumerate(waits):
+    #     print(wait)
+    #     # Select data for each wait time
+    #     data_wait = data[data["waits"] == wait]
+    #     msr_raw = data_wait["MSR[V]"]
+    #     msr_raws.append(msr_raw)
+    #     msr_raw = np.sort(msr_raw)
+    #     median_index = int(len(msr_raw) / 2)
+    #     print(msr_raw)
+    #     median = np.median(msr_raw)
+    #     medians.append(median)
+    # Evaluate the asymetric error bars as the 68% confidence interval
+    # low_error = [median - np.percentile(msr_raw[:median_index], 100 - 68)]
+    # high_error = [np.percentile(msr_raw[median_index:], 68) - median]
 
-        msr_raw = np.sort(msr_raw)
-        median_index = int(len(msr_raw) / 2)
-        median = np.median(msr_raw)
+    # ax.errorbar(
+    #     [wait],
+    #     median,
+    #     yerr=np.stack(
+    #         (low_error, high_error), axis=0
+    #     ),  #   yerr = confidence_interval,
+    #     ms=10,
+    #     # color=f"C{i}",
+    #     marker="x",
+    # )
 
-        # Evaluate the asymetric error bars as the 68% confidence interval
-        low_error = [median - np.percentile(msr_raw[:median_index], 100 - 68)]
-        high_error = [np.percentile(msr_raw[median_index:], 68) - median]
-
-        ax.errorbar(
-            [wait],
-            median,
-            yerr=np.stack(
-                (low_error, high_error), axis=0
-            ),  #   yerr = confidence_interval,
-            ms=10,
-            # color=f"C{i}",
-            marker="x",
-        )
-    ax.set_xlabel("wait[ns]", fontsize=FONTSIZE)
-    ax.set_ylabel("MSR[V]", fontsize=FONTSIZE)
-    ax.set_title("Ramsey", fontsize=FONTSIZE)
-
-    plt.tight_layout()
-    fig.savefig(f"ramsey_plots/ramsey_fit.png")
+    # ax.set_xlabel("wait[ns]", fontsize=FONTSIZE)
+    # ax.set_ylabel("MSR[V]", fontsize=FONTSIZE)
+    # ax.set_title("Ramsey", fontsize=FONTSIZE)
+    sns.boxplot(data=data, x="MSR[V]", y="waits")
+    plt.show()
+    # plt.tight_layout()
+    plt.savefig(f"ramsey_plots/ramsey_fit.png")
+    # print("FFFFFF ", fit(waits, medians))
+    # print(t2(data))
 
 
 if __name__ == "__main__":
