@@ -31,6 +31,7 @@ class ResonatorSpectroscopyParameters(Parameters):
     """Readout amplitude (optional). Same for all qubits."""
     attenuation: Optional[int] = None
     """Readout attenuation (optional). Same for all qubits."""
+    qubits: Optional[list] = field(default_factory=list)
 
     def __post_init__(self):
         if self.attenuation is not None and self.amplitude is not None:

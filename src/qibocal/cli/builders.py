@@ -7,7 +7,7 @@ import shutil
 import yaml
 
 from qibocal import calibrations
-from qibocal.cli.utils import generate_output_folder, load_yaml
+from qibocal.cli.utils import allocate_qubits, generate_output_folder, load_yaml
 from qibocal.config import raise_error
 from qibocal.data import Data
 
@@ -149,17 +149,8 @@ class ActionBuilder:
         self.backend, self.platform = self._allocate_backend(
             backend_name, platform_name, platform_runcard
         )
-        if "qubits" in self.runcard:
-            if self.platform is not None:
-                self.qubits = {
-                    q: self.platform.qubits[q]
-                    for q in self.runcard["qubits"]
-                    if q in self.platform.qubits
-                }
-            else:
-                self.qubits = self.runcard.get("qubits")
-        else:
-            self.qubits = []
+
+        self.qubits = allocate_qubits(self.platform, self.runcard.get("qubits", []))
 
         # Setting format. If absent csv is used.
         self.format = self.runcard.get("format", "csv")
