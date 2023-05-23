@@ -41,3 +41,4 @@ class Operation(Enum):
     flipping = flipping
     dispersive_shift = dispersive_shift
     StdRB = StdRB
+    single_shot_classification = single_shot_classification

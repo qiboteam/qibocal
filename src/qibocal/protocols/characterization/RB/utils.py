@@ -168,9 +168,10 @@ class RBSequence:
         # Define PulseSequence
         sequence = PulseSequence()
         virtual_z_phases = defaultdict(int)
-
         next_pulse_start = 0
         for i in range(size):
+            # virtual_z_phases = defaultdict(int)
+            gate_number = 0
             for index in circuit:
                 if index == 0:
                     continue
@@ -221,7 +222,16 @@ class RBSequence:
                         )
                     )
                     virtual_z_phases[qubit] += phi
-                next_pulse_start = sequence.finish
+
+                if gate_number == 0:
+                    if isinstance(gate, gates.Z):
+                        pass
+                    elif isinstance(gate, gates.RZ):
+                        pass
+                    else:
+                        next_pulse_start = sequence.finish
+
+                gate_number += 1
 
             invert_gate = self.inverse(circuit, qubit)
             # U3 pulses
