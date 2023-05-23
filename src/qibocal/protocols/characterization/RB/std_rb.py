@@ -3,7 +3,7 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
-from qibolab.platforms.platform import (
+from qibolab import (
     AcquisitionType,
     AveragingMode,
     ExecutionParameters,
