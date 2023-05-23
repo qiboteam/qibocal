@@ -155,73 +155,76 @@ def t2(data):
     voltages = np.array(
         [data[data["waits"] == wait]["MSR[V]"].to_list() for wait in waits]
     )
-    print(len(voltages))
-    for i in voltages:
-        print(len(i))
-    print(voltages)
-    rng = np.random.default_rng()
+
+    rng = np.random.default_rng(seed=0)
     rng.shuffle(voltages, axis=1)
-    print(voltages)
     fig, ax = plt.subplots(1, 1)
     # plt.hist(voltages[0])
     t2s = []
-    print("GGGGGG", voltages.shape[1])
+    high = 0
+    low = 0
     for i in range(1000):  # (voltages.shape[1]):
         y = voltages[:, i]
-
-        print(fit(waits, y))
         t2s.append(fit(waits, y))
-        # if i in [1,2,3]:
-        # plt.scatter(waits,y)
+        print(t2s[-1], len(t2s))
+        if t2s[-1] is not None:
+            fig, ax = plt.subplots(1, 1)
+            plt.scatter(waits, y)
+            if t2s[-1] > 1e6 and high < 5:
+                plt.savefig(f"ramseys_bad_high{high}.png")
+                high += 1
+            elif t2s[-1] < 1 and low < 5:
+                plt.savefig(f"ramseys_bad_low{low}.png")
+                low += 1
+
+    print("GGGGGG")
     t2s = t2s[t2s != None]
     plt.hist(t2s, bins=1000, density=True)
     plt.savefig("t2.png")
     return np.median(t2s), np.std(t2s)
 
 
-def plots(file_data="ramsey_raw.csv"):
+def main(file_data="ramsey_raw.csv"):
     data = pd.read_csv(file_data, dtype=float)
 
-    # waits = data["waits"].unique()
-    # fig, ax = plt.subplots(1, 1, figsize=(14, 7))
-    # medians = []
-    # msr_raws = []
-    # for i, wait in enumerate(waits):
-    #     print(wait)
-    #     # Select data for each wait time
-    #     data_wait = data[data["waits"] == wait]
-    #     msr_raw = data_wait["MSR[V]"]
-    #     msr_raws.append(msr_raw)
-    #     msr_raw = np.sort(msr_raw)
-    #     median_index = int(len(msr_raw) / 2)
-    #     print(msr_raw)
-    #     median = np.median(msr_raw)
-    #     medians.append(median)
-    # Evaluate the asymetric error bars as the 68% confidence interval
-    # low_error = [median - np.percentile(msr_raw[:median_index], 100 - 68)]
-    # high_error = [np.percentile(msr_raw[median_index:], 68) - median]
+    waits = data["waits"].unique()
+    fig, ax = plt.subplots(1, 1, figsize=(14, 7))
+    medians = []
+    msr_raws = []
+    for i, wait in enumerate(waits):
+        print(wait)
+        # Select data for each wait time
+        data_wait = data[data["waits"] == wait]
+        msr_raw = data_wait["MSR[V]"]
+        msr_raws.append(msr_raw)
+        msr_raw = np.sort(msr_raw)
+        median_index = int(len(msr_raw) / 2)
+        print(msr_raw)
+        median = np.median(msr_raw)
+        medians.append(median)
+        # Evaluate the asymetric error bars as the 68% confidence interval
+        low_error = [median - np.percentile(msr_raw[:median_index], 100 - 68)]
+        high_error = [np.percentile(msr_raw[median_index:], 68) - median]
 
-    # ax.errorbar(
-    #     [wait],
-    #     median,
-    #     yerr=np.stack(
-    #         (low_error, high_error), axis=0
-    #     ),  #   yerr = confidence_interval,
-    #     ms=10,
-    #     # color=f"C{i}",
-    #     marker="x",
-    # )
+        ax.errorbar(
+            [wait],
+            median,
+            yerr=np.stack(
+                (low_error, high_error), axis=0
+            ),  #   yerr = confidence_interval,
+            ms=10,
+            # color=f"C{i}",
+            marker="x",
+        )
 
-    # ax.set_xlabel("wait[ns]", fontsize=FONTSIZE)
-    # ax.set_ylabel("MSR[V]", fontsize=FONTSIZE)
-    # ax.set_title("Ramsey", fontsize=FONTSIZE)
-    sns.boxplot(data=data, x="MSR[V]", y="waits")
-    plt.show()
-    # plt.tight_layout()
-    plt.savefig(f"ramsey_plots/ramsey_fit.png")
-    # print("FFFFFF ", fit(waits, medians))
-    # print(t2(data))
+    ax.set_xlabel("wait[ns]", fontsize=FONTSIZE)
+    ax.set_ylabel("MSR[V]", fontsize=FONTSIZE)
+    ax.set_title("Ramsey", fontsize=FONTSIZE)
+
+    plt.tight_layout()
+    plt.savefig(f"ramsey_data.png")
+    print(t2(data))
 
 
 if __name__ == "__main__":
-    plots()
+    main()
