@@ -1,6 +1,6 @@
 import inspect
-from dataclasses import dataclass, field, fields
-from typing import Callable, Dict, Generic, NewType, Optional, TypeVar, Union
+from dataclasses import dataclass, fields
+from typing import Callable, Dict, Generic, NewType, TypeVar, Union
 
 from qibolab.platforms.abstract import Qubit
 
@@ -21,9 +21,6 @@ class Parameters:
     The actual parameters structure is only used inside the routines themselves.
 
     """
-
-    qubits: Optional[list] = field(default_factory=list)
-    """Local qubits (optional)."""
 
     @classmethod
     def load(cls, parameters):
