@@ -4,7 +4,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -69,7 +69,7 @@ class DispersiveShiftData(DataUnits):
 
 
 def _acquisition(
-    params: DispersiveShiftParameters, platform: AbstractPlatform, qubits: Qubits
+    params: DispersiveShiftParameters, platform: Platform, qubits: Qubits
 ) -> DispersiveShiftData:
     r"""
     Data acquisition for dispersive shift experiment.
@@ -78,7 +78,7 @@ def _acquisition(
 
     Args:
         params (DispersiveShiftParameters): experiment's parameters
-        platform (AbstractPlatform): Qibolab platform object
+        platform (Platform): Qibolab platform object
         qubits (dict): List of target qubits to perform the action
 
     """

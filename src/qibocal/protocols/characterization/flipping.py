@@ -3,7 +3,7 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
 
@@ -55,7 +55,7 @@ class FlippngData(DataUnits):
 
 def _acquisition(
     params: FlippingParameters,
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: Qubits,
 ) -> FlippngData:
     r"""
@@ -66,7 +66,7 @@ def _acquisition(
 
     Args:
         params (:class:`SingleShotClassificationParameters`): input parameters
-        platform (:class:`AbstractPlatform`): Qibolab's platform
+        platform (:class:`Platform`): Qibolab's platform
         qubits (dict): Dict of target :class:`Qubit` objects to be characterized
 
     Returns:

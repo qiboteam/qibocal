@@ -1,6 +1,6 @@
 import numpy as np
 from qibo.config import log
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -12,7 +12,7 @@ from qibocal.fitting.methods import lorentzian_fit
 
 @plot("MSR and Phase vs Resonator Frequency", plots.frequency_msr_phase)
 def resonator_spectroscopy(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: dict,
     freq_width: int,
     freq_step: int,
@@ -27,7 +27,7 @@ def resonator_spectroscopy(
     resonator frequency found.
 
     Args:
-        platform (AbstractPlatform): Qibolab platform object
+        platform (Platform): Qibolab platform object
         qubits (dict): List of target qubits to perform the action
         freq_width (int): Width frequency in HZ to perform the high resolution sweep
         freq_step (int): Step frequency in HZ for the high resolution sweep
@@ -125,7 +125,7 @@ def resonator_spectroscopy(
     "Cross section at half range attenuation", plots.frequency_attenuation_msr_phase_cut
 )
 def resonator_punchout_attenuation(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: dict,
     freq_width,
     freq_step,
@@ -142,7 +142,7 @@ def resonator_punchout_attenuation(
     That shows the two regimes of a given resonator, low and high-power regimes.
 
     Args:
-        platform (AbstractPlatform): Qibolab platform object
+        platform (Platform): Qibolab platform object
         qubits (dict): List of target qubits to perform the action
         freq_width (int): Width frequency in HZ to perform the spectroscopy sweep
         freq_step (int): Step frequency in HZ for the spectroscopy sweep
@@ -243,7 +243,7 @@ def resonator_punchout_attenuation(
     plots.frequency_amplitude_msr_phase,
 )
 def resonator_punchout(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: dict,
     freq_width,
     freq_step,
@@ -260,7 +260,7 @@ def resonator_punchout(
     That shows the two regimes of a given resonator, low and high-power regimes.
 
     Args:
-        platform (AbstractPlatform): Qibolab platform object
+        platform (Platform): Qibolab platform object
         qubits (dict): List of target qubits to perform the action
         freq_width (int): Width frequency in HZ to perform the spectroscopy sweep
         freq_step (int): Step frequency in HZ for the spectroscopy sweep
@@ -365,7 +365,7 @@ def resonator_punchout(
     plots.frequency_flux_msr_phase,
 )
 def resonator_spectroscopy_flux(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: dict,
     freq_width,
     freq_step,
@@ -381,7 +381,7 @@ def resonator_spectroscopy_flux(
     This routine works for quantum devices flux controlled.
 
     Args:
-        platform (AbstractPlatform): Qibolab platform object
+        platform (Platform): Qibolab platform object
         qubits (dict): List of target qubits to perform the action
         freq_width (int): Width frequency in HZ to perform the spectroscopy sweep
         freq_step (int): Step frequency in HZ for the spectroscopy sweep
@@ -484,7 +484,7 @@ def resonator_spectroscopy_flux(
 
 @plot("MSR and Phase vs Resonator Frequency", plots.dispersive_frequency_msr_phase)
 def dispersive_shift(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: dict,
     freq_width,
     freq_step,
@@ -496,7 +496,7 @@ def dispersive_shift(
     the resonator shift produced by the coupling between the resonator and the qubit.
 
     Args:
-        platform (AbstractPlatform): Qibolab platform object
+        platform (Platform): Qibolab platform object
         qubits (dict): List of target qubits to perform the action
         freq_width (int): Width frequency in HZ to perform the spectroscopy sweep
         freq_step (int): Step frequency in HZ for the spectroscopy sweep

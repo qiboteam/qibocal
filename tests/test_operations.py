@@ -2,14 +2,14 @@
 import pathlib
 
 import pytest
-from qibolab.platform import Platform
+from qibolab.platform import create_platform
 
 from qibocal.auto.runcard import Runcard
 from qibocal.auto.task import Task
 
 PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/single_routines.yml"
 RUNCARD = Runcard.load(PATH_TO_RUNCARD)
-platform = Platform("dummy")
+platform = create_platform("dummy")
 
 
 @pytest.mark.parametrize("action", RUNCARD.actions)

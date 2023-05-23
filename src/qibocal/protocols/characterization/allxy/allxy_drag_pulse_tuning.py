@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -46,7 +46,7 @@ class AllXYDragData(Data):
 
 def _acquisition(
     params: AllXYDragParameters,
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: Qubits,
 ) -> AllXYDragData:
     r"""

@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
 
 import numpy as np
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -50,7 +50,7 @@ class QubitFluxData(resonator_flux_dependence.ResonatorFluxData):
 
 def _acquisition(
     params: QubitFluxParameters,
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: Qubits,
 ) -> QubitFluxData:
     """Data acquisition for QubitFlux Experiment."""

@@ -3,7 +3,7 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -48,7 +48,7 @@ class SingleShotClassificationResults(Results):
 
 def _acquisition(
     params: SingleShotClassificationParameters,
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: Qubits,
 ) -> SingleShotClassificationData:
     """
@@ -57,7 +57,7 @@ def _acquisition(
     The subscripts `exc` and `gnd` will represent the excited state |1> and the ground state |0>.
 
     Args:
-        platform (:class:`qibolab.platforms.abstract.AbstractPlatform`): custom abstract platform on which we perform the calibration.
+        platform (:class:`qibolab.platforms.abstract.Platform`): custom abstract platform on which we perform the calibration.
         qubits (dict): Dict of target Qubit objects to perform the action
         nshots (int): number of times the pulse sequence will be repeated.
 

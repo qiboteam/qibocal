@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -72,7 +72,7 @@ class ResonatorPunchoutData(DataUnits):
 
 def _acquisition(
     params: ResonatorPunchoutParameters,
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: Qubits,
 ) -> ResonatorPunchoutData:
     """Data acquisition for Punchout over amplitude."""

@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
 
 import numpy as np
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
 
@@ -47,7 +47,7 @@ class RabiLengthData(amplitude.RabiAmplitudeData):
 
 
 def _acquisition(
-    params: RabiLengthParameters, platform: AbstractPlatform, qubits: Qubits
+    params: RabiLengthParameters, platform: Platform, qubits: Qubits
 ) -> RabiLengthData:
     r"""
     Data acquisition for RabiLength Experiment.

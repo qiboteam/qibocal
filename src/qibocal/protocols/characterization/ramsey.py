@@ -3,7 +3,7 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
 
@@ -76,7 +76,7 @@ class RamseyData(DataUnits):
 
 def _acquisition(
     params: RamseyParameters,
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: Qubits,
 ) -> RamseyData:
     """Data acquisition for Ramsey Experiment (detuned)."""

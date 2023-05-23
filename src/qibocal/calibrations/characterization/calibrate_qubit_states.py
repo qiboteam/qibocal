@@ -1,5 +1,5 @@
 import numpy as np
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 
 from qibocal import plots
@@ -10,7 +10,7 @@ from qibocal.fitting.methods import calibrate_qubit_states_fit
 
 @plot("Qubit States", plots.qubit_states)
 def calibrate_qubit_states(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: dict,
     nshots,
 ):
@@ -20,7 +20,7 @@ def calibrate_qubit_states(
     The subscripts `exc` and `gnd` will represent the excited state |1> and the ground state |0>.
 
     Args:
-        platform (:class:`qibolab.platforms.abstract.AbstractPlatform`): custom abstract platform on which we perform the calibration.
+        platform (:class:`qibolab.platforms.abstract.Platform`): custom abstract platform on which we perform the calibration.
         qubits (dict): Dict of target Qubit objects to perform the action
         nshots (int): number of times the pulse sequence will be repeated.
         software_averages (int): Number of executions of the routine for averaging results
