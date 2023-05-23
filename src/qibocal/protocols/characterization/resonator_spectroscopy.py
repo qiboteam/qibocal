@@ -2,12 +2,8 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platforms.abstract import AbstractPlatform
-from qibolab.platforms.platform import (
-    AcquisitionType,
-    AveragingMode,
-    ExecutionParameters,
-)
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
