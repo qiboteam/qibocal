@@ -145,7 +145,7 @@ class RBSequence:
         sequences = defaultdict(list)
         circuits = defaultdict(list)
         for depth in self.depths:
-            size = 1250 // (2 * depth)
+            size = 1000 // (2 * depth)
             unrolling_runs = math.ceil(self.runs / size)
             print(size, unrolling_runs)
             for run in range(unrolling_runs):

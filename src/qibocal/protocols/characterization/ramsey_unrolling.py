@@ -100,8 +100,6 @@ def _acquisition(
             sequence.add(platform.create_RX90_pulse(qubit.name, start=next_pulse_start))
             next_pulse_start = sequence.finish + wait
 
-            print(next_pulse_start - old_pulse_start)
-
             relative_phase = 0
             if params.n_osc != 0:
                 relative_phase = (
@@ -129,7 +127,6 @@ def _acquisition(
         # DataUnits stores by default MSR, phase, i, q
         # additionally include wait time and t_max
 
-        print(sequence)
         # execute the pulse sequence
         results = platform.execute_pulse_sequence(
             sequence,
@@ -142,8 +139,6 @@ def _acquisition(
         )
 
         ro_pulses = sequence.ro_pulses
-
-        print(ro_pulses)
 
         for ro_pulse, wait in zip(ro_pulses, waits):
             # average msr, phase, i and q over the number of shots defined in the runcard
