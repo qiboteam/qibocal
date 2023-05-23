@@ -1,8 +1,8 @@
 import itertools
 
 import numpy as np
+from qibolab.executionparameters import AcquisitionType, AveragingMode
 from qibolab.platforms.abstract import AbstractPlatform
-from qibolab.platforms.platform import AcquisitionType, AveragingMode
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 

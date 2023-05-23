@@ -129,4 +129,5 @@ class Executor:
             self.history.push(completed)
             self.head = self.next()
             if self.platform is not None:
-                self.platform.update(completed.res.update)
+                pass
+                # self.platform.update(completed.res.update)

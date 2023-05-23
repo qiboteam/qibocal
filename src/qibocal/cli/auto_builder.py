@@ -53,7 +53,8 @@ class AutoCalibrationBuilder(ActionBuilder):
 
     def dump_platform_runcard(self):
         if self.platform is not None:
-            self.platform.dump(self.folder / UPDATED_PLATFORM)
+            pass
+            # self.platform.dump(self.folder / UPDATED_PLATFORM)
 
 
 class AutoCalibrationReportBuilder:

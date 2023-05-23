@@ -3,12 +3,12 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab.platforms.abstract import AbstractPlatform
-from qibolab.platforms.platform import (
+from qibolab.executionparameters import (
     AcquisitionType,
     AveragingMode,
     ExecutionParameters,
 )
+from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import FluxPulse, PulseSequence, Rectangular
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -89,13 +89,13 @@ def _aquisition(
         fx_pulses[pair[0]] = FluxPulse(
             start=qd_pulses[pair[1]].se_finish + 8,
             duration=params.coupler_flux_duration,
-            amplitude=0.1,
+            amplitude=1,
             shape=Rectangular(),
             channel=platform.qubits[f"c{pair[0]}"].flux.name,
         )
 
         ro_pulses[pair[1]] = platform.create_MZ_pulse(
-            pair[1], start=fx_pulses[pair[0]].se_finish + 40
+            pair[1], start=fx_pulses[pair[0]].se_finish + 8
         )
         # ro_pulses[pair[0]] = platform.create_MZ_pulse(pair[0], start=ro_pulses[pair[1]].se_finish) # Multiplex not working yet
 
