@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "qibocal"
-version = "0.0.2"
+version = "0.0.3"
 description = ""
 authors = ["andrea-pasquale <andreapasquale97@gmail.com>"]
 license = "Apache License 2.0"
@@ -16,7 +16,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.8,<3.12"
-qibolab = { git = "https://github.com/qiboteam/qibolab.git" }
+qibolab = "0.0.3"
 qibo = "^0.1.9"
 pandas = "^1.4.3"
 Pint-Pandas = "^0.3"
