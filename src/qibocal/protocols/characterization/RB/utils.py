@@ -156,8 +156,6 @@ class RBSequence:
                 )
                 circuits[f"{depth}_{run}"].append(circuit)
 
-                print(len(sequences[f"{depth}_{run}"]))
-
         return sequences, circuits
 
     def inverse(self, ints, q=0):
@@ -252,6 +250,7 @@ class RBSequence:
 
             MZ_pulse = platform.create_MZ_pulse(qubit, start=measurement_start)
             sequence.add(MZ_pulse)
+            next_pulse_start = sequence.finish
             next_pulse_start += platform.relaxation_time
 
         return sequence
