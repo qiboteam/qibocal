@@ -5,7 +5,6 @@ from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal import plots
-from qibocal.config import raise_error
 from qibocal.data import DataUnits
 from qibocal.decorators import plot
 from qibocal.fitting.methods import lorentzian_fit, resonator_spectroscopy_flux_fit
@@ -96,7 +95,7 @@ def resonator_spectroscopy(
             # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulses[qubit].serial]
             # store the results
-            r = result.to_dict(average=False)
+            r = result.raw
             r.update(
                 {
                     "frequency[Hz]": delta_frequency_range + ro_pulses[qubit].frequency,
@@ -223,7 +222,7 @@ def resonator_punchout_attenuation(
                 len(attenuation_range)
                 * list(delta_frequency_range + ro_pulse.frequency)
             ).flatten()
-            r = result.to_dict(average=False)
+            r = result.raw
             r.update(
                 {
                     "frequency[Hz]": freqs,
@@ -345,7 +344,7 @@ def resonator_punchout(
             freqs = np.array(
                 len(amplitude_range) * list(delta_frequency_range + ro_pulse.frequency)
             ).flatten()
-            r = {k: v.ravel() for k, v in result.to_dict(average=False).items()}
+            r = {k: v.ravel() for k, v in result.raw.items()}
             r.update(
                 {
                     "frequency[Hz]": freqs,
@@ -472,7 +471,7 @@ def resonator_spectroscopy_flux(
                 * list(delta_frequency_range + ro_pulses[qubit].frequency)
             ).flatten()
             # store the results
-            r = {k: v.ravel() for k, v in result.to_dict(average=False).items()}
+            r = {k: v.ravel() for k, v in result.raw.items()}
             r.update(
                 {
                     "frequency[Hz]": freqs,
@@ -529,7 +528,7 @@ def dispersive_shift(
             - **qubit**: The qubit being tested
             - **iteration**: The iteration number of the many determined by software_averages
     """
-
+    # TODO: add sweepers
     # reload instrument settings from runcard
     platform.reload_settings()
 
@@ -609,7 +608,7 @@ def dispersive_shift(
             for data, results in list(zip([data_0, data_1], [results_0, results_1])):
                 for ro_pulse in ro_pulses.values():
                     # average msr, phase, i and q over the number of shots defined in the runcard
-                    r = results[ro_pulse.serial].to_dict(average=True)
+                    r = results[ro_pulse.serial].average.raw
                     # store the results
                     r.update(
                         {

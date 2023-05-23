@@ -114,7 +114,7 @@ def rabi_pulse_length(
 
             for ro_pulse in ro_pulses.values():
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                r = results[ro_pulse.serial].to_dict(average=True)
+                r = results[ro_pulse.serial].average.raw
                 r.update(
                     {
                         "time[ns]": duration,
@@ -242,7 +242,7 @@ def rabi_pulse_gain(
 
             for ro_pulse in ro_pulses.values():
                 # average msr, phase, i and q over the number of shots defined in the runcard
-                r = results[ro_pulse.serial].to_dict(average=True)
+                r = results[ro_pulse.serial].average.raw
                 r.update(
                     {
                         "gain[dimensionless]": gain,
@@ -356,7 +356,7 @@ def rabi_pulse_amplitude(
         for qubit in qubits:
             # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulses[qubit].serial]
-            r = result.to_dict(average=False)
+            r = result.raw
             r.update(
                 {
                     "amplitude[dimensionless]": qd_pulse_amplitude_range,
@@ -474,7 +474,7 @@ def rabi_pulse_length_and_gain(
                 results = platform.execute_pulse_sequence(sequence)
                 for ro_pulse in ro_pulses.values():
                     # average msr, phase, i and q over the number of shots defined in the runcard
-                    r = results[ro_pulse.serial].to_dict(average=True)
+                    r = results[ro_pulse.serial].average.raw
                     r.update(
                         {
                             "duration[ns]": duration,
@@ -587,7 +587,7 @@ def rabi_pulse_length_and_amplitude(
                 )
                 for ro_pulse in ro_pulses.values():
                     # average msr, phase, i and q over the number of shots defined in the runcard
-                    r = results[ro_pulse.serial].to_dict(average=True)
+                    r = results[ro_pulse.serial].average.raw
                     r.update(
                         {
                             "duration[ns]": duration,
