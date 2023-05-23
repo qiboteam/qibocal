@@ -749,12 +749,12 @@ def frequency_flux_msr_phase(folder, routine, qubit, format, method):
                     if params["type"] == 1:
                         popt = [params["curr_sp"], params["xi"], params["d"]]
                         if method == "resonator":
-                            f = freq_r_transmon
+                            func = freq_r_transmon
                             popt.extend(
                                 (params["f_q/f_rh"], params["g"], params["f_rh"])
                             )
                         elif method == "qubit":
-                            f = freq_q_transmon
+                            func = freq_q_transmon
                             popt.append(params["f_qs"])
                     elif params["type"] == 2:
                         popt = [
@@ -765,17 +765,17 @@ def frequency_flux_msr_phase(folder, routine, qubit, format, method):
                             params["Ej"],
                         ]
                         if method == "resonator":
-                            f = freq_r_mathieu
+                            func = freq_r_mathieu
                             popt[:0] = [
                                 params["f_rh"],
                                 params["g"],
                             ]
                         elif method == "qubit":
-                            f = freq_q_mathieu
+                            func = freq_q_mathieu
                     else:
-                        f = line
+                        func = line
                         popt = [params["popt0"], params["popt1"]]
-                    frequencies_fit = f(biases_fit, *popt)
+                    frequencies_fit = func(biases_fit, *popt)
                     fig.add_trace(
                         go.Scatter(
                             x=frequencies_fit,

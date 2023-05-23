@@ -1157,6 +1157,7 @@ def resonator_spectroscopy_flux_fit(
 
             if fluxline == qubit:
                 try:
+                    scaler = 10**9
                     f_rh = params_fit["f_rh"][
                         str(qubit)
                     ]  # Resonator frequency at high power.
@@ -1174,9 +1175,11 @@ def resonator_spectroscopy_flux_fit(
                         popt = curve_fit(
                             freq_r_transmon,
                             biases,
-                            frequencies,
-                            p0=[max_c, xi, 0, f_q_0 / f_rh, g, f_rh],
+                            frequencies / scaler,
+                            p0=[max_c, xi, 0, f_q_0 / f_rh, g / scaler, f_rh / scaler],
                         )[0]
+                        popt[4] *= scaler
+                        popt[5] *= scaler
                         f_qs = popt[3] * popt[5]  # Qubit frequency at sweet spot.
                         f_rs = freq_r_transmon(
                             popt[0], *popt
@@ -1211,10 +1214,22 @@ def resonator_spectroscopy_flux_fit(
                         popt = curve_fit(
                             freq_r_mathieu1,
                             biases,
-                            frequencies,
-                            p0=[f_rh, g, max_c, xi, 0, Ec, Ej],
+                            frequencies / scaler,
+                            p0=[
+                                f_rh / scaler,
+                                g / scaler,
+                                max_c,
+                                xi,
+                                0,
+                                Ec / scaler,
+                                Ej / scaler,
+                            ],
                             method="dogbox",
                         )[0]
+                        popt[0] *= scaler
+                        popt[1] *= scaler
+                        popt[5] *= scaler
+                        popt[6] *= scaler
                         f_qs = freq_q_mathieu(
                             popt[2], *popt[2::]
                         )  # Qubit frequency at sweet spot.
@@ -1347,6 +1362,7 @@ def qubit_spectroscopy_flux_fit(
 
             frequencies, biases = image_to_curve(frequencies, biases, msr)
             if fluxline == qubit:
+                scaler = 10**9
                 try:
                     max_c = biases[np.argmax(frequencies)]
                     min_c = biases[np.argmin(frequencies)]
@@ -1358,9 +1374,10 @@ def qubit_spectroscopy_flux_fit(
                         popt = curve_fit(
                             freq_q_transmon,
                             biases,
-                            frequencies,
-                            p0=[max_c, xi, 0, f_q_0],
+                            frequencies / scaler,
+                            p0=[max_c, xi, 0, f_q_0 / scaler],
                         )[0]
+                        popt[3] *= scaler
                         f_qs = popt[3]  # Qubit frequency at sweet spot.
                         f_q_offset = freq_q_transmon(
                             0, *popt
@@ -1388,10 +1405,12 @@ def qubit_spectroscopy_flux_fit(
                         popt = curve_fit(
                             freq_q_mathieu1,
                             biases,
-                            frequencies,
-                            p0=[max_c, xi, 0, Ec, Ej],
+                            frequencies / scaler,
+                            p0=[max_c, xi, 0, Ec / scaler, Ej / scaler],
                             method="dogbox",
                         )[0]
+                        popt[3] *= scaler
+                        popt[4] *= scaler
                         f_qs = freq_q_mathieu(
                             popt[0], *popt
                         )  # Qubit frequency at sweet spot.
