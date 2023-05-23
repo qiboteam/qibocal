@@ -28,6 +28,8 @@ class QubitSpectroscopyParameters(Parameters):
     """Number of shots."""
     relaxation_time: int = 50
     """Relaxation time (ns)."""
+    qubits: Optional[list] = field(default_factory=list)
+    """Local qubits (optional)."""
 
 
 @dataclass

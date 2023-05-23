@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optinal, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
@@ -24,6 +24,8 @@ class T1Parameters(Parameters):
     """Final delay before readout (ns)."""
     delay_before_readout_step: int
     """Step delay before readout (ns)."""
+    qubits: Optional[list] = field(default_factory=list)
+    """Local qubits (optional)."""
 
 
 @dataclass

@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 from qibolab.platforms.abstract import AbstractPlatform
@@ -28,6 +28,8 @@ class RabiLengthParameters(Parameters):
     """Number of shots."""
     relaxation_time: float
     """Relxation time (ns)."""
+    qubits: Optional[list] = field(default_factory=list)
+    """Local qubits (optional)."""
 
 
 @dataclass

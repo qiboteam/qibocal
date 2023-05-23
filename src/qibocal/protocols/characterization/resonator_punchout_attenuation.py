@@ -33,6 +33,8 @@ class ResonatorPunchoutAttenuationParameters(Parameters):
     """Number of shots."""
     relaxation_time: int
     """Relaxation time (ns)."""
+    qubits: Optional[list] = field(default_factory=list)
+    """Local qubits (optional)."""
 
 
 @dataclass

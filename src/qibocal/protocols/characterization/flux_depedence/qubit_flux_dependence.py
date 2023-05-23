@@ -30,6 +30,8 @@ class QubitFluxParameters(Parameters):
     """Relaxation time (ns)."""
     drive_amplitude: float
     """Drive pulse amplitude. Same for all qubits."""
+    qubits: Optional[list] = field(default_factory=list)
+    """Local qubits (optional)."""
 
 
 @dataclass
