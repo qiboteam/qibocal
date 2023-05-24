@@ -71,13 +71,16 @@ def _aquisition(
                 "Please specify wich coupler needs to be used with qubit 2."
             )
         qubits.pop(2)
+        couplers = len(qubits) * [2]
+    else:
+        couplers = qubits
 
     # create a sequence
     sequence = PulseSequence()
     ro_pulses = {}
 
-    for qubit in qubits:
-        ro_pulses[qubit] = platform.create_MZ_pulse(qubit, start=0)
+    for qubit, coupler in zip(qubits, couplers):
+        ro_pulses[qubit] = platform.create_MZ_pulse(coupler, start=0)
 
         sequence.add(ro_pulses[qubit])
 
@@ -89,7 +92,7 @@ def _aquisition(
     sweeper_offset = Sweeper(
         Parameter.bias,
         delta_offset_range,
-        qubits=[platform.qubits[f"c{qubit}"] for qubit in qubits],
+        qubits=[platform.qubits[f"c{qubit}"] for qubit in qubits],  # f"c{qubit}"
     )
 
     # create a DataUnits object to store the results,

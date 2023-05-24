@@ -34,7 +34,7 @@ class Operation(Enum):
     resonator_spectroscopy = resonator_spectroscopy
     resonator_punchout = resonator_punchout
     resonator_punchout_attenuation = resonator_punchout_attenuation
-    resonator_sp_flux = resonator_flux
+    resonator_flux = resonator_flux
     qubit_spectroscopy = qubit_spectroscopy
     qubit_flux = qubit_flux
     rabi_amplitude = rabi_amplitude
@@ -57,5 +57,5 @@ class Operation(Enum):
     coupler_swap_flux = coupler_swap_flux
     qubit_frequency_flux = qubit_frequency_flux
     resonator_frequency_flux = resonator_frequency_flux
-    resonator_flux = coupler_resonator_flux
+    coupler_resonator_flux = coupler_resonator_flux
     coupler_qubit_flux = coupler_qubit_flux
