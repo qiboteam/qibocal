@@ -50,7 +50,7 @@ class RamseyResults(Results):
 class RamseyData(DataUnits):
     """Ramsey acquisition outputs."""
 
-    def __init__(self, n_osc, t_max):
+    def __init__(self, n_osc, t_max, detuning_sign):
         super().__init__(
             name="data",
             quantities={"wait": "ns", "qubit_freqs": "Hz"},
@@ -61,6 +61,7 @@ class RamseyData(DataUnits):
 
         self._n_osc = n_osc
         self._t_max = t_max
+        self._detuning_sign = detuning_sign
 
     @property
     def n_osc(self):
@@ -71,6 +72,11 @@ class RamseyData(DataUnits):
     def t_max(self):
         """Final delay between RX(pi/2) pulses in ns."""
         return self._t_max
+
+    @property
+    def detuning_sign(self):
+        """Sign for induced detuning."""
+        return self._detuning_sign
 
 
 def _acquisition(
@@ -91,7 +97,7 @@ def _acquisition(
         params.delay_between_pulses_step,
     )
 
-    data = RamseyData(params.n_osc, params.delay_between_pulses_end)
+    data = RamseyData(params.n_osc, params.delay_between_pulses_end, detuning_sign=+1)
 
     for qubit in qubits.values():
         next_pulse_start = 0
@@ -104,7 +110,9 @@ def _acquisition(
             if params.n_osc != 0:
                 relative_phase = (
                     (next_pulse_start - old_pulse_start)
-                    * (-2 * np.pi)
+                    * data.detuning_sign
+                    * 2
+                    * np.pi
                     * (params.n_osc)
                     / params.delay_between_pulses_end
                 )
@@ -224,7 +232,9 @@ def _fit(data: RamseyData) -> RamseyResults:
             ]
             delta_fitting = popt[2] / (2 * np.pi)
             # FIXME: check this formula
-            delta_phys = +int((delta_fitting - data.n_osc / data.t_max) * 1e9)
+            delta_phys = data.detuning_sign * int(
+                (delta_fitting - data.n_osc / data.t_max) * 1e9
+            )
             corrected_qubit_frequency = int(qubit_freq + delta_phys)
             t2 = 1.0 / popt[4]
 
