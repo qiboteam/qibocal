@@ -7,7 +7,7 @@ from qibolab.sweeper import Parameter, Sweeper
 from qibocal import plots
 from qibocal.data import DataUnits
 from qibocal.decorators import plot
-from qibocal.fitting.methods import lorentzian_fit
+from qibocal.fitting.methods import lorentzian_fit, resonator_spectroscopy_flux_fit
 
 
 @plot("MSR and Phase vs Resonator Frequency", plots.frequency_msr_phase)
@@ -362,7 +362,7 @@ def resonator_punchout(
 
 @plot(
     "MSR and Phase vs Resonator Frequency and Flux",
-    plots.frequency_flux_msr_phase,
+    plots.frequency_flux_msr_phase_resonator,
 )
 def resonator_spectroscopy_flux(
     platform: AbstractPlatform,
@@ -372,6 +372,7 @@ def resonator_spectroscopy_flux(
     bias_width,
     bias_step,
     fluxlines,
+    params_fit,
     nshots=1024,
     relaxation_time=50,
     software_averages=1,
@@ -389,6 +390,10 @@ def resonator_spectroscopy_flux(
         bias_step (float): Step bias in A for the flux bias sweep
         fluxlines (list): List of flux lines to use to perform the experiment. If it is set to "qubits", it uses each of
                         flux lines associated with the target qubits.
+        params_fit (dict): Dictionary of parameters for the fit. {"f_rh":{"q_i":f_rh_i,...}, "g":{"q_i":g_i,...}, "Ec":{"q_i":Ec_i,...}, "Ej":{"q_i":Ej_i,...}.
+                          freq_rh is the resonator frequency at high power and g in the readout coupling.
+                          If Ec and Ej are missing, the fit is valid in the transmon limit and if they are indicated,
+                          contains the next-order correction.
         software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
 
@@ -480,6 +485,15 @@ def resonator_spectroscopy_flux(
 
         # save data
         yield data
+        yield resonator_spectroscopy_flux_fit(
+            data,
+            x="bias[V]",
+            y="frequency[Hz]",
+            qubits=qubits,
+            fluxlines=fluxlines,
+            resonator_type=platform.resonator_type,
+            params_fit=params_fit,
+        )
 
 
 @plot("MSR and Phase vs Resonator Frequency", plots.dispersive_frequency_msr_phase)
