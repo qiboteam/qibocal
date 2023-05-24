@@ -3,11 +3,7 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab.executionparameters import (
-    AcquisitionType,
-    AveragingMode,
-    ExecutionParameters,
-)
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import FluxPulse, PulseSequence, Rectangular
 from qibolab.sweeper import Parameter, Sweeper
@@ -85,13 +81,14 @@ def _aquisition(
     if params.coupler_flux_duration is None:
         params.coupler_flux_duration = 2000
     for pair in qubit_pairs:
-        qd_pulses[pair[1]] = platform.create_RX_pulse(pair[1], start=0)
+        qd_pulses[pair[0]] = platform.create_RX_pulse(pair[0], start=0)
         fx_pulses[pair[0]] = FluxPulse(
-            start=qd_pulses[pair[1]].se_finish + 8,
+            start=qd_pulses[pair[0]].se_finish + 8,
             duration=params.coupler_flux_duration,
             amplitude=1,
             shape=Rectangular(),
             channel=platform.qubits[f"c{pair[0]}"].flux.name,
+            qubit=f"c{pair[0]}",
         )
 
         ro_pulses[pair[1]] = platform.create_MZ_pulse(
@@ -99,7 +96,7 @@ def _aquisition(
         )
         # ro_pulses[pair[0]] = platform.create_MZ_pulse(pair[0], start=ro_pulses[pair[1]].se_finish) # Multiplex not working yet
 
-        sequence.add(qd_pulses[pair[1]])
+        sequence.add(qd_pulses[pair[0]])
         sequence.add(fx_pulses[pair[0]])
         sequence.add(ro_pulses[pair[1]])
         # sequence.add(ro_pulses[pair[0]])
@@ -135,7 +132,7 @@ def _aquisition(
     for pair in qubit_pairs:
         # WHEN MULTIPLEXING IS WORKING
         # for state, qubit in zip([0, 1], pair):
-        for state, qubit in zip([1], [pair[1]]):
+        for state, qubit in zip([0], [pair[1]]):
             # average msr, phase, i and q over the number of shots defined in the runcard
             ro_pulse = ro_pulses[qubit]
             result = results[ro_pulse.serial]
@@ -179,7 +176,7 @@ def _aquisition(
     for pair in qubit_pairs:
         # WHEN MULTIPLEXING IS WORKING
         # for state, qubit in zip([0, 1], pair):
-        for state, qubit in zip([0], [pair[0]]):
+        for state, qubit in zip([1], [pair[0]]):
             # average msr, phase, i and q over the number of shots defined in the runcard
             ro_pulse = ro_pulses[qubit]
             result = results[ro_pulse.serial]
@@ -210,7 +207,7 @@ def _plot(data: CouplerSwapFluxData, fit: CouplerSwapFluxResults, qubit):
 
     # Plot data
     for state, q in zip(
-        [0, 1], [qubit, 2]
+        [1, 0], [qubit, 2]
     ):  # When multiplex works zip([0, 1], [qubit, 2])
         fig.add_trace(
             go.Scatter(

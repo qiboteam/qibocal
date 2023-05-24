@@ -1,5 +1,5 @@
 import numpy as np
-from qibolab.executionparameters import AcquisitionType, AveragingMode
+from qibolab import AcquisitionType, AveragingMode
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 

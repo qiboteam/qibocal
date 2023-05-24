@@ -4,11 +4,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import plotly.graph_objects as go
 from qibo.config import raise_error
-from qibolab.executionparameters import (
-    AcquisitionType,
-    AveragingMode,
-    ExecutionParameters,
-)
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper

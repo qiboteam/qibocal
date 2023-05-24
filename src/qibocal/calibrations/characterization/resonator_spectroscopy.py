@@ -1,6 +1,6 @@
 import numpy as np
 from qibo.config import log
-from qibolab.executionparameters import AcquisitionType, AveragingMode
+from qibolab import AcquisitionType, AveragingMode
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
