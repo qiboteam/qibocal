@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Union
+from typing import Dict, Optional, Union
 
 import numpy as np
 import plotly.graph_objects as go
