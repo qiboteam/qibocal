@@ -39,7 +39,7 @@ class PauliErrorOnAll(NoiseModel):
         self.add(PauliError(list(zip(["X", "Y", "Z"], params))))
 
 
-class PauliErrorOnX(PauliErrorOnAll):
+class PauliErrorOnX(NoiseModel):
     """Builds a noise model with pauli flips acting on X gates.
     Inherited from ``PauliErrorOnAll`` but the ``build`` method is
     overwritten to act on X gates.
@@ -47,5 +47,23 @@ class PauliErrorOnX(PauliErrorOnAll):
     are drawn (in sum not bigger than 1).
     """
 
+    def __init__(self, *args) -> None:
+        # TODO only for latest qibo version
+        super().__init__()
+        # Check if number of arguments is 0 or 1 and if it's equal to None
+        if len(args) == 0 or (len(args) == 1 and args[0] is None):
+            # Assign random values to params.
+            params = np.random.uniform(0, 0.25, size=1)
+        elif len(args) == 1:
+            params = args
+        else:
+            # Raise ValueError if given paramters are wrong.
+            raise_error(
+                ValueError,
+                f"Wrong number of error parameters, 3 != {len(args)}.",
+            )
+        self.build(*params)
+
     def build(self, *params):
-        self.add(PauliError(*params), gates.X)
+        # self.add(PauliError(*params), gates.X)
+        self.add(PauliError([("X", params[0])]))
