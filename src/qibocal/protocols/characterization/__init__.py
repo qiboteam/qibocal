@@ -16,6 +16,7 @@ from .rabi.amplitude import rabi_amplitude
 from .rabi.length import rabi_length
 from .ramsey import ramsey
 from .RB.standard_rb import standard_rb
+from .RB.xid_rb import xid_rb
 from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
@@ -41,3 +42,4 @@ class Operation(Enum):
     flipping = flipping
     dispersive_shift = dispersive_shift
     standard_rb = standard_rb
+    xid_rb = xid_rb

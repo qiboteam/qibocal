@@ -5,7 +5,13 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 from qibocal.auto.operation import Results
-from qibocal.calibrations.niGSC.basics.fitting import exp1B_func, fit_exp1B_func
+from qibocal.calibrations.niGSC.basics.fitting import (
+    exp1_func,
+    exp1B_func,
+    fit_exp1_func,
+    fit_exp1B_func,
+)
+from qibocal.protocols.characterization.RB.utils import extract_from_data
 
 real_numeric = Union[int, float, np.number]
 numeric = Union[int, float, complex, np.number]
@@ -37,6 +43,11 @@ class DecayResult(Results):
         self.Berr: Union[numeric, NoneType] = Berr
         self.hists: Union[Tuple[List[numeric], List[numeric]], NoneType] = hists
         self.fig = None
+        self.func = exp1B_func
+
+    @property
+    def fitting_params(self):
+        return (self.A, self.p, self.B)
 
     def reset_fittingparams(
         self,
@@ -84,6 +95,35 @@ class DecayResult(Results):
         return [self.fig]
 
 
+class NoOffsetDecayResult(DecayResult):
+    def __init__(
+        self, m, y, A=None, p=None, B=None, Aerr=None, perr=None, Berr=None, hists=None
+    ):
+        super().__init__(m, y, A, p, 0, Aerr, perr, None, hists)
+        self.func = exp1_func
+
+    @property
+    def fitting_params(self):
+        return (self.A, self.p)
+
+    def fit(self, **kwargs):
+        kwargs.setdefault("bounds", ((0, 0), (1, 1)))
+        kwargs.setdefault("p0", (self.A, self.p))
+        params, errs = fit_exp1_func(
+            self.m, self.y, **kwargs
+        )  # , bounds = (([0,0,0]),([10,1,10])))
+        self.A, self.p = params
+        self.Aerr, self.perr = errs
+
+    def __str__(self):
+        if self.perr is not None:
+            return "({:.3f}\u00B1{:.3f})({:.3f}\u00B1{:.3f})^m ".format(
+                self.A, self.Aerr, self.p, self.perr
+            )
+        else:
+            return "DecayResult: Ap^m"
+
+
 def plot_decay_result(
     result: DecayResult, fig: Union[go.Figure, None] = None
 ) -> go.Figure:
@@ -99,7 +139,7 @@ def plot_decay_result(
         )
     )
     m_fit = np.linspace(min(result.m), max(result.m), 100)
-    y_fit = exp1B_func(m_fit, result.A, result.p, result.B)
+    y_fit = result.func(m_fit, *result.fitting_params)
     fig.add_trace(
         go.Scatter(x=m_fit, y=y_fit, name=str(result), line=go.scatter.Line(dash="dot"))
     )
@@ -125,3 +165,22 @@ def plot_hists_result(result: DecayResult) -> go.Figure:
         coloraxis_colorbar_x=-0.15, coloraxis_colorbar_title_text="count"
     )
     return fig_hist
+
+
+def choose_bins(niter):
+    if niter <= 10:
+        return niter
+    else:
+        return int(np.log10(niter) * 10)
+
+
+def get_hists_data(data_agg: DecayResult):
+    signal = extract_from_data(data_agg, "signal", "depth")[1].reshape(
+        -1, data_agg.attrs["niter"]
+    )
+    if data_agg.attrs["niter"] > 10:
+        nbins = choose_bins(data_agg.attrs["niter"])
+        counts_list, bins_list = zip(*[np.histogram(x, bins=nbins) for x in signal])
+    else:
+        counts_list, bins_list = np.ones(signal.shape), signal
+    return counts_list, bins_list
