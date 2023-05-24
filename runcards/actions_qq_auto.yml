@@ -35,7 +35,7 @@ actions:
   #   priority: 0
   #   operation: resonator_punchout_attenuation
   #   # main: resonator_spectroscopy low power
-  #   next: resonator_punchout
+  #   next: resonator spectroscopy low power
   #   parameters:
   #     freq_width: 10_000_000
   #     freq_step: 500_000
@@ -52,10 +52,11 @@ actions:
   #   parameters:
   #     freq_width: 10_000_000
   #     freq_step: 1_000_000
-  #     amplitude: 0.2
+  #     # amplitude: 0.2
   #     power_level: low
   #     nshots: 1024
   #     relaxation_time: 50
+  #     attenuation: 20
 
   # - id: resonator flux dependence
   #   priority: 0
@@ -201,3 +202,10 @@ actions:
   #   parameters:
   #     nflips_max: 20
   #     nflips_step: 1
+
+  # - id: dispersive_shift
+  #   priority: 0
+  #   operation: dispersive_shift
+  #   parameters:
+  #     freq_width: 10_000_000
+  #     freq_step: 400_000

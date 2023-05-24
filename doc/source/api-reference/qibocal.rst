@@ -64,7 +64,7 @@ Qubit spectroscopy
 
 Rabi oscillations
 """""""""""""""""
-.. automodule:: qibocal.calibrations.characterization.rabi_oscillations
+.. automodule:: qibocal.calibrations.characterization.rabi
    :members:
    :undoc-members:
    :show-inheritance:

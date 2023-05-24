@@ -207,7 +207,7 @@ def build_report(experiment: Experiment, df_aggr: pd.DataFrame) -> Figure:
         df_aggr (pd.DataFrame): Normally build with ``get_aggregational_data`` function.
 
     Returns:
-        (Figure): A plotly.graphical_object.Figure object.
+        (tuple): A `plotly.graphical_object.Figure` object and a string corresponding to a table.
     """
 
     # Initiate a report object.
