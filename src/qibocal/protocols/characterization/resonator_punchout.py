@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Union
 
 import numpy as np
 import plotly.graph_objects as go
@@ -21,7 +21,7 @@ class ResonatorPunchoutParameters(Parameters):
     """ "ResonatorPunchout runcard inputs."""
 
     freq_width: int
-    """Width for frequency sweep relative  to the readout frequency (hz)."""
+    """Width for frequency sweep relative  to the readout frequency (Hz)."""
     freq_step: int
     """Frequency step for sweep (Hz)."""
     min_amp_factor: float
@@ -40,18 +40,18 @@ class ResonatorPunchoutParameters(Parameters):
 class ResonatorPunchoutResults(Results):
     """ResonatorPunchout outputs."""
 
-    readout_frequency: Dict[List[Tuple], str] = field(
+    readout_frequency: Dict[Union[str, int], float] = field(
         metadata=dict(update="readout_frequency")
     )
-    """Readout frequency for each qubit."""
-    readout_amplitude: Dict[List[Tuple], str] = field(
+    """Readout frequency [GHz] for each qubit."""
+    readout_amplitude: Dict[Union[str, int], float] = field(
         metadata=dict(update="readout_amplitude")
     )
     """Readout amplitude for each qubit."""
-    bare_frequency: Optional[Dict[List[Tuple], str]] = field(
+    bare_frequency: Optional[Dict[Union[str, int], float]] = field(
         metadata=dict(update="bare_resonator_frequency")
     )
-    """Bare resonator frequency for each qubit."""
+    """Bare resonator frequency [GHz] for each qubit."""
 
 
 class ResonatorPunchoutData(DataUnits):
@@ -139,7 +139,7 @@ def _acquisition(
         r.update(
             {
                 "frequency[Hz]": freqs,
-                "amplitude[dimensionless]": amps,
+                "amplitude[dimensionless]": amps * ro_pulse.amplitude,
                 "qubit": len(freqs) * [qubit],
             }
         )
@@ -186,12 +186,8 @@ def _fit(data: ResonatorPunchoutData, fit_type="amplitude") -> ResonatorPunchout
             freq_hp = utils.get_max_freq(hp_points)
             freq_lp = utils.get_max_freq(lp_points)
 
-            point_hp_max, point_hp_min = utils.get_points_with_max_freq(
-                min_points, freq_hp
-            )
-            point_lp_max, point_lp_min = utils.get_points_with_max_freq(
-                min_points, freq_lp
-            )
+            point_hp_max, _ = utils.get_points_with_max_freq(min_points, freq_hp)
+            point_lp_max, _ = utils.get_points_with_max_freq(min_points, freq_lp)
 
             freq_lp = point_lp_max[0]
             ro_amp = point_lp_max[1]
@@ -238,7 +234,7 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
 
     fig.add_trace(
         go.Heatmap(
-            x=qubit_data["frequency"].pint.to("Hz").pint.magnitude,
+            x=qubit_data["frequency"].pint.to("GHz").pint.magnitude,
             y=qubit_data["amplitude"].pint.to("dimensionless").pint.magnitude,
             z=normalised_data["MSR"].pint.to("dimensionless").pint.magnitude,
             colorbar_x=0.46,
@@ -246,11 +242,13 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
         row=1,
         col=1,
     )
-    fig.update_xaxes(title_text=f"{qubit}: Frequency (Hz)", row=1, col=1)
+    fig.update_xaxes(title_text="Frequency (GHz)", row=1, col=1)
+    fig.update_xaxes(title_text="Frequency (GHz)", row=1, col=2)
     fig.update_yaxes(title_text="Amplitude", row=1, col=1)
+    fig.update_yaxes(title_text="Amplitude", row=1, col=2)
     fig.add_trace(
         go.Heatmap(
-            x=qubit_data["frequency"].pint.to("Hz").pint.magnitude,
+            x=qubit_data["frequency"].pint.to("GHz").pint.magnitude,
             y=qubit_data["amplitude"].pint.to("dimensionless").pint.magnitude,
             z=qubit_data["phase"].pint.to("rad").pint.magnitude,
             colorbar_x=1.01,
@@ -262,7 +260,7 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
     fig.add_trace(
         go.Scatter(
             x=[
-                fit.readout_frequency[qubit] * 1e9,
+                fit.readout_frequency[qubit],
             ],
             y=[
                 fit.readout_amplitude[qubit],
@@ -276,9 +274,9 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
         )
     )
     title_text = ""
-    title_text += f"{qubit} | Resonator Frequency at Low Power:  {fit.readout_frequency[qubit]*1e9:,.0f} Hz<br>"
-    title_text += f"{qubit} | Resonator Frequency at High Power: {fit.bare_frequency[qubit]*1e9:,.0f} Hz<br>"
-    title_text += f"{qubit} | Readout Amplitude at Low Power: {fit.readout_amplitude[qubit]:,.3f} <br>"
+    title_text += f"{qubit} | Resonator frequency at low power:  {fit.readout_frequency[qubit]*1e9:,.0f} Hz<br>"
+    title_text += f"{qubit} | Resonator frequency at high power: {fit.bare_frequency[qubit]*1e9:,.0f} Hz<br>"
+    title_text += f"{qubit} | Readout amplitude at low power: {fit.readout_amplitude[qubit]:,.3f} <br>"
 
     fitting_report = fitting_report + title_text
 

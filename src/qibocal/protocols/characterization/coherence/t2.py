@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Union
 
 import numpy as np
 import plotly.graph_objects as go
@@ -8,7 +8,6 @@ from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.config import log
 from qibocal.plots.utils import get_color
 
 from . import t1, utils
@@ -34,9 +33,9 @@ class T2Parameters(Parameters):
 class T2Results(Results):
     """T2 outputs."""
 
-    t2: Dict[List[Tuple], str] = field(metadata=dict(update="t2"))
+    t2: Dict[Union[str, int], float] = field(metadata=dict(update="t2"))
     """T2 for each qubit (ns)."""
-    fitted_parameters: Dict[List[Tuple], List]
+    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
     """Raw fitting output."""
 
 

@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Union
 
 import numpy as np
 import plotly.graph_objects as go
@@ -38,9 +38,9 @@ class DragPulseTuningParameters(allxy_drag_pulse_tuning.AllXYDragParameters):
 class DragPulseTuningResults(Results):
     """DragPulseTuning outputs."""
 
-    betas: Dict[List[Tuple], str] = field(metadata=dict(update="beta"))
+    betas: Dict[Union[str, int], float] = field(metadata=dict(update="beta"))
     """Optimal beta paramter for each qubit."""
-    fitted_parameters: Dict[List[Tuple], List]
+    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
     """Raw fitting output."""
 
 

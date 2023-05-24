@@ -1,7 +1,8 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Union
 
 import numpy as np
+import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
@@ -27,7 +28,7 @@ class DispersiveShiftParameters(Parameters):
     """Dispersive shift inputs."""
 
     freq_width: int
-    """Width for frequency sweep relative to the readout frequency (Hz)."""
+    """Width [Hz] for frequency sweep relative to the readout frequency (Hz)."""
     freq_step: int
     """Frequency step for sweep (Hz)."""
     nshots: Optional[int] = None
@@ -40,9 +41,9 @@ class DispersiveShiftParameters(Parameters):
 class StateResults(Results):
     """Resonator spectroscopy outputs."""
 
-    frequency: Dict[List[Tuple], str]
+    frequency: Dict[Union[str, int], float]
     """Readout frequency for each qubit."""
-    fitted_parameters: Dict[List[Tuple], List]
+    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
     """Raw fitted parameters."""
 
 
@@ -54,9 +55,11 @@ class DispersiveShiftResults(Results):
     """Resonator spectroscopy outputs in the ground state."""
     results_1: StateResults
     """Resonator spectroscopy outputs in the excited state"""
-    best_freq: Dict[List[Tuple], str] = field(metadata=dict(update="readout_frequency"))
+    best_freq: Dict[Union[str, int], float] = field(
+        metadata=dict(update="readout_frequency")
+    )
     """Readout frequency that maximizes the distance of ground and excited states in iq-plane"""
-    best_iqs: Dict[List[Tuple], str]
+    best_iqs: Dict[Union[str, int], npt.NDArray[np.float64]]
     """iq-couples of ground and excited states with best frequency"""
 
 
@@ -203,6 +206,7 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
         )
         best_freqs[qubit] = frequencies[max_index]
         best_iqs[qubit] = iq_couples[:, qubit, max_index]
+
     return DispersiveShiftResults(
         results_0=results[0],
         results_1=results[1],

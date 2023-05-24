@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Union
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
@@ -37,11 +37,13 @@ class RabiAmplitudeParameters(Parameters):
 class RabiAmplitudeResults(Results):
     """RabiAmplitude outputs."""
 
-    amplitude: Dict[List[Tuple], str] = field(metadata=dict(update="drive_amplitude"))
+    amplitude: Dict[Union[str, int], float] = field(
+        metadata=dict(update="drive_amplitude")
+    )
     """Drive amplitude for each qubit."""
-    length: Dict[List[Tuple], str] = field(metadata=dict(update="drive_length"))
+    length: Dict[Union[str, int], float] = field(metadata=dict(update="drive_length"))
     """Drive pulse duration. Same for all qubits."""
-    fitted_parameters: Dict[List[Tuple], List]
+    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
     """Raw fitted parameters."""
 
 

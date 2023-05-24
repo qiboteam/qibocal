@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple, Union
 
 import numpy as np
 import plotly.graph_objects as go
@@ -38,16 +38,22 @@ class SingleShotClassificationData(DataUnits):
 
 @dataclass
 class SingleShotClassificationResults(Results):
-    threshold: Dict[List[Tuple], str] = field(metadata=dict(update="threshold"))
-    rotation_angle: Dict[List[Tuple], str] = field(metadata=dict(update="iq_angle"))
-    mean_gnd_states: Dict[List[Tuple], str] = field(
+    """SingleShotClassification outputs."""
+
+    threshold: Dict[Union[str, int], float] = field(metadata=dict(update="threshold"))
+    """Threshold for classification."""
+    rotation_angle: Dict[Union[str, int], float] = field(
+        metadata=dict(update="iq_angle")
+    )
+    """Threshold for classification."""
+    mean_gnd_states: Dict[Union[str, int], complex] = field(
         metadata=dict(update="mean_gnd_states")
     )
-    mean_exc_states: Dict[List[Tuple], str] = field(
+    mean_exc_states: Dict[Union[str, int], complex] = field(
         metadata=dict(update="mean_exc_states")
     )
-    fidelity: Dict[List[Tuple], str]
-    assignment_fidelity: Dict[List[Tuple], str]
+    fidelity: Dict[Union[str, int], float]
+    assignment_fidelity: Dict[Union[str, int], float]
 
 
 def _acquisition(

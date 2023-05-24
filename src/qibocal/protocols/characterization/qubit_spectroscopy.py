@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Union
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
@@ -18,11 +18,11 @@ class QubitSpectroscopyParameters(Parameters):
     """QubitSpectroscopy runcard inputs."""
 
     freq_width: int
-    """Width for frequency sweep relative  to the qubit frequency."""
+    """Width [Hz] for frequency sweep relative  to the qubit frequency."""
     freq_step: int
-    """Frequency step for sweep."""
+    """Frequency [Hz] step for sweep."""
     drive_duration: int
-    """Drive pulse duration. Same for all qubits."""
+    """Drive pulse duration [ns]. Same for all qubits."""
     drive_amplitude: Optional[float] = None
     """Drive pulse amplitude (optional). Same for all qubits."""
     nshots: Optional[int] = None
@@ -35,16 +35,19 @@ class QubitSpectroscopyParameters(Parameters):
 class QubitSpectroscopyResults(Results):
     """QubitSpectroscopy outputs."""
 
-    frequency: Dict[List[Tuple], str] = field(metadata=dict(update="drive_frequency"))
-    """Drive frequecy for each qubit."""
-    amplitude: Dict[List[Tuple], str]
+    frequency: Dict[Union[str, int], Dict[str, float]] = field(
+        metadata=dict(update="drive_frequency")
+    )
+    """Drive frequecy [GHz] for each qubit."""
+    amplitude: Dict[Union[str, int], float]
     """Input drive amplitude. Same for all qubits."""
-    fitted_parameters: Dict[List[Tuple], List]
+    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
     """Raw fitting output."""
-    attenuation: Optional[Dict[List[Tuple], str]] = field(
+    # FIXME: Is attenuation needed for qubit spectroscopy?
+    attenuation: Optional[Dict[Union[str, int], int]] = field(
         default_factory=dict,
     )
-    """Input attenuation for each qubit (optional)."""
+    """Input attenuation [dB] for each qubit (optional)."""
 
 
 class QubitSpectroscopyData(ResonatorSpectroscopyData):
