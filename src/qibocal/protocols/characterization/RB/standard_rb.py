@@ -10,7 +10,7 @@ from qibolab.platforms.abstract import AbstractPlatform
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.calibrations.niGSC.standardrb import ModuleFactory as StandardRBScan
-from qibocal.protocols.characterization.RB.result import DecayResult
+from qibocal.protocols.characterization.RB.result import DecayResult, get_hists_data
 from qibocal.protocols.characterization.RB.utils import extract_from_data
 
 NoneType = type(None)
@@ -29,7 +29,7 @@ class StandardRBParameters(Parameters):
     noise_params: list = field(default_factory=list)
 
     def __post_init__(self):
-        # TODO
+        # TODO should the noise_model be already build here?
         if self.noise_model is not None:
             pass
 
@@ -78,32 +78,14 @@ def execute(
     return data_list
 
 
-def choose_bins(niter):
-    if niter <= 10:
-        return niter
-    else:
-        return int(np.log10(niter) * 10)
-
-
-def get_hists(data_agg: StandardRBData):
-    p0 = extract_from_data(data_agg, "p0", "depth")[1].reshape(
-        -1, data_agg.attrs["niter"]
-    )
-    if data_agg.attrs["niter"] > 10:
-        nbins = choose_bins(data_agg.attrs["niter"])
-        counts_list, bins_list = zip(*[np.histogram(x, bins=nbins) for x in p0])
-    else:
-        counts_list, bins_list = np.ones(p0.shape), p0
-    return counts_list, bins_list
-
-
 def aggregate(data: StandardRBData):
-    data_agg = data.assign(p0=lambda x: 1 - np.mean(x.samples.to_list(), axis=1))
+    # The signal is here the survival probability.
+    data_agg = data.assign(signal=lambda x: 1 - np.mean(x.samples.to_list(), axis=1))
     # Histogram
     hists = get_hists(data_agg)
     # Build the result object
     return StandardRBResult(
-        *extract_from_data(data_agg, "p0", "depth", "mean"), hists=hists
+        *extract_from_data(data_agg, "signal", "depth", "mean"), hists=hists
     )
 
 
