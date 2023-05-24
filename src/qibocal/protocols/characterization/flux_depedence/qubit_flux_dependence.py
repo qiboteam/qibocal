@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
@@ -25,9 +25,9 @@ class QubitFluxParameters(Parameters):
     """Width for bias sweep (V)."""
     bias_step: float
     """Bias step for sweep (V)."""
-    nshots: int
+    nshots: Optional[int] = None
     """Number of shots."""
-    relaxation_time: int
+    relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
     drive_amplitude: float
     """Drive pulse amplitude. Same for all qubits."""

@@ -30,9 +30,9 @@ class ResonatorPunchoutParameters(Parameters):
     """Maximum amplitude multiplicative factor."""
     step_amp_factor: float
     """Step amplitude multiplicative factor."""
-    nshots: int
+    nshots: Optional[int] = None
     """Number of shots."""
-    relaxation_time: int
+    relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
 
 

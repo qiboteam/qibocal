@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
@@ -16,9 +16,9 @@ MESH_SIZE = 50
 
 @dataclass
 class SingleShotClassificationParameters(Parameters):
-    nshots: int
+    nshots: Optional[int] = None
     """Number of shots."""
-    relaxation_time: int
+    relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
 
 

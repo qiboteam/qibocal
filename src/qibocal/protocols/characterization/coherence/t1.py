@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
@@ -26,9 +26,9 @@ class T1Parameters(Parameters):
     """Final delay before readout (ns)."""
     delay_before_readout_step: int
     """Step delay before readout (ns)."""
-    nshots: int
+    nshots: Optional[int] = None
     """Number of shots."""
-    relaxation_time: int
+    relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
 
 

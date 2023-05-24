@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
@@ -25,9 +25,9 @@ class SpinEchoParameters(Parameters):
     """Final delay between pulses (ns)."""
     delay_between_pulses_step: int
     """Step delay between pulses (ns)."""
-    nshots: int
+    nshots: Optional[int] = None
     """Number of shots."""
-    relaxation_time: int
+    relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
 
 

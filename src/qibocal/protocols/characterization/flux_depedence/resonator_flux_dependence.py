@@ -26,9 +26,9 @@ class ResonatorFluxParameters(Parameters):
     """Width for bias sweep (V)."""
     bias_step: float
     """Bias step for sweep (V)."""
-    nshots: int
+    nshots: Optional[int] = None
     """Number of shots."""
-    relaxation_time: int
+    relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
 
 

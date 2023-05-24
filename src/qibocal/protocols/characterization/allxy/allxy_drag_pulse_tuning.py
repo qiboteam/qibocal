@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
@@ -23,9 +24,9 @@ class AllXYDragParameters(Parameters):
     """Final beta parameter for Drag pulse."""
     beta_step: float
     """Step beta parameter for Drag pulse."""
-    nshots: int
+    nshots: Optional[int] = None
     """Number of shots."""
-    relaxation_time: int
+    relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
 
 

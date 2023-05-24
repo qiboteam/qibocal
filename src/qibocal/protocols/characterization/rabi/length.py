@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
@@ -25,10 +25,10 @@ class RabiLengthParameters(Parameters):
     """Step pi pulse duration (ns)."""
     pulse_amplitude: float
     """Pi pulse amplitude. Same for all qubits."""
-    nshots: int
+    nshots: Optional[int] = None
     """Number of shots."""
-    relaxation_time: float
-    """Relxation time (ns)."""
+    relaxation_time: Optional[int] = None
+    """Relaxation time (ns)."""
 
 
 @dataclass

@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
@@ -28,9 +28,9 @@ class DragPulseTuningParameters(allxy_drag_pulse_tuning.AllXYDragParameters):
     """DRAG pulse beta end sweep parameter."""
     beta_step: float
     """DRAG pulse beta sweep step parameter."""
-    nshots: int
+    nshots: Optional[int] = None
     """Number of shots."""
-    relaxation_time: int
+    relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
 
 

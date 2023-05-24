@@ -30,9 +30,9 @@ class ResonatorPunchoutAttenuationParameters(Parameters):
     """Attenuation maximum value (dB)."""
     step_att: int
     """Attenuation step (dB)."""
-    nshots: int
+    nshots: Optional[int] = None
     """Number of shots."""
-    relaxation_time: int
+    relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
 
 

@@ -24,9 +24,9 @@ class T2Parameters(Parameters):
     """Final delay between RX(pi/2) pulses in ns."""
     delay_between_pulses_step: int
     """Step delay between RX(pi/2) pulses in ns."""
-    nshots: int
+    nshots: Optional[int] = None
     """Number of shots."""
-    relaxation_time: int
+    relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
 
 

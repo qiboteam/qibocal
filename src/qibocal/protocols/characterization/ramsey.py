@@ -18,10 +18,6 @@ from qibocal.plots.utils import get_color
 class RamseyParameters(Parameters):
     """Ramsey runcard inputs."""
 
-    nshots: int
-    """Number of shots."""
-    relaxation_time: int
-    """Relaxation time (ns)."""
     delay_between_pulses_start: int
     """Initial delay between RX(pi/2) pulses in ns."""
     delay_between_pulses_end: int
@@ -31,6 +27,10 @@ class RamseyParameters(Parameters):
     n_osc: Optional[int] = 0
     """Number of oscillations to induce detuning (optional).
         If 0 standard Ramsey experiment is performed."""
+    nshots: Optional[int] = None
+    """Number of shots."""
+    relaxation_time: Optional[int] = None
+    """Relaxation time (ns)."""
 
 
 @dataclass

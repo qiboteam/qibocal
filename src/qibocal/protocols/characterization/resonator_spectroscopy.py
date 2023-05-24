@@ -21,17 +21,17 @@ class ResonatorSpectroscopyParameters(Parameters):
     """Width for frequency sweep relative  to the readout frequency (Hz)."""
     freq_step: int
     """Frequency step for sweep (Hz)."""
-    nshots: int
-    """Number of shots."""
     power_level: PowerLevel
     """Power regime (low or high). If low the readout frequency will be updated.
     If high both the readout frequency and the bare resonator frequency will be updated."""
-    relaxation_time: int
-    """Relaxation time (ns)."""
     amplitude: Optional[float] = None
     """Readout amplitude (optional). Same for all qubits."""
     attenuation: Optional[int] = None
     """Readout attenuation (optional). Same for all qubits."""
+    nshots: Optional[int] = None
+    """Number of shots."""
+    relaxation_time: Optional[int] = None
+    """Relaxation time (ns)."""
 
     def __post_init__(self):
         if self.attenuation is not None and self.amplitude is not None:

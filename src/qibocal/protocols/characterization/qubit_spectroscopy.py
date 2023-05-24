@@ -25,9 +25,9 @@ class QubitSpectroscopyParameters(Parameters):
     """Drive pulse duration. Same for all qubits."""
     drive_amplitude: Optional[float] = None
     """Drive pulse amplitude (optional). Same for all qubits."""
-    nshots: int = 1024
+    nshots: Optional[int] = None
     """Number of shots."""
-    relaxation_time: int = 50
+    relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
 
 
