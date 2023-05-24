@@ -38,7 +38,9 @@ def generate_models(data, test_size=0.25):
         - x_test: Test inputs.
         - y_test: Test outputs.
     """
-    input_data = data[["i", "q"]].values
+    data["i"] = data["i"].pint.magnitude
+    data["q"] = data["q"].pint.magnitude
+    input_data = data[["i", "q"]].to_numpy()
     output_data = data["state"].values
     return train_test_split(
         input_data, output_data, test_size=test_size, random_state=0, shuffle=True

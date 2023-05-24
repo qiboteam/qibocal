@@ -17,8 +17,4 @@ def test_data_acquisition(action):
     """Test data acquisition for all routines using dummy"""
     task = Task(action)
     print(task)
-    if "low attenuation" in task.id or "high attenuation" in task.id:
-        with pytest.raises(NotImplementedError):
-            task.operation.acquisition(task.parameters, platform, platform.qubits)
-    else:
-        task.operation.acquisition(task.parameters, platform, platform.qubits)
+    task.operation.acquisition(task.parameters, platform, platform.qubits)

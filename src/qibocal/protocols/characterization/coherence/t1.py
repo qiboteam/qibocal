@@ -1,19 +1,14 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, Optional, Union
 
 import numpy as np
 import plotly.graph_objects as go
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platforms.abstract import AbstractPlatform
-from qibolab.platforms.platform import (
-    AcquisitionType,
-    AveragingMode,
-    ExecutionParameters,
-)
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.config import log
 from qibocal.data import DataUnits
 from qibocal.plots.utils import get_color
 
@@ -30,9 +25,9 @@ class T1Parameters(Parameters):
     """Final delay before readout (ns)."""
     delay_before_readout_step: int
     """Step delay before readout (ns)."""
-    nshots: int
+    nshots: Optional[int] = None
     """Number of shots."""
-    relaxation_time: int
+    relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
 
 
@@ -40,9 +35,9 @@ class T1Parameters(Parameters):
 class T1Results(Results):
     """T1 outputs."""
 
-    t1: Dict[List[Tuple], str] = field(metadata=dict(update="t1"))
+    t1: Dict[Union[str, int], float] = field(metadata=dict(update="t1"))
     """T1 for each qubit."""
-    fitted_parameters: Dict[List[Tuple], List]
+    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
     """Raw fitting output."""
 
 
