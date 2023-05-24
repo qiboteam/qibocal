@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import pint
 from scipy.optimize import curve_fit
+from scipy.signal import savgol_filter
 
 from qibocal.config import log
 from qibocal.data import Data
@@ -15,8 +16,10 @@ from qibocal.fitting.utils import (
     exp,
     flipping,
     freq_q_mathieu,
+    freq_q_transmon,
     freq_r_mathieu,
     freq_r_transmon,
+    image_to_curve,
     line,
     lorenzian,
     parse,
@@ -876,11 +879,13 @@ def res_spectroscopy_flux_fit(data, x, y, qubit, fluxline, params_fit):
 
 
 def res_spectroscopy_flux_matrix(folder, fluxlines):
-    """Calculation of the resonator flux matrix, Mf.
+    """
+    Calculation of the resonator flux matrix, Mf.
        curr = Mf*freq + offset_c.
        Mf = Mc^-1, offset_c = -Mc^-1 * offset_f
        freq = Mc*curr + offset_f
-        Args:
+
+    Args:
         folder (str): Folder where the data files with the experimental and fit data are.
         fluxlines (list): ids of the current line used for the experiment.
 
@@ -1068,6 +1073,396 @@ def calibrate_qubit_states_fit(data, x, y, nshots, qubits, degree=True):
         }
         parameters.add(results)
     return parameters
+
+
+def resonator_spectroscopy_flux_fit(
+    data, x, y, qubits, fluxlines, resonator_type, params_fit
+):
+    """Fit frequency as a function of current for the flux resonator spectroscopy
+        Args:
+        data (DataUnits): data file with information on the feature response at each current point.
+        x (str): column of the data file associated to x-axis.
+        y (str): column of the data file associated to y-axis.
+        qubits (list): qubits coupled to the resonator that we are probing.
+        fluxlines (list): List of flux lines to use to perform the experiment.
+        resonator_type (str): the type of readout resonator ['3D', '2D'].
+        params_fit (dict): Dictionary of parameters for the fit. {"f_rh":f_rh, "g":g, "Ec":Ec, "Ej":Ej}.
+                          freq_rh is the resonator frequency at high power and g in the readout coupling.
+                          If Ec and Ej are missing, the fit is valid in the transmon limit and if they are indicated,
+                          contains the next-order correction.
+
+    Returns:
+        data_fit (Data): Data file with labels and fit parameters.
+
+    """
+
+    quantities = [
+        "curr_sp",
+        "xi",
+        "d",
+        "g",
+        "f_rh",
+        "f_qs",
+        "f_rs",
+        "f_offset",
+        "C_ii",
+        "qubit",
+        "fluxline",
+        "popt0",
+        "popt1",
+        "type",
+    ]
+    if len(params_fit) == 2:
+        # First order approximation params_fit={"f_rh":f_rh, "g":g}
+        quantities.append("f_q/f_rh")
+    else:
+        # Second order approximation params_fit={"f_rh":f_rh, "g":g, "Ec":Ec, "Ej":Ej}
+        quantities.extend(
+            (
+                "Ec",
+                "Ej",
+            )
+        )
+
+    data_fit = Data(
+        name=f"fits",
+        quantities=quantities,
+    )
+
+    bias_keys = parse(x)
+    frequency_keys = parse(y)
+    for qubit in qubits:
+        qubit_data = (
+            data.df[data.df["qubit"] == qubit]
+            .drop(columns=["qubit", "iteration"])
+            .groupby([frequency_keys[0], bias_keys[0]], as_index=False)
+            .mean()
+        )
+        for fluxline in fluxlines:
+            qubit_data = qubit_data[qubit_data["fluxline"] == fluxline]
+            qubit_data[bias_keys[0]] = (
+                qubit_data[bias_keys[0]].pint.to(bias_keys[1]).pint.magnitude
+            )
+            qubit_data[frequency_keys[0]] = (
+                qubit_data[frequency_keys[0]].pint.to(frequency_keys[1]).pint.magnitude
+            )
+            if resonator_type == "2D":
+                qubit_data["MSR"] = -qubit_data["MSR"]
+
+            biases = qubit_data[bias_keys[0]]
+            frequencies = qubit_data[frequency_keys[0]]
+            msr = qubit_data["MSR"] * 1e6
+
+            frequencies, biases = image_to_curve(frequencies, biases, msr)
+
+            if fluxline == qubit:
+                try:
+                    scaler = 10**9
+                    f_rh = params_fit["f_rh"][
+                        str(qubit)
+                    ]  # Resonator frequency at high power.
+                    g = params_fit["g"][str(qubit)]  # Readout coupling.
+                    max_c = biases[np.argmax(frequencies)]
+                    min_c = biases[np.argmin(frequencies)]
+                    xi = 1 / (2 * abs(max_c - min_c))  # Convert bias to flux.
+                    if len(params_fit) == 2:
+                        f_r_0 = np.max(
+                            frequencies
+                        )  # Initial estimation for resonator frequency at sweet spot.
+                        f_q_0 = f_rh - g**2 / (
+                            f_r_0 - f_rh
+                        )  # Initial estimation for qubit frequency at sweet spot.
+                        popt = curve_fit(
+                            freq_r_transmon,
+                            biases,
+                            frequencies / scaler,
+                            p0=[max_c, xi, 0, f_q_0 / f_rh, g / scaler, f_rh / scaler],
+                        )[0]
+                        popt[4] *= scaler
+                        popt[5] *= scaler
+                        f_qs = popt[3] * popt[5]  # Qubit frequency at sweet spot.
+                        f_rs = freq_r_transmon(
+                            popt[0], *popt
+                        )  # Resonator frequency at sweet spot.
+                        f_r_offset = freq_r_transmon(
+                            0, *popt
+                        )  # Resonator frequenct at zero current.
+                        C_ii = (f_rs - f_r_offset) / popt[
+                            0
+                        ]  # Corresponding flux matrix element.
+                        data_fit.add(
+                            {
+                                "curr_sp": popt[0],
+                                "xi": popt[1],
+                                "d": abs(popt[2]),
+                                "f_q/f_rh": popt[3],
+                                "g": popt[4],
+                                "f_rh": popt[5],
+                                "f_qs": f_qs,
+                                "f_rs": f_rs,
+                                "f_offset": f_r_offset,
+                                "C_ii": C_ii,
+                                "qubit": qubit,
+                                "fluxline": fluxline,
+                                "type": 1,
+                            }
+                        )
+                    else:
+                        Ec = params_fit["Ec"][str(qubit)]  # Charge energy.
+                        Ej = params_fit["Ej"][str(qubit)]  # Josephson energy
+                        freq_r_mathieu1 = partial(freq_r_mathieu, p7=0.4999)
+                        popt = curve_fit(
+                            freq_r_mathieu1,
+                            biases,
+                            frequencies / scaler,
+                            p0=[
+                                f_rh / scaler,
+                                g / scaler,
+                                max_c,
+                                xi,
+                                0,
+                                Ec / scaler,
+                                Ej / scaler,
+                            ],
+                            method="dogbox",
+                        )[0]
+                        popt[0] *= scaler
+                        popt[1] *= scaler
+                        popt[5] *= scaler
+                        popt[6] *= scaler
+                        f_qs = freq_q_mathieu(
+                            popt[2], *popt[2::]
+                        )  # Qubit frequency at sweet spot.
+                        f_rs = freq_r_mathieu(
+                            popt[2], *popt
+                        )  # Resonator frequency at sweet spot.
+                        f_r_offset = freq_r_mathieu(
+                            0, *popt
+                        )  # Resonator frequenct at zero current.
+                        C_ii = (f_rs - f_r_offset) / popt[
+                            2
+                        ]  # Corresponding flux matrix element.
+                        data_fit.add(
+                            {
+                                "curr_sp": popt[2],
+                                "xi": popt[3],
+                                "d": abs(popt[4]),
+                                "g": popt[1],
+                                "Ec": popt[5],
+                                "Ej": popt[6],
+                                "f_rh": popt[0],
+                                "f_qs": f_qs,
+                                "f_rs": f_rs,
+                                "f_offset": f_r_offset,
+                                "C_ii": C_ii,
+                                "qubit": qubit,
+                                "fluxline": fluxline,
+                                "type": 2,
+                            }
+                        )
+                except:
+                    log.warning("The fitting was not successful")
+                    data_fit.add({key: 0 for key in data_fit.df.columns})
+                    return data_fit
+            else:
+                try:
+                    freq_min = np.min(frequencies)
+                    freq_max = np.max(frequencies)
+                    freq_norm = (frequencies - freq_min) / (freq_max - freq_min)
+                    popt = curve_fit(line, biases, freq_norm)[0]
+                    popt[0] = popt[0] * (freq_max - freq_min)
+                    popt[1] = popt[1] * (freq_max - freq_min) + freq_min
+                    data_fit.add(
+                        {
+                            "qubit": qubit,
+                            "fluxline": fluxline,
+                            "popt0": popt[0],  # C_ij
+                            "popt1": popt[1],
+                            "type": 3,
+                        }
+                    )
+                except:
+                    log.warning("The fitting was not successful")
+                    # pylint: disable=E1101
+                    data_fit.add({key: 0 for key in data_fit.df.columns})
+                    return data_fit
+    return data_fit
+
+
+def qubit_spectroscopy_flux_fit(
+    data, x, y, qubits, fluxlines, resonator_type, params_fit
+):
+    """Fit frequency as a function of current for the flux qubit spectroscopy
+        Args:
+        data (DataUnits): data file with information on the feature response at each current point.
+        x (str): column of the data file associated to x-axis.
+        y (str): column of the data file associated to y-axis.
+        qubits (list): qubits coupled to the resonator that we are probing.
+        fluxlines (list): List of flux lines to use to perform the experiment.
+        resonator_type (str): the type of readout resonator ['3D', '2D'].
+        params_fit (dict): Dictionary of parameters for the fit. {"Ec":Ec, "Ej":Ej}.
+                          If Ec and Ej are missing, the fit is valid in the transmon limit and if they are indicated,
+                          contains the next-order correction.
+
+    Returns:
+        data_fit (Data): Data file with labels and fit parameters.
+
+    """
+
+    quantities = [
+        "curr_sp",
+        "xi",
+        "d",
+        "f_qs",
+        "f_offset",
+        "C_ii",
+        "qubit",
+        "fluxline",
+        "popt0",
+        "popt1",
+        "type",
+    ]
+    if len(params_fit) == 2:
+        # Second order approximation params_fit={"Ec":Ec, "Ej":Ej}
+        quantities.extend(
+            (
+                "Ec",
+                "Ej",
+            )
+        )
+
+    data_fit = Data(
+        name=f"fits",
+        quantities=quantities,
+    )
+
+    bias_keys = parse(x)
+    frequency_keys = parse(y)
+    for qubit in qubits:
+        qubit_data = (
+            data.df[data.df["qubit"] == qubit]
+            .drop(columns=["qubit", "iteration"])
+            .groupby([frequency_keys[0], bias_keys[0]], as_index=False)
+            .mean()
+        )
+
+        for fluxline in fluxlines:
+            qubit_data = qubit_data[qubit_data["fluxline"] == fluxline]
+            qubit_data[bias_keys[0]] = (
+                qubit_data[bias_keys[0]].pint.to(bias_keys[1]).pint.magnitude
+            )
+            qubit_data[frequency_keys[0]] = (
+                qubit_data[frequency_keys[0]].pint.to(frequency_keys[1]).pint.magnitude
+            )
+            if resonator_type == "2D":
+                qubit_data["MSR"] = -qubit_data["MSR"]
+
+            biases = qubit_data[bias_keys[0]]
+            frequencies = qubit_data[frequency_keys[0]]
+            msr = qubit_data["MSR"] * 1e6
+
+            frequencies, biases = image_to_curve(frequencies, biases, msr)
+            if fluxline == qubit:
+                scaler = 10**9
+                try:
+                    max_c = biases[np.argmax(frequencies)]
+                    min_c = biases[np.argmin(frequencies)]
+                    xi = 1 / (2 * abs(max_c - min_c))  # Convert bias to flux.
+                    if len(params_fit) == 0:
+                        f_q_0 = np.max(
+                            frequencies
+                        )  # Initial estimation for qubit frequency at sweet spot.
+                        popt = curve_fit(
+                            freq_q_transmon,
+                            biases,
+                            frequencies / scaler,
+                            p0=[max_c, xi, 0, f_q_0 / scaler],
+                        )[0]
+                        popt[3] *= scaler
+                        f_qs = popt[3]  # Qubit frequency at sweet spot.
+                        f_q_offset = freq_q_transmon(
+                            0, *popt
+                        )  # Qubit frequenct at zero current.
+                        C_ii = (f_qs - f_q_offset) / popt[
+                            0
+                        ]  # Corresponding flux matrix element.
+                        data_fit.add(
+                            {
+                                "curr_sp": popt[0],
+                                "xi": popt[1],
+                                "d": abs(popt[2]),
+                                "f_qs": f_qs,
+                                "f_offset": f_q_offset,
+                                "C_ii": C_ii,
+                                "qubit": qubit,
+                                "fluxline": fluxline,
+                                "type": 1,
+                            }
+                        )
+                    elif len(params_fit) == 2:
+                        Ec = params_fit["Ec"][str(qubit)]  # Charge energy.
+                        Ej = params_fit["Ej"][str(qubit)]  # Josephson energy
+                        freq_q_mathieu1 = partial(freq_q_mathieu, p7=0.4999)
+                        popt = curve_fit(
+                            freq_q_mathieu1,
+                            biases,
+                            frequencies / scaler,
+                            p0=[max_c, xi, 0, Ec / scaler, Ej / scaler],
+                            method="dogbox",
+                        )[0]
+                        popt[3] *= scaler
+                        popt[4] *= scaler
+                        f_qs = freq_q_mathieu(
+                            popt[0], *popt
+                        )  # Qubit frequency at sweet spot.
+                        f_q_offset = freq_q_mathieu(
+                            0, *popt
+                        )  # Qubit frequenct at zero current.
+                        C_ii = (f_qs - f_q_offset) / popt[
+                            0
+                        ]  # Corresponding flux matrix element.
+                        data_fit.add(
+                            {
+                                "curr_sp": popt[0],
+                                "xi": popt[1],
+                                "d": abs(popt[2]),
+                                "Ec": popt[3],
+                                "Ej": popt[4],
+                                "f_qs": f_qs,
+                                "f_offset": f_q_offset,
+                                "C_ii": C_ii,
+                                "qubit": qubit,
+                                "fluxline": fluxline,
+                                "type": 2,
+                            }
+                        )
+                except:
+                    log.warning("The fitting was not successful")
+                    data_fit.add({key: 0 for key in data_fit.df.columns})
+                    return data_fit
+            else:
+                try:
+                    freq_min = np.min(frequencies)
+                    freq_max = np.max(frequencies)
+                    freq_norm = (frequencies - freq_min) / (freq_max - freq_min)
+                    popt = curve_fit(line, biases, freq_norm)[0]
+                    popt[0] = popt[0] * (freq_max - freq_min)
+                    popt[1] = popt[1] * (freq_max - freq_min) + freq_min
+                    data_fit.add(
+                        {
+                            "qubit": qubit,
+                            "fluxline": fluxline,
+                            "popt0": popt[0],  # C_ij
+                            "popt1": popt[1],
+                            "type": 3,
+                        }
+                    )
+                except:
+                    log.warning("The fitting was not successful")
+                    # pylint: disable=E1101
+                    data_fit.add({key: 0 for key in data_fit.df.columns})
+                    return data_fit
+    return data_fit
 
 
 def ro_optimization_fit(data, *labels, debug=False):

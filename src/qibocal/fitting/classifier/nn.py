@@ -1,4 +1,7 @@
+from pathlib import Path
+
 import keras_tuner as kt  # pylint: disable=import-error
+import numpy as np
 from tensorflow.keras import backend as K  # pylint: disable=import-error
 from tensorflow.keras import callbacks, optimizers  # pylint: disable=import-error
 from tensorflow.keras.layers import (  # pylint: disable=import-error
@@ -6,7 +9,10 @@ from tensorflow.keras.layers import (  # pylint: disable=import-error
     Dense,
     Layer,
 )
-from tensorflow.keras.models import Sequential  # pylint: disable=import-error
+from tensorflow.keras.models import (  # pylint: disable=import-error
+    Sequential,
+    load_model,
+)
 
 from .utils import identity
 
@@ -44,18 +50,29 @@ def hyperopt(x_train, y_train, path):
     tuner.search_space_summary()
 
     stop_early = callbacks.EarlyStopping(monitor="val_accuracy", patience=10)
-
     tuner.search(
         x_train, y_train, epochs=120, validation_split=0.2, callbacks=[stop_early]
     )
 
     # Get the optimal hyperparameters
     best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
-
     return best_hps.get_config()
 
 
 normalize = identity
+
+
+def dump(model, save_path: Path):
+    r"""Dumps the `model` in `save_path`"""
+    model.save(save_path)
+
+
+def predict_from_file(loading_path: Path, input: np.typing.NDArray):
+    r"""This function loads the model saved in `loading_path`
+    and returns the predictions of `input`.
+    """
+    model = load_model(loading_path)
+    return model.predict(input)
 
 
 class RBFLayer(Layer):

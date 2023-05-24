@@ -167,7 +167,7 @@ actions:
 
   - id: flipping
     priority: 0
-    # next: dispersive shift
+    next: dispersive shift
     operation: flipping
     parameters:
       nflips_max: 5
