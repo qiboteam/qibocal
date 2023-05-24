@@ -246,7 +246,6 @@ class BellExperiment:
 
     def execute_sequence(self, sequence, qubits, nshots):
         platform = self.platform
-        qubits = self.qubits
         results = platform.execute_pulse_sequence(sequence, nshots=nshots)
         frequencies = calculate_frequencies(results[qubits[0]], results[qubits[1]])
         return frequencies
@@ -279,12 +278,6 @@ class BellExperiment:
             mitigated_chsh_values_basis = []
         if exact:
             exact_chsh_values_basis = []
-
-        if pulses:
-            platform = self.platform
-            platform.connect()
-            platform.setup()
-            platform.start()
 
         for basis in bell_basis:
             chsh_values = []
@@ -341,10 +334,6 @@ class BellExperiment:
                 mitigated_chsh_values_basis.append(mitigated_chsh_values)
             if exact:
                 exact_chsh_values_basis.append(exact_chsh_values)
-
-        if pulses:
-            platform.stop()
-            platform.disconnect()
 
         timestr = time.strftime("%Y%m%d-%H%M")
 

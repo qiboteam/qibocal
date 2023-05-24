@@ -24,6 +24,10 @@ thetas = np.linspace(0, 2 * np.pi, ntheta)
 
 platform = Platform("qblox", runcard)
 
+platform.connect()
+platform.setup()
+platform.start()
+
 readout_mitigation = ReadoutErrorMitigation(platform, nqubits, qubits)
 
 calibration_matrix = readout_mitigation.get_calibration_matrix(nshots)
@@ -40,6 +44,9 @@ bell.execute(
     readout_mitigation=readout_mitigation,
     exact=True,
 )
+
+platform.stop()
+platform.disconnect()
 
 """
 Simulation version:
