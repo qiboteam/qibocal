@@ -82,7 +82,7 @@ def aggregate(data: StandardRBData):
     # The signal is here the survival probability.
     data_agg = data.assign(signal=lambda x: 1 - np.mean(x.samples.to_list(), axis=1))
     # Histogram
-    hists = get_hists(data_agg)
+    hists = get_hists_data(data_agg)
     # Build the result object
     return StandardRBResult(
         *extract_from_data(data_agg, "signal", "depth", "mean"), hists=hists
