@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Union
 
 import numpy as np
 import plotly.graph_objects as go
@@ -20,7 +20,7 @@ class ResonatorPunchoutParameters(Parameters):
     """ "ResonatorPunchout runcard inputs."""
 
     freq_width: int
-    """Width for frequency sweep relative  to the readout frequency (hz)."""
+    """Width for frequency sweep relative  to the readout frequency (Hz)."""
     freq_step: int
     """Frequency step for sweep (Hz)."""
     min_amp_factor: float
@@ -39,18 +39,18 @@ class ResonatorPunchoutParameters(Parameters):
 class ResonatorPunchoutResults(Results):
     """ResonatorPunchout outputs."""
 
-    readout_frequency: Dict[List[Tuple], str] = field(
+    readout_frequency: Dict[Union[str, int], float] = field(
         metadata=dict(update="readout_frequency")
     )
-    """Readout frequency for each qubit."""
-    readout_amplitude: Dict[List[Tuple], str] = field(
+    """Readout frequency [GHz] for each qubit."""
+    readout_amplitude: Dict[Union[str, int], float] = field(
         metadata=dict(update="readout_amplitude")
     )
     """Readout amplitude for each qubit."""
-    bare_frequency: Optional[Dict[List[Tuple], str]] = field(
+    bare_frequency: Optional[Dict[Union[str, int], float]] = field(
         metadata=dict(update="bare_resonator_frequency")
     )
-    """Bare resonator frequency for each qubit."""
+    """Bare resonator frequency [GHz] for each qubit."""
 
 
 class ResonatorPunchoutData(DataUnits):

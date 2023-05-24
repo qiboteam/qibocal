@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, Union
 
 import numpy as np
 import plotly.graph_objects as go
@@ -27,11 +27,13 @@ class FlippingParameters(Parameters):
 class FlippingResults(Results):
     """Flipping outputs."""
 
-    amplitude: Dict[List[Tuple], str] = field(metadata=dict(update="drive amplitude"))
+    amplitude: Dict[Union[str, int], float] = field(
+        metadata=dict(update="drive amplitude")
+    )
     """Drive amplitude for each qubit."""
-    amplitude_factors: Dict[List[Tuple], str]
+    amplitude_factors: Dict[Union[str, int], float]
     """Drive amplitude correction factor for each qubit."""
-    fitted_parameters: Dict[List[Tuple], List]
+    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
     """Raw fitting output."""
 
 
@@ -231,8 +233,8 @@ def _plot(data: FlippngData, fit: FlippingResults, qubit):
             ),
         )
         fitting_report = fitting_report + (
-            f"q{qubit} | Amplitude_correction_factor: {fit.amplitude_factors[qubit]:.4f}<br>"
-            + f"q{qubit} | Corrected_amplitude: {fit.amplitude[qubit][0]:.4f}<br><br>"
+            f"q{qubit} | Amplitude correction factor: {fit.amplitude_factors[qubit]:.4f}<br>"
+            + f"q{qubit} | Corrected amplitude: {fit.amplitude[qubit][0]:.4f}<br><br>"
         )
 
     # last part
