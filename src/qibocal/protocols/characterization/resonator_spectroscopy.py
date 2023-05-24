@@ -35,10 +35,6 @@ class ResonatorSpectroscopyParameters(Parameters):
     Otherwise the default attenuation defined on the platform runcard will be used"""
 
     def __post_init__(self):
-        if self.attenuation is not None and self.amplitude is not None:
-            raise ValueError(
-                "Cannot specify attenuation and amplitude at the same time."
-            )
         # TODO: ask Alessandro if there is a proper way to pass Enum to class
         self.power_level = PowerLevel(self.power_level)
 
@@ -123,9 +119,9 @@ def _acquisition(
         amplitudes[qubit] = ro_pulses[qubit].amplitude
 
         if params.attenuation is not None:
-            platform.set_attenuation(platform.qubits[qubit], params.attenuation)
+            platform.set_attenuation(qubit, params.attenuation)
 
-        attenuations[qubit] = platform.get_attenuation(platform.qubits[qubit])
+        attenuations[qubit] = platform.get_attenuation(qubit)
 
         sequence.add(ro_pulses[qubit])
 
