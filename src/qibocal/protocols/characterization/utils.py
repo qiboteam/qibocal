@@ -88,10 +88,6 @@ def spectroscopy_plot(data, fit: Results, qubit):
         cols=2,
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
-        subplot_titles=(
-            "MSR (uV)",
-            "phase (rad)",
-        ),
     )
     qubit_data = data.df[data.df["qubit"] == qubit].drop(columns=["i", "q", "qubit"])
 
