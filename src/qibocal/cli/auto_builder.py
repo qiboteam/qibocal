@@ -8,7 +8,7 @@ import yaml
 from qibocal.auto.execute import Executor, History
 from qibocal.auto.runcard import Runcard
 
-from .builders import ActionBuilder, load_yaml
+from .builders import ActionBuilder
 
 META = "meta.yml"
 RUNCARD = "runcard.yml"
@@ -17,7 +17,7 @@ UPDATED_PLATFORM = "new_platform.yml"
 
 class AutoCalibrationBuilder(ActionBuilder):
     def __init__(self, runcard, folder=None, force=False, update=True):
-        super().__init__(runcard, folder, force)
+        super().__init__(runcard, folder, force, update)
         # TODO: modify folder in Path in ActionBuilder
         self.folder = Path(self.folder)
         self.executor = Executor.load(
@@ -41,6 +41,7 @@ class AutoCalibrationBuilder(ActionBuilder):
             self.platform.disconnect()
 
     def dump_report(self):
+        """Dump report."""
         from qibocal.web.report import create_autocalibration_report
 
         # update end time
@@ -53,6 +54,7 @@ class AutoCalibrationBuilder(ActionBuilder):
         create_autocalibration_report(self.folder, self.executor.history)
 
     def dump_platform_runcard(self):
+        """Dump platform runcard."""
         if self.platform is not None:
             self.platform.dump(self.folder / UPDATED_PLATFORM)
 

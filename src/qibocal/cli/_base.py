@@ -74,12 +74,12 @@ def command(runcard, folder, force=None):
     help="Use --force option to overwrite the output folder.",
 )
 @click.option(
-    "update",
-    "-u",
+    "--no-update",
+    "fix_platform",
     is_flag=True,
     help="Use --update option to update iteratively the platform.",
 )
-def autocalibration(runcard, folder, force=None, update=True):
+def autocalibration(runcard, folder, force=None, fix_platform=False):
     """qibocal: Quantum Calibration Verification and Validation using Qibo.
 
     Arguments:
@@ -89,9 +89,10 @@ def autocalibration(runcard, folder, force=None, update=True):
      - PLATFORM_RUNCARD: Qibolab's platform runcard. If not provided Qibocal will use the runcard available in Qibolab for the platform chosen.
     """
 
-    builder = AutoCalibrationBuilder(runcard, folder, force, update)
+    builder = AutoCalibrationBuilder(runcard, folder, force, update=not fix_platform)
     builder.run()
-    builder.dump_platform_runcard()
+    if not fix_platform:
+        builder.dump_platform_runcard()
     builder.dump_report()
 
 

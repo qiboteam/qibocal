@@ -135,7 +135,7 @@ class ActionBuilder:
         force (bool): option to overwrite the output folder if it exists already.
     """
 
-    def __init__(self, runcard, folder=None, force=False):
+    def __init__(self, runcard, folder=None, force=False, update=False):
         # setting output folder
         self.folder = generate_output_folder(folder, force)
 
@@ -147,7 +147,7 @@ class ActionBuilder:
         platform_name = self.runcard.get("platform", "dummy")
         platform_runcard = self.runcard.get("runcard", None)
         self.backend, self.platform = self._allocate_backend(
-            backend_name, platform_name, platform_runcard
+            backend_name, platform_name, platform_runcard, update
         )
 
         self.qubits = allocate_qubits(self.platform, self.runcard.get("qubits", []))
@@ -158,7 +158,7 @@ class ActionBuilder:
         shutil.copy(runcard, f"{self.folder}/runcard.yml")
         self.save_meta()
 
-    def _allocate_backend(self, backend_name, platform_name, platform_runcard):
+    def _allocate_backend(self, backend_name, platform_name, platform_runcard, update):
         """Allocate the platform using Qibolab."""
         from qibo.backends import GlobalBackend, set_backend
 
@@ -171,13 +171,15 @@ class ActionBuilder:
                 original_runcard = platform_runcard
             # copy of the original runcard that will stay unmodified
             shutil.copy(original_runcard, f"{self.folder}/platform.yml")
-            # copy of the original runcard that will be modified during calibration
-            updated_runcard = f"{self.folder}/new_platform.yml"
-            shutil.copy(original_runcard, updated_runcard)
-            # allocate backend with updated_runcard
-            set_backend(
-                backend=backend_name, platform=platform_name, runcard=updated_runcard
-            )
+            if update:
+                # copy of the original runcard that will be modified during calibration
+                runcard = f"{self.folder}/new_platform.yml"
+                shutil.copy(original_runcard, runcard)
+                # allocate backend with updated_runcard
+            else:
+                runcard = f"{self.folder}/platform.yml"
+
+            set_backend(backend=backend_name, platform=platform_name, runcard=runcard)
             backend = GlobalBackend()
             return backend, backend.platform
         else:
@@ -221,35 +223,11 @@ class ActionBuilder:
                 parser.build()
                 parser.execute(self.format, self.platform)
 
-            for qubit in self.qubits:
-                if self.platform is not None:
-                    self.update_platform_runcard(qubit, action)
             self.dump_report(actions)
 
         if self.platform is not None:
             self.platform.stop()
             self.platform.disconnect()
-
-    def update_platform_runcard(self, qubit, routine):
-        try:
-            data_fit = Data.load_data(self.folder, "data", routine, self.format, "fits")
-            data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
-        except FileNotFoundError:
-            return None
-
-        params = data_fit.df[data_fit.df["qubit"] == qubit]
-        settings = load_yaml(f"{self.folder}/new_platform.yml")
-        for param in params:
-            if param in list(self.qubits[qubit].__annotations__.keys()):
-                setattr(self.qubits[qubit], param, params[param])
-                settings["characterization"]["single_qubit"][qubit][param] = int(
-                    data_fit.get_values(param)
-                )
-
-        with open(f"{self.folder}/new_platform.yml", "w") as file:
-            yaml.dump(
-                settings, file, sort_keys=False, indent=4, default_flow_style=None
-            )
 
     def dump_report(self, actions=None):
         from qibocal.web.report import create_report
