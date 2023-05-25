@@ -1,5 +1,3 @@
-# from __future__ import annotations
-
 from dataclasses import dataclass, field
 from typing import Iterable, Union
 
@@ -8,9 +6,12 @@ import pandas as pd
 from qibo.noise import NoiseModel
 from qibolab.platforms.abstract import AbstractPlatform
 
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Parameters, Qubits, Routine
 from qibocal.calibrations.niGSC.standardrb import ModuleFactory as StandardRBScan
-from qibocal.protocols.characterization.RB.result import DecayResult, get_hists_data
+from qibocal.protocols.characterization.RB.result import (
+    DecayWithOffsetResult,
+    get_hists_data,
+)
 from qibocal.protocols.characterization.RB.utils import extract_from_data
 
 NoneType = type(None)
@@ -28,11 +29,6 @@ class StandardRBParameters(Parameters):
     noise_model: str = ""
     noise_params: list = field(default_factory=list)
 
-    def __post_init__(self):
-        # TODO should the noise_model be already build here?
-        if self.noise_model is not None:
-            pass
-
 
 class StandardRBData(pd.DataFrame):
     def __init__(self, *args, **kwargs) -> None:
@@ -44,9 +40,7 @@ class StandardRBData(pd.DataFrame):
         self.save_func(f"{path}/{self.__class__.__name__}.csv")
 
 
-class StandardRBResult(DecayResult):
-    # def __init__(self, m, y, A=None, p=None, B=None, Aerr=None, perr=None, Berr=None, hists=None):
-    # super().__init__(m, y, A, p, B, Aerr, perr, Berr, hists)
+class StandardRBResult(DecayWithOffsetResult):
     def calculate_fidelities(self):
         # Divide infidelity by magic number
         magic_number = 1.875
@@ -67,7 +61,6 @@ def execute(
     nshots: Union[int, NoneType] = None,
     noise_model: Union[NoiseModel, NoneType] = None,
 ):
-    # Execute
     data_list = []
     for c in scan:
         depth = (c.depth - 2) if c.depth > 1 else 0
@@ -89,7 +82,7 @@ def aggregate(data: StandardRBData):
     )
 
 
-def aquire(
+def acquire(
     params: StandardRBParameters,
     platform: AbstractPlatform,
     qubits: Qubits,
@@ -126,4 +119,4 @@ def plot(data: StandardRBData, result: StandardRBResult, qubit):
     return [fig], table_str
 
 
-standard_rb = Routine(aquire, extract, plot)
+standard_rb = Routine(acquire, extract, plot)
