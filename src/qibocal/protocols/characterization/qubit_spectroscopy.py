@@ -2,12 +2,14 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
+import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.data import DataUnits
 
 from .resonator_spectroscopy import ResonatorSpectroscopyData
 from .utils import lorentzian_fit, spectroscopy_plot
@@ -47,8 +49,43 @@ class QubitSpectroscopyResults(Results):
     """Input attenuation for each qubit (optional)."""
 
 
-class QubitSpectroscopyData(ResonatorSpectroscopyData):
+class QubitSpectroscopyData(DataUnits):
     """QubitSpectroscopy acquisition outputs."""
+
+    def __init__(
+        self, resonator_type, power_level=None, amplitude=None, attenuation=None
+    ):
+        super().__init__(
+            name="data",
+            quantities={"frequency": "Hz"},
+            options=[
+                "probability",
+            ],
+        )
+        self._resonator_type = resonator_type
+        self._power_level = power_level
+        self._amplitude = amplitude
+        self._attenuation = attenuation
+
+    @property
+    def resonator_type(self):
+        """Type of resonator"""
+        return self._resonator_type
+
+    @property
+    def power_level(self):
+        """Resonator spectroscopy power level"""
+        return self._power_level
+
+    @property
+    def amplitude(self):
+        """Readout pulse amplitude common for all qubits"""
+        return self._amplitude
+
+    @property
+    def attenuation(self):
+        """Attenuation value common for all qubits"""
+        return self._attenuation
 
 
 def _acquisition(
@@ -105,9 +142,20 @@ def _acquisition(
         # average msr, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulse.serial]
         r = result.serialize
+
+        prob = np.abs(
+            result.voltage_i
+            + 1j * result.voltage_q
+            - complex(platform.qubits[qubit].mean_gnd_states)
+        ) / np.abs(
+            complex(platform.qubits[qubit].mean_exc_states)
+            - complex(platform.qubits[qubit].mean_gnd_states)
+        )
+
         # store the results
         r.update(
             {
+                "probability": prob,
                 "frequency[Hz]": delta_frequency_range + qd_pulses[qubit].frequency,
                 "qubit": len(delta_frequency_range) * [qubit],
             }
@@ -140,7 +188,28 @@ def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
 
 def _plot(data: QubitSpectroscopyData, fit: QubitSpectroscopyResults, qubit):
     """Plotting function for QubitSpectroscopy."""
-    return spectroscopy_plot(data, fit, qubit)
+    figs, report = spectroscopy_plot(data, fit, qubit)
+
+    data = data.df[data.df["qubit"] == qubit]
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=data["frequency"].pint.to("GHz").pint.magnitude,
+            y=data["probability"],
+            opacity=1,
+            name="Frequency",
+            showlegend=True,
+            legendgroup="Frequency",
+        ),
+    )
+    fig.update_layout(
+        title=f"Qubit {qubit} spectroscopy",
+        xaxis_title="Frequency (GHz)",
+        yaxis_title="Probability",
+    )
+
+    figs.append(fig)
+    return figs, report
 
 
 qubit_spectroscopy = Routine(_acquisition, _fit, _plot)

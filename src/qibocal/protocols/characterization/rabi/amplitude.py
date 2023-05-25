@@ -69,6 +69,7 @@ def _acquisition(
     sequence = PulseSequence()
     qd_pulses = {}
     ro_pulses = {}
+
     for qubit in qubits:
         qd_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
         if params.pulse_length is not None:

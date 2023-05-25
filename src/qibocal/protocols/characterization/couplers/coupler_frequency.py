@@ -28,6 +28,8 @@ class CouplerFrequencyParameters(Parameters):
     """Coupler drive duration."""
     coupler_drive_amplitude: Optional[float] = None
     """Coupler drive amplitude."""
+    drive_amplitude: Optional[float] = None
+    """Drive amplitude."""
     relaxation_time: Optional[float] = None
     """Relaxation time."""
 
@@ -87,6 +89,7 @@ def _aquisition(
         params.coupler_frequency = 3_600_000_000
     if params.coupler_drive_amplitude is None:
         params.coupler_drive_amplitude = 0.5
+
     for pair in qubit_pairs:
         cd_pulses[pair[0]] = platform.create_qubit_drive_pulse(
             pair[0], start=0, duration=params.coupler_drive_duration
@@ -96,6 +99,8 @@ def _aquisition(
         )
         cd_pulses[pair[0]].amplitude = params.coupler_drive_amplitude
         cd_pulses[pair[0]].frequency = params.coupler_frequency
+        if params.drive_amplitude is not None:
+            qd_pulses[pair[1]].amplitude = params.drive_amplitude
 
         # FIXME: This should be done in the driver
         platform.qubits[pair[0]].drive_frequency = params.coupler_frequency
@@ -150,7 +155,7 @@ def _aquisition(
             complex(platform.qubits[qubit].mean_exc_states)
             - complex(platform.qubits[qubit].mean_gnd_states)
         )
-        # prob = iq_to_probability(result.voltage_i, result.voltage_q, complex(platform.qubits[qubit].mean_exc_states), complex(platform.qubits[qubit].mean_gnd_states))
+
         # store the results
         r = {
             "frequency[Hz]": delta_frequency_range + params.coupler_frequency,

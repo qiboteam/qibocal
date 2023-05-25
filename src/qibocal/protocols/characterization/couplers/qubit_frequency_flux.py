@@ -21,8 +21,10 @@ class QubitFrequencyFluxParameters(Parameters):
     """Frequency width."""
     frequency_step: float
     """Frequency step."""
-    offset_width: float
-    """Flux offset width in volt."""
+    offset_min: float
+    """Flux offset minimum in volt."""
+    offset_max: float
+    """Flux offset maximum in volt."""
     offset_step: float
     """Flux offset step in volt."""
     nshots: Optional[int] = 1024
@@ -79,20 +81,23 @@ def _aquisition(
                 "Please specify wich coupler needs to be used with qubit 2."
             )
         qubits.pop(2)
+        couplers = len(qubits) * [2]
+    else:
+        couplers = qubits
 
     # create a sequence
     sequence = PulseSequence()
     ro_pulses = {}
     qd_pulses = {}
 
-    for qubit in qubits:
+    for qubit, coupler in zip(qubits, couplers):
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
-            qubit, start=0, duration=params.drive_duration
+            coupler, start=0, duration=params.drive_duration
         )
         qd_pulses[qubit].amplitude = params.drive_amplitude
 
         ro_pulses[qubit] = platform.create_MZ_pulse(
-            qubit, start=qd_pulses[qubit].finish
+            coupler, start=qd_pulses[qubit].finish
         )
 
         sequence.add(qd_pulses[qubit])
@@ -103,7 +108,7 @@ def _aquisition(
         -params.frequency_width // 2, params.frequency_width // 2, params.frequency_step
     )
     delta_offset_range = np.arange(
-        -params.offset_width / 2, params.offset_width / 2, params.offset_step
+        params.offset_min, params.offset_max, params.offset_step
     )
 
     sweeper_frequency = Sweeper(

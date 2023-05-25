@@ -20,8 +20,10 @@ class CouplerFrequencyFluxParameters(Parameters):
     """Frequency width."""
     frequency_step: float
     """Frequency step."""
-    offset_width: float
-    """Flux offset width in volt."""
+    offset_min: float
+    """Flux offset minimum in volt."""
+    offset_max: float
+    """Flux offset maximum in volt."""
     offset_step: float
     """Flux offset step in volt."""
     nshots: Optional[int] = None
@@ -107,7 +109,9 @@ def _aquisition(
             params.coupler_frequency - params.frequency_width * 1.1
         )
 
-        ro_pulses[pair[1]] = platform.create_MZ_pulse(pair[1], start=0)
+        ro_pulses[pair[1]] = platform.create_MZ_pulse(
+            pair[1], start=params.coupler_drive_duration + 80
+        )
 
         sequence.add(qd_pulses[pair[1]])
         sequence.add(cd_pulses[pair[0]])
@@ -118,7 +122,7 @@ def _aquisition(
         -params.frequency_width // 2, params.frequency_width // 2, params.frequency_step
     )
     delta_offset_range = np.arange(
-        -params.offset_width / 2, params.offset_width / 2, params.offset_step
+        params.offset_min, params.offset_max, params.offset_step
     )
 
     sweeper_frequency = Sweeper(

@@ -6,53 +6,45 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platforms.abstract import AbstractPlatform
-from qibolab.pulses import PulseSequence
+from qibolab.pulses import FluxPulse, PulseSequence, Rectangular
 from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
 
-"""
-
-NOT DONE YET
-
-"""
-
 
 @dataclass
-class CouplerSwapTimeFluxParameters(Parameters):
-    """CouplerSwapTimeFluxParameters runcard inputs."""
+class CouplerSwapFluxTimeParameters(Parameters):
+    """CouplerSwapFluxTime runcard inputs."""
 
-    frequency_width: float
-    """Frequency width."""
-    frequency_step: float
-    """Frequency step."""
-    offset_width: float
-    """Offset width."""
-    offset_step: float
-    """Offset step."""
+    amplitude_factor_min: float
+    """Amplitude minimum."""
+    amplitude_factor_max: float
+    """Amplitude maximum."""
+    amplitude_factor_step: float
+    """Amplitude step."""
+    duration_min: float
+    """Duration minimum."""
+    duration_max: float
+    """Duration maximum."""
+    duration_step: float
+    """Duration step."""
     nshots: Optional[int] = None
     """Number of shots per point."""
-    coupler_frequency: Optional[float] = None
-    """Coupler frequency."""
-    coupler_drive_duration: Optional[float] = None
-    """Coupler drive duration."""
-    coupler_drive_amplitude: Optional[float] = None
-    """Coupler drive amplitude."""
 
 
 @dataclass
-class CouplerSwapTimeFluxParametersResults(Results):
-    """CouplerSwapTimeFluxParameters outputs when fitting will be done."""
+class CouplerSwapFluxTimeResults(Results):
+    """CouplerSwapFluxTime outputs when fitting will be done."""
 
 
-class CouplerSwapTimeFluxParametersData(DataUnits):
-    """CouplerSwapTimeFluxParameters acquisition outputs."""
+class CouplerSwapFluxTimeData(DataUnits):
+    """CouplerSwapFluxTime acquisition outputs."""
 
     def __init__(self):
         super().__init__(
             name="data",
-            quantities={"frequency": "Hz", "offset": "V"},
+            quantities={"amplitude": "dimensionless", "duration": "ns"},
             options=[
                 "coupler",
                 "qubit",
@@ -63,10 +55,10 @@ class CouplerSwapTimeFluxParametersData(DataUnits):
 
 
 def _aquisition(
-    params: CouplerSwapTimeFluxParametersParameters,
+    params: CouplerSwapFluxTimeParameters,
     platform: AbstractPlatform,
     qubits: Qubits,
-) -> CouplerSwapTimeFluxParametersData:
+) -> CouplerSwapFluxTimeData:
     r"""
     Perform a SWAP experiment between two qubits through the coupler by changing its frequency.
 
@@ -87,63 +79,53 @@ def _aquisition(
     # create a sequence
     sequence = PulseSequence()
     ro_pulses = {}
-    cd_pulses = {}
     qd_pulses = {}
+    fx_pulses = {}
 
-    # FIXME: add coupler pulses in the runcard
-    if params.coupler_drive_duration is None:
-        params.coupler_drive_duration = 2000
-    if params.coupler_frequency is None:
-        params.coupler_frequency = 3_600_000_000
-    if params.coupler_drive_amplitude is None:
-        params.coupler_drive_amplitude = 0.5
     for pair in qubit_pairs:
-        qd_pulses[pair[1]] = platform.create_RX_pulse(pair[1], start=0)
-        cd_pulses[pair[0]] = platform.create_qubit_drive_pulse(
-            pair[0],
-            start=qd_pulses[pair[1]].se_finish,
-            duration=params.coupler_drive_duration,
-        )
-        cd_pulses[pair[0]].amplitude = params.coupler_drive_amplitude
-        cd_pulses[pair[0]].frequency = params.coupler_frequency
-
-        # FIXME: This should be done in the driver
-        platform.qubits[pair[0]].drive_frequency = params.coupler_frequency
-        platform.qubits[pair[0]].drive.local_oscillator.frequency = (
-            params.coupler_frequency - params.frequency_width * 1.1
+        qd_pulses[pair[0]] = platform.create_RX_pulse(pair[0], start=0)
+        fx_pulses[pair[0]] = FluxPulse(
+            start=qd_pulses[pair[0]].se_finish + 8,
+            duration=params.duration_min,
+            amplitude=1,
+            shape=Rectangular(),
+            channel=platform.qubits[f"c{pair[0]}"].flux.name,
+            qubit=f"c{pair[0]}",
         )
 
         ro_pulses[pair[1]] = platform.create_MZ_pulse(
-            pair[1], start=cd_pulses[pair[0]].se_finish
+            pair[1], start=fx_pulses[pair[0]].se_finish + 8
         )
         # ro_pulses[pair[0]] = platform.create_MZ_pulse(pair[0], start=ro_pulses[pair[1]].se_finish) # Multiplex not working yet
 
-        sequence.add(qd_pulses[pair[1]])
-        sequence.add(cd_pulses[pair[0]])
+        sequence.add(qd_pulses[pair[0]])
+        sequence.add(fx_pulses[pair[0]])
         sequence.add(ro_pulses[pair[1]])
         # sequence.add(ro_pulses[pair[0]])
 
     # define the parameter to sweep and its range:
-    delta_frequency_range = np.arange(
-        -params.frequency_width // 2, params.frequency_width // 2, params.frequency_step
+    delta_amplitude_range = np.arange(
+        params.amplitude_factor_min,
+        params.amplitude_factor_max,
+        params.amplitude_factor_step,
     )
-    delta_offset_range = np.arange(
-        -params.offset_width / 2, params.offset_width / 2, params.offset_step
+    delta_duration_range = np.arange(
+        params.duration_min, params.duration_max, params.duration_step
     )
 
-    sweeper_frequency = Sweeper(
-        Parameter.frequency,
-        delta_frequency_range,
-        pulses=[cd_pulses[pair[0]] for pair in qubit_pairs],
+    sweeper_amplitude = Sweeper(
+        Parameter.amplitude,
+        delta_amplitude_range,
+        pulses=[fx_pulses[pair[0]] for pair in qubit_pairs],
     )
-    sweeper_offset = Sweeper(
-        Parameter.bias,
-        delta_offset_range,
-        qubits=[platform.qubits[f"c{pair[0]}"] for pair in qubit_pairs],
+    sweeper_duration = Sweeper(
+        Parameter.duration,
+        delta_duration_range,
+        pulses=[fx_pulses[pair[0]] for pair in qubit_pairs],
     )
 
     # create a DataUnits object to store the results,
-    sweep_data = CouplerSwapTimeFluxParametersData()
+    sweep_data = CouplerSwapFluxTimeData()
 
     # repeat the experiment as many times as defined by nshots
     results = platform.sweep(
@@ -153,15 +135,15 @@ def _aquisition(
             acquisition_type=AcquisitionType.INTEGRATION,
             averaging_mode=AveragingMode.CYCLIC,
         ),
-        sweeper_frequency,
-        sweeper_offset,
+        sweeper_amplitude,
+        sweeper_duration,
     )
 
     # retrieve the results for every qubit
     for pair in qubit_pairs:
         # WHEN MULTIPLEXING IS WORKING
         # for state, qubit in zip([0, 1], pair):
-        for state, qubit in zip([1], [pair[1]]):
+        for state, qubit in zip([0], [pair[1]]):
             # average msr, phase, i and q over the number of shots defined in the runcard
             ro_pulse = ro_pulses[qubit]
             result = results[ro_pulse.serial]
@@ -174,28 +156,29 @@ def _aquisition(
                 complex(platform.qubits[qubit].mean_exc_states)
                 - complex(platform.qubits[qubit].mean_gnd_states)
             )
-            # prob = iq_to_probability(result.voltage_i, result.voltage_q, complex(platform.qubits[qubit].mean_exc_states), complex(platform.qubits[qubit].mean_gnd_states))
-            freq, offset = np.meshgrid(
-                delta_frequency_range + params.coupler_frequency,
-                delta_offset_range + platform.qubits[f"c{pair[0]}"].sweetspot,
-                indexing="ij",
+            amp, dur = np.meshgrid(
+                delta_amplitude_range, delta_duration_range, indexing="ij"
             )
             # store the results
             r = {
-                "frequency[Hz]": freq.flatten(),
-                "offset[V]": offset.flatten(),
-                "coupler": len(delta_frequency_range)
-                * len(delta_offset_range)
+                "amplitude[dimensionless]": amp.flatten(),
+                "duration[ns]": dur.flatten(),
+                "coupler": len(delta_amplitude_range)
+                * len(delta_duration_range)
                 * [f"c{pair[0]}"],
-                "qubit": len(delta_frequency_range) * len(delta_offset_range) * [qubit],
-                "state": len(delta_frequency_range) * len(delta_offset_range) * [state],
+                "qubit": len(delta_amplitude_range)
+                * len(delta_duration_range)
+                * [qubit],
+                "state": len(delta_amplitude_range)
+                * len(delta_duration_range)
+                * [state],
                 "probability": prob.flatten(),
             }
             sweep_data.add_data_from_dict(r)
 
     # Temporary fix for multiplexing, repeat the experiment for the second qubit
     ro_pulses[pair[0]] = platform.create_MZ_pulse(
-        pair[0], start=ro_pulses[pair[1]].se_finish
+        pair[0], start=ro_pulses[pair[1]].se_start
     )  # Multiplex not working yet
     sequence.add(ro_pulses[pair[0]])
     sequence.remove(ro_pulses[pair[1]])
@@ -207,14 +190,14 @@ def _aquisition(
             acquisition_type=AcquisitionType.INTEGRATION,
             averaging_mode=AveragingMode.CYCLIC,
         ),
-        sweeper_frequency,
-        sweeper_offset,
+        sweeper_amplitude,
+        sweeper_duration,
     )
 
     for pair in qubit_pairs:
         # WHEN MULTIPLEXING IS WORKING
         # for state, qubit in zip([0, 1], pair):
-        for state, qubit in zip([0], [pair[0]]):
+        for state, qubit in zip([1], [pair[0]]):
             # average msr, phase, i and q over the number of shots defined in the runcard
             ro_pulse = ro_pulses[qubit]
             result = results[ro_pulse.serial]
@@ -229,13 +212,17 @@ def _aquisition(
             )
             # store the results
             r = {
-                "frequency[Hz]": freq.flatten(),
-                "offset[V]": offset.flatten(),
-                "coupler": len(delta_frequency_range)
-                * len(delta_offset_range)
+                "amplitude[dimensionless]": amp.flatten(),
+                "duration[ns]": dur.flatten(),
+                "coupler": len(delta_amplitude_range)
+                * len(delta_duration_range)
                 * [f"c{pair[0]}"],
-                "qubit": len(delta_frequency_range) * len(delta_offset_range) * [qubit],
-                "state": len(delta_frequency_range) * len(delta_offset_range) * [state],
+                "qubit": len(delta_amplitude_range)
+                * len(delta_duration_range)
+                * [qubit],
+                "state": len(delta_amplitude_range)
+                * len(delta_duration_range)
+                * [state],
                 "probability": prob.flatten(),
             }
             sweep_data.add_data_from_dict(r)
@@ -243,16 +230,12 @@ def _aquisition(
     return sweep_data
 
 
-def _plot(
-    data: CouplerSwapTimeFluxParametersData,
-    fit: CouplerSwapTimeFluxParametersResults,
-    qubit,
-):
+def _plot(data: CouplerSwapFluxTimeData, fit: CouplerSwapFluxTimeResults, qubit):
     fig = make_subplots(rows=1, cols=2, subplot_titles=("|0>", "|1>"))
 
     # Plot data
     for state, q in zip(
-        [0, 1], [qubit, 2]
+        [1, 0], [qubit, 2]
     ):  # When multiplex works zip([0, 1], [qubit, 2])
         fig.add_trace(
             go.Heatmap(
@@ -260,15 +243,15 @@ def _plot(
                     (data.df["state"] == state)
                     & (data.df["qubit"] == q)
                     & (data.df["coupler"] == f"c{qubit}")
-                ]["frequency"]
-                .pint.to("Hz")
+                ]["duration"]
+                .pint.to("ns")
                 .pint.magnitude,
                 y=data.df[
                     (data.df["state"] == state)
                     & (data.df["qubit"] == q)
                     & (data.df["coupler"] == f"c{qubit}")
-                ]["offset"]
-                .pint.to("V")
+                ]["amplitude"]
+                .pint.to("dimensionless")
                 .pint.magnitude,
                 z=data.df[
                     (data.df["state"] == state)
@@ -282,8 +265,8 @@ def _plot(
         )
     fig.update_layout(
         title=f"Qubit {qubit} swap frequency",
-        xaxis_title="Frequency [Hz]",
-        yaxis_title="Offset [V]",
+        xaxis_title="Duration [ns]",
+        yaxis_title="Amplitude [dimensionless]",
         legend_title="States",
     )
     fig.update_layout(
@@ -293,9 +276,9 @@ def _plot(
     return [fig], "No fitting data."
 
 
-def _fit(data: CouplerSwapTimeFluxParametersData):
-    return CouplerSwapTimeFluxParametersResults()
+def _fit(data: CouplerSwapFluxTimeData):
+    return CouplerSwapFluxTimeResults()
 
 
-coupler_swap_frequency_flux = Routine(_aquisition, _fit, _plot)
-"""Coupler swap frequency routine."""
+coupler_swap_flux_time = Routine(_aquisition, _fit, _plot)
+"""Coupler swap flux routine."""

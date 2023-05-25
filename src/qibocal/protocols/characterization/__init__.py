@@ -7,9 +7,11 @@ from .classification import single_shot_classification
 from .coherence.spin_echo import spin_echo
 from .coherence.t1 import t1
 from .coherence.t2 import t2
+from .couplers.coupler_cz_flux_time import coupler_cz_flux_time
 from .couplers.coupler_frequency import coupler_frequency
 from .couplers.coupler_frequency_flux import coupler_frequency_flux
 from .couplers.coupler_swap_flux import coupler_swap_flux
+from .couplers.coupler_swap_flux_time import coupler_swap_flux_time
 from .couplers.coupler_swap_frequency import coupler_swap_frequency
 from .couplers.coupler_swap_frequency_flux import coupler_swap_frequency_flux
 from .couplers.qubit_flux import qubit_flux as coupler_qubit_flux
@@ -28,6 +30,7 @@ from .ramsey_sweep import ramsey as ramsey_sweep
 from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
+from .two_qubit_interaction.cz_flux_time import cz_flux_time
 
 
 class Operation(Enum):
@@ -59,3 +62,6 @@ class Operation(Enum):
     resonator_frequency_flux = resonator_frequency_flux
     coupler_resonator_flux = coupler_resonator_flux
     coupler_qubit_flux = coupler_qubit_flux
+    coupler_swap_flux_time = coupler_swap_flux_time
+    cz_flux_time = cz_flux_time
+    coupler_cz_flux_time = coupler_cz_flux_time
