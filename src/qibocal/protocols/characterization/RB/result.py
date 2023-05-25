@@ -178,7 +178,6 @@ def get_hists_data(data_agg: pd.DataFrame):
     signal = extract_from_data(data_agg, "signal", "depth")[1].reshape(
         -1, data_agg.attrs["niter"]
     )
-    print(data_agg.attrs["niter"])
     if data_agg.attrs["niter"] > 10:
         nbins = choose_bins(data_agg.attrs["niter"])
         counts_list, bins_list = zip(*[np.histogram(x, bins=nbins) for x in signal])
