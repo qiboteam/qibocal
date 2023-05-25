@@ -12,7 +12,7 @@ import pandas as pd
 from qibolab.platforms.abstract import Qubit
 from sklearn.metrics import accuracy_score
 
-from . import data, plots
+from . import data
 
 CLS_MODULES = [
     "linear_svm",
@@ -305,6 +305,8 @@ def train_qubit(
 
     benchmarks_table = pd.DataFrame([asdict(res) for res in results_list])
     if base_dir:
+        from . import plots
+
         plots.plot_models_results(x_train, x_test, y_test, qubit_dir, models, names)
         plots.plot_roc_curves(x_test, y_test, qubit_dir, models, names)
     return benchmarks_table, y_test, x_test, models, names, hpars_list

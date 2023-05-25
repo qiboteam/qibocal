@@ -6,8 +6,6 @@ import numpy as np
 import numpy.typing as npt
 import skops.io as sio
 
-from .utils import identity
-
 
 def constructor(_hyperparams):
     r"""Return the model class.
@@ -32,7 +30,7 @@ def hyperopt(_x_train, _y_train, _path):
     return {}
 
 
-normalize = identity
+normalize = lambda x: x
 
 
 def dump(model, save_path: Path):
