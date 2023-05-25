@@ -1,7 +1,8 @@
 from dataclasses import dataclass, field
-from typing import Dict, Union
+from typing import Dict, Optional, Union
 
 import numpy as np
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
@@ -24,10 +25,10 @@ class RabiLengthParameters(Parameters):
     """Step pi pulse duration (ns)."""
     pulse_amplitude: float
     """Pi pulse amplitude. Same for all qubits."""
-    nshots: int
+    nshots: Optional[int] = None
     """Number of shots."""
-    relaxation_time: float
-    """Relxation time (ns)."""
+    relaxation_time: Optional[int] = None
+    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -92,11 +93,19 @@ def _acquisition(
             ro_pulses[qubit].start = qd_pulses[qubit].finish
 
         # execute the pulse sequence
-        results = platform.execute_pulse_sequence(sequence, nshots=params.nshots)
+        results = platform.execute_pulse_sequence(
+            sequence,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
+        )
 
         for qubit in qubits:
             # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[qubit].average.raw
+            r = results[ro_pulses[qubit].serial].serialize
             r.update(
                 {
                     "length[ns]": duration,
@@ -104,7 +113,7 @@ def _acquisition(
                     "qubit": qubit,
                 }
             )
-            data.add(r)
+            data.add_data_from_dict(r)
 
     return data
 

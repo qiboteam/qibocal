@@ -1,7 +1,8 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Union
+from typing import Dict, Optional, Union
 
 import numpy as np
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
@@ -24,11 +25,11 @@ class ResonatorFluxParameters(Parameters):
     bias_width: float
     """Width for bias sweep [V]."""
     bias_step: float
-    """Bias step for sweep [V]."""
-    nshots: int
+    """Bias step for sweep (V)."""
+    nshots: Optional[int] = None
     """Number of shots."""
-    relaxation_time: int
-    """Relaxation time [ns]."""
+    relaxation_time: Optional[int] = None
+    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -94,10 +95,14 @@ def _acquisition(
     # repeat the experiment as many times as defined by software_averages
     results = platform.sweep(
         sequence,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
+        ),
         bias_sweeper,
         freq_sweeper,
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
     )
 
     # retrieve the results for every qubit
@@ -110,7 +115,7 @@ def _acquisition(
             * list(delta_frequency_range + ro_pulses[qubit].frequency)
         ).flatten()
         # store the results
-        r = {k: v.ravel() for k, v in result.raw.items()}
+        r = {k: v.ravel() for k, v in result.serialize.items()}
         r.update(
             {
                 "frequency[Hz]": freqs,
