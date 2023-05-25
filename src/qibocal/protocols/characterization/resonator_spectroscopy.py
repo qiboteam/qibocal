@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Optional, Union
 
 import numpy as np
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
@@ -19,17 +20,17 @@ class ResonatorSpectroscopyParameters(Parameters):
     freq_width: int
     """Width for frequency sweep relative  to the readout frequency (Hz)."""
     freq_step: int
-    """Frequency step for sweep [Hz]."""
-    nshots: int
-    """Number of shots."""
+    """Frequency step for sweep (Hz)."""
     power_level: PowerLevel
     """Power regime (low or high). If low the readout frequency will be updated.
     If high both the readout frequency and the bare resonator frequency will be updated."""
-    relaxation_time: int
-    """Relaxation time (ns)."""
     amplitude: Optional[float] = None
     """Readout amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
+    nshots: Optional[int] = None
+    """Number of shots."""
+    relaxation_time: Optional[int] = None
+    """Relaxation time (ns)."""
 
     def __post_init__(self):
         # TODO: ask Alessandro if there is a proper way to pass Enum to class
@@ -127,9 +128,13 @@ def _acquisition(
     )
     results = platform.sweep(
         sequence,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
+        ),
         sweeper,
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
     )
 
     # retrieve the results for every qubit
@@ -137,7 +142,7 @@ def _acquisition(
         # average msr, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulses[qubit].serial]
         # store the results
-        r = result.raw
+        r = result.serialize
         r.update(
             {
                 "frequency[Hz]": delta_frequency_range + ro_pulses[qubit].frequency,
