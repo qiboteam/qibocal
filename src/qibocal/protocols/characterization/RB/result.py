@@ -143,44 +143,35 @@ def plot_decay_result(
     fig.add_trace(
         go.Scatter(x=m_fit, y=y_fit, name=str(result), line=go.scatter.Line(dash="dot"))
     )
-    # print(fig)
     return fig
 
 
 def plot_hists_result(result: DecayResult) -> go.Figure:
-    count_array, bins_array = np.array(result.hists[0]), np.array(result.hists[1])
-    if bins_array.shape[1] - count_array.shape[1]:
-        bins_array = (
-            bins_array[::, :-1]
-            + (np.array(bins_array[::, 1] - bins_array[::, 0]).reshape(-1, 1)) / 2
-        )
-    fig_hist = px.scatter(
-        x=np.repeat(result.m, bins_array.shape[-1]),
-        y=bins_array.flatten(),
-        color=count_array.flatten() if not np.all(count_array == 1) else None,
-        color_continuous_scale=px.colors.sequential.Tealgrn,
-    )
-    fig_hist.update_traces(marker=dict(symbol="square"))
-    fig_hist.update_layout(
-        coloraxis_colorbar_x=-0.15, coloraxis_colorbar_title_text="count"
-    )
+    counts_list, bins_list = result.hists
+    counts_list = sum(counts_list, [])
+    fig_hist = go.Figure(go.Scatter(
+            x=np.repeat(result.m, [len(bins) for bins in bins_list]),
+            y=sum(bins_list, []),
+            mode="markers",
+            marker={"symbol": "square"},
+            marker_color = [f'rgba(101, 151, 170, {count/max(counts_list)})' for count in counts_list],
+            text = [count for count in counts_list],
+            hovertemplate='<br>x:%{x}<br>y:%{y}<br>count:%{text}',
+            name="iterations",
+        ))
+    
     return fig_hist
-
-
-def choose_bins(niter):
-    if niter <= 10:
-        return niter
-    else:
-        return int(np.log10(niter) * 10)
 
 
 def get_hists_data(data_agg: DecayResult):
     signal = extract_from_data(data_agg, "signal", "depth")[1].reshape(
         -1, data_agg.attrs["niter"]
     )
-    if data_agg.attrs["niter"] > 10:
-        nbins = choose_bins(data_agg.attrs["niter"])
-        counts_list, bins_list = zip(*[np.histogram(x, bins=nbins) for x in signal])
-    else:
-        counts_list, bins_list = np.ones(signal.shape), signal
+    counts_list, bins_list = zip(*[np.histogram(x, bins=12) for x in signal])
+    counts_list, bins_list = list(counts_list), list(bins_list)
+    for k in range(len(counts_list)):
+        bins, counts = bins_list[k], counts_list[k]
+        bins = bins[:-1] + (bins[1] - bins[0]) / 2
+        bins_list[k] = list(bins[counts != 0])
+        counts_list[k] = list(counts[counts != 0])
     return counts_list, bins_list
