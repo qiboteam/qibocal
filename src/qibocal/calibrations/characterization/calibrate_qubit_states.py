@@ -16,7 +16,11 @@ MARGIN = 0
 
 @plot("Qubit States", plots.qubit_states)
 def calibrate_qubit_states(
-    platform: AbstractPlatform, qubits: dict, nshots: int, classifiers, save_dir: str
+    platform: AbstractPlatform,
+    qubits: dict,
+    nshots: int,
+    save_dir: str,
+    classifiers=["qubit_fit"],
 ):
     """
     Method which implements the state's calibration of a chosen qubit. Two analogous tests are performed
