@@ -102,7 +102,7 @@ class Classifier:
 
     def dump(self, path: pathlib.Path):
         if base_dir:
-            return self.mod.dump(self.trainable_model, path)
+            self.mod.dump(self.trainable_model, path)
 
     @classmethod
     def load_model(cls, name: str, base_dir: pathlib.Path):
