@@ -266,7 +266,6 @@ def train_qubit(
 
     for mod in classifiers:
         classifier = Classifier(mod, qubit_dir)
-        print(classifier.savedir)
         if classifier.savedir:
             classifier.savedir.mkdir(exist_ok=True)
         logging.info(f"Classification model: {classifier.name}")
