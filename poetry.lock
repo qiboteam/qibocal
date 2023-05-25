@@ -2665,11 +2665,15 @@ networkx = "^3.0"
 pyyaml = "^6.0"
 qibo = "^0.1.12"
 
+[package.extras]
+qblox = ["pyvisa-py (==0.5.3)", "qblox-instruments (==0.9.0)", "qcodes (>=0.37.0,<0.38.0)", "qcodes_contrib_drivers (==0.18.0)"]
+qm = ["qm-qua (==1.1.1)", "qualang-tools (==0.14.0)"]
+
 [package.source]
 type = "git"
 url = "https://github.com/qiboteam/qibolab.git"
 reference = "execute_branch"
-resolved_reference = "492f0685eba9cdc6ea7630f20d419045a38f9d9c"
+resolved_reference = "06592d4b8ece639c013c00cc347ae09697a763ef"
 
 [[package]]
 name = "recommonmark"

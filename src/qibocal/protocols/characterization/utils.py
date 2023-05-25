@@ -151,10 +151,10 @@ def spectroscopy_plot(data, fit: Results, qubit):
 
     fitting_report += f"{qubit} | {label}: {freq[qubit]*1e9:,.0f} Hz<br>"
 
-    if fit.amplitude:
+    if fit.amplitude[qubit] is not None:
         fitting_report += f"{qubit} | amplitude: {fit.amplitude[qubit]} <br>"
 
-    if fit.attenuation:
+    if fit.attenuation[qubit] is not None and fit.attenuation[qubit] != 0:
         fitting_report += f"{qubit} | attenuation: {fit.attenuation[qubit]} <br>"
 
     fig.update_layout(
