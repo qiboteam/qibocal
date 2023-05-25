@@ -1,7 +1,9 @@
 from dataclasses import dataclass
+from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
+from qibolab import AveragingMode, ExecutionParameters
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
@@ -22,6 +24,10 @@ class AllXYDragParameters(Parameters):
     """Final beta parameter for Drag pulse."""
     beta_step: float
     """Step beta parameter for Drag pulse."""
+    nshots: Optional[int] = None
+    """Number of shots."""
+    relaxation_time: Optional[int] = None
+    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -78,11 +84,18 @@ def _acquisition(
                 )
 
             # execute the pulse sequence
-            results = platform.execute_pulse_sequence(sequence)
+            results = platform.execute_pulse_sequence(
+                sequence,
+                ExecutionParameters(
+                    nshots=params.nshots,
+                    relaxation_time=params.relaxation_time,
+                    averaging_mode=AveragingMode.CYCLIC,
+                ),
+            )
 
             # retrieve the results for every qubit
             for ro_pulse in ro_pulses.values():
-                z_proj = 2 * results[ro_pulse.serial].ground_state_probability - 1
+                z_proj = 2 * results[ro_pulse.serial].probability(0) - 1
                 # store the results
                 r = {
                     "probability": z_proj,
