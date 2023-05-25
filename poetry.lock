@@ -2672,8 +2672,8 @@ qm = ["qm-qua (==1.1.1)", "qualang-tools (==0.14.0)"]
 [package.source]
 type = "git"
 url = "https://github.com/qiboteam/qibolab.git"
-reference = "execute_branch"
-resolved_reference = "06592d4b8ece639c013c00cc347ae09697a763ef"
+reference = "main"
+resolved_reference = "eb1a6459e409528745134b576764756bd3f6410d"
 
 [[package]]
 name = "recommonmark"
@@ -3602,4 +3602,4 @@ viz = ["pydot"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.8,<3.12"
-content-hash = "e73c7a04e9b58e07c310c64481d4cdcf834ddc768d2e59ec44cff13ca11db1e9"
+content-hash = "5752ea58aedfff6bc5f4812b27627d5b267e77099d53aeb25aac1ede21d7657c"
