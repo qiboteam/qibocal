@@ -13,7 +13,7 @@ from readout_mitigation import ReadoutErrorMitigation
 nqubits = 5
 qubits = [2, 3]
 nshots = 10000
-runcard = "qibolab/src/qibolab/runcards/qw5q_gold_qblox.yml"
+runcard = "../../../qibolab/src/qibolab/runcards/qw5q_gold_qblox.yml"
 timestr = time.strftime("%Y%m%d-%H%M")
 shutil.copy(runcard, f"{timestr}_runcard.yml")
 ntheta = 20
@@ -23,6 +23,7 @@ bell_basis = [0, 1, 2, 3]
 thetas = np.linspace(0, 2 * np.pi, ntheta)
 
 platform = Platform("qblox", runcard)
+# platform = None
 
 platform.connect()
 platform.setup()

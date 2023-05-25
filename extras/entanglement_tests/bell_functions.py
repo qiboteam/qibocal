@@ -145,13 +145,15 @@ class BellExperiment:
                 p[0] += 0
             elif bell_state == 2:
                 p[0] += 0
-                c.add(gates.GPI(qubits[0], p[0]))
+                c.add(gates.GPI2(qubits[0], p[0]))
+                c.add(gates.GPI2(qubits[0], p[0]))
             elif bell_state == 3:
                 p[0] += np.pi
-                c.add(gates.GPI(qubits[0], p[0]))
+                c.add(gates.GPI2(qubits[0], p[0]))
+                c.add(gates.GPI2(qubits[0], p[0]))
 
             c.add(gates.GPI2(qubits[0], p[0]))
-            p += theta
+            p[0] += theta
             c.add(gates.GPI2(qubits[0], p[0] + np.pi))
 
         else:
@@ -195,7 +197,7 @@ class BellExperiment:
                         c.add(gates.H(qubits[i]))
             for qubit in qubits:
                 c.add(gates.M(qubit, p0=rerr[0], p1=rerr[1]))
-            chsh_circuits.add(c)
+            chsh_circuits.append(c)
 
         return chsh_circuits
 
