@@ -73,7 +73,7 @@ devtools = "^0.10.0"
 
 [tool.poetry.extras]
 
-classify = ["scikit-learn", "tensorflow", "keras-tuner", "matplotlib", "seaborn", "skl2onnx", "skops", "onnxruntime", "onnx"]
+classify = ["scikit-learn", "tensorflow", "keras-tuner", "matplotlib", "seaborn", "skl2onnx", "onnxruntime", "onnx"]
 docs = [
   "sphinx",
   "furo",
