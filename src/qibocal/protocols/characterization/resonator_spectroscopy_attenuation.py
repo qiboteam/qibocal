@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Optional, Union
 
 import numpy as np
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -102,7 +102,7 @@ class ResonatorSpectroscopyAttenuationData(DataUnits):
 
 def _acquisition(
     params: ResonatorSpectroscopyAttenuationParameters,
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: Qubits,
 ) -> ResonatorSpectroscopyAttenuationData:
     """Data acquisition for resonator spectroscopy attenuation."""

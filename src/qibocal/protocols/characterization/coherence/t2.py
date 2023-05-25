@@ -4,7 +4,7 @@ from typing import Dict, Optional, Union
 import numpy as np
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -45,7 +45,7 @@ class T2Data(t1.T1Data):
 
 def _acquisition(
     params: T2Parameters,
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: Qubits,
 ) -> T2Data:
     """Data acquisition for Ramsey Experiment (detuned)."""
