@@ -2,8 +2,6 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Tuple, Union
 
 import numpy as np
-import pandas as pd
-import plotly.express as px
 import plotly.graph_objects as go
 
 from qibocal.auto.operation import Results
@@ -173,8 +171,10 @@ def get_hists_data(data_agg: DecayResult):
     signal = extract_from_data(data_agg, "signal", "depth")[1].reshape(
         -1, data_agg.attrs["niter"]
     )
-    counts_list, bins_list = zip(*[np.histogram(x, bins=12) for x in signal])
+    counts_list, bins_list = zip(*[np.histogram(x, bins=50) for x in signal])
     counts_list, bins_list = list(counts_list), list(bins_list)
+
+    # Remove zero counts and adjust bin values
     for k in range(len(counts_list)):
         bins, counts = bins_list[k], counts_list[k]
         bins = bins[:-1] + (bins[1] - bins[0]) / 2

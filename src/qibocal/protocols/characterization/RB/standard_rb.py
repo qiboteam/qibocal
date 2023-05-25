@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 from qibo.noise import NoiseModel
 from qibolab.platforms.abstract import AbstractPlatform
 
-from qibocal.auto.operation import Parameters, Qubits, Routine
+from qibocal.auto.operation import Routine
 from qibocal.calibrations.niGSC.standardrb import ModuleFactory as StandardRBScan
 from qibocal.protocols.characterization.RB.result import (
     DecayWithOffsetResult,
@@ -15,49 +15,13 @@ from qibocal.protocols.characterization.RB.result import (
 )
 from qibocal.protocols.characterization.RB.utils import extract_from_data
 
+from .data import RBData
+from .params import RBParameters
+
 NoneType = type(None)
 
 
 @dataclass
-class StandardRBParameters(Parameters):
-    """Standard Randomized Benchmarking runcard inputs."""
-
-    nqubits: int
-    """The amount of qubits on the chip """
-    qubits: list
-    """A list of indices which qubit(s) should be benchmarked """
-    depths: Union[list, dict]
-    """A list of depths/sequence lengths. If a dictionary is given the list will be build."""
-    niter: int
-    """Sets how many iterations over the same depth value."""
-    nshots: int
-    """For each sequence how many shots for statistics should be performed."""
-    noise_model: str = ""
-    """For simulation purposes, string has to match what is in qibocal. ... basics.noisemodels"""
-    noise_params: list = field(default_factory=list)
-    """With this the noise model will be initialized, if not given random values will be used."""
-
-    def __post_init__(self):
-        if isinstance(self.depths, dict):
-            self.depths: list = list(
-                range(self.depths["start"], self.depths["stop"], self.depths["step"])
-            )
-
-
-class StandardRBData(pd.DataFrame):
-    """A pandas DataFrame child. The output of the acquisition function."""
-
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        # FIXME this is necessary because the auto builder calls .to_csv(path_to_directory).
-        # But the DataFrame object from pandas needs a path to a file.
-        self.save_func = self.to_csv
-        self.to_csv = self.to_csv_helper
-
-    def to_csv_helper(self, path):
-        self.save_func(f"{path}/{self.__class__.__name__}.csv")
-
-
 class StandardRBResult(DecayWithOffsetResult):
     """Inherits from `DecayWithOffsetResult`, a result class storing data and parameters
     of a single decay with statistics.
@@ -83,11 +47,11 @@ class StandardRBResult(DecayWithOffsetResult):
         }
 
 
-def setup_scan(params: StandardRBParameters) -> Iterable:
+def setup_scan(params: RBParameters) -> Iterable:
     """An iterator building random Clifford sequences with an inverse in the end.
 
     Args:
-        params (StandardRBParameters): The needed parameters.
+        params (RBParameters): The needed parameters.
 
     Returns:
         Iterable: The iterator of circuits.
@@ -127,12 +91,12 @@ def execute(
     return data_list
 
 
-def aggregate(data: StandardRBData) -> StandardRBResult:
+def aggregate(data: RBData) -> StandardRBResult:
     """Takes a data frame, processes it and aggregates data in order to create
     a routine result object.
 
     Args:
-        data (StandardRBData): Actually a data frame from where the data is processed.
+        data (RBData): Actually a data frame from where the data is processed.
 
     Returns:
         StandardRBResult: The aggregated data.
@@ -148,11 +112,7 @@ def aggregate(data: StandardRBData) -> StandardRBResult:
     )
 
 
-def acquire(
-    params: StandardRBParameters,
-    platform: AbstractPlatform,
-    qubits: Qubits,
-) -> StandardRBData:
+def acquire(params: RBParameters, *args) -> RBData:
     """The data acquisition stage of standard rb.
 
     1. Set up the scan
@@ -160,12 +120,10 @@ def acquire(
     3. Put the acquired data in a standard rb data object.
 
     Args:
-        params (StandardRBParameters): All parameters in one object.
-        platform (AbstractPlatform): Not used yet.
-        qubits (Qubits): Not used yet.
+        params (RBParameters): All parameters in one object.
 
     Returns:
-        StandardRBData: _description_
+        RBData: _description_
     """
 
     # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
@@ -180,17 +138,17 @@ def acquire(
     # Execute the scan.
     data = execute(scan, params.nshots, noise_model)
     # Build the data object which will be returned and later saved.
-    standardrb_data = StandardRBData(data)
+    standardrb_data = RBData(data)
     standardrb_data.attrs = params.__dict__
     return standardrb_data
 
 
-def extract(data: StandardRBData) -> StandardRBResult:
+def extract(data: RBData) -> StandardRBResult:
     """Takes a data frame and extracts the depths,
     average values of the survival probability and histogram
 
     Args:
-        data (StandardRBData): Data from the data acquisition stage.
+        data (RBData): Data from the data acquisition stage.
 
     Returns:
         StandardRBResult: Aggregated and processed data.
@@ -202,14 +160,12 @@ def extract(data: StandardRBData) -> StandardRBResult:
     return result
 
 
-def plot(
-    data: StandardRBData, result: StandardRBResult, qubit
-) -> Tuple[List[go.Figure], str]:
+def plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure], str]:
     """Builds the table for the qq pipe, calls the plot function of the result object
     and returns the figure es list.
 
     Args:
-        data (StandardRBData): Data object used for the table.
+        data (RBData): Data object used for the table.
         result (StandardRBResult): Is called for the plot.
         qubit (_type_): Not used yet.
 
