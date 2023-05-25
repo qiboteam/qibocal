@@ -18,6 +18,7 @@ from .ramsey import ramsey
 from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
+from .signal_experiments.tof import tof
 
 
 class Operation(Enum):
@@ -39,3 +40,4 @@ class Operation(Enum):
     drag_pulse_tuning = drag_pulse_tuning
     flipping = flipping
     dispersive_shift = dispersive_shift
+    tof = tof

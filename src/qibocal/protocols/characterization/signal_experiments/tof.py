@@ -1,0 +1,138 @@
+from dataclasses import dataclass, field
+from typing import Dict, Optional, Union
+
+import numpy as np
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
+from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.pulses import PulseSequence
+from qibolab.sweeper import Parameter, Sweeper
+
+from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.data import DataUnits
+
+from ..utils import PowerLevel, lorentzian_fit, spectroscopy_plot
+
+"""
+Method which implements the state's calibration of a chosen qubit. Two analogous tests are performed
+for calibrate the ground state and the excited state of the oscillator.
+The subscripts `exc` and `gnd` will represent the excited state |1> and the ground state |0>.
+Args:
+    platform (:class:`qibolab.platforms.abstract.AbstractPlatform`): custom abstract platform on which we perform the calibration.
+    qubits (dict): Dict of target Qubit objects to perform the action
+    nshots (int): number of times the pulse sequence will be repeated.
+    relaxation_time (float): #For data processing nothing qubit related
+Returns:
+    A Data object with the raw data obtained for the fast and precision sweeps with the following keys
+        - **MSR[V]**: Signal voltage mesurement in volts before demodulation
+        - **iteration[dimensionless]**: Execution number
+        - **qubit**: The qubit being tested
+        - **iteration**: The iteration number of the many determined by software_averages
+"""
+
+
+@dataclass
+class ToFParameters(Parameters):
+    """ToF runcard inputs."""
+
+    nshots: Optional[int] = None
+    """Number of shots."""
+    relaxation_time: Optional[int] = None
+    """Relaxation time (ns)."""
+
+
+@dataclass
+class ToFResults(Results):
+    """ToF outputs."""
+
+    ToF: Dict[Union[str, int], float] = field(metadata=dict(update="time_of_flight"))
+    """Time of flight"""
+
+
+class ToFData(DataUnits):
+    """ToF acquisition outputs."""
+
+
+def _acquisition(
+    params: ToFParameters, platform: AbstractPlatform, qubits: Qubits
+) -> ToFData:
+    """Data acquisition for time of flight experiment."""
+    # create a sequence of pulses for the experiment:
+    # MZ
+
+    # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
+    state0_sequence = PulseSequence()
+    state1_sequence = PulseSequence()
+
+    RX_pulses = {}
+    ro_pulses = {}
+    for qubit in qubits:
+        RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+            qubit, start=RX_pulses[qubit].finish
+        )
+
+        state0_sequence.add(ro_pulses[qubit])
+        state1_sequence.add(RX_pulses[qubit])
+        state1_sequence.add(ro_pulses[qubit])
+
+    # create a DataUnits object to store the results
+    data = ToFData()
+
+    # execute the first pulse sequence
+    state0_results = platform.execute_pulse_sequence(
+        state0_sequence,
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.RAW,
+        averaging_mode=AveragingMode.CYCLIC,
+    )
+
+    # retrieve and store the results for every qubit
+    for qubit, ro_pulse in ro_pulses.items():
+        r = state0_results[ro_pulse.serial].serialize
+        r.update(
+            {
+                "qubit": [ro_pulse.qubit] * len(r["MSR[V]"]),
+                "sample": np.arange(len(r["MSR[V]"])),
+                "state": [0] * len(r["MSR[V]"]),
+            }
+        )
+        data.add_data_from_dict(r)
+
+    # # execute the second pulse sequence
+    state1_results = platform.execute_pulse_sequence(
+        state1_sequence,
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.RAW,
+        averaging_mode=AveragingMode.CYCLIC,
+    )
+
+    # retrieve and store the results for every qubit
+    for qubit, ro_pulse in ro_pulses.items():
+        r = state1_results[ro_pulse.serial].serialize
+        r.update(
+            {
+                "qubit": [ro_pulse.qubit] * len(r["MSR[V]"]),
+                "sample": np.arange(len(r["MSR[V]"])),
+                "state": [1] * len(r["MSR[V]"]),
+            }
+        )
+        data.add_data_from_dict(r)
+
+    # finally, save the remaining data
+    return data
+
+
+def _fit(data: ToFData) -> ToFResults:
+    """Post-processing function for ToF."""
+    return ToFResults({})
+
+
+def _plot(data: ToFData, fit: ToFResults, qubit):
+    """Plotting function for ResonatorSpectroscopy."""
+    return utils.signals(data, fit, qubit)
+
+
+tof = Routine(_acquisition, _fit, _plot)
+"""ResonatorSpectroscopy Routine object."""
