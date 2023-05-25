@@ -35,16 +35,17 @@ class ActionParser:
         self.func = getattr(calibrations, self.name)
         sig = inspect.signature(self.func)
         self.params = self.runcard["actions"][self.name]
-        new_params = []
-        # remove all the parameters with default values
+
         for param in sig.parameters.values():
+            # check the parameters without default value
             if param.default == inspect.Parameter.empty:
-                new_params.append(param)
-        # regenerate the signature
-        sig = sig.replace(parameters=new_params)
-        for param in list(sig.parameters)[2:]:
-            if param not in self.params:
-                raise_error(AttributeError, f"Missing parameter {param} in runcard.")
+                if (
+                    param.name not in ["platform", "qubits"]
+                    and param.name not in self.params
+                ):
+                    raise_error(
+                        AttributeError, f"Missing parameter {param} in runcard."
+                    )
 
     def execute(self, data_format, platform, qubits):
         """Execute action and retrieve results."""

@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import numpy as np
+from qibolab import AcquisitionType, ExecutionParameters
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
@@ -20,6 +21,7 @@ def calibrate_qubit_states(
     qubits: dict,
     nshots: int,
     save_dir=None,
+    relaxation_time=None,
     classifiers=["qubit_fit"],
 ):
     """
@@ -73,11 +75,19 @@ def calibrate_qubit_states(
     data = DataUnits(name="data", options=["qubit", "iteration", "state"])
 
     # execute the first pulse sequence
-    state0_results = platform.execute_pulse_sequence(state0_sequence, nshots=nshots)
+    state0_results = platform.execute_pulse_sequence(
+        state0_sequence,
+        ExecutionParameters(
+            nshots=nshots,
+            relaxation_time=relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+        ),
+    )
+    # platform.execute_pulse_sequence(state0_sequence, nshots=nshots)
 
     # retrieve and store the results for every qubit
     for ro_pulse in ro_pulses.values():
-        r = state0_results[ro_pulse.serial].raw
+        r = state0_results[ro_pulse.serial].serialize
         r.update(
             {
                 "qubit": [ro_pulse.qubit] * nshots,
@@ -88,11 +98,18 @@ def calibrate_qubit_states(
         data.add_data_from_dict(r)
 
     # execute the second pulse sequence
-    state1_results = platform.execute_pulse_sequence(state1_sequence, nshots=nshots)
-
+    # state1_results = platform.execute_pulse_sequence(state1_sequence, nshots=nshots)
+    state1_results = platform.execute_pulse_sequence(
+        state1_sequence,
+        ExecutionParameters(
+            nshots=nshots,
+            relaxation_time=relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+        ),
+    )
     # retrieve and store the results for every qubit
     for ro_pulse in ro_pulses.values():
-        r = state1_results[ro_pulse.serial].raw
+        r = state1_results[ro_pulse.serial].serialize
         r.update(
             {
                 "qubit": [ro_pulse.qubit] * nshots,
