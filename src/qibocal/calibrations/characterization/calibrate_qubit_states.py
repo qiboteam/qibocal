@@ -19,7 +19,7 @@ def calibrate_qubit_states(
     platform: AbstractPlatform,
     qubits: dict,
     nshots: int,
-    save_dir: str,
+    save_dir=None,
     classifiers=["qubit_fit"],
 ):
     """
@@ -123,7 +123,10 @@ def calibrate_qubit_states(
     classifiers_dict = {}
     for qubit in qubits:
         benchmark_table, y_test, x_test, models, names, hpars_list = run.train_qubit(
-            Path(save_dir), qubits[qubit], qubits_data=data.df, classifiers=classifiers
+            qubits[qubit],
+            qubits_data=data.df,
+            classifiers=classifiers,
+            base_dir=save_dir,
         )
 
         classifiers_dict = {

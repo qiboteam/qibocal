@@ -91,7 +91,9 @@ class Classifier:
     @property
     def savedir(self):
         r"""The saving path."""
-        return self.base_dir / self.name
+        if self.base_dir:
+            return self.base_dir / self.name
+        return False
 
     @property
     def hyperfile(self):
@@ -99,7 +101,8 @@ class Classifier:
         return self.savedir / HYPERFILE
 
     def dump(self, path: pathlib.Path):
-        return self.mod.dump(self.trainable_model, path)
+        if base_dir:
+            return self.mod.dump(self.trainable_model, path)
 
     @classmethod
     def load_model(cls, name: str, base_dir: pathlib.Path):
@@ -123,7 +126,10 @@ class Classifier:
 
     def dump_hyper(self, hyperpars):
         r"""Saves the hyperparameters"""
-        self.hyperfile.write_text(json.dumps(hyperpars, default=str), encoding="utf-8")
+        if self.base_dir:
+            self.hyperfile.write_text(
+                json.dumps(hyperpars, default=str), encoding="utf-8"
+            )
 
     def load_hyper(self):
         r"""Loads the hyperparameters and returns them."""
@@ -211,10 +217,10 @@ def plot_history(history, save_dir: pathlib.Path):
 
 
 def train_qubit(
-    base_dir: pathlib.Path,
     qubit: Qubit,
     qubits_data=None,
     classifiers=None,
+    base_dir=None,
 ):
     r"""Given a dataset `qubits_data` with qubits' information, this function performs the benchmarking of some classifiers.
     Each model's prediction `y_pred` is saved in  `basedir/qubit{qubit}/{classifier name}/predictions.npy`.
@@ -244,8 +250,10 @@ def train_qubit(
     qubit_data = qubits_data[qubits_data["qubit"] == qubit.name]
     nn_epochs = 200
     nn_val_split = 0.2
-    qubit_dir = base_dir / f"qubit{qubit.name}"
-    qubit_dir.mkdir(parents=True, exist_ok=True)
+    qubit_dir = None
+    if base_dir:
+        qubit_dir = pathlib.Path(base_dir) / f"qubit{qubit.name}"
+        qubit_dir.mkdir(parents=True, exist_ok=True)
     x_train, x_test, y_train, y_test = data.generate_models(qubit_data)
     models = []
     results_list = []
@@ -258,7 +266,9 @@ def train_qubit(
 
     for mod in classifiers:
         classifier = Classifier(mod, qubit_dir)
-        classifier.savedir.mkdir(exist_ok=True)
+        print(classifier.savedir)
+        if classifier.savedir:
+            classifier.savedir.mkdir(exist_ok=True)
         logging.info(f"Classification model: {classifier.name}")
         if classifier.name not in qubit.classifiers_hpars:
             hyperpars = classifier.hyperopt(
@@ -267,8 +277,8 @@ def train_qubit(
         else:
             hyperpars = qubit.classifiers_hpars[classifier.name]
         hpars_list.append(hyperpars)
-        classifier.dump_hyper(hyperpars)
         model = classifier.create_model(hyperpars)
+        classifier.dump_hyper(hyperpars)
 
         if classifier.name == "nn":
             results, y_pred, model, fit_info = benchmarking(
@@ -289,12 +299,14 @@ def train_qubit(
         results.name = classifier.name
         results_list.append(results)
         names.append(classifier.name)
-        dump_preds(y_pred, classifier.savedir)
-        classifier.dump(classifier.savedir / classifier.name)
+        if base_dir:
+            dump_preds(y_pred, classifier.savedir)
+            classifier.dump(classifier.savedir / classifier.name)
 
     benchmarks_table = pd.DataFrame([asdict(res) for res in results_list])
-    plots.plot_models_results(x_train, x_test, y_test, qubit_dir, models, names)
-    plots.plot_roc_curves(x_test, y_test, qubit_dir, models, names)
+    if base_dir:
+        plots.plot_models_results(x_train, x_test, y_test, qubit_dir, models, names)
+        plots.plot_roc_curves(x_test, y_test, qubit_dir, models, names)
     return benchmarks_table, y_test, x_test, models, names, hpars_list
 
 
