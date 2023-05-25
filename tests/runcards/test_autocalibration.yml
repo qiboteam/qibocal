@@ -9,11 +9,23 @@ actions:
   - id: resonator high power high amplitude
     priority: 0
     operation: resonator_spectroscopy
-    next: resonator punchout
+    next: resonator high power low attenuation
     parameters:
       freq_width: 10_000_000
       freq_step: 100_000
-      amplitude: 0.4
+      amplitude: 0.9
+      power_level: high
+      nshots: 1024
+      relaxation_time: 0
+
+  - id: resonator high power low attenuation
+    priority: 0
+    operation: resonator_spectroscopy_attenuation
+    next: resonator punchout
+    parameters:
+      freq_width: 10_000_000 # 20_000_000
+      freq_step: 100_000 # 500_00
+      attenuation: 15
       power_level: high
       nshots: 1024
       relaxation_time: 0
@@ -45,16 +57,28 @@ actions:
       nshots: 1000
       relaxation_time: 0
 
-
   - id: resonator spectroscopy low power
     priority: 0
     operation: resonator_spectroscopy
-    next: resonator flux dependence
+    next: resonator low power high attenuation
     parameters:
       freq_width: 10_000_000
       freq_step: 50_000
       amplitude: 0.022
       power_level: low
+      nshots: 1024
+      relaxation_time: 0
+
+  - id: resonator low power high attenuation
+    priority: 0
+    operation: resonator_spectroscopy_attenuation
+    next: resonator flux dependence
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 100_000
+      attenuation: 50
+      amplitude: 0.4
+      power_level: high
       nshots: 1024
       relaxation_time: 0
 
