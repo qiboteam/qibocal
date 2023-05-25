@@ -30,9 +30,6 @@ class ResonatorSpectroscopyParameters(Parameters):
     amplitude: Optional[float] = None
     """Readout amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
-    attenuation: Optional[int] = None
-    """Readout attenuation (optional). If defined, same attenuation will be used in all qubits.
-    Otherwise the default attenuation defined on the platform runcard will be used"""
 
     def __post_init__(self):
         # TODO: ask Alessandro if there is a proper way to pass Enum to class
@@ -66,9 +63,7 @@ class ResonatorSpectroscopyResults(Results):
 class ResonatorSpectroscopyData(DataUnits):
     """ResonatorSpectroscopy acquisition outputs."""
 
-    def __init__(
-        self, resonator_type, power_level=None, amplitude=None, attenuation=None
-    ):
+    def __init__(self, resonator_type, power_level=None, amplitude=None):
         super().__init__(
             "data",
             {"frequency": "Hz"},
@@ -77,7 +72,6 @@ class ResonatorSpectroscopyData(DataUnits):
         self._resonator_type = resonator_type
         self._power_level = power_level
         self._amplitude = amplitude
-        self._attenuation = attenuation
 
     @property
     def resonator_type(self):
@@ -93,11 +87,6 @@ class ResonatorSpectroscopyData(DataUnits):
     def amplitude(self):
         """Readout pulse amplitude common for all qubits"""
         return self._amplitude
-
-    @property
-    def attenuation(self):
-        """Attenuation value common for all qubits"""
-        return self._attenuation
 
 
 def _acquisition(
@@ -120,11 +109,6 @@ def _acquisition(
 
         amplitudes[qubit] = ro_pulses[qubit].amplitude
 
-        if params.attenuation is not None:
-            platform.set_attenuation(qubit, params.attenuation)
-
-        attenuations[qubit] = platform.get_attenuation(qubit)
-
         sequence.add(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:
@@ -140,7 +124,6 @@ def _acquisition(
         platform.resonator_type,
         params.power_level,
         amplitudes,
-        attenuations,
     )
     results = platform.sweep(
         sequence,
@@ -171,7 +154,6 @@ def _fit(data: ResonatorSpectroscopyData) -> ResonatorSpectroscopyResults:
     qubits = data.df["qubit"].unique()
     bare_frequency = {}
     amplitudes = {}
-    attenuations = {}
     frequency = {}
     fitted_parameters = {}
     for qubit in qubits:
@@ -181,7 +163,6 @@ def _fit(data: ResonatorSpectroscopyData) -> ResonatorSpectroscopyResults:
 
         frequency[qubit] = freq
         amplitudes[qubit] = data.amplitude[qubit]
-        attenuations[qubit] = data.attenuation[qubit]
         fitted_parameters[qubit] = fitted_params
     if data.power_level is PowerLevel.high:
         return ResonatorSpectroscopyResults(
@@ -189,14 +170,12 @@ def _fit(data: ResonatorSpectroscopyData) -> ResonatorSpectroscopyResults:
             fitted_parameters=fitted_parameters,
             bare_frequency=bare_frequency,
             amplitude=amplitudes,
-            attenuation=attenuations,
         )
     else:
         return ResonatorSpectroscopyResults(
             frequency=frequency,
             fitted_parameters=fitted_parameters,
             amplitude=amplitudes,
-            attenuation=attenuations,
         )
 
 
