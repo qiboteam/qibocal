@@ -7,17 +7,20 @@ format: csv
 
 actions:
 
-  - id: XID
-    priority: 0
-    operation: xid_rb
-  #   main: resonator punchout
-    parameters:
-      nqubits: 1
-      qubits: [0]
-      depths: [1,3,5,10,20]
-      niter: 20
-      nshots: 128
-      noise_model: PauliErrorOnAll
+  # - id: XID
+  #   priority: 0
+  #   operation: xid_rb
+  # #   main: resonator punchout
+  #   parameters:
+  #     nqubits: 1
+  #     qubits: [0]
+  #     depths:
+  #       start: 1
+  #       stop: 10
+  #       step: 2
+  #     niter: 20
+  #     nshots: 128
+  #     noise_model: PauliErrorOnAll
 
   - id: Standard RB
     priority: 0
@@ -26,7 +29,10 @@ actions:
     parameters:
       nqubits: 1
       qubits: [0]
-      depths: [1,3,5,10,20]
+      depths:
+        start: 1
+        stop: 10
+        step: 2
       niter: 20
       nshots: 128
       noise_model: PauliErrorOnX
