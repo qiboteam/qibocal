@@ -150,17 +150,22 @@ def plot_decay_result(
 def plot_hists_result(result: DecayResult) -> go.Figure:
     counts_list, bins_list = result.hists
     counts_list = sum(counts_list, [])
-    fig_hist = go.Figure(go.Scatter(
+    fig_hist = go.Figure(
+        go.Scatter(
             x=np.repeat(result.m, [len(bins) for bins in bins_list]),
             y=sum(bins_list, []),
             mode="markers",
             marker={"symbol": "square"},
-            marker_color = [f'rgba(101, 151, 170, {count/max(counts_list)})' for count in counts_list],
-            text = [count for count in counts_list],
-            hovertemplate='<br>x:%{x}<br>y:%{y}<br>count:%{text}',
+            marker_color=[
+                f"rgba(101, 151, 170, {count/max(counts_list)})"
+                for count in counts_list
+            ],
+            text=[count for count in counts_list],
+            hovertemplate="<br>x:%{x}<br>y:%{y}<br>count:%{text}",
             name="iterations",
-        ))
-    
+        )
+    )
+
     return fig_hist
 
 
