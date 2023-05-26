@@ -14,23 +14,26 @@ from .utils import PowerLevel, lorentzian_fit, spectroscopy_plot
 
 
 @dataclass
-class ResonatorSpectroscopyParameters(Parameters):
+class ResonatorSpectroscopyAttenuationParameters(Parameters):
     """ResonatorSpectroscopy runcard inputs."""
 
     freq_width: int
     """Width for frequency sweep relative  to the readout frequency (Hz)."""
     freq_step: int
-    """Frequency step for sweep (Hz)."""
+    """Frequency step for sweep [Hz]."""
     power_level: PowerLevel
     """Power regime (low or high). If low the readout frequency will be updated.
     If high both the readout frequency and the bare resonator frequency will be updated."""
-    amplitude: Optional[float] = None
-    """Readout amplitude (optional). If defined, same amplitude will be used in all qubits.
-    Otherwise the default amplitude defined on the platform runcard will be used"""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
+    amplitude: Optional[float] = None
+    """Readout amplitude (optional). If defined, same amplitude will be used in all qubits.
+    Otherwise the default amplitude defined on the platform runcard will be used"""
+    attenuation: Optional[int] = None
+    """Readout attenuation (optional). If defined, same attenuation will be used in all qubits.
+    Otherwise the default attenuation defined on the platform runcard will be used"""
 
     def __post_init__(self):
         # TODO: ask Alessandro if there is a proper way to pass Enum to class
@@ -38,7 +41,7 @@ class ResonatorSpectroscopyParameters(Parameters):
 
 
 @dataclass
-class ResonatorSpectroscopyResults(Results):
+class ResonatorSpectroscopyAttenuationResults(Results):
     """ResonatorSpectroscopy outputs."""
 
     frequency: Dict[Union[str, int], float] = field(
@@ -61,10 +64,12 @@ class ResonatorSpectroscopyResults(Results):
     """Readout attenuation [dB] for each qubit."""
 
 
-class ResonatorSpectroscopyData(DataUnits):
+class ResonatorSpectroscopyAttenuationData(DataUnits):
     """ResonatorSpectroscopy acquisition outputs."""
 
-    def __init__(self, resonator_type, power_level=None, amplitude=None):
+    def __init__(
+        self, resonator_type, power_level=None, amplitude=None, attenuation=None
+    ):
         super().__init__(
             "data",
             {"frequency": "Hz"},
@@ -73,6 +78,7 @@ class ResonatorSpectroscopyData(DataUnits):
         self._resonator_type = resonator_type
         self._power_level = power_level
         self._amplitude = amplitude
+        self._attenuation = attenuation
 
     @property
     def resonator_type(self):
@@ -89,11 +95,18 @@ class ResonatorSpectroscopyData(DataUnits):
         """Readout pulse amplitude common for all qubits"""
         return self._amplitude
 
+    @property
+    def attenuation(self):
+        """Attenuation value common for all qubits"""
+        return self._attenuation
+
 
 def _acquisition(
-    params: ResonatorSpectroscopyParameters, platform: AbstractPlatform, qubits: Qubits
-) -> ResonatorSpectroscopyData:
-    """Data acquisition for resonator spectroscopy."""
+    params: ResonatorSpectroscopyAttenuationParameters,
+    platform: AbstractPlatform,
+    qubits: Qubits,
+) -> ResonatorSpectroscopyAttenuationData:
+    """Data acquisition for resonator spectroscopy attenuation."""
     # create a sequence of pulses for the experiment:
     # MZ
 
@@ -101,6 +114,7 @@ def _acquisition(
     sequence = PulseSequence()
     ro_pulses = {}
     amplitudes = {}
+    attenuations = {}
 
     for qubit in qubits:
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
@@ -108,6 +122,11 @@ def _acquisition(
             ro_pulses[qubit].amplitude = params.amplitude
 
         amplitudes[qubit] = ro_pulses[qubit].amplitude
+
+        if params.attenuation is not None:
+            platform.set_attenuation(qubit, params.attenuation)
+
+        attenuations[qubit] = platform.get_attenuation(qubit)
 
         sequence.add(ro_pulses[qubit])
 
@@ -120,11 +139,13 @@ def _acquisition(
         delta_frequency_range,
         pulses=[ro_pulses[qubit] for qubit in qubits],
     )
-    data = ResonatorSpectroscopyData(
+    data = ResonatorSpectroscopyAttenuationData(
         platform.resonator_type,
         params.power_level,
         amplitudes,
+        attenuations,
     )
+
     results = platform.sweep(
         sequence,
         ExecutionParameters(
@@ -153,11 +174,14 @@ def _acquisition(
     return data
 
 
-def _fit(data: ResonatorSpectroscopyData) -> ResonatorSpectroscopyResults:
+def _fit(
+    data: ResonatorSpectroscopyAttenuationData,
+) -> ResonatorSpectroscopyAttenuationResults:
     """Post-processing function for ResonatorSpectroscopy."""
     qubits = data.df["qubit"].unique()
     bare_frequency = {}
     amplitudes = {}
+    attenuations = {}
     frequency = {}
     fitted_parameters = {}
     for qubit in qubits:
@@ -167,26 +191,33 @@ def _fit(data: ResonatorSpectroscopyData) -> ResonatorSpectroscopyResults:
 
         frequency[qubit] = freq
         amplitudes[qubit] = data.amplitude[qubit]
+        attenuations[qubit] = data.attenuation[qubit]
         fitted_parameters[qubit] = fitted_params
     if data.power_level is PowerLevel.high:
-        return ResonatorSpectroscopyResults(
+        return ResonatorSpectroscopyAttenuationResults(
             frequency=frequency,
             fitted_parameters=fitted_parameters,
             bare_frequency=bare_frequency,
             amplitude=amplitudes,
+            attenuation=attenuations,
         )
     else:
-        return ResonatorSpectroscopyResults(
+        return ResonatorSpectroscopyAttenuationResults(
             frequency=frequency,
             fitted_parameters=fitted_parameters,
             amplitude=amplitudes,
+            attenuation=attenuations,
         )
 
 
-def _plot(data: ResonatorSpectroscopyData, fit: ResonatorSpectroscopyResults, qubit):
-    """Plotting function for ResonatorSpectroscopy."""
+def _plot(
+    data: ResonatorSpectroscopyAttenuationData,
+    fit: ResonatorSpectroscopyAttenuationResults,
+    qubit,
+):
+    """Plotting function for ResonatorSpectroscopyAttenuation."""
     return spectroscopy_plot(data, fit, qubit)
 
 
-resonator_spectroscopy = Routine(_acquisition, _fit, _plot)
-"""ResonatorSpectroscopy Routine object."""
+resonator_spectroscopy_attenuation = Routine(_acquisition, _fit, _plot)
+"""ResonatorSpectroscopyAttenuation Routine object."""
