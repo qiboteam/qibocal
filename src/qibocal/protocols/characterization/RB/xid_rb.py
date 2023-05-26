@@ -58,7 +58,7 @@ def aggregate(data: RBData):
     return XIdResult(
         *extract_from_data(data_agg, "signal", "depth", "mean"),
         hists=hists,
-        meta_data=data.attrs,
+        # meta_data=data.attrs,
     )
 
 
@@ -84,10 +84,11 @@ def extract(data: RBData):
 
 
 def plot(data: RBData, result: XIdResult, qubit):
-    table_str = "".join(
-        [f" | {key}: {value}<br>" for key, value in {**result.meta_data}.items()]
-    )
+    # table_str = "".join(
+    #     [f" | {key}: {value}<br>" for key, value in {**result.meta_data}.items()]
+    # )
     fig = result.plot()
+    table_str = ""
     return [fig], table_str
 
 

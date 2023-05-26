@@ -117,11 +117,11 @@ def aggregate(data: RBData) -> StandardRBResult:
     return StandardRBResult(
         *extract_from_data(data_agg, "signal", "depth", "mean"),
         hists=hists,
-        meta_data=data.attrs,
+        # meta_data=data.attrs,
     )
 
 
-def acquire(params: RBParameters, *args) -> RBData:
+def acquire(params: RBParameters, platform) -> RBData:
     """The data acquisition stage of standard rb.
 
     1. Set up the scan
@@ -183,10 +183,7 @@ def plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure]
     """
 
     table_str = "".join(
-        [
-            f" | {key}: {value}<br>"
-            for key, value in {**result.meta_data, **result.fidelity_dict}.items()
-        ]
+        [f" | {key}: {value}<br>" for key, value in {**result.fidelity_dict}.items()]
     )
     fig = result.plot()
     return [fig], table_str

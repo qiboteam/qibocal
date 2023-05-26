@@ -33,6 +33,7 @@ class DecayResult(Results):
     hists: Tuple[List[numeric], List[numeric]] = field(
         default_factory=lambda: (list(), list())
     )
+    meta_data: dict = field(default_factory=lambda: {})
 
     def __post_init__(self):
         if len(self.y) != len(self.m):
