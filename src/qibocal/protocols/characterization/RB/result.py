@@ -8,10 +8,8 @@ from qibocal.auto.operation import Results
 from qibocal.calibrations.niGSC.basics.fitting import (
     exp1_func,
     exp1B_func,
-    expn_func,
     fit_exp1_func,
     fit_exp1B_func,
-    fit_expn_func,
 )
 from qibocal.protocols.characterization.RB.utils import extract_from_data
 
@@ -77,74 +75,6 @@ class DecayResult(Results):
             )
         else:
             return "DecayResult: Ap^m"
-
-    def get_tables(self):
-        pass
-
-    def get_figures(self):
-        return [self.fig]
-
-
-@dataclass
-class TwoDecaysResult(Results):
-    """ """
-
-    m: Union[List[numeric], np.ndarray]
-    y: Union[List[numeric], np.ndarray]
-    A1: Optional[numeric] = field(default=None)
-    A1err: Optional[numeric] = field(default=None)
-    A2: Optional[numeric] = field(default=None)
-    A2err: Optional[numeric] = field(default=None)
-    p1: Optional[numeric] = field(default=None)
-    p1err: Optional[numeric] = field(default=None)
-    p2: Optional[numeric] = field(default=None)
-    p2err: Optional[numeric] = field(default=None)
-    hists: Tuple[List[numeric], List[numeric]] = field(
-        default_factory=lambda: (list(), list())
-    )
-
-    def __post_init__(self):
-        if len(self.y) != len(self.m):
-            raise ValueError(
-                "Lenght of y and m must agree. len(m)={} != len(y)={}".format(
-                    len(self.m), len(self.y)
-                )
-            )
-        self.func = expn_func
-
-    @property
-    def fitting_params(self):
-        return (self.A1, self.A2, self.p1, self.p2)
-
-    def reset_fitting_params(self, A1=None, A2=None, p1=None, p2=None):
-        self.A1, self.A2 = A1, A2
-        self.p1, self.p2 = p1, p2
-
-    def fit(self, **kwargs):
-        params, errs = fit_expn_func(self.m, self.y, **kwargs)
-        self.A1, self.A2, self.p1, self.p2 = params
-        self.A1err, self.A2err, self.p1err, self.p2err = errs
-
-    def plot(self):
-        if self.hists is not None:
-            self.fig = plot_hists_result(self)
-        self.fig = plot_decay_result(self, self.fig)
-        return self.fig
-
-    def __str__(self):
-        if self.p1err is not None:
-            return "({:.3f}\u00B1{:.3f})({:.3f}\u00B1{:.3f})^m + ({:.3f}\u00B1{:.3f})({:.3f}\u00B1{:.3f})^m".format(
-                self.A1,
-                self.A1err,
-                self.p1,
-                self.p1err,
-                self.A2,
-                self.A2err,
-                self.p2,
-                self.p2err,
-            )
-        else:
-            return "DecayResult: Ap^m + Ap^m"
 
     def get_tables(self):
         pass

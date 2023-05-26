@@ -183,4 +183,5 @@ def plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure]
     return [fig], table_str
 
 
+# Build the routine object which is used by qq-auto.
 standard_rb = Routine(acquire, extract, plot)
