@@ -93,7 +93,7 @@ class Classifier:
         r"""The saving path."""
         if self.base_dir:
             return self.base_dir / self.name
-        return False
+        return None
 
     @property
     def hyperfile(self):
@@ -101,8 +101,7 @@ class Classifier:
         return self.savedir / HYPERFILE
 
     def dump(self, path: pathlib.Path):
-        if base_dir:
-            self.mod.dump(self.trainable_model, path)
+        self.mod.dump(self.trainable_model, path)
 
     @classmethod
     def load_model(cls, name: str, base_dir: pathlib.Path):
@@ -126,10 +125,7 @@ class Classifier:
 
     def dump_hyper(self, hyperpars):
         r"""Saves the hyperparameters"""
-        if self.base_dir:
-            self.hyperfile.write_text(
-                json.dumps(hyperpars, default=str), encoding="utf-8"
-            )
+        self.hyperfile.write_text(json.dumps(hyperpars, default=str), encoding="utf-8")
 
     def load_hyper(self):
         r"""Loads the hyperparameters and returns them."""
@@ -266,8 +262,6 @@ def train_qubit(
 
     for mod in classifiers:
         classifier = Classifier(mod, qubit_dir)
-        if classifier.savedir:
-            classifier.savedir.mkdir(exist_ok=True)
         logging.info(f"Classification model: {classifier.name}")
         if classifier.name not in qubit.classifiers_hpars:
             hyperpars = classifier.hyperopt(
@@ -277,7 +271,6 @@ def train_qubit(
             hyperpars = qubit.classifiers_hpars[classifier.name]
         hpars_list.append(hyperpars)
         model = classifier.create_model(hyperpars)
-        classifier.dump_hyper(hyperpars)
 
         if classifier.name == "nn":
             results, y_pred, model, fit_info = benchmarking(
@@ -299,6 +292,8 @@ def train_qubit(
         results_list.append(results)
         names.append(classifier.name)
         if base_dir:
+            classifier.savedir.mkdir(exist_ok=True)
+            classifier.dump_hyper(hyperpars)
             dump_preds(y_pred, classifier.savedir)
             classifier.dump(classifier.savedir / classifier.name)
 

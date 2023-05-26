@@ -83,7 +83,6 @@ def calibrate_qubit_states(
             acquisition_type=AcquisitionType.INTEGRATION,
         ),
     )
-    # platform.execute_pulse_sequence(state0_sequence, nshots=nshots)
 
     # retrieve and store the results for every qubit
     for ro_pulse in ro_pulses.values():
@@ -98,7 +97,6 @@ def calibrate_qubit_states(
         data.add_data_from_dict(r)
 
     # execute the second pulse sequence
-    # state1_results = platform.execute_pulse_sequence(state1_sequence, nshots=nshots)
     state1_results = platform.execute_pulse_sequence(
         state1_sequence,
         ExecutionParameters(
