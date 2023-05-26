@@ -4,10 +4,12 @@ from typing import Iterable, List, Tuple, Union
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from qibo import gates
+from qibo.models import Circuit
 from qibo.noise import NoiseModel
 
 from qibocal.auto.operation import Routine
-from qibocal.calibrations.niGSC.standardrb import ModuleFactory as StandardRBScan
+from qibocal.calibrations.niGSC.basics.circuitfactory import SingleCliffordsFactory
 from qibocal.protocols.characterization.RB.result import (
     DecayWithOffsetResult,
     get_hists_data,
@@ -20,8 +22,53 @@ from .params import RBParameters
 NoneType = type(None)
 
 
+class Scan(SingleCliffordsFactory):
+    def build_circuit(self, depth: int) -> Circuit:
+        """Initiate a ``qibo.models.Circuit`` object and fill it with the wanted gates.
+
+        Which gates are wanted is encoded in ``self.gates_layer()``.
+        Add a measurement gate for every qubit.
+
+        Args:
+            depth (int): How many layers there are in the circuit.
+
+        Returns:
+            Circuit: the circuit with ``depth`` many layers.
+        """
+        # Initiate the ``Circuit`` object with the amount of active qubits.
+        circuit = Circuit(len(self.qubits))
+        # Go through the depth/layers of the circuit and add gate layers interleaved with CZ.
+        cliffords_circuit = Circuit(len(self.qubits))
+        for _ in range(depth - 1):
+            cliffords = self.gate_layer()
+            circuit.add(cliffords)
+            cliffords_circuit.add(cliffords)
+            circuit.add(gates.CZ(*range(len(self.qubits))))
+            circuit.add(gates.CZ(*range(len(self.qubits))))
+        # If there is at least one gate in the circuit, add an inverse.
+        if depth > 0:
+            cliffords = self.gate_layer()
+            circuit.add(cliffords)
+            cliffords_circuit.add(cliffords)
+            # Build a gate out of the unitary of the whole circuit and
+            # take the daggered version of that.
+            # import pdb
+            # pdb.set_trace()
+            circuit_q0 = cliffords_circuit.light_cone(0)[0]
+            circuit_q1 = cliffords_circuit.light_cone(1)[0]
+            circuit.add(gates.Unitary(circuit_q0.unitary(), 0).dagger())
+            circuit.add(gates.Unitary(circuit_q1.unitary(), 1).dagger())
+            # circuit.add(
+            #     gates.Unitary(circuit.unitary(), *range(len(self.qubits))).dagger()
+            # )
+        # Add a ``Measurement`` gate for every qubit.
+        circuit.add(gates.M(*range(len(self.qubits))))
+        # print(circuit.draw())
+        return circuit
+
+
 @dataclass
-class StandardRBResult(DecayWithOffsetResult):
+class InterleavedRBResult(DecayWithOffsetResult):
     """Inherits from `DecayWithOffsetResult`, a result class storing data and parameters
     of a single decay with statistics.
 
@@ -31,26 +78,7 @@ class StandardRBResult(DecayWithOffsetResult):
 
     """
 
-    def calculate_fidelities(self):
-        """Takes the fitting parameter of the decay and calculates a fidelity. Stores the
-        primitive fidelity, the fidelity and the average gate error in an attribute dictionary.
-        """
-
-        if self.p is not None:
-            # Divide infidelity by magic number
-            magic_number = 1.875
-            infidelity = (1 - self.p) / magic_number
-            self.fidelity_dict = {
-                "fidelity_primitive": 1 - ((1 - self.p) / 2),
-                "fidelity": 1 - infidelity,
-                "average_error_gate": infidelity * 100,
-            }
-        else:
-            self.fidelity_dict = {
-                "fidelity_primitive": "Fitting not successfull",
-                "fidelity": "Fitting not successfull",
-                "average_error_gate": "Fitting not successfull",
-            }
+    pass
 
 
 def setup_scan(params: RBParameters) -> Iterable:
@@ -63,7 +91,7 @@ def setup_scan(params: RBParameters) -> Iterable:
         Iterable: The iterator of circuits.
     """
 
-    return StandardRBScan(params.nqubits, params.depths * params.niter, params.qubits)
+    return Scan(params.nqubits, params.depths * params.niter, params.qubits)
 
 
 def execute(
@@ -88,7 +116,7 @@ def execute(
     # Iterate through the scan and execute each circuit.
     for c in scan:
         # The inverse and measurement gate don't count for the depth.
-        depth = (c.depth - 2) if c.depth > 1 else 0
+        depth = (c.depth + 1) // 3 if c.depth > 0 else 0
         if noise_model is not None:
             c = noise_model.apply(c)
         samples = c.execute(nshots=nshots).samples()
@@ -97,7 +125,7 @@ def execute(
     return data_list
 
 
-def aggregate(data: RBData) -> StandardRBResult:
+def aggregate(data: RBData) -> InterleavedRBResult:
     """Takes a data frame, processes it and aggregates data in order to create
     a routine result object.
 
@@ -105,15 +133,22 @@ def aggregate(data: RBData) -> StandardRBResult:
         data (RBData): Actually a data frame from where the data is processed.
 
     Returns:
-        StandardRBResult: The aggregated data.
+        InterleavedRBResult: The aggregated data.
     """
 
+    def p0s(samples_list):
+        ground = np.array([0] * len(samples_list[0][0]))
+        my_p0s = []
+        for samples in samples_list:
+            my_p0s.append(np.sum(np.product(samples == ground, axis=1)) / len(samples))
+        return my_p0s
+
     # The signal is here the survival probability.
-    data_agg = data.assign(signal=lambda x: 1 - np.mean(x.samples.to_list(), axis=1))
+    data_agg = data.assign(signal=lambda x: p0s(x.samples.to_list()))
     # Histogram
     hists = get_hists_data(data_agg)
     # Build the result object
-    return StandardRBResult(
+    return InterleavedRBResult(
         *extract_from_data(data_agg, "signal", "depth", "mean"),
         hists=hists,
         meta_data=data.attrs,
@@ -151,7 +186,7 @@ def acquire(params: RBParameters) -> RBData:
     return standardrb_data
 
 
-def extract(data: RBData) -> StandardRBResult:
+def extract(data: RBData) -> InterleavedRBResult:
     """Takes a data frame and extracts the depths,
     average values of the survival probability and histogram
 
@@ -159,22 +194,23 @@ def extract(data: RBData) -> StandardRBResult:
         data (RBData): Data from the data acquisition stage.
 
     Returns:
-        StandardRBResult: Aggregated and processed data.
+        InterleavedRBResult: Aggregated and processed data.
     """
 
     result = aggregate(data)
     result.fit()
-    result.calculate_fidelities()
     return result
 
 
-def plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure], str]:
+def plot(
+    data: RBData, result: InterleavedRBResult, qubit
+) -> Tuple[List[go.Figure], str]:
     """Builds the table for the qq pipe, calls the plot function of the result object
     and returns the figure es list.
 
     Args:
         data (RBData): Data object used for the table.
-        result (StandardRBResult): Is called for the plot.
+        result (InterleavedRBResult): Is called for the plot.
         qubit (_type_): Not used yet.
 
     Returns:
