@@ -35,7 +35,8 @@ def execute(
     data_list = []
     for c in scan:
         depth = c.depth
-        nx = c.gate_types[X]
+        nx = len(c.gates_of_type("x"))
+        # nx = c.gate_types[X]
         if noise_model is not None:
             c = noise_model.apply(c)
         samples = c.execute(nshots=nshots).samples()
@@ -46,7 +47,7 @@ def execute(
 def aggregate(data: RBData):
     def filter(nx_list, samples_list):
         return [
-            sum((-1) ** (nx % 2 + s[0]) / 2.0 for s in samples)
+            sum((-1) ** (nx % 2 + s[0]) / 2.0 for s in samples) / len(samples_list[0])
             for nx, samples in zip(nx_list, samples_list)
         ]
 
@@ -55,11 +56,13 @@ def aggregate(data: RBData):
     hists = get_hists_data(data_agg)
     # Build the result object
     return XIdResult(
-        *extract_from_data(data_agg, "signal", "depth", "mean"), hists=hists
+        *extract_from_data(data_agg, "signal", "depth", "mean"),
+        hists=hists,
+        meta_data=data.attrs,
     )
 
 
-def aquire(params: RBParameters, *args) -> RBData:
+def acquire(params: RBParameters, *args) -> RBData:
     scan = setup_scan(params)
     if params.noise_model:
         from qibocal.calibrations.niGSC.basics import noisemodels
@@ -82,10 +85,10 @@ def extract(data: RBData):
 
 def plot(data: RBData, result: XIdResult, qubit):
     table_str = "".join(
-        [f" | {key}: {value}<br>" for key, value in {**data.attrs}.items()]
+        [f" | {key}: {value}<br>" for key, value in {**result.meta_data}.items()]
     )
     fig = result.plot()
     return [fig], table_str
 
 
-xid_rb = Routine(aquire, extract, plot)
+xid_rb = Routine(acquire, extract, plot)

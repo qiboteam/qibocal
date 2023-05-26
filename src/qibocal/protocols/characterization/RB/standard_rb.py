@@ -37,14 +37,21 @@ class StandardRBResult(DecayWithOffsetResult):
         primitive fidelity, the fidelity and the average gate error in an attribute dictionary.
         """
 
-        # Divide infidelity by magic number
-        magic_number = 1.875
-        infidelity = (1 - self.p) / magic_number
-        self.fidelity_dict = {
-            "fidelity_primitive": 1 - ((1 - self.p) / 2),
-            "fidelity": 1 - infidelity,
-            "average_error_gate": infidelity * 100,
-        }
+        if self.p is not None:
+            # Divide infidelity by magic number
+            magic_number = 1.875
+            infidelity = (1 - self.p) / magic_number
+            self.fidelity_dict = {
+                "fidelity_primitive": 1 - ((1 - self.p) / 2),
+                "fidelity": 1 - infidelity,
+                "average_error_gate": infidelity * 100,
+            }
+        else:
+            self.fidelity_dict = {
+                "fidelity_primitive": "Fitting not successfull",
+                "fidelity": "Fitting not successfull",
+                "average_error_gate": "Fitting not successfull",
+            }
 
 
 def setup_scan(params: RBParameters) -> Iterable:
@@ -108,7 +115,9 @@ def aggregate(data: RBData) -> StandardRBResult:
     hists = get_hists_data(data_agg)
     # Build the result object
     return StandardRBResult(
-        *extract_from_data(data_agg, "signal", "depth", "mean"), hists=hists
+        *extract_from_data(data_agg, "signal", "depth", "mean"),
+        hists=hists,
+        meta_data=data.attrs,
     )
 
 
@@ -176,7 +185,7 @@ def plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure]
     table_str = "".join(
         [
             f" | {key}: {value}<br>"
-            for key, value in {**data.attrs, **result.fidelity_dict}.items()
+            for key, value in {**result.meta_data, **result.fidelity_dict}.items()
         ]
     )
     fig = result.plot()
