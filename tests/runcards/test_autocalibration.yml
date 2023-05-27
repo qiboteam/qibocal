@@ -78,7 +78,7 @@ actions:
       freq_step: 100_000
       attenuation: 50
       amplitude: 0.4
-      power_level: high
+      power_level: low
       nshots: 1024
       relaxation_time: 0
 

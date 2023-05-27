@@ -101,7 +101,6 @@ def _acquisition(
     sequence = PulseSequence()
     ro_pulses = {}
     amplitudes = {}
-    attenuations = {}
 
     for qubit in qubits:
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
