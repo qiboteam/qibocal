@@ -26,6 +26,8 @@ class SpinEchoParameters(Parameters):
     """Step delay between pulses (ns)."""
     qubits: Optional[list] = field(default_factory=list)
     """Local qubits (optional)."""
+    update: Optional[bool] = True
+    """Runcard update mechanism."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
