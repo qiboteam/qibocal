@@ -1,9 +1,10 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, Optional, Union
 
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
@@ -21,14 +22,25 @@ from . import allxy_drag_pulse_tuning
 class DragPulseTuningParameters(allxy_drag_pulse_tuning.AllXYDragParameters):
     """DragPulseTuning runcard inputs."""
 
+    beta_start: float
+    """DRAG pulse beta start sweep parameter."""
+    beta_end: float
+    """DRAG pulse beta end sweep parameter."""
+    beta_step: float
+    """DRAG pulse beta sweep step parameter."""
+    nshots: Optional[int] = None
+    """Number of shots."""
+    relaxation_time: Optional[int] = None
+    """Relaxation time (ns)."""
+
 
 @dataclass
 class DragPulseTuningResults(Results):
     """DragPulseTuning outputs."""
 
-    betas: Dict[List[Tuple], str] = field(metadata=dict(update="beta"))
+    betas: Dict[Union[str, int], float] = field(metadata=dict(update="beta"))
     """Optimal beta paramter for each qubit."""
-    fitted_parameters: Dict[List[Tuple], List]
+    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
     """Raw fitting output."""
 
 
@@ -108,8 +120,24 @@ def _acquisition(
             seq2.add(ro_pulses[qubit])
 
         # execute the pulse sequences
-        result1 = platform.execute_pulse_sequence(seq1)
-        result2 = platform.execute_pulse_sequence(seq2)
+        result1 = platform.execute_pulse_sequence(
+            seq1,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
+        )
+        result2 = platform.execute_pulse_sequence(
+            seq2,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
+        )
 
         # retrieve the results for every qubit
         for ro_pulse in ro_pulses.values():
@@ -117,14 +145,14 @@ def _acquisition(
             r2 = result2[ro_pulse.serial]
             # store the results
             r = {
-                "MSR[V]": r1.measurement.mean() - r2.measurement.mean(),
-                "i[V]": r1.i.mean() - r2.i.mean(),
-                "q[V]": r1.q.mean() - r2.q.mean(),
-                "phase[rad]": r1.phase.mean() - r2.phase.mean(),
+                "MSR[V]": r1.magnitude - r2.magnitude,
+                "i[V]": r1.voltage_i - r2.voltage_i,
+                "q[V]": r1.voltage_q - r2.voltage_q,
+                "phase[rad]": r1.phase - r2.phase,
                 "beta_param[dimensionless]": beta_param,
                 "qubit": ro_pulse.qubit,
             }
-            data.add(r)
+            data.add_data_from_dict(r)
 
     return data
 

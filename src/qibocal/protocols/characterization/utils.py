@@ -88,10 +88,6 @@ def spectroscopy_plot(data, fit: Results, qubit):
         cols=2,
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
-        subplot_titles=(
-            "MSR (uV)",
-            "phase (rad)",
-        ),
     )
     qubit_data = data.df[data.df["qubit"] == qubit].drop(columns=["i", "q", "qubit"])
 
@@ -155,11 +151,12 @@ def spectroscopy_plot(data, fit: Results, qubit):
 
     fitting_report += f"{qubit} | {label}: {freq[qubit]*1e9:,.0f} Hz<br>"
 
-    if fit.amplitude:
+    if fit.amplitude[qubit] is not None:
         fitting_report += f"{qubit} | amplitude: {fit.amplitude[qubit]} <br>"
 
-    if fit.attenuation:
-        fitting_report += f"{qubit} | attenuation: {fit.attenuation[qubit]} <br>"
+    if data.__class__.__name__ == "ResonatorSpectroscopyAttenuationData":
+        if fit.attenuation[qubit] is not None and fit.attenuation[qubit] != 0:
+            fitting_report += f"{qubit} | attenuation: {fit.attenuation[qubit]} <br>"
 
     fig.update_layout(
         showlegend=True,

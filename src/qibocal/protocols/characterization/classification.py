@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Union
 
 import numpy as np
 import plotly.graph_objects as go
+from qibolab import AcquisitionType, ExecutionParameters
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
@@ -19,6 +20,10 @@ class SingleShotClassificationParameters(Parameters):
     """Number of shots."""
     qubits: Optional[list] = field(default_factory=list)
     """Local qubits (optional)."""
+    nshots: Optional[int] = None
+    """Number of shots."""
+    relaxation_time: Optional[int] = None
+    """Relaxation time (ns)."""
 
 
 class SingleShotClassificationData(DataUnits):
@@ -37,16 +42,22 @@ class SingleShotClassificationData(DataUnits):
 
 @dataclass
 class SingleShotClassificationResults(Results):
-    threshold: Dict[List[Tuple], str] = field(metadata=dict(update="threshold"))
-    rotation_angle: Dict[List[Tuple], str] = field(metadata=dict(update="iq_angle"))
-    mean_gnd_states: Dict[List[Tuple], str] = field(
+    """SingleShotClassification outputs."""
+
+    threshold: Dict[Union[str, int], float] = field(metadata=dict(update="threshold"))
+    """Threshold for classification."""
+    rotation_angle: Dict[Union[str, int], float] = field(
+        metadata=dict(update="iq_angle")
+    )
+    """Threshold for classification."""
+    mean_gnd_states: Dict[Union[str, int], complex] = field(
         metadata=dict(update="mean_gnd_states")
     )
-    mean_exc_states: Dict[List[Tuple], str] = field(
+    mean_exc_states: Dict[Union[str, int], complex] = field(
         metadata=dict(update="mean_exc_states")
     )
-    fidelity: Dict[List[Tuple], str]
-    assignment_fidelity: Dict[List[Tuple], str]
+    fidelity: Dict[Union[str, int], float]
+    assignment_fidelity: Dict[Union[str, int], float]
 
 
 def _acquisition(
@@ -102,12 +113,17 @@ def _acquisition(
 
     # execute the first pulse sequence
     state0_results = platform.execute_pulse_sequence(
-        state0_sequence, nshots=params.nshots
+        state0_sequence,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+        ),
     )
 
     # retrieve and store the results for every qubit
     for ro_pulse in ro_pulses.values():
-        r = state0_results[ro_pulse.serial].raw
+        r = state0_results[ro_pulse.serial].serialize
         r.update(
             {
                 "qubit": [ro_pulse.qubit] * params.nshots,
@@ -118,12 +134,17 @@ def _acquisition(
 
     # execute the second pulse sequence
     state1_results = platform.execute_pulse_sequence(
-        state1_sequence, nshots=params.nshots
+        state1_sequence,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+        ),
     )
 
     # retrieve and store the results for every qubit
     for ro_pulse in ro_pulses.values():
-        r = state1_results[ro_pulse.serial].raw
+        r = state1_results[ro_pulse.serial].serialize
         r.update(
             {
                 "qubit": [ro_pulse.qubit] * params.nshots,

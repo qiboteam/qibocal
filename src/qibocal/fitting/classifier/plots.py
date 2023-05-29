@@ -109,8 +109,8 @@ def plot_roc_curves(x_test, y_test, path: pathlib.Path, models, models_names):
         plt.subplot(1, len_list, count + 1)
 
         # Evaluate the ROC curves
-        y_pred = np.load(path / models_names[count] / run.PREDFILE)
-        fpr, tpr, _ = roc_curve(y_test, y_pred)
+        y_pred = np.load(path / models_names[count] / run.PREDFILE).tolist()
+        fpr, tpr, _ = roc_curve(y_test.tolist(), y_pred)
         fprs.append(fpr)
         tprs.append(tpr)
 
@@ -120,7 +120,7 @@ def plot_roc_curves(x_test, y_test, path: pathlib.Path, models, models_names):
             )
         except ValueError:
             RocCurveDisplay.from_predictions(
-                y_test,
+                y_test.tolist(),
                 y_pred,
                 ax=ax,
                 color="darkorange",

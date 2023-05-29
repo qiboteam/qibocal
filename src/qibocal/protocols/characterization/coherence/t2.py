@@ -1,13 +1,13 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Union
 
 import numpy as np
 import plotly.graph_objects as go
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.config import log
 from qibocal.plots.utils import get_color
 
 from . import t1, utils
@@ -25,15 +25,19 @@ class T2Parameters(Parameters):
     """Step delay between RX(pi/2) pulses in ns."""
     qubits: Optional[list] = field(default_factory=list)
     """Local qubits (optional)."""
+    nshots: Optional[int] = None
+    """Number of shots."""
+    relaxation_time: Optional[int] = None
+    """Relaxation time (ns)."""
 
 
 @dataclass
 class T2Results(Results):
     """T2 outputs."""
 
-    t2: Dict[List[Tuple], str] = field(metadata=dict(update="t2"))
+    t2: Dict[Union[str, int], float] = field(metadata=dict(update="t2"))
     """T2 for each qubit (ns)."""
-    fitted_parameters: Dict[List[Tuple], List]
+    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
     """Raw fitting output."""
 
 
@@ -86,10 +90,18 @@ def _acquisition(
             ro_pulses[qubit].start = RX90_pulses2[qubit].finish
 
         # execute the pulse sequence
-        results = platform.execute_pulse_sequence(sequence)
+        results = platform.execute_pulse_sequence(
+            sequence,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
+        )
         for qubit, ro_pulse in ro_pulses.items():
             # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[ro_pulse.serial].average.raw
+            r = results[ro_pulse.serial].serialize
             r.update(
                 {
                     "wait[ns]": wait,
