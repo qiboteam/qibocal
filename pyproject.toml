@@ -49,7 +49,7 @@ pint = "^0.20.1" # The new version of pint (0.21) is incompatible with Pint-Pand
 optional = true
 
 [tool.poetry.group.test.dependencies]
-pylint = "2.12.2"
+pylint = "^2.17"
 pytest = "^7.1.2"
 pytest-cov = "^3.0.0"
 
