@@ -52,7 +52,15 @@ class ActionParser:
         if data_format is None:
             raise_error(ValueError, f"Cannot store data using {data_format} format.")
 
-        results = self.func(platform, qubits, **self.params)
+        elif self.name == "calibrate_qubit_states" and "save_dir" not in self.params:
+            results = self.func(
+                platform,
+                qubits,
+                **self.params,
+                save_dir=self.folder + "/data/calibrate_qubit_states",
+            )
+        else:
+            results = self.func(platform, qubits, **self.params)
 
         for data in results:
             getattr(data, f"to_{data_format}")(self.path)

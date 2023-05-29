@@ -139,9 +139,9 @@ def calibrate_qubit_states(
     for qubit in qubits:
         benchmark_table, y_test, x_test, models, names, hpars_list = run.train_qubit(
             qubits[qubit],
+            save_dir,
             qubits_data=data.df,
             classifiers=classifiers,
-            base_dir=save_dir,
         )
 
         classifiers_dict = {

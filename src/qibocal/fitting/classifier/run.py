@@ -91,9 +91,7 @@ class Classifier:
     @property
     def savedir(self):
         r"""The saving path."""
-        if self.base_dir:
-            return self.base_dir / self.name
-        return None
+        return self.base_dir / self.name
 
     @property
     def hyperfile(self):
@@ -214,9 +212,9 @@ def plot_history(history, save_dir: pathlib.Path):
 
 def train_qubit(
     qubit: Qubit,
+    base_dir,
     qubits_data=None,
     classifiers=None,
-    base_dir=None,
 ):
     r"""Given a dataset `qubits_data` with qubits' information, this function performs the benchmarking of some classifiers.
     Each model's prediction `y_pred` is saved in  `basedir/qubit{qubit}/{classifier name}/predictions.npy`.
@@ -246,10 +244,8 @@ def train_qubit(
     qubit_data = qubits_data[qubits_data["qubit"] == qubit.name]
     nn_epochs = 200
     nn_val_split = 0.2
-    qubit_dir = None
-    if base_dir:
-        qubit_dir = pathlib.Path(base_dir) / f"qubit{qubit.name}"
-        qubit_dir.mkdir(parents=True, exist_ok=True)
+    qubit_dir = pathlib.Path(base_dir) / f"qubit{qubit.name}"
+    qubit_dir.mkdir(parents=True, exist_ok=True)
     x_train, x_test, y_train, y_test = data.generate_models(qubit_data)
     models = []
     results_list = []
@@ -291,18 +287,12 @@ def train_qubit(
         results.name = classifier.name
         results_list.append(results)
         names.append(classifier.name)
-        if base_dir:
-            classifier.savedir.mkdir(exist_ok=True)
-            classifier.dump_hyper(hyperpars)
-            dump_preds(y_pred, classifier.savedir)
-            classifier.dump(classifier.savedir / classifier.name)
+        classifier.savedir.mkdir(exist_ok=True)
+        classifier.dump_hyper(hyperpars)
+        dump_preds(y_pred, classifier.savedir)
+        classifier.dump(classifier.savedir / classifier.name)
 
     benchmarks_table = pd.DataFrame([asdict(res) for res in results_list])
-    if base_dir:
-        from . import plots
-
-        plots.plot_models_results(x_train, x_test, y_test, qubit_dir, models, names)
-        plots.plot_roc_curves(x_test, y_test, qubit_dir, models, names)
     return benchmarks_table, y_test, x_test, models, names, hpars_list
 
 
