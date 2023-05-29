@@ -18,6 +18,7 @@ from .couplers.qubit_flux import qubit_flux as coupler_qubit_flux
 from .couplers.qubit_frequency_flux import qubit_frequency_flux
 from .couplers.resonator_flux import resonator_flux as coupler_resonator_flux
 from .couplers.resonator_frequency_flux import resonator_frequency_flux
+from .couplers.tune_transition_coupler_flux import tune_transition_coupler_flux
 from .dispersive_shift import dispersive_shift
 from .flipping import flipping
 from .flux_depedence.qubit_flux_dependence import qubit_flux
@@ -65,3 +66,4 @@ class Operation(Enum):
     coupler_swap_flux_time = coupler_swap_flux_time
     cz_flux_time = cz_flux_time
     coupler_cz_flux_time = coupler_cz_flux_time
+    tune_transition_coupler_flux = tune_transition_coupler_flux

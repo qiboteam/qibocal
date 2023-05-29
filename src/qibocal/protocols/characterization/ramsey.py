@@ -95,7 +95,7 @@ def _acquisition(
     RX90_pulses2 = {}
     sequence = PulseSequence()
     for qubit in qubits:
-        RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=bonus.finish)
+        RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
         RX90_pulses2[qubit] = platform.create_RX90_pulse(
             qubit,
             start=RX90_pulses1[qubit].finish,
