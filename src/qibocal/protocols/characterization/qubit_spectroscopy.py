@@ -3,7 +3,7 @@ from typing import Dict, Optional, Union
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -43,11 +43,6 @@ class QubitSpectroscopyResults(Results):
     """Input drive amplitude. Same for all qubits."""
     fitted_parameters: Dict[Union[str, int], Dict[str, float]]
     """Raw fitting output."""
-    # FIXME: Is attenuation needed for qubit spectroscopy?
-    attenuation: Optional[Dict[Union[str, int], int]] = field(
-        default_factory=dict,
-    )
-    """Input attenuation [dB] for each qubit (optional)."""
 
 
 class QubitSpectroscopyData(ResonatorSpectroscopyData):
@@ -55,7 +50,7 @@ class QubitSpectroscopyData(ResonatorSpectroscopyData):
 
 
 def _acquisition(
-    params: QubitSpectroscopyParameters, platform: AbstractPlatform, qubits: Qubits
+    params: QubitSpectroscopyParameters, platform: Platform, qubits: Qubits
 ) -> QubitSpectroscopyData:
     """Data acquisition for qubit spectroscopy."""
     # create a sequence of pulses for the experiment:
@@ -123,21 +118,18 @@ def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
     """Post-processing function for QubitSpectroscopy."""
     qubits = data.df["qubit"].unique()
     amplitudes = {}
-    attenuations = {}
     frequency = {}
     fitted_parameters = {}
     for qubit in qubits:
         freq, fitted_params = lorentzian_fit(data, qubit)
         frequency[qubit] = freq
         amplitudes[qubit] = data.amplitude
-        attenuations[qubit] = data.attenuation
         fitted_parameters[qubit] = fitted_params
 
     return QubitSpectroscopyResults(
         frequency=frequency,
         fitted_parameters=fitted_parameters,
         amplitude=amplitudes,
-        attenuation=attenuations,
     )
 
 

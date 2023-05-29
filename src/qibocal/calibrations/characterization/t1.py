@@ -1,5 +1,5 @@
 import numpy as np
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 
 from qibocal import plots
@@ -10,7 +10,7 @@ from qibocal.fitting.methods import t1_fit
 
 @plot("MSR vs Time", plots.t1_time_msr)
 def t1(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: list,
     delay_before_readout_start,
     delay_before_readout_end,
@@ -26,7 +26,7 @@ def t1(
     towards the ground state.
 
     Args:
-        platform (AbstractPlatform): Qibolab platform object
+        platform (Platform): Qibolab platform object
         qubits (list): List of target qubits to perform the action
         delay_before_readout_start (int): Initial time delay before ReadOut
         delay_before_readout_end (list): Maximum time delay before ReadOut
