@@ -167,7 +167,7 @@ INT_TO_GATE = {
     6: lambda q: gates.RX(q, np.pi / 2),  # U3(q, np.pi / 2, -np.pi / 2, np.pi / 2),
     7: lambda q: gates.RX(q, -np.pi / 2),  # U3(q, -np.pi / 2, -np.pi / 2, np.pi / 2),
     8: lambda q: gates.RY(q, np.pi / 2),  # U3(q, np.pi / 2, 0, 0),
-    9: lambda q: gates.RY(q, np.pi / 2),  # U3(q, -np.pi / 2, 0, 0),
+    9: lambda q: gates.RY(q, -np.pi / 2),  # U3(q, -np.pi / 2, 0, 0),
     # 2pi/3 rotations
     10: lambda q: gates.U3(q, np.pi / 2, -np.pi / 2, 0),  # Rx(pi/2)Ry(pi/2)
     11: lambda q: gates.U3(q, np.pi / 2, -np.pi / 2, np.pi),  # Rx(pi/2)Ry(-pi/2)
