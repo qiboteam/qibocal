@@ -3,7 +3,7 @@ from typing import Dict, Optional, Union
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -91,7 +91,7 @@ class ResonatorSpectroscopyData(DataUnits):
 
 
 def _acquisition(
-    params: ResonatorSpectroscopyParameters, platform: AbstractPlatform, qubits: Qubits
+    params: ResonatorSpectroscopyParameters, platform: Platform, qubits: Qubits
 ) -> ResonatorSpectroscopyData:
     """Data acquisition for resonator spectroscopy."""
     # create a sequence of pulses for the experiment:
