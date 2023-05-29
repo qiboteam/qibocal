@@ -4,48 +4,19 @@ from typing import Dict, Optional, Union
 import numpy as np
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.plots.utils import get_color
 
 from . import t1, utils
-
-
-@dataclass
-class T2Parameters(Parameters):
-    """T2 runcard inputs."""
-
-    delay_between_pulses_start: int
-    """Initial delay between RX(pi/2) pulses in ns."""
-    delay_between_pulses_end: int
-    """Final delay between RX(pi/2) pulses in ns."""
-    delay_between_pulses_step: int
-    """Step delay between RX(pi/2) pulses in ns."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
-
-
-@dataclass
-class T2Results(Results):
-    """T2 outputs."""
-
-    t2: Dict[Union[str, int], float] = field(metadata=dict(update="t2"))
-    """T2 for each qubit (ns)."""
-    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
-    """Raw fitting output."""
-
-
-class T2Data(t1.T1Data):
-    """T2 acquisition outputs."""
+from .t2 import T2Data, T2Parameters, _fit, _plot
 
 
 def _acquisition(
     params: T2Parameters,
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: Qubits,
 ) -> T2Data:
     """Data acquisition for Ramsey Experiment (detuned)."""
@@ -108,74 +79,6 @@ def _acquisition(
             )
             data.add_data_from_dict(r)
     return data
-
-
-def _fit(data: T2Data) -> T2Results:
-    r"""
-    Fitting routine for Ramsey experiment. The used model is
-    .. math::
-        y = p_0 - p_1 e^{-x p_2}.
-    """
-    t2s, fitted_parameters = utils.exponential_fit(data)
-    return T2Results(t2s, fitted_parameters)
-
-
-def _plot(data: T2Data, fit: T2Results, qubit):
-    """Plotting function for Ramsey Experiment."""
-
-    figures = []
-    fig = go.Figure()
-    fitting_report = ""
-
-    qubit_data = data.df[data.df["qubit"] == qubit]
-
-    fig.add_trace(
-        go.Scatter(
-            x=qubit_data["wait"].pint.magnitude,
-            y=qubit_data["MSR"].pint.to("uV").pint.magnitude,
-            marker_color=get_color(0),
-            opacity=1,
-            name="Voltage",
-            showlegend=True,
-            legendgroup="Voltage",
-        )
-    )
-
-    # add fitting trace
-    if len(data) > 0:
-        waitrange = np.linspace(
-            min(qubit_data["wait"].pint.to("ns").pint.magnitude),
-            max(qubit_data["wait"].pint.to("ns").pint.magnitude),
-            2 * len(data),
-        )
-
-        params = fit.fitted_parameters[qubit]
-        fig.add_trace(
-            go.Scatter(
-                x=waitrange,
-                y=utils.exp_decay(
-                    waitrange,
-                    *params,
-                ),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
-                marker_color=get_color(1),
-            )
-        )
-        fitting_report = fitting_report + (
-            f"{qubit} | T2: {fit.t2[qubit]:,.0f} ns.<br><br>"
-        )
-
-    fig.update_layout(
-        showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Time (ns)",
-        yaxis_title="MSR (uV)",
-    )
-
-    figures.append(fig)
-
-    return figures, fitting_report
 
 
 t2_sequences = Routine(_acquisition, _fit, _plot)
