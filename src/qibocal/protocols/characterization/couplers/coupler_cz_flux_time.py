@@ -84,9 +84,11 @@ def _aquisition(
 
     for pair in qubit_pairs:
         qd_pulses[pair[0]] = platform.create_RX_pulse(pair[0], start=0)
-        qd_pulses[pair[1]] = platform.create_RX_pulse(pair[1], start=0)
+        qd_pulses[pair[1]] = platform.create_RX_pulse(
+            pair[1], start=qd_pulses[pair[0]].se_finish + 8
+        )
         fx_pulses[pair[0]] = FluxPulse(
-            start=qd_pulses[pair[0]].se_finish + 8,
+            start=qd_pulses[pair[1]].se_finish + 8,
             duration=params.duration_min,
             amplitude=1,
             shape=Rectangular(),
@@ -161,21 +163,24 @@ def _aquisition(
             amp, dur = np.meshgrid(
                 delta_amplitude_range, delta_duration_range, indexing="ij"
             )
+            r = result.serialize
             # store the results
-            r = {
-                "amplitude[dimensionless]": amp.flatten(),
-                "duration[ns]": dur.flatten(),
-                "coupler": len(delta_amplitude_range)
-                * len(delta_duration_range)
-                * [f"c{pair[0]}"],
-                "qubit": len(delta_amplitude_range)
-                * len(delta_duration_range)
-                * [qubit],
-                "state": len(delta_amplitude_range)
-                * len(delta_duration_range)
-                * [state],
-                "probability": prob.flatten(),
-            }
+            r.update(
+                {
+                    "amplitude[dimensionless]": amp.flatten(),
+                    "duration[ns]": dur.flatten(),
+                    "coupler": len(delta_amplitude_range)
+                    * len(delta_duration_range)
+                    * [f"c{pair[0]}"],
+                    "qubit": len(delta_amplitude_range)
+                    * len(delta_duration_range)
+                    * [qubit],
+                    "state": len(delta_amplitude_range)
+                    * len(delta_duration_range)
+                    * [state],
+                    "probability": prob.flatten(),
+                }
+            )
             sweep_data.add_data_from_dict(r)
 
     # Temporary fix for multiplexing, repeat the experiment for the second qubit
@@ -212,21 +217,24 @@ def _aquisition(
                 complex(platform.qubits[qubit].mean_exc_states)
                 - complex(platform.qubits[qubit].mean_gnd_states)
             )
+            r = result.serialize
             # store the results
-            r = {
-                "amplitude[dimensionless]": amp.flatten(),
-                "duration[ns]": dur.flatten(),
-                "coupler": len(delta_amplitude_range)
-                * len(delta_duration_range)
-                * [f"c{pair[0]}"],
-                "qubit": len(delta_amplitude_range)
-                * len(delta_duration_range)
-                * [qubit],
-                "state": len(delta_amplitude_range)
-                * len(delta_duration_range)
-                * [state],
-                "probability": prob.flatten(),
-            }
+            r.update(
+                {
+                    "amplitude[dimensionless]": amp.flatten(),
+                    "duration[ns]": dur.flatten(),
+                    "coupler": len(delta_amplitude_range)
+                    * len(delta_duration_range)
+                    * [f"c{pair[0]}"],
+                    "qubit": len(delta_amplitude_range)
+                    * len(delta_duration_range)
+                    * [qubit],
+                    "state": len(delta_amplitude_range)
+                    * len(delta_duration_range)
+                    * [state],
+                    "probability": prob.flatten(),
+                }
+            )
             sweep_data.add_data_from_dict(r)
 
     return sweep_data
@@ -234,49 +242,69 @@ def _aquisition(
 
 def _plot(data: CouplerCzFluxTimeData, fit: CouplerCzFluxTimeResults, qubit):
     states = ["low", "high"]
-    fig = make_subplots(rows=1, cols=2, subplot_titles=tuple(states))
 
-    # Plot data
-    for state, q in zip(
-        states, [qubit, 2]
-    ):  # When multiplex works zip(["low","high"], [qubit, 2])
-        fig.add_trace(
-            go.Heatmap(
-                x=data.df[
+    figures = []
+    colouraxis = ["coloraxis", "coloraxis2"]
+
+    for values, unit in zip(["MSR", "phase", "probability"], ["V", "rad", None]):
+        fig = make_subplots(rows=1, cols=2, subplot_titles=tuple(states))
+
+        # Plot data
+        for state, q in zip(
+            states, [qubit, 2]
+        ):  # When multiplex works zip(["low","high"], [qubit, 2])
+            if unit is None:
+                z = data.df[
                     (data.df["state"] == state)
                     & (data.df["qubit"] == q)
                     & (data.df["coupler"] == f"c{qubit}")
-                ]["duration"]
-                .pint.to("ns")
-                .pint.magnitude,
-                y=data.df[
+                ][values]
+            else:
+                z = data.df[
                     (data.df["state"] == state)
                     & (data.df["qubit"] == q)
                     & (data.df["coupler"] == f"c{qubit}")
-                ]["amplitude"]
-                .pint.to("dimensionless")
-                .pint.magnitude,
-                z=data.df[
-                    (data.df["state"] == state)
-                    & (data.df["qubit"] == q)
-                    & (data.df["coupler"] == f"c{qubit}")
-                ]["probability"],
-                name=f"Qubit {q} |{state}>",
-            ),
-            row=1,
-            col=states.index(state) + 1,
+                ][values]
+                z = z.pint.to(unit).pint.magnitude
+
+            fig.add_trace(
+                go.Heatmap(
+                    x=data.df[
+                        (data.df["state"] == state)
+                        & (data.df["qubit"] == q)
+                        & (data.df["coupler"] == f"c{qubit}")
+                    ]["duration"]
+                    .pint.to("ns")
+                    .pint.magnitude,
+                    y=data.df[
+                        (data.df["state"] == state)
+                        & (data.df["qubit"] == q)
+                        & (data.df["coupler"] == f"c{qubit}")
+                    ]["amplitude"]
+                    .pint.to("dimensionless")
+                    .pint.magnitude,
+                    z=z,
+                    name=f"Qubit {q} |{state}>",
+                    coloraxis=colouraxis[states.index(state)],
+                ),
+                row=1,
+                col=states.index(state) + 1,
+            )
+
+        fig.update_layout(
+            coloraxis=dict(colorscale="Viridis", colorbar=dict(x=0.45)),
+            coloraxis2=dict(colorscale="Cividis", colorbar=dict(x=1)),
         )
-    fig.update_layout(
-        title=f"Qubit {qubit} swap frequency",
-        xaxis_title="Duration [ns]",
-        yaxis_title="Amplitude [dimensionless]",
-        legend_title="States",
-    )
-    fig.update_layout(
-        coloraxis=dict(colorscale="Viridis", colorbar=dict(x=-0.15)),
-        coloraxis2=dict(colorscale="Cividis", colorbar=dict(x=1.15)),
-    )
-    return [fig], "No fitting data."
+
+        fig.update_layout(
+            title=f"Qubit {qubit} cz {values}",
+            xaxis_title="Duration [ns]",
+            yaxis_title="Amplitude [dimensionless]",
+            legend_title="States",
+        )
+
+        figures.append(fig)
+    return figures, "No fitting data."
 
 
 def _fit(data: CouplerCzFluxTimeData):
