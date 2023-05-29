@@ -1,11 +1,7 @@
 import pathlib
 
-import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.model_selection import train_test_split
-
-COLORS = ["#FF0000", "#0000FF"]
-DATAFILE = "data_processing.pdf"
 
 
 def load_qubit(data_path: pathlib.Path, qubit):

@@ -31,8 +31,6 @@ HYPERFILE = "hyperpars.json"
 PREDFILE = "predictions.npy"
 BENCHTABFILE = "benchmarks.csv"
 
-base_dir = pathlib.Path()
-
 
 def import_classifiers(cls_names: List[str]):
     r"""Return the classification models.
@@ -212,7 +210,7 @@ def plot_history(history, save_dir: pathlib.Path):
 
 def train_qubit(
     qubit: Qubit,
-    base_dir,
+    base_dir: str,
     qubits_data=None,
     classifiers=None,
 ):

@@ -10,7 +10,6 @@ import yaml
 from qibocal import calibrations
 from qibocal.cli.utils import generate_output_folder, load_yaml
 from qibocal.config import raise_error
-from qibocal.data import Data
 
 
 class ActionParser:
