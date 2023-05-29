@@ -1,9 +1,10 @@
 from dataclasses import dataclass, field
-from typing import Dict, Union
+from typing import Dict, Optional, Union
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
 
@@ -21,6 +22,10 @@ class FlippingParameters(Parameters):
     """Maximum number of flips ([RX(pi) - RX(pi)] sequences). """
     nflips_step: int
     """Flip step."""
+    nshots: Optional[int] = None
+    """Number of shots."""
+    relaxation_time: Optional[int] = None
+    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -57,7 +62,7 @@ class FlippngData(DataUnits):
 
 def _acquisition(
     params: FlippingParameters,
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: Qubits,
 ) -> FlippngData:
     r"""
@@ -68,7 +73,7 @@ def _acquisition(
 
     Args:
         params (:class:`SingleShotClassificationParameters`): input parameters
-        platform (:class:`AbstractPlatform`): Qibolab's platform
+        platform (:class:`Platform`): Qibolab's platform
         qubits (dict): Dict of target :class:`Qubit` objects to be characterized
 
     Returns:
@@ -100,11 +105,19 @@ def _acquisition(
             ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=start1)
             sequence.add(ro_pulses[qubit])
         # execute the pulse sequence
-        results = platform.execute_pulse_sequence(sequence)
+        results = platform.execute_pulse_sequence(
+            sequence,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
+        )
         for ro_pulse in ro_pulses.values():
             # average msr, phase, i and q over the number of shots defined in the runcard
 
-            r = results[ro_pulse.serial].average.raw
+            r = results[ro_pulse.serial].serialize
             r.update(
                 {
                     "flips[dimensionless]": flips,
@@ -113,7 +126,7 @@ def _acquisition(
                 }
             )
 
-            data.add(r)
+            data.add_data_from_dict(r)
 
     return data
 

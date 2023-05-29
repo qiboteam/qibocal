@@ -1,9 +1,10 @@
 from dataclasses import dataclass, field
-from typing import Dict, Union
+from typing import Dict, Optional, Union
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -22,7 +23,11 @@ class SpinEchoParameters(Parameters):
     delay_between_pulses_end: int
     """Final delay between pulses [ns]."""
     delay_between_pulses_step: int
-    """Step delay between pulses [ns]."""
+    """Step delay between pulses (ns)."""
+    nshots: Optional[int] = None
+    """Number of shots."""
+    relaxation_time: Optional[int] = None
+    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -43,7 +48,7 @@ class SpinEchoData(T1Data):
 
 def _acquisition(
     params: SpinEchoParameters,
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: Qubits,
 ) -> SpinEchoData:
     """Data acquisition for SpinEcho"""
@@ -90,18 +95,26 @@ def _acquisition(
             ro_pulses[qubit].start = RX90_pulses2[qubit].finish
 
         # execute the pulse sequence
-        results = platform.execute_pulse_sequence(sequence)
+        results = platform.execute_pulse_sequence(
+            sequence,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
+        )
 
         for ro_pulse in ro_pulses.values():
             # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[ro_pulse.serial].average.raw
+            r = results[ro_pulse.serial].serialize
             r.update(
                 {
                     "wait[ns]": 2 * wait,
                     "qubit": ro_pulse.qubit,
                 }
             )
-            data.add(r)
+            data.add_data_from_dict(r)
     return data
 
 

@@ -1,11 +1,12 @@
 from dataclasses import dataclass, field
-from typing import Dict, Union
+from typing import Dict, Optional, Union
 
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -29,7 +30,11 @@ class DispersiveShiftParameters(Parameters):
     freq_width: int
     """Width [Hz] for frequency sweep relative to the readout frequency (Hz)."""
     freq_step: int
-    """Frequency step for sweep [Hz]."""
+    """Frequency step for sweep (Hz)."""
+    nshots: Optional[int] = None
+    """Number of shots."""
+    relaxation_time: Optional[int] = None
+    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -72,7 +77,7 @@ class DispersiveShiftData(DataUnits):
 
 
 def _acquisition(
-    params: DispersiveShiftParameters, platform: AbstractPlatform, qubits: Qubits
+    params: DispersiveShiftParameters, platform: Platform, qubits: Qubits
 ) -> DispersiveShiftData:
     r"""
     Data acquisition for dispersive shift experiment.
@@ -81,7 +86,7 @@ def _acquisition(
 
     Args:
         params (DispersiveShiftParameters): experiment's parameters
-        platform (AbstractPlatform): Qibolab platform object
+        platform (Platform): Qibolab platform object
         qubits (dict): List of target qubits to perform the action
 
     """
@@ -118,16 +123,35 @@ def _acquisition(
         pulses=[ro_pulses[qubit] for qubit in qubits],
     )
 
-    results_0 = platform.sweep(sequence_0, sweeper)
+    results_0 = platform.sweep(
+        sequence_0,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
+        ),
+        sweeper,
+    )
 
-    results_1 = platform.sweep(sequence_1, sweeper)
+    results_1 = platform.sweep(
+        sequence_1,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
+        ),
+        sweeper,
+    )
+
     # retrieve the results for every qubit
     for qubit in qubits:
         # average msr, phase, i and q over the number of shots defined in the runcard
         for i, results in enumerate([results_0, results_1]):
             result = results[ro_pulses[qubit].serial]
             # store the results
-            r = result.raw
+            r = result.serialize
             r.update(
                 {
                     "frequency[Hz]": delta_frequency_range + ro_pulses[qubit].frequency,

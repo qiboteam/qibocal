@@ -1,7 +1,7 @@
 from typing import Optional
 
 import numpy as np
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -13,7 +13,7 @@ from qibocal.fitting.methods import lorentzian_fit, qubit_spectroscopy_flux_fit
 
 @plot("MSR and Phase vs Qubit Drive Frequency", plots.frequency_msr_phase)
 def qubit_spectroscopy(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: dict,
     freq_width: int,
     freq_step: int,
@@ -29,7 +29,7 @@ def qubit_spectroscopy(
     Afterthat, a final sweep with more precision is executed centered in the new qubit frequency found.
 
     Args:
-        platform (AbstractPlatform): Qibolab platform object
+        platform (Platform): Qibolab platform object
         qubits (dict): Dict of target Qubit objects to perform the action
         freq_width (int): Width frequency in HZ to perform the high resolution sweep
         freq_step (int): Step frequency in HZ for the high resolution sweep
@@ -134,7 +134,7 @@ def qubit_spectroscopy(
     plots.frequency_flux_msr_phase_qubit,
 )
 def qubit_spectroscopy_flux(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: dict,
     drive_amplitude,
     freq_width,
@@ -152,7 +152,7 @@ def qubit_spectroscopy_flux(
     This routine works for multiqubit devices flux controlled.
 
     Args:
-        platform (AbstractPlatform): Qibolab platform object
+        platform (Platform): Qibolab platform object
         qubits (dict): Dict of target Qubit objects to perform the action
         freq_width (int): Width frequency in HZ to perform the spectroscopy sweep
         freq_step (int): Step frequency in HZ for the spectroscopy sweep

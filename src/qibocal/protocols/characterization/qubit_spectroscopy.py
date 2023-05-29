@@ -2,7 +2,8 @@ from dataclasses import dataclass, field
 from typing import Dict, Optional, Union
 
 import numpy as np
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -24,10 +25,10 @@ class QubitSpectroscopyParameters(Parameters):
     """Drive pulse duration [ns]. Same for all qubits."""
     drive_amplitude: Optional[float] = None
     """Drive pulse amplitude (optional). Same for all qubits."""
-    nshots: int = 1024
+    nshots: Optional[int] = None
     """Number of shots."""
-    relaxation_time: int = 50
-    """Relaxation time [ns]."""
+    relaxation_time: Optional[int] = None
+    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -42,11 +43,6 @@ class QubitSpectroscopyResults(Results):
     """Input drive amplitude. Same for all qubits."""
     fitted_parameters: Dict[Union[str, int], Dict[str, float]]
     """Raw fitting output."""
-    # FIXME: Is attenuation needed for qubit spectroscopy?
-    attenuation: Optional[Dict[Union[str, int], int]] = field(
-        default_factory=dict,
-    )
-    """Input attenuation [dB] for each qubit (optional)."""
 
 
 class QubitSpectroscopyData(ResonatorSpectroscopyData):
@@ -54,7 +50,7 @@ class QubitSpectroscopyData(ResonatorSpectroscopyData):
 
 
 def _acquisition(
-    params: QubitSpectroscopyParameters, platform: AbstractPlatform, qubits: Qubits
+    params: QubitSpectroscopyParameters, platform: Platform, qubits: Qubits
 ) -> QubitSpectroscopyData:
     """Data acquisition for qubit spectroscopy."""
     # create a sequence of pulses for the experiment:
@@ -93,16 +89,20 @@ def _acquisition(
 
     results = platform.sweep(
         sequence,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
+        ),
         sweeper,
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
     )
 
     # retrieve the results for every qubit
     for qubit, ro_pulse in ro_pulses.items():
         # average msr, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulse.serial]
-        r = result.raw
+        r = result.serialize
         # store the results
         r.update(
             {
@@ -118,21 +118,18 @@ def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
     """Post-processing function for QubitSpectroscopy."""
     qubits = data.df["qubit"].unique()
     amplitudes = {}
-    attenuations = {}
     frequency = {}
     fitted_parameters = {}
     for qubit in qubits:
         freq, fitted_params = lorentzian_fit(data, qubit)
         frequency[qubit] = freq
         amplitudes[qubit] = data.amplitude
-        attenuations[qubit] = data.attenuation
         fitted_parameters[qubit] = fitted_params
 
     return QubitSpectroscopyResults(
         frequency=frequency,
         fitted_parameters=fitted_parameters,
         amplitude=amplitudes,
-        attenuation=attenuations,
     )
 
 
