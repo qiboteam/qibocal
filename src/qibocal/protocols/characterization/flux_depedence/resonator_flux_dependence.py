@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Union
 
 import numpy as np
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -20,14 +21,14 @@ class ResonatorFluxParameters(Parameters):
     freq_width: int
     """Width for frequency sweep relative to the readout frequency (Hz)."""
     freq_step: int
-    """Frequency step for sweep (Hz)."""
+    """Frequency step for sweep [Hz]."""
     bias_width: float
-    """Width for bias sweep (V)."""
+    """Width for bias sweep [V]."""
     bias_step: float
     """Bias step for sweep (V)."""
-    nshots: int
+    nshots: Optional[int] = None
     """Number of shots."""
-    relaxation_time: int
+    relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
     qubits: Optional[list] = field(default_factory=list)
     """Local qubits (optional)."""
@@ -37,11 +38,13 @@ class ResonatorFluxParameters(Parameters):
 class ResonatorFluxResults(Results):
     """ResonatoFlux outputs."""
 
-    sweetspot: Dict[List[Tuple], str] = field(metadata=dict(update="sweetspot"))
+    sweetspot: Dict[Union[str, int], float] = field(metadata=dict(update="sweetspot"))
     """Sweetspot for each qubit."""
-    frequency: Dict[List[Tuple], str] = field(metadata=dict(update="readout_frequency"))
+    frequency: Dict[Union[str, int], float] = field(
+        metadata=dict(update="readout_frequency")
+    )
     """Readout frequency for each qubit."""
-    fitted_parameters: Dict[List[Tuple], List]
+    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
     """Raw fitting output."""
 
 
@@ -57,7 +60,7 @@ class ResonatorFluxData(DataUnits):
 
 
 def _acquisition(
-    params: ResonatorFluxParameters, platform: AbstractPlatform, qubits: Qubits
+    params: ResonatorFluxParameters, platform: Platform, qubits: Qubits
 ) -> ResonatorFluxData:
     """Data acquisition for ResonatorFlux experiment."""
     # create a sequence of pulses for the experiment:
@@ -94,10 +97,14 @@ def _acquisition(
     # repeat the experiment as many times as defined by software_averages
     results = platform.sweep(
         sequence,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
+        ),
         bias_sweeper,
         freq_sweeper,
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
     )
 
     # retrieve the results for every qubit
@@ -110,7 +117,7 @@ def _acquisition(
             * list(delta_frequency_range + ro_pulses[qubit].frequency)
         ).flatten()
         # store the results
-        r = {k: v.ravel() for k, v in result.raw.items()}
+        r = {k: v.ravel() for k, v in result.serialize.items()}
         r.update(
             {
                 "frequency[Hz]": freqs,

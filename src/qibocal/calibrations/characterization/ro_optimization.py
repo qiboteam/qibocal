@@ -1,5 +1,5 @@
 import numpy as np
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -11,7 +11,7 @@ from qibocal.fitting.methods import ro_optimization_fit
 
 @plot("Qubit States", plots.ro_frequency)
 def ro_frequency(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: dict,
     frequency_width: float,
     frequency_step: float,
@@ -24,7 +24,7 @@ def ro_frequency(
     Their distinctiveness is then associated to the fidelity.
 
     Args:
-        platform (:class:`qibolab.platforms.abstract.AbstractPlatform`): custom abstract platform on which we perform the calibration.
+        platform (:class:`qibolab.platforms.abstract.Platform`): custom abstract platform on which we perform the calibration.
         qubits (dict): List of target qubits to perform the action
         nshots (int): number of times the pulse sequence will be repeated.
         frequency_width (float): width of the frequency range to be swept in Hz.
@@ -125,7 +125,7 @@ def ro_frequency(
 
 @plot("Qubit States", plots.ro_amplitude)
 def ro_amplitude(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: dict,
     amplitude_factor_min: float,
     amplitude_factor_max: float,
@@ -139,7 +139,7 @@ def ro_amplitude(
     Their distinctiveness is then associated to the fidelity.
 
     Args:
-        platform (:class:`qibolab.platforms.abstract.AbstractPlatform`): custom abstract platform on which we perform the calibration.
+        platform (:class:`qibolab.platforms.abstract.Platform`): custom abstract platform on which we perform the calibration.
         qubits (dict): List of target qubits to perform the action
         nshots (int): number of times the pulse sequence will be repeated.
         amplitude_factor_min (float): minimum amplitude factor to be swept.
@@ -241,7 +241,7 @@ def ro_amplitude(
 
 @plot("TWPA frequency", plots.ro_frequency)
 def twpa_frequency(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: dict,
     frequency_width: float,
     frequency_step: float,
@@ -254,7 +254,7 @@ def twpa_frequency(
     Their distinctiveness is then associated to the fidelity.
 
     Args:
-        platform (:class:`qibolab.platforms.abstract.AbstractPlatform`): custom abstract platform on which we perform the calibration.
+        platform (:class:`qibolab.platforms.abstract.Platform`): custom abstract platform on which we perform the calibration.
         qubits (dict): List of target qubits to perform the action
         frequency_width (float): Frequency range to sweep in Hz
         frequency_step (float): Frequency step to sweep in Hz
@@ -342,7 +342,7 @@ def twpa_frequency(
 
 @plot("TWPA power", plots.ro_power)
 def twpa_power(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: dict,
     power_width: float,
     power_step: float,
@@ -355,7 +355,7 @@ def twpa_power(
     Their distinctiveness is then associated to the fidelity.
 
     Args:
-        platform (:class:`qibolab.platforms.abstract.AbstractPlatform`): custom abstract platform on which we perform the calibration.
+        platform (:class:`qibolab.platforms.abstract.Platform`): custom abstract platform on which we perform the calibration.
         qubits (dict): List of target qubits to perform the action
         power_width (float): width of the power range to be scanned in dBm
         power_step (float): step of the power range to be scanned in dBm

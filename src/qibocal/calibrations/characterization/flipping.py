@@ -1,5 +1,5 @@
 import numpy as np
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 
 from qibocal import plots
@@ -10,7 +10,7 @@ from qibocal.fitting.methods import flipping_fit
 
 @plot("MSR vs Flips", plots.flips_msr)
 def flipping(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: dict,
     nflips_max,
     nflips_step,
@@ -22,7 +22,7 @@ def flipping(
     a Rx(pi/2) and N flips (Rx(pi) rotations). After fitting we can obtain the delta amplitude to refine pi pulses.
 
     Args:
-        platform (AbstractPlatform): Qibolab platform object
+        platform (Platform): Qibolab platform object
         qubits (dict): Dict of target Qubit objects to perform the action
         nflips_max (int): Maximum number of flips introduced in each sequence
         nflips_step (int): Scan range step for the number of flippings

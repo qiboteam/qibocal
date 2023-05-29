@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Union
 
 import numpy as np
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 from scipy.optimize import curve_fit
@@ -26,9 +27,9 @@ class RabiAmplitudeParameters(Parameters):
     """Step amplitude multiplicative factor."""
     pulse_length: float
     """RX pulse duration (ns)."""
-    nshots: int
+    nshots: Optional[int] = None
     """Number of shots."""
-    relaxation_time: float
+    relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
     qubits: Optional[list] = field(default_factory=list)
     """Local qubits (optional)."""
@@ -38,11 +39,13 @@ class RabiAmplitudeParameters(Parameters):
 class RabiAmplitudeResults(Results):
     """RabiAmplitude outputs."""
 
-    amplitude: Dict[List[Tuple], str] = field(metadata=dict(update="drive_amplitude"))
+    amplitude: Dict[Union[str, int], float] = field(
+        metadata=dict(update="drive_amplitude")
+    )
     """Drive amplitude for each qubit."""
-    length: Dict[List[Tuple], str] = field(metadata=dict(update="drive_length"))
+    length: Dict[Union[str, int], float] = field(metadata=dict(update="drive_length"))
     """Drive pulse duration. Same for all qubits."""
-    fitted_parameters: Dict[List[Tuple], List]
+    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
     """Raw fitted parameters."""
 
 
@@ -58,7 +61,7 @@ class RabiAmplitudeData(DataUnits):
 
 
 def _acquisition(
-    params: RabiAmplitudeParameters, platform: AbstractPlatform, qubits: Qubits
+    params: RabiAmplitudeParameters, platform: Platform, qubits: Qubits
 ) -> RabiAmplitudeData:
     r"""
     Data acquisition for Rabi experiment sweeping amplitude.
@@ -100,14 +103,18 @@ def _acquisition(
     # sweep the parameter
     results = platform.sweep(
         sequence,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
+        ),
         sweeper,
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
     )
     for qubit in qubits:
         # average msr, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulses[qubit].serial]
-        r = result.raw
+        r = result.serialize
         r.update(
             {
                 "amplitude[dimensionless]": qd_pulses[qubit].amplitude

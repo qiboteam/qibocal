@@ -3,7 +3,8 @@ from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab import AveragingMode, ExecutionParameters
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -19,6 +20,10 @@ class AllXYParameters(Parameters):
     """Beta parameter for drag pulse."""
     qubits: Optional[list] = field(default_factory=list)
     """Local qubits (optional)."""
+    nshots: Optional[int] = None
+    """Number of shots."""
+    relaxation_time: Optional[int] = None
+    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -63,7 +68,7 @@ gatelist = [
 
 def _acquisition(
     params: AllXYParameters,
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: Qubits,
 ) -> AllXYData:
     r"""
@@ -91,11 +96,17 @@ def _acquisition(
             )
 
         # execute the pulse sequence
-        results = platform.execute_pulse_sequence(sequence)
+        results = platform.execute_pulse_sequence(
+            sequence,
+            ExecutionParameters(
+                nshots=params.nshots,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
+        )
 
         # retrieve the results for every qubit
         for ro_pulse in ro_pulses.values():
-            z_proj = 2 * results[ro_pulse.serial].ground_state_probability - 1
+            z_proj = 2 * results[ro_pulse.serial].probability(0) - 1
             # store the results
             r = {
                 "probability": z_proj,
@@ -109,7 +120,7 @@ def _acquisition(
 
 
 def add_gate_pair_pulses_to_sequence(
-    platform: AbstractPlatform,
+    platform: Platform,
     gates,
     qubit,
     sequence,
