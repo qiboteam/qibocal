@@ -8,7 +8,7 @@ from pathlib import Path
 
 import click
 import yaml
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 
 from qibocal.config import log, raise_error
 
@@ -120,7 +120,8 @@ def generate_output_folder(folder, force):
     return folder
 
 
-def allocate_qubits(platform: AbstractPlatform, qubit_ids: list):
+def allocate_qubits(platform: Platform, qubit_ids: list):
+    """Load platform' qubits."""
     if platform is not None:
         return {q: platform.qubits[q] for q in qubit_ids if q in platform.qubits}
     else:
