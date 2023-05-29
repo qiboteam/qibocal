@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Optional, Set, Union
 
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 
 from .graph import Graph
 from .history import Completed, History
@@ -24,7 +24,7 @@ class Executor:
     """Output path."""
     qubits: Optional[Qubits] = None
     """Qubits to be calibrated."""
-    platform: Optional[AbstractPlatform] = None
+    platform: Optional[Platform] = None
     """Qubits' platform."""
     head: Optional[Id] = None
     """The current position."""
@@ -37,7 +37,7 @@ class Executor:
         cls,
         card: Union[dict, Path],
         output: Path,
-        platform: AbstractPlatform = None,
+        platform: Platform = None,
         qubits: Qubits = None,
     ):
         """Load execution graph and associated executor from a runcard."""

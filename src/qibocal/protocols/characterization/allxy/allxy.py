@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 import plotly.graph_objects as go
 from qibolab import AveragingMode, ExecutionParameters
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -68,7 +68,7 @@ gatelist = [
 
 def _acquisition(
     params: AllXYParameters,
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: Qubits,
 ) -> AllXYData:
     r"""
@@ -120,7 +120,7 @@ def _acquisition(
 
 
 def add_gate_pair_pulses_to_sequence(
-    platform: AbstractPlatform,
+    platform: Platform,
     gates,
     qubit,
     sequence,

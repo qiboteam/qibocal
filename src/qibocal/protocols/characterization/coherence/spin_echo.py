@@ -4,7 +4,7 @@ from typing import Dict, Optional, Union
 import numpy as np
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -50,7 +50,7 @@ class SpinEchoData(T1Data):
 
 def _acquisition(
     params: SpinEchoParameters,
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: Qubits,
 ) -> SpinEchoData:
     """Data acquisition for SpinEcho"""
