@@ -4,6 +4,7 @@ from typing import List, Optional, Tuple, Union
 
 import numpy as np
 import plotly.graph_objects as go
+from pandas import DataFrame
 
 from qibocal.auto.operation import Results
 from qibocal.calibrations.niGSC.basics.fitting import (
@@ -19,10 +20,12 @@ numeric = Union[int, float, complex, np.number]
 
 @dataclass
 class DecayResult(Results):
-    """ """
+    """Data being described by a single decay, Ap^x."""
 
+    # x and y data.
     m: Union[List[numeric], np.ndarray]
     y: Union[List[numeric], np.ndarray]
+    # Fitting parameters.
     A: Optional[numeric] = field(default=None)
     Aerr: Optional[numeric] = field(default=None)
     p: Optional[numeric] = field(default=None)
@@ -32,6 +35,9 @@ class DecayResult(Results):
     )
 
     def __post_init__(self):
+        """Do some checks if the data given is correct. If no initial fitting parameters are given,
+        choose a wise guess based on the given data.
+        """
         if len(self.y) != len(self.m):
             raise ValueError(
                 "Lenght of y and m must agree. len(m)={} != len(y)={}".format(
@@ -49,6 +55,8 @@ class DecayResult(Results):
         return (self.A, self.p)
 
     def fit(self, **kwargs):
+        """Fits the data, all parameters given through kwargs will be passed on to the optimization function."""
+
         kwargs.setdefault("bounds", ((0, 0), (1, 1)))
         kwargs.setdefault("p0", (self.A, self.p))
         params, errs = fit_exp1_func(self.m, self.y, **kwargs)
@@ -56,12 +64,16 @@ class DecayResult(Results):
         self.Aerr, self.perr = errs
 
     def plot(self):
+        """Plots the histogram data for each point and the averges plus the fit."""
+
         if self.hists is not None:
             self.fig = plot_hists_result(self)
         self.fig = plot_decay_result(self, self.fig)
         return self.fig
 
     def __str__(self):
+        """Overwrite the representation of the object with the fitting parameters if there are any."""
+
         if self.perr is not None:
             return "({:.3f}\u00B1{:.3f})({:.3f}\u00B1{:.3f})^m".format(
                 self.A, self.Aerr, self.p, self.perr
@@ -72,10 +84,7 @@ class DecayResult(Results):
 
 @dataclass
 class DecayWithOffsetResult(DecayResult):
-    """
-    y[i] = (A +- Aerr) (p +- perr)^m[i] + (B +- Berr)
-    # for later: y= sum_i A_i p_i^m (needs m integer)
-    """
+    """Data being described by a single decay with offset, Ap^x + B."""
 
     B: Optional[numeric] = field(default=None)
     Berr: Optional[numeric] = field(default=None)
@@ -83,7 +92,7 @@ class DecayWithOffsetResult(DecayResult):
     def __post_init__(self):
         super().__post_init__()
         if self.B is None:
-            self.B = np.min(np.array(self.y))
+            self.B = np.mean(np.array(self.y))
         self.func = exp1B_func
 
     @property
@@ -91,6 +100,8 @@ class DecayWithOffsetResult(DecayResult):
         return (*super().fitting_params, self.B)
 
     def fit(self, **kwargs):
+        """Fits the data, all parameters given through kwargs will be passed on to the optimization function."""
+
         kwargs.setdefault("bounds", ((0, 0, 0), (1, 1, 1)))
         kwargs.setdefault("p0", (self.A, self.p, self.B))
         params, errs = fit_exp1B_func(self.m, self.y, **kwargs)
@@ -98,6 +109,8 @@ class DecayWithOffsetResult(DecayResult):
         self.Aerr, self.perr, self.Berr = errs
 
     def __str__(self):
+        """Overwrite the representation of the object with the fitting parameters if there are any."""
+
         if self.perr is not None:
             return "({:.3f}\u00B1{:.3f})({:.3f}\u00B1{:.3f})^m + ({:.3f}\u00B1{:.3f})".format(
                 self.A, self.Aerr, self.p, self.perr, self.B, self.Berr
@@ -109,8 +122,20 @@ class DecayWithOffsetResult(DecayResult):
 def plot_decay_result(
     result: DecayResult, fig: Optional[go.Figure] = None
 ) -> go.Figure:
+    """Plots the average and the fitting data from a `DecayResult`.
+
+    Args:
+        result (DecayResult): Data to plot.
+        fig (Optional[go.Figure], optional): If given, traces. Defaults to None.
+
+    Returns:
+        go.Figure: Figure with at least two traces, one for the data, one for the fit.
+    """
+
+    # Initiate an empty figure if none was given.
     if fig is None:
         fig = go.Figure()
+    # Plot the x and y data from the result, they are (normally) the averages.
     fig.add_trace(
         go.Scatter(
             x=result.m,
@@ -120,6 +145,7 @@ def plot_decay_result(
             name="average",
         )
     )
+    # Build the fit and plot the fit.
     m_fit = np.linspace(min(result.m), max(result.m), 100)
     y_fit = result.func(m_fit, *result.fitting_params)
     fig.add_trace(
@@ -129,6 +155,15 @@ def plot_decay_result(
 
 
 def plot_hists_result(result: DecayResult) -> go.Figure:
+    """Plots the distribution of data around each point.
+
+    Args:
+        result (DecayResult): Where the histogramm data comes from.
+
+    Returns:
+        go.Figure: A plotly figure with one single trace with the distribution of
+    """
+
     counts_list, bins_list = result.hists
     counts_list = sum(counts_list, [])
     fig_hist = go.Figure(
@@ -150,8 +185,21 @@ def plot_hists_result(result: DecayResult) -> go.Figure:
     return fig_hist
 
 
-def get_hists_data(data_agg: DecayResult):
-    signal = extract_from_data(data_agg, "signal", "depth")[1].reshape(
+def get_hists_data(
+    data_agg: DataFrame, xlabel: str = "depth", ylabel: str = "signal"
+) -> Tuple[list, list]:
+    """From a dataframe extract for each point the histogram data.
+
+    Args:
+        data_agg (DataFrame): The raw data for the histogram.
+        xlabel (str, optional): The label where the x data is stored in the data frame. Defaults to 'depth'.
+        ylabel (str, optional): The label where the y data is stored in the data frame. Defaults to 'signal'.
+
+    Returns:
+        Tuple[list, list]: Counts and bin for each point.
+    """
+
+    signal = extract_from_data(data_agg, ylabel, xlabel)[1].reshape(
         -1, data_agg.attrs["niter"]
     )
     # Get the exact number of occurences
