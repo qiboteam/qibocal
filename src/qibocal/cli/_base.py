@@ -77,7 +77,8 @@ def command(runcard, folder, force=None):
     "--no-update",
     "fix_platform",
     is_flag=True,
-    help="Use --update option to update iteratively the platform.",
+    help="Use --no-update option to avoid updating iteratively the platform."
+    "With this option the new runcard will not be produced.",
 )
 def autocalibration(runcard, folder, force=None, fix_platform=False):
     """qibocal: Quantum Calibration Verification and Validation using Qibo.

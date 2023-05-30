@@ -9,6 +9,7 @@ PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/test_autocalibration
 
 
 # FIXME: https://github.com/qiboteam/qibolab/issues/454
+# TODO: improve tests when dummy is available
 @pytest.mark.skip(reason="Waiting for dummy platform support.")
 @pytest.mark.parametrize("update", [True, False])
 def test_qq_auto_dummy(update):
