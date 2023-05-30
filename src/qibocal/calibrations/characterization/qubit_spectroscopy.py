@@ -1,19 +1,19 @@
 from typing import Optional
 
 import numpy as np
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal import plots
 from qibocal.data import DataUnits
 from qibocal.decorators import plot
-from qibocal.fitting.methods import lorentzian_fit
+from qibocal.fitting.methods import lorentzian_fit, qubit_spectroscopy_flux_fit
 
 
 @plot("MSR and Phase vs Qubit Drive Frequency", plots.frequency_msr_phase)
 def qubit_spectroscopy(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: dict,
     freq_width: int,
     freq_step: int,
@@ -29,7 +29,7 @@ def qubit_spectroscopy(
     Afterthat, a final sweep with more precision is executed centered in the new qubit frequency found.
 
     Args:
-        platform (AbstractPlatform): Qibolab platform object
+        platform (Platform): Qibolab platform object
         qubits (dict): Dict of target Qubit objects to perform the action
         freq_width (int): Width frequency in HZ to perform the high resolution sweep
         freq_step (int): Step frequency in HZ for the high resolution sweep
@@ -131,10 +131,10 @@ def qubit_spectroscopy(
 
 @plot(
     "MSR and Phase vs Qubit Drive Frequency and Flux Current",
-    plots.frequency_flux_msr_phase,
+    plots.frequency_flux_msr_phase_qubit,
 )
 def qubit_spectroscopy_flux(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: dict,
     drive_amplitude,
     freq_width,
@@ -142,6 +142,7 @@ def qubit_spectroscopy_flux(
     bias_width,
     bias_step,
     fluxlines,
+    params_fit,
     nshots=1024,
     relaxation_time=50,
     software_averages=1,
@@ -151,7 +152,7 @@ def qubit_spectroscopy_flux(
     This routine works for multiqubit devices flux controlled.
 
     Args:
-        platform (AbstractPlatform): Qibolab platform object
+        platform (Platform): Qibolab platform object
         qubits (dict): Dict of target Qubit objects to perform the action
         freq_width (int): Width frequency in HZ to perform the spectroscopy sweep
         freq_step (int): Step frequency in HZ for the spectroscopy sweep
@@ -159,6 +160,9 @@ def qubit_spectroscopy_flux(
         bias_step (float): Step bias in A for the flux bias sweep
         fluxlines (list): List of flux lines to use to perform the experiment. If it is set to "qubits", it uses each of
                         flux lines associated with the target qubits.
+        params_fit (dict): Dictionary of parameters for the fit. {"Ec":{"q_i":Ec_i,...}, "Ej":{"q_i":Ej_i,...}.
+                        If Ec and Ej are missing, the fit is valid in the transmon limit and if they are indicated,
+                        contains the next-order correction.
         software_averages (int): Number of executions of the routine for averaging results
         points (int): Save data results in a file every number of points
 
@@ -272,3 +276,12 @@ def qubit_spectroscopy_flux(
 
         # finally, save the remaining data and fits
         yield data
+        yield qubit_spectroscopy_flux_fit(
+            data,
+            x="bias[V]",
+            y="frequency[Hz]",
+            qubits=qubits,
+            fluxlines=fluxlines,
+            resonator_type=platform.resonator_type,
+            params_fit=params_fit,
+        )

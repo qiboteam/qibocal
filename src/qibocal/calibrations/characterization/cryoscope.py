@@ -1,7 +1,7 @@
 from typing import Optional
 
 import numpy as np
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import FluxPulse, PulseSequence, Rectangular
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -12,7 +12,7 @@ from qibocal.decorators import plot
 
 @plot("Flux pulse timing", plots.flux_pulse_timing)
 def flux_pulse_timing(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: list,
     flux_pulse_amplitude_start,
     flux_pulse_amplitude_end,
@@ -34,7 +34,7 @@ def flux_pulse_timing(
     the flux pulses in the implementation of 2q gates.
 
     Args:
-        platform (AbstractPlatform): Qibolab platform object
+        platform (Platform): Qibolab platform object
         qubits (list): List of target qubits to perform the action
         flux_pulse_amplitude_start (int): Initial flux pulse amplitude
         flux_pulse_amplitude_end (int): Maximum flux pulse amplitude
@@ -243,7 +243,7 @@ def flux_pulse_timing(
     plots.cryoscope_reconstructed_amplitude_time,
 )
 def cryoscope(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: dict,
     flux_pulse_amplitude,
     flux_pulse_duration_start,
@@ -284,7 +284,7 @@ def cryoscope(
     https://arxiv.org/abs/1907.04818
 
     Args:
-        platform (AbstractPlatform): Qibolab platform object
+        platform (Platform): Qibolab platform object
         qubits (list): List of target qubits to perform the action
         flux_pulse_duration_start (int): Initial flux pulse duration
         flux_pulse_duration_end (int): Maximum flux pulse duration

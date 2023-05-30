@@ -1,5 +1,5 @@
 import numpy as np
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 
 from qibocal import plots
@@ -35,7 +35,7 @@ gatelist = [
 
 @plot("Probability vs Gate Sequence", plots.allXY)
 def allXY(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: dict,
     beta_param=None,
     software_averages=1,
@@ -48,7 +48,7 @@ def allXY(
     qubit in |1> state.
 
     Args:
-        platform (AbstractPlatform): Qibolab platform object
+        platform (Platform): Qibolab platform object
         qubits (dict): Dict of target Qubit objects to perform the action
         beta_param (float): Drag pi pulse coefficient. If none, teh default shape defined in the runcard will be used.
         software_averages (int): Number of executions of the routine for averaging results
@@ -116,7 +116,7 @@ def allXY(
 
 @plot("Probability vs Gate Sequence", plots.allXY_drag_pulse_tuning)
 def allXY_drag_pulse_tuning(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: dict,
     beta_start,
     beta_end,
@@ -134,7 +134,7 @@ def allXY_drag_pulse_tuning(
     in order to find the optimal drag pulse coefficient for pi pulses.
 
     Args:
-        platform (AbstractPlatform): Qibolab platform object
+        platform (Platform): Qibolab platform object
         qubits (dict): Dict of target Qubit objects to perform the action
         beta_start (float): Initial drag pulse beta parameter
         beta_end (float): Maximum drag pulse beta parameter
@@ -208,7 +208,7 @@ def allXY_drag_pulse_tuning(
 
 @plot("MSR vs beta parameter", plots.drag_pulse_tuning)
 def drag_pulse_tuning(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: dict,
     beta_start,
     beta_end,
@@ -221,7 +221,7 @@ def drag_pulse_tuning(
     of different beta parameter values. After fitting, we obtain the best coefficient value for a pi pulse with drag shape.
 
     Args:
-        platform (AbstractPlatform): Qibolab platform object
+        platform (Platform): Qibolab platform object
         qubits (dict): Dict of target Qubit objects to perform the action
         beta_start (float): Initial drag pulse beta parameter
         beta_end (float): Maximum drag pulse beta parameter
@@ -357,7 +357,7 @@ def drag_pulse_tuning(
 
 
 def _add_gate_pair_pulses_to_sequence(
-    platform: AbstractPlatform, gates, qubit, beta_param, sequence
+    platform: Platform, gates, qubit, beta_param, sequence
 ):
     pulse_duration = platform.create_RX_pulse(qubit, start=0).duration
     # All gates have equal pulse duration
