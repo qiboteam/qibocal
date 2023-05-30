@@ -9,7 +9,7 @@ from typing import List, Optional
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from qibolab.platforms.abstract import Qubit
+from qibolab.qubits import Qubit
 from sklearn.metrics import accuracy_score
 
 from . import data

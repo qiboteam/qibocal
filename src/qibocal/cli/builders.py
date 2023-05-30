@@ -189,9 +189,9 @@ class ActionBuilder:
 
         if backend_name == "qibolab":
             if platform_runcard is None:
-                from qibolab.paths import qibolab_folder
+                from qibolab import get_platforms_path
 
-                original_runcard = qibolab_folder / "runcards" / f"{platform_name}.yml"
+                original_runcard = get_platforms_path() / f"{platform_name}.yml"
             else:
                 original_runcard = platform_runcard
             # copy of the original runcard that will stay unmodified
