@@ -211,4 +211,3 @@ def fit_exp2_func(
     """
 
     return fit_expn_func(xdata, ydata, 2)
-
