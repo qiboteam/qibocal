@@ -13,9 +13,7 @@ from qibocal.calibrations.niGSC.basics.fitting import (
 )
 from qibocal.protocols.characterization.RB.utils import extract_from_data
 
-real_numeric = Union[int, float, np.number]
 numeric = Union[int, float, complex, np.number]
-NoneType = type(None)
 
 
 @dataclass
@@ -49,12 +47,6 @@ class DecayResult(Results):
     def fitting_params(self):
         return (self.A, self.p)
 
-    def reset_fitting_params(self, A=None, p=None):
-        self.A: Optional[numeric] = (
-            A if A is not None else np.max(self.y) - np.mean(self.y)
-        )
-        self.p: Optional[numeric] = p if p is not None else 0.9
-
     def fit(self, **kwargs):
         kwargs.setdefault("bounds", ((0, 0), (1, 1)))
         kwargs.setdefault("p0", (self.A, self.p))
@@ -76,12 +68,6 @@ class DecayResult(Results):
         else:
             return "DecayResult: Ap^m"
 
-    def get_tables(self):
-        pass
-
-    def get_figures(self):
-        return [self.fig]
-
 
 @dataclass
 class DecayWithOffsetResult(DecayResult):
@@ -102,10 +88,6 @@ class DecayWithOffsetResult(DecayResult):
     @property
     def fitting_params(self):
         return (*super().fitting_params, self.B)
-
-    def reset_fitting_params(self, A=None, p=None, B=None):
-        super().reset_fitting_params(A, p)
-        self.B: Optional[numeric] = B if B is not None else np.mean(self.y)
 
     def fit(self, **kwargs):
         kwargs.setdefault("bounds", ((0, 0, 0), (1, 1, 1)))

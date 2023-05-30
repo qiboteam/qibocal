@@ -1,6 +1,6 @@
 platform: qw5q_gold_qblox
 
-qubits: [0]
+qubits: [1]
 
 format: csv
 
@@ -11,8 +11,8 @@ actions:
     operation: standard_rb
   #   main: resonator punchout
     parameters:
-      nqubits: 1
-      qubits: [0]
+      nqubits: 5
+      qubits: [1]
       depths: [1,3,5,10,15,20,30]
         # start: 1
         # stop: 10
