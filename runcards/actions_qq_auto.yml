@@ -1,5 +1,4 @@
-platform: dummy
-backend: numpy
+platform: qw5q_gold_qblox
 
 qubits: [0]
 

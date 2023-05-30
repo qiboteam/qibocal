@@ -47,9 +47,12 @@ class ModuleFactory(SingleCliffordsFactory):
         if depth > 0:
             # Build a gate out of the unitary of the whole circuit and
             # take the daggered version of that.
-            circuit.add(
-                gates.Unitary(circuit.unitary(), *range(len(self.qubits))).dagger()
-            )
+            # circuit.add(
+            #     gates.Unitary(circuit.unitary(), *range(len(self.qubits))).dagger()
+            # )
+            for qubit in range(len(self.qubits)):
+                circuit_q = circuit.light_cone(qubit)[0]
+                circuit.add(gates.Unitary(circuit_q.unitary(), qubit).dagger())
         circuit.add(gates.M(*range(len(self.qubits))))
         return circuit
 

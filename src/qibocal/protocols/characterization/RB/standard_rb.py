@@ -39,11 +39,10 @@ class StandardRBResult(DecayWithOffsetResult):
 
         # Divide infidelity by magic number
         magic_number = 1.875
-        infidelity = (1 - self.p) / magic_number
+        infidelity = (1 - self.p) / 2
         self.fidelity_dict = {
-            "fidelity_primitive": 1 - ((1 - self.p) / 2),
             "fidelity": 1 - infidelity,
-            "average_error_gate": infidelity * 100,
+            "pi/2 fidelity": 1 - infidelity / magic_number,
         }
 
 
@@ -102,8 +101,15 @@ def aggregate(data: RBData) -> StandardRBResult:
         StandardRBResult: The aggregated data.
     """
 
+    def p0s(samples_list):
+        ground = np.array([0] * len(samples_list[0][0]))
+        my_p0s = []
+        for samples in samples_list:
+            my_p0s.append(np.sum(np.product(samples == ground, axis=1)) / len(samples))
+        return my_p0s
+
     # The signal is here the survival probability.
-    data_agg = data.assign(signal=lambda x: 1 - np.mean(x.samples.to_list(), axis=1))
+    data_agg = data.assign(signal=lambda x: p0s(x.samples.to_list()))
     # Histogram
     hists = get_hists_data(data_agg)
     # Build the result object
