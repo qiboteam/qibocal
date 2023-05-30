@@ -33,7 +33,7 @@ class DispersiveShiftParameters(Parameters):
     """Frequency step for sweep (Hz)."""
     qubits: Optional[list] = field(default_factory=list)
     """Local qubits (optional)."""
-    update: Optional[bool] = True
+    update: Optional[bool] = None
     """Runcard update mechanism."""
     nshots: Optional[int] = None
     """Number of shots."""

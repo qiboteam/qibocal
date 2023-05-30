@@ -29,7 +29,7 @@ class RamseyParameters(Parameters):
         If 0 standard Ramsey experiment is performed."""
     qubits: Optional[list] = field(default_factory=list)
     """Local qubits (optional)."""
-    update: Optional[bool] = True
+    update: Optional[bool] = None
     """Runcard update mechanism."""
     nshots: Optional[int] = None
     """Number of shots."""

@@ -29,7 +29,7 @@ class ResonatorSpectroscopyParameters(Parameters):
     Otherwise the default amplitude defined on the platform runcard will be used"""
     qubits: Optional[list] = field(default_factory=list)
     """Local qubits (optional)."""
-    update: Optional[bool] = True
+    update: Optional[bool] = None
     """Runcard update mechanism."""
     nshots: Optional[int] = None
     """Number of shots."""

@@ -32,7 +32,7 @@ class ResonatorFluxParameters(Parameters):
     """Relaxation time (ns)."""
     qubits: Optional[list] = field(default_factory=list)
     """Local qubits (optional)."""
-    update: Optional[bool] = True
+    update: Optional[bool] = None
     """Runcard update mechanism."""
 
 

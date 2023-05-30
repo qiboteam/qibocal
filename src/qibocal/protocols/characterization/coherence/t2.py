@@ -25,7 +25,7 @@ class T2Parameters(Parameters):
     """Step delay between RX(pi/2) pulses in ns."""
     qubits: Optional[list] = field(default_factory=list)
     """Local qubits (optional)."""
-    update: Optional[bool] = True
+    update: Optional[bool] = None
     """Runcard update mechanism."""
     nshots: Optional[int] = None
     """Number of shots."""

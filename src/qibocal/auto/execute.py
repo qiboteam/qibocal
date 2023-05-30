@@ -132,5 +132,12 @@ class Executor:
             completed = Completed(task, output, Normal())
             self.history.push(completed)
             self.head = self.next()
-            if self.platform is not None and self.update:
-                self.platform.update(completed.res.update)
+
+            if self.platform is not None:
+                # update platform if:
+                # - global update is True and local not specified
+                # - local update is True
+                if (self.update and task.parameters.update is None) or (
+                    task.parameters.update
+                ):
+                    self.platform.update(completed.res.update)
