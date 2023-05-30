@@ -1,3 +1,4 @@
+from collections import Counter
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple, Union
 
@@ -38,7 +39,7 @@ class DecayResult(Results):
                 )
             )
         if self.A is None:
-            self.A = np.max(self.y) - np.mean(self.y)
+            self.A = np.max(self.y) - np.min(self.y)
         if self.p is None:
             self.p = 0.9
         self.func = exp1_func
@@ -82,7 +83,7 @@ class DecayWithOffsetResult(DecayResult):
     def __post_init__(self):
         super().__post_init__()
         if self.B is None:
-            self.B = np.mean(np.array(self.y))
+            self.B = np.min(np.array(self.y))
         self.func = exp1B_func
 
     @property
@@ -153,13 +154,9 @@ def get_hists_data(data_agg: DecayResult):
     signal = extract_from_data(data_agg, "signal", "depth")[1].reshape(
         -1, data_agg.attrs["niter"]
     )
-    counts_list, bins_list = zip(*[np.histogram(x, bins=50) for x in signal])
-    counts_list, bins_list = list(counts_list), list(bins_list)
+    # Get the exact number of occurences
+    counters = [Counter(np.round(x, 3)) for x in signal]
+    bins_list = [list(counter_x.keys()) for counter_x in counters]
+    counts_list = [list(counter_x.values()) for counter_x in counters]
 
-    # Remove zero counts and adjust bin values
-    for k in range(len(counts_list)):
-        bins, counts = bins_list[k], counts_list[k]
-        bins = bins[:-1] + (bins[1] - bins[0]) / 2
-        bins_list[k] = list(bins[counts != 0])
-        counts_list[k] = list(counts[counts != 0])
     return counts_list, bins_list

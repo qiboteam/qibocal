@@ -117,7 +117,7 @@ def fit_exp1B_func(
     else:
         # Get a guess for the exponential function.
         kwargs["p0"] = kwargs.get(
-            "p0", (np.max(ydata) - np.mean(ydata), 0.9, np.mean(ydata))
+            "p0", (np.max(ydata) - np.min(ydata), 0.9, np.min(ydata))
         )
         # If the search for fitting parameters does not work just return
         # fixed parameters where one can see that the fit did not work
@@ -211,3 +211,4 @@ def fit_exp2_func(
     """
 
     return fit_expn_func(xdata, ydata, 2)
+
