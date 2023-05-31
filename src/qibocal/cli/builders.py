@@ -10,7 +10,6 @@ import yaml
 from qibocal import calibrations
 from qibocal.cli.utils import generate_output_folder, load_yaml
 from qibocal.config import raise_error
-from qibocal.data import Data
 
 
 class ActionParser:
@@ -35,16 +34,32 @@ class ActionParser:
         self.func = getattr(calibrations, self.name)
         sig = inspect.signature(self.func)
         self.params = self.runcard["actions"][self.name]
-        for param in list(sig.parameters)[2:-1]:
-            if param not in self.params:
-                raise_error(AttributeError, f"Missing parameter {param} in runcard.")
+
+        for param in sig.parameters.values():
+            # check the parameters without default value
+            if param.default == inspect.Parameter.empty:
+                if (
+                    param.name not in ["platform", "qubits"]
+                    and param.name not in self.params
+                ):
+                    raise_error(
+                        AttributeError, f"Missing parameter {param} in runcard."
+                    )
 
     def execute(self, data_format, platform, qubits):
         """Execute action and retrieve results."""
         if data_format is None:
             raise_error(ValueError, f"Cannot store data using {data_format} format.")
 
-        results = self.func(platform, qubits, **self.params)
+        elif self.name == "calibrate_qubit_states" and "save_dir" not in self.params:
+            results = self.func(
+                platform,
+                qubits,
+                **self.params,
+                save_dir=self.folder + "/data/calibrate_qubit_states",
+            )
+        else:
+            results = self.func(platform, qubits, **self.params)
 
         for data in results:
             getattr(data, f"to_{data_format}")(self.path)
