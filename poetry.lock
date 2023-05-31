@@ -2693,8 +2693,8 @@ zh = ["laboneq (==2.5.0)"]
 [package.source]
 type = "git"
 url = "https://github.com/qiboteam/qibolab.git"
-reference = "dummy"
-resolved_reference = "1bfb692931a36d15a8f6941a2c7f4fa30d6fbc1e"
+reference = "main"
+resolved_reference = "7a5b331498fe788620ac9ec3071fff71dcd745bc"
 
 [[package]]
 name = "recommonmark"
@@ -3636,4 +3636,4 @@ viz = ["pydot"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.12"
-content-hash = "6abbe1cb07e24ed9afb45d68eb77a71c90f50ee018db63bc6a505af1f0dc453f"
+content-hash = "2e89a2ef743ad618760d20ab87633672764a25dd2b04b1241fcfebe66b45d4c2"
