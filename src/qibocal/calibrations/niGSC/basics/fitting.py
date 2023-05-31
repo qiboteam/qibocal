@@ -8,7 +8,7 @@ import numpy as np
 from scipy.linalg import hankel, svd
 from scipy.optimize import curve_fit
 
-from qibocal.config import raise_error
+from qibocal.config import raise_error, log
 
 
 def exp1_func(x: np.ndarray, A: float, f: float) -> np.ndarray:
@@ -129,8 +129,9 @@ def fit_exp1B_func(
                 **kwargs,
             )
             perr = tuple(np.sqrt(np.diag(pcov)))
-        except RuntimeError:
-            popt, perr = (0, 0, 0), (0, 0, 0)
+        except Exception as e:
+            log.warning(e)
+            popt, perr = (0, 0), (0, 0)
     return popt, perr
 
 
@@ -166,7 +167,8 @@ def fit_exp1_func(
                 method="lm",
             )
             perr = tuple(np.sqrt(np.diag(pcov)))
-        except RuntimeError:
+        except Exception as e:
+            log.warning(e)
             popt, perr = (0, 0), (0, 0)
 
     return popt, perr
