@@ -1,5 +1,5 @@
 import numpy as np
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -11,7 +11,7 @@ from qibocal.fitting.methods import rabi_fit
 
 @plot("MSR vs Time", plots.time_msr_phase)
 def rabi_pulse_length(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: dict,
     pulse_duration_start,
     pulse_duration_end,
@@ -25,7 +25,7 @@ def rabi_pulse_length(
     to find the drive pulse length that creates a rotation of a desired angle.
 
     Args:
-        platform (AbstractPlatform): Qibolab platform object
+        platform (Platform): Qibolab platform object
         qubits (dict): Dict of target Qubit objects to perform the action
         pulse_duration_start (int): Initial drive pulse duration for the Rabi experiment
         pulse_duration_end (int): Maximum drive pulse duration for the Rabi experiment
@@ -140,7 +140,7 @@ def rabi_pulse_length(
 
 @plot("MSR vs Gain", plots.gain_msr_phase)
 def rabi_pulse_gain(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: dict,
     pulse_gain_start,
     pulse_gain_end,
@@ -153,7 +153,7 @@ def rabi_pulse_gain(
     to find the drive pulse gain that creates a rotation of a desired angle.
 
     Args:
-        platform (AbstractPlatform): Qibolab platform object
+        platform (Platform): Qibolab platform object
         qubits (dict): Dict of target Qubit objects to perform the action
         pulse_gain_start (int): Initial drive pulse gain for the Rabi experiment
         pulse_gain_end (int): Maximum drive pulse gain for the Rabi experiment
@@ -268,7 +268,7 @@ def rabi_pulse_gain(
 
 @plot("MSR vs Amplitude", plots.amplitude_msr_phase)
 def rabi_pulse_amplitude(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: dict,
     pulse_amplitude_start,
     pulse_amplitude_end,
@@ -282,7 +282,7 @@ def rabi_pulse_amplitude(
     to find the drive pulse amplitude that creates a rotation of a desired angle.
 
     Args:
-        platform (AbstractPlatform): Qibolab platform object
+        platform (Platform): Qibolab platform object
         qubits (dict): Dict of target Qubit objects to perform the action
         pulse_amplitude_start (int): Initial drive pulse amplitude for the Rabi experiment
         pulse_amplitude_end (int): Maximum drive pulse amplitude for the Rabi experiment
@@ -383,7 +383,7 @@ def rabi_pulse_amplitude(
 
 @plot("MSR vs length and gain", plots.duration_gain_msr_phase)
 def rabi_pulse_length_and_gain(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: dict,
     pulse_duration_start,
     pulse_duration_end,
@@ -399,7 +399,7 @@ def rabi_pulse_length_and_gain(
     combination of duration and gain to find the drive pulse amplitude that creates a rotation of a desired angle.
 
     Args:
-        platform (AbstractPlatform): Qibolab platform object
+        platform (Platform): Qibolab platform object
         qubits (dict): Dict of target Qubit objects to perform the action
         pulse_duration_start (int): Initial drive pulse duration for the Rabi experiment
         pulse_duration_end (int): Maximum drive pulse duration for the Rabi experiment
@@ -508,7 +508,7 @@ def rabi_pulse_length_and_amplitude(
     combination of duration and amplitude to find the drive pulse amplitude that creates a rotation of a desired angle.
 
     Args:
-        platform (AbstractPlatform): Qibolab platform object
+        platform (Platform): Qibolab platform object
         qubit (int): Target qubit to perform the action
         pulse_duration_start (int): Initial drive pulse duration for the Rabi experiment
         pulse_duration_end (int): Maximum drive pulse duration for the Rabi experiment

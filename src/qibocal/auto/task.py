@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List
 
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 
 from ..protocols.characterization import Operation
 from .operation import Data, DummyPars, Qubits, Results, Routine, dummy_operation
@@ -79,7 +79,7 @@ class Task:
         os.makedirs(path)
         return path
 
-    def run(self, folder: Path, platform: AbstractPlatform, qubits: Qubits) -> Results:
+    def run(self, folder: Path, platform: Platform, qubits: Qubits) -> Results:
         try:
             operation: Routine = self.operation
             parameters = self.parameters
