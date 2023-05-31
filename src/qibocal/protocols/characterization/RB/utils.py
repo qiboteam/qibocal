@@ -44,5 +44,5 @@ def extract_from_data(
         return grouped_df[groupby_key].to_numpy(), grouped_df[output_key].to_numpy()
     else:
         df = data.get([output_key, groupby_key])
-        grouped_df = df.groupby(groupby_key, group_keys=True).apply(agg_type)
+        grouped_df = df.groupby(groupby_key, group_keys=True).agg(agg_type)
         return grouped_df.index.to_numpy(), grouped_df[output_key].to_numpy()
