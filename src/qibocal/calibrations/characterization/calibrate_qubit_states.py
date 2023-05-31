@@ -33,7 +33,18 @@ def calibrate_qubit_states(
         platform (:class:`qibolab.platforms.abstract.Platform`): custom abstract platform on which we perform the calibration.
         qubits (dict): Dict of target Qubit objects to perform the action
         nshots (int): number of times the pulse sequence will be repeated.
-        classifiers (list): list of classifiers
+        classifiers (list): list of classifiers, the available once are:
+
+            - linear_svm
+            - ada_boost
+            - gaussian_process
+            - naive_bayes
+            - nn
+            - qubit_fit
+            - random_forest
+            - rbf_svm
+            - qblox_fit
+
         save_dir (str): save path
 
     Returns:
