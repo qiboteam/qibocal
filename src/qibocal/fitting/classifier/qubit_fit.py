@@ -6,8 +6,6 @@ import numpy as np
 import numpy.typing as npt
 import skops.io as sio
 
-from .utils import identity
-
 
 def constructor(_hyperparams):
     r"""Return the model class.
@@ -32,7 +30,7 @@ def hyperopt(_x_train, _y_train, _path):
     return {}
 
 
-normalize = identity
+normalize = lambda x: x
 
 
 def dump(model, save_path: Path):
@@ -59,8 +57,8 @@ class QubitFit:
         angle (float): Rotational angle.
     """  # TODO: add references
 
-    iq_mean0: np.ndarray = field(default_factory=np.ndarray)
-    iq_mean1: np.ndarray = field(default_factory=np.ndarray)
+    iq_mean0: list = field(default_factory=list)
+    iq_mean1: list = field(default_factory=list)
     threshold: float = 0.0
     angle: float = 0.0
     fidelity: float = None
