@@ -1,5 +1,5 @@
 import numpy as np
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 
 from qibocal import plots
@@ -10,7 +10,7 @@ from qibocal.fitting.methods import spin_echo_fit
 
 @plot("MSR vs Time", plots.spin_echo_time_msr)
 def spin_echo_3pulses(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: list,
     delay_between_pulses_start,
     delay_between_pulses_end,

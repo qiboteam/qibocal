@@ -1,13 +1,14 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, Optional, Union
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.config import log
 from qibocal.data import DataUnits
 from qibocal.plots.utils import get_color
 
@@ -24,15 +25,19 @@ class T1Parameters(Parameters):
     """Final delay before readout (ns)."""
     delay_before_readout_step: int
     """Step delay before readout (ns)."""
+    nshots: Optional[int] = None
+    """Number of shots."""
+    relaxation_time: Optional[int] = None
+    """Relaxation time (ns)."""
 
 
 @dataclass
 class T1Results(Results):
     """T1 outputs."""
 
-    t1: Dict[List[Tuple], str] = field(metadata=dict(update="t1"))
+    t1: Dict[Union[str, int], float] = field(metadata=dict(update="t1"))
     """T1 for each qubit."""
-    fitted_parameters: Dict[List[Tuple], List]
+    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
     """Raw fitting output."""
 
 
@@ -47,9 +52,7 @@ class T1Data(DataUnits):
         )
 
 
-def _acquisition(
-    params: T1Parameters, platform: AbstractPlatform, qubits: Qubits
-) -> T1Data:
+def _acquisition(params: T1Parameters, platform: Platform, qubits: Qubits) -> T1Data:
     r"""Data acquisition for T1 experiment.
     In a T1 experiment, we measure an excited qubit after a delay. Due to decoherence processes
     (e.g. amplitude damping channel), it is possible that, at the time of measurement, after the delay,
@@ -59,7 +62,7 @@ def _acquisition(
 
     Args:
         params:
-        platform (AbstractPlatform): Qibolab platform object
+        platform (Platform): Qibolab platform object
         qubits (list): List of target qubits to perform the action
         delay_before_readout_start (int): Initial time delay before ReadOut
         delay_before_readout_end (list): Maximum time delay before ReadOut
@@ -99,18 +102,25 @@ def _acquisition(
             ro_pulses[qubit].start = qd_pulses[qubit].duration + wait
 
         # execute the pulse sequence
-        results = platform.execute_pulse_sequence(sequence)
-
+        results = platform.execute_pulse_sequence(
+            sequence,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
+        )
         for ro_pulse in ro_pulses.values():
             # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[ro_pulse.serial].average.raw
+            r = results[ro_pulse.serial].serialize
             r.update(
                 {
                     "wait[ns]": wait,
                     "qubit": ro_pulse.qubit,
                 }
             )
-            data.add(r)
+            data.add_data_from_dict(r)
     return data
 
 
