@@ -49,7 +49,7 @@ def test_1expfitting():
         np.array(fitting.fit_exp1_func(x, y)), np.array(((0.75, 1.0), (0, 0)))
     )
     # Catch exceptions
-    x = np.linspace(-np.pi/2, np.pi/2, 100)
+    x = np.linspace(-np.pi / 2, np.pi / 2, 100)
     y_dist = np.tan(x)
     popt, perr = fitting.fit_exp1_func(x, y_dist, maxfev=1, p0=[1])
     assert not (np.all(np.array([*popt, *perr]), 0))
