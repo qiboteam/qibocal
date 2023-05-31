@@ -1,11 +1,9 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Iterable, List, Tuple, Union
 
 import numpy as np
-import pandas as pd
 import plotly.graph_objects as go
 from qibo.noise import NoiseModel
-from qibolab.platforms.abstract import AbstractPlatform
 
 from qibocal.auto.operation import Routine
 from qibocal.calibrations.niGSC.standardrb import ModuleFactory as StandardRBScan
