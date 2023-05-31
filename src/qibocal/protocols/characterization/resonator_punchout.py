@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
 import numpy as np
 import plotly.graph_objects as go
@@ -7,6 +7,7 @@ from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -44,15 +45,15 @@ class ResonatorPunchoutParameters(Parameters):
 class ResonatorPunchoutResults(Results):
     """ResonatorPunchout outputs."""
 
-    readout_frequency: Dict[Union[str, int], float] = field(
+    readout_frequency: Dict[QubitId, float] = field(
         metadata=dict(update="readout_frequency")
     )
     """Readout frequency [GHz] for each qubit."""
-    readout_amplitude: Dict[Union[str, int], float] = field(
+    readout_amplitude: Dict[QubitId, float] = field(
         metadata=dict(update="readout_amplitude")
     )
     """Readout amplitude for each qubit."""
-    bare_frequency: Optional[Dict[Union[str, int], float]] = field(
+    bare_frequency: Optional[Dict[QubitId, float]] = field(
         metadata=dict(update="bare_resonator_frequency")
     )
     """Bare resonator frequency [GHz] for each qubit."""
