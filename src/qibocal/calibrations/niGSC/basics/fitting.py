@@ -112,13 +112,10 @@ def fit_exp1B_func(
 
     # Check if all the values in ``ydata``are the same. That would make the
     # exponential fit unnecessary.
+    print(kwargs)
     if np.all(ydata == ydata[0]):
         popt, perr = (ydata[0], 1.0, 0), (0, 0, 0)
     else:
-        # Get a guess for the exponential function.
-        kwargs["p0"] = kwargs.get(
-            "p0", (np.max(ydata) - np.min(ydata), 0.9, np.min(ydata))
-        )
         # If the search for fitting parameters does not work just return
         # fixed parameters where one can see that the fit did not work
         try:
@@ -153,19 +150,11 @@ def fit_exp1_func(
     if np.all(ydata == ydata[0]):
         popt, perr = (ydata[0], 1.0), (0, 0)
     else:
-        # Get a guess for the exponential function.
-        guess = kwargs.get("p0", [0.5, 0.9])
         # If the search for fitting parameters does not work just return
         # fixed parameters where one can see that the fit did not work
         try:
             # Build a new function such that the linear offset is zero.
-            popt, pcov = curve_fit(
-                exp1_func,
-                xdata,
-                ydata,
-                p0=guess,
-                method="lm",
-            )
+            popt, pcov = curve_fit(exp1_func, xdata, ydata, **kwargs)
             perr = tuple(np.sqrt(np.diag(pcov)))
         except Exception as e:
             log.warning(e)

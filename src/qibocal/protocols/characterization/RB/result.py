@@ -1,5 +1,6 @@
 from collections import Counter
 from dataclasses import dataclass, field
+from numbers import Number
 from typing import Iterable, List, Optional, Tuple, Union
 
 import numpy as np
@@ -13,21 +14,19 @@ from qibocal.calibrations.niGSC.basics.fitting import (
     fit_exp1B_func,
 )
 
-numeric = Union[int, float, complex, np.number]
-
 
 @dataclass
 class DecayResult(Results):
     """Data being described by a single decay, Ap^x."""
 
     # x and y data.
-    x: Union[List[numeric], np.ndarray]
-    y: Union[List[numeric], np.ndarray]
+    x: Union[List[Number], np.ndarray]
+    y: Union[List[Number], np.ndarray]
     # Fitting parameters.
-    A: Optional[numeric] = field(default=None)
-    Aerr: Optional[numeric] = field(default=None)
-    p: Optional[numeric] = field(default=None)
-    perr: Optional[numeric] = field(default=None)
+    A: Optional[Number] = None
+    Aerr: Optional[Number] = None
+    p: Optional[Number] = None
+    perr: Optional[Number] = None
 
     def __post_init__(self):
         """Do some checks if the data given is correct. If no initial fitting parameters are given,
@@ -87,8 +86,8 @@ class DecayResult(Results):
 class DecayWithOffsetResult(DecayResult):
     """Data being described by a single decay with offset, Ap^x + B."""
 
-    B: Optional[numeric] = field(default=None)
-    Berr: Optional[numeric] = field(default=None)
+    B: Optional[Number] = None
+    Berr: Optional[Number] = None
 
     def __post_init__(self):
         super().__post_init__()
@@ -102,7 +101,7 @@ class DecayWithOffsetResult(DecayResult):
 
     def fit(self, **kwargs):
         """Fits the data, all parameters given through kwargs will be passed on to the optimization function."""
-
+        print(kwargs)
         kwargs.setdefault("bounds", ((0, 0, 0), (1, 1, 1)))
         kwargs.setdefault("p0", (self.A, self.p, self.B))
         params, errs = fit_exp1B_func(self.x, self.y, **kwargs)
@@ -186,7 +185,7 @@ def plot_hists_result(result: DecayResult) -> go.Figure:
     return fig_hist
 
 
-def get_hists_data(signal: Union[List[numeric], np.ndarray]) -> Tuple[list, list]:
+def get_hists_data(signal: Union[List[Number], np.ndarray]) -> Tuple[list, list]:
     """From a dataframe extract for each point the histogram data.
 
     Args:

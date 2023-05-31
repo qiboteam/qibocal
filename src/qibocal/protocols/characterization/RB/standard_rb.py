@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Iterable, List, Tuple, Union
+from typing import Iterable, List, Optional, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
@@ -13,7 +13,7 @@ from qibocal.protocols.characterization.RB.utils import extract_from_data
 from .data import RBData
 from .params import RBParameters
 
-NoneType = type(None)
+PULSES_PER_CLIFFORD = 1.875
 
 
 @dataclass
@@ -33,11 +33,10 @@ class StandardRBResult(DecayWithOffsetResult):
         """
 
         # Divide infidelity by magic number
-        magic_number = 1.875
         infidelity = (1 - self.p) / 2
         self.fidelity_dict = {
             "fidelity": 1 - infidelity,
-            "pi/2 fidelity": 1 - infidelity / magic_number,
+            "pulse fidelity": 1 - infidelity / PULSES_PER_CLIFFORD,
         }
 
 
@@ -56,16 +55,16 @@ def setup_scan(params: RBParameters) -> Iterable:
 
 def execute(
     scan: Iterable,
-    nshots: Union[int, NoneType] = None,
-    noise_model: Union[NoiseModel, NoneType] = None,
+    nshots: Optional[int] = None,
+    noise_model: Optional[NoiseModel] = None,
 ) -> List[dict]:
     """Execute a given scan with the given number of shots and if its a simulation with the given
     noise model.
 
     Args:
         scan (Iterable): The ensemble of experiments (here circuits)
-        nshots (Union[int, NoneType], optional): Number of shots per circuit. Defaults to None.
-        noise_model (Union[NoiseModel, NoneType], optional): If its a simulation a noise model
+        nshots Optional[int]: Number of shots per circuit. Defaults to None.
+        noise_model Optional[NoiseModel]: If its a simulation a noise model
             can be applied. Defaults to None.
 
     Returns:
