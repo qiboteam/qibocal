@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from math import atan2
 from pathlib import Path
 
@@ -57,8 +57,8 @@ class QubitFit:
         angle (float): Rotational angle.
     """  # TODO: add references
 
-    iq_mean0: np.ndarray = np.array([0.0, 0.0])
-    iq_mean1: np.ndarray = np.array([0.0, 0.0])
+    iq_mean0: np.ndarray = field(default_factory=np.ndarray)
+    iq_mean1: np.ndarray = field(default_factory=np.ndarray)
     threshold: float = 0.0
     angle: float = 0.0
     fidelity: float = None
