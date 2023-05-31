@@ -222,7 +222,7 @@ actions:
       freq_step: 100_000
       nshots: 1024
       relaxation_time:
-      
+
   - id: Standard RB 1
     priority: 0
     operation: standard_rb
@@ -246,4 +246,3 @@ actions:
       niter: 5
       nshots: 128
       noise_model: PauliErrorOnAll
-
