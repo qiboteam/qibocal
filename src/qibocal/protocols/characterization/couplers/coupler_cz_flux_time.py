@@ -197,8 +197,8 @@ def _aquisition(
             acquisition_type=AcquisitionType.INTEGRATION,
             averaging_mode=AveragingMode.CYCLIC,
         ),
-        sweeper_amplitude,
         sweeper_duration,
+        sweeper_amplitude,
     )
 
     for pair in qubit_pairs:

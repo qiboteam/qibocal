@@ -106,7 +106,8 @@ def _aquisition(
         sequence.add(qd_pulses[pair[0]])
         sequence.add(qd_pulses[pair[1]])
         sequence.add(fx_pulses[pair[0]])
-        # sequence.add(ro_pulses[pair[0]])
+        sequence.add(ro_pulses[pair[0]])
+        sequence.add(ro_pulses[pair[1]])
 
     # define the parameter to sweep and its range:
     delta_amplitude_range = np.arange(
@@ -134,7 +135,7 @@ def _aquisition(
 
     for dur in delta_duration_range:
         fx_pulses[pair[0]].duration = dur
-        sequence.add(ro_pulses[pair[1]])
+        sequence.remove(ro_pulses[pair[0]])
         # repeat the experiment as many times as defined by nshots
         results = platform.sweep(
             sequence,
@@ -192,6 +193,7 @@ def _aquisition(
             ),
             sweeper_amplitude,
         )
+        sequence.add(ro_pulses[pair[1]])
 
         for pair in qubit_pairs:
             # WHEN MULTIPLEXING IS WORKING
