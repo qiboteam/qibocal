@@ -101,7 +101,6 @@ class DecayWithOffsetResult(DecayResult):
 
     def fit(self, **kwargs):
         """Fits the data, all parameters given through kwargs will be passed on to the optimization function."""
-        print(kwargs)
         kwargs.setdefault("bounds", ((0, 0, 0), (1, 1, 1)))
         kwargs.setdefault("p0", (self.A, self.p, self.B))
         params, errs = fit_exp1B_func(self.x, self.y, **kwargs)

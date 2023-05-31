@@ -112,7 +112,6 @@ def fit_exp1B_func(
 
     # Check if all the values in ``ydata``are the same. That would make the
     # exponential fit unnecessary.
-    print(kwargs)
     if np.all(ydata == ydata[0]):
         popt, perr = (ydata[0], 1.0, 0), (0, 0, 0)
     else:
