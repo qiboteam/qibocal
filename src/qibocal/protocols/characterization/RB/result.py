@@ -120,19 +120,19 @@ class DecayWithOffsetResult(DecayResult):
         else:
             return "DecayResult: Ap^x+B"
     
-    def semi_parametric_bootstrap(self, n_bootstrap=10, niter=20, sample_size=1024, **kwargs):
+    def semi_parametric_bootstrap(self, n_bootstrap=10, sample_size=1024, **kwargs):
         def samples_to_p0(samples):
             ground = np.array([0] * len(samples[0]))
             return np.sum(np.product(samples == ground, axis=1)) / len(samples)
         
-        popt, _ = self.fit(self.m, [np.mean(y) for y in self.y], **kwargs)
+        popt, _ = self.fit(self.x, [np.mean(y) for y in self.y], **kwargs)
         bootstrap_estimates = [popt]
         for _ in range(n_bootstrap):
             fit_x = []
             fit_y = []
-            for x, y in zip(self.m, self.y):
+            for x, y in zip(self.x, self.y_scatter):
                 # Non-parametric bootstrap: Resample sequences with replacement
-                bootstrap_y = np.random.choice(y, size=sample_size, replace=True)
+                bootstrap_y = np.random.choice(y, size=len(y), replace=True)
 
                 # Parametrically sample the number of "correct" measurement results using binomial distribution
                 bootstrap_y_corrected = []

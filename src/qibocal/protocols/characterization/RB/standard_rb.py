@@ -14,7 +14,7 @@ from .data import RBData
 from .params import RBParameters
 
 NoneType = type(None)
-
+NPULSES_PER_CLIFFORD = 1.875
 
 @dataclass
 class StandardRBResult(DecayWithOffsetResult):
@@ -31,13 +31,10 @@ class StandardRBResult(DecayWithOffsetResult):
         """Takes the fitting parameter of the decay and calculates a fidelity. Stores the
         primitive fidelity, the fidelity and the average gate error in an attribute dictionary.
         """
-
-        # Divide infidelity by magic number
-        magic_number = 1.875
         infidelity = (1 - self.p) / 2
         self.fidelity_dict = {
             "fidelity": 1 - infidelity,
-            "pi/2 fidelity": 1 - infidelity / magic_number,
+            "pulse fidelity": 1 - infidelity / NPULSES_PER_CLIFFORD,
         }
 
 
@@ -151,7 +148,7 @@ def extract(data: RBData) -> StandardRBResult:
     """
 
     result = aggregate(data)
-    result.semi_parametric_bootstrap(100, 20, 1024)
+    result.semi_parametric_bootstrap(100, data.attrs['nshots'])
     result.calculate_fidelities()
     return result
 
@@ -172,8 +169,12 @@ def plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure]
     table_str = "".join(
         [
             f" | {key}: {value}<br>"
-            for key, value in {**data.attrs, **result.fidelity_dict}.items()
+            for key, value in data.attrs.items()
         ]
+    )
+    table_str += "".join(
+        f" | {key}: {value:.4f}\u00B1{result.perr/2:.4f}<br>"
+            for key, value in result.fidelity_dict.items()
     )
     fig = result.plot()
     return [fig], table_str
