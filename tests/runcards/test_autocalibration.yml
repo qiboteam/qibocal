@@ -232,7 +232,6 @@ actions:
       depths: [1,3,5,10]
       niter: 2
       nshots: 128
-      # noise_model: PauliErrorOnX
 
   - id: Standard RB 2
     priority: 0
