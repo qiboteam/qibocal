@@ -139,8 +139,8 @@ def _aquisition(
             acquisition_type=AcquisitionType.INTEGRATION,
             averaging_mode=AveragingMode.CYCLIC,
         ),
-        sweeper_amplitude,
         sweeper_duration,
+        sweeper_amplitude,
     )
 
     # retrieve the results for every qubit
@@ -160,8 +160,8 @@ def _aquisition(
                 complex(platform.qubits[qubit].mean_exc_states)
                 - complex(platform.qubits[qubit].mean_gnd_states)
             )
-            amp, dur = np.meshgrid(
-                delta_amplitude_range, delta_duration_range, indexing="ij"
+            dur, amp = np.meshgrid(
+                delta_duration_range, delta_amplitude_range, indexing="ij"
             )
             r = result.serialize
             # store the results

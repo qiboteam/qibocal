@@ -8,6 +8,7 @@ from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platforms.abstract import AbstractPlatform
 from qibolab.pulses import FluxPulse, PulseSequence, Rectangular
 from qibolab.sweeper import Parameter, Sweeper
+from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
@@ -319,23 +320,37 @@ def _plot(
     # y = np.mean(data.df[data.df["state"] == "RX"]["probability"].to_numpy().reshape(shape) -
     #                   data.df[data.df["state"] == "I"]["probability"].to_numpy().reshape(shape), axis=-1)
 
+    def get_phase(row, x):
+        """Fit a sinus to the data, and return the phase difference."""
+
+        def func(x, a, b, c):
+            return a * np.sin(b * x + c)
+
+        popt_real, _ = curve_fit(func, x, row.real, p0=[1, 1, 1], maxfev=10000)
+        popt_imag, _ = curve_fit(func, x, row.imag, p0=[1, 1, 1], maxfev=10000)
+        return popt_real[2] - popt_imag[2]
+
+    dt = data.df[
+        (data.df["state"] == "RX")
+        & (data.df["qubit"] == q)
+        & (data.df["coupler"] == f"c{qubit}")
+    ]["probability"].to_numpy().reshape(shape) + 1j * data.df[
+        (data.df["state"] == "I")
+        & (data.df["qubit"] == q)
+        & (data.df["coupler"] == f"c{qubit}")
+    ][
+        "probability"
+    ].to_numpy().reshape(
+        shape
+    )
+    dt = dt.astype(np.complex128)
+
     for q in [qubit]:
-        y = np.mean(
-            data.df[
-                (data.df["state"] == "RX")
-                & (data.df["qubit"] == q)
-                & (data.df["coupler"] == f"c{qubit}")
-            ]["probability"]
-            .to_numpy()
-            .reshape(shape)
-            - data.df[
-                (data.df["state"] == "I")
-                & (data.df["qubit"] == q)
-                & (data.df["coupler"] == f"c{qubit}")
-            ]["probability"]
-            .to_numpy()
-            .reshape(shape),
-            axis=-1,
+        y = np.apply_along_axis(
+            get_phase,
+            0,
+            dt,
+            data.df["amplitude"].pint.to("dimensionless").pint.magnitude.unique(),
         )
         fig.add_trace(
             go.Scatter(
