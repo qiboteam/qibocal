@@ -99,14 +99,15 @@ class DecayWithOffsetResult(DecayResult):
     def fitting_params(self):
         return (*super().fitting_params, self.B)
 
-    def fit(self, **kwargs):
+    def fit(self, xdata, ydata, **kwargs):
         """Fits the data, all parameters given through kwargs will be passed on to the optimization function."""
 
         kwargs.setdefault("bounds", ((0, 0, 0), (1, 1, 1)))
         kwargs.setdefault("p0", (self.A, self.p, self.B))
-        params, errs = fit_exp1B_func(self.m, self.y, **kwargs)
-        self.A, self.p, self.B = params
-        self.Aerr, self.perr, self.Berr = errs
+        params, errs = fit_exp1B_func(xdata, ydata, **kwargs)
+        return params, errs
+        # self.A, self.p, self.B = params
+        # self.Aerr, self.perr, self.Berr = errs
 
     def __str__(self):
         """Overwrite the representation of the object with the fitting parameters if there are any."""
@@ -117,6 +118,44 @@ class DecayWithOffsetResult(DecayResult):
             )
         else:
             return "DecayResult: Ap^m+B"
+    
+    def semi_parametric_bootstrap(self, n_bootstrap=10, niter=20, sample_size=1024, **kwargs):
+        def samples_to_p0(samples):
+            ground = np.array([0] * len(samples[0]))
+            return np.sum(np.product(samples == ground, axis=1)) / len(samples)
+        
+        popt, _ = self.fit(self.m, [np.mean(y) for y in self.y], **kwargs)
+        bootstrap_estimates = [popt]
+        for _ in range(n_bootstrap):
+            fit_x = []
+            fit_y = []
+            for x, y in zip(self.m, self.y):
+                # Non-parametric bootstrap: Resample sequences with replacement
+                bootstrap_y = np.random.choice(y, size=sample_size, replace=True)
+
+                # Parametrically sample the number of "correct" measurement results using binomial distribution
+                bootstrap_y_corrected = []
+
+                for y_prob in bootstrap_y:
+                    samples_corrected = np.random.binomial(n=1, p=1-y_prob, size=(sample_size, 1))
+                    bootstrap_y_corrected.append(samples_to_p0(samples_corrected))
+
+                bootstrap_y_corrected = np.array(bootstrap_y_corrected)
+
+                # Fit the resampled data to extract parameters
+                fit_x.append(x)
+                fit_y.append(np.mean(bootstrap_y_corrected))
+
+            # Fit new values
+            params, _ = self.fit(fit_x, fit_y, **kwargs)
+            bootstrap_estimates.append(params)
+        
+        self.bootstrap_estimates = bootstrap_estimates
+        perr = np.std(np.array(bootstrap_estimates), axis=0)
+        self.A, self.p, self.B = popt
+        self.Aerr, self.perr, self.Berr = 3 * perr
+        self.y = [np.mean(y) for y in self.y]
+        return popt, perr
 
 
 def plot_decay_result(

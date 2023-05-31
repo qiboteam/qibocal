@@ -112,9 +112,17 @@ def aggregate(data: RBData) -> StandardRBResult:
     data_agg = data.assign(signal=lambda x: p0s(x.samples.to_list()))
     # Histogram
     hists = get_hists_data(data_agg)
+    depths, signals = extract_from_data(data_agg, "signal", "depth")
+    xdata = []
+    ydata = []
+    for depth, signal in zip(depths, signals):
+        if depth not in xdata:
+            xdata.append(depth)
+            ydata.append([])
+        ydata[-1].append(signal)
     # Build the result object
     return StandardRBResult(
-        *extract_from_data(data_agg, "signal", "depth", "mean"), hists=hists
+        np.array(xdata), np.array(ydata), hists=hists
     )
 
 
@@ -161,7 +169,7 @@ def extract(data: RBData) -> StandardRBResult:
     """
 
     result = aggregate(data)
-    result.fit()
+    result.semi_parametric_bootstrap(100, 20, 1024)
     result.calculate_fidelities()
     return result
 
