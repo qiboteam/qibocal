@@ -7,10 +7,7 @@ from qibo.noise import NoiseModel
 
 from qibocal.auto.operation import Routine
 from qibocal.calibrations.niGSC.standardrb import ModuleFactory as StandardRBScan
-from qibocal.protocols.characterization.RB.result import (
-    DecayWithOffsetResult,
-    get_hists_data,
-)
+from qibocal.protocols.characterization.RB.result import DecayWithOffsetResult
 from qibocal.protocols.characterization.RB.utils import extract_from_data
 
 from .data import RBData
@@ -108,12 +105,7 @@ def aggregate(data: RBData) -> StandardRBResult:
 
     # The signal is here the survival probability.
     data_agg = data.assign(signal=lambda x: p0s(x.samples.to_list()))
-    # Histogram
-    hists = get_hists_data(data_agg)
-    # Build the result object
-    return StandardRBResult(
-        *extract_from_data(data_agg, "signal", "depth", "mean"), hists=hists
-    )
+    return StandardRBResult(*extract_from_data(data_agg, "signal", "depth", list))
 
 
 def acquire(params: RBParameters, *args) -> RBData:
