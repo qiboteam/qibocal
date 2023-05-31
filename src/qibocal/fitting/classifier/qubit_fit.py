@@ -57,8 +57,8 @@ class QubitFit:
         angle (float): Rotational angle.
     """  # TODO: add references
 
-    iq_mean0: np.ndarray = field(default_factory=np.ndarray)
-    iq_mean1: np.ndarray = field(default_factory=np.ndarray)
+    iq_mean0: list = field(default_factory=list)
+    iq_mean1: list = field(default_factory=list)
     threshold: float = 0.0
     angle: float = 0.0
     fidelity: float = None
