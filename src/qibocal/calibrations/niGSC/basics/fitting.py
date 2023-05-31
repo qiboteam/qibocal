@@ -8,7 +8,7 @@ import numpy as np
 from scipy.linalg import hankel, svd
 from scipy.optimize import curve_fit
 
-from qibocal.config import raise_error, log
+from qibocal.config import log, raise_error
 
 
 def exp1_func(x: np.ndarray, A: float, f: float) -> np.ndarray:
