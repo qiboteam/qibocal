@@ -26,19 +26,17 @@ def lorentzian(frequency, amplitude, center, sigma, offset):
 
 
 def lorentzian_fit(data, qubit):
-    qubit_data = (
-        data.df[data.df["qubit"] == qubit].drop(columns=["qubit"]).reset_index()
-    )
-    frequencies = qubit_data["frequency"].pint.to("GHz").pint.magnitude
-    voltages = qubit_data["MSR"].pint.to("uV").pint.magnitude
+    qubit_data = data.measurement[qubit]
+    frequencies = qubit_data.frequency / 1e9
+    voltages = qubit_data.voltage * 1e4
     model_Q = lmfit.Model(lorentzian)
 
     # Guess parameters for Lorentzian max or min
     if (
-        data.resonator_type == "3D"
+        data.config.resonator_type == "3D"
         and data.__class__.__name__ == "ResonatorSpectroscopyData"
     ) or (
-        data.resonator_type == "2D"
+        data.config.resonator_type == "2D"
         and data.__class__.__name__ == "QubitSpectroscopyData"
     ):
         guess_center = frequencies[
@@ -89,15 +87,15 @@ def spectroscopy_plot(data, fit: Results, qubit):
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
     )
-    qubit_data = data.df[data.df["qubit"] == qubit].drop(columns=["i", "q", "qubit"])
+    qubit_data = data.measurement[qubit]
 
     fitting_report = ""
 
-    frequencies = qubit_data["frequency"].pint.to("GHz").pint.magnitude.unique()
+    frequencies = qubit_data.frequency / 1e9
     fig.add_trace(
         go.Scatter(
-            x=qubit_data["frequency"].pint.to("GHz").pint.magnitude,
-            y=qubit_data["MSR"].pint.to("uV").pint.magnitude,
+            x=frequencies,
+            y=qubit_data.voltage * 1e4,
             marker_color=get_color(0),
             opacity=1,
             name="Frequency",
@@ -109,8 +107,8 @@ def spectroscopy_plot(data, fit: Results, qubit):
     )
     fig.add_trace(
         go.Scatter(
-            x=qubit_data["frequency"].pint.to("GHz").pint.magnitude,
-            y=qubit_data["phase"].pint.to("rad").pint.magnitude,
+            x=frequencies,
+            y=qubit_data.phase,
             marker_color=get_color(1),
             opacity=1,
             name="Phase",
@@ -139,10 +137,10 @@ def spectroscopy_plot(data, fit: Results, qubit):
         row=1,
         col=1,
     )
-    if data.power_level is PowerLevel.low:
+    if data.config.power_level is PowerLevel.low:
         label = "readout frequency"
         freq = fit.frequency
-    elif data.power_level is PowerLevel.high:
+    elif data.config.power_level is PowerLevel.high:
         label = "bare resonator frequency"
         freq = fit.bare_frequency
     else:
