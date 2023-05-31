@@ -25,8 +25,10 @@ def hyperopt(_x_train, _y_train, _path):
     Returns:
         Dictionary with model's hyperparameters.
     """
-    model = SVC(kernel="linear", C=REG_PARAM)
+    model = SVC(kernel="linear", probability=True, C=REG_PARAM)
     return model.get_params()
 
 
 normalize = utils.scikit_normalize
+dump = utils.scikit_dump
+predict_from_file = utils.scikit_predict

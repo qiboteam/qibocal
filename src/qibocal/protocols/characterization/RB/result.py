@@ -1,10 +1,9 @@
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple, Union
+from typing import Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import plotly.graph_objects as go
-from pandas import DataFrame
 
 from qibocal.auto.operation import Results
 from qibocal.calibrations.niGSC.basics.fitting import (
@@ -13,7 +12,6 @@ from qibocal.calibrations.niGSC.basics.fitting import (
     fit_exp1_func,
     fit_exp1B_func,
 )
-from qibocal.protocols.characterization.RB.utils import extract_from_data
 
 numeric = Union[int, float, complex, np.number]
 
@@ -23,27 +21,28 @@ class DecayResult(Results):
     """Data being described by a single decay, Ap^x."""
 
     # x and y data.
-    m: Union[List[numeric], np.ndarray]
+    x: Union[List[numeric], np.ndarray]
     y: Union[List[numeric], np.ndarray]
     # Fitting parameters.
     A: Optional[numeric] = field(default=None)
     Aerr: Optional[numeric] = field(default=None)
     p: Optional[numeric] = field(default=None)
     perr: Optional[numeric] = field(default=None)
-    hists: Tuple[List[numeric], List[numeric]] = field(
-        default_factory=lambda: (list(), list())
-    )
 
     def __post_init__(self):
         """Do some checks if the data given is correct. If no initial fitting parameters are given,
         choose a wise guess based on the given data.
         """
-        if len(self.y) != len(self.m):
+        if len(self.y) != len(self.x):
             raise ValueError(
-                "Lenght of y and m must agree. len(m)={} != len(y)={}".format(
-                    len(self.m), len(self.y)
+                "Lenght of y and x must agree. len(x)={} != len(y)={}".format(
+                    len(self.x), len(self.y)
                 )
             )
+        self.y_scatter = None
+        if isinstance(self.y[0], Iterable):
+            self.y_scatter = self.y
+            self.y = [np.mean(y_row) for y_row in self.y]
         if self.A is None:
             self.A = np.max(self.y) - np.min(self.y)
         if self.p is None:
@@ -59,14 +58,14 @@ class DecayResult(Results):
 
         kwargs.setdefault("bounds", ((0, 0), (1, 1)))
         kwargs.setdefault("p0", (self.A, self.p))
-        params, errs = fit_exp1_func(self.m, self.y, **kwargs)
+        params, errs = fit_exp1_func(self.x, self.y, **kwargs)
         self.A, self.p = params
         self.Aerr, self.perr = errs
 
     def plot(self):
         """Plots the histogram data for each point and the averges plus the fit."""
 
-        if self.hists is not None:
+        if self.y_scatter is not None:
             self.fig = plot_hists_result(self)
         self.fig = plot_decay_result(self, self.fig)
         return self.fig
@@ -75,11 +74,13 @@ class DecayResult(Results):
         """Overwrite the representation of the object with the fitting parameters if there are any."""
 
         if self.perr is not None:
-            return "({:.3f}\u00B1{:.3f})({:.3f}\u00B1{:.3f})^m".format(
-                self.A, self.Aerr, self.p, self.perr
+            return (
+                "Fit: y=Ap^x<br>A: {:.3f}\u00B1{:.3f}<br>p: {:.3f}\u00B1{:.3f}".format(
+                    self.A, self.Aerr, self.p, self.perr
+                )
             )
         else:
-            return "DecayResult: Ap^m"
+            return "DecayResult: Ap^x"
 
 
 @dataclass
@@ -113,11 +114,11 @@ class DecayWithOffsetResult(DecayResult):
         """Overwrite the representation of the object with the fitting parameters if there are any."""
 
         if self.perr is not None:
-            return "({:.3f}\u00B1{:.3f})({:.3f}\u00B1{:.3f})^m + ({:.3f}\u00B1{:.3f})".format(
+            return "Fit: y=Ap^x+B<br>A: {:.3f}\u00B1{:.3f}<br>p: {:.3f}\u00B1{:.3f}<br>B: {:.3f}\u00B1{:.3f}".format(
                 self.A, self.Aerr, self.p, self.perr, self.B, self.Berr
             )
         else:
-            return "DecayResult: Ap^m+B"
+            return "DecayResult: Ap^x+B"
     
     def semi_parametric_bootstrap(self, n_bootstrap=10, niter=20, sample_size=1024, **kwargs):
         def samples_to_p0(samples):
@@ -177,7 +178,7 @@ def plot_decay_result(
     # Plot the x and y data from the result, they are (normally) the averages.
     fig.add_trace(
         go.Scatter(
-            x=result.m,
+            x=result.x,
             y=result.y,
             line=dict(color="#aa6464"),
             mode="markers",
@@ -185,11 +186,12 @@ def plot_decay_result(
         )
     )
     # Build the fit and plot the fit.
-    m_fit = np.linspace(min(result.m), max(result.m), 100)
-    y_fit = result.func(m_fit, *result.fitting_params)
+    x_fit = np.linspace(min(result.x), max(result.x), 100)
+    y_fit = result.func(x_fit, *result.fitting_params)
     fig.add_trace(
-        go.Scatter(x=m_fit, y=y_fit, name=str(result), line=go.scatter.Line(dash="dot"))
+        go.Scatter(x=x_fit, y=y_fit, name=str(result), line=go.scatter.Line(dash="dot"))
     )
+    fig.update_layout(xaxis_title="x", yaxis_title="y")
     return fig
 
 
@@ -202,12 +204,11 @@ def plot_hists_result(result: DecayResult) -> go.Figure:
     Returns:
         go.Figure: A plotly figure with one single trace with the distribution of
     """
-
-    counts_list, bins_list = result.hists
+    counts_list, bins_list = get_hists_data(result.y_scatter)
     counts_list = sum(counts_list, [])
     fig_hist = go.Figure(
         go.Scatter(
-            x=np.repeat(result.m, [len(bins) for bins in bins_list]),
+            x=np.repeat(result.x, [len(bins) for bins in bins_list]),
             y=sum(bins_list, []),
             mode="markers",
             marker={"symbol": "square"},
@@ -224,9 +225,7 @@ def plot_hists_result(result: DecayResult) -> go.Figure:
     return fig_hist
 
 
-def get_hists_data(
-    data_agg: DataFrame, xlabel: str = "depth", ylabel: str = "signal"
-) -> Tuple[list, list]:
+def get_hists_data(signal: Union[List[numeric], np.ndarray]) -> Tuple[list, list]:
     """From a dataframe extract for each point the histogram data.
 
     Args:
@@ -238,9 +237,6 @@ def get_hists_data(
         Tuple[list, list]: Counts and bin for each point.
     """
 
-    signal = extract_from_data(data_agg, ylabel, xlabel)[1].reshape(
-        -1, data_agg.attrs["niter"]
-    )
     # Get the exact number of occurences
     counters = [Counter(np.round(x, 3)) for x in signal]
     bins_list = [list(counter_x.keys()) for counter_x in counters]

@@ -2,7 +2,7 @@ import inspect
 from dataclasses import dataclass, fields
 from typing import Callable, Dict, Generic, NewType, TypeVar, Union
 
-from qibolab.platforms.abstract import Qubit
+from qibolab.qubits import Qubit
 
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
@@ -21,6 +21,11 @@ class Parameters:
     The actual parameters structure is only used inside the routines themselves.
 
     """
+
+    nshots: int
+    """Number of executions on hardware"""
+    relaxation_time: float
+    """Wait time for the qubit to decohere back to the `gnd` state"""
 
     @classmethod
     def load(cls, parameters):

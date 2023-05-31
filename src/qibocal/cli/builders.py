@@ -3,6 +3,7 @@ import importlib
 import inspect
 import os
 import shutil
+from pathlib import Path
 
 import yaml
 
@@ -173,9 +174,9 @@ class ActionBuilder:
 
         if backend_name == "qibolab":
             if platform_runcard is None:
-                from qibolab.paths import qibolab_folder
+                from qibolab import get_platforms_path
 
-                original_runcard = qibolab_folder / "runcards" / f"{platform_name}.yml"
+                original_runcard = get_platforms_path() / f"{platform_name}.yml"
             else:
                 original_runcard = platform_runcard
             # copy of the original runcard that will stay unmodified
@@ -230,35 +231,12 @@ class ActionBuilder:
                 parser.build()
                 parser.execute(self.format, self.platform)
 
-            for qubit in self.qubits:
-                if self.platform is not None:
-                    self.update_platform_runcard(qubit, action)
             self.dump_report(actions)
 
         if self.platform is not None:
             self.platform.stop()
             self.platform.disconnect()
-
-    def update_platform_runcard(self, qubit, routine):
-        try:
-            data_fit = Data.load_data(self.folder, "data", routine, self.format, "fits")
-            data_fit.df = data_fit.df[data_fit.df["qubit"] == qubit]
-        except FileNotFoundError:
-            return None
-
-        params = data_fit.df[data_fit.df["qubit"] == qubit]
-        settings = load_yaml(f"{self.folder}/new_platform.yml")
-        for param in params:
-            if param in list(self.qubits[qubit].__annotations__.keys()):
-                setattr(self.qubits[qubit], param, params[param])
-                settings["characterization"]["single_qubit"][qubit][param] = int(
-                    data_fit.get_values(param)
-                )
-
-        with open(f"{self.folder}/new_platform.yml", "w") as file:
-            yaml.dump(
-                settings, file, sort_keys=False, indent=4, default_flow_style=None
-            )
+            self.platform.dump(Path(f"{self.folder}/new_platform.yml"))
 
     def dump_report(self, actions=None):
         from qibocal.web.report import create_report

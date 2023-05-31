@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, Optional, Union
 
 import numpy as np
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
 
@@ -24,21 +25,23 @@ class RabiLengthParameters(Parameters):
     """Step pi pulse duration (ns)."""
     pulse_amplitude: float
     """Pi pulse amplitude. Same for all qubits."""
-    nshots: int
+    nshots: Optional[int] = None
     """Number of shots."""
-    relaxation_time: float
-    """Relxation time (ns)."""
+    relaxation_time: Optional[int] = None
+    """Relaxation time (ns)."""
 
 
 @dataclass
 class RabiLengthResults(Results):
     """RabiLength outputs."""
 
-    length: Dict[List[Tuple], str] = field(metadata=dict(update="drive_length"))
+    length: Dict[Union[str, int], int] = field(metadata=dict(update="drive_length"))
     """Pi pulse duration for each qubit."""
-    amplitude: Dict[List[Tuple], str] = field(metadata=dict(update="drive_amplitude"))
+    amplitude: Dict[Union[str, int], float] = field(
+        metadata=dict(update="drive_amplitude")
+    )
     """Pi pulse amplitude. Same for all qubits."""
-    fitted_parameters: Dict[List[Tuple], List]
+    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
     """Raw fitting output."""
 
 
@@ -47,7 +50,7 @@ class RabiLengthData(amplitude.RabiAmplitudeData):
 
 
 def _acquisition(
-    params: RabiLengthParameters, platform: AbstractPlatform, qubits: Qubits
+    params: RabiLengthParameters, platform: Platform, qubits: Qubits
 ) -> RabiLengthData:
     r"""
     Data acquisition for RabiLength Experiment.
@@ -86,16 +89,23 @@ def _acquisition(
     # sweep the parameter
     for duration in qd_pulse_duration_range:
         for qubit in qubits:
-            print(duration)
             qd_pulses[qubit].duration = duration
             ro_pulses[qubit].start = qd_pulses[qubit].finish
 
         # execute the pulse sequence
-        results = platform.execute_pulse_sequence(sequence, nshots=params.nshots)
+        results = platform.execute_pulse_sequence(
+            sequence,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
+        )
 
         for qubit in qubits:
             # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[qubit].average.raw
+            r = results[ro_pulses[qubit].serial].serialize
             r.update(
                 {
                     "length[ns]": duration,
@@ -103,7 +113,7 @@ def _acquisition(
                     "qubit": qubit,
                 }
             )
-            data.add(r)
+            data.add_data_from_dict(r)
 
     return data
 
