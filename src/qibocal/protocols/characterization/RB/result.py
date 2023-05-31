@@ -27,6 +27,7 @@ class DecayResult(Results):
     Aerr: Optional[Number] = None
     p: Optional[Number] = None
     perr: Optional[Number] = None
+    func: Iterable = field(default=exp1_func)
 
     def __post_init__(self):
         """Do some checks if the data given is correct. If no initial fitting parameters are given,
@@ -46,7 +47,6 @@ class DecayResult(Results):
             self.A = np.max(self.y) - np.min(self.y)
         if self.p is None:
             self.p = 0.9
-        self.func = exp1_func
 
     @property
     def fitting_params(self):
@@ -88,12 +88,12 @@ class DecayWithOffsetResult(DecayResult):
 
     B: Optional[Number] = None
     Berr: Optional[Number] = None
+    func: Iterable = field(default=exp1B_func)
 
     def __post_init__(self):
         super().__post_init__()
         if self.B is None:
             self.B = np.mean(np.array(self.y))
-        self.func = exp1B_func
 
     @property
     def fitting_params(self):
