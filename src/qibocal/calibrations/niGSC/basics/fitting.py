@@ -131,7 +131,7 @@ def fit_exp1B_func(
             perr = tuple(np.sqrt(np.diag(pcov)))
         except Exception as e:
             log.warning(e)
-            popt, perr = (0, 0), (0, 0)
+            popt, perr = (0, 0, 0), (0, 0, 0)
     return popt, perr
 
 
