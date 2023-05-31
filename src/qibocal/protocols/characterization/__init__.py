@@ -8,6 +8,7 @@ from .coherence.spin_echo import spin_echo
 from .coherence.t1 import t1
 from .coherence.t2 import t2
 from .couplers.coupler_cz_flux_time import coupler_cz_flux_time
+from .couplers.coupler_cz_flux_time_nosweep import coupler_cz_flux_time_nosweep
 from .couplers.coupler_frequency import coupler_frequency
 from .couplers.coupler_frequency_flux import coupler_frequency_flux
 from .couplers.coupler_swap_flux import coupler_swap_flux
@@ -66,4 +67,5 @@ class Operation(Enum):
     coupler_swap_flux_time = coupler_swap_flux_time
     cz_flux_time = cz_flux_time
     coupler_cz_flux_time = coupler_cz_flux_time
+    coupler_cz_flux_time_nosweep = coupler_cz_flux_time_nosweep
     tune_transition_coupler_flux = tune_transition_coupler_flux

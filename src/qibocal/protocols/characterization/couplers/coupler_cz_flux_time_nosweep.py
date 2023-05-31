@@ -99,12 +99,13 @@ def _aquisition(
         ro_pulses[pair[1]] = platform.create_MZ_pulse(
             pair[1], start=fx_pulses[pair[0]].se_finish + 8
         )
-        # ro_pulses[pair[0]] = platform.create_MZ_pulse(pair[0], start=ro_pulses[pair[1]].se_finish) # Multiplex not working yet
+        ro_pulses[pair[0]] = platform.create_MZ_pulse(
+            pair[0], start=ro_pulses[pair[1]].se_start
+        )
 
         sequence.add(qd_pulses[pair[0]])
         sequence.add(qd_pulses[pair[1]])
         sequence.add(fx_pulses[pair[0]])
-        sequence.add(ro_pulses[pair[1]])
         # sequence.add(ro_pulses[pair[0]])
 
     # define the parameter to sweep and its range:
@@ -122,120 +123,105 @@ def _aquisition(
         delta_amplitude_range,
         pulses=[fx_pulses[pair[0]] for pair in qubit_pairs],
     )
-    sweeper_duration = Sweeper(
-        Parameter.duration,
-        delta_duration_range,
-        pulses=[fx_pulses[pair[0]] for pair in qubit_pairs],
-    )
+    # sweeper_duration = Sweeper(
+    #     Parameter.duration,
+    #     delta_duration_range,
+    #     pulses=[fx_pulses[pair[0]] for pair in qubit_pairs],
+    # )
 
     # create a DataUnits object to store the results,
     sweep_data = CouplerCzFluxTimeData()
 
-    # repeat the experiment as many times as defined by nshots
-    results = platform.sweep(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
-        ),
-        sweeper_duration,
-        sweeper_amplitude,
-    )
+    for dur in delta_duration_range:
+        fx_pulses[pair[0]].duration = dur
+        sequence.add(ro_pulses[pair[1]])
+        # repeat the experiment as many times as defined by nshots
+        results = platform.sweep(
+            sequence,
+            ExecutionParameters(
+                nshots=params.nshots,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
+            sweeper_amplitude,
+        )
 
-    # retrieve the results for every qubit
-    for pair in qubit_pairs:
-        # WHEN MULTIPLEXING IS WORKING
-        # for state, qubit in zip(["low","high"], pair):
-        for state, qubit in zip(["high"], [pair[1]]):
-            # average msr, phase, i and q over the number of shots defined in the runcard
-            ro_pulse = ro_pulses[qubit]
-            result = results[ro_pulse.serial]
+        # retrieve the results for every qubit
+        for pair in qubit_pairs:
+            # WHEN MULTIPLEXING IS WORKING
+            # for state, qubit in zip(["low","high"], pair):
+            for state, qubit in zip(["high"], [pair[1]]):
+                # average msr, phase, i and q over the number of shots defined in the runcard
+                ro_pulse = ro_pulses[qubit]
+                result = results[ro_pulse.serial]
 
-            prob = np.abs(
-                result.voltage_i
-                + 1j * result.voltage_q
-                - complex(platform.qubits[qubit].mean_gnd_states)
-            ) / np.abs(
-                complex(platform.qubits[qubit].mean_exc_states)
-                - complex(platform.qubits[qubit].mean_gnd_states)
-            )
-            dur, amp = np.meshgrid(
-                delta_duration_range, delta_amplitude_range, indexing="ij"
-            )
-            r = result.serialize
-            # store the results
-            r.update(
-                {
-                    "amplitude[dimensionless]": amp.flatten(),
-                    "duration[ns]": dur.flatten(),
-                    "coupler": len(delta_amplitude_range)
-                    * len(delta_duration_range)
-                    * [f"c{pair[0]}"],
-                    "qubit": len(delta_amplitude_range)
-                    * len(delta_duration_range)
-                    * [qubit],
-                    "state": len(delta_amplitude_range)
-                    * len(delta_duration_range)
-                    * [state],
-                    "probability": prob.flatten(),
-                }
-            )
-            sweep_data.add_data_from_dict(r)
+                prob = np.abs(
+                    result.voltage_i
+                    + 1j * result.voltage_q
+                    - complex(platform.qubits[qubit].mean_gnd_states)
+                ) / np.abs(
+                    complex(platform.qubits[qubit].mean_exc_states)
+                    - complex(platform.qubits[qubit].mean_gnd_states)
+                )
 
-    # Temporary fix for multiplexing, repeat the experiment for the second qubit
-    ro_pulses[pair[0]] = platform.create_MZ_pulse(
-        pair[0], start=ro_pulses[pair[1]].se_start
-    )  # Multiplex not working yet
-    sequence.add(ro_pulses[pair[0]])
-    sequence.remove(ro_pulses[pair[1]])
+                r = result.serialize
+                # store the results
+                r.update(
+                    {
+                        "amplitude[dimensionless]": delta_amplitude_range.flatten(),
+                        "duration[ns]": len(delta_amplitude_range) * [dur],
+                        "coupler": len(delta_amplitude_range) * [f"c{pair[0]}"],
+                        "qubit": len(delta_amplitude_range) * [qubit],
+                        "state": len(delta_amplitude_range) * [state],
+                        "probability": prob.flatten(),
+                    }
+                )
+                sweep_data.add_data_from_dict(r)
 
-    results = platform.sweep(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
-        ),
-        sweeper_amplitude,
-        sweeper_duration,
-    )
+        # Temporary fix for multiplexing, repeat the experiment for the second qubit
 
-    for pair in qubit_pairs:
-        # WHEN MULTIPLEXING IS WORKING
-        # for state, qubit in zip(["low","high"], pair):
-        for state, qubit in zip(["low"], [pair[0]]):
-            # average msr, phase, i and q over the number of shots defined in the runcard
-            ro_pulse = ro_pulses[qubit]
-            result = results[ro_pulse.serial]
+        sequence.add(ro_pulses[pair[0]])
+        sequence.remove(ro_pulses[pair[1]])
 
-            prob = np.abs(
-                result.voltage_i
-                + 1j * result.voltage_q
-                - complex(platform.qubits[qubit].mean_gnd_states)
-            ) / np.abs(
-                complex(platform.qubits[qubit].mean_exc_states)
-                - complex(platform.qubits[qubit].mean_gnd_states)
-            )
-            r = result.serialize
-            # store the results
-            r.update(
-                {
-                    "amplitude[dimensionless]": amp.flatten(),
-                    "duration[ns]": dur.flatten(),
-                    "coupler": len(delta_amplitude_range)
-                    * len(delta_duration_range)
-                    * [f"c{pair[0]}"],
-                    "qubit": len(delta_amplitude_range)
-                    * len(delta_duration_range)
-                    * [qubit],
-                    "state": len(delta_amplitude_range)
-                    * len(delta_duration_range)
-                    * [state],
-                    "probability": prob.flatten(),
-                }
-            )
-            sweep_data.add_data_from_dict(r)
+        results = platform.sweep(
+            sequence,
+            ExecutionParameters(
+                nshots=params.nshots,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
+            sweeper_amplitude,
+        )
+
+        for pair in qubit_pairs:
+            # WHEN MULTIPLEXING IS WORKING
+            # for state, qubit in zip(["low","high"], pair):
+            for state, qubit in zip(["low"], [pair[0]]):
+                # average msr, phase, i and q over the number of shots defined in the runcard
+                ro_pulse = ro_pulses[qubit]
+                result = results[ro_pulse.serial]
+
+                prob = np.abs(
+                    result.voltage_i
+                    + 1j * result.voltage_q
+                    - complex(platform.qubits[qubit].mean_gnd_states)
+                ) / np.abs(
+                    complex(platform.qubits[qubit].mean_exc_states)
+                    - complex(platform.qubits[qubit].mean_gnd_states)
+                )
+                r = result.serialize
+                # store the results
+                r.update(
+                    {
+                        "amplitude[dimensionless]": delta_amplitude_range.flatten(),
+                        "duration[ns]": len(delta_amplitude_range) * [dur],
+                        "coupler": len(delta_amplitude_range) * [f"c{pair[0]}"],
+                        "qubit": len(delta_amplitude_range) * [qubit],
+                        "state": len(delta_amplitude_range) * [state],
+                        "probability": prob.flatten(),
+                    }
+                )
+                sweep_data.add_data_from_dict(r)
 
     return sweep_data
 
@@ -269,14 +255,14 @@ def _plot(data: CouplerCzFluxTimeData, fit: CouplerCzFluxTimeResults, qubit):
 
             fig.add_trace(
                 go.Heatmap(
-                    y=data.df[
+                    x=data.df[
                         (data.df["state"] == state)
                         & (data.df["qubit"] == q)
                         & (data.df["coupler"] == f"c{qubit}")
                     ]["duration"]
                     .pint.to("ns")
                     .pint.magnitude,
-                    x=data.df[
+                    y=data.df[
                         (data.df["state"] == state)
                         & (data.df["qubit"] == q)
                         & (data.df["coupler"] == f"c{qubit}")
@@ -298,8 +284,8 @@ def _plot(data: CouplerCzFluxTimeData, fit: CouplerCzFluxTimeResults, qubit):
 
         fig.update_layout(
             title=f"Qubit {qubit} cz {values}",
-            yaxis_title="Duration [ns]",
-            xaxis_title="Amplitude [dimensionless]",
+            xaxis_title="Duration [ns]",
+            yaxis_title="Amplitude [dimensionless]",
             legend_title="States",
         )
 
@@ -311,5 +297,5 @@ def _fit(data: CouplerCzFluxTimeData):
     return CouplerCzFluxTimeResults()
 
 
-coupler_cz_flux_time = Routine(_aquisition, _fit, _plot)
+coupler_cz_flux_time_nosweep = Routine(_aquisition, _fit, _plot)
 """Coupler swap flux routine."""
