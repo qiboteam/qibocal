@@ -218,8 +218,6 @@ def _fit(data: RamseyData) -> RamseyResults:
         times = qubit_data_df["wait"].pint.to("ns").pint.magnitude
         qubit_freq = qubit_data_df["qubit_freqs"].pint.to("Hz").pint.magnitude.unique()
 
-        print("qubit_freq", qubit_freq)
-
         try:
             y_max = np.max(voltages.values)
             y_min = np.min(voltages.values)
