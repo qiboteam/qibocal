@@ -3,7 +3,7 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
 
@@ -67,7 +67,7 @@ class StdRBData(DataUnits):
 
 
 def _acquisition(
-    params: StdRBParameters, platform: AbstractPlatform, qubits: Qubits
+    params: StdRBParameters, platform: Platform, qubits: Qubits
 ) -> StdRBData:
     r"""
     Data acquisition for Rabi experiment sweeping amplitude.
