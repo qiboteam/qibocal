@@ -115,6 +115,7 @@ def fit_exp1B_func(
     if np.all(ydata == ydata[0]):
         popt, perr = (ydata[0], 1.0, 0), (0, 0, 0)
     else:
+        kwargs.setdefault("p0", (np.max(ydata) - np.min(ydata), 0.9, np.min(ydata)))
         # If the search for fitting parameters does not work just return
         # fixed parameters where one can see that the fit did not work
         try:
@@ -152,6 +153,7 @@ def fit_exp1_func(
         # If the search for fitting parameters does not work just return
         # fixed parameters where one can see that the fit did not work
         try:
+            kwargs.setdefault("p0", (np.max(ydata) - np.min(ydata), 0.9))
             # Build a new function such that the linear offset is zero.
             popt, pcov = curve_fit(exp1_func, xdata, ydata, **kwargs)
             perr = tuple(np.sqrt(np.diag(pcov)))
