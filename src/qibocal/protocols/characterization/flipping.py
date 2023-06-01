@@ -1,10 +1,10 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, Optional, Union
 
 import numpy as np
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
 
@@ -22,9 +22,9 @@ class FlippingParameters(Parameters):
     """Maximum number of flips ([RX(pi) - RX(pi)] sequences). """
     nflips_step: int
     """Flip step."""
-    nshots: int
+    nshots: Optional[int] = None
     """Number of shots."""
-    relaxation_time: int
+    relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
 
 
@@ -32,11 +32,13 @@ class FlippingParameters(Parameters):
 class FlippingResults(Results):
     """Flipping outputs."""
 
-    amplitude: Dict[List[Tuple], str] = field(metadata=dict(update="drive amplitude"))
+    amplitude: Dict[Union[str, int], float] = field(
+        metadata=dict(update="drive amplitude")
+    )
     """Drive amplitude for each qubit."""
-    amplitude_factors: Dict[List[Tuple], str]
+    amplitude_factors: Dict[Union[str, int], float]
     """Drive amplitude correction factor for each qubit."""
-    fitted_parameters: Dict[List[Tuple], List]
+    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
     """Raw fitting output."""
 
 
@@ -60,7 +62,7 @@ class FlippngData(DataUnits):
 
 def _acquisition(
     params: FlippingParameters,
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: Qubits,
 ) -> FlippngData:
     r"""
@@ -71,7 +73,7 @@ def _acquisition(
 
     Args:
         params (:class:`SingleShotClassificationParameters`): input parameters
-        platform (:class:`AbstractPlatform`): Qibolab's platform
+        platform (:class:`Platform`): Qibolab's platform
         qubits (dict): Dict of target :class:`Qubit` objects to be characterized
 
     Returns:
@@ -244,8 +246,8 @@ def _plot(data: FlippngData, fit: FlippingResults, qubit):
             ),
         )
         fitting_report = fitting_report + (
-            f"q{qubit} | Amplitude_correction_factor: {fit.amplitude_factors[qubit]:.4f}<br>"
-            + f"q{qubit} | Corrected_amplitude: {fit.amplitude[qubit][0]:.4f}<br><br>"
+            f"q{qubit} | Amplitude correction factor: {fit.amplitude_factors[qubit]:.4f}<br>"
+            + f"q{qubit} | Corrected amplitude: {fit.amplitude[qubit][0]:.4f}<br><br>"
         )
 
     # last part

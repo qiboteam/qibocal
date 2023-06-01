@@ -9,9 +9,10 @@ from typing import List, Optional
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from qibolab.qubits import Qubit
 from sklearn.metrics import accuracy_score
 
-from . import data, plots
+from . import data
 
 CLS_MODULES = [
     "linear_svm",
@@ -29,8 +30,6 @@ CLS_MODULES = [
 HYPERFILE = "hyperpars.json"
 PREDFILE = "predictions.npy"
 BENCHTABFILE = "benchmarks.csv"
-
-base_dir = pathlib.Path()
 
 
 def import_classifiers(cls_names: List[str]):
@@ -58,6 +57,7 @@ class Classifier:
     def __init__(self, mod, base_dir: pathlib.Path) -> None:
         self.mod = mod
         self.base_dir = base_dir
+        self.trainable_model = None
 
     @property
     def name(self):
@@ -96,6 +96,9 @@ class Classifier:
         r"""The path where the hyperparameters are stored."""
         return self.savedir / HYPERFILE
 
+    def dump(self, path: pathlib.Path):
+        self.mod.dump(self.trainable_model, path)
+
     @classmethod
     def load_model(cls, name: str, base_dir: pathlib.Path):
         r"""
@@ -133,7 +136,8 @@ class Classifier:
         Returns:
             Classification model.
         """
-        return self.normalize(self.constructor(hyperpars))
+        self.trainable_model = self.normalize(self.constructor(hyperpars))
+        return self.trainable_model
 
 
 @dataclass
@@ -163,6 +167,7 @@ def benchmarking(model, x_train, y_train, x_test, y_test, **fit_kwargs):
     """
     # Evaluate training time
     start = time.time()
+    y_train = y_train.astype("int")
     fit_info = model.fit(x_train, y_train, **fit_kwargs)
     stop = time.time()
     training_time = stop - start
@@ -172,7 +177,9 @@ def benchmarking(model, x_train, y_train, x_test, y_test, **fit_kwargs):
     stop = time.time()
     test_time = (stop - start) / len(x_test)
     # Evaluate accuracy
-    score = accuracy_score(y_test, np.round(y_pred))
+    y_pred = np.round(y_pred).tolist()
+
+    score = accuracy_score(y_test.tolist(), y_pred)
     logging.info(f"Accuracy: {score}")
     results = BenchmarkResults(score, test_time, training_time)
 
@@ -202,15 +209,18 @@ def plot_history(history, save_dir: pathlib.Path):
 
 
 def train_qubit(
-    data_path: pathlib.Path, base_dir: pathlib.Path, qubit, classifiers=None
+    qubit: Qubit,
+    base_dir: str,
+    qubits_data=None,
+    classifiers=None,
 ):
-    r"""Given a dataset in `data_path` with qubits' information, this function performs the benchmarking of some classifiers.
+    r"""Given a dataset `qubits_data` with qubits' information, this function performs the benchmarking of some classifiers.
     Each model's prediction `y_pred` is saved in  `basedir/qubit{qubit}/{classifier name}/predictions.npy`.
 
     Args:
-        data_path(path): Where the qubits' data are stored.
         base_dir (path): Where save the results.
         qubit (int): Qubit ID.
+        qubits_data (DataFrame): data about the qubits` states.
         classifiers (list | None, optional): List of classification models. It must be a subset of `CLS_MODULES`.
 
     Returns:
@@ -222,44 +232,23 @@ def train_qubit(
             - **testing_time**: testing time per item in seconds.
 
         - y_test (list): List of test outputs.
+        - x_test (list): Tests inputs.
+        - models (list): List of trained models.
+        - Names (list): Models' names
+        - hpars_list(list): Models' hyper-parameters.
 
-    Example:
-        The code below shows how to benchmark the state classifiers with `train_qubit` function:
-
-            .. code-block:: python
-
-                import logging
-                from pathlib import Path
-
-                from qibocal.fitting.classifier import plots, run
-
-                logging.basicConfig(level=logging.INFO)
-                # Define the data path
-                data_path = Path("calibrate_qubit_states/data.csv")
-                # Define the save path
-                base_dir = Path("results")
-                base_dir.mkdir(exist_ok=True)
-                # Define the list of classifiers (not mandatory)
-                classifiers = ["ada_boost", "linear_svm"]
-                for qubit in range(1, 5):
-                    print(f"QUBIT: {qubit}")
-                    qubit_dir = base_dir / f"qubit{qubit}"
-                    table, y_test, x_test = run.train_qubit(data_path, base_dir, qubit)
-                    run.dump_benchmarks_table(table, qubit_dir)
-                    # Plots
-                    plots.plot_table(table, qubit_dir)
-                    plots.plot_conf_matr(y_test, qubit_dir)
     """
+
+    qubit_data = qubits_data[qubits_data["qubit"] == qubit.name]
     nn_epochs = 200
     nn_val_split = 0.2
-    qubit_dir = base_dir / f"qubit{qubit}"
-    qubit_dir.mkdir(exist_ok=True)
-    qubit_data = data.load_qubit(data_path, qubit)
-    data.plot_qubit(qubit_data, qubit_dir)
+    qubit_dir = pathlib.Path(base_dir) / f"qubit{qubit.name}"
+    qubit_dir.mkdir(parents=True, exist_ok=True)
     x_train, x_test, y_train, y_test = data.generate_models(qubit_data)
     models = []
     results_list = []
     names = []
+    hpars_list = []
     if classifiers is None:
         classifiers = CLS_MODULES
 
@@ -267,11 +256,14 @@ def train_qubit(
 
     for mod in classifiers:
         classifier = Classifier(mod, qubit_dir)
-        classifier.savedir.mkdir(exist_ok=True)
         logging.info(f"Classification model: {classifier.name}")
-        hyperpars = classifier.hyperopt(x_train, y_train, classifier.savedir)
-
-        classifier.dump_hyper(hyperpars)
+        if classifier.name not in qubit.classifiers_hpars:
+            hyperpars = classifier.hyperopt(
+                x_train, y_train.astype(np.int64), classifier.savedir
+            )
+        else:
+            hyperpars = qubit.classifiers_hpars[classifier.name]
+        hpars_list.append(hyperpars)
         model = classifier.create_model(hyperpars)
 
         if classifier.name == "nn":
@@ -289,18 +281,17 @@ def train_qubit(
             results, y_pred, model, _ = benchmarking(
                 model, x_train, y_train, x_test, y_test
             )
-
         models.append(model)  # save trained model
         results.name = classifier.name
         results_list.append(results)
         names.append(classifier.name)
+        classifier.savedir.mkdir(exist_ok=True)
+        classifier.dump_hyper(hyperpars)
         dump_preds(y_pred, classifier.savedir)
+        classifier.dump(classifier.savedir / classifier.name)
 
     benchmarks_table = pd.DataFrame([asdict(res) for res in results_list])
-    plots.plot_models_results(x_train, x_test, y_test, qubit_dir, models, names)
-    plots.plot_roc_curves(x_test, y_test, qubit_dir, models, names)
-
-    return benchmarks_table, y_test, x_test
+    return benchmarks_table, y_test, x_test, models, names, hpars_list
 
 
 def dump_preds(y_pred, dir_path):

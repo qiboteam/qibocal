@@ -1,10 +1,10 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Union
 
 import numpy as np
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from scipy.optimize import curve_fit
 
@@ -18,10 +18,6 @@ from qibocal.plots.utils import get_color
 class RamseyParameters(Parameters):
     """Ramsey runcard inputs."""
 
-    nshots: int
-    """Number of shots."""
-    relaxation_time: int
-    """Relaxation time (ns)."""
     delay_between_pulses_start: int
     """Initial delay between RX(pi/2) pulses in ns."""
     delay_between_pulses_end: int
@@ -31,9 +27,9 @@ class RamseyParameters(Parameters):
     n_osc: Optional[int]
     """Number of oscillations to induce detuning (optional).
         If 0 standard Ramsey experiment is performed."""
-    nshots: int
+    nshots: Optional[int] = None
     """Number of shots."""
-    relaxation_time: int
+    relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
 
 
@@ -41,13 +37,15 @@ class RamseyParameters(Parameters):
 class RamseyResults(Results):
     """Ramsey outputs."""
 
-    frequency: Dict[List[Tuple], str] = field(metadata=dict(update="drive_frequency"))
-    """Drive frequency for each qubit."""
-    t2: Dict[List[Tuple], str]
-    """T2 for each qubit (ns)."""
-    delta_phys: Dict[List[Tuple], str]
-    """Drive frequency correction for each qubit."""
-    fitted_parameters: Dict[List[Tuple], List]
+    frequency: Dict[Union[str, int], float] = field(
+        metadata=dict(update="drive_frequency")
+    )
+    """Drive frequency [GHz] for each qubit."""
+    t2: Dict[Union[str, int], float]
+    """T2 for each qubit [ns]."""
+    delta_phys: Dict[Union[str, int], float]
+    """Drive frequency [Hz] correction for each qubit."""
+    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
     """Raw fitting output."""
 
 
@@ -85,7 +83,7 @@ class RamseyData(DataUnits):
 
 def _acquisition(
     params: RamseyParameters,
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: Qubits,
 ) -> RamseyData:
     """Data acquisition for Ramsey Experiment (detuned)."""
@@ -181,7 +179,7 @@ def _fit(data: RamseyData) -> RamseyResults:
 
     t2s = {}
     corrected_qubit_frequencies = {}
-    freqs_detuing = {}
+    freqs_detuning = {}
     fitted_parameters = {}
 
     for qubit in qubits:
@@ -247,10 +245,10 @@ def _fit(data: RamseyData) -> RamseyResults:
         fitted_parameters[qubit] = popt
         corrected_qubit_frequencies[qubit] = corrected_qubit_frequency / 1e9
         t2s[qubit] = t2
-        freqs_detuing[qubit] = delta_phys
+        freqs_detuning[qubit] = delta_phys
 
     return RamseyResults(
-        corrected_qubit_frequencies, t2s, freqs_detuing, fitted_parameters
+        corrected_qubit_frequencies, t2s, freqs_detuning, fitted_parameters
     )
 
 

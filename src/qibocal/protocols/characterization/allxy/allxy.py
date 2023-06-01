@@ -1,9 +1,10 @@
 from dataclasses import dataclass
+from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
 from qibolab import AveragingMode, ExecutionParameters
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -15,12 +16,12 @@ from qibocal.plots.utils import get_color
 class AllXYParameters(Parameters):
     """AllXY runcard inputs."""
 
-    nshots: int
-    """Number of shots."""
-    relaxation_time: int
-    """Relaxation time (ns)."""
     beta_param: float = None
     """Beta parameter for drag pulse."""
+    nshots: Optional[int] = None
+    """Number of shots."""
+    relaxation_time: Optional[int] = None
+    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -65,7 +66,7 @@ gatelist = [
 
 def _acquisition(
     params: AllXYParameters,
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: Qubits,
 ) -> AllXYData:
     r"""
@@ -117,7 +118,7 @@ def _acquisition(
 
 
 def add_gate_pair_pulses_to_sequence(
-    platform: AbstractPlatform,
+    platform: Platform,
     gates,
     qubit,
     sequence,

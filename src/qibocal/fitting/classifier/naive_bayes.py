@@ -1,6 +1,6 @@
 from sklearn.naive_bayes import GaussianNB
 
-from . import utils
+from . import scikit_utils
 
 
 def constructor(hyperpars):
@@ -27,4 +27,6 @@ def hyperopt(_x_train, _y_train, _path):
     return model.get_params()
 
 
-normalize = utils.scikit_normalize
+normalize = scikit_utils.scikit_normalize
+dump = scikit_utils.scikit_dump
+predict_from_file = scikit_utils.scikit_predict

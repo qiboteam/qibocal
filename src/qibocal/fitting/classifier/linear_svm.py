@@ -1,6 +1,6 @@
 from sklearn.svm import SVC
 
-from . import utils
+from . import scikit_utils
 
 REG_PARAM = 0.025
 
@@ -25,8 +25,10 @@ def hyperopt(_x_train, _y_train, _path):
     Returns:
         Dictionary with model's hyperparameters.
     """
-    model = SVC(kernel="linear", C=REG_PARAM)
+    model = SVC(kernel="linear", probability=True, C=REG_PARAM)
     return model.get_params()
 
 
-normalize = utils.scikit_normalize
+normalize = scikit_utils.scikit_normalize
+dump = scikit_utils.scikit_dump
+predict_from_file = scikit_utils.scikit_predict

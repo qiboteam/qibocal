@@ -1,10 +1,10 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from typing import Dict, Optional, Union
 
 import numpy as np
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, ExecutionParameters
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -16,9 +16,9 @@ MESH_SIZE = 50
 
 @dataclass
 class SingleShotClassificationParameters(Parameters):
-    nshots: int
+    nshots: Optional[int] = None
     """Number of shots."""
-    relaxation_time: int
+    relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
 
 
@@ -38,21 +38,27 @@ class SingleShotClassificationData(DataUnits):
 
 @dataclass
 class SingleShotClassificationResults(Results):
-    threshold: Dict[List[Tuple], str] = field(metadata=dict(update="threshold"))
-    rotation_angle: Dict[List[Tuple], str] = field(metadata=dict(update="iq_angle"))
-    mean_gnd_states: Dict[List[Tuple], str] = field(
+    """SingleShotClassification outputs."""
+
+    threshold: Dict[Union[str, int], float] = field(metadata=dict(update="threshold"))
+    """Threshold for classification."""
+    rotation_angle: Dict[Union[str, int], float] = field(
+        metadata=dict(update="iq_angle")
+    )
+    """Threshold for classification."""
+    mean_gnd_states: Dict[Union[str, int], complex] = field(
         metadata=dict(update="mean_gnd_states")
     )
-    mean_exc_states: Dict[List[Tuple], str] = field(
+    mean_exc_states: Dict[Union[str, int], complex] = field(
         metadata=dict(update="mean_exc_states")
     )
-    fidelity: Dict[List[Tuple], str]
-    assignment_fidelity: Dict[List[Tuple], str]
+    fidelity: Dict[Union[str, int], float]
+    assignment_fidelity: Dict[Union[str, int], float]
 
 
 def _acquisition(
     params: SingleShotClassificationParameters,
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: Qubits,
 ) -> SingleShotClassificationData:
     """
@@ -61,7 +67,7 @@ def _acquisition(
     The subscripts `exc` and `gnd` will represent the excited state |1> and the ground state |0>.
 
     Args:
-        platform (:class:`qibolab.platforms.abstract.AbstractPlatform`): custom abstract platform on which we perform the calibration.
+        platform (:class:`qibolab.platforms.abstract.Platform`): custom abstract platform on which we perform the calibration.
         qubits (dict): Dict of target Qubit objects to perform the action
         nshots (int): number of times the pulse sequence will be repeated.
 

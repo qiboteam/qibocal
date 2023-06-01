@@ -1,9 +1,9 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Union
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -21,14 +21,14 @@ class ResonatorFluxParameters(Parameters):
     freq_width: int
     """Width for frequency sweep relative to the readout frequency (Hz)."""
     freq_step: int
-    """Frequency step for sweep (Hz)."""
+    """Frequency step for sweep [Hz]."""
     bias_width: float
-    """Width for bias sweep (V)."""
+    """Width for bias sweep [V]."""
     bias_step: float
     """Bias step for sweep (V)."""
-    nshots: int
+    nshots: Optional[int] = None
     """Number of shots."""
-    relaxation_time: int
+    relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
 
 
@@ -36,11 +36,13 @@ class ResonatorFluxParameters(Parameters):
 class ResonatorFluxResults(Results):
     """ResonatoFlux outputs."""
 
-    sweetspot: Dict[List[Tuple], str] = field(metadata=dict(update="sweetspot"))
+    sweetspot: Dict[Union[str, int], float] = field(metadata=dict(update="sweetspot"))
     """Sweetspot for each qubit."""
-    frequency: Dict[List[Tuple], str] = field(metadata=dict(update="readout_frequency"))
+    frequency: Dict[Union[str, int], float] = field(
+        metadata=dict(update="readout_frequency")
+    )
     """Readout frequency for each qubit."""
-    fitted_parameters: Dict[List[Tuple], List]
+    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
     """Raw fitting output."""
 
 
@@ -56,7 +58,7 @@ class ResonatorFluxData(DataUnits):
 
 
 def _acquisition(
-    params: ResonatorFluxParameters, platform: AbstractPlatform, qubits: Qubits
+    params: ResonatorFluxParameters, platform: Platform, qubits: Qubits
 ) -> ResonatorFluxData:
     """Data acquisition for ResonatorFlux experiment."""
     # create a sequence of pulses for the experiment:

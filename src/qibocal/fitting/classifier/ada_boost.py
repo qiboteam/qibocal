@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.model_selection import GridSearchCV, RepeatedStratifiedKFold
 
-from . import utils
+from . import scikit_utils
 
 
 def constructor(hyperpars):
@@ -37,4 +37,6 @@ def hyperopt(x_train, y_train, _path):
     return search.best_params_
 
 
-normalize = utils.scikit_normalize
+normalize = scikit_utils.scikit_normalize
+dump = scikit_utils.scikit_dump
+predict_from_file = scikit_utils.scikit_predict

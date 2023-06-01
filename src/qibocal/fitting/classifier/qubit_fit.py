@@ -1,10 +1,10 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from math import atan2
+from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
-
-from .utils import identity
+import skops.io as sio
 
 
 def constructor(_hyperparams):
@@ -30,7 +30,20 @@ def hyperopt(_x_train, _y_train, _path):
     return {}
 
 
-normalize = identity
+normalize = lambda x: x
+
+
+def dump(model, save_path: Path):
+    r"""Dumps the `model` in `save_path`"""
+    sio.dump(model, save_path.with_suffix(".skops"))
+
+
+def predict_from_file(loading_path: Path, input: np.typing.NDArray):
+    r"""This function loads the model saved in `loading_path`
+    and returns the predictions of `input`.
+    """
+    model = sio.load(loading_path, trusted=True)
+    return model.predict(input)
 
 
 @dataclass
@@ -44,8 +57,8 @@ class QubitFit:
         angle (float): Rotational angle.
     """  # TODO: add references
 
-    iq_mean0: np.ndarray = np.array([0.0, 0.0])
-    iq_mean1: np.ndarray = np.array([0.0, 0.0])
+    iq_mean0: list = field(default_factory=list)
+    iq_mean1: list = field(default_factory=list)
     threshold: float = 0.0
     angle: float = 0.0
     fidelity: float = None
@@ -61,7 +74,6 @@ class QubitFit:
         iq_state0 = iq_coordinates[(states == 0)]
         self.iq_mean0 = np.mean(iq_state0, axis=0)
         self.iq_mean1 = np.mean(iq_state1, axis=0)
-
         # translate
         iq_coordinates_translated = self.translate(iq_coordinates)
         iq_state1_trans = self.translate(self.iq_mean1)
@@ -82,13 +94,12 @@ class QubitFit:
         cum_distribution_diff = np.abs(
             np.array(cum_distribution_state1) - np.array(cum_distribution_state0)
         )
-
         max_index = np.argmax(cum_distribution_diff)
         self.threshold = x_values[max_index]
-        errors_state1 = nshots - cum_distribution_state1[max_index]
+        errors_state1 = 1 - cum_distribution_state1[max_index]
         errors_state0 = cum_distribution_state0[max_index]
-        self.fidelity = cum_distribution_diff[max_index] / nshots
-        self.assignment_fidelity = 1 - (errors_state1 + errors_state0) / nshots / 2
+        self.fidelity = cum_distribution_diff[max_index]
+        self.assignment_fidelity = (errors_state1 + errors_state0) / 2
 
     def rotate(self, v):
         c, s = np.cos(self.angle), np.sin(self.angle)
@@ -119,7 +130,7 @@ def _eval_cumulative(input_data, points):
     app = 0
 
     for val in input_data:
-        app += np.max(np.searchsorted(points[app::], val) - 1, 0)
+        app += np.amax([np.searchsorted(points[app::], val) - 1, 0])
         prob.append(app + 1)
 
     return np.array(prob) / len(points)

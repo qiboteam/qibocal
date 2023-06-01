@@ -1,9 +1,10 @@
 from dataclasses import dataclass
+from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
 from qibolab import AveragingMode, ExecutionParameters
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -23,9 +24,9 @@ class AllXYDragParameters(Parameters):
     """Final beta parameter for Drag pulse."""
     beta_step: float
     """Step beta parameter for Drag pulse."""
-    nshots: int
+    nshots: Optional[int] = None
     """Number of shots."""
-    relaxation_time: int
+    relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
 
 
@@ -51,7 +52,7 @@ class AllXYDragData(Data):
 
 def _acquisition(
     params: AllXYDragParameters,
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: Qubits,
 ) -> AllXYDragData:
     r"""
