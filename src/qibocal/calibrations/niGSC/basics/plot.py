@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
+import qibocal.protocols.characterization.RB.fitting as fitting_methods
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
 from qibocal.calibrations.niGSC.basics.utils import number_to_str
 

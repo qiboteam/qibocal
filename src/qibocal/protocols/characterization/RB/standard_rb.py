@@ -1,3 +1,4 @@
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Iterable, List, Optional, Tuple
 
@@ -173,7 +174,14 @@ def plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure]
         Tuple[List[go.Figure], str]:
     """
 
-    table_str = "".join([f" | {key}: {value}<br>" for key, value in data.attrs.items()])
+    meta_data = deepcopy(data.attrs)
+    meta_data.pop("depths")
+    if not meta_data["noise_model"]:
+        meta_data.pop("noise_model")
+        meta_data.pop("noise_params")
+        meta_data.pop("nqubits")
+
+    table_str = "".join([f" | {key}: {value}<br>" for key, value in meta_data.items()])
     table_str += "".join(
         f" | {key}: {number_to_str(*value)}<br>"
         for key, value in result.fidelity_dict.items()

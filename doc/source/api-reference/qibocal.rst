@@ -171,7 +171,7 @@ Experiment
 
 Fitting methods
 """""""""""""""
-.. automodule:: qibocal.calibrations.niGSC.basics.fitting
+.. automodule:: qibocal.protocols.characterization.RB.fitting
    :members:
    :undoc-members:
    :show-inheritance:
