@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import numpy as np
+from qibolab import AcquisitionType, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 
@@ -16,7 +17,12 @@ MARGIN = 0
 
 @plot("Qubit States", plots.qubit_states)
 def calibrate_qubit_states(
-    platform: Platform, qubits: dict, nshots: int, classifiers, save_dir: str
+    platform: Platform,
+    qubits: dict,
+    nshots: int,
+    save_dir=None,
+    relaxation_time=None,
+    classifiers=["qubit_fit"],
 ):
     """
     Method which implements the state's calibration of a chosen qubit. Two analogous tests are performed
@@ -27,7 +33,18 @@ def calibrate_qubit_states(
         platform (:class:`qibolab.platforms.abstract.Platform`): custom abstract platform on which we perform the calibration.
         qubits (dict): Dict of target Qubit objects to perform the action
         nshots (int): number of times the pulse sequence will be repeated.
-        classifiers (list): list of classifiers
+        classifiers (list): list of classifiers, the available ones are:
+
+            - linear_svm
+            - ada_boost
+            - gaussian_process
+            - naive_bayes
+            - nn
+            - qubit_fit
+            - random_forest
+            - rbf_svm
+            - qblox_fit
+
         save_dir (str): save path
 
     Returns:
@@ -69,11 +86,18 @@ def calibrate_qubit_states(
     data = DataUnits(name="data", options=["qubit", "iteration", "state"])
 
     # execute the first pulse sequence
-    state0_results = platform.execute_pulse_sequence(state0_sequence, nshots=nshots)
+    state0_results = platform.execute_pulse_sequence(
+        state0_sequence,
+        ExecutionParameters(
+            nshots=nshots,
+            relaxation_time=relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+        ),
+    )
 
     # retrieve and store the results for every qubit
     for ro_pulse in ro_pulses.values():
-        r = state0_results[ro_pulse.serial].raw
+        r = state0_results[ro_pulse.serial].serialize
         r.update(
             {
                 "qubit": [ro_pulse.qubit] * nshots,
@@ -84,11 +108,17 @@ def calibrate_qubit_states(
         data.add_data_from_dict(r)
 
     # execute the second pulse sequence
-    state1_results = platform.execute_pulse_sequence(state1_sequence, nshots=nshots)
-
+    state1_results = platform.execute_pulse_sequence(
+        state1_sequence,
+        ExecutionParameters(
+            nshots=nshots,
+            relaxation_time=relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+        ),
+    )
     # retrieve and store the results for every qubit
     for ro_pulse in ro_pulses.values():
-        r = state1_results[ro_pulse.serial].raw
+        r = state1_results[ro_pulse.serial].serialize
         r.update(
             {
                 "qubit": [ro_pulse.qubit] * nshots,
@@ -119,7 +149,10 @@ def calibrate_qubit_states(
     classifiers_dict = {}
     for qubit in qubits:
         benchmark_table, y_test, x_test, models, names, hpars_list = run.train_qubit(
-            Path(save_dir), qubits[qubit], qubits_data=data.df, classifiers=classifiers
+            qubits[qubit],
+            save_dir,
+            qubits_data=data.df,
+            classifiers=classifiers,
         )
 
         classifiers_dict = {

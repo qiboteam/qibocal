@@ -14,8 +14,6 @@ from tensorflow.keras.models import (  # pylint: disable=import-error
     load_model,
 )
 
-from .utils import identity
-
 
 def constructor(hyperpars):
     r"""Return the model class.
@@ -59,7 +57,7 @@ def hyperopt(x_train, y_train, path):
     return best_hps.get_config()
 
 
-normalize = identity
+normalize = lambda x: x
 
 
 def dump(model, save_path: Path):
