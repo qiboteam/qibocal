@@ -30,6 +30,8 @@ class ResonatorPunchoutParameters(Parameters):
     """Maximum amplitude multiplicative factor."""
     step_amp_factor: float
     """Step amplitude multiplicative factor."""
+    amplitude: float = None
+    """Initial readout amplitude."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
@@ -86,6 +88,8 @@ def _acquisition(
     ro_pulses = {}
     for qubit in qubits:
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
+        if params.amplitude is not None:
+            ro_pulses[qubit].amplitude = params.amplitude
         sequence.add(ro_pulses[qubit])
 
     # define the parameters to sweep and their range:
