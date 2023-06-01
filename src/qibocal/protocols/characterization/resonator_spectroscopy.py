@@ -105,7 +105,7 @@ class ResonatorSpectroscopyData:
             yaml.dump(my_dict, outfile)
 
         for q in self.data:
-            np.savetxt(path / f"data_q{q}", self[q])
+            np.save(path / f"data_q{q}.npy", self[q])
 
 
 def _acquisition(
