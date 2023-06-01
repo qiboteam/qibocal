@@ -8,7 +8,7 @@ from qibo.noise import NoiseModel
 from qibocal.auto.operation import Routine
 from qibocal.calibrations.niGSC.standardrb import ModuleFactory as StandardRBScan
 from qibocal.protocols.characterization.RB.result import DecayWithOffsetResult
-from qibocal.protocols.characterization.RB.utils import ci_to_str, extract_from_data
+from qibocal.protocols.characterization.RB.utils import extract_from_data, number_to_str
 
 from .data import RBData
 from .params import RBParameters
@@ -153,7 +153,9 @@ def extract(data: RBData) -> StandardRBResult:
     """
 
     result = aggregate(data)
-    result.fit(data.attrs["n_bootstrap"], data.attrs["nshots"])
+    result.fit(
+        data.attrs["n_bootstrap"], data.attrs["nshots"], data.attrs["uncertainties"]
+    )
     result.calculate_fidelities()
     return result
 
@@ -173,7 +175,7 @@ def plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure]
 
     table_str = "".join([f" | {key}: {value}<br>" for key, value in data.attrs.items()])
     table_str += "".join(
-        f" | {key}: {ci_to_str(*value)}<br>"
+        f" | {key}: {number_to_str(*value)}<br>"
         for key, value in result.fidelity_dict.items()
     )
     fig = result.plot()

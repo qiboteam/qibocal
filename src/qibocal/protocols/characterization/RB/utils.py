@@ -1,5 +1,6 @@
-from math import log10
-from typing import Callable, Iterable, List, Tuple, Union
+from math import isinf, log10
+from numbers import Number
+from typing import Callable, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 from pandas import DataFrame
@@ -7,49 +8,68 @@ from pandas import DataFrame
 from qibocal.config import raise_error
 
 
-def ci_to_str(value, confidence=None, precision=None):
-    """"""
+def number_to_str(
+    value,
+    confidence: Optional[Union[float, list, np.ndarray]] = None,
+    precision: Optional[int] = None,
+):
+    """Converts a number into a string.
+
+    Args:
+        value (int or float or complex): the number to display
+        confidence (float or list, optional): number or 2-element interval with the unvertainty of the value.
+        Defaults to ``None``
+        precision (int, optional): number of floating points of the displayed value. If ``None`` and
+        ``confidence`` is not given, defaults to 3. Defaults to ``None``.
+
+    Returns:
+        str: The number expressed as a string, with the confidence interval if given.
+    """
+
     if confidence is None:
         precision = precision if precision is not None else 3
         return f"{value:.{precision}f}"
 
-    if isinstance(confidence, float):
-        if confidence < 0:
+    if isinstance(confidence, Iterable) is True:
+        if len(confidence) != 2:
             raise_error(
                 ValueError,
-                f"`confidence` cannot be negative. Got {confidence} instead.",
+                f"`confidence` list must contain 2 elements. Got {len(confidence)} instead.",
             )
-        if confidence == 0:
+        if any(confidence < 0):
+            raise_error(
+                ValueError,
+                f"`confidence` values cannot be negative. Got {confidence} instead.",
+            )
+
+        if all(c == 0 or isinf(c) for c in confidence):
             precision = precision if precision is not None else 3
             return f"{value:.{precision}f}"
         if precision is None:
-            precision = max(-int(log10(confidence)), 0) + 1
-        return f"{value:.{precision}f} \u00B1 {confidence:.{precision}f}"
+            precision = (
+                max(*[-int(log10(c)) if not isinf(c) else 0 for c in confidence], 0) + 1
+            )
+        if abs(confidence[0] - confidence[1]) < 10 ** (-precision):
+            return f"{value:.{precision}f} \u00B1 {confidence[0]:.{precision}f}"
+        return f"{value:.{precision}f} +{confidence[1]:.{precision}f} / -{confidence[0]:.{precision}f}"
 
-    if isinstance(confidence, Iterable) is False:
+    if isinstance(confidence, Number) is False:
         raise_error(
             TypeError,
             f"`confidence` must be iterable or a number. Got {type(confidence)} instead.",
         )
-    if len(confidence) != 2:
-        raise_error(
-            ValueError,
-            f"`confidence` list must contain 2 elements. Got {len(confidence)} instead.",
-        )
-    if any(confidence < 0):
-        raise_error(
-            ValueError,
-            f"`confidence` values cannot be negative. Got {confidence} instead.",
-        )
 
-    if precision is None:
-        precision = max(-int(log10(confidence[0])), -int(log10(confidence[1])), 0) + 1
-    if all(c == 0 for c in confidence):
+    if confidence < 0:
+        raise_error(
+            ValueError,
+            f"`confidence` cannot be negative. Got {confidence} instead.",
+        )
+    if confidence == 0 or isinf(confidence):
         precision = precision if precision is not None else 3
         return f"{value:.{precision}f}"
-    if abs(confidence[0] - confidence[1]) < 10 ** (-precision):
-        return f"{value:.{precision}f} \u00B1 {confidence[0]:.{precision}f}"
-    return f"{value:.{precision}f} +{confidence[1]:.{precision}f} / -{confidence[0]:.{precision}f}"
+    if precision is None:
+        precision = max(-int(log10(confidence)), 0) + 1
+    return f"{value:.{precision}f} \u00B1 {confidence:.{precision}f}"
 
 
 def extract_from_data(

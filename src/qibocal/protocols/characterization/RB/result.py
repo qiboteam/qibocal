@@ -1,4 +1,5 @@
 from collections import Counter
+from copy import deepcopy
 from dataclasses import dataclass, field
 from numbers import Number
 from typing import Iterable, List, Optional, Tuple, Union
@@ -13,7 +14,7 @@ from qibocal.calibrations.niGSC.basics.fitting import (
     fit_exp1_func,
     fit_exp1B_func,
 )
-from qibocal.protocols.characterization.RB.utils import ci_to_str
+from qibocal.protocols.characterization.RB.utils import number_to_str
 
 
 @dataclass
@@ -68,28 +69,56 @@ class DecayResult(Results):
     def fit_func(self, x, y, **kwargs):
         return fit_exp1_func(x, y, **kwargs)
 
-    def fit(self, n_bootstrap=0, sample_size=1, **kwargs):
+    def fit(self, n_bootstrap=0, sample_size=1, uncertainties=None, **kwargs):
         """Fits the data, all parameters given through kwargs will be passed on to the optimization function."""
 
         def samples_to_p0(samples):
             ground = np.array([0] * len(samples[0]))
             return np.sum(np.product(samples == ground, axis=1)) / len(samples)
 
-        # Perform fit on the initial data
-        kwargs.setdefault("bounds", ((0, 0, 0), (1, 1, 1)))
-        kwargs.setdefault("p0", (self.A, self.p, self.B))
-        kwargs.setdefault("sigma", np.std(np.array(self.y_scatter), axis=1))
-        popt, pcov = self.fit_func(self.x, self.y, **kwargs)
-        self.fitting_params = popt
+        def data_mean_errors(data, uncertainties=None, sigma=None, symmetric=False):
+            if sigma is not None:
+                return sigma
+            if uncertainties == "std":
+                return np.std(data, axis=1)
+            if isinstance(uncertainties, Number):
+                confidence = uncertainties
+                percentiles = [
+                    100 * (1 - confidence) / 2,
+                    100 * (1 - (1 - confidence) / 2),
+                ]
+                data_mean = np.mean(data, axis=1)
+                data_errors = np.abs(
+                    np.vstack([data_mean, data_mean])
+                    - np.percentile(data, percentiles, axis=1)
+                )
+                if symmetric:
+                    return [max(errors) for errors in data_errors.T]
+                return data_errors
+            return None
+
+        # Fit the initial data
+        init_kwargs = deepcopy(kwargs)
+        init_kwargs.setdefault("bounds", ((0, 0, 0), (1, 1, 1)))
+        init_kwargs.setdefault("p0", (self.A, self.p, self.B))
+        init_sigma = init_kwargs.pop("sigma", None)
+        sigma = data_mean_errors(
+            self.y_scatter, uncertainties, init_sigma, symmetric=True
+        )
+        popt, pcov = self.fit_func(self.x, self.y, sigma=sigma, **init_kwargs)
 
         if n_bootstrap < 1:
+            self.fitting_params = popt
             self.fitting_errors = pcov
-            self.error_y = np.std(self.y_scatter, axis=1)
+            self.error_y = data_mean_errors(
+                self.y_scatter, uncertainties, symmetric=False
+            )
             return
 
         # Semi-parametric bootstrap resampling
         bootstrap_estimates = [popt]
         y_estimates = [self.y]
+
         for _ in range(n_bootstrap):
             fit_y = []
             bootstrap_y_scatter = []
@@ -107,24 +136,29 @@ class DecayResult(Results):
                 fit_y.append(np.mean(bootstrap_y_scatter[-1]))
 
             # Fit the resampled data to extract parameters
-            kwargs["sigma"] = np.std(bootstrap_y_scatter, axis=1)
-            params, _ = self.fit_func(self.x, fit_y, **kwargs)
+            bootstrap_sigma = data_mean_errors(
+                bootstrap_y_scatter, uncertainties, init_sigma, symmetric=True
+            )
+            params, _ = self.fit_func(
+                self.x, fit_y, sigma=bootstrap_sigma, **init_kwargs
+            )
             bootstrap_estimates.append(params)
             y_estimates.append(fit_y)
 
-        # 95% confidence intervals for the error bars
-        confidence = 0.95
-        percentiles = [100 * (1 - confidence) / 2, 100 * (1 - (1 - confidence) / 2)]
-        self.error_y = np.abs(
-            np.vstack([self.y, self.y])
-            - np.percentile(self.y_scatter, percentiles, axis=1)
+        # Fit the initial data given bootstrap uncertainties
+        y_estimates = np.array(y_estimates).T
+        sigma = data_mean_errors(y_estimates, uncertainties, init_sigma, symmetric=True)
+        popt, pcov = self.fit_func(self.x, self.y, sigma=sigma, **init_kwargs)
+        self.fitting_params = popt
+        fitting_errors = data_mean_errors(
+            np.array(bootstrap_estimates).T, uncertainties
         )
-
-        # 95% confidence intervals for the fitting parameters
-        self.fitting_errors = np.abs(
-            np.vstack([popt, popt])
-            - np.percentile(bootstrap_estimates, percentiles, axis=0)
-        ).T
+        self.fitting_errors = (
+            fitting_errors.T
+            if fitting_errors is not None
+            else [0] * len(self.fitting_errors)
+        )
+        self.error_y = data_mean_errors(y_estimates, uncertainties, symmetric=False)
 
     def plot(self):
         """Plots the histogram data for each point and the averges plus the fit."""
@@ -139,7 +173,7 @@ class DecayResult(Results):
 
         if self.perr is not None:
             return "Fit: y=Ap^x<br>A: {}<br>p: {}".format(
-                ci_to_str(self.A, self.Aerr), ci_to_str(self.p, self.perr)
+                number_to_str(self.A, self.Aerr), number_to_str(self.p, self.perr)
             )
         else:
             return "DecayResult: Ap^x"
@@ -182,9 +216,9 @@ class DecayWithOffsetResult(DecayResult):
 
         if self.perr is not None:
             return "Fit: y=Ap^x+B<br>A: {}<br>p: {}<br>B: {}".format(
-                ci_to_str(self.A, self.Aerr),
-                ci_to_str(self.p, self.perr),
-                ci_to_str(self.B, self.Berr),
+                number_to_str(self.A, self.Aerr),
+                number_to_str(self.p, self.perr),
+                number_to_str(self.B, self.Berr),
             )
         else:
             return "DecayResult: Ap^x+B"
@@ -216,7 +250,7 @@ def plot_decay_result(
         )
     )
     # If result.error_y is given, create a dictionary for the error bars
-    if hasattr(result, "error_y"):
+    if hasattr(result, "error_y") and result.error_y is not None:
         if isinstance(result.error_y, Number):
             error_y_dict = dict(
                 type="constant",
