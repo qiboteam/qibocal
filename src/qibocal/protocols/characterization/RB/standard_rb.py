@@ -1,3 +1,4 @@
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Iterable, List, Optional, Tuple
 
@@ -35,8 +36,8 @@ class StandardRBResult(DecayWithOffsetResult):
         # Divide infidelity by magic number
         infidelity = (1 - self.p) / 2
         self.fidelity_dict = {
-            "fidelity": 1 - infidelity,
-            "pulse fidelity": 1 - infidelity / PULSES_PER_CLIFFORD,
+            "fidelity": np.round(1 - infidelity, 4),
+            "pulse fidelity": np.round(1 - infidelity / PULSES_PER_CLIFFORD, 4),
         }
 
 
@@ -168,10 +169,17 @@ def plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure]
         Tuple[List[go.Figure], str]:
     """
 
+    meta_data = deepcopy(data.attrs)
+    meta_data.pop("depths")
+    if not meta_data["noise_model"]:
+        meta_data.pop("noise_model")
+        meta_data.pop("noise_params")
+        meta_data.pop("nqubits")
+
     table_str = "".join(
         [
             f" | {key}: {value}<br>"
-            for key, value in {**data.attrs, **result.fidelity_dict}.items()
+            for key, value in {**meta_data, **result.fidelity_dict}.items()
         ]
     )
     fig = result.plot()
