@@ -119,6 +119,32 @@ actions:
       nshots: 1024
       relaxation_time:
 
+  - id: rabi amplitude
+    priority: 0
+    operation: rabi_amplitude
+    next: rabi length
+    parameters:
+      update: False
+      min_amp_factor: 0.0
+      max_amp_factor: 5.0
+      step_amp_factor: 0.1
+      pulse_length: 30
+      relaxation_time: 100_000
+      nshots: 1024
+
+  - id: rabi length
+    priority: 0
+    operation: rabi_length
+    next: t1
+    parameters:
+      update: False
+      pulse_duration_start: 10
+      pulse_duration_end: 200
+      pulse_duration_step: 5
+      pulse_amplitude: 0.05
+      relaxation_time: 100_000
+      nshots: 1024
+
   - id: t1
     priority: 0
     operation: t1
