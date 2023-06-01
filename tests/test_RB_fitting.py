@@ -3,7 +3,7 @@ import warnings
 import numpy as np
 import pytest
 
-from qibocal.calibrations.niGSC.basics import fitting
+from qibocal.protocols.characterization.RB import fitting
 
 
 def test_1expfitting():

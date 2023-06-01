@@ -7,7 +7,7 @@ import numpy as np
 import plotly.graph_objects as go
 
 from qibocal.auto.operation import Results
-from qibocal.calibrations.niGSC.basics.fitting import (
+from qibocal.protocols.characterization.RB.fitting import (
     exp1_func,
     exp1B_func,
     fit_exp1_func,
@@ -27,7 +27,8 @@ class DecayResult(Results):
     Aerr: Optional[Number] = None
     p: Optional[Number] = None
     perr: Optional[Number] = None
-    func: Iterable = field(default=exp1_func)
+    model: Iterable = field(default=exp1_func)
+    """The result data should behave according to that to that model."""
 
     def __post_init__(self):
         """Do some checks if the data given is correct. If no initial fitting parameters are given,
@@ -88,7 +89,8 @@ class DecayWithOffsetResult(DecayResult):
 
     B: Optional[Number] = None
     Berr: Optional[Number] = None
-    func: Iterable = field(default=exp1B_func)
+    model: Iterable = field(default=exp1B_func)
+    """The result data should behave according to that to that model."""
 
     def __post_init__(self):
         super().__post_init__()
@@ -146,7 +148,7 @@ def plot_decay_result(
     )
     # Build the fit and plot the fit.
     x_fit = np.linspace(min(result.x), max(result.x), 100)
-    y_fit = result.func(x_fit, *result.fitting_params)
+    y_fit = result.model(x_fit, *result.fitting_params)
     fig.add_trace(
         go.Scatter(x=x_fit, y=y_fit, name=str(result), line=go.scatter.Line(dash="dot"))
     )
