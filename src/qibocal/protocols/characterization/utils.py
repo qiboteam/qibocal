@@ -26,17 +26,17 @@ def lorentzian(frequency, amplitude, center, sigma, offset):
 
 
 def lorentzian_fit(data, qubit):
-    qubit_data = data.measurement[qubit]
-    frequencies = qubit_data.frequency / 1e9
-    voltages = qubit_data.voltage * 1e4
+    qubit_data = data[qubit]
+    frequencies = qubit_data.freq / 1e9
+    voltages = qubit_data.msr * 1e4
     model_Q = lmfit.Model(lorentzian)
 
     # Guess parameters for Lorentzian max or min
     if (
-        data.config.resonator_type == "3D"
+        data.resonator_type == "3D"
         and data.__class__.__name__ == "ResonatorSpectroscopyData"
     ) or (
-        data.config.resonator_type == "2D"
+        data.resonator_type == "2D"
         and data.__class__.__name__ == "QubitSpectroscopyData"
     ):
         guess_center = frequencies[
@@ -87,15 +87,15 @@ def spectroscopy_plot(data, fit: Results, qubit):
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
     )
-    qubit_data = data.measurement[qubit]
+    qubit_data = data[qubit]
 
     fitting_report = ""
 
-    frequencies = qubit_data.frequency / 1e9
+    frequencies = qubit_data.freq / 1e9
     fig.add_trace(
         go.Scatter(
             x=frequencies,
-            y=qubit_data.voltage * 1e4,
+            y=qubit_data.msr * 1e4,
             marker_color=get_color(0),
             opacity=1,
             name="Frequency",
@@ -137,10 +137,10 @@ def spectroscopy_plot(data, fit: Results, qubit):
         row=1,
         col=1,
     )
-    if data.config.power_level is PowerLevel.low:
+    if data.power_level is PowerLevel.low:
         label = "readout frequency"
         freq = fit.frequency
-    elif data.config.power_level is PowerLevel.high:
+    elif data.power_level is PowerLevel.high:
         label = "bare resonator frequency"
         freq = fit.bare_frequency
     else:
