@@ -13,6 +13,7 @@ from qibocal.calibrations.niGSC.basics.fitting import (
     fit_exp1_func,
     fit_exp1B_func,
 )
+from qibocal.protocols.characterization.RB.utils import ci_to_str
 
 
 @dataclass
@@ -35,7 +36,7 @@ class DecayResult(Results):
         """
         if len(self.y) != len(self.x):
             raise ValueError(
-                "Lenght of y and x must agree. len(x)={} != len(y)={}".format(
+                "Length of y and x must agree. len(x)={} != len(y)={}".format(
                     len(self.x), len(self.y)
                 )
             )
@@ -83,8 +84,7 @@ class DecayResult(Results):
 
         if n_bootstrap < 1:
             self.fitting_errors = pcov
-            error_y = np.std(self.y_scatter, axis=1)
-            self.error_y = error_y  # np.vstack([error_y, error_y])
+            self.error_y = np.std(self.y_scatter, axis=1)
             return
 
         # Semi-parametric bootstrap resampling
@@ -205,41 +205,55 @@ def plot_decay_result(
     # Initiate an empty figure if none was given.
     if fig is None:
         fig = go.Figure()
-    # If result.error_y is given, create a dictionary for the error bars
-    error_y_dict = None
-    if isinstance(result.error_y, numeric):
-        error_y_dict = dict(
-            type="constant",
-            value=result.error_y,
-        )
-    elif isinstance(result.error_y[0], Iterable) is True:
-        error_y_dict = dict(
-            type="data",
-            symmetric=False,
-            array=result.error_y[1],
-            arrayminus=result.error_y[0],
-        )
-    else:
-        error_y_dict = dict(
-            type="data",
-            array=result.error_y,
-        )
     # Plot the x and y data from the result, they are (normally) the averages.
     fig.add_trace(
         go.Scatter(
             x=result.x,
             y=result.y,
-            error_y=error_y_dict,
             line=dict(color="#aa6464"),
             mode="markers",
             name="average",
         )
     )
+    # If result.error_y is given, create a dictionary for the error bars
+    if hasattr(result, "error_y"):
+        if isinstance(result.error_y, Number):
+            error_y_dict = dict(
+                type="constant",
+                value=result.error_y,
+            )
+        elif isinstance(result.error_y[0], Iterable) is True:
+            error_y_dict = dict(
+                type="data",
+                symmetric=False,
+                array=result.error_y[1],
+                arrayminus=result.error_y[0],
+            )
+        else:
+            error_y_dict = dict(
+                type="data",
+                array=result.error_y,
+            )
+        fig.add_trace(
+            go.Scatter(
+                x=result.x,
+                y=result.y,
+                error_y=error_y_dict,
+                line=dict(color="#aa6464"),
+                mode="markers",
+                name="error bars",
+            )
+        )
     # Build the fit and plot the fit.
     x_fit = np.linspace(min(result.x), max(result.x), 100)
     y_fit = result.func(x_fit, *result.fitting_params)
     fig.add_trace(
-        go.Scatter(x=x_fit, y=y_fit, name=str(result), line=go.scatter.Line(dash="dot"))
+        go.Scatter(
+            x=x_fit,
+            y=y_fit,
+            name=str(result),
+            line=go.scatter.Line(dash="dot", color="#00cc96"),
+        )
     )
     return fig
 
