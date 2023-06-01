@@ -140,6 +140,7 @@ def _aquisition(
         )
 
         # repeat the experiment as many times as defined by nshots
+        sequence.remove(ro_pulses[pair[0]])
         results = platform.sweep(
             sequence,
             ExecutionParameters(
@@ -156,7 +157,6 @@ def _aquisition(
         for pair in qubit_pairs:
             # WHEN MULTIPLEXING IS WORKING
             # for state, qubit in zip(["low","high"], pair):
-            sequence.remove(ro_pulses[pair[0]])
             for state, qubit in zip(["high"], [pair[1]]):
                 # average msr, phase, i and q over the number of shots defined in the runcard
                 ro_pulse = ro_pulses[qubit]
@@ -300,10 +300,10 @@ def _plot(data: CouplerCzFluxTimeData, fit: CouplerCzFluxTimeResults, qubit):
                 col=states.index(state) + 1,
             )
 
-        fig.update_layout(
-            coloraxis=dict(colorscale="Viridis", colorbar=dict(x=0.45)),
-            coloraxis2=dict(colorscale="Cividis", colorbar=dict(x=1)),
-        )
+            fig.update_layout(
+                coloraxis=dict(colorscale="Viridis", colorbar=dict(x=0.45)),
+                coloraxis2=dict(colorscale="Cividis", colorbar=dict(x=1)),
+            )
 
         fig.update_layout(
             title=f"Qubit {qubit} cz {values}",

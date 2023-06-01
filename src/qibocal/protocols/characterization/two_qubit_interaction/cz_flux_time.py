@@ -234,6 +234,7 @@ def _plot(data: CzFluxTimeData, fit: CzFluxTimeResults, qubit):
     fig = make_subplots(rows=1, cols=2, subplot_titles=("high", "low"))
     states = ["high", "low"]
     # Plot data
+    colouraxis = ["coloraxis", "coloraxis2"]
     for state, q in zip(
         states, [2, qubit]
     ):  # When multiplex works zip(["high", "low"], [qubit, 2])
@@ -253,9 +254,15 @@ def _plot(data: CzFluxTimeData, fit: CzFluxTimeResults, qubit):
                     "probability"
                 ],
                 name=f"Qubit {q} |{state}>",
+                coloraxis=colouraxis[states.index(state)],
             ),
             row=1,
             col=states.index(state) + 1,
+        )
+
+        fig.update_layout(
+            coloraxis=dict(colorscale="Viridis", colorbar=dict(x=0.45)),
+            coloraxis2=dict(colorscale="Cividis", colorbar=dict(x=1)),
         )
     fig.update_layout(
         title=f"Qubit {qubit} swap frequency",
