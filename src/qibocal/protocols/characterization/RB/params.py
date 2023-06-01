@@ -18,6 +18,8 @@ class RBParameters(Parameters):
     """Sets how many iterations over the same depth value."""
     nshots: int
     """For each sequence how many shots for statistics should be performed."""
+    n_bootstrap: int = 1
+    """Number of bootstrap iterations for the fit uncertainties. Defaults to 1."""
     noise_model: str = ""
     """For simulation purposes, string has to match what is in qibocal. ... basics.noisemodels"""
     noise_params: list = field(default_factory=list)

@@ -8,13 +8,14 @@ from qibo.noise import NoiseModel
 from qibocal.auto.operation import Routine
 from qibocal.calibrations.niGSC.standardrb import ModuleFactory as StandardRBScan
 from qibocal.protocols.characterization.RB.result import DecayWithOffsetResult
-from qibocal.protocols.characterization.RB.utils import extract_from_data
+from qibocal.protocols.characterization.RB.utils import ci_to_str, extract_from_data
 
 from .data import RBData
 from .params import RBParameters
 
 NoneType = type(None)
 NPULSES_PER_CLIFFORD = 1.875
+
 
 @dataclass
 class StandardRBResult(DecayWithOffsetResult):
@@ -33,8 +34,11 @@ class StandardRBResult(DecayWithOffsetResult):
         """
         infidelity = (1 - self.p) / 2
         self.fidelity_dict = {
-            "fidelity": 1 - infidelity,
-            "pulse fidelity": 1 - infidelity / NPULSES_PER_CLIFFORD,
+            "fidelity": [1 - infidelity, self.perr / 2],
+            "pi/2 fidelity": [
+                1 - infidelity / NPULSES_PER_CLIFFORD,
+                self.perr / (NPULSES_PER_CLIFFORD * 2),
+            ],
         }
 
 
@@ -148,7 +152,7 @@ def extract(data: RBData) -> StandardRBResult:
     """
 
     result = aggregate(data)
-    result.semi_parametric_bootstrap(100, data.attrs['nshots'])
+    result.fit(data.attrs["n_bootstrap"], data.attrs["nshots"])
     result.calculate_fidelities()
     return result
 
@@ -166,15 +170,10 @@ def plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure]
         Tuple[List[go.Figure], str]:
     """
 
-    table_str = "".join(
-        [
-            f" | {key}: {value}<br>"
-            for key, value in data.attrs.items()
-        ]
-    )
+    table_str = "".join([f" | {key}: {value}<br>" for key, value in data.attrs.items()])
     table_str += "".join(
-        f" | {key}: {value:.4f}\u00B1{result.perr/2:.4f}<br>"
-            for key, value in result.fidelity_dict.items()
+        f" | {key}: {ci_to_str(*value)}<br>"
+        for key, value in result.fidelity_dict.items()
     )
     fig = result.plot()
     return [fig], table_str
