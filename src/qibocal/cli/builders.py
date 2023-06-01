@@ -186,23 +186,37 @@ class ActionBuilder:
     def _allocate_backend(self, backend_name, platform_name, platform_runcard):
         """Allocate the platform using Qibolab."""
         from qibo.backends import GlobalBackend, set_backend
+        from qibolab import dummy
 
         if backend_name == "qibolab":
-            if platform_runcard is None:
-                from qibolab import get_platforms_path
+            if platform_name == dummy.NAME:
+                platform = dummy.create_dummy()
+                platform.dump(f"{self.folder}/platform.yml")
+                platform.dump(f"{self.folder}/new_platform.yml")
+                if platform_runcard is not None:
+                    raise_error(
+                        ValueError, "Dummy platform doesn't support custom runcards."
+                    )
+                set_backend(backend=backend_name, platform=platform_name)
 
-                original_runcard = get_platforms_path() / f"{platform_name}.yml"
             else:
-                original_runcard = platform_runcard
-            # copy of the original runcard that will stay unmodified
-            shutil.copy(original_runcard, f"{self.folder}/platform.yml")
-            # copy of the original runcard that will be modified during calibration
-            updated_runcard = f"{self.folder}/new_platform.yml"
-            shutil.copy(original_runcard, updated_runcard)
-            # allocate backend with updated_runcard
-            set_backend(
-                backend=backend_name, platform=platform_name, runcard=updated_runcard
-            )
+                if platform_runcard is None:
+                    from qibolab import get_platforms_path
+
+                    original_runcard = get_platforms_path() / f"{platform_name}.yml"
+                else:
+                    original_runcard = platform_runcard
+                # copy of the original runcard that will stay unmodified
+                shutil.copy(original_runcard, f"{self.folder}/platform.yml")
+                # copy of the original runcard that will be modified during calibration
+                updated_runcard = f"{self.folder}/new_platform.yml"
+                shutil.copy(original_runcard, updated_runcard)
+                # allocate backend with updated_runcard
+                set_backend(
+                    backend=backend_name,
+                    platform=platform_name,
+                    runcard=updated_runcard,
+                )
             backend = GlobalBackend()
             return backend, backend.platform
         else:
