@@ -7,8 +7,9 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibo import gates
 from qibo.config import log
-from qibolab import Platform
-from qibolab.platforms.abstract import AbstractPlatform
+
+# from qibolab import Platform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.transpilers.unitary_decompositions import u3_decomposition
 
@@ -113,7 +114,7 @@ INT_TO_GATE = {
     6: lambda q: gates.RX(q, np.pi / 2),  # U3(q, np.pi / 2, -np.pi / 2, np.pi / 2),
     7: lambda q: gates.RX(q, -np.pi / 2),  # U3(q, -np.pi / 2, -np.pi / 2, np.pi / 2),
     8: lambda q: gates.RY(q, np.pi / 2),  # U3(q, np.pi / 2, 0, 0),
-    9: lambda q: gates.RY(q, np.pi / 2),  # U3(q, -np.pi / 2, 0, 0),
+    9: lambda q: gates.RY(q, -np.pi / 2),  # U3(q, -np.pi / 2, 0, 0),
     # 2pi/3 rotations
     10: lambda q: gates.U3(q, np.pi / 2, -np.pi / 2, 0),  # Rx(pi/2)Ry(pi/2)
     11: lambda q: gates.U3(q, np.pi / 2, -np.pi / 2, np.pi),  # Rx(pi/2)Ry(-pi/2)
@@ -164,7 +165,7 @@ class RBSequence:
         theta, phi, lam = u3_decomposition(inverse_unitary)
         return gates.U3(q, theta, phi, lam)
 
-    def circuit_to_sequence(self, platform: AbstractPlatform, qubit, circuit, size):
+    def circuit_to_sequence(self, platform: Platform, qubit, circuit, size):
         # Define PulseSequence
         sequence = PulseSequence()
         virtual_z_phases = defaultdict(int)

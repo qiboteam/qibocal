@@ -115,7 +115,7 @@ def _acquisition(
                     {
                         "sequence[dimensionless]": 0,  # TODO: Store sequences
                         "length[dimensionless]": len(circuit[0]),
-                        "probabilities[dimensionless]": r["state_0"][0],
+                        "probabilities[dimensionless]": r["0"][0],
                         "qubit": qubit.name,
                     }
                 )
