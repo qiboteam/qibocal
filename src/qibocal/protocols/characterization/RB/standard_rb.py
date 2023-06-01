@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Iterable, List, Tuple, Union
+from typing import Iterable, List, Optional, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
@@ -13,6 +13,7 @@ from qibocal.protocols.characterization.RB.utils import ci_to_str, extract_from_
 from .data import RBData
 from .params import RBParameters
 
+PULSES_PER_CLIFFORD = 1.875
 NoneType = type(None)
 NPULSES_PER_CLIFFORD = 1.875
 
@@ -57,16 +58,16 @@ def setup_scan(params: RBParameters) -> Iterable:
 
 def execute(
     scan: Iterable,
-    nshots: Union[int, NoneType] = None,
-    noise_model: Union[NoiseModel, NoneType] = None,
+    nshots: Optional[int] = None,
+    noise_model: Optional[NoiseModel] = None,
 ) -> List[dict]:
     """Execute a given scan with the given number of shots and if its a simulation with the given
     noise model.
 
     Args:
         scan (Iterable): The ensemble of experiments (here circuits)
-        nshots (Union[int, NoneType], optional): Number of shots per circuit. Defaults to None.
-        noise_model (Union[NoiseModel, NoneType], optional): If its a simulation a noise model
+        nshots Optional[int]: Number of shots per circuit. Defaults to None.
+        noise_model Optional[NoiseModel]: If its a simulation a noise model
             can be applied. Defaults to None.
 
     Returns:
