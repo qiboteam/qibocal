@@ -117,7 +117,7 @@ actions:
   - id: rabi
     priority: 0
     operation: rabi_amplitude
-    main: t1
+    main: rabi length
     parameters:
       min_amp_factor: 0.0
       max_amp_factor: 4.0
@@ -129,6 +129,18 @@ actions:
   - id: rabi length
     priority: 0
     operation: rabi_length
+    main: rabi length sequences
+    parameters:
+      pulse_duration_start: 4
+      pulse_duration_end: 84
+      pulse_duration_step: 8
+      pulse_amplitude: 0.5
+      nshots: 1024
+
+  - id: rabi length sequences
+    priority: 0
+    operation: rabi_length_sequences
+    main: t1
     parameters:
       pulse_duration_start: 4
       pulse_duration_end: 84
@@ -139,15 +151,17 @@ actions:
   - id: t1
     priority: 0
     operation: t1
+    main: t1 sequences
     parameters:
       delay_before_readout_start: 0
       delay_before_readout_end: 20_000
       delay_before_readout_step: 2000
       nshots: 1024
 
-  - id: t1
+  - id: t1 sequences
     priority: 0
     operation: t1_sequences
+    main: t2
     parameters:
       delay_before_readout_start: 0
       delay_before_readout_end: 20_000
@@ -157,13 +171,14 @@ actions:
   - id: t2
     priority: 0
     operation: t2
+    main: t2 sequences
     parameters:
       delay_between_pulses_start: 16
       delay_between_pulses_end: 20000
       delay_between_pulses_step: 100
       nshots: 10
 
-  - id: t2
+  - id: t2 sequences
     priority: 0
     operation: t2_sequences
     parameters:
@@ -182,7 +197,7 @@ actions:
       n_osc: 10
       nshots: 10
 
-  - id: ramsey_detuned
+  - id: ramsey detuned sequences
     priority: 0
     operation: ramsey_sequences
     parameters:
@@ -200,7 +215,7 @@ actions:
       delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
       delay_between_pulses_end: 5000
       delay_between_pulses_step: 500 # must be a multiple of 4
-      n_osc: 10
+      n_osc: 0
       nshots: 1024
 
 
