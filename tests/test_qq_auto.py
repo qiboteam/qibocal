@@ -8,9 +8,6 @@ from qibocal.cli.auto_builder import AutoCalibrationBuilder
 PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/test_autocalibration.yml"
 
 
-# FIXME: https://github.com/qiboteam/qibolab/issues/454
-# TODO: improve tests when dummy is available
-@pytest.mark.skip(reason="Waiting for dummy platform support.")
 @pytest.mark.parametrize("update", [True, False])
 def test_qq_auto_dummy(update):
     """Test full calibration pipeline for autocalibration."""

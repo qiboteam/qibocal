@@ -35,7 +35,6 @@ def qubit_states(folder, routine, qubit, format):
             data.df = data.df[data.df["qubit"] == qubit]
         except:
             data = DataUnits(options=["qubit", "iteration", "state"])
-
         parameters = load_data(folder, subfolder, routine, format, "parameters")
         parameters.df = parameters.df[parameters.df["qubit"] == qubit]
         models_name = parameters.df["model_name"].to_list()
