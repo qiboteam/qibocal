@@ -8,8 +8,13 @@ from qibo.noise import NoiseModel
 from qibo.quantum_info import random_clifford
 
 from qibocal.auto.operation import Routine
+
 <<<<<<< HEAD
-from qibocal.protocols.characterization.RB.result import DecayWithOffsetResult, plot_decay_result
+from qibocal.protocols.characterization.RB.result import (
+    DecayWithOffsetResult,
+    plot_decay_result,
+)
+
 =======
 from qibocal.protocols.characterization.RB.circuit_tools import (
     add_inverse_layer,
@@ -18,6 +23,7 @@ from qibocal.protocols.characterization.RB.circuit_tools import (
     layer_circuit,
 )
 from qibocal.protocols.characterization.RB.result import DecayWithOffsetResult
+
 >>>>>>> e9c236cec9757d14eb815bae0220596f40d1abfd
 from qibocal.protocols.characterization.RB.utils import extract_from_data
 

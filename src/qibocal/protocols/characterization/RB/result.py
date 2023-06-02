@@ -1,7 +1,7 @@
 from collections import Counter
 from dataclasses import dataclass, field
 from numbers import Number
-from typing import Iterable, List, Optional, Tuple, Union, Dict
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import plotly.graph_objects as go
