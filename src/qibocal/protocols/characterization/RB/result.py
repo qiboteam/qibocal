@@ -64,11 +64,12 @@ class DecayResult(Results):
 
     def plot(self):
         """Plots the histogram data for each point and the averges plus the fit."""
-
-        if self.y_scatter is not None:
-            self.fig = plot_hists_result(self)
-        self.fig = plot_decay_result(self, self.fig)
-        return self.fig
+        self.fig = plot_decay_result(self)
+        return fig
+        # if self.y_scatter is not None:
+        #     self.fig = plot_hists_result(self)
+        # self.fig = plot_decay_result(self, self.fig)
+        # return self.fig
 
     def __str__(self):
         """Overwrite the representation of the object with the fitting parameters if there are any."""
@@ -120,9 +121,7 @@ class DecayWithOffsetResult(DecayResult):
             return "DecayResult: Ap^x+B"
 
 
-def plot_decay_result(
-    result: DecayResult, fig: Optional[go.Figure] = None
-) -> go.Figure:
+def plot_decay_result(result: DecayResult) -> go.Figure:
     """Plots the average and the fitting data from a `DecayResult`.
 
     Args:
@@ -133,9 +132,11 @@ def plot_decay_result(
         go.Figure: Figure with at least two traces, one for the data, one for the fit.
     """
 
-    # Initiate an empty figure if none was given.
-    if fig is None:
+    if result.y_scatter is not None:
+        fig = plot_hists_result(result)
+    else:
         fig = go.Figure()
+
     # Plot the x and y data from the result, they are (normally) the averages.
     fig.add_trace(
         go.Scatter(
