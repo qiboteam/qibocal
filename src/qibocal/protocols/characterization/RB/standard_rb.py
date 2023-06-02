@@ -14,13 +14,16 @@ from qibocal.protocols.characterization.RB.circuit_tools import (
     embed_circuit,
     layer_circuit,
 )
-from qibocal.protocols.characterization.RB.result import DecayWithOffsetResult
+from qibocal.protocols.characterization.RB.result import (
+    DecayWithOffsetResult,
+    plot_decay_result,
+)
 from qibocal.protocols.characterization.RB.utils import extract_from_data, number_to_str
 
 from .data import RBData
 from .params import RBParameters
 
-PULSES_PER_CLIFFORD = 1.875
+NPULSES_PER_CLIFFORD = 1.875
 
 
 @dataclass
@@ -50,12 +53,12 @@ class StandardRBResult(DecayWithOffsetResult):
 
 def setup_scan(params: RBParameters) -> Iterable:
     """Returns an iterator of single-qubit random self-inverting Clifford circuits.
+    ls
+        Args:
+            params (RBParameters): Parameters of the RB protocol.
 
-    Args:
-        params (RBParameters): Parameters of the RB protocol.
-
-    Returns:
-        Iterable: The iterator of circuits.
+        Returns:
+            Iterable: The iterator of circuits.
     """
 
     def make_circuit(depth):
@@ -124,7 +127,9 @@ def aggregate(data: RBData) -> StandardRBResult:
 
     # The signal is here the survival probability.
     data_agg = data.assign(signal=lambda x: p0s(x.samples.to_list()))
-    return StandardRBResult(*extract_from_data(data_agg, "signal", "depth", list))
+    return StandardRBResult(
+        *extract_from_data(data_agg, "signal", "depth", list), meta_data=data.attrs
+    )
 
 
 def acquire(params: RBParameters, *args) -> RBData:
@@ -189,19 +194,20 @@ def plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure]
     Returns:
         Tuple[List[go.Figure], str]:
     """
-    meta_data_dict = deepcopy(data.attrs)
-    if not meta_data_dict["noise_model"]:
-        del meta_data_dict["noise_model"]
-        del meta_data_dict["noise_model"]
-    table_str = "".join(
-        [f" | {key}: {value}<br>" for key, value in meta_data_dict.items()]
-    )
+    meta_data = deepcopy(result.meta_data)
+    meta_data.pop("depths")
+    if not meta_data["noise_model"]:
+        meta_data.pop("noise_model")
+        meta_data.pop("noise_params")
+        meta_data.pop("nqubits")
+
+    table_str = "".join([f" | {key}: {value}<br>" for key, value in meta_data.items()])
 
     table_str += "".join(
         f" | {key}: {number_to_str(*value)}<br>"
         for key, value in result.fidelity_dict.items()
     )
-    fig = result.plot()
+    fig = plot_decay_result(result)
     return [fig], table_str
 
 

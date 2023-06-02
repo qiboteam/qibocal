@@ -2,7 +2,7 @@ from collections import Counter
 from copy import deepcopy
 from dataclasses import dataclass, field
 from numbers import Number
-from typing import Iterable, List, Optional, Tuple, Union
+from typing import Dict, Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import plotly.graph_objects as go
@@ -32,6 +32,7 @@ class DecayResult(Results):
     # Model and the fitting function
     model: Iterable = field(default=exp1_func)
     fit_func: Iterable = field(default=fit_exp1_func)
+    meta_data: Dict = field(default_factory=dict)
     """The result data should behave according to that to that model."""
 
     def __post_init__(self):
@@ -52,6 +53,7 @@ class DecayResult(Results):
             self.A = np.max(self.y) - np.min(self.y)
         if self.p is None:
             self.p = 0.9
+        self.fig = None
 
     @property
     def fitting_params(self):
@@ -175,14 +177,13 @@ class DecayResult(Results):
 
     def plot(self):
         """Plots the histogram data for each point and the averges plus the fit."""
-
-        if self.y_scatter is not None:
-            self.fig = plot_hists_result(self)
-        self.fig = plot_decay_result(self, self.fig)
+        self.fig = plot_decay_result(self)
         return self.fig
 
     def __str__(self):
-        """Overwrite the representation of the object with the fitting parameters if there are any."""
+        """Overwrite the representation of the object with the fitting parameters
+        if there are any.
+        """
 
         if all(param is not None for param in self.fitting_params):
             return "Fit: y=Ap^x<br>A: {}<br>p: {}".format(
@@ -225,7 +226,9 @@ class DecayWithOffsetResult(DecayResult):
         self.Aerr, self.perr, self.Berr = value
 
     def __str__(self):
-        """Overwrite the representation of the object with the fitting parameters if there are any."""
+        """Overwrite the representation of the object with the fitting parameters
+        if there are any.
+        """
 
         if all(param is not None for param in self.fitting_params):
             return "Fit: y=Ap^x+B<br>A: {}<br>p: {}<br>B: {}".format(
@@ -236,9 +239,7 @@ class DecayWithOffsetResult(DecayResult):
         return "DecayResult: Ap^x+B"
 
 
-def plot_decay_result(
-    result: DecayResult, fig: Optional[go.Figure] = None
-) -> go.Figure:
+def plot_decay_result(result: DecayResult) -> go.Figure:
     """Plots the average and the fitting data from a `DecayResult`.
 
     Args:
@@ -248,9 +249,12 @@ def plot_decay_result(
     Returns:
         go.Figure: Figure with at least two traces, one for the data, one for the fit.
     """
-    # Initiate an empty figure if none was given.
-    if fig is None:
+
+    if result.y_scatter is not None:
+        fig = plot_hists_result(result)
+    else:
         fig = go.Figure()
+
     # Plot the x and y data from the result, they are (normally) the averages.
     fig.add_trace(
         go.Scatter(
@@ -332,12 +336,10 @@ def get_hists_data(signal: Union[List[Number], np.ndarray]) -> Tuple[list, list]
     """From a dataframe extract for each point the histogram data.
 
     Args:
-        data_agg (DataFrame): The raw data for the histogram.
-        xlabel (str, optional): The label where the x data is stored in the data frame. Defaults to 'depth'.
-        ylabel (str, optional): The label where the y data is stored in the data frame. Defaults to 'signal'.
+        signal (list or np.ndarray): The raw data for the histogram.
 
     Returns:
-        Tuple[list, list]: Counts and bin for each point.
+        Tuple[list, list]: Counts and bins for each point.
     """
 
     # Get the exact number of occurences
