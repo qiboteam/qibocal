@@ -8,23 +8,22 @@ from qibo.noise import NoiseModel
 from qibo.quantum_info import random_clifford
 
 from qibocal.auto.operation import Routine
-<<<<<<< HEAD
-from qibocal.protocols.characterization.RB.result import DecayWithOffsetResult, plot_decay_result
-=======
 from qibocal.protocols.characterization.RB.circuit_tools import (
     add_inverse_layer,
     add_measurement_layer,
     embed_circuit,
     layer_circuit,
 )
-from qibocal.protocols.characterization.RB.result import DecayWithOffsetResult
->>>>>>> e9c236cec9757d14eb815bae0220596f40d1abfd
+from qibocal.protocols.characterization.RB.result import (
+    DecayWithOffsetResult,
+    plot_decay_result,
+)
 from qibocal.protocols.characterization.RB.utils import extract_from_data
 
 from .data import RBData
 from .params import RBParameters
 
-PULSES_PER_CLIFFORD = 1.875
+NPULSES_PER_CLIFFORD = 1.875
 
 
 @dataclass
@@ -46,19 +45,19 @@ class StandardRBResult(DecayWithOffsetResult):
         # Divide infidelity by magic number
         infidelity = (1 - self.p) / 2
         self.fidelity_dict = {
-            "fidelity": 1 - infidelity,
-            "pulse fidelity": 1 - infidelity / PULSES_PER_CLIFFORD,
+            "fidelity": np.round(1 - infidelity, 4),
+            "pulse fidelity": np.round(1 - infidelity / NPULSES_PER_CLIFFORD, 4),
         }
 
 
 def setup_scan(params: RBParameters) -> Iterable:
     """Returns an iterator of single-qubit random self-inverting Clifford circuits.
-ls
-    Args:
-        params (RBParameters): Parameters of the RB protocol.
+    ls
+        Args:
+            params (RBParameters): Parameters of the RB protocol.
 
-    Returns:
-        Iterable: The iterator of circuits.
+        Returns:
+            Iterable: The iterator of circuits.
     """
 
     def make_circuit(depth):
@@ -127,7 +126,9 @@ def aggregate(data: RBData) -> StandardRBResult:
 
     # The signal is here the survival probability.
     data_agg = data.assign(signal=lambda x: p0s(x.samples.to_list()))
-    return StandardRBResult(*extract_from_data(data_agg, "signal", "depth", list), meta_data=data.attrs)
+    return StandardRBResult(
+        *extract_from_data(data_agg, "signal", "depth", list), meta_data=data.attrs
+    )
 
 
 def acquire(params: RBParameters, *args) -> RBData:
