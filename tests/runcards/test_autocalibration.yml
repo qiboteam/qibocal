@@ -109,7 +109,7 @@ actions:
   - id: qubit flux dependence
     priority: 0
     operation: qubit_flux
-    next: t1
+    next: rabi amplitude
     parameters:
       freq_width: 10_000_000
       freq_step: 1_000_000
