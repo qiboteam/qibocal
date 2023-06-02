@@ -123,7 +123,7 @@ def aggregate(data: RBData) -> StandardRBResult:
 
     # The signal is here the survival probability.
     data_agg = data.assign(signal=lambda x: p0s(x.samples.to_list()))
-    return StandardRBResult(*extract_from_data(data_agg, "signal", "depth", list))
+    return StandardRBResult(*extract_from_data(data_agg, "signal", "depth", list), meta_data=data.attrs)
 
 
 def acquire(params: RBParameters, *args) -> RBData:
@@ -186,10 +186,18 @@ def plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure]
     Returns:
         Tuple[List[go.Figure], str]:
     """
+
+    meta_data = deepcopy(result.meta_data)
+    meta_data.pop("depths")
+    if not meta_data["noise_model"]:
+        meta_data.pop("noise_model")
+        meta_data.pop("noise_params")
+        meta_data.pop("nqubits")
+
     table_str = "".join(
         [
             f" | {key}: {value}<br>"
-            for key, value in {**data.attrs, **result.fidelity_dict}.items()
+            for key, value in {**meta_data, **result.fidelity_dict}.items()
         ]
     )
     fig = plot_decay_result(result)

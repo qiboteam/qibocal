@@ -1,7 +1,7 @@
 from collections import Counter
 from dataclasses import dataclass, field
 from numbers import Number
-from typing import Iterable, List, Optional, Tuple, Union
+from typing import Iterable, List, Optional, Tuple, Union, Dict
 
 import numpy as np
 import plotly.graph_objects as go
@@ -28,6 +28,7 @@ class DecayResult(Results):
     p: Optional[Number] = None
     perr: Optional[Number] = None
     model: Iterable = field(default=exp1_func)
+    meta_data: Dict = field(default_factor=dict)
     """The result data should behave according to that to that model."""
 
     def __post_init__(self):
