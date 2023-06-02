@@ -7,7 +7,7 @@ from qibo.noise import NoiseModel
 from copy import deepcopy
 
 from qibocal.auto.operation import Routine
-from qibocal.protocols.characterization.RB.result import DecayWithOffsetResult
+from qibocal.protocols.characterization.RB.result import DecayWithOffsetResult, plot_decay_result
 from qibocal.protocols.characterization.RB.utils import extract_from_data
 from qibo.quantum_info import random_clifford
 
@@ -49,7 +49,7 @@ class StandardRBResult(DecayWithOffsetResult):
 
 def setup_scan(params: RBParameters) -> Iterable:
     """Returns an iterator of single-qubit random self-inverting Clifford circuits.
-
+ls
     Args:
         params (RBParameters): Parameters of the RB protocol.
 
@@ -186,17 +186,13 @@ def plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure]
     Returns:
         Tuple[List[go.Figure], str]:
     """
-    meta_data_dict = deepcopy(data.attrs)
-    if not meta_data_dict['noise_model']:
-        del meta_data_dict['noise_model']
-        del meta_data_dict['noise_model']
     table_str = "".join(
         [
             f" | {key}: {value}<br>"
             for key, value in {**data.attrs, **result.fidelity_dict}.items()
         ]
     )
-    fig = result.plot()
+    fig = plot_decay_result(result)
     return [fig], table_str
 
 
