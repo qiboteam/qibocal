@@ -1,24 +1,28 @@
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Iterable, List, Optional, Tuple
 
 import numpy as np
 import plotly.graph_objects as go
 from qibo.noise import NoiseModel
-from copy import deepcopy
+from qibo.quantum_info import random_clifford
 
 from qibocal.auto.operation import Routine
+<<<<<<< HEAD
 from qibocal.protocols.characterization.RB.result import DecayWithOffsetResult, plot_decay_result
+=======
+from qibocal.protocols.characterization.RB.circuit_tools import (
+    add_inverse_layer,
+    add_measurement_layer,
+    embed_circuit,
+    layer_circuit,
+)
+from qibocal.protocols.characterization.RB.result import DecayWithOffsetResult
+>>>>>>> e9c236cec9757d14eb815bae0220596f40d1abfd
 from qibocal.protocols.characterization.RB.utils import extract_from_data
-from qibo.quantum_info import random_clifford
 
 from .data import RBData
 from .params import RBParameters
-from qibocal.protocols.characterization.RB.circuit_tools import (
-    layer_circuit,
-    add_inverse_layer,
-    add_measurement_layer,
-    embed_circuit
-)
 
 PULSES_PER_CLIFFORD = 1.875
 
@@ -58,17 +62,17 @@ ls
     """
 
     def make_circuit(depth):
-        """Returns a random Clifford circuit with inverse of `depth`.
-        """
+        """Returns a random Clifford circuit with inverse of `depth`."""
+
         def layer_gen():
-            """Returns a circuit with a random single-qubit clifford unitary.
-            """
+            """Returns a circuit with a random single-qubit clifford unitary."""
             return random_clifford(len(params.qubits), return_circuit=True)
 
         circuit = layer_circuit(layer_gen, depth)
         add_inverse_layer(circuit)
         add_measurement_layer(circuit)
         return embed_circuit(circuit, params.nqubits, params.qubits)
+
     return map(make_circuit, params.depths * params.niter)
 
 
@@ -186,7 +190,6 @@ def plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure]
     Returns:
         Tuple[List[go.Figure], str]:
     """
-
     meta_data = deepcopy(result.meta_data)
     meta_data.pop("depths")
     if not meta_data["noise_model"]:

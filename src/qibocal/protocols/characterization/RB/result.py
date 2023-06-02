@@ -49,13 +49,16 @@ class DecayResult(Results):
             self.A = np.max(self.y) - np.min(self.y)
         if self.p is None:
             self.p = 0.9
+        self.fig = None
 
     @property
     def fitting_params(self):
         return (self.A, self.p)
 
     def fit(self, **kwargs):
-        """Fits the data, all parameters given through kwargs will be passed on to the optimization function."""
+        """Fits the data, all parameters given through kwargs will be passed on to the
+        optimization function.
+        """
 
         kwargs.setdefault("bounds", ((0, 0), (1, 1)))
         kwargs.setdefault("p0", (self.A, self.p))
@@ -73,7 +76,9 @@ class DecayResult(Results):
         # return self.fig
 
     def __str__(self):
-        """Overwrite the representation of the object with the fitting parameters if there are any."""
+        """Overwrite the representation of the object with the fitting parameters
+        if there are any.
+        """
 
         if self.perr is not None:
             return (
@@ -81,8 +86,7 @@ class DecayResult(Results):
                     self.A, self.Aerr, self.p, self.perr
                 )
             )
-        else:
-            return "DecayResult: Ap^x"
+        return "DecayResult: Ap^x"
 
 
 @dataclass
@@ -104,7 +108,10 @@ class DecayWithOffsetResult(DecayResult):
         return (*super().fitting_params, self.B)
 
     def fit(self, **kwargs):
-        """Fits the data, all parameters given through kwargs will be passed on to the optimization function."""
+        """Fits the data, all parameters given through kwargs will be passed on to the
+        optimization function.
+        """
+
         kwargs.setdefault("bounds", ((0, 0, 0), (1, 1, 1)))
         kwargs.setdefault("p0", (self.A, self.p, self.B))
         params, errs = fit_exp1B_func(self.x, self.y, **kwargs)
@@ -112,14 +119,15 @@ class DecayWithOffsetResult(DecayResult):
         self.Aerr, self.perr, self.Berr = errs
 
     def __str__(self):
-        """Overwrite the representation of the object with the fitting parameters if there are any."""
+        """Overwrite the representation of the object with the fitting parameters
+        if there are any.
+        """
 
         if self.perr is not None:
             return "Fit: y=Ap^x+B<br>A: {:.3f}\u00B1{:.3f}<br>p: {:.3f}\u00B1{:.3f}<br>B: {:.3f}\u00B1{:.3f}".format(
                 self.A, self.Aerr, self.p, self.perr, self.B, self.Berr
             )
-        else:
-            return "DecayResult: Ap^x+B"
+        return "DecayResult: Ap^x+B"
 
 
 def plot_decay_result(result: DecayResult) -> go.Figure:
@@ -143,7 +151,7 @@ def plot_decay_result(result: DecayResult) -> go.Figure:
         go.Scatter(
             x=result.x,
             y=result.y,
-            line=dict(color="#aa6464"),
+            line={"color": "#aa6464"},
             mode="markers",
             name="average",
         )
@@ -179,7 +187,7 @@ def plot_hists_result(result: DecayResult) -> go.Figure:
                 f"rgba(101, 151, 170, {count/max(counts_list)})"
                 for count in counts_list
             ],
-            text=[count for count in counts_list],
+            text=counts_list,
             hovertemplate="<br>x:%{x}<br>y:%{y}<br>count:%{text}",
             name="iterations",
         )
@@ -192,12 +200,10 @@ def get_hists_data(signal: Union[List[Number], np.ndarray]) -> Tuple[list, list]
     """From a dataframe extract for each point the histogram data.
 
     Args:
-        data_agg (DataFrame): The raw data for the histogram.
-        xlabel (str, optional): The label where the x data is stored in the data frame. Defaults to 'depth'.
-        ylabel (str, optional): The label where the y data is stored in the data frame. Defaults to 'signal'.
+        signal (list or np.ndarray): The raw data for the histogram.
 
     Returns:
-        Tuple[list, list]: Counts and bin for each point.
+        Tuple[list, list]: Counts and bins for each point.
     """
 
     # Get the exact number of occurences

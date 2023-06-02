@@ -60,7 +60,7 @@ def layer_circuit(layer_gen: Callable, depth: int) -> Circuit:
                 TypeError,
                 f"layer_gen must return type Circuit or Gate, but it is type {type(new_layer)}.",
             )
-        if full_circuit is None: # instantiate in first loop
+        if full_circuit is None:  # instantiate in first loop
             full_circuit = Circuit(new_circuit.nqubits)
         full_circuit = full_circuit + new_circuit
     return full_circuit
@@ -70,7 +70,7 @@ def add_inverse_layer(circuit: Circuit, single_qubit=True):
     """Adds an inverse gate/inverse gates at the end of a circuit (in place).
 
     Args:
-        circuit (Circuit): circuit 
+        circuit (Circuit): circuit
     """
 
     if circuit.depth > 0:
