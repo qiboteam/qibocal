@@ -33,7 +33,7 @@ def significant_digit(number: Number):
             if not isinf(np.imag(number)) and np.imag(number) != 0
             else 3,
         )
-    return max(position, 1)
+    return max(position, 3)
 
 
 def number_to_str(
