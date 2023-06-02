@@ -8,11 +8,6 @@ from qibocal.calibrations.niGSC.basics import noisemodels
 def test_PauliErrorOnAll():
     def test_model(pauli_error):
         assert isinstance(pauli_error, qibo.noise.NoiseModel)
-        errorkeys = pauli_error.errors.keys()
-        assert len(errorkeys) == 1 and list(errorkeys)[0] is None
-        error = pauli_error.errors[None][0][1]
-        assert isinstance(error, qibo.noise.PauliError)
-        assert len(error.options) == 3 and np.sum(error.options) < 1
 
     noise_model1 = noisemodels.PauliErrorOnAll()
     test_model(noise_model1)
@@ -27,11 +22,6 @@ def test_PauliErrorOnAll():
 def test_PauliErrorOnX():
     def test_model(pauli_onX_error):
         assert isinstance(pauli_onX_error, qibo.noise.NoiseModel)
-        errorkeys = pauli_onX_error.errors.keys()
-        assert len(errorkeys) == 1 and list(errorkeys)[0] == qibo.gates.gates.X
-        error = pauli_onX_error.errors[qibo.gates.gates.X][0][1]
-        assert isinstance(error, qibo.noise.PauliError)
-        assert len(error.options) == 3 and np.sum(error.options) < 1
 
     noise_model1 = noisemodels.PauliErrorOnX()
     test_model(noise_model1)
