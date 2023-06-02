@@ -151,7 +151,7 @@ class ActionBuilder:
         force (bool): option to overwrite the output folder if it exists already.
     """
 
-    def __init__(self, runcard, folder=None, force=False, update=False):
+    def __init__(self, runcard, folder, force, update):
         # setting output folder
         self.folder = generate_output_folder(folder, force)
 
@@ -183,13 +183,13 @@ class ActionBuilder:
             if platform_name == dummy.NAME:
                 platform = dummy.create_dummy()
                 platform.dump(f"{self.folder}/platform.yml")
-                platform.dump(f"{self.folder}/new_platform.yml")
+                if update:
+                    updated_runcard = f"{self.folder}/new_platform.yml"
+                    platform.dump(updated_runcard)
                 if platform_runcard is not None:
                     raise_error(
                         ValueError, "Dummy platform doesn't support custom runcards."
                     )
-                set_backend(backend=backend_name, platform=platform_name)
-
             else:
                 if platform_runcard is None:
                     from qibolab import get_platforms_path
@@ -199,21 +199,21 @@ class ActionBuilder:
                     original_runcard = platform_runcard
                 # copy of the original runcard that will stay unmodified
                 shutil.copy(original_runcard, f"{self.folder}/platform.yml")
-                # copy of the original runcard that will be modified during calibration
-                updated_runcard = f"{self.folder}/new_platform.yml"
-                shutil.copy(original_runcard, updated_runcard)
-                # allocate backend with updated_runcard
-                set_backend(
-                    backend=backend_name,
-                    platform=platform_name,
-                    runcard=updated_runcard,
-                )
-            backend = GlobalBackend()
-            return backend, backend.platform
-        else:
-            set_backend(backend=backend_name, platform=platform_name)
-            backend = GlobalBackend()
-            return backend, None
+                if update:
+                    # copy of the original runcard that will be modified during calibration
+                    updated_runcard = f"{self.folder}/new_platform.yml"
+                    shutil.copy(original_runcard, updated_runcard)
+                else:
+                    updated_runcard = original_runcard
+
+        # allocate backend with updated_runcard
+        set_backend(
+            backend=backend_name,
+            platform=platform_name,
+            runcard=updated_runcard if update else None,
+        )
+        backend = GlobalBackend()
+        return backend, backend.platform
 
     def save_meta(self):
         import qibocal

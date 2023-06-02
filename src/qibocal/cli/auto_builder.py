@@ -16,7 +16,7 @@ UPDATED_PLATFORM = "new_platform.yml"
 
 
 class AutoCalibrationBuilder(ActionBuilder):
-    def __init__(self, runcard, folder=None, force=False, update=True):
+    def __init__(self, runcard, folder, force, update):
         super().__init__(runcard, folder, force, update)
         # TODO: modify folder in Path in ActionBuilder
         self.folder = Path(self.folder)
