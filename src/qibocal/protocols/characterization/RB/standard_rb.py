@@ -5,9 +5,15 @@ from typing import Iterable, List, Optional, Tuple
 import numpy as np
 import plotly.graph_objects as go
 from qibo.noise import NoiseModel
+from qibo.quantum_info import random_clifford
 
 from qibocal.auto.operation import Routine
-from qibocal.calibrations.niGSC.standardrb import ModuleFactory as StandardRBScan
+from qibocal.protocols.characterization.RB.circuit_tools import (
+    add_inverse_layer,
+    add_measurement_layer,
+    embed_circuit,
+    layer_circuit,
+)
 from qibocal.protocols.characterization.RB.result import DecayWithOffsetResult
 from qibocal.protocols.characterization.RB.utils import extract_from_data, number_to_str
 
@@ -15,8 +21,6 @@ from .data import RBData
 from .params import RBParameters
 
 PULSES_PER_CLIFFORD = 1.875
-NoneType = type(None)
-NPULSES_PER_CLIFFORD = 1.875
 
 
 @dataclass
@@ -38,23 +42,35 @@ class StandardRBResult(DecayWithOffsetResult):
         self.fidelity_dict = {
             "fidelity": [1 - infidelity, self.perr / 2],
             "pi/2 fidelity": [
-                1 - infidelity / NPULSES_PER_CLIFFORD,
-                self.perr / (NPULSES_PER_CLIFFORD * 2),
+                1 - infidelity / PULSES_PER_CLIFFORD,
+                self.perr / (PULSES_PER_CLIFFORD * 2),
             ],
         }
 
 
 def setup_scan(params: RBParameters) -> Iterable:
-    """An iterator building random Clifford sequences with an inverse in the end.
+    """Returns an iterator of single-qubit random self-inverting Clifford circuits.
 
     Args:
-        params (RBParameters): The needed parameters.
+        params (RBParameters): Parameters of the RB protocol.
 
     Returns:
         Iterable: The iterator of circuits.
     """
 
-    return StandardRBScan(params.nqubits, params.depths * params.niter, params.qubits)
+    def make_circuit(depth):
+        """Returns a random Clifford circuit with inverse of `depth`."""
+
+        def layer_gen():
+            """Returns a circuit with a random single-qubit clifford unitary."""
+            return random_clifford(len(params.qubits), return_circuit=True)
+
+        circuit = layer_circuit(layer_gen, depth)
+        add_inverse_layer(circuit)
+        add_measurement_layer(circuit)
+        return embed_circuit(circuit, params.nqubits, params.qubits)
+
+    return map(make_circuit, params.depths * params.niter)
 
 
 def execute(
@@ -173,15 +189,14 @@ def plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure]
     Returns:
         Tuple[List[go.Figure], str]:
     """
+    meta_data_dict = deepcopy(data.attrs)
+    if not meta_data_dict["noise_model"]:
+        del meta_data_dict["noise_model"]
+        del meta_data_dict["noise_model"]
+    table_str = "".join(
+        [f" | {key}: {value}<br>" for key, value in meta_data_dict.items()]
+    )
 
-    meta_data = deepcopy(data.attrs)
-    meta_data.pop("depths")
-    if not meta_data["noise_model"]:
-        meta_data.pop("noise_model")
-        meta_data.pop("noise_params")
-        meta_data.pop("nqubits")
-
-    table_str = "".join([f" | {key}: {value}<br>" for key, value in meta_data.items()])
     table_str += "".join(
         f" | {key}: {number_to_str(*value)}<br>"
         for key, value in result.fidelity_dict.items()
