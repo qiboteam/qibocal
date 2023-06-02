@@ -15,7 +15,7 @@ def significant_digit(number: Number):
         number (Number)
 
     Returns:
-        int: position of the first significant digit or ``1`` if the given number
+        int: position of the first significant digit or ``3`` if the given number
         is integer, ``inf`` or ``0``. Returns ``-1`` if ``number`` is ``None``.
     """
     if number is None:
@@ -24,14 +24,14 @@ def significant_digit(number: Number):
     position = (
         ceil(-log10(abs(np.real(number))))
         if not isinf(np.real(number)) and np.real(number) != 0
-        else 1
+        else 3
     )
     if np.imag(number) != 0:
         position = max(
             position,
             ceil(-log10(abs(np.imag(number))))
             if not isinf(np.imag(number)) and np.imag(number) != 0
-            else 1,
+            else 3,
         )
     return max(position, 1)
 

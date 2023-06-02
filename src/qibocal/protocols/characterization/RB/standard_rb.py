@@ -23,7 +23,7 @@ from qibocal.protocols.characterization.RB.utils import extract_from_data, numbe
 from .data import RBData
 from .params import RBParameters
 
-NPULSES_PER_CLIFFORD = 1.875
+PULSES_PER_CLIFFORD = 1.875
 
 
 @dataclass
