@@ -69,11 +69,7 @@ class DecayResult(Results):
     def plot(self):
         """Plots the histogram data for each point and the averges plus the fit."""
         self.fig = plot_decay_result(self)
-        return fig
-        # if self.y_scatter is not None:
-        #     self.fig = plot_hists_result(self)
-        # self.fig = plot_decay_result(self, self.fig)
-        # return self.fig
+        return self.fig
 
     def __str__(self):
         """Overwrite the representation of the object with the fitting parameters
