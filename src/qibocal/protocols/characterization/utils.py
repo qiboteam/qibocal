@@ -153,8 +153,9 @@ def spectroscopy_plot(data, fit: Results, qubit):
 
     if fit.amplitude[qubit] is not None:
         fitting_report += f"{qubit} | amplitude: {fit.amplitude[qubit]} <br>"
-        if data.power_level is PowerLevel.low:
-            fit.amplitude.clear()
+        if data.power_level is PowerLevel.high:
+            # TODO: find better solution for not updating amplitude in high power
+            fit.amplitude.pop(qubit)
 
     if data.__class__.__name__ == "ResonatorSpectroscopyAttenuationData":
         if fit.attenuation[qubit] is not None and fit.attenuation[qubit] != 0:
