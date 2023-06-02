@@ -26,6 +26,10 @@ class AllXYDragParameters(Parameters):
     """Step beta parameter for Drag pulse."""
     qubits: Optional[list] = field(default_factory=list)
     """Local qubits (optional)."""
+    update: Optional[
+        bool
+    ] = False  # False because this routine does not update the runcard
+    """Runcard update mechanism."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
