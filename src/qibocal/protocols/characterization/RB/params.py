@@ -18,7 +18,7 @@ class RBParameters(Parameters):
     """Sets how many iterations over the same depth value."""
     nshots: int
     """For each sequence how many shots for statistics should be performed."""
-    n_bootstrap: int = 1
+    n_bootstrap: int = 100
     """Number of bootstrap iterations for the fit uncertainties and error bars.
     If ``0``, gets the fit uncertainties from the fitting function and the error bars
     from the distribution of the measurements. Defaults to ``1``."""

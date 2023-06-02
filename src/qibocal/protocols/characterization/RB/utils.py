@@ -1,6 +1,6 @@
 from math import ceil, isinf, log10
 from numbers import Number
-from typing import Callable, Iterable, List, Optional, Tuple, Union
+from typing import Callable, List, Optional, Tuple, Union
 
 import numpy as np
 from pandas import DataFrame
@@ -33,19 +33,22 @@ def significant_digit(number: Number):
             if not isinf(np.imag(number)) and np.imag(number) != 0
             else 3,
         )
-    return max(position, 3)
+    position = 3 if position < 1 else position
+    return position
 
 
 def number_to_str(
     value: Number,
-    uncertainty: Optional[Union[Number, Iterable]] = None,
+    uncertainty: Optional[
+        Union[Number, List[Number], Tuple[Number], np.ndarray]
+    ] = None,
     precision: Optional[int] = None,
 ):
     """Converts a number into a string.
 
     Args:
         value (Number): the number to display
-        uncertainty (Number or Iterable, optional): number or 2-element
+        uncertainty (Number or List[Number] or np.ndarray, optional): number or 2-element
         interval with the low and high uncertainties of the ``value``. Defaults to ``None``.
         precision (int, optional): nonnegative number of floating points of the displayed value.
         If ``None``, defaults to the first significant digit of ``uncertainty``
@@ -54,13 +57,9 @@ def number_to_str(
     Returns:
         str: The number expressed as a string, with the uncertainty if given.
     """
-    # If uncertainty is not given, return the value with precision
-    if uncertainty is None:
-        precision = precision if precision is not None else 3
-        return f"{value:.{precision}f}"
 
     if precision is not None:
-        if not isinstance(precision, int):
+        if isinstance(precision, int) is False:
             raise_error(
                 TypeError,
                 f"`precision` must be of type int. Got {type(precision)} instead.",
@@ -71,12 +70,17 @@ def number_to_str(
                 f"`precision` cannot be negative. Got {precision}.",
             )
 
+    # If uncertainty is not given, return the value with precision
+    if uncertainty is None:
+        precision = precision if precision is not None else 3
+        return f"{value:.{precision}f}"
+
     if isinstance(uncertainty, Number):
         if precision is None:
             precision = significant_digit(uncertainty)
         return f"{value:.{precision}f} \u00B1 {uncertainty:.{precision}f}"
 
-    if isinstance(uncertainty, Iterable) is False:
+    if isinstance(uncertainty, (list, tuple, np.ndarray)) is False:
         raise_error(
             TypeError,
             f"`uncertainty` must be of type Iterable or a Number. Got {type(uncertainty)} instead.",
@@ -114,8 +118,8 @@ def extract_from_data(
 
     If ``groupby_key`` given, aggregate the dataframe, extract the data by which the frame was
     grouped, what was calculated given the ``agg_type`` parameter. Two arrays are returned then,
-    the group values and the grouped (aggregated) data. If no ``agg_type`` given use a linear function.
-    If ``groupby_key`` not given, only return the extracted data from given key.
+    the group values and the grouped (aggregated) data. If no ``agg_type`` given use a linear
+    function. If ``groupby_key`` not given, only return the extracted data from given key.
 
     Args:
         output_key (str): Key name of the wanted output.
