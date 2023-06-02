@@ -189,11 +189,11 @@ def plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure]
     meta_data_dict = deepcopy(data.attrs)
     if not meta_data_dict["noise_model"]:
         del meta_data_dict["noise_model"]
-        del meta_data_dict["noise_model"]
+        del meta_data_dict["noise_params"]
     table_str = "".join(
         [
             f" | {key}: {value}<br>"
-            for key, value in {**data.attrs, **result.fidelity_dict}.items()
+            for key, value in {**meta_data_dict, **result.fidelity_dict}.items()
         ]
     )
     fig = result.plot()
