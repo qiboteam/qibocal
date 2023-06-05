@@ -32,6 +32,7 @@ from .ramsey_sweep import ramsey as ramsey_sweep
 from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
+from .tomography import tomography
 from .two_qubit_interaction.cz_flux_time import cz_flux_time
 from .two_qubit_interaction.cz_virtualz_correction import cz_virtualz_correction
 
@@ -71,3 +72,4 @@ class Operation(Enum):
     coupler_cz_flux_time_nosweep = coupler_cz_flux_time_nosweep
     tune_transition_coupler_flux = tune_transition_coupler_flux
     cz_virtualz_correction = cz_virtualz_correction
+    tomography = tomography

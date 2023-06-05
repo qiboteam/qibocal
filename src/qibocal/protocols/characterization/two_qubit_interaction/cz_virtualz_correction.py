@@ -84,17 +84,11 @@ def _acquisition(
     during the execution of the flux pulse.
     """
 
-    # TODO: generalize this for more qubits?
-    if len(qubits) > 1:
-        raise NotImplementedError
-
-    qubit = list(qubits.keys())[0]
-
+    # FIXME: make general for multiple qubits
+    if 2 in qubits:
+        qubits.pop(2)
+    lowfreq = list(qubits.values())[0].name
     highfreq = 2
-    lowfreq = qubit
-    if qubit > 2:
-        highfreq = qubit
-        lowfreq = 2
 
     data = CzVirtualZCorrectionData()
 
@@ -128,7 +122,7 @@ def _acquisition(
             theta_pulse[setup] = platform.create_RX90_pulse(
                 target_qubit,
                 start=flux_sequence[setup].finish,
-                relative_phase=virtual_z_phase[target_qubit],
+                # relative_phase=virtual_z_phase[target_qubit],
             )
 
             RX_pulse_end[setup] = platform.create_RX_pulse(
@@ -165,7 +159,6 @@ def _acquisition(
                 Parameter.relative_phase, thetas, pulses=[theta_pulse[setup]]
             )
 
-            print(sequence[setup])
             results = platform.sweep(
                 sequence[setup],
                 ExecutionParameters(
@@ -290,9 +283,6 @@ def _plot(data: CzVirtualZCorrectionData, data_fit: CzVirtualZCorrectionResults,
 
     highfreq = 2
     lowfreq = qubit
-    if qubit > 2:
-        highfreq = qubit
-        lowfreq = 2
 
     fig = make_subplots(
         rows=1,
