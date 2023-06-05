@@ -101,7 +101,7 @@ class Task:
             self._data: Data = operation.acquisition(
                 parameters,
             )
-        self._data.to_csv(path)
+        self._data.save(path)
         # TODO: data dump
         # path.write_text(yaml.dump(pydantic_encoder(self.data(base_dir))))
         return operation.fit(self._data)

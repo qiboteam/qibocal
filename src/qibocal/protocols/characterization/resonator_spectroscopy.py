@@ -96,7 +96,7 @@ class ResonatorSpectroscopyData:
     def __getitem__(self, qubit):
         return self.data[qubit]
 
-    def to_csv(self, path):
+    def save(self, path):
         """Store results."""
         self.power_level = self.power_level.name
         my_dict = asdict(self)
