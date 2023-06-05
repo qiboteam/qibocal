@@ -1,7 +1,13 @@
 from dataclasses import dataclass, field
-from typing import Union
+from typing import TypedDict, Union
 
 from qibocal.auto.operation import Parameters
+
+
+class DepthsDict(TypedDict):
+    start: int
+    stop: int
+    step: int
 
 
 @dataclass
@@ -12,7 +18,7 @@ class RBParameters(Parameters):
     """The amount of qubits on the chip """
     qubits: list
     """A list of indices which qubit(s) should be benchmarked """
-    depths: Union[list, dict]
+    depths: Union[list, DepthsDict]
     """A list of depths/sequence lengths. If a dictionary is given the list will be build."""
     niter: int
     """Sets how many iterations over the same depth value."""
