@@ -151,6 +151,7 @@ def _aquisition(
         sweeper_amplitude,
         sweeper_duration,
     )
+    print(results)
 
     # retrieve the results for every qubit
     for pair in params.qubits:
@@ -159,8 +160,9 @@ def _aquisition(
         for state, qubit in zip(["high", "low"], pair):
             # average msr, phase, i and q over the number of shots defined in the runcard
             ro_pulse = ro_pulses[qubit]
+
             result = results[ro_pulse.serial]
-            prob = result
+            prob = result.statistical_frequency
 
             """ Distance probability
             if needed you have to set acquisition_type.INTEGRATION
@@ -199,7 +201,7 @@ def _plot(data: ChevronData, fit: ChevronResults, qubits):
     states = ["high", "low"]
     # Plot data
     colouraxis = ["coloraxis", "coloraxis2"]
-    for state, q in zip(states, [2, qubits]):
+    for state, q in zip(states, [qubits[0], qubits[1]]):
         fig.add_trace(
             go.Heatmap(
                 x=data.df[(data.df["state"] == state) & (data.df["qubit"] == q)][
