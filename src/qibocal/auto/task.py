@@ -6,6 +6,8 @@ from typing import List
 
 from qibolab.platform import Platform
 
+from qibocal.cli.utils import allocate_qubits
+
 from ..protocols.characterization import Operation
 from .operation import Data, DummyPars, Qubits, Results, Routine, dummy_operation
 from .runcard import Action, Id
@@ -90,6 +92,8 @@ class Task:
         path = self.datapath(folder)
 
         if operation.platform_dependent and operation.qubits_dependent:
+            if parameters.qubits:
+                qubits = allocate_qubits(platform, parameters.qubits)
             self._data: Data = operation.acquisition(
                 parameters, platform=platform, qubits=qubits
             )

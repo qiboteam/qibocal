@@ -16,6 +16,10 @@ MESH_SIZE = 50
 
 @dataclass
 class SingleShotClassificationParameters(Parameters):
+    nshots: int
+    """Number of shots."""
+    qubits: Optional[list] = field(default_factory=list)
+    """Local qubits (optional)."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None

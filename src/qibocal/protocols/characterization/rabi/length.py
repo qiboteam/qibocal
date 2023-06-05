@@ -27,6 +27,10 @@ class RabiLengthParameters(Parameters):
     """Pi pulse amplitude. Same for all qubits."""
     nshots: Optional[int] = None
     """Number of shots."""
+    relaxation_time: float
+    """Relxation time (ns)."""
+    qubits: Optional[list] = field(default_factory=list)
+    """Local qubits (optional)."""
     relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
 

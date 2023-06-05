@@ -72,6 +72,11 @@ class AutoCalibrationReportBuilder:
         name = routine.replace("_", " ").title()
         return f"{name} - {iteration}"
 
+    def routine_qubits(self, routine_name, iteration):
+        """Get local qubits parameter from Task if available otherwise use global one."""
+        local_qubits = self.history[(routine_name, iteration)].task.parameters.qubits
+        return local_qubits if local_qubits else self.qubits
+
     def single_qubit_plot(self, routine_name, iteration, qubit):
         node = self.history[(routine_name, iteration)]
         data = node.task.data
