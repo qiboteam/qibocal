@@ -7,6 +7,7 @@ from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import FluxPulse, PulseSequence, Rectangular
+from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -29,16 +30,14 @@ class ChevronParameters(Parameters):
     """Duration maximum."""
     duration_step: float
     """Duration step."""
-    pairs: Union[list[Tuple[int], Tuple[int]]]
+    qubits: list[list[QubitId, QubitId]]
     """Pair(s) of qubit to probe."""
     nshots: Optional[int] = None
     """Number of shots per point."""
 
     def __post_init__(self):
-        if not isinstance(self.pairs, list):
-            self.pairs = [self.pairs]
-        qubits = np.array(self.pairs).flatten()
-        if len(np.unique(qubits)) != len(qubits):
+        flat_qubits = np.array(self.qubits).flatten()
+        if len(np.unique(flat_qubits)) != len(flat_qubits):
             raise ValueError("Qubits cannot appear in more then one pair.")
 
 
@@ -78,7 +77,7 @@ def _aquisition(
     Returns:
         DataUnits: Acquisition data.
     """
-    for pair in params.pairs:
+    for pair in params.qubits:
         # order the qubits so that the low frequency one is the first
         if (
             platform.qubits[pair[0]].drive_frequency
@@ -92,7 +91,7 @@ def _aquisition(
     qd_pulses = {}
     fx_pulses = {}
 
-    for pair in params.pairs:
+    for pair in params.qubits:
         qd_pulses[pair[0]] = platform.create_RX_pulse(pair[0], start=0)
         qd_pulses[pair[1]] = platform.create_RX_pulse(pair[1], start=0)
         fx_pulses[pair[0]] = FluxPulse(
@@ -130,12 +129,12 @@ def _aquisition(
     sweeper_amplitude = Sweeper(
         Parameter.amplitude,
         delta_amplitude_range,
-        pulses=[fx_pulses[pair[0]] for pair in params.pairs],
+        pulses=[fx_pulses[pair[0]] for pair in params.qubits],
     )
     sweeper_duration = Sweeper(
         Parameter.duration,
         delta_duration_range,
-        pulses=[fx_pulses[pair[0]] for pair in params.pairs],
+        pulses=[fx_pulses[pair[0]] for pair in params.qubits],
     )
 
     # create a DataUnits object to store the results,
@@ -154,7 +153,7 @@ def _aquisition(
     )
 
     # retrieve the results for every qubit
-    for pair in params.pairs:
+    for pair in params.qubits:
         # TODO: here it is written ["high", "low"] but the low frequency is pair[0]
         #       was it correct?
         for state, qubit in zip(["high", "low"], pair):
@@ -195,15 +194,12 @@ def _aquisition(
     return sweep_data
 
 
-def _plot(data: ChevronData, fit: ChevronResults, qubit):
-    # TODO number of rows should be number of pairs
+def _plot(data: ChevronData, fit: ChevronResults, qubits):
     fig = make_subplots(rows=1, cols=2, subplot_titles=("high", "low"))
     states = ["high", "low"]
     # Plot data
     colouraxis = ["coloraxis", "coloraxis2"]
-    for state, q in zip(
-        states, [2, qubit]  #  TODO should be for pairs zip(states, pair)
-    ):
+    for state, q in zip(states, [2, qubits]):
         fig.add_trace(
             go.Heatmap(
                 x=data.df[(data.df["state"] == state) & (data.df["qubit"] == q)][
@@ -222,7 +218,7 @@ def _plot(data: ChevronData, fit: ChevronResults, qubit):
                 name=f"Qubit {q} |{state}>",
                 coloraxis=colouraxis[states.index(state)],
             ),
-            row=1,  # TODO should be dynamic
+            row=1,
             col=states.index(state) + 1,
         )
 
@@ -231,7 +227,7 @@ def _plot(data: ChevronData, fit: ChevronResults, qubit):
             coloraxis2=dict(colorscale="Cividis", colorbar=dict(x=1)),
         )
     fig.update_layout(
-        title=f"Qubit {qubit} swap frequency",
+        title=f"Qubits {qubits[0]}-{qubits[1]} swap frequency",
         xaxis_title="Duration [ns]",
         yaxis_title="Amplitude [dimensionless]",
         legend_title="States",
