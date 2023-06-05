@@ -34,9 +34,8 @@ class PauliErrorOnAll(NoiseModel):
         self.build(*params)
 
     def build(self, *params):
-        # TODO for qibo v.0.1.14 change *params to list(zip(["X", "Y", "Z"], params))
         # Add PauliError to gates.Gate
-        self.add(PauliError(*params))
+        self.add(PauliError(list(zip(["X", "Y", "Z"], params))))
 
 
 class PauliErrorOnX(PauliErrorOnAll):
@@ -48,4 +47,4 @@ class PauliErrorOnX(PauliErrorOnAll):
     """
 
     def build(self, *params):
-        self.add(PauliError(*params), gates.X)
+        self.add(PauliError(list(zip(["X", "Y", "Z"], params))), gates.X)
