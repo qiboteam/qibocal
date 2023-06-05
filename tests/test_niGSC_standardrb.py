@@ -4,12 +4,11 @@ import numpy as np
 import pandas as pd
 import pytest
 from plotly.graph_objects import Figure
-from qibo import gates
 from qibo.noise import NoiseModel
 
 from qibocal.calibrations.niGSC import standardrb
 from qibocal.calibrations.niGSC.basics import utils
-from qibocal.protocols.characterization.rb import noisemodels
+from qibocal.protocols.characterization.rrandomized_benchmarkingb import noisemodels
 
 
 def theoretical_outcome(noise_model: NoiseModel) -> float:

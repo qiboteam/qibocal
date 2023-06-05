@@ -7,7 +7,9 @@ from qibo.models import Circuit
 
 from qibocal.calibrations.niGSC.basics.circuitfactory import Qibo1qGatesFactory
 from qibocal.calibrations.niGSC.basics.experiment import *
-from qibocal.protocols.characterization.rb.noisemodels import PauliErrorOnX
+from qibocal.protocols.characterization.randomized_benchmarking.noisemodels import (
+    PauliErrorOnX,
+)
 
 
 @pytest.fixture

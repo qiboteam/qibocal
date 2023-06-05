@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 import qibo
 
-from qibocal.protocols.characterization.rb import noisemodels
+from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
 
 
 def test_PauliErrorOnAll():
