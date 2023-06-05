@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
 import numpy as np
 import plotly.graph_objects as go
@@ -7,6 +7,7 @@ from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Qubits, Results, Routine
@@ -42,9 +43,9 @@ class DragPulseTuningParameters(allxy_drag_pulse_tuning.AllXYDragParameters):
 class DragPulseTuningResults(Results):
     """DragPulseTuning outputs."""
 
-    betas: Dict[Union[str, int], float] = field(metadata=dict(update="beta"))
+    betas: Dict[QubitId, float] = field(metadata=dict(update="beta"))
     """Optimal beta paramter for each qubit."""
-    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
+    fitted_parameters: Dict[QubitId, Dict[str, float]]
     """Raw fitting output."""
 
 

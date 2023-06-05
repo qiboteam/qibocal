@@ -1,11 +1,12 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
 import numpy as np
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
@@ -46,20 +47,18 @@ class SingleShotClassificationData(DataUnits):
 class SingleShotClassificationResults(Results):
     """SingleShotClassification outputs."""
 
-    threshold: Dict[Union[str, int], float] = field(metadata=dict(update="threshold"))
+    threshold: Dict[QubitId, float] = field(metadata=dict(update="threshold"))
     """Threshold for classification."""
-    rotation_angle: Dict[Union[str, int], float] = field(
-        metadata=dict(update="iq_angle")
-    )
+    rotation_angle: Dict[QubitId, float] = field(metadata=dict(update="iq_angle"))
     """Threshold for classification."""
-    mean_gnd_states: Dict[Union[str, int], complex] = field(
+    mean_gnd_states: Dict[QubitId, complex] = field(
         metadata=dict(update="mean_gnd_states")
     )
-    mean_exc_states: Dict[Union[str, int], complex] = field(
+    mean_exc_states: Dict[QubitId, complex] = field(
         metadata=dict(update="mean_exc_states")
     )
-    fidelity: Dict[Union[str, int], float]
-    assignment_fidelity: Dict[Union[str, int], float]
+    fidelity: Dict[QubitId, float]
+    assignment_fidelity: Dict[QubitId, float]
 
 
 def _acquisition(

@@ -1,11 +1,12 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
 import numpy as np
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -36,13 +37,11 @@ class FlippingParameters(Parameters):
 class FlippingResults(Results):
     """Flipping outputs."""
 
-    amplitude: Dict[Union[str, int], float] = field(
-        metadata=dict(update="drive amplitude")
-    )
+    amplitude: Dict[QubitId, float] = field(metadata=dict(update="drive amplitude"))
     """Drive amplitude for each qubit."""
-    amplitude_factors: Dict[Union[str, int], float]
+    amplitude_factors: Dict[QubitId, float]
     """Drive amplitude correction factor for each qubit."""
-    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
+    fitted_parameters: Dict[QubitId, Dict[str, float]]
     """Raw fitting output."""
 
 
