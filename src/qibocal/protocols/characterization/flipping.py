@@ -24,6 +24,8 @@ class FlippingParameters(Parameters):
     """Flip step."""
     qubits: Optional[list] = field(default_factory=list)
     """Local qubits (optional)."""
+    update: Optional[bool] = None
+    """Runcard update mechanism."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None

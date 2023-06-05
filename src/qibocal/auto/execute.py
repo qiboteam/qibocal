@@ -26,6 +26,8 @@ class Executor:
     """Qubits to be calibrated."""
     platform: Optional[Platform] = None
     """Qubits' platform."""
+    update: Optional[bool] = True
+    """Runcard update mechanism."""
     head: Optional[Id] = None
     """The current position."""
     pending: Set[Id] = field(default_factory=set)
@@ -39,6 +41,7 @@ class Executor:
         output: Path,
         platform: Platform = None,
         qubits: Qubits = None,
+        update: bool = True,
     ):
         """Load execution graph and associated executor from a runcard."""
         runcard = Runcard.load(card)
@@ -49,6 +52,7 @@ class Executor:
             output=output,
             platform=platform,
             qubits=qubits,
+            update=update,
         )
 
     def available(self, task: Task):
@@ -128,5 +132,12 @@ class Executor:
             completed = Completed(task, output, Normal())
             self.history.push(completed)
             self.head = self.next()
+
             if self.platform is not None:
-                self.platform.update(completed.res.update)
+                # update platform if:
+                # - global update is True and local not specified
+                # - local update is True
+                if (self.update and task.parameters.update is None) or (
+                    task.parameters.update
+                ):
+                    self.platform.update(completed.res.update)

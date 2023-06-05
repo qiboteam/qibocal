@@ -45,7 +45,13 @@ TARGET_COMPARE_DIR = "qq-compare/"
     is_flag=True,
     help="Use --force option to overwrite the output folder.",
 )
-def command(runcard, folder, force=None):
+@click.option(
+    "--update/--no-update",
+    default=True,
+    help="Use --no-update option to avoid updating iteratively the platform."
+    "With this option the new runcard will not be produced.",
+)
+def command(runcard, folder, force, update):
     """qibocal: Quantum Calibration Verification and Validation using Qibo.
 
     Arguments:
@@ -55,7 +61,7 @@ def command(runcard, folder, force=None):
      - PLATFORM_RUNCARD: Qibolab's platform runcard. If not provided Qibocal will use the runcard available in Qibolab for the platform chosen.
     """
 
-    builder = ActionBuilder(runcard, folder, force)
+    builder = ActionBuilder(runcard, folder, force, update)
     builder.execute()
 
 
@@ -73,19 +79,26 @@ def command(runcard, folder, force=None):
     is_flag=True,
     help="Use --force option to overwrite the output folder.",
 )
-def autocalibration(runcard, folder, force=None):
+@click.option(
+    "--update/--no-update",
+    default=True,
+    help="Use --no-update option to avoid updating iteratively the platform."
+    "With this option the new runcard will not be produced.",
+)
+def autocalibration(runcard, folder, force, update):
     """qibocal: Quantum Calibration Verification and Validation using Qibo.
 
     Arguments:
 
      - RUNCARD: runcard with declarative inputs.
-
-     - PLATFORM_RUNCARD: Qibolab's platform runcard. If not provided Qibocal will use the runcard available in Qibolab for the platform chosen.
+     - PLATFORM_RUNCARD: Qibolab's platform runcard. If not provided Qibocal will use the default one in
+                         https://github.com/qiboteam/qibolab_platforms_qrc.
     """
 
-    builder = AutoCalibrationBuilder(runcard, folder, force)
+    builder = AutoCalibrationBuilder(runcard, folder, force, update=update)
     builder.run()
-    builder.dump_platform_runcard()
+    if update:
+        builder.dump_platform_runcard()
     builder.dump_report()
 
 
