@@ -171,7 +171,7 @@ Experiment
 
 Fitting methods
 """""""""""""""
-.. automodule:: qibocal.protocols.characterization.RB.fitting
+.. automodule:: qibocal.protocols.characterization.randomized_benchmarking.fitting
    :members:
    :undoc-members:
    :show-inheritance:
@@ -192,7 +192,7 @@ Useful functions
 
 Prebuild noise models
 """""""""""""""""""""
-.. automodule:: from qibocal.protocols.characterization.rb.noisemodels
+.. automodule:: from qibocal.protocols.characterization.randomized_benchmarking.noisemodels
    :members:
    :undoc-members:
    :show-inheritance:
