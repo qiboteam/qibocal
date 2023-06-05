@@ -192,7 +192,7 @@ Useful functions
 
 Prebuild noise models
 """""""""""""""""""""
-.. automodule:: qibocal.calibrations.niGSC.basics.noisemodels
+.. automodule:: from qibocal.protocols.characterization.rb.noisemodels
    :members:
    :undoc-members:
    :show-inheritance:

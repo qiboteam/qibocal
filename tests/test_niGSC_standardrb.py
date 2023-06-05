@@ -8,7 +8,8 @@ from qibo import gates
 from qibo.noise import NoiseModel
 
 from qibocal.calibrations.niGSC import standardrb
-from qibocal.calibrations.niGSC.basics import noisemodels, utils
+from qibocal.calibrations.niGSC.basics import utils
+from qibocal.protocols.characterization.rb import noisemodels
 
 
 def theoretical_outcome(noise_model: NoiseModel) -> float:

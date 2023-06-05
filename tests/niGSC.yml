@@ -18,7 +18,7 @@ actions:
     runs: 5
     nshots: 10
     noise_model: PauliErrorOnX
-    noise_params: [0.05, 0.01, 0.01]
+    noise_params: [0.05]
   simulfilteredrb:
     nqubits: 1
     depths: [1,3,5,7,10]

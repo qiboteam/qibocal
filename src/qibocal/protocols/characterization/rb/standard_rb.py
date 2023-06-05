@@ -8,17 +8,18 @@ from qibo.noise import NoiseModel
 from qibo.quantum_info import random_clifford
 
 from qibocal.auto.operation import Routine
-from qibocal.protocols.characterization.RB.circuit_tools import (
+from qibocal.protocols.characterization.rb import noisemodels
+from qibocal.protocols.characterization.rb.circuit_tools import (
     add_inverse_layer,
     add_measurement_layer,
     embed_circuit,
     layer_circuit,
 )
-from qibocal.protocols.characterization.RB.result import (
+from qibocal.protocols.characterization.rb.result import (
     DecayWithOffsetResult,
     plot_decay_result,
 )
-from qibocal.protocols.characterization.RB.utils import extract_from_data
+from qibocal.protocols.characterization.rb.utils import extract_from_data
 
 from .data import RBData
 from .params import RBParameters
@@ -149,8 +150,6 @@ def acquire(params: RBParameters, *args) -> RBData:
     scan = setup_scan(params)
     # For simulations, a noise model can be added.
     if params.noise_model:
-        from qibocal.calibrations.niGSC.basics import noisemodels
-
         noise_model = getattr(noisemodels, params.noise_model)(*params.noise_params)
     else:
         noise_model = None

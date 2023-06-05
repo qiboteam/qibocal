@@ -173,13 +173,13 @@ Noise models and runcards
 
 When simulating the standard RB scheme noise can be added using :class:`qibo.noise.NoiseModel` object.
 It has to be predefined and passed when initiating the experiment object.
-One of the predefined examples is :class:`qibocal.calibrations.niGSC.basics.noisemodels.PauliErrorOnAll`
+One of the predefined examples is :class:`from qibocal.protocols.characterization.rb.noisemodels.PauliErrorOnAll`
 
 .. code-block:: python
 
     # To not alter the iterator when using it, make deep copies.
     from qibocal.calibrations.niGSC import standardrb
-    from qibocal.calibrations.niGSC.basics.noisemodels import PauliErrorOnAll
+    from from qibocal.protocols.characterization.rb.noisemodels import PauliErrorOnAll
 
     nqubits = 1
     runs = 10

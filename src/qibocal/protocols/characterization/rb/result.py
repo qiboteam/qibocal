@@ -7,7 +7,7 @@ import numpy as np
 import plotly.graph_objects as go
 
 from qibocal.auto.operation import Results
-from qibocal.protocols.characterization.RB.fitting import (
+from qibocal.protocols.characterization.rb.fitting import (
     exp1_func,
     exp1B_func,
     fit_exp1_func,

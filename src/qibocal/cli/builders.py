@@ -65,7 +65,7 @@ class niGSCactionParser(ActionParser):
         self.runs = self.runcard["actions"][self.name]["runs"]
         self.nshots = self.runcard["actions"][self.name]["nshots"]
 
-        from qibocal.calibrations.niGSC.basics import noisemodels
+        from qibocal.protocols.characterization.rb import noisemodels
 
         try:
             self.noise_params = self.runcard["actions"][self.name]["noise_params"]
