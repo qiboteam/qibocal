@@ -31,10 +31,6 @@ class ResonatorFluxParameters(Parameters):
     """Number of shots."""
     relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
-    qubits: list = field(default_factory=list)
-    """Local qubits (optional)."""
-    update: Optional[bool] = None
-    """Runcard update mechanism."""
 
 
 @dataclass

@@ -26,6 +26,10 @@ class Action:
     """Alternative subsequent actions, branching from the current one."""
     priority: Optional[int] = None
     """Priority level, determining the execution order."""
+    qubits: List = Field(default_factory=list)
+    """Local qubits (optional)."""
+    update: bool = True
+    """Runcard update mechanism."""
     parameters: Optional[Dict[str, Any]] = None
     """Input parameters, either values or provider reference."""
 
@@ -39,7 +43,7 @@ class Runcard:
     """Structure of an execution runcard."""
 
     actions: List[Action]
-    qubits: Optional[List[Union[int, str]]] = Field(default_factory=list)
+    qubits: Optional[list] = Field(default_factory=list)
     format: Optional[str] = None
 
     @classmethod

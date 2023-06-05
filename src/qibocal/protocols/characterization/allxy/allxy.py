@@ -18,12 +18,6 @@ class AllXYParameters(Parameters):
 
     beta_param: float = None
     """Beta parameter for drag pulse."""
-    qubits: list = field(default_factory=list)
-    """Local qubits (optional)."""
-    update: Optional[
-        bool
-    ] = False  # False because this routine does not update the runcard
-    """Runcard update mechanism."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None

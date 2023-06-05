@@ -29,10 +29,6 @@ class DragPulseTuningParameters(allxy_drag_pulse_tuning.AllXYDragParameters):
     """DRAG pulse beta end sweep parameter."""
     beta_step: float
     """DRAG pulse beta sweep step parameter."""
-    qubits: list = field(default_factory=list)
-    """Local qubits (optional)."""
-    update: Optional[bool] = None
-    """Runcard update mechanism."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None

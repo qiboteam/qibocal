@@ -137,7 +137,5 @@ class Executor:
                 # update platform if:
                 # - global update is True and local not specified
                 # - local update is True
-                if (self.update and task.parameters.update is None) or (
-                    task.parameters.update
-                ):
+                if (self.update and task.update is None) or (task.update):
                     self.platform.update(completed.res.update)

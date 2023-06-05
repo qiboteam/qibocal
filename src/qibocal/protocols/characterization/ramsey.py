@@ -28,10 +28,6 @@ class RamseyParameters(Parameters):
     n_osc: Optional[int] = 0
     """Number of oscillations to induce detuning (optional).
         If 0 standard Ramsey experiment is performed."""
-    qubits: list = field(default_factory=list)
-    """Local qubits (optional)."""
-    update: Optional[bool] = None
-    """Runcard update mechanism."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None

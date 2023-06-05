@@ -123,8 +123,8 @@ actions:
     priority: 0
     operation: rabi_amplitude
     next: rabi length
+    update: False #FIXME: to avoid fitted amplitude > 1
     parameters:
-      update: False
       min_amp_factor: 0.0
       max_amp_factor: 5.0
       step_amp_factor: 0.1
@@ -137,7 +137,6 @@ actions:
     operation: rabi_length
     next: t1
     parameters:
-      update: False
       pulse_duration_start: 10
       pulse_duration_end: 200
       pulse_duration_step: 5

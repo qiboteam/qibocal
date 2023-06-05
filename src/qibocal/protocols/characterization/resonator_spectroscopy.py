@@ -1,11 +1,10 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Dict, Optional, Union
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -28,10 +27,6 @@ class ResonatorSpectroscopyParameters(Parameters):
     amplitude: Optional[float] = None
     """Readout amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
-    qubits: list = field(default_factory=list)
-    """Local qubits (optional)."""
-    update: Optional[bool] = None
-    """Runcard update mechanism."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
@@ -46,18 +41,24 @@ class ResonatorSpectroscopyParameters(Parameters):
 class ResonatorSpectroscopyResults(Results):
     """ResonatorSpectroscopy outputs."""
 
-    frequency: Dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
+    frequency: Dict[Union[str, int], float] = field(
+        metadata=dict(update="readout_frequency")
+    )
     """Readout frequency [GHz] for each qubit."""
-    fitted_parameters: Dict[QubitId, Dict[str, float]]
+    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
     """Raw fitted parameters."""
-    bare_frequency: Optional[Dict[QubitId, float]] = field(
+    bare_frequency: Optional[Dict[Union[str, int], float]] = field(
         default_factory=dict, metadata=dict(update="bare_resonator_frequency")
     )
     """Bare resonator frequency [GHz] for each qubit."""
-    amplitude: Optional[Dict[QubitId, float]] = field(
+    amplitude: Optional[Dict[Union[str, int], float]] = field(
         default_factory=dict, metadata=dict(update="readout_amplitude")
     )
     """Readout amplitude for each qubit."""
+    attenuation: Optional[Dict[Union[str, int], int]] = field(
+        default_factory=dict, metadata=dict(update="readout_attenuation")
+    )
+    """Readout attenuation [dB] for each qubit."""
 
 
 class ResonatorSpectroscopyData(DataUnits):

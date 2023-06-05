@@ -17,12 +17,8 @@ MESH_SIZE = 50
 
 @dataclass
 class SingleShotClassificationParameters(Parameters):
-    nshots: int
-    """Number of shots."""
-    qubits: list = field(default_factory=list)
-    """Local qubits (optional)."""
-    update: Optional[bool] = None
-    """Runcard update mechanism."""
+    """SingleShotClassification runcard inputs."""
+
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
