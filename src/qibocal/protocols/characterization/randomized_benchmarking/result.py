@@ -14,7 +14,9 @@ from qibocal.protocols.characterization.randomized_benchmarking.fitting import (
     fit_exp1_func,
     fit_exp1B_func,
 )
-from qibocal.protocols.characterization.RB.utils import number_to_str
+from qibocal.protocols.characterization.randomized_benchmarking.utils import (
+    number_to_str,
+)
 
 
 @dataclass

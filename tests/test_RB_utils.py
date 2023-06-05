@@ -1,6 +1,8 @@
 import pytest
 
-from qibocal.protocols.characterization.RB.utils import number_to_str
+from qibocal.protocols.characterization.randomized_benchmarking.utils import (
+    number_to_str,
+)
 
 
 @pytest.mark.parametrize("value", [0.555555, 2, -0.1 + 0.1j])
