@@ -68,7 +68,7 @@ def setup_scan(params: RBParameters) -> Iterable:
 
         def layer_gen():
             """Returns a circuit with a random single-qubit clifford unitary."""
-            return random_clifford(len(params.qubits), return_circuit=True)
+            return random_clifford(len(params.qubits))
 
         circuit = layer_circuit(layer_gen, depth)
         add_inverse_layer(circuit)

@@ -19,7 +19,8 @@ class RBParameters(Parameters):
     nshots: int
     """For each sequence how many shots for statistics should be performed."""
     noise_model: str = ""
-    """For simulation purposes, string has to match what is in qibocal. ... basics.noisemodels"""
+    """For simulation purposes, string has to match what is in
+    :mod:`qibocal.protocols.characterization.randomized_benchmarking.noisemodels`"""
     noise_params: list = field(default_factory=list)
     """With this the noise model will be initialized, if not given random values will be used."""
 

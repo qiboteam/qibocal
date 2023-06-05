@@ -1,10 +1,8 @@
-from functools import reduce
 from typing import Callable, List, Tuple, Union
 
 import numpy as np
 from pandas import DataFrame
 from qibo import gates
-from qibo.backends import GlobalBackend
 
 from qibocal.config import raise_error
 
@@ -15,7 +13,7 @@ SINGLE_QUBIT_CLIFFORDS = {
     2: lambda q: gates.RZ(q, np.pi / 2),
     3: lambda q: gates.RZ(q, -np.pi / 2),
     # pi rotations
-    4: lambda q: gates.X(q),  # gates.U3(q, np.pi, 0, np.pi),
+    4: lambda q: gates.X(q),  # U3(q, np.pi, 0, np.pi),
     5: lambda q: gates.Y(q),  # U3(q, np.pi, 0, 0),
     # pi/2 rotations
     6: lambda q: gates.RX(q, np.pi / 2),  # U3(q, np.pi / 2, -np.pi / 2, np.pi / 2),
@@ -43,28 +41,18 @@ SINGLE_QUBIT_CLIFFORDS = {
 }
 
 
-def random_clifford(
-    qubits, return_circuit: bool = False, fuse: bool = False, seed=None, backend=None
-):
+def random_clifford(qubits, seed=None):
     """Generates random Clifford operator(s).
 
     Args:
         qubits (int or list or ndarray): if ``int``, the number of qubits for the Clifford.
             If ``list`` or ``ndarray``, indexes of the qubits for the Clifford to act on.
-        return_circuit (bool, optional): if ``True``, returns a :class:`qibo.gates.Unitary`
-            object. If ``False``, returns an ``ndarray`` object. Default is ``False``.
-        fuse (bool, optional): if ``False``, returns an ``ndarray`` with one Clifford
-            gate per qubit. If ``True``, returns the tensor product of the Clifford
-            gates that were sampled. Default is ``False``.
         seed (int or ``numpy.random.Generator``, optional): Either a generator of
             random numbers or a fixed seed to initialize a generator. If ``None``,
             initializes a generator with a random seed. Default is ``None``.
-        backend (:class:`qibo.backends.abstract.Backend`, optional): backend to be used
-            in the execution. If ``None``, it uses :class:`qibo.backends.GlobalBackend`.
-            Defaults to ``None``.
 
     Returns:
-        (ndarray or list of :class:`qibo.gates.Gate`): Random Clifford operator(s).
+        (list of :class:`qibo.gates.Gate`): Random Clifford operator(s).
     """
 
     if (
@@ -83,27 +71,6 @@ def random_clifford(
     if isinstance(qubits, (list, np.ndarray)) and any(q < 0 for q in qubits):
         raise_error(ValueError, "qubit indexes must be non-negative integers.")
 
-    if not isinstance(return_circuit, bool):
-        raise_error(
-            TypeError,
-            f"return_circuit must be type bool, but it is type {type(return_circuit)}.",
-        )
-
-    if not isinstance(fuse, bool):
-        raise_error(TypeError, f"fuse must be type bool, but it is type {type(fuse)}.")
-
-    if (
-        seed is not None
-        and not isinstance(seed, int)
-        and not isinstance(seed, np.random.Generator)
-    ):
-        raise_error(
-            TypeError, "seed must be either type int or numpy.random.Generator."
-        )
-
-    if backend is None:  # pragma: no cover
-        backend = GlobalBackend()
-
     local_state = (
         np.random.default_rng(seed) if seed is None or isinstance(seed, int) else seed
     )
@@ -112,23 +79,11 @@ def random_clifford(
         qubits = range(qubits)
 
     random_indexes = local_state.integers(0, len(SINGLE_QUBIT_CLIFFORDS), len(qubits))
+    clifford_gates = [
+        SINGLE_QUBIT_CLIFFORDS[p](q) for p, q in zip(random_indexes, qubits)
+    ]
 
-    if return_circuit is True:
-        unitaries = [
-            SINGLE_QUBIT_CLIFFORDS[p](q) for p, q in zip(random_indexes, qubits)
-        ]
-    else:
-        unitaries = [SINGLE_QUBIT_CLIFFORDS[p](0).matrix for p in random_indexes]
-        if len(unitaries) == 1:
-            unitaries = unitaries[0]
-        elif fuse:
-            unitaries = reduce(np.kron, unitaries)
-        elif not fuse:
-            unitaries = np.array(unitaries)
-
-        unitaries = backend.cast(unitaries, dtype=unitaries.dtype)
-
-    return unitaries
+    return clifford_gates
 
 
 def extract_from_data(
