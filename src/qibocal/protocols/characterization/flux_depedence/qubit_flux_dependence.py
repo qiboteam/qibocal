@@ -27,7 +27,7 @@ class QubitFluxParameters(Parameters):
     """Bias step for sweep (V)."""
     drive_amplitude: float
     """Drive pulse amplitude. Same for all qubits."""
-    qubits: Optional[list] = field(default_factory=list)
+    qubits: list = field(default_factory=list)
     """Local qubits (optional)."""
     update: Optional[bool] = None
     """Runcard update mechanism."""

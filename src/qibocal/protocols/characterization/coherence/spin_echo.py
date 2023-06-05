@@ -24,7 +24,7 @@ class SpinEchoParameters(Parameters):
     """Final delay between pulses [ns]."""
     delay_between_pulses_step: int
     """Step delay between pulses (ns)."""
-    qubits: Optional[list] = field(default_factory=list)
+    qubits: list = field(default_factory=list)
     """Local qubits (optional)."""
     update: Optional[bool] = None
     """Runcard update mechanism."""

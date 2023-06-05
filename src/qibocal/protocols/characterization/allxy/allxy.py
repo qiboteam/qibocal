@@ -18,7 +18,7 @@ class AllXYParameters(Parameters):
 
     beta_param: float = None
     """Beta parameter for drag pulse."""
-    qubits: Optional[list] = field(default_factory=list)
+    qubits: list = field(default_factory=list)
     """Local qubits (optional)."""
     update: Optional[
         bool

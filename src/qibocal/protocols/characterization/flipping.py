@@ -22,7 +22,7 @@ class FlippingParameters(Parameters):
     """Maximum number of flips ([RX(pi) - RX(pi)] sequences). """
     nflips_step: int
     """Flip step."""
-    qubits: Optional[list] = field(default_factory=list)
+    qubits: list = field(default_factory=list)
     """Local qubits (optional)."""
     update: Optional[bool] = None
     """Runcard update mechanism."""

@@ -24,7 +24,7 @@ class ResonatorSpectroscopyAttenuationParameters(Parameters):
     power_level: PowerLevel
     """Power regime (low or high). If low the readout frequency will be updated.
     If high both the readout frequency and the bare resonator frequency will be updated."""
-    qubits: Optional[list] = field(default_factory=list)
+    qubits: list = field(default_factory=list)
     """Local qubits (optional)."""
     update: Optional[bool] = None
     """Runcard update mechanism."""

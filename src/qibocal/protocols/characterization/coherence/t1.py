@@ -25,7 +25,7 @@ class T1Parameters(Parameters):
     """Final delay before readout (ns)."""
     delay_before_readout_step: int
     """Step delay before readout (ns)."""
-    qubits: Optional[list] = field(default_factory=list)
+    qubits: list = field(default_factory=list)
     """Local qubits (optional)."""
     update: Optional[bool] = None
     """Runcard update mechanism."""
