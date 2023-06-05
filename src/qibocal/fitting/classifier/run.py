@@ -12,7 +12,7 @@ import pandas as pd
 from qibolab.qubits import Qubit
 from sklearn.metrics import accuracy_score
 
-from . import data, plots
+from . import data
 
 CLS_MODULES = [
     "linear_svm",
@@ -30,8 +30,6 @@ CLS_MODULES = [
 HYPERFILE = "hyperpars.json"
 PREDFILE = "predictions.npy"
 BENCHTABFILE = "benchmarks.csv"
-
-base_dir = pathlib.Path()
 
 
 def import_classifiers(cls_names: List[str]):
@@ -99,7 +97,7 @@ class Classifier:
         return self.savedir / HYPERFILE
 
     def dump(self, path: pathlib.Path):
-        return self.mod.dump(self.trainable_model, path)
+        self.mod.dump(self.trainable_model, path)
 
     @classmethod
     def load_model(cls, name: str, base_dir: pathlib.Path):
@@ -211,8 +209,8 @@ def plot_history(history, save_dir: pathlib.Path):
 
 
 def train_qubit(
-    base_dir: pathlib.Path,
     qubit: Qubit,
+    base_dir: str,
     qubits_data=None,
     classifiers=None,
 ):
@@ -244,7 +242,7 @@ def train_qubit(
     qubit_data = qubits_data[qubits_data["qubit"] == qubit.name]
     nn_epochs = 200
     nn_val_split = 0.2
-    qubit_dir = base_dir / f"qubit{qubit.name}"
+    qubit_dir = pathlib.Path(base_dir) / f"qubit{qubit.name}"
     qubit_dir.mkdir(parents=True, exist_ok=True)
     x_train, x_test, y_train, y_test = data.generate_models(qubit_data)
     models = []
@@ -258,7 +256,6 @@ def train_qubit(
 
     for mod in classifiers:
         classifier = Classifier(mod, qubit_dir)
-        classifier.savedir.mkdir(exist_ok=True)
         logging.info(f"Classification model: {classifier.name}")
         if classifier.name not in qubit.classifiers_hpars:
             hyperpars = classifier.hyperopt(
@@ -267,7 +264,6 @@ def train_qubit(
         else:
             hyperpars = qubit.classifiers_hpars[classifier.name]
         hpars_list.append(hyperpars)
-        classifier.dump_hyper(hyperpars)
         model = classifier.create_model(hyperpars)
 
         if classifier.name == "nn":
@@ -289,12 +285,12 @@ def train_qubit(
         results.name = classifier.name
         results_list.append(results)
         names.append(classifier.name)
+        classifier.savedir.mkdir(exist_ok=True)
+        classifier.dump_hyper(hyperpars)
         dump_preds(y_pred, classifier.savedir)
         classifier.dump(classifier.savedir / classifier.name)
 
     benchmarks_table = pd.DataFrame([asdict(res) for res in results_list])
-    plots.plot_models_results(x_train, x_test, y_test, qubit_dir, models, names)
-    plots.plot_roc_curves(x_test, y_test, qubit_dir, models, names)
     return benchmarks_table, y_test, x_test, models, names, hpars_list
 
 

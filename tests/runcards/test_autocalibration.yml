@@ -1,6 +1,6 @@
 platform: dummy
 
-qubits: [0, 1, 2, 3, 4]
+qubits: [0, 1]
 
 format: csv
 
@@ -15,7 +15,7 @@ actions:
       freq_step: 100_000
       amplitude: 0.9
       power_level: high
-      nshots: 1024
+      nshots: 10
       relaxation_time: 0
 
   - id: resonator high power low attenuation
@@ -27,7 +27,7 @@ actions:
       freq_step: 100_000 # 500_00
       attenuation: 15
       power_level: high
-      nshots: 1024
+      nshots: 10
       relaxation_time:
 
 
@@ -41,7 +41,7 @@ actions:
       min_amp_factor: 0.005
       max_amp_factor: 0.3
       step_amp_factor: 0.005
-      nshots: 1024
+      nshots: 10
       relaxation_time:
 
   - id: resonator_punchout_attenuation
@@ -54,7 +54,7 @@ actions:
       min_att: 4
       max_att: 60
       step_att: 4
-      nshots: 1024
+      nshots: 10
       relaxation_time:
 
   - id: resonator spectroscopy low power
@@ -66,7 +66,7 @@ actions:
       freq_step: 50_000
       amplitude: 0.022
       power_level: low
-      nshots: 1024
+      nshots: 10
       relaxation_time:
 
   - id: resonator low power high attenuation
@@ -79,7 +79,7 @@ actions:
       attenuation: 50
       amplitude: 0.4
       power_level: low
-      nshots: 1024
+      nshots: 10
       relaxation_time: 0
 
   - id: resonator flux dependence
@@ -91,7 +91,7 @@ actions:
       freq_step: 500_000
       bias_width: 0.8
       bias_step:  0.1
-      nshots: 1024
+      nshots: 10
       relaxation_time:
 
   - id: qubit spectroscopy
@@ -103,7 +103,7 @@ actions:
       drive_duration: 1000
       freq_width: 2_000_000
       freq_step: 500_000
-      nshots: 1024
+      nshots: 10
       relaxation_time:
 
   - id: qubit flux dependence
@@ -116,7 +116,7 @@ actions:
       bias_width: 0.8 #0.1
       bias_step:  0.1 # 0.001
       drive_amplitude: 0.005
-      nshots: 1024
+      nshots: 10
       relaxation_time:
 
   - id: t1
@@ -127,7 +127,7 @@ actions:
       delay_before_readout_start: 0
       delay_before_readout_end: 20_000
       delay_before_readout_step: 2000
-      nshots: 1024
+      nshots: 10
       relaxation_time:
 
 
@@ -139,7 +139,7 @@ actions:
       delay_between_pulses_start: 16
       delay_between_pulses_end: 20000
       delay_between_pulses_step: 100
-      nshots: 1024
+      nshots: 10
       relaxation_time:
 
   - id: ramsey detuned
@@ -151,7 +151,7 @@ actions:
       delay_between_pulses_end: 5000
       delay_between_pulses_step: 500 # must be a multiple of 4
       n_osc: 10
-      nshots: 1024
+      nshots: 10
       relaxation_time:
 
   - id: single shot classification
@@ -159,7 +159,7 @@ actions:
     next: allXY
     operation: single_shot_classification
     parameters:
-      nshots: 5000
+      nshots: 10
       relaxation_time:
 
   - id: allXY
@@ -168,7 +168,7 @@ actions:
     next: allxy_drag_pulse_tuning
     parameters:
       beta_param: null
-      nshots: 1024
+      nshots: 10
       relaxation_time:
 
   - id: allxy_drag_pulse_tuning
@@ -179,7 +179,7 @@ actions:
       beta_start: 0
       beta_end: 0.02
       beta_step: 0.01
-      nshots: 1024
+      nshots: 10
       relaxation_time:
 
   - id: drag_pulse_tuning
@@ -190,7 +190,7 @@ actions:
       beta_start: 0
       beta_end: 0.02
       beta_step: 0.01
-      nshots: 1024
+      nshots: 10
       relaxation_time:
 
   - id: spin_echo
@@ -201,7 +201,7 @@ actions:
       delay_between_pulses_start: 0
       delay_between_pulses_end: 20000
       delay_between_pulses_step: 2000
-      nshots: 1024
+      nshots: 10
       relaxation_time:
 
   - id: flipping
@@ -211,7 +211,7 @@ actions:
     parameters:
       nflips_max: 5
       nflips_step: 1
-      nshots: 1024
+      nshots: 10
       relaxation_time:
 
   - id: dispersive shift
@@ -220,7 +220,7 @@ actions:
     parameters:
       freq_width: 10_000_000
       freq_step: 100_000
-      nshots: 1024
+      nshots: 10
       relaxation_time:
 
   - id: Standard RB 1
