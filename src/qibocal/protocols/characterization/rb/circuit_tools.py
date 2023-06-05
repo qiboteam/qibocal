@@ -53,6 +53,9 @@ def layer_circuit(layer_gen: Callable, depth: int) -> Circuit:
         if isinstance(new_layer, Gate):
             new_circuit = Circuit(max(new_layer.qubits) + 1)
             new_circuit.add(new_layer)
+        elif all(isinstance(gate, Gate) for gate in new_layer):
+            new_circuit = Circuit(max(max(gate.qubits) for gate in new_layer) + 1)
+            new_circuit.add(new_layer)
         elif isinstance(new_layer, Circuit):
             new_circuit = new_layer
         else:
