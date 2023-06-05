@@ -43,7 +43,7 @@ def layer_circuit(layer_gen: Callable, depth: int) -> Circuit:
     """
 
     if not isinstance(depth, int) or depth <= 0:
-        raise_error(ValueError, "depth must be type int and positive.")
+        raise_error(ValueError, "Depth must be type int and positive.")
     full_circuit = None
     # Build each layer, there will be depth many in the final circuit.
     for _ in range(depth):
@@ -52,6 +52,9 @@ def layer_circuit(layer_gen: Callable, depth: int) -> Circuit:
         # Ensure new_layer is a circuit
         if isinstance(new_layer, Gate):
             new_circuit = Circuit(max(new_layer.qubits) + 1)
+            new_circuit.add(new_layer)
+        elif all(isinstance(gate, Gate) for gate in new_layer):
+            new_circuit = Circuit(max(max(gate.qubits) for gate in new_layer) + 1)
             new_circuit.add(new_layer)
         elif isinstance(new_layer, Circuit):
             new_circuit = new_layer

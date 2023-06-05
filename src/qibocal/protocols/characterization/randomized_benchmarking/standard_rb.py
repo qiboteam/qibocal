@@ -5,20 +5,24 @@ from typing import Iterable, List, Optional, Tuple
 import numpy as np
 import plotly.graph_objects as go
 from qibo.noise import NoiseModel
-from qibo.quantum_info import random_clifford
 
 from qibocal.auto.operation import Routine
-from qibocal.protocols.characterization.RB.circuit_tools import (
+from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
+from qibocal.protocols.characterization.randomized_benchmarking.circuit_tools import (
     add_inverse_layer,
     add_measurement_layer,
     embed_circuit,
     layer_circuit,
 )
-from qibocal.protocols.characterization.RB.result import (
+from qibocal.protocols.characterization.randomized_benchmarking.result import (
     DecayWithOffsetResult,
     plot_decay_result,
 )
-from qibocal.protocols.characterization.RB.utils import extract_from_data, number_to_str
+from qibocal.protocols.characterization.randomized_benchmarking.utils import (
+    extract_from_data,
+    number_to_str,
+    random_clifford,
+)
 
 from .data import RBData
 from .params import RBParameters
@@ -133,7 +137,7 @@ def aggregate(data: RBData) -> StandardRBResult:
 
 
 def acquire(params: RBParameters, *args) -> RBData:
-    """The data acquisition stage of standard rb.
+    """The data acquisition stage of Standard Randomized Benchmarking.
 
     1. Set up the scan
     2. Execute the scan
@@ -150,8 +154,6 @@ def acquire(params: RBParameters, *args) -> RBData:
     scan = setup_scan(params)
     # For simulations, a noise model can be added.
     if params.noise_model:
-        from qibocal.calibrations.niGSC.basics import noisemodels
-
         noise_model = getattr(noisemodels, params.noise_model)(*params.noise_params)
     else:
         noise_model = None
