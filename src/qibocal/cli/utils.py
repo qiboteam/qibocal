@@ -123,6 +123,13 @@ def generate_output_folder(folder, force):
 def allocate_qubits(platform: Platform, qubit_ids: list):
     """Load platform' qubits."""
     if platform is not None:
+        # if qubits is a list of lists (for two qubits gates), then return a list of dictionaries
+        if isinstance(qubit_ids[0], list):
+            return [
+                {q: platform.qubits[q] for q in pair if q in platform.qubits}
+                for pair in qubit_ids
+            ]
+
         return {q: platform.qubits[q] for q in qubit_ids if q in platform.qubits}
     else:
         return qubit_ids
