@@ -6,7 +6,7 @@ from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
@@ -82,13 +82,17 @@ def _acquisition(
         Parameter.frequency,
         delta_frequency_range,
         pulses=[qd_pulses[qubit] for qubit in qubits],
+        type=SweeperType.OFFSET,
     )
 
     delta_bias_range = np.arange(
         -params.bias_width / 2, params.bias_width / 2, params.bias_step
     )
     bias_sweeper = Sweeper(
-        Parameter.bias, delta_bias_range, qubits=list(qubits.values())
+        Parameter.bias,
+        delta_bias_range,
+        qubits=list(qubits.values()),
+        type=SweeperType.ABSOLUTE,
     )
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
