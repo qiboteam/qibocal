@@ -2468,14 +2468,13 @@ files = [
 
 [[package]]
 name = "qibo"
-version = "0.1.13"
+version = "0.1.14"
 description = "A framework for quantum computing with hardware acceleration."
-category = "main"
 optional = false
 python-versions = ">=3.8,<3.12"
 files = [
-    {file = "qibo-0.1.13-py3-none-any.whl", hash = "sha256:2a3ae42c9b5c38c4fd93814d29a7041936f418907dffaf5d70cf84585b4ec68b"},
-    {file = "qibo-0.1.13.tar.gz", hash = "sha256:bdd78e9e1d719ca6db512b14c36f329c64e8cff1b3a2a50824dd207eb0998034"},
+    {file = "qibo-0.1.14-py3-none-any.whl", hash = "sha256:3b6597b43fb3bfd9f4d22b441192e7e7d187b34957df0a37c2fa57e3ee6f1b66"},
+    {file = "qibo-0.1.14.tar.gz", hash = "sha256:59aaa9b22d4ab2f4a9c8e6a52474682e552e35729391ff4711faea159866f000"},
 ]
 
 [package.dependencies]
@@ -3415,11 +3414,11 @@ docs = ["furo", "jaraco.packaging (>=9)", "jaraco.tidelift (>=1.4)", "rst.linker
 testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more-itertools", "pytest (>=6)", "pytest-black (>=0.3.7)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=1.3)", "pytest-flake8", "pytest-mypy (>=0.9.1)"]
 
 [extras]
-classify = ["keras-tuner", "matplotlib", "onnx", "onnxruntime", "scikit-learn", "seaborn", "skl2onnx", "tensorflow"]
+classify = ["keras-tuner", "matplotlib", "onnx", "onnxruntime", "seaborn", "skl2onnx", "tensorflow"]
 docs = ["Sphinx", "furo", "recommonmark", "sphinx_markdown_tables", "sphinxcontrib-bibtex"]
 viz = ["pydot"]
 
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.12"
-content-hash = "92b0d18e92efc66a8a209bfed1b83ec48df0966d9ccd5e3715ff8cc9e0a2b7e2"
+content-hash = "99136f2f3292beb9714f437b88e852ebb71112d7d66cc2b5a815b6a82748ee34"
