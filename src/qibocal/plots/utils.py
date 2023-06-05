@@ -33,7 +33,6 @@ def get_color_state1(number):
 def load_data(folder, subfolder, routine, data_format, name):
     file = f"{folder}/{subfolder}/{routine}/{name}.csv"
     data = DataUnits()
-    all_columns = pd.read_csv(file, nrows=1).columns.tolist()
     if "fit" in name or "parameters" in name:
         data.df = pd.read_csv(file, header=[0], index_col=[0])
 
