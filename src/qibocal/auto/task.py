@@ -6,7 +6,7 @@ from typing import List
 
 from qibolab.platform import Platform
 
-from qibocal.cli.utils import allocate_qubits
+from qibocal.utils import allocate_qubits
 
 from ..protocols.characterization import Operation
 from .operation import Data, DummyPars, Qubits, Results, Routine, dummy_operation

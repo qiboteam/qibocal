@@ -118,11 +118,3 @@ def generate_output_folder(folder, force):
     log.info(f"Creating directory {folder}.")
     os.makedirs(path)
     return folder
-
-
-def allocate_qubits(platform: Platform, qubit_ids: list):
-    """Load platform' qubits."""
-    if platform is not None:
-        return {q: platform.qubits[q] for q in qubit_ids if q in platform.qubits}
-    else:
-        return qubit_ids

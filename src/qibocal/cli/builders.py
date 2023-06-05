@@ -8,8 +8,9 @@ from pathlib import Path
 import yaml
 
 from qibocal import calibrations
-from qibocal.cli.utils import allocate_qubits, generate_output_folder, load_yaml
+from qibocal.cli.utils import generate_output_folder, load_yaml
 from qibocal.config import raise_error
+from qibocal.utils import allocate_qubits
 
 
 class ActionParser:
