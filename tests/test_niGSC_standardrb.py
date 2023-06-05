@@ -29,9 +29,9 @@ def theoretical_outcome(noise_model: NoiseModel) -> float:
     # Extract the noise acting on unitaries and turn it into the associated
     # error channel.
     error = noise_model.errors[None][0][1]
-    errorchannel = error.channel(0, *error.options)
+    errorchannel = error.channel([0], error.options)
     # Calculate the effective depolarizing parameter.
-    return utils.effective_depol(errorchannel)
+    return utils.effective_depol(errorchannel[0])
 
 
 @pytest.fixture

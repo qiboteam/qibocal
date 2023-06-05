@@ -70,7 +70,7 @@ def setup_scan(params: RBParameters) -> Iterable:
 
         def layer_gen():
             """Returns a circuit with a random single-qubit clifford unitary."""
-            return random_clifford(len(params.qubits), return_circuit=True)
+            return random_clifford(len(params.qubits))
 
         circuit = layer_circuit(layer_gen, depth)
         add_inverse_layer(circuit)
@@ -153,10 +153,11 @@ def acquire(params: RBParameters, *args) -> RBData:
     # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
     scan = setup_scan(params)
     # For simulations, a noise model can be added.
-    if params.noise_model:
-        noise_model = getattr(noisemodels, params.noise_model)(*params.noise_params)
-    else:
-        noise_model = None
+    noise_model = (
+        getattr(noisemodels, params.noise_model)(*params.noise_params)
+        if params.noise_model
+        else None
+    )
     # Execute the scan.
     data = execute(scan, params.nshots, noise_model)
     # Build the data object which will be returned and later saved.

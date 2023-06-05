@@ -213,7 +213,6 @@ actions:
   # - id: Standard RB
   #   priority: 0
   #   operation: standard_rb
-  # #   main: resonator punchout
   #   parameters:
   #     nqubits: 5
   #     qubits: [1]
@@ -222,4 +221,5 @@ actions:
   #     nshots: 128
   #     n_bootstrap: 100
   #     uncertainties: 0.95
-  #    # noise_model: PauliErrorOnAll
+  #     # noise_model: PauliErrorOnAll
+  #     # noise_params: [0.01, 0.01, 0.01]
