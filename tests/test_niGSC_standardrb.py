@@ -8,7 +8,7 @@ from qibo.noise import NoiseModel
 
 from qibocal.calibrations.niGSC import standardrb
 from qibocal.calibrations.niGSC.basics import utils
-from qibocal.protocols.characterization.rrandomized_benchmarkingb import noisemodels
+from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
 
 
 def theoretical_outcome(noise_model: NoiseModel) -> float:
