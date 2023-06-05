@@ -19,7 +19,7 @@ from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
 from .resonator_spectroscopy_attenuation import resonator_spectroscopy_attenuation
-
+from .two_qubit_interaction.snz_tuning import snz_tuning
 
 class Operation(Enum):
     resonator_spectroscopy = resonator_spectroscopy
@@ -41,3 +41,4 @@ class Operation(Enum):
     drag_pulse_tuning = drag_pulse_tuning
     flipping = flipping
     dispersive_shift = dispersive_shift
+    snz_tuning = snz_tuning

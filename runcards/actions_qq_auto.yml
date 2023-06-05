@@ -209,3 +209,18 @@ actions:
   #   parameters:
   #     freq_width: 10_000_000
   #     freq_step: 400_000
+
+  - id: snz
+    priority: 0
+    operation: snz_tuning
+    parameters:
+      amplitude_factor_start: 0.0
+      amplitude_factor_end: 1.0
+      amplitude_factor_step: 0.1
+      b_amplitude_factor_start: 0.0
+      b_amplitude_factor_end: 1.0
+      b_amplitude_factor_step: 0.1
+      detuning_start: 0
+      detuning_end: 180
+      detuning_step: 20
+      
