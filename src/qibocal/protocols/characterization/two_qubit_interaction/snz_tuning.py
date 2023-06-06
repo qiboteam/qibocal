@@ -1,11 +1,12 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Union
+from typing import Optional, Union
 
 import networkx as nx
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import SNZ, FluxPulse, Rectangular
+from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -36,6 +37,8 @@ class SnzTuningParameters(Parameters):
     """Ending detuning for the flux pulse."""
     detuning_step: float
     """Step detuning for the flux pulse."""
+    pairs: list[list[QubitId, QubitId]]
+    """List of qubit pairs to be used in the experiment."""
     dt_spacing: Optional[float] = 0
     """Time spacing between the two halves of the SNZ pulse."""
     snz_b_half_duration: Optional[float] = 1
@@ -50,12 +53,18 @@ class SnzTuningParameters(Parameters):
 class SnzTuningResults(Results):
     """SnzTuning outputs."""
 
-    pulse_amplitude: Dict[Union[str, int], float] = field(
-        metadata=dict(update="snz_pulse_amplitude")
-    )
+    pulse_amplitude: dict[
+        tuple[QubitId, QubitId], float
+    ]  # = field(metadata=dict(update="snz_pulse_amplitude"))
     """CZ pulse amplitude."""
-    snz_ratio: Dict[Union[str, int], float] = field(metadata=dict(update="snz_ratio"))
+    snz_ratio: dict[
+        tuple[QubitId, QubitId], float
+    ]  # = field(metadata=dict(update="snz_ratio"))
     """CZ pulse ratio, A/B in the pulse description."""
+    snz_leakage: dict[
+        tuple[QubitId, QubitId], float
+    ]  # = field(metadata=dict(update="snz_leakage"))
+    """CZ leakage measured on the control qubit."""
     data_fit: DataUnits
     """Data fit used in plotting to debug the fitting.
         quantities={
@@ -118,26 +127,16 @@ def _acquisition(
     performing CZ gate (180 phase difference).
     """
 
-    G = nx.Graph()
-    G.add_nodes_from(platform.qubits)
-    G.add_edges_from(platform.topology)
-
-    # Find unique pairs of qubits
-    unique_pairs = []
-    for qubit in qubits:
-        neighbors = list(G.neighbors(qubit))
-        for neighbor in neighbors:
-            if (neighbor, qubit) not in unique_pairs and (
-                qubit,
-                neighbor,
-            ) not in unique_pairs:
-                if (
-                    platform.qubits[qubit].drive_frequency
-                    > platform.qubits[neighbor].drive_frequency
-                ):
-                    unique_pairs.append((qubit, neighbor))
-                else:
-                    unique_pairs.append((neighbor, qubit))
+    # Get the high frequency index in the pairs
+    indices_highfreq = []
+    for pair in params.pairs:
+        if (
+            platform.qubits[pair[0]].drive_frequency
+            > platform.qubits[pair[1]].drive_frequency
+        ):
+            indices_highfreq.append(0)
+        else:
+            indices_highfreq.append(1)
 
     # Create the data object
     data = SnzTuningData()
@@ -166,66 +165,52 @@ def _acquisition(
     b_amplitude_mesh = b_amplitude_mesh.flatten()
     detuning_mesh = detuning_mesh.flatten()
 
-    for q_highfreq, q_lowfreq in unique_pairs:
+    for pair, index_highfreq in zip(params.pairs, indices_highfreq):
+        q_target = pair[1]
+        q_control = pair[0]
+
         # Target sequence RX90 - CPhi - RX90 - MZ
         initial_RX90_pulse = platform.create_RX90_pulse(
-            q_highfreq, start=0, relative_phase=0
+            q_target, start=0, relative_phase=0
         )
 
-        # Creating the deconstructed SNZ pulse and pulses for the target qubit
-        # The Create_CZ_pulse_sequence function must return the square CZ pulse
-        sequence, virtual = platform.create_CZ_pulse_sequence(
-            tuple(sorted([q_highfreq, q_lowfreq])),
-        )
+        # Creating the SNZ sequence which might contain parking pulses
+        sequence, virtual = platform.pairs[
+            tuple(sorted([q_target, q_control]))
+        ].native_gates.CZ.sequence(start=initial_RX90_pulse.se_finish)
+
+        pulses = []
         for pulse in sequence:
             if (
                 isinstance(pulse, FluxPulse)
-                and isinstance(pulse.shape, Rectangular)
-                and pulse.qubit == q_highfreq
+                and isinstance(pulse.shape, SNZ)
+                and pulse.qubit == pair[index_highfreq]
             ):
-                half_flux_pulse_duration = pulse.duration / 2
-                snz_amplitude = pulse.amplitude
+                pulses.append(pulse)
 
-        snz_a = FluxPulse(
-            start=initial_RX90_pulse.finish,
-            duration=half_flux_pulse_duration * 2 + params.dt_spacing,
-            amplitude=snz_amplitude,
-            shape=SNZ(
-                dt_spacing=params.dt_spacing,
-            ),
-            qubit=q_highfreq,
-            channel=platform.qubits[q_highfreq].flux.name,
-        )
-        snz_b = FluxPulse(
-            start=initial_RX90_pulse.finish
-            + half_flux_pulse_duration
-            - params.snz_b_half_duration,
-            duration=params.snz_b_half_duration * 2 + params.dt_spacing,
-            amplitude=snz_amplitude,
-            shape=SNZ(
-                dt_spacing=params.dt_spacing,
-            ),
-            qubit=q_highfreq,
-            channel=platform.qubits[q_highfreq].flux.name,
-        )
+        if len(pulses) != 2:
+            raise ValueError(f"Unvalid sequence for SNZ tuning: \n {sequence}")
+        else:
+            # Snz_a is the pulse with the longest duration
+            snz_a = max(pulses, key=lambda x: x.duration)
+            # Snz_b is the pulse with the shortest duration
+            snz_b = min(pulses, key=lambda x: x.duration)
 
         RX90_pulse = platform.create_RX90_pulse(
-            q_highfreq, start=snz_a.se_finish, relative_phase=virtual[q_highfreq]
+            q_target, start=snz_a.se_finish, relative_phase=virtual[q_target]
         )
         ro_pulse_target = platform.create_qubit_readout_pulse(
-            q_highfreq, start=RX90_pulse.se_finish
+            q_target, start=RX90_pulse.se_finish
         )
 
         # Creating different measurment
-        sequence_target = (
-            initial_RX90_pulse + snz_a + snz_b + RX90_pulse + ro_pulse_target
-        )
+        sequence_target = initial_RX90_pulse + sequence + RX90_pulse + ro_pulse_target
 
         # Control pulses
-        initial_RX_pulse = platform.create_RX_pulse(q_lowfreq, start=0)
-        RX_pulse = platform.create_RX_pulse(q_lowfreq, start=RX90_pulse.se_start)
+        initial_RX_pulse = platform.create_RX_pulse(q_control, start=0)
+        RX_pulse = platform.create_RX_pulse(q_control, start=RX90_pulse.se_start)
         ro_pulse_control = platform.create_qubit_readout_pulse(
-            q_lowfreq, start=RX90_pulse.se_finish
+            q_control, start=RX90_pulse.se_finish
         )
 
         # Creating the two different sequences ON and OFF
@@ -235,9 +220,11 @@ def _acquisition(
         }
 
         # Create the Sweepers
-        amplitude_sweep = Sweeper("amplitude", amplitudes, pulses=[snz_a])
-        b_amplitude_sweep = Sweeper("amplitude", ratios, pulses=[snz_b])
-        detuning_sweep = Sweeper("relative_phase", detuning, pulses=[RX90_pulse])
+        amplitude_sweep = Sweeper(Parameter.amplitude, amplitudes, pulses=[snz_a])
+        b_amplitude_sweep = Sweeper(Parameter.amplitude, ratios, pulses=[snz_b])
+        detuning_sweep = Sweeper(
+            Parameter.relative_phase, detuning, pulses=[RX90_pulse]
+        )
 
         for on_off in ["ON", "OFF"]:
             results = platform.sweep(
@@ -266,8 +253,8 @@ def _acquisition(
                             complex(platform.qubits[ro_pulse.qubit].mean_exc_states)
                             - complex(platform.qubits[ro_pulse.qubit].mean_gnd_states)
                         ).flatten(),
-                        "controlqubit": len(amplitude_mesh) * [q_lowfreq],
-                        "targetqubit": len(amplitude_mesh) * [q_highfreq],
+                        "controlqubit": len(amplitude_mesh) * [q_control],
+                        "targetqubit": len(amplitude_mesh) * [q_target],
                         "result_qubit": len(amplitude_mesh) * [ro_pulse.qubit],
                         "on_off": len(amplitude_mesh) * [on_off],
                         "detuning[degree]": detuning_mesh,
@@ -287,25 +274,37 @@ def _fit(data: SnzTuningData) -> SnzTuningResults:
     ratio = {}
 
     data_fit = utils.fit_amplitude_balance_cz(data)
-    qubits = data_fit.df["result_qubit"].unique()
-    for qubit in qubits:
+
+    pairs = utils.unique_combination(data)
+    for pair in pairs:
+        q_control = pair[0]
+        q_target = pair[1]
+
         # Find the minimum leakage for a phase difference being 180 +- 1 degree
-        min_leakage[qubit] = data_fit.df[
-            (data_fit.df["result_qubit"] == qubit)
+        min_leakage[tuple(sorted(pair))] = data_fit.df[
+            (data_fit.df["controlqubit"] == q_control)
+            & (data_fit.df["targetqubit"] == q_target)
             & (data_fit.get_values("phase_difference", "degree") > 179)
             & (data_fit.get_values("phase_difference", "degree") < 181)
         ]["leakage"].min()
-        amplitude[qubit] = data_fit.df[(min_leakage[qubit] == data_fit.df["leakage"])][
-            "flux_pulse_amplitude"
-        ]
-        ratio[qubit] = data_fit.df[(min_leakage[qubit] == data_fit.df["leakage"])][
-            "flux_pulse_ratio"
-        ]
+
+        amplitude[tuple(sorted(pair))] = data_fit.df[
+            (min_leakage[tuple(sorted(pair))] == data_fit.df["leakage"])
+            & (data_fit.df["controlqubit"] == q_control)
+            & (data_fit.df["targetqubit"] == q_target)
+        ]["flux_pulse_amplitude"]
+
+        ratio[tuple(sorted(pair))] = data_fit.df[
+            (min_leakage[tuple(sorted(pair))] == data_fit.df["leakage"])
+            & (data_fit.df["controlqubit"] == q_control)
+            & (data_fit.df["targetqubit"] == q_target)
+        ]["flux_pulse_ratio"]
 
     return SnzTuningResults(
         pulse_amplitude=amplitude,
         snz_ratio=ratio,
         data_fit=data_fit,
+        snz_leakage=min_leakage,
     )
 
 
@@ -319,10 +318,11 @@ def _plot(data: SnzTuningData, results: SnzTuningResults, qubit):
         utils.amplitude_balance_cz_acquired_phase(data, results.data_fit, qubit),
     ]
 
-    fitting_report = (
-        f"{qubit} | SNZ amplitude: {results.pulse_amplitude[qubit]:.4f} <br>"
-        + f"{qubit} | SNZ ratio: {results.snz_ratio[qubit]:.4f} <br>"
-    )
+    # fitting_report = (
+    #     f"{qubit} | SNZ amplitude: {results.pulse_amplitude[qubit]:.4f} <br>"
+    #     + f"{qubit} | SNZ ratio: {results.snz_ratio[qubit]:.4f} <br>"
+    # )
+    fitting_report = "No fitting data."
     return figures, fitting_report
 
 

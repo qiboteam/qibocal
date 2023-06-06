@@ -1,9 +1,11 @@
 import numpy as np
 import pandas as pd
-from scipy.optimize import curve_fit
-from plotly.subplots import make_subplots
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+from scipy.optimize import curve_fit
+
 from qibocal.data import DataUnits
+
 
 # Fitting
 def fit_amplitude_balance_cz(data):
@@ -33,16 +35,7 @@ def fit_amplitude_balance_cz(data):
         options=["controlqubit", "targetqubit"],
     )
 
-    combinations = np.vstack(
-        (data.df["targetqubit"].to_numpy(), data.df["controlqubit"].to_numpy())
-    ).transpose()
-    # Extracting unique values
-    if isinstance(data.df["targetqubit"].to_numpy()[0], np.integer):
-        combinations = np.unique(combinations, axis=0)
-    else:
-        flatdata_string = [str(p[0]) + "%" + str(p[1]) for p in combinations]
-        flatdata_string = list(set(flatdata_string))
-        combinations = [p.split("%") for p in flatdata_string]
+    combinations = unique_combination(data)
 
     amplitude_unique = np.unique(data.df["flux_pulse_amplitude"].to_numpy())
     ratio_unique = np.unique(data.df["flux_pulse_ratio"].to_numpy())
@@ -57,7 +50,9 @@ def fit_amplitude_balance_cz(data):
         q_control = i[1]
 
         # Extracting Data
-        iq_distance_dict = sort_data(data, q_control, q_target, ["iq_distance", "dimensionless"])
+        iq_distance_dict = sort_data(
+            data, q_control, q_target, ["iq_distance", "dimensionless"]
+        )
         amplitude_dict = sort_data(
             data, q_control, q_target, ["flux_pulse_amplitude", "dimensionless"]
         )
@@ -70,30 +65,30 @@ def fit_amplitude_balance_cz(data):
             for ratio in ratio_unique:
                 try:
                     # Normalizing between -1 and 1
-                    for ON_OFF in ["ON", "OFF"]:
-                        iq_distance_dict["target"][ON_OFF][
-                            (amplitude_dict["target"][ON_OFF] == amp)
-                            & (ratio_dict["target"][ON_OFF] == ratio)
-                        ] = iq_distance_dict["target"][ON_OFF][
-                            (amplitude_dict["target"][ON_OFF] == amp)
-                            & (ratio_dict["target"][ON_OFF] == ratio)
+                    for on_off in ["ON", "OFF"]:
+                        iq_distance_dict["target"][on_off][
+                            (amplitude_dict["target"][on_off] == amp)
+                            & (ratio_dict["target"][on_off] == ratio)
+                        ] = iq_distance_dict["target"][on_off][
+                            (amplitude_dict["target"][on_off] == amp)
+                            & (ratio_dict["target"][on_off] == ratio)
                         ] - np.nanmean(
-                            iq_distance_dict["target"][ON_OFF][
-                                (amplitude_dict["target"][ON_OFF] == amp)
-                                & (ratio_dict["target"][ON_OFF] == ratio)
+                            iq_distance_dict["target"][on_off][
+                                (amplitude_dict["target"][on_off] == amp)
+                                & (ratio_dict["target"][on_off] == ratio)
                             ]
                         )
-                        iq_distance_dict["target"][ON_OFF][
-                            (amplitude_dict["target"][ON_OFF] == amp)
-                            & (ratio_dict["target"][ON_OFF] == ratio)
-                        ] = iq_distance_dict["target"][ON_OFF][
-                            (amplitude_dict["target"][ON_OFF] == amp)
-                            & (ratio_dict["target"][ON_OFF] == ratio)
+                        iq_distance_dict["target"][on_off][
+                            (amplitude_dict["target"][on_off] == amp)
+                            & (ratio_dict["target"][on_off] == ratio)
+                        ] = iq_distance_dict["target"][on_off][
+                            (amplitude_dict["target"][on_off] == amp)
+                            & (ratio_dict["target"][on_off] == ratio)
                         ] - np.max(
                             np.abs(
-                                iq_distance_dict["target"][ON_OFF][
-                                    (amplitude_dict["target"][ON_OFF] == amp)
-                                    & (ratio_dict["target"][ON_OFF] == ratio)
+                                iq_distance_dict["target"][on_off][
+                                    (amplitude_dict["target"][on_off] == amp)
+                                    & (ratio_dict["target"][on_off] == ratio)
                                 ]
                             )
                         )
@@ -164,18 +159,19 @@ def sort_data(data, q_control, q_target, options):
     data_dict = {"control": {}, "target": {}}
     for k in ["ON", "OFF"]:
         data_dict["control"][k] = data.get_values(options[0], options[1])[
-            (data.df["ON_OFF"] == k)
+            (data.df["on_off"] == k)
             & (data.df["controlqubit"] == q_control)
             & (data.df["targetqubit"] == q_target)
             & (data.df["result_qubit"] == q_control)
         ].to_numpy()
         data_dict["target"][k] = data.get_values(options[0], options[1])[
-            (data.df["ON_OFF"] == k)
+            (data.df["on_off"] == k)
             & (data.df["controlqubit"] == q_control)
             & (data.df["targetqubit"] == q_target)
             & (data.df["result_qubit"] == q_target)
         ].to_numpy()
     return data_dict
+
 
 # Plotting
 def amplitude_balance_cz_acquired_phase(data, data_fit, qubit):
@@ -419,31 +415,30 @@ def amplitude_balance_cz_raw_data(data, data_fit, qubit):
 
         # Point where Phi2Q is closest to 180 degrees
         idx = np.argmin(np.abs(data_fit.get_values("phase_difference", "degree") - 180))
-
         fig.add_trace(
             go.Scatter(
                 x=data.get_values("detuning", "degree")[
                     (
                         data.df["flux_pulse_ratio"]
-                        == data_fit.df["flux_pulse_ratio"][idx]
+                        == data_fit.df["flux_pulse_ratio"].iloc[idx]
                     )
                     & (
                         data.df["flux_pulse_amplitude"]
-                        == data_fit.df["flux_pulse_amplitude"][idx]
+                        == data_fit.df["flux_pulse_amplitude"].iloc[idx]
                     )
                     & (data.df["controlqubit"] == q_control)
                     & (data.df["targetqubit"] == q_target)
                     & (data.df["on_off"] == "ON")
                     & (data.df["result_qubit"] == q_target)
                 ],
-                y=data.get_values("prob", "dimensionless")[
+                y=data.get_values("iq_distance", "dimensionless")[
                     (
                         data.df["flux_pulse_ratio"]
-                        == data_fit.df["flux_pulse_ratio"][idx]
+                        == data_fit.df["flux_pulse_ratio"].iloc[idx]
                     )
                     & (
                         data.df["flux_pulse_amplitude"]
-                        == data_fit.df["flux_pulse_amplitude"][idx]
+                        == data_fit.df["flux_pulse_amplitude"].iloc[idx]
                     )
                     & (data.df["controlqubit"] == q_control)
                     & (data.df["targetqubit"] == q_target)
@@ -460,25 +455,25 @@ def amplitude_balance_cz_raw_data(data, data_fit, qubit):
                 x=data.get_values("detuning", "degree")[
                     (
                         data.df["flux_pulse_ratio"]
-                        == data_fit.df["flux_pulse_ratio"][idx]
+                        == data_fit.df["flux_pulse_ratio"].iloc[idx]
                     )
                     & (
                         data.df["flux_pulse_amplitude"]
-                        == data_fit.df["flux_pulse_amplitude"][idx]
+                        == data_fit.df["flux_pulse_amplitude"].iloc[idx]
                     )
                     & (data.df["controlqubit"] == q_control)
                     & (data.df["targetqubit"] == q_target)
                     & (data.df["on_off"] == "OFF")
                     & (data.df["result_qubit"] == q_target)
                 ],
-                y=data.get_values("prob", "dimensionless")[
+                y=data.get_values("iq_distance", "dimensionless")[
                     (
                         data.df["flux_pulse_ratio"]
-                        == data_fit.df["flux_pulse_ratio"][idx]
+                        == data_fit.df["flux_pulse_ratio"].iloc[idx]
                     )
                     & (
                         data.df["flux_pulse_amplitude"]
-                        == data_fit.df["flux_pulse_amplitude"][idx]
+                        == data_fit.df["flux_pulse_amplitude"].iloc[idx]
                     )
                     & (data.df["controlqubit"] == q_control)
                     & (data.df["targetqubit"] == q_target)
@@ -495,25 +490,25 @@ def amplitude_balance_cz_raw_data(data, data_fit, qubit):
                 x=data.get_values("detuning", "degree")[
                     (
                         data.df["flux_pulse_ratio"]
-                        == data_fit.df["flux_pulse_ratio"][idx]
+                        == data_fit.df["flux_pulse_ratio"].iloc[idx]
                     )
                     & (
                         data.df["flux_pulse_amplitude"]
-                        == data_fit.df["flux_pulse_amplitude"][idx]
+                        == data_fit.df["flux_pulse_amplitude"].iloc[idx]
                     )
                     & (data.df["controlqubit"] == q_control)
                     & (data.df["targetqubit"] == q_target)
                     & (data.df["on_off"] == "ON")
                     & (data.df["result_qubit"] == q_target)
                 ],
-                y=data.get_values("prob", "dimensionless")[
+                y=data.get_values("iq_distance", "dimensionless")[
                     (
                         data.df["flux_pulse_ratio"]
-                        == data_fit.df["flux_pulse_ratio"][idx]
+                        == data_fit.df["flux_pulse_ratio"].iloc[idx]
                     )
                     & (
                         data.df["flux_pulse_amplitude"]
-                        == data_fit.df["flux_pulse_amplitude"][idx]
+                        == data_fit.df["flux_pulse_amplitude"].iloc[idx]
                     )
                     & (data.df["controlqubit"] == q_control)
                     & (data.df["targetqubit"] == q_target)
@@ -530,25 +525,25 @@ def amplitude_balance_cz_raw_data(data, data_fit, qubit):
                 x=data.get_values("detuning", "degree")[
                     (
                         data.df["flux_pulse_ratio"]
-                        == data_fit.df["flux_pulse_ratio"][idx]
+                        == data_fit.df["flux_pulse_ratio"].iloc[idx]
                     )
                     & (
                         data.df["flux_pulse_amplitude"]
-                        == data_fit.df["flux_pulse_amplitude"][idx]
+                        == data_fit.df["flux_pulse_amplitude"].iloc[idx]
                     )
                     & (data.df["controlqubit"] == q_control)
                     & (data.df["targetqubit"] == q_target)
                     & (data.df["on_off"] == "OFF")
                     & (data.df["result_qubit"] == q_target)
                 ],
-                y=data.get_values("prob", "dimensionless")[
+                y=data.get_values("iq_distance", "dimensionless")[
                     (
                         data.df["flux_pulse_ratio"]
-                        == data_fit.df["flux_pulse_ratio"][idx]
+                        == data_fit.df["flux_pulse_ratio"].iloc[idx]
                     )
                     & (
                         data.df["flux_pulse_amplitude"]
-                        == data_fit.df["flux_pulse_amplitude"][idx]
+                        == data_fit.df["flux_pulse_amplitude"].iloc[idx]
                     )
                     & (data.df["controlqubit"] == q_control)
                     & (data.df["targetqubit"] == q_target)
@@ -570,3 +565,16 @@ def amplitude_balance_cz_raw_data(data, data_fit, qubit):
     )
     return fig
 
+
+def unique_combination(data):
+    combinations = np.vstack(
+        (data.df["targetqubit"].to_numpy(), data.df["controlqubit"].to_numpy())
+    ).transpose()
+    # Extracting unique values
+    if isinstance(data.df["targetqubit"].to_numpy()[0], np.integer):
+        combinations = np.unique(combinations, axis=0)
+    else:
+        flatdata_string = [str(p[0]) + "%" + str(p[1]) for p in combinations]
+        flatdata_string = list(set(flatdata_string))
+        combinations = [p.split("%") for p in flatdata_string]
+    return combinations
