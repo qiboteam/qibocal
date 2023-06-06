@@ -41,7 +41,7 @@ class Task:
         return self.action.id
 
     @property
-    def uid(self) -> UId:
+    def uid(self) -> TaskId:
         return (self.action.id, self.iteration)
 
     @property
