@@ -159,7 +159,7 @@ def test_number_to_str(value):
         test = number_to_str(value, uncertainty=[0.1, 0.1, 0.1])
 
 
-def test_extract_from_data(data):
+def test_extract_from_data():
     data = [
         {"group": 1, "output": 3},
         {"group": 1, "output": 4},
