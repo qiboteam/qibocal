@@ -1,13 +1,10 @@
 """Adds global CLI options."""
 import base64
-import os
 import pathlib
 import shutil
 import socket
 import subprocess
 import uuid
-from datetime import datetime
-from glob import glob
 from urllib.parse import urljoin
 
 import click
