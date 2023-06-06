@@ -27,7 +27,7 @@ class Action:
     """Alternative subsequent actions, branching from the current one."""
     priority: Optional[int] = None
     """Priority level, determining the execution order."""
-    qubits: List[QubitId] = Field(default_factory=list)
+    qubits: list = Field(default_factory=list)
     """Local qubits (optional)."""
     update: bool = True
     """Runcard update mechanism."""
