@@ -1,4 +1,3 @@
-
 import numpy as np
 from qibolab import AcquisitionType, ExecutionParameters
 from qibolab.platform import Platform
