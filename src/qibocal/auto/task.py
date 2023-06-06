@@ -37,11 +37,11 @@ class Task:
         return cls(action=descr)
 
     @property
-    def id(self):
+    def id(self) -> Id:
         return self.action.id
 
     @property
-    def uid(self):
+    def uid(self) -> UId:
         return (self.action.id, self.iteration)
 
     @property
