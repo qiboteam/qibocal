@@ -9,7 +9,6 @@ from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import Data
-from qibocal.plots.utils import get_color
 
 
 @dataclass
@@ -227,7 +226,6 @@ def _plot(data: AllXYData, _fit: AllXYResults, qubit):
         go.Scatter(
             x=qubit_data["gateNumber"],
             y=qubit_data["probability"],
-            marker_color=get_color(0),
             mode="markers",
             text=gatelist,
             textposition="bottom center",
