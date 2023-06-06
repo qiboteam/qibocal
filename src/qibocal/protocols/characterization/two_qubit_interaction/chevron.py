@@ -1,13 +1,15 @@
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple, Union
+"""SWAP experiment for two qubit gates, chevron plot"""
+from dataclasses import dataclass
+from typing import Optional, Union
 
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import FluxPulse, PulseSequence, Rectangular
-from qibolab.qubits import QubitId
+from qibolab.pulses import FluxPulse, Pulse, PulseSequence, Rectangular
+from qibolab.qubits import Qubit, QubitId
+from qibolab.result import AveragedSampleResults
 from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -29,6 +31,7 @@ class ChevronParameters(Parameters):
     duration_max: float
     """Duration maximum."""
     duration_step: float
+
     """Duration step."""
     qubits: Optional[list[list[QubitId, QubitId]]] = None
     """Pair(s) of qubit to probe."""
@@ -56,6 +59,90 @@ class ChevronData(DataUnits):
         )
 
 
+def order_pairs(
+    pair: list[QubitId, QubitId], qubits: dict[QubitId, Qubit]
+) -> list[QubitId, QubitId]:
+    """Order a pair of qubits by drive frequency"""
+
+    if qubits[pair[0]].drive_frequency > qubits[pair[1]].drive_frequency:
+        return pair[::-1]
+    return pair
+
+
+def create_sequence(
+    ord_pair: list[QubitId, QubitId], platform: Platform, params: ChevronParameters
+) -> tuple[PulseSequence, dict[QubitId, Pulse], dict[QubitId, Pulse]]:
+    """Create the experiment PulseSequence for a specific pair.
+
+    Returns:
+        PulseSequence, Dictionary of readout pulses, Dictionary of flux pulses
+    """
+    sequence = PulseSequence()
+    ro_pulses = {}
+    qd_pulses = {}
+    fx_pulses = {}
+
+    qd_pulses[ord_pair[0]] = platform.create_RX_pulse(ord_pair[0], start=0)
+    qd_pulses[ord_pair[1]] = platform.create_RX_pulse(ord_pair[1], start=0)
+    fx_pulses[ord_pair[0]] = FluxPulse(
+        start=max([qd_pulses[ord_pair[0]].se_finish, qd_pulses[ord_pair[1]].se_finish])
+        + 8,
+        duration=params.duration_min,
+        amplitude=1,
+        shape=Rectangular(),
+        channel=platform.qubits[ord_pair[0]].flux.name,
+        qubit=ord_pair[0],
+    )
+
+    ro_pulses[ord_pair[0]] = platform.create_MZ_pulse(
+        ord_pair[0], start=fx_pulses[ord_pair[0]].se_finish + 8
+    )
+    ro_pulses[ord_pair[1]] = platform.create_MZ_pulse(
+        ord_pair[1], start=fx_pulses[ord_pair[0]].se_finish + 8
+    )
+
+    sequence.add(qd_pulses[ord_pair[0]])
+    sequence.add(qd_pulses[ord_pair[1]])
+    sequence.add(fx_pulses[ord_pair[0]])
+    sequence.add(ro_pulses[ord_pair[0]])
+    sequence.add(ro_pulses[ord_pair[1]])
+    return sequence, ro_pulses, fx_pulses
+
+
+def save_data(
+    pair: list[QubitId, QubitId],
+    ro_pulses: dict[QubitId, Pulse],
+    results: dict[Union[QubitId, str], AveragedSampleResults],
+    sweep_data: ChevronData,
+    delta_amplitude_range: np.ndarray,
+    delta_duration_range: np.ndarray,
+):
+    """Save results of the experiment in the Data object"""
+    for state, qubit in zip(["low", "high"], pair):
+        ro_pulse = ro_pulses[qubit]
+        result = results[ro_pulse.serial]
+        prob = result.statistical_frequency
+        amp, dur = np.meshgrid(
+            delta_amplitude_range, delta_duration_range, indexing="ij"
+        )
+        r = {
+            "amplitude[dimensionless]": amp.flatten(),
+            "duration[ns]": dur.flatten(),
+            "qubit": (
+                len(delta_amplitude_range)
+                * len(delta_duration_range)
+                * [f"{qubit}_{pair}"]
+            ),
+            "state": (
+                len(delta_amplitude_range)
+                * len(delta_duration_range)
+                * [f"{state}_{pair}"]
+            ),
+            "probability": prob.flatten(),
+        }
+        sweep_data.add_data_from_dict(r)
+
+
 def _aquisition(
     params: ChevronParameters,
     platform: Platform,
@@ -73,52 +160,16 @@ def _aquisition(
         DataUnits: Acquisition data.
     """
     if params.qubits is None:
+        raise ValueError("You have to specifiy the pairs. Es: [[0, 1], [2, 3]]")
         params.qubits = platform.settings["topology"]
 
     # create a DataUnits object to store the results,
     sweep_data = ChevronData()
     for pair in params.qubits:
         # order the qubits so that the low frequency one is the first
-        if (
-            platform.qubits[pair[0]].drive_frequency
-            > platform.qubits[pair[1]].drive_frequency
-        ):
-            ord_pair = pair[::-1]
-        else:
-            ord_pair = pair
-
+        ord_pair = order_pairs(pair, platform.qubits)
         # create a sequence
-        sequence = PulseSequence()
-        ro_pulses = {}
-        qd_pulses = {}
-        fx_pulses = {}
-
-        qd_pulses[ord_pair[0]] = platform.create_RX_pulse(ord_pair[0], start=0)
-        qd_pulses[ord_pair[1]] = platform.create_RX_pulse(ord_pair[1], start=0)
-        fx_pulses[ord_pair[0]] = FluxPulse(
-            start=max(
-                [qd_pulses[ord_pair[0]].se_finish, qd_pulses[ord_pair[1]].se_finish]
-            )
-            + 8,
-            duration=params.duration_min,
-            amplitude=1,
-            shape=Rectangular(),
-            channel=platform.qubits[ord_pair[0]].flux.name,
-            qubit=ord_pair[0],
-        )
-
-        ro_pulses[ord_pair[0]] = platform.create_MZ_pulse(
-            ord_pair[0], start=fx_pulses[ord_pair[0]].se_finish + 8
-        )
-        ro_pulses[ord_pair[1]] = platform.create_MZ_pulse(
-            ord_pair[1], start=fx_pulses[ord_pair[0]].se_finish + 8
-        )
-
-        sequence.add(qd_pulses[ord_pair[0]])
-        sequence.add(qd_pulses[ord_pair[1]])
-        sequence.add(fx_pulses[ord_pair[0]])
-        sequence.add(ro_pulses[ord_pair[0]])
-        sequence.add(ro_pulses[ord_pair[1]])
+        sequence, ro_pulses, fx_pulses = create_sequence(ord_pair, platform, params)
 
         # define the parameter to sweep and its range:
         delta_amplitude_range = np.arange(
@@ -151,42 +202,21 @@ def _aquisition(
             sweeper_amplitude,
             sweeper_duration,
         )
-
-        # TODO: here it is written ["high", "low"] but the low frequency is pair[0]
-        #       was it correct?
-        for state, qubit in zip(["high", "low"], pair):
-            # average msr, phase, i and q over the number of shots defined in the runcard
-            ro_pulse = ro_pulses[qubit]
-
-            result = results[ro_pulse.serial]
-            prob = result.statistical_frequency
-            amp, dur = np.meshgrid(
-                delta_amplitude_range, delta_duration_range, indexing="ij"
-            )
-            # store the results
-            r = {
-                "amplitude[dimensionless]": amp.flatten(),
-                "duration[ns]": dur.flatten(),
-                "qubit": (
-                    len(delta_amplitude_range)
-                    * len(delta_duration_range)
-                    * [f"{qubit}_{pair}"]
-                ),
-                "state": (
-                    len(delta_amplitude_range)
-                    * len(delta_duration_range)
-                    * [f"{state}_{pair}"]
-                ),
-                "probability": prob.flatten(),
-            }
-            sweep_data.add_data_from_dict(r)
-
+        save_data(
+            pair,
+            ro_pulses,
+            results,
+            sweep_data,
+            delta_amplitude_range,
+            delta_duration_range,
+        )
     return sweep_data
 
 
 def _plot(data: ChevronData, fit: ChevronResults, qubits):
-    fig = make_subplots(rows=1, cols=2, subplot_titles=("high", "low"))
-    states = ["high", "low"]
+    """Plot the experiment result for a single pair"""
+    fig = make_subplots(rows=1, cols=2, subplot_titles=("low", "high"))
+    states = ["low", "high"]
     # Plot data
     colouraxis = ["coloraxis", "coloraxis2"]
     for state, q in zip(states, qubits):
@@ -222,8 +252,8 @@ def _plot(data: ChevronData, fit: ChevronResults, qubits):
         legend_title="States",
     )
     fig.update_layout(
-        coloraxis=dict(colorscale="Oryel", colorbar=dict(x=-0.15)),
-        coloraxis2=dict(colorscale="Darkmint", colorbar=dict(x=1.15)),
+        coloraxis={"colorscale": "Oryel", "colorbar": {"x": -0.15}},
+        coloraxis2={"colorscale": "Darkmint", "colorbar": {"x": 1.15}},
     )
     return [fig], "No fitting data."
 
