@@ -4,9 +4,11 @@ import tempfile
 from pathlib import Path
 
 import yaml
+from qibolab.qubits import QubitId
 
 from qibocal.auto.execute import Executor, History
 from qibocal.auto.runcard import Runcard
+from qibocal.auto.task import TaskId
 from qibocal.cli.utils import generate_output_folder, load_yaml
 from qibocal.config import raise_error
 from qibocal.utils import allocate_qubits
@@ -147,7 +149,7 @@ class ActionBuilder:
 
     def dump_report(self):
         """Dump report."""
-        from qibocal.web.report import create_autocalibration_report
+        from qibocal.web.report import create_report
 
         # update end time
         meta = yaml.safe_load((self.folder / META).read_text())
@@ -156,7 +158,7 @@ class ActionBuilder:
         with open(self.folder / META, "w") as file:
             yaml.dump(meta, file)
 
-        create_autocalibration_report(self.folder, self.executor.history)
+        create_report(self.folder, self.executor.history)
 
     def dump_platform_runcard(self):
         """Dump platform runcard."""
@@ -187,7 +189,6 @@ class ReportBuilder:
         self.path = self.title = path
         self.metadata = yaml.safe_load((path / META).read_text())
         self.runcard = Runcard.load(path / RUNCARD)
-        self.format = self.runcard.format
         self.qubits = self.runcard.qubits
 
         self.history = history
@@ -197,13 +198,13 @@ class ReportBuilder:
         name = routine.replace("_", " ").title()
         return f"{name} - {iteration}"
 
-    def routine_qubits(self, routine_name, iteration):
+    def routine_qubits(self, task_uid: TaskId):
         """Get local qubits parameter from Task if available otherwise use global one."""
-        local_qubits = self.history[(routine_name, iteration)].task.qubits
+        local_qubits = self.history[task_uid].task.qubits
         return local_qubits if len(local_qubits) > 0 else self.qubits
 
-    def single_qubit_plot(self, routine_name, iteration, qubit):
-        node = self.history[(routine_name, iteration)]
+    def single_qubit_plot(self, task_uid: TaskId, qubit: QubitId):
+        node = self.history[task_uid]
         data = node.task.data
         figures, fitting_report = node.task.operation.report(data, node.res, qubit)
         with tempfile.NamedTemporaryFile(delete=False) as temp:
@@ -217,8 +218,8 @@ class ReportBuilder:
         all_html = "".join(html_list)
         return all_html, fitting_report
 
-    def plot(self, routine_name, iteration):
-        node = self.history[(routine_name, iteration)]
+    def plot(self, task_uid: TaskId):
+        node = self.history[task_uid]
         data = node.task.data
         figures, fitting_report = node.task.operation.report(data)
         with tempfile.NamedTemporaryFile(delete=False) as temp:

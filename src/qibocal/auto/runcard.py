@@ -17,7 +17,7 @@ Id = NewType("Id", str)
 """Action identifiers type."""
 
 
-@dataclass
+@dataclass(config=dict(smart_union=True))
 class Action:
     """Action specification in the runcard."""
 
@@ -31,7 +31,7 @@ class Action:
     """Alternative subsequent actions, branching from the current one."""
     priority: Optional[int] = None
     """Priority level, determining the execution order."""
-    qubits: List[QubitId] = Field(default_factory=list)
+    qubits: list[QubitId] = Field(default_factory=list)
     """Local qubits (optional)."""
     update: bool = True
     """Runcard update mechanism."""
@@ -43,7 +43,7 @@ class Action:
         return hash(self.id)
 
 
-@dataclass(config=dict(arbitrary_types_allowed=True))
+@dataclass(config=dict(smart_union=True, arbitrary_types_allowed=True))
 class Runcard:
     """Structure of an execution runcard."""
 
@@ -66,7 +66,6 @@ class Runcard:
             if isinstance(card, Path)
             else card
         )
-        print(content)
         backend_name = content.get("backend", "qibolab")
         platform_name = content.get("platform", None)
         qubit_ids = content.get("qubits", [])

@@ -138,8 +138,5 @@ class Executor:
             self.head = self.next()
 
             if self.platform is not None:
-                # update platform if:
-                # - global update is True and local not specified
-                # - local update is True
                 if (self.update and task.update is None) or (task.update):
                     self.platform.update(completed.res.update)

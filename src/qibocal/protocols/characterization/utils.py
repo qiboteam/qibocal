@@ -89,7 +89,6 @@ def spectroscopy_plot(data, fit: Results, qubit):
         vertical_spacing=0.1,
     )
     qubit_data = data.df[data.df["qubit"] == qubit].drop(columns=["i", "q", "qubit"])
-
     fitting_report = ""
 
     frequencies = qubit_data["frequency"].pint.to("GHz").pint.magnitude.unique()
@@ -123,6 +122,7 @@ def spectroscopy_plot(data, fit: Results, qubit):
         max(frequencies),
         2 * len(frequencies),
     )
+
     params = fit.fitted_parameters[qubit]
 
     fig.add_trace(
