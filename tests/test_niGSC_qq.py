@@ -1,7 +1,6 @@
 import os
 import tempfile
 from pathlib import Path
-from shutil import rmtree
 
 from qibocal.cli._base import ActionBuilder
 
