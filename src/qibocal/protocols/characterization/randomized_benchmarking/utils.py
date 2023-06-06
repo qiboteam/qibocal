@@ -80,7 +80,6 @@ def random_clifford(qubits, seed=None):
         qubits = list(range(qubits))
 
     random_indexes = local_state.integers(0, len(SINGLE_QUBIT_CLIFFORDS), len(qubits))
-    print(random_indexes)
     clifford_gates = [
         SINGLE_QUBIT_CLIFFORDS[p](q) for p, q in zip(random_indexes, qubits)
     ]

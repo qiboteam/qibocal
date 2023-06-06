@@ -5,6 +5,7 @@ import pytest
 
 from qibocal.protocols.characterization.randomized_benchmarking import fitting
 from qibocal.protocols.characterization.randomized_benchmarking.utils import (
+    extract_from_data,
     number_to_str,
     random_clifford,
 )
@@ -156,3 +157,19 @@ def test_number_to_str(value):
         test = number_to_str(value, uncertainty="0.1")
     with pytest.raises(ValueError):
         test = number_to_str(value, uncertainty=[0.1, 0.1, 0.1])
+
+
+def test_extract_from_data(data):
+    data = [
+        {"group": 1, "output": 3},
+        {"group": 1, "output": 4},
+        {"group": 2, "output": 5},
+    ]
+    assert np.allclose(extract_from_data(data, "output"), [3, 4, 5])
+    assert extract_from_data(data, "output", agg_type="count") == 3
+    assert np.allclose(
+        extract_from_data(data, "output", "group"), ([1, 1, 2], [3, 4, 5])
+    )
+    assert np.allclose(
+        extract_from_data(data, "output", "group", "count"), ([1, 2], [2, 1])
+    )
