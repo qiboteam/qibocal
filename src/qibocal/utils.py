@@ -8,4 +8,10 @@ def allocate_qubits(
     platform: Optional[Platform], qubit_ids: List[QubitId]
 ) -> Union[List[QubitId], Dict[QubitId, Qubit]]:
     """Convert List[QubitId] -> Dict[QubitId, Qubit] for non-trivial platform."""
-    return {q: platform.qubits[q] for q in qubit_ids if q in platform.qubits}
+    qubits = {}
+    for q in qubit_ids:
+        if not isinstance(q, list) and q in platform.qubits:
+            qubits[q] = platform.qubits[q]
+        else:
+            qubits[tuple(sorted(q))] = platform.pairs[tuple(sorted(q))]
+    return qubits

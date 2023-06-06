@@ -387,7 +387,7 @@ def amplitude_balance_cz_raw_data(data, data_fit, pair):
             ],
             name=f"ON Q{q_target}",
         ),
-        row=i + 1,
+        row=1,
         col=2,
     )
     fig.add_trace(
@@ -422,7 +422,7 @@ def amplitude_balance_cz_raw_data(data, data_fit, pair):
             ],
             name=f"OFF Q{q_target}",
         ),
-        row=i + 1,
+        row=1,
         col=2,
     )
     fig.add_trace(
@@ -457,7 +457,7 @@ def amplitude_balance_cz_raw_data(data, data_fit, pair):
             ],
             name=f"ON Q{q_target}",
         ),
-        row=i + 1,
+        row=1,
         col=1,
     )
     fig.add_trace(
@@ -492,7 +492,7 @@ def amplitude_balance_cz_raw_data(data, data_fit, pair):
             ],
             name=f"OFF Q{q_control}",
         ),
-        row=i + 1,
+        row=1,
         col=1,
     )
     fig.update_layout(

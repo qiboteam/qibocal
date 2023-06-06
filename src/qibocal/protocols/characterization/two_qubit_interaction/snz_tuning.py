@@ -36,8 +36,8 @@ class SnzTuningParameters(Parameters):
     """Ending detuning for the flux pulse."""
     detuning_step: float
     """Step detuning for the flux pulse."""
-    pairs: list[list[QubitId, QubitId]]
-    """List of qubit pairs to be used in the experiment [control, target]."""
+    control_low: Optional[bool] = True
+    """Apply the phase tomography on the high frequency qubit and leakage on the low frequency qubit."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
@@ -122,15 +122,12 @@ def _acquisition(
     """
 
     # Get the high frequency index in the pairs
-    indices_highfreq = []
-    for pair in params.pairs:
-        if (
-            platform.qubits[pair[0]].drive_frequency
-            > platform.qubits[pair[1]].drive_frequency
-        ):
-            indices_highfreq.append(0)
+    qubits_highfreq = []
+    for pair in qubits:
+        if qubits[pair].qubit1.drive_frequency > qubits[pair].qubit2.drive_frequency:
+            qubits_highfreq.append(qubits[pair].qubit1)
         else:
-            indices_highfreq.append(1)
+            qubits_highfreq.append(qubits[pair].qubit2)
 
     # Create the data object
     data = SnzTuningData()
@@ -159,7 +156,7 @@ def _acquisition(
     b_amplitude_mesh = b_amplitude_mesh.flatten()
     detuning_mesh = detuning_mesh.flatten()
 
-    for pair, index_highfreq in zip(params.pairs, indices_highfreq):
+    for pair, q_highfreq in zip(qubits, qubits_highfreq):
         q_target = pair[1]
         q_control = pair[0]
 
@@ -178,7 +175,7 @@ def _acquisition(
             if (
                 isinstance(pulse, FluxPulse)
                 and isinstance(pulse.shape, SNZ)
-                and pulse.qubit == pair[index_highfreq]
+                and pulse.qubit == q_highfreq.name
             ):
                 pulses.append(pulse)
 
@@ -302,14 +299,14 @@ def _fit(data: SnzTuningData) -> SnzTuningResults:
     )
 
 
-def _plot(data: SnzTuningData, results: SnzTuningResults, pair):
+def _plot(data: SnzTuningData, results: SnzTuningResults, qubits):
     r"""Plotting function for the SNZ tuning experiment."""
 
     figures = [
-        utils.amplitude_balance_cz_raw_data(data, results.data_fit, pair),
-        utils.amplitude_balance_cz_acquired_phase(data, results.data_fit, pair),
-        utils.amplitude_balance_cz_leakage(data, results.data_fit, pair),
-        utils.amplitude_balance_cz_acquired_phase(data, results.data_fit, pair),
+        utils.amplitude_balance_cz_raw_data(data, results.data_fit, qubits),
+        utils.amplitude_balance_cz_acquired_phase(data, results.data_fit, qubits),
+        utils.amplitude_balance_cz_leakage(data, results.data_fit, qubits),
+        utils.amplitude_balance_cz_acquired_phase(data, results.data_fit, qubits),
     ]
 
     # fitting_report = (
