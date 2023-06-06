@@ -157,8 +157,12 @@ def _acquisition(
     detuning_mesh = detuning_mesh.flatten()
 
     for pair, q_highfreq in zip(qubits, qubits_highfreq):
-        q_target = pair[1]
-        q_control = pair[0]
+        if params.control_low:
+            q_target = q_highfreq.name
+            q_control = pair[0] if pair[0] != q_target else pair[1]
+        else:
+            q_control = q_highfreq.name
+            q_target = pair[0] if pair[0] != q_control else pair[1]
 
         # Target sequence RX90 - CPhi - RX90 - MZ
         initial_RX90_pulse = platform.create_RX90_pulse(
@@ -166,9 +170,9 @@ def _acquisition(
         )
 
         # Creating the SNZ sequence which might contain parking pulses
-        sequence, virtual = platform.pairs[
-            tuple(sorted([q_target, q_control]))
-        ].native_gates.CZ.sequence(start=initial_RX90_pulse.se_finish)
+        sequence, virtual = platform.pairs[pair].native_gates.CZ.sequence(
+            start=initial_RX90_pulse.se_finish
+        )
 
         pulses = []
         for pulse in sequence:
