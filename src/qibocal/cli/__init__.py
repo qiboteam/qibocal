@@ -1,2 +1,2 @@
 """CLI entry point."""
-from ._base import autocalibration, upload
+from ._base import command, upload

@@ -1,21 +1,16 @@
 """Adds global CLI options."""
 import base64
-import os
 import pathlib
 import shutil
 import socket
 import subprocess
 import uuid
-from datetime import datetime
-from glob import glob
 from urllib.parse import urljoin
 
 import click
 from qibo.config import log, raise_error
 
-from ..cli.auto_builder import AutoCalibrationBuilder
-from ..cli.builders import ActionBuilder, load_yaml
-from .utils import check_folder_structure, folders_exists, update_meta, update_runcard
+from ..cli.builders import ActionBuilder
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -49,7 +44,7 @@ ROOT_URL = "http://login.qrccluster.com:9000/"
     help="Use --no-update option to avoid updating iteratively the platform."
     "With this option the new runcard will not be produced.",
 )
-def autocalibration(runcard, folder, force, update):
+def command(runcard, folder, force, update):
     """qibocal: Quantum Calibration Verification and Validation using Qibo.
 
     Arguments:
@@ -59,7 +54,7 @@ def autocalibration(runcard, folder, force, update):
                          https://github.com/qiboteam/qibolab_platforms_qrc.
     """
 
-    builder = AutoCalibrationBuilder(runcard, folder, force, update=update)
+    builder = ActionBuilder(runcard, folder, force, update=update)
     builder.run()
     if update:
         builder.dump_platform_runcard()

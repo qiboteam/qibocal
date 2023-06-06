@@ -44,10 +44,9 @@ class Executor:
         update: bool = True,
     ):
         """Load execution graph and associated executor from a runcard."""
-        runcard = Runcard.load(card)
 
         return cls(
-            graph=Graph.from_actions(runcard.actions),
+            graph=Graph.from_actions(card.actions),
             history=History({}),
             output=output,
             platform=platform,

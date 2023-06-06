@@ -18,14 +18,6 @@ class AutoCalibrationBuilder(ActionBuilder):
     def __init__(self, runcard, folder, force, update):
         super().__init__(runcard, folder, force, update)
         # TODO: modify folder in Path in ActionBuilder
-        self.folder = Path(self.folder)
-        self.executor = Executor.load(
-            self.runcard,
-            self.folder,
-            self.platform,
-            self.qubits,
-            update,
-        )
 
     def run(self):
         if self.platform is not None:
@@ -64,7 +56,6 @@ class AutoCalibrationReportBuilder:
         self.path = self.title = path
         self.metadata = yaml.safe_load((path / META).read_text())
         self.runcard = Runcard.load(path / RUNCARD)
-        self.format = self.runcard.format
         self.qubits = self.runcard.qubits
 
         self.history = history

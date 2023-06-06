@@ -18,7 +18,7 @@ def create_autocalibration_report(path, history):
 
     report = AutoCalibrationReportBuilder(path, history)
     env = Environment(loader=FileSystemLoader(TEMPLATES))
-    template = env.get_template("autocalibration.html")
+    template = env.get_template("template.html")
     html = template.render(
         is_static=True,
         css_styles=css_styles,

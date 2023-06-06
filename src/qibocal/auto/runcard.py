@@ -5,7 +5,11 @@ from typing import Any, Dict, List, NewType, Optional, Union
 import yaml
 from pydantic import Field
 from pydantic.dataclasses import dataclass
-from qibolab.qubits import QubitId
+from qibo.backends import Backend, construct_backend
+from qibolab.platform import Platform
+from qibolab.qubits import Qubit, QubitId
+
+from qibocal.utils import allocate_qubits
 
 from .operation import OperationId
 
@@ -39,13 +43,15 @@ class Action:
         return hash(self.id)
 
 
-@dataclass
+@dataclass(config=dict(arbitrary_types_allowed=True))
 class Runcard:
     """Structure of an execution runcard."""
 
     actions: List[Action]
-    qubits: Optional[list] = Field(default_factory=list)
-    format: Optional[str] = None
+    qubits: Optional[List[QubitId]] = Field(default_facotry=list)
+    platform: Optional[Platform] = None
+    backend: Optional[Backend] = None
+    # TODO: pass custom runcard (?)
 
     @classmethod
     def load(cls, card: Union[dict, Path]):
@@ -60,4 +66,17 @@ class Runcard:
             if isinstance(card, Path)
             else card
         )
-        return cls(**content)
+        print(content)
+        backend_name = content.get("backend", "qibolab")
+        platform_name = content.get("platform", None)
+        qubit_ids = content.get("qubits", [])
+
+        backend = construct_backend(backend_name, platform_name)
+        platform = backend.platform
+
+        return cls(
+            actions=content["actions"],
+            qubits=qubit_ids,
+            platform=platform,
+            backend=backend,
+        )
