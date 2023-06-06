@@ -1,11 +1,16 @@
-import warnings
+from functools import reduce
 
 import numpy as np
 import pytest
 
 from qibocal.protocols.characterization.randomized_benchmarking import fitting
+from qibocal.protocols.characterization.randomized_benchmarking.utils import (
+    number_to_str,
+    random_clifford,
+)
 
 
+# Test fitting
 def test_1expfitting():
     successes = 0
     number_runs = 50
@@ -99,3 +104,55 @@ def test_exp2_fitting():
         # Distort ``y`` a bit.
         y_dist = y + np.random.uniform(-1, 1, size=len(y)) * 0.001
         popt, perr = fitting.fit_exp2_func(x, y_dist)
+
+
+# Test utils
+@pytest.mark.parametrize("seed", [10])
+@pytest.mark.parametrize("qubits", [1, 2, [0, 1], np.array([0, 1])])
+def test_random_clifford(qubits, seed):
+    with pytest.raises(TypeError):
+        q = "1"
+        random_clifford(q)
+    with pytest.raises(ValueError):
+        q = -1
+        random_clifford(q)
+    with pytest.raises(ValueError):
+        q = [0, 1, -3]
+        random_clifford(q)
+
+    result_single = np.array([[1j, -1j], [-1j, -1j]]) / np.sqrt(2)
+
+    result_two = np.array(
+        [
+            [0.0 + 0.0j, 0.5 - 0.5j, -0.0 - 0.0j, -0.5 + 0.5j],
+            [0.5 + 0.5j, 0.0 + 0.0j, -0.5 - 0.5j, -0.0 - 0.0],
+            [0.0 - 0.0j, -0.5 + 0.5j, 0.0 - 0.0j, -0.5 + 0.5j],
+            [-0.5 - 0.5j, 0.0 - 0.0j, -0.5 - 0.5j, 0.0 - 0.0j],
+        ]
+    )
+
+    result = result_single if (isinstance(qubits, int) and qubits == 1) else result_two
+
+    gates = random_clifford(qubits, seed=seed)
+    matrix = reduce(np.kron, [gate.matrix for gate in gates])
+    assert np.allclose(matrix, result)
+
+
+@pytest.mark.parametrize("value", [0.555555, 2, -0.1 + 0.1j])
+def test_number_to_str(value):
+    assert number_to_str(value) == f"{value:.3f}"
+    assert number_to_str(value, [None, None]) == f"{value:.3f}"
+    assert number_to_str(value, 0.01) == f"{value:.2f} \u00B1 0.01"
+    assert number_to_str(value, [0.01, 0.01]) == f"{value:.2f} \u00B1 0.01"
+    assert number_to_str(value, [0.2, 0.01]) == f"{value:.2f} +0.01 / -0.20"
+    assert (
+        number_to_str(value, [float("inf"), float("inf")]) == f"{value:.3f} \u00B1 inf"
+    )
+    with pytest.raises(TypeError):
+        test = number_to_str(value, precision="1")
+    with pytest.raises(ValueError):
+        test = number_to_str(value, precision=-1)
+    with pytest.raises(TypeError):
+        test = number_to_str(value, uncertainty="0.1")
+    with pytest.raises(ValueError):
+        test = number_to_str(value, uncertainty=[0.1, 0.1, 0.1])

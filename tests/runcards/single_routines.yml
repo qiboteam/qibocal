@@ -262,8 +262,8 @@ actions:
       depths: [1,3,5,10]
       niter: 2
       nshots: 128
-      n_bootstrap: 0
       uncertainties: None
+      n_bootstrap: 0
 
   - id: standard rb bootstrap
     priority: 0
@@ -277,8 +277,8 @@ actions:
         step: 2
       niter: 5
       nshots: 128
-      noise_model: PauliErrorOnAll
       n_bootstrap: 10
+      noise_model: PauliErrorOnAll
 
   - id: standard rb std
     priority: 0
@@ -292,6 +292,6 @@ actions:
         step: 2
       niter: 5
       nshots: 128
-      noise_model: PauliErrorOnAll
-      n_bootstrap: 0
       uncertainties: std
+      n_bootstrap: 0
+      noise_model: PauliErrorOnAll

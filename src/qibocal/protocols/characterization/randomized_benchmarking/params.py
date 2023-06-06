@@ -24,14 +24,14 @@ class RBParameters(Parameters):
     """Sets how many iterations over the same depth value."""
     nshots: int
     """For each sequence how many shots for statistics should be performed."""
-    n_bootstrap: int = 100
-    """Number of bootstrap iterations for the fit uncertainties and error bars.
-    If ``0``, gets the fit uncertainties from the fitting function and the error bars
-    from the distribution of the measurements. Defaults to ``1``."""
     uncertainties: Union[str, float] = 0.95
     """Method of computing the error bars and uncertainties of the data. If ``None``, does not
     compute the errors. If ``"std"``, computes the standard deviation. If a value is of type ``float``
     between 0 and 1, computes the corresponding confidence interval. Defaults to ``0.95``."""
+    n_bootstrap: int = 100
+    """Number of bootstrap iterations for the fit uncertainties and error bars.
+    If ``0``, gets the fit uncertainties from the fitting function and the error bars
+    from the distribution of the measurements. Defaults to ``1``."""
     noise_model: str = ""
     """For simulation purposes, string has to match what is in
     :mod:`qibocal.protocols.characterization.randomized_benchmarking.noisemodels`"""

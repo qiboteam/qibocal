@@ -22,7 +22,6 @@ from qibocal.protocols.characterization.randomized_benchmarking.utils import (
     extract_from_data,
     number_to_str,
     random_clifford,
-    samples_to_p0,
 )
 
 from .data import RBData
@@ -42,6 +41,12 @@ class StandardRBResult(DecayWithOffsetResult):
 
     """
 
+    def __post_init__(self):
+        super().__post_init__()
+        self.resample_func = lambda data: resample_p0(
+            data, self.meta_data.get("nshots", 1)
+        )
+
     def calculate_fidelities(self):
         """Takes the fitting parameter of the decay and calculates a fidelity. Stores the
         primitive fidelity, the fidelity and the average gate error in an attribute dictionary.
@@ -54,6 +59,45 @@ class StandardRBResult(DecayWithOffsetResult):
                 self.perr / (PULSES_PER_CLIFFORD * 2),
             ],
         }
+
+
+def samples_to_p0(samples_list):
+    """Computes the probabilitiy of 0 from the list of samples.
+
+    Args:
+        samples_list (list or np.ndarray): 3d array with rows corresponding to circuits containing
+            `nshots` number of lists with `nqubits` amount of `0` and `1`.
+            e.g. `samples_list` for 1 circuit, 3 shots and 2 qubits looks like
+            `[[[0, 0], [0, 1], [1, 0]]]`.
+
+    Returns:
+        list: list of probabilities corresponding to each row.
+    """
+
+    ground = np.array([0] * len(samples_list[0][0]))
+    p0_list = []
+    for samples in samples_list:
+        p0_list.append(np.sum(np.product(samples == ground, axis=1)) / len(samples))
+    return p0_list
+
+
+def resample_p0(data, sample_size=100):
+    """Preforms parametric resampling of shots with binomial distribution
+        and returns a list of "corrected" probabilites.
+
+    Args:
+        data (list or np.ndarray): list of probabilities for the binomial distribution.
+        nshots (int): sample size for one probability distribution.
+
+    Returns:
+        list: resampled probabilities.
+    """
+    # Parametrically sample the number of  shots with binomial distribution
+    resampled_data = []
+    for p in data:
+        samples_corrected = np.random.binomial(n=1, p=1 - p, size=(sample_size, 1))
+        resampled_data.append(samples_to_p0([samples_corrected])[0])
+    return resampled_data
 
 
 def setup_scan(params: RBParameters) -> Iterable:
@@ -172,12 +216,7 @@ def extract(data: RBData) -> StandardRBResult:
     """
 
     result = aggregate(data)
-    result.fit(
-        data.attrs["uncertainties"],
-        data.attrs["n_bootstrap"],
-        data.attrs["nshots"],
-        samples_to_p0,
-    )
+    result.fit()
     result.calculate_fidelities()
     return result
 

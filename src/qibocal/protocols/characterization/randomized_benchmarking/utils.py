@@ -66,7 +66,6 @@ def random_clifford(qubits, seed=None):
             TypeError,
             f"qubits must be either type int, list or ndarray, but it is type {type(qubits)}.",
         )
-
     if isinstance(qubits, int) and qubits <= 0:
         raise_error(ValueError, "qubits must be a positive integer.")
 
@@ -78,34 +77,15 @@ def random_clifford(qubits, seed=None):
     )
 
     if isinstance(qubits, int):
-        qubits = range(qubits)
+        qubits = list(range(qubits))
 
     random_indexes = local_state.integers(0, len(SINGLE_QUBIT_CLIFFORDS), len(qubits))
+    print(random_indexes)
     clifford_gates = [
         SINGLE_QUBIT_CLIFFORDS[p](q) for p, q in zip(random_indexes, qubits)
     ]
 
     return clifford_gates
-
-
-def samples_to_p0(samples_list):
-    """Computes the probabilitiy of 0 from the list of samples.
-
-    Args:
-        samples_list (list or np.ndarray): 3d array with rows corresponding to circuits containing
-            `nshots` number of lists with `nqubits` amount of `0` and `1`.
-            e.g. `samples_list` for 1 circuit, 3 shots and 2 qubits looks like
-            `[[[0, 0], [0, 1], [1, 0]]]`.
-
-    Returns:
-        list: list of probabilities corresponding to each row.
-    """
-
-    ground = np.array([0] * len(samples_list[0][0]))
-    p0_list = []
-    for samples in samples_list:
-        p0_list.append(np.sum(np.product(samples == ground, axis=1)) / len(samples))
-    return p0_list
 
 
 def data_mean_errors(data, uncertainties=None, symmetric=False):
@@ -153,9 +133,6 @@ def significant_digit(number: Number):
         int: position of the first significant digit or ``3`` if the given number
         is integer, ``inf`` or ``0``. Returns ``-1`` if ``number`` is ``None``.
     """
-
-    if number is None:
-        return -1
 
     position = (
         ceil(-log10(abs(np.real(number))))
