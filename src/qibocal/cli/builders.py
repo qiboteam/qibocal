@@ -168,8 +168,10 @@ class ActionBuilder:
         self.backend, self.platform = self._allocate_backend(
             backend_name, platform_name, platform_runcard, update
         )
-
-        self.qubits = allocate_qubits(self.platform, self.runcard.get("qubits", []))
+        if self.platform is not None:
+            self.qubits = allocate_qubits(self.platform, self.runcard.get("qubits", []))
+        else:
+            self.qubits = self.runcard.get("qubits", [])
 
         # Setting format. If absent csv is used.
         self.format = self.runcard.get("format", "csv")
