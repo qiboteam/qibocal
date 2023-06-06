@@ -37,7 +37,7 @@ class SnzTuningParameters(Parameters):
     detuning_step: float
     """Step detuning for the flux pulse."""
     pairs: list[list[QubitId, QubitId]]
-    """List of qubit pairs to be used in the experiment."""
+    """List of qubit pairs to be used in the experiment [control, target]."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
@@ -302,14 +302,14 @@ def _fit(data: SnzTuningData) -> SnzTuningResults:
     )
 
 
-def _plot(data: SnzTuningData, results: SnzTuningResults, qubit):
+def _plot(data: SnzTuningData, results: SnzTuningResults, pair):
     r"""Plotting function for the SNZ tuning experiment."""
 
     figures = [
-        utils.amplitude_balance_cz_raw_data(data, results.data_fit, qubit),
-        utils.amplitude_balance_cz_acquired_phase(data, results.data_fit, qubit),
-        utils.amplitude_balance_cz_leakage(data, results.data_fit, qubit),
-        utils.amplitude_balance_cz_acquired_phase(data, results.data_fit, qubit),
+        utils.amplitude_balance_cz_raw_data(data, results.data_fit, pair),
+        utils.amplitude_balance_cz_acquired_phase(data, results.data_fit, pair),
+        utils.amplitude_balance_cz_leakage(data, results.data_fit, pair),
+        utils.amplitude_balance_cz_acquired_phase(data, results.data_fit, pair),
     ]
 
     # fitting_report = (
