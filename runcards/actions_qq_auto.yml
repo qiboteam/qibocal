@@ -6,17 +6,17 @@ format: csv
 
 actions:
 
-  - id: resonator_spectroscopy high power
-    priority: 0
-    operation: resonator_spectroscopy
-    # main: resonator punchout
-    parameters:
-      freq_width: 10_000_000
-      freq_step: 500_000
-      amplitude: 0.4
-      power_level: high
-      nshots: 1024
-      relaxation_time: 0
+  # - id: resonator_spectroscopy high power
+  #   priority: 0
+  #   operation: resonator_spectroscopy
+  #   # main: resonator punchout
+  #   parameters:
+  #     freq_width: 10_000_000
+  #     freq_step: 500_000
+  #     amplitude: 0.4
+  #     power_level: high
+  #     nshots: 1024
+  #     relaxation_time: 0
 
   # - id: resonator punchout
   #   priority: 10
@@ -148,12 +148,12 @@ actions:
   #     delay_between_pulses_end: 200
   #     delay_between_pulses_step: 4 # must be a multiple of 4
 
-  # - id: single shot classification
-  #   priority: 0
-  #   # main: allXY
-  #   operation: single_shot_classification
-  #   parameters:
-  #     nshots: 1024
+  - id: single shot classification
+    priority: 0
+    # main: allXY
+    operation: single_shot_classification
+    parameters:
+      nshots: 1024
 
   # - id: allXY
   #   priority: 0
