@@ -36,6 +36,8 @@ class ChevronParameters(Parameters):
     """Number of shots per point."""
     qubits: Optional[list[list[QubitId, QubitId]]] = None
     """Pair(s) of qubit to probe."""
+    parking: bool = True
+    """Wether to park non interacting qubits or not."""
 
 
 @dataclass
@@ -69,7 +71,9 @@ def order_pairs(
 
 
 def create_sequence(
-    ord_pair: list[QubitId, QubitId], platform: Platform, params: ChevronParameters
+    ord_pair: list[QubitId, QubitId],
+    platform: Platform,
+    params: ChevronParameters,
 ) -> tuple[PulseSequence, dict[QubitId, Pulse], dict[QubitId, Pulse]]:
     """Create the experiment PulseSequence for a specific pair.
 
@@ -77,6 +81,17 @@ def create_sequence(
         PulseSequence, Dictionary of readout pulses, Dictionary of flux pulses
     """
     sequence = PulseSequence()
+
+    if params.parking:
+        # if parking is true, create a cz pulse from the runcard and
+        # add to the sequence all parking pulses
+        cz_sequence, _ = platform.pairs[
+            tuple(sorted(ord_pair))
+        ].native_gates.CZ.sequence(start=0)
+        for pulse in cz_sequence:
+            if pulse.qubit not in ord_pair:
+                sequence.add(pulse)
+
     ro_pulses = {}
     qd_pulses = {}
     fx_pulses = {}
@@ -105,6 +120,15 @@ def create_sequence(
     sequence.add(fx_pulses[ord_pair[0]])
     sequence.add(ro_pulses[ord_pair[0]])
     sequence.add(ro_pulses[ord_pair[1]])
+
+    if params.parking:
+        # if parking is true, change all the durations so that
+        # ends just before measurement
+        for pulse in sequence:
+            if pulse.qubit in ord_pair:
+                break
+            pulse.duration = sequence[-3].finish
+
     return sequence, ro_pulses, fx_pulses
 
 

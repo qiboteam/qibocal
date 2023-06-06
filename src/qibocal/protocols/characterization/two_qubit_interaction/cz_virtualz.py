@@ -35,6 +35,8 @@ class CZVirtualZParameters(Parameters):
     """Time delay between the two flux pulses if enabled."""
     qubits: Optional[list[list[QubitId, QubitId]]] = None
     """Pair(s) of qubit to probe."""
+    parking: bool = True
+    """Wether to park non interacting qubits or not."""
 
 
 @dataclass
@@ -80,6 +82,7 @@ def create_sequence(
     target_qubit: QubitId,
     control_qubit: QubitId,
     ord_pair: list[QubitId, QubitId],
+    parking: bool,
 ) -> tuple[
     PulseSequence, dict[QubitId, Pulse], dict[QubitId, Pulse], dict[QubitId, Pulse]
 ]:
@@ -97,6 +100,17 @@ def create_sequence(
     start = 0
 
     sequence = PulseSequence()
+
+    if parking:
+        # if parking is true, create a cz pulse from the runcard and
+        # add to the sequence all parking pulses
+        cz_sequence, _ = platform.pairs[
+            tuple(sorted([target_qubit, control_qubit]))
+        ].native_gates.CZ.sequence(start=0)
+        for pulse in cz_sequence:
+            if pulse.qubit not in {target_qubit, control_qubit}:
+                sequence.add(pulse)
+
     Y90_pulse[setup] = platform.create_RX90_pulse(
         target_qubit, start=start, relative_phase=np.pi / 2
     )
@@ -140,6 +154,14 @@ def create_sequence(
             RX_pulse_start[setup],
             RX_pulse_end[setup],
         )
+
+    if parking:
+        # if parking is true, change all the durations so that
+        # ends just before measurement
+        for pulse in sequence:
+            if pulse.qubit in {target_qubit, control_qubit}:
+                break
+            pulse.duration = theta_pulse[setup].finish
     return sequence, measure_target, virtual_z_phase, theta_pulse
 
 
@@ -186,7 +208,9 @@ def _acquisition(
                     measure_target,
                     virtual_z_phase,
                     theta_pulse,
-                ) = create_sequence(platform, setup, target_q, control_q, ord_pair)
+                ) = create_sequence(
+                    platform, setup, target_q, control_q, ord_pair, params.parking
+                )
 
                 thetas = (
                     np.arange(params.theta_start, params.theta_end, params.theta_step)
