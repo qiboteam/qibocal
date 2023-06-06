@@ -15,11 +15,13 @@ from .qubit_spectroscopy import qubit_spectroscopy
 from .rabi.amplitude import rabi_amplitude
 from .rabi.length import rabi_length
 from .ramsey import ramsey
+from .randomized_benchmarking.standard_rb import standard_rb
 from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
 from .resonator_spectroscopy_attenuation import resonator_spectroscopy_attenuation
 from .two_qubit_interaction.snz_tuning import snz_tuning
+
 
 class Operation(Enum):
     resonator_spectroscopy = resonator_spectroscopy
@@ -42,3 +44,4 @@ class Operation(Enum):
     flipping = flipping
     dispersive_shift = dispersive_shift
     snz_tuning = snz_tuning
+    standard_rb = standard_rb
