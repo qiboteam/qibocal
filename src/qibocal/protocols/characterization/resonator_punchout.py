@@ -7,7 +7,7 @@ from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
-from qibolab.sweeper import Parameter, Sweeper
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.config import log
@@ -99,6 +99,7 @@ def _acquisition(
         Parameter.frequency,
         delta_frequency_range,
         [ro_pulses[qubit] for qubit in qubits],
+        type=SweeperType.OFFSET,
     )
 
     # amplitude
@@ -106,7 +107,10 @@ def _acquisition(
         params.min_amp_factor, params.max_amp_factor, params.step_amp_factor
     )
     amp_sweeper = Sweeper(
-        Parameter.amplitude, amplitude_range, [ro_pulses[qubit] for qubit in qubits]
+        Parameter.amplitude,
+        amplitude_range,
+        [ro_pulses[qubit] for qubit in qubits],
+        type=SweeperType.FACTOR,
     )
 
     # create a DataUnits object to store the results,

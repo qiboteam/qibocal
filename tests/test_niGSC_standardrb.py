@@ -4,11 +4,11 @@ import numpy as np
 import pandas as pd
 import pytest
 from plotly.graph_objects import Figure
-from qibo import gates
 from qibo.noise import NoiseModel
 
 from qibocal.calibrations.niGSC import standardrb
-from qibocal.calibrations.niGSC.basics import noisemodels, utils
+from qibocal.calibrations.niGSC.basics import utils
+from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
 
 
 def theoretical_outcome(noise_model: NoiseModel) -> float:
@@ -29,9 +29,9 @@ def theoretical_outcome(noise_model: NoiseModel) -> float:
     # Extract the noise acting on unitaries and turn it into the associated
     # error channel.
     error = noise_model.errors[None][0][1]
-    errorchannel = error.channel(0, *error.options)
+    errorchannel = error.channel([0], error.options)
     # Calculate the effective depolarizing parameter.
-    return utils.effective_depol(errorchannel)
+    return utils.effective_depol(errorchannel[0])
 
 
 @pytest.fixture

@@ -73,7 +73,6 @@ def test_general_singlequbitgates_factories(
             else:
                 factory = factory_init(nqubits, list(depths) * runs, qubits=qubits)
                 abstract_factorytest(factory)
-                # if factory.name not in ('XId', 'SingleCliffordsInv'):
                 if "inv" in factory.name or "Inv" in factory.name:
                     # When checking the depth of circuits, the measurement gate and inverse gate
                     # has to be taken into account
@@ -85,11 +84,6 @@ def test_general_singlequbitgates_factories(
                     if circuit.ngates == 1:
                         assert isinstance(circuit.queue[0], gates.measurements.M)
                     else:
-                        assert (
-                            circuit.ngates
-                            == depths[count % len(depths)] * len(qubits)
-                            + additional_gates
-                        )
                         assert (
                             circuit.depth
                             == depths[count % len(depths)] + additional_gates

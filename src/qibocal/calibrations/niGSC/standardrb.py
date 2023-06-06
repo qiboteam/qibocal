@@ -14,7 +14,7 @@ from qibo import gates
 from qibo.models import Circuit
 from qibo.noise import NoiseModel
 
-import qibocal.calibrations.niGSC.basics.fitting as fitting_methods
+import qibocal.protocols.characterization.randomized_benchmarking.fitting as fitting_methods
 from qibocal.calibrations.niGSC.basics.circuitfactory import SingleCliffordsFactory
 from qibocal.calibrations.niGSC.basics.experiment import Experiment
 from qibocal.calibrations.niGSC.basics.plot import Report, scatter_fit_fig
@@ -45,11 +45,11 @@ class ModuleFactory(SingleCliffordsFactory):
             circuit.add(self.gate_layer())
         # If there is at least one gate in the circuit, add an inverse.
         if depth > 0:
-            # Build a gate out of the unitary of the whole circuit and
-            # take the daggered version of that.
-            circuit.add(
-                gates.Unitary(circuit.unitary(), *range(len(self.qubits))).dagger()
-            )
+            # Build an inverse gate for each qubit out of the unitaries using the light cone
+            # method and take the daggered version of that.
+            for qubit in range(len(self.qubits)):
+                circuit_q = circuit.light_cone(qubit)[0]
+                circuit.add(gates.Unitary(circuit_q.unitary(), qubit).dagger())
         circuit.add(gates.M(*range(len(self.qubits))))
         return circuit
 

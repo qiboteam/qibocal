@@ -5,7 +5,7 @@ import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
-from qibolab.sweeper import Parameter, Sweeper
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -93,6 +93,7 @@ def _acquisition(
         Parameter.amplitude,
         qd_pulse_amplitude_range,
         [qd_pulses[qubit] for qubit in qubits],
+        type=SweeperType.FACTOR,
     )
 
     # create a DataUnits object to store the results,
