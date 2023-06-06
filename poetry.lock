@@ -2508,10 +2508,8 @@ rfsoc = ["qcodes (>=0.37.0,<0.38.0)", "qcodes_contrib_drivers (==0.18.0)", "qibo
 zh = ["laboneq (==2.5.0)"]
 
 [package.source]
-type = "git"
-url = "https://github.com/qiboteam/qibolab.git"
-reference = "main"
-resolved_reference = "e870c2851f769ede0099f1017a056d293b9972fd"
+type = "directory"
+url = "../qibolab"
 
 [[package]]
 name = "recommonmark"
@@ -3421,4 +3419,4 @@ viz = ["pydot"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.12"
-content-hash = "99136f2f3292beb9714f437b88e852ebb71112d7d66cc2b5a815b6a82748ee34"
+content-hash = "29f91a5c184fb1e79475c1d26f3ab625efd68c352fed14850a08b50e30703da7"

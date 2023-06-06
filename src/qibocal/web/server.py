@@ -6,7 +6,8 @@ import yaml
 from flask import Flask, redirect, render_template, request
 
 from qibocal import __version__
-from qibocal.cli.builders import ReportBuilder
+
+# from qibocal.cli.builders import ReportBuilder
 
 server = Flask(__name__)
 

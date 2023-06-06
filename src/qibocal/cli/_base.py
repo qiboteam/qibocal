@@ -51,40 +51,6 @@ TARGET_COMPARE_DIR = "qq-compare/"
     help="Use --no-update option to avoid updating iteratively the platform."
     "With this option the new runcard will not be produced.",
 )
-def command(runcard, folder, force, update):
-    """qibocal: Quantum Calibration Verification and Validation using Qibo.
-
-    Arguments:
-
-     - RUNCARD: runcard with declarative inputs.
-
-     - PLATFORM_RUNCARD: Qibolab's platform runcard. If not provided Qibocal will use the runcard available in Qibolab for the platform chosen.
-    """
-
-    builder = ActionBuilder(runcard, folder, force, update)
-    builder.execute()
-
-
-@click.command(context_settings=CONTEXT_SETTINGS)
-@click.argument("runcard", metavar="RUNCARD", type=click.Path(exists=True))
-@click.option(
-    "folder",
-    "-o",
-    type=click.Path(),
-    help="Output folder. If not provided a standard name will generated.",
-)
-@click.option(
-    "force",
-    "-f",
-    is_flag=True,
-    help="Use --force option to overwrite the output folder.",
-)
-@click.option(
-    "--update/--no-update",
-    default=True,
-    help="Use --no-update option to avoid updating iteratively the platform."
-    "With this option the new runcard will not be produced.",
-)
 def autocalibration(runcard, folder, force, update):
     """qibocal: Quantum Calibration Verification and Validation using Qibo.
 
@@ -265,7 +231,7 @@ def compare(folders):
 
     log.info(f"Upload completed")
 
-    from qibocal.web.report import create_report
+    # from qibocal.web.report import create_report
 
     create_report(TARGET_COMPARE_DIR)
     log.info(f"HTML report generated")
