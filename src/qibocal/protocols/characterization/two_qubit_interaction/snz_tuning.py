@@ -80,12 +80,11 @@ class SnzTuningData(DataUnits):
     def __init__(self):
         super().__init__(
             name="data",
-            quantities={
-                "detuning": "degree",
-                "flux_pulse_amplitude": "dimensionless",
-                "flux_pulse_ratio": "dimensionless",
-            },
+            quantities={},
             options=[
+                "detuning",
+                "flux_pulse_amplitude",
+                "flux_pulse_ratio",
                 "controlqubit",
                 "targetqubit",
                 "on_off",
@@ -239,7 +238,7 @@ def _acquisition(
                 r = result.serialize
                 r.update(
                     {
-                        "iq_distance[dimensionless]": np.abs(
+                        "iq_distance": np.abs(
                             result.voltage_i
                             + 1j * result.voltage_q
                             - complex(platform.qubits[ro_pulse.qubit].mean_gnd_states)
@@ -253,8 +252,8 @@ def _acquisition(
                         "result_qubit": len(amplitude_mesh) * [ro_pulse.qubit],
                         "on_off": len(amplitude_mesh) * [on_off],
                         "detuning[degree]": detuning_mesh,
-                        "flux_pulse_amplitude[dimensionless]": amplitude_mesh,
-                        "flux_pulse_ratio[dimensionless]": b_amplitude_mesh,
+                        "flux_pulse_amplitude": amplitude_mesh,
+                        "flux_pulse_ratio": b_amplitude_mesh,
                     }
                 )
                 data.add_data_from_dict(r)
@@ -279,8 +278,8 @@ def _fit(data: SnzTuningData) -> SnzTuningResults:
         min_leakage[tuple(sorted(pair))] = data_fit.df[
             (data_fit.df["controlqubit"] == q_control)
             & (data_fit.df["targetqubit"] == q_target)
-            & (data_fit.get_values("phase_difference", "degree") > 179)
-            & (data_fit.get_values("phase_difference", "degree") < 181)
+            & (data_fit.df["phase_difference"] > 179)
+            & (data_fit.df["phase_difference"] < 181)
         ]["leakage"].min()
 
         amplitude[tuple(sorted(pair))] = data_fit.df[
