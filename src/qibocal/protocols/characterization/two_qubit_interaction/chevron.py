@@ -105,14 +105,14 @@ def create_sequence(
     sequence.add(fx_pulse)
     sequence.add(ro_pulses[ord_pair[0]])
     sequence.add(ro_pulses[ord_pair[1]])
-    if parking:
+    if params.parking:
         # if parking is true, create a cz pulse from the runcard and
         # add to the sequence all parking pulses
         cz_sequence, _ = platform.pairs[
-            tuple(sorted([target_qubit, control_qubit]))
+            tuple(sorted(ord_pair))
         ].native_gates.CZ.sequence(start=0)
         for pulse in cz_sequence:
-            if pulse.qubit not in {target_qubit, control_qubit}:
+            if pulse.qubit not in ord_pair:
                 pulse.start = fx_pulse.start
                 pulse.duration = fx_pulse.duration
                 sequence.add(pulse)
