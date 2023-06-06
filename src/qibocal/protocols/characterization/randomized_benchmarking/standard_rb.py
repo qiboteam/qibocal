@@ -27,7 +27,7 @@ from qibocal.protocols.characterization.randomized_benchmarking.utils import (
 from .data import RBData
 from .params import RBParameters
 
-PULSES_PER_CLIFFORD = 1.875
+NPULSES_PER_CLIFFORD = 1.875
 
 
 @dataclass
@@ -53,10 +53,10 @@ class StandardRBResult(DecayWithOffsetResult):
         """
         infidelity = (1 - self.p) / 2
         self.fidelity_dict = {
-            "fidelity": [1 - infidelity, self.perr / 2],
-            "pi/2 fidelity": [
-                1 - infidelity / PULSES_PER_CLIFFORD,
-                self.perr / (PULSES_PER_CLIFFORD * 2),
+            "fidelity": [1 - infidelity, self.p_err / 2],
+            "pulse fidelity": [
+                1 - infidelity / NPULSES_PER_CLIFFORD,
+                self.p_err / (NPULSES_PER_CLIFFORD * 2),
             ],
         }
 

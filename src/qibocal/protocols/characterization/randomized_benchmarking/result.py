@@ -30,9 +30,9 @@ class DecayResult(Results):
     y: Union[List[Number], np.ndarray]
     # Fitting parameters and errors.
     A: Optional[Number] = None
-    Aerr: Optional[Number] = None
+    A_err: Optional[Number] = None
     p: Optional[Number] = None
-    perr: Optional[Number] = None
+    p_err: Optional[Number] = None
     # Model and the fitting function
     model: Iterable = field(default=exp1_func)
     fit_func: Iterable = field(default=fit_exp1_func)
@@ -72,18 +72,15 @@ class DecayResult(Results):
 
     @property
     def fitting_errors(self):
-        return (self.Aerr, self.perr)
+        return (self.A_err, self.p_err)
 
     @fitting_errors.setter
     def fitting_errors(self, value):
-        self.Aerr, self.perr = value
+        self.A_err, self.p_err = value
 
-    def fit(
-        self,
-        **kwargs,
-    ):
-        """Fits the data and performs bootstrap resampling,
-        kwargs will be passed to the optimization function.
+    def fit(self, **kwargs):
+        """Fits the data and performs bootstrap resampling, all parameters given through `kwargs`
+        will be passed on to the optimization function.
         """
 
         # Update kwargs for the optimization function
@@ -141,7 +138,7 @@ class DecayResult(Results):
 
         if all(param is not None for param in self.fitting_params):
             return "Fit: y=Ap^x<br>A: {}<br>p: {}".format(
-                number_to_str(self.A, self.Aerr), number_to_str(self.p, self.perr)
+                number_to_str(self.A, self.A_err), number_to_str(self.p, self.p_err)
             )
         return "DecayResult: Ap^x"
 
@@ -152,7 +149,7 @@ class DecayWithOffsetResult(DecayResult):
 
     # Fitting parameters and errors
     B: Optional[Number] = None
-    Berr: Optional[Number] = None
+    B_err: Optional[Number] = None
     # Model and the fitting function
     model: Iterable = field(default=exp1B_func)
     fit_func: Iterable = field(default=fit_exp1B_func)
@@ -173,11 +170,11 @@ class DecayWithOffsetResult(DecayResult):
 
     @property
     def fitting_errors(self):
-        return (*super().fitting_errors, self.Berr)
+        return (*super().fitting_errors, self.B_err)
 
     @fitting_errors.setter
     def fitting_errors(self, value):
-        self.Aerr, self.perr, self.Berr = value
+        self.A_err, self.p_err, self.B_err = value
 
     def __str__(self):
         """Overwrite the representation of the object with the fitting parameters
@@ -186,9 +183,9 @@ class DecayWithOffsetResult(DecayResult):
 
         if all(param is not None for param in self.fitting_params):
             return "Fit: y=Ap^x+B<br>A: {}<br>p: {}<br>B: {}".format(
-                number_to_str(self.A, self.Aerr),
-                number_to_str(self.p, self.perr),
-                number_to_str(self.B, self.Berr),
+                number_to_str(self.A, self.A_err),
+                number_to_str(self.p, self.p_err),
+                number_to_str(self.B, self.B_err),
             )
         return "DecayResult: Ap^x+B"
 
@@ -272,15 +269,16 @@ def bootstrap(
         y_data (list or np.ndarray): 2d array with rows containing data points
             from which the mean values for y are computed.
         uncertainties (str or float, optional): method of computing ``sigma`` for the ``fit_func``.
-            If ``std``, computes the standard deviation. If type ``float`` between
-            0 and 1, computes the maximum of low and high errors from the corresponding confidence interval.
+            If ``std``, computes the standard deviation. If type ``float`` between 0 and 1,
+            computes the maximum of low and high errors from the corresponding confidence interval.
             If ``None``, does not compute the uncertainties. Defaults to ``None``.
         n_bootstrap (int): number of bootstrap iterations. If `0`,
             returns `y_data` for y estimates and an empty list for fitting parameters estimates.
         resample_func (callable): function that preforms resampling of given a list of y values.
             (see :func:`qibocal.protocols.characterization.randomized_benchmarking.standard_rb.resample_p0`)
             If ``None``, only non-parametric resampling is performed. Defaults to ``None``.
-        fit_func (callable): function that return the fitting parameters and errors given `x`, `y`, `sigma` and `kwargs`.
+        fit_func (callable): fitting function that returns parameters and errors, given
+            `x`, `y`, `sigma` and `**kwargs`.
             Defaults to :func:`qibocal.protocols.characterization.randomized_benchmarking.fitting.fit_exp1B_func`.
 
     Returns:
