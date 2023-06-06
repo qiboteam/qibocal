@@ -220,7 +220,6 @@ class Experiment:
             datarow (dict): Dictionary with parameters for execution and immediate
                 postprocessing information.
         """
-
         if self.noise_model is not None:
             circuit = self.noise_model.apply(circuit)
         samples = circuit(nshots=self.nshots).samples()
