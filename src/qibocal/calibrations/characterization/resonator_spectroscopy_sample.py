@@ -1,5 +1,5 @@
 import numpy as np
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 
 from qibocal.data import DataUnits
@@ -79,7 +79,7 @@ def scan_level(
         span (int): Search space around previous best value where the next frequency is sampled.
         resolution (int): How many points are taken in the span.
         noise (float): MSR value for the background noise.
-        platform (AbstractPlatform): Platform the experiment is executed on.
+        platform (Platform): Platform the experiment is executed on.
         ro_pulse (ReadoutPulse): Used in order to execute the pulse sequence with the right parameters in the right qubit.
         qubit (int): qubit coupled to the resonator that we are probing.
         sequence (PulseSequence):
@@ -123,7 +123,7 @@ def scan_small(best_f, best_msr, span, resolution, platform, ro_pulse, qubit, se
         best_msr (float): MSR found for the previous best frequency. Used to check if a better value is found.
         span (int): Search space around previous best value where the next frequency is sampled.
         resolution (int): How many points are taken in the span. Taken as 10 for the small scan.
-        platform (AbstractPlatform): Platform the experiment is executed on.
+        platform (Platform): Platform the experiment is executed on.
         ro_pulse (ReadoutPulse): Used in order to execute the pulse sequence with the right parameters in the right qubit.
         qubit (int): qubit coupled to the resonator that we are probing.
         sequence (PulseSequence):
@@ -154,7 +154,7 @@ def scan_small(best_f, best_msr, span, resolution, platform, ro_pulse, qubit, se
 
 @plot("Frequency vs Attenuation", frequency_attenuation)
 def resonator_punchout_sample(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: dict,
     min_att,
     max_att,
@@ -169,7 +169,7 @@ def resonator_punchout_sample(
     """Use gaussian samples to extract the punchout of the resonator for different values of attenuation.
 
     Args:
-        platform (AbstractPlatform): Platform the experiment is executed on.
+        platform (Platform): Platform the experiment is executed on.
         qubits (dict): Dict of target Qubit objects to perform the action
         min_att (int): minimum attenuation value where the experiment starts. Less attenuation -> more power.
         max_att (int): maximum attenuation reached in the scan.
@@ -259,7 +259,7 @@ def resonator_punchout_sample(
 
 @plot("Frequency vs Current", frequency_bias_flux)
 def resonator_flux_sample(
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: dict,
     bias_min,
     bias_max,
@@ -276,7 +276,7 @@ def resonator_flux_sample(
     """Use gaussian samples to extract the flux-frequency response of the resonator for different values of bias.
 
     Args:
-        platform (AbstractPlatform): Platform the experiment is executed on.
+        platform (Platform): Platform the experiment is executed on.
         qubits (dict): Dict of target Qubit objects to perform the action
         bias_min (float): minimum bias value where the experiment starts.
         bias_max (float): maximum bias reached in the scan.

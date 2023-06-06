@@ -6,9 +6,9 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
-from qibolab.sweeper import Parameter, Sweeper
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
@@ -77,7 +77,7 @@ class DispersiveShiftData(DataUnits):
 
 
 def _acquisition(
-    params: DispersiveShiftParameters, platform: AbstractPlatform, qubits: Qubits
+    params: DispersiveShiftParameters, platform: Platform, qubits: Qubits
 ) -> DispersiveShiftData:
     r"""
     Data acquisition for dispersive shift experiment.
@@ -86,7 +86,7 @@ def _acquisition(
 
     Args:
         params (DispersiveShiftParameters): experiment's parameters
-        platform (AbstractPlatform): Qibolab platform object
+        platform (Platform): Qibolab platform object
         qubits (dict): List of target qubits to perform the action
 
     """
@@ -121,6 +121,7 @@ def _acquisition(
         Parameter.frequency,
         delta_frequency_range,
         pulses=[ro_pulses[qubit] for qubit in qubits],
+        type=SweeperType.OFFSET,
     )
 
     results_0 = platform.sweep(

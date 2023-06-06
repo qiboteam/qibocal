@@ -5,9 +5,9 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
-from qibolab.sweeper import Parameter, Sweeper
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.config import log
@@ -83,7 +83,7 @@ class ResonatorPunchoutAttenuationData(DataUnits):
 
 def _acquisition(
     params: ResonatorPunchoutAttenuationParameters,
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: Qubits,
 ) -> ResonatorPunchoutAttenuationData:
     """Data acquisition for Punchout over attenuation."""
@@ -107,12 +107,16 @@ def _acquisition(
         Parameter.frequency,
         delta_frequency_range,
         [ro_pulses[qubit] for qubit in qubits],
+        type=SweeperType.OFFSET,
     )
 
     # attenuation
     attenuation_range = np.arange(params.min_att, params.max_att, params.step_att)
     att_sweeper = Sweeper(
-        Parameter.attenuation, attenuation_range, qubits=list(qubits.values())
+        Parameter.attenuation,
+        attenuation_range,
+        qubits=list(qubits.values()),
+        type=SweeperType.ABSOLUTE,
     )
 
     # create a DataUnits object to store the results,

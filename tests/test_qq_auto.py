@@ -1,6 +1,8 @@
 import pathlib
 import tempfile
 
+import pytest
+
 from qibocal.cli.auto_builder import AutoCalibrationBuilder
 
 PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/test_autocalibration.yml"

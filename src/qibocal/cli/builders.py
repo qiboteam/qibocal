@@ -10,7 +10,6 @@ import yaml
 from qibocal import calibrations
 from qibocal.cli.utils import generate_output_folder, load_yaml
 from qibocal.config import raise_error
-from qibocal.data import Data
 
 
 class ActionParser:
@@ -35,16 +34,32 @@ class ActionParser:
         self.func = getattr(calibrations, self.name)
         sig = inspect.signature(self.func)
         self.params = self.runcard["actions"][self.name]
-        for param in list(sig.parameters)[2:-1]:
-            if param not in self.params:
-                raise_error(AttributeError, f"Missing parameter {param} in runcard.")
+
+        for param in sig.parameters.values():
+            # check the parameters without default value
+            if param.default == inspect.Parameter.empty:
+                if (
+                    param.name not in ["platform", "qubits"]
+                    and param.name not in self.params
+                ):
+                    raise_error(
+                        AttributeError, f"Missing parameter {param} in runcard."
+                    )
 
     def execute(self, data_format, platform, qubits):
         """Execute action and retrieve results."""
         if data_format is None:
             raise_error(ValueError, f"Cannot store data using {data_format} format.")
 
-        results = self.func(platform, qubits, **self.params)
+        elif self.name == "calibrate_qubit_states" and "save_dir" not in self.params:
+            results = self.func(
+                platform,
+                qubits,
+                **self.params,
+                save_dir=self.folder + "/data/calibrate_qubit_states",
+            )
+        else:
+            results = self.func(platform, qubits, **self.params)
 
         for data in results:
             getattr(data, f"to_{data_format}")(self.path)
@@ -65,7 +80,9 @@ class niGSCactionParser(ActionParser):
         self.runs = self.runcard["actions"][self.name]["runs"]
         self.nshots = self.runcard["actions"][self.name]["nshots"]
 
-        from qibocal.calibrations.niGSC.basics import noisemodels
+        from qibocal.protocols.characterization.randomized_benchmarking import (
+            noisemodels,
+        )
 
         try:
             self.noise_params = self.runcard["actions"][self.name]["noise_params"]
@@ -171,23 +188,37 @@ class ActionBuilder:
     def _allocate_backend(self, backend_name, platform_name, platform_runcard):
         """Allocate the platform using Qibolab."""
         from qibo.backends import GlobalBackend, set_backend
+        from qibolab import dummy
 
         if backend_name == "qibolab":
-            if platform_runcard is None:
-                from qibolab.paths import qibolab_folder
+            if platform_name == dummy.NAME:
+                platform = dummy.create_dummy()
+                platform.dump(f"{self.folder}/platform.yml")
+                platform.dump(f"{self.folder}/new_platform.yml")
+                if platform_runcard is not None:
+                    raise_error(
+                        ValueError, "Dummy platform doesn't support custom runcards."
+                    )
+                set_backend(backend=backend_name, platform=platform_name)
 
-                original_runcard = qibolab_folder / "runcards" / f"{platform_name}.yml"
             else:
-                original_runcard = platform_runcard
-            # copy of the original runcard that will stay unmodified
-            shutil.copy(original_runcard, f"{self.folder}/platform.yml")
-            # copy of the original runcard that will be modified during calibration
-            updated_runcard = f"{self.folder}/new_platform.yml"
-            shutil.copy(original_runcard, updated_runcard)
-            # allocate backend with updated_runcard
-            set_backend(
-                backend=backend_name, platform=platform_name, runcard=updated_runcard
-            )
+                if platform_runcard is None:
+                    from qibolab import get_platforms_path
+
+                    original_runcard = get_platforms_path() / f"{platform_name}.yml"
+                else:
+                    original_runcard = platform_runcard
+                # copy of the original runcard that will stay unmodified
+                shutil.copy(original_runcard, f"{self.folder}/platform.yml")
+                # copy of the original runcard that will be modified during calibration
+                updated_runcard = f"{self.folder}/new_platform.yml"
+                shutil.copy(original_runcard, updated_runcard)
+                # allocate backend with updated_runcard
+                set_backend(
+                    backend=backend_name,
+                    platform=platform_name,
+                    runcard=updated_runcard,
+                )
             backend = GlobalBackend()
             return backend, backend.platform
         else:

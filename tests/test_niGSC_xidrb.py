@@ -4,7 +4,7 @@ import pytest
 from plotly.graph_objects import Figure
 
 from qibocal.calibrations.niGSC import XIdrb
-from qibocal.calibrations.niGSC.basics import noisemodels
+from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
 
 
 @pytest.fixture
