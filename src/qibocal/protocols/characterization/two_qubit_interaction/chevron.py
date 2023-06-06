@@ -127,7 +127,8 @@ def create_sequence(
         for pulse in sequence:
             if pulse.qubit in ord_pair:
                 break
-            pulse.duration = sequence[-3].finish
+            pulse.start = sequence[-3].start
+            pulse.duration = sequence[-3].duration
 
     return sequence, ro_pulses, fx_pulses
 

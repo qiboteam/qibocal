@@ -90,13 +90,6 @@ def create_sequence(
     lowfreq = ord_pair[0]
     highfreq = ord_pair[1]
 
-    Y90_pulse = {}
-    RX_pulse_start = {}
-    flux_sequence = {}
-    theta_pulse = {}
-    RX_pulse_end = {}
-    measure_target = {}
-    measure_control = {}
     start = 0
 
     sequence = PulseSequence()
@@ -111,48 +104,48 @@ def create_sequence(
             if pulse.qubit not in {target_qubit, control_qubit}:
                 sequence.add(pulse)
 
-    Y90_pulse[setup] = platform.create_RX90_pulse(
+    Y90_pulse = platform.create_RX90_pulse(
         target_qubit, start=start, relative_phase=np.pi / 2
     )
-    RX_pulse_start[setup] = platform.create_RX_pulse(
+    RX_pulse_start = platform.create_RX_pulse(
         control_qubit, start=start, relative_phase=0
     )
 
-    flux_sequence[setup], virtual_z_phase = platform.create_CZ_pulse_sequence(
+    flux_sequence, virtual_z_phase = platform.create_CZ_pulse_sequence(
         (highfreq, lowfreq),
-        start=max(Y90_pulse[setup].finish, RX_pulse_start[setup].finish),
+        start=max(Y90_pulse.finish, RX_pulse_start.finish),
     )
 
-    theta_pulse[setup] = platform.create_RX90_pulse(
+    theta_pulse = platform.create_RX90_pulse(
         target_qubit,
-        start=flux_sequence[setup].finish,
+        start=flux_sequence.finish,
         relative_phase=virtual_z_phase[target_qubit],
     )
 
-    RX_pulse_end[setup] = platform.create_RX_pulse(
+    RX_pulse_end = platform.create_RX_pulse(
         control_qubit,
-        start=flux_sequence[setup].finish,
+        start=flux_sequence.finish,
         relative_phase=virtual_z_phase[control_qubit],
     )
 
-    measure_target[setup] = platform.create_qubit_readout_pulse(
-        target_qubit, start=theta_pulse[setup].finish
+    measure_target = platform.create_qubit_readout_pulse(
+        target_qubit, start=theta_pulse.finish
     )
-    measure_control[setup] = platform.create_qubit_readout_pulse(
-        control_qubit, start=theta_pulse[setup].finish
+    measure_control = platform.create_qubit_readout_pulse(
+        control_qubit, start=theta_pulse.finish
     )
 
     sequence.add(
-        Y90_pulse[setup],
-        flux_sequence[setup],
-        theta_pulse[setup],
-        measure_target[setup],
-        # measure_control[setup],
+        Y90_pulse,
+        flux_sequence,
+        theta_pulse,
+        measure_target,
+        # measure_control,
     )
     if setup == "X":
         sequence.add(
-            RX_pulse_start[setup],
-            RX_pulse_end[setup],
+            RX_pulse_start,
+            RX_pulse_end,
         )
 
     if parking:
@@ -161,7 +154,8 @@ def create_sequence(
         for pulse in sequence:
             if pulse.qubit in {target_qubit, control_qubit}:
                 break
-            pulse.duration = theta_pulse[setup].finish
+            pulse.start = flux_sequence[setup].start
+            pulse.duration = flux_sequence[setup].duration
     return sequence, measure_target, virtual_z_phase, theta_pulse
 
 
@@ -219,7 +213,7 @@ def _acquisition(
                 sweeper = Sweeper(
                     Parameter.relative_phase,
                     thetas,
-                    pulses=[theta_pulse[setup]],
+                    pulses=[theta_pulse],
                     type=SweeperType.ABSOLUTE,
                 )
                 results = platform.sweep(
@@ -232,7 +226,7 @@ def _acquisition(
                     sweeper,
                 )
 
-                result = results[measure_target[setup].serial]
+                result = results[measure_target.serial]
                 prob = result.statistical_frequency
 
                 r = {
