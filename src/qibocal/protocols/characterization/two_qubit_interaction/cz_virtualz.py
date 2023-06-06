@@ -8,7 +8,7 @@ from plotly.subplots import make_subplots
 from qibo.config import log
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
+from qibolab.pulses import Pulse, PulseSequence
 from qibolab.qubits import Qubit, QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
