@@ -125,6 +125,7 @@ def spectroscopy_plot(data, fit: Results, qubit):
         max(frequencies),
         2 * len(frequencies),
     )
+
     params = fit.fitted_parameters[qubit]
 
     fig.add_trace(

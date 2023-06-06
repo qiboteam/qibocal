@@ -7,7 +7,7 @@ from qibolab.qubits import QubitId
 
 from qibocal.auto.execute import Executor, History
 from qibocal.auto.runcard import Runcard
-from qibocal.auto.task import UId
+from qibocal.auto.task import TaskId
 
 from .builders import ActionBuilder
 
@@ -76,12 +76,12 @@ class AutoCalibrationReportBuilder:
         name = routine.replace("_", " ").title()
         return f"{name} - {iteration}"
 
-    def routine_qubits(self, task_uid: UId):
+    def routine_qubits(self, task_uid: TaskId):
         """Get local qubits parameter from Task if available otherwise use global one."""
         local_qubits = self.history[task_uid].task.qubits
         return local_qubits if len(local_qubits) > 0 else self.qubits
 
-    def single_qubit_plot(self, task_uid: UId, qubit: QubitId):
+    def single_qubit_plot(self, task_uid: TaskId, qubit: QubitId):
         node = self.history[task_uid]
         data = node.task.data
         figures, fitting_report = node.task.operation.report(data, node.res, qubit)
@@ -96,7 +96,7 @@ class AutoCalibrationReportBuilder:
         all_html = "".join(html_list)
         return all_html, fitting_report
 
-    def plot(self, task_uid: UId):
+    def plot(self, task_uid: TaskId):
         node = self.history[task_uid]
         data = node.task.data
         figures, fitting_report = node.task.operation.report(data)

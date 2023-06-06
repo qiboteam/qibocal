@@ -21,8 +21,8 @@ But not so insanely big not to fit in a native integer.
 DATAFILE = "data.csv"
 """Name of the file where data acquired by calibration are dumped."""
 
-UId = tuple[Id, int]
-"""Useful type for Task."""
+TaskId = tuple[Id, int]
+"""Unique identifier for executed tasks."""
 
 
 @dataclass
