@@ -34,22 +34,6 @@ class ActionBuilder:
         # parse runcard
         self.runcard = Runcard.load(Path(runcard))
         self.update = update
-
-        # backend and platform allocation
-        # backend_name = self.runcard.get("backend", "qibolab")
-        # platform_name = self.runcard.get("platform", "dummy")
-        # platform_runcard = self.runcard.get("runcard", None)
-        # self.backend, self.platform = self._allocate_backend(
-        #     backend_name, platform_name, platform_runcard, update
-        # )
-
-        # self.qubits = allocate_qubits(self.platform, self.runcard.get("qubits", []))
-
-        # Saving runcard
-        # shutil.copy(self.runcard, f"{self.folder}/ RUNCARD")
-        # self.save_meta()
-
-        # self.folder = Path(self.folder)
         self._prepare_output(runcard)
 
     @property
