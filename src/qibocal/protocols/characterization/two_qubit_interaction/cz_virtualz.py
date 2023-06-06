@@ -1,22 +1,20 @@
 """CZ virtual correction experiment for two qubit gates, tune landscape"""
-from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple, Union
+from dataclasses import dataclass
+from typing import Optional, Union
 
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from qibo.config import log, raise_error
+from qibo.config import log
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import FluxPulse, PulseSequence, Rectangular
+from qibolab.pulses import PulseSequence
 from qibolab.qubits import Qubit, QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
-
-from .utils import landscape, parse
 
 
 @dataclass
@@ -43,14 +41,14 @@ class CZVirtualZParameters(Parameters):
 class CZVirtualZResults(Results):
     """CzVirtualZ outputs when fitting will be done."""
 
-    # amplitude: dict[Union[str, int], float]
-    # """Amplitude of the fit."""
-    # offset: dict[Union[str, int], float]
-    # """Offset of the fit."""
-    # phase_offset: dict[Union[str, int], float]
-    # """Phase offset of the fit."""
-    # setup: dict[Union[str, int], str]
-    # """Setup of the fit."""
+    amplitude: dict[Union[str, int], float]
+    """Amplitude of the fit."""
+    offset: dict[Union[str, int], float]
+    """Offset of the fit."""
+    phase_offset: dict[Union[str, int], float]
+    """Phase offset of the fit."""
+    setup: dict[Union[str, int], str]
+    """Setup of the fit."""
 
 
 class CZVirtualZData(DataUnits):
@@ -76,11 +74,19 @@ def order_pairs(
     return pair
 
 
-def create_sequence(platform, setup, target_qubit, control_qubit, ord_pair):
+def create_sequence(
+    platform: Platform,
+    setup: str,
+    target_qubit: QubitId,
+    control_qubit: QubitId,
+    ord_pair: list[QubitId, QubitId],
+) -> tuple(
+    PulseSequence, dict[QubitId, Pulse], dict[QubitId, Pulse], dict[QubitId, Pulse]
+):
+    """Create the experiment PulseSequence"""
     lowfreq = ord_pair[0]
     highfreq = ord_pair[1]
 
-    sweeper = {}
     Y90_pulse = {}
     RX_pulse_start = {}
     flux_sequence = {}
@@ -218,72 +224,85 @@ def _acquisition(
     return data
 
 
+def fit_function(x, p0, p1, p2):
+    # TODO maybe x=2pi*x
+    return np.sin(x + p2) * p0 + p1
+
+
 def _fit(
     data: CZVirtualZData,
 ) -> CZVirtualZResults:
     r"""
-    Fitting routine for T1 experiment. The used model is
+    Fitting routine for the experiment. The used model is
 
     .. math::
 
-        y = p_0 sin\Big(2 \pi x + p_2\Big) + p_1.
+        y = p_0 sin\Big(x + p_2\Big) + p_1.
     """
-    return CZVirtualZResults()
-    # qubits = data.df["qubit"].unique()
+    amplitude = {}
+    offset = {}
+    phase_offset = {}
+    setups = {}
 
-    # amplitude = {qubit: [] for qubit in qubits}
-    # offset = {qubit: [] for qubit in qubits}
-    # phase_offset = {qubit: [] for qubit in qubits}
-    # setups = {qubit: [] for qubit in qubits}
+    pairs = data.df["pair"].unique()
+    for pair in pairs:
+        data_pair = data.df[data.df["pair"] == pair]
+        qubits = data_pair["qubit"].unique()
 
-    # for qubit in qubits:
-    #    qubit_data = (
-    #        data.df[(data.df["target_qubit"] == qubit) & (data.df["qubit"] == qubit)]
-    #        .drop(columns=["target_qubit", "qubit"])
-    #        .groupby(["setup", "theta"], as_index=False)
-    #        .mean()
-    #    )
-    #    thetas_keys = parse("theta[rad]")
-    #    voltages_keys = parse("MSR[V]")
+        for qubit in qubits:
+            amplitude[(qubit, pair)] = []
+            offset[(qubit, pair)] = []
+            phase_offset[(qubit, pair)] = []
+            setups[(qubit, pair)] = []
 
-    #    thetas = qubit_data[thetas_keys[0]].pint.to(thetas_keys[1]).pint.magnitude
-    #    voltages = qubit_data[voltages_keys[0]].pint.to(voltages_keys[1]).pint.magnitude
-    #    for setup in ("I", "X"):
-    #        setup_voltages = voltages[qubit_data["setup"] == setup]
-    #        setup_thetas = thetas[qubit_data["setup"] == setup]
+        for qubit in qubits:
+            qubit_data = (
+                data_pair[
+                    (data_pair["target_qubit"] == qubit) & (data_pair["qubit"] == qubit)
+                ]
+                .drop(columns=["target_qubit", "qubit"])
+                .groupby(["setup", "theta", "probability"], as_index=False)
+                .mean()
+            )
 
-    #        pguess = [
-    #            np.max(setup_voltages) - np.min(setup_voltages),
-    #            np.mean(setup_voltages),
-    #            3.14,
-    #        ]
+            thetas = qubit_data["theta"].pint.to("rad").pint.magnitude
+            probabilities = qubit_data["probability"]
 
-    #        try:
-    #            popt, pcov = curve_fit(
-    #                landscape,
-    #                setup_thetas,
-    #                setup_voltages,
-    #                p0=pguess,
-    #                bounds=((0, 0, 0), (2.5e6, 2.5e6, 2 * np.pi)),
-    #            )
-    #            amplitude[qubit] += [popt[0]]
-    #            offset[qubit] += [popt[1]]
-    #            phase_offset[qubit] += [popt[2]]
-    #            setups[qubit] += [setup]
-    #        except:
-    #            log.warning("landscape_fit: the fitting was not succesful")
-    #            print(setup)
-    #            amplitude[qubit] += [None]
-    #            offset[qubit] += [None]
-    #            phase_offset[qubit] += [None]
-    #            setups[qubit] += [setup]
+            for setup in ("I", "X"):
+                setup_probabilities = probabilities[qubit_data["setup"] == setup]
+                setup_thetas = thetas[qubit_data["setup"] == setup]
 
-    # return CzVirtualZCorrectionResults(
-    #    amplitude=amplitude,
-    #    offset=offset,
-    #    phase_offset=phase_offset,
-    #    setup=setups,
-    # )
+                pguess = [
+                    np.max(setup_probabilities) - np.min(setup_probabilities),
+                    np.mean(setup_probabilities),
+                    3.14,
+                ]
+
+                try:
+                    popt, pcov = curve_fit(
+                        fit_function,
+                        setup_thetas,
+                        setup_probabilities,
+                        p0=pguess,
+                        bounds=((0, 0, 0), (2.5e6, 2.5e6, 2 * np.pi)),
+                    )
+                    amplitude[(qubit, pair)] += [popt[0]]
+                    offset[(qubit, pair)] += [popt[1]]
+                    phase_offset[(qubit, pair)] += [popt[2]]
+                    setups[(qubit, pair)] += [setup]
+                except:
+                    log.warning("landscape_fit: the fitting was not succesful")
+                    amplitude[(qubit, pair)] += [None]
+                    offset[(qubit, pair)] += [None]
+                    phase_offset[(qubit, pair)] += [None]
+                    setups[(qubit, pair)] += [setup]
+
+    return CZVirtualZResults(
+        amplitude=amplitude,
+        offset=offset,
+        phase_offset=phase_offset,
+        setup=setups,
+    )
 
 
 def _plot(data: CZVirtualZData, data_fit: CZVirtualZResults, qubits):
@@ -305,21 +324,21 @@ def _plot(data: CZVirtualZData, data_fit: CZVirtualZResults, qubits):
     fitting_report = ""
     column = 0
     for qubit in qubits:
-        filter = (
+        df_filter = (
             (data.df["target_qubit"] == qubit)
             & (data.df["qubit"] == qubit)
             & (data.df["pair"] == str(qubits))
         )
-        thetas = data.df[filter]["theta"].pint.to("rad").pint.magnitude.unique()
+        thetas = data.df[df_filter]["theta"].pint.to("rad").pint.magnitude.unique()
         column += 1
         offset = {}
         for setup in ("I", "X"):
             fig.add_trace(
                 go.Scatter(
-                    x=data.get_values("theta", "rad")[filter][
+                    x=data.get_values("theta", "rad")[df_filter][
                         data.df["setup"] == setup
                     ].to_numpy(),
-                    y=data.df[filter][data.df["setup"] == setup]["probability"],
+                    y=data.df[df_filter][data.df["setup"] == setup]["probability"],
                     name=f"q{qubit} {setup} Data",
                 ),
                 row=1,
@@ -329,45 +348,53 @@ def _plot(data: CZVirtualZData, data_fit: CZVirtualZResults, qubits):
             angle_range = np.linspace(thetas[0], thetas[-1], 100)
             if (
                 (
-                    data_fit.amplitude[qubit][data_fit.setup[qubit].index(setup)]
+                    data_fit.amplitude[(qubit, str(qubits))][
+                        data_fit.setup[(qubit, str(qubits))].index(setup)
+                    ]
                     is not None
                 )
                 and (
-                    data_fit.offset[qubit][data_fit.setup[qubit].index(setup)]
+                    data_fit.offset[(qubit, str(qubits))][
+                        data_fit.setup[(qubit, str(qubits))].index(setup)
+                    ]
                     is not None
                 )
                 and (
-                    data_fit.phase_offset[qubit][data_fit.setup[qubit].index(setup)]
+                    data_fit.phase_offset[(qubit, str(qubits))][
+                        data_fit.setup[(qubit, str(qubits))].index(setup)
+                    ]
                     is not None
                 )
             ):
                 fig.add_trace(
                     go.Scatter(
                         x=angle_range,
-                        y=landscape(
+                        y=fit_function(
                             angle_range,
-                            data_fit.amplitude[qubit][
-                                data_fit.setup[qubit].index(setup)
+                            data_fit.amplitude[(qubit, str(qubits))][
+                                data_fit.setup[(qubit, str(qubits))].index(setup)
                             ],
-                            data_fit.offset[qubit][data_fit.setup[qubit].index(setup)],
-                            data_fit.phase_offset[qubit][
-                                data_fit.setup[qubit].index(setup)
+                            data_fit.offset[(qubit, str(qubits))][
+                                data_fit.setup[(qubit, str(qubits))].index(setup)
+                            ],
+                            data_fit.phase_offset[(qubit, str(qubits))][
+                                data_fit.setup[(qubit, str(qubits))].index(setup)
                             ],
                         ),
-                        name=f"q{qubit} {setup} Fit",
+                        name=f"q{qubit} {setup} pair {qubits} Fit",
                         line=go.scatter.Line(dash="dot"),
                     ),
                     row=1,
                     col=column,
                 )
-                offset[setup] = data_fit.offset[qubit][
-                    data_fit.setup[qubit].index(setup)
+                offset[setup] = data_fit.offset[(qubit, str(qubits))][
+                    data_fit.setup[(qubit, str(qubits))].index(setup)
                 ]
                 fitting_report += (
-                    f"q{qubit} {setup} | offset: {offset[setup]:,.3f} rad<br>"
+                    f"q{qubit} {setup} {qubits}| offset: {offset[setup]:,.3f} rad<br>"
                 )
         if "X" in offset and "I" in offset:
-            fitting_report += f"q{qubit} | Z rotation: {data_fit.offset[qubit][data_fit.setup[qubit].index('X')] - data_fit.offset[qubit][data_fit.setup[qubit].index('I')]:,.3f} rad<br>"
+            fitting_report += f"q{qubit} pair {qubits} |Z rotation: {data_fit.offset[(qubit, str(qubits))][data_fit.setup[(qubit, str(qubits))].index('X')] - data_fit.offset[(qubit, str(qubits))][data_fit.setup[(qubit, str(qubits))].index('I')]:,.3f} rad<br>"
         fitting_report += "<br>"
 
     fig.update_layout(
