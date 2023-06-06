@@ -15,6 +15,7 @@ from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
+from qibocal.protocols.characterization.two_qubit_interaction.chevron import order_pairs
 
 
 @dataclass
@@ -66,16 +67,6 @@ class CZVirtualZData(DataUnits):
         )
 
 
-def order_pairs(
-    pair: list[QubitId, QubitId], qubits: dict[QubitId, Qubit]
-) -> list[QubitId, QubitId]:
-    """Order a pair of qubits by drive frequency"""
-
-    if qubits[pair[0]].drive_frequency > qubits[pair[1]].drive_frequency:
-        return pair[::-1]
-    return pair
-
-
 def create_sequence(
     platform: Platform,
     setup: str,
@@ -90,26 +81,12 @@ def create_sequence(
     lowfreq = ord_pair[0]
     highfreq = ord_pair[1]
 
-    start = 0
-
     sequence = PulseSequence()
 
-    if parking:
-        # if parking is true, create a cz pulse from the runcard and
-        # add to the sequence all parking pulses
-        cz_sequence, _ = platform.pairs[
-            tuple(sorted([target_qubit, control_qubit]))
-        ].native_gates.CZ.sequence(start=0)
-        for pulse in cz_sequence:
-            if pulse.qubit not in {target_qubit, control_qubit}:
-                sequence.add(pulse)
-
     Y90_pulse = platform.create_RX90_pulse(
-        target_qubit, start=start, relative_phase=np.pi / 2
+        target_qubit, start=0, relative_phase=np.pi / 2
     )
-    RX_pulse_start = platform.create_RX_pulse(
-        control_qubit, start=start, relative_phase=0
-    )
+    RX_pulse_start = platform.create_RX_pulse(control_qubit, start=0, relative_phase=0)
 
     flux_sequence, virtual_z_phase = platform.create_CZ_pulse_sequence(
         (highfreq, lowfreq),
@@ -149,13 +126,17 @@ def create_sequence(
         )
 
     if parking:
-        # if parking is true, change all the durations so that
-        # ends just before measurement
-        for pulse in sequence:
-            if pulse.qubit in {target_qubit, control_qubit}:
-                break
-            pulse.start = flux_sequence[setup].start
-            pulse.duration = flux_sequence[setup].duration
+        # if parking is true, create a cz pulse from the runcard and
+        # add to the sequence all parking pulses
+        cz_sequence, _ = platform.pairs[
+            tuple(sorted([target_qubit, control_qubit]))
+        ].native_gates.CZ.sequence(start=0)
+        for pulse in cz_sequence:
+            if pulse.qubit not in {target_qubit, control_qubit}:
+                pulse.start = flux_sequence[setup].start
+                pulse.duration = flux_sequence[setup].duration
+                sequence.add(pulse)
+
     return sequence, measure_target, virtual_z_phase, theta_pulse
 
 
@@ -334,7 +315,7 @@ def _plot(data: CZVirtualZData, data_fit: CZVirtualZResults, qubits):
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
         subplot_titles=(
-            "P(0) - Low Frequency",  # TODO: change this to <Z>
+            "P(0) - Low Frequency",
             "P(0) - High Frequency",
         ),
     )

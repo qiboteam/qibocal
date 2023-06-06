@@ -52,11 +52,7 @@ class ChevronData(DataUnits):
         super().__init__(
             name="data",
             quantities={"amplitude": "dimensionless", "duration": "ns"},
-            options=[
-                "qubit",
-                "probability",
-                "state",
-            ],
+            options=["qubit", "probability", "state", "pair"],
         )
 
 
@@ -82,23 +78,12 @@ def create_sequence(
     """
     sequence = PulseSequence()
 
-    if params.parking:
-        # if parking is true, create a cz pulse from the runcard and
-        # add to the sequence all parking pulses
-        cz_sequence, _ = platform.pairs[
-            tuple(sorted(ord_pair))
-        ].native_gates.CZ.sequence(start=0)
-        for pulse in cz_sequence:
-            if pulse.qubit not in ord_pair:
-                sequence.add(pulse)
-
     ro_pulses = {}
     qd_pulses = {}
-    fx_pulses = {}
 
     qd_pulses[ord_pair[0]] = platform.create_RX_pulse(ord_pair[0], start=0)
     qd_pulses[ord_pair[1]] = platform.create_RX_pulse(ord_pair[1], start=0)
-    fx_pulses[ord_pair[0]] = FluxPulse(
+    fx_pulse = FluxPulse(
         start=max([qd_pulses[ord_pair[0]].se_finish, qd_pulses[ord_pair[1]].se_finish])
         + 8,
         duration=params.duration_min,
@@ -109,28 +94,30 @@ def create_sequence(
     )
 
     ro_pulses[ord_pair[0]] = platform.create_MZ_pulse(
-        ord_pair[0], start=fx_pulses[ord_pair[0]].se_finish + 8
+        ord_pair[0], start=fx_pulse.se_finish + 8
     )
     ro_pulses[ord_pair[1]] = platform.create_MZ_pulse(
-        ord_pair[1], start=fx_pulses[ord_pair[0]].se_finish + 8
+        ord_pair[1], start=fx_pulse.se_finish + 8
     )
 
     sequence.add(qd_pulses[ord_pair[0]])
     sequence.add(qd_pulses[ord_pair[1]])
-    sequence.add(fx_pulses[ord_pair[0]])
+    sequence.add(fx_pulse)
     sequence.add(ro_pulses[ord_pair[0]])
     sequence.add(ro_pulses[ord_pair[1]])
+    if parking:
+        # if parking is true, create a cz pulse from the runcard and
+        # add to the sequence all parking pulses
+        cz_sequence, _ = platform.pairs[
+            tuple(sorted([target_qubit, control_qubit]))
+        ].native_gates.CZ.sequence(start=0)
+        for pulse in cz_sequence:
+            if pulse.qubit not in {target_qubit, control_qubit}:
+                pulse.start = fx_pulse.start
+                pulse.duration = fx_pulse.duration
+                sequence.add(pulse)
 
-    if params.parking:
-        # if parking is true, change all the durations so that
-        # ends just before measurement
-        for pulse in sequence:
-            if pulse.qubit in ord_pair:
-                break
-            pulse.start = sequence[-3].start
-            pulse.duration = sequence[-3].duration
-
-    return sequence, ro_pulses, fx_pulses
+    return sequence, ro_pulses, fx_pulse
 
 
 def save_data(
@@ -153,14 +140,13 @@ def save_data(
             "amplitude[dimensionless]": amp.flatten(),
             "duration[ns]": dur.flatten(),
             "qubit": (
-                len(delta_amplitude_range)
-                * len(delta_duration_range)
-                * [f"{qubit}_{pair}"]
+                len(delta_amplitude_range) * len(delta_duration_range) * [f"{qubit}"]
             ),
             "state": (
-                len(delta_amplitude_range)
-                * len(delta_duration_range)
-                * [f"{state}_{pair}"]
+                len(delta_amplitude_range) * len(delta_duration_range) * [f"{state}"]
+            ),
+            "pair": (
+                len(delta_amplitude_range) * len(delta_duration_range) * [f"{pair}"]
             ),
             "probability": prob.flatten(),
         }
@@ -193,7 +179,7 @@ def _aquisition(
         # order the qubits so that the low frequency one is the first
         ord_pair = order_pairs(pair, platform.qubits)
         # create a sequence
-        sequence, ro_pulses, fx_pulses = create_sequence(ord_pair, platform, params)
+        sequence, ro_pulses, fx_pulse = create_sequence(ord_pair, platform, params)
 
         # define the parameter to sweep and its range:
         delta_amplitude_range = np.arange(
@@ -208,13 +194,13 @@ def _aquisition(
         sweeper_amplitude = Sweeper(
             Parameter.amplitude,
             delta_amplitude_range,
-            pulses=[fx_pulses[ord_pair[0]]],
+            pulses=[fx_pulse],
             type=SweeperType.ABSOLUTE,
         )
         sweeper_duration = Sweeper(
             Parameter.duration,
             delta_duration_range,
-            pulses=[fx_pulses[ord_pair[0]]],
+            pulses=[fx_pulse],
             type=SweeperType.ABSOLUTE,
         )
 
@@ -246,24 +232,19 @@ def _plot(data: ChevronData, fit: ChevronResults, qubits):
     # Plot data
     colouraxis = ["coloraxis", "coloraxis2"]
     for state, q in zip(states, qubits):
+        df_filter = (
+            (data.df["state"] == f"{state}")
+            & (data.df["qubit"] == f"{q}")
+            & (data.df["pair"] == f"{qubits}")
+        )
+
         fig.add_trace(
             go.Heatmap(
-                x=data.df[
-                    (data.df["state"] == f"{state}_{qubits}")
-                    & (data.df["qubit"] == f"{q}_{qubits}")
-                ]["duration"]
-                .pint.to("ns")
-                .pint.magnitude,
-                y=data.df[
-                    (data.df["state"] == f"{state}_{qubits}")
-                    & (data.df["qubit"] == f"{q}_{qubits}")
-                ]["amplitude"]
+                x=data.df[df_filter]["duration"].pint.to("ns").pint.magnitude,
+                y=data.df[df_filter]["amplitude"]
                 .pint.to("dimensionless")
                 .pint.magnitude,
-                z=data.df[
-                    (data.df["state"] == f"{state}_{qubits}")
-                    & (data.df["qubit"] == f"{q}_{qubits}")
-                ]["probability"],
+                z=data.df[df_filter]["probability"],
                 name=f"Qubit {q} |{state}>",
                 coloraxis=colouraxis[states.index(state)],
             ),
