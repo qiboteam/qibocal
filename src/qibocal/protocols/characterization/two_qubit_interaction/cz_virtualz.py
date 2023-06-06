@@ -80,9 +80,9 @@ def create_sequence(
     target_qubit: QubitId,
     control_qubit: QubitId,
     ord_pair: list[QubitId, QubitId],
-) -> tuple(
+) -> tuple[
     PulseSequence, dict[QubitId, Pulse], dict[QubitId, Pulse], dict[QubitId, Pulse]
-):
+]:
     """Create the experiment PulseSequence"""
     lowfreq = ord_pair[0]
     highfreq = ord_pair[1]
