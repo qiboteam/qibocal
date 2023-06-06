@@ -8,6 +8,7 @@ import numpy as np
 import plotly.graph_objects as go
 
 from qibocal.auto.operation import Results
+from qibocal.config import raise_error
 from qibocal.protocols.characterization.randomized_benchmarking.fitting import (
     exp1_func,
     exp1B_func,
@@ -15,7 +16,9 @@ from qibocal.protocols.characterization.randomized_benchmarking.fitting import (
     fit_exp1B_func,
 )
 from qibocal.protocols.characterization.randomized_benchmarking.utils import (
+    data_mean_errors,
     number_to_str,
+    samples_to_p0,
 )
 
 
@@ -42,8 +45,10 @@ class DecayResult(Results):
         choose a wise guess based on the given data.
         """
         if len(self.y) != len(self.x):
-            raise ValueError(
-                f"Length of y and x must agree. len(x)={len(self.x)} != len(y)={len(self.y)}"
+            raise_error(
+                ValueError(
+                    f"Length of y and x must agree. len(x)={len(self.x)} != len(y)={len(self.y)}"
+                )
             )
         self.y_scatter = None
         self.error_y = None
@@ -74,67 +79,121 @@ class DecayResult(Results):
         self.Aerr, self.perr = value
 
     def fit(
-        self, n_bootstrap: int = 0, sample_size: int = 1, uncertainties=None, **kwargs
+        self,
+        uncertainties=None,
+        n_bootstrap: int = 0,
+        sample_size: int = 1,
+        samples_to_y=None,
+        **kwargs,
     ):
-        """Fits the data, all parameters given through
-        kwargs will be passed on to the optimization function.
+        """Fits the data and performs bootstrap resampling.
 
         Args:
+            uncertainties: method of computing the uncertainties if ``sigma`` in ``kwargs``
+                is not given. If ``std``, computes the standard deviation. If type ``float`` between
+                0 and 1, computes the corresponding confidence interval. If ``None``, does not
+                compute the uncertainties. Defaults to ``None``.
             n_bootstrap (int): number of bootstrap iterations.
             sample_size (int): number of "corrected" samples from the binomial distribution.
-            uncertainties: method of computing the uncertainties if ``sigma`` in ``kwargs``
-            is not given. If ``std``, computes the standard deviation. If type ``float`` between
-            0 and 1, computes the corresponding confidence interval. If ``None``, does not compute
-            the uncertainties. Defaults to ``None``.
-
+            samples_to_y (callable): function that transforms samples to y data. If ``None``,
+                computes the probability of 0 (see
+                :func:`qibocal.protocols.characterization.randomized_benchmarking.utils.samples_to_p0`).
+                Defaults to ``None``.
+            kwargs: parameters passed on to the optimization function.
         """
 
-        def samples_to_p0(samples):
-            ground = np.array([0] * len(samples[0]))
-            return np.sum(np.product(samples == ground, axis=1)) / len(samples)
-
-        def data_mean_errors(data, uncertainties=None, sigma=None, symmetric=False):
-            if sigma is not None:
-                return sigma
-            if uncertainties == "std":
-                return np.std(data, axis=1)
-            if isinstance(uncertainties, Number):
-                confidence = uncertainties
-                percentiles = [
-                    100 * (1 - confidence) / 2,
-                    100 * (1 - (1 - confidence) / 2),
-                ]
-                data_mean = np.mean(data, axis=1)
-                data_errors = np.abs(
-                    np.vstack([data_mean, data_mean])
-                    - np.percentile(data, percentiles, axis=1)
-                )
-                if symmetric:
-                    return [max(errors) for errors in data_errors.T]
-                return data_errors
-            return None
-
-        # Fit the initial data
+        # Update kwargs for the optimization function
         init_kwargs = deepcopy(kwargs)
         init_kwargs.setdefault("bounds", ((0, 0, 0), (1, 1, 1)))
         init_kwargs.setdefault("p0", (self.A, self.p, self.B))
         init_sigma = init_kwargs.pop("sigma", None)
-        sigma = data_mean_errors(
-            self.y_scatter, uncertainties, init_sigma, symmetric=True
+
+        # Perform bootstrap resampling
+        y_estimates, popt_estimates = self.semiparametric_bootstrap(
+            uncertainties, n_bootstrap, sample_size, samples_to_y, **init_kwargs
+        )
+        if len(y_estimates) == 0:
+            y_estimates = self.y_scatter
+
+        # Fit the initial data
+        sigma = (
+            data_mean_errors(y_estimates, uncertainties, symmetric=True)
+            if init_sigma is None
+            else init_sigma
         )
         popt, pcov = self.fit_func(self.x, self.y, sigma=sigma, **init_kwargs)
+        self.fitting_params = popt
 
-        if n_bootstrap < 1:
-            self.fitting_params = popt
+        # Compute fitting errors
+        if len(popt_estimates) == 0:
             self.fitting_errors = pcov
-            self.error_y = data_mean_errors(
-                self.y_scatter, uncertainties, symmetric=False
+        else:
+            fitting_errors = data_mean_errors(popt_estimates, uncertainties)
+            self.fitting_errors = (
+                fitting_errors.T
+                if fitting_errors is not None
+                else [0] * len(self.fitting_errors)
             )
-            return
 
-        # Semi-parametric bootstrap resampling
-        bootstrap_estimates = [popt]
-        y_estimates = [self.y]
+        # Compute y data errors
+        self.error_y = data_mean_errors(y_estimates, uncertainties, symmetric=False)
+
+    def semiparametric_bootstrap(
+        self,
+        uncertainties=None,
+        n_bootstrap: int = 0,
+        sample_size: int = 1,
+        samples_to_y=None,
+        **kwargs,
+    ) -> Tuple[list, list]:
+        """Semiparametric bootstrap resampling.
+        All parameters given through kwargs will be passed on to the optimization function.
+
+        Args:
+            uncertainties: method of computing the uncertainties if ``sigma`` in ``kwargs``
+                is not given. If ``std``, computes the standard deviation. If type ``float`` between
+                0 and 1, computes the corresponding confidence interval. If ``None``, does not
+                compute the uncertainties. Defaults to ``None``.
+            n_bootstrap (int): number of bootstrap iterations.
+            sample_size (int): number of "corrected" samples from the binomial distribution.
+            samples_to_y (callable): function that transforms samples to y data. If ``None``,
+                computes the probability of 0 (see
+                :func:`qibocal.protocols.characterization.randomized_benchmarking.utils.samples_to_p0`).
+                Defaults to ``None``.
+
+        Returns:
+            Tuple[list, list]: y data estimates and fitting parameters estimates.
+        """
+
+        if isinstance(n_bootstrap, int) is False:
+            raise_error(
+                TypeError,
+                f"`n_bootstrap` must be of type int. Got {type(n_bootstrap)} instead.",
+            )
+        if isinstance(sample_size, int) is False:
+            raise_error(
+                TypeError,
+                f"`sample_size` must be of type int. Got {type(sample_size)} instead.",
+            )
+        if n_bootstrap < 0:
+            raise_error(
+                ValueError, f"`n_bootstrap` cannot be negative. Got {n_bootstrap}."
+            )
+        if sample_size < 0:
+            raise_error(
+                ValueError, f"`sample_size` cannot be negative. Got {sample_size}."
+            )
+        if samples_to_y is not None and callable(samples_to_y) is False:
+            raise_error(
+                TypeError,
+                f"`samples_to_y must be callable. Got {type(samples_to_y)} instead.",
+            )
+
+        if samples_to_y is None:
+            samples_to_y = samples_to_p0
+
+        popt_estimates = []
+        y_estimates = []
 
         for _ in range(n_bootstrap):
             fit_y = []
@@ -149,33 +208,18 @@ class DecayResult(Results):
                     samples_corrected = np.random.binomial(
                         n=1, p=1 - y_prob, size=(sample_size, 1)
                     )
-                    bootstrap_y_scatter[-1].append(samples_to_p0(samples_corrected))
+                    bootstrap_y_scatter[-1].append(samples_to_y([samples_corrected])[0])
                 fit_y.append(np.mean(bootstrap_y_scatter[-1]))
 
-            # Fit the resampled data to extract parameters
+            # Fit the resampled data to get parameters estimates
             bootstrap_sigma = data_mean_errors(
-                bootstrap_y_scatter, uncertainties, init_sigma, symmetric=True
+                bootstrap_y_scatter, uncertainties, symmetric=True
             )
-            params, _ = self.fit_func(
-                self.x, fit_y, sigma=bootstrap_sigma, **init_kwargs
-            )
-            bootstrap_estimates.append(params)
+            popt, _ = self.fit_func(self.x, fit_y, sigma=bootstrap_sigma, **kwargs)
+            popt_estimates.append(popt)
             y_estimates.append(fit_y)
 
-        # Fit the initial data given bootstrap uncertainties
-        y_estimates = np.array(y_estimates).T
-        sigma = data_mean_errors(y_estimates, uncertainties, init_sigma, symmetric=True)
-        popt, pcov = self.fit_func(self.x, self.y, sigma=sigma, **init_kwargs)
-        self.fitting_params = popt
-        fitting_errors = data_mean_errors(
-            np.array(bootstrap_estimates).T, uncertainties
-        )
-        self.fitting_errors = (
-            fitting_errors.T
-            if fitting_errors is not None
-            else [0] * len(self.fitting_errors)
-        )
-        self.error_y = data_mean_errors(y_estimates, uncertainties, symmetric=False)
+        return np.array(y_estimates).T, np.array(popt_estimates).T
 
     def plot(self):
         """Plots the histogram data for each point and the averges plus the fit."""

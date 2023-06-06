@@ -22,6 +22,7 @@ from qibocal.protocols.characterization.randomized_benchmarking.utils import (
     extract_from_data,
     number_to_str,
     random_clifford,
+    samples_to_p0,
 )
 
 from .data import RBData
@@ -122,15 +123,8 @@ def aggregate(data: RBData) -> StandardRBResult:
         StandardRBResult: The aggregated data.
     """
 
-    def p0s(samples_list):
-        ground = np.array([0] * len(samples_list[0][0]))
-        my_p0s = []
-        for samples in samples_list:
-            my_p0s.append(np.sum(np.product(samples == ground, axis=1)) / len(samples))
-        return my_p0s
-
     # The signal is here the survival probability.
-    data_agg = data.assign(signal=lambda x: p0s(x.samples.to_list()))
+    data_agg = data.assign(signal=lambda x: samples_to_p0(x.samples.to_list()))
     return StandardRBResult(
         *extract_from_data(data_agg, "signal", "depth", list), meta_data=data.attrs
     )
@@ -179,7 +173,10 @@ def extract(data: RBData) -> StandardRBResult:
 
     result = aggregate(data)
     result.fit(
-        data.attrs["n_bootstrap"], data.attrs["nshots"], data.attrs["uncertainties"]
+        data.attrs["uncertainties"],
+        data.attrs["n_bootstrap"],
+        data.attrs["nshots"],
+        samples_to_p0,
     )
     result.calculate_fidelities()
     return result
