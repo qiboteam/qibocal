@@ -10,7 +10,7 @@ from qibolab.platform import Platform
 from qibolab.pulses import FluxPulse, Pulse, PulseSequence, Rectangular
 from qibolab.qubits import Qubit, QubitId
 from qibolab.result import AveragedSampleResults
-from qibolab.sweeper import Parameter, Sweeper
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
@@ -31,12 +31,11 @@ class ChevronParameters(Parameters):
     duration_max: float
     """Duration maximum."""
     duration_step: float
-
     """Duration step."""
-    qubits: Optional[list[list[QubitId, QubitId]]] = None
-    """Pair(s) of qubit to probe."""
     nshots: Optional[int] = None
     """Number of shots per point."""
+    qubits: Optional[list[list[QubitId, QubitId]]] = None
+    """Pair(s) of qubit to probe."""
 
 
 @dataclass
@@ -185,11 +184,13 @@ def _aquisition(
             Parameter.amplitude,
             delta_amplitude_range,
             pulses=[fx_pulses[ord_pair[0]]],
+            type=SweeperType.ABSOLUTE,
         )
         sweeper_duration = Sweeper(
             Parameter.duration,
             delta_duration_range,
             pulses=[fx_pulses[ord_pair[0]]],
+            type=SweeperType.ABSOLUTE,
         )
 
         results = platform.sweep(

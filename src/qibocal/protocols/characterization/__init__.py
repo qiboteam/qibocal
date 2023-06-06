@@ -21,6 +21,7 @@ from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
 from .resonator_spectroscopy_attenuation import resonator_spectroscopy_attenuation
 from .two_qubit_interaction.chevron import chevron
+from .two_qubit_interaction.cz_virtualz import cz_virtualz
 
 
 class Operation(Enum):
@@ -44,4 +45,5 @@ class Operation(Enum):
     flipping = flipping
     dispersive_shift = dispersive_shift
     chevron = chevron
+    cz_virtualz = cz_virtualz
     standard_rb = standard_rb
