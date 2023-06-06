@@ -1,5 +1,4 @@
 import datetime
-import os
 import tempfile
 from pathlib import Path
 
@@ -8,7 +7,7 @@ import yaml
 from qibocal.auto.execute import Executor, History
 from qibocal.auto.runcard import Runcard
 
-from .builders import ActionBuilder, load_yaml
+from .builders import ActionBuilder
 
 META = "meta.yml"
 RUNCARD = "runcard.yml"
@@ -16,8 +15,8 @@ UPDATED_PLATFORM = "new_platform.yml"
 
 
 class AutoCalibrationBuilder(ActionBuilder):
-    def __init__(self, runcard, folder=None, force=False):
-        super().__init__(runcard, folder, force)
+    def __init__(self, runcard, folder, force, update):
+        super().__init__(runcard, folder, force, update)
         # TODO: modify folder in Path in ActionBuilder
         self.folder = Path(self.folder)
         self.executor = Executor.load(
@@ -25,6 +24,7 @@ class AutoCalibrationBuilder(ActionBuilder):
             self.folder,
             self.platform,
             self.qubits,
+            update,
         )
 
     def run(self):
@@ -40,6 +40,7 @@ class AutoCalibrationBuilder(ActionBuilder):
             self.platform.disconnect()
 
     def dump_report(self):
+        """Dump report."""
         from qibocal.web.report import create_autocalibration_report
 
         # update end time
@@ -52,6 +53,7 @@ class AutoCalibrationBuilder(ActionBuilder):
         create_autocalibration_report(self.folder, self.executor.history)
 
     def dump_platform_runcard(self):
+        """Dump platform runcard."""
         if self.platform is not None:
             self.platform.dump(self.folder / UPDATED_PLATFORM)
 
@@ -71,6 +73,11 @@ class AutoCalibrationReportBuilder:
         """Prettify routine's name for report headers."""
         name = routine.replace("_", " ").title()
         return f"{name} - {iteration}"
+
+    def routine_qubits(self, routine_name, iteration):
+        """Get local qubits parameter from Task if available otherwise use global one."""
+        local_qubits = self.history[(routine_name, iteration)].task.qubits
+        return local_qubits if len(local_qubits) > 0 else self.qubits
 
     def single_qubit_plot(self, routine_name, iteration, qubit):
         node = self.history[(routine_name, iteration)]

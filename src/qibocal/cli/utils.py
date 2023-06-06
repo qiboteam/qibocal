@@ -8,6 +8,7 @@ from pathlib import Path
 
 import click
 import yaml
+from qibolab.platform import Platform
 
 from qibocal.config import log, raise_error
 

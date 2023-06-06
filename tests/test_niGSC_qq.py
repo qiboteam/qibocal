@@ -1,7 +1,6 @@
 import os
 import tempfile
 from pathlib import Path
-from shutil import rmtree
 
 from qibocal.cli._base import ActionBuilder
 
@@ -11,7 +10,7 @@ here = Path(__file__).parent
 def test_command_niGSC():
     path_to_runcard = here / "niGSC.yml"
     test_folder = tempfile.mkdtemp()
-    builder = ActionBuilder(path_to_runcard, test_folder, force=True)
+    builder = ActionBuilder(path_to_runcard, test_folder, force=True, update=False)
     builder.execute()
     builder.dump_report()
     paths_to_protocols = [
