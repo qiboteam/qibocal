@@ -26,7 +26,7 @@ class Executor:
     """Qubits to be calibrated."""
     platform: Optional[Platform] = None
     """Qubits' platform."""
-    update: Optional[bool] = True
+    update: bool = True
     """Runcard update mechanism."""
     head: Optional[Id] = None
     """The current position."""
@@ -123,7 +123,12 @@ class Executor:
         return self.graph.task(self.head)
 
     def run(self):
-        """Actual execution."""
+        """Actual execution.
+
+        The platform's update method is called if:
+        - self.update is True and task.update is None
+        - task.update is True
+        """
         self.head = self.graph.start
 
         while self.head is not None:
