@@ -1,11 +1,10 @@
-from dataclasses import dataclass, field
-from typing import Optional, Union
+from dataclasses import dataclass
+from typing import Optional
 
-import networkx as nx
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import SNZ, FluxPulse, Rectangular
+from qibolab.pulses import SNZ, FluxPulse
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper
 
@@ -39,10 +38,6 @@ class SnzTuningParameters(Parameters):
     """Step detuning for the flux pulse."""
     pairs: list[list[QubitId, QubitId]]
     """List of qubit pairs to be used in the experiment."""
-    dt_spacing: Optional[float] = 0
-    """Time spacing between the two halves of the SNZ pulse."""
-    snz_b_half_duration: Optional[float] = 1
-    """Duration of the lowered amplitude (B) of the SNZ pulse."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
