@@ -32,10 +32,12 @@ class ChevronParameters(Parameters):
     """Duration maximum."""
     duration_step: float
     """Duration step."""
-    nshots: Optional[int] = None
-    """Number of shots per point."""
     parking: bool = True
     """Wether to park non interacting qubits or not."""
+    dt: int = 0
+    """Delay around flux pulse."""
+    nshots: Optional[int] = None
+    """Number of shots per point."""
 
 
 @dataclass
@@ -83,7 +85,7 @@ def create_sequence(
     qd_pulses[ord_pair[1]] = platform.create_RX_pulse(ord_pair[1], start=0)
     fx_pulse = FluxPulse(
         start=max([qd_pulses[ord_pair[0]].se_finish, qd_pulses[ord_pair[1]].se_finish])
-        + 8,
+        + params.dt,
         duration=params.duration_min,
         amplitude=1,
         shape=Rectangular(),
@@ -92,10 +94,10 @@ def create_sequence(
     )
 
     ro_pulses[ord_pair[0]] = platform.create_MZ_pulse(
-        ord_pair[0], start=fx_pulse.se_finish + 8
+        ord_pair[0], start=fx_pulse.se_finish + params.dt
     )
     ro_pulses[ord_pair[1]] = platform.create_MZ_pulse(
-        ord_pair[1], start=fx_pulse.se_finish + 8
+        ord_pair[1], start=fx_pulse.se_finish + params.dt
     )
 
     sequence.add(qd_pulses[ord_pair[0]])
@@ -167,6 +169,7 @@ def _aquisition(
     Returns:
         DataUnits: Acquisition data.
     """
+    print(qubits)
     # create a DataUnits object to store the results,
     sweep_data = ChevronData()
     for pair in qubits:
