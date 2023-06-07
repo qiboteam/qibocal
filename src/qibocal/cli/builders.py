@@ -171,7 +171,7 @@ class ActionBuilder:
         qubits_ids = self.runcard.get("qubits", [])
 
         if self.platform is not None:
-            if any(isinstance(i, tuple) for i in qubits_ids):
+            if any(isinstance(i, list) for i in qubits_ids):
                 self.qubits = allocate_qubits_pairs(self.platform, qubits_ids)
             else:
                 self.qubits = allocate_single_qubits(self.platform, qubits_ids)
