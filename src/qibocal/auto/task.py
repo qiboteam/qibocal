@@ -7,8 +7,16 @@ from typing import List
 from qibolab.platform import Platform
 
 from ..protocols.characterization import Operation
-from ..utils import allocate_qubits
-from .operation import Data, DummyPars, Qubits, Results, Routine, dummy_operation
+from ..utils import allocate_qubits_pairs, allocate_single_qubits
+from .operation import (
+    Data,
+    DummyPars,
+    Qubits,
+    QubitsPairs,
+    Results,
+    Routine,
+    dummy_operation,
+)
 from .runcard import Action, Id
 
 MAX_PRIORITY = int(1e9)
@@ -103,7 +111,11 @@ class Task:
 
         if operation.platform_dependent and operation.qubits_dependent:
             if self.qubits:
-                qubits = allocate_qubits(platform, self.qubits)
+                if isinstance(self.qubits, Qubits):
+                    qubits = allocate_single_qubits(platform, self.qubits)
+                elif isinstance(self.qubits, QubitsPairs):
+                    qubits = allocate_qubits_pairs(platform, self.qubits)
+
             self._data: Data = operation.acquisition(
                 parameters, platform=platform, qubits=qubits
             )
