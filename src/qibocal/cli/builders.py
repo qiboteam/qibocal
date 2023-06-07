@@ -9,8 +9,7 @@ from qibolab.qubits import QubitId
 from qibocal.auto.execute import Executor, History
 from qibocal.auto.runcard import Runcard
 from qibocal.auto.task import TaskId
-from qibocal.cli.utils import generate_output_folder, load_yaml
-from qibocal.config import raise_error
+from qibocal.cli.utils import generate_output_folder
 from qibocal.utils import allocate_qubits
 
 META = "meta.yml"
@@ -25,7 +24,7 @@ class ActionBuilder:
         runcard (path): path containing the runcard.
         folder (path): path for the output folder.
         force (bool): option to overwrite the output folder if it exists already.
-        update (bool): option to
+        update (bool): option to update platform after each routine.
     """
 
     def __init__(self, runcard, folder, force, update):
@@ -33,25 +32,43 @@ class ActionBuilder:
         self.folder = generate_output_folder(folder, force)
         # parse runcard
         self.runcard = Runcard.load(Path(runcard))
+        # store update option
         self.update = update
+        # prepare output
         self._prepare_output(runcard)
+        # allocate executor
+        self.executor = Executor.load(
+            self.runcard,
+            self.folder,
+            self.platform,
+            self.qubits,
+            self.update,
+        )
 
     @property
     def platform(self):
+        """Qibolab's platform object."""
         return self.runcard.platform
 
     @property
     def backend(self):
+        """ "Qibo's backend object."""
         return self.runcard.backend
 
     @property
     def qubits(self):
+        """Qubits dictionary."""
         if self.platform is not None:
             return allocate_qubits(self.platform, self.runcard.qubits)
 
         return self.runcard.qubits
 
     def _prepare_output(self, runcard):
+        """Methods that takes care of:
+        - dumping original platform
+        - storing qq runcard
+        - generating meta.yml
+        """
         self.platform.dump(self.folder / PLATFORM)
         shutil.copy(runcard, self.folder / RUNCARD)
 
@@ -72,13 +89,8 @@ class ActionBuilder:
             yaml.dump(meta, file)
 
     def run(self):
-        self.executor = Executor.load(
-            self.runcard,
-            self.folder,
-            self.platform,
-            self.qubits,
-            self.update,
-        )
+        """Execute protocols in runcard."""
+
         if self.platform is not None:
             self.platform.connect()
             self.platform.setup()
@@ -91,7 +103,7 @@ class ActionBuilder:
             self.platform.disconnect()
 
     def dump_report(self):
-        """Dump report."""
+        """Generate report as html."""
         from qibocal.web.report import create_report
 
         # update end time
@@ -111,6 +123,7 @@ class ActionBuilder:
 
 class ReportBuilder:
     def __init__(self, path: Path, history: History):
+        """Helper class to generate html report."""
         # FIXME: currently the title of the report is the output folder
         self.path = self.title = path
         self.metadata = yaml.safe_load((path / META).read_text())
@@ -124,13 +137,14 @@ class ReportBuilder:
         name = routine.replace("_", " ").title()
         return f"{name} - {iteration}"
 
-    def routine_qubits(self, task_uid: TaskId):
+    def routine_qubits(self, task_id: TaskId):
         """Get local qubits parameter from Task if available otherwise use global one."""
-        local_qubits = self.history[task_uid].task.qubits
+        local_qubits = self.history[task_id].task.qubits
         return local_qubits if len(local_qubits) > 0 else self.qubits
 
-    def single_qubit_plot(self, task_uid: TaskId, qubit: QubitId):
-        node = self.history[task_uid]
+    def single_qubit_plot(self, task_id: TaskId, qubit: QubitId):
+        """Generate single qubit plot."""
+        node = self.history[task_id]
         data = node.task.data
         figures, fitting_report = node.task.operation.report(data, node.res, qubit)
         with tempfile.NamedTemporaryFile(delete=False) as temp:
@@ -144,8 +158,9 @@ class ReportBuilder:
         all_html = "".join(html_list)
         return all_html, fitting_report
 
-    def plot(self, task_uid: TaskId):
-        node = self.history[task_uid]
+    def plot(self, task_id: TaskId):
+        """ "Generate plot when only acquisition data are provided."""
+        node = self.history[task_id]
         data = node.task.data
         figures, fitting_report = node.task.operation.report(data)
         with tempfile.NamedTemporaryFile(delete=False) as temp:
