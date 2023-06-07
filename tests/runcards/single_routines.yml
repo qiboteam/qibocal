@@ -45,6 +45,7 @@ actions:
     parameters:
       freq_width: 10_000_000
       freq_step: 1_000_000
+      amplitude: 0.04
       min_amp_factor: 0.005
       max_amp_factor: 0.3
       step_amp_factor: 0.005
