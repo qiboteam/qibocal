@@ -1,9 +1,7 @@
-import warnings
-
 import numpy as np
 import pytest
 
-from qibocal.calibrations.niGSC.basics import fitting
+from qibocal.protocols.characterization.randomized_benchmarking import fitting
 
 
 def test_1expfitting():
@@ -48,17 +46,13 @@ def test_1expfitting():
     assert np.array_equal(
         np.array(fitting.fit_exp1_func(x, y)), np.array(((0.75, 1.0), (0, 0)))
     )
-    # At least once the algorithm shall not find a fit:
-    didnt_getit = 0
-    didnt_getitB = 0
-    for _ in range(20):
-        x = np.sort(np.random.choice(np.linspace(0, 15, 50), size=50, replace=False))
-        y_dist = np.e ** (-((x - 5) ** 2) * 10) + np.random.randn(len(x)) * 0.1
-        popt1, perr1 = fitting.fit_exp1_func(x, y_dist, p0=[-100])
-        didnt_getit += not (np.all(np.array([*popt1, *perr1]), 0))
-        popt, perr = fitting.fit_exp1B_func(x, y_dist, p0=[-100, 0.01])
-        didnt_getitB += not (np.all(np.array([*popt, *perr]), 0))
-    assert didnt_getit >= 1 and didnt_getitB >= 1
+    # Catch exceptions
+    x = np.linspace(-np.pi / 2, np.pi / 2, 100)
+    y_dist = np.tan(x)
+    popt, perr = fitting.fit_exp1_func(x, y_dist, maxfev=1, p0=[1])
+    assert not (np.all(np.array([*popt, *perr]), 0))
+    popt, perr = fitting.fit_exp1B_func(x, y_dist, maxfev=1)
+    assert not (np.all(np.array([*popt, *perr]), 0))
 
 
 def test_exp2_fitting():
