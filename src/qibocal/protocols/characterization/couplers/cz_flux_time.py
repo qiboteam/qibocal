@@ -62,12 +62,19 @@ def _aquisition(
     qubits: Qubits,
 ) -> CouplerCzFluxTimeData:
     r"""
-    Perform a SWAP experiment between two qubits through the coupler by changing its frequency.
+    Place the two qubits in the |11> state which oscillates to |02> by applying a flux pulse on the coupler.
+
+    The qubits must be at specific frequencies such that the high frequency qubit
+    1 to 2 transition is at the same frequency as the low frequency qubit 0 to 1 transition.
+    At this avoided crossing, the coupling can be turned on and off by applying a flux pulse on the coupler.
+    The amplitude of this flux pluse changes the frequency of the coupler. The
+    closer the coupler frequency is to the avoided crossing, the stronger the coupling.
+    A strong interaction allows for a faster CZ gate.
 
     Args:
         platform: Platform to use.
         params: Experiment parameters.
-        qubits: Qubits to use.
+        qubits: Dict of QubitPairs.
 
     Returns:
         DataUnits: Acquisition data.
