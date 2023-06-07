@@ -34,8 +34,6 @@ class CZVirtualZParameters(Parameters):
     """Relaxation time."""
     dt: Optional[float] = None
     """Time delay between the two flux pulses if enabled."""
-    qubits: Optional[list[list[QubitId, QubitId]]] = None
-    """Pair(s) of qubit to probe."""
     parking: bool = True
     """Wether to park non interacting qubits or not."""
 
@@ -161,15 +159,10 @@ def _acquisition(
     Population of the high frequency qubit yield the leakage to the non-computational states
     during the execution of the flux pulse.
     """
-
-    if params.qubits is None:
-        raise ValueError("You have to specifiy the pairs. Es: [[0, 1], [2, 3]]")
-        params.qubits = platform.settings["topology"]
-
     # create a DataUnits object to store the results,
     data = CZVirtualZData()
 
-    for pair in params.qubits:
+    for pair in qubits:
         # order the qubits so that the low frequency one is the first
         ord_pair = order_pairs(pair, platform.qubits)
 
@@ -308,7 +301,7 @@ def _plot(data: CZVirtualZData, data_fit: CZVirtualZResults, qubits):
     r"""
     Plot routine for CZVirtualZ.
     """
-
+    qubits = tuple(qubits)
     fig = make_subplots(
         rows=1,
         cols=2,

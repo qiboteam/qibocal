@@ -156,7 +156,7 @@ def save_data(
 def _aquisition(
     params: ChevronParameters,
     platform: Platform,
-    qubits: Qubits,
+    qubits,
 ) -> ChevronData:
     r"""
     Perform a SWAP experiment between pairs of qubits by changing its frequency.
@@ -169,7 +169,6 @@ def _aquisition(
     Returns:
         DataUnits: Acquisition data.
     """
-    print(qubits)
     # create a DataUnits object to store the results,
     sweep_data = ChevronData()
     for pair in qubits:
@@ -224,6 +223,7 @@ def _aquisition(
 
 def _plot(data: ChevronData, fit: ChevronResults, qubits):
     """Plot the experiment result for a single pair"""
+    qubits = tuple(qubits)
     fig = make_subplots(rows=1, cols=2, subplot_titles=("low", "high"))
     states = ["low", "high"]
     # Plot data
