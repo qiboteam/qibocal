@@ -113,7 +113,7 @@ def ramsey_fit_and_analyze(
     perrs = np.array(3 * np.std(bootstrap_params, axis=0))
     errors = 3 * np.std(bootstrap_y_estimates, axis=0)
     dof = len(unique_x) - len(popt) - 1
-    chi2 = np.sum((fit_func(unique_x, *popt) - y_mean) ** 2 / errors**2)
+    chi2 = np.sum((model_function(unique_x, *popt) - y_mean) ** 2 / errors**2)
     chi2_dist = stats.chi2(dof)
     reduced_chi2 = chi2 / dof
     p_value = 1 - chi2_dist.cdf(chi2)
