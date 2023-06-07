@@ -1,6 +1,6 @@
 import inspect
 from dataclasses import dataclass, fields
-from typing import Callable, Dict, Generic, NewType, TypeVar, Union
+from typing import Callable, Generic, NewType, TypeVar, Union
 
 from qibolab.qubits import Qubit, QubitId
 
@@ -8,9 +8,9 @@ OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
 ParameterValue = Union[float, int]
 """Valid value for a routine and runcard parameter."""
-Qubits = Dict[QubitId, Qubit]
+Qubits = dict[QubitId, Qubit]
 """Convenient way of passing qubit pairs in the routines."""
-QubitsPairs = Dict[tuple[QubitId, QubitId], Qubit]
+QubitsPairs = dict[tuple[QubitId, QubitId], Qubit]
 
 
 class Parameters:
@@ -70,13 +70,13 @@ class Results:
     """
 
     @property
-    def update(self) -> Dict[str, ParameterValue]:
+    def update(self) -> dict[str, ParameterValue]:
         """Produce an update from a result object.
 
         This is later used to update the runcard.
 
         """
-        up: Dict[str, ParameterValue] = {}
+        up: dict[str, ParameterValue] = {}
         for fld in fields(self):
             if "update" in fld.metadata:
                 up[fld.metadata["update"]] = getattr(self, fld.name)

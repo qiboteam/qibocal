@@ -111,9 +111,9 @@ class Task:
 
         if operation.platform_dependent and operation.qubits_dependent:
             if self.qubits:
-                if isinstance(self.qubits, Qubits):
+                if type(self.qubits) is Qubits:
                     qubits = allocate_single_qubits(platform, self.qubits)
-                elif isinstance(self.qubits, QubitsPairs):
+                elif type(self.qubits) is QubitsPairs:
                     qubits = allocate_qubits_pairs(platform, self.qubits)
 
             self._data: Data = operation.acquisition(
