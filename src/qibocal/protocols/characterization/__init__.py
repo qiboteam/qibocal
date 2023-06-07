@@ -7,6 +7,7 @@ from .classification import single_shot_classification
 from .coherence.spin_echo import spin_echo
 from .coherence.t1 import t1
 from .coherence.t2 import t2
+from .couplers.cz_flux_time import cz_flux_time as coupler_cz_flux_time
 from .dispersive_shift import dispersive_shift
 from .flipping import flipping
 from .flux_depedence.qubit_flux_dependence import qubit_flux
@@ -43,3 +44,4 @@ class Operation(Enum):
     flipping = flipping
     dispersive_shift = dispersive_shift
     standard_rb = standard_rb
+    coupler_cz_flux_time = coupler_cz_flux_time
