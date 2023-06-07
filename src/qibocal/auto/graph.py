@@ -1,5 +1,5 @@
 """Execution graph and navigation utilities."""
-from typing import Dict, List, Set, Tuple
+from typing import List
 
 import networkx as nx
 

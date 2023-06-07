@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
@@ -18,8 +18,6 @@ class AllXYParameters(Parameters):
 
     beta_param: float = None
     """Beta parameter for drag pulse."""
-    qubits: Optional[list] = field(default_factory=list)
-    """Local qubits (optional)."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None

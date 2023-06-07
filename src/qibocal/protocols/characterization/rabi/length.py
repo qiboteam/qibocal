@@ -1,10 +1,11 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -27,10 +28,6 @@ class RabiLengthParameters(Parameters):
     """Pi pulse amplitude. Same for all qubits."""
     nshots: Optional[int] = None
     """Number of shots."""
-    relaxation_time: float
-    """Relxation time (ns)."""
-    qubits: Optional[list] = field(default_factory=list)
-    """Local qubits (optional)."""
     relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
 
@@ -39,13 +36,11 @@ class RabiLengthParameters(Parameters):
 class RabiLengthResults(Results):
     """RabiLength outputs."""
 
-    length: Dict[Union[str, int], int] = field(metadata=dict(update="drive_length"))
+    length: Dict[QubitId, int] = field(metadata=dict(update="drive_length"))
     """Pi pulse duration for each qubit."""
-    amplitude: Dict[Union[str, int], float] = field(
-        metadata=dict(update="drive_amplitude")
-    )
+    amplitude: Dict[QubitId, float] = field(metadata=dict(update="drive_amplitude"))
     """Pi pulse amplitude. Same for all qubits."""
-    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
+    fitted_parameters: Dict[QubitId, Dict[str, float]]
     """Raw fitting output."""
 
 

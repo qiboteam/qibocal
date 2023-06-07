@@ -1,10 +1,11 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -29,21 +30,19 @@ class QubitSpectroscopyParameters(Parameters):
     """Number of shots."""
     relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
-    qubits: Optional[list] = field(default_factory=list)
-    """Local qubits (optional)."""
 
 
 @dataclass
 class QubitSpectroscopyResults(Results):
     """QubitSpectroscopy outputs."""
 
-    frequency: Dict[Union[str, int], Dict[str, float]] = field(
+    frequency: Dict[QubitId, Dict[str, float]] = field(
         metadata=dict(update="drive_frequency")
     )
     """Drive frequecy [GHz] for each qubit."""
-    amplitude: Dict[Union[str, int], float]
+    amplitude: Dict[QubitId, float]
     """Input drive amplitude. Same for all qubits."""
-    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
+    fitted_parameters: Dict[QubitId, Dict[str, float]]
     """Raw fitting output."""
 
 

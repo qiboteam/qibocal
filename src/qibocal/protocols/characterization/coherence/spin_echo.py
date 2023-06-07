@@ -1,11 +1,12 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
 import numpy as np
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.plots.utils import get_color
@@ -24,8 +25,6 @@ class SpinEchoParameters(Parameters):
     """Final delay between pulses [ns]."""
     delay_between_pulses_step: int
     """Step delay between pulses (ns)."""
-    qubits: Optional[list] = field(default_factory=list)
-    """Local qubits (optional)."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
@@ -36,11 +35,9 @@ class SpinEchoParameters(Parameters):
 class SpinEchoResults(Results):
     """SpinEcho outputs."""
 
-    t2_spin_echo: Dict[Union[str, int], float] = field(
-        metadata=dict(update="t2_spin_echo")
-    )
+    t2_spin_echo: Dict[QubitId, float] = field(metadata=dict(update="t2_spin_echo"))
     """T2 echo for each qubit."""
-    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
+    fitted_parameters: Dict[QubitId, Dict[str, float]]
     """Raw fitting output."""
 
 

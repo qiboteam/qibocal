@@ -34,8 +34,6 @@ class ChevronParameters(Parameters):
     """Duration step."""
     nshots: Optional[int] = None
     """Number of shots per point."""
-    qubits: Optional[list[list[QubitId, QubitId]]] = None
-    """Pair(s) of qubit to probe."""
     parking: bool = True
     """Wether to park non interacting qubits or not."""
 
@@ -156,7 +154,7 @@ def save_data(
 def _aquisition(
     params: ChevronParameters,
     platform: Platform,
-    qubits: Qubits,  # TODO this parameter is not used so probably I did it wrong
+    qubits: Qubits,
 ) -> ChevronData:
     r"""
     Perform a SWAP experiment between pairs of qubits by changing its frequency.
@@ -169,13 +167,9 @@ def _aquisition(
     Returns:
         DataUnits: Acquisition data.
     """
-    if params.qubits is None:
-        raise ValueError("You have to specifiy the pairs. Es: [[0, 1], [2, 3]]")
-        params.qubits = platform.settings["topology"]
-
     # create a DataUnits object to store the results,
     sweep_data = ChevronData()
-    for pair in params.qubits:
+    for pair in qubits:
         # order the qubits so that the low frequency one is the first
         ord_pair = order_pairs(pair, platform.qubits)
         # create a sequence

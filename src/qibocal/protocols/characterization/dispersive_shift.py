@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -8,6 +8,7 @@ from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -31,8 +32,6 @@ class DispersiveShiftParameters(Parameters):
     """Width [Hz] for frequency sweep relative to the readout frequency (Hz)."""
     freq_step: int
     """Frequency step for sweep (Hz)."""
-    qubits: Optional[list] = field(default_factory=list)
-    """Local qubits (optional)."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
@@ -43,9 +42,9 @@ class DispersiveShiftParameters(Parameters):
 class StateResults(Results):
     """Resonator spectroscopy outputs."""
 
-    frequency: Dict[Union[str, int], float]
+    frequency: Dict[QubitId, float]
     """Readout frequency for each qubit."""
-    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
+    fitted_parameters: Dict[QubitId, Dict[str, float]]
     """Raw fitted parameters."""
 
 
@@ -57,11 +56,9 @@ class DispersiveShiftResults(Results):
     """Resonator spectroscopy outputs in the ground state."""
     results_1: StateResults
     """Resonator spectroscopy outputs in the excited state"""
-    best_freq: Dict[Union[str, int], float] = field(
-        metadata=dict(update="readout_frequency")
-    )
+    best_freq: Dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
     """Readout frequency that maximizes the distance of ground and excited states in iq-plane"""
-    best_iqs: Dict[Union[str, int], npt.NDArray[np.float64]]
+    best_iqs: Dict[QubitId, npt.NDArray[np.float64]]
     """iq-couples of ground and excited states with best frequency"""
 
 
