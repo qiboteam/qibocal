@@ -1,11 +1,12 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
 import numpy as np
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.plots.utils import get_color
@@ -33,9 +34,9 @@ class T2Parameters(Parameters):
 class T2Results(Results):
     """T2 outputs."""
 
-    t2: Dict[Union[str, int], float] = field(metadata=dict(update="t2"))
+    t2: Dict[QubitId, float] = field(metadata=dict(update="t2"))
     """T2 for each qubit (ns)."""
-    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
+    fitted_parameters: Dict[QubitId, Dict[str, float]]
     """Raw fitting output."""
 
 

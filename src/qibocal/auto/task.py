@@ -7,7 +7,16 @@ from typing import List
 from qibolab.platform import Platform
 
 from ..protocols.characterization import Operation
-from .operation import Data, DummyPars, Qubits, Results, Routine, dummy_operation
+from ..utils import allocate_qubits_pairs, allocate_single_qubits
+from .operation import (
+    Data,
+    DummyPars,
+    Qubits,
+    QubitsPairs,
+    Results,
+    Routine,
+    dummy_operation,
+)
 from .runcard import Action, Id
 
 MAX_PRIORITY = int(1e9)
@@ -19,6 +28,9 @@ But not so insanely big not to fit in a native integer.
 
 DATAFILE = "data.csv"
 """Name of the file where data acquired by calibration are dumped."""
+
+TaskId = tuple[Id, int]
+"""Unique identifier for executed tasks."""
 
 
 @dataclass
@@ -33,11 +45,11 @@ class Task:
         return cls(action=descr)
 
     @property
-    def id(self):
+    def id(self) -> Id:
         return self.action.id
 
     @property
-    def uid(self):
+    def uid(self) -> TaskId:
         return (self.action.id, self.iteration)
 
     @property
@@ -71,6 +83,14 @@ class Task:
         return self.operation.parameters_type.load(self.action.parameters)
 
     @property
+    def qubits(self):
+        return self.action.qubits
+
+    @property
+    def update(self):
+        return self.action.update
+
+    @property
     def data(self):
         return self._data
 
@@ -90,6 +110,12 @@ class Task:
         path = self.datapath(folder)
 
         if operation.platform_dependent and operation.qubits_dependent:
+            if self.qubits:
+                if isinstance(self.qubits, Qubits):
+                    qubits = allocate_single_qubits(platform, self.qubits)
+                elif isinstance(self.qubits, QubitsPairs):
+                    qubits = allocate_qubits_pairs(platform, self.qubits)
+
             self._data: Data = operation.acquisition(
                 parameters, platform=platform, qubits=qubits
             )

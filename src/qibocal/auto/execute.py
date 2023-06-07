@@ -26,6 +26,8 @@ class Executor:
     """Qubits to be calibrated."""
     platform: Optional[Platform] = None
     """Qubits' platform."""
+    update: bool = True
+    """Runcard update mechanism."""
     head: Optional[Id] = None
     """The current position."""
     pending: Set[Id] = field(default_factory=set)
@@ -39,6 +41,7 @@ class Executor:
         output: Path,
         platform: Platform = None,
         qubits: Qubits = None,
+        update: bool = True,
     ):
         """Load execution graph and associated executor from a runcard."""
         runcard = Runcard.load(card)
@@ -49,6 +52,7 @@ class Executor:
             output=output,
             platform=platform,
             qubits=qubits,
+            update=update,
         )
 
     def available(self, task: Task):
@@ -119,7 +123,12 @@ class Executor:
         return self.graph.task(self.head)
 
     def run(self):
-        """Actual execution."""
+        """Actual execution.
+
+        The platform's update method is called if:
+        - self.update is True and task.update is None
+        - task.update is True
+        """
         self.head = self.graph.start
 
         while self.head is not None:
@@ -128,5 +137,7 @@ class Executor:
             completed = Completed(task, output, Normal())
             self.history.push(completed)
             self.head = self.next()
+
             if self.platform is not None:
-                self.platform.update(completed.res.update)
+                if (self.update and task.update is None) or (task.update):
+                    self.platform.update(completed.res.update)
