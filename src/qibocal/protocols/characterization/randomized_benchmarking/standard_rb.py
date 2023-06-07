@@ -1,12 +1,13 @@
 from copy import deepcopy
-from dataclasses import dataclass
-from typing import Iterable, List, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import Iterable, List, Optional, Tuple, TypedDict, Union
 
 import numpy as np
+import pandas as pd
 import plotly.graph_objects as go
 from qibo.noise import NoiseModel
 
-from qibocal.auto.operation import Routine
+from qibocal.auto.operation import Parameters, Results, Routine
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
 from qibocal.protocols.characterization.randomized_benchmarking.circuit_tools import (
     add_inverse_layer,
@@ -14,53 +15,78 @@ from qibocal.protocols.characterization.randomized_benchmarking.circuit_tools im
     embed_circuit,
     layer_circuit,
 )
-from qibocal.protocols.characterization.randomized_benchmarking.result import (
-    DecayWithOffsetResult,
-    plot_decay_result,
-)
 from qibocal.protocols.characterization.randomized_benchmarking.utils import (
     extract_from_data,
     random_clifford,
 )
 
-from .data import RBData
-from .params import RBParameters
+from .fitting import exp1B_func, fit_exp1B_func
 
 NPULSES_PER_CLIFFORD = 1.875
 
 
+class DepthsDict(TypedDict):
+    start: int
+    stop: int
+    step: int
+
+
 @dataclass
-class StandardRBResult(DecayWithOffsetResult):
-    """Inherits from `DecayWithOffsetResult`, a result class storing data and parameters
-    of a single decay with statistics.
+class StandardRBParameters(Parameters):
+    """Standard Randomized Benchmarking runcard inputs."""
 
-    Adds the method of calculating a fidelity out of the fitting parameters.
-    TODO calculate SPAM errors with A and B
-    TODO calculate the error of the fidelity
+    nqubits: int
+    """The amount of qubits on the chip """
+    qubits: list
+    """A list of indices which qubit(s) should be benchmarked """
+    depths: Union[list, DepthsDict]
+    """A list of depths/sequence lengths. If a dictionary is given the list will be build."""
+    niter: int
+    """Sets how many iterations over the same depth value."""
+    nshots: int
+    """For each sequence how many shots for statistics should be performed."""
+    noise_model: str = ""
+    """For simulation purposes, string has to match what is in
+    :mod:`qibocal.protocols.characterization.randomized_benchmarking.noisemodels`"""
+    noise_params: list = field(default_factory=list)
+    """With this the noise model will be initialized, if not given random values will be used."""
 
-    """
-
-    def calculate_fidelities(self):
-        """Takes the fitting parameter of the decay and calculates a fidelity. Stores the
-        primitive fidelity, the fidelity and the average gate error in an attribute dictionary.
-        """
-
-        # Divide infidelity by magic number
-        infidelity = (1 - self.p) / 2
-        self.fidelity_dict = {
-            "fidelity": np.round(1 - infidelity, 4),
-            "pulse fidelity": np.round(1 - infidelity / NPULSES_PER_CLIFFORD, 4),
-        }
+    def __post_init__(self):
+        if isinstance(self.depths, dict):
+            self.depths = list(
+                range(self.depths["start"], self.depths["stop"], self.depths["step"])
+            )
 
 
-def setup_scan(params: RBParameters) -> Iterable:
+class RBData(pd.DataFrame):
+    """A pandas DataFrame child. The output of the acquisition function."""
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+    def to_csv(self, path):
+        """Overwrite this method because qibocal action builder call this function with a directory."""
+        super().to_csv(f"{path}/{self.__class__.__name__}.csv")
+
+
+@dataclass
+class StandardRBResult(Results):
+    fidelity: float
+    """The overall fidelity of this qubit."""
+    pulse_fidelity: float
+    """The pulse fidelity of the gates acting on this qubit."""
+    fitting_parameters: Tuple[Tuple[float, float, float], Tuple[float, float, float]]
+    """Raw fitting parameters."""
+
+
+def setup_scan(params: StandardRBParameters) -> Iterable:
     """Returns an iterator of single-qubit random self-inverting Clifford circuits.
-    ls
-        Args:
-            params (RBParameters): Parameters of the RB protocol.
 
-        Returns:
-            Iterable: The iterator of circuits.
+    Args:
+        params (StandardRBParameters): Parameters of the RB protocol.
+
+    Returns:
+        Iterable: The iterator of circuits.
     """
 
     def make_circuit(depth):
@@ -109,43 +135,18 @@ def execute(
     return data_list
 
 
-def aggregate(data: RBData) -> StandardRBResult:
-    """Takes a data frame, processes it and aggregates data in order to create
-    a routine result object.
-
-    Args:
-        data (RBData): Actually a data frame from where the data is processed.
-
-    Returns:
-        StandardRBResult: The aggregated data.
-    """
-
-    def p0s(samples_list):
-        ground = np.array([0] * len(samples_list[0][0]))
-        my_p0s = []
-        for samples in samples_list:
-            my_p0s.append(np.sum(np.product(samples == ground, axis=1)) / len(samples))
-        return my_p0s
-
-    # The signal is here the survival probability.
-    data_agg = data.assign(signal=lambda x: p0s(x.samples.to_list()))
-    return StandardRBResult(
-        *extract_from_data(data_agg, "signal", "depth", list), meta_data=data.attrs
-    )
-
-
-def acquire(params: RBParameters, *args) -> RBData:
+def _acquisition(params: StandardRBParameters, *args) -> RBData:
     """The data acquisition stage of Standard Randomized Benchmarking.
 
     1. Set up the scan
     2. Execute the scan
-    3. Put the acquired data in a standard rb data object.
+    3. Post process the data and initialize a standard rb data object with it.
 
     Args:
-        params (RBParameters): All parameters in one object.
+        params (StandardRBParameters): All parameters in one object.
 
     Returns:
-        RBData: _description_
+        RBData: The depths, samples and ground state probability of each exeriment in the scan.
     """
 
     # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
@@ -156,17 +157,29 @@ def acquire(params: RBParameters, *args) -> RBData:
         if params.noise_model
         else None
     )
+    # TODO extract the noise parameters from the build noise model and add them to params object.
     # Execute the scan.
     data = execute(scan, params.nshots, noise_model)
     # Build the data object which will be returned and later saved.
-    standardrb_data = RBData(data)
+    data = pd.DataFrame(data)
+
+    def p0s(samples_list):
+        ground = np.array([0] * len(samples_list[0][0]))
+        my_p0s = []
+        for samples in samples_list:
+            my_p0s.append(np.sum(np.product(samples == ground, axis=1)) / len(samples))
+        return my_p0s
+
+    # The signal here is the survival probability.
+    standardrb_data = RBData(data.assign(signal=lambda x: p0s(x.samples.to_list())))
+    # Store the paramters to display them later.
     standardrb_data.attrs = params.__dict__
     return standardrb_data
 
 
-def extract(data: RBData) -> StandardRBResult:
-    """Takes a data frame and extracts the depths,
-    average values of the survival probability and histogram
+def _fit(data: RBData) -> StandardRBResult:
+    """Takes a data frame, extracts the depths and the signal and fits it with an
+    exponential function y = Ap^x+B.
 
     Args:
         data (RBData): Data from the data acquisition stage.
@@ -175,13 +188,15 @@ def extract(data: RBData) -> StandardRBResult:
         StandardRBResult: Aggregated and processed data.
     """
 
-    result = aggregate(data)
-    result.fit()
-    result.calculate_fidelities()
-    return result
+    x, y = extract_from_data(data, "signal", "depth", "mean")
+    popt, perr = fit_exp1B_func(x, y)
+    infidelity = (1 - popt[0]) / 2
+    fidelity = np.round(1 - infidelity, 4)
+    pulse_fidelity = np.round(1 - infidelity / NPULSES_PER_CLIFFORD, 4)
+    return StandardRBResult(fidelity, pulse_fidelity, (popt, perr))
 
 
-def plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure], str]:
+def _plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure], str]:
     """Builds the table for the qq pipe, calls the plot function of the result object
     and returns the figure es list.
 
@@ -193,7 +208,44 @@ def plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure]
     Returns:
         Tuple[List[go.Figure], str]:
     """
-    meta_data = deepcopy(result.meta_data)
+
+    x, y = extract_from_data(data, "signal", "depth", list)
+    popt, perr = result.fitting_parameters
+    label = "Fit: y=Ap^x+B<br>A: {:.3f}\u00B1{:.3f}<br>p: {:.3f}\u00B1{:.3f}<br>B: {:.3f}\u00B1{:.3f}".format(
+        popt[0], perr[0], popt[1], perr[1], popt[2], perr[2]
+    )
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=np.repeat(x, len(y[0])),
+            y=np.array([np.array(y_row) for y_row in y]).flatten(),
+            line=dict(color="#6597aa"),
+            mode="markers",
+            marker={"opacity": 0.2, "symbol": "square"},
+            name="itertarions",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=x,
+            y=[np.mean(y_row) for y_row in y],
+            line=dict(color="#aa6464"),
+            mode="markers",
+            name="average",
+        )
+    )
+    x_fit = np.linspace(min(x), max(x), len(x) * 20)
+    y_fit = exp1B_func(x_fit, *popt)
+    fig.add_trace(
+        go.Scatter(
+            x=x_fit,
+            y=y_fit,
+            name=label,
+            line=go.scatter.Line(dash="dot"),
+        )
+    )
+
+    meta_data = deepcopy(data.attrs)
     meta_data.pop("depths")
     if not meta_data["noise_model"]:
         meta_data.pop("noise_model")
@@ -203,12 +255,15 @@ def plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure]
     table_str = "".join(
         [
             f" | {key}: {value}<br>"
-            for key, value in {**meta_data, **result.fidelity_dict}.items()
+            for key, value in {
+                **meta_data,
+                "fidelity": result.fidelity,
+                "pulse_fidelity": result.pulse_fidelity,
+            }.items()
         ]
     )
-    fig = plot_decay_result(result)
     return [fig], table_str
 
 
 # Build the routine object which is used by qq-auto.
-standard_rb = Routine(acquire, extract, plot)
+standard_rb = Routine(_acquisition, _fit, _plot)
