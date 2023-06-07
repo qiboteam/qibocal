@@ -3,14 +3,13 @@ from typing import Dict, Optional, Union
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
-from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
 
-from ..utils import PowerLevel, lorentzian_fit, spectroscopy_plot
+from .utils import signals
 
 """
 Method which implements the state's calibration of a chosen qubit. Two analogous tests are performed
@@ -51,13 +50,15 @@ class ToFResults(Results):
 class ToFData(DataUnits):
     """ToF acquisition outputs."""
 
+    def __init__(self, qubit, state):
+        super().__init__(
+            f"data_q{qubit}_{state}",
+            options=["sample"],
+        )
 
-def _acquisition(
-    params: ToFParameters, platform: AbstractPlatform, qubits: Qubits
-) -> ToFData:
+
+def _acquisition(params: ToFParameters, platform: Platform, qubits: Qubits) -> ToFData:
     """Data acquisition for time of flight experiment."""
-    # create a sequence of pulses for the experiment:
-    # MZ
 
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     state0_sequence = PulseSequence()
@@ -75,49 +76,48 @@ def _acquisition(
         state1_sequence.add(RX_pulses[qubit])
         state1_sequence.add(ro_pulses[qubit])
 
-    # create a DataUnits object to store the results
-    data = ToFData()
-
     # execute the first pulse sequence
     state0_results = platform.execute_pulse_sequence(
         state0_sequence,
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.RAW,
-        averaging_mode=AveragingMode.CYCLIC,
+        options=ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.RAW,
+            averaging_mode=AveragingMode.CYCLIC,
+        ),
     )
 
     # retrieve and store the results for every qubit
-    for qubit, ro_pulse in ro_pulses.items():
-        r = state0_results[ro_pulse.serial].serialize
+    for qubit in qubits:
+        r = state0_results[ro_pulses[qubit].serial].serialize
         r.update(
             {
-                "qubit": [ro_pulse.qubit] * len(r["MSR[V]"]),
                 "sample": np.arange(len(r["MSR[V]"])),
-                "state": [0] * len(r["MSR[V]"]),
             }
         )
+        data = ToFData(qubit, state=0)
         data.add_data_from_dict(r)
 
     # # execute the second pulse sequence
     state1_results = platform.execute_pulse_sequence(
         state1_sequence,
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.RAW,
-        averaging_mode=AveragingMode.CYCLIC,
+        options=ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.RAW,
+            averaging_mode=AveragingMode.CYCLIC,
+        ),
     )
 
     # retrieve and store the results for every qubit
-    for qubit, ro_pulse in ro_pulses.items():
-        r = state1_results[ro_pulse.serial].serialize
+    for qubit in qubits:
+        r = state1_results[ro_pulses[qubit].serial].serialize
         r.update(
             {
-                "qubit": [ro_pulse.qubit] * len(r["MSR[V]"]),
                 "sample": np.arange(len(r["MSR[V]"])),
-                "state": [1] * len(r["MSR[V]"]),
             }
         )
+        data = ToFData(qubit, state=1)
         data.add_data_from_dict(r)
 
     # finally, save the remaining data
@@ -131,7 +131,7 @@ def _fit(data: ToFData) -> ToFResults:
 
 def _plot(data: ToFData, fit: ToFResults, qubit):
     """Plotting function for ResonatorSpectroscopy."""
-    return utils.signals(data, fit, qubit)
+    return signals(data, fit, qubit)
 
 
 tof = Routine(_acquisition, _fit, _plot)
