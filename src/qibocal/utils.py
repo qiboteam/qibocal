@@ -1,17 +1,18 @@
-from typing import Optional, Union
+from typing import Optional
 
 from qibolab.platform import Platform
 from qibolab.qubits import Qubit, QubitId, QubitPair
 
 
-def allocate_qubits(
+def allocate_single_qubits(
     platform: Optional[Platform], qubit_ids: list[QubitId]
-) -> Union[dict[QubitId, Qubit], dict[tuple, QubitPair]]:
-    """Convert list[QubitId] -> Union[dict[QubitId, Qubit], dict[tuple, QubitPair]] for non-trivial platform."""
-    qubits = {}
-    for q in qubit_ids:
-        if not isinstance(q, list) and q in platform.qubits:
-            qubits[q] = platform.qubits[q]
-        else:
-            qubits[tuple(sorted(q))] = platform.pairs[tuple(sorted(q))]
-    return qubits
+) -> dict[QubitId, Qubit]:
+    """Convert list[QubitId] -> dict[QubitId, Qubit] for non-trivial platform."""
+    return {q: platform.qubits[q] for q in qubit_ids}
+
+
+def allocate_qubits_pairs(
+    platform: Optional[Platform], qubit_pairs_ids: list[tuple[QubitId, QubitId]]
+) -> dict[tuple[QubitId, QubitId], QubitPair]:
+    """Convert  list[tuple[QubitId,QubitId]] -> dict[tuple[QubitId,QubitId], QubitPair] for non-trivial platform."""
+    return {qq: platform.pairs[tuple(sorted(qq))] for qq in qubit_pairs_ids}

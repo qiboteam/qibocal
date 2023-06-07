@@ -76,13 +76,13 @@ class AutoCalibrationReportBuilder:
         name = routine.replace("_", " ").title()
         return f"{name} - {iteration}"
 
-    def routine_qubits(self, task_uid: TaskId):
+    def routine_qubits(self, task: TaskId):
         """Get local qubits parameter from Task if available otherwise use global one."""
-        local_qubits = self.history[task_uid].task.qubits
+        local_qubits = self.history[task].task.qubits
         return local_qubits if len(local_qubits) > 0 else self.qubits
 
-    def single_qubit_plot(self, task_uid: TaskId, qubit: QubitId):
-        node = self.history[task_uid]
+    def single_qubit_plot(self, task: TaskId, qubit: QubitId):
+        node = self.history[task]
         data = node.task.data
         figures, fitting_report = node.task.operation.report(data, node.res, qubit)
         with tempfile.NamedTemporaryFile(delete=False) as temp:
@@ -96,8 +96,8 @@ class AutoCalibrationReportBuilder:
         all_html = "".join(html_list)
         return all_html, fitting_report
 
-    def plot(self, task_uid: TaskId):
-        node = self.history[task_uid]
+    def plot(self, task: TaskId):
+        node = self.history[task]
         data = node.task.data
         figures, fitting_report = node.task.operation.report(data)
         with tempfile.NamedTemporaryFile(delete=False) as temp:

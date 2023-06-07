@@ -10,7 +10,7 @@ import yaml
 from qibocal import calibrations
 from qibocal.cli.utils import generate_output_folder, load_yaml
 from qibocal.config import raise_error
-from qibocal.utils import allocate_qubits
+from qibocal.utils import allocate_qubits_pairs, allocate_single_qubits
 
 
 class ActionParser:
@@ -168,10 +168,15 @@ class ActionBuilder:
         self.backend, self.platform = self._allocate_backend(
             backend_name, platform_name, platform_runcard, update
         )
+        qubits_ids = self.runcard.get("qubits", [])
+
         if self.platform is not None:
-            self.qubits = allocate_qubits(self.platform, self.runcard.get("qubits", []))
+            if any(isinstance(i, tuple) for i in qubits_ids):
+                self.qubits = allocate_qubits_pairs(self.platform, qubits_ids)
+            else:
+                self.qubits = allocate_single_qubits(self.platform, qubits_ids)
         else:
-            self.qubits = self.runcard.get("qubits", [])
+            self.qubits = qubits_ids
 
         # Setting format. If absent csv is used.
         self.format = self.runcard.get("format", "csv")

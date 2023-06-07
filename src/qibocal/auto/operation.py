@@ -2,14 +2,15 @@ import inspect
 from dataclasses import dataclass, fields
 from typing import Callable, Dict, Generic, NewType, TypeVar, Union
 
-from qibolab.qubits import Qubit
+from qibolab.qubits import Qubit, QubitId
 
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
 ParameterValue = Union[float, int]
 """Valid value for a routine and runcard parameter."""
-Qubits = Dict[int, Qubit]
-"""Convenient way of passing qubits in the routines."""
+Qubits = Dict[QubitId, Qubit]
+"""Convenient way of passing qubit pairs in the routines."""
+QubitsPairs = Dict[tuple[QubitId, QubitId], Qubit]
 
 
 class Parameters:
