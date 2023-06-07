@@ -14,8 +14,8 @@ from qibocal.data import DataUnits
 
 
 @dataclass
-class CouplerCzFluxTimeParameters(Parameters):
-    """CouplerCzFluxTime runcard inputs."""
+class ChevronFluxTimeParameters(Parameters):
+    """ChevronFluxTime runcard inputs."""
 
     amplitude_factor_min: float
     """Amplitude minimum."""
@@ -29,6 +29,8 @@ class CouplerCzFluxTimeParameters(Parameters):
     """Duration maximum."""
     duration_step: float
     """Duration step."""
+    native_gate: Optional[str] = "CZ"
+    """Native gate to implement, CZ or iSWAP."""
     dt: Optional[float] = 0
     """Wait time around the flux pulse in ns."""
     nshots: Optional[int] = None
@@ -36,12 +38,12 @@ class CouplerCzFluxTimeParameters(Parameters):
 
 
 @dataclass
-class CouplerCzFluxTimeResults(Results):
-    """CouplerCzFluxTime outputs when fitting will be done."""
+class ChevronFluxTimeResults(Results):
+    """ChevronFluxTime outputs when fitting will be done."""
 
 
-class CouplerCzFluxTimeData(DataUnits):
-    """CouplerCzFluxTime acquisition outputs."""
+class ChevronFluxTimeData(DataUnits):
+    """ChevronFluxTime acquisition outputs."""
 
     def __init__(self):
         super().__init__(
@@ -57,19 +59,19 @@ class CouplerCzFluxTimeData(DataUnits):
 
 
 def _aquisition(
-    params: CouplerCzFluxTimeParameters,
+    params: ChevronFluxTimeParameters,
     platform: Platform,
     qubits: Qubits,
-) -> CouplerCzFluxTimeData:
+) -> ChevronFluxTimeData:
     r"""
-    Place the two qubits in the |11> state which oscillates to |02> by applying a flux pulse on the coupler.
+    Routine to find the optimal flux pulse amplitude and duration for a CZ/iSWAP gate.
 
     The qubits must be at specific frequencies such that the high frequency qubit
-    1 to 2 transition is at the same frequency as the low frequency qubit 0 to 1 transition.
+    1 to 2 (CZ) / 0 to 1 (iSWAP) transition is at the same frequency as the low frequency qubit 0 to 1 transition.
     At this avoided crossing, the coupling can be turned on and off by applying a flux pulse on the coupler.
     The amplitude of this flux pluse changes the frequency of the coupler. The
     closer the coupler frequency is to the avoided crossing, the stronger the coupling.
-    A strong interaction allows for a faster CZ gate.
+    A strong interaction allows for a faster controlled gate.
 
     Args:
         platform: Platform to use.
@@ -92,7 +94,7 @@ def _aquisition(
     dur, amp = np.meshgrid(delta_duration_range, delta_amplitude_range, indexing="ij")
 
     # create a DataUnits object to store the results,
-    sweep_data = CouplerCzFluxTimeData()
+    sweep_data = ChevronFluxTimeData()
 
     # sort high and low frequency qubit
     for pair in qubits:
@@ -102,6 +104,8 @@ def _aquisition(
         q_highfreq = pair.qubit2.name
 
         qd_pulse1 = platform.create_RX_pulse(q_lowfreq, start=0)
+        if params.native_gate == "iSWAP":
+            qd_pulse1.amplitude = 0
         qd_pulse2 = platform.create_RX_pulse(q_highfreq, start=0 + params.dt)
         sequence = qd_pulse1 + qd_pulse2
         fx_pulse = FluxPulse(
@@ -182,7 +186,7 @@ def _aquisition(
     return sweep_data
 
 
-def _plot(data: CouplerCzFluxTimeData, fit: CouplerCzFluxTimeResults, pair: QubitPair):
+def _plot(data: ChevronFluxTimeData, fit: ChevronFluxTimeResults, pair: QubitPair):
     states = ["low", "high"]
 
     figures = []
@@ -240,7 +244,7 @@ def _plot(data: CouplerCzFluxTimeData, fit: CouplerCzFluxTimeResults, pair: Qubi
             )
 
         fig.update_layout(
-            title=f"Qubit {pair.name} cz {values}",
+            title=f"Qubit {pair.name} Interaction {values}",
             yaxis_title="Duration [ns]",
             xaxis_title="Amplitude [dimensionless]",
             legend_title="States",
@@ -250,8 +254,8 @@ def _plot(data: CouplerCzFluxTimeData, fit: CouplerCzFluxTimeResults, pair: Qubi
     return figures, "No fitting data."
 
 
-def _fit(data: CouplerCzFluxTimeData):
-    return CouplerCzFluxTimeResults()
+def _fit(data: ChevronFluxTimeData):
+    return ChevronFluxTimeResults()
 
 
 def sort_frequency(pair: QubitPair):
@@ -262,5 +266,5 @@ def sort_frequency(pair: QubitPair):
         return pair.qubit1, pair.qubit2
 
 
-cz_flux_time = Routine(_aquisition, _fit, _plot)
-"""Coupler swap flux routine."""
+chevron_flux_time = Routine(_aquisition, _fit, _plot)
+"""Coupler cz/swap flux routine."""
