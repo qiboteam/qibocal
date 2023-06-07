@@ -271,3 +271,28 @@ actions:
       niter: 5
       nshots: 128
       noise_model: PauliErrorOnAll
+
+  - id: chevron id
+    priority: 0
+    operation: chevron
+    qubits: [[0, 1]]
+    parameters:
+      amplitude_factor_min: 0.1
+      amplitude_factor_max: 0.6
+      amplitude_factor_step: 0.01
+      duration_min: 10
+      duration_max: 50
+      duration_step: 1
+      nshots: 1000
+      parking: False
+
+  - id: tune landscape
+    priority: 0
+    operation: cz_virtualz
+    qubits: [[0, 1]]
+    parameters:
+      theta_start: 0
+      theta_end: 180
+      theta_step: 10
+      dt: 0
+      parking: False

@@ -16,4 +16,17 @@ platform = create_platform("dummy")
 def test_data_acquisition(action):
     """Test data acquisition for all routines using dummy"""
     task = Task(action)
-    task.operation.acquisition(task.parameters, platform, platform.qubits)
+    qubits = {}
+
+    for elem in task.qubits:
+        if isinstance(elem, list):
+            qubit_ids = []
+            qubit_vals = []
+            for qubit in elem:
+                qubit_ids.append(qubit)
+                qubit_vals.append(platform.qubits[qubit])
+            qubits[tuple(qubit_ids)] = qubit_vals
+        else:
+            qubits[elem] = platform.qubits[elem]
+
+    task.operation.acquisition(task.parameters, platform, qubits)
