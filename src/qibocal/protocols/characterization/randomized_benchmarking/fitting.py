@@ -1,7 +1,7 @@
 """In this python script the fitting methods for the gate set protocols are defined.
 They consist mostly of exponential decay fitting.
 """
-
+from copy import deepcopy
 from typing import Optional, Tuple, Union
 
 import numpy as np
@@ -9,6 +9,9 @@ from scipy.linalg import hankel, svd
 from scipy.optimize import curve_fit
 
 from qibocal.config import log, raise_error
+from qibocal.protocols.characterization.randomized_benchmarking.utils import (
+    data_mean_errors,
+)
 
 
 def exp1_func(x: np.ndarray, A: float, f: float) -> np.ndarray:
@@ -203,3 +206,83 @@ def fit_exp2_func(
     """
 
     return fit_expn_func(xdata, ydata, 2)
+
+
+def bootstrap(
+    x_data: Union[np.ndarray, list],
+    y_data: Union[np.ndarray, list],
+    uncertainties: Union[str, float] = None,
+    n_bootstrap: int = 0,
+    resample_func=None,
+    fit_func=fit_exp1B_func,
+    **kwargs,
+):
+    """Semiparametric bootstrap resampling.
+
+    Args:
+        x_data (list or np.ndarray): 1d array of x values.
+        y_data (list or np.ndarray): 2d array with rows containing data points
+            from which the mean values for y are computed.
+        uncertainties (str or float, optional): method of computing ``sigma`` for the ``fit_func``.
+            If ``std``, computes the standard deviation. If type ``float`` between 0 and 1,
+            computes the maximum of low and high errors from the corresponding confidence interval.
+            If ``None``, does not compute the uncertainties. Defaults to ``None``.
+        n_bootstrap (int): number of bootstrap iterations. If `0`,
+            returns `y_data` for y estimates and an empty list for fitting parameters estimates.
+        resample_func (callable): function that preforms resampling of given a list of y values.
+            (see :func:`qibocal.protocols.characterization.randomized_benchmarking.standard_rb.resample_p0`)
+            If ``None``, only non-parametric resampling is performed. Defaults to ``None``.
+        fit_func (callable): fitting function that returns parameters and errors, given
+            `x`, `y`, `sigma` and `**kwargs`.
+            Defaults to :func:`qibocal.protocols.characterization.randomized_benchmarking.fitting.fit_exp1B_func`.
+
+    Returns:
+        Tuple[list, list]: y data estimates and fitting parameters estimates.
+    """
+
+    if isinstance(n_bootstrap, int) is False:
+        raise_error(
+            TypeError,
+            f"`n_bootstrap` must be of type int. Got {type(n_bootstrap)} instead.",
+        )
+    if n_bootstrap < 0:
+        raise_error(ValueError, f"`n_bootstrap` cannot be negative. Got {n_bootstrap}.")
+    if n_bootstrap == 0:
+        return y_data, []
+
+    if resample_func is not None and callable(resample_func) is False:
+        raise_error(
+            TypeError,
+            f"`resample_func must be callable. Got {type(resample_func)} instead.",
+        )
+    if resample_func is None:
+        resample_func = lambda data: data
+
+    # Extract sigma for fit_func if given
+    init_kwargs = deepcopy(kwargs)
+    init_sigma = init_kwargs.pop("sigma", None)
+
+    popt_estimates = []
+    y_estimates = []
+
+    for _ in range(n_bootstrap):
+        bootstrap_y_scatter = []
+        for y in y_data:
+            # Non-parametric bootstrap: resample data points with replacement
+            non_parametric_y = np.random.choice(y, size=len(y), replace=True)
+
+            # Parametrically resample the new data
+            bootstrap_y_scatter.append(resample_func(non_parametric_y))
+        bootstrap_y = np.mean(bootstrap_y_scatter, axis=1)
+
+        # Fit the resampled data to get parameters estimates
+        bootstrap_sigma = (
+            data_mean_errors(bootstrap_y_scatter, uncertainties, symmetric=True)
+            if init_sigma is None
+            else init_sigma
+        )
+        popt, _ = fit_func(x_data, bootstrap_y, sigma=bootstrap_sigma, **kwargs)
+        popt_estimates.append(popt)
+        y_estimates.append(bootstrap_y)
+
+    return np.array(y_estimates).T, np.array(popt_estimates).T
