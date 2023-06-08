@@ -174,7 +174,7 @@ def _acquisition(params: StandardRBParameters, platform) -> RBData:
         # Every executed circuit gets a row where the data is stored.
         data_list.append({"depth": depth, "samples": samples})
     # Build the data object which will be returned and later saved.
-    data = pd.DataFrame(data)
+    data = pd.DataFrame(data_list)
 
     def p0s(samples_list):
         ground = np.array([0] * len(samples_list[0][0]))
