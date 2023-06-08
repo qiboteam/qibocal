@@ -191,7 +191,7 @@ def _acquisition(params: StandardRBParameters, platform) -> RBData:
         # Every executed circuit gets a row where the data is stored.
         data_list.append({"depth": depth, "samples": samples})
     # Build the data object which will be returned and later saved.
-    data = pd.DataFrame(data)
+    data = pd.DataFrame(data_list)
 
     # The signal here is the survival probability.
     standardrb_data = RBData(
@@ -227,7 +227,7 @@ def _fit(data: RBData) -> StandardRBResult:
         y_scatter,
         uncertainties,
         n_bootstrap,
-        lambda data: resample_p0(data, data.attrs.get("nshots", 1)),
+        lambda p: resample_p0(p, data.attrs.get("nshots", 1)),
         fit_exp1B_func,
     )
 
