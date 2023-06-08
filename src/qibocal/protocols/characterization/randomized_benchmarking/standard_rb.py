@@ -181,7 +181,7 @@ def _acquisition(params: StandardRBParameters, *args) -> RBData:
 
     # The signal here is the survival probability.
     standardrb_data = RBData(data.assign(signal=lambda x: p0s(x.samples.to_list())))
-    # Store the paramters to display them later.
+    # Store the parameters to display them later.
     standardrb_data.attrs = params.__dict__
     return standardrb_data
 
