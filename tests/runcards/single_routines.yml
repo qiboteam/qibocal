@@ -254,7 +254,7 @@ actions:
       nshots: 10
       relaxation_time:
 
-  - id: Standard RB 1
+  - id: standard rb
     priority: 0
     operation: standard_rb
     parameters:
@@ -264,7 +264,7 @@ actions:
       niter: 2
       nshots: 128
 
-  - id: Standard RB 2
+  - id: standard rb noise
     priority: 0
     operation: standard_rb
     parameters:

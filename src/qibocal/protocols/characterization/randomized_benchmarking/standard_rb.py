@@ -10,18 +10,15 @@ from qibo.noise import NoiseModel
 
 from qibocal.auto.operation import Parameters, Results, Routine
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
-from qibocal.protocols.characterization.randomized_benchmarking.circuit_tools import (
+
+from .circuit_tools import (
     add_inverse_layer,
     add_measurement_layer,
     embed_circuit,
     layer_circuit,
 )
-from qibocal.protocols.characterization.randomized_benchmarking.utils import (
-    extract_from_data,
-    random_clifford,
-)
-
 from .fitting import exp1B_func, fit_exp1B_func
+from .utils import extract_from_data, random_clifford
 
 NPULSES_PER_CLIFFORD = 1.875
 
@@ -165,8 +162,17 @@ def _acquisition(params: StandardRBParameters, platform) -> RBData:
         else None
     )
     # TODO extract the noise parameters from the build noise model and add them to params object.
-    # Execute the scan.
-    data = execute(scan, params.nshots, noise_model)
+    # 2. Execute the scan.
+    data_list = []
+    # Iterate through the scan and execute each circuit.
+    for circuit in scan:
+        # The inverse and measurement gate don't count for the depth.
+        depth = (circuit.depth - 2) if circuit.depth > 1 else 0
+        if noise_model is not None:
+            circuit = noise_model.apply(circuit)
+        samples = circuit.execute(nshots=params.nshots).samples()
+        # Every executed circuit gets a row where the data is stored.
+        data_list.append({"depth": depth, "samples": samples})
     # Build the data object which will be returned and later saved.
     data = pd.DataFrame(data)
 
@@ -179,7 +185,7 @@ def _acquisition(params: StandardRBParameters, platform) -> RBData:
 
     # The signal here is the survival probability.
     standardrb_data = RBData(data.assign(signal=lambda x: p0s(x.samples.to_list())))
-    # Store the paramters to display them later.
+    # Store the parameters to display them later.
     standardrb_data.attrs = params.__dict__
     return standardrb_data
 
