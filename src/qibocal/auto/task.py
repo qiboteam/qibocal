@@ -89,14 +89,12 @@ class Task:
 
         path = self.datapath(folder)
 
-        if operation.platform_dependent and operation.qubits_dependent:
+        if operation.qubits_dependent:
             self._data: Data = operation.acquisition(
                 parameters, platform=platform, qubits=qubits
             )
         else:
-            self._data: Data = operation.acquisition(
-                parameters,
-            )
+            self._data: Data = operation.acquisition(parameters, platform=platform)
         self._data.to_csv(path)
         # TODO: data dump
         # path.write_text(yaml.dump(pydantic_encoder(self.data(base_dir))))

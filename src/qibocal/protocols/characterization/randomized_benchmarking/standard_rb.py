@@ -5,6 +5,7 @@ from typing import Iterable, List, Optional, Tuple, TypedDict, Union
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from qibo.config import raise_error
 from qibo.noise import NoiseModel
 
 from qibocal.auto.operation import Parameters, Results, Routine
@@ -135,7 +136,7 @@ def execute(
     return data_list
 
 
-def _acquisition(params: StandardRBParameters, *args) -> RBData:
+def _acquisition(params: StandardRBParameters, platform) -> RBData:
     """The data acquisition stage of Standard Randomized Benchmarking.
 
     1. Set up the scan
@@ -148,6 +149,12 @@ def _acquisition(params: StandardRBParameters, *args) -> RBData:
     Returns:
         RBData: The depths, samples and ground state probability of each exeriment in the scan.
     """
+
+    if platform and params.noise_model:
+        raise_error(
+            TypeError,
+            f"Platform {platform} is for hardware, you need a backend for simulation",
+        )
 
     # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
     scan = setup_scan(params)
