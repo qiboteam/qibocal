@@ -106,9 +106,9 @@ class Task:
         path = self.datapath(folder)
         if operation.platform_dependent and operation.qubits_dependent:
             if platform is not None:
-                if len(self.qubits) != 0:
+                if len(self.qubits) > 0:
                     qubits = allocate_qubits(platform, self.qubits)
-            if len(qubits) != 0:
+            if len(qubits) > 0:
                 self._data: Data = operation.acquisition(
                     parameters, platform=platform, qubits=qubits
                 )
