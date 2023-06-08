@@ -9,7 +9,7 @@ from qibo.noise import NoiseModel
 
 from qibocal.auto.operation import Parameters, Results, Routine
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
-from qibocal.protocols.characterization.randomized_benchmarking.utils import (
+from .utils import (
     extract_from_data,
     random_clifford,
 )
