@@ -81,25 +81,10 @@ class AutoCalibrationReportBuilder:
         local_qubits = self.history[task].task.qubits
         return local_qubits if len(local_qubits) > 0 else self.qubits
 
-    def single_qubit_plot(self, task: TaskId, qubit: QubitId):
+    def plot(self, task: TaskId, qubit: QubitId):
         node = self.history[task]
         data = node.task.data
         figures, fitting_report = node.task.operation.report(data, node.res, qubit)
-        with tempfile.NamedTemporaryFile(delete=False) as temp:
-            html_list = []
-            for figure in figures:
-                figure.write_html(temp.name, include_plotlyjs=False, full_html=False)
-                temp.seek(0)
-                fightml = temp.read().decode("utf-8")
-                html_list.append(fightml)
-
-        all_html = "".join(html_list)
-        return all_html, fitting_report
-
-    def plot(self, task: TaskId):
-        node = self.history[task]
-        data = node.task.data
-        figures, fitting_report = node.task.operation.report(data)
         with tempfile.NamedTemporaryFile(delete=False) as temp:
             html_list = []
             for figure in figures:
