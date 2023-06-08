@@ -9,7 +9,7 @@ from qibo.noise import NoiseModel
 
 from qibocal.auto.operation import Parameters, Results, Routine
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
-from qibocal.protocols.characterization.randomized_benchmarking.circuit_tools import (
+from .circuit_tools import (
     add_inverse_layer,
     add_measurement_layer,
     embed_circuit,
