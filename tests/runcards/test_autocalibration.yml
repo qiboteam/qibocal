@@ -226,6 +226,7 @@ actions:
 
   - id: standard rb
     priority: 0
+    next: standard rb noise
     operation: standard_rb
     parameters:
       nqubits: 2
@@ -233,3 +234,15 @@ actions:
       depths: [1,3,5,10]
       niter: 2
       nshots: 128
+
+  - id: standard rb noise
+    priority: 0
+    operation: standard_rb
+    parameters:
+      nqubits: 2
+      qubits: [1]
+      depths: [1,3,5,10]
+      niter: 2
+      nshots: 128
+      noise_model: PauliErrorOnAll
+      noise_params:

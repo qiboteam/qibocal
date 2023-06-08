@@ -16,4 +16,9 @@ platform = create_platform("dummy")
 def test_data_acquisition(action):
     """Test data acquisition for all routines using dummy"""
     task = Task(action)
-    task.operation.acquisition(task.parameters, platform, platform.qubits)
+    if task.operation.qubits_dependent:
+        task.operation.acquisition(task.parameters, platform, platform.qubits)
+    elif task.operation.platform_dependent:
+        task.operation.acquisition(task.parameters, platform)
+    else:
+        task.operation.acquisition(task.parameters)
