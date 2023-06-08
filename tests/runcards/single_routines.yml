@@ -1,9 +1,3 @@
-platform: dummy
-
-qubits: [0, 1]
-
-format: csv
-
 actions:
 
   - id: resonator high power high amplitude

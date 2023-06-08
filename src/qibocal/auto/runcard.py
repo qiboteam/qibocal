@@ -29,7 +29,7 @@ class Action:
     """Priority level, determining the execution order."""
     qubits: list[QubitId] = Field(default_factory=list)
     """Local qubits (optional)."""
-    update: bool = True
+    update: bool = None
     """Runcard update mechanism."""
     parameters: Optional[Dict[str, Any]] = None
     """Input parameters, either values or provider reference."""

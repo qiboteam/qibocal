@@ -1,0 +1,85 @@
+"""Test routines' acquisition method using dummy platform"""
+import pathlib
+import tempfile
+from copy import deepcopy
+
+import pytest
+from qibolab import create_platform
+
+from qibocal.auto.execute import Executor
+from qibocal.auto.runcard import Runcard
+from qibocal.auto.task import Task
+from qibocal.utils import allocate_qubits
+
+DUMMY_CARD = {
+    "actions": [
+        {
+            "id": "resonator frequency",
+            "priority": 0,
+            "operation": "resonator_spectroscopy",
+            "parameters": {
+                "freq_width": 10_000_000,
+                "freq_step": 100_000,
+                "amplitude": 0.4,
+                "power_level": "low",
+            },
+        }
+    ]
+}
+
+
+def modify_card(card, qubits=None, update=None):
+    if qubits is not None:
+        card["actions"][0]["qubits"] = qubits
+    elif update is not None:
+        card["actions"][0]["update"] = update
+    return card
+
+
+PLATFORM = create_platform("dummy")
+
+
+@pytest.mark.parametrize("global_qubits", [[], [0, 1]])
+@pytest.mark.parametrize("local_qubits", [[], [0, 1]])
+def test_qubits_argument(global_qubits, local_qubits):
+    """Test possible qubits combinations between global and local."""
+    runcard = Runcard.load(modify_card(DUMMY_CARD, qubits=local_qubits))
+    task = Task(runcard.actions[0])
+    if not local_qubits and not global_qubits:
+        with pytest.raises(ValueError):
+            task.run(
+                pathlib.Path(tempfile.mkdtemp()),
+                PLATFORM,
+                allocate_qubits(PLATFORM, global_qubits),
+            )
+    else:
+        task.run(
+            pathlib.Path(tempfile.mkdtemp()),
+            PLATFORM,
+            allocate_qubits(PLATFORM, global_qubits),
+        )
+        if local_qubits:
+            assert task.qubits == local_qubits
+        else:
+            assert task.qubits == global_qubits
+
+
+@pytest.mark.parametrize("global_update", [True, False])
+@pytest.mark.parametrize("local_update", [True, False, None])
+def test_update_argument(global_update, local_update):
+    """Test possible update combinations between global and local."""
+    platform = deepcopy(create_platform("dummy"))
+    old_readout_frequency = platform.qubits[0].readout_frequency
+    NEW_CARD = modify_card(deepcopy(DUMMY_CARD), update=local_update)
+    executor = Executor.load(
+        NEW_CARD,
+        pathlib.Path(tempfile.mkdtemp()),
+        platform,
+        platform.qubits,
+        global_update,
+    )
+    executor.run()
+    if local_update or (local_update is None and global_update):
+        assert old_readout_frequency != platform.qubits[0].readout_frequency
+    else:
+        assert old_readout_frequency == platform.qubits[0].readout_frequency
