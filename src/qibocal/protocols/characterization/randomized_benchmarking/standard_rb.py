@@ -129,7 +129,7 @@ def _acquisition(params: StandardRBParameters, platform) -> RBData:
             f"Backend qibolab ({platform}) does not perform noise models simulation.",
         )
     elif platform and params.noise_model:
-        log.warn(
+        log.warning(
             f"Backend qibolab ({platform}) does not perform noise models simulation. "
             + "Setting backend to `NumpyBackend` instead."
         )
