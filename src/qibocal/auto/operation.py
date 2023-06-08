@@ -147,7 +147,7 @@ class DummyRes(Results):
     """Dummy results."""
 
 
-def _dummy_acquisition(pars: DummyPars) -> DummyData:
+def _dummy_acquisition(pars: DummyPars, platform) -> DummyData:
     return DummyData()
 
 
