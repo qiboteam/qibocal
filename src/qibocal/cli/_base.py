@@ -14,7 +14,7 @@ import click
 from qibo.config import log, raise_error
 
 from ..cli.auto_builder import AutoCalibrationBuilder
-from ..cli.builders import ActionBuilder, load_yaml
+from ..cli.builders import ActionBuilder, load_card
 from .utils import check_folder_structure, folders_exists, update_meta, update_runcard
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
@@ -255,12 +255,12 @@ def compare(folders):
 
         if i > 0:
             # update meta.yml for comparing report
-            metadata_new = load_yaml(os.path.join(folder, "meta.yml"))
-            metadata = load_yaml(os.path.join(TARGET_COMPARE_DIR, "meta.yml"))
+            metadata_new = load_card(os.path.join(folder, "meta.yml"))
+            metadata = load_card(os.path.join(TARGET_COMPARE_DIR, "meta.yml"))
             update_meta(metadata, metadata_new)
             # update runcard.yml for comparing report
-            rundata_new = load_yaml(os.path.join(folder, "runcard.yml"))
-            rundata = load_yaml(os.path.join(TARGET_COMPARE_DIR, "runcard.yml"))
+            rundata_new = load_card(os.path.join(folder, "runcard.yml"))
+            rundata = load_card(os.path.join(TARGET_COMPARE_DIR, "runcard.yml"))
             update_runcard(rundata, rundata_new, TARGET_COMPARE_DIR)
 
     log.info(f"Upload completed")

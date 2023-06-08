@@ -8,7 +8,7 @@ from pathlib import Path
 import yaml
 
 from qibocal import calibrations
-from qibocal.cli.utils import generate_output_folder, load_yaml
+from qibocal.cli.utils import generate_output_folder, load_card
 from qibocal.config import raise_error
 from qibocal.utils import allocate_qubits
 
@@ -159,7 +159,7 @@ class ActionBuilder:
         self.folder = generate_output_folder(folder, force)
 
         # parse runcard
-        self.runcard = load_yaml(runcard)
+        self.runcard = load_card(runcard)
 
         # backend and platform allocation
         backend_name = self.runcard.get("backend", "qibolab")
@@ -176,7 +176,11 @@ class ActionBuilder:
         # Setting format. If absent csv is used.
         self.format = self.runcard.get("format", "csv")
         # Saving runcard
-        shutil.copy(runcard, f"{self.folder}/runcard.yml")
+        if isinstance(runcard, dict):
+            with open(f"{self.folder}/runcard.yml", "w") as file:
+                yaml.dump(runcard, file)
+        else:
+            shutil.copy(runcard, f"{self.folder}/runcard.yml")
         self.save_meta()
 
     def _allocate_backend(self, backend_name, platform_name, platform_runcard, update):
@@ -267,7 +271,7 @@ class ActionBuilder:
         from qibocal.web.report import create_report
 
         # update end time
-        meta = load_yaml(f"{self.folder}/meta.yml")
+        meta = load_card(f"{self.folder}/meta.yml")
         e = datetime.datetime.now(datetime.timezone.utc)
         meta["end-time"] = e.strftime("%H:%M:%S")
         with open(f"{self.folder}/meta.yml", "w") as file:
@@ -287,14 +291,14 @@ class ReportBuilder:
 
     def __init__(self, path, actions=None):
         self.path = path
-        self.metadata = load_yaml(os.path.join(path, "meta.yml"))
+        self.metadata = load_card(os.path.join(path, "meta.yml"))
 
         # find proper path title
         base, self.title = os.path.join(os.getcwd(), path), ""
         while self.title in ("", "."):
             base, self.title = os.path.split(base)
 
-        self.runcard = load_yaml(os.path.join(path, "runcard.yml"))
+        self.runcard = load_card(os.path.join(path, "runcard.yml"))
         self.format = self.runcard.get("format")
         self.qubits = self.runcard.get("qubits")
 

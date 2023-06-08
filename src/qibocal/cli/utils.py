@@ -5,6 +5,7 @@ import os
 import shutil
 from glob import glob
 from pathlib import Path
+from typing import Union
 
 import click
 import yaml
@@ -80,11 +81,12 @@ def update_runcard(rundata, rundata_new, target_compare_dir):
         )
 
 
-def load_yaml(path):
-    """Load yaml file from disk."""
-    with open(path) as file:
-        data = yaml.safe_load(file)
-    return data
+def load_card(card: Union[dict, str]):
+    if isinstance(card, str):
+        with open(card) as file:
+            data = yaml.safe_load(file)
+        return data
+    return card
 
 
 def generate_output_folder(folder, force):

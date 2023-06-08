@@ -3,18 +3,37 @@ import pathlib
 import tempfile
 
 import pytest
+import yaml
 from qibolab import create_platform
 
-from qibocal.auto.runcard import Runcard
-from qibocal.auto.task import Task
+from qibocal.cli.auto_builder import AutoCalibrationBuilder
 
 PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/single_routines.yml"
-RUNCARD = Runcard.load(PATH_TO_RUNCARD)
-platform = create_platform("dummy")
+PLATFORM = create_platform("dummy")
 
 
-@pytest.mark.parametrize("action", RUNCARD.actions)
-def test_protocols(action):
-    """Test data acquisition for all routines using dummy"""
-    task = Task(action)
-    task.run(pathlib.Path(tempfile.mkdtemp()), platform, platform.qubits)
+def generate_runcard_single_protocol():
+    with open(PATH_TO_RUNCARD) as file:
+        actions = yaml.safe_load(file)
+
+    for action in actions["actions"]:
+        # FIXME: temporary fix for noise model in runcard
+        if "noise_model" in action["parameters"]:
+            yield {
+                "actions": [action],
+                "backend": "numpy",
+                "qubits": list(PLATFORM.qubits),
+            }
+        else:
+            yield {"actions": [action], "qubits": list(PLATFORM.qubits)}
+
+
+@pytest.mark.parametrize("runcard", generate_runcard_single_protocol())
+def test_builder(runcard):
+    """Test possible update combinations between global and local."""
+    builder = AutoCalibrationBuilder(
+        runcard, tempfile.mkdtemp(), force=True, update=False
+    )
+    builder.run()
+    builder.dump_platform_runcard()
+    builder.dump_report()
