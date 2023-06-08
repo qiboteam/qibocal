@@ -18,5 +18,7 @@ def test_data_acquisition(action):
     task = Task(action)
     if task.operation.qubits_dependent:
         task.operation.acquisition(task.parameters, platform, platform.qubits)
-    else:
+    elif task.operation.platform_dependent:
         task.operation.acquisition(task.parameters, platform)
+    else:
+        task.operation.acquisition(task.parameters)
