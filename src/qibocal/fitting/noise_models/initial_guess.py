@@ -31,11 +31,11 @@ def ramsey_initial_guess_direct_interpolation(
     Estimate initial parameters for Ramsey fit using direct interpolation method for FWHM.
 
     Args:
-    - x_data: 1D numpy array representing the x-axis data points
-    - y_data: 1D numpy array representing the y-axis data points
+        x_data (np.ndarray): 1D numpy array representing the x-axis data points
+        y_data (np.ndarray): 1D numpy array representing the y-axis data points
 
     Returns:
-    - A list of initial guess parameters for the Ramsey fit: [offset, amplitude, frequency, phase, t2s]
+        list: A list of initial guess parameters for the Ramsey fit: [offset, amplitude, frequency, phase, t2s]
     """
     # Estimate initial amplitude and offset
     amplitude = (np.max(y_data) - np.min(y_data)) / 2
@@ -71,8 +71,8 @@ def ramsey_initial_guess_gaussian_envelope(
     Estimate the initial parameters for a Ramsey experiment with a Gaussian envelope.
 
     Args:
-        x_data (array-like): The time values of the signal.
-        y_data (array-like): The amplitude values of the signal.
+        x_data (np.ndarray): The time values of the signal.
+        y_data (np.ndarray): The amplitude values of the signal.
 
     Returns:
         list: A list containing the initial guesses for the offset, amplitude, frequency, phase,
@@ -131,11 +131,11 @@ def ramsey_initial_guess_gaussian_envelope_hilbert(
     transform.
 
     Args:
-        x_data (array): 1-D array containing the time points for the signal.
-        y_data: A 1D numpy array representing the y-axis data of the signal.
+        x_data (np.ndarray): 1-D array containing the time points for the signal.
+        y_data (np.ndarray): A 1D numpy array representing the y-axis data of the signal.
 
     Returns:
-        A list of initial guess values for the Ramsey experiment parameters: [offset, amplitude, frequency, phase, t2s].
+        list: A list of initial guess values for the Ramsey experiment parameters: [offset, amplitude, frequency, phase, t2s].
     """
     # Calculate the amplitude and offset of the signal
     amplitude = (np.max(y_data) - np.min(y_data)) / 2
@@ -174,11 +174,11 @@ def ramsey_initial_guess_hilbert(x_data: np.ndarray, y_data: np.ndarray) -> List
     Estimate initial parameters for a Ramsey experiment using the Hilbert transform.
 
     Args:
-    x_data (array): 1-D array containing the time points for the signal.
-    y_data (array): 1-D array containing the signal values.
+        x_data (array): 1-D array containing the time points for the signal.
+        y_data (array): 1-D array containing the signal values.
 
     Returns:
-    list: Initial parameter guess for the Ramsey experiment, consisting of [offset, amplitude, frequency, phase, t2s].
+        list: Initial parameter guess for the Ramsey experiment, consisting of [offset, amplitude, frequency, phase, t2s].
     """
     # Calculate initial guess for Ramsey experiment parameters
     amplitude = (

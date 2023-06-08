@@ -7,15 +7,15 @@ def single_exp_decay(t, offset, amplitude, frequency, phase, t2s):
     This is a simple damped sinusoidal function, which is a common fit function in Ramsey experiments.
 
     Args:
-    - t (numpy.ndarray): Time vector.
-    - offset (float): Offset parameter of the model.
-    - amplitude (float): Amplitude parameter of the cosine term in the model.
-    - frequency (float): Frequency parameter of the cosine term in the model.
-    - phase (float): Phase parameter of the cosine term in the model.
-    - t2s (float): T2* parameter of the exponential decay term in the model.
+        t (numpy.ndarray): Time vector.
+        offset (float): Offset parameter of the model.
+        amplitude (float): Amplitude parameter of the cosine term in the model.
+        frequency (float): Frequency parameter of the cosine term in the model.
+        phase (float): Phase parameter of the cosine term in the model.
+        t2s (float): T2* parameter of the exponential decay term in the model.
 
     Returns:
-    - y_pred (numpy.ndarray): Predicted values of the model.
+        y_pred (numpy.ndarray): Predicted values of the model.
     """
 
     # Calculate predicted values
@@ -35,15 +35,15 @@ def gaussian_decay(t, offset, amplitude, frequency, phase, t2s):
     is affected by other factors such as noise in the magnetic field or spin-spin interactions.
 
     Args:
-    - t (numpy.ndarray): Time vector.
-    - offset (float): Offset parameter of the model.
-    - amplitude (float): Amplitude parameter of the cosine term in the model.
-    - frequency (float): Frequency parameter of the cosine term in the model.
-    - phase (float): Phase parameter of the cosine term in the model.
-    - t2s (float): T2* parameter of the Gaussian decay term in the model.
+        t (numpy.ndarray): Time vector.
+        offset (float): Offset parameter of the model.
+        amplitude (float): Amplitude parameter of the cosine term in the model.
+        frequency (float): Frequency parameter of the cosine term in the model.
+        phase (float): Phase parameter of the cosine term in the model.
+        t2s (float): T2* parameter of the Gaussian decay term in the model.
 
     Returns:
-    - y_pred (numpy.ndarray): Predicted values of the model.
+        y_pred (numpy.ndarray): Predicted values of the model.
     """
     # Calculate predicted values
     y_pred = offset + amplitude * np.cos(2 * np.pi * frequency * t + phase) * np.exp(
@@ -61,16 +61,16 @@ def stretched_exp_decay(t, offset, amplitude, frequency, phase, t2s, beta):
     The function takes in the following parameters:
 
     Args:
-    - t (numpy.ndarray): Time vector.
-    - offset (float): Offset parameter of the model.
-    - amplitude (float): Amplitude parameter of the cosine term in the model.
-    - frequency (float): Frequency parameter of the cosine term in the model.
-    - phase (float): Phase parameter of the cosine term in the model.
-    - t2s (float): T2* parameter of the stretched exponential decay term in the model.
-    - beta (float): Stretching parameter of the stretched exponential decay term in the model.
+        t (numpy.ndarray): Time vector.
+        offset (float): Offset parameter of the model.
+        amplitude (float): Amplitude parameter of the cosine term in the model.
+        frequency (float): Frequency parameter of the cosine term in the model.
+        phase (float): Phase parameter of the cosine term in the model.
+        t2s (float): T2* parameter of the stretched exponential decay term in the model.
+        beta (float): Stretching parameter of the stretched exponential decay term in the model.
 
     Returns:
-    - y_pred (numpy.ndarray): Predicted values of the model.
+        y_pred (numpy.ndarray): Predicted values of the model.
     """
 
     # Calculate predicted values
@@ -89,15 +89,15 @@ def lorentzian_decay(t, offset, amplitude, frequency, phase, t2s):
     is due to a single, dominant source.
 
     Args:
-    - t (numpy.ndarray): Time vector.
-    - offset (float): Offset parameter of the model.
-    - amplitude (float): Amplitude parameter of the cosine term in the model.
-    - frequency (float): Frequency parameter of the cosine term in the model.
-    - phase (float): Phase parameter of the cosine term in the model.
-    - t2s (float): T2* parameter of the Gaussian decay term in the model.
+        t (numpy.ndarray): Time vector.
+        offset (float): Offset parameter of the model.
+        amplitude (float): Amplitude parameter of the cosine term in the model.
+        frequency (float): Frequency parameter of the cosine term in the model.
+        phase (float): Phase parameter of the cosine term in the model.
+        t2s (float): T2* parameter of the Gaussian decay term in the model.
 
     Returns:
-    - y_pred (numpy.ndarray): Predicted values of the model.
+        y_pred (numpy.ndarray): Predicted values of the model.
     """
 
     # Calculate predicted values
@@ -116,16 +116,16 @@ def inverse_gaussian_decay(t, offset, amplitude, frequency, phase, t2s, beta):
     decoherence is due to a combination of Gaussian and Lorentzian sources.
 
     Args:
-    - t (numpy.ndarray): Time vector.
-    - offset (float): Offset parameter of the model.
-    - amplitude (float): Amplitude parameter of the cosine term in the model.
-    - frequency (float): Frequency parameter of the cosine term in the model.
-    - phase (float): Phase parameter of the cosine term in the model.
-    - t2s (float): T2* parameter of the inverse Gaussian decay term in the model.
-    - beta (float): Parameter of the inverse Gaussian decay term in the model.
+        t (numpy.ndarray): Time vector.
+        offset (float): Offset parameter of the model.
+        amplitude (float): Amplitude parameter of the cosine term in the model.
+        frequency (float): Frequency parameter of the cosine term in the model.
+        phase (float): Phase parameter of the cosine term in the model.
+        t2s (float): T2* parameter of the inverse Gaussian decay term in the model.
+        beta (float): Parameter of the inverse Gaussian decay term in the model.
 
     Returns:
-    - y_pred (numpy.ndarray): Predicted values of the model.
+        y_pred (numpy.ndarray): Predicted values of the model.
     """
 
     # Calculate predicted values

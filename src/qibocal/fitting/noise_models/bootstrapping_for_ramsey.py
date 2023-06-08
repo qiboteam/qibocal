@@ -28,16 +28,22 @@ def ramsey_fit_and_analyze(
         dict: Dictionary containing fit results and analysis.
 
     Example:
+        .. testcode::
 
-        >>> import numpy as np
-        >>> x_data = np.array([0, 1, 2, 3, 4, 5])
-        >>> y_data = np.array([0.2, 0.5, 0.7, 0.9, 1.0, 0.8])
-        >>> initial_guess_function = ramsey_initial_guess_direct_interpolation(x_data, y_data):
-        >>> model_function = def ramsey(x, p0, p1, p2, p3, p4)
-        >>> n_bootstrap = 1000
-        >>> max_t1 = 100000
-        >>> r_squared_limit = 0.78
-        >>> result = ramsey_fit_and_analyze(x_data, y_data, initial_guess_function, model_function, n_bootstrap, max_t1, r_squared_limit)
+            import numpy as np
+            from qibocal.fitting.methods import ramsey
+            from qibocal.fitting.noise_models.initial_guess import ramsey_initial_guess_direct_interpolation
+            from qibocal.fitting.noise_models.bootstrapping_for_ramsey import ramsey_fit_and_analyze
+
+            x_data = np.array([0, 1, 2, 3, 4, 5])
+            y_data = np.array([0.2, 0.5, 0.7, 0.9, 1.0, 0.8])
+
+            result = ramsey_fit_and_analyze(x_data, y_data,
+                                            initial_guess_function=ramsey_initial_guess_direct_interpolation,
+                                            model_function=ramsey,
+                                            n_bootstrap=1000,
+                                            max_t1=100000,
+                                            r_squared_limit=0.78)
     """
 
     # Normalize x_data and y_data to the range [0, 1]
@@ -56,7 +62,7 @@ def ramsey_fit_and_analyze(
 
     # Perform the initial curve fitting using the provided data
     initial_guess = initial_guess_function(unique_x, y_mean)
-    popt, pcov = curve_fit(
+    popt, _ = curve_fit(
         model_function,
         unique_x,
         y_mean,
@@ -80,7 +86,7 @@ def ramsey_fit_and_analyze(
 
         # Fit the curve to the bootstrap sample
         initial_guess = initial_guess_function(unique_x, bootstrap_y)
-        bootstrap_popt, bootstrap_pcov = curve_fit(
+        bootstrap_popt, _ = curve_fit(
             model_function,
             unique_x,
             bootstrap_y,
@@ -134,15 +140,6 @@ def calculate_max_t1(w_r, w_q, g, k):
     """
     Calculate the maximum T1 using the Purcell effect.
 
-    Arguments:
-    - w_r: Resonator frequency in Hz.
-    - w_q: Qubit frequency in Hz.
-    - g: Coupling strength in Hz.
-    - k: Photon loss rate from the resonator in Hz.
-
-    Returns:
-    - max_t1: Maximum T1 time.
-
     The Purcell effect describes the modification of the spontaneous emission rate
     of a quantum system due to its interaction with a resonant electromagnetic mode.
     This function calculates the maximum T1 time, which is the time it takes for the
@@ -152,18 +149,35 @@ def calculate_max_t1(w_r, w_q, g, k):
     The frequencies, coupling strength, and loss rate are initially provided in Hz.
 
     The formula used to calculate the maximum T1 is:
-    max_t1 = (w_r - w_q) ** 2 / (g ** 2 * k)
 
-    Note: Ensure that the input values for the frequencies, coupling strength, and
-    photon loss rate are appropriate for the specific quantum system being considered.
+    ..math::
+        T_1^{(\\max)} = (w_r - w_q)^2 / (g^2 \\cdot k)
 
-    Example usage:
-    >>> w_r = 7.8e9
-    >>> w_q = 5.5e9
-    >>> g = 100e6
-    >>> k = 1e6
-    >>> max_t1 = calculate_max_t1(w_r, w_q, g, k)
-    >>> print(max_t1)
+    ..note::
+        Ensure that the input values for the frequencies, coupling strength, and
+        photon loss rate are appropriate for the specific quantum system being considered.
+
+    Args:
+        w_r: Resonator frequency in Hz.
+        w_q: Qubit frequency in Hz.
+        g: Coupling strength in Hz.
+        k: Photon loss rate from the resonator in Hz.
+
+    Returns:
+        max_t1: Maximum T1 time.
+
+
+    Example:
+        .. testcode::
+
+            from qibocal.fitting.noise_models.bootstrapping_for_ramsey import calculate_max_t1
+
+            w_r = 7.8e9
+            w_q = 5.5e9
+            g = 100e6
+            k = 1e6
+            max_t1 = calculate_max_t1(w_r, w_q, g, k)
+            print(max_t1)
     """
 
     max_t1 = (w_r - w_q) ** 2 / (g**2 * k)
