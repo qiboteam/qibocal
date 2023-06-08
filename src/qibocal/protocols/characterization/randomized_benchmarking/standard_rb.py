@@ -6,9 +6,9 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import qibo
-from qibo.config import log
 
 from qibocal.auto.operation import Parameters, Results, Routine
+from qibocal.config import log, raise_error
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
 
 from .circuit_tools import (
@@ -120,8 +120,13 @@ def _acquisition(params: StandardRBParameters, platform) -> RBData:
         RBData: The depths, samples and ground state probability of each exeriment in the scan.
     """
 
-    if platform and params.noise_model:
-        log.info(
+    if platform and platform.name != "dummy" and params.noise_model:
+        raise_error(
+            NotImplementedError,
+            f"Backend qibolab ({platform}) does not perform noise models simulation.",
+        )
+    elif platform and params.noise_model:
+        log.warn(
             f"Backend qibolab ({platform}) does not perform noise models simulation. "
             + "Setting backend to `NumpyBackend` instead."
         )
