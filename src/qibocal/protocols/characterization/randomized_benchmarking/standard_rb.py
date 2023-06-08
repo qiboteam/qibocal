@@ -1,12 +1,12 @@
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Iterable, List, Optional, Tuple, TypedDict, Union
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from qibo.config import raise_error
-from qibo.noise import NoiseModel
+import qibo
+from qibo.config import log
 
 from qibocal.auto.operation import Parameters, Results, Routine
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
@@ -46,7 +46,7 @@ class StandardRBParameters(Parameters):
     noise_model: str = ""
     """For simulation purposes, string has to match what is in
     :mod:`qibocal.protocols.characterization.randomized_benchmarking.noisemodels`"""
-    noise_params: list = field(default_factory=list)
+    noise_params: Optional[list] = None
     """With this the noise model will be initialized, if not given random values will be used."""
 
     def __post_init__(self):
@@ -54,6 +54,9 @@ class StandardRBParameters(Parameters):
             self.depths = list(
                 range(self.depths["start"], self.depths["stop"], self.depths["step"])
             )
+
+        if self.noise_params is None:
+            self.noise_params = []
 
 
 class RBData(pd.DataFrame):
@@ -102,37 +105,6 @@ def setup_scan(params: StandardRBParameters) -> Iterable:
     return map(make_circuit, params.depths * params.niter)
 
 
-def execute(
-    scan: Iterable,
-    nshots: Optional[int] = None,
-    noise_model: Optional[NoiseModel] = None,
-) -> List[dict]:
-    """Execute a given scan with the given number of shots and if its a simulation with the given
-    noise model.
-
-    Args:
-        scan (Iterable): The ensemble of experiments (here circuits)
-        nshots Optional[int]: Number of shots per circuit. Defaults to None.
-        noise_model Optional[NoiseModel]: If its a simulation a noise model
-            can be applied. Defaults to None.
-
-    Returns:
-        List[dict]: A list with one dictionary for each executed circuit where the data is stored.
-    """
-
-    data_list = []
-    # Iterate through the scan and execute each circuit.
-    for c in scan:
-        # The inverse and measurement gate don't count for the depth.
-        depth = (c.depth - 2) if c.depth > 1 else 0
-        if noise_model is not None:
-            c = noise_model.apply(c)
-        samples = c.execute(nshots=nshots).samples()
-        # Every executed circuit gets a row where the data is stored.
-        data_list.append({"depth": depth, "samples": samples})
-    return data_list
-
-
 def _acquisition(params: StandardRBParameters, platform) -> RBData:
     """The data acquisition stage of Standard Randomized Benchmarking.
 
@@ -142,16 +114,18 @@ def _acquisition(params: StandardRBParameters, platform) -> RBData:
 
     Args:
         params (StandardRBParameters): All parameters in one object.
+        platform (Platform): Platform the experiment is executed on.
 
     Returns:
         RBData: The depths, samples and ground state probability of each exeriment in the scan.
     """
 
     if platform and params.noise_model:
-        raise_error(
-            TypeError,
-            f"Platform {platform} is for hardware, you need a backend for simulation",
+        log.info(
+            f"Backend qibolab ({platform}) does not perform noise models simulation. "
+            + "Setting backend to `NumpyBackend` instead."
         )
+        qibo.set_backend("numpy")
 
     # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
     scan = setup_scan(params)
