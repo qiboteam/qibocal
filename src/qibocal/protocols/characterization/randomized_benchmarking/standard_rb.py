@@ -158,8 +158,17 @@ def _acquisition(params: StandardRBParameters, *args) -> RBData:
         else None
     )
     # TODO extract the noise parameters from the build noise model and add them to params object.
-    # Execute the scan.
-    data = execute(scan, params.nshots, noise_model)
+    # 2. Execute the scan.
+    data_list = []
+    # Iterate through the scan and execute each circuit.
+    for circuit in scan:
+        # The inverse and measurement gate don't count for the depth.
+        depth = (circuit.depth - 2) if circuit.depth > 1 else 0
+        if noise_model is not None:
+            circuit = noise_model.apply(circuit)
+        samples = circuit.execute(nshots=params.nshots).samples()
+        # Every executed circuit gets a row where the data is stored.
+        data_list.append({"depth": depth, "samples": samples})
     # Build the data object which will be returned and later saved.
     data = pd.DataFrame(data)
 
