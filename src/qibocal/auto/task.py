@@ -6,6 +6,8 @@ from typing import List
 
 from qibolab.platform import Platform
 
+from qibocal.config import raise_error
+
 from ..protocols.characterization import Operation
 from ..utils import allocate_qubits
 from .operation import Data, DummyPars, Qubits, Results, Routine, dummy_operation
@@ -76,7 +78,11 @@ class Task:
 
     @property
     def qubits(self):
-        return self.action.qubits
+        return self._qubits
+
+    @qubits.setter
+    def qubits(self, qubits):
+        self._qubits = qubits
 
     @property
     def update(self):
@@ -100,13 +106,19 @@ class Task:
             parameters = DummyPars()
 
         path = self.datapath(folder)
-
         if operation.platform_dependent and operation.qubits_dependent:
-            if self.qubits:
-                qubits = allocate_qubits(platform, self.qubits)
-            self._data: Data = operation.acquisition(
-                parameters, platform=platform, qubits=qubits
-            )
+            if platform is not None:
+                if self.action.qubits:
+                    qubits = allocate_qubits(platform, self.action.qubits)
+            if qubits:
+                self._data: Data = operation.acquisition(
+                    parameters, platform=platform, qubits=qubits
+                )
+                # after acquisition we update the qubit parameter
+                self.qubits = list(qubits.keys())
+            else:
+                raise_error(ValueError, "Cannot execute protocol with emtpy dictionary")
+
         else:
             self._data: Data = operation.acquisition(
                 parameters,
