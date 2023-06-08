@@ -9,17 +9,17 @@ from qibo.noise import NoiseModel
 
 from qibocal.auto.operation import Parameters, Results, Routine
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
+from qibocal.protocols.characterization.randomized_benchmarking.utils import (
+    extract_from_data,
+    random_clifford,
+)
+
 from .circuit_tools import (
     add_inverse_layer,
     add_measurement_layer,
     embed_circuit,
     layer_circuit,
 )
-from qibocal.protocols.characterization.randomized_benchmarking.utils import (
-    extract_from_data,
-    random_clifford,
-)
-
 from .fitting import exp1B_func, fit_exp1B_func
 
 NPULSES_PER_CLIFFORD = 1.875
