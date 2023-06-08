@@ -93,10 +93,8 @@ class Task:
             self._data: Data = operation.acquisition(
                 parameters, platform=platform, qubits=qubits
             )
-        elif operation.platform_dependent:
-            self._data: Data = operation.acquisition(parameters, platform=platform)
         else:
-            self._data: Data = operation.acquisition(parameters)
+            self._data: Data = operation.acquisition(parameters, platform=platform)
         self._data.to_csv(path)
         # TODO: data dump
         # path.write_text(yaml.dump(pydantic_encoder(self.data(base_dir))))

@@ -67,7 +67,7 @@ class RBData(pd.DataFrame):
 
     def to_csv(self, path):
         """Overwrite this method because qibocal action builder call this function with a directory."""
-        super().to_csv(f"{path}/{self.__class__.__name__}.csv")
+        super().to_json(f"{path}/{self.__class__.__name__}.csv")
 
 
 @dataclass
@@ -93,6 +93,9 @@ def setup_scan(params: StandardRBParameters) -> Iterable:
     def make_circuit(depth):
         """Returns a random Clifford circuit with inverse of `depth`."""
 
+        # This function is needed so that the inside of the layer_circuit function layer_gen()
+        # can be called for each layer of the circuit, and it returns a random layer of
+        # Clifford gates. Could also be a generator, it just has to be callable.
         def layer_gen():
             """Returns a circuit with a random single-qubit clifford unitary."""
             return random_clifford(len(params.qubits))
