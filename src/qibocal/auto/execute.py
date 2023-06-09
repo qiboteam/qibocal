@@ -1,7 +1,7 @@
 """Tasks execution."""
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional, Set, Union
+from typing import List, Optional, Set
 
 from qibolab.platform import Platform
 
@@ -22,9 +22,9 @@ class Executor:
     """The execution history, with results and exit states."""
     output: Path
     """Output path."""
-    qubits: Optional[Qubits] = None
+    qubits: Qubits
     """Qubits to be calibrated."""
-    platform: Optional[Platform] = None
+    platform: Platform
     """Qubits' platform."""
     update: bool = True
     """Runcard update mechanism."""
@@ -37,17 +37,16 @@ class Executor:
     @classmethod
     def load(
         cls,
-        card: Union[dict, Path],
+        card: Runcard,
         output: Path,
         platform: Platform = None,
         qubits: Qubits = None,
         update: bool = True,
     ):
         """Load execution graph and associated executor from a runcard."""
-        runcard = Runcard.load(card)
 
         return cls(
-            graph=Graph.from_actions(runcard.actions),
+            graph=Graph.from_actions(card.actions),
             history=History({}),
             output=output,
             platform=platform,

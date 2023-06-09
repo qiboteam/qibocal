@@ -11,7 +11,11 @@ from qibocal.auto.runcard import Runcard
 from qibocal.auto.task import Task
 from qibocal.utils import allocate_qubits
 
+PLATFORM = create_platform("dummy")
+QUBITS = list(PLATFORM.qubits)
+
 DUMMY_CARD = {
+    "qubits": QUBITS,
     "actions": [
         {
             "id": "resonator frequency",
@@ -24,7 +28,7 @@ DUMMY_CARD = {
                 "power_level": "low",
             },
         }
-    ]
+    ],
 }
 
 
@@ -37,32 +41,21 @@ def modify_card(card, qubits=None, update=None):
     return card
 
 
-PLATFORM = create_platform("dummy")
-
-
-@pytest.mark.parametrize("global_qubits", [[], [0, 1]])
 @pytest.mark.parametrize("local_qubits", [[], [0, 1]])
-def test_qubits_argument(global_qubits, local_qubits):
+def test_qubits_argument(local_qubits):
     """Test possible qubits combinations between global and local."""
     runcard = Runcard.load(modify_card(DUMMY_CARD, qubits=local_qubits))
     task = Task(runcard.actions[0])
-    if not local_qubits and not global_qubits:
-        with pytest.raises(ValueError):
-            task.run(
-                pathlib.Path(tempfile.mkdtemp()),
-                PLATFORM,
-                allocate_qubits(PLATFORM, global_qubits),
-            )
+
+    task.run(
+        pathlib.Path(tempfile.mkdtemp()),
+        PLATFORM,
+        allocate_qubits(PLATFORM, QUBITS),
+    )
+    if local_qubits:
+        assert task.qubits == local_qubits
     else:
-        task.run(
-            pathlib.Path(tempfile.mkdtemp()),
-            PLATFORM,
-            allocate_qubits(PLATFORM, global_qubits),
-        )
-        if local_qubits:
-            assert task.qubits == local_qubits
-        else:
-            assert task.qubits == global_qubits
+        assert task.qubits == QUBITS
 
 
 @pytest.mark.parametrize("global_update", [True, False])
@@ -73,7 +66,7 @@ def test_update_argument(global_update, local_update):
     old_readout_frequency = platform.qubits[0].readout_frequency
     NEW_CARD = modify_card(deepcopy(DUMMY_CARD), update=local_update)
     executor = Executor.load(
-        NEW_CARD,
+        Runcard.load(NEW_CARD),
         pathlib.Path(tempfile.mkdtemp()),
         platform,
         platform.qubits,
