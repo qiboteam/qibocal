@@ -1,12 +1,14 @@
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple, Union
 
 import numpy as np
 import plotly.graph_objects as go
 from qibo.noise import NoiseModel
+from qibolab.platform import Platform
+from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Routine
+from qibocal.auto.operation import Qubits, Routine
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
 from qibocal.protocols.characterization.randomized_benchmarking.circuit_tools import (
     add_inverse_layer,
@@ -53,7 +55,7 @@ class StandardRBResult(DecayWithOffsetResult):
         }
 
 
-def setup_scan(params: RBParameters) -> Iterable:
+def setup_scan(params: RBParameters, qubits) -> Iterable:
     """Returns an iterator of single-qubit random self-inverting Clifford circuits.
     ls
         Args:
@@ -62,18 +64,19 @@ def setup_scan(params: RBParameters) -> Iterable:
         Returns:
             Iterable: The iterator of circuits.
     """
+    qubit_ids = list(qubits.keys()) if isinstance(qubits, dict) else qubits
 
     def make_circuit(depth):
         """Returns a random Clifford circuit with inverse of `depth`."""
 
         def layer_gen():
             """Returns a circuit with a random single-qubit clifford unitary."""
-            return random_clifford(len(params.qubits))
+            return random_clifford(len(qubit_ids))
 
         circuit = layer_circuit(layer_gen, depth)
         add_inverse_layer(circuit)
         add_measurement_layer(circuit)
-        return embed_circuit(circuit, params.nqubits, params.qubits)
+        return embed_circuit(circuit, params.nqubits, qubit_ids)
 
     return map(make_circuit, params.depths * params.niter)
 
@@ -134,7 +137,9 @@ def aggregate(data: RBData) -> StandardRBResult:
     )
 
 
-def acquire(params: RBParameters, *args) -> RBData:
+def acquire(
+    params: RBParameters, platform: Platform, qubits: Union[Qubits, List[QubitId]]
+) -> RBData:
     """The data acquisition stage of Standard Randomized Benchmarking.
 
     1. Set up the scan
@@ -149,7 +154,7 @@ def acquire(params: RBParameters, *args) -> RBData:
     """
 
     # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
-    scan = setup_scan(params)
+    scan = setup_scan(params, qubits)
     # For simulations, a noise model can be added.
     noise_model = (
         getattr(noisemodels, params.noise_model)(*params.noise_params)

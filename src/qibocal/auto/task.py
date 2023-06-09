@@ -1,10 +1,13 @@
 """Action execution tracker."""
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List
 
 from qibolab.platform import Platform
+from qibolab.qubits import QubitId
+
+from qibocal.config import raise_error
 
 from ..protocols.characterization import Operation
 from ..utils import allocate_qubits
@@ -29,6 +32,11 @@ TaskId = tuple[Id, int]
 class Task:
     action: Action
     iteration: int = 0
+    qubits: List[QubitId] = field(default_factory=list)
+
+    def __post_init__(self):
+        if len(self.qubits) == 0:
+            self.qubits = self.action.qubits
 
     @classmethod
     def load(cls, card: dict):
@@ -75,10 +83,6 @@ class Task:
         return self.operation.parameters_type.load(self.action.parameters)
 
     @property
-    def qubits(self):
-        return self.action.qubits
-
-    @property
     def update(self):
         return self.action.update
 
@@ -100,13 +104,19 @@ class Task:
             parameters = DummyPars()
 
         path = self.datapath(folder)
-
         if operation.platform_dependent and operation.qubits_dependent:
-            if self.qubits:
-                qubits = allocate_qubits(platform, self.qubits)
-            self._data: Data = operation.acquisition(
-                parameters, platform=platform, qubits=qubits
-            )
+            if platform is not None:
+                if len(self.qubits) > 0:
+                    qubits = allocate_qubits(platform, self.qubits)
+            if len(qubits) > 0:
+                self._data: Data = operation.acquisition(
+                    parameters, platform=platform, qubits=qubits
+                )
+                # after acquisition we update the qubit parameter
+                self.qubits = list(qubits)
+            else:
+                raise_error(ValueError, "Cannot execute protocol with emtpy dictionary")
+
         else:
             self._data: Data = operation.acquisition(
                 parameters,

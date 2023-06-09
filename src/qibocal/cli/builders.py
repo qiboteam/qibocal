@@ -31,7 +31,7 @@ class ActionBuilder:
         # setting output folder
         self.folder = generate_output_folder(folder, force)
         # parse runcard
-        self.runcard = Runcard.load(Path(runcard))
+        self.runcard = Runcard.load(runcard)
         # store update option
         self.update = update
         # prepare output
@@ -69,8 +69,13 @@ class ActionBuilder:
         - storing qq runcard
         - generating meta.yml
         """
-        self.platform.dump(self.folder / PLATFORM)
-        shutil.copy(runcard, self.folder / RUNCARD)
+        if self.backend.name == "qibolab":
+            self.platform.dump(self.folder / PLATFORM)
+        if isinstance(runcard, dict):
+            with open(self.folder / RUNCARD, "w") as file:
+                yaml.dump(runcard, file)
+        else:
+            shutil.copy(runcard, self.folder / RUNCARD)
 
         import qibocal
 

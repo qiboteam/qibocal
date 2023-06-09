@@ -5,18 +5,7 @@ import os
 import shutil
 from pathlib import Path
 
-import click
-import yaml
-from qibolab.platform import Platform
-
 from qibocal.config import log, raise_error
-
-
-def load_yaml(path):
-    """Load yaml file from disk."""
-    with open(path) as file:
-        data = yaml.safe_load(file)
-    return data
 
 
 def generate_output_folder(folder, force):

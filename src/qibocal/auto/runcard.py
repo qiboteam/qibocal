@@ -67,7 +67,7 @@ class Runcard:
             else card
         )
         backend_name = content.get("backend", "qibolab")
-        platform_name = content.get("platform", None)
+        platform_name = content.get("platform", "dummy")
         qubit_ids = content.get("qubits", [])
 
         backend = construct_backend(backend_name, platform_name)

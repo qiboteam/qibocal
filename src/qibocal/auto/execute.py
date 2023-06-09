@@ -1,7 +1,7 @@
 """Tasks execution."""
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional, Set, Union
+from typing import List, Optional, Set
 
 from qibolab.platform import Platform
 
@@ -37,7 +37,7 @@ class Executor:
     @classmethod
     def load(
         cls,
-        card: Union[dict, Path],
+        card: Runcard,
         output: Path,
         platform: Platform = None,
         qubits: Qubits = None,
@@ -136,7 +136,6 @@ class Executor:
             completed = Completed(task, output, Normal())
             self.history.push(completed)
             self.head = self.next()
-
             if self.platform is not None:
-                if (self.update and task.update is None) or (task.update):
+                if self.update and task.update:
                     self.platform.update(completed.res.update)
