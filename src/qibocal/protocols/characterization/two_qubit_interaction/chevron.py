@@ -1,4 +1,4 @@
-"""SWAP experiment for two qubit gates, chevron plot"""
+"""SWAP experiment for two qubit gates, chevron plot."""
 from dataclasses import dataclass
 from typing import Optional, Union
 
@@ -11,8 +11,10 @@ from qibolab.pulses import FluxPulse, Pulse, PulseSequence, Rectangular
 from qibolab.qubits import Qubit, QubitId
 from qibolab.result import AveragedSampleResults
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.config import log
 from qibocal.data import DataUnits
 
 
@@ -44,11 +46,15 @@ class ChevronParameters(Parameters):
 class ChevronResults(Results):
     """CzFluxTime outputs when fitting will be done."""
 
+    period: dict[str, float]
+    """Period of the oscillation"""
+
 
 class ChevronData(DataUnits):
     """CzFluxTime acquisition outputs."""
 
     def __init__(self):
+        """Initialize data object with pint."""
         super().__init__(
             name="data",
             quantities={"amplitude": "dimensionless", "duration": "ns"},
@@ -59,8 +65,7 @@ class ChevronData(DataUnits):
 def order_pairs(
     pair: list[QubitId, QubitId], qubits: dict[QubitId, Qubit]
 ) -> list[QubitId, QubitId]:
-    """Order a pair of qubits by drive frequency"""
-
+    """Order a pair of qubits by drive frequency."""
     if qubits[pair[0]].drive_frequency > qubits[pair[1]].drive_frequency:
         return pair[::-1]
     return pair
@@ -70,7 +75,7 @@ def create_sequence(
     ord_pair: list[QubitId, QubitId],
     platform: Platform,
     params: ChevronParameters,
-) -> tuple[PulseSequence, dict[QubitId, Pulse], dict[QubitId, Pulse]]:
+) -> PulseSequence:
     """Create the experiment PulseSequence for a specific pair.
 
     Returns:
@@ -117,7 +122,7 @@ def create_sequence(
                 pulse.duration = fx_pulse.duration
                 sequence.add(pulse)
 
-    return sequence, ro_pulses, fx_pulse
+    return sequence
 
 
 def save_data(
@@ -128,7 +133,7 @@ def save_data(
     delta_amplitude_range: np.ndarray,
     delta_duration_range: np.ndarray,
 ):
-    """Save results of the experiment in the Data object"""
+    """Save results of the experiment in the Data object."""
     for state, qubit in zip(["low", "high"], pair):
         ro_pulse = ro_pulses[qubit]
         result = results[ro_pulse.serial]
@@ -156,7 +161,7 @@ def save_data(
 def _aquisition(
     params: ChevronParameters,
     platform: Platform,
-    qubits,
+    qubits: Qubits,
 ) -> ChevronData:
     r"""
     Perform a SWAP experiment between pairs of qubits by changing its frequency.
@@ -175,7 +180,9 @@ def _aquisition(
         # order the qubits so that the low frequency one is the first
         ord_pair = order_pairs(pair, platform.qubits)
         # create a sequence
-        sequence, ro_pulses, fx_pulse = create_sequence(ord_pair, platform, params)
+        sequence = create_sequence(ord_pair, platform, params)
+        fx_pulse = sequence.qf_pulses[0]
+        ro_pulses = {pulse.qubit: pulse for pulse in sequence.ro_pulses}
 
         # define the parameter to sweep and its range:
         delta_amplitude_range = np.arange(
@@ -222,12 +229,14 @@ def _aquisition(
 
 
 def _plot(data: ChevronData, fit: ChevronResults, qubits):
-    """Plot the experiment result for a single pair"""
+    """Plot the experiment result for a single pair."""
     qubits = tuple(qubits)
     fig = make_subplots(rows=1, cols=2, subplot_titles=("low", "high"))
     states = ["low", "high"]
     # Plot data
     colouraxis = ["coloraxis", "coloraxis2"]
+
+    fit_report = ""
     for state, q in zip(states, qubits):
         df_filter = (
             (data.df["state"] == f"{state}")
@@ -249,6 +258,11 @@ def _plot(data: ChevronData, fit: ChevronResults, qubits):
             col=states.index(state) + 1,
         )
 
+        fit_report += f"q{q} - {state} frequency| "
+        fit_report += (
+            f"Period of oscillation: {fit.period[(str(qubits), str(q))]} ns<br>"
+        )
+
     fig.update_layout(
         title=f"Qubits {qubits[0]}-{qubits[1]} swap frequency",
         xaxis_title="Duration [ns]",
@@ -259,11 +273,57 @@ def _plot(data: ChevronData, fit: ChevronResults, qubits):
         coloraxis={"colorscale": "Oryel", "colorbar": {"x": -0.15}},
         coloraxis2={"colorscale": "Darkmint", "colorbar": {"x": 1.15}},
     )
-    return [fig], "No fitting data."
+    return [fig], fit_report
+
+
+def fit_function(x, p0, p1, p2, p3):
+    """Sinusoidal fit function."""
+    return p0 + p1 * np.sin(2 * np.pi * p2 * x + p3)
 
 
 def _fit(data: ChevronData):
-    return ChevronResults()
+    pairs = data.df["pair"].unique()
+    amplitudes = data.df["amplitude"].unique()
+
+    results = {}
+
+    for pair in pairs:
+        data_pair = data.df[data.df["pair"] == pair]
+        qubits = data_pair["qubit"].unique()
+        for qubit in qubits:
+            data_qubit = data_pair[data_pair["qubit"] == qubit]
+            fft_freqs = []
+
+            for amp in amplitudes:
+                data_amp = data_qubit[data_qubit["amplitude"] == amp]
+
+                probability = data_amp["probability"]
+
+                fft_freqs.append(max(np.abs(np.fft.fft(probability))))
+
+            min_idx = np.argmin(fft_freqs)
+
+            amp = amplitudes[min_idx]
+            data_amp = data_qubit[data_qubit["amplitude"] == amp]
+            duration = data_amp["duration"]
+            probability = data_amp["probability"]
+
+            guesses = [np.mean(probability), 1, np.min(fft_freqs), 0]
+            # bounds = []
+            # TODO maybe normalize
+            try:
+                popt, _ = curve_fit(
+                    fit_function, duration, probability, p0=guesses, maxfev=10000
+                )
+
+                results[(pair, qubit)] = np.abs(1 / popt[2])
+
+            except:
+                log.warning("chevron fit: the fitting was not succesful")
+
+                results[(pair, qubit)] = 0
+
+    return ChevronResults(results)
 
 
 chevron = Routine(_aquisition, _fit, _plot)

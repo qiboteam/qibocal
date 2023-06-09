@@ -1,4 +1,4 @@
-"""CZ virtual correction experiment for two qubit gates, tune landscape"""
+"""CZ virtual correction experiment for two qubit gates, tune landscape."""
 from dataclasses import dataclass
 from typing import Optional, Union
 
@@ -9,7 +9,7 @@ from qibo.config import log
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import Pulse, PulseSequence
-from qibolab.qubits import Qubit, QubitId
+from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
@@ -56,6 +56,7 @@ class CZVirtualZData(DataUnits):
     """CZVirtualZ data."""
 
     def __init__(self):
+        """Initialize data object with pint."""
         super().__init__(
             name="data",
             quantities={
@@ -75,7 +76,7 @@ def create_sequence(
 ) -> tuple[
     PulseSequence, dict[QubitId, Pulse], dict[QubitId, Pulse], dict[QubitId, Pulse]
 ]:
-    """Create the experiment PulseSequence"""
+    """Create the experiment PulseSequence."""
     lowfreq = ord_pair[0]
     highfreq = ord_pair[1]
 
@@ -106,16 +107,16 @@ def create_sequence(
     measure_target = platform.create_qubit_readout_pulse(
         target_qubit, start=theta_pulse.finish
     )
-    measure_control = platform.create_qubit_readout_pulse(
-        control_qubit, start=theta_pulse.finish
-    )
+    # measure_control = platform.create_qubit_readout_pulse(
+    #    control_qubit, start=theta_pulse.finish
+    # )
 
     sequence.add(
         Y90_pulse,
         flux_sequence,
         theta_pulse,
         measure_target,
-        # measure_control,
+        #    measure_control,
     )
     if setup == "X":
         sequence.add(
@@ -217,15 +218,17 @@ def _acquisition(
 
 
 def fit_function(x, p0, p1, p2):
-    # TODO maybe x=2pi*x
+    """Sinusoidal fit function."""
+    # return p0 + p1 * np.sin(2*np.pi*p2 * x + p3)
     return np.sin(x + p2) * p0 + p1
 
 
 def _fit(
     data: CZVirtualZData,
 ) -> CZVirtualZResults:
-    r"""
-    Fitting routine for the experiment. The used model is
+    r"""Fitting routine for the experiment.
+
+    The used model is
 
     .. math::
 
@@ -271,7 +274,7 @@ def _fit(
                 ]
 
                 try:
-                    popt, pcov = curve_fit(
+                    popt, _ = curve_fit(
                         fit_function,
                         setup_thetas,
                         setup_probabilities,
@@ -298,9 +301,7 @@ def _fit(
 
 
 def _plot(data: CZVirtualZData, data_fit: CZVirtualZResults, qubits):
-    r"""
-    Plot routine for CZVirtualZ.
-    """
+    """Plot routine for CZVirtualZ."""
     qubits = tuple(qubits)
     fig = make_subplots(
         rows=1,
@@ -386,7 +387,14 @@ def _plot(data: CZVirtualZData, data_fit: CZVirtualZResults, qubits):
                     f"q{qubit} {setup} {qubits}| offset: {offset[setup]:,.3f} rad<br>"
                 )
         if "X" in offset and "I" in offset:
-            fitting_report += f"q{qubit} pair {qubits} |Z rotation: {data_fit.offset[(qubit, str(qubits))][data_fit.setup[(qubit, str(qubits))].index('X')] - data_fit.offset[(qubit, str(qubits))][data_fit.setup[(qubit, str(qubits))].index('I')]:,.3f} rad<br>"
+            fitting_report += f"q{qubit} pair {qubits} |"
+            ang_X = data_fit.offset[(qubit, str(qubits))][
+                data_fit.setup[(qubit, str(qubits))].index("X")
+            ]
+            ang_I = data_fit.offset[(qubit, str(qubits))][
+                data_fit.setup[(qubit, str(qubits))].index("I")
+            ]
+            fitting_report += f"Z rotation: {round(ang_X - ang_I, 3)} rad<br>"
         fitting_report += "<br>"
 
     fig.update_layout(
