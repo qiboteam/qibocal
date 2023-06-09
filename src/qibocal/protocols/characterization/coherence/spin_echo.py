@@ -1,14 +1,14 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
 import numpy as np
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.plots.utils import get_color
 
 from .t1 import T1Data
 from .utils import exp_decay, exponential_fit
@@ -34,11 +34,9 @@ class SpinEchoParameters(Parameters):
 class SpinEchoResults(Results):
     """SpinEcho outputs."""
 
-    t2_spin_echo: Dict[Union[str, int], float] = field(
-        metadata=dict(update="t2_spin_echo")
-    )
+    t2_spin_echo: Dict[QubitId, float] = field(metadata=dict(update="t2_spin_echo"))
     """T2 echo for each qubit."""
-    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
+    fitted_parameters: Dict[QubitId, Dict[str, float]]
     """Raw fitting output."""
 
 
@@ -141,7 +139,6 @@ def _plot(data: SpinEchoData, fit: SpinEchoResults, qubit: int):
         go.Scatter(
             x=qubit_data["wait"].pint.to("ns").pint.magnitude,
             y=qubit_data["MSR"].pint.to("uV").pint.magnitude,
-            marker_color=get_color(0),
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -164,7 +161,6 @@ def _plot(data: SpinEchoData, fit: SpinEchoResults, qubit: int):
                 y=exp_decay(waitrange, *params),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
-                marker_color=get_color(1),
             ),
         )
 
