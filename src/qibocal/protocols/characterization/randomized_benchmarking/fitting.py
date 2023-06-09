@@ -130,7 +130,7 @@ def fit_exp1B_func(
             )
             perr = tuple(np.sqrt(np.diag(pcov)))
         except Exception as e:
-            log.warning(f"Ap^x+B fit: the fitting was not succesful. {e}")
+            log.warning("Ap^x+B fit: the fitting was not succesful. %e", e)
             popt, perr = (0, 0, 0), (0, 0, 0)
     return popt, perr
 
@@ -161,7 +161,7 @@ def fit_exp1_func(
             popt, pcov = curve_fit(exp1_func, xdata, ydata, **kwargs)
             perr = tuple(np.sqrt(np.diag(pcov)))
         except Exception as e:
-            log.warning(f"Ap^x fit: the fitting was not succesful. {e}")
+            log.warning("Ap^x fit: the fitting was not succesful. %e", e)
             popt, perr = (0, 0), (0, 0)
 
     return popt, perr
