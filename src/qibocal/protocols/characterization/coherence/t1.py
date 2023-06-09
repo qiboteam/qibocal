@@ -95,7 +95,7 @@ def _acquisition(params: T1Parameters, platform: Platform, qubits: Qubits) -> T1
     sweeper = Sweeper(
         Parameter.delay,
         ro_wait_range,
-        [qd_pulses[qubit] for qubit in qubits],
+        [ro_pulses[qubit] for qubit in qubits],
     )
 
     # create a DataUnits object to store the MSR, phase, i, q and the delay time
