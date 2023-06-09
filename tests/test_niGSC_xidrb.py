@@ -57,7 +57,7 @@ def test_experiment_withnoise(
         pass
     else:
         # Build the noise model.
-        noise = noisemodels.PauliErrorOnX(*noise_params)
+        noise = noisemodels.PauliErrorOnX(noise_params)
         # Test exectue an experiment.
         myfactory1 = XIdrb.ModuleFactory(nqubits, list(depths) * runs, qubits)
         myfaultyexperiment = XIdrb.ModuleExperiment(
@@ -122,7 +122,7 @@ def test_build_report(depths: list, nshots: int, nqubits: int, runs: int, qubits
     else:
         noise_params = [0.01, 0.1, 0.05]
         # Build the noise model.
-        noise = noisemodels.PauliErrorOnX(*noise_params)
+        noise = noisemodels.PauliErrorOnX(noise_params)
         # Test exectue an experiment.
         myfactory1 = XIdrb.ModuleFactory(nqubits, depths * runs, qubits)
         myfaultyexperiment = XIdrb.ModuleExperiment(
