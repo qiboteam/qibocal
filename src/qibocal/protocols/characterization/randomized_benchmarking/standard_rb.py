@@ -1,6 +1,6 @@
 from copy import deepcopy
-from dataclasses import dataclass
-from typing import Iterable, List, Optional, Tuple, TypedDict, Union
+from dataclasses import dataclass, field
+from typing import Iterable, List, Tuple, TypedDict, Union
 
 import numpy as np
 import pandas as pd
@@ -24,6 +24,8 @@ NPULSES_PER_CLIFFORD = 1.875
 
 
 class DepthsDict(TypedDict):
+    """Dictionary used to build a list of depths as `range(start, stop, step)`."""
+
     start: int
     stop: int
     step: int
@@ -46,7 +48,7 @@ class StandardRBParameters(Parameters):
     noise_model: str = ""
     """For simulation purposes, string has to match what is in
     :mod:`qibocal.protocols.characterization.randomized_benchmarking.noisemodels`"""
-    noise_params: Optional[list] = None
+    noise_params: list = field(default_factory=list)
     """With this the noise model will be initialized, if not given random values will be used."""
 
     def __post_init__(self):
@@ -54,9 +56,6 @@ class StandardRBParameters(Parameters):
             self.depths = list(
                 range(self.depths["start"], self.depths["stop"], self.depths["step"])
             )
-
-        if self.noise_params is None:
-            self.noise_params = []
 
 
 class RBData(pd.DataFrame):
@@ -120,29 +119,31 @@ def _acquisition(params: StandardRBParameters, platform) -> RBData:
         platform (Platform): Platform the experiment is executed on.
 
     Returns:
-        RBData: The depths, samples and ground state probability of each exeriment in the scan.
+        RBData: The depths, samples and ground state probability of each experiment in the scan.
     """
 
-    if platform and platform.name != "dummy" and params.noise_model:
-        raise_error(
-            NotImplementedError,
-            f"Backend qibolab ({platform}) does not perform noise models simulation.",
-        )
-    elif platform and params.noise_model:
-        log.warning(
-            f"Backend qibolab ({platform}) does not perform noise models simulation. "
-            + "Setting backend to `NumpyBackend` instead."
-        )
-        qibo.set_backend("numpy")
+    # For simulations, a noise model can be added.
+    noise_model = None
+    if params.noise_model:
+        # FIXME implement this check outside acquisition
+        if platform and platform.name != "dummy":
+            raise_error(
+                NotImplementedError,
+                f"Backend qibolab ({platform}) does not perform noise models simulation.",
+            )
+        elif platform:
+            log.warning(
+                f"Backend qibolab ({platform}) does not perform noise models simulation. "
+                + "Setting backend to `NumpyBackend` instead."
+            )
+            qibo.set_backend("numpy")
+
+        noise_model = getattr(noisemodels, params.noise_model)(params.noise_params)
+        params.noise_params = noise_model.params
 
     # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
     scan = setup_scan(params)
-    # For simulations, a noise model can be added.
-    noise_model = (
-        getattr(noisemodels, params.noise_model)(*params.noise_params)
-        if params.noise_model
-        else None
-    )
+
     # TODO extract the noise parameters from the build noise model and add them to params object.
     # 2. Execute the scan.
     data_list = []

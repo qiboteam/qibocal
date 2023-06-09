@@ -3,6 +3,8 @@ strings describing the error model via runcards in qibocal.
 They inherit from the qibo noise NoiseModel module and are prebuild.
 """
 
+from typing import Optional
+
 import numpy as np
 from qibo import gates
 from qibo.noise import NoiseModel, PauliError
@@ -17,25 +19,25 @@ class PauliErrorOnAll(NoiseModel):
     are drawn (in sum not bigger than 1).
     """
 
-    def __init__(self, *args) -> None:
+    def __init__(self, probabilities: Optional[list] = None) -> None:
         super().__init__()
         # Check if number of arguments is 0 or 1 and if it's equal to None
-        if len(args) == 0 or (len(args) == 1 and args[0] is None):
+        if not probabilities:
             # Assign random values to params.
-            params = np.random.uniform(0, 0.25, size=3)
-        elif len(args) == 3:
-            params = args
+            self.params = np.random.uniform(0, 0.25, size=3).round(3)
+        elif len(probabilities) == 3:
+            self.params = probabilities
         else:
             # Raise ValueError if given paramters are wrong.
             raise_error(
                 ValueError,
-                f"Wrong number of error parameters, 3 != {len(args)}.",
+                f"Wrong number of error parameters, 3 != {len(probabilities)}.",
             )
-        self.build(*params)
+        self.build()
 
-    def build(self, *params):
+    def build(self):
         # Add PauliError to gates.Gate
-        self.add(PauliError(list(zip(["X", "Y", "Z"], params))))
+        self.add(PauliError(list(zip(["X", "Y", "Z"], self.params))))
 
 
 class PauliErrorOnX(PauliErrorOnAll):
@@ -46,5 +48,5 @@ class PauliErrorOnX(PauliErrorOnAll):
     are drawn (in sum not bigger than 1).
     """
 
-    def build(self, *params):
-        self.add(PauliError(list(zip(["X", "Y", "Z"], params))), gates.X)
+    def build(self):
+        self.add(PauliError(list(zip(["X", "Y", "Z"], self.params))), gates.X)
