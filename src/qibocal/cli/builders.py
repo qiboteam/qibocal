@@ -48,12 +48,12 @@ class ActionBuilder:
     @property
     def platform(self):
         """Qibolab's platform object."""
-        return self.runcard.platform
+        return self.runcard.platform_obj
 
     @property
     def backend(self):
         """ "Qibo's backend object."""
-        return self.runcard.backend
+        return self.runcard.backend_obj
 
     @property
     def qubits(self):

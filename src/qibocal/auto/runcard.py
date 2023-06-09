@@ -1,4 +1,5 @@
 """Specify runcard layout, handles (de)serialization."""
+from functools import cached_property
 from pathlib import Path
 from typing import Any, Dict, List, NewType, Optional, Union
 
@@ -49,9 +50,19 @@ class Runcard:
 
     actions: List[Action]
     qubits: List[QubitId] = Field(default_facotry=list)
-    platform: Optional[Platform] = None
-    backend: Optional[Backend] = None
+    backend: str = "qibolab"
+    platform: Optional[str] = "dummy"
     # TODO: pass custom runcard (?)
+
+    @cached_property
+    def backend_obj(self) -> Backend:
+        """Allocate backend."""
+        return construct_backend(self.backend, self.platform)
+
+    @property
+    def platform_obj(self) -> Platform:
+        """Allocate platform."""
+        return self.backend_obj.platform
 
     @classmethod
     def load(cls, card: Union[dict, Path]):
@@ -66,16 +77,5 @@ class Runcard:
             if isinstance(card, Path)
             else card
         )
-        backend_name = content.get("backend", "qibolab")
-        platform_name = content.get("platform", "dummy")
-        qubit_ids = content.get("qubits", [])
 
-        backend = construct_backend(backend_name, platform_name)
-        platform = backend.platform
-
-        return cls(
-            actions=content["actions"],
-            qubits=qubit_ids,
-            platform=platform,
-            backend=backend,
-        )
+        return cls(**content)

@@ -22,9 +22,9 @@ class Executor:
     """The execution history, with results and exit states."""
     output: Path
     """Output path."""
-    qubits: Optional[Qubits] = None
+    qubits: Qubits
     """Qubits to be calibrated."""
-    platform: Optional[Platform] = None
+    platform: Platform
     """Qubits' platform."""
     update: bool = True
     """Runcard update mechanism."""

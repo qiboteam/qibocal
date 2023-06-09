@@ -108,14 +108,12 @@ class Task:
             if platform is not None:
                 if len(self.qubits) > 0:
                     qubits = allocate_qubits(platform, self.qubits)
-            if len(qubits) > 0:
-                self._data: Data = operation.acquisition(
-                    parameters, platform=platform, qubits=qubits
-                )
-                # after acquisition we update the qubit parameter
-                self.qubits = list(qubits)
-            else:
-                raise_error(ValueError, "Cannot execute protocol with emtpy dictionary")
+
+            self._data: Data = operation.acquisition(
+                parameters, platform=platform, qubits=qubits
+            )
+            # after acquisition we update the qubit parameter
+            self.qubits = list(qubits)
 
         else:
             self._data: Data = operation.acquisition(
