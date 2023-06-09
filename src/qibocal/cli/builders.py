@@ -1,5 +1,4 @@
 import datetime
-import shutil
 import tempfile
 from pathlib import Path
 
@@ -71,11 +70,9 @@ class ActionBuilder:
         """
         if self.backend.name == "qibolab":
             self.platform.dump(self.folder / PLATFORM)
-        if isinstance(runcard, dict):
-            with open(self.folder / RUNCARD, "w") as file:
-                yaml.dump(runcard, file)
-        else:
-            shutil.copy(runcard, self.folder / RUNCARD)
+
+        with open(self.folder / RUNCARD, "w") as file:
+            yaml.dump(runcard, file)
 
         import qibocal
 
@@ -132,7 +129,7 @@ class ReportBuilder:
         # FIXME: currently the title of the report is the output folder
         self.path = self.title = path
         self.metadata = yaml.safe_load((path / META).read_text())
-        self.runcard = Runcard.load(path / RUNCARD)
+        self.runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
         self.qubits = self.runcard.qubits
 
         self.history = history

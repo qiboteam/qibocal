@@ -8,6 +8,7 @@ import uuid
 from urllib.parse import urljoin
 
 import click
+import yaml
 from qibo.config import log, raise_error
 
 from ..cli.builders import ActionBuilder
@@ -53,8 +54,8 @@ def command(runcard, folder, force, update):
      - PLATFORM_RUNCARD: Qibolab's platform runcard. If not provided Qibocal will use the default one in
                          https://github.com/qiboteam/qibolab_platforms_qrc.
     """
-
-    builder = ActionBuilder(runcard, folder, force, update=update)
+    card = yaml.safe_load(pathlib.Path(runcard).read_text(encoding="utf-8"))
+    builder = ActionBuilder(card, folder, force, update=update)
     builder.run()
     if update:
         builder.dump_platform_runcard()
