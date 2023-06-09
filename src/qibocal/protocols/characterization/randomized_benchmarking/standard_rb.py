@@ -65,12 +65,14 @@ class RBData(pd.DataFrame):
         super().__init__(*args, **kwargs)
 
     def to_csv(self, path):
-        """Overwrite this method because qibocal action builder call this function with a directory."""
+        """Overwrite because qibocal action builder calls this function with a directory."""
         super().to_json(f"{path}/{self.__class__.__name__}.csv")
 
 
 @dataclass
 class StandardRBResult(Results):
+    """Standard RB outputs."""
+
     fidelity: float
     """The overall fidelity of this qubit."""
     pulse_fidelity: float
@@ -133,8 +135,11 @@ def _acquisition(params: StandardRBParameters, platform) -> RBData:
             )
         elif platform:
             log.warning(
-                f"Backend qibolab ({platform}) does not perform noise models simulation. "
-                + "Setting backend to `NumpyBackend` instead."
+                (
+                    "Backend qibolab (%s) does not perform noise models simulation. "
+                    "Setting backend to `NumpyBackend` instead."
+                ),
+                platform.name,
             )
             qibo.set_backend("numpy")
 
@@ -144,7 +149,6 @@ def _acquisition(params: StandardRBParameters, platform) -> RBData:
     # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
     scan = setup_scan(params)
 
-    # TODO extract the noise parameters from the build noise model and add them to params object.
     # 2. Execute the scan.
     data_list = []
     # Iterate through the scan and execute each circuit.
@@ -207,8 +211,11 @@ def _plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure
 
     x, y = extract_from_data(data, "signal", "depth", list)
     popt, perr = result.fitting_parameters
-    label = "Fit: y=Ap^x+B<br>A: {:.3f}\u00B1{:.3f}<br>p: {:.3f}\u00B1{:.3f}<br>B: {:.3f}\u00B1{:.3f}".format(
-        popt[0], perr[0], popt[1], perr[1], popt[2], perr[2]
+    label = (
+        "Fit: y=Ap^x+B<br>"
+        f"A: {popt[0]:.3f}\u00B1{perr[0]:.3f}<br>"
+        f"p: {popt[1]:.3f}\u00B1{perr[1]:.3f}<br>"
+        f"B: {popt[2]:.3f}\u00B1{perr[2]:.3f}"
     )
     fig = go.Figure()
     fig.add_trace(
