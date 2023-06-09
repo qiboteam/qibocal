@@ -3,12 +3,12 @@ from typing import Dict, Optional, Union
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
-from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
+from qibocal.protocols.characterization.signal_experiments import utils
 
 from ..utils import PowerLevel, lorentzian_fit, spectroscopy_plot
 
@@ -17,7 +17,7 @@ Method which implements the state's calibration of a chosen qubit. Two analogous
 for calibrate the ground state and the excited state of the oscillator.
 The subscripts `exc` and `gnd` will represent the excited state |1> and the ground state |0>.
 Args:
-    platform (:class:`qibolab.platforms.abstract.AbstractPlatform`): custom abstract platform on which we perform the calibration.
+    platform (Platform): custom abstract platform on which we perform the calibration.
     qubits (dict): Dict of target Qubit objects to perform the action
     nshots (int): number of times the pulse sequence will be repeated.
     relaxation_time (float): #For data processing nothing qubit related
@@ -52,9 +52,7 @@ class ToFData(DataUnits):
     """ToF acquisition outputs."""
 
 
-def _acquisition(
-    params: ToFParameters, platform: AbstractPlatform, qubits: Qubits
-) -> ToFData:
+def _acquisition(params: ToFParameters, platform: Platform, qubits: Qubits) -> ToFData:
     """Data acquisition for time of flight experiment."""
     # create a sequence of pulses for the experiment:
     # MZ
@@ -81,10 +79,12 @@ def _acquisition(
     # execute the first pulse sequence
     state0_results = platform.execute_pulse_sequence(
         state0_sequence,
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.RAW,
-        averaging_mode=AveragingMode.CYCLIC,
+        options=ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.RAW,
+            averaging_mode=AveragingMode.CYCLIC,
+        ),
     )
 
     # retrieve and store the results for every qubit
@@ -102,10 +102,12 @@ def _acquisition(
     # # execute the second pulse sequence
     state1_results = platform.execute_pulse_sequence(
         state1_sequence,
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.RAW,
-        averaging_mode=AveragingMode.CYCLIC,
+        options=ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.RAW,
+            averaging_mode=AveragingMode.CYCLIC,
+        ),
     )
 
     # retrieve and store the results for every qubit
