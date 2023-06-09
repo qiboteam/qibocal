@@ -29,6 +29,7 @@ DUMMY_CARD = {
 
 
 def modify_card(card, qubits=None, update=None):
+    """Modify runcard to change local qubits or update."""
     if qubits is not None:
         card["actions"][0]["qubits"] = qubits
     elif update is not None:
@@ -65,7 +66,7 @@ def test_qubits_argument(global_qubits, local_qubits):
 
 
 @pytest.mark.parametrize("global_update", [True, False])
-@pytest.mark.parametrize("local_update", [True, False, None])
+@pytest.mark.parametrize("local_update", [True, False])
 def test_update_argument(global_update, local_update):
     """Test possible update combinations between global and local."""
     platform = deepcopy(create_platform("dummy"))
@@ -79,7 +80,7 @@ def test_update_argument(global_update, local_update):
         global_update,
     )
     executor.run()
-    if local_update or (local_update is None and global_update):
+    if local_update and global_update:
         assert old_readout_frequency != platform.qubits[0].readout_frequency
     else:
         assert old_readout_frequency == platform.qubits[0].readout_frequency
