@@ -44,7 +44,7 @@ class Action:
         return hash(self.id)
 
 
-@dataclass(config=dict(smart_union=True, arbitrary_types_allowed=True))
+@dataclass(config=dict(smart_union=True))
 class Runcard:
     """Structure of an execution runcard."""
 
