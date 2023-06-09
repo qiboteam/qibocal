@@ -64,7 +64,7 @@ def setup_scan(params: RBParameters, qubits) -> Iterable:
         Returns:
             Iterable: The iterator of circuits.
     """
-    qubit_ids = list(qubits.keys()) if isinstance(qubits, dict) else qubits
+    qubit_ids = list(qubits) if isinstance(qubits, dict) else qubits
 
     def make_circuit(depth):
         """Returns a random Clifford circuit with inverse of `depth`."""

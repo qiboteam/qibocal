@@ -51,7 +51,7 @@ class Runcard:
     actions: List[Action]
     qubits: List[QubitId] = Field(default_facotry=list)
     backend: str = "qibolab"
-    platform: Optional[str] = "dummy"
+    platform: str = "dummy"
     # TODO: pass custom runcard (?)
 
     @cached_property
