@@ -1,6 +1,6 @@
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import Iterable, List, Tuple, TypedDict, Union
+from typing import Iterable, List, Optional, Tuple, TypedDict, Union
 
 import numpy as np
 import pandas as pd
@@ -48,7 +48,7 @@ class StandardRBParameters(Parameters):
     noise_model: str = ""
     """For simulation purposes, string has to match what is in
     :mod:`qibocal.protocols.characterization.randomized_benchmarking.noisemodels`"""
-    noise_params: list = field(default_factory=list)
+    noise_params: Optional[list] = field(default_factory=list)
     """With this the noise model will be initialized, if not given random values will be used."""
 
     def __post_init__(self):
