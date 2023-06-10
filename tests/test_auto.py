@@ -6,7 +6,6 @@ from typing import List
 import pytest
 import yaml
 from pydantic.dataclasses import dataclass
-from pydantic.json import pydantic_encoder
 
 from qibocal.auto.execute import Executor
 from qibocal.auto.runcard import Runcard
@@ -37,9 +36,7 @@ def test_execution(card: pathlib.Path):
 
     """
     testcard = TestCard(**yaml.safe_load(card.read_text(encoding="utf-8")))
-    executor = Executor.load(
-        pydantic_encoder(testcard.runcard), output=pathlib.Path(tempfile.mkdtemp())
-    )
+    executor = Executor.load(testcard.runcard, output=pathlib.Path(tempfile.mkdtemp()))
     executor.run()
 
     assert testcard.validation.result == [step[0] for step in executor.history]

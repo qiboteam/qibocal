@@ -3,7 +3,6 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from qibocal.config import log
-from qibocal.plots.utils import get_color
 
 
 def rabi_amplitude_fit(x, p0, p1, p2, p3):
@@ -59,7 +58,6 @@ def plot(data, fit, qubit):
         go.Scatter(
             x=qubit_data[quantity].pint.to(unit).pint.magnitude,
             y=qubit_data["MSR"].pint.to("uV").pint.magnitude,
-            marker_color=get_color(0),
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -72,7 +70,6 @@ def plot(data, fit, qubit):
         go.Scatter(
             x=qubit_data[quantity].pint.to(unit).pint.magnitude,
             y=qubit_data["phase"].pint.to("rad").pint.magnitude,
-            marker_color=get_color(1),
             opacity=1,
             name="Phase",
             showlegend=True,
