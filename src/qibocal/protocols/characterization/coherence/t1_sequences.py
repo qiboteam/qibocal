@@ -3,13 +3,10 @@ import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
-from qibolab.sweeper import Parameter, Sweeper
 
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Qubits, Routine
 from qibocal.data import DataUnits
-from qibocal.plots.utils import get_color
 
-from . import utils
 from .t1 import T1Data, T1Parameters, _fit, _plot
 
 

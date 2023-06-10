@@ -3,12 +3,8 @@ import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
-from scipy.optimize import curve_fit
 
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.config import log
-from qibocal.data import DataUnits
-from qibocal.plots.utils import get_color
+from qibocal.auto.operation import Qubits, Routine
 
 from .ramsey import RamseyData, RamseyParameters, _fit, _plot
 

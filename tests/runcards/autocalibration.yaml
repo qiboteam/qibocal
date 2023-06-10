@@ -1,4 +1,5 @@
 runcard:
+  qubits: [0,1]
   actions:
     - id: high-power-spectroscopy
       main: punchout

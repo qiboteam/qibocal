@@ -1,16 +1,16 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
 import numpy as np
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
-from qibocal.plots.utils import get_color
 
 from . import utils
 
@@ -35,9 +35,9 @@ class T1Parameters(Parameters):
 class T1Results(Results):
     """T1 outputs."""
 
-    t1: Dict[Union[str, int], float] = field(metadata=dict(update="t1"))
+    t1: Dict[QubitId, float] = field(metadata=dict(update="t1"))
     """T1 for each qubit."""
-    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
+    fitted_parameters: Dict[QubitId, Dict[str, float]]
     """Raw fitting output."""
 
 
@@ -151,7 +151,6 @@ def _plot(data: T1Data, fit: T1Results, qubit):
         go.Scatter(
             x=qubit_data["wait"].pint.to("ns").pint.magnitude,
             y=qubit_data["MSR"].pint.to("uV").pint.magnitude,
-            marker_color=get_color(0),
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -174,7 +173,6 @@ def _plot(data: T1Data, fit: T1Results, qubit):
                 y=utils.exp_decay(waitrange, *params),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
-                marker_color=get_color(2),
             )
         )
         fitting_report = fitting_report + (

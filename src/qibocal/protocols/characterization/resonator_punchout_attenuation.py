@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
 import numpy as np
 import plotly.graph_objects as go
@@ -7,6 +7,7 @@ from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -40,25 +41,25 @@ class ResonatorPunchoutAttenuationParameters(Parameters):
 class ResonatorPunchoutAttenuationResults(Results):
     """ResonatorPunchoutAttenation outputs."""
 
-    readout_frequency: Dict[Union[str, int], float] = field(
+    readout_frequency: Dict[QubitId, float] = field(
         metadata=dict(update="readout_frequency")
     )
     """Readout frequency [GHz] for each qubit."""
-    readout_attenuation: Dict[Union[str, int], int] = field(
+    readout_attenuation: Dict[QubitId, int] = field(
         metadata=dict(update="readout_attenuation")
     )
     """Readout attenuation [dB] for each qubit."""
-    bare_frequency: Optional[Dict[Union[str, int], float]] = field(
+    bare_frequency: Optional[Dict[QubitId, float]] = field(
         metadata=dict(update="bare_resonator_frequency")
     )
     """Bare resonator frequency [GHz] for each qubit."""
-    lp_max_att: Dict[Union[str, int], int]
+    lp_max_att: Dict[QubitId, int]
     """Maximum attenuation at low power for each qubit."""
-    lp_min_att: Dict[Union[str, int], int]
+    lp_min_att: Dict[QubitId, int]
     """Minimum attenuation at low power for each qubit."""
-    hp_max_att: Dict[Union[str, int], int]
+    hp_max_att: Dict[QubitId, int]
     """Maximum attenuation at high power for each qubit."""
-    hp_min_att: Dict[Union[str, int], int]
+    hp_min_att: Dict[QubitId, int]
     """Minimum attenuation at high power for each qubit."""
 
 

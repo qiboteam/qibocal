@@ -4,10 +4,8 @@ from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.plots.utils import get_color
+from qibocal.auto.operation import Qubits, Routine
 
-from . import t1, utils
 from .t2 import T2Data, T2Parameters, _fit, _plot
 
 
