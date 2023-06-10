@@ -93,7 +93,7 @@ def _acquisition(params: T1Parameters, platform: Platform, qubits: Qubits) -> T1
     )
 
     sweeper = Sweeper(
-        Parameter.delay,
+        Parameter.start,
         ro_wait_range,
         [ro_pulses[qubit] for qubit in qubits],
     )

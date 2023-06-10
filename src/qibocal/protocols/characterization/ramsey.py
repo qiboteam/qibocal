@@ -156,7 +156,7 @@ def _acquisition(
 
     else:
         sweeper = Sweeper(
-            Parameter.delay,
+            Parameter.start,
             waits,
             [RX90_pulses2[qubit] for qubit in qubits],
         )
