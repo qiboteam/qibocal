@@ -1,5 +1,3 @@
-import statistics
-from enum import Enum
 
 import lmfit
 import numpy as np

@@ -8,6 +8,7 @@ from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
+from qibocal.protocols.characterization.signal_experiments import utils
 
 from .utils import signals
 
@@ -16,7 +17,7 @@ Method which implements the state's calibration of a chosen qubit. Two analogous
 for calibrate the ground state and the excited state of the oscillator.
 The subscripts `exc` and `gnd` will represent the excited state |1> and the ground state |0>.
 Args:
-    platform (:class:`qibolab.platforms.abstract.AbstractPlatform`): custom abstract platform on which we perform the calibration.
+    platform (Platform): custom abstract platform on which we perform the calibration.
     qubits (dict): Dict of target Qubit objects to perform the action
     nshots (int): number of times the pulse sequence will be repeated.
     relaxation_time (float): #For data processing nothing qubit related
