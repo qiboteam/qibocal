@@ -25,7 +25,7 @@ class RabiLengthParameters(Parameters):
     """Final pi pulse duration (ns)."""
     pulse_duration_step: float
     """Step pi pulse duration (ns)."""
-    pulse_amplitude: float
+    pulse_amplitude: Optional[float] = None
     """Pi pulse amplitude. Same for all qubits."""
     nshots: Optional[int] = None
     """Number of shots."""
@@ -65,7 +65,8 @@ def _acquisition(
     for qubit in qubits:
         # TODO: made duration optional for qd pulse?
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
-        qd_pulses[qubit].amplitude = params.pulse_amplitude
+        if params.pulse_amplitude is not None:
+            qd_pulses[qubit].amplitude = params.pulse_amplitude
 
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=qd_pulses[qubit].finish
