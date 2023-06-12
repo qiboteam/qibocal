@@ -13,7 +13,6 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
-from qibocal.plots.utils import get_color
 from qibocal.protocols.characterization.resonator_spectroscopy import (
     ResonatorSpectroscopyData,
 )
@@ -259,7 +258,6 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
             go.Scatter(
                 x=q_data.df["frequency"].pint.to("GHz").pint.magnitude,
                 y=q_data.df["MSR"].pint.to("uV").pint.magnitude,
-                marker_color=get_color(3 * i),
                 opacity=opacity,
                 name=f"q{qubit}: {label}",
                 showlegend=True,
@@ -272,7 +270,6 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
             go.Scatter(
                 x=q_data.df["frequency"].pint.to("GHz").pint.magnitude,
                 y=q_data.df["phase"].pint.to("rad").pint.magnitude,
-                marker_color=get_color(3 * i + 1),
                 opacity=opacity,
                 showlegend=False,
                 legendgroup=f"q{qubit}: {label}",
@@ -294,7 +291,6 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
                 y=lorentzian(freqrange, **params),
                 name=f"q{qubit}: {label} Fit",
                 line=go.scatter.Line(dash="dot"),
-                marker_color=get_color(3 * i + 2),
             ),
             row=1,
             col=1,

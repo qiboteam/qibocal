@@ -12,7 +12,6 @@ from scipy.optimize import curve_fit
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.config import log
 from qibocal.data import DataUnits
-from qibocal.plots.utils import get_color
 
 
 @dataclass
@@ -213,7 +212,6 @@ def _plot(data: FlippngData, fit: FlippingResults, qubit):
         go.Scatter(
             x=qubit_data["flips"].pint.magnitude,
             y=qubit_data["MSR"].pint.to("uV").pint.magnitude,
-            marker_color=get_color(0),
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -241,7 +239,6 @@ def _plot(data: FlippngData, fit: FlippingResults, qubit):
                 ),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
-                marker_color=get_color(1),
             ),
         )
         fitting_report = fitting_report + (

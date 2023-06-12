@@ -1,10 +1,11 @@
 """Action execution tracker."""
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Union
 
 from qibolab.platform import Platform
+from qibolab.qubits import QubitId
 
 from ..protocols.characterization import Operation
 from ..utils import allocate_qubits_pairs, allocate_single_qubits
@@ -37,6 +38,11 @@ TaskId = tuple[Id, int]
 class Task:
     action: Action
     iteration: int = 0
+    qubits: List[QubitId] = field(default_factory=list)
+
+    def __post_init__(self):
+        if len(self.qubits) == 0:
+            self.qubits = self.action.qubits
 
     @classmethod
     def load(cls, card: dict):
@@ -83,10 +89,6 @@ class Task:
         return self.operation.parameters_type.load(self.action.parameters)
 
     @property
-    def qubits(self):
-        return self.action.qubits
-
-    @property
     def update(self):
         return self.action.update
 
@@ -110,17 +112,20 @@ class Task:
             parameters = DummyPars()
 
         path = self.datapath(folder)
-
         if operation.platform_dependent and operation.qubits_dependent:
-            if self.qubits:
-                if any(isinstance(i, tuple) for i in self.qubits):
-                    qubits = allocate_qubits_pairs(platform, self.qubits)
-                else:
-                    qubits = allocate_single_qubits(platform, self.qubits)
+            if platform is not None:
+                if len(self.qubits) > 0:
+                    if any(isinstance(i, tuple) for i in self.qubits):
+                        qubits = allocate_qubits_pairs(platform, self.qubits)
+                    else:
+                        qubits = allocate_single_qubits(platform, self.qubits)
 
             self._data: Data = operation.acquisition(
                 parameters, platform=platform, qubits=qubits
             )
+            # after acquisition we update the qubit parameter
+            self.qubits = list(qubits)
+
         else:
             self._data: Data = operation.acquisition(
                 parameters,

@@ -2,6 +2,6 @@
 
 import importlib.metadata as im
 
-from .cli import autocalibration, command, compare, live_plot, upload
+from .cli import command, upload
 
 __version__ = im.version(__package__)

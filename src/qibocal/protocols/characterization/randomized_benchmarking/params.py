@@ -16,8 +16,6 @@ class RBParameters(Parameters):
 
     nqubits: int
     """The amount of qubits on the chip """
-    qubits: list
-    """A list of indices which qubit(s) should be benchmarked """
     depths: Union[list, DepthsDict]
     """A list of depths/sequence lengths. If a dictionary is given the list will be build."""
     niter: int
