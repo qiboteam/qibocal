@@ -51,17 +51,17 @@ class ToFResults(Results):
 class ToFData(DataUnits):
     """ToF acquisition outputs."""
 
-    def __init__(self, qubit, state):
+    def __init__(self):
         super().__init__(
-            f"data_q{qubit}_{state}",
-            options=["sample"],
+            f"data",
+            # f"data_q{qubit}_{state}",
+            options=["qubit", "sample", "state"],
         )
 
 
 def _acquisition(params: ToFParameters, platform: Platform, qubits: Qubits) -> ToFData:
     """Data acquisition for time of flight experiment."""
 
-    # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     state0_sequence = PulseSequence()
     state1_sequence = PulseSequence()
 
@@ -88,15 +88,19 @@ def _acquisition(params: ToFParameters, platform: Platform, qubits: Qubits) -> T
         ),
     )
 
+    data = ToFData()
+
     # retrieve and store the results for every qubit
     for qubit in qubits:
         r = state0_results[ro_pulses[qubit].serial].serialize
+        number_of_samples = len(r["MSR[V]"])
         r.update(
             {
-                "sample": np.arange(len(r["MSR[V]"])),
+                "qubit": [qubit] * number_of_samples,
+                "sample": np.arange(number_of_samples),
+                "state": [0] * number_of_samples,
             }
         )
-        data = ToFData(qubit, state=0)
         data.add_data_from_dict(r)
 
     # # execute the second pulse sequence
@@ -113,12 +117,14 @@ def _acquisition(params: ToFParameters, platform: Platform, qubits: Qubits) -> T
     # retrieve and store the results for every qubit
     for qubit in qubits:
         r = state1_results[ro_pulses[qubit].serial].serialize
+        number_of_samples = len(r["MSR[V]"])
         r.update(
             {
-                "sample": np.arange(len(r["MSR[V]"])),
+                "qubit": [qubit] * number_of_samples,
+                "sample": np.arange(number_of_samples),
+                "state": [1] * number_of_samples,
             }
         )
-        data = ToFData(qubit, state=1)
         data.add_data_from_dict(r)
 
     # finally, save the remaining data

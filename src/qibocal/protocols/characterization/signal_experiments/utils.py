@@ -1,14 +1,9 @@
-import lmfit
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from qibocal.auto.operation import Results
-from qibocal.config import log
-from qibocal.plots.utils import get_color
 
-
-# Signals
+# Signals #add phase
 def signals(data, fit, qubit):
     figures = []
     fig = make_subplots(
@@ -22,20 +17,15 @@ def signals(data, fit, qubit):
         ),
     )
 
-    # iterate over multiple data folders
-    qubit_data = data.df[data.df["qubit"] == qubit].drop(columns=["i", "q", "qubit"])
-
     fitting_report = ""
 
     states = data.df["state"].unique()
-    # MSR = data.df["i"].pint.to("uV").pint.magnitude.unique()
     for state in states:
         state_data = data.df[data.df["state"] == state]
         fig.add_trace(
             go.Scatter(
                 x=state_data["sample"],
                 y=state_data["MSR"].pint.to("uV").pint.magnitude,
-                marker_color=get_color(1),
             ),
             row=1,
             col=1 + state,
@@ -48,12 +38,15 @@ def signals(data, fit, qubit):
         yaxis_title="MSR (uV)",
     )
 
+    fitting_report = fitting_report + (f"{qubit} | Time of flight : <br>")
+
     figures.append(fig)
 
     return figures, fitting_report
 
 
 # Integration weights calculation
+# add phase ?
 def signal_0_1(data, fit, qubit):
     figures = []
     fig = make_subplots(
@@ -64,18 +57,14 @@ def signal_0_1(data, fit, qubit):
         subplot_titles=("State 0-1",),
     )
 
-    qubit_data = data.df[data.df["qubit"] == qubit].drop(columns=["i", "q", "qubit"])
+    integration_weights = fit.optimal_integration_weights[qubit]
 
     fitting_report = ""
-
     state = "1-0"
 
-    state_data = data.df[data.df["state"] == state]
     fig.add_trace(
         go.Scatter(
-            x=state_data["sample"],
-            y=state_data["weights"].pint.to("dimensionless").pint.magnitude,
-            marker_color=get_color(2),
+            y=integration_weights,
             name=f"q{qubit}",
             showlegend=not bool(state),
             legendgroup=f"q{qubit}",
@@ -86,11 +75,7 @@ def signal_0_1(data, fit, qubit):
 
     fig.add_trace(
         go.Scatter(
-            x=state_data["sample"],
-            y=np.ones(
-                [len(state_data["weights"].pint.to("dimensionless").pint.magnitude)]
-            ),
-            marker_color=get_color(2),
+            y=np.ones([len(integration_weights)]),
             name=f"q{qubit}",
             showlegend=not bool(state),
             legendgroup=f"q{qubit}",
@@ -105,6 +90,8 @@ def signal_0_1(data, fit, qubit):
         xaxis_title="Sample",
         yaxis_title="MSR (uV)",
     )
+
+    fitting_report = fitting_report + (f"{qubit} | Optimal integration weights : <br>")
 
     figures.append(fig)
 
