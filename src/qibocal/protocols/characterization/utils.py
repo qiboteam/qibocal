@@ -208,3 +208,36 @@ def get_points_with_max_freq(min_points, max_freq):
 
 def norm(x_mags):
     return (x_mags - np.min(x_mags)) / (np.max(x_mags) - np.min(x_mags))
+
+
+def image_to_curve(x, y, z, alpha=0.0001, order=50):
+    max_y = np.max(y)
+    min_y = np.min(y)
+    leny = int((max_y - min_y) / (y[1] - y[0])) + 1
+    max_x = np.max(x)
+    min_x = np.min(x)
+    lenx = int(len(x) / (leny))
+    x = np.linspace(min_x, max_x, lenx)
+    y = np.linspace(min_y, max_y, leny)
+    z = np.array(z, float)
+    z = np.reshape(z, (lenx, leny))
+    zmax, zmin = z.max(), z.min()
+    znorm = (z - zmin) / (zmax - zmin)
+
+    # Mask out region
+    mask = znorm < 0.5
+    z = np.argwhere(mask)
+    weights = znorm[mask] / float(znorm.max())
+    # Column indices
+    x_fit = y[z[:, 1].reshape(-1, 1)]
+    # Row indices to predict.
+    y_fit = x[z[:, 0]]
+
+    # Ridge regression, i.e., least squares with l2 regularization
+    A = feature(x_fit, order)
+    model = Ridge(alpha=alpha)
+    model.fit(A, y_fit, sample_weight=weights)
+    x_pred = y
+    X_pred = feature(x_pred, order)
+    y_pred = model.predict(X_pred)
+    return y_pred, x_pred
