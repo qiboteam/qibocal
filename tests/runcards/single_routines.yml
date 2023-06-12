@@ -138,9 +138,9 @@ actions:
       relaxation_time: 0
       nshots: 10
 
-  - id: time of flight
+  - id: optimal integration weights
     priority: 0
-    operation: tof
+    operation: optimal_integration_weights
     parameters:
       nshots: 1024
 
