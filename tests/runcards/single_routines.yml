@@ -247,7 +247,6 @@ actions:
     operation: standard_rb
     qubits: [0]
     parameters:
-      nqubits: 2
       depths: [1,3,5,10]
       niter: 2
       nshots: 128
@@ -272,8 +271,8 @@ actions:
   - id: standard rb std
     priority: 0
     operation: standard_rb
+    qubits: [0, 1, 3]
     parameters:
-      nqubits: 4
       depths:
         start: 1
         stop: 10
