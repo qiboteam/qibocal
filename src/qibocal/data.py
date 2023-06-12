@@ -5,6 +5,7 @@ from abc import abstractmethod
 
 import numpy as np
 import pandas as pd
+import pint_pandas  # nopycln: import
 
 from qibocal.config import raise_error
 
