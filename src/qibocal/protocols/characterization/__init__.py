@@ -8,6 +8,7 @@ from .coherence.spin_echo import spin_echo
 from .coherence.t1 import t1
 from .coherence.t2 import t2
 from .dispersive_shift import dispersive_shift
+from .fast_reset.fast_reset import fast_reset
 from .flipping import flipping
 from .flux_depedence.qubit_flux_dependence import qubit_flux
 from .flux_depedence.resonator_flux_dependence import resonator_flux
@@ -43,3 +44,4 @@ class Operation(Enum):
     flipping = flipping
     dispersive_shift = dispersive_shift
     standard_rb = standard_rb
+    fast_reset = fast_reset
