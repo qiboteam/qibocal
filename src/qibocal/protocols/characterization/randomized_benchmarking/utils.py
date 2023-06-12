@@ -87,41 +87,6 @@ def random_clifford(qubits, seed=None):
     return clifford_gates
 
 
-def data_mean_errors(data, uncertainties=None, symmetric=False):
-    """Compute the errors of the mean values for the given ``data``.
-
-    Args:
-        data (list or np.ndarray): 2d array with rows containing data points
-            from which the mean value is computed.
-        uncertainties: method of computing the uncertainties. If ``std``, computes the
-            standard deviation. If type ``float`` between 0 and 1, computes the corresponding
-            confidence interval. If ``None``, returns ``None``. Defaults to ``None``.
-        symmetric (bool): If ``False`` and ``uncertainties`` is of type ``float``, returns 2d array
-            with 2 rows contanining lower and higher errors. If ``True``, returns a list of errors
-            corresponding to each mean value. Defaults to ``False``.
-
-    Returns:
-        np.ndarray: errors of the mean values.
-    """
-
-    if uncertainties == "std":
-        return np.std(data, axis=1)
-    if isinstance(uncertainties, Number):
-        confidence = uncertainties
-        percentiles = [
-            100 * (1 - confidence) / 2,
-            100 * (1 - (1 - confidence) / 2),
-        ]
-        data_mean = np.mean(data, axis=1)
-        data_errors = np.abs(
-            np.vstack([data_mean, data_mean]) - np.percentile(data, percentiles, axis=1)
-        )
-        if symmetric:
-            return np.max(data_errors, axis=0)
-        return data_errors
-    return None
-
-
 def significant_digit(number: Number):
     """Computes the position of the first significant digit of a given number.
 

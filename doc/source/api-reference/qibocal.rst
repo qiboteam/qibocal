@@ -192,7 +192,7 @@ Useful functions
 
 Prebuild noise models
 """""""""""""""""""""
-.. automodule:: from qibocal.protocols.characterization.randomized_benchmarking.noisemodels
+.. automodule:: qibocal.protocols.characterization.randomized_benchmarking.noisemodels
    :members:
    :undoc-members:
    :show-inheritance:

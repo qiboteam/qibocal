@@ -38,7 +38,6 @@ def lorentzian_fit(data, x, y, qubits, resonator_type, labels, fit_file_name=Non
 
         y = \frac{A}{\pi} \Big[ \frac{\sigma}{(f-f_0)^2 + \sigma^2} \Big] + y_0.
 
-    Args:
 
     Args:
         data (`DataUnits`): dataset for the fit
@@ -728,7 +727,8 @@ def drag_tuning_fit(data: Data, x, y, qubits, labels):
 
 def res_spectroscopy_flux_fit(data, x, y, qubit, fluxline, params_fit):
     """Fit frequency as a function of current for the flux resonator spectroscopy
-        Args:
+
+    Args:
         data (DataUnits): Data file with information on the feature response at each current point.
         x (str): Column of the data file associated to x-axis.
         y (str): Column of the data file associated to y-axis.
@@ -1079,7 +1079,8 @@ def resonator_spectroscopy_flux_fit(
     data, x, y, qubits, fluxlines, resonator_type, params_fit
 ):
     """Fit frequency as a function of current for the flux resonator spectroscopy
-        Args:
+
+    Args:
         data (DataUnits): data file with information on the feature response at each current point.
         x (str): column of the data file associated to x-axis.
         y (str): column of the data file associated to y-axis.
@@ -1293,7 +1294,8 @@ def qubit_spectroscopy_flux_fit(
     data, x, y, qubits, fluxlines, resonator_type, params_fit
 ):
     """Fit frequency as a function of current for the flux qubit spectroscopy
-        Args:
+
+    Args:
         data (DataUnits): data file with information on the feature response at each current point.
         x (str): column of the data file associated to x-axis.
         y (str): column of the data file associated to y-axis.

@@ -9,6 +9,7 @@ import qibo
 
 from qibocal.auto.operation import Parameters, Results, Routine
 from qibocal.config import log, raise_error
+from qibocal.fitting.utils import bootstrap, data_errors
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
 
 from .circuit_tools import (
@@ -17,9 +18,8 @@ from .circuit_tools import (
     embed_circuit,
     layer_circuit,
 )
-from .fitting import bootstrap, exp1B_func, fit_exp1B_func
+from .fitting import exp1B_func, fit_exp1B_func
 from .utils import (
-    data_mean_errors,
     extract_from_data,
     number_to_str,
     random_clifford,
@@ -52,10 +52,10 @@ class StandardRBParameters(Parameters):
     """Sets how many iterations over the same depth value."""
     nshots: int
     """For each sequence how many shots for statistics should be performed."""
-    uncertainties: Union[str, float] = 0.95
+    uncertainties: Union[str, float] = 95
     """Method of computing the error bars and uncertainties of the data. If ``None``, does not
-    compute the errors. If ``"std"``, computes the standard deviation. If a value is of type ``float``
-    between 0 and 1, computes the corresponding confidence interval. Defaults to ``0.95``."""
+    compute the errors. If ``"std"``, computes the standard deviation. If ``float`` or ``int``
+    between 0 and 100, computes the corresponding confidence interval. Defaults to ``95``."""
     n_bootstrap: int = 100
     """Number of bootstrap iterations for the fit uncertainties and error bars.
     If ``0``, gets the fit uncertainties from the fitting function and the error bars
@@ -210,17 +210,17 @@ def _fit(data: RBData) -> StandardRBResult:
 
     # Perform bootstrap resampling
     y_estimates, popt_estimates = bootstrap(
-        x,
-        y_scatter,
-        uncertainties,
-        n_bootstrap,
-        lambda p: resample_p0(p, data.attrs.get("nshots", 1)),
-        fit_exp1B_func,
+        x_data=x,
+        y_data=y_scatter,
+        fit_func=fit_exp1B_func,
+        sigma_method=uncertainties,
+        n_bootstrap=n_bootstrap,
+        resample_func=lambda p: resample_p0(p, data.attrs.get("nshots", 1)),
     )
 
     # Fit the initial data
     sigma = (
-        data_mean_errors(y_estimates, uncertainties, symmetric=True)
+        data_errors(y_estimates, uncertainties, symmetric=True, data_median=y)
         if init_sigma is None
         else init_sigma
     )
@@ -228,13 +228,13 @@ def _fit(data: RBData) -> StandardRBResult:
 
     # Compute fitting errors
     if len(popt_estimates):
-        perr = data_mean_errors(popt_estimates, uncertainties)
-        perr = perr.T if perr is not None else (0,) * len(perr)
+        perr = data_errors(popt_estimates, uncertainties, data_median=popt)
+        perr = perr.T if perr is not None else (0,) * len(popt)
 
     # Compute y data errors
-    error_y = data_mean_errors(y_estimates, uncertainties, symmetric=False)
+    error_y = data_errors(y_estimates, uncertainties, symmetric=False, data_median=y)
 
-    infidelity = (1 - popt[0]) / 2
+    infidelity = (1 - popt[1]) / 2
     fidelity = 1 - infidelity
     pulse_fidelity = 1 - infidelity / NPULSES_PER_CLIFFORD
     return StandardRBResult(fidelity, pulse_fidelity, (popt, perr), error_y)
