@@ -160,6 +160,9 @@ def _acquisition(
     Population of the high frequency qubit yield the leakage to the non-computational states
     during the execution of the flux pulse.
     """
+    if not isinstance(list(qubits.keys())[0], tuple):
+        raise ValueError("You need to specify a list of pairs.")
+
     # create a DataUnits object to store the results,
     data = CZVirtualZData()
 
