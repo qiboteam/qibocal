@@ -258,7 +258,6 @@ actions:
     operation: standard_rb
     qubits: [1]
     parameters:
-      nqubits: 2
       depths:
         start: 1
         stop: 10

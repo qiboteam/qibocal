@@ -91,7 +91,7 @@ def significant_digit(number: Number):
     """Computes the position of the first significant digit of a given number.
 
     Args:
-        number (Number)
+        number (Number): number for which the significant digit is computed. Can be complex.
 
     Returns:
         int: position of the first significant digit or ``3`` if the given number
@@ -188,9 +188,9 @@ def samples_to_p0(samples_list):
 
     Args:
         samples_list (list or np.ndarray): 3d array with rows corresponding to circuits containing
-            `nshots` number of lists with `nqubits` amount of `0` and `1`.
-            e.g. `samples_list` for 1 circuit, 3 shots and 2 qubits looks like
-            `[[[0, 0], [0, 1], [1, 0]]]`.
+            ``nshots`` number of lists with ``nqubits`` amount of ``0`` and ``1``.
+            e.g. ``samples_list`` for 1 circuit, 3 shots and 2 qubits looks like
+            ``[[[0, 0], [0, 1], [1, 0]]]``.
 
     Returns:
         list: list of probabilities corresponding to each row.
