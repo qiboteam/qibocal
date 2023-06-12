@@ -80,9 +80,7 @@ class StandardRBResult(Results):
 
 
 def setup_scan(
-    params: StandardRBParameters,
-    qubits: Union[Qubits, List[QubitId]],
-    nqubits: Optional[int] = None,
+    params: StandardRBParameters, qubits: Union[Qubits, List[QubitId]], nqubits: int
 ) -> Iterable:
     """Returns an iterator of single-qubit random self-inverting Clifford circuits.
 
@@ -95,7 +93,6 @@ def setup_scan(
         Iterable: The iterator of circuits.
     """
 
-    nqubits = nqubits if nqubits else max(qubits) + 1
     qubit_ids = list(qubits) if isinstance(qubits, dict) else qubits
 
     def make_circuit(depth):
