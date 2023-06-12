@@ -10,8 +10,8 @@ from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.bootstrap import bootstrap, data_errors
 from qibocal.config import log, raise_error
-from qibocal.fitting.utils import bootstrap, data_errors
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
 
 from .circuit_tools import (
@@ -97,9 +97,7 @@ class StandardRBResult(Results):
 
 
 def setup_scan(
-    params: StandardRBParameters,
-    qubits: Union[Qubits, List[QubitId]],
-    nqubits: Optional[int] = None,
+    params: StandardRBParameters, qubits: Union[Qubits, List[QubitId]], nqubits: int
 ) -> Iterable:
     """Returns an iterator of single-qubit random self-inverting Clifford circuits.
 
@@ -112,7 +110,6 @@ def setup_scan(
         Iterable: The iterator of circuits.
     """
 
-    nqubits = nqubits if nqubits else max(qubits) + 1
     qubit_ids = list(qubits) if isinstance(qubits, dict) else qubits
 
     def make_circuit(depth):
@@ -227,8 +224,8 @@ def _fit(data: RBData) -> StandardRBResult:
         x_data=x,
         y_data=y_scatter,
         fit_func=fit_exp1B_func,
-        sigma_method=uncertainties,
         n_bootstrap=n_bootstrap,
+        sigma_method=uncertainties,
         resample_func=lambda p: resample_p0(p, data.attrs.get("nshots", 1)),
     )
 
