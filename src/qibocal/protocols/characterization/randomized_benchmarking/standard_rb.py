@@ -21,13 +21,7 @@ from .circuit_tools import (
     layer_circuit,
 )
 from .fitting import exp1B_func, fit_exp1B_func
-from .utils import (
-    extract_from_data,
-    number_to_str,
-    random_clifford,
-    resample_p0,
-    samples_to_p0,
-)
+from .utils import extract_from_data, number_to_str, random_clifford
 
 NPULSES_PER_CLIFFORD = 1.875
 
