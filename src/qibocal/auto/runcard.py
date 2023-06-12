@@ -2,10 +2,9 @@
 from functools import cached_property
 from typing import Any, Dict, List, NewType, Optional, Union
 
-import qibo
 from pydantic import Field
 from pydantic.dataclasses import dataclass
-from qibo.backends import Backend, construct_backend
+from qibo.backends import Backend, construct_backend, set_backend
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
@@ -54,7 +53,7 @@ class Runcard:
     @cached_property
     def backend_obj(self) -> Backend:
         """Allocate backend."""
-        qibo.set_backend(self.backend, self.platform)
+        set_backend(self.backend, self.platform)
         return construct_backend(self.backend, self.platform)
 
     @property
