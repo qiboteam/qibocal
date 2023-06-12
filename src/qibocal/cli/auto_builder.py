@@ -43,7 +43,7 @@ class AutoCalibrationBuilder(ActionBuilder):
 
     def dump_report(self):
         """Dump report."""
-        from qibocal.web.report import create_autocalibration_report
+        from qibocal.web.report import create_report
 
         # update end time
         meta = yaml.safe_load((self.folder / META).read_text())
@@ -52,7 +52,7 @@ class AutoCalibrationBuilder(ActionBuilder):
         with open(self.folder / META, "w") as file:
             yaml.dump(meta, file)
 
-        create_autocalibration_report(self.folder, self.executor.history)
+        create_report(self.folder, self.executor.history)
 
     def dump_platform_runcard(self):
         """Dump platform runcard."""
@@ -66,7 +66,6 @@ class AutoCalibrationReportBuilder:
         self.path = self.title = path
         self.metadata = yaml.safe_load((path / META).read_text())
         self.runcard = Runcard.load(path / RUNCARD)
-        self.format = self.runcard.format
         self.qubits = self.runcard.qubits
 
         self.history = history
