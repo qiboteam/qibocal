@@ -33,7 +33,7 @@ NPULSES_PER_CLIFFORD = 1.875
 
 
 class DepthsDict(TypedDict):
-    """Dictionary used to build a list of depths as `range(start, stop, step)`."""
+    """Dictionary used to build a list of depths as ``range(start, stop, step)``."""
 
     start: int
     stop: int
@@ -104,7 +104,7 @@ def setup_scan(
     Args:
         params (StandardRBParameters): Parameters of the RB protocol.
         qubits (Dict[int, Union[str, int]] or List[Union[str, int]]): List of qubits the circuit is executed on.
-        nqubits (int, optional): Number of qubits of the resulting circuits. If `None`, sets `len(qubits)`. Defaults to `None`.
+        nqubits (int, optional): Number of qubits of the resulting circuits. If ``None``, sets ``len(qubits)``. Defaults to ``None``.
 
     Returns:
         Iterable: The iterator of circuits.
@@ -113,7 +113,7 @@ def setup_scan(
     qubit_ids = list(qubits) if isinstance(qubits, dict) else qubits
 
     def make_circuit(depth):
-        """Returns a random Clifford circuit with inverse of `depth`."""
+        """Returns a random Clifford circuit with inverse of ``depth``."""
 
         # This function is needed so that the inside of the layer_circuit function layer_gen()
         # can be called for each layer of the circuit, and it returns a random layer of
@@ -163,7 +163,7 @@ def _acquisition(
             log.warning(
                 (
                     "Backend qibolab (%s) does not perform noise models simulation. "
-                    "Setting backend to `NumpyBackend` instead."
+                    "Setting backend to ``NumpyBackend`` instead."
                 ),
                 platform.name,
             )

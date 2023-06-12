@@ -10,14 +10,14 @@ def data_errors(data, method=None, symmetric=False, data_median=None):
     Args:
         data (list or np.ndarray): 2d array with rows containing data points
             from which the median value is extracted.
-        method (str or int or float, optional): method of computing the method. If `"std"`, computes the
-            standard deviation. If type `float` or `int` between 0 and 100, computes the corresponding
-            confidence interval using `np.percentile`. Otherwise, returns `None`. Defaults to `None`.
-        symmetric (bool): If `False` and `method` is of type `float`, returns 2d array
-            with 2 rows contanining lower and higher errors. If `True`, returns a list of errors
-            corresponding to each mean value. Defaults to `False`.
-        data_median (list or np.ndarray, optional): 1d array used to get the errors from the confidence interval.
-            If `None`, the median values are computed from `data`.
+        method (str or int or float, optional): method of computing the method. If ``"std"``, computes the
+            standard deviation. If type ``float`` or ``int`` between 0 and 100, computes the corresponding
+            confidence interval using ``np.percentile``. Otherwise, returns ``None``. Defaults to ``None``.
+        symmetric (bool): If ``False`` and ``method`` is of type ``float``, returns 2d array
+            with 2 rows contanining lower and higher errors. If ``True``, returns a list of errors
+            corresponding to each mean value. Defaults to ``False``.
+        data_median (list or np.ndarray, optional): 1d array for computing the errors from the confidence interval.
+            If ``None``, the median values are computed from ``data``.
 
     Returns:
         np.ndarray: errors of the data.
@@ -53,30 +53,27 @@ def bootstrap(
     """Semiparametric bootstrap resampling.
 
     Steps:
-        1. (Non-parametric resampling) For each row in `y_data`, draw the same number of samples with replacement.
-        2. (Semi-parametric resampling) Parametrically resample obtained values if `resample_func` is given.
+        1. (Non-parametric resampling) For each row in ``y_data``, draw the same number of samples with replacement.
+        2. (Semi-parametric resampling) Parametrically resample obtained values if ``resample_func`` is given.
         3. Compute the mean of the samples.
-        4. Repeat for each row in `y_data`.
-        5. Fit the bootstrap estimates of `y` with `fit_func` and record new fitting parameters.
-        6. If `filter_estimates` is given, check whether the obtained estimates should be recorded.
+        4. Repeat for each row in ``y_data``.
+        5. Fit the bootstrap estimates of ``y`` with ``fit_func`` and record new fitting parameters.
+        6. If ``filter_estimates`` is given, check whether the obtained estimates should be recorded.
 
     Args:
         x_data (list or np.ndarray): 1d array of x values.
         y_data (list or np.ndarray): 2d array with rows containing data points
             from which the mean values for y are computed.
         fit_func (callable): fitting function that returns parameters and errors, given
-            `x`, `y`, `sigma` (if `sigma_method` is not `None`) and `**kwargs`.
-        n_bootstrap (int): number of bootstrap iterations. If `0`, returns `(y_data, [])`.
-        sigma_method (str or float, optional): method of computing `sigma` for the `fit_func`
-            when `sigma` is not given in `kwargs`. If `std`, computes the standard deviation.
-            If type `float` between 0 and 1, computes the maximum of low and high errors from
-            the corresponding confidence interval. Otherwise, does not compute `sigma`. Defaults to `None`.
-        resample_func (callable, optional): function that maps a list of non-parametrically resmapled `y` values to a new list.
-            (see :func:`qibocal.protocols.characterization.randomized_benchmarking.standard_rb.resample_p0`)
-            If `None`, only non-parametric resampling is performed. Defaults to `None`.
-        filter_estimates (callable, optional): function that returns `False` if bootstrap estimates should not be added.
-            Maps `list, list` to `bool`. Defaults to `None`.
-        kwargs: parameters passed to the `fit_func`.
+            ``x``, ``y``, ``sigma`` (if ``sigma_method`` is not ``None``) and ``**kwargs``.
+        n_bootstrap (int): number of bootstrap iterations. If ``0``, returns ``(y_data, [])``.
+        sigma_method (str or float, optional): method of computing ``sigma`` for the ``fit_func`` when ``sigma`` is not in ``kwargs``.
+            Passed as ``method`` to :func:`qibocal.bootstrap.data_errors`. Defaults to ``None``.
+        resample_func (callable, optional): function that maps a list of non-parametrically resmapled ``y`` values to a new list.
+            If ``None``, only non-parametric resampling is performed. Defaults to ``None``.
+        filter_estimates (callable, optional): function that returns ``False`` if bootstrap estimates should not be added.
+            Maps ``list, list`` to ``bool``. Defaults to ``None``.
+        kwargs: parameters passed to the ``fit_func``.
 
     Returns:
         Tuple[list, list]: y data estimates and fitting parameters estimates.
