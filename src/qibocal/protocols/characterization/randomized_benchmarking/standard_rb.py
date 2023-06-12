@@ -66,7 +66,7 @@ class RBData(pd.DataFrame):
 
     def to_csv(self, path):
         """Overwrite because qibocal action builder calls this function with a directory."""
-        super().to_json(f"{path}/{self.__class__.__name__}.json")
+        super().to_json(f"{path}/{self.__class__.__name__}.json", default_handler=str)
 
 
 @dataclass
