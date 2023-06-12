@@ -8,8 +8,7 @@ from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
-
-from .utils import signal_0_1
+from qibocal.protocols.characterization.signal_experiments.utils import signal_0_1
 
 
 @dataclass

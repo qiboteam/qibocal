@@ -8,9 +8,7 @@ from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
-from qibocal.protocols.characterization.signal_experiments import utils
-
-from .utils import signals
+from qibocal.protocols.characterization.signal_experiments.utils import signals
 
 """
 Method which implements the state's calibration of a chosen qubit. Two analogous tests are performed
