@@ -9,7 +9,6 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.plots.utils import get_color
 
 from . import t1, utils
 
@@ -134,7 +133,6 @@ def _plot(data: T2Data, fit: T2Results, qubit):
         go.Scatter(
             x=qubit_data["wait"].pint.magnitude,
             y=qubit_data["MSR"].pint.to("uV").pint.magnitude,
-            marker_color=get_color(0),
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -160,7 +158,6 @@ def _plot(data: T2Data, fit: T2Results, qubit):
                 ),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
-                marker_color=get_color(1),
             )
         )
         fitting_report = fitting_report + (

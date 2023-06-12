@@ -8,7 +8,7 @@ Qibocal provides Quantum Characterization Validation and Verification protocols 
 
 Qibocal key features:
 
-- Automatization of calibration routines.
+- Automatization of calibration protocols.
 
 - Declarative inputs using runcard.
 
@@ -44,32 +44,26 @@ platform: tii1q
 
 qubits: [0]
 
-format: csv
+- id: resonator spectroscopy high power
+  priority: 0
+  operation: resonator_spectroscopy
+  parameters:
+    freq_width: 10_000_000
+    freq_step: 500_000
+    amplitude: 0.4
+    power_level: high
+    nshots: 1024
+    relaxation_time: 0
 
-actions:
-   resonator_spectroscopy:
-     lowres_width: 5_000_000
-     lowres_step: 2_000_000
-     highres_width: 1_500_000
-     highres_step: 200_000
-     precision_width: 1_500_000
-     precision_step: 100_000
-     software_averages: 1
-     points: 5
 ```
-### Run the routine
-To run all the calibration routines specified in the ```runcard```, Qibocal uses the `qq` command
+### How to run protocols
+To run the protocols specified in the ```runcard```, Qibocal uses the `qq` command
 ```sh
 qq <runcard> -o <output_folder>
 ```
 if ```<output_folder>``` is specified, the results will be saved in it, otherwise ```qq``` will automatically create a default folder containing the current date and the username.
 
-### Visualize the data
 
-Qibocal gives the possibility to live-plotting with the `qq-live` command
-```sh
-qq-live <output_folder>
-```
 ### Uploading reports to server
 
 In order to upload the report to a centralized server, send to the server administrators your public ssh key (from the machine(s) you are planning to upload the report) and then use the `qq-upload <output_folder>` command. This program will upload your report to the server and generate an unique URL.
