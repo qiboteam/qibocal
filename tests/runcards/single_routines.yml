@@ -2,6 +2,12 @@
 
 actions:
 
+  - id: time of flight
+    priority: 0
+    operation: tof
+    parameters:
+      nshots: 1024
+
   - id: resonator high power high amplitude
     priority: 0
     operation: resonator_spectroscopy
@@ -131,6 +137,12 @@ actions:
       pulse_amplitude: 0.5
       relaxation_time: 0
       nshots: 10
+
+  - id: time of flight
+    priority: 0
+    operation: tof
+    parameters:
+      nshots: 1024
 
   - id: t1
     priority: 0
