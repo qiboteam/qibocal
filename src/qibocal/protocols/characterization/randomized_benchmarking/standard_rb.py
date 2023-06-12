@@ -6,8 +6,10 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import qibo
+from qibolab.platform import Platform
+from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Parameters, Results, Routine
+from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.config import log, raise_error
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
 
@@ -37,8 +39,6 @@ class StandardRBParameters(Parameters):
 
     nqubits: int
     """The amount of qubits on the chip """
-    qubits: list
-    """A list of indices which qubit(s) should be benchmarked """
     depths: Union[list, DepthsDict]
     """A list of depths/sequence lengths. If a dictionary is given the list will be build."""
     niter: int
@@ -81,7 +81,7 @@ class StandardRBResult(Results):
     """Raw fitting parameters."""
 
 
-def setup_scan(params: StandardRBParameters) -> Iterable:
+def setup_scan(params: StandardRBParameters, qubits) -> Iterable:
     """Returns an iterator of single-qubit random self-inverting Clifford circuits.
 
     Args:
@@ -90,6 +90,7 @@ def setup_scan(params: StandardRBParameters) -> Iterable:
     Returns:
         Iterable: The iterator of circuits.
     """
+    qubit_ids = list(qubits) if isinstance(qubits, dict) else qubits
 
     def make_circuit(depth):
         """Returns a random Clifford circuit with inverse of `depth`."""
@@ -99,17 +100,21 @@ def setup_scan(params: StandardRBParameters) -> Iterable:
         # Clifford gates. Could also be a generator, it just has to be callable.
         def layer_gen():
             """Returns a circuit with a random single-qubit clifford unitary."""
-            return random_clifford(len(params.qubits))
+            return random_clifford(len(qubit_ids))
 
         circuit = layer_circuit(layer_gen, depth)
         add_inverse_layer(circuit)
         add_measurement_layer(circuit)
-        return embed_circuit(circuit, params.nqubits, params.qubits)
+        return embed_circuit(circuit, params.nqubits, qubit_ids)
 
     return map(make_circuit, params.depths * params.niter)
 
 
-def _acquisition(params: StandardRBParameters, platform) -> RBData:
+def _acquisition(
+    params: StandardRBParameters,
+    platform: Platform,
+    qubits: Union[Qubits, List[QubitId]],
+) -> RBData:
     """The data acquisition stage of Standard Randomized Benchmarking.
 
     1. Set up the scan
@@ -119,6 +124,7 @@ def _acquisition(params: StandardRBParameters, platform) -> RBData:
     Args:
         params (StandardRBParameters): All parameters in one object.
         platform (Platform): Platform the experiment is executed on.
+        qubits: List of qubits the experiment is executed on.
 
     Returns:
         RBData: The depths, samples and ground state probability of each experiment in the scan.
@@ -147,7 +153,7 @@ def _acquisition(params: StandardRBParameters, platform) -> RBData:
         params.noise_params = noise_model.params
 
     # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
-    scan = setup_scan(params)
+    scan = setup_scan(params, qubits)
 
     # 2. Execute the scan.
     data_list = []
