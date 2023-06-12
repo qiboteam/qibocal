@@ -8,7 +8,6 @@ from plotly.subplots import make_subplots
 
 from qibocal.auto.operation import Results
 from qibocal.config import log
-from qibocal.plots.utils import get_color
 
 
 class PowerLevel(Enum):
@@ -90,7 +89,6 @@ def spectroscopy_plot(data, fit: Results, qubit):
         vertical_spacing=0.1,
     )
     qubit_data = data.df[data.df["qubit"] == qubit].drop(columns=["i", "q", "qubit"])
-
     fitting_report = ""
 
     frequencies = qubit_data["frequency"].pint.to("GHz").pint.magnitude.unique()
@@ -98,7 +96,6 @@ def spectroscopy_plot(data, fit: Results, qubit):
         go.Scatter(
             x=qubit_data["frequency"].pint.to("GHz").pint.magnitude,
             y=qubit_data["MSR"].pint.to("uV").pint.magnitude,
-            marker_color=get_color(0),
             opacity=1,
             name="Frequency",
             showlegend=True,
@@ -111,7 +108,6 @@ def spectroscopy_plot(data, fit: Results, qubit):
         go.Scatter(
             x=qubit_data["frequency"].pint.to("GHz").pint.magnitude,
             y=qubit_data["phase"].pint.to("rad").pint.magnitude,
-            marker_color=get_color(1),
             opacity=1,
             name="Phase",
             showlegend=True,
@@ -126,6 +122,7 @@ def spectroscopy_plot(data, fit: Results, qubit):
         max(frequencies),
         2 * len(frequencies),
     )
+
     params = fit.fitted_parameters[qubit]
 
     fig.add_trace(
@@ -134,7 +131,6 @@ def spectroscopy_plot(data, fit: Results, qubit):
             y=lorentzian(freqrange, **params),
             name="Fit",
             line=go.scatter.Line(dash="dot"),
-            marker_color=get_color(2),
         ),
         row=1,
         col=1,

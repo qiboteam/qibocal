@@ -1,10 +1,12 @@
 """Specify runcard layout, handles (de)serialization."""
-from pathlib import Path
+from functools import cached_property
 from typing import Any, Dict, List, NewType, Optional, Union
 
-import yaml
 from pydantic import Field
 from pydantic.dataclasses import dataclass
+from qibo.backends import Backend, construct_backend, set_backend
+from qibolab.platform import Platform
+from qibolab.qubits import QubitId
 
 from .operation import OperationId
 
@@ -12,7 +14,7 @@ Id = NewType("Id", str)
 """Action identifiers type."""
 
 
-@dataclass
+@dataclass(config=dict(smart_union=True))
 class Action:
     """Action specification in the runcard."""
 
@@ -26,6 +28,10 @@ class Action:
     """Alternative subsequent actions, branching from the current one."""
     priority: Optional[int] = None
     """Priority level, determining the execution order."""
+    qubits: list[QubitId] = Field(default_factory=list)
+    """Local qubits (optional)."""
+    update: bool = True
+    """Runcard update mechanism."""
     parameters: Optional[Dict[str, Any]] = None
     """Input parameters, either values or provider reference."""
 
@@ -34,25 +40,28 @@ class Action:
         return hash(self.id)
 
 
-@dataclass
+@dataclass(config=dict(smart_union=True))
 class Runcard:
     """Structure of an execution runcard."""
 
     actions: List[Action]
-    qubits: Optional[List[Union[int, str]]] = Field(default_factory=list)
-    format: Optional[str] = None
+    qubits: List[QubitId] = Field(default_facotry=list)
+    backend: str = "qibolab"
+    platform: str = "dummy"
+    # TODO: pass custom runcard (?)
+
+    @cached_property
+    def backend_obj(self) -> Backend:
+        """Allocate backend."""
+        set_backend(self.backend, self.platform)
+        return construct_backend(self.backend, self.platform)
+
+    @property
+    def platform_obj(self) -> Platform:
+        """Allocate platform."""
+        return self.backend_obj.platform
 
     @classmethod
-    def load(cls, card: Union[dict, Path]):
-        """Load a runcard.
-
-        It accepts both a dictionary, or a path to a YAML file, to be first
-        deserialized in a dictionary, and further loaded into an instance.
-
-        """
-        content = (
-            yaml.safe_load(card.read_text(encoding="utf-8"))
-            if isinstance(card, Path)
-            else card
-        )
-        return cls(**content)
+    def load(cls, params: dict):
+        """Load a runcard (dict)."""
+        return cls(**params)
