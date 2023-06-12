@@ -17,15 +17,7 @@ def generate_runcard_single_protocol():
         actions = yaml.safe_load(file)
 
     for action in actions["actions"]:
-        # FIXME: temporary fix for noise model in runcard
-        if "noise_model" in action["parameters"]:
-            yield {
-                "actions": [action],
-                "backend": "numpy",
-                "qubits": list(PLATFORM.qubits),
-            }
-        else:
-            yield {"actions": [action], "qubits": list(PLATFORM.qubits)}
+        yield {"actions": [action], "qubits": list(PLATFORM.qubits)}
 
 
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol())
