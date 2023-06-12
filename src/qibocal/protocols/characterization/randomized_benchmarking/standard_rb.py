@@ -37,8 +37,6 @@ class DepthsDict(TypedDict):
 class StandardRBParameters(Parameters):
     """Standard Randomized Benchmarking runcard inputs."""
 
-    nqubits: int
-    """The amount of qubits on the chip """
     depths: Union[list, DepthsDict]
     """A list of depths/sequence lengths. If a dictionary is given the list will be build."""
     niter: int
@@ -81,15 +79,23 @@ class StandardRBResult(Results):
     """Raw fitting parameters."""
 
 
-def setup_scan(params: StandardRBParameters, qubits) -> Iterable:
+def setup_scan(
+    params: StandardRBParameters,
+    qubits: Union[Qubits, List[QubitId]],
+    nqubits: Optional[int] = None,
+) -> Iterable:
     """Returns an iterator of single-qubit random self-inverting Clifford circuits.
 
     Args:
         params (StandardRBParameters): Parameters of the RB protocol.
+        qubits (Dict[int, Union[str, int]] or List[Union[str, int]]): List of qubits the circuit is executed on.
+        nqubits (int, optional): Number of qubits of the resulting circuits. If `None`, sets `len(qubits)`. Defaults to `None`.
 
     Returns:
         Iterable: The iterator of circuits.
     """
+
+    nqubits = nqubits if nqubits else max(qubits) + 1
     qubit_ids = list(qubits) if isinstance(qubits, dict) else qubits
 
     def make_circuit(depth):
@@ -105,7 +111,7 @@ def setup_scan(params: StandardRBParameters, qubits) -> Iterable:
         circuit = layer_circuit(layer_gen, depth)
         add_inverse_layer(circuit)
         add_measurement_layer(circuit)
-        return embed_circuit(circuit, params.nqubits, qubit_ids)
+        return embed_circuit(circuit, nqubits, qubit_ids)
 
     return map(make_circuit, params.depths * params.niter)
 
@@ -124,7 +130,7 @@ def _acquisition(
     Args:
         params (StandardRBParameters): All parameters in one object.
         platform (Platform): Platform the experiment is executed on.
-        qubits: List of qubits the experiment is executed on.
+        qubits (Dict[int, Union[str, int]] or List[Union[str, int]]): List of qubits the experiment is executed on.
 
     Returns:
         RBData: The depths, samples and ground state probability of each experiment in the scan.
@@ -148,12 +154,14 @@ def _acquisition(
                 platform.name,
             )
             qibo.set_backend("numpy")
+            platform = None
 
         noise_model = getattr(noisemodels, params.noise_model)(params.noise_params)
         params.noise_params = noise_model.params
 
     # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
-    scan = setup_scan(params, qubits)
+    nqubits = platform.nqubits if platform else max(qubits) + 1
+    scan = setup_scan(params, qubits, nqubits)
 
     # 2. Execute the scan.
     data_list = []
@@ -259,7 +267,6 @@ def _plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure
     if not meta_data["noise_model"]:
         meta_data.pop("noise_model")
         meta_data.pop("noise_params")
-        meta_data.pop("nqubits")
 
     table_str = "".join(
         [
