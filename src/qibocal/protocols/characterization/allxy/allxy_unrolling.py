@@ -9,7 +9,6 @@ from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import Data
-from qibocal.plots.utils import get_color
 
 
 @dataclass
@@ -80,21 +79,6 @@ def _acquisition(
     # create a Data object to store the results
     data = AllXYData()
 
-    # repeat the experiment as many times as defined by software_averages
-    # for iteration in range(params.software_averages):
-    # gateNumber = 1
-    # # sweep the parameter
-    # for gateNumber, gates in enumerate(gatelist):
-    #     # create a sequence of pulses
-    #     ro_pulses = {}
-    #     sequence = PulseSequence()
-    #     for qubit in qubits:
-    #         sequence, ro_pulses[qubit] = add_gate_pair_pulses_to_sequence(
-    #             platform, gates, qubit, sequence, params.beta_param
-    #         )
-
-    #     # execute the pulse sequence
-
     gateNumber = 1
     # sweep the parameter
     pulse_start = 0
@@ -114,7 +98,7 @@ def _acquisition(
                 # FIX Ro pulses for the results
             )
 
-            pulse_start += 300_000
+            pulse_start += platform.relaxation_time
             sequences.add(sequence)
 
     results = platform.execute_pulse_sequence(
@@ -251,7 +235,6 @@ def _plot(data: AllXYData, _fit: AllXYResults, qubit):
         go.Scatter(
             x=qubit_data["gateNumber"],
             y=qubit_data["probability"],
-            marker_color=get_color(0),
             mode="markers",
             text=gatelist,
             textposition="bottom center",

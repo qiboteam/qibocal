@@ -48,3 +48,4 @@ class Operation(Enum):
     StdRB = StdRB
     single_shot_classification = single_shot_classification
     standard_rb = standard_rb
+    spin_echo = spin_echo

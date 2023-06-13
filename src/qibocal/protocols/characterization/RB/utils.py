@@ -1,4 +1,3 @@
-import json
 import math
 from collections import defaultdict
 
@@ -6,17 +5,9 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibo import gates
-from qibo.config import log
-
-# from qibolab import Platform
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.transpilers.unitary_decompositions import u3_decomposition
-
-from qibocal.calibrations.niGSC.basics.fitting import exp1B_func, fit_exp1B_func
-from qibocal.calibrations.niGSC.basics.utils import gate_fidelity
-from qibocal.config import log
-from qibocal.plots.utils import get_color
 
 
 def RB_fit(x, A, p, B):
@@ -49,7 +40,6 @@ def plot(data, fit, qubit):
         go.Scatter(
             x=qubit_data[quantity].pint.to(unit).pint.magnitude,
             y=qubit_data["probabilities"].pint.to("dimensionless").pint.magnitude,
-            marker_color=get_color(0),
             mode="markers",
             opacity=0.3,
             name="StandardRB",
