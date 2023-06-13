@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 from pint import DimensionalityError, UndefinedUnitError
 
-from qibocal.data import AbstractData, Data, DataUnits
+from qibocal.data import Data, DataUnits
 
 
 def random_data_units(length, options=None):
