@@ -6,7 +6,7 @@ from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
@@ -25,10 +25,6 @@ class ResonatorSpectroscopyAttenuationParameters(Parameters):
     power_level: PowerLevel
     """Power regime (low or high). If low the readout frequency will be updated.
     If high both the readout frequency and the bare resonator frequency will be updated."""
-    qubits: Optional[list] = field(default_factory=list)
-    """Local qubits (optional)."""
-    update: Optional[bool] = None
-    """Runcard update mechanism."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
@@ -141,6 +137,7 @@ def _acquisition(
         Parameter.frequency,
         delta_frequency_range,
         pulses=[ro_pulses[qubit] for qubit in qubits],
+        type=SweeperType.OFFSET,
     )
     data = ResonatorSpectroscopyAttenuationData(
         platform.resonator_type,

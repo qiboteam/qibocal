@@ -8,7 +8,6 @@ from plotly.subplots import make_subplots
 
 from qibocal.auto.operation import Results
 from qibocal.config import log
-from qibocal.plots.utils import get_color
 
 
 class PowerLevel(Enum):
@@ -96,7 +95,6 @@ def spectroscopy_plot(data, fit: Results, qubit):
         go.Scatter(
             x=frequencies,
             y=qubit_data.msr * 1e4,
-            marker_color=get_color(0),
             opacity=1,
             name="Frequency",
             showlegend=True,
@@ -109,7 +107,6 @@ def spectroscopy_plot(data, fit: Results, qubit):
         go.Scatter(
             x=frequencies,
             y=qubit_data.phase,
-            marker_color=get_color(1),
             opacity=1,
             name="Phase",
             showlegend=True,
@@ -124,6 +121,7 @@ def spectroscopy_plot(data, fit: Results, qubit):
         max(frequencies),
         2 * len(frequencies),
     )
+
     params = fit.fitted_parameters[qubit]
 
     fig.add_trace(
@@ -132,11 +130,11 @@ def spectroscopy_plot(data, fit: Results, qubit):
             y=lorentzian(freqrange, **params),
             name="Fit",
             line=go.scatter.Line(dash="dot"),
-            marker_color=get_color(2),
         ),
         row=1,
         col=1,
     )
+
     if data.power_level is PowerLevel.low:
         label = "readout frequency"
         freq = fit.frequency
@@ -151,6 +149,9 @@ def spectroscopy_plot(data, fit: Results, qubit):
 
     if fit.amplitude[qubit] is not None:
         fitting_report += f"{qubit} | amplitude: {fit.amplitude[qubit]} <br>"
+        if data.power_level is PowerLevel.high:
+            # TODO: find better solution for not updating amplitude in high power
+            fit.amplitude.pop(qubit)
 
     if data.__class__.__name__ == "ResonatorSpectroscopyAttenuationData":
         if fit.attenuation[qubit] is not None and fit.attenuation[qubit] != 0:

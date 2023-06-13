@@ -10,7 +10,6 @@ from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
-from qibocal.plots.utils import get_color
 
 from . import utils
 
@@ -25,10 +24,6 @@ class T1Parameters(Parameters):
     """Final delay before readout (ns)."""
     delay_before_readout_step: int
     """Step delay before readout (ns)."""
-    qubits: Optional[list] = field(default_factory=list)
-    """Local qubits (optional)."""
-    update: Optional[bool] = None
-    """Runcard update mechanism."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
@@ -154,7 +149,6 @@ def _plot(data: T1Data, fit: T1Results, qubit):
         go.Scatter(
             x=qubit_data["wait"].pint.to("ns").pint.magnitude,
             y=qubit_data["MSR"].pint.to("uV").pint.magnitude,
-            marker_color=get_color(0),
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -177,7 +171,6 @@ def _plot(data: T1Data, fit: T1Results, qubit):
                 y=utils.exp_decay(waitrange, *params),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
-                marker_color=get_color(2),
             )
         )
         fitting_report = fitting_report + (

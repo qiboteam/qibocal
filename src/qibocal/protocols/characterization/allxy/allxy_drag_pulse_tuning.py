@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
@@ -9,7 +9,6 @@ from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import Data
-from qibocal.plots.utils import get_color
 
 from . import allxy
 
@@ -24,8 +23,6 @@ class AllXYDragParameters(Parameters):
     """Final beta parameter for Drag pulse."""
     beta_step: float
     """Step beta parameter for Drag pulse."""
-    qubits: Optional[list] = field(default_factory=list)
-    """Local qubits (optional)."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
@@ -132,7 +129,6 @@ def _plot(data: AllXYDragData, _fit: AllXYDragResults, qubit):
             go.Scatter(
                 x=beta_param_data["gateNumber"],
                 y=beta_param_data["probability"],
-                marker_color=get_color(j),
                 mode="markers+lines",
                 opacity=0.5,
                 name=f"Beta {beta_param}",

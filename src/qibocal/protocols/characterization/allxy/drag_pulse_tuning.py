@@ -13,8 +13,6 @@ from scipy.optimize import curve_fit
 from qibocal.auto.operation import Qubits, Results, Routine
 from qibocal.config import log
 from qibocal.data import DataUnits
-from qibocal.fitting.utils import cos
-from qibocal.plots.utils import get_color
 
 from . import allxy_drag_pulse_tuning
 
@@ -29,10 +27,6 @@ class DragPulseTuningParameters(allxy_drag_pulse_tuning.AllXYDragParameters):
     """DRAG pulse beta end sweep parameter."""
     beta_step: float
     """DRAG pulse beta sweep step parameter."""
-    qubits: Optional[list] = field(default_factory=list)
-    """Local qubits (optional)."""
-    update: Optional[bool] = None
-    """Runcard update mechanism."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
@@ -162,6 +156,14 @@ def _acquisition(
     return data
 
 
+def drag_fit(x, p0, p1, p2, p3):
+    # Offset                  : p[0]
+    # Amplitude               : p[1]
+    # Period                  : p[2]
+    # Phase                   : p[3]
+    return p0 + p1 * np.cos(2 * np.pi * x / p2 + p3)
+
+
 def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
     r"""
     Fitting routine for drag tunning. The used model is
@@ -189,8 +191,10 @@ def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
         ]
 
         try:
-            popt, pcov = curve_fit(cos, beta_params.values, voltages.values)
-            smooth_dataset = cos(beta_params.values, popt[0], popt[1], popt[2], popt[3])
+            popt, pcov = curve_fit(drag_fit, beta_params.values, voltages.values)
+            smooth_dataset = drag_fit(
+                beta_params.values, popt[0], popt[1], popt[2], popt[3]
+            )
             min_abs_index = np.abs(smooth_dataset).argmin()
             beta_optimal = beta_params.values[min_abs_index]
         except:
@@ -221,7 +225,6 @@ def _plot(data: DragPulseTuningData, fit: DragPulseTuningResults, qubit):
         go.Scatter(
             x=qubit_data["beta_param"].pint.magnitude,
             y=qubit_data["MSR"].pint.to("uV").pint.magnitude,
-            marker_color=get_color(0),
             mode="markers",
             opacity=0.3,
             name="Probability",
@@ -242,7 +245,7 @@ def _plot(data: DragPulseTuningData, fit: DragPulseTuningResults, qubit):
         fig.add_trace(
             go.Scatter(
                 x=beta_range,
-                y=cos(
+                y=drag_fit(
                     beta_range,
                     float(fit.fitted_parameters[qubit][0]),
                     float(fit.fitted_parameters[qubit][1]),
@@ -251,7 +254,6 @@ def _plot(data: DragPulseTuningData, fit: DragPulseTuningResults, qubit):
                 ),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
-                marker_color=get_color(1),
             ),
         )
         fitting_report = fitting_report + (

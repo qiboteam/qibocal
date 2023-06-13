@@ -12,7 +12,6 @@ from scipy.optimize import curve_fit
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.config import log
 from qibocal.data import DataUnits
-from qibocal.plots.utils import get_color
 
 
 @dataclass
@@ -28,10 +27,6 @@ class RamseyParameters(Parameters):
     n_osc: Optional[int] = 0
     """Number of oscillations to induce detuning (optional).
         If 0 standard Ramsey experiment is performed."""
-    qubits: Optional[list] = field(default_factory=list)
-    """Local qubits (optional)."""
-    update: Optional[bool] = None
-    """Runcard update mechanism."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
@@ -268,7 +263,6 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
         go.Scatter(
             x=qubit_data["wait"].pint.magnitude,
             y=qubit_data["MSR"].pint.to("uV").pint.magnitude,
-            marker_color=get_color(0),
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -297,7 +291,6 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
                 ),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
-                marker_color=get_color(1),
             )
         )
         fitting_report = (

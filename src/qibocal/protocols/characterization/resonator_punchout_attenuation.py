@@ -8,7 +8,7 @@ from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.config import log
@@ -35,10 +35,6 @@ class ResonatorPunchoutAttenuationParameters(Parameters):
     """Number of shots."""
     relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
-    qubits: Optional[list] = field(default_factory=list)
-    """Local qubits (optional)."""
-    update: Optional[bool] = None
-    """Runcard update mechanism."""
 
 
 @dataclass
@@ -112,12 +108,16 @@ def _acquisition(
         Parameter.frequency,
         delta_frequency_range,
         [ro_pulses[qubit] for qubit in qubits],
+        type=SweeperType.OFFSET,
     )
 
     # attenuation
     attenuation_range = np.arange(params.min_att, params.max_att, params.step_att)
     att_sweeper = Sweeper(
-        Parameter.attenuation, attenuation_range, qubits=list(qubits.values())
+        Parameter.attenuation,
+        attenuation_range,
+        qubits=list(qubits.values()),
+        type=SweeperType.ABSOLUTE,
     )
 
     # create a DataUnits object to store the results,

@@ -6,7 +6,7 @@ from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
@@ -30,10 +30,6 @@ class QubitSpectroscopyParameters(Parameters):
     """Number of shots."""
     relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
-    qubits: Optional[list] = field(default_factory=list)
-    """Local qubits (optional)."""
-    update: Optional[bool] = None
-    """Runcard update mechanism."""
 
 
 @dataclass
@@ -85,6 +81,7 @@ def _acquisition(
         Parameter.frequency,
         delta_frequency_range,
         pulses=[qd_pulses[qubit] for qubit in qubits],
+        type=SweeperType.OFFSET,
     )
 
     # Create data structure for data acquisition.

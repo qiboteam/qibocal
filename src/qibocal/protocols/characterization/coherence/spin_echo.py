@@ -9,7 +9,6 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.plots.utils import get_color
 
 from .t1 import T1Data
 from .utils import exp_decay, exponential_fit
@@ -25,10 +24,6 @@ class SpinEchoParameters(Parameters):
     """Final delay between pulses [ns]."""
     delay_between_pulses_step: int
     """Step delay between pulses (ns)."""
-    qubits: Optional[list] = field(default_factory=list)
-    """Local qubits (optional)."""
-    update: Optional[bool] = None
-    """Runcard update mechanism."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
@@ -144,7 +139,6 @@ def _plot(data: SpinEchoData, fit: SpinEchoResults, qubit: int):
         go.Scatter(
             x=qubit_data["wait"].pint.to("ns").pint.magnitude,
             y=qubit_data["MSR"].pint.to("uV").pint.magnitude,
-            marker_color=get_color(0),
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -167,7 +161,6 @@ def _plot(data: SpinEchoData, fit: SpinEchoResults, qubit: int):
                 y=exp_decay(waitrange, *params),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
-                marker_color=get_color(1),
             ),
         )
 

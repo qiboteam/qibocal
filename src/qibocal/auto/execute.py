@@ -1,7 +1,7 @@
 """Tasks execution."""
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional, Set, Union
+from typing import List, Optional, Set
 
 from qibolab.platform import Platform
 
@@ -22,11 +22,11 @@ class Executor:
     """The execution history, with results and exit states."""
     output: Path
     """Output path."""
-    qubits: Optional[Qubits] = None
+    qubits: Qubits
     """Qubits to be calibrated."""
-    platform: Optional[Platform] = None
+    platform: Platform
     """Qubits' platform."""
-    update: Optional[bool] = True
+    update: bool = True
     """Runcard update mechanism."""
     head: Optional[Id] = None
     """The current position."""
@@ -37,17 +37,16 @@ class Executor:
     @classmethod
     def load(
         cls,
-        card: Union[dict, Path],
+        card: Runcard,
         output: Path,
         platform: Platform = None,
         qubits: Qubits = None,
         update: bool = True,
     ):
         """Load execution graph and associated executor from a runcard."""
-        runcard = Runcard.load(card)
 
         return cls(
-            graph=Graph.from_actions(runcard.actions),
+            graph=Graph.from_actions(card.actions),
             history=History({}),
             output=output,
             platform=platform,
@@ -123,7 +122,12 @@ class Executor:
         return self.graph.task(self.head)
 
     def run(self):
-        """Actual execution."""
+        """Actual execution.
+
+        The platform's update method is called if:
+        - self.update is True and task.update is None
+        - task.update is True
+        """
         self.head = self.graph.start
 
         while self.head is not None:
@@ -132,12 +136,6 @@ class Executor:
             completed = Completed(task, output, Normal())
             self.history.push(completed)
             self.head = self.next()
-
             if self.platform is not None:
-                # update platform if:
-                # - global update is True and local not specified
-                # - local update is True
-                if (self.update and task.parameters.update is None) or (
-                    task.parameters.update
-                ):
+                if self.update and task.update:
                     self.platform.update(completed.res.update)

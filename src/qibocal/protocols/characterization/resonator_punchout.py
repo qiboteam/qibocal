@@ -8,7 +8,7 @@ from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.config import log
@@ -31,14 +31,12 @@ class ResonatorPunchoutParameters(Parameters):
     """Maximum amplitude multiplicative factor."""
     step_amp_factor: float
     """Step amplitude multiplicative factor."""
+    amplitude: float = None
+    """Initial readout amplitude."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
-    qubits: Optional[list] = field(default_factory=list)
-    """Local qubits (optional)."""
-    update: Optional[bool] = None
-    """Runcard update mechanism."""
 
 
 @dataclass
@@ -91,6 +89,8 @@ def _acquisition(
     ro_pulses = {}
     for qubit in qubits:
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
+        if params.amplitude is not None:
+            ro_pulses[qubit].amplitude = params.amplitude
         sequence.add(ro_pulses[qubit])
 
     # define the parameters to sweep and their range:
@@ -102,6 +102,7 @@ def _acquisition(
         Parameter.frequency,
         delta_frequency_range,
         [ro_pulses[qubit] for qubit in qubits],
+        type=SweeperType.OFFSET,
     )
 
     # amplitude
@@ -109,7 +110,10 @@ def _acquisition(
         params.min_amp_factor, params.max_amp_factor, params.step_amp_factor
     )
     amp_sweeper = Sweeper(
-        Parameter.amplitude, amplitude_range, [ro_pulses[qubit] for qubit in qubits]
+        Parameter.amplitude,
+        amplitude_range,
+        [ro_pulses[qubit] for qubit in qubits],
+        type=SweeperType.FACTOR,
     )
 
     # create a DataUnits object to store the results,
