@@ -270,9 +270,9 @@ actions:
     operation: chevron
     qubits: [[0, 1]]
     parameters:
-      amplitude_factor_min: 0.1
-      amplitude_factor_max: 0.6
-      amplitude_factor_step: 0.01
+      amplitude_min: 0.1
+      amplitude_max: 0.6
+      amplitude_step: 0.01
       duration_min: 10
       duration_max: 50
       duration_step: 1
