@@ -145,6 +145,7 @@ def _acquisition(
             ),
         )
 
+        # FIXME: Will this work for multiplex ?
         ro_pulses = sequence.ro_pulses
 
         for ro_pulse, wait in zip(ro_pulses, waits):

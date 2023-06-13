@@ -101,6 +101,9 @@ def _acquisition(
             pulse_start += platform.relaxation_time
             sequences.add(sequence)
 
+    # FIXME: Will this work for multiplex ?
+    ro_pulses = sequences.ro_pulses
+
     results = platform.execute_pulse_sequence(
         sequences,
         ExecutionParameters(
@@ -110,16 +113,18 @@ def _acquisition(
     )
 
     # retrieve the results for every qubit
-    for ro_pulse in ro_pulses.values():
+    i = 0
+    for ro_pulse in ro_pulses:
         z_proj = 2 * results[ro_pulse.serial].probability(0) - 1
         # store the results
         r = {
             "probability": z_proj,
-            "gateNumber": gateNumber,
+            "gateNumber": i,
             "beta_param": params.beta_param,
             "qubit": ro_pulse.qubit,
         }
         data.add(r)
+        i += 1
     # finally, save the remaining data
     return data
 
