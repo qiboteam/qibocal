@@ -1,5 +1,4 @@
-from copy import deepcopy
-from typing import Callable, Optional, Union
+from typing import Optional, Union
 
 import numpy as np
 
@@ -41,83 +40,38 @@ def data_errors(data, method=None, symmetric=False, data_median=None):
 
 
 def bootstrap(
-    x_data: Union[np.ndarray, list],
-    y_data: Union[np.ndarray, list],
-    fit_func: Callable,
+    data: Union[np.ndarray, list],
     n_bootstrap: int,
-    sigma_method: Optional[Union[str, float]] = None,
-    resample_func: Optional[Callable] = None,
-    filter_estimates: Optional[Callable] = None,
-    **kwargs,
+    homogeneous: bool = True,
+    sample_size: Optional[int] = None,
+    seed: Optional[int] = None,
 ):
-    """Semiparametric bootstrap resampling.
-
-    Steps:
-        1. (Non-parametric resampling) For each row in ``y_data``, draw the same number of samples with replacement.
-        2. (Semi-parametric resampling) Parametrically resample obtained values if ``resample_func`` is given.
-        3. Compute the mean of the samples.
-        4. Repeat for each row in ``y_data``.
-        5. Fit the bootstrap estimates of ``y`` with ``fit_func`` and record new fitting parameters.
-        6. If ``filter_estimates`` is given, check whether the obtained estimates should be recorded.
+    """Non-parametric bootstrap resampling.
 
     Args:
-        x_data (list or np.ndarray): 1d array of x values.
-        y_data (list or np.ndarray): 2d array with rows containing data points
-            from which the mean values for y are computed.
-        fit_func (callable): fitting function that returns parameters and errors, given
-            ``x``, ``y``, ``sigma`` (if ``sigma_method`` is not ``None``) and ``**kwargs``.
-        n_bootstrap (int): number of bootstrap iterations. If ``0``, returns ``(y_data, [])``.
-        sigma_method (str or float, optional): method of computing ``sigma`` for the ``fit_func`` when ``sigma`` is not in ``kwargs``.
-            Passed as ``method`` to :func:`qibocal.bootstrap.data_errors`. Defaults to ``None``.
-        resample_func (callable, optional): function that maps a list of non-parametrically resmapled ``y`` values to a new list.
-            If ``None``, only non-parametric resampling is performed. Defaults to ``None``.
-        filter_estimates (callable, optional): function that returns ``False`` if bootstrap estimates should not be added.
-            Maps ``list, list`` to ``bool``. Defaults to ``None``.
-        kwargs: parameters passed to the ``fit_func``.
+        data (list or np.ndarray): 2d array with rows containing samples.
+        n_bootstrap (int): number of bootstrap iterations. If ``0``, returns ``(data, [])``.
+        homogeneous (bool): if ``True``, assumes that all rows in ``data`` are of the same size. Default is ``True``.
+        sample_size (int, optional): number of samples per row in ``data``. If ``None``, defaults to ``len(data[0])``.
+        seed (int, optional): A fixed seed to initialize ``np.random.Generator``. If ``None``,
+            initializes a generator with a random seed. Defaults is ``None``.
 
     Returns:
-        Tuple[list, list]: y data estimates and fitting parameters estimates.
+        list or np.ndarray: resampled data of shape (len(data), sample_size, n_bootstrap)
     """
 
-    if n_bootstrap == 0:
-        return y_data, []
+    local_state = np.random.default_rng(seed)
 
-    if resample_func is None:
-        resample_func = lambda data: data
-
-    # Extract sigma for fit_func if given
-    init_kwargs = deepcopy(kwargs)
-    init_sigma = init_kwargs.pop("sigma", None)
-
-    popt_estimates = []
-    y_estimates = []
-
-    for _ in range(n_bootstrap):
-        bootstrap_y_scatter = []
-        for y in y_data:
-            # Non-parametric bootstrap: resample data points with replacement
-            non_parametric_y = np.random.choice(y, size=len(y), replace=True)
-
-            # Parametrically resample the new data
-            bootstrap_y_scatter.append(resample_func(non_parametric_y))
-        bootstrap_y = np.mean(bootstrap_y_scatter, axis=1)
-
-        # Fit the resampled data to get parameters estimates
-        bootstrap_sigma = (
-            data_errors(
-                bootstrap_y_scatter,
-                sigma_method,
-                symmetric=True,
-                data_median=bootstrap_y,
-            )
-            if init_sigma is None
-            else init_sigma
+    if homogeneous:
+        sample_size = sample_size or len(data[0])
+        random_inds = local_state.integers(
+            0, sample_size, size=(sample_size, n_bootstrap)
         )
-        popt, _ = fit_func(x_data, bootstrap_y, sigma=bootstrap_sigma, **kwargs)
+        return np.array(data)[:, random_inds]
 
-        # Filter obtained estimates
-        if filter_estimates is None or filter_estimates(bootstrap_y, popt):
-            y_estimates.append(bootstrap_y)
-            popt_estimates.append(popt)
-
-    return np.array(y_estimates).T, np.array(popt_estimates).T
+    bootstrap_y_scatter = []
+    for row in data:
+        bootstrap_y_scatter.append(
+            local_state.choice(row, size=((sample_size or len(row)), n_bootstrap))
+        )
+    return bootstrap_y_scatter
