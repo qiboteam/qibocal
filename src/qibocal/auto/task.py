@@ -7,8 +7,6 @@ from typing import List
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
-from qibocal.config import raise_error
-
 from ..protocols.characterization import Operation
 from ..utils import allocate_qubits
 from .operation import Data, DummyPars, Qubits, Results, Routine, dummy_operation

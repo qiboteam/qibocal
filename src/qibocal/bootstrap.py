@@ -50,9 +50,11 @@ def bootstrap(
 
     Args:
         data (list or np.ndarray): 2d array with rows containing samples.
-        n_bootstrap (int): number of bootstrap iterations. If ``0``, returns ``(data, [])``.
-        homogeneous (bool): if ``True``, assumes that all rows in ``data`` are of the same size. Default is ``True``.
-        sample_size (int, optional): number of samples per row in ``data``. If ``None``, defaults to ``len(data[0])``.
+        n_bootstrap (int): number of bootstrap iterations.
+        homogeneous (bool): if ``True``, assumes that all rows in ``data`` are of the same size
+            and returns ``np.ndarray``. If ``False``, returns a list of lists. Default is ``True``.
+        sample_size (int, optional): number of samples per row in ``data``. If ``None``,
+            defaults to ``len(row)`` from ``data``.
         seed (int, optional): A fixed seed to initialize ``np.random.Generator``. If ``None``,
             initializes a generator with a random seed. Defaults is ``None``.
 
@@ -60,11 +62,11 @@ def bootstrap(
         list or np.ndarray: resampled data of shape (len(data), sample_size, n_bootstrap)
     """
 
-    local_state = np.random.default_rng(seed)
+    random_generator = np.random.default_rng(seed)
 
     if homogeneous:
         sample_size = sample_size or len(data[0])
-        random_inds = local_state.integers(
+        random_inds = random_generator.integers(
             0, sample_size, size=(sample_size, n_bootstrap)
         )
         return np.array(data)[:, random_inds]
@@ -72,6 +74,6 @@ def bootstrap(
     bootstrap_y_scatter = []
     for row in data:
         bootstrap_y_scatter.append(
-            local_state.choice(row, size=((sample_size or len(row)), n_bootstrap))
+            random_generator.choice(row, size=((sample_size or len(row)), n_bootstrap))
         )
     return bootstrap_y_scatter

@@ -2,8 +2,6 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from qibocal.config import log
-
 
 def rabi_amplitude_fit(x, p0, p1, p2, p3):
     # A fit to Superconducting Qubit Rabi Oscillation

@@ -2,8 +2,12 @@ from functools import reduce
 
 import numpy as np
 import pytest
+import qibo
 
-from qibocal.protocols.characterization.randomized_benchmarking import fitting
+from qibocal.protocols.characterization.randomized_benchmarking import (
+    fitting,
+    noisemodels,
+)
 from qibocal.protocols.characterization.randomized_benchmarking.utils import (
     extract_from_data,
     number_to_str,
@@ -105,6 +109,35 @@ def test_exp2_fitting():
         # Distort ``y`` a bit.
         y_dist = y + np.random.uniform(-1, 1, size=len(y)) * 0.001
         popt, perr = fitting.fit_exp2_func(x, y_dist)
+
+
+# Test noisemodels
+def test_PauliErrors():
+    def test_model(noise_model, num_keys=1):
+        assert isinstance(noise_model, qibo.noise.NoiseModel)
+        errorkeys = noise_model.errors.keys()
+        assert len(errorkeys) == num_keys
+        error = list(noise_model.errors.values())[0][0][1]
+        assert isinstance(error, qibo.noise.PauliError)
+        assert len(error.options) == 3 and np.sum(pair[1] for pair in error.options) < 1
+
+    noise_model1 = noisemodels.PauliErrorOnAll()
+    test_model(noise_model1)
+    noise_model2 = noisemodels.PauliErrorOnAll([0.1, 0.1, 0.1])
+    test_model(noise_model2)
+    noise_model3 = noisemodels.PauliErrorOnAll(None)
+    test_model(noise_model3)
+    with pytest.raises(ValueError):
+        noise_model4 = noisemodels.PauliErrorOnAll([0.1, 0.2])
+
+    noise_model1 = noisemodels.PauliErrorOnX()
+    test_model(noise_model1)
+    noise_model2 = noisemodels.PauliErrorOnX([0.1, 0.1, 0.1])
+    test_model(noise_model2)
+    noise_model3 = noisemodels.PauliErrorOnX(None)
+    test_model(noise_model3)
+    with pytest.raises(ValueError):
+        noise_model4 = noisemodels.PauliErrorOnX([0.1, 0.2])
 
 
 # Test utils
