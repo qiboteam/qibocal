@@ -1,4 +1,3 @@
-import json
 import math
 from collections import defaultdict
 
@@ -6,16 +5,12 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibo import gates
-from qibo.config import log
 
 # from qibolab import Platform
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.transpilers.unitary_decompositions import u3_decomposition
 
-from qibocal.calibrations.niGSC.basics.fitting import exp1B_func, fit_exp1B_func
-from qibocal.calibrations.niGSC.basics.utils import gate_fidelity
-from qibocal.config import log
 from qibocal.plots.utils import get_color
 
 
