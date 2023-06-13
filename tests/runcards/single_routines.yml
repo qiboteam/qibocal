@@ -242,21 +242,20 @@ actions:
       nshots: 10
       relaxation_time:
 
-  - id: Standard RB 1
+  - id: standard rb
     priority: 0
     operation: standard_rb
     qubits: [0]
     parameters:
-      nqubits: 2
       depths: [1,3,5,10]
       niter: 2
       nshots: 10
 
-  - id: Standard RB 2
+  - id: standard rb noise
     priority: 0
     operation: standard_rb
+    qubits: [0, 1, 3]
     parameters:
-      nqubits: 4
       depths:
         start: 1
         stop: 8
