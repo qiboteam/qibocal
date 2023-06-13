@@ -178,6 +178,9 @@ def fit_expn_func(
         Tuple[tuple, tuple]: (A1, ..., An, f1, ..., fn) with f* the decay parameters.
     """
 
+    if n == 1:
+        return fit_exp1_func(xdata, ydata, **kwargs)
+
     # TODO how are the errors estimated?
     # TODO the data has to have a sufficiently big size, check that.
     decays = esprit(np.array(xdata), np.array(ydata), n)
