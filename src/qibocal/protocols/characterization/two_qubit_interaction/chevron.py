@@ -22,11 +22,11 @@ from qibocal.data import DataUnits
 class ChevronParameters(Parameters):
     """CzFluxTime runcard inputs."""
 
-    amplitude_factor_min: float
+    amplitude_min: float
     """Amplitude minimum."""
-    amplitude_factor_max: float
+    amplitude_max: float
     """Amplitude maximum."""
-    amplitude_factor_step: float
+    amplitude_step: float
     """Amplitude step."""
     duration_min: float
     """Duration minimum."""
@@ -35,7 +35,7 @@ class ChevronParameters(Parameters):
     duration_step: float
     """Duration step."""
     parking: bool = True
-    """Wether to park non interacting qubits or not."""
+    """Whether to park non interacting qubits or not."""
     dt: int = 0
     """Delay around flux pulse."""
     nshots: Optional[int] = None
@@ -164,7 +164,7 @@ def _aquisition(
     qubits: Qubits,
 ) -> ChevronData:
     r"""
-    Perform a SWAP experiment between pairs of qubits by changing its frequency.
+    Perform an iSWAP/CZ experiment between pairs of qubits by changing its frequency.
 
     Args:
         platform: Platform to use.
@@ -189,9 +189,9 @@ def _aquisition(
 
         # define the parameter to sweep and its range:
         delta_amplitude_range = np.arange(
-            params.amplitude_factor_min,
-            params.amplitude_factor_max,
-            params.amplitude_factor_step,
+            params.amplitude_min,
+            params.amplitude_max,
+            params.amplitude_step,
         )
         delta_duration_range = np.arange(
             params.duration_min, params.duration_max, params.duration_step
