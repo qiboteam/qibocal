@@ -9,6 +9,7 @@ from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import Data
+from qibocal.plots.utils import get_color
 
 
 @dataclass
@@ -81,37 +82,60 @@ def _acquisition(
 
     # repeat the experiment as many times as defined by software_averages
     # for iteration in range(params.software_averages):
+    # gateNumber = 1
+    # # sweep the parameter
+    # for gateNumber, gates in enumerate(gatelist):
+    #     # create a sequence of pulses
+    #     ro_pulses = {}
+    #     sequence = PulseSequence()
+    #     for qubit in qubits:
+    #         sequence, ro_pulses[qubit] = add_gate_pair_pulses_to_sequence(
+    #             platform, gates, qubit, sequence, params.beta_param
+    #         )
+
+    #     # execute the pulse sequence
+
     gateNumber = 1
     # sweep the parameter
+    pulse_start = 0
+    sequences = PulseSequence()
+    ro_pulses = {}
     for gateNumber, gates in enumerate(gatelist):
         # create a sequence of pulses
-        ro_pulses = {}
         sequence = PulseSequence()
         for qubit in qubits:
-            sequence, ro_pulses[qubit] = add_gate_pair_pulses_to_sequence(
-                platform, gates, qubit, sequence, params.beta_param
+            sequence, ro_pulses[qubit], pulse_start = add_gate_pair_pulses_to_sequence(
+                platform,
+                gates,
+                qubit,
+                sequence,
+                None,
+                pulse_start
+                # FIX Ro pulses for the results
             )
 
-        # execute the pulse sequence
-        results = platform.execute_pulse_sequence(
-            sequence,
-            ExecutionParameters(
-                nshots=params.nshots,
-                averaging_mode=AveragingMode.CYCLIC,
-            ),
-        )
+            pulse_start += 300_000
+            sequences.add(sequence)
 
-        # retrieve the results for every qubit
-        for ro_pulse in ro_pulses.values():
-            z_proj = 2 * results[ro_pulse.serial].probability(0) - 1
-            # store the results
-            r = {
-                "probability": z_proj,
-                "gateNumber": gateNumber,
-                "beta_param": params.beta_param,
-                "qubit": ro_pulse.qubit,
-            }
-            data.add(r)
+    results = platform.execute_pulse_sequence(
+        sequences,
+        ExecutionParameters(
+            nshots=params.nshots,
+            averaging_mode=AveragingMode.CYCLIC,
+        ),
+    )
+
+    # retrieve the results for every qubit
+    for ro_pulse in ro_pulses.values():
+        z_proj = 2 * results[ro_pulse.serial].probability(0) - 1
+        # store the results
+        r = {
+            "probability": z_proj,
+            "gateNumber": gateNumber,
+            "beta_param": params.beta_param,
+            "qubit": ro_pulse.qubit,
+        }
+        data.add(r)
     # finally, save the remaining data
     return data
 
@@ -122,12 +146,12 @@ def add_gate_pair_pulses_to_sequence(
     qubit,
     sequence,
     beta_param=None,
+    pulse_start=0,
 ):
     pulse_duration = platform.create_RX_pulse(qubit, start=0).duration
     # All gates have equal pulse duration
 
     sequenceDuration = 0
-    pulse_start = 0
 
     for gate in gates:
         if gate == "I":
@@ -199,12 +223,13 @@ def add_gate_pair_pulses_to_sequence(
             sequence.add(RY90_pulse)
 
         sequenceDuration = sequenceDuration + pulse_duration
-        pulse_start = pulse_duration
+        pulse_start += pulse_duration
 
     # RO pulse starting just after pair of gates
-    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=sequenceDuration + 4)
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=pulse_start)
     sequence.add(ro_pulse)
-    return sequence, ro_pulse
+    pulse_start += ro_pulse.duration
+    return sequence, ro_pulse, pulse_start
 
 
 def _fit(_data: AllXYData) -> AllXYResults:
@@ -226,6 +251,7 @@ def _plot(data: AllXYData, _fit: AllXYResults, qubit):
         go.Scatter(
             x=qubit_data["gateNumber"],
             y=qubit_data["probability"],
+            marker_color=get_color(0),
             mode="markers",
             text=gatelist,
             textposition="bottom center",
@@ -268,5 +294,5 @@ def _plot(data: AllXYData, _fit: AllXYResults, qubit):
     return figures, fitting_report
 
 
-allxy = Routine(_acquisition, _fit, _plot)
+allxy_unrolling = Routine(_acquisition, _fit, _plot)
 """AllXY Routine object."""

@@ -1,11 +1,12 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
-from qibolab.sweeper import Parameter, Sweeper
+from qibolab.qubits import QubitId
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
@@ -44,21 +45,19 @@ class ResonatorSpectroscopyAttenuationParameters(Parameters):
 class ResonatorSpectroscopyAttenuationResults(Results):
     """ResonatorSpectroscopy outputs."""
 
-    frequency: Dict[Union[str, int], float] = field(
-        metadata=dict(update="readout_frequency")
-    )
+    frequency: Dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
     """Readout frequency [GHz] for each qubit."""
-    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
+    fitted_parameters: Dict[QubitId, Dict[str, float]]
     """Raw fitted parameters."""
-    bare_frequency: Optional[Dict[Union[str, int], float]] = field(
+    bare_frequency: Optional[Dict[QubitId, float]] = field(
         default_factory=dict, metadata=dict(update="bare_resonator_frequency")
     )
     """Bare resonator frequency [GHz] for each qubit."""
-    amplitude: Optional[Dict[Union[str, int], float]] = field(
+    amplitude: Optional[Dict[QubitId, float]] = field(
         default_factory=dict, metadata=dict(update="readout_amplitude")
     )
     """Readout amplitude for each qubit."""
-    attenuation: Optional[Dict[Union[str, int], int]] = field(
+    attenuation: Optional[Dict[QubitId, int]] = field(
         default_factory=dict, metadata=dict(update="readout_attenuation")
     )
     """Readout attenuation [dB] for each qubit."""
@@ -138,6 +137,7 @@ def _acquisition(
         Parameter.frequency,
         delta_frequency_range,
         pulses=[ro_pulses[qubit] for qubit in qubits],
+        type=SweeperType.OFFSET,
     )
     data = ResonatorSpectroscopyAttenuationData(
         platform.resonator_type,

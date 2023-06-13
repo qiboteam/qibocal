@@ -1,11 +1,12 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
-from qibolab.sweeper import Parameter, Sweeper
+from qibolab.qubits import QubitId
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -37,13 +38,11 @@ class RabiAmplitudeParameters(Parameters):
 class RabiAmplitudeResults(Results):
     """RabiAmplitude outputs."""
 
-    amplitude: Dict[Union[str, int], float] = field(
-        metadata=dict(update="drive_amplitude")
-    )
+    amplitude: Dict[QubitId, float] = field(metadata=dict(update="drive_amplitude"))
     """Drive amplitude for each qubit."""
-    length: Dict[Union[str, int], float] = field(metadata=dict(update="drive_length"))
+    length: Dict[QubitId, float] = field(metadata=dict(update="drive_length"))
     """Drive pulse duration. Same for all qubits."""
-    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
+    fitted_parameters: Dict[QubitId, Dict[str, float]]
     """Raw fitted parameters."""
 
 
@@ -91,6 +90,7 @@ def _acquisition(
         Parameter.amplitude,
         qd_pulse_amplitude_range,
         [qd_pulses[qubit] for qubit in qubits],
+        type=SweeperType.FACTOR,
     )
 
     # create a DataUnits object to store the results,

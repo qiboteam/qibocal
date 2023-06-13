@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -8,11 +8,11 @@ from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
-from qibolab.sweeper import Parameter, Sweeper
+from qibolab.qubits import QubitId
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
-from qibocal.plots.utils import get_color
 from qibocal.protocols.characterization.resonator_spectroscopy import (
     ResonatorSpectroscopyData,
 )
@@ -41,9 +41,9 @@ class DispersiveShiftParameters(Parameters):
 class StateResults(Results):
     """Resonator spectroscopy outputs."""
 
-    frequency: Dict[Union[str, int], float]
+    frequency: Dict[QubitId, float]
     """Readout frequency for each qubit."""
-    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
+    fitted_parameters: Dict[QubitId, Dict[str, float]]
     """Raw fitted parameters."""
 
 
@@ -55,11 +55,9 @@ class DispersiveShiftResults(Results):
     """Resonator spectroscopy outputs in the ground state."""
     results_1: StateResults
     """Resonator spectroscopy outputs in the excited state"""
-    best_freq: Dict[Union[str, int], float] = field(
-        metadata=dict(update="readout_frequency")
-    )
+    best_freq: Dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
     """Readout frequency that maximizes the distance of ground and excited states in iq-plane"""
-    best_iqs: Dict[Union[str, int], npt.NDArray[np.float64]]
+    best_iqs: Dict[QubitId, npt.NDArray[np.float64]]
     """iq-couples of ground and excited states with best frequency"""
 
 
@@ -121,6 +119,7 @@ def _acquisition(
         Parameter.frequency,
         delta_frequency_range,
         pulses=[ro_pulses[qubit] for qubit in qubits],
+        type=SweeperType.OFFSET,
     )
 
     results_0 = platform.sweep(
@@ -259,7 +258,6 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
             go.Scatter(
                 x=q_data.df["frequency"].pint.to("GHz").pint.magnitude,
                 y=q_data.df["MSR"].pint.to("uV").pint.magnitude,
-                marker_color=get_color(3 * i),
                 opacity=opacity,
                 name=f"q{qubit}: {label}",
                 showlegend=True,
@@ -272,7 +270,6 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
             go.Scatter(
                 x=q_data.df["frequency"].pint.to("GHz").pint.magnitude,
                 y=q_data.df["phase"].pint.to("rad").pint.magnitude,
-                marker_color=get_color(3 * i + 1),
                 opacity=opacity,
                 showlegend=False,
                 legendgroup=f"q{qubit}: {label}",
@@ -294,7 +291,6 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
                 y=lorentzian(freqrange, **params),
                 name=f"q{qubit}: {label} Fit",
                 line=go.scatter.Line(dash="dot"),
-                marker_color=get_color(3 * i + 2),
             ),
             row=1,
             col=1,

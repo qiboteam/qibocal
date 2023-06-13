@@ -1,11 +1,12 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
-from qibolab.sweeper import Parameter, Sweeper
+from qibolab.qubits import QubitId
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
@@ -37,13 +38,11 @@ class QubitFluxParameters(Parameters):
 class QubitFluxResults(Results):
     """QubitFlux outputs."""
 
-    sweetspot: Dict[Union[str, int], float] = field(metadata=dict(update="sweetspot"))
+    sweetspot: Dict[QubitId, float] = field(metadata=dict(update="sweetspot"))
     """Sweetspot for each qubit."""
-    frequency: Dict[Union[str, int], float] = field(
-        metadata=dict(update="drive_frequency")
-    )
+    frequency: Dict[QubitId, float] = field(metadata=dict(update="drive_frequency"))
     """Drive frequency for each qubit."""
-    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
+    fitted_parameters: Dict[QubitId, Dict[str, float]]
     """Raw fitting output."""
 
 
@@ -83,13 +82,17 @@ def _acquisition(
         Parameter.frequency,
         delta_frequency_range,
         pulses=[qd_pulses[qubit] for qubit in qubits],
+        type=SweeperType.OFFSET,
     )
 
     delta_bias_range = np.arange(
         -params.bias_width / 2, params.bias_width / 2, params.bias_step
     )
     bias_sweeper = Sweeper(
-        Parameter.bias, delta_bias_range, qubits=list(qubits.values())
+        Parameter.bias,
+        delta_bias_range,
+        qubits=list(qubits.values()),
+        type=SweeperType.ABSOLUTE,
     )
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
