@@ -1,11 +1,9 @@
 import numpy as np
-import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Qubits, Routine
-from qibocal.data import DataUnits
 
 from .t1 import T1Data, T1Parameters, _fit, _plot
 
