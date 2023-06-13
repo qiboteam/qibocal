@@ -10,7 +10,7 @@ from qibocal.auto.operation import Results
 from qibocal.config import log
 
 
-class PowerLevel(Enum):
+class PowerLevel(str, Enum):
     """Power Regime for Resonator Spectroscopy"""
 
     high = "high"

@@ -1,4 +1,3 @@
-import json
 from dataclasses import asdict, dataclass, field
 from typing import Dict, Optional, Union
 
@@ -10,7 +9,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
 from .utils import PowerLevel, lorentzian_fit, spectroscopy_plot
 
@@ -70,19 +69,19 @@ ResSpecType = np.dtype(
 
 
 @dataclass
-class ResonatorSpectroscopyData:
+class ResonatorSpectroscopyData(Data):
     """Data structure for resonator spectroscopy."""
 
     power_level: PowerLevel
     """Power regime of the resonator."""
     resonator_type: str
     """Resonator type."""
-    amplitudes: list
+    amplitudes: Dict[QubitId, float]
     """Amplitudes provided by the user."""
     data: Dict[QubitId, npt.NDArray[ResSpecType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def add_qubit_data(self, qubit, freq, msr, phase):
+    def register_qubit(self, qubit, freq, msr, phase):
         """Store output for single qubit."""
         ar = np.empty(freq.shape, dtype=ResSpecType)
         ar["freq"] = freq
@@ -98,16 +97,16 @@ class ResonatorSpectroscopyData:
     def __getitem__(self, qubit):
         return self.data[qubit]
 
+    @property
+    def global_params_dict(self):
+        global_dict = asdict(self)
+        global_dict.pop("data")
+        return global_dict
+
     def save(self, path):
         """Store results."""
-        my_dict = asdict(self)
-        my_dict.pop("data")
-        my_dict["power_level"] = self.power_level.name
-        with open(path / "conf.json", "w") as outfile:
-            json.dump(my_dict, outfile, indent=4)
-
-        for q in self.data:
-            np.save(path / f"data_q{q}.npy", self[q])
+        self.to_json(path, self.global_params_dict)
+        self.to_npz(path, self.data)
 
 
 def _acquisition(
@@ -162,7 +161,7 @@ def _acquisition(
         # average msr, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulses[qubit].serial]
         # store the results
-        data.add_qubit_data(
+        data.register_qubit(
             qubit,
             msr=result.magnitude,
             phase=result.phase,

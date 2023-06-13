@@ -1,7 +1,9 @@
 import inspect
+import json
 from dataclasses import dataclass, fields
 from typing import Callable, Dict, Generic, NewType, TypeVar, Union
 
+import numpy as np
 from qibolab.qubits import Qubit
 
 OperationId = NewType("OperationId", str)
@@ -10,6 +12,11 @@ ParameterValue = Union[float, int]
 """Valid value for a routine and runcard parameter."""
 Qubits = Dict[int, Qubit]
 """Convenient way of passing qubits in the routines."""
+
+DATAFILE = "data.npz"
+"""Name of the file where data acquired (arrays) by calibration are dumped."""
+JSONFILE = "conf.json"
+"""Name of the file where data acquired (global configuration) by calibration are dumped."""
 
 
 class Parameters:
@@ -44,6 +51,16 @@ class Parameters:
 
 class Data:
     """Data resulting from acquisition routine."""
+
+    @staticmethod
+    def to_npz(path, data_dict: dict):
+        """Helper function to use np.savez while converting keys into strings."""
+        np.savez(path / DATAFILE, **{str(i): data_dict[i] for i in data_dict})
+
+    @staticmethod
+    def to_json(path, data_dict: dict):
+        """Helper function to dump to json in JSONFILE path."""
+        (path / JSONFILE).write_text(json.dumps(data_dict, indent=4))
 
 
 @dataclass
