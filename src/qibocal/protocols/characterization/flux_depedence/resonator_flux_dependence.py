@@ -191,7 +191,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                     xi = 1 / (2 * abs(max_c - min_c))  # Convert bias to flux.
 
                     # First order approximation: f_rh, g provided
-                    if ( (Ec and Ej) == None ) and ( (f_rh and g) not None ) :
+                    if ( (Ec and Ej) is None ) and ( (f_rh and g) is not None ):
                         f_r_0 = np.max(frequencies)  # Initial estimation for resonator frequency at sweet spot.
                         f_q_0 = f_rh - g**2 / (f_r_0 - f_rh)  # Initial estimation for qubit frequency at sweet spot.
                         popt = curve_fit(
@@ -213,7 +213,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                         fitted_parameters[qubit] = popt[1], abs(popt[2]), popt[3], g, f_rh, f_qs, f_r_offset, C_ii
 
                     # Second order approximation: f_rh, g, Ec, Ej provided
-                    elif (Ec and Ej and f_rh and g) not None:
+                    elif (Ec and Ej and f_rh and g) is not None:
                         freq_r_mathieu1 = partial(freq_r_mathieu, p7=0.4999)
                         popt = curve_fit(
                             freq_r_mathieu1,

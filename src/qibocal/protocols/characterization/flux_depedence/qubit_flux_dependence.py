@@ -204,7 +204,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                     xi = 1 / (2 * abs(max_c - min_c))  # Convert bias to flux.
 
                     #First order approximation: Ec and Ej NOT provided
-                    if (Ec and Ej) == None:
+                    if (Ec and Ej) is None:
                         f_q_0 = np.max(frequencies)  # Initial estimation for qubit frequency at sweet spot.
                         popt = curve_fit(
                             freq_q_transmon,
@@ -223,7 +223,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                         fitted_parameters[qubit] = popt[1], abs(popt[2]), f_q_offset, C_ii
 
                     # Second order approximation: Ec and Ej provided
-                    elif (Ec and Ej) not None:
+                    elif (Ec and Ej) is not None:
                         freq_q_mathieu1 = partial(freq_q_mathieu, p7=0.4999)
                         popt = curve_fit(
                             freq_q_mathieu1,
