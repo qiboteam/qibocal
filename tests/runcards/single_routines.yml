@@ -274,28 +274,13 @@ actions:
   - id: standard rb no error
     priority: 0
     operation: standard_rb
-    qubits: [0]
+    qubits: [0, 1, 3]
     parameters:
       depths: [1,3,5,10]
       niter: 2
-      nshots: 128
+      nshots: 50
       uncertainties: None
       n_bootstrap: 0
-
-  - id: standard rb std
-    priority: 0
-    operation: standard_rb
-    qubits: [0, 1, 3]
-    parameters:
-      depths:
-        start: 1
-        stop: 10
-        step: 2
-      niter: 5
-      nshots: 128
-      uncertainties: std
-      n_bootstrap: 0
-      noise_model: PauliErrorOnAll
 
   - id: standard rb bootstrap
     priority: 0
@@ -307,18 +292,19 @@ actions:
         stop: 10
         step: 2
       niter: 5
-      nshots: 128
+      nshots: 50
       n_bootstrap: 10
       noise_model: PauliErrorOnAll
 
   - id: standard rb inhomogeneous
     priority: 0
     operation: standard_rb
-    qubits: [1]
+    qubits: [2]
     parameters:
       depths: [1, 5, 5, 10]
       niter: 5
-      nshots: 128
+      nshots: 50
+      uncertainties: std
       n_bootstrap: 10
       noise_model: PauliErrorOnX
       noise_params: [0.01, 0.01, 0.01]

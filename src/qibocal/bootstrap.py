@@ -3,7 +3,9 @@ from typing import Optional, Union
 import numpy as np
 
 
-def data_uncertainties(data, method=None, symmetric=False, data_median=None):
+def data_uncertainties(
+    data, method=None, symmetric=False, data_median=None, homogeneous=True
+):
     """Compute the uncertainties of the median (or specified) values.
 
     Args:
@@ -17,6 +19,8 @@ def data_uncertainties(data, method=None, symmetric=False, data_median=None):
             corresponding to each mean value. Defaults to ``False``.
         data_median (list or np.ndarray, optional): 1d array for computing the errors from the confidence interval.
             If ``None``, the median values are computed from ``data``.
+        homogeneous (bool): if ``True``, assumes that all rows in ``data`` are of the same size
+            and returns ``np.ndarray``. Default is ``True``.
 
     Returns:
         np.ndarray: uncertainties of the data.
@@ -29,9 +33,19 @@ def data_uncertainties(data, method=None, symmetric=False, data_median=None):
             (100 - method) / 2,
             (100 + method) / 2,
         ]
-        data_loc = data_median if data_median is not None else np.median(data, axis=1)
+        if data_median is None:
+            data_median = (
+                np.median(data, axis=1)
+                if homogeneous
+                else [np.meadian(row) for row in data]
+            )
+        precentile_interval = (
+            np.percentile(data, percentiles, axis=1)
+            if homogeneous
+            else np.array([np.percentile(row, percentiles) for row in data]).T
+        )
         uncertainties = np.abs(
-            np.vstack([data_loc, data_loc]) - np.percentile(data, percentiles, axis=1)
+            np.vstack([data_median, data_median]) - precentile_interval
         )
         if symmetric:
             return np.max(uncertainties, axis=0)

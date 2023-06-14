@@ -99,8 +99,8 @@ def samples_to_p0(samples_list):
     """Computes the probabilitiy of 0 from the list of samples.
 
     Args:
-        samples_list (list or np.ndarray): 3d array with rows corresponding to circuits
-            containing ``nshots`` number of lists with ``nqubits`` amount of ``0`` and ``1``.
+        samples_list (list or np.ndarray): 3d array with ``ncircuits`` rows containing
+            ``nshots`` lists with ``nqubits`` amount of ``0`` and ``1`` samples.
             e.g. ``samples_list`` for 1 circuit, 3 shots and 2 qubits looks like
             ``[[[0, 0], [0, 1], [1, 0]]]`` and ``p0=1/3``.
 
@@ -109,10 +109,9 @@ def samples_to_p0(samples_list):
     """
 
     ground = np.array([0] * len(samples_list[0][0]))
-    p0_list = []
-    for samples in samples_list:
-        p0_list.append(np.sum(np.product(samples == ground, axis=1)) / len(samples))
-    return p0_list
+    return np.sum(np.count_nonzero(samples_list == ground, axis=1), axis=1) / len(
+        samples_list[0]
+    )
 
 
 def resample_p0(data, sample_size=100, homogeneous: bool = True):
@@ -271,7 +270,7 @@ def _fit(data: RBData) -> StandardRBResult:
     n_bootstrap = data.attrs.get("n_bootstrap", 0)
 
     y_estimates, popt_estimates = y_scatter, []
-    if n_bootstrap:
+    if uncertainties and n_bootstrap:
         # Non-parametric bootstrap resampling
         bootstrap_y = bootstrap(
             y_scatter,
@@ -292,22 +291,28 @@ def _fit(data: RBData) -> StandardRBResult:
             else [np.mean(y_iter, axis=0) for y_iter in bootstrap_y]
         )
         popt_estimates = np.apply_along_axis(
-            lambda y_iter: fit_exp1B_func(x, y_iter)[0],
+            lambda y_iter: fit_exp1B_func(x, y_iter, bounds=[0, 1])[0],
             axis=0,
             arr=np.array(y_estimates),
         )
 
     # Fit the initial data and compute error bars
     y = [np.mean(y_row) for y_row in y_scatter]
+
+    # If bootstrap was not performed, y_estimates can be inhomogeneous
     error_bars = data_uncertainties(
-        y_estimates, uncertainties, symmetric=False, data_median=y
+        y_estimates,
+        uncertainties,
+        symmetric=False,
+        data_median=y,
+        homogeneous=(homogeneous or n_bootstrap != 0),
     )
     sigma = (
         np.max(error_bars, axis=0)
         if error_bars is not None and len(error_bars.shape) == 2
         else error_bars
     )
-    popt, perr = fit_exp1B_func(x, y, sigma=sigma)
+    popt, perr = fit_exp1B_func(x, y, sigma=sigma, bounds=[0, 1])
 
     # Compute fit uncertainties
     if len(popt_estimates):
