@@ -281,7 +281,7 @@ def _plot(
         go.Heatmap(
             x=frequencies,
             y=attenuations,
-            z=qubit_data.msr * 1e4,
+            z=qubit_data.msr * 1e6,
             colorbar_x=0.46,
         ),
         row=1,

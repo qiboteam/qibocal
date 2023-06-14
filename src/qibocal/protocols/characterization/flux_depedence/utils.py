@@ -6,7 +6,7 @@ def flux_dependence_plot(data, fit, qubit):
     figures = []
     fitting_report = "No fitting data"
 
-    qubit_data = data.df[data.df["qubit"] == qubit]
+    qubit_data = data[qubit]
 
     fig = make_subplots(
         rows=1,
@@ -18,12 +18,12 @@ def flux_dependence_plot(data, fit, qubit):
             "Phase [rad]",
         ),
     )
-
+    frequencies = qubit_data.freq / 1e9
     fig.add_trace(
         go.Heatmap(
-            x=qubit_data["frequency"].pint.to("GHz").pint.magnitude,
-            y=qubit_data["bias"].pint.to("V").pint.magnitude,
-            z=qubit_data["MSR"].pint.to("uV").pint.magnitude,
+            x=frequencies,
+            y=qubit_data.bias,
+            z=qubit_data.msr * 1e4,
             colorbar_x=0.46,
         ),
         row=1,
@@ -38,9 +38,9 @@ def flux_dependence_plot(data, fit, qubit):
 
     fig.add_trace(
         go.Heatmap(
-            x=qubit_data["frequency"].pint.to("GHz").pint.magnitude,
-            y=qubit_data["bias"].pint.to("V").pint.magnitude,
-            z=qubit_data["phase"].pint.to("rad").pint.magnitude,
+            x=frequencies,
+            y=qubit_data.bias,
+            z=qubit_data.phase,
             colorbar_x=1.01,
         ),
         row=1,

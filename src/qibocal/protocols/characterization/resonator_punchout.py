@@ -80,7 +80,7 @@ class ResonatorPunchoutData(Data):
     data: Dict[QubitId, npt.NDArray[ResPunchoutType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def add_qubit_data(self, qubit, freq, amp, msr, phase):
+    def register_qubit(self, qubit, freq, amp, msr, phase):
         """Store output for single qubit."""
         ar = np.empty(msr.shape, dtype=ResPunchoutType)
         frequency, amplitude = np.meshgrid(freq, amp)
@@ -179,7 +179,7 @@ def _acquisition(
     for qubit, ro_pulse in ro_pulses.items():
         # average msr, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulse.serial]
-        data.add_qubit_data(
+        data.register_qubit(
             qubit,
             msr=result.magnitude,
             phase=result.phase,
@@ -279,7 +279,7 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
         go.Heatmap(
             x=frequencies,
             y=amplitudes,
-            z=qubit_data.msr * 1e4,
+            z=qubit_data.msr * 1e6,
             colorbar_x=0.46,
         ),
         row=1,

@@ -93,7 +93,7 @@ def spectroscopy_plot(data, fit: Results, qubit):
     fig.add_trace(
         go.Scatter(
             x=frequencies,
-            y=qubit_data.msr * 1e4,
+            y=qubit_data.msr * 1e6,
             opacity=1,
             name="Frequency",
             showlegend=True,
