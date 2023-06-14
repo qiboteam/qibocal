@@ -11,14 +11,15 @@ def data_uncertainties(
     Args:
         data (list or np.ndarray): 2d array with rows containing data points
             from which the median value is extracted.
-        method (str or int or float, optional): method of computing the method. If ``"std"``, computes the
-            standard deviation. If type ``float`` or ``int`` between 0 and 100, computes the corresponding
-            confidence interval using ``np.percentile``. Otherwise, returns ``None``. Defaults to ``None``.
+        method (str or int or float, optional): method of computing the method.
+            If ``"std"``, computes the standard deviation. If number between 0 and 100,
+            computes the corresponding confidence interval using ``np.percentile``.
+            Otherwise, returns ``None``. Defaults to ``None``.
         symmetric (bool): If ``False`` and ``method`` is of type ``float``, returns 2d array
             with 2 rows contanining lower and higher errors. If ``True``, returns a list of errors
             corresponding to each mean value. Defaults to ``False``.
-        data_median (list or np.ndarray, optional): 1d array for computing the errors from the confidence interval.
-            If ``None``, the median values are computed from ``data``.
+        data_median (list or np.ndarray, optional): 1d array for computing the errors from the
+            confidence interval. If ``None``, the median values are computed from ``data``.
         homogeneous (bool): if ``True``, assumes that all rows in ``data`` are of the same size
             and returns ``np.ndarray``. Default is ``True``.
 
