@@ -97,16 +97,11 @@ def _acquisition(
                 averaging_mode=AveragingMode.CYCLIC,
             ),
         )
-        for qubit, ro_pulse in ro_pulses.items():
-            # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[ro_pulse.serial].serialize
-            r.update(
-                {
-                    "wait[ns]": wait,
-                    "qubit": qubit,
-                }
+        for ro_pulse in ro_pulses.values():
+            result = results[ro_pulse.serial]
+            data.register_qubit(
+                qubit, wait=wait, msr=result.magnitude, phase=result.phase
             )
-            data.add_data_from_dict(r)
     return data
 
 
@@ -127,12 +122,12 @@ def _plot(data: T2Data, fit: T2Results, qubit):
     fig = go.Figure()
     fitting_report = ""
 
-    qubit_data = data.df[data.df["qubit"] == qubit]
+    qubit_data = data[qubit]
 
     fig.add_trace(
         go.Scatter(
-            x=qubit_data["wait"].pint.magnitude,
-            y=qubit_data["MSR"].pint.to("uV").pint.magnitude,
+            x=qubit_data.wait,
+            y=qubit_data.msr * 1e6,
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -141,28 +136,28 @@ def _plot(data: T2Data, fit: T2Results, qubit):
     )
 
     # add fitting trace
-    if len(data) > 0:
-        waitrange = np.linspace(
-            min(qubit_data["wait"].pint.to("ns").pint.magnitude),
-            max(qubit_data["wait"].pint.to("ns").pint.magnitude),
-            2 * len(data),
-        )
+    waitrange = np.linspace(
+        min(qubit_data.wait),
+        max(qubit_data.wait),
+        2 * len(qubit_data),
+    )
 
-        params = fit.fitted_parameters[qubit]
-        fig.add_trace(
-            go.Scatter(
-                x=waitrange,
-                y=utils.exp_decay(
-                    waitrange,
-                    *params,
-                ),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
+    params = fit.fitted_parameters[qubit]
+    fig.add_trace(
+        go.Scatter(
+            x=waitrange,
+            y=utils.exp_decay(
+                waitrange,
+                *params,
             )
+            * 1e6,
+            name="Fit",
+            line=go.scatter.Line(dash="dot"),
         )
-        fitting_report = fitting_report + (
-            f"{qubit} | T2: {fit.t2[qubit]:,.0f} ns.<br><br>"
-        )
+    )
+    fitting_report = fitting_report + (
+        f"{qubit} | T2: {fit.t2[qubit]:,.0f} ns.<br><br>"
+    )
 
     fig.update_layout(
         showlegend=True,

@@ -2,14 +2,14 @@ from dataclasses import dataclass, field
 from typing import Dict, Optional
 
 import numpy as np
+import numpy.typing as npt
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.data import DataUnits
+from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
 from . import utils
 
@@ -40,15 +40,41 @@ class T1Results(Results):
     """Raw fitting output."""
 
 
-class T1Data(DataUnits):
+CoherenceType = np.dtype(
+    [("wait", np.float64), ("msr", np.float64), ("phase", np.float64)]
+)
+"""Custom dtype for coherence routines."""
+
+
+@dataclass
+class T1Data(Data):
     """T1 acquisition outputs."""
 
-    def __init__(self):
-        super().__init__(
-            name="data",
-            quantities={"wait": "ns"},
-            options=["qubit"],
-        )
+    data: Dict[QubitId, npt.NDArray[CoherenceType]] = field(default_factory=dict)
+    """Raw data acquired."""
+
+    def register_qubit(self, qubit, wait, msr, phase):
+        """Store output for single qubit."""
+        ar = np.empty((1,), dtype=CoherenceType)
+        ar["wait"] = wait
+        ar["msr"] = msr
+        ar["phase"] = phase
+        if self.data:
+            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
+        else:
+            self.data[qubit] = np.rec.array(ar)
+
+    @property
+    def qubits(self):
+        """Access qubits from data structure."""
+        return [q for q in self.data]
+
+    def __getitem__(self, qubit):
+        return self.data[qubit]
+
+    def save(self, path):
+        """Store results."""
+        self.to_npz(path, self.data)
 
 
 def _acquisition(params: T1Parameters, platform: Platform, qubits: Qubits) -> T1Data:
@@ -111,15 +137,10 @@ def _acquisition(params: T1Parameters, platform: Platform, qubits: Qubits) -> T1
             ),
         )
         for ro_pulse in ro_pulses.values():
-            # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[ro_pulse.serial].serialize
-            r.update(
-                {
-                    "wait[ns]": wait,
-                    "qubit": ro_pulse.qubit,
-                }
+            result = results[ro_pulse.serial]
+            data.register_qubit(
+                qubit, wait=wait, msr=result.magnitude, phase=result.phase
             )
-            data.add_data_from_dict(r)
     return data
 
 
@@ -143,12 +164,13 @@ def _plot(data: T1Data, fit: T1Results, qubit):
     fig = go.Figure()
 
     fitting_report = ""
-    qubit_data = data.df[data.df["qubit"] == qubit]
+    qubit_data = data[qubit]
+    waits = qubit_data.wait
 
     fig.add_trace(
         go.Scatter(
-            x=qubit_data["wait"].pint.to("ns").pint.magnitude,
-            y=qubit_data["MSR"].pint.to("uV").pint.magnitude,
+            x=waits,
+            y=qubit_data.msr * 1e6,
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -156,26 +178,24 @@ def _plot(data: T1Data, fit: T1Results, qubit):
         )
     )
 
-    #  add fitting trace
-    if len(data) > 0:
-        waitrange = np.linspace(
-            min(qubit_data["wait"].pint.to("ns").pint.magnitude),
-            max(qubit_data["wait"].pint.to("ns").pint.magnitude),
-            2 * len(qubit_data),
-        )
+    waitrange = np.linspace(
+        min(waits),
+        max(waits),
+        2 * len(qubit_data),
+    )
 
-        params = fit.fitted_parameters[qubit]
-        fig.add_trace(
-            go.Scatter(
-                x=waitrange,
-                y=utils.exp_decay(waitrange, *params),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
-            )
+    params = fit.fitted_parameters[qubit]
+    fig.add_trace(
+        go.Scatter(
+            x=waitrange,
+            y=utils.exp_decay(waitrange, *params) * 1e6,
+            name="Fit",
+            line=go.scatter.Line(dash="dot"),
         )
-        fitting_report = fitting_report + (
-            f"{qubit} | t1: {fit.t1[qubit]:,.0f} ns.<br><br>"
-        )
+    )
+    fitting_report = fitting_report + (
+        f"{qubit} | t1: {fit.t1[qubit]:,.0f} ns.<br><br>"
+    )
 
     # last part
     fig.update_layout(

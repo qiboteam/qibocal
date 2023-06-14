@@ -9,23 +9,22 @@ def exp_decay(x, *p):
 
 
 def exponential_fit(data):
-    qubits = data.df["qubit"].unique()
+    qubits = data.qubits
 
     decay = {}
     fitted_parameters = {}
 
     for qubit in qubits:
-        qubit_data_df = data.df[data.df["qubit"] == qubit]
-        voltages = qubit_data_df["MSR"].pint.to("uV").pint.magnitude
-        times = qubit_data_df["wait"].pint.to("ns").pint.magnitude
+        voltages = data[qubit].msr
+        times = data[qubit].wait
 
         try:
-            y_max = np.max(voltages.values)
-            y_min = np.min(voltages.values)
-            y = (voltages.values - y_min) / (y_max - y_min)
-            x_max = np.max(times.values)
-            x_min = np.min(times.values)
-            x = (times.values - x_min) / (x_max - x_min)
+            y_max = np.max(voltages)
+            y_min = np.min(voltages)
+            y = (voltages - y_min) / (y_max - y_min)
+            x_max = np.max(times)
+            x_min = np.min(times)
+            x = (times - x_min) / (x_max - x_min)
 
             p0 = [
                 0.5,
