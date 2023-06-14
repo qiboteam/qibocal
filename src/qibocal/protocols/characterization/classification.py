@@ -1,15 +1,15 @@
-from dataclasses import dataclass, field
-from typing import Dict, Optional
+from dataclasses import asdict, dataclass, field
+from typing import Dict, Optional, Tuple
 
 import numpy as np
+import numpy.typing as npt
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.data import DataUnits
+from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
 MESH_SIZE = 50
 
@@ -24,18 +24,46 @@ class SingleShotClassificationParameters(Parameters):
     """Relaxation time (ns)."""
 
 
-class SingleShotClassificationData(DataUnits):
-    def __init__(self, nshots):
-        super().__init__(
-            "data",
-            options=["qubit", "state"],
-        )
+ClassificationType = np.dtype([("i", np.float64), ("q", np.float64)])
+"""Custom dtype for rabi amplitude."""
 
-        self._nshots = nshots
+
+@dataclass
+class SingleShotClassificationData(Data):
+    nshots: int
+    """Number of shots."""
+    data: Dict[Tuple[QubitId, int], npt.NDArray[ClassificationType]] = field(
+        default_factory=dict
+    )
+    """Raw data acquired."""
+
+    def register_qubit(self, qubit, state, i, q):
+        """Store output for single qubit."""
+        ar = np.empty(i.shape, dtype=ClassificationType)
+        ar["i"] = i
+        ar["q"] = q
+        self.data[qubit, state] = np.rec.array(ar)
 
     @property
-    def nshots(self):
-        return self._nshots
+    def qubits(self):
+        """Access qubits from data structure."""
+        return [q[0] for q in self.data]
+
+    def __getitem__(self, qubit_state: tuple):
+        # FIXME: Perhaps we should change it...
+        qubit, state = qubit_state
+        return self.data[qubit, state]
+
+    @property
+    def global_params_dict(self):
+        global_dict = asdict(self)
+        global_dict.pop("data")
+        return global_dict
+
+    def save(self, path):
+        """Store results."""
+        self.to_json(path, self.global_params_dict)
+        self.to_npz(path, self.data)
 
 
 @dataclass
@@ -118,15 +146,11 @@ def _acquisition(
     )
 
     # retrieve and store the results for every qubit
-    for ro_pulse in ro_pulses.values():
-        r = state0_results[ro_pulse.serial].serialize
-        r.update(
-            {
-                "qubit": [ro_pulse.qubit] * params.nshots,
-                "state": [0] * params.nshots,
-            }
+    for qubit in qubits:
+        result = state0_results[ro_pulses[qubit].serial]
+        data.register_qubit(
+            qubit=qubit, state=0, i=result.voltage_i, q=result.voltage_q
         )
-        data.add_data_from_dict(r)
 
     # execute the second pulse sequence
     state1_results = platform.execute_pulse_sequence(
@@ -139,41 +163,25 @@ def _acquisition(
     )
 
     # retrieve and store the results for every qubit
-    for ro_pulse in ro_pulses.values():
-        r = state1_results[ro_pulse.serial].serialize
-        r.update(
-            {
-                "qubit": [ro_pulse.qubit] * params.nshots,
-                "state": [1] * params.nshots,
-            }
+    for qubit in qubits:
+        result = state1_results[ro_pulses[qubit].serial]
+        data.register_qubit(
+            qubit=qubit, state=1, i=result.voltage_i, q=result.voltage_q
         )
-        data.add_data_from_dict(r)
 
     return data
 
 
 def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
-    qubits = data.df["qubit"].unique()
+    qubits = data.qubits
     thresholds, rotation_angles = {}, {}
     fidelities, assignment_fidelities = {}, {}
     mean_gnd_states = {}
     mean_exc_states = {}
 
     for qubit in qubits:
-        qubit_data = data.df[data.df["qubit"] == qubit].drop(
-            columns=["qubit", "MSR", "phase"]
-        )
-
-        iq_state0 = (
-            qubit_data[qubit_data["state"] == 0]["i"].pint.to("V").pint.magnitude
-            + 1.0j
-            * qubit_data[qubit_data["state"] == 0]["q"].pint.to("V").pint.magnitude
-        )
-        iq_state1 = (
-            qubit_data[qubit_data["state"] == 1]["i"].pint.to("V").pint.magnitude
-            + 1.0j
-            * qubit_data[qubit_data["state"] == 1]["q"].pint.to("V").pint.magnitude
-        )
+        iq_state0 = data[qubit, 0].i + 1.0j * data[qubit, 0].q
+        iq_state1 = data[qubit, 1].i + 1.0j * data[qubit, 1].q
 
         iq_state1 = np.array(iq_state1)
         iq_state0 = np.array(iq_state0)
@@ -240,18 +248,13 @@ def _plot(
     fitting_report = ""
     max_x, max_y, min_x, min_y = 0, 0, 0, 0
 
-    qubit_data = data.df[data.df["qubit"] == qubit]
-    state0_data = qubit_data[data.df["state"] == 0].drop(
-        columns=["MSR", "phase", "qubit"]
-    )
-    state1_data = qubit_data[data.df["state"] == 1].drop(
-        columns=["MSR", "phase", "qubit"]
-    )
+    state0_data = data[qubit, 0]
+    state1_data = data[qubit, 1]
 
     fig.add_trace(
         go.Scatter(
-            x=state0_data["i"].pint.to("V").pint.magnitude,
-            y=state0_data["q"].pint.to("V").pint.magnitude,
+            x=state0_data.i,
+            y=state0_data.q,
             name="Ground State",
             legendgroup="Ground State",
             mode="markers",
@@ -263,8 +266,8 @@ def _plot(
 
     fig.add_trace(
         go.Scatter(
-            x=state1_data["i"].pint.to("V").pint.magnitude,
-            y=state1_data["q"].pint.to("V").pint.magnitude,
+            x=state1_data.i,
+            y=state1_data.q,
             name="Excited State",
             legendgroup="Excited State",
             mode="markers",
@@ -276,8 +279,8 @@ def _plot(
 
     fig.add_trace(
         go.Scatter(
-            x=[state0_data["i"].pint.to("V").pint.magnitude.mean()],
-            y=[state0_data["q"].pint.to("V").pint.magnitude.mean()],
+            x=[np.mean(state0_data.i)],
+            y=[np.mean(state0_data.q)],
             name="Average Ground State",
             legendgroup="Average Ground State",
             showlegend=True,
@@ -288,8 +291,8 @@ def _plot(
 
     fig.add_trace(
         go.Scatter(
-            x=[state1_data["i"].pint.to("V").pint.magnitude.mean()],
-            y=[state1_data["q"].pint.to("V").pint.magnitude.mean()],
+            x=[np.mean(state1_data.i)],
+            y=[np.mean(state1_data.q)],
             name="Average Excited State",
             legendgroup="Average Excited State",
             showlegend=True,
@@ -300,23 +303,23 @@ def _plot(
 
     max_x = max(
         max_x,
-        state0_data["i"].pint.to("V").pint.magnitude.max(),
-        state1_data["i"].pint.to("V").pint.magnitude.max(),
+        np.max(state0_data.i),
+        np.max(state1_data.i),
     )
     max_y = max(
         max_y,
-        state0_data["q"].pint.to("V").pint.magnitude.max(),
-        state1_data["q"].pint.to("V").pint.magnitude.max(),
+        np.max(state0_data.q),
+        np.max(state1_data.q),
     )
     min_x = min(
         min_x,
-        state0_data["i"].pint.to("V").pint.magnitude.min(),
-        state1_data["i"].pint.to("V").pint.magnitude.min(),
+        np.min(state0_data.i),
+        np.min(state1_data.i),
     )
     min_y = min(
         min_y,
-        state0_data["q"].pint.to("V").pint.magnitude.min(),
-        state1_data["q"].pint.to("V").pint.magnitude.min(),
+        np.min(state0_data.q),
+        np.min(state1_data.q),
     )
 
     feature_x = np.linspace(min_x, max_x, MESH_SIZE)
