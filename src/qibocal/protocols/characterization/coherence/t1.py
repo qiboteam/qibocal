@@ -7,6 +7,7 @@ from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
@@ -91,35 +92,37 @@ def _acquisition(params: T1Parameters, platform: Platform, qubits: Qubits) -> T1
         params.delay_before_readout_step,
     )
 
+    sweeper = Sweeper(
+        Parameter.start,
+        ro_wait_range,
+        [ro_pulses[qubit] for qubit in qubits],
+        type=SweeperType.ABSOLUTE,
+    )
+
     # create a DataUnits object to store the MSR, phase, i, q and the delay time
     data = T1Data()
 
-    # repeat the experiment as many times as defined by software_averages
     # sweep the parameter
-    for wait in ro_wait_range:
-        for qubit in qubits:
-            ro_pulses[qubit].start = qd_pulses[qubit].duration + wait
-
-        # execute the pulse sequence
-        results = platform.execute_pulse_sequence(
-            sequence,
-            ExecutionParameters(
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.INTEGRATION,
-                averaging_mode=AveragingMode.CYCLIC,
-            ),
+    # execute the pulse sequence
+    results = platform.sweep(
+        sequence,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
+        ),
+        sweeper,
+    )
+    for qubit in qubits:
+        r = results[ro_pulses[qubit].serial].serialize
+        r.update(
+            {
+                "wait[ns]": ro_wait_range,
+                "qubit": len(ro_wait_range) * [qubit],
+            }
         )
-        for ro_pulse in ro_pulses.values():
-            # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[ro_pulse.serial].serialize
-            r.update(
-                {
-                    "wait[ns]": wait,
-                    "qubit": ro_pulse.qubit,
-                }
-            )
-            data.add_data_from_dict(r)
+        data.add_data_from_dict(r)
     return data
 
 
