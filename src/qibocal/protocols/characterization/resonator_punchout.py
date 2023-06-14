@@ -1,4 +1,5 @@
 from dataclasses import asdict, dataclass, field
+from statistics import mode
 from typing import Dict, Optional
 
 import numpy as np
@@ -162,9 +163,6 @@ def _acquisition(
         resonator_type=platform.resonator_type,
     )
 
-    # repeat the experiment as many times as defined by software_averages
-    amps = np.repeat(amplitude_range, len(delta_frequency_range))
-
     results = platform.sweep(
         sequence,
         ExecutionParameters(
@@ -203,7 +201,6 @@ def _fit(data: ResonatorPunchoutData, fit_type="amp") -> ResonatorPunchoutResult
 
     for qubit in qubits:
         qubit_data = data[qubit]
-
         try:
             n_amps = len(np.unique(qubit_data.amp))
             n_freq = len(np.unique(qubit_data.freq))
@@ -212,28 +209,26 @@ def _fit(data: ResonatorPunchoutData, fit_type="amp") -> ResonatorPunchoutResult
                     qubit_data.msr[i * n_freq : (i + 1) * n_freq]
                 )
 
-            # averaged_data_updated = qubit_data.copy()
-            # averaged_data_updated.update(normalised_data["MSR"])
+            min_msr_indices = np.where(
+                qubit_data.msr == (1 if data.resonator_type == "3D" else 0)
+            )[0]
 
-            min_points = utils.find_min_msr(qubit_data, data.resonator_type, fit_type)
-
-            max_freq = np.max(qubit_data.freq[min_points])
-            min_freq = np.min(qubit_data.freq[min_points])
+            max_freq = np.max(qubit_data.freq[min_msr_indices])
+            min_freq = np.min(qubit_data.freq[min_msr_indices])
             middle_freq = (max_freq + min_freq) / 2
 
-            hp_points_indices = np.where(qubit_data.freq[min_points] < middle_freq)[0]
-            lp_points_indices = np.where(qubit_data.freq[min_points] >= middle_freq)[0]
+            hp_points_indices = np.where(
+                qubit_data.freq[min_msr_indices] < middle_freq
+            )[0]
+            lp_points_indices = np.where(
+                qubit_data.freq[min_msr_indices] >= middle_freq
+            )[0]
 
-            # TODO: remove this function
-            freq_hp = utils.get_max_freq(qubit_data.freq[hp_points_indices])
-            freq_lp = utils.get_max_freq(qubit_data.freq[lp_points_indices])
+            freq_hp = mode(qubit_data.freq[hp_points_indices])
+            freq_lp = mode(qubit_data.freq[lp_points_indices])
 
-            # TODO: implement if else in previous function
             lp_max = np.max(
                 getattr(qubit_data, fit_type)[np.where(qubit_data.freq == freq_lp)[0]]
-            )
-            hp_max = np.max(
-                getattr(qubit_data, fit_type)[np.where(qubit_data.freq == freq_hp)[0]]
             )
 
             ro_amp = lp_max
@@ -280,7 +275,6 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
         qubit_data.msr[i * n_freq : (i + 1) * n_freq] = utils.norm(
             qubit_data.msr[i * n_freq : (i + 1) * n_freq]
         )
-
     fig.add_trace(
         go.Heatmap(
             x=frequencies,

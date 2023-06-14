@@ -1,4 +1,3 @@
-import statistics
 from enum import Enum
 
 import lmfit
@@ -168,36 +167,6 @@ def spectroscopy_plot(data, fit: Results, qubit):
     figures.append(fig)
 
     return figures, fitting_report
-
-
-def find_min_msr(data, resonator_type, fit_type):
-    return np.where(data.msr == (1 if resonator_type == "3D" else 0))[0]
-
-    # min_msr_per_attenuation = []
-    # for i in np.unique(data[:, 1]):
-    #     selected = data[data[:, 1] == i]
-    #     min_msr_per_attenuation.append(selected[func(selected[:, 2])])
-
-    # return np.array(min_msr_per_attenuation)
-
-
-def get_max_freq(freqs):
-    return statistics.mode(freqs)
-
-
-def get_points_with_max_freq(min_points, max_freq):
-    matching_points = [point for point in min_points if point[0] == max_freq]
-    if matching_points:
-        return max(matching_points, key=lambda point: point[1]), min(
-            matching_points, key=lambda point: point[1]
-        )
-    x_values = [point[0] for point in min_points]
-    closest_idx = np.argmin(np.abs(np.array(x_values) - max_freq))
-    closest_point = min_points[closest_idx]
-    matching_points = [point for point in min_points if point[0] == closest_point[0]]
-    return max(matching_points, key=lambda point: point[1]), min(
-        matching_points, key=lambda point: point[1]
-    )
 
 
 def norm(x_mags):
