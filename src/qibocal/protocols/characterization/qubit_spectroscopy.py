@@ -61,12 +61,16 @@ def _acquisition(
     sequence = PulseSequence()
     ro_pulses = {}
     qd_pulses = {}
+    amplitudes = {}
     for qubit in qubits:
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=params.drive_duration
         )
         if params.drive_amplitude is not None:
             qd_pulses[qubit].amplitude = params.drive_amplitude
+
+        amplitudes[qubit] = qd_pulses[qubit].amplitude
+
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=qd_pulses[qubit].finish
         )
@@ -86,7 +90,7 @@ def _acquisition(
 
     # Create data structure for data acquisition.
     data = QubitSpectroscopyData(
-        platform.resonator_type, amplitude=params.drive_amplitude
+        resonator_type=platform.resonator_type, amplitudes=amplitudes
     )
 
     results = platform.sweep(
@@ -106,32 +110,29 @@ def _acquisition(
         result = results[ro_pulse.serial]
         r = result.serialize
         # store the results
-        r.update(
-            {
-                "frequency[Hz]": delta_frequency_range + qd_pulses[qubit].frequency,
-                "qubit": len(delta_frequency_range) * [qubit],
-            }
+        data.register_qubit(
+            qubit,
+            msr=result.magnitude,
+            phase=result.phase,
+            freq=delta_frequency_range + qd_pulses[qubit].frequency,
         )
-        data.add_data_from_dict(r)
     return data
 
 
 def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
     """Post-processing function for QubitSpectroscopy."""
-    qubits = data.df["qubit"].unique()
-    amplitudes = {}
+    qubits = data.qubits
     frequency = {}
     fitted_parameters = {}
     for qubit in qubits:
         freq, fitted_params = lorentzian_fit(data, qubit)
         frequency[qubit] = freq
-        amplitudes[qubit] = data.amplitude
         fitted_parameters[qubit] = fitted_params
 
     return QubitSpectroscopyResults(
         frequency=frequency,
         fitted_parameters=fitted_parameters,
-        amplitude=amplitudes,
+        amplitude=data.amplitudes,
     )
 
 

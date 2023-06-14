@@ -72,14 +72,14 @@ ResSpecType = np.dtype(
 class ResonatorSpectroscopyData(Data):
     """Data structure for resonator spectroscopy."""
 
-    power_level: PowerLevel
-    """Power regime of the resonator."""
     resonator_type: str
     """Resonator type."""
     amplitudes: Dict[QubitId, float]
     """Amplitudes provided by the user."""
     data: Dict[QubitId, npt.NDArray[ResSpecType]] = field(default_factory=dict)
     """Raw data acquired."""
+    power_level: Optional[PowerLevel] = None
+    """Power regime of the resonator."""
 
     def register_qubit(self, qubit, freq, msr, phase):
         """Store output for single qubit."""
