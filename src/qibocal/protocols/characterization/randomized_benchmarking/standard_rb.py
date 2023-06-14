@@ -10,7 +10,7 @@ from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.bootstrap import bootstrap, data_errors
+from qibocal.bootstrap import bootstrap, data_uncertainties
 from qibocal.config import log, raise_error
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
 
@@ -46,13 +46,13 @@ class StandardRBParameters(Parameters):
     nshots: int
     """For each sequence how many shots for statistics should be performed."""
     uncertainties: Union[str, float] = 95
-    """Method of computing the error bars and uncertainties of the data. If ``None``, does not
-    compute the errors. If ``"std"``, computes the standard deviation. If ``float`` or ``int``
+    """Method of computing the error bars of the signal and uncertainties of the fit. If ``None``,
+    does not compute them. If ``"std"``, computes the standard deviation. If ``float`` or ``int``
     between 0 and 100, computes the corresponding confidence interval. Defaults to ``95``."""
     n_bootstrap: int = 100
     """Number of bootstrap iterations for the fit uncertainties and error bars.
     If ``0``, gets the fit uncertainties from the fitting function and the error bars
-    from the distribution of the measurements. Defaults to ``1``."""
+    from the distribution of the measurements. Defaults to ``100``."""
     seed: Optional[int] = None
     """A fixed seed to initialize ``np.random.Generator``. If ``None``, uses a random seed.
     Defaults is ``None``."""
@@ -88,9 +88,11 @@ class StandardRBResult(Results):
     """The overall fidelity of this qubit."""
     pulse_fidelity: float
     """The pulse fidelity of the gates acting on this qubit."""
-    fitting_parameters: Tuple[Tuple[float, float, float], Tuple[float, float, float]]
+    fit_parameters: Tuple[float, float, float]
     """Raw fitting parameters."""
-    error_y: Optional[Union[float, List[float], np.ndarray]] = None
+    fit_uncertainties: Tuple[float, float, float]
+    """Fitting parameters uncertainties."""
+    error_bars: Optional[Union[float, List[float], np.ndarray]] = None
     """Error bars for y."""
 
 
@@ -98,8 +100,8 @@ def samples_to_p0(samples_list):
     """Computes the probabilitiy of 0 from the list of samples.
 
     Args:
-        samples_list (list or np.ndarray): 3d array with rows corresponding to circuits
-            containing ``nshots`` number of lists with ``nqubits`` amount of ``0`` and ``1``.
+        samples_list (list or np.ndarray): 3d array with ``ncircuits`` rows containing
+            ``nshots`` lists with ``nqubits`` amount of ``0`` and ``1`` samples.
             e.g. ``samples_list`` for 1 circuit, 3 shots and 2 qubits looks like
             ``[[[0, 0], [0, 1], [1, 0]]]`` and ``p0=1/3``.
 
@@ -108,10 +110,9 @@ def samples_to_p0(samples_list):
     """
 
     ground = np.array([0] * len(samples_list[0][0]))
-    p0_list = []
-    for samples in samples_list:
-        p0_list.append(np.sum(np.product(samples == ground, axis=1)) / len(samples))
-    return p0_list
+    return np.sum(np.count_nonzero(samples_list == ground, axis=1), axis=1) / len(
+        samples_list[0]
+    )
 
 
 def resample_p0(data, sample_size=100, homogeneous: bool = True):
@@ -270,7 +271,7 @@ def _fit(data: RBData) -> StandardRBResult:
     n_bootstrap = data.attrs.get("n_bootstrap", 0)
 
     y_estimates, popt_estimates = y_scatter, []
-    if n_bootstrap:
+    if uncertainties and n_bootstrap:
         # Non-parametric bootstrap resampling
         bootstrap_y = bootstrap(
             y_scatter,
@@ -279,7 +280,7 @@ def _fit(data: RBData) -> StandardRBResult:
             seed=data.attrs.get("seed", None),
         )
 
-        # Parametric bootstrap resampling of of "corrected" probabilites from binomial distribution
+        # Parametric bootstrap resampling of "corrected" probabilites from binomial distribution
         bootstrap_y = resample_p0(
             bootstrap_y, data.attrs.get("nshots", 1), homogeneous=homogeneous
         )
@@ -291,31 +292,39 @@ def _fit(data: RBData) -> StandardRBResult:
             else [np.mean(y_iter, axis=0) for y_iter in bootstrap_y]
         )
         popt_estimates = np.apply_along_axis(
-            lambda y_iter: fit_exp1B_func(x, y_iter)[0],
+            lambda y_iter: fit_exp1B_func(x, y_iter, bounds=[0, 1])[0],
             axis=0,
             arr=np.array(y_estimates),
         )
 
     # Fit the initial data and compute error bars
     y = [np.mean(y_row) for y_row in y_scatter]
-    error_y = data_errors(y_estimates, uncertainties, symmetric=False, data_median=y)
-    sigma = (
-        np.max(error_y, axis=0)
-        if error_y is not None and len(error_y.shape) == 2
-        else error_y
-    )
-    popt, perr = fit_exp1B_func(x, y, sigma=sigma)
 
-    # Compute fitting errors
+    # If bootstrap was not performed, y_estimates can be inhomogeneous
+    error_bars = data_uncertainties(
+        y_estimates,
+        uncertainties,
+        symmetric=False,
+        data_median=y,
+        homogeneous=(homogeneous or n_bootstrap != 0),
+    )
+    sigma = (
+        np.max(error_bars, axis=0)
+        if error_bars is not None and len(error_bars.shape) == 2
+        else error_bars
+    )
+    popt, perr = fit_exp1B_func(x, y, sigma=sigma, bounds=[0, 1])
+
+    # Compute fit uncertainties
     if len(popt_estimates):
-        perr = data_errors(popt_estimates, uncertainties, data_median=popt)
+        perr = data_uncertainties(popt_estimates, uncertainties, data_median=popt)
         perr = perr.T if perr is not None else (0,) * len(popt)
 
     # Compute the fidelities
     infidelity = (1 - popt[1]) / 2
     fidelity = 1 - infidelity
     pulse_fidelity = 1 - infidelity / NPULSES_PER_CLIFFORD
-    return StandardRBResult(fidelity, pulse_fidelity, (popt, perr), error_y)
+    return StandardRBResult(fidelity, pulse_fidelity, popt, perr, error_bars)
 
 
 def _plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure], str]:

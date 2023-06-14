@@ -11,7 +11,7 @@ from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Qubits, Results, Routine
-from qibocal.bootstrap import bootstrap, data_errors
+from qibocal.bootstrap import bootstrap, data_uncertainties
 from qibocal.config import log, raise_error
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
 
@@ -301,8 +301,12 @@ def _fit(data: RBData) -> CliffordRBResult:
 
         # Fit the initial data and compute error bars
         y = [np.mean(y_row) for y_row in y_scatter]
-        error_y = data_errors(
-            y_estimates, uncertainties, symmetric=False, data_median=y
+        error_y = data_uncertainties(
+            y_estimates,
+            uncertainties,
+            symmetric=False,
+            data_median=y,
+            homogeneous=(homogeneous or n_bootstrap != 0),
         )
         sigma = (
             np.max(error_y, axis=0)
@@ -313,7 +317,7 @@ def _fit(data: RBData) -> CliffordRBResult:
 
         # Compute fitting errors
         if len(popt_estimates):
-            perr = data_errors(popt_estimates, uncertainties, data_median=popt)
+            perr = data_uncertainties(popt_estimates, uncertainties, data_median=popt)
             perr = perr.T if perr is not None else (0,) * len(popt)
 
         fit_parameters[irrep_key] = popt

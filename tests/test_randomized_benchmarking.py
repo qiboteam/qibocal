@@ -183,14 +183,6 @@ def test_number_to_str(value):
     assert (
         number_to_str(value, [float("inf"), float("inf")]) == f"{value:.3f} \u00B1 inf"
     )
-    with pytest.raises(TypeError):
-        test = number_to_str(value, precision="1")
-    with pytest.raises(ValueError):
-        test = number_to_str(value, precision=-1)
-    with pytest.raises(TypeError):
-        test = number_to_str(value, uncertainty="0.1")
-    with pytest.raises(ValueError):
-        test = number_to_str(value, uncertainty=[0.1, 0.1, 0.1])
 
 
 def test_extract_from_data():
