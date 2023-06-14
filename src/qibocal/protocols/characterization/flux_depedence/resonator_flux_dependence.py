@@ -159,7 +159,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
         qubit_data = data.df[data.df["qubit"] == qubit]
         bias_keys = qubit_data["bias"].pint.to("V").pint.magnitude.unique()
         frequency_keys = qubit_data["frequency"].pint.to("Hz").pint.magnitude.unique()
-        
+
         fluxlines = qubit_data["fluxline"].pint.to("dimensionless").pint.magnitude.unique()
         Ec = qubit_data["Ec"].pint.to("dimensionless").pint.magnitude.unique()
         Ej = qubit_data["Ej"].pint.to("dimensionless").pint.magnitude.unique()
@@ -248,8 +248,8 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                         log.warning("resonator_flux_fit: the fitting was not succesful. Not enought guess parameters provided")
 
                 except:
-                    log.warning("resonator_flux_fit: the fitting was not succesful")            
-            
+                    log.warning("resonator_flux_fit: the fitting was not succesful")
+
             else:
                 try:
                     freq_min = np.min(frequencies)
@@ -258,12 +258,12 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                     popt = curve_fit(line, biases, freq_norm)[0]
                     popt[0] = popt[0] * (freq_max - freq_min)
                     popt[1] = popt[1] * (freq_max - freq_min) + freq_min # C_ij
-                    
+
                     frequency[qubit] = None
                     sweetspot[qubit] = None
                     fitted_parameters[qubit] = popt[0], popt[1]
                 except:
-                    log.warning("resonator_flux_fit: the fitting was not succesful")            
+                    log.warning("resonator_flux_fit: the fitting was not succesful")
 
     return ResonatorFluxResults(
         frequency=frequency,

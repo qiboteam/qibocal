@@ -148,7 +148,6 @@ def feature(x, order=3):
     return np.power(x, np.arange(order + 1).reshape(1, -1))
 
 
-
 def image_to_curve(x, y, z, alpha=0.0001, order=50):
     max_y = np.max(y)
     min_y = np.min(y)

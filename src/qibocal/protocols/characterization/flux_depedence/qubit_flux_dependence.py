@@ -175,7 +175,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
         qubit_data = data.df[data.df["qubit"] == qubit]
         bias_keys = qubit_data["bias"].pint.to("V").pint.magnitude.unique()
         frequency_keys = qubit_data["frequency"].pint.to("Hz").pint.magnitude.unique()
-        
+
         fluxlines = qubit_data["fluxline"].pint.to("dimensionless").pint.magnitude.unique()
         Ec = qubit_data["Ec"].pint.to("dimensionless").pint.magnitude.unique()
         Ej = qubit_data["Ej"].pint.to("dimensionless").pint.magnitude.unique()
@@ -204,7 +204,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                     xi = 1 / (2 * abs(max_c - min_c))  # Convert bias to flux.
 
                     #First order approximation: Ec and Ej NOT provided
-                    if (Ec and Ej) == None: 
+                    if (Ec and Ej) == None:
                         f_q_0 = np.max(frequencies)  # Initial estimation for qubit frequency at sweet spot.
                         popt = curve_fit(
                             freq_q_transmon,
@@ -248,7 +248,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
 
                 except:
                     log.warning("qubit_flux_fit: the fitting was not succesful")
-            
+
 
             else:
                 try:
@@ -258,12 +258,12 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                     popt = curve_fit(line, biases, freq_norm)[0]
                     popt[0] = popt[0] * (freq_max - freq_min)
                     popt[1] = popt[1] * (freq_max - freq_min) + freq_min # C_ij
-                    
+
                     frequency[qubit] = None
                     sweetspot[qubit] = None
                     fitted_parameters[qubit] = popt[0], popt[1]
                 except:
-                    log.warning("qubit_flux_fit: the fitting was not succesful")            
+                    log.warning("qubit_flux_fit: the fitting was not succesful")
 
     return QubitFluxResults(
         frequency=frequency,
