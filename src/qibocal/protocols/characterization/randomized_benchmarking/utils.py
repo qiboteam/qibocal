@@ -98,21 +98,13 @@ def significant_digit(number: Number):
         is integer, ``inf`` or ``0``. Returns ``-1`` if ``number`` is ``None``.
     """
 
-    if isinf(number) or number - round(number) == 0:
+    if isinf(np.real(number)) or number - round(np.real(number)) == 0:
         return 2
 
-    position = (
-        ceil(-log10(abs(np.real(number))))
-        if not isinf(np.real(number)) and np.real(number) != 0
-        else 2
-    )
+    position = ceil(-log10(abs(np.real(number))))
+
     if np.imag(number) != 0:
-        position = max(
-            position,
-            ceil(-log10(abs(np.imag(number))))
-            if not isinf(np.imag(number)) and np.imag(number) != 0
-            else 2,
-        )
+        position = max(position, ceil(-log10(abs(np.imag(number)))))
 
     return position
 
