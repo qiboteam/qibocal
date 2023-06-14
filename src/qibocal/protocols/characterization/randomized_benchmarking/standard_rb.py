@@ -280,7 +280,7 @@ def _fit(data: RBData) -> StandardRBResult:
             seed=data.attrs.get("seed", None),
         )
 
-        # Parametric bootstrap resampling of of "corrected" probabilites from binomial distribution
+        # Parametric bootstrap resampling of "corrected" probabilites from binomial distribution
         bootstrap_y = resample_p0(
             bootstrap_y, data.attrs.get("nshots", 1), homogeneous=homogeneous
         )
