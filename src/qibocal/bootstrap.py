@@ -3,8 +3,8 @@ from typing import Optional, Union
 import numpy as np
 
 
-def data_errors(data, method=None, symmetric=False, data_median=None):
-    """Compute the errors of the median (or given) values for the given ``data``.
+def data_uncertainties(data, method=None, symmetric=False, data_median=None):
+    """Compute the uncertainties of the median (or specified) values.
 
     Args:
         data (list or np.ndarray): 2d array with rows containing data points
@@ -19,7 +19,7 @@ def data_errors(data, method=None, symmetric=False, data_median=None):
             If ``None``, the median values are computed from ``data``.
 
     Returns:
-        np.ndarray: errors of the data.
+        np.ndarray: uncertainties of the data.
     """
 
     if method == "std":
@@ -30,12 +30,12 @@ def data_errors(data, method=None, symmetric=False, data_median=None):
             (100 + method) / 2,
         ]
         data_loc = data_median if data_median is not None else np.median(data, axis=1)
-        data_errors = np.abs(
+        uncertainties = np.abs(
             np.vstack([data_loc, data_loc]) - np.percentile(data, percentiles, axis=1)
         )
         if symmetric:
-            return np.max(data_errors, axis=0)
-        return data_errors
+            return np.max(uncertainties, axis=0)
+        return uncertainties
     return None
 
 

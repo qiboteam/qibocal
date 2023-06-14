@@ -10,7 +10,7 @@ from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.bootstrap import bootstrap, data_errors
+from qibocal.bootstrap import bootstrap, data_uncertainties
 from qibocal.config import log, raise_error
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
 
@@ -45,8 +45,8 @@ class StandardRBParameters(Parameters):
     nshots: int
     """For each sequence how many shots for statistics should be performed."""
     uncertainties: Union[str, float] = 95
-    """Method of computing the error bars and uncertainties of the data. If ``None``, does not
-    compute the errors. If ``"std"``, computes the standard deviation. If ``float`` or ``int``
+    """Method of computing the error bars of the signal and uncertainties of the fit. If ``None``,
+    does not compute them. If ``"std"``, computes the standard deviation. If ``float`` or ``int``
     between 0 and 100, computes the corresponding confidence interval. Defaults to ``95``."""
     n_bootstrap: int = 100
     """Number of bootstrap iterations for the fit uncertainties and error bars.
@@ -87,9 +87,11 @@ class StandardRBResult(Results):
     """The overall fidelity of this qubit."""
     pulse_fidelity: float
     """The pulse fidelity of the gates acting on this qubit."""
-    fitting_parameters: Tuple[Tuple[float, float, float], Tuple[float, float, float]]
+    fit_parameters: Tuple[float, float, float]
     """Raw fitting parameters."""
-    error_y: Optional[Union[float, List[float], np.ndarray]] = None
+    fit_uncertainties: Tuple[float, float, float]
+    """Fitting parameters uncertainties."""
+    error_bars: Optional[Union[float, List[float], np.ndarray]] = None
     """Error bars for y."""
 
 
@@ -297,24 +299,26 @@ def _fit(data: RBData) -> StandardRBResult:
 
     # Fit the initial data and compute error bars
     y = [np.mean(y_row) for y_row in y_scatter]
-    error_y = data_errors(y_estimates, uncertainties, symmetric=False, data_median=y)
+    error_bars = data_uncertainties(
+        y_estimates, uncertainties, symmetric=False, data_median=y
+    )
     sigma = (
-        np.max(error_y, axis=0)
-        if error_y is not None and len(error_y.shape) == 2
-        else error_y
+        np.max(error_bars, axis=0)
+        if error_bars is not None and len(error_bars.shape) == 2
+        else error_bars
     )
     popt, perr = fit_exp1B_func(x, y, sigma=sigma)
 
-    # Compute fitting errors
+    # Compute fit uncertainties
     if len(popt_estimates):
-        perr = data_errors(popt_estimates, uncertainties, data_median=popt)
+        perr = data_uncertainties(popt_estimates, uncertainties, data_median=popt)
         perr = perr.T if perr is not None else (0,) * len(popt)
 
     # Compute the fidelities
     infidelity = (1 - popt[1]) / 2
     fidelity = 1 - infidelity
     pulse_fidelity = 1 - infidelity / NPULSES_PER_CLIFFORD
-    return StandardRBResult(fidelity, pulse_fidelity, (popt, perr), error_y)
+    return StandardRBResult(fidelity, pulse_fidelity, popt, perr, error_bars)
 
 
 def _plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure], str]:
@@ -332,7 +336,7 @@ def _plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure
 
     x, y_scatter = extract_from_data(data, "signal", "depth", list)
     y = [np.mean(y_row) for y_row in y_scatter]
-    popt, perr = result.fitting_parameters
+    popt, perr = result.fit_parameters, result.fit_uncertainties
     label = "Fit: y=Ap^x<br>A: {}<br>p: {}<br>B: {}".format(
         number_to_str(popt[0], perr[0]),
         number_to_str(popt[1], perr[1]),
@@ -358,22 +362,22 @@ def _plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure
             name="average",
         )
     )
-    # If result.error_y is given, create a dictionary for the error bars
+    # Create a dictionary for the error bars
     error_y_dict = None
-    if result.error_y is not None:
+    if result.error_bars is not None:
         # Constant error bars
-        if isinstance(result.error_y, Iterable) is False:
-            error_y_dict = {"type": "constant", "value": result.error_y}
+        if isinstance(result.error_bars, Iterable) is False:
+            error_y_dict = {"type": "constant", "value": result.error_bars}
         # Symmetric error bars
-        elif isinstance(result.error_y[0], Iterable) is False:
-            error_y_dict = {"type": "data", "array": result.error_y}
+        elif isinstance(result.error_bars[0], Iterable) is False:
+            error_y_dict = {"type": "data", "array": result.error_bars}
         # Asymmetric error bars
         else:
             error_y_dict = {
                 "type": "data",
                 "symmetric": False,
-                "array": result.error_y[1],
-                "arrayminus": result.error_y[0],
+                "array": result.error_bars[1],
+                "arrayminus": result.error_bars[0],
             }
         fig.add_trace(
             go.Scatter(
