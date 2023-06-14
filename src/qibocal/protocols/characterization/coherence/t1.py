@@ -7,7 +7,7 @@ from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
@@ -96,6 +96,7 @@ def _acquisition(params: T1Parameters, platform: Platform, qubits: Qubits) -> T1
         Parameter.start,
         ro_wait_range,
         [ro_pulses[qubit] for qubit in qubits],
+        type=SweeperType.ABSOLUTE,
     )
 
     # create a DataUnits object to store the MSR, phase, i, q and the delay time
