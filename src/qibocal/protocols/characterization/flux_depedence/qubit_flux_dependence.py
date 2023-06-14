@@ -32,6 +32,9 @@ class QubitFluxParameters(Parameters):
     """Number of shots."""
     relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
+    transition: Optional[str] = "0->1"
+    """Flux spectroscopy transition type ("0->1" or "0->2")."""
+
 
 
 @dataclass
@@ -42,6 +45,8 @@ class QubitFluxResults(Results):
     """Sweetspot for each qubit."""
     frequency: Dict[QubitId, float] = field(metadata=dict(update="drive_frequency"))
     """Drive frequency for each qubit."""
+
+    #TODO: After testing fitting, decide which fitted params should be saved/updated in the runcard
     fitted_parameters: Dict[QubitId, Dict[str, float]]
     """Raw fitting output."""
 
@@ -49,11 +54,10 @@ class QubitFluxData(DataUnits):
     """QubitFlux acquisition outputs."""
 
     def __init__(self, resonator_type):
-    # , Ec=None, Ej=None):
         super().__init__(
             "data",
-            {"frequency": "Hz", "bias": "V", "Ec": "dimensionless", "Ej": "dimensionless"},
-            options=["qubit"],
+            {"frequency": "Hz", "bias": "V"},
+            options=["qubit", "Ec", "Ej"],
         )
         self._resonator_type = resonator_type
 
@@ -80,6 +84,10 @@ def _acquisition(
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=2000
         )
+
+        if transition == "0->2":
+            qd_pulses[qubit].frequency -= qubits[qubit].anharmonicity / 2 #TODO: add anharmonicity to platform runcard - single qubit gates settings
+
         qd_pulses[qubit].amplitude = params.drive_amplitude
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=qd_pulses[qubit].finish
@@ -141,10 +149,9 @@ def _acquisition(
                 "frequency[Hz]": freqs,
                 "bias[V]": biases,
                 "qubit": len(freqs) * [qubit],
-                "Ec": len(freqs) * [platform.qubits[qubit].Ec], #add Ec to platform runcard - single qubit gates settings
-                "Ej": len(freqs) * [platform.qubits[qubit].Ej], #add Ej to platform runcard - single qubit gates settings
+                "Ec": len(freqs) * [platform.qubits[qubit].Ec], #TODO: add Ec to platform runcard - single qubit gates settings
+                "Ej": len(freqs) * [platform.qubits[qubit].Ej], #TODO: add Ej to platform runcard - single qubit gates settings
                 "fluxline": len(freqs) * [platform.qubits[qubit].flux] #fluxline
-                
             }
         )
         data.add_data_from_dict(r)
@@ -157,19 +164,11 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
     Post-processing for QubitFlux Experiment.
     Fit frequency as a function of current for the flux qubit spectroscopy
     data (QubitFluxData): data object with information on the feature response at each current point.
-    fluxlines (list): List of flux lines to use to perform the experiment.
-    params_fit (dict): Dictionary of parameters for the fit. {"Ec":Ec, "Ej":Ej}.
-                          If Ec and Ej are missing, the fit is valid in the transmon limit and if they are indicated,
-                          contains the next-order correction.
     """
 
-    #Ec, Ej not accessible form here. They are settings stored in platform runcard accessible via platform settings
-    #fluxlines list?
-
     qubits = data.df["qubit"].unique()
-    bare_frequency = {}
-    amplitudes = {}
     frequency = {}
+    sweetspot = {}
     fitted_parameters = {}
 
     for qubit in qubits:
@@ -203,10 +202,10 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                     max_c = biases[np.argmax(frequencies)]
                     min_c = biases[np.argmin(frequencies)]
                     xi = 1 / (2 * abs(max_c - min_c))  # Convert bias to flux.
-                    if (Ec and Ej) == None: #not guess Ec and Ej provided for the qubit
-                        f_q_0 = np.max(
-                            frequencies
-                        )  # Initial estimation for qubit frequency at sweet spot.
+
+                    #First order approximation: Ec and Ej NOT provided
+                    if (Ec and Ej) == None: 
+                        f_q_0 = np.max(frequencies)  # Initial estimation for qubit frequency at sweet spot.
                         popt = curve_fit(
                             freq_q_transmon,
                             biases,
@@ -215,16 +214,16 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                         )[0]
                         popt[3] *= scaler
                         f_qs = popt[3]  # Qubit frequency at sweet spot.
-                        f_q_offset = freq_q_transmon(
-                            0, *popt
-                        )  # Qubit frequenct at zero current.
-                        C_ii = (f_qs - f_q_offset) / popt[
-                            0
-                        ]  # Corresponding flux matrix element.
+                        f_q_offset = freq_q_transmon(0, *popt)  # Qubit frequenct at zero current.
+                        C_ii = (f_qs - f_q_offset) / popt[0]  # Corresponding flux matrix element.
 
+                        frequency[qubit] = f_qs
+                        sweetspot[qubit] = popt[0]
+                        #fitted_parameters = xi, d, f_q_offset, C_ii
+                        fitted_parameters[qubit] = popt[1], abs(popt[2]), f_q_offset, C_ii
+
+                    # Second order approximation: Ec and Ej provided
                     elif (Ec and Ej) not None:
-                        # Ec = params_fit["Ec"][str(qubit)]  # Charge energy.
-                        # Ej = params_fit["Ej"][str(qubit)]  # Josephson energy
                         freq_q_mathieu1 = partial(freq_q_mathieu, p7=0.4999)
                         popt = curve_fit(
                             freq_q_mathieu1,
@@ -235,33 +234,21 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                         )[0]
                         popt[3] *= scaler
                         popt[4] *= scaler
-                        f_qs = freq_q_mathieu(
-                            popt[0], *popt
-                        )  # Qubit frequency at sweet spot.
-                        f_q_offset = freq_q_mathieu(
-                            0, *popt
-                        )  # Qubit frequenct at zero current.
-                        C_ii = (f_qs - f_q_offset) / popt[
-                            0
-                        ]  # Corresponding flux matrix element.
+                        f_qs = freq_q_mathieu(popt[0], *popt)  # Qubit frequency at sweet spot.
+                        f_q_offset = freq_q_mathieu(0, *popt)  # Qubit frequenct at zero current.
+                        C_ii = (f_qs - f_q_offset) / popt[0]   # Corresponding flux matrix element.
+
+                        frequency[qubit] = f_qs
+                        sweetspot[qubit] = popt[0]
+                        #fitted_parameters = xi, d, Ec, Ej, f_q_offset, C_ii
+                        fitted_parameters[qubit] = popt[1], abs(popt[2]), popt[3], popt[4], f_q_offset, C_ii
+
+                    else:
+                        log.warning("qubit_flux_fit: the fitting was not succesful. Not enought guess parameters provided")
 
                 except:
                     log.warning("qubit_flux_fit: the fitting was not succesful")
             
-                # "curr_sp": popt[0],
-                # "xi": popt[1],
-                # "d": abs(popt[2]),
-                # "Ec": popt[3],
-                # "Ej": popt[4],
-                # "f_qs": f_qs,
-                # "f_offset": f_q_offset,
-                # "C_ii": C_ii,
-                # "qubit": qubit,
-                # "fluxline": fluxline,
-                # "type": 2,                                   
-                frequency[qubit] = f_qs 
-                sweetspot[qubit] = popt[0]
-                fitted_parameters[qubit] = popt[1], abs(popt[2]), popt[3], popt[4], f_q_offset, C_ii
 
             else:
                 try:
@@ -270,13 +257,10 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                     freq_norm = (frequencies - freq_min) / (freq_max - freq_min)
                     popt = curve_fit(line, biases, freq_norm)[0]
                     popt[0] = popt[0] * (freq_max - freq_min)
-                    popt[1] = popt[1] * (freq_max - freq_min) + freq_min
-                    # "fluxline": fluxline,
-                    # "popt0": popt[0],  # C_ij
-                    # "popt1": popt[1],
-                    # "type": 3,
-                    frequency[qubit] = None #Preguntar a Alejandro????  
-                    sweetspot[qubit] = None #Preguntar a Alejandro????
+                    popt[1] = popt[1] * (freq_max - freq_min) + freq_min # C_ij
+                    
+                    frequency[qubit] = None
+                    sweetspot[qubit] = None
                     fitted_parameters[qubit] = popt[0], popt[1]
                 except:
                     log.warning("qubit_flux_fit: the fitting was not succesful")            
