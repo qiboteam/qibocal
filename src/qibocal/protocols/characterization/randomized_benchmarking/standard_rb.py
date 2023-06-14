@@ -51,7 +51,7 @@ class StandardRBParameters(Parameters):
     n_bootstrap: int = 100
     """Number of bootstrap iterations for the fit uncertainties and error bars.
     If ``0``, gets the fit uncertainties from the fitting function and the error bars
-    from the distribution of the measurements. Defaults to ``1``."""
+    from the distribution of the measurements. Defaults to ``100``."""
     seed: Optional[int] = None
     """A fixed seed to initialize ``np.random.Generator``. If ``None``, uses a random seed.
     Defaults is ``None``."""

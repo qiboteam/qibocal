@@ -98,6 +98,9 @@ def significant_digit(number: Number):
         is integer, ``inf`` or ``0``. Returns ``-1`` if ``number`` is ``None``.
     """
 
+    if isinf(number) or number - round(number) == 0:
+        return 2
+
     position = (
         ceil(-log10(abs(np.real(number))))
         if not isinf(np.real(number)) and np.real(number) != 0
@@ -110,7 +113,7 @@ def significant_digit(number: Number):
             if not isinf(np.imag(number)) and np.imag(number) != 0
             else 2,
         )
-    position = 2 if position < 1 else position
+
     return position
 
 
@@ -124,7 +127,7 @@ def number_to_str(
     Args:
         value (Number): the number to display
         uncertainty (Number or list or tuple or np.ndarray, optional): number or 2-element
-        interval with the low and high uncertainties of the ``value``. Defaults to ``None``.
+        interval with the low and high uncertainties of ``value``. Defaults to ``None``.
         precision (int, optional): nonnegative number of floating points of the displayed value.
         If ``None``, defaults to the second significant digit of ``uncertainty``
         or ``3`` if ``uncertainty`` is ``None``. Defaults to ``None``.
