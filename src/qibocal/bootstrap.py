@@ -28,7 +28,7 @@ def data_uncertainties(
     """
 
     if method == "std":
-        return np.std(data, axis=1)
+        return np.std(data, axis=1) if homogeneous else [np.std(row) for row in data]
     if isinstance(method, (int, float)) and 0 <= method <= 100:
         percentiles = [
             (100 - method) / 2,
