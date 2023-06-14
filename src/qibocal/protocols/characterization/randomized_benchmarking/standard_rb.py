@@ -310,7 +310,7 @@ def _fit(data: RBData) -> StandardRBResult:
     )
     sigma = (
         np.max(error_bars, axis=0)
-        if error_bars is not None and len(error_bars.shape) == 2
+        if error_bars is not None and isinstance(error_bars[0], Iterable)
         else error_bars
     )
     popt, perr = fit_exp1B_func(x, y, sigma=sigma, bounds=[0, 1])
