@@ -21,6 +21,7 @@ from .circuit_tools import (
     layer_circuit,
 )
 from .fitting import exp1B_func, fit_exp1B_func
+from .plot import rb_figure
 from .utils import extract_from_data, number_to_str, random_clifford
 
 NPULSES_PER_CLIFFORD = 1.875
@@ -330,70 +331,74 @@ def _plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure
         Tuple[List[go.Figure], str]:
     """
 
-    x, y_scatter = extract_from_data(data, "signal", "depth", list)
-    y = [np.mean(y_row) for y_row in y_scatter]
+    # x, y_scatter = extract_from_data(data, "signal", "depth", list)
+    # y = [np.mean(y_row) for y_row in y_scatter]
     popt, perr = result.fitting_parameters
     label = "Fit: y=Ap^x<br>A: {}<br>p: {}<br>B: {}".format(
         number_to_str(popt[0], perr[0]),
         number_to_str(popt[1], perr[1]),
         number_to_str(popt[2], perr[2]),
     )
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scatter(
-            x=data.depth.tolist(),
-            y=data.signal.tolist(),
-            line=dict(color="#6597aa"),
-            mode="markers",
-            marker={"opacity": 0.2, "symbol": "square"},
-            name="itertarions",
-        )
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=x,
-            y=y,
-            line=dict(color="#aa6464"),
-            mode="markers",
-            name="average",
-        )
-    )
-    # If result.error_y is given, create a dictionary for the error bars
-    error_y_dict = None
-    if result.error_y is not None:
-        # Constant error bars
-        if isinstance(result.error_y, Iterable) is False:
-            error_y_dict = {"type": "constant", "value": result.error_y}
-        # Symmetric error bars
-        elif isinstance(result.error_y[0], Iterable) is False:
-            error_y_dict = {"type": "data", "array": result.error_y}
-        # Asymmetric error bars
-        else:
-            error_y_dict = {
-                "type": "data",
-                "symmetric": False,
-                "array": result.error_y[1],
-                "arrayminus": result.error_y[0],
-            }
-        fig.add_trace(
-            go.Scatter(
-                x=x,
-                y=y,
-                error_y=error_y_dict,
-                line={"color": "#aa6464"},
-                mode="markers",
-                name="error bars",
-            )
-        )
-    x_fit = np.linspace(min(x), max(x), len(x) * 20)
-    y_fit = exp1B_func(x_fit, *popt)
-    fig.add_trace(
-        go.Scatter(
-            x=x_fit,
-            y=y_fit,
-            name=label,
-            line=go.scatter.Line(dash="dot", color="#00cc96"),
-        )
+    # fig = go.Figure()
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=data.depth.tolist(),
+    #         y=data.signal.tolist(),
+    #         line=dict(color="#6597aa"),
+    #         mode="markers",
+    #         marker={"opacity": 0.2, "symbol": "square"},
+    #         name="itertarions",
+    #     )
+    # )
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=x,
+    #         y=y,
+    #         line=dict(color="#aa6464"),
+    #         mode="markers",
+    #         name="average",
+    #     )
+    # )
+    # # If result.error_y is given, create a dictionary for the error bars
+    # error_y_dict = None
+    # if result.error_y is not None:
+    #     # Constant error bars
+    #     if isinstance(result.error_y, Iterable) is False:
+    #         error_y_dict = {"type": "constant", "value": result.error_y}
+    #     # Symmetric error bars
+    #     elif isinstance(result.error_y[0], Iterable) is False:
+    #         error_y_dict = {"type": "data", "array": result.error_y}
+    #     # Asymmetric error bars
+    #     else:
+    #         error_y_dict = {
+    #             "type": "data",
+    #             "symmetric": False,
+    #             "array": result.error_y[1],
+    #             "arrayminus": result.error_y[0],
+    #         }
+    #     fig.add_trace(
+    #         go.Scatter(
+    #             x=x,
+    #             y=y,
+    #             error_y=error_y_dict,
+    #             line={"color": "#aa6464"},
+    #             mode="markers",
+    #             name="error bars",
+    #         )
+    #     )
+    # x_fit = np.linspace(min(x), max(x), len(x) * 20)
+    # y_fit = exp1B_func(x_fit, *popt)
+    # fig.add_trace(
+    #     go.Scatter(
+    #         x=x_fit,
+    #         y=y_fit,
+    #         name=label,
+    #         line=go.scatter.Line(dash="dot", color="#00cc96"),
+    #     )
+    # )
+
+    fig = rb_figure(
+        data, lambda x: exp1B_func(x, *popt), fit_label=label, error_y=result.error_y
     )
 
     meta_data = deepcopy(data.attrs)

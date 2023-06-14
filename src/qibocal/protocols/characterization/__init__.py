@@ -15,6 +15,7 @@ from .qubit_spectroscopy import qubit_spectroscopy
 from .rabi.amplitude import rabi_amplitude
 from .rabi.length import rabi_length
 from .ramsey import ramsey
+from .randomized_benchmarking.clifford_filtered_rb import clifford_filtered_rb
 from .randomized_benchmarking.standard_rb import standard_rb
 from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
@@ -43,3 +44,4 @@ class Operation(Enum):
     flipping = flipping
     dispersive_shift = dispersive_shift
     standard_rb = standard_rb
+    clifford_filtered_rb = clifford_filtered_rb
