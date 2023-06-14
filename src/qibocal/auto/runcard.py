@@ -45,7 +45,7 @@ class Runcard:
     """Structure of an execution runcard."""
 
     actions: List[Action]
-    qubits: List[QubitId] = Field(default_facotry=list)
+    qubits: List[QubitId]
     backend: str = "qibolab"
     platform: str = "dummy"
     # TODO: pass custom runcard (?)
