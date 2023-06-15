@@ -7,6 +7,7 @@ from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -117,24 +118,52 @@ def _acquisition(
     # additionally include wait time and t_max
     data = RamseyData(params.n_osc, params.delay_between_pulses_end, detuning_sign=+1)
 
-    # sweep the parameter
-    for wait in waits:
-        for qubit in qubits:
-            RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
-            ro_pulses[qubit].start = RX90_pulses2[qubit].finish
-            if params.n_osc != 0:
-                # FIXME: qblox will induce a positive detuning with minus sign
-                RX90_pulses2[qubit].relative_phase = (
-                    RX90_pulses2[qubit].start
-                    * data.detuning_sign
-                    * 2
-                    * np.pi
-                    * (params.n_osc)
-                    / params.delay_between_pulses_end
-                )
+    if params.n_osc != 0:
+        # sweep the parameter
+        for wait in waits:
+            for qubit in qubits:
+                RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
+                ro_pulses[qubit].start = RX90_pulses2[qubit].finish
+                if params.n_osc != 0:
+                    RX90_pulses2[qubit].relative_phase = (
+                        RX90_pulses2[qubit].start
+                        * (-2 * np.pi)
+                        * (params.n_osc)
+                        / params.delay_between_pulses_end
+                    )
 
-        # execute the pulse sequence
-        results = platform.execute_pulse_sequence(
+            # execute the pulse sequence
+            results = platform.execute_pulse_sequence(
+                sequence,
+                ExecutionParameters(
+                    nshots=params.nshots,
+                    relaxation_time=params.relaxation_time,
+                    acquisition_type=AcquisitionType.INTEGRATION,
+                    averaging_mode=AveragingMode.CYCLIC,
+                ),
+            )
+            for qubit, ro_pulse in ro_pulses.items():
+                # average msr, phase, i and q over the number of shots defined in the runcard
+                r = results[ro_pulse.serial].serialize
+                r.update(
+                    {
+                        "wait[ns]": wait,
+                        "qubit_freqs[Hz]": qubits[qubit].drive_frequency,
+                        "qubit": qubit,
+                    }
+                )
+                data.add_data_from_dict(r)
+
+    else:
+        sweeper = Sweeper(
+            Parameter.start,
+            waits,
+            [RX90_pulses2[qubit] for qubit in qubits],
+            type=SweeperType.ABSOLUTE,
+        )
+
+        # execute the sweep
+        results = platform.sweep(
             sequence,
             ExecutionParameters(
                 nshots=params.nshots,
@@ -142,18 +171,20 @@ def _acquisition(
                 acquisition_type=AcquisitionType.INTEGRATION,
                 averaging_mode=AveragingMode.CYCLIC,
             ),
+            sweeper,
         )
-        for qubit, ro_pulse in ro_pulses.items():
+        for qubit in qubits:
             # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[ro_pulse.serial].serialize
+            r = results[ro_pulses[qubit].serial].serialize
             r.update(
                 {
-                    "wait[ns]": wait,
-                    "qubit_freqs[Hz]": qubits[qubit].drive_frequency,
-                    "qubit": qubit,
+                    "wait[ns]": waits,
+                    "qubit_freqs[Hz]": len(waits) * [qubits[qubit].drive_frequency],
+                    "qubit": len(waits) * [qubit],
                 }
             )
             data.add_data_from_dict(r)
+
     return data
 
 
@@ -237,6 +268,7 @@ def _fit(data: RamseyData) -> RamseyResults:
             log.warning(f"ramsey_fit: the fitting was not succesful. {e}")
             popt = [0] * 5
             t2 = 5.0
+            print(qubit_freq)
             corrected_qubit_frequency = int(qubit_freq)
             delta_phys = 0
 

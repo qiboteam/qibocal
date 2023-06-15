@@ -118,8 +118,8 @@ actions:
       max_amp_factor: 4.0
       step_amp_factor: 0.1
       pulse_length: 30
-      relaxation_time: 0
-      nshots: 10
+      nshots: 1024
+      relaxation_time:
 
   - id: rabi length
     priority: 0
@@ -129,8 +129,17 @@ actions:
       pulse_duration_end: 84
       pulse_duration_step: 8
       pulse_amplitude: 0.5
-      relaxation_time: 0
-      nshots: 10
+      nshots: 1024
+
+  - id: rabi length sequences
+    priority: 0
+    operation: rabi_length_sequences
+    parameters:
+      pulse_duration_start: 4
+      pulse_duration_end: 84
+      pulse_duration_step: 8
+      pulse_amplitude: 0.5
+      nshots: 1024
 
   - id: t1
     priority: 0
@@ -139,8 +148,16 @@ actions:
       delay_before_readout_start: 0
       delay_before_readout_end: 20_000
       delay_before_readout_step: 2000
+      nshots: 1024
+
+  - id: t1 sequences
+    priority: 0
+    operation: t1_sequences
+    parameters:
+      delay_before_readout_start: 0
+      delay_before_readout_end: 20_000
+      delay_before_readout_step: 2000
       nshots: 10
-      relaxation_time:
 
   - id: t2
     priority: 0
@@ -150,9 +167,17 @@ actions:
       delay_between_pulses_end: 20000
       delay_between_pulses_step: 100
       nshots: 10
-      relaxation_time:
 
-  - id: ramsey
+  - id: t2 sequences
+    priority: 0
+    operation: t2_sequences
+    parameters:
+      delay_between_pulses_start: 16
+      delay_between_pulses_end: 20000
+      delay_between_pulses_step: 100
+      nshots: 1024
+
+  - id: ramsey_detuned
     priority: 0
     operation: ramsey
     parameters:
@@ -161,8 +186,16 @@ actions:
       delay_between_pulses_step: 500 # must be a multiple of 4
       n_osc: 10
       nshots: 10
-      relaxation_time:
 
+  - id: ramsey detuned sequences
+    priority: 0
+    operation: ramsey_sequences
+    parameters:
+      delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
+      delay_between_pulses_end: 5000
+      delay_between_pulses_step: 500 # must be a multiple of 4
+      n_osc: 10
+      nshots: 1024
 
   - id: ramsey
     priority: 0
@@ -171,16 +204,16 @@ actions:
       delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
       delay_between_pulses_end: 5000
       delay_between_pulses_step: 500 # must be a multiple of 4
-      n_osc: 10
-      nshots: 10
-      relaxation_time:
+      n_osc: 0
+      nshots: 1024
+
 
 
   - id: single shot classification
     priority: 0
     operation: single_shot_classification
     parameters:
-      nshots: 10
+      nshots: 5000
       relaxation_time:
 
 
@@ -190,7 +223,6 @@ actions:
     parameters:
       beta_param: null
       nshots: 10
-      relaxation_time:
 
 
   - id: allxy_drag_pulse_tuning
@@ -201,7 +233,6 @@ actions:
       beta_end: 0.02
       beta_step: 0.01
       nshots: 10
-      relaxation_time:
 
 
   - id: drag_pulse_tuning
@@ -212,7 +243,6 @@ actions:
       beta_end: 0.02
       beta_step: 0.01
       nshots: 10
-      relaxation_time:
 
   - id: spin_echo
     priority: 0
@@ -231,7 +261,6 @@ actions:
       nflips_max: 5
       nflips_step: 1
       nshots: 10
-      relaxation_time:
 
   - id: dispersive shift
     priority: 0
@@ -242,21 +271,21 @@ actions:
       nshots: 10
       relaxation_time:
 
-  - id: Standard RB 1
+  - id: standard rb
     priority: 0
     operation: standard_rb
     qubits: [0]
     parameters:
-      nqubits: 2
       depths: [1,3,5,10]
       niter: 2
-      nshots: 10
+      nshots: 128
 
-  - id: Standard RB 2
+
+  - id: standard rb noise
     priority: 0
     operation: standard_rb
+    qubits: [0, 1, 3]
     parameters:
-      nqubits: 4
       depths:
         start: 1
         stop: 8
