@@ -212,7 +212,7 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
         for qubit in qubits:
             data_i = data[qubit, i]
             freq, fitted_params = lorentzian_fit(
-                data_i, qubit, resonator_type=data.resonator_type, fit="resonator"
+                data_i, resonator_type=data.resonator_type, fit="resonator"
             )
             frequency[qubit] = freq
             fitted_parameters[qubit] = fitted_params

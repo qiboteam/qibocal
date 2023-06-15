@@ -59,7 +59,7 @@ class FlippingData(Data):
         ar = np.empty((1,), dtype=FlippingType)
         ar["flips"] = flips
         ar["msr"] = msr
-        if self.data:
+        if qubit in self.data:
             self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
         else:
             self.data[qubit] = np.rec.array(ar)

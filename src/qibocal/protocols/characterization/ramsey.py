@@ -75,7 +75,7 @@ class RamseyData(Data):
         ar["wait"] = wait
         ar["msr"] = msr
         ar["phase"] = phase
-        if self.data:
+        if qubit in self.data:
             self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
         else:
             self.data[qubit] = np.rec.array(ar)
@@ -171,8 +171,8 @@ def _acquisition(
                 averaging_mode=AveragingMode.CYCLIC,
             ),
         )
-        for qubit, ro_pulse in ro_pulses.items():
-            result = results[ro_pulse.serial]
+        for qubit in qubits:
+            result = results[ro_pulses[qubit].serial]
             data.register_qubit(
                 qubit, wait=wait, msr=result.magnitude, phase=result.phase
             )

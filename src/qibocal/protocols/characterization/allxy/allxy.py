@@ -46,7 +46,7 @@ class AllXYData(Data):
         ar = np.empty((1,), dtype=AllXYType)
         ar["prob"] = prob
         ar["gate"] = gate
-        if self.data:
+        if qubit in self.data:
             self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
         else:
             self.data[qubit] = np.rec.array(ar)

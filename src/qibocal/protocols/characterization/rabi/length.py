@@ -66,7 +66,7 @@ class RabiLengthData(Data):
         ar["length"] = length
         ar["msr"] = msr
         ar["phase"] = phase
-        if self.data:
+        if qubit in self.data:
             self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
         else:
             self.data[qubit] = np.rec.array(ar)

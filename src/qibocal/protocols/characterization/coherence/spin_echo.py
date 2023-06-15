@@ -103,8 +103,8 @@ def _acquisition(
             ),
         )
 
-        for ro_pulse in ro_pulses.values():
-            result = results[ro_pulse.serial]
+        for qubit in qubits:
+            result = results[ro_pulses[qubit].serial]
             data.register_qubit(
                 qubit, wait=wait, msr=result.magnitude, phase=result.phase
             )

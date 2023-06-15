@@ -151,7 +151,9 @@ def _fit(
     frequency = {}
     fitted_parameters = {}
     for qubit in qubits:
-        freq, fitted_params = lorentzian_fit(data, qubit)
+        freq, fitted_params = lorentzian_fit(
+            data[qubit], resonator_type=data.resonator_type, fit="resonator"
+        )
         if data.power_level is PowerLevel.high:
             bare_frequency[qubit] = freq
 

@@ -155,7 +155,7 @@ class DummyPars(Parameters):
 class DummyData(Data):
     """Dummy data."""
 
-    def to_csv(self, path):
+    def save(self, path):
         """Dummy method for saving data"""
 
 

@@ -35,10 +35,6 @@ class AllXYDragResults(Results):
     """AllXYDrag outputs."""
 
 
-class AllXYDragData(Data):
-    """AllXYDrag acquisition outputs."""
-
-
 @dataclass
 class AllXYDragData(Data):
     """AllXY acquisition outputs."""

@@ -58,7 +58,7 @@ class DragPulseTuningData(Data):
         ar = np.empty((1,), dtype=DragPulseTuningType)
         ar["msr"] = msr
         ar["beta"] = beta
-        if self.data:
+        if qubit in self.data:
             self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
         else:
             self.data[qubit] = np.rec.array(ar)
