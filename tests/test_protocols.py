@@ -8,7 +8,7 @@ from qibolab import create_platform
 
 from qibocal.cli.builders import ActionBuilder
 
-PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/single_routines.yml"
+PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/protocols.yml"
 PLATFORM = create_platform("dummy")
 
 
