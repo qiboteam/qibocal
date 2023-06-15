@@ -306,11 +306,15 @@ def _fit(data: RBData) -> StandardRBResult:
         data_median=y,
         homogeneous=(homogeneous or n_bootstrap != 0),
     )
-    sigma = (
-        np.max(error_bars, axis=0)
-        if error_bars is not None and isinstance(error_bars[0], Iterable)
-        else error_bars
-    )
+    # Generate symmetric non-zero uncertainty of y for the fit
+    sigma = None
+    if error_bars is not None:
+        sigma = (
+            np.max(error_bars, axis=0)
+            if isinstance(error_bars[0], Iterable)
+            else error_bars
+        ) + 0.1
+
     popt, perr = fit_exp1B_func(x, y, sigma=sigma, bounds=[0, 1])
 
     # Compute fit uncertainties
