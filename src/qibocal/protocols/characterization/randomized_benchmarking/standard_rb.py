@@ -109,7 +109,7 @@ def samples_to_p0(samples_list):
     """
 
     ground = np.array([0] * len(samples_list[0][0]))
-    return np.sum(np.count_nonzero(samples_list == ground, axis=1), axis=1) / len(
+    return np.count_nonzero((samples_list == ground).all(axis=2), axis=1) / len(
         samples_list[0]
     )
 
@@ -303,7 +303,6 @@ def _fit(data: RBData) -> StandardRBResult:
     error_bars = data_uncertainties(
         y_estimates,
         uncertainties,
-        symmetric=False,
         data_median=y,
         homogeneous=(homogeneous or n_bootstrap != 0),
     )

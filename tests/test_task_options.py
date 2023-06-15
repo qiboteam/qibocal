@@ -27,7 +27,17 @@ DUMMY_CARD = {
                 "amplitude": 0.4,
                 "power_level": "low",
             },
-        }
+        },
+        {
+            "id": "standard rb",
+            "priority": 0,
+            "operation": "standard_rb",
+            "parameters": {
+                "depths": [1, 5, 10],
+                "niter": 3,
+                "nshots": 10,
+            },
+        },
     ],
 }
 
@@ -36,6 +46,7 @@ def modify_card(card, qubits=None, update=None):
     """Modify runcard to change local qubits or update."""
     if qubits is not None:
         card["actions"][0]["qubits"] = qubits
+        card["actions"][1]["qubits"] = qubits
     elif update is not None:
         card["actions"][0]["update"] = update
     return card
@@ -51,6 +62,18 @@ def test_qubits_argument(local_qubits):
         pathlib.Path(tempfile.mkdtemp()),
         PLATFORM,
         allocate_qubits(PLATFORM, QUBITS),
+    )
+    if local_qubits:
+        assert task.qubits == local_qubits
+    else:
+        assert task.qubits == QUBITS
+
+    task = Task(runcard.actions[1])
+
+    task.run(
+        pathlib.Path(tempfile.mkdtemp()),
+        None,
+        QUBITS,
     )
     if local_qubits:
         assert task.qubits == local_qubits
