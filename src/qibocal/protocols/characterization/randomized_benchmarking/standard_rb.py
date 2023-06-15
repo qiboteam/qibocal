@@ -342,7 +342,7 @@ def _plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure
 
     # x, y_scatter = extract_from_data(data, "signal", "depth", list)
     # y = [np.mean(y_row) for y_row in y_scatter]
-    popt, perr = result.fitting_parameters
+    popt, perr = result.fit_parameters, result.fit_uncertainties
     label = "Fit: y=Ap^x<br>A: {}<br>p: {}<br>B: {}".format(
         number_to_str(popt[0], perr[0]),
         number_to_str(popt[1], perr[1]),
@@ -407,7 +407,7 @@ def _plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure
     # )
 
     fig = rb_figure(
-        data, lambda x: exp1B_func(x, *popt), fit_label=label, error_y=result.error_y
+        data, lambda x: exp1B_func(x, *popt), fit_label=label, error_y=result.error_bars
     )
 
     meta_data = deepcopy(data.attrs)

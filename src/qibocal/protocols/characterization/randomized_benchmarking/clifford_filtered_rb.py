@@ -310,7 +310,7 @@ def _fit(data: RBData) -> CliffordRBResult:
         )
         sigma = (
             np.max(error_y, axis=0)
-            if error_y is not None and len(error_y.shape) == 2
+            if error_y is not None and isinstance(error_y[0], Iterable)
             else error_y
         )
         popt, perr = fit_exp1_func(x, y, sigma=sigma, bounds=[0, 1])
