@@ -65,10 +65,12 @@ class Data:
         return [q for q in self.data]
 
     def __getitem__(self, qubit: Union[QubitId, Tuple]):
+        """Access data attribute member."""
         return self.data[qubit]
 
     @property
     def global_params_dict(self):
+        """Convert non-arrays attributes into dict."""
         global_dict = asdict(self)
         global_dict.pop("data")
         return global_dict
