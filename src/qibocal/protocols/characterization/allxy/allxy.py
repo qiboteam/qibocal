@@ -1,14 +1,15 @@
-from dataclasses import dataclass
-from typing import Optional
+from dataclasses import dataclass, field
+from typing import Dict, Optional
 
 import numpy as np
+import numpy.typing as npt
 import plotly.graph_objects as go
 from qibolab import AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.data import Data
+from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
 
 @dataclass
@@ -28,14 +29,39 @@ class AllXYResults(Results):
     """AllXY outputs."""
 
 
+AllXYType = np.dtype([("prob", np.float64), ("gate", np.int64)])
+
+
+@dataclass
 class AllXYData(Data):
     """AllXY acquisition outputs."""
 
-    def __init__(self):
-        super().__init__(
-            name="data",
-            quantities={"probability", "gateNumber", "qubit"},
-        )
+    beta_param: float = None
+    """Beta parameter for drag pulse."""
+    data: Dict[QubitId, npt.NDArray[AllXYType]] = field(default_factory=dict)
+    """Raw data acquired."""
+
+    def register_qubit(self, qubit, prob, gate):
+        """Store output for single qubit."""
+        ar = np.empty((1,), dtype=AllXYType)
+        ar["prob"] = prob
+        ar["gate"] = gate
+        if self.data:
+            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
+        else:
+            self.data[qubit] = np.rec.array(ar)
+
+    @property
+    def qubits(self):
+        """Access qubits from data structure."""
+        return [q for q in self.data]
+
+    def __getitem__(self, qubit):
+        return self.data[qubit]
+
+    def save(self, path):
+        """Store results."""
+        self.to_npz(path, self.data)
 
 
 gatelist = [
@@ -77,12 +103,10 @@ def _acquisition(
     """
 
     # create a Data object to store the results
-    data = AllXYData()
+    data = AllXYData(params.beta_param)
 
     # repeat the experiment as many times as defined by software_averages
     # for iteration in range(params.software_averages):
-    gateNumber = 1
-    # sweep the parameter
     for gateNumber, gates in enumerate(gatelist):
         # create a sequence of pulses
         ro_pulses = {}
@@ -102,16 +126,10 @@ def _acquisition(
         )
 
         # retrieve the results for every qubit
-        for ro_pulse in ro_pulses.values():
-            z_proj = 2 * results[ro_pulse.serial].probability(0) - 1
+        for qubit in qubits:
+            z_proj = 2 * results[ro_pulses[qubit].serial].probability(0) - 1
             # store the results
-            r = {
-                "probability": z_proj,
-                "gateNumber": gateNumber,
-                "beta_param": params.beta_param,
-                "qubit": ro_pulse.qubit,
-            }
-            data.add(r)
+            data.register_qubit(qubit, z_proj, gateNumber)
     # finally, save the remaining data
     return data
 
@@ -220,16 +238,15 @@ def _plot(data: AllXYData, _fit: AllXYResults, qubit):
     fitting_report = "No fitting data"
     fig = go.Figure()
 
-    qubit_data = data.df[data.df["qubit"] == qubit].drop(columns=["qubit"])
+    qubit_data = data[qubit]
 
     fig.add_trace(
         go.Scatter(
-            x=qubit_data["gateNumber"],
-            y=qubit_data["probability"],
+            x=qubit_data.gate,
+            y=qubit_data.prob,
             mode="markers",
             text=gatelist,
             textposition="bottom center",
-            opacity=0.3,
             name="Expectation value",
             showlegend=True,
             legendgroup="group1",
