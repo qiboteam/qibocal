@@ -264,3 +264,9 @@ actions:
       niter: 2
       nshots: 10
       noise_model: PauliErrorOnAll
+
+  - id: fast reset
+    priority: 0
+    operation: fast_reset
+    parameters:
+      nshots: 1024
