@@ -12,14 +12,7 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.protocols.characterization.resonator_spectroscopy import (
-    ResonatorSpectroscopyData,
-)
-from qibocal.protocols.characterization.utils import (
-    PowerLevel,
-    lorentzian,
-    lorentzian_fit,
-)
+from qibocal.protocols.characterization.utils import lorentzian_fit
 
 
 @dataclass
