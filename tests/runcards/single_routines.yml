@@ -197,6 +197,26 @@ actions:
       n_osc: 10
       nshots: 1024
 
+  - id: ramsey detuned sequences
+    priority: 0
+    operation: ramsey_unrolling
+    parameters:
+      delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
+      delay_between_pulses_end: 5000
+      delay_between_pulses_step: 500 # must be a multiple of 4
+      n_osc: 10
+      nshots: 1024
+
+  - id: ramsey detuned sequences
+    priority: 0
+    operation: ramsey_unrolling_sequence
+    parameters:
+      delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
+      delay_between_pulses_end: 5000
+      delay_between_pulses_step: 500 # must be a multiple of 4
+      n_osc: 10
+      nshots: 1024
+
   - id: ramsey
     priority: 0
     operation: ramsey
@@ -206,7 +226,6 @@ actions:
       delay_between_pulses_step: 500 # must be a multiple of 4
       n_osc: 0
       nshots: 1024
-
 
 
   - id: single shot classification
@@ -220,6 +239,20 @@ actions:
   - id: allXY
     priority: 0
     operation: allxy
+    parameters:
+      beta_param: null
+      nshots: 10
+
+  - id: allXY
+    priority: 0
+    operation: allxy_unrolling
+    parameters:
+      beta_param: null
+      nshots: 10
+
+  - id: allXY
+    priority: 0
+    operation: allxy_unrolling_sequence
     parameters:
       beta_param: null
       nshots: 10
@@ -293,3 +326,25 @@ actions:
       niter: 2
       nshots: 10
       noise_model: PauliErrorOnAll
+
+  - id: StdRB
+    priority: 0
+    operation: StdRB_unrolling
+    parameters:
+      min_depth: 10
+      max_depth: 70 
+      step_depth: 20
+      runs: 5
+      nshots: 50
+      relaxation_time: 300_000
+
+  - id: StdRB
+    priority: 0
+    operation: StdRB_unrolling_sequence
+    parameters:
+      min_depth: 10
+      max_depth: 70 
+      step_depth: 20
+      runs: 5
+      nshots: 50
+      relaxation_time: 300_000
