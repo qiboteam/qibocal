@@ -108,7 +108,6 @@ def _acquisition(
     for qubit, ro_pulse in ro_pulses.items():
         # average msr, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulse.serial]
-        r = result.serialize
         # store the results
         data.register_qubit(
             qubit,
@@ -125,7 +124,9 @@ def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
     frequency = {}
     fitted_parameters = {}
     for qubit in qubits:
-        freq, fitted_params = lorentzian_fit(data, qubit)
+        freq, fitted_params = lorentzian_fit(
+            data[qubit], resonator_type=data.resonator_type, fit="qubit"
+        )
         frequency[qubit] = freq
         fitted_parameters[qubit] = fitted_params
 

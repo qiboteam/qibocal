@@ -23,19 +23,15 @@ def lorentzian(frequency, amplitude, center, sigma, offset):
     ) + offset
 
 
-def lorentzian_fit(data, qubit):
-    qubit_data = data[qubit]
-    frequencies = qubit_data.freq / 1e9
-    voltages = qubit_data.msr * 1e4
+def lorentzian_fit(data, resonator_type=None, fit=None):
+    frequencies = data.freq / 1e9
+    voltages = data.msr * 1e6
     model_Q = lmfit.Model(lorentzian)
 
     # Guess parameters for Lorentzian max or min
-    if (
-        data.resonator_type == "3D"
-        and data.__class__.__name__ == "ResonatorSpectroscopyData"
-    ) or (
-        data.resonator_type == "2D"
-        and data.__class__.__name__ == "QubitSpectroscopyData"
+    # TODO: probably this is not working on HW
+    if (resonator_type == "3D" and fit == "resonator") or (
+        resonator_type == "2D" and fit == "qubit"
     ):
         guess_center = frequencies[
             np.argmax(voltages)
