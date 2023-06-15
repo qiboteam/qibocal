@@ -208,12 +208,11 @@ actions:
   #     freq_width: 10_000_000
   #     freq_step: 400_000
 
-  # - id: Standard RB
+  # - id: standard rb
   #   priority: 0
   #   operation: standard_rb
+  #   qubits: [1]
   #   parameters:
-  #     nqubits: 5
-  #     qubits: [1]
   #     depths: [1,3,5,10,15,20,30]
   #     niter: 20
   #     nshots: 128

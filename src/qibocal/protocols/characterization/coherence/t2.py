@@ -7,6 +7,7 @@ from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
@@ -81,27 +82,28 @@ def _acquisition(
     # additionally include wait time and t_max
     data = T2Data()
 
-    # sweep the parameter
-    for wait in waits:
-        for qubit in qubits:
-            RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
-            ro_pulses[qubit].start = RX90_pulses2[qubit].finish
+    sweeper = Sweeper(
+        Parameter.start,
+        waits,
+        [RX90_pulses2[qubit] for qubit in qubits],
+        type=SweeperType.ABSOLUTE,
+    )
 
-        # execute the pulse sequence
-        results = platform.execute_pulse_sequence(
-            sequence,
-            ExecutionParameters(
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.INTEGRATION,
-                averaging_mode=AveragingMode.CYCLIC,
-            ),
-        )
-        for qubit in qubits:
-            result = results[ro_pulses[qubit].serial]
-            data.register_qubit(
-                qubit, wait=wait, msr=result.magnitude, phase=result.phase
-            )
+    # execute the sweep
+    results = platform.sweep(
+        sequence,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
+        ),
+        sweeper,
+    )
+
+    for qubit in qubits:
+        result = results[ro_pulses[qubit].serial]
+        data.register_qubit(qubit, wait=waits, msr=result.magnitude, phase=result.phase)
     return data
 
 

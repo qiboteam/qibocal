@@ -8,6 +8,7 @@ from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
@@ -55,7 +56,8 @@ class T1Data(Data):
 
     def register_qubit(self, qubit, wait, msr, phase):
         """Store output for single qubit."""
-        ar = np.empty((1,), dtype=CoherenceType)
+        shape = (1,) if np.isscalar(wait) else wait.shape
+        ar = np.empty(shape, dtype=CoherenceType)
         ar["wait"] = wait
         ar["msr"] = msr
         ar["phase"] = phase
@@ -117,30 +119,35 @@ def _acquisition(params: T1Parameters, platform: Platform, qubits: Qubits) -> T1
         params.delay_before_readout_step,
     )
 
+    sweeper = Sweeper(
+        Parameter.start,
+        ro_wait_range,
+        [ro_pulses[qubit] for qubit in qubits],
+        type=SweeperType.ABSOLUTE,
+    )
+
     # create a DataUnits object to store the MSR, phase, i, q and the delay time
     data = T1Data()
 
-    # repeat the experiment as many times as defined by software_averages
     # sweep the parameter
-    for wait in ro_wait_range:
-        for qubit in qubits:
-            ro_pulses[qubit].start = qd_pulses[qubit].duration + wait
+    # execute the pulse sequence
+    results = platform.sweep(
+        sequence,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
+        ),
+        sweeper,
+    )
 
-        # execute the pulse sequence
-        results = platform.execute_pulse_sequence(
-            sequence,
-            ExecutionParameters(
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.INTEGRATION,
-                averaging_mode=AveragingMode.CYCLIC,
-            ),
+    for qubit in qubits:
+        result = results[ro_pulses[qubit].serial]
+        data.register_qubit(
+            qubit, wait=ro_wait_range, msr=result.magnitude, phase=result.phase
         )
-        for qubit in qubits:
-            result = results[ro_pulses[qubit].serial]
-            data.register_qubit(
-                qubit, wait=wait, msr=result.magnitude, phase=result.phase
-            )
+
     return data
 
 

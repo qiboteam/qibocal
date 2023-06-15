@@ -4,6 +4,7 @@ from dataclasses import dataclass, fields
 from typing import Callable, Dict, Generic, NewType, TypeVar, Union
 
 import numpy as np
+from qibolab.platform import Platform
 from qibolab.qubits import Qubit
 
 OperationId = NewType("OperationId", str)
@@ -164,7 +165,7 @@ class DummyRes(Results):
     """Dummy results."""
 
 
-def _dummy_acquisition(pars: DummyPars) -> DummyData:
+def _dummy_acquisition(pars: DummyPars, platform: Platform) -> DummyData:
     return DummyData()
 
 
