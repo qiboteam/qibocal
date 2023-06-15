@@ -1,4 +1,4 @@
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from typing import Dict, Optional
 
 import numpy as np
@@ -68,25 +68,6 @@ class RabiAmplitudeData(Data):
         ar["msr"] = msr
         ar["phase"] = phase
         self.data[qubit] = np.rec.array(ar)
-
-    @property
-    def qubits(self):
-        """Access qubits from data structure."""
-        return [q for q in self.data]
-
-    def __getitem__(self, qubit):
-        return self.data[qubit]
-
-    @property
-    def global_params_dict(self):
-        global_dict = asdict(self)
-        global_dict.pop("data")
-        return global_dict
-
-    def save(self, path):
-        """Store results."""
-        self.to_json(path, self.global_params_dict)
-        self.to_npz(path, self.data)
 
 
 def _acquisition(

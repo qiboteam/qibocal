@@ -1,4 +1,4 @@
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from typing import Dict, Optional, Tuple
 
 import numpy as np
@@ -12,7 +12,7 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.protocols.characterization.utils import lorentzian_fit
+from qibocal.protocols.characterization.utils import lorentzian, lorentzian_fit
 
 
 @dataclass
@@ -84,27 +84,6 @@ class DispersiveShiftData(Data):
         ar["i"] = i
         ar["q"] = q
         self.data[qubit, state] = np.rec.array(ar)
-
-    @property
-    def qubits(self):
-        """Access qubits from data structure."""
-        return np.unique([q[0] for q in self.data])
-
-    def __getitem__(self, qubit_state: tuple):
-        # FIXME: Perhaps we should change it...
-        qubit, state = qubit_state
-        return self.data[qubit, state]
-
-    @property
-    def global_params_dict(self):
-        global_dict = asdict(self)
-        global_dict.pop("data")
-        return global_dict
-
-    def save(self, path):
-        """Store results."""
-        self.to_json(path, self.global_params_dict)
-        self.to_npz(path, self.data)
 
 
 def _acquisition(

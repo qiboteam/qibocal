@@ -66,14 +66,6 @@ class T1Data(Data):
         else:
             self.data[qubit] = np.rec.array(ar)
 
-    @property
-    def qubits(self):
-        """Access qubits from data structure."""
-        return [q for q in self.data]
-
-    def __getitem__(self, qubit):
-        return self.data[qubit]
-
     def save(self, path):
         """Store results."""
         self.to_npz(path, self.data)

@@ -1,11 +1,12 @@
 import inspect
 import json
-from dataclasses import dataclass, fields
-from typing import Callable, Dict, Generic, NewType, TypeVar, Union
+from dataclasses import asdict, dataclass, fields
+from typing import Callable, Dict, Generic, NewType, Tuple, TypeVar, Union
 
 import numpy as np
+import numpy.typing as npt
 from qibolab.platform import Platform
-from qibolab.qubits import Qubit
+from qibolab.qubits import Qubit, QubitId
 
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
@@ -53,6 +54,30 @@ class Parameters:
 class Data:
     """Data resulting from acquisition routine."""
 
+    data: dict[Union[Tuple, QubitId], npt.NDArray]
+    """Data object to store arrays"""
+
+    @property
+    def qubits(self):
+        """Access qubits from data structure."""
+        if set(map(type, self.data)) == {tuple}:
+            return np.unique([q[0] for q in self.data])
+        return [q for q in self.data]
+
+    def __getitem__(self, qubit: Union[QubitId, Tuple]):
+        return self.data[qubit]
+
+    @property
+    def global_params_dict(self):
+        global_dict = asdict(self)
+        global_dict.pop("data")
+        return global_dict
+
+    def save(self, path):
+        """Store results."""
+        self.to_json(path, self.global_params_dict)
+        self.to_npz(path, self.data)
+
     @staticmethod
     def to_npz(path, data_dict: dict):
         """Helper function to use np.savez while converting keys into strings."""
@@ -61,7 +86,8 @@ class Data:
     @staticmethod
     def to_json(path, data_dict: dict):
         """Helper function to dump to json in JSONFILE path."""
-        (path / JSONFILE).write_text(json.dumps(data_dict, indent=4))
+        if data_dict:
+            (path / JSONFILE).write_text(json.dumps(data_dict, indent=4))
 
 
 @dataclass

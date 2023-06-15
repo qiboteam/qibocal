@@ -59,18 +59,9 @@ class AllXYDragData(Data):
             self.data[qubit, beta] = np.rec.array(ar)
 
     @property
-    def qubits(self):
-        """Access qubits from data structure."""
-        return np.unique([q[0] for q in self.data])
-
-    @property
     def beta_params(self):
         """Access qubits from data structure."""
         return np.unique([b[1] for b in self.data])
-
-    def __getitem__(self, qubit_beta: tuple):
-        qubit, beta = qubit_beta
-        return self.data[qubit, beta]
 
     def save(self, path):
         """Store results."""
