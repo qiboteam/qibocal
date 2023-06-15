@@ -3,6 +3,7 @@ from enum import Enum
 from .allxy.allxy import allxy
 from .allxy.allxy_drag_pulse_tuning import allxy_drag_pulse_tuning
 from .allxy.allxy_unrolling import allxy_unrolling
+from .allxy.allxy_unrolling_sequence import allxy_unrolling_sequence
 from .allxy.drag_pulse_tuning import drag_pulse_tuning
 from .classification import single_shot_classification
 from .coherence.spin_echo import spin_echo
@@ -17,8 +18,10 @@ from .rabi.amplitude import rabi_amplitude
 from .rabi.length import rabi_length
 from .ramsey import ramsey
 from .ramsey_unrolling import ramsey_unrolling
+from .ramsey_unrolling_sequence import ramsey_unrolling_sequence
 from .randomized_benchmarking.standard_rb import standard_rb
-from .RB.std_rb import StdRB
+from .RB.std_rb_unrolling import StdRB_unrolling
+from .RB.std_rb_unrolling_sequence import StdRB_unrolling_sequence
 from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
@@ -37,6 +40,7 @@ class Operation(Enum):
     rabi_length = rabi_length
     ramsey = ramsey
     ramsey_unrolling = ramsey_unrolling
+    ramsey_unrolling_sequence = ramsey_unrolling_sequence
     t1 = t1
     t2 = t2
     allxy = allxy
@@ -45,7 +49,9 @@ class Operation(Enum):
     drag_pulse_tuning = drag_pulse_tuning
     flipping = flipping
     dispersive_shift = dispersive_shift
-    StdRB = StdRB
+    StdRB_unrolling = StdRB_unrolling
+    StdRB_unrolling_sequence = StdRB_unrolling_sequence
     single_shot_classification = single_shot_classification
     standard_rb = standard_rb
     spin_echo = spin_echo
+    allxy_unrolling_sequence = allxy_unrolling_sequence

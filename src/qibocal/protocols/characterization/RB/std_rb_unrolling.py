@@ -90,34 +90,44 @@ def _acquisition(
 
     # sweep the parameter
     for qubit in qubits.values():
-        sequences, circuits = rb_sequencer.get_sequences(qubit.name)
-        for sequence, circuit in zip(sequences.values(), circuits.values()):
-            results = platform.execute_pulse_sequence(
-                sequence[0],
-                ExecutionParameters(
-                    nshots=params.nshots,
-                    relaxation_time=params.relaxation_time,
-                    acquisition_type=AcquisitionType.DISCRIMINATION,
-                    averaging_mode=AveragingMode.CYCLIC,
-                ),
-            )
+        sequences, circuits, ro_pulses = rb_sequencer.get_sequences_list(qubit.name)
+        results = platform.execute_pulse_sequence(
+            sequences,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.DISCRIMINATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
+        )
 
-            ro_pulses = sequence[0].ro_pulses
-            # average msr, phase, i and q over the number of shots defined in the runcard
+        counts_depths = {}
+        for depth in depths:
+            starts = [pulse.start for pulse in ro_pulses[depth]]
+            counts = {}
+            for pulse in ro_pulses[depth]:
+                counts[pulse] = starts.count(pulse.start)
+            counts_depths[depth] = counts
 
-            for ro_pulse in ro_pulses:
-                result = results[ro_pulse.serial]
-                r = result.serialize
+        # average msr, phase, i and q over the number of shots defined in the runcard
+        j = 0
+        for depth in depths:
+            for ro_pulse in counts_depths[depth].keys():
+                for i in range(counts_depths[depth][ro_pulse]):
+                    result = results[ro_pulse.serial][i]
+                    r = result.serialize
 
-                r.update(
-                    {
-                        "sequence[dimensionless]": 0,  # TODO: Store sequences
-                        "length[dimensionless]": len(circuit[0]),
-                        "probabilities[dimensionless]": r["0"][0],
-                        "qubit": qubit.name,
-                    }
-                )
-                data.add_data_from_dict(r)
+                    r.update(
+                        {
+                            "sequence[dimensionless]": 0,  # TODO: Store sequences
+                            "length[dimensionless]": len(circuits[j]),
+                            "probabilities[dimensionless]": r["0"][0],
+                            "qubit": qubit.name,
+                        }
+                    )
+                    data.add_data_from_dict(r)
+
+                    j += 1
 
     return data
 
@@ -189,5 +199,5 @@ def _plot(data: StdRBData, fit: StdRBResults, qubit):
     return utils.plot(data, fit, qubit)
 
 
-StdRB = Routine(_acquisition, _fit, _plot)
+StdRB_unrolling = Routine(_acquisition, _fit, _plot)
 """Standard RB Routine object."""

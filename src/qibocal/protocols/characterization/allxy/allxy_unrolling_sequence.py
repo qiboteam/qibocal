@@ -79,22 +79,24 @@ def _acquisition(
     # create a Data object to store the results
     data = AllXYData()
 
+    gateNumber = 1
     # sweep the parameter
-    sequences = []
+    pulse_start = 0
+    sequences = PulseSequence()
     ro_pulses = {}
     for gateNumber, gates in enumerate(gatelist):
         # create a sequence of pulses
         sequence = PulseSequence()
         for qubit in qubits:
-            sequence, ro_pulses[qubit] = add_gate_pair_pulses_to_sequence(
-                platform,
-                gates,
-                qubit,
-                sequence,
-                None,
+            sequence, ro_pulses[qubit], pulse_start = add_gate_pair_pulses_to_sequence(
+                platform, gates, qubit, sequence, None, pulse_start
             )
 
-            sequences.append(sequence)
+            pulse_start += platform.relaxation_time
+            sequences.add(sequence)
+
+    # FIXME: Will this work for multiplex ?
+    ro_pulses = sequences.ro_pulses
 
     results = platform.execute_pulse_sequence(
         sequences,
@@ -106,17 +108,16 @@ def _acquisition(
 
     # retrieve the results for every qubit
     i = 0
-    for sequence in sequences:
-        for ro_pulse in sequence.ro_pulses:
-            z_proj = 2 * results[ro_pulse.serial][i].probability(0) - 1
-            # store the results
-            r = {
-                "probability": z_proj,
-                "gateNumber": i,
-                "beta_param": params.beta_param,
-                "qubit": ro_pulse.qubit,
-            }
-            data.add(r)
+    for ro_pulse in ro_pulses:
+        z_proj = 2 * results[ro_pulse.serial].probability(0) - 1
+        # store the results
+        r = {
+            "probability": z_proj,
+            "gateNumber": i,
+            "beta_param": params.beta_param,
+            "qubit": ro_pulse.qubit,
+        }
+        data.add(r)
         i += 1
     # finally, save the remaining data
     return data
@@ -128,18 +129,20 @@ def add_gate_pair_pulses_to_sequence(
     qubit,
     sequence,
     beta_param=None,
+    pulse_start=0,
 ):
     pulse_duration = platform.create_RX_pulse(qubit, start=0).duration
     # All gates have equal pulse duration
 
     sequenceDuration = 0
-    pulse_start = 0
 
     for gate in gates:
         if gate == "I":
+            # print("Transforming to sequence I gate")
             pass
 
         if gate == "RX(pi)":
+            # print("Transforming to sequence RX(pi) gate")
             if beta_param == None:
                 RX_pulse = platform.create_RX_pulse(
                     qubit,
@@ -154,6 +157,7 @@ def add_gate_pair_pulses_to_sequence(
             sequence.add(RX_pulse)
 
         if gate == "RX(pi/2)":
+            # print("Transforming to sequence RX(pi/2) gate")
             if beta_param == None:
                 RX90_pulse = platform.create_RX90_pulse(
                     qubit,
@@ -168,6 +172,7 @@ def add_gate_pair_pulses_to_sequence(
             sequence.add(RX90_pulse)
 
         if gate == "RY(pi)":
+            # print("Transforming to sequence RY(pi) gate")
             if beta_param == None:
                 RY_pulse = platform.create_RX_pulse(
                     qubit,
@@ -184,6 +189,7 @@ def add_gate_pair_pulses_to_sequence(
             sequence.add(RY_pulse)
 
         if gate == "RY(pi/2)":
+            # print("Transforming to sequence RY(pi/2) gate")
             if beta_param == None:
                 RY90_pulse = platform.create_RX90_pulse(
                     qubit,
@@ -200,12 +206,13 @@ def add_gate_pair_pulses_to_sequence(
             sequence.add(RY90_pulse)
 
         sequenceDuration = sequenceDuration + pulse_duration
-        pulse_start = pulse_duration
+        pulse_start += pulse_duration
 
     # RO pulse starting just after pair of gates
-    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=sequenceDuration)
+    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=pulse_start)
     sequence.add(ro_pulse)
-    return sequence, ro_pulse
+    pulse_start += ro_pulse.duration
+    return sequence, ro_pulse, pulse_start
 
 
 def _fit(_data: AllXYData) -> AllXYResults:
@@ -269,5 +276,5 @@ def _plot(data: AllXYData, _fit: AllXYResults, qubit):
     return figures, fitting_report
 
 
-allxy_unrolling = Routine(_acquisition, _fit, _plot)
+allxy_unrolling_sequence = Routine(_acquisition, _fit, _plot)
 """AllXY Routine object."""

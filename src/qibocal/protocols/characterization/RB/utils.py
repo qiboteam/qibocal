@@ -134,6 +134,30 @@ class RBSequence:
         self.depths = depths
         self.runs = runs
 
+    def get_sequences_list(self, qubit):
+        sequences = []
+        circuits = []
+        ro_pulses = {}
+        for depth in self.depths:
+            new_sequences = []
+            for run in range(self.runs):
+                circuit = list(np.random.randint(0, len(INT_TO_GATE), depth))
+
+                new_sequences.append(
+                    self.circuit_to_sequence_list(self.platform, qubit, circuit)
+                )
+
+                circuits.append(circuit)
+
+            ro_pulses_list = []
+            for sequence in new_sequences:
+                ro_pulses_list.append(sequence.ro_pulses[0])
+            ro_pulses[depth] = ro_pulses_list
+
+            sequences += new_sequences
+
+        return sequences, circuits, ro_pulses
+
     def get_sequences(self, qubit):
         sequences = defaultdict(list)
         circuits = defaultdict(list)
@@ -156,6 +180,98 @@ class RBSequence:
         inverse_unitary = np.transpose(np.conj(unitary))
         theta, phi, lam = u3_decomposition(inverse_unitary)
         return gates.U3(q, theta, phi, lam)
+
+    def circuit_to_sequence_list(
+        self,
+        platform: Platform,
+        qubit,
+        circuit,
+    ):
+        # Define PulseSequence
+        sequence = PulseSequence()
+        virtual_z_phases = defaultdict(int)
+        next_pulse_start = 0
+        # virtual_z_phases = defaultdict(int)
+        for index in circuit:
+            if index == 0:
+                continue
+            gate = INT_TO_GATE[index](qubit)
+            # Virtual gates
+            if isinstance(gate, gates.Z):
+                virtual_z_phases[qubit] += np.pi
+            if isinstance(gate, gates.RZ):
+                virtual_z_phases[qubit] += gate.parameters[0]
+            # X
+            if isinstance(gate, (gates.X, gates.Y)):
+                phase = 0 if isinstance(gate, gates.X) else -np.pi / 2
+                sequence.add(
+                    platform.create_RX_pulse(
+                        qubit,
+                        start=next_pulse_start,
+                        relative_phase=virtual_z_phases[qubit] + phase,
+                    )
+                )
+            # RX
+            if isinstance(gate, (gates.RX, gates.RY)):
+                phase = 0 if isinstance(gate, gates.RX) else -np.pi / 2
+                phase += 0 if gate.parameters[0] > 0 else -np.pi
+                sequence.add(
+                    platform.create_RX90_pulse(
+                        qubit,
+                        start=next_pulse_start,
+                        relative_phase=virtual_z_phases[qubit] + phase,
+                    )
+                )
+            # U3 pulses
+            if isinstance(gate, gates.U3):
+                theta, phi, lam = gate.parameters
+                virtual_z_phases[qubit] += lam
+                sequence.add(
+                    platform.create_RX90_pulse(
+                        qubit,
+                        start=next_pulse_start,
+                        relative_phase=virtual_z_phases[qubit],
+                    )
+                )
+                virtual_z_phases[qubit] += theta
+                sequence.add(
+                    platform.create_RX90_pulse(
+                        qubit,
+                        start=sequence.finish,
+                        relative_phase=virtual_z_phases[qubit] - np.pi,
+                    )
+                )
+                virtual_z_phases[qubit] += phi
+
+        invert_gate = self.inverse(circuit, qubit)
+        # U3 pulses
+        if isinstance(invert_gate, gates.U3):
+            theta, phi, lam = invert_gate.parameters
+            virtual_z_phases[qubit] += lam
+            sequence.add(
+                platform.create_RX90_pulse(
+                    qubit,
+                    start=next_pulse_start,
+                    relative_phase=virtual_z_phases[qubit],
+                )
+            )
+            virtual_z_phases[qubit] += theta
+            sequence.add(
+                platform.create_RX90_pulse(
+                    qubit,
+                    start=sequence.finish,
+                    relative_phase=virtual_z_phases[qubit] - np.pi,
+                )
+            )
+            virtual_z_phases[qubit] += phi
+
+        # Add measurement pulse
+        measurement_start = sequence.finish
+
+        MZ_pulse = platform.create_MZ_pulse(qubit, start=measurement_start)
+        sequence.add(MZ_pulse)
+
+        return sequence
 
     def circuit_to_sequence(self, platform: Platform, qubit, circuit, size):
         # Define PulseSequence
