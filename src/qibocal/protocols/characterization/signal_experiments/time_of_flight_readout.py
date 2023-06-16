@@ -14,8 +14,8 @@ from qibocal.data import DataUnits
 
 
 @dataclass
-class ToFParameters(Parameters):
-    """ToF runcard inputs."""
+class TimeOfFlightReadoutParameters(Parameters):
+    """TimeOfFlightReadout runcard inputs."""
 
     nshots: Optional[int] = None
     """Number of shots."""
@@ -24,15 +24,17 @@ class ToFParameters(Parameters):
 
 
 @dataclass
-class ToFResults(Results):
-    """ToF outputs."""
+class TimeOfFlightReadoutResults(Results):
+    """TimeOfFlightReadout outputs."""
 
-    ToF: Dict[QubitId, float] = field(metadata=dict(update="time_of_flight"))
+    TimeOfFlightReadout: Dict[QubitId, float] = field(
+        metadata=dict(update="time_of_flight")
+    )
     """Time of flight"""
 
 
-class ToFData(DataUnits):
-    """ToF acquisition outputs."""
+class TimeOfFlightReadoutData(DataUnits):
+    """TimeOfFlightReadout acquisition outputs."""
 
     def __init__(self):
         super().__init__(
@@ -41,7 +43,9 @@ class ToFData(DataUnits):
         )
 
 
-def _acquisition(params: ToFParameters, platform: Platform, qubits: Qubits) -> ToFData:
+def _acquisition(
+    params: TimeOfFlightReadoutParameters, platform: Platform, qubits: Qubits
+) -> TimeOfFlightReadoutData:
     """Data acquisition for time of flight experiment."""
 
     sequence = PulseSequence()
@@ -67,7 +71,7 @@ def _acquisition(params: ToFParameters, platform: Platform, qubits: Qubits) -> T
         ),
     )
 
-    data = ToFData()
+    data = TimeOfFlightReadoutData()
 
     # retrieve and store the results for every qubit
     for qubit in qubits:
@@ -85,12 +89,12 @@ def _acquisition(params: ToFParameters, platform: Platform, qubits: Qubits) -> T
     return data
 
 
-def _fit(data: ToFData) -> ToFResults:
-    """Post-processing function for ToF."""
-    return ToFResults({})
+def _fit(data: TimeOfFlightReadoutData) -> TimeOfFlightReadoutResults:
+    """Post-processing function for TimeOfFlightReadout."""
+    return TimeOfFlightReadoutResults({})
 
 
-def _plot(data: ToFData, fit: ToFResults, qubit):
+def _plot(data: TimeOfFlightReadoutData, fit: TimeOfFlightReadoutResults, qubit):
     """Plotting function for TimeOfFlightReadout."""
     figures = []
     fig = make_subplots(
@@ -125,5 +129,5 @@ def _plot(data: ToFData, fit: ToFResults, qubit):
     return figures, fitting_report
 
 
-tof_readout = Routine(_acquisition, _fit, _plot)
+time_of_flight_readout = Routine(_acquisition, _fit, _plot)
 """TimeOfFlightReadout Routine object."""
