@@ -21,7 +21,6 @@ from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
 from .resonator_spectroscopy_attenuation import resonator_spectroscopy_attenuation
 from .signal_experiments.optimal_integration_weights import optimal_integration_weights
-from .signal_experiments.tof import tof
 
 
 class Operation(Enum):
@@ -45,5 +44,4 @@ class Operation(Enum):
     flipping = flipping
     dispersive_shift = dispersive_shift
     standard_rb = standard_rb
-    tof = tof
     optimal_integration_weights = optimal_integration_weights

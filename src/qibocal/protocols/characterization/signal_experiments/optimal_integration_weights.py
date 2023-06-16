@@ -2,13 +2,14 @@ from dataclasses import dataclass
 from typing import Dict, Optional, Union
 
 import numpy as np
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
-from qibocal.protocols.characterization.signal_experiments.utils import signal_0_1
 
 
 @dataclass
@@ -170,7 +171,55 @@ def _plot(
     data: OptimalIntegrationWeightsData, fit: OptimalIntegrationWeightsResults, qubit
 ):
     """Plotting function for OptimalIntegrationWeights."""
-    return signal_0_1(data, fit, qubit)
+
+    figures = []
+    fig = make_subplots(
+        rows=1,
+        cols=1,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        subplot_titles=("State 0-1",),
+    )
+
+    integration_weights = fit.optimal_integration_weights[qubit]
+
+    fitting_report = ""
+    state = "1-0"
+
+    fig.add_trace(
+        go.Scatter(
+            y=integration_weights,
+            name=f"q{qubit}",
+            showlegend=not bool(state),
+            legendgroup=f"q{qubit}",
+        ),
+        row=1,
+        col=1,
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            y=np.ones([len(integration_weights)]),
+            name=f"q{qubit}",
+            showlegend=not bool(state),
+            legendgroup=f"q{qubit}",
+        ),
+        row=1,
+        col=1,
+    )
+
+    fig.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Sample",
+        yaxis_title="MSR (uV)",
+    )
+
+    fitting_report = fitting_report + (f"{qubit} | Optimal integration weights : <br>")
+
+    figures.append(fig)
+
+    return figures, fitting_report
 
 
 optimal_integration_weights = Routine(_acquisition, _fit, _plot)
