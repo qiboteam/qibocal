@@ -4,7 +4,7 @@ actions:
 
   - id: time of flight
     priority: 0
-    operation: tof
+    operation: tof_readout
     parameters:
       nshots: 1024
 

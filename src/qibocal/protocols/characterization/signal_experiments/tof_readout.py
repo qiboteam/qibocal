@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
 import numpy as np
 import plotly.graph_objects as go
@@ -7,6 +7,7 @@ from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.data import DataUnits
@@ -26,7 +27,7 @@ class ToFParameters(Parameters):
 class ToFResults(Results):
     """ToF outputs."""
 
-    ToF: Dict[Union[str, int], float] = field(metadata=dict(update="time_of_flight"))
+    ToF: Dict[QubitId, float] = field(metadata=dict(update="time_of_flight"))
     """Time of flight"""
 
 
@@ -122,9 +123,6 @@ def _plot(data: ToFData, fit: ToFResults, qubit):
     figures.append(fig)
 
     return figures, fitting_report
-
-    """Plotting function for TimeOfFlightReadout."""
-    return signals(data, fit, qubit)
 
 
 tof_readout = Routine(_acquisition, _fit, _plot)
