@@ -19,6 +19,8 @@ DATAFILE = "data.npz"
 """Name of the file where data acquired (arrays) by calibration are dumped."""
 JSONFILE = "conf.json"
 """Name of the file where data acquired (global configuration) by calibration are dumped."""
+RESULTFILE = "result.json"
+"""Name of the file where results are dumped."""
 
 
 class Parameters:
@@ -61,7 +63,7 @@ class Data:
     def qubits(self):
         """Access qubits from data structure."""
         if set(map(type, self.data)) == {tuple}:
-            return np.unique([q[0] for q in self.data])
+            return list({q[0] for q in self.data})
         return [q for q in self.data]
 
     def __getitem__(self, qubit: Union[QubitId, Tuple]):
@@ -127,6 +129,10 @@ class Results:
                 up[fld.metadata["update"]] = getattr(self, fld.name)
 
         return up
+
+    def save(self, path):
+        """Store results to json."""
+        (path / RESULTFILE).write_text(json.dumps(asdict(self), indent=4))
 
 
 # Internal types, in particular `_ParametersT` is used to address function

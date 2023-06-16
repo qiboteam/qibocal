@@ -113,6 +113,7 @@ class Task:
         else:
             self._data: Data = operation.acquisition(parameters, platform=platform)
         self._data.save(path)
-        # TODO: data dump
-        # path.write_text(yaml.dump(pydantic_encoder(self.data(base_dir))))
-        return operation.fit(self._data)
+
+        results = operation.fit(self._data)
+        results.save(path)
+        return results
