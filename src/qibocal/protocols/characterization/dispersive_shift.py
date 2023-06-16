@@ -49,7 +49,7 @@ class DispersiveShiftResults(Results):
     """Resonator spectroscopy outputs in the excited state"""
     best_freq: Dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
     """Readout frequency that maximizes the distance of ground and excited states in iq-plane"""
-    best_iqs: Dict[QubitId, npt.NDArray[np.float64]]
+    best_iqs: Dict[QubitId, list]
     """iq-couples of ground and excited states with best frequency"""
 
 
@@ -205,7 +205,7 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
             np.linalg.norm(iq_couples[0][qubit] - iq_couples[1][qubit], axis=-1)
         )
         best_freqs[qubit] = frequencies[max_index]
-        best_iqs[qubit] = iq_couples[:, qubit, max_index]
+        best_iqs[qubit] = iq_couples[:, qubit, max_index].tolist()
 
     return DispersiveShiftResults(
         results_0=results[0],
