@@ -2,8 +2,6 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from qibocal.config import log
-
 
 def rabi_amplitude_fit(x, p0, p1, p2, p3):
     # A fit to Superconducting Qubit Rabi Oscillation
@@ -27,13 +25,11 @@ def rabi_length_fit(x, p0, p1, p2, p3, p4):
 
 def plot(data, fit, qubit):
     if data.__class__.__name__ == "RabiAmplitudeData":
-        quantity = "amplitude"
-        unit = "dimensionless"
+        quantity = "amp"
         title = "Amplitude (dimensionless)"
         fitting = rabi_amplitude_fit
     elif data.__class__.__name__ == "RabiLengthData":
         quantity = "length"
-        unit = "ns"
         title = "Time (ns)"
         fitting = rabi_length_fit
 
@@ -51,13 +47,13 @@ def plot(data, fit, qubit):
         ),
     )
 
-    qubit_data = data.df[data.df["qubit"] == qubit]
+    qubit_data = data[qubit]
 
-    rabi_parameters = qubit_data[quantity].pint.to(unit).pint.magnitude.unique()
+    rabi_parameters = getattr(qubit_data, quantity)
     fig.add_trace(
         go.Scatter(
-            x=qubit_data[quantity].pint.to(unit).pint.magnitude,
-            y=qubit_data["MSR"].pint.to("uV").pint.magnitude,
+            x=rabi_parameters,
+            y=qubit_data.msr * 1e6,
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -68,8 +64,8 @@ def plot(data, fit, qubit):
     )
     fig.add_trace(
         go.Scatter(
-            x=qubit_data[quantity].pint.to(unit).pint.magnitude,
-            y=qubit_data["phase"].pint.to("rad").pint.magnitude,
+            x=rabi_parameters,
+            y=qubit_data.phase,
             opacity=1,
             name="Phase",
             showlegend=True,
@@ -79,32 +75,28 @@ def plot(data, fit, qubit):
         col=2,
     )
 
-    # add fitting trace
-    if len(data) > 0:
-        rabi_parameter_range = np.linspace(
-            min(rabi_parameters),
-            max(rabi_parameters),
-            2 * len(data),
-        )
-        params = fit.fitted_parameters[qubit]
-        fig.add_trace(
-            go.Scatter(
-                x=rabi_parameter_range,
-                y=fitting(rabi_parameter_range, *params),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
-                marker_color="rgb(255, 130, 67)",
-            ),
-            row=1,
-            col=1,
-        )
+    rabi_parameter_range = np.linspace(
+        min(rabi_parameters),
+        max(rabi_parameters),
+        2 * len(rabi_parameters),
+    )
+    params = fit.fitted_parameters[qubit]
+    fig.add_trace(
+        go.Scatter(
+            x=rabi_parameter_range,
+            y=fitting(rabi_parameter_range, *params) * 1e6,
+            name="Fit",
+            line=go.scatter.Line(dash="dot"),
+            marker_color="rgb(255, 130, 67)",
+        ),
+        row=1,
+        col=1,
+    )
 
-        fitting_report += (
-            f"{qubit} | pi_pulse_amplitude: {float(fit.amplitude[qubit]):.3f}<br>"
-        )
-        fitting_report += (
-            f"{qubit} | pi_pulse_length: {float(fit.length[qubit]):.3f}<br>"
-        )
+    fitting_report += (
+        f"{qubit} | pi_pulse_amplitude: {float(fit.amplitude[qubit]):.3f}<br>"
+    )
+    fitting_report += f"{qubit} | pi_pulse_length: {float(fit.length[qubit]):.3f}<br>"
 
     fig.update_layout(
         showlegend=True,

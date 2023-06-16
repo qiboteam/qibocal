@@ -2,13 +2,14 @@ from dataclasses import dataclass, field
 from typing import Dict, Optional, Union
 
 import numpy as np
+import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.data import DataUnits
+from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
 from .utils import PowerLevel, lorentzian_fit, spectroscopy_plot
 
@@ -61,33 +62,32 @@ class ResonatorSpectroscopyResults(Results):
     """Readout attenuation [dB] for each qubit."""
 
 
-class ResonatorSpectroscopyData(DataUnits):
-    """ResonatorSpectroscopy acquisition outputs."""
+ResSpecType = np.dtype(
+    [("freq", np.float64), ("msr", np.float64), ("phase", np.float64)]
+)
+"""Custom dtype for resonator spectroscopy."""
 
-    def __init__(self, resonator_type, power_level=None, amplitude=None):
-        super().__init__(
-            "data",
-            {"frequency": "Hz"},
-            options=["qubit"],
-        )
-        self._resonator_type = resonator_type
-        self._power_level = power_level
-        self._amplitude = amplitude
 
-    @property
-    def resonator_type(self):
-        """Type of resonator"""
-        return self._resonator_type
+@dataclass
+class ResonatorSpectroscopyData(Data):
+    """Data structure for resonator spectroscopy."""
 
-    @property
-    def power_level(self):
-        """Resonator spectroscopy power level"""
-        return self._power_level
+    resonator_type: str
+    """Resonator type."""
+    amplitudes: Dict[QubitId, float]
+    """Amplitudes provided by the user."""
+    data: Dict[QubitId, npt.NDArray[ResSpecType]] = field(default_factory=dict)
+    """Raw data acquired."""
+    power_level: Optional[PowerLevel] = None
+    """Power regime of the resonator."""
 
-    @property
-    def amplitude(self):
-        """Readout pulse amplitude common for all qubits"""
-        return self._amplitude
+    def register_qubit(self, qubit, freq, msr, phase):
+        """Store output for single qubit."""
+        ar = np.empty(freq.shape, dtype=ResSpecType)
+        ar["freq"] = freq
+        ar["msr"] = msr
+        ar["phase"] = phase
+        self.data[qubit] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -122,9 +122,9 @@ def _acquisition(
         type=SweeperType.OFFSET,
     )
     data = ResonatorSpectroscopyData(
-        platform.resonator_type,
-        params.power_level,
-        amplitudes,
+        amplitudes=amplitudes,
+        power_level=params.power_level,
+        resonator_type=platform.resonator_type,
     )
     results = platform.sweep(
         sequence,
@@ -142,45 +142,43 @@ def _acquisition(
         # average msr, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulses[qubit].serial]
         # store the results
-        r = result.serialize
-        r.update(
-            {
-                "frequency[Hz]": delta_frequency_range + ro_pulses[qubit].frequency,
-                "qubit": len(delta_frequency_range) * [qubit],
-            }
+        data.register_qubit(
+            qubit,
+            msr=result.magnitude,
+            phase=result.phase,
+            freq=delta_frequency_range + ro_pulses[qubit].frequency,
         )
-        data.add_data_from_dict(r)
-    # finally, save the remaining data
     return data
 
 
 def _fit(data: ResonatorSpectroscopyData) -> ResonatorSpectroscopyResults:
     """Post-processing function for ResonatorSpectroscopy."""
-    qubits = data.df["qubit"].unique()
+    qubits = data.qubits
     bare_frequency = {}
-    amplitudes = {}
     frequency = {}
     fitted_parameters = {}
     for qubit in qubits:
-        freq, fitted_params = lorentzian_fit(data, qubit)
+        freq, fitted_params = lorentzian_fit(
+            data[qubit], resonator_type=data.resonator_type, fit="resonator"
+        )
         if data.power_level is PowerLevel.high:
             bare_frequency[qubit] = freq
 
         frequency[qubit] = freq
-        amplitudes[qubit] = data.amplitude[qubit]
         fitted_parameters[qubit] = fitted_params
+
     if data.power_level is PowerLevel.high:
         return ResonatorSpectroscopyResults(
             frequency=frequency,
             fitted_parameters=fitted_parameters,
             bare_frequency=bare_frequency,
-            amplitude=amplitudes,
+            amplitude=data.amplitudes,
         )
     else:
         return ResonatorSpectroscopyResults(
             frequency=frequency,
             fitted_parameters=fitted_parameters,
-            amplitude=amplitudes,
+            amplitude=data.amplitudes,
         )
 
 

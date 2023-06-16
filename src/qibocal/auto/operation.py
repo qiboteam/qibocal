@@ -1,8 +1,12 @@
 import inspect
-from dataclasses import dataclass, fields
-from typing import Callable, Dict, Generic, NewType, TypeVar, Union
+import json
+from dataclasses import asdict, dataclass, fields
+from typing import Callable, Dict, Generic, NewType, Tuple, TypeVar, Union
 
-from qibolab.qubits import Qubit
+import numpy as np
+import numpy.typing as npt
+from qibolab.platform import Platform
+from qibolab.qubits import Qubit, QubitId
 
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
@@ -10,6 +14,13 @@ ParameterValue = Union[float, int]
 """Valid value for a routine and runcard parameter."""
 Qubits = Dict[int, Qubit]
 """Convenient way of passing qubits in the routines."""
+
+DATAFILE = "data.npz"
+"""Name of the file where data acquired (arrays) by calibration are dumped."""
+JSONFILE = "conf.json"
+"""Name of the file where data acquired (global configuration) by calibration are dumped."""
+RESULTFILE = "result.json"
+"""Name of the file where results are dumped."""
 
 
 class Parameters:
@@ -44,6 +55,43 @@ class Parameters:
 
 class Data:
     """Data resulting from acquisition routine."""
+
+    data: dict[Union[Tuple, QubitId], npt.NDArray]
+    """Data object to store arrays"""
+
+    @property
+    def qubits(self):
+        """Access qubits from data structure."""
+        if set(map(type, self.data)) == {tuple}:
+            return list({q[0] for q in self.data})
+        return [q for q in self.data]
+
+    def __getitem__(self, qubit: Union[QubitId, Tuple]):
+        """Access data attribute member."""
+        return self.data[qubit]
+
+    @property
+    def global_params_dict(self):
+        """Convert non-arrays attributes into dict."""
+        global_dict = asdict(self)
+        global_dict.pop("data")
+        return global_dict
+
+    def save(self, path):
+        """Store results."""
+        self.to_json(path, self.global_params_dict)
+        self.to_npz(path, self.data)
+
+    @staticmethod
+    def to_npz(path, data_dict: dict):
+        """Helper function to use np.savez while converting keys into strings."""
+        np.savez(path / DATAFILE, **{str(i): data_dict[i] for i in data_dict})
+
+    @staticmethod
+    def to_json(path, data_dict: dict):
+        """Helper function to dump to json in JSONFILE path."""
+        if data_dict:
+            (path / JSONFILE).write_text(json.dumps(data_dict, indent=4))
 
 
 @dataclass
@@ -81,6 +129,10 @@ class Results:
                 up[fld.metadata["update"]] = getattr(self, fld.name)
 
         return up
+
+    def save(self, path):
+        """Store results to json."""
+        (path / RESULTFILE).write_text(json.dumps(asdict(self), indent=4))
 
 
 # Internal types, in particular `_ParametersT` is used to address function
@@ -138,7 +190,7 @@ class DummyPars(Parameters):
 class DummyData(Data):
     """Dummy data."""
 
-    def to_csv(self, path):
+    def save(self, path):
         """Dummy method for saving data"""
 
 
@@ -147,7 +199,7 @@ class DummyRes(Results):
     """Dummy results."""
 
 
-def _dummy_acquisition(pars: DummyPars) -> DummyData:
+def _dummy_acquisition(pars: DummyPars, platform: Platform) -> DummyData:
     return DummyData()
 
 

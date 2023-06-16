@@ -115,22 +115,13 @@ def _acquisition(
     # retrieve the results for every qubit
     for qubit in qubits:
         result = results[ro_pulses[qubit].serial]
-
-        biases = np.repeat(delta_bias_range, len(delta_frequency_range))
-        freqs = np.array(
-            len(delta_bias_range)
-            * list(delta_frequency_range + qd_pulses[qubit].frequency)
-        ).flatten()
-        # store the results
-        r = {k: v.ravel() for k, v in result.serialize.items()}
-        r.update(
-            {
-                "frequency[Hz]": freqs,
-                "bias[V]": biases,
-                "qubit": len(freqs) * [qubit],
-            }
+        data.register_qubit(
+            qubit,
+            msr=result.magnitude,
+            phase=result.phase,
+            freq=delta_frequency_range + qd_pulses[qubit].frequency,
+            bias=delta_bias_range,
         )
-        data.add_data_from_dict(r)
 
     return data
 

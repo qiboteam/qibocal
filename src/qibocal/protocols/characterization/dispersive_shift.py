@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -11,16 +11,8 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.data import DataUnits
-from qibocal.protocols.characterization.resonator_spectroscopy import (
-    ResonatorSpectroscopyData,
-)
-from qibocal.protocols.characterization.utils import (
-    PowerLevel,
-    lorentzian,
-    lorentzian_fit,
-)
+from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.protocols.characterization.utils import lorentzian, lorentzian_fit
 
 
 @dataclass
@@ -57,21 +49,41 @@ class DispersiveShiftResults(Results):
     """Resonator spectroscopy outputs in the excited state"""
     best_freq: Dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
     """Readout frequency that maximizes the distance of ground and excited states in iq-plane"""
-    best_iqs: Dict[QubitId, npt.NDArray[np.float64]]
+    best_iqs: Dict[QubitId, list]
     """iq-couples of ground and excited states with best frequency"""
 
 
-class DispersiveShiftData(DataUnits):
+DispersiveShiftType = np.dtype(
+    [
+        ("freq", np.float64),
+        ("i", np.float64),
+        ("q", np.float64),
+        ("msr", np.float64),
+        ("phase", np.float64),
+    ]
+)
+"""Custom dtype for rabi amplitude."""
+
+
+@dataclass
+class DispersiveShiftData(Data):
     """Dipsersive shift acquisition outputs."""
 
-    def __init__(self, resonator_type, power_level=PowerLevel.low):
-        super().__init__(
-            name="data",
-            quantities={"frequency": "Hz"},
-            options=["qubit", "state"],
-        )
-        self.resonator_type = resonator_type
-        self.power_level = power_level
+    resonator_type: str
+    """Resonator type."""
+    data: Dict[Tuple[QubitId, int], npt.NDArray[DispersiveShiftType]] = field(
+        default_factory=dict
+    )
+
+    def register_qubit(self, qubit, state, freq, msr, phase, i, q):
+        """Store output for single qubit."""
+        ar = np.empty(i.shape, dtype=DispersiveShiftType)
+        ar["freq"] = freq
+        ar["msr"] = msr
+        ar["phase"] = phase
+        ar["i"] = i
+        ar["q"] = q
+        self.data[qubit, state] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -114,7 +126,6 @@ def _acquisition(
 
     # create a DataUnits objects to store the results
     data = DispersiveShiftData(platform.resonator_type)
-
     sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
@@ -150,41 +161,35 @@ def _acquisition(
         for i, results in enumerate([results_0, results_1]):
             result = results[ro_pulses[qubit].serial]
             # store the results
-            r = result.serialize
-            r.update(
-                {
-                    "frequency[Hz]": delta_frequency_range + ro_pulses[qubit].frequency,
-                    "qubit": len(delta_frequency_range) * [qubit],
-                    "state": len(delta_frequency_range) * [i],
-                }
+            data.register_qubit(
+                qubit=qubit,
+                state=i,
+                freq=ro_pulses[qubit].frequency + delta_frequency_range,
+                msr=result.magnitude,
+                phase=result.phase,
+                i=result.voltage_i,
+                q=result.voltage_q,
             )
-            data.add_data_from_dict(r)
-
     return data
 
 
 def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
     """Post-Processing for dispersive shift"""
-    qubits = data.df["qubit"].unique()
+    qubits = data.qubits
     results = []
     iq_couples = [[], []]  # axis 0: states, axis 1: qubit
-
     for i in range(2):
         frequency = {}
         fitted_parameters = {}
-        data_i = ResonatorSpectroscopyData(data.resonator_type)
-        data_i.df = data.df[data.df["state"] == i].drop(columns=["state"]).reset_index()
-
         for qubit in qubits:
-            freq, fitted_params = lorentzian_fit(data_i, qubit)
+            data_i = data[qubit, i]
+            freq, fitted_params = lorentzian_fit(
+                data_i, resonator_type=data.resonator_type, fit="resonator"
+            )
             frequency[qubit] = freq
             fitted_parameters[qubit] = fitted_params
-            i_measures = data_i.df[data_i.df["qubit"] == qubit][
-                "i"
-            ].pint.magnitude.to_numpy()
-            q_measures = data_i.df[data_i.df["qubit"] == qubit][
-                "q"
-            ].pint.magnitude.to_numpy()
+            i_measures = data_i.i
+            q_measures = data_i.q
 
             iq_couples[i].append(np.stack((i_measures, q_measures), axis=-1))
             results.append(StateResults(frequency, fitted_parameters))
@@ -194,17 +199,13 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
     best_freqs = {}
     best_iqs = {}
     for qubit in qubits:
-        frequencies = (
-            data.df[data.df["qubit"] == qubit]["frequency"]
-            .pint.to("GHz")
-            .pint.magnitude.unique()
-        )
+        frequencies = data[qubit, 0].freq
 
         max_index = np.argmax(
             np.linalg.norm(iq_couples[0][qubit] - iq_couples[1][qubit], axis=-1)
         )
         best_freqs[qubit] = frequencies[max_index]
-        best_iqs[qubit] = iq_couples[:, qubit, max_index]
+        best_iqs[qubit] = iq_couples[:, qubit, max_index].tolist()
 
     return DispersiveShiftResults(
         results_0=results[0],
@@ -229,16 +230,11 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
         ),
     )
     # iterate over multiple data folders
-    qubit_data = data.df[data.df["qubit"] == qubit]
 
     fitting_report = ""
 
-    data_0 = ResonatorSpectroscopyData(data.resonator_type)
-    data_0.df = qubit_data[qubit_data["state"] == 0].drop(columns=["state"])
-    data_1 = ResonatorSpectroscopyData(data.resonator_type)
-    data_1.df = (
-        qubit_data[qubit_data["state"] == 1].drop(columns=["state"]).reset_index()
-    )
+    data_0 = data[qubit, 0]
+    data_1 = data[qubit, 1]
 
     fit_data_0 = fit.results_0
     fit_data_1 = fit.results_1
@@ -252,12 +248,12 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
         )
     ):
         opacity = 1
-        frequencies = q_data.df["frequency"].pint.to("GHz").pint.magnitude.unique()
+        frequencies = q_data.freq / 1e9
 
         fig.add_trace(
             go.Scatter(
-                x=q_data.df["frequency"].pint.to("GHz").pint.magnitude,
-                y=q_data.df["MSR"].pint.to("uV").pint.magnitude,
+                x=frequencies,
+                y=q_data.msr * 1e6,
                 opacity=opacity,
                 name=f"q{qubit}: {label}",
                 showlegend=True,
@@ -268,8 +264,8 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
         )
         fig.add_trace(
             go.Scatter(
-                x=q_data.df["frequency"].pint.to("GHz").pint.magnitude,
-                y=q_data.df["phase"].pint.to("rad").pint.magnitude,
+                x=frequencies,
+                y=q_data.phase,
                 opacity=opacity,
                 showlegend=False,
                 legendgroup=f"q{qubit}: {label}",
@@ -281,7 +277,7 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
         freqrange = np.linspace(
             min(frequencies),
             max(frequencies),
-            2 * len(data),
+            2 * len(q_data),
         )
 
         params = data_fit.fitted_parameters[qubit]
@@ -298,10 +294,10 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
 
     fig.add_trace(
         go.Scatter(
-            x=[fit.best_freq[qubit], fit.best_freq[qubit]],
+            x=[fit.best_freq[qubit] / 1e9, fit.best_freq[qubit] / 1e9],
             y=[
-                np.min(qubit_data["MSR"].pint.to("uV").pint.magnitude),
-                np.max(qubit_data["MSR"].pint.to("uV").pint.magnitude),
+                np.min(np.concatenate((data_0.msr, data_1.msr))),
+                np.max(np.concatenate((data_0.msr, data_1.msr))),
             ],
             mode="lines",
             line=go.scatter.Line(color="orange", width=3, dash="dash"),
@@ -312,23 +308,23 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
     )
 
     fig.add_vline(
-        x=fit.best_freq[qubit],
+        x=fit.best_freq[qubit] / 1e9,
         line=dict(color="orange", width=3, dash="dash"),
         row=1,
-        col=2,
+        col=1,
     )
 
     fitting_report = fitting_report + (
-        f"{qubit} | State zero freq : {fit_data_0.frequency[qubit]*1e9:,.0f} Hz.<br>"
+        f"{qubit} | State zero freq : {fit_data_0.frequency[qubit]:,.0f} Hz.<br>"
     )
     fitting_report = fitting_report + (
-        f"{qubit} | State one freq : {fit_data_1.frequency[qubit]*1e9:,.0f} Hz.<br>"
+        f"{qubit} | State one freq : {fit_data_1.frequency[qubit]:,.0f} Hz.<br>"
     )
     fitting_report = fitting_report + (
-        f"{qubit} | Frequency shift : {(fit_data_1.frequency[qubit] - fit_data_0.frequency[qubit])*1e9:,.0f} Hz.<br>"
+        f"{qubit} | Frequency shift : {(fit_data_1.frequency[qubit] - fit_data_0.frequency[qubit]):,.0f} Hz.<br>"
     )
     fitting_report = fitting_report + (
-        f"{qubit} | Best frequency : {fit.best_freq[qubit]*1e9:,.0f} Hz.<br>"
+        f"{qubit} | Best frequency : {fit.best_freq[qubit]:,.0f} Hz.<br>"
     )
     fig.update_layout(
         showlegend=True,

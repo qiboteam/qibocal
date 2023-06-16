@@ -7,8 +7,6 @@ from typing import List
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
-from qibocal.config import raise_error
-
 from ..protocols.characterization import Operation
 from ..utils import allocate_qubits
 from .operation import Data, DummyPars, Qubits, Results, Routine, dummy_operation
@@ -20,9 +18,6 @@ MAX_PRIORITY = int(1e9)
 But not so insanely big not to fit in a native integer.
 
 """
-
-DATAFILE = "data.csv"
-"""Name of the file where data acquired by calibration are dumped."""
 
 TaskId = tuple[Id, int]
 """Unique identifier for executed tasks."""
@@ -116,10 +111,9 @@ class Task:
             self.qubits = list(qubits)
 
         else:
-            self._data: Data = operation.acquisition(
-                parameters,
-            )
-        self._data.to_csv(path)
-        # TODO: data dump
-        # path.write_text(yaml.dump(pydantic_encoder(self.data(base_dir))))
-        return operation.fit(self._data)
+            self._data: Data = operation.acquisition(parameters, platform=platform)
+        self._data.save(path)
+
+        results = operation.fit(self._data)
+        results.save(path)
+        return results
