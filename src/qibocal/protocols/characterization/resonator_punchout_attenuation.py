@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from statistics import mode
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -42,15 +42,15 @@ class ResonatorPunchoutAttenuationParameters(Parameters):
 class ResonatorPunchoutAttenuationResults(Results):
     """ResonatorPunchoutAttenation outputs."""
 
-    readout_frequency: Dict[QubitId, float] = field(
+    readout_frequency: dict[QubitId, float] = field(
         metadata=dict(update="readout_frequency")
     )
     """Readout frequency [GHz] for each qubit."""
-    readout_attenuation: Dict[QubitId, int] = field(
+    readout_attenuation: dict[QubitId, int] = field(
         metadata=dict(update="readout_attenuation")
     )
     """Readout attenuation [dB] for each qubit."""
-    bare_frequency: Optional[Dict[QubitId, float]] = field(
+    bare_frequency: Optional[dict[QubitId, float]] = field(
         metadata=dict(update="bare_resonator_frequency")
     )
 
@@ -72,7 +72,7 @@ class ResonatorPunchoutAttenuationData(Data):
 
     resonator_type: str
     """Resonator type."""
-    data: Dict[QubitId, npt.NDArray[ResPunchoutAttType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[ResPunchoutAttType]] = field(default_factory=dict)
     """Raw data acquired."""
 
     def add_qubit_data(self, qubit, freq, att, msr, phase):

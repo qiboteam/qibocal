@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from statistics import mode
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -44,15 +44,15 @@ class ResonatorPunchoutParameters(Parameters):
 class ResonatorPunchoutResults(Results):
     """ResonatorPunchout outputs."""
 
-    readout_frequency: Dict[QubitId, float] = field(
+    readout_frequency: dict[QubitId, float] = field(
         metadata=dict(update="readout_frequency")
     )
     """Readout frequency [GHz] for each qubit."""
-    readout_amplitude: Dict[QubitId, float] = field(
+    readout_amplitude: dict[QubitId, float] = field(
         metadata=dict(update="readout_amplitude")
     )
     """Readout amplitude for each qubit."""
-    bare_frequency: Optional[Dict[QubitId, float]] = field(
+    bare_frequency: Optional[dict[QubitId, float]] = field(
         metadata=dict(update="bare_resonator_frequency")
     )
     """Bare resonator frequency [GHz] for each qubit."""
@@ -75,9 +75,9 @@ class ResonatorPunchoutData(Data):
 
     resonator_type: str
     """Resonator type."""
-    amplitudes: Dict[QubitId, float]
+    amplitudes: dict[QubitId, float]
     """Amplitudes provided by the user."""
-    data: Dict[QubitId, npt.NDArray[ResPunchoutType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[ResPunchoutType]] = field(default_factory=dict)
     """Raw data acquired."""
 
     def register_qubit(self, qubit, freq, amp, msr, phase):

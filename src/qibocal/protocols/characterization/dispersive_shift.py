@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Tuple
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -33,9 +33,9 @@ class DispersiveShiftParameters(Parameters):
 class StateResults(Results):
     """Resonator spectroscopy outputs."""
 
-    frequency: Dict[QubitId, float]
+    frequency: dict[QubitId, float]
     """Readout frequency for each qubit."""
-    fitted_parameters: Dict[QubitId, Dict[str, float]]
+    fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitted parameters."""
 
 
@@ -47,9 +47,9 @@ class DispersiveShiftResults(Results):
     """Resonator spectroscopy outputs in the ground state."""
     results_1: StateResults
     """Resonator spectroscopy outputs in the excited state"""
-    best_freq: Dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
+    best_freq: dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
     """Readout frequency that maximizes the distance of ground and excited states in iq-plane"""
-    best_iqs: Dict[QubitId, npt.NDArray[np.float64]]
+    best_iqs: dict[QubitId, npt.NDArray[np.float64]]
     """iq-couples of ground and excited states with best frequency"""
 
 
@@ -71,7 +71,7 @@ class DispersiveShiftData(Data):
 
     resonator_type: str
     """Resonator type."""
-    data: Dict[Tuple[QubitId, int], npt.NDArray[DispersiveShiftType]] = field(
+    data: dict[tuple[QubitId, int], npt.NDArray[DispersiveShiftType]] = field(
         default_factory=dict
     )
 
@@ -97,7 +97,7 @@ def _acquisition(
     Args:
         params (DispersiveShiftParameters): experiment's parameters
         platform (Platform): Qibolab platform object
-        qubits (dict): List of target qubits to perform the action
+        qubits (dict): list of target qubits to perform the action
 
     """
 

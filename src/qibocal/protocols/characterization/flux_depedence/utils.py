@@ -23,7 +23,7 @@ def flux_dependence_plot(data, fit, qubit):
         go.Heatmap(
             x=frequencies,
             y=qubit_data.bias,
-            z=qubit_data.msr * 1e4,
+            z=qubit_data.msr * 1e6,
             colorbar_x=0.46,
         ),
         row=1,

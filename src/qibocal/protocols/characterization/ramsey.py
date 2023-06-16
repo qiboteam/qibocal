@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -38,13 +38,13 @@ class RamseyParameters(Parameters):
 class RamseyResults(Results):
     """Ramsey outputs."""
 
-    frequency: Dict[QubitId, float] = field(metadata=dict(update="drive_frequency"))
+    frequency: dict[QubitId, float] = field(metadata=dict(update="drive_frequency"))
     """Drive frequency [GHz] for each qubit."""
-    t2: Dict[QubitId, float]
+    t2: dict[QubitId, float]
     """T2 for each qubit [ns]."""
-    delta_phys: Dict[QubitId, float]
+    delta_phys: dict[QubitId, float]
     """Drive frequency [Hz] correction for each qubit."""
-    fitted_parameters: Dict[QubitId, Dict[str, float]]
+    fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
 
 
@@ -64,13 +64,14 @@ class RamseyData(Data):
     """Final delay between RX(pi/2) pulses in ns."""
     detuning_sign: int
     """Sign for induced detuning."""
-    qubit_freqs: Dict[QubitId, float] = field(default_factory=dict)
+    qubit_freqs: dict[QubitId, float] = field(default_factory=dict)
     """Qubit freqs for each qubit."""
-    data: Dict[QubitId, npt.NDArray[RamseyType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[RamseyType]] = field(default_factory=dict)
     """Raw data acquired."""
 
     def register_qubit(self, qubit, wait, msr, phase):
         """Store output for single qubit."""
+        # to be able to handle the non-sweeper case
         shape = (1,) if np.isscalar(wait) else wait.shape
         ar = np.empty(shape, dtype=RamseyType)
         ar["wait"] = wait

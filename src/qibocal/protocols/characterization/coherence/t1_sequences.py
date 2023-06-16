@@ -19,7 +19,7 @@ def _acquisition(params: T1Parameters, platform: Platform, qubits: Qubits) -> T1
     Args:
         params:
         platform (Platform): Qibolab platform object
-        qubits (list): List of target qubits to perform the action
+        qubits (list): list of target qubits to perform the action
         delay_before_readout_start (int): Initial time delay before ReadOut
         delay_before_readout_end (list): Maximum time delay before ReadOut
         delay_before_readout_step (int): Scan range step for the delay before ReadOut

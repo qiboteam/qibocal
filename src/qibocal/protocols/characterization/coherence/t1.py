@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -35,9 +35,9 @@ class T1Parameters(Parameters):
 class T1Results(Results):
     """T1 outputs."""
 
-    t1: Dict[QubitId, float] = field(metadata=dict(update="t1"))
+    t1: dict[QubitId, float] = field(metadata=dict(update="t1"))
     """T1 for each qubit."""
-    fitted_parameters: Dict[QubitId, Dict[str, float]]
+    fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
 
 
@@ -51,11 +51,12 @@ CoherenceType = np.dtype(
 class T1Data(Data):
     """T1 acquisition outputs."""
 
-    data: Dict[QubitId, npt.NDArray[CoherenceType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[CoherenceType]] = field(default_factory=dict)
     """Raw data acquired."""
 
     def register_qubit(self, qubit, wait, msr, phase):
         """Store output for single qubit."""
+        # to be able to handle the non-sweeper case
         shape = (1,) if np.isscalar(wait) else wait.shape
         ar = np.empty(shape, dtype=CoherenceType)
         ar["wait"] = wait
@@ -78,7 +79,7 @@ def _acquisition(params: T1Parameters, platform: Platform, qubits: Qubits) -> T1
     Args:
         params:
         platform (Platform): Qibolab platform object
-        qubits (list): List of target qubits to perform the action
+        qubits (list): list of target qubits to perform the action
         delay_before_readout_start (int): Initial time delay before ReadOut
         delay_before_readout_end (list): Maximum time delay before ReadOut
         delay_before_readout_step (int): Scan range step for the delay before ReadOut

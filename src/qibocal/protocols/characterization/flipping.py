@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -32,11 +32,11 @@ class FlippingParameters(Parameters):
 class FlippingResults(Results):
     """Flipping outputs."""
 
-    amplitude: Dict[QubitId, float] = field(metadata=dict(update="drive amplitude"))
+    amplitude: dict[QubitId, float] = field(metadata=dict(update="drive amplitude"))
     """Drive amplitude for each qubit."""
-    amplitude_factors: Dict[QubitId, float]
+    amplitude_factors: dict[QubitId, float]
     """Drive amplitude correction factor for each qubit."""
-    fitted_parameters: Dict[QubitId, Dict[str, float]]
+    fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
 
 
@@ -49,9 +49,9 @@ class FlippingData(Data):
 
     resonator_type: str
     """Resonator type."""
-    pi_pulse_amplitudes: Dict[QubitId, float]
+    pi_pulse_amplitudes: dict[QubitId, float]
     """Pi pulse amplitudes for each qubit."""
-    data: Dict[QubitId, npt.NDArray[FlippingType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[FlippingType]] = field(default_factory=dict)
     """Raw data acquired."""
 
     def register_qubit(self, qubit, flips, msr):
@@ -79,7 +79,7 @@ def _acquisition(
     Args:
         params (:class:`SingleShotClassificationParameters`): input parameters
         platform (:class:`Platform`): Qibolab's platform
-        qubits (dict): Dict of target :class:`Qubit` objects to be characterized
+        qubits (dict): dict of target :class:`Qubit` objects to be characterized
 
     Returns:
         data (:class:`FlippingData`)

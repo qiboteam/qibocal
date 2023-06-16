@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
@@ -45,19 +45,19 @@ class ResonatorSpectroscopyAttenuationParameters(Parameters):
 class ResonatorSpectroscopyAttenuationResults(Results):
     """ResonatorSpectroscopy outputs."""
 
-    frequency: Dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
+    frequency: dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
     """Readout frequency [GHz] for each qubit."""
-    fitted_parameters: Dict[QubitId, Dict[str, float]]
+    fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitted parameters."""
-    bare_frequency: Optional[Dict[QubitId, float]] = field(
+    bare_frequency: Optional[dict[QubitId, float]] = field(
         default_factory=dict, metadata=dict(update="bare_resonator_frequency")
     )
     """Bare resonator frequency [GHz] for each qubit."""
-    amplitude: Optional[Dict[QubitId, float]] = field(
+    amplitude: Optional[dict[QubitId, float]] = field(
         default_factory=dict, metadata=dict(update="readout_amplitude")
     )
     """Readout amplitude for each qubit."""
-    attenuation: Optional[Dict[QubitId, int]] = field(
+    attenuation: Optional[dict[QubitId, int]] = field(
         default_factory=dict, metadata=dict(update="readout_attenuation")
     )
     """Readout attenuation [dB] for each qubit."""
@@ -67,7 +67,7 @@ class ResonatorSpectroscopyAttenuationResults(Results):
 class ResonatorSpectroscopyAttenuationData(ResonatorSpectroscopyData):
     """Data structure for resonator spectroscopy with attenuation."""
 
-    attenuations: Dict[QubitId, int] = field(default_factory=dict)
+    attenuations: dict[QubitId, int] = field(default_factory=dict)
 
 
 def _acquisition(

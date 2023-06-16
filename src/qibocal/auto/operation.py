@@ -1,7 +1,7 @@
 import inspect
 import json
 from dataclasses import asdict, dataclass, fields
-from typing import Callable, Dict, Generic, NewType, Tuple, TypeVar, Union
+from typing import Callable, Generic, NewType, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -12,7 +12,7 @@ OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
 ParameterValue = Union[float, int]
 """Valid value for a routine and runcard parameter."""
-Qubits = Dict[int, Qubit]
+Qubits = dict[int, Qubit]
 """Convenient way of passing qubits in the routines."""
 
 DATAFILE = "data.npz"
@@ -54,7 +54,7 @@ class Parameters:
 class Data:
     """Data resulting from acquisition routine."""
 
-    data: dict[Union[Tuple, QubitId], npt.NDArray]
+    data: dict[Union[tuple[QubitId, int], QubitId], npt.NDArray]
     """Data object to store arrays"""
 
     @property
@@ -64,7 +64,7 @@ class Data:
             return np.unique([q[0] for q in self.data])
         return [q for q in self.data]
 
-    def __getitem__(self, qubit: Union[QubitId, Tuple]):
+    def __getitem__(self, qubit: Union[QubitId, tuple[QubitId, int]]):
         """Access data attribute member."""
         return self.data[qubit]
 
@@ -115,13 +115,13 @@ class Results:
     """
 
     @property
-    def update(self) -> Dict[str, ParameterValue]:
+    def update(self) -> dict[str, ParameterValue]:
         """Produce an update from a result object.
 
         This is later used to update the runcard.
 
         """
-        up: Dict[str, ParameterValue] = {}
+        up: dict[str, ParameterValue] = {}
         for fld in fields(self):
             if "update" in fld.metadata:
                 up[fld.metadata["update"]] = getattr(self, fld.name)

@@ -2,7 +2,6 @@
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List
 
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
@@ -27,7 +26,7 @@ TaskId = tuple[Id, int]
 class Task:
     action: Action
     iteration: int = 0
-    qubits: List[QubitId] = field(default_factory=list)
+    qubits: list[QubitId] = field(default_factory=list)
 
     def __post_init__(self):
         if len(self.qubits) == 0:
@@ -59,7 +58,7 @@ class Task:
         return self.action.main
 
     @property
-    def next(self) -> List[Id]:
+    def next(self) -> list[Id]:
         if self.action.next is None:
             return []
         if isinstance(self.action.next, str):
@@ -113,6 +112,4 @@ class Task:
         else:
             self._data: Data = operation.acquisition(parameters, platform=platform)
         self._data.save(path)
-        # TODO: data dump
-        # path.write_text(yaml.dump(pydantic_encoder(self.data(base_dir))))
         return operation.fit(self._data)

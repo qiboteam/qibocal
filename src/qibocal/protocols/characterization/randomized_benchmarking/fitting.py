@@ -2,7 +2,7 @@
 They consist mostly of exponential decay fitting.
 """
 
-from typing import Optional, Tuple, Union
+from typing import Optional, Union
 
 import numpy as np
 from scipy.linalg import hankel, svd
@@ -98,7 +98,7 @@ def esprit(
 
 def fit_exp1B_func(
     xdata: Union[np.ndarray, list], ydata: Union[np.ndarray, list], **kwargs
-) -> Tuple[tuple, tuple]:
+) -> tuple[tuple, tuple]:
     """Calculate an single exponential A*p^m+B fit to the given ydata.
 
     Args:
@@ -106,7 +106,7 @@ def fit_exp1B_func(
         ydata (Union[np.ndarray, list]): The data to be fitted.
 
     Returns:
-        Tuple[tuple, tuple]: The fitting parameters (A, p, B) and the estimated error
+        tuple[tuple, tuple]: The fitting parameters (A, p, B) and the estimated error
                              (A_err, p_err, B_err)
     """
 
@@ -134,7 +134,7 @@ def fit_exp1B_func(
 
 def fit_exp1_func(
     xdata: Union[np.ndarray, list], ydata: Union[np.ndarray, list], **kwargs
-) -> Tuple[tuple, tuple]:
+) -> tuple[tuple, tuple]:
     """Calculate an single exponential  A*p^m fit to the given ydata, no linear offset.
 
     Args:
@@ -142,7 +142,7 @@ def fit_exp1_func(
         ydata (Union[np.ndarray, list]): The data to be fitted.
 
     Returns:
-        Tuple[tuple, tuple]: The fitting parameters (A, p) and the estimated error (A_err, p_err).
+        tuple[tuple, tuple]: The fitting parameters (A, p) and the estimated error (A_err, p_err).
     """
 
     # Check if all the values in ``ydata``are the same. That would make the
@@ -166,7 +166,7 @@ def fit_exp1_func(
 
 def fit_expn_func(
     xdata: Union[np.ndarray, list], ydata: Union[np.ndarray, list], n: int = 2, **kwargs
-) -> Tuple[tuple, tuple]:
+) -> tuple[tuple, tuple]:
     """Calculate n exponentials on top of each other, fit to the given ydata.
     No linear offset, the ESPRIT algorithm is used to identify ``n`` exponential decays.
 
@@ -176,7 +176,7 @@ def fit_expn_func(
         n (int): number of decays to fit. Default is 2.
 
     Returns:
-        Tuple[tuple, tuple]: (A1, ..., An, f1, ..., fn) with f* the decay parameters.
+        tuple[tuple, tuple]: (A1, ..., An, f1, ..., fn) with f* the decay parameters.
     """
 
     # TODO how are the errors estimated?
@@ -189,7 +189,7 @@ def fit_expn_func(
 
 def fit_exp2_func(
     xdata: Union[np.ndarray, list], ydata: Union[np.ndarray, list], **kwargs
-) -> Tuple[tuple, tuple]:
+) -> tuple[tuple, tuple]:
     """Calculate 2 exponentials on top of each other, fit to the given ydata.
 
     No linear offset, the ESPRIT algorithm is used to identify the two exponential decays.
@@ -199,7 +199,7 @@ def fit_exp2_func(
         ydata (Union[np.ndarray, list]): The data to be fitted
 
     Returns:
-        Tuple[tuple, tuple]: (A1, A2, f1, f2) with f* the decay parameters.
+        tuple[tuple, tuple]: (A1, A2, f1, f2) with f* the decay parameters.
     """
 
     return fit_expn_func(xdata, ydata, 2)

@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -38,11 +38,11 @@ class RabiLengthParameters(Parameters):
 class RabiLengthResults(Results):
     """RabiLength outputs."""
 
-    length: Dict[QubitId, int] = field(metadata=dict(update="drive_length"))
+    length: dict[QubitId, int] = field(metadata=dict(update="drive_length"))
     """Pi pulse duration for each qubit."""
-    amplitude: Dict[QubitId, float] = field(metadata=dict(update="drive_amplitude"))
+    amplitude: dict[QubitId, float] = field(metadata=dict(update="drive_amplitude"))
     """Pi pulse amplitude. Same for all qubits."""
-    fitted_parameters: Dict[QubitId, Dict[str, float]]
+    fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
 
 
@@ -56,13 +56,14 @@ RabiLenType = np.dtype(
 class RabiLengthData(Data):
     """RabiLength acquisition outputs."""
 
-    amplitudes: Dict[QubitId, float] = field(default_factory=dict)
+    amplitudes: dict[QubitId, float] = field(default_factory=dict)
     """Pulse durations provided by the user."""
-    data: Dict[QubitId, npt.NDArray[RabiLenType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[RabiLenType]] = field(default_factory=dict)
     """Raw data acquired."""
 
     def register_qubit(self, qubit, length, msr, phase):
         """Store output for single qubit."""
+        # to be able to handle the non-sweeper case
         shape = (1,) if np.isscalar(length) else length.shape
         ar = np.empty(shape, dtype=RabiLenType)
         ar["length"] = length

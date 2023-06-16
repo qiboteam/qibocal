@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
@@ -34,9 +34,9 @@ class T2Parameters(Parameters):
 class T2Results(Results):
     """T2 outputs."""
 
-    t2: Dict[QubitId, float] = field(metadata=dict(update="t2"))
+    t2: dict[QubitId, float] = field(metadata=dict(update="t2"))
     """T2 for each qubit (ns)."""
-    fitted_parameters: Dict[QubitId, Dict[str, float]]
+    fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
 
 

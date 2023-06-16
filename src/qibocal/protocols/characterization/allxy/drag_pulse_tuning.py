@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -37,9 +37,9 @@ class DragPulseTuningParameters(allxy_drag_pulse_tuning.AllXYDragParameters):
 class DragPulseTuningResults(Results):
     """DragPulseTuning outputs."""
 
-    betas: Dict[QubitId, float] = field(metadata=dict(update="beta"))
+    betas: dict[QubitId, float] = field(metadata=dict(update="beta"))
     """Optimal beta paramter for each qubit."""
-    fitted_parameters: Dict[QubitId, Dict[str, float]]
+    fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
 
 
@@ -50,7 +50,7 @@ DragPulseTuningType = np.dtype([("msr", np.float64), ("beta", np.float64)])
 class DragPulseTuningData(Data):
     """DragPulseTuning acquisition outputs."""
 
-    data: Dict[QubitId, npt.NDArray[DragPulseTuningType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[DragPulseTuningType]] = field(default_factory=dict)
     """Raw data acquired."""
 
     def register_qubit(self, qubit, msr, beta):
@@ -158,15 +158,6 @@ def _acquisition(
             r2 = result2[ro_pulses[qubit].serial]
             # store the results
             data.register_qubit(qubit, r1.magnitude - r2.magnitude, beta_param)
-            # r = {
-            #     "MSR[V]": r1.magnitude - r2.magnitude,
-            #     "i[V]": r1.voltage_i - r2.voltage_i,
-            #     "q[V]": r1.voltage_q - r2.voltage_q,
-            #     "phase[rad]": r1.phase - r2.phase,
-            #     "beta_param[dimensionless]": beta_param,
-            #     "qubit": ro_pulse.qubit,
-            # }
-            # data.add_data_from_dict(r)
 
     return data
 
@@ -196,15 +187,6 @@ def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
         qubit_data = data[qubit]
         voltages = qubit_data.msr * 1e6
         beta_params = qubit_data.beta
-
-        # TODO: remove this if not needed
-        # pguess = [
-        #     0,  # Offset:    p[0]
-        #     beta_params.values[np.argmax(voltages)]
-        #     - beta_params.values[np.argmin(voltages)],  # Amplitude: p[1]
-        #     4,  # Period:    p[2]
-        #     0.3,  # Phase:     p[3]
-        # ]
 
         try:
             popt, pcov = curve_fit(drag_fit, beta_params, voltages)
