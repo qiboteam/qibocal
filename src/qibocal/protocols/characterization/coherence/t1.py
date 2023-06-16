@@ -185,7 +185,7 @@ def _plot(data: T1Data, fit: T1Results, qubit):
     fig.add_trace(
         go.Scatter(
             x=waitrange,
-            y=utils.exp_decay(waitrange, *params) * V_TO_UV,
+            y=utils.exp_decay(waitrange, *params),
             name="Fit",
             line=go.scatter.Line(dash="dot"),
         )
