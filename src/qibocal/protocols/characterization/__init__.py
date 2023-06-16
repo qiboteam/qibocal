@@ -24,6 +24,7 @@ from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
 from .resonator_spectroscopy_attenuation import resonator_spectroscopy_attenuation
+from .signal_experiments.tof_readout import tof_readout
 
 
 class Operation(Enum):
@@ -43,6 +44,7 @@ class Operation(Enum):
     t1_sequences = t1_sequences
     t2 = t2
     t2_sequences = t2_sequences
+    tof_readout = tof_readout
     single_shot_classification = single_shot_classification
     spin_echo = spin_echo
     allxy = allxy
