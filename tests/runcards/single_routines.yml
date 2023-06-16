@@ -332,7 +332,7 @@ actions:
     operation: StdRB_unrolling
     parameters:
       min_depth: 10
-      max_depth: 70 
+      max_depth: 70
       step_depth: 20
       runs: 5
       nshots: 50
@@ -343,7 +343,7 @@ actions:
     operation: StdRB_unrolling_sequence
     parameters:
       min_depth: 10
-      max_depth: 70 
+      max_depth: 70
       step_depth: 20
       runs: 5
       nshots: 50
