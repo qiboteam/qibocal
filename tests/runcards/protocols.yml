@@ -216,7 +216,6 @@ actions:
       nshots: 10
 
 
-
   - id: allXY
     priority: 0
     operation: allxy
