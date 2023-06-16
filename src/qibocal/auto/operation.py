@@ -90,8 +90,18 @@ class Data:
     @staticmethod
     def to_json(path, data_dict: dict):
         """Helper function to dump to json in JSONFILE path."""
-        if data_dict:
-            (path / JSONFILE).write_text(json.dumps(data_dict, indent=4))
+        (path / JSONFILE).write_text(json.dumps(data_dict, indent=4))
+
+    @classmethod
+    def load(cls, path):
+        params = json.loads((path / JSONFILE).read_text())
+        obj = cls(**params)
+        raw_data = np.load(path / DATAFILE)
+        for i in raw_data:
+            # FIXME: change eval asap
+            obj.data[eval(i)] = np.rec.array(raw_data[i])
+
+        return obj
 
 
 @dataclass
@@ -133,6 +143,11 @@ class Results:
     def save(self, path):
         """Store results to json."""
         (path / RESULTFILE).write_text(json.dumps(asdict(self), indent=4))
+
+    @classmethod
+    def load(cls, path):
+        params = json.loads((path / RESULTFILE).read_text())
+        return cls(**params)
 
 
 # Internal types, in particular `_ParametersT` is used to address function
