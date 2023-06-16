@@ -9,7 +9,16 @@ from qibolab.qubits import QubitId
 
 from ..protocols.characterization import Operation
 from ..utils import allocate_qubits
-from .operation import Data, DummyPars, Qubits, Results, Routine, dummy_operation
+from .operation import (
+    DATAFILE,
+    RESULTFILE,
+    Data,
+    DummyPars,
+    Qubits,
+    Results,
+    Routine,
+    dummy_operation,
+)
 from .runcard import Action, Id
 
 MAX_PRIORITY = int(1e9)
@@ -81,13 +90,22 @@ class Task:
     def update(self):
         return self.action.update
 
-    @property
-    def data(self):
-        return self._data
+    def path(self, base_dir: Path):
+        return base_dir / f"{self.id}_{self.iteration}"
 
-    @property
-    def results(self):
-        return self._results
+    def data(self, base_dir: Path = None):
+        if not self.path(base_dir / DATAFILE).is_file():
+            return None
+
+        Data = self.operation.data_type
+        return Data(self.path(base_dir))
+
+    def results(self, base_dir: Path = None):
+        if not self.path(base_dir / RESULTFILE).is_file():
+            return None
+
+        Results = self.operation.result_type
+        return Results(self.path(base_dir))
 
     def datapath(self, base_dir: Path):
         path = base_dir / "data" / f"{self.id}_{self.iteration}"
@@ -108,16 +126,16 @@ class Task:
                 if len(self.qubits) > 0:
                     qubits = allocate_qubits(platform, self.qubits)
 
-            self._data: Data = operation.acquisition(
+            data: Data = operation.acquisition(
                 parameters, platform=platform, qubits=qubits
             )
             # after acquisition we update the qubit parameter
             self.qubits = list(qubits)
 
         else:
-            self._data: Data = operation.acquisition(parameters, platform=platform)
-        self._data.save(path)
+            data: Data = operation.acquisition(parameters, platform=platform)
 
-        self._results: Results = operation.fit(self._data)
-        self._results.save(path)
-        return self._results
+        data.save(path)
+        results: Results = operation.fit(data)
+        results.save(path)
+        return data, results

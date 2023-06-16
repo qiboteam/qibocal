@@ -3,6 +3,7 @@ import copy
 from dataclasses import dataclass
 from typing import Dict, Tuple
 
+from .operation import Data, Results
 from .runcard import Id
 from .status import Status
 from .task import Task
@@ -21,7 +22,12 @@ class Completed:
         be added
 
     """
+    data: Data
+    """Data acquired."""
+    results: Results
+    """Final results."""
     status: Status
+    """Routine status."""
 
     def __post_init__(self):
         self.task = copy.deepcopy(self.task)

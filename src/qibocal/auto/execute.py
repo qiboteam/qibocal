@@ -132,10 +132,12 @@ class Executor:
 
         while self.head is not None:
             task = self.current
-            output = task.run(self.output, platform=self.platform, qubits=self.qubits)
-            completed = Completed(task, Normal())
+            data, results = task.run(
+                self.output, platform=self.platform, qubits=self.qubits
+            )
+            completed = Completed(task, data, results, Normal())
             self.history.push(completed)
             self.head = self.next()
             if self.platform is not None:
                 if self.update and task.update:
-                    self.platform.update(task.results.update)
+                    self.platform.update(results.update)
