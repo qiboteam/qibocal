@@ -14,6 +14,7 @@ from scipy.optimize import curve_fit
 from qibocal.auto.operation import Data, Qubits, Results, Routine
 from qibocal.config import log
 
+from ..utils import V_TO_UV
 from . import allxy_drag_pulse_tuning
 
 
@@ -185,7 +186,7 @@ def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
 
     for qubit in qubits:
         qubit_data = data[qubit]
-        voltages = qubit_data.msr * 1e6
+        voltages = qubit_data.msr * V_TO_UV
         beta_params = qubit_data.beta
 
         try:
@@ -219,7 +220,7 @@ def _plot(data: DragPulseTuningData, fit: DragPulseTuningResults, qubit):
     fig.add_trace(
         go.Scatter(
             x=qubit_data.beta,
-            y=qubit_data.msr * 1e6,
+            y=qubit_data.msr * V_TO_UV,
             mode="markers",
             opacity=0.3,
             name="Probability",

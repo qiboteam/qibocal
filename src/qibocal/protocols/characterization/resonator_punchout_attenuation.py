@@ -15,7 +15,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 
-from .utils import norm
+from .utils import GHZ_TO_HZ, HZ_TO_GHZ, V_TO_UV, norm
 
 
 @dataclass
@@ -217,8 +217,8 @@ def _fit(
             freq_low_att = 0.0
             ro_att = 0.0
 
-        freqs_low_att[qubit] = freq_low_att / 1e9
-        freqs_high_att[qubit] = freq_high_att / 1e9
+        freqs_low_att[qubit] = freq_low_att * HZ_TO_GHZ
+        freqs_high_att[qubit] = freq_high_att * HZ_TO_GHZ
         ro_atts[qubit] = ro_att
 
     return ResonatorPunchoutAttenuationResults(
@@ -249,7 +249,7 @@ def _plot(
     )
 
     qubit_data = data[qubit]
-    frequencies = qubit_data.freq / 1e9
+    frequencies = qubit_data.freq * HZ_TO_GHZ
     attenuations = qubit_data.att
     n_att = len(np.unique(qubit_data.att))
     n_freq = len(np.unique(qubit_data.freq))
@@ -262,7 +262,7 @@ def _plot(
         go.Heatmap(
             x=frequencies,
             y=attenuations,
-            z=qubit_data.msr * 1e6,
+            z=qubit_data.msr * V_TO_UV,
             colorbar_x=0.46,
         ),
         row=1,
@@ -300,11 +300,11 @@ def _plot(
         )
     )
     title_text = ""
-    title_text += f"{qubit} | Resonator Frequency at Low Power:  {fit.readout_frequency[qubit] * 1e9} Hz.<br>"
+    title_text += f"{qubit} | Resonator Frequency at Low Power:  {fit.readout_frequency[qubit] * GHZ_TO_HZ} Hz.<br>"
     title_text += (
         f"{qubit} | Readout Attenuation: {fit.readout_attenuation[qubit]} db.<br>"
     )
-    title_text += f"{qubit} | Resonator Frequency at High Power: {fit.bare_frequency[qubit] * 1e9} Hz.<br>"
+    title_text += f"{qubit} | Resonator Frequency at High Power: {fit.bare_frequency[qubit] * GHZ_TO_HZ} Hz.<br>"
 
     fitting_report = fitting_report + title_text
 

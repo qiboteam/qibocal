@@ -12,6 +12,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
+from ..utils import V_TO_UV
 from . import utils
 
 
@@ -166,7 +167,7 @@ def _plot(data: T1Data, fit: T1Results, qubit):
     fig.add_trace(
         go.Scatter(
             x=waits,
-            y=qubit_data.msr * 1e6,
+            y=qubit_data.msr * V_TO_UV,
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -184,7 +185,7 @@ def _plot(data: T1Data, fit: T1Results, qubit):
     fig.add_trace(
         go.Scatter(
             x=waitrange,
-            y=utils.exp_decay(waitrange, *params) * 1e6,
+            y=utils.exp_decay(waitrange, *params) * V_TO_UV,
             name="Fit",
             line=go.scatter.Line(dash="dot"),
         )

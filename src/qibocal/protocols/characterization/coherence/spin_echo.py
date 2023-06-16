@@ -10,6 +10,7 @@ from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
+from ..utils import V_TO_UV
 from .t1 import T1Data
 from .utils import exp_decay, exponential_fit
 
@@ -133,7 +134,7 @@ def _plot(data: SpinEchoData, fit: SpinEchoResults, qubit: int):
     fig.add_trace(
         go.Scatter(
             x=waits,
-            y=qubit_data.msr * 1e6,
+            y=qubit_data.msr * V_TO_UV,
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -152,7 +153,7 @@ def _plot(data: SpinEchoData, fit: SpinEchoResults, qubit: int):
     fig.add_trace(
         go.Scatter(
             x=waitrange,
-            y=exp_decay(waitrange, *params) * 1e6,
+            y=exp_decay(waitrange, *params) * V_TO_UV,
             name="Fit",
             line=go.scatter.Line(dash="dot"),
         ),

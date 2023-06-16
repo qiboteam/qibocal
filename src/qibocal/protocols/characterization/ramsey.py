@@ -14,6 +14,8 @@ from scipy.optimize import curve_fit
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 
+from .utils import GHZ_TO_HZ, HZ_TO_GHZ, V_TO_UV
+
 
 @dataclass
 class RamseyParameters(Parameters):
@@ -210,7 +212,7 @@ def _fit(data: RamseyData) -> RamseyResults:
 
     for qubit in qubits:
         qubit_data = data[qubit]
-        voltages = qubit_data.msr
+        voltages = qubit_data.msr * V_TO_UV
         times = qubit_data.wait
         qubit_freq = data.qubit_freqs[qubit]
 
@@ -254,7 +256,7 @@ def _fit(data: RamseyData) -> RamseyResults:
             ]
             delta_fitting = popt[2] / (2 * np.pi)
             delta_phys = data.detuning_sign * int(
-                (delta_fitting - data.n_osc / data.t_max) * 1e9
+                (delta_fitting - data.n_osc / data.t_max) * GHZ_TO_HZ
             )
             # FIXME: for qblox the correct formula is the following (there is a bug related to the phase)
             # corrected_qubit_frequency = int(qubit_freq + delta_phys)
@@ -270,7 +272,7 @@ def _fit(data: RamseyData) -> RamseyResults:
             delta_phys = 0
 
         fitted_parameters[qubit] = popt
-        corrected_qubit_frequencies[qubit] = corrected_qubit_frequency / 1e9
+        corrected_qubit_frequencies[qubit] = corrected_qubit_frequency * HZ_TO_GHZ
         t2s[qubit] = t2
         freqs_detuning[qubit] = delta_phys
 
@@ -290,7 +292,7 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
     fig.add_trace(
         go.Scatter(
             x=qubit_data.wait,
-            y=qubit_data.msr * 1e6,
+            y=qubit_data.msr * V_TO_UV,
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -315,8 +317,7 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
                 float(fit.fitted_parameters[qubit][2]),
                 float(fit.fitted_parameters[qubit][3]),
                 float(fit.fitted_parameters[qubit][4]),
-            )
-            * 1e6,
+            ),
             name="Fit",
             line=go.scatter.Line(dash="dot"),
         )
@@ -324,7 +325,7 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
     fitting_report = (
         fitting_report
         + (f"{qubit} | Delta_frequency: {fit.delta_phys[qubit]:,.1f} Hz<br>")
-        + (f"{qubit} | Drive_frequency: {fit.frequency[qubit] * 1e9} Hz<br>")
+        + (f"{qubit} | Drive_frequency: {fit.frequency[qubit] * GHZ_TO_HZ} Hz<br>")
         + (f"{qubit} | T2: {fit.t2[qubit]:,.0f} ns.<br><br>")
     )
 

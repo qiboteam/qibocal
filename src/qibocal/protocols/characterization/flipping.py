@@ -13,6 +13,8 @@ from scipy.optimize import curve_fit
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 
+from .utils import V_TO_UV
+
 
 @dataclass
 class FlippingParameters(Parameters):
@@ -154,7 +156,7 @@ def _fit(data: FlippingData) -> FlippingResults:
     for qubit in qubits:
         qubit_data = data[qubit]
         pi_pulse_amplitude = data.pi_pulse_amplitudes[qubit]
-        voltages = qubit_data.msr
+        voltages = qubit_data.msr * V_TO_UV
         flips = qubit_data.flips
         if data.resonator_type == "3D":
             pguess = [
@@ -209,7 +211,7 @@ def _plot(data: FlippingData, fit: FlippingResults, qubit):
     fig.add_trace(
         go.Scatter(
             x=qubit_data.flips,
-            y=qubit_data.msr * 1e6,
+            y=qubit_data.msr * V_TO_UV,
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -232,8 +234,7 @@ def _plot(data: FlippingData, fit: FlippingResults, qubit):
                 float(fit.fitted_parameters[qubit][1]),
                 float(fit.fitted_parameters[qubit][2]),
                 float(fit.fitted_parameters[qubit][3]),
-            )
-            * 1e6,
+            ),
             name="Fit",
             line=go.scatter.Line(dash="dot"),
         ),

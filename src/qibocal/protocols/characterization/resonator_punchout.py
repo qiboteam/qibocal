@@ -15,7 +15,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 
-from . import utils
+from .utils import GHZ_TO_HZ, HZ_TO_GHZ, V_TO_UV, norm
 
 
 @dataclass
@@ -186,7 +186,7 @@ def _fit(data: ResonatorPunchoutData, fit_type="amp") -> ResonatorPunchoutResult
             n_amps = len(np.unique(qubit_data.amp))
             n_freq = len(np.unique(qubit_data.freq))
             for i in range(n_amps):
-                qubit_data.msr[i * n_freq : (i + 1) * n_freq] = utils.norm(
+                qubit_data.msr[i * n_freq : (i + 1) * n_freq] = norm(
                     qubit_data.msr[i * n_freq : (i + 1) * n_freq]
                 )
 
@@ -220,8 +220,8 @@ def _fit(data: ResonatorPunchoutData, fit_type="amp") -> ResonatorPunchoutResult
             freq_hp = 0.0
             ro_amp = 0.0
 
-        dressed_freqs[qubit] = freq_lp / 1e9
-        bare_freqs[qubit] = freq_hp / 1e9
+        dressed_freqs[qubit] = freq_lp * HZ_TO_GHZ
+        bare_freqs[qubit] = freq_hp * HZ_TO_GHZ
         ro_amplitudes[qubit] = ro_amp
 
     return ResonatorPunchoutResults(
@@ -248,19 +248,19 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
     )
 
     qubit_data = data[qubit]
-    frequencies = qubit_data.freq / 1e9
+    frequencies = qubit_data.freq * HZ_TO_GHZ
     amplitudes = qubit_data.amp
     n_amps = len(np.unique(qubit_data.amp))
     n_freq = len(np.unique(qubit_data.freq))
     for i in range(n_amps):
-        qubit_data.msr[i * n_freq : (i + 1) * n_freq] = utils.norm(
+        qubit_data.msr[i * n_freq : (i + 1) * n_freq] = norm(
             qubit_data.msr[i * n_freq : (i + 1) * n_freq]
         )
     fig.add_trace(
         go.Heatmap(
             x=frequencies,
             y=amplitudes,
-            z=qubit_data.msr * 1e6,
+            z=qubit_data.msr * V_TO_UV,
             colorbar_x=0.46,
         ),
         row=1,
@@ -298,8 +298,8 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
         )
     )
     title_text = ""
-    title_text += f"{qubit} | Resonator frequency at low power:  {fit.readout_frequency[qubit]*1e9:,.0f} Hz<br>"
-    title_text += f"{qubit} | Resonator frequency at high power: {fit.bare_frequency[qubit]*1e9:,.0f} Hz<br>"
+    title_text += f"{qubit} | Resonator frequency at low power:  {fit.readout_frequency[qubit]*GHZ_TO_HZ:,.0f} Hz<br>"
+    title_text += f"{qubit} | Resonator frequency at high power: {fit.bare_frequency[qubit]*GHZ_TO_HZ:,.0f} Hz<br>"
     title_text += f"{qubit} | Readout amplitude at low power: {fit.readout_amplitude[qubit]:,.3f} <br>"
 
     fitting_report = fitting_report + title_text

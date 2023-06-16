@@ -1,6 +1,8 @@
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+from ..utils import HZ_TO_GHZ, V_TO_UV
+
 
 def flux_dependence_plot(data, fit, qubit):
     figures = []
@@ -18,12 +20,12 @@ def flux_dependence_plot(data, fit, qubit):
             "Phase [rad]",
         ),
     )
-    frequencies = qubit_data.freq / 1e9
+    frequencies = qubit_data.freq * HZ_TO_GHZ
     fig.add_trace(
         go.Heatmap(
             x=frequencies,
             y=qubit_data.bias,
-            z=qubit_data.msr * 1e6,
+            z=qubit_data.msr * V_TO_UV,
             colorbar_x=0.46,
         ),
         row=1,

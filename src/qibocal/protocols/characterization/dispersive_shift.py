@@ -12,7 +12,12 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.protocols.characterization.utils import lorentzian, lorentzian_fit
+from qibocal.protocols.characterization.utils import (
+    HZ_TO_GHZ,
+    V_TO_UV,
+    lorentzian,
+    lorentzian_fit,
+)
 
 
 @dataclass
@@ -248,12 +253,12 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
         )
     ):
         opacity = 1
-        frequencies = q_data.freq / 1e9
+        frequencies = q_data.freq * HZ_TO_GHZ
 
         fig.add_trace(
             go.Scatter(
                 x=frequencies,
-                y=q_data.msr * 1e6,
+                y=q_data.msr * V_TO_UV,
                 opacity=opacity,
                 name=f"q{qubit}: {label}",
                 showlegend=True,
@@ -294,7 +299,7 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
 
     fig.add_trace(
         go.Scatter(
-            x=[fit.best_freq[qubit] / 1e9, fit.best_freq[qubit] / 1e9],
+            x=[fit.best_freq[qubit] * HZ_TO_GHZ, fit.best_freq[qubit] * HZ_TO_GHZ],
             y=[
                 np.min(np.concatenate((data_0.msr, data_1.msr))),
                 np.max(np.concatenate((data_0.msr, data_1.msr))),
@@ -308,7 +313,7 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
     )
 
     fig.add_vline(
-        x=fit.best_freq[qubit] / 1e9,
+        x=fit.best_freq[qubit] * HZ_TO_GHZ,
         line=dict(color="orange", width=3, dash="dash"),
         row=1,
         col=1,
