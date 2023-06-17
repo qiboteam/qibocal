@@ -91,26 +91,21 @@ class Task:
         return self.action.update
 
     def path(self, base_dir: Path):
-        return base_dir / f"{self.id}_{self.iteration}"
+        return Path(base_dir / "data" / f"{self.id}_{self.iteration}")
 
     def data(self, base_dir: Path = None):
-        if not self.path(base_dir / DATAFILE).is_file():
+        if not (self.path(base_dir) / DATAFILE).is_file():
             return None
 
         Data = self.operation.data_type
-        return Data(self.path(base_dir))
+        return Data.load(self.path(base_dir))
 
     def results(self, base_dir: Path = None):
-        if not self.path(base_dir / RESULTFILE).is_file():
+        if not (self.path(base_dir) / RESULTFILE).is_file():
             return None
 
-        Results = self.operation.result_type
-        return Results(self.path(base_dir))
-
-    def datapath(self, base_dir: Path):
-        path = base_dir / "data" / f"{self.id}_{self.iteration}"
-        os.makedirs(path)
-        return path
+        Results = self.operation.results_type
+        return Results.load(self.path(base_dir))
 
     def run(self, folder: Path, platform: Platform, qubits: Qubits) -> Results:
         try:
@@ -120,7 +115,8 @@ class Task:
             operation = dummy_operation
             parameters = DummyPars()
 
-        path = self.datapath(folder)
+        os.makedirs(folder / "data" / f"{self.id}_{self.iteration}")
+        path = self.path(folder)
         if operation.platform_dependent and operation.qubits_dependent:
             if platform is not None:
                 if len(self.qubits) > 0:
@@ -139,3 +135,29 @@ class Task:
         results: Results = operation.fit(data)
         results.save(path)
         return data, results
+
+    def acquire(self, folder: Path, platform: Platform, qubits: Qubits) -> Data:
+        try:
+            operation: Routine = self.operation
+            parameters = self.parameters
+        except RuntimeError:
+            operation = dummy_operation
+            parameters = DummyPars()
+        print(qubits)
+        os.makedirs(folder / "data" / f"{self.id}_{self.iteration}")
+        path = self.path(folder)
+        if operation.platform_dependent and operation.qubits_dependent:
+            if platform is not None:
+                if len(self.qubits) > 0:
+                    qubits = allocate_qubits(platform, self.qubits)
+
+            data: Data = operation.acquisition(
+                parameters, platform=platform, qubits=qubits
+            )
+            # after acquisition we update the qubit parameter
+            self.qubits = list(qubits)
+        else:
+            data: Data = operation.acquisition(parameters, platform=platform)
+        print(data)
+        data.save(path)
+        return data

@@ -147,6 +147,13 @@ class Results:
     @classmethod
     def load(cls, path):
         params = json.loads((path / RESULTFILE).read_text())
+
+        for key, elem in params.items():
+            if isinstance(elem, dict):
+                # FIXME: necessary since after loading QubitId is string and not int
+                # maybe convert all QubitIds into strings ?
+                params[key] = {eval(k): value for k, value in elem.items()}
+
         return cls(**params)
 
 

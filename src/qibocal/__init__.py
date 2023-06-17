@@ -2,6 +2,6 @@
 
 import importlib.metadata as im
 
-from .cli import command, upload
+from .cli import acquire, command, report, upload
 
 __version__ = im.version(__package__)

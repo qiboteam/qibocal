@@ -11,12 +11,12 @@ STYLES = WEB_DIR / "static" / "styles.css"
 TEMPLATES = WEB_DIR / "templates"
 
 
-def create_report(path, history):
+def create_report(path):
     """Creates an HTML report for the data in the given path."""
     with open(STYLES) as file:
         css_styles = f"<style>\n{file.read()}\n</style>"
 
-    report = ReportBuilder(path, history)
+    report = ReportBuilder(path)
     env = Environment(loader=FileSystemLoader(TEMPLATES))
     template = env.get_template("template.html")
     html = template.render(

@@ -5,7 +5,7 @@ from pathlib import Path
 import yaml
 from qibolab.qubits import QubitId
 
-from qibocal.auto.execute import Executor, History
+from qibocal.auto.execute import Executor
 from qibocal.auto.runcard import Runcard
 from qibocal.auto.task import TaskId
 from qibocal.cli.utils import generate_output_folder
@@ -15,6 +15,79 @@ META = "meta.yml"
 RUNCARD = "runcard.yml"
 UPDATED_PLATFORM = "new_platform.yml"
 PLATFORM = "platform.yml"
+
+
+class AcquisitionBuilder:
+    def __init__(self, runcard, folder, force):
+        self.folder = generate_output_folder(folder, force)
+        self.runcard = Runcard.load(runcard)
+        self._prepare_output(runcard)
+        self.executor = Executor.load(
+            self.runcard,
+            self.folder,
+            self.platform,
+            self.qubits,
+        )
+
+    def run(self):
+        """Execute protocols in runcard."""
+
+        if self.platform is not None:
+            self.platform.connect()
+            self.platform.setup()
+            self.platform.start()
+
+        self.executor.acquire()
+
+        if self.platform is not None:
+            self.platform.stop()
+            self.platform.disconnect()
+
+    @property
+    def platform(self):
+        """Qibolab's platform object."""
+        return self.runcard.platform_obj
+
+    @property
+    def backend(self):
+        """ "Qibo's backend object."""
+        return self.runcard.backend_obj
+
+    @property
+    def qubits(self):
+        """Qubits dictionary."""
+        if self.platform is not None:
+            return allocate_qubits(self.platform, self.runcard.qubits)
+
+        return self.runcard.qubits
+
+    def _prepare_output(self, runcard):
+        """Methods that takes care of:
+        - dumping original platform
+        - storing qq runcard
+        - generating meta.yml
+        """
+        if self.backend.name == "qibolab":
+            self.platform.dump(self.folder / PLATFORM)
+
+        with open(self.folder / RUNCARD, "w") as file:
+            yaml.dump(runcard, file)
+
+        import qibocal
+
+        e = datetime.datetime.now(datetime.timezone.utc)
+        meta = {}
+        meta["title"] = self.folder.name
+        meta["backend"] = str(self.backend)
+        meta["platform"] = str(self.backend.platform)
+        meta["date"] = e.strftime("%Y-%m-%d")
+        meta["start-time"] = e.strftime("%H:%M:%S")
+        meta["end-time"] = e.strftime("%H:%M:%S")
+        meta["versions"] = self.backend.versions  # pylint: disable=E1101
+        meta["versions"]["qibocal"] = qibocal.__version__
+
+        with open(self.folder / META, "w") as file:
+            yaml.dump(meta, file)
 
 
 class ActionBuilder:
@@ -104,10 +177,6 @@ class ActionBuilder:
             self.platform.stop()
             self.platform.disconnect()
 
-    def dump_report(self):
-        """Generate report as html."""
-        from qibocal.web.report import create_report
-
         # update end time
         meta = yaml.safe_load((self.folder / META).read_text())
         e = datetime.datetime.now(datetime.timezone.utc)
@@ -115,7 +184,11 @@ class ActionBuilder:
         with open(self.folder / META, "w") as file:
             yaml.dump(meta, file)
 
-        create_report(self.folder, self.executor.history)
+    def dump_report(self):
+        """Generate report as html."""
+        from qibocal.web.report import create_report
+
+        create_report(self.folder)
 
     def dump_platform_runcard(self):
         """Dump platform runcard."""
@@ -124,20 +197,35 @@ class ActionBuilder:
 
 
 class ReportBuilder:
-    def __init__(self, path: Path, history: History):
+    def __init__(self, path: Path):
         """Helper class to generate html report."""
         # FIXME: currently the title of the report is the output folder
         self.path = self.title = path
         self.metadata = yaml.safe_load((path / META).read_text())
         self.runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
         self.qubits = self.runcard.qubits
-
-        self.history = history
+        self.executor = Executor.load(
+            self.runcard,
+            self.path,
+            self.platform,
+            self.qubits,
+        )
+        self.history = self.executor.generate_history(self.path)
 
     def routine_name(self, routine, iteration):
         """Prettify routine's name for report headers."""
         name = routine.replace("_", " ").title()
         return f"{name} - {iteration}"
+
+    @property
+    def platform(self):
+        """Qibolab's platform object."""
+        return self.runcard.platform_obj
+
+    @property
+    def backend(self):
+        """ "Qibo's backend object."""
+        return self.runcard.backend_obj
 
     def routine_qubits(self, task_id: TaskId):
         """Get local qubits parameter from Task if available otherwise use global one."""
@@ -175,3 +263,8 @@ class ReportBuilder:
 
         all_html = "".join(html_list)
         return all_html, fitting_report
+
+    def run(self):
+        from qibocal.web.report import create_report
+
+        create_report(self.path)

@@ -121,6 +121,19 @@ class Executor:
         assert self.head is not None
         return self.graph.task(self.head)
 
+    def generate_history(self, path):
+        self.head = self.graph.start
+
+        while self.head is not None:
+            task = self.current
+            completed = Completed(
+                task, task.data(path), results=task.results(path), status=Normal()
+            )
+            self.history.push(completed)
+            self.head = self.next()
+
+        return self.history
+
     def run(self):
         """Actual execution.
 
@@ -141,3 +154,13 @@ class Executor:
             if self.platform is not None:
                 if self.update and task.update:
                     self.platform.update(results.update)
+
+    def acquire(self):
+        self.head = self.graph.start
+
+        while self.head is not None:
+            task = self.current
+            data = task.acquire(self.output, platform=self.platform, qubits=self.qubits)
+            completed = Completed(task, data, status=Normal())
+            self.history.push(completed)
+            self.head = self.next()

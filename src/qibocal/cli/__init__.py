@@ -1,2 +1,2 @@
 """CLI entry point."""
-from ._base import command, upload
+from ._base import acquire, command, report, upload

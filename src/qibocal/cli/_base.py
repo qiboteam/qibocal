@@ -11,7 +11,7 @@ import click
 import yaml
 from qibo.config import log, raise_error
 
-from ..cli.builders import ActionBuilder
+from ..cli.builders import AcquisitionBuilder, ActionBuilder, ReportBuilder
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -60,6 +60,41 @@ def command(runcard, folder, force, update):
     if update:
         builder.dump_platform_runcard()
     builder.dump_report()
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument("runcard", metavar="RUNCARD", type=click.Path(exists=True))
+@click.option(
+    "folder",
+    "-o",
+    type=click.Path(),
+    help="Output folder. If not provided a standard name will generated.",
+)
+@click.option(
+    "force",
+    "-f",
+    is_flag=True,
+    help="Use --force option to overwrite the output folder.",
+)
+def acquire(runcard, folder, force):
+    """qibocal: Quantum Calibration Verification and Validation using Qibo.
+
+    Arguments:
+
+     - RUNCARD: runcard with declarative inputs.
+     - PLATFORM_RUNCARD: Qibolab's platform runcard. If not provided Qibocal will use the default one in
+                         https://github.com/qiboteam/qibolab_platforms_qrc.
+    """
+    card = yaml.safe_load(pathlib.Path(runcard).read_text(encoding="utf-8"))
+    builder = AcquisitionBuilder(card, folder, force)
+    builder.run()
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument("folder", metavar="folder", type=click.Path(exists=True))
+def report(folder):
+    builder = ReportBuilder(pathlib.Path(folder))
+    builder.run()
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)

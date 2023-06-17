@@ -1,7 +1,7 @@
 """Track execution history."""
 import copy
 from dataclasses import dataclass
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 from .operation import Data, Results
 from .runcard import Id
@@ -24,10 +24,10 @@ class Completed:
     """
     data: Data
     """Data acquired."""
-    results: Results
-    """Final results."""
     status: Status
     """Routine status."""
+    results: Optional[Results] = None
+    """Final results."""
 
     def __post_init__(self):
         self.task = copy.deepcopy(self.task)
