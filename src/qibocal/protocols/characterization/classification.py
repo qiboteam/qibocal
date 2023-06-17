@@ -217,7 +217,7 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
 
 
 def _plot(
-    data: SingleShotClassificationData, fit: SingleShotClassificationResults, qubit
+    data: SingleShotClassificationData, qubit, fit: SingleShotClassificationResults
 ):
     figures = []
 
@@ -279,57 +279,57 @@ def _plot(
         ),
     )
 
-    max_x = max(
-        max_x,
-        np.max(state0_data.i),
-        np.max(state1_data.i),
-    )
-    max_y = max(
-        max_y,
-        np.max(state0_data.q),
-        np.max(state1_data.q),
-    )
-    min_x = min(
-        min_x,
-        np.min(state0_data.i),
-        np.min(state1_data.i),
-    )
-    min_y = min(
-        min_y,
-        np.min(state0_data.q),
-        np.min(state1_data.q),
-    )
+    if fit is not None:
+        max_x = max(
+            max_x,
+            np.max(state0_data.i),
+            np.max(state1_data.i),
+        )
+        max_y = max(
+            max_y,
+            np.max(state0_data.q),
+            np.max(state1_data.q),
+        )
+        min_x = min(
+            min_x,
+            np.min(state0_data.i),
+            np.min(state1_data.i),
+        )
+        min_y = min(
+            min_y,
+            np.min(state0_data.q),
+            np.min(state1_data.q),
+        )
 
-    feature_x = np.linspace(min_x, max_x, MESH_SIZE)
-    feature_y = np.linspace(min_y, max_y, MESH_SIZE)
+        feature_x = np.linspace(min_x, max_x, MESH_SIZE)
+        feature_y = np.linspace(min_y, max_y, MESH_SIZE)
 
-    [x, y] = np.meshgrid(feature_x, feature_y)
+        [x, y] = np.meshgrid(feature_x, feature_y)
+        z = (
+            (np.exp(1j * fit.rotation_angle[qubit]) * (x + 1j * y)).real
+            > fit.threshold[qubit]
+        ).astype(int)
+        fig.add_trace(
+            go.Contour(
+                x=feature_x,
+                y=feature_y,
+                z=z,
+                showscale=False,
+                opacity=0.4,
+                name="Score",
+                hoverinfo="skip",
+            ),
+        )
 
-    z = (
-        (np.exp(1j * fit.rotation_angle[qubit]) * (x + 1j * y)).real
-        > fit.threshold[qubit]
-    ).astype(int)
-    fig.add_trace(
-        go.Contour(
-            x=feature_x,
-            y=feature_y,
-            z=z,
-            showscale=False,
-            opacity=0.4,
-            name="Score",
-            hoverinfo="skip",
-        ),
-    )
-
-    fitting_report = (
-        fitting_report
-        + f"{qubit} | Average Ground State (i,q): ({fit.mean_gnd_states[qubit][0]:.3f}, {fit.mean_gnd_states[qubit][1]:.3f}) <br>"
-        + f"{qubit} | Average Excited State (i,q): ({fit.mean_exc_states[qubit][0]:.3f}, {fit.mean_exc_states[qubit][1]:.3f}) <br>"
-        + f"{qubit} | Rotation Angle: {fit.rotation_angle[qubit]:.3f} rad <br>"
-        + f"{qubit} | Threshold: {fit.threshold[qubit]:.4f} <br>"
-        + f"{qubit} | Fidelity: {fit.fidelity[qubit]:.3f} <br>"
-        + f"{qubit} | Assignment Fidelity: {fit.assignment_fidelity[qubit]:.3f} <br>"
-    )
+        fitting_report = (
+            fitting_report
+            + f"{qubit} | Average Ground State (i,q): ({fit.mean_gnd_states[qubit][0]:.3f}, {fit.mean_gnd_states[qubit][1]:.3f}) <br>"
+            + f"{qubit} | Average Excited State (i,q): ({fit.mean_exc_states[qubit][0]:.3f}, {fit.mean_exc_states[qubit][1]:.3f}) <br>"
+            + f"{qubit} | Rotation Angle: {fit.rotation_angle[qubit]:.3f} rad <br>"
+            + f"{qubit} | Threshold: {fit.threshold[qubit]:.4f} <br>"
+            + f"{qubit} | Fidelity: {fit.fidelity[qubit]:.3f} <br>"
+            + f"{qubit} | Assignment Fidelity: {fit.assignment_fidelity[qubit]:.3f} <br>"
+        )
 
     fig.update_layout(
         showlegend=True,

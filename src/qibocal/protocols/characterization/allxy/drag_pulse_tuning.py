@@ -158,15 +158,6 @@ def _acquisition(
             r2 = result2[ro_pulses[qubit].serial]
             # store the results
             data.register_qubit(qubit, r1.magnitude - r2.magnitude, beta_param)
-            # r = {
-            #     "MSR[V]": r1.magnitude - r2.magnitude,
-            #     "i[V]": r1.voltage_i - r2.voltage_i,
-            #     "q[V]": r1.voltage_q - r2.voltage_q,
-            #     "phase[rad]": r1.phase - r2.phase,
-            #     "beta_param[dimensionless]": beta_param,
-            #     "qubit": ro_pulse.qubit,
-            # }
-            # data.add_data_from_dict(r)
 
     return data
 
@@ -197,15 +188,6 @@ def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
         voltages = qubit_data.msr * 1e6
         beta_params = qubit_data.beta
 
-        # TODO: remove this if not needed
-        # pguess = [
-        #     0,  # Offset:    p[0]
-        #     beta_params.values[np.argmax(voltages)]
-        #     - beta_params.values[np.argmin(voltages)],  # Amplitude: p[1]
-        #     4,  # Period:    p[2]
-        #     0.3,  # Phase:     p[3]
-        # ]
-
         try:
             popt, pcov = curve_fit(drag_fit, beta_params, voltages)
             smooth_dataset = drag_fit(beta_params, popt[0], popt[1], popt[2], popt[3])
@@ -221,7 +203,7 @@ def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
     return DragPulseTuningResults(betas_optimal, fitted_parameters)
 
 
-def _plot(data: DragPulseTuningData, fit: DragPulseTuningResults, qubit):
+def _plot(data: DragPulseTuningData, qubit, fit: DragPulseTuningResults):
     """Plotting function for DragPulseTuning."""
 
     figures = []
@@ -239,7 +221,6 @@ def _plot(data: DragPulseTuningData, fit: DragPulseTuningResults, qubit):
             x=qubit_data.beta,
             y=qubit_data.msr * 1e6,
             mode="markers",
-            opacity=0.3,
             name="Probability",
             showlegend=True,
             legendgroup="group1",
@@ -247,30 +228,30 @@ def _plot(data: DragPulseTuningData, fit: DragPulseTuningResults, qubit):
     )
 
     # add fitting traces
+    if fit is not None:
+        beta_range = np.linspace(
+            min(qubit_data.beta),
+            max(qubit_data.beta),
+            20,
+        )
 
-    beta_range = np.linspace(
-        min(qubit_data.beta),
-        max(qubit_data.beta),
-        20,
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=beta_range,
-            y=drag_fit(
-                beta_range,
-                float(fit.fitted_parameters[qubit][0]),
-                float(fit.fitted_parameters[qubit][1]),
-                float(fit.fitted_parameters[qubit][2]),
-                float(fit.fitted_parameters[qubit][3]),
+        fig.add_trace(
+            go.Scatter(
+                x=beta_range,
+                y=drag_fit(
+                    beta_range,
+                    float(fit.fitted_parameters[qubit][0]),
+                    float(fit.fitted_parameters[qubit][1]),
+                    float(fit.fitted_parameters[qubit][2]),
+                    float(fit.fitted_parameters[qubit][3]),
+                ),
+                name="Fit",
+                line=go.scatter.Line(dash="dot"),
             ),
-            name="Fit",
-            line=go.scatter.Line(dash="dot"),
-        ),
-    )
-    fitting_report = fitting_report + (
-        f"{qubit} | Optimal Beta Param: {fit.betas[qubit]:.4f}<br><br>"
-    )
+        )
+        fitting_report = fitting_report + (
+            f"{qubit} | Optimal Beta Param: {fit.betas[qubit]:.4f}<br><br>"
+        )
 
     fig.update_layout(
         showlegend=True,

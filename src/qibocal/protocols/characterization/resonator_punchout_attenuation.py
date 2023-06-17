@@ -230,8 +230,8 @@ def _fit(
 
 def _plot(
     data: ResonatorPunchoutAttenuationData,
-    fit: ResonatorPunchoutAttenuationResults,
     qubit,
+    fit: ResonatorPunchoutAttenuationResults = None,
 ):
     """Plotting for ResonatorPunchoutAttenuation."""
 
@@ -268,8 +268,8 @@ def _plot(
         row=1,
         col=1,
     )
-    fig.update_xaxes(title_text=f"{qubit}: Frequency (Hz)", row=1, col=1)
-    fig.update_yaxes(title_text="Attenuation", row=1, col=1)
+    fig.update_xaxes(title_text="Frequency (Hz)", row=1, col=1)
+    fig.update_yaxes(title_text="Attenuation (dB)", row=1, col=1)
     fig.add_trace(
         go.Heatmap(
             x=frequencies,
@@ -280,33 +280,34 @@ def _plot(
         row=1,
         col=2,
     )
-    fig.update_xaxes(title_text=f"{qubit}/: Frequency (Hz)", row=1, col=2)
-    fig.update_yaxes(title_text="Attenuation", row=1, col=2)
+    fig.update_xaxes(title_text="Frequency (Hz)", row=1, col=2)
+    fig.update_yaxes(title_text="Attenuation (dB)", row=1, col=2)
 
-    fig.add_trace(
-        go.Scatter(
-            x=[
-                fit.readout_frequency[qubit],
-            ],
-            y=[
-                fit.readout_attenuation[qubit],
-            ],
-            mode="markers",
-            marker=dict(
-                size=8,
-                color="gray",
-                symbol="circle",
-            ),
+    if fit is not None:
+        fig.add_trace(
+            go.Scatter(
+                x=[
+                    fit.readout_frequency[qubit],
+                ],
+                y=[
+                    fit.readout_attenuation[qubit],
+                ],
+                mode="markers",
+                marker=dict(
+                    size=8,
+                    color="gray",
+                    symbol="circle",
+                ),
+            )
         )
-    )
-    title_text = ""
-    title_text += f"{qubit} | Resonator Frequency at Low Power:  {fit.readout_frequency[qubit] * 1e9} Hz.<br>"
-    title_text += (
-        f"{qubit} | Readout Attenuation: {fit.readout_attenuation[qubit]} db.<br>"
-    )
-    title_text += f"{qubit} | Resonator Frequency at High Power: {fit.bare_frequency[qubit] * 1e9} Hz.<br>"
+        title_text = ""
+        title_text += f"{qubit} | Resonator Frequency at Low Power:  {fit.readout_frequency[qubit] * 1e9} Hz.<br>"
+        title_text += (
+            f"{qubit} | Readout Attenuation: {fit.readout_attenuation[qubit]} db.<br>"
+        )
+        title_text += f"{qubit} | Resonator Frequency at High Power: {fit.bare_frequency[qubit] * 1e9} Hz.<br>"
 
-    fitting_report = fitting_report + title_text
+        fitting_report = fitting_report + title_text
 
     fig.update_layout(
         showlegend=False,

@@ -178,11 +178,11 @@ def _fit(
 
 def _plot(
     data: ResonatorSpectroscopyAttenuationData,
-    fit: ResonatorSpectroscopyAttenuationResults,
     qubit,
+    fit: ResonatorSpectroscopyAttenuationResults,
 ):
     """Plotting function for ResonatorSpectroscopyAttenuation."""
-    return spectroscopy_plot(data, fit, qubit)
+    return spectroscopy_plot(data, qubit, fit)
 
 
 resonator_spectroscopy_attenuation = Routine(_acquisition, _fit, _plot)

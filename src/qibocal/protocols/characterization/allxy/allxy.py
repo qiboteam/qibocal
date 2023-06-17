@@ -223,11 +223,11 @@ def _fit(_data: AllXYData) -> AllXYResults:
 
 
 # allXY
-def _plot(data: AllXYData, _fit: AllXYResults, qubit):
+def _plot(data: AllXYData, qubit, fit: AllXYResults = None):
     """Plotting function for allXY."""
 
     figures = []
-    fitting_report = "No fitting data"
+    fitting_report = ""
     fig = go.Figure()
 
     qubit_data = data[qubit]

@@ -231,7 +231,7 @@ def _fit(data: ResonatorPunchoutData, fit_type="amp") -> ResonatorPunchoutResult
     )
 
 
-def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
+def _plot(data: ResonatorPunchoutData, qubit, fit: ResonatorPunchoutResults = None):
     """Plotting function for ResonatorPunchout."""
     figures = []
     fitting_report = ""
@@ -281,28 +281,29 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
         col=2,
     )
 
-    fig.add_trace(
-        go.Scatter(
-            x=[
-                fit.readout_frequency[qubit],
-            ],
-            y=[
-                fit.readout_amplitude[qubit],
-            ],
-            mode="markers",
-            marker=dict(
-                size=8,
-                color="gray",
-                symbol="circle",
-            ),
+    if fit is not None:
+        fig.add_trace(
+            go.Scatter(
+                x=[
+                    fit.readout_frequency[qubit],
+                ],
+                y=[
+                    fit.readout_amplitude[qubit],
+                ],
+                mode="markers",
+                marker=dict(
+                    size=8,
+                    color="gray",
+                    symbol="circle",
+                ),
+            )
         )
-    )
-    title_text = ""
-    title_text += f"{qubit} | Resonator frequency at low power:  {fit.readout_frequency[qubit]*1e9:,.0f} Hz<br>"
-    title_text += f"{qubit} | Resonator frequency at high power: {fit.bare_frequency[qubit]*1e9:,.0f} Hz<br>"
-    title_text += f"{qubit} | Readout amplitude at low power: {fit.readout_amplitude[qubit]:,.3f} <br>"
+        title_text = ""
+        title_text += f"{qubit} | Resonator frequency at low power:  {fit.readout_frequency[qubit]*1e9:,.0f} Hz<br>"
+        title_text += f"{qubit} | Resonator frequency at high power: {fit.bare_frequency[qubit]*1e9:,.0f} Hz<br>"
+        title_text += f"{qubit} | Readout amplitude at low power: {fit.readout_amplitude[qubit]:,.3f} <br>"
 
-    fitting_report = fitting_report + title_text
+        fitting_report = fitting_report + title_text
 
     fig.update_layout(
         showlegend=False,

@@ -94,8 +94,11 @@ class Data:
 
     @classmethod
     def load(cls, path):
-        params = json.loads((path / JSONFILE).read_text())
-        obj = cls(**params)
+        if (path / JSONFILE).is_file():
+            params = json.loads((path / JSONFILE).read_text())
+            obj = cls(**params)
+        else:
+            obj = cls()
         raw_data = np.load(path / DATAFILE)
         for i in raw_data:
             # FIXME: change eval asap

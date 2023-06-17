@@ -2,10 +2,9 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 
-def flux_dependence_plot(data, fit, qubit):
+def flux_dependence_plot(data, qubit, fit):
     figures = []
-    fitting_report = "No fitting data"
-
+    fitting_report = ""
     qubit_data = data[qubit]
 
     fig = make_subplots(

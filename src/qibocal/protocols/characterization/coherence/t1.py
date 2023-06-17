@@ -156,7 +156,7 @@ def _fit(data: T1Data) -> T1Results:
     return T1Results(t1s, fitted_parameters)
 
 
-def _plot(data: T1Data, fit: T1Results, qubit):
+def _plot(data: T1Data, qubit, fit: T1Results = None):
     """Plotting function for T1 experiment."""
 
     figures = []
@@ -177,24 +177,25 @@ def _plot(data: T1Data, fit: T1Results, qubit):
         )
     )
 
-    waitrange = np.linspace(
-        min(waits),
-        max(waits),
-        2 * len(qubit_data),
-    )
-
-    params = fit.fitted_parameters[qubit]
-    fig.add_trace(
-        go.Scatter(
-            x=waitrange,
-            y=utils.exp_decay(waitrange, *params) * 1e6,
-            name="Fit",
-            line=go.scatter.Line(dash="dot"),
+    if fit is not None:
+        waitrange = np.linspace(
+            min(waits),
+            max(waits),
+            2 * len(qubit_data),
         )
-    )
-    fitting_report = fitting_report + (
-        f"{qubit} | t1: {fit.t1[qubit]:,.0f} ns.<br><br>"
-    )
+
+        params = fit.fitted_parameters[qubit]
+        fig.add_trace(
+            go.Scatter(
+                x=waitrange,
+                y=utils.exp_decay(waitrange, *params) * 1e6,
+                name="Fit",
+                line=go.scatter.Line(dash="dot"),
+            )
+        )
+        fitting_report = fitting_report + (
+            f"{qubit} | t1: {fit.t1[qubit]:,.0f} ns.<br><br>"
+        )
 
     # last part
     fig.update_layout(

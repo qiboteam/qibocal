@@ -149,9 +149,9 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     return ResonatorFluxResults({}, {}, {})
 
 
-def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, qubit):
+def _plot(data: ResonatorFluxData, qubit, fit: ResonatorFluxResults = None):
     """Plotting function for ResonatorFlux Experiment."""
-    return utils.flux_dependence_plot(data, fit, qubit)
+    return utils.flux_dependence_plot(data, qubit, fit)
 
 
 resonator_flux = Routine(_acquisition, _fit, _plot)

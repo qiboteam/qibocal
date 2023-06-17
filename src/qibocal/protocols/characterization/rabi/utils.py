@@ -23,7 +23,7 @@ def rabi_length_fit(x, p0, p1, p2, p3, p4):
     return p0 + p1 * np.sin(2 * np.pi * x * p2 + p3) * np.exp(-x * p4)
 
 
-def plot(data, fit, qubit):
+def plot(data, qubit, fit):
     if data.__class__.__name__ == "RabiAmplitudeData":
         quantity = "amp"
         title = "Amplitude (dimensionless)"
@@ -75,37 +75,40 @@ def plot(data, fit, qubit):
         col=2,
     )
 
-    rabi_parameter_range = np.linspace(
-        min(rabi_parameters),
-        max(rabi_parameters),
-        2 * len(rabi_parameters),
-    )
-    params = fit.fitted_parameters[qubit]
-    fig.add_trace(
-        go.Scatter(
-            x=rabi_parameter_range,
-            y=fitting(rabi_parameter_range, *params) * 1e6,
-            name="Fit",
-            line=go.scatter.Line(dash="dot"),
-            marker_color="rgb(255, 130, 67)",
-        ),
-        row=1,
-        col=1,
-    )
+    if fit is not None:
+        rabi_parameter_range = np.linspace(
+            min(rabi_parameters),
+            max(rabi_parameters),
+            2 * len(rabi_parameters),
+        )
+        params = fit.fitted_parameters[qubit]
+        fig.add_trace(
+            go.Scatter(
+                x=rabi_parameter_range,
+                y=fitting(rabi_parameter_range, *params) * 1e6,
+                name="Fit",
+                line=go.scatter.Line(dash="dot"),
+                marker_color="rgb(255, 130, 67)",
+            ),
+            row=1,
+            col=1,
+        )
 
-    fitting_report += (
-        f"{qubit} | pi_pulse_amplitude: {float(fit.amplitude[qubit]):.3f}<br>"
-    )
-    fitting_report += f"{qubit} | pi_pulse_length: {float(fit.length[qubit]):.3f}<br>"
+        fitting_report += (
+            f"{qubit} | pi_pulse_amplitude: {float(fit.amplitude[qubit]):.3f}<br>"
+        )
+        fitting_report += (
+            f"{qubit} | pi_pulse_length: {float(fit.length[qubit]):.3f}<br>"
+        )
 
-    fig.update_layout(
-        showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title=title,
-        yaxis_title="MSR (uV)",
-        xaxis2_title=title,
-        yaxis2_title="Phase (rad)",
-    )
+        fig.update_layout(
+            showlegend=True,
+            uirevision="0",  # ``uirevision`` allows zooming while live plotting
+            xaxis_title=title,
+            yaxis_title="MSR (uV)",
+            xaxis2_title=title,
+            yaxis2_title="Phase (rad)",
+        )
 
     figures.append(fig)
 

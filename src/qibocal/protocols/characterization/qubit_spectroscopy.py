@@ -137,9 +137,9 @@ def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
     )
 
 
-def _plot(data: QubitSpectroscopyData, fit: QubitSpectroscopyResults, qubit):
+def _plot(data: QubitSpectroscopyData, qubit, fit: QubitSpectroscopyResults):
     """Plotting function for QubitSpectroscopy."""
-    return spectroscopy_plot(data, fit, qubit)
+    return spectroscopy_plot(data, qubit, fit)
 
 
 qubit_spectroscopy = Routine(_acquisition, _fit, _plot)

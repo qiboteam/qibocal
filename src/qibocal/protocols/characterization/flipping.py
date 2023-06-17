@@ -197,7 +197,7 @@ def _fit(data: FlippingData) -> FlippingResults:
     )
 
 
-def _plot(data: FlippingData, fit: FlippingResults, qubit):
+def _plot(data: FlippingData, qubit, fit: FlippingResults = None):
     """Plotting function for Flipping."""
 
     figures = []
@@ -217,31 +217,32 @@ def _plot(data: FlippingData, fit: FlippingResults, qubit):
         ),
     )
 
-    flips_range = np.linspace(
-        min(qubit_data.flips),
-        max(qubit_data.flips),
-        2 * len(qubit_data),
-    )
+    if fit is not None:
+        flips_range = np.linspace(
+            min(qubit_data.flips),
+            max(qubit_data.flips),
+            2 * len(qubit_data),
+        )
 
-    fig.add_trace(
-        go.Scatter(
-            x=flips_range,
-            y=flipping_fit(
-                flips_range,
-                float(fit.fitted_parameters[qubit][0]),
-                float(fit.fitted_parameters[qubit][1]),
-                float(fit.fitted_parameters[qubit][2]),
-                float(fit.fitted_parameters[qubit][3]),
-            )
-            * 1e6,
-            name="Fit",
-            line=go.scatter.Line(dash="dot"),
-        ),
-    )
-    fitting_report = fitting_report + (
-        f"{qubit} | Amplitude correction factor: {fit.amplitude_factors[qubit]:.4f}<br>"
-        + f"{qubit} | Corrected amplitude: {fit.amplitude[qubit]:.4f}<br><br>"
-    )
+        fig.add_trace(
+            go.Scatter(
+                x=flips_range,
+                y=flipping_fit(
+                    flips_range,
+                    float(fit.fitted_parameters[qubit][0]),
+                    float(fit.fitted_parameters[qubit][1]),
+                    float(fit.fitted_parameters[qubit][2]),
+                    float(fit.fitted_parameters[qubit][3]),
+                )
+                * 1e6,
+                name="Fit",
+                line=go.scatter.Line(dash="dot"),
+            ),
+        )
+        fitting_report = fitting_report + (
+            f"{qubit} | Amplitude correction factor: {fit.amplitude_factors[qubit]:.4f}<br>"
+            + f"{qubit} | Corrected amplitude: {fit.amplitude[qubit]:.4f}<br><br>"
+        )
 
     # last part
     fig.update_layout(

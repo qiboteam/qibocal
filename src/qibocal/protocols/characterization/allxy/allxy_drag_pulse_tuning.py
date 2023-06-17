@@ -122,11 +122,11 @@ def _fit(_data: AllXYDragData) -> AllXYDragResults:
     return AllXYDragResults()
 
 
-def _plot(data: AllXYDragData, _fit: AllXYDragResults, qubit):
+def _plot(data: AllXYDragData, qubit, fit: AllXYDragResults = None):
     """Plotting function for allXYDrag."""
 
     figures = []
-    fitting_report = "No fitting data"
+    fitting_report = ""
 
     fig = go.Figure()
     beta_params = data.beta_params

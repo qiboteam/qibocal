@@ -65,7 +65,7 @@ def _acquisition(
         for qubit in qubits:
             result = results[ro_pulses[qubit].serial]
             data.register_qubit(
-                qubit, wait=waits, msr=result.magnitude, phase=result.phase
+                qubit, wait=wait, msr=result.magnitude, phase=result.phase
             )
     return data
 

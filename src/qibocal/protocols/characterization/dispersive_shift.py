@@ -215,7 +215,7 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
     )
 
 
-def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
+def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
     """Plotting function for dispersive shift."""
     figures = []
 
@@ -236,8 +236,8 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
     data_0 = data[qubit, 0]
     data_1 = data[qubit, 1]
 
-    fit_data_0 = fit.results_0
-    fit_data_1 = fit.results_1
+    fit_data_0 = fit.results_0 if fit is not None else None
+    fit_data_1 = fit.results_1 if fit is not None else None
 
     for i, label, q_data, data_fit in list(
         zip(
@@ -255,9 +255,9 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
                 x=frequencies,
                 y=q_data.msr * 1e6,
                 opacity=opacity,
-                name=f"q{qubit}: {label}",
+                name=f"{label}",
                 showlegend=True,
-                legendgroup=f"q{qubit}: {label}",
+                legendgroup=f"{label}",
             ),
             row=1,
             col=1,
@@ -268,64 +268,66 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
                 y=q_data.phase,
                 opacity=opacity,
                 showlegend=False,
-                legendgroup=f"q{qubit}: {label}",
+                legendgroup=f"{label}",
             ),
             row=1,
             col=2,
         )
 
-        freqrange = np.linspace(
-            min(frequencies),
-            max(frequencies),
-            2 * len(q_data),
-        )
+        if fit is not None:
+            freqrange = np.linspace(
+                min(frequencies),
+                max(frequencies),
+                2 * len(q_data),
+            )
 
-        params = data_fit.fitted_parameters[qubit]
+            params = data_fit.fitted_parameters[qubit]
+            fig.add_trace(
+                go.Scatter(
+                    x=freqrange,
+                    y=lorentzian(freqrange, **params),
+                    name=f"{label} Fit",
+                    line=go.scatter.Line(dash="dot"),
+                ),
+                row=1,
+                col=1,
+            )
+
+    if fit is not None:
         fig.add_trace(
             go.Scatter(
-                x=freqrange,
-                y=lorentzian(freqrange, **params),
-                name=f"q{qubit}: {label} Fit",
-                line=go.scatter.Line(dash="dot"),
+                x=[fit.best_freq[qubit] / 1e9, fit.best_freq[qubit] / 1e9],
+                y=[
+                    np.min(np.concatenate((data_0.msr, data_1.msr))),
+                    np.max(np.concatenate((data_0.msr, data_1.msr))),
+                ],
+                mode="lines",
+                line=go.scatter.Line(color="orange", width=3, dash="dash"),
+                name="Best frequency",
             ),
             row=1,
             col=1,
         )
 
-    fig.add_trace(
-        go.Scatter(
-            x=[fit.best_freq[qubit] / 1e9, fit.best_freq[qubit] / 1e9],
-            y=[
-                np.min(np.concatenate((data_0.msr, data_1.msr))),
-                np.max(np.concatenate((data_0.msr, data_1.msr))),
-            ],
-            mode="lines",
-            line=go.scatter.Line(color="orange", width=3, dash="dash"),
-            name="Best frequency",
-        ),
-        row=1,
-        col=1,
-    )
+        fig.add_vline(
+            x=fit.best_freq[qubit] / 1e9,
+            line=dict(color="orange", width=3, dash="dash"),
+            row=1,
+            col=1,
+        )
 
-    fig.add_vline(
-        x=fit.best_freq[qubit] / 1e9,
-        line=dict(color="orange", width=3, dash="dash"),
-        row=1,
-        col=1,
-    )
-
-    fitting_report = fitting_report + (
-        f"{qubit} | State zero freq : {fit_data_0.frequency[qubit]:,.0f} Hz.<br>"
-    )
-    fitting_report = fitting_report + (
-        f"{qubit} | State one freq : {fit_data_1.frequency[qubit]:,.0f} Hz.<br>"
-    )
-    fitting_report = fitting_report + (
-        f"{qubit} | Frequency shift : {(fit_data_1.frequency[qubit] - fit_data_0.frequency[qubit]):,.0f} Hz.<br>"
-    )
-    fitting_report = fitting_report + (
-        f"{qubit} | Best frequency : {fit.best_freq[qubit]:,.0f} Hz.<br>"
-    )
+        fitting_report = fitting_report + (
+            f"{qubit} | State zero freq : {fit_data_0.frequency[qubit]:,.0f} Hz.<br>"
+        )
+        fitting_report = fitting_report + (
+            f"{qubit} | State one freq : {fit_data_1.frequency[qubit]:,.0f} Hz.<br>"
+        )
+        fitting_report = fitting_report + (
+            f"{qubit} | Frequency shift : {(fit_data_1.frequency[qubit] - fit_data_0.frequency[qubit]):,.0f} Hz.<br>"
+        )
+        fitting_report = fitting_report + (
+            f"{qubit} | Best frequency : {fit.best_freq[qubit]:,.0f} Hz.<br>"
+        )
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
