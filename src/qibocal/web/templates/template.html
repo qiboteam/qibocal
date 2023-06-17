@@ -160,7 +160,7 @@
 
 
             {% set figures, fitting_report = report.single_qubit_plot(task_uid, qubit) %}
-            {% if "No fitting data" not in fitting_report %}
+            {% if fitting_report %}
                                     {% set fitting_params= fitting_report.split('<br>') %}
                                       <div class="div-fitting">
                                         <table class="fitting-table">

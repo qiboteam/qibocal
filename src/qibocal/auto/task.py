@@ -143,7 +143,6 @@ class Task:
         except RuntimeError:
             operation = dummy_operation
             parameters = DummyPars()
-        print(qubits)
         os.makedirs(folder / "data" / f"{self.id}_{self.iteration}")
         path = self.path(folder)
         if operation.platform_dependent and operation.qubits_dependent:
@@ -158,6 +157,5 @@ class Task:
             self.qubits = list(qubits)
         else:
             data: Data = operation.acquisition(parameters, platform=platform)
-        print(data)
         data.save(path)
         return data

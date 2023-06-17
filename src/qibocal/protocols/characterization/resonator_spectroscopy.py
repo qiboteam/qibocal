@@ -182,9 +182,9 @@ def _fit(data: ResonatorSpectroscopyData) -> ResonatorSpectroscopyResults:
         )
 
 
-def _plot(data: ResonatorSpectroscopyData, fit: ResonatorSpectroscopyResults, qubit):
+def _plot(data: ResonatorSpectroscopyData, qubit, fit: ResonatorSpectroscopyResults):
     """Plotting function for ResonatorSpectroscopy."""
-    return spectroscopy_plot(data, fit, qubit)
+    return spectroscopy_plot(data, qubit, fit)
 
 
 resonator_spectroscopy = Routine(_acquisition, _fit, _plot)
