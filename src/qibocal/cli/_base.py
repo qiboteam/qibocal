@@ -11,7 +11,7 @@ import click
 import yaml
 from qibo.config import log, raise_error
 
-from ..cli.builders import AcquisitionBuilder, ActionBuilder, ReportBuilder
+from ..cli.builders import AcquisitionBuilder, ActionBuilder, FitBuilder, ReportBuilder
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -94,6 +94,13 @@ def acquire(runcard, folder, force):
 @click.argument("folder", metavar="folder", type=click.Path(exists=True))
 def report(folder):
     builder = ReportBuilder(pathlib.Path(folder))
+    builder.run()
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument("folder", metavar="folder", type=click.Path(exists=True))
+def fit(folder):
+    builder = FitBuilder(pathlib.Path(folder))
     builder.run()
 
 

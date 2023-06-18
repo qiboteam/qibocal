@@ -17,6 +17,44 @@ UPDATED_PLATFORM = "new_platform.yml"
 PLATFORM = "platform.yml"
 
 
+class FitBuilder:
+    def __init__(self, path: Path):
+        self.path = path
+        self.metadata = yaml.safe_load((path / META).read_text())
+        self.runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
+        self.executor = Executor.load(
+            self.runcard,
+            self.path,
+            self.platform,
+            self.qubits,
+        )
+
+    @property
+    def platform(self):
+        """Qibolab's platform object."""
+        return self.runcard.platform_obj
+
+    @property
+    def backend(self):
+        """ "Qibo's backend object."""
+        return self.runcard.backend_obj
+
+    def run(self):
+        self.executor.fit(self.path)
+        e = datetime.datetime.now(datetime.timezone.utc)
+        self.metadata["end-time"] = e.strftime("%H:%M:%S")
+        with open(self.path / META, "w") as file:
+            yaml.dump(self.metadata, file)
+
+    @property
+    def qubits(self):
+        """Qubits dictionary."""
+        if self.platform is not None:
+            return allocate_qubits(self.platform, self.runcard.qubits)
+
+        return self.runcard.qubits
+
+
 class AcquisitionBuilder:
     def __init__(self, runcard, folder, force):
         self.folder = generate_output_folder(folder, force)

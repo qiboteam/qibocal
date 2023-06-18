@@ -159,3 +159,8 @@ class Task:
             data: Data = operation.acquisition(parameters, platform=platform)
         data.save(path)
         return data
+
+    def fit(self, folder: Path) -> Results:
+        results = self.operation.fit(self.data(folder))
+        results.save(self.path(folder))
+        return results

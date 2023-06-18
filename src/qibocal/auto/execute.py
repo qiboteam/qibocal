@@ -164,3 +164,17 @@ class Executor:
             completed = Completed(task, data, status=Normal())
             self.history.push(completed)
             self.head = self.next()
+
+    def fit(self, path):
+        self.head = self.graph.start
+
+        while self.head is not None:
+            task = self.current
+            results = task.fit(self.output)
+            completed = Completed(
+                task, task.data(path), results=results, status=Normal()
+            )
+            self.history.push(completed)
+            self.head = self.next()
+
+        return self.history
