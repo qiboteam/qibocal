@@ -44,6 +44,7 @@ onnxruntime = { version = "^1.14.1", optional = true }
 onnx = {version = "^1.13.1", optional = true }
 pint = "^0.20.1" # The new version of pint (0.21) is incompatible with Pint-Pandas
 setuptools = "^67.8.0"
+numpy = "^1.25.0"
 
 
 [tool.poetry.group.test]
