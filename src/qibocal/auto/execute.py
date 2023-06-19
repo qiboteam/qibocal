@@ -1,7 +1,7 @@
 """Tasks execution."""
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional, Set
+from typing import Optional, Set
 
 from qibolab.platform import Platform
 
@@ -66,7 +66,7 @@ class Executor:
 
     def successors(self, task: Task):
         """Retrieve successors of a specified task."""
-        succs: List[Task] = []
+        succs: list[Task] = []
 
         if task.main is not None:
             # main task has always more priority on its own, with respect to

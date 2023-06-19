@@ -1,7 +1,6 @@
 """Track execution history."""
 import copy
 from dataclasses import dataclass
-from typing import Dict, Tuple
 
 from .runcard import Id
 from .status import Status
@@ -27,7 +26,7 @@ class Completed:
         self.task = copy.deepcopy(self.task)
 
 
-class History(Dict[Tuple[Id, int], Completed]):
+class History(dict[tuple[Id, int], Completed]):
     """Execution history.
 
     This is not only used for logging and debugging, but it is an actual part

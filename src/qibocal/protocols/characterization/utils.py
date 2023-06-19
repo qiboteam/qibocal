@@ -8,6 +8,10 @@ from plotly.subplots import make_subplots
 from qibocal.auto.operation import Results
 from qibocal.config import log
 
+GHZ_TO_HZ = 1e9
+HZ_TO_GHZ = 1e-9
+V_TO_UV = 1e6
+
 
 class PowerLevel(str, Enum):
     """Power Regime for Resonator Spectroscopy"""
@@ -24,8 +28,8 @@ def lorentzian(frequency, amplitude, center, sigma, offset):
 
 
 def lorentzian_fit(data, resonator_type=None, fit=None):
-    frequencies = data.freq / 1e9
-    voltages = data.msr * 1e6
+    frequencies = data.freq * HZ_TO_GHZ
+    voltages = data.msr * V_TO_UV
     model_Q = lmfit.Model(lorentzian)
 
     # Guess parameters for Lorentzian max or min
@@ -85,7 +89,7 @@ def spectroscopy_plot(data, fit: Results, qubit):
 
     fitting_report = ""
 
-    frequencies = qubit_data.freq / 1e9
+    frequencies = qubit_data.freq * HZ_TO_GHZ
     fig.add_trace(
         go.Scatter(
             x=frequencies,
@@ -140,7 +144,7 @@ def spectroscopy_plot(data, fit: Results, qubit):
         label = "qubit frequency"
         freq = fit.frequency
 
-    fitting_report += f"{qubit} | {label}: {freq[qubit]*1e9:,.0f} Hz<br>"
+    fitting_report += f"{qubit} | {label}: {freq[qubit]*GHZ_TO_HZ:,.0f} Hz<br>"
 
     if fit.amplitude[qubit] is not None:
         fitting_report += f"{qubit} | amplitude: {fit.amplitude[qubit]} <br>"

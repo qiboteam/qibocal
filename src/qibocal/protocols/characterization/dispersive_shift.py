@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Tuple
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -12,7 +12,12 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.protocols.characterization.utils import lorentzian, lorentzian_fit
+from qibocal.protocols.characterization.utils import (
+    HZ_TO_GHZ,
+    V_TO_UV,
+    lorentzian,
+    lorentzian_fit,
+)
 
 
 @dataclass
@@ -33,9 +38,9 @@ class DispersiveShiftParameters(Parameters):
 class StateResults(Results):
     """Resonator spectroscopy outputs."""
 
-    frequency: Dict[QubitId, float]
+    frequency: dict[QubitId, float]
     """Readout frequency for each qubit."""
-    fitted_parameters: Dict[QubitId, Dict[str, float]]
+    fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitted parameters."""
 
 
@@ -47,9 +52,9 @@ class DispersiveShiftResults(Results):
     """Resonator spectroscopy outputs in the ground state."""
     results_1: StateResults
     """Resonator spectroscopy outputs in the excited state"""
-    best_freq: Dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
+    best_freq: dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
     """Readout frequency that maximizes the distance of ground and excited states in iq-plane"""
-    best_iqs: Dict[QubitId, list]
+    best_iqs: dict[QubitId, npt.NDArray[np.float64]]
     """iq-couples of ground and excited states with best frequency"""
 
 
@@ -71,7 +76,7 @@ class DispersiveShiftData(Data):
 
     resonator_type: str
     """Resonator type."""
-    data: Dict[Tuple[QubitId, int], npt.NDArray[DispersiveShiftType]] = field(
+    data: dict[tuple[QubitId, int], npt.NDArray[DispersiveShiftType]] = field(
         default_factory=dict
     )
 
@@ -97,7 +102,7 @@ def _acquisition(
     Args:
         params (DispersiveShiftParameters): experiment's parameters
         platform (Platform): Qibolab platform object
-        qubits (dict): List of target qubits to perform the action
+        qubits (dict): list of target qubits to perform the action
 
     """
 
@@ -248,12 +253,12 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
         )
     ):
         opacity = 1
-        frequencies = q_data.freq / 1e9
+        frequencies = q_data.freq * HZ_TO_GHZ
 
         fig.add_trace(
             go.Scatter(
                 x=frequencies,
-                y=q_data.msr * 1e6,
+                y=q_data.msr * V_TO_UV,
                 opacity=opacity,
                 name=f"q{qubit}: {label}",
                 showlegend=True,
@@ -294,7 +299,7 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
 
     fig.add_trace(
         go.Scatter(
-            x=[fit.best_freq[qubit] / 1e9, fit.best_freq[qubit] / 1e9],
+            x=[fit.best_freq[qubit] * HZ_TO_GHZ, fit.best_freq[qubit] * HZ_TO_GHZ],
             y=[
                 np.min(np.concatenate((data_0.msr, data_1.msr))),
                 np.max(np.concatenate((data_0.msr, data_1.msr))),
@@ -308,7 +313,7 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
     )
 
     fig.add_vline(
-        x=fit.best_freq[qubit] / 1e9,
+        x=fit.best_freq[qubit] * HZ_TO_GHZ,
         line=dict(color="orange", width=3, dash="dash"),
         row=1,
         col=1,

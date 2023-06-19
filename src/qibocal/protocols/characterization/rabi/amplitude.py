@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -13,6 +13,7 @@ from scipy.optimize import curve_fit
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 
+from ..utils import V_TO_UV
 from . import utils
 
 
@@ -38,11 +39,11 @@ class RabiAmplitudeParameters(Parameters):
 class RabiAmplitudeResults(Results):
     """RabiAmplitude outputs."""
 
-    amplitude: Dict[QubitId, float] = field(metadata=dict(update="drive_amplitude"))
+    amplitude: dict[QubitId, float] = field(metadata=dict(update="drive_amplitude"))
     """Drive amplitude for each qubit."""
-    length: Dict[QubitId, float] = field(metadata=dict(update="drive_length"))
+    length: dict[QubitId, float] = field(metadata=dict(update="drive_length"))
     """Drive pulse duration. Same for all qubits."""
-    fitted_parameters: Dict[QubitId, Dict[str, float]]
+    fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitted parameters."""
 
 
@@ -56,9 +57,9 @@ RabiAmpType = np.dtype(
 class RabiAmplitudeData(Data):
     """RabiAmplitude data acquisition."""
 
-    durations: Dict[QubitId, float] = field(default_factory=dict)
+    durations: dict[QubitId, float] = field(default_factory=dict)
     """Pulse durations provided by the user."""
-    data: Dict[QubitId, npt.NDArray[RabiAmpType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[RabiAmpType]] = field(default_factory=dict)
     """Raw data acquired."""
 
     def register_qubit(self, qubit, amp, msr, phase):
@@ -149,7 +150,7 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
         qubit_data = data[qubit]
 
         rabi_parameter = qubit_data.amp
-        voltages = qubit_data.msr * 1e6
+        voltages = qubit_data.msr * V_TO_UV
 
         y_min = np.min(voltages)
         y_max = np.max(voltages)

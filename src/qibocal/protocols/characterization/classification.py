@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Tuple
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -32,7 +32,7 @@ ClassificationType = np.dtype([("i", np.float64), ("q", np.float64)])
 class SingleShotClassificationData(Data):
     nshots: int
     """Number of shots."""
-    data: Dict[Tuple[QubitId, int], npt.NDArray[ClassificationType]] = field(
+    data: dict[tuple[QubitId, int], npt.NDArray[ClassificationType]] = field(
         default_factory=dict
     )
     """Raw data acquired."""
@@ -49,18 +49,18 @@ class SingleShotClassificationData(Data):
 class SingleShotClassificationResults(Results):
     """SingleShotClassification outputs."""
 
-    threshold: Dict[QubitId, float] = field(metadata=dict(update="threshold"))
+    threshold: dict[QubitId, float] = field(metadata=dict(update="threshold"))
     """Threshold for classification."""
-    rotation_angle: Dict[QubitId, float] = field(metadata=dict(update="iq_angle"))
+    rotation_angle: dict[QubitId, float] = field(metadata=dict(update="iq_angle"))
     """Threshold for classification."""
-    mean_gnd_states: Dict[QubitId, npt.NDArray[ClassificationType]] = field(
+    mean_gnd_states: dict[QubitId, complex] = field(
         metadata=dict(update="mean_gnd_states")
     )
-    mean_exc_states: Dict[QubitId, npt.NDArray[ClassificationType]] = field(
+    mean_exc_states: dict[QubitId, complex] = field(
         metadata=dict(update="mean_exc_states")
     )
-    fidelity: Dict[QubitId, float]
-    assignment_fidelity: Dict[QubitId, float]
+    fidelity: dict[QubitId, float]
+    assignment_fidelity: dict[QubitId, float]
 
 
 def _acquisition(
@@ -75,7 +75,7 @@ def _acquisition(
 
     Args:
         platform (:class:`qibolab.platforms.abstract.Platform`): custom abstract platform on which we perform the calibration.
-        qubits (dict): Dict of target Qubit objects to perform the action
+        qubits (dict): dict of target Qubit objects to perform the action
         nshots (int): number of times the pulse sequence will be repeated.
 
     Returns:

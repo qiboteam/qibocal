@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -12,6 +12,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
+from ..utils import V_TO_UV
 from . import utils
 
 
@@ -35,9 +36,9 @@ class T1Parameters(Parameters):
 class T1Results(Results):
     """T1 outputs."""
 
-    t1: Dict[QubitId, float] = field(metadata=dict(update="t1"))
+    t1: dict[QubitId, float] = field(metadata=dict(update="t1"))
     """T1 for each qubit."""
-    fitted_parameters: Dict[QubitId, Dict[str, float]]
+    fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
 
 
@@ -51,11 +52,12 @@ CoherenceType = np.dtype(
 class T1Data(Data):
     """T1 acquisition outputs."""
 
-    data: Dict[QubitId, npt.NDArray[CoherenceType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[CoherenceType]] = field(default_factory=dict)
     """Raw data acquired."""
 
     def register_qubit(self, qubit, wait, msr, phase):
         """Store output for single qubit."""
+        # to be able to handle the non-sweeper case
         shape = (1,) if np.isscalar(wait) else wait.shape
         ar = np.empty(shape, dtype=CoherenceType)
         ar["wait"] = wait
@@ -65,10 +67,6 @@ class T1Data(Data):
             self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
         else:
             self.data[qubit] = np.rec.array(ar)
-
-    def save(self, path):
-        """Store results."""
-        self.to_npz(path, self.data)
 
 
 def _acquisition(params: T1Parameters, platform: Platform, qubits: Qubits) -> T1Data:
@@ -82,7 +80,7 @@ def _acquisition(params: T1Parameters, platform: Platform, qubits: Qubits) -> T1
     Args:
         params:
         platform (Platform): Qibolab platform object
-        qubits (list): List of target qubits to perform the action
+        qubits (list): list of target qubits to perform the action
         delay_before_readout_start (int): Initial time delay before ReadOut
         delay_before_readout_end (list): Maximum time delay before ReadOut
         delay_before_readout_step (int): Scan range step for the delay before ReadOut
@@ -169,7 +167,7 @@ def _plot(data: T1Data, fit: T1Results, qubit):
     fig.add_trace(
         go.Scatter(
             x=waits,
-            y=qubit_data.msr * 1e6,
+            y=qubit_data.msr * V_TO_UV,
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -187,7 +185,7 @@ def _plot(data: T1Data, fit: T1Results, qubit):
     fig.add_trace(
         go.Scatter(
             x=waitrange,
-            y=utils.exp_decay(waitrange, *params) * 1e6,
+            y=utils.exp_decay(waitrange, *params),
             name="Fit",
             line=go.scatter.Line(dash="dot"),
         )
