@@ -21,11 +21,13 @@ def _acquisition(
     sequence = PulseSequence()
     qd_pulses = {}
     ro_pulses = {}
+    amplitudes = {}
     for qubit in qubits:
         # TODO: made duration optional for qd pulse?
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
         if params.pulse_amplitude is not None:
             qd_pulses[qubit].amplitude = params.pulse_amplitude
+        amplitudes[qubit] = qd_pulses[qubit].amplitude
 
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=qd_pulses[qubit].finish
@@ -44,7 +46,7 @@ def _acquisition(
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
     # additionally include qubit drive pulse length
-    data = RabiLengthData()
+    data = RabiLengthData(amplitudes=amplitudes)
 
     # sweep the parameter
     for duration in qd_pulse_duration_range:
@@ -65,15 +67,13 @@ def _acquisition(
 
         for qubit in qubits:
             # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[ro_pulses[qubit].serial].serialize
-            r.update(
-                {
-                    "length[ns]": duration,
-                    "amplitude[dimensionless]": float(qd_pulses[qubit].amplitude),
-                    "qubit": qubit,
-                }
+            result = results[ro_pulses[qubit].serial]
+            data.register_qubit(
+                qubit,
+                length=qd_pulse_duration_range,
+                msr=result.magnitude,
+                phase=result.phase,
             )
-            data.add_data_from_dict(r)
 
     return data
 

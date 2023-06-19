@@ -1,4 +1,3 @@
-import statistics
 from enum import Enum
 
 import lmfit
@@ -9,8 +8,12 @@ from plotly.subplots import make_subplots
 from qibocal.auto.operation import Results
 from qibocal.config import log
 
+GHZ_TO_HZ = 1e9
+HZ_TO_GHZ = 1e-9
+V_TO_UV = 1e6
 
-class PowerLevel(Enum):
+
+class PowerLevel(str, Enum):
     """Power Regime for Resonator Spectroscopy"""
 
     high = "high"
@@ -24,21 +27,15 @@ def lorentzian(frequency, amplitude, center, sigma, offset):
     ) + offset
 
 
-def lorentzian_fit(data, qubit):
-    qubit_data = (
-        data.df[data.df["qubit"] == qubit].drop(columns=["qubit"]).reset_index()
-    )
-    frequencies = qubit_data["frequency"].pint.to("GHz").pint.magnitude
-    voltages = qubit_data["MSR"].pint.to("uV").pint.magnitude
+def lorentzian_fit(data, resonator_type=None, fit=None):
+    frequencies = data.freq * HZ_TO_GHZ
+    voltages = data.msr * V_TO_UV
     model_Q = lmfit.Model(lorentzian)
 
     # Guess parameters for Lorentzian max or min
-    if (
-        data.resonator_type == "3D"
-        and data.__class__.__name__ == "ResonatorSpectroscopyData"
-    ) or (
-        data.resonator_type == "2D"
-        and data.__class__.__name__ == "QubitSpectroscopyData"
+    # TODO: probably this is not working on HW
+    if (resonator_type == "3D" and fit == "resonator") or (
+        resonator_type == "2D" and fit == "qubit"
     ):
         guess_center = frequencies[
             np.argmax(voltages)
@@ -88,14 +85,15 @@ def spectroscopy_plot(data, fit: Results, qubit):
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
     )
-    qubit_data = data.df[data.df["qubit"] == qubit].drop(columns=["i", "q", "qubit"])
+    qubit_data = data[qubit]
+
     fitting_report = ""
 
-    frequencies = qubit_data["frequency"].pint.to("GHz").pint.magnitude.unique()
+    frequencies = qubit_data.freq * HZ_TO_GHZ
     fig.add_trace(
         go.Scatter(
-            x=qubit_data["frequency"].pint.to("GHz").pint.magnitude,
-            y=qubit_data["MSR"].pint.to("uV").pint.magnitude,
+            x=frequencies,
+            y=qubit_data.msr * 1e6,
             opacity=1,
             name="Frequency",
             showlegend=True,
@@ -106,8 +104,8 @@ def spectroscopy_plot(data, fit: Results, qubit):
     )
     fig.add_trace(
         go.Scatter(
-            x=qubit_data["frequency"].pint.to("GHz").pint.magnitude,
-            y=qubit_data["phase"].pint.to("rad").pint.magnitude,
+            x=frequencies,
+            y=qubit_data.phase,
             opacity=1,
             name="Phase",
             showlegend=True,
@@ -135,6 +133,7 @@ def spectroscopy_plot(data, fit: Results, qubit):
         row=1,
         col=1,
     )
+
     if data.power_level is PowerLevel.low:
         label = "readout frequency"
         freq = fit.frequency
@@ -145,7 +144,7 @@ def spectroscopy_plot(data, fit: Results, qubit):
         label = "qubit frequency"
         freq = fit.frequency
 
-    fitting_report += f"{qubit} | {label}: {freq[qubit]*1e9:,.0f} Hz<br>"
+    fitting_report += f"{qubit} | {label}: {freq[qubit]*GHZ_TO_HZ:,.0f} Hz<br>"
 
     if fit.amplitude[qubit] is not None:
         fitting_report += f"{qubit} | amplitude: {fit.amplitude[qubit]} <br>"
@@ -168,42 +167,6 @@ def spectroscopy_plot(data, fit: Results, qubit):
     figures.append(fig)
 
     return figures, fitting_report
-
-
-def find_min_msr(data, resonator_type, fit_type):
-    # Find the minimum values of z for each level of attenuation and their locations (x, y).
-    data = data[["frequency", fit_type, "MSR"]].to_numpy()
-    if resonator_type == "3D":
-        func = np.argmax
-    else:
-        func = np.argmin
-    min_msr_per_attenuation = []
-    for i in np.unique(data[:, 1]):
-        selected = data[data[:, 1] == i]
-        min_msr_per_attenuation.append(selected[func(selected[:, 2])])
-
-    return np.array(min_msr_per_attenuation)
-
-
-def get_max_freq(distribution_points):
-    freqs = [point[0] for point in distribution_points]
-    max_freq = statistics.mode(freqs)
-    return max_freq
-
-
-def get_points_with_max_freq(min_points, max_freq):
-    matching_points = [point for point in min_points if point[0] == max_freq]
-    if matching_points:
-        return max(matching_points, key=lambda point: point[1]), min(
-            matching_points, key=lambda point: point[1]
-        )
-    x_values = [point[0] for point in min_points]
-    closest_idx = np.argmin(np.abs(np.array(x_values) - max_freq))
-    closest_point = min_points[closest_idx]
-    matching_points = [point for point in min_points if point[0] == closest_point[0]]
-    return max(matching_points, key=lambda point: point[1]), min(
-        matching_points, key=lambda point: point[1]
-    )
 
 
 def norm(x_mags):
