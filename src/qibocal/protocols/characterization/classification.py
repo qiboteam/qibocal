@@ -225,7 +225,6 @@ def _plot(
 
     fitting_report = ""
     max_x, max_y, min_x, min_y = 0, 0, 0, 0
-
     state0_data = data[qubit, 0]
     state1_data = data[qubit, 1]
 
@@ -279,28 +278,27 @@ def _plot(
         ),
     )
 
+    max_x = max(
+        max_x,
+        np.max(state0_data.i),
+        np.max(state1_data.i),
+    )
+    max_y = max(
+        max_y,
+        np.max(state0_data.q),
+        np.max(state1_data.q),
+    )
+    min_x = min(
+        min_x,
+        np.min(state0_data.i),
+        np.min(state1_data.i),
+    )
+    min_y = min(
+        min_y,
+        np.min(state0_data.q),
+        np.min(state1_data.q),
+    )
     if fit is not None:
-        max_x = max(
-            max_x,
-            np.max(state0_data.i),
-            np.max(state1_data.i),
-        )
-        max_y = max(
-            max_y,
-            np.max(state0_data.q),
-            np.max(state1_data.q),
-        )
-        min_x = min(
-            min_x,
-            np.min(state0_data.i),
-            np.min(state1_data.i),
-        )
-        min_y = min(
-            min_y,
-            np.min(state0_data.q),
-            np.min(state1_data.q),
-        )
-
         feature_x = np.linspace(min_x, max_x, MESH_SIZE)
         feature_y = np.linspace(min_y, max_y, MESH_SIZE)
 
