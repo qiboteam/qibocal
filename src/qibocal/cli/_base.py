@@ -11,7 +11,13 @@ import click
 import yaml
 from qibo.config import log, raise_error
 
-from ..cli.builders import AcquisitionBuilder, ActionBuilder, FitBuilder, ReportBuilder
+from ..cli.builders import (
+    AcquisitionBuilder,
+    ActionBuilder,
+    ExecutionMode,
+    FitBuilder,
+    ReportBuilder,
+)
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -56,7 +62,7 @@ def command(runcard, folder, force, update):
     """
     card = yaml.safe_load(pathlib.Path(runcard).read_text(encoding="utf-8"))
     builder = ActionBuilder(card, folder, force, update=update)
-    builder.run()
+    builder.run(mode=ExecutionMode.run)
     if update:
         builder.dump_platform_runcard()
     builder.dump_report()
@@ -87,7 +93,7 @@ def acquire(runcard, folder, force):
     """
     card = yaml.safe_load(pathlib.Path(runcard).read_text(encoding="utf-8"))
     builder = AcquisitionBuilder(card, folder, force)
-    builder.run()
+    builder.run(mode=ExecutionMode.acquire)
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)

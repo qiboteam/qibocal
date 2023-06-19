@@ -108,33 +108,8 @@ class Task:
         return Results.load(self.path(base_dir))
 
     def run(self, folder: Path, platform: Platform, qubits: Qubits) -> Results:
-        try:
-            operation: Routine = self.operation
-            parameters = self.parameters
-        except RuntimeError:
-            operation = dummy_operation
-            parameters = DummyPars()
-
-        os.makedirs(folder / "data" / f"{self.id}_{self.iteration}")
-        path = self.path(folder)
-        if operation.platform_dependent and operation.qubits_dependent:
-            if platform is not None:
-                if len(self.qubits) > 0:
-                    qubits = allocate_qubits(platform, self.qubits)
-
-            data: Data = operation.acquisition(
-                parameters, platform=platform, qubits=qubits
-            )
-            # after acquisition we update the qubit parameter
-            self.qubits = list(qubits)
-
-        else:
-            data: Data = operation.acquisition(parameters, platform=platform)
-
-        data.save(path)
-        results: Results = operation.fit(data)
-        results.save(path)
-        return data, results
+        self.acquire(folder, platform, qubits)
+        self.fit(folder)
 
     def acquire(self, folder: Path, platform: Platform, qubits: Qubits) -> Data:
         try:
@@ -145,22 +120,16 @@ class Task:
             parameters = DummyPars()
         os.makedirs(folder / "data" / f"{self.id}_{self.iteration}")
         path = self.path(folder)
-        if operation.platform_dependent and operation.qubits_dependent:
-            if platform is not None:
-                if len(self.qubits) > 0:
-                    qubits = allocate_qubits(platform, self.qubits)
 
-            data: Data = operation.acquisition(
-                parameters, platform=platform, qubits=qubits
-            )
-            # after acquisition we update the qubit parameter
-            self.qubits = list(qubits)
-        else:
-            data: Data = operation.acquisition(parameters, platform=platform)
+        if platform is not None:
+            if len(self.qubits) > 0:
+                qubits = allocate_qubits(platform, self.qubits)
+
+        data: Data = operation.acquisition(parameters, platform=platform, qubits=qubits)
+        # after acquisition we update the qubit parameter
+        self.qubits = list(qubits)
         data.save(path)
-        return data
 
-    def fit(self, folder: Path) -> Results:
+    def fit(self, folder: Path, **kwargs) -> Results:
         results = self.operation.fit(self.data(folder))
         results.save(self.path(folder))
-        return results

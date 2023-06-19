@@ -1,5 +1,6 @@
 """Tasks execution."""
 from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
 from typing import List, Optional, Set
 
@@ -10,6 +11,13 @@ from .history import Completed, History
 from .runcard import Id, Runcard
 from .status import Normal
 from .task import Qubits, Task
+
+
+@dataclass
+class ExecutionMode(Enum):
+    acquire = "acquire"
+    fit = "fit"
+    run = "run"
 
 
 @dataclass
@@ -121,20 +129,7 @@ class Executor:
         assert self.head is not None
         return self.graph.task(self.head)
 
-    def generate_history(self, path):
-        self.head = self.graph.start
-
-        while self.head is not None:
-            task = self.current
-            completed = Completed(
-                task, task.data(path), results=task.results(path), status=Normal()
-            )
-            self.history.push(completed)
-            self.head = self.next()
-
-        return self.history
-
-    def run(self):
+    def run(self, mode):
         """Actual execution.
 
         The platform's update method is called if:
@@ -145,36 +140,20 @@ class Executor:
 
         while self.head is not None:
             task = self.current
-            data, results = task.run(
-                self.output, platform=self.platform, qubits=self.qubits
+            if hasattr(task, mode.name):
+                getattr(task, mode.name)(
+                    self.output, platform=self.platform, qubits=self.qubits
+                )
+            completed = Completed(
+                task,
+                task.data(self.output),
+                results=task.results(self.output),
+                status=Normal(),
             )
-            completed = Completed(task, data, results, Normal())
             self.history.push(completed)
             self.head = self.next()
+
+        if mode.name in ["run", "fit"]:
             if self.platform is not None:
                 if self.update and task.update:
-                    self.platform.update(results.update)
-
-    def acquire(self):
-        self.head = self.graph.start
-
-        while self.head is not None:
-            task = self.current
-            data = task.acquire(self.output, platform=self.platform, qubits=self.qubits)
-            completed = Completed(task, data, status=Normal())
-            self.history.push(completed)
-            self.head = self.next()
-
-    def fit(self, path):
-        self.head = self.graph.start
-
-        while self.head is not None:
-            task = self.current
-            results = task.fit(self.output)
-            completed = Completed(
-                task, task.data(path), results=results, status=Normal()
-            )
-            self.history.push(completed)
-            self.head = self.next()
-
-        return self.history
+                    self.platform.update(task.results(self.output).update)
