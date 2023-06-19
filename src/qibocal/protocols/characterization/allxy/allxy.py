@@ -51,10 +51,6 @@ class AllXYData(Data):
         else:
             self.data[qubit] = np.rec.array(ar)
 
-    def save(self, path):
-        """Store results."""
-        self.to_npz(path, self.data)
-
 
 gatelist = [
     ["I", "I"],

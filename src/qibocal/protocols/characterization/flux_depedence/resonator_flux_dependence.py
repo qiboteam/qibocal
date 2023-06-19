@@ -73,10 +73,6 @@ class ResonatorFluxData(Data):
         ar["phase"] = phase
         self.data[qubit] = np.rec.array(ar)
 
-    def save(self, path):
-        """Store results."""
-        self.to_npz(path, self.data)
-
 
 def _acquisition(
     params: ResonatorFluxParameters, platform: Platform, qubits: Qubits

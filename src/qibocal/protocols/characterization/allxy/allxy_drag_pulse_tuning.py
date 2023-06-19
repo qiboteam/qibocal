@@ -63,10 +63,6 @@ class AllXYDragData(Data):
         """Access qubits from data structure."""
         return np.unique([b[1] for b in self.data])
 
-    def save(self, path):
-        """Store results."""
-        self.to_npz(path, self.data)
-
 
 def _acquisition(
     params: AllXYDragParameters,

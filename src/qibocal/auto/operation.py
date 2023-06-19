@@ -77,19 +77,17 @@ class Data:
 
     def save(self, path):
         """Store results."""
-        self.to_json(path, self.global_params_dict)
-        self.to_npz(path, self.data)
+        self.to_json(path)
+        self.to_npz(path)
 
-    @staticmethod
-    def to_npz(path, data_dict: dict):
+    def to_npz(self, path):
         """Helper function to use np.savez while converting keys into strings."""
-        np.savez(path / DATAFILE, **{str(i): data_dict[i] for i in data_dict})
+        np.savez(path / DATAFILE, **{str(i): self.data[i] for i in self.data})
 
-    @staticmethod
-    def to_json(path, data_dict: dict):
+    def to_json(self, path):
         """Helper function to dump to json in JSONFILE path."""
-        if data_dict:
-            (path / JSONFILE).write_text(json.dumps(data_dict, indent=4))
+        if self.global_params_dict:
+            (path / JSONFILE).write_text(json.dumps(self.global_params_dict, indent=4))
 
 
 @dataclass
