@@ -1,7 +1,6 @@
 """Test graph execution."""
 import pathlib
 import tempfile
-from typing import List
 
 import pytest
 import yaml
@@ -17,7 +16,7 @@ cards = pathlib.Path(__file__).parent / "runcards"
 class Validation:
     """Values used to validate the result."""
 
-    result: List[str]
+    result: list[str]
     """Asserted history."""
     description: str
 
