@@ -8,6 +8,8 @@ import numpy.typing as npt
 from qibolab.platform import Platform
 from qibolab.qubits import Qubit, QubitId
 
+from qibocal.utils import my_eval
+
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
 ParameterValue = Union[float, int]
@@ -102,7 +104,7 @@ class Data:
         raw_data = np.load(path / DATAFILE)
         for i in raw_data:
             # FIXME: change eval asap
-            obj.data[eval(i)] = np.rec.array(raw_data[i])
+            obj.data[my_eval(i)] = np.rec.array(raw_data[i])
 
         return obj
 
@@ -155,7 +157,7 @@ class Results:
             if isinstance(elem, dict):
                 # FIXME: necessary since after loading QubitId is string and not int
                 # maybe convert all QubitIds into strings ?
-                params[key] = {eval(k): value for k, value in elem.items()}
+                params[key] = {my_eval(k): value for k, value in elem.items()}
 
         return cls(**params)
 
