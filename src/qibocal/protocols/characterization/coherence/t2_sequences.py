@@ -62,16 +62,11 @@ def _acquisition(
                 averaging_mode=AveragingMode.CYCLIC,
             ),
         )
-        for qubit, ro_pulse in ro_pulses.items():
-            # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[ro_pulse.serial].serialize
-            r.update(
-                {
-                    "wait[ns]": wait,
-                    "qubit": qubit,
-                }
+        for qubit in qubits:
+            result = results[ro_pulses[qubit].serial]
+            data.register_qubit(
+                qubit, wait=wait, msr=result.magnitude, phase=result.phase
             )
-            data.add_data_from_dict(r)
     return data
 
 

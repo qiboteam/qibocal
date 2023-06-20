@@ -11,7 +11,7 @@ actions:
       amplitude: 0.4
       power_level: high
       nshots: 10
-      relaxation_time:
+
 
   - id: resonator high power low attenuation
     priority: 0
@@ -22,7 +22,7 @@ actions:
       attenuation: 15
       power_level: high
       nshots: 10
-      relaxation_time:
+
 
   - id: resonator low power high attenuation
     priority: 0
@@ -33,7 +33,7 @@ actions:
       attenuation: 60
       power_level: low
       nshots: 10
-      relaxation_time:
+
 
   - id: resonator punchout
     priority: 0
@@ -46,7 +46,7 @@ actions:
       max_amp_factor: 0.3
       step_amp_factor: 0.005
       nshots: 100
-      relaxation_time:
+
 
   - id: resonator_punchout_attenuation
     priority: 0
@@ -58,7 +58,7 @@ actions:
       max_att: 60
       step_att: 4
       nshots: 1000
-      relaxation_time:
+
 
 
   - id: resonator spectroscopy low power
@@ -70,7 +70,7 @@ actions:
       amplitude: 0.022
       power_level: low
       nshots: 10
-      relaxation_time:
+
 
 
   - id: qubit spectroscopy
@@ -82,7 +82,7 @@ actions:
       freq_width: 2_000_000
       freq_step: 500_000
       nshots: 10
-      relaxation_time:
+
 
 
   - id: resonator flux dependence
@@ -94,7 +94,7 @@ actions:
       bias_width: 0.8
       bias_step:  0.1
       nshots: 10
-      relaxation_time:
+
 
 
   - id: qubit flux dependence
@@ -107,7 +107,7 @@ actions:
       bias_step:  0.1 # 0.001
       drive_amplitude: 0.005
       nshots: 10
-      relaxation_time:
+
 
 
   - id: rabi
@@ -119,7 +119,7 @@ actions:
       step_amp_factor: 0.1
       pulse_length: 30
       nshots: 1024
-      relaxation_time:
+
 
   - id: rabi length
     priority: 0
@@ -213,8 +213,7 @@ actions:
     priority: 0
     operation: single_shot_classification
     parameters:
-      nshots: 5000
-      relaxation_time:
+      nshots: 10
 
 
   - id: allXY
@@ -252,7 +251,7 @@ actions:
       delay_between_pulses_end: 20000
       delay_between_pulses_step: 2000
       nshots: 10
-      relaxation_time:
+
 
   - id: flipping
     priority: 0
@@ -269,7 +268,7 @@ actions:
       freq_width: 10_000_000
       freq_step: 100_000
       nshots: 10
-      relaxation_time:
+
 
   - id: standard rb
     priority: 0
