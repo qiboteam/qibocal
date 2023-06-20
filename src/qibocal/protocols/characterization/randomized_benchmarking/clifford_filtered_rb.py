@@ -1,10 +1,11 @@
 from copy import deepcopy
 from dataclasses import dataclass
 from itertools import product
-from typing import Iterable, List, Tuple, Union
+from typing import Iterable, Union
 
 import numpy as np
 import pandas as pd
+import plotly.express as px
 import plotly.graph_objects as go
 import qibo
 from qibolab.platform import Platform
@@ -24,16 +25,11 @@ from .utils import extract_from_data, number_to_str, random_clifford
 
 @dataclass
 class CliffordRBResult(Results):
-    """Standard RB outputs."""
+    """Clifford simultaneous filtered RB outputs."""
 
-    irrep_signal: dict
+    filtered_data: pd.DataFrame
     """Raw fitting parameters and uncertainties."""
-    fit_parameters: dict
-    """Fitting parameters."""
-    fit_errors: dict
-    """Uncertainties of the fitting parameters."""
-    error_y: dict
-    """Error bars."""
+    fit_results: pd.DataFrame
 
 
 def filter_function(samples_list, circuit_list) -> list:
@@ -113,44 +109,17 @@ def filter_function(samples_list, circuit_list) -> list:
     return datarow
 
 
-def resample_filter(data, sample_size=100, homogeneous: bool = True):
-    """Preforms parametric resampling of shots with binomial distribution
-        and returns a list of "corrected" probabilites.
-
-    Args:
-        data (list or np.ndarray): list of probabilities for the binomial distribution.
-        nshots (int): sample size for one probability distribution.
-
-    Returns:
-        list: resampled probabilities.
-    """
-    if homogeneous:
-        return np.apply_along_axis(
-            lambda p: filter_function(
-                np.random.multinomial(n=1, p=1 - p, size=(1, sample_size, len(p))).T
-            ),
-            0,
-            data,
-        )
-    resampled_data = []
-    for row in data:
-        resampled_data.append([])
-        for p in row:
-            samples_corrected = np.random.multinomial(
-                n=1, p=1 - p, size=(1, sample_size, *p.shape)
-            ).T
-            resampled_data[-1].append(filter_function(samples_corrected))
-    return resampled_data
-
-
 def setup_scan(
-    params: StandardRBParameters, qubits: Union[Qubits, List[QubitId]], nqubits: int
+    params: StandardRBParameters,
+    qubits: Union[Qubits, list[QubitId]],
+    nqubits: int,
+    **kwargs,
 ) -> Iterable:
     """Returns an iterator of single-qubit random self-inverting Clifford circuits.
 
     Args:
         params (StandardRBParameters): Parameters of the RB protocol.
-        qubits (Dict[int, Union[str, int]] or List[Union[str, int]]):
+        qubits (dict[int, Union[str, int]] or list[Union[str, int]]):
             List of qubits the circuit is executed on.
         nqubits (int, optional): Number of qubits of the resulting circuits.
             If ``None``, sets ``len(qubits)``. Defaults to ``None``.
@@ -171,7 +140,7 @@ def setup_scan(
             """Returns a circuit with a random single-qubit clifford unitary."""
             return random_clifford(len(qubit_ids), params.seed)
 
-        circuit = layer_circuit(layer_gen, depth)
+        circuit = layer_circuit(layer_gen, depth, **kwargs)
         add_measurement_layer(circuit)
         return embed_circuit(circuit, nqubits, qubit_ids)
 
@@ -181,7 +150,7 @@ def setup_scan(
 def _acquisition(
     params: StandardRBParameters,
     platform: Platform,
-    qubits: Union[Qubits, List[QubitId]],
+    qubits: Union[Qubits, list[QubitId]],
 ) -> RBData:
     """The data acquisition stage of Clifford Filtered Randomized Benchmarking.
 
@@ -192,7 +161,7 @@ def _acquisition(
     Args:
         params (StandardRBParameters): All parameters in one object.
         platform (Platform): Platform the experiment is executed on.
-        qubits (Dict[int, Union[str, int]] or List[Union[str, int]]): List of qubits the experiment is executed on.
+        qubits (dict[int, Union[str, int]] or list[Union[str, int]]): List of qubits the experiment is executed on.
 
     Returns:
         RBData: The depths, samples and ground state probability of each exeriment in the scan.
@@ -223,14 +192,14 @@ def _acquisition(
 
     # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
     nqubits = platform.nqubits if platform else max(qubits) + 1
-    scan = setup_scan(params, qubits, nqubits)
+    scan = setup_scan(params, qubits, nqubits, density_matrix=(noise_model is not None))
 
     # 2. Execute the scan.
     data_list = []
     # Iterate through the scan and execute each circuit.
     for circuit in scan:
         # Every executed circuit gets a row where the data is stored.
-        depth = circuit.depth - 1
+        depth = circuit.depth - 1 if circuit.depth > 0 else 0
         data_list.append({"depth": depth, "circuit": circuit})
         if noise_model is not None:
             circuit = noise_model.apply(circuit)
@@ -238,14 +207,12 @@ def _acquisition(
         data_list[-1]["samples"] = samples
 
     # Build the data object which will be returned and later saved.
-    data = pd.DataFrame(data_list)
-    clifford_rb_data = RBData(
-        data
-    )  # .join(pd.DataFrame(filter_dict, index=data.index)))
+    # data = pd.DataFrame(data_list)
+    clifford_rb_data = RBData(data_list)
 
     # Store the parameters to display them later.
     clifford_rb_data.attrs = params.__dict__
-    clifford_rb_data.attrs.setdefault("nqubits", nqubits)
+    clifford_rb_data.attrs.setdefault("qubits", qubits)
     return clifford_rb_data
 
 
@@ -259,14 +226,17 @@ def _fit(data: RBData) -> CliffordRBResult:
     Returns:
         CliffordRBResult: Aggregated and processed data.
     """
-
-    # Compute the filter functions for samples of each random circuit
+    # Post-processing: compute the filter functions of each random circuit given samples
     irrep_signal = filter_function(data.samples.tolist(), data.circuit.tolist())
-    fit_parameters, fit_errors, error_y_dict = {}, {}, {}
+    filtered_data = data.join(pd.DataFrame(irrep_signal, index=data.index))
+
+    # Perform fitting for each irrep and store in pd.DataFrame
+    fit_results = {"fit_parameters": [], "fit_uncertainties": [], "error_bars": []}
+
     for irrep_key in irrep_signal:
         # Extract depths and probabilities
         x, y_scatter = extract_from_data(
-            data.join(pd.DataFrame(irrep_signal, index=data.index)),
+            filtered_data,
             irrep_key,
             "depth",
             list,
@@ -301,33 +271,42 @@ def _fit(data: RBData) -> CliffordRBResult:
 
         # Fit the initial data and compute error bars
         y = [np.mean(y_row) for y_row in y_scatter]
-        error_y = data_uncertainties(
+        # If bootstrap was not performed, y_estimates can be inhomogeneous
+        error_bars = data_uncertainties(
             y_estimates,
             uncertainties,
-            symmetric=False,
             data_median=y,
             homogeneous=(homogeneous or n_bootstrap != 0),
         )
-        sigma = (
-            np.max(error_y, axis=0)
-            if error_y is not None and isinstance(error_y[0], Iterable)
-            else error_y
-        )
+        # Generate symmetric non-zero uncertainty of y for the fit
+        sigma = None
+        if error_bars is not None:
+            sigma = (
+                np.max(error_bars, axis=0)
+                if isinstance(error_bars[0], Iterable)
+                else error_bars
+            ) + 0.1
         popt, perr = fit_exp1_func(x, y, sigma=sigma, bounds=[0, 1])
 
-        # Compute fitting errors
+        # Compute fitting uncertainties
         if len(popt_estimates):
             perr = data_uncertainties(popt_estimates, uncertainties, data_median=popt)
             perr = perr.T if perr is not None else (0,) * len(popt)
 
-        fit_parameters[irrep_key] = popt
-        fit_errors[irrep_key] = perr
-        error_y_dict[irrep_key] = error_y
+        fit_results["fit_parameters"].append(popt)
+        fit_results["fit_uncertainties"].append(perr)
+        fit_results["error_bars"].append(error_bars)
+    fit_results = pd.DataFrame(
+        fit_results,
+        index=list(irrep_signal.keys()),
+    )
+    return CliffordRBResult(
+        filtered_data,
+        fit_results,
+    )
 
-    return CliffordRBResult(irrep_signal, fit_parameters, fit_errors, error_y_dict)
 
-
-def _plot(data: RBData, result: CliffordRBResult, qubit) -> Tuple[List[go.Figure], str]:
+def _plot(data: RBData, result: CliffordRBResult, qubit) -> tuple[list[go.Figure], str]:
     """Builds the table for the qq pipe, calls the plot function of the result object
     and returns the figure es list.
 
@@ -341,39 +320,41 @@ def _plot(data: RBData, result: CliffordRBResult, qubit) -> Tuple[List[go.Figure
     """
 
     def crosstalk(q0, q1):
-        p0 = result.fit_parameters[f"irrep{2 ** q0}"][1]
-        p1 = result.fit_parameters[f"irrep{2 ** q1}"][1]
-        p01 = result.fit_parameters[f"irrep{2 ** q1 + 2 ** q0}"][1]
-        if p0 == 0 or p1 == 0 or p01 == 0:
+        p0 = result.fit_results["fit_parameters"][f"irrep{2 ** q0}"][1]
+        p1 = result.fit_results["fit_parameters"][f"irrep{2 ** q1}"][1]
+        p01 = result.fit_results["fit_parameters"][f"irrep{2 ** q1 + 2 ** q0}"][1]
+        if p0 == 0 or p1 == 0:
             return None
         return p01 / (p0 * p1)
 
-    nqubits = data.attrs.get("nqubits", int(np.log2(len(result.irrep_signal))))
+    nqubits = int(np.log2(len(result.fit_results.index)))
+    qubits = data.attrs.get("qubits", list(range(nqubits)))
+
     # crosstalk_heatmap = np.ones((nqubits, nqubits))
     # crosstalk_heatmap[np.triu_indices(nqubits)] = None
     rb_params = {}
 
     fig_list = []
-    for kk, irrep_key in enumerate(result.irrep_signal):
+    for kk, irrep_key in enumerate(result.filtered_data.columns[3:]):
         irrep_binary = np.binary_repr(kk, width=nqubits)
         # nontrivial_qubits = [q for q, c in enumerate(irrep_binary) if c == '1']
         popt, perr, error_y = (
-            result.fit_parameters[irrep_key],
-            result.fit_errors[irrep_key],
-            result.error_y[irrep_key],
+            result.fit_results["fit_parameters"][irrep_key],
+            result.fit_results["fit_uncertainties"][irrep_key],
+            result.fit_results["error_bars"][irrep_key],
         )
         label = "Fit: y=Ap^x<br>A: {}<br>p: {}".format(
             number_to_str(popt[0], perr[0]),
             number_to_str(popt[1], perr[1]),
         )
-        rb_params[f"p_{irrep_binary}"] = number_to_str(popt[1], perr[1])
+        rb_params[f"Irrep {irrep_binary}"] = number_to_str(popt[1], perr[1])
         # if len(nontrivial_qubits) == 2:
         #     crosstalk_heatmap[nontrivial_qubits[1], nontrivial_qubits[0]] *= popt[1]
         # elif len(nontrivial_qubits) == 1 and nqubits > 1:
         #     crosstalk_heatmap[nontrivial_qubits[0]] /= popt[1]
 
         fig_irrep = rb_figure(
-            data.join(pd.DataFrame(result.irrep_signal, index=data.index)),
+            result.filtered_data,
             model=lambda x: exp1_func(x, *popt),
             fit_label=label,
             signal_label=irrep_key,
@@ -386,24 +367,28 @@ def _plot(data: RBData, result: CliffordRBResult, qubit) -> Tuple[List[go.Figure
     if nqubits > 1:
         crosstalk_heatmap = np.array(
             [
-                [crosstalk(i, j) if i > j else None for j in range(nqubits)]
+                [crosstalk(i, j) if i > j else np.nan for j in range(nqubits)]
                 for i in range(nqubits)
             ]
         )
         np.fill_diagonal(crosstalk_heatmap, 1)
-        crosstalk_fig = go.Figure(
-            go.Heatmap(
-                x=list(range(nqubits)),
-                y=list(range(nqubits)),
-                z=crosstalk_heatmap,
-                hoverongaps=False,
-            )
+        crosstalk_fig = px.imshow(
+            crosstalk_heatmap,
+            zmin=np.nanmin(crosstalk_heatmap, initial=0),
+            zmax=np.nanmax(crosstalk_heatmap),
         )
         crosstalk_fig.update_layout(
-            yaxis=dict(scaleanchor="x", autorange="reversed"),
             plot_bgcolor="rgba(0, 0, 0, 0)",
-            xaxis_showgrid=False,
-            yaxis_showgrid=False,
+            xaxis=dict(
+                showgrid=False,
+                tickvals=list(range(nqubits)),
+                ticktext=qubits,
+            ),
+            yaxis=dict(
+                showgrid=False,
+                tickvals=list(range(nqubits)),
+                ticktext=qubits,
+            ),
         )
         result_fig.append(crosstalk_fig)
 
@@ -413,7 +398,9 @@ def _plot(data: RBData, result: CliffordRBResult, qubit) -> Tuple[List[go.Figure
         meta_data.pop("noise_model")
         meta_data.pop("noise_params")
 
-    table_str = "".join([f" | {key}: {value}<br>" for key, value in meta_data.items()])
+    table_str = "".join(
+        [f" | {key}: {value}<br>" for key, value in {**meta_data, **rb_params}.items()]
+    )
     return result_fig, table_str
 
 

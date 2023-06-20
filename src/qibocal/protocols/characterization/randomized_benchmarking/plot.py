@@ -113,6 +113,7 @@ def carousel(fig_list: list):
     sliders = [
         dict(
             active=0,
+            currentvalue={"prefix": "Irrep "},
             pad={"t": 50},
             steps=steps,
         )

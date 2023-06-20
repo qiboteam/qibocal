@@ -89,7 +89,7 @@ class StandardRBResult(Results):
     pulse_fidelity: float
     """The pulse fidelity of the gates acting on this qubit."""
     fit_parameters: tuple[float, float, float]
-    """Raw fitting parameters."""
+    """Fitting parameters."""
     fit_uncertainties: tuple[float, float, float]
     """Fitting parameters uncertainties."""
     error_bars: Optional[Union[float, list[float], np.ndarray]] = None
@@ -146,7 +146,10 @@ def resample_p0(data, sample_size=100, homogeneous: bool = True):
 
 
 def setup_scan(
-    params: StandardRBParameters, qubits: Union[Qubits, list[QubitId]], nqubits: int
+    params: StandardRBParameters,
+    qubits: Union[Qubits, list[QubitId]],
+    nqubits: int,
+    **kwargs,
 ) -> Iterable:
     """Returns an iterator of single-qubit random self-inverting Clifford circuits.
 
@@ -173,7 +176,7 @@ def setup_scan(
             """Returns a circuit with a random single-qubit clifford unitary."""
             return random_clifford(len(qubit_ids), params.seed)
 
-        circuit = layer_circuit(layer_gen, depth)
+        circuit = layer_circuit(layer_gen, depth, **kwargs)
         add_inverse_layer(circuit)
         add_measurement_layer(circuit)
         return embed_circuit(circuit, nqubits, qubit_ids)
@@ -226,7 +229,7 @@ def _acquisition(
 
     # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
     nqubits = platform.nqubits if platform else max(qubits) + 1
-    scan = setup_scan(params, qubits, nqubits)
+    scan = setup_scan(params, qubits, nqubits, density_matrix=(noise_model is not None))
 
     # 2. Execute the scan.
     data_list = []
@@ -341,72 +344,12 @@ def _plot(data: RBData, result: StandardRBResult, qubit) -> tuple[list[go.Figure
     Returns:
         tuple[list[go.Figure], str]:
     """
-
-    # x, y_scatter = extract_from_data(data, "signal", "depth", list)
-    # y = [np.mean(y_row) for y_row in y_scatter]
     popt, perr = result.fit_parameters, result.fit_uncertainties
     label = "Fit: y=Ap^x<br>A: {}<br>p: {}<br>B: {}".format(
         number_to_str(popt[0], perr[0]),
         number_to_str(popt[1], perr[1]),
         number_to_str(popt[2], perr[2]),
     )
-    # fig = go.Figure()
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x=data.depth.tolist(),
-    #         y=data.signal.tolist(),
-    #         line=dict(color="#6597aa"),
-    #         mode="markers",
-    #         marker={"opacity": 0.2, "symbol": "square"},
-    #         name="itertarions",
-    #     )
-    # )
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x=x,
-    #         y=y,
-    #         line=dict(color="#aa6464"),
-    #         mode="markers",
-    #         name="average",
-    #     )
-    # )
-    # # If result.error_y is given, create a dictionary for the error bars
-    # error_y_dict = None
-    # if result.error_y is not None:
-    #     # Constant error bars
-    #     if isinstance(result.error_y, Iterable) is False:
-    #         error_y_dict = {"type": "constant", "value": result.error_y}
-    #     # Symmetric error bars
-    #     elif isinstance(result.error_y[0], Iterable) is False:
-    #         error_y_dict = {"type": "data", "array": result.error_y}
-    #     # Asymmetric error bars
-    #     else:
-    #         error_y_dict = {
-    #             "type": "data",
-    #             "symmetric": False,
-    #             "array": result.error_y[1],
-    #             "arrayminus": result.error_y[0],
-    #         }
-    #     fig.add_trace(
-    #         go.Scatter(
-    #             x=x,
-    #             y=y,
-    #             error_y=error_y_dict,
-    #             line={"color": "#aa6464"},
-    #             mode="markers",
-    #             name="error bars",
-    #         )
-    #     )
-    # x_fit = np.linspace(min(x), max(x), len(x) * 20)
-    # y_fit = exp1B_func(x_fit, *popt)
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x=x_fit,
-    #         y=y_fit,
-    #         name=label,
-    #         line=go.scatter.Line(dash="dot", color="#00cc96"),
-    #     )
-    # )
 
     fig = rb_figure(
         data, lambda x: exp1B_func(x, *popt), fit_label=label, error_y=result.error_bars

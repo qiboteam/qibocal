@@ -31,7 +31,7 @@ def embed_circuit(circuit: Circuit, nqubits: int, qubits: list) -> Circuit:
     return large_circuit
 
 
-def layer_circuit(layer_gen: Callable, depth: int) -> Circuit:
+def layer_circuit(layer_gen: Callable, depth: int, **kwargs) -> Circuit:
     """Creates a circuit of `depth` layers from a generator `layer_gen` yielding `Circuit` or `Gate`.
 
     Args:
@@ -51,10 +51,12 @@ def layer_circuit(layer_gen: Callable, depth: int) -> Circuit:
         new_layer = layer_gen()
         # Ensure new_layer is a circuit
         if isinstance(new_layer, Gate):
-            new_circuit = Circuit(max(new_layer.qubits) + 1)
+            new_circuit = Circuit(max(new_layer.qubits) + 1, **kwargs)
             new_circuit.add(new_layer)
         elif all(isinstance(gate, Gate) for gate in new_layer):
-            new_circuit = Circuit(max(max(gate.qubits) for gate in new_layer) + 1)
+            new_circuit = Circuit(
+                max(max(gate.qubits) for gate in new_layer) + 1, **kwargs
+            )
             new_circuit.add(new_layer)
         elif isinstance(new_layer, Circuit):
             new_circuit = new_layer
@@ -64,7 +66,7 @@ def layer_circuit(layer_gen: Callable, depth: int) -> Circuit:
                 f"layer_gen must return type Circuit or Gate, but it is type {type(new_layer)}.",
             )
         if full_circuit is None:  # instantiate in first loop
-            full_circuit = Circuit(new_circuit.nqubits)
+            full_circuit = Circuit(new_circuit.nqubits, **kwargs)
         full_circuit = full_circuit + new_circuit
     return full_circuit
 
