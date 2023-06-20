@@ -1,6 +1,6 @@
 from math import ceil, isinf, log10
 from numbers import Number
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Callable, Optional, Union
 
 import numpy as np
 from pandas import DataFrame
@@ -154,11 +154,11 @@ def number_to_str(
 
 
 def extract_from_data(
-    data: Union[List[dict], DataFrame],
+    data: Union[list[dict], DataFrame],
     output_key: str,
     groupby_key: str = "",
     agg_type: Union[str, Callable] = "",
-) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
+) -> Union[np.ndarray, tuple[np.ndarray, np.ndarray]]:
     """Return wanted values from list of dictionaries via a dataframe and its properties.
 
     If ``groupby_key`` given, aggregate the dataframe, extract the data by which the frame was

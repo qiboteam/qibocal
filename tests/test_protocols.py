@@ -8,7 +8,7 @@ from qibolab import create_platform
 
 from qibocal.cli.builders import ActionBuilder
 
-PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/single_routines.yml"
+PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/protocols.yml"
 PLATFORM = create_platform("dummy")
 
 
@@ -20,7 +20,12 @@ def generate_runcard_single_protocol():
         yield {"actions": [action], "qubits": list(PLATFORM.qubits)}
 
 
-@pytest.mark.parametrize("runcard", generate_runcard_single_protocol())
+def idfn(val):
+    """Helper function to indentify the protocols when testing."""
+    return val["actions"][0]["id"]
+
+
+@pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
 def test_builder(runcard):
     """Test possible update combinations between global and local."""
     builder = ActionBuilder(runcard, tempfile.mkdtemp(), force=True, update=False)

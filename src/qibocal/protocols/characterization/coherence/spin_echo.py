@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
@@ -10,6 +10,7 @@ from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
+from ..utils import V_TO_UV
 from .t1 import T1Data
 from .utils import exp_decay, exponential_fit
 
@@ -34,9 +35,9 @@ class SpinEchoParameters(Parameters):
 class SpinEchoResults(Results):
     """SpinEcho outputs."""
 
-    t2_spin_echo: Dict[QubitId, float] = field(metadata=dict(update="t2_spin_echo"))
+    t2_spin_echo: dict[QubitId, float] = field(metadata=dict(update="t2_spin_echo"))
     """T2 echo for each qubit."""
-    fitted_parameters: Dict[QubitId, Dict[str, float]]
+    fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
 
 
@@ -103,16 +104,11 @@ def _acquisition(
             ),
         )
 
-        for ro_pulse in ro_pulses.values():
-            # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[ro_pulse.serial].serialize
-            r.update(
-                {
-                    "wait[ns]": 2 * wait,
-                    "qubit": ro_pulse.qubit,
-                }
+        for qubit in qubits:
+            result = results[ro_pulses[qubit].serial]
+            data.register_qubit(
+                qubit, wait=wait, msr=result.magnitude, phase=result.phase
             )
-            data.add_data_from_dict(r)
     return data
 
 
@@ -132,13 +128,13 @@ def _plot(data: SpinEchoData, fit: SpinEchoResults, qubit: int):
     # iterate over multiple data folders
     fitting_report = ""
 
-    qubit_data = data.df[data.df["qubit"] == qubit]
-    waits = data.df["wait"].pint.to("ns").pint.magnitude
+    qubit_data = data[qubit]
+    waits = qubit_data.wait
 
     fig.add_trace(
         go.Scatter(
-            x=qubit_data["wait"].pint.to("ns").pint.magnitude,
-            y=qubit_data["MSR"].pint.to("uV").pint.magnitude,
+            x=waits,
+            y=qubit_data.msr * V_TO_UV,
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -147,26 +143,25 @@ def _plot(data: SpinEchoData, fit: SpinEchoResults, qubit: int):
     )
 
     # add fitting trace
-    if len(data) > 0:
-        waitrange = np.linspace(
-            min(waits),
-            max(waits),
-            2 * len(data),
-        )
-        params = fit.fitted_parameters[qubit]
+    waitrange = np.linspace(
+        min(waits),
+        max(waits),
+        2 * len(qubit_data),
+    )
+    params = fit.fitted_parameters[qubit]
 
-        fig.add_trace(
-            go.Scatter(
-                x=waitrange,
-                y=exp_decay(waitrange, *params),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
-            ),
-        )
+    fig.add_trace(
+        go.Scatter(
+            x=waitrange,
+            y=exp_decay(waitrange, *params) * V_TO_UV,
+            name="Fit",
+            line=go.scatter.Line(dash="dot"),
+        ),
+    )
 
-        fitting_report = fitting_report + (
-            f"{qubit} | T2 Spin Echo: {fit.t2_spin_echo[qubit]:,.0f} ns.<br><br>"
-        )
+    fitting_report = fitting_report + (
+        f"{qubit} | T2 Spin Echo: {fit.t2_spin_echo[qubit]:,.0f} ns.<br><br>"
+    )
 
     fig.update_layout(
         showlegend=True,
