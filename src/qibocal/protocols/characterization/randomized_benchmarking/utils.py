@@ -1,6 +1,6 @@
 from math import ceil, isinf, log10
 from numbers import Number
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Callable, Optional, Union
 
 import numpy as np
 from pandas import DataFrame
@@ -95,13 +95,13 @@ def significant_digit(number: Number):
 
     Returns:
         int: position of the first significant digit. Returns ``-1`` if the given number
-            is integer, ``inf`` or ``None``.
+            is ``>= 1``, ``= 0`` or ``inf``.
     """
 
-    if isinf(np.real(number)) or number - round(np.real(number)) == 0:
+    if isinf(np.real(number)) or np.real(number) >= 1 or number == 0:
         return -1
 
-    position = ceil(-log10(abs(np.real(number))))
+    position = max(ceil(-log10(abs(np.real(number)))), -1)
 
     if np.imag(number) != 0:
         position = max(position, ceil(-log10(abs(np.imag(number)))))
@@ -154,11 +154,11 @@ def number_to_str(
 
 
 def extract_from_data(
-    data: Union[List[dict], DataFrame],
+    data: Union[list[dict], DataFrame],
     output_key: str,
     groupby_key: str = "",
     agg_type: Union[str, Callable] = "",
-) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
+) -> Union[np.ndarray, tuple[np.ndarray, np.ndarray]]:
     """Return wanted values from list of dictionaries via a dataframe and its properties.
 
     If ``groupby_key`` given, aggregate the dataframe, extract the data by which the frame was

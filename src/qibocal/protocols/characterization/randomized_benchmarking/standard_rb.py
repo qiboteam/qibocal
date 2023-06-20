@@ -1,6 +1,6 @@
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import Iterable, List, Optional, Tuple, TypedDict, Union
+from typing import Iterable, Optional, TypedDict, Union
 
 import numpy as np
 import pandas as pd
@@ -27,8 +27,8 @@ from .utils import extract_from_data, number_to_str, random_clifford
 NPULSES_PER_CLIFFORD = 1.875
 
 
-class DepthsDict(TypedDict):
-    """Dictionary used to build a list of depths as ``range(start, stop, step)``."""
+class Depthsdict(TypedDict):
+    """dictionary used to build a list of depths as ``range(start, stop, step)``."""
 
     start: int
     stop: int
@@ -39,7 +39,7 @@ class DepthsDict(TypedDict):
 class StandardRBParameters(Parameters):
     """Standard Randomized Benchmarking runcard inputs."""
 
-    depths: Union[list, DepthsDict]
+    depths: Union[list, Depthsdict]
     """A list of depths/sequence lengths. If a dictionary is given the list will be build."""
     niter: int
     """Sets how many iterations over the same depth value."""
@@ -75,7 +75,7 @@ class RBData(pd.DataFrame):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-    def to_csv(self, path):
+    def save(self, path):
         """Overwrite because qibocal action builder calls this function with a directory."""
         super().to_json(f"{path}/{self.__class__.__name__}.json", default_handler=str)
 
@@ -88,11 +88,11 @@ class StandardRBResult(Results):
     """The overall fidelity of this qubit."""
     pulse_fidelity: float
     """The pulse fidelity of the gates acting on this qubit."""
-    fit_parameters: Tuple[float, float, float]
+    fit_parameters: tuple[float, float, float]
     """Raw fitting parameters."""
-    fit_uncertainties: Tuple[float, float, float]
+    fit_uncertainties: tuple[float, float, float]
     """Fitting parameters uncertainties."""
-    error_bars: Optional[Union[float, List[float], np.ndarray]] = None
+    error_bars: Optional[Union[float, list[float], np.ndarray]] = None
     """Error bars for y."""
 
 
@@ -110,7 +110,7 @@ def samples_to_p0(samples_list):
     """
 
     ground = np.array([0] * len(samples_list[0][0]))
-    return np.sum(np.count_nonzero(samples_list == ground, axis=1), axis=1) / len(
+    return np.count_nonzero((samples_list == ground).all(axis=2), axis=1) / len(
         samples_list[0]
     )
 
@@ -146,14 +146,14 @@ def resample_p0(data, sample_size=100, homogeneous: bool = True):
 
 
 def setup_scan(
-    params: StandardRBParameters, qubits: Union[Qubits, List[QubitId]], nqubits: int
+    params: StandardRBParameters, qubits: Union[Qubits, list[QubitId]], nqubits: int
 ) -> Iterable:
     """Returns an iterator of single-qubit random self-inverting Clifford circuits.
 
     Args:
         params (StandardRBParameters): Parameters of the RB protocol.
-        qubits (Dict[int, Union[str, int]] or List[Union[str, int]]):
-            List of qubits the circuit is executed on.
+        qubits (dict[int, Union[str, int]] or list[Union[str, int]]):
+            list of qubits the circuit is executed on.
         nqubits (int, optional): Number of qubits of the resulting circuits.
             If ``None``, sets ``len(qubits)``. Defaults to ``None``.
 
@@ -184,7 +184,7 @@ def setup_scan(
 def _acquisition(
     params: StandardRBParameters,
     platform: Platform,
-    qubits: Union[Qubits, List[QubitId]],
+    qubits: Union[Qubits, list[QubitId]],
 ) -> RBData:
     """The data acquisition stage of Standard Randomized Benchmarking.
 
@@ -195,8 +195,7 @@ def _acquisition(
     Args:
         params (StandardRBParameters): All parameters in one object.
         platform (Platform): Platform the experiment is executed on.
-        qubits (Dict[int, Union[str, int]] or List[Union[str, int]]):
-            List of qubits the experiment is executed on.
+        qubits (dict[int, Union[str, int]] or list[Union[str, int]]): list of qubits the experiment is executed on.
 
     Returns:
         RBData: The depths, samples and ground state probability of each experiment in the scan.
@@ -304,15 +303,18 @@ def _fit(data: RBData) -> StandardRBResult:
     error_bars = data_uncertainties(
         y_estimates,
         uncertainties,
-        symmetric=False,
         data_median=y,
         homogeneous=(homogeneous or n_bootstrap != 0),
     )
-    sigma = (
-        np.max(error_bars, axis=0)
-        if error_bars is not None and isinstance(error_bars[0], Iterable)
-        else error_bars
-    )
+    # Generate symmetric non-zero uncertainty of y for the fit
+    sigma = None
+    if error_bars is not None:
+        sigma = (
+            np.max(error_bars, axis=0)
+            if isinstance(error_bars[0], Iterable)
+            else error_bars
+        ) + 0.1
+
     popt, perr = fit_exp1B_func(x, y, sigma=sigma, bounds=[0, 1])
 
     # Compute fit uncertainties
@@ -327,7 +329,7 @@ def _fit(data: RBData) -> StandardRBResult:
     return StandardRBResult(fidelity, pulse_fidelity, popt, perr, error_bars)
 
 
-def _plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure], str]:
+def _plot(data: RBData, result: StandardRBResult, qubit) -> tuple[list[go.Figure], str]:
     """Builds the table for the qq pipe, calls the plot function of the result object
     and returns the figure es list.
 
@@ -337,7 +339,7 @@ def _plot(data: RBData, result: StandardRBResult, qubit) -> Tuple[List[go.Figure
         qubit (_type_): Not used yet.
 
     Returns:
-        Tuple[List[go.Figure], str]:
+        tuple[list[go.Figure], str]:
     """
 
     # x, y_scatter = extract_from_data(data, "signal", "depth", list)
