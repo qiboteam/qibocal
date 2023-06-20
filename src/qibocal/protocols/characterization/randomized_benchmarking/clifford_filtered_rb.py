@@ -248,7 +248,7 @@ def _fit(data: RBData) -> CliffordRBResult:
         n_bootstrap = data.attrs.get("n_bootstrap", 0)
 
         y_estimates, popt_estimates = y_scatter, []
-        if n_bootstrap:
+        if uncertainties and n_bootstrap:
             # Non-parametric bootstrap resampling
             bootstrap_y = bootstrap(
                 y_scatter,
@@ -329,6 +329,8 @@ def _plot(data: RBData, result: CliffordRBResult, qubit) -> tuple[list[go.Figure
 
     nqubits = int(np.log2(len(result.fit_results.index)))
     qubits = data.attrs.get("qubits", list(range(nqubits)))
+    if isinstance(qubits, dict):
+        qubits = [q.name for q in qubits.values()]
 
     # crosstalk_heatmap = np.ones((nqubits, nqubits))
     # crosstalk_heatmap[np.triu_indices(nqubits)] = None

@@ -269,7 +269,6 @@ actions:
       freq_step: 100_000
       nshots: 10
 
-
   - id: standard rb no error
     priority: 0
     operation: standard_rb
@@ -306,3 +305,27 @@ actions:
       n_bootstrap: 10
       noise_model: PauliErrorOnX
       noise_params: [0.01, 0.01, 0.01]
+
+  - id: clifford rb no error
+    priority: 0
+    operation: clifford_filtered_rb
+    parameters:
+      depths:
+        start: 1
+        stop: 10
+        step: 2
+      niter: 2
+      nshots: 50
+      uncertainties: None
+      n_bootstrap: 0
+
+  - id: clifford rb bootstrap
+    priority: 0
+    operation: clifford_filtered_rb
+    qubits: [1]
+    parameters:
+      depths: [0, 1, 2, 3, 5]
+      niter: 5
+      nshots: 50
+      n_bootstrap: 10
+      noise_model: PauliErrorOnAll
