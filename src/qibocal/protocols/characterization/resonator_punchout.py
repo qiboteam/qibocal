@@ -182,13 +182,14 @@ def _fit(data: ResonatorPunchoutData, fit_type="amp") -> ResonatorPunchoutResult
     for qubit in qubits:
         qubit_data = data[qubit]
 
+        freqs = np.unique(qubit_data.freq)
         namps = len(np.unique(qubit_data.amp))
         nfreq = len(np.unique(qubit_data.freq))
         msrs = np.reshape(qubit_data.msr, (namps, nfreq))
         if data.resonator_type == "3D":
-            peak_freqs = qubit_data.freq[np.argmax(msrs, axis=1)]
+            peak_freqs = freqs[np.argmax(msrs, axis=1)]
         else:
-            peak_freqs = qubit_data.freq[np.argmin(msrs, axis=1)]
+            peak_freqs = freqs[np.argmin(msrs, axis=1)]
         max_freq = np.max(peak_freqs)
         min_freq = np.min(peak_freqs)
         middle_freq = (max_freq + min_freq) / 2
