@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from statistics import mode
 from typing import Optional
 
 import numpy as np
@@ -11,6 +10,7 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from scipy.stats import mode
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
@@ -195,8 +195,8 @@ def _fit(
                 qubit_data.freq[min_msr_indices] >= middle_freq
             )[0]
 
-            freq_high_att = mode(qubit_data.freq[high_att_indices])
-            freq_low_att = mode(qubit_data.freq[low_att_indices])
+            freq_high_att = mode(qubit_data.freq[high_att_indices])[0]
+            freq_low_att = mode(qubit_data.freq[low_att_indices])[0]
 
             high_att_max = np.max(
                 getattr(qubit_data, fit_type)[
@@ -210,7 +210,7 @@ def _fit(
             )
 
             ro_att = round((high_att_max + high_att_min) / 2)
-            ro_att = ro_att + 1 if ro_att % 2 == 1 else ro_att
+            ro_att = ro_att + (ro_att % 2)
 
         except:
             log.warning("resonator_punchout_fit: the fitting was not succesful")
