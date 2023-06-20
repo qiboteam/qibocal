@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from statistics import mode
 from typing import Optional
 
 import numpy as np
@@ -11,9 +10,9 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from scipy.stats import mode
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.config import log
 
 from .utils import GHZ_TO_HZ, HZ_TO_GHZ, V_TO_UV, norm
 
@@ -183,44 +182,26 @@ def _fit(data: ResonatorPunchoutData, fit_type="amp") -> ResonatorPunchoutResult
 
     for qubit in qubits:
         qubit_data = data[qubit]
-        try:
-            n_amps = len(np.unique(qubit_data.amp))
-            n_freq = len(np.unique(qubit_data.freq))
-            for i in range(n_amps):
-                qubit_data.msr[i * n_freq : (i + 1) * n_freq] = norm(
-                    qubit_data.msr[i * n_freq : (i + 1) * n_freq]
-                )
 
-            min_msr_indices = np.where(
-                qubit_data.msr == (1 if data.resonator_type == "3D" else 0)
-            )[0]
+        n_amps = len(np.unique(qubit_data.amp))
+        n_freq = len(np.unique(qubit_data.freq))
 
-            max_freq = np.max(qubit_data.freq[min_msr_indices])
-            min_freq = np.min(qubit_data.freq[min_msr_indices])
-            middle_freq = (max_freq + min_freq) / 2
+        if data.resonator_type == "3D":
+            peak_freqs = np.amax(qubit_data.msr, axis=1)
+        else:
+            peak_freqs = np.argmin(qubit_data.msr, axis=1)
 
-            hp_points_indices = np.where(
-                qubit_data.freq[min_msr_indices] < middle_freq
-            )[0]
-            lp_points_indices = np.where(
-                qubit_data.freq[min_msr_indices] >= middle_freq
-            )[0]
-
-            freq_hp = mode(qubit_data.freq[hp_points_indices])
-            freq_lp = mode(qubit_data.freq[lp_points_indices])
-
-            lp_max = np.max(
-                getattr(qubit_data, fit_type)[np.where(qubit_data.freq == freq_lp)[0]]
-            )
-
-            ro_amp = lp_max
-
-        except:
-            log.warning("resonator_punchout_fit: the fitting was not succesful")
-            freq_lp = 0.0
-            freq_hp = 0.0
-            ro_amp = 0.0
-
+        max_freq = np.max(peak_freqs)
+        min_freq = np.min(peak_freqs)
+        middle_freq = (max_freq + min_freq) / 2
+        freq_hp = qubit_data.freq[qubit_data.freq < middle_freq]
+        freq_lp = qubit_data.freq[qubit_data.freq >= middle_freq]
+        freq_hp = mode(freq_hp)[0]
+        freq_lp = mode(freq_lp)[0]
+        lp_max = np.max(
+            getattr(qubit_data, fit_type)[np.where(qubit_data.freq == freq_lp)[0]]
+        )
+        ro_amp = lp_max
         dressed_freqs[qubit] = freq_lp * HZ_TO_GHZ
         bare_freqs[qubit] = freq_hp * HZ_TO_GHZ
         ro_amplitudes[qubit] = ro_amp
