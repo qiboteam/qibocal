@@ -182,28 +182,28 @@ def _fit(data: ResonatorPunchoutData, fit_type="amp") -> ResonatorPunchoutResult
     for qubit in qubits:
         qubit_data = data[qubit]
 
-        n_amps = len(np.unique(qubit_data.amp))
-        n_freq = len(np.unique(qubit_data.freq))
-
+        namps = len(np.unique(qubit_data.amp))
+        nfreq = len(np.unique(qubit_data.freq))
+        msrs = np.reshape(qubit_data.msr, (namps, nfreq))
         if data.resonator_type == "3D":
-            peak_freqs = np.amax(qubit_data.msr, axis=1)
+            peak_freqs = qubit_data.freq[np.argmax(msrs, axis=1)]
         else:
-            peak_freqs = np.argmin(qubit_data.msr, axis=1)
-
+            peak_freqs = qubit_data.freq[np.argmin(msrs, axis=1)]
         max_freq = np.max(peak_freqs)
         min_freq = np.min(peak_freqs)
         middle_freq = (max_freq + min_freq) / 2
-        freq_hp = qubit_data.freq[qubit_data.freq < middle_freq]
-        freq_lp = qubit_data.freq[qubit_data.freq >= middle_freq]
+
+        freq_hp = peak_freqs[peak_freqs < middle_freq]
+        freq_lp = peak_freqs[peak_freqs >= middle_freq]
         freq_hp = mode(freq_hp)[0]
         freq_lp = mode(freq_lp)[0]
-        lp_max = np.max(
-            getattr(qubit_data, fit_type)[np.where(qubit_data.freq == freq_lp)[0]]
-        )
-        ro_amp = lp_max
-        dressed_freqs[qubit] = freq_lp * HZ_TO_GHZ
-        bare_freqs[qubit] = freq_hp * HZ_TO_GHZ
-        ro_amplitudes[qubit] = ro_amp
+
+        ro_amp = getattr(qubit_data, fit_type)[
+            np.argmax(qubit_data.msr[np.where(qubit_data.freq == freq_lp)[0]])
+        ]
+        dressed_freqs[qubit] = freq_lp.item() * HZ_TO_GHZ
+        bare_freqs[qubit] = freq_hp[0] * HZ_TO_GHZ
+        ro_amplitudes[qubit] = ro_amp.item()
 
     return ResonatorPunchoutResults(
         dressed_freqs,
