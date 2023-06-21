@@ -79,11 +79,13 @@ def _acquisition(
         ),
     )
 
+    #FIXME: Multiplex
     i = 0
     for sequence in sequences:
         for ro_pulse in sequence.ro_pulses:
             # for qubit in qubits:
             result = results[ro_pulse.serial][0]
+            qubit = ro_pulse.qubit
             data.register_qubit(
                 qubit, wait=waits[i], msr=result.magnitude, phase=result.phase
             )
