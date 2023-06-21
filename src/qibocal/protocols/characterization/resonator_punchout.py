@@ -165,7 +165,7 @@ def _acquisition(
             msr=result.magnitude,
             phase=result.phase,
             freq=delta_frequency_range + ro_pulse.frequency,
-            amp=amplitude_range,
+            amp=amplitude_range * amplitudes[qubit],
         )
 
     return data
