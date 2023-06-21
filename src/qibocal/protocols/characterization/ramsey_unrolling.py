@@ -79,7 +79,7 @@ def _acquisition(
         ),
     )
 
-    #FIXME: Multiplex
+    # FIXME: Multiplex
     i = 0
     for sequence in sequences:
         for ro_pulse in sequence.ro_pulses:
