@@ -1,4 +1,4 @@
-from typing import Callable, List, Tuple, Union
+from typing import Callable, Union
 
 import numpy as np
 from pandas import DataFrame
@@ -87,11 +87,11 @@ def random_clifford(qubits, seed=None):
 
 
 def extract_from_data(
-    data: Union[List[dict], DataFrame],
+    data: Union[list[dict], DataFrame],
     output_key: str,
     groupby_key: str = "",
     agg_type: Union[str, Callable] = "",
-) -> Union[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
+) -> Union[np.ndarray, tuple[np.ndarray, np.ndarray]]:
     """Return wanted values from list of dictionaries via a dataframe and its properties.
 
     If ``groupby_key`` given, aggregate the dataframe, extract the data by which the frame was

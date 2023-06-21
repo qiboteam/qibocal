@@ -1,15 +1,15 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
+import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.data import DataUnits
+from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
 from . import utils
 
@@ -37,23 +37,41 @@ class ResonatorFluxParameters(Parameters):
 class ResonatorFluxResults(Results):
     """ResonatoFlux outputs."""
 
-    sweetspot: Dict[QubitId, float] = field(metadata=dict(update="sweetspot"))
+    sweetspot: dict[QubitId, float] = field(metadata=dict(update="sweetspot"))
     """Sweetspot for each qubit."""
-    frequency: Dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
+    frequency: dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
     """Readout frequency for each qubit."""
-    fitted_parameters: Dict[QubitId, Dict[str, float]]
+    fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
 
 
-class ResonatorFluxData(DataUnits):
+ResFluxType = np.dtype(
+    [
+        ("freq", np.float64),
+        ("bias", np.float64),
+        ("msr", np.float64),
+        ("phase", np.float64),
+    ]
+)
+"""Custom dtype for resonator flux dependence."""
+
+
+@dataclass
+class ResonatorFluxData(Data):
     """ResonatorFlux acquisition outputs."""
 
-    def __init__(self):
-        super().__init__(
-            "data",
-            {"frequency": "Hz", "bias": "V"},
-            options=["qubit"],
-        )
+    data: dict[QubitId, npt.NDArray[ResFluxType]] = field(default_factory=dict)
+    """Raw data acquired."""
+
+    def register_qubit(self, qubit, freq, bias, msr, phase):
+        """Store output for single qubit."""
+        ar = np.empty(msr.shape, dtype=ResFluxType)
+        frequency, biases = np.meshgrid(freq, bias)
+        ar["freq"] = frequency.flatten()
+        ar["bias"] = biases.flatten()
+        ar["msr"] = msr
+        ar["phase"] = phase
+        self.data[qubit] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -111,22 +129,13 @@ def _acquisition(
     # retrieve the results for every qubit
     for qubit in qubits:
         result = results[ro_pulses[qubit].serial]
-
-        biases = np.repeat(delta_bias_range, len(delta_frequency_range))
-        freqs = np.array(
-            len(delta_bias_range)
-            * list(delta_frequency_range + ro_pulses[qubit].frequency)
-        ).flatten()
-        # store the results
-        r = {k: v.ravel() for k, v in result.serialize.items()}
-        r.update(
-            {
-                "frequency[Hz]": freqs,
-                "bias[V]": biases,
-                "qubit": len(freqs) * [qubit],
-            }
+        data.register_qubit(
+            qubit,
+            msr=result.magnitude,
+            phase=result.phase,
+            freq=delta_frequency_range + ro_pulses[qubit].frequency,
+            bias=delta_bias_range,
         )
-        data.add_data_from_dict(r)
 
     return data
 

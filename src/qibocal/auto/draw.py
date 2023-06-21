@@ -1,5 +1,5 @@
 """Drawing utilities for execution graphs."""
-from typing import Dict, Set, Tuple
+from typing import Set
 
 import networkx as nx
 from networkx.drawing.nx_pydot import graphviz_layout
@@ -18,8 +18,8 @@ def draw(graph: Graph, ax=None):
     xs = [p[1] for p in rawpos.values()]
     length = max(xs) - min(xs)
 
-    ys: Dict[float, Set[float]] = {}
-    pos: Dict[Id, Tuple[float, float]] = {}
+    ys: dict[float, Set[float]] = {}
+    pos: dict[Id, tuple[float, float]] = {}
     for id, (x, y) in rawpos.items():
         depth = -priorities.index(graph.task(id).priority)
         if x in ys:

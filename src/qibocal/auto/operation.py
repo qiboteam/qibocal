@@ -1,16 +1,24 @@
 import inspect
-from dataclasses import dataclass, fields
-from typing import Callable, Dict, Generic, NewType, TypeVar, Union
+import json
+from dataclasses import asdict, dataclass, fields
+from typing import Callable, Generic, NewType, TypeVar, Union
 
+import numpy as np
+import numpy.typing as npt
 from qibolab.platform import Platform
-from qibolab.qubits import Qubit
+from qibolab.qubits import Qubit, QubitId
 
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
 ParameterValue = Union[float, int]
 """Valid value for a routine and runcard parameter."""
-Qubits = Dict[int, Qubit]
+Qubits = dict[int, Qubit]
 """Convenient way of passing qubits in the routines."""
+
+DATAFILE = "data.npz"
+"""Name of the file where data acquired (arrays) by calibration are dumped."""
+JSONFILE = "conf.json"
+"""Name of the file where data acquired (global configuration) by calibration are dumped."""
 
 
 class Parameters:
@@ -46,6 +54,41 @@ class Parameters:
 class Data:
     """Data resulting from acquisition routine."""
 
+    data: dict[Union[tuple[QubitId, int], QubitId], npt.NDArray]
+    """Data object to store arrays"""
+
+    @property
+    def qubits(self):
+        """Access qubits from data structure."""
+        if set(map(type, self.data)) == {tuple}:
+            return np.unique([q[0] for q in self.data])
+        return [q for q in self.data]
+
+    def __getitem__(self, qubit: Union[QubitId, tuple[QubitId, int]]):
+        """Access data attribute member."""
+        return self.data[qubit]
+
+    @property
+    def global_params_dict(self):
+        """Convert non-arrays attributes into dict."""
+        global_dict = asdict(self)
+        global_dict.pop("data")
+        return global_dict
+
+    def save(self, path):
+        """Store results."""
+        self.to_json(path)
+        self.to_npz(path)
+
+    def to_npz(self, path):
+        """Helper function to use np.savez while converting keys into strings."""
+        np.savez(path / DATAFILE, **{str(i): self.data[i] for i in self.data})
+
+    def to_json(self, path):
+        """Helper function to dump to json in JSONFILE path."""
+        if self.global_params_dict:
+            (path / JSONFILE).write_text(json.dumps(self.global_params_dict, indent=4))
+
 
 @dataclass
 class Results:
@@ -70,13 +113,13 @@ class Results:
     """
 
     @property
-    def update(self) -> Dict[str, ParameterValue]:
+    def update(self) -> dict[str, ParameterValue]:
         """Produce an update from a result object.
 
         This is later used to update the runcard.
 
         """
-        up: Dict[str, ParameterValue] = {}
+        up: dict[str, ParameterValue] = {}
         for fld in fields(self):
             if "update" in fld.metadata:
                 up[fld.metadata["update"]] = getattr(self, fld.name)
@@ -139,7 +182,7 @@ class DummyPars(Parameters):
 class DummyData(Data):
     """Dummy data."""
 
-    def to_csv(self, path):
+    def save(self, path):
         """Dummy method for saving data"""
 
 
