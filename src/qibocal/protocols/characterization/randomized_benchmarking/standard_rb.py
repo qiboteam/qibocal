@@ -352,7 +352,10 @@ def _plot(data: RBData, result: StandardRBResult, qubit) -> tuple[list[go.Figure
     )
 
     fig = rb_figure(
-        data, lambda x: exp1B_func(x, *popt), fit_label=label, error_y=result.error_bars
+        data,
+        lambda x: exp1B_func(x, *popt),
+        fit_label=label,
+        error_bars=result.error_bars,
     )
 
     meta_data = deepcopy(data.attrs)
@@ -360,6 +363,8 @@ def _plot(data: RBData, result: StandardRBResult, qubit) -> tuple[list[go.Figure
     if not meta_data["noise_model"]:
         meta_data.pop("noise_model")
         meta_data.pop("noise_params")
+    elif meta_data.get("noise_params", None) is not None:
+        meta_data["noise_params"] = np.round(meta_data["noise_params"], 3)
 
     table_str = "".join(
         [

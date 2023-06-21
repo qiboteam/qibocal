@@ -172,15 +172,31 @@ def test_random_clifford(qubits, seed):
     assert np.allclose(matrix, result)
 
 
-@pytest.mark.parametrize("value", [0.555555, 2.1])
-def test_number_to_str(value):
-    assert number_to_str(value) == f"{value:.3f}"
-    assert number_to_str(value, [None, None]) == f"{value:.3f}"
-    assert number_to_str(value, 0.0123) == f"{value:.3f} \u00B1 0.012"
-    assert number_to_str(value, [0.0123, 0.012]) == f"{value:.3f} \u00B1 0.012"
-    assert number_to_str(value, [0.203, 0.001]) == f"{value:.4f} +0.0010 / -0.20"
-    assert number_to_str(value, [0.203, 0.00001]) == f"{value:.3f} +1.0e-05 / -0.20"
-    assert number_to_str(value, [float("inf"), float("inf")]) == f"{value} \u00B1 inf"
+@pytest.mark.parametrize("prec", [2, 3])
+def test_number_to_str(prec):
+    # Real values
+    value = np.random.uniform(0, 1)
+    assert number_to_str(value, precision=prec) == f"{value:.{prec}f}"
+    assert number_to_str(value, [None, None], prec) == f"{value:.{prec}f}"
+    assert number_to_str(value, 0.0123, prec) == f"{value:.3f} \u00B1 0.012"
+    assert number_to_str(value, [0.0123, 0.012], prec) == f"{value:.3f} \u00B1 0.012"
+    assert (
+        number_to_str(value, [0.2, 1e-5], prec) == f"{value:.{prec}f} +1.0e-05 / -0.20"
+    )
+    assert number_to_str(value, [np.inf] * 2, prec) == f"{value:.{prec}f} \u00B1 inf"
+    # Complex values
+    value += np.random.uniform(0, 1) * 1j
+    assert number_to_str(value, precision=prec) == f"{value:.{prec}f}"
+    assert number_to_str(value, [None, None], prec) == f"{value:.{prec}f}"
+    assert (
+        number_to_str(value, 0.0123, prec)
+        == f"({np.real(value):.3f}+{np.imag(value):.{prec}f}j) \u00B1 (0.012+0j)"
+    )
+    assert (
+        number_to_str(value, [0.2, 1e-5], prec)
+        == f"({value:.{prec}f}) +(1.0e-05+0j) / -(0.20+0j)"
+    )
+    assert number_to_str(value, [np.inf] * 2, prec) == f"{value:.{prec}f} \u00B1 inf"
 
 
 def test_extract_from_data():

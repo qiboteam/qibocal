@@ -332,15 +332,12 @@ def _plot(data: RBData, result: CliffordRBResult, qubit) -> tuple[list[go.Figure
     if isinstance(qubits, dict):
         qubits = [q.name for q in qubits.values()]
 
-    # crosstalk_heatmap = np.ones((nqubits, nqubits))
-    # crosstalk_heatmap[np.triu_indices(nqubits)] = None
     rb_params = {}
-
     fig_list = []
     for kk, irrep_key in enumerate(result.filtered_data.columns[3:]):
         irrep_binary = np.binary_repr(kk, width=nqubits)
-        # nontrivial_qubits = [q for q, c in enumerate(irrep_binary) if c == '1']
-        popt, perr, error_y = (
+
+        popt, perr, error_bars = (
             result.fit_results["fit_parameters"][irrep_key],
             result.fit_results["fit_uncertainties"][irrep_key],
             result.fit_results["error_bars"][irrep_key],
@@ -350,19 +347,16 @@ def _plot(data: RBData, result: CliffordRBResult, qubit) -> tuple[list[go.Figure
             number_to_str(popt[1], perr[1]),
         )
         rb_params[f"Irrep {irrep_binary}"] = number_to_str(popt[1], perr[1])
-        # if len(nontrivial_qubits) == 2:
-        #     crosstalk_heatmap[nontrivial_qubits[1], nontrivial_qubits[0]] *= popt[1]
-        # elif len(nontrivial_qubits) == 1 and nqubits > 1:
-        #     crosstalk_heatmap[nontrivial_qubits[0]] /= popt[1]
 
         fig_irrep = rb_figure(
             result.filtered_data,
             model=lambda x: exp1_func(x, *popt),
             fit_label=label,
             signal_label=irrep_key,
-            error_y=error_y,
+            error_bars=error_bars,
+            legend=dict(yanchor="bottom", y=1.02, xanchor="right", x=1),
+            title=dict(text=irrep_binary),
         )
-        fig_irrep.update_layout(title=dict(text=irrep_binary))
         fig_list.append(fig_irrep)
     result_fig = [carousel(fig_list)]
 
@@ -399,6 +393,8 @@ def _plot(data: RBData, result: CliffordRBResult, qubit) -> tuple[list[go.Figure
     if not meta_data["noise_model"]:
         meta_data.pop("noise_model")
         meta_data.pop("noise_params")
+    elif meta_data.get("noise_params", None) is not None:
+        meta_data["noise_params"] = np.round(meta_data["noise_params"], 3)
 
     table_str = "".join(
         [f" | {key}: {value}<br>" for key, value in {**meta_data, **rb_params}.items()]

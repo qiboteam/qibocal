@@ -282,17 +282,6 @@ actions:
       uncertainties: None
       n_bootstrap: 0
 
-  - id: standard rb bootstrap
-    priority: 0
-    operation: standard_rb
-    qubits: [1]
-    parameters:
-      depths: [1, 2, 3, 5]
-      niter: 5
-      nshots: 50
-      n_bootstrap: 10
-      noise_model: PauliErrorOnAll
-
   - id: standard rb inhomogeneous
     priority: 0
     operation: standard_rb

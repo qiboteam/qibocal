@@ -106,11 +106,25 @@ def number_to_str(
         str: The number expressed as a string, with the uncertainty if given.
     """
 
-    def _display(dev):
-        if dev >= 1e-4:
-            return f"{ufloat(value, dev):.2u}".split("+/-")
-        dev_display = f"{dev:.1e}" if np.real(dev) > PRECISION_TOL else "0"
-        return f"{value:.{precision}f}", dev_display
+    def _sign(val):
+        return "+" if float(val) > -PRECISION_TOL else "-"
+
+    def _display(val, dev):
+        # inf uncertainty
+        if np.isinf(dev):
+            return f"{value:.{precision}f}", "inf"
+        # Real values
+        if not np.iscomplex(val) and not np.iscomplex(dev):
+            if dev >= 1e-4:
+                return f"{ufloat(val, dev):.2u}".split("+/-")
+            dev_display = f"{dev:.1e}" if np.real(dev) > PRECISION_TOL else "0"
+            return f"{val:.{precision}f}", dev_display
+        # Complex case
+        val_display, dev_display = _display(np.real(val), np.real(dev))
+        val_imag, dev_imag = _display(np.imag(val), np.imag(dev))
+        val_display = f"({val_display}{_sign(val_imag)}{val_imag.strip('-')}j)"
+        dev_display = f"({dev_display}{_sign(dev_imag)}{dev_imag.strip('-')}j)"
+        return val_display, dev_display
 
     # If uncertainty is not given, return the value with precision
     if uncertainty is None:
@@ -118,15 +132,15 @@ def number_to_str(
         return f"{value:.{precision}f}"
 
     if isinstance(uncertainty, Number):
-        value_display, uncertainty_display = _display(uncertainty)
+        value_display, uncertainty_display = _display(value, uncertainty)
         return value_display + " \u00B1 " + uncertainty_display
 
     # If any uncertainty is None, return the value with precision
     if any(u is None for u in uncertainty):
         return f"{value:.{precision}f}"
 
-    value_0, uncertainty_0 = _display(uncertainty[0])
-    value_1, uncertainty_1 = _display(uncertainty[1])
+    value_0, uncertainty_0 = _display(value, uncertainty[0])
+    value_1, uncertainty_1 = _display(value, uncertainty[1])
     value_display = max(value_0, value_1, key=len)
 
     if uncertainty_0 == uncertainty_1:

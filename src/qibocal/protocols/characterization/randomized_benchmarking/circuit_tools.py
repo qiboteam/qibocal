@@ -44,32 +44,35 @@ def layer_circuit(layer_gen: Callable, depth: int, **kwargs) -> Circuit:
 
     if not isinstance(depth, int) or depth < 0:
         raise_error(ValueError, "Depth must be type int and >= 0.")
-    full_circuit = None
+
+    # Generate a layer to get nqubits.
+    new_layer = layer_gen()
+    if isinstance(new_layer, Gate):
+        nqubits = max(new_layer.qubits) + 1
+    elif all(isinstance(gate, Gate) for gate in new_layer):
+        nqubits = max(max(gate.qubits) for gate in new_layer) + 1
+    elif isinstance(new_layer, Circuit):
+        nqubits = new_layer.nqubits
+    else:
+        raise_error(
+            TypeError,
+            f"layer_gen must return type Circuit or Gate, but it is type {type(new_layer)}.",
+        )
+
+    # instantiate an empty circuit
+    full_circuit = Circuit(nqubits, **kwargs)
+
     # Build each layer, there will be depth many in the final circuit.
     for _ in range(depth):
-        # Generate a layer.
+        # Generate a new layer.
         new_layer = layer_gen()
         # Ensure new_layer is a circuit
-        if isinstance(new_layer, Gate):
-            new_circuit = Circuit(max(new_layer.qubits) + 1, **kwargs)
-            new_circuit.add(new_layer)
-        elif all(isinstance(gate, Gate) for gate in new_layer):
-            new_circuit = Circuit(
-                max(max(gate.qubits) for gate in new_layer) + 1, **kwargs
-            )
-            new_circuit.add(new_layer)
-        elif isinstance(new_layer, Circuit):
+        if isinstance(new_layer, Circuit):
             new_circuit = new_layer
         else:
-            raise_error(
-                TypeError,
-                f"layer_gen must return type Circuit or Gate, but it is type {type(new_layer)}.",
-            )
-        if full_circuit is None:  # instantiate in first loop
-            full_circuit = Circuit(new_circuit.nqubits, **kwargs)
+            new_circuit = Circuit(nqubits, **kwargs)
+            new_circuit.add(new_layer)
         full_circuit = full_circuit + new_circuit
-    if full_circuit is None:
-        return Circuit(1, **kwargs)
     return full_circuit
 
 
