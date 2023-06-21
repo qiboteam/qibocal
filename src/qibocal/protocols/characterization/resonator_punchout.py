@@ -82,12 +82,13 @@ class ResonatorPunchoutData(Data):
 
     def register_qubit(self, qubit, freq, amp, msr, phase):
         """Store output for single qubit."""
-        ar = np.empty(msr.shape, dtype=ResPunchoutType)
         frequency, amplitude = np.meshgrid(freq, amp)
+        size = len(frequency.flatten())
+        ar = np.empty(size, dtype=ResPunchoutType)
         ar["freq"] = frequency.flatten()
         ar["amp"] = amplitude.flatten()
-        ar["msr"] = msr
-        ar["phase"] = phase
+        ar["msr"] = msr.flatten()
+        ar["phase"] = phase.flatten()
         self.data[qubit] = np.rec.array(ar)
 
 
