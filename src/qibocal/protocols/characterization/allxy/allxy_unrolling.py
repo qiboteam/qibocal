@@ -96,7 +96,7 @@ def _acquisition(
 
             sequences.append(sequence)
 
-    results = platform.execute_pulse_sequence(
+    results = platform.execute_pulse_sequences(
         sequences,
         ExecutionParameters(
             nshots=params.nshots,

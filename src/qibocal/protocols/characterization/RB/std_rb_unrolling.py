@@ -91,7 +91,7 @@ def _acquisition(
     # sweep the parameter
     for qubit in qubits.values():
         sequences, circuits, ro_pulses = rb_sequencer.get_sequences_list(qubit.name)
-        results = platform.execute_pulse_sequence(
+        results = platform.execute_pulse_sequences(
             sequences,
             ExecutionParameters(
                 nshots=params.nshots,
