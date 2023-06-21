@@ -1,14 +1,15 @@
-from dataclasses import dataclass
-from typing import Dict, List, Tuple
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
+import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
+from qibolab.qubits import QubitId
 from scipy.optimize import curve_fit
 
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
-from qibocal.data import DataUnits
 from qibocal.protocols.characterization.RB import utils
 
 """
@@ -29,9 +30,9 @@ class StdRBParameters(Parameters):
     """Minimum amplitude multiplicative factor."""
     runs: int
     """Number of random sequences per depth"""
-    nshots: int
+    nshots: Optional[int] = None
     """Number of shots."""
-    relaxation_time: float
+    relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
 
 
@@ -49,19 +50,32 @@ class StdRBResults(Results):
     """Raw fitted parameters."""
 
 
-class StdRBData(DataUnits):
-    """RabiAmplitude data acquisition."""
+StdRBType = np.dtype(
+    [
+        ("sequence", np.int64),
+        ("length", np.int64),
+        ("probabilities", np.float64),
+    ]
+)
 
-    def __init__(self):
-        super().__init__(
-            "data",
-            {
-                "sequence": "dimensionless",
-                "length": "dimensionless",
-                "probabilities": "dimensionless",
-            },
-            options=["qubit"],
-        )
+
+@dataclass
+class StdRBData(Data):
+    """StdRB data acquisition."""
+
+    data: dict[QubitId, npt.NDArray[StdRBType]] = field(default_factory=dict)
+    """Raw data acquired."""
+
+    def register_qubit(self, qubit, sequence, length, prob):
+        """Store output for single qubit."""
+        ar = np.empty((1,), dtype=StdRBType)
+        ar["sequence"] = sequence
+        ar["length"] = length
+        ar["probabilities"] = prob
+        if qubit in self.data:
+            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
+        else:
+            self.data[qubit] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -83,9 +97,7 @@ def _acquisition(
         params.runs,
     )
 
-    # create a DataUnits object to store the results,
-    # DataUnits stores by default MSR, phase, i, q
-    # additionally include qubit drive pulse amplitude
+    # create a Data object to store the results
     data = StdRBData()
 
     # sweep the parameter
@@ -114,19 +126,9 @@ def _acquisition(
         for depth in depths:
             for ro_pulse in counts_depths[depth].keys():
                 for i in range(counts_depths[depth][ro_pulse]):
-                    result = results[ro_pulse.serial][i]
-                    r = result.serialize
-
-                    r.update(
-                        {
-                            "sequence[dimensionless]": 0,  # TODO: Store sequences
-                            "length[dimensionless]": len(circuits[j]),
-                            "probabilities[dimensionless]": r["0"][0],
-                            "qubit": qubit.name,
-                        }
-                    )
-                    data.add_data_from_dict(r)
-
+                    probs = results[ro_pulse.serial][i].probability(0)
+                    qubit = ro_pulse.qubit
+                    data.register_qubit(qubit, 0, len(circuits[j]), probs)
                     j += 1
 
     return data
@@ -135,7 +137,7 @@ def _acquisition(
 def _fit(data: StdRBData) -> StdRBResults:
     """Post-processing for Standard RB."""
 
-    qubits = data.df["qubit"].unique()
+    qubits = data.qubits
 
     fitted_parameters = {}
     fidelities_primitive = {}
@@ -143,15 +145,10 @@ def _fit(data: StdRBData) -> StdRBResults:
     average_errors_gate = {}
 
     for qubit in qubits:
-        qubit_data = data.df[data.df["qubit"] == qubit]
+        qubit_data = data[qubit]
 
-        sequence_length = qubit_data["length"].pint.to("dimensionless").pint.magnitude
-        probabilities = (
-            qubit_data["probabilities"].pint.to("dimensionless").pint.magnitude
-        )
-
-        x = sequence_length.values
-        y = probabilities.values
+        x = qubit_data.length
+        y = qubit_data.probabilities
 
         a_guess = np.max(y) - np.mean(y)
         p_guess = 0.9

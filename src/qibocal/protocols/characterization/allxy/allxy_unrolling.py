@@ -1,41 +1,13 @@
-from dataclasses import dataclass
-from typing import Optional
-
 import numpy as np
-import plotly.graph_objects as go
 from qibolab import AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.data import Data
+from qibocal.auto.operation import Qubits, Routine
 
+from .allxy import AllXYData, AllXYParameters, _fit, _plot
 
-@dataclass
-class AllXYParameters(Parameters):
-    """AllXY runcard inputs."""
-
-    beta_param: float = None
-    """Beta parameter for drag pulse."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
-
-
-@dataclass
-class AllXYResults(Results):
-    """AllXY outputs."""
-
-
-class AllXYData(Data):
-    """AllXY acquisition outputs."""
-
-    def __init__(self):
-        super().__init__(
-            name="data",
-            quantities={"probability", "gateNumber", "qubit"},
-        )
+# from qibocal.data import Data
 
 
 gatelist = [
@@ -82,7 +54,7 @@ def _acquisition(
     # sweep the parameter
     sequences = []
     ro_pulses = {}
-    for gateNumber, gates in enumerate(gatelist):
+    for gates in enumerate(gatelist):
         # create a sequence of pulses
         sequence = PulseSequence()
         for qubit in qubits:
@@ -104,21 +76,15 @@ def _acquisition(
         ),
     )
 
-    # retrieve the results for every qubit
     i = 0
     for sequence in sequences:
         for ro_pulse in sequence.ro_pulses:
+            qubit = ro_pulse.qubit
             z_proj = 2 * results[ro_pulse.serial][i].probability(0) - 1
             # store the results
-            r = {
-                "probability": z_proj,
-                "gateNumber": i,
-                "beta_param": params.beta_param,
-                "qubit": ro_pulse.qubit,
-            }
-            data.add(r)
+            data.register_qubit(qubit, z_proj, i)
         i += 1
-    # finally, save the remaining data
+
     return data
 
 
@@ -206,67 +172,6 @@ def add_gate_pair_pulses_to_sequence(
     ro_pulse = platform.create_qubit_readout_pulse(qubit, start=sequenceDuration)
     sequence.add(ro_pulse)
     return sequence, ro_pulse
-
-
-def _fit(_data: AllXYData) -> AllXYResults:
-    """Post-Processing for allXY"""
-    return AllXYResults()
-
-
-# allXY
-def _plot(data: AllXYData, _fit: AllXYResults, qubit):
-    """Plotting function for allXY."""
-
-    figures = []
-    fitting_report = "No fitting data"
-    fig = go.Figure()
-
-    qubit_data = data.df[data.df["qubit"] == qubit].drop(columns=["qubit"])
-
-    fig.add_trace(
-        go.Scatter(
-            x=qubit_data["gateNumber"],
-            y=qubit_data["probability"],
-            mode="markers",
-            text=gatelist,
-            textposition="bottom center",
-            opacity=0.3,
-            name="Expectation value",
-            showlegend=True,
-            legendgroup="group1",
-        ),
-    )
-
-    fig.add_hline(
-        y=0,
-        line_width=2,
-        line_dash="dash",
-        line_color="grey",
-    )
-    fig.add_hline(
-        y=1,
-        line_width=2,
-        line_dash="dash",
-        line_color="grey",
-    )
-
-    fig.add_hline(
-        y=-1,
-        line_width=2,
-        line_dash="dash",
-        line_color="grey",
-    )
-
-    fig.update_layout(
-        showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Gate sequence number",
-        yaxis_title="Expectation value of Z",
-    )
-
-    figures.append(fig)
-
-    return figures, fitting_report
 
 
 allxy_unrolling = Routine(_acquisition, _fit, _plot)

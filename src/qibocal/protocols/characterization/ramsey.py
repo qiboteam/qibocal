@@ -210,10 +210,14 @@ def _fit(data: RamseyData) -> RamseyResults:
     freqs_detuning = {}
     fitted_parameters = {}
 
+    # print(data)
+    # import pdb; pdb.set_trace()
+
     for qubit in qubits:
         qubit_data = data[qubit]
         voltages = qubit_data.msr * V_TO_UV
         times = qubit_data.wait
+        # import pdb; pdb.set_trace()
         qubit_freq = data.qubit_freqs[qubit]
 
         try:

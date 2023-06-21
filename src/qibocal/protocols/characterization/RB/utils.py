@@ -35,13 +35,13 @@ def plot(data, fit, qubit):
         subplot_titles=("Standard RB",),
     )
 
-    qubit_data = data.df[data.df["qubit"] == qubit]
-    RB_parameters = qubit_data[quantity].pint.to(unit).pint.magnitude.unique()
+    qubit_data = data[qubit]
+    RB_parameters = getattr(qubit_data, quantity)
 
     fig.add_trace(
         go.Scatter(
-            x=qubit_data[quantity].pint.to(unit).pint.magnitude,
-            y=qubit_data["probabilities"].pint.to("dimensionless").pint.magnitude,
+            x=RB_parameters,
+            y=qubit_data.probabilities,
             mode="markers",
             opacity=0.3,
             name="StandardRB",
@@ -53,11 +53,11 @@ def plot(data, fit, qubit):
     )
 
     # add fitting trace
-    if len(data) > 0:
+    if len(RB_parameters) > 0:
         RB_parameter_range = np.linspace(
             min(RB_parameters),
             max(RB_parameters),
-            2 * len(data),
+            2 * len(RB_parameters),
         )
         params = fit.fitted_parameters[qubit]
 
