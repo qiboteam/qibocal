@@ -31,7 +31,14 @@ TARGET_DIR = "qibocal-reports/"
 ROOT_URL = "http://login.qrccluster.com:9000/"
 
 
-@click.command(context_settings=CONTEXT_SETTINGS)
+@click.group()
+def command():
+    """Welcome to Qibocal!
+    Qibo module to calibrate and characterize self-hosted QPUS.
+    """
+
+
+@command.command(context_settings=CONTEXT_SETTINGS)
 @click.argument("runcard", metavar="RUNCARD", type=click.Path(exists=True))
 @click.option(
     "folder",
@@ -51,14 +58,12 @@ ROOT_URL = "http://login.qrccluster.com:9000/"
     help="Use --no-update option to avoid updating iteratively the platform."
     "With this option the new runcard will not be produced.",
 )
-def command(runcard, folder, force, update):
-    """qibocal: Quantum Calibration Verification and Validation using Qibo.
+def auto(runcard, folder, force, update):
+    """Autocalibration
 
     Arguments:
 
      - RUNCARD: runcard with declarative inputs.
-     - PLATFORM_RUNCARD: Qibolab's platform runcard. If not provided Qibocal will use the default one in
-                         https://github.com/qiboteam/qibolab_platforms_qrc.
     """
     card = yaml.safe_load(pathlib.Path(runcard).read_text(encoding="utf-8"))
     builder = ActionBuilder(card, folder, force, update=update)
@@ -68,7 +73,7 @@ def command(runcard, folder, force, update):
     builder.dump_report()
 
 
-@click.command(context_settings=CONTEXT_SETTINGS)
+@command.command(context_settings=CONTEXT_SETTINGS)
 @click.argument("runcard", metavar="RUNCARD", type=click.Path(exists=True))
 @click.option(
     "folder",
@@ -83,39 +88,56 @@ def command(runcard, folder, force, update):
     help="Use --force option to overwrite the output folder.",
 )
 def acquire(runcard, folder, force):
-    """qibocal: Quantum Calibration Verification and Validation using Qibo.
+    """Data acquisition
 
     Arguments:
 
      - RUNCARD: runcard with declarative inputs.
-     - PLATFORM_RUNCARD: Qibolab's platform runcard. If not provided Qibocal will use the default one in
-                         https://github.com/qiboteam/qibolab_platforms_qrc.
     """
     card = yaml.safe_load(pathlib.Path(runcard).read_text(encoding="utf-8"))
     builder = AcquisitionBuilder(card, folder, force)
     builder.run(mode=ExecutionMode.acquire)
 
 
-@click.command(context_settings=CONTEXT_SETTINGS)
+@command.command(context_settings=CONTEXT_SETTINGS)
 @click.argument("folder", metavar="folder", type=click.Path(exists=True))
 def report(folder):
+    """Report generation
+
+    Arguments:
+
+    - FOLDER: input folder.
+
+    """
     builder = ReportBuilder(pathlib.Path(folder))
     builder.run()
 
 
-@click.command(context_settings=CONTEXT_SETTINGS)
+@command.command(context_settings=CONTEXT_SETTINGS)
 @click.argument("folder", metavar="folder", type=click.Path(exists=True))
 def fit(folder):
+    """Post-processing analysis
+
+    Arguments:
+
+    - FOLDER: input folder.
+
+    """
     builder = FitBuilder(pathlib.Path(folder))
     builder.run()
 
 
-@click.command(context_settings=CONTEXT_SETTINGS)
-@click.argument("output_folder", metavar="FOLDER", type=click.Path(exists=True))
-def upload(output_folder):
-    """Uploads output folder to server"""
+@command.command(context_settings=CONTEXT_SETTINGS)
+@click.argument("folder", metavar="FOLDER", type=click.Path(exists=True))
+def upload(folder):
+    """Uploads output folder to server
 
-    output_path = pathlib.Path(output_folder)
+    Arguments:
+
+    - FOLDER: input folder.
+    """
+
+    output_path = pathlib.Path(folder)
 
     # check the rsync command exists.
     if not shutil.which("rsync"):

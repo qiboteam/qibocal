@@ -90,9 +90,6 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 qq = "qibocal:command"
-qq-upload = "qibocal:upload"
-qq-acquire = "qibocal:acquire"
-qq-report = "qibocal:report"
 
 
 [tool.poe.tasks]
