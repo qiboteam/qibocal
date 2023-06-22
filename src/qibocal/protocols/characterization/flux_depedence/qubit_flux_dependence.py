@@ -9,6 +9,7 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.data import DataUnits
 
 from . import utils
 
@@ -57,7 +58,7 @@ class QubitFluxData(DataUnits):
         super().__init__(
             "data",
             {"frequency": "Hz", "bias": "V"},
-            options=["qubit", "Ec", "Ej"],
+            options=["qubit", "Ec", "Ej", "fluxline"],
         )
         self._resonator_type = resonator_type
 
@@ -151,15 +152,9 @@ def _acquisition(
                 "frequency[Hz]": freqs,
                 "bias[V]": biases,
                 "qubit": len(freqs) * [qubit],
-                "Ec": len(freqs)
-                * [
-                    platform.qubits[qubit].Ec
-                ],  # TODO: add Ec to platform runcard - single qubit gates settings
-                "Ej": len(freqs)
-                * [
-                    platform.qubits[qubit].Ej
-                ],  # TODO: add Ej to platform runcard - single qubit gates settings
-                "fluxline": len(freqs) * [platform.qubits[qubit].flux],  # fluxline
+                "Ec": len(freqs) * [platform.qubits[qubit].Ec], 
+                "Ej": len(freqs) * [platform.qubits[qubit].Ej],
+                "fluxline": len(freqs) * [qubit],  # fluxline
             }
         )
         data.add_data_from_dict(r)
@@ -184,20 +179,15 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
         bias_keys = qubit_data["bias"].pint.to("V").pint.magnitude.unique()
         frequency_keys = qubit_data["frequency"].pint.to("Hz").pint.magnitude.unique()
 
-        fluxlines = (
-            qubit_data["fluxline"].pint.to("dimensionless").pint.magnitude.unique()
-        )
-        Ec = qubit_data["Ec"].pint.to("dimensionless").pint.magnitude.unique()
-        Ej = qubit_data["Ej"].pint.to("dimensionless").pint.magnitude.unique()
+        fluxlines = qubit_data["fluxline"]
+        Ec = qubit_data["Ec"]
+        Ej = qubit_data["Ej"]
 
         for fluxline in fluxlines:
             qubit_data = qubit_data[qubit_data["fluxline"] == fluxline]
-            qubit_data[bias_keys[0]] = (
-                qubit_data[bias_keys[0]].pint.to(bias_keys[1]).pint.magnitude
-            )
-            qubit_data[frequency_keys[0]] = (
-                qubit_data[frequency_keys[0]].pint.to(frequency_keys[1]).pint.magnitude
-            )
+            qubit_data[bias_keys[0]] = (qubit_data[bias_keys[0]].pint.to(bias_keys[1]).pint.magnitude)
+            qubit_data[frequency_keys[0]] = (qubit_data[frequency_keys[0]].pint.to(frequency_keys[1]).pint.magnitude)
+            
             if data.resonator_type == "2D":
                 qubit_data["MSR"] = -qubit_data["MSR"]
 

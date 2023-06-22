@@ -54,7 +54,7 @@ class ResonatorFluxData(DataUnits):
         super().__init__(
             "data",
             {"frequency": "Hz", "bias": "V"},
-            options=["qubit", "Ec", "Ej", "g", "f_rh": "Hz" ],
+            options=["qubit", "Ec", "Ej", "g", "f_rh", "fluxline"],
         )
         self._resonator_type = resonator_type
 
@@ -120,10 +120,7 @@ def _acquisition(
         result = results[ro_pulses[qubit].serial]
 
         biases = np.repeat(delta_bias_range, len(delta_frequency_range))
-        freqs = np.array(
-            len(delta_bias_range)
-            * list(delta_frequency_range + ro_pulses[qubit].frequency)
-        ).flatten()
+        freqs = np.array(len(delta_bias_range) * list(delta_frequency_range + ro_pulses[qubit].frequency)).flatten()
         # store the results
         r = {k: v.ravel() for k, v in result.serialize.items()}
         r.update(
@@ -133,9 +130,9 @@ def _acquisition(
                 "qubit": len(freqs) * [qubit],
                 "Ec": len(freqs) * [platform.qubits[qubit].Ec], #TODO: add to platform runcard - single qubit gates settings
                 "Ej": len(freqs) * [platform.qubits[qubit].Ej], #TODO: add to platform runcard - single qubit gates settings
-                "g": len(freqs) * [platform.qubits[qubit].g] #TODO: g in the readout coupling - add to platform runcard - single qubit gates settings
-                "f_rh": len(freqs) * [platform.qubits[qubit].bare_resonator_frequency] #TODO: Resonator frequency at high power - add to platform runcard - single qubit gates settings
-                "fluxline": len(freqs) * [platform.qubits[qubit].flux] #fluxline
+                "g": len(freqs) * [platform.qubits[qubit].g], #TODO: g in the readout coupling - add to platform runcard - single qubit gates settings
+                "f_rh": len(freqs) * [platform.qubits[qubit].bare_resonator_frequency], #TODO: Resonator frequency at high power - add to platform runcard - single qubit gates settings
+                "fluxline": len(freqs) * [qubit], #len(freqs) * [platform.qubits[qubit].flux.name], #fluxline
             }
         )
         data.add_data_from_dict(r)
@@ -144,7 +141,7 @@ def _acquisition(
 
 
 def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
-     """
+    """
     Post-processing for QubitFlux Experiment.
     Fit frequency as a function of current for the flux qubit spectroscopy
     data (QubitFluxData): data object with information on the feature response at each current point.
@@ -160,18 +157,15 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
         bias_keys = qubit_data["bias"].pint.to("V").pint.magnitude.unique()
         frequency_keys = qubit_data["frequency"].pint.to("Hz").pint.magnitude.unique()
 
-        fluxlines = qubit_data["fluxline"].pint.to("dimensionless").pint.magnitude.unique()
-        Ec = qubit_data["Ec"].pint.to("dimensionless").pint.magnitude.unique()
-        Ej = qubit_data["Ej"].pint.to("dimensionless").pint.magnitude.unique()
+        fluxlines = qubit_data["fluxline"] 
+        Ec = qubit_data["Ec"]
+        Ej = qubit_data["Ej"]
 
         for fluxline in fluxlines:
             qubit_data = qubit_data[qubit_data["fluxline"] == fluxline]
-            qubit_data[bias_keys[0]] = (
-                qubit_data[bias_keys[0]].pint.to(bias_keys[1]).pint.magnitude
-            )
-            qubit_data[frequency_keys[0]] = (
-                qubit_data[frequency_keys[0]].pint.to(frequency_keys[1]).pint.magnitude
-            )
+            qubit_data[bias_keys[0]] = (qubit_data[bias_keys[0]].pint.to(bias_keys[1]).pint.magnitude)
+            qubit_data[frequency_keys[0]] = (qubit_data[frequency_keys[0]].pint.to(frequency_keys[1]).pint.magnitude)
+            
             if data.resonator_type == "2D":
                 qubit_data["MSR"] = -qubit_data["MSR"]
 
@@ -184,8 +178,8 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 scaler = 10**9
                 try:
                     scaler = 10**9
-                    f_rh = qubit_data["f_rh"].pint.to("Hz").pint.magnitude.unique()  # Resonator frequency at high power.
-                    g = qubit_data["g"].pint.to("dimensionless").pint.magnitude.unique()  # Readout coupling.
+                    f_rh = qubit_data["f_rh"] #.pint.to("Hz").pint.magnitude.unique()  # Resonator frequency at high power.
+                    g = qubit_data["g"] #.pint.to("dimensionless").pint.magnitude.unique()  # Readout coupling.
                     max_c = biases[np.argmax(frequencies)]
                     min_c = biases[np.argmin(frequencies)]
                     xi = 1 / (2 * abs(max_c - min_c))  # Convert bias to flux.
