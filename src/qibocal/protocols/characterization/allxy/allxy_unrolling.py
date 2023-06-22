@@ -54,7 +54,7 @@ def _acquisition(
     # sweep the parameter
     sequences = []
     ro_pulses = {}
-    for gates in enumerate(gatelist):
+    for gateNumber, gates in enumerate(gatelist):
         # create a sequence of pulses
         sequence = PulseSequence()
         for qubit in qubits:
