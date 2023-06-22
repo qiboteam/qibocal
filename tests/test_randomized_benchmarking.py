@@ -61,13 +61,13 @@ def test_1expfitting():
     # Catch exceptions
     x = np.linspace(-np.pi / 2, np.pi / 2, 100)
     y_dist = np.tan(x)
-    popt, perr = fitting.fit_exp1_func(x, y_dist, maxfev=1, p0=[1])
+    popt, perr = fitting.fit_expn_func(x, y_dist, n=1, maxfev=1, p0=[1])
     assert not (np.all(np.array([*popt, *perr]), 0))
     popt, perr = fitting.fit_exp1B_func(x, y_dist, maxfev=1)
     assert not (np.all(np.array([*popt, *perr]), 0))
 
 
-def test_exp2_fitting():
+def test_expn_fitting():
     successes = 0
     number_runs = 50
     for count in range(number_runs):
@@ -80,10 +80,10 @@ def test_exp2_fitting():
         else:
             f1, f2 = np.random.uniform(0.1, 0.99, size=2)
         y = A1 * f1**x + A2 * f2**x
-        assert np.allclose(fitting.exp2_func(x, A1, A2, f1, f2), y)
+        assert np.allclose(fitting.expn_func(x, A1, A2, f1, f2), y)
         # Distort ``y`` a bit.
         y_dist = y + np.random.uniform(-1, 1, size=len(y)) * 0.001
-        popt, perr = fitting.fit_exp2_func(x, y_dist)
+        popt, _ = fitting.fit_expn_func(x, y_dist, 2)
         worked = np.all(
             np.logical_or(
                 np.allclose(np.array(popt), [A2, A1, f2, f1], atol=0.05, rtol=0.1),
@@ -108,7 +108,7 @@ def test_exp2_fitting():
         y = A1 * f1**x + A2 * f2**x
         # Distort ``y`` a bit.
         y_dist = y + np.random.uniform(-1, 1, size=len(y)) * 0.001
-        popt, perr = fitting.fit_exp2_func(x, y_dist)
+        popt, _ = fitting.fit_expn_func(x, y_dist, 2)
 
 
 # Test noisemodels

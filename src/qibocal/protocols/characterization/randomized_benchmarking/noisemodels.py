@@ -26,8 +26,8 @@ class PauliErrorOnAll(NoiseModel):
         # Check if number of arguments is 0 or 1 and if it's equal to None
         if not probabilities:
             # Assign random values to params.
-            np.random.seed(seed)
-            self.params = np.random.uniform(0, 0.25, size=3)
+            random_generator = np.random.default_rng(seed)
+            self.params = random_generator.uniform(0, 0.25, size=3)
         elif len(probabilities) == 3:
             self.params = probabilities
         else:
