@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import Dict, Optional
 
 import numpy as np
+import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
@@ -9,8 +10,7 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.data import DataUnits
+from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
 
 @dataclass
@@ -33,14 +33,27 @@ class TimeOfFlightReadoutResults(Results):
     """Time of flight"""
 
 
-class TimeOfFlightReadoutData(DataUnits):
+TimeOfFlightReadoutType = np.dtype([("samples", np.float64)])
+
+
+@dataclass
+class TimeOfFlightReadoutData(Data):
     """TimeOfFlightReadout acquisition outputs."""
 
-    def __init__(self):
-        super().__init__(
-            f"data",
-            options=["qubit", "sample"],
-        )
+    data: dict[QubitId, npt.NDArray[TimeOfFlightReadoutType]] = field(
+        default_factory=dict
+    )
+    """Raw data acquired."""
+
+    def register_qubit(self, qubit, samples):
+        """Store output for single qubit."""
+        shape = (1,) if np.isscalar(samples) else samples.shape
+        ar = np.empty(shape, dtype=TimeOfFlightReadoutType)
+        ar["samples"] = samples
+        if qubit in self.data:
+            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
+        else:
+            self.data[qubit] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -74,16 +87,22 @@ def _acquisition(
     data = TimeOfFlightReadoutData()
 
     # retrieve and store the results for every qubit
+
     for qubit in qubits:
-        r = results[ro_pulses[qubit].serial].serialize
-        number_of_samples = len(r["MSR[V]"])
-        r.update(
-            {
-                "qubit": [qubit] * number_of_samples,
-                "sample": np.arange(number_of_samples),
-            }
-        )
-        data.add_data_from_dict(r)
+        samples = results[ro_pulses[qubit].serial].magnitude
+        # store the results
+        data.register_qubit(qubit, samples)
+
+    # for qubit in qubits:
+    #     r = results[ro_pulses[qubit].serial].serialize
+    #     number_of_samples = len(r["MSR[V]"])
+    #     r.update(
+    #         {
+    #             "qubit": [qubit] * number_of_samples,
+    #             "sample": np.arange(number_of_samples),
+    #         }
+    #     )
+    #     data.add_data_from_dict(r)
 
     # finally, save the remaining data
     return data
@@ -96,23 +115,23 @@ def _fit(data: TimeOfFlightReadoutData) -> TimeOfFlightReadoutResults:
 
 def _plot(data: TimeOfFlightReadoutData, fit: TimeOfFlightReadoutResults, qubit):
     """Plotting function for TimeOfFlightReadout."""
-    figures = []
-    fig = make_subplots(
-        rows=1,
-        cols=1,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
-    )
 
-    fitting_report = ""
+    figures = []
+    fitting_report = "No fitting data"
+    fig = go.Figure()
+
+    qubit_data = data[qubit]
+    y = qubit_data.samples
 
     fig.add_trace(
         go.Scatter(
-            x=data.df["sample"],
-            y=data.df["MSR"].pint.to("uV").pint.magnitude,
+            # x=data.df["sample"],
+            y=y,
+            textposition="bottom center",
+            name="Expectation value",
+            showlegend=True,
+            legendgroup="group1",
         ),
-        row=1,
-        col=1,
     )
 
     fig.update_layout(
@@ -122,7 +141,7 @@ def _plot(data: TimeOfFlightReadoutData, fit: TimeOfFlightReadoutResults, qubit)
         yaxis_title="MSR (uV)",
     )
 
-    fitting_report = fitting_report + (f"{qubit} | Time of flight : <br>")
+    # fitting_report = fitting_report + (f"{qubit} | Time of flight : <br>")
 
     figures.append(fig)
 
