@@ -18,6 +18,7 @@ classifiers = [
 python = ">=3.9,<3.12"
 qibolab = { git = "https://github.com/qiboteam/qibolab.git", branch = "move-execution-parameters" }
 qibo = "^0.1.9"
+#https://github.com/qiboteam/qibocal/pull/398#issuecomment-1601276341
 numpy = "^1.23.0"
 scipy = "^1.10.1"
 pandas = "^1.4.3"
