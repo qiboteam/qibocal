@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -26,10 +26,8 @@ class TimeOfFlightReadoutParameters(Parameters):
 class TimeOfFlightReadoutResults(Results):
     """TimeOfFlightReadout outputs."""
 
-    TimeOfFlightReadout: Dict[QubitId, float] = field(
-        metadata=dict(update="time_of_flight")
-    )
-    """Time of flight"""
+    fitted_parameters: dict[QubitId, dict[str, float]]
+    """Raw fitting output."""
 
 
 TimeOfFlightReadoutType = np.dtype([("samples", np.float64)])
@@ -72,7 +70,6 @@ def _acquisition(
 
         sequence.add(ro_pulses[qubit])
 
-    # execute the first pulse sequence
     results = platform.execute_pulse_sequence(
         sequence,
         options=ExecutionParameters(
@@ -86,37 +83,46 @@ def _acquisition(
     data = TimeOfFlightReadoutData()
 
     # retrieve and store the results for every qubit
-
     for qubit in qubits:
         samples = results[ro_pulses[qubit].serial].magnitude
         # store the results
         data.register_qubit(qubit, samples)
 
-    # for qubit in qubits:
-    #     r = results[ro_pulses[qubit].serial].serialize
-    #     number_of_samples = len(r["MSR[V]"])
-    #     r.update(
-    #         {
-    #             "qubit": [qubit] * number_of_samples,
-    #             "sample": np.arange(number_of_samples),
-    #         }
-    #     )
-    #     data.add_data_from_dict(r)
-
-    # finally, save the remaining data
     return data
 
 
 def _fit(data: TimeOfFlightReadoutData) -> TimeOfFlightReadoutResults:
     """Post-processing function for TimeOfFlightReadout."""
-    return TimeOfFlightReadoutResults({})
+
+    qubits = data.qubits
+    fitted_parameters = {}
+
+    for qubit in qubits:
+        qubit_data = data[qubit]
+        # Calculate moving average
+        window_size = 20
+        i = 0
+        moving_averages = []
+        while i < len(qubit_data) - window_size + 1:
+            window_average = round(
+                np.sum(qubit_data[i : i + window_size].samples) / window_size, 2
+            )
+            moving_averages.append(window_average)
+            i += 1
+        max_average = moving_averages.index(max(moving_averages))
+        # FIXME: Where do I get the sampling rate from ???
+        # time_of_flight_readout = max_average * sampling_rate
+        time_of_flight_readout = max_average
+        fitted_parameters[qubit] = time_of_flight_readout
+
+    return TimeOfFlightReadoutResults(fitted_parameters)
 
 
 def _plot(data: TimeOfFlightReadoutData, fit: TimeOfFlightReadoutResults, qubit):
     """Plotting function for TimeOfFlightReadout."""
 
     figures = []
-    fitting_report = "No fitting data"
+    fitting_report = ""
     fig = go.Figure()
 
     qubit_data = data[qubit]
@@ -140,7 +146,25 @@ def _plot(data: TimeOfFlightReadoutData, fit: TimeOfFlightReadoutResults, qubit)
         yaxis_title="MSR (uV)",
     )
 
-    # fitting_report = fitting_report + (f"{qubit} | Time of flight : <br>")
+    # FIXME: Need Sampling Rate again
+    fig.add_vline(
+        x=fit.fitted_parameters[qubit],
+        # x=fit.fitted_parameters[qubit]/sampling_rate,
+        line_width=2,
+        line_dash="dash",
+        line_color="grey",
+    )
+
+    fitting_report += (
+        f"{qubit} | Time of flight(Sample) : {fit.fitted_parameters[qubit]}<br>"
+    )
+
+    fig.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Sample",
+        yaxis_title="MSR (uV)",
+    )
 
     figures.append(fig)
 
