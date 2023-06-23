@@ -20,6 +20,8 @@ class TimeOfFlightReadoutParameters(Parameters):
     """Number of shots."""
     relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
+    window_size: Optional[int] = 40
+    """Window size for the moving average."""
 
 
 @dataclass
@@ -30,7 +32,7 @@ class TimeOfFlightReadoutResults(Results):
     """Raw fitting output."""
 
 
-TimeOfFlightReadoutType = np.dtype([("samples", np.float64)])
+TimeOfFlightReadoutType = np.dtype([("samples", np.float64), ("window_size", np.int64)])
 
 
 @dataclass
@@ -42,11 +44,12 @@ class TimeOfFlightReadoutData(Data):
     )
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, samples):
+    def register_qubit(self, qubit, samples, window_size):
         """Store output for single qubit."""
         shape = (1,) if np.isscalar(samples) else samples.shape
         ar = np.empty(shape, dtype=TimeOfFlightReadoutType)
         ar["samples"] = samples
+        ar["window_size"] = window_size
         if qubit in self.data:
             self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
         else:
@@ -86,7 +89,7 @@ def _acquisition(
     for qubit in qubits:
         samples = results[ro_pulses[qubit].serial].magnitude
         # store the results
-        data.register_qubit(qubit, samples)
+        data.register_qubit(qubit, samples, params.window_size)
 
     return data
 
@@ -100,16 +103,18 @@ def _fit(data: TimeOfFlightReadoutData) -> TimeOfFlightReadoutResults:
     for qubit in qubits:
         qubit_data = data[qubit]
         # Calculate moving average
-        window_size = 20
+        window_size = qubit_data.window_size
         i = 0
         moving_averages = []
         while i < len(qubit_data) - window_size + 1:
-            window_average = round(
-                np.sum(qubit_data[i : i + window_size].samples) / window_size, 2
-            )
+            window_average = np.sum(qubit_data[i : i + window_size].samples) / window_size
             moving_averages.append(window_average)
             i += 1
-        max_average = moving_averages.index(max(moving_averages))
+        
+        for i in range(len(moving_averages)-1):
+            delta = moving_averages[i+1] - moving_averages[i]
+        
+        max_average_change = moving_averages.index(max(moving_averages))
         # FIXME: Where do I get the sampling rate from ???
         # time_of_flight_readout = max_average * sampling_rate
         time_of_flight_readout = max_average
