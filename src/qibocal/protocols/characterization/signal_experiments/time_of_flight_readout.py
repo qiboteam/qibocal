@@ -103,21 +103,26 @@ def _fit(data: TimeOfFlightReadoutData) -> TimeOfFlightReadoutResults:
     for qubit in qubits:
         qubit_data = data[qubit]
         # Calculate moving average
-        window_size = qubit_data.window_size
+        # FIXME: This way of getting a parameter in the fit is saving it
+        # as many times as samples are on the data.
+        window_size = qubit_data.window_size[0]
         i = 0
-        moving_averages = []
+        moving_average_deltas = []
+        last = None
         while i < len(qubit_data) - window_size + 1:
-            window_average = np.sum(qubit_data[i : i + window_size].samples) / window_size
-            moving_averages.append(window_average)
+            window_average = (
+                np.sum(qubit_data[i : i + window_size].samples) / window_size
+            )
+            if last is None:
+                last = window_average
+            moving_average_deltas.append(window_average - last)
+            last = window_average
             i += 1
-        
-        for i in range(len(moving_averages)-1):
-            delta = moving_averages[i+1] - moving_averages[i]
-        
-        max_average_change = moving_averages.index(max(moving_averages))
+
+        max_average_change = moving_average_deltas.index(max(moving_average_deltas))
         # FIXME: Where do I get the sampling rate from ???
-        # time_of_flight_readout = max_average * sampling_rate
-        time_of_flight_readout = max_average
+        # time_of_flight_readout = max_average_change * sampling_rate
+        time_of_flight_readout = max_average_change
         fitted_parameters[qubit] = time_of_flight_readout
 
     return TimeOfFlightReadoutResults(fitted_parameters)
