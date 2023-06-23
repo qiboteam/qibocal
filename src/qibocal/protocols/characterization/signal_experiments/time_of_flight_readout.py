@@ -105,10 +105,12 @@ def _fit(data: TimeOfFlightReadoutData) -> TimeOfFlightReadoutResults:
         moving_averages = []
         last = None
         while i < len(qubit_data) - window_size + 1:
-            window_average = np.sum(qubit_data[i : i + window_size].samples) / window_size
+            window_average = (
+                np.sum(qubit_data[i : i + window_size].samples) / window_size
+            )
             if last is None:
                 last = window_average
-            moving_averages.append(window_average- last)
+            moving_averages.append(window_average - last)
             last = window_average
 
             i += 1
