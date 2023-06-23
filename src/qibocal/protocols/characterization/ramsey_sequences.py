@@ -19,6 +19,7 @@ def _acquisition(
     ro_pulses = {}
     RX90_pulses1 = {}
     RX90_pulses2 = {}
+    freqs = {}
     sequence = PulseSequence()
     for qubit in qubits:
         RX90_pulses1[qubit] = platform.create_RX90_pulse(qubit, start=0)
@@ -29,6 +30,7 @@ def _acquisition(
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=RX90_pulses2[qubit].finish
         )
+        freqs[qubit] = qubits[qubit].drive_frequency
         sequence.add(RX90_pulses1[qubit])
         sequence.add(RX90_pulses2[qubit])
         sequence.add(ro_pulses[qubit])
@@ -44,7 +46,12 @@ def _acquisition(
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
     # additionally include wait time and t_max
-    data = RamseyData(params.n_osc, params.delay_between_pulses_end, detuning_sign=+1)
+    data = RamseyData(
+        n_osc=params.n_osc,
+        t_max=params.delay_between_pulses_end,
+        detuning_sign=+1,
+        qubit_freqs=freqs,
+    )
 
     # sweep the parameter
     for wait in waits:
@@ -72,17 +79,11 @@ def _acquisition(
                 averaging_mode=AveragingMode.CYCLIC,
             ),
         )
-        for qubit, ro_pulse in ro_pulses.items():
-            # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[ro_pulse.serial].serialize
-            r.update(
-                {
-                    "wait[ns]": wait,
-                    "qubit_freqs[Hz]": qubits[qubit].drive_frequency,
-                    "qubit": qubit,
-                }
+        for qubit in qubits:
+            result = results[ro_pulses[qubit].serial]
+            data.register_qubit(
+                qubit, wait=wait, msr=result.magnitude, phase=result.phase
             )
-            data.add_data_from_dict(r)
     return data
 
 

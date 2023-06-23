@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
@@ -38,11 +38,11 @@ class QubitFluxParameters(Parameters):
 class QubitFluxResults(Results):
     """QubitFlux outputs."""
 
-    sweetspot: Dict[QubitId, float] = field(metadata=dict(update="sweetspot"))
+    sweetspot: dict[QubitId, float] = field(metadata=dict(update="sweetspot"))
     """Sweetspot for each qubit."""
-    frequency: Dict[QubitId, float] = field(metadata=dict(update="drive_frequency"))
+    frequency: dict[QubitId, float] = field(metadata=dict(update="drive_frequency"))
     """Drive frequency for each qubit."""
-    fitted_parameters: Dict[QubitId, Dict[str, float]]
+    fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
 
 
@@ -115,22 +115,13 @@ def _acquisition(
     # retrieve the results for every qubit
     for qubit in qubits:
         result = results[ro_pulses[qubit].serial]
-
-        biases = np.repeat(delta_bias_range, len(delta_frequency_range))
-        freqs = np.array(
-            len(delta_bias_range)
-            * list(delta_frequency_range + qd_pulses[qubit].frequency)
-        ).flatten()
-        # store the results
-        r = {k: v.ravel() for k, v in result.serialize.items()}
-        r.update(
-            {
-                "frequency[Hz]": freqs,
-                "bias[V]": biases,
-                "qubit": len(freqs) * [qubit],
-            }
+        data.register_qubit(
+            qubit,
+            msr=result.magnitude,
+            phase=result.phase,
+            freq=delta_frequency_range + qd_pulses[qubit].frequency,
+            bias=delta_bias_range,
         )
-        data.add_data_from_dict(r)
 
     return data
 
