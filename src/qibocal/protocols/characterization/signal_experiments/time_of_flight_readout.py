@@ -100,14 +100,17 @@ def _fit(data: TimeOfFlightReadoutData) -> TimeOfFlightReadoutResults:
     for qubit in qubits:
         qubit_data = data[qubit]
         # Calculate moving average
-        window_size = 20
+        window_size = 200
         i = 0
         moving_averages = []
+        last = None
         while i < len(qubit_data) - window_size + 1:
-            window_average = round(
-                np.sum(qubit_data[i : i + window_size].samples) / window_size, 2
-            )
-            moving_averages.append(window_average)
+            window_average = np.sum(qubit_data[i : i + window_size].samples) / window_size
+            if last is None:
+                last = window_average
+            moving_averages.append(window_average- last)
+            last = window_average
+
             i += 1
         max_average = moving_averages.index(max(moving_averages))
         # FIXME: Where do I get the sampling rate from ???
