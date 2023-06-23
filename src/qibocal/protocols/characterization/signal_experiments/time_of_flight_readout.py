@@ -11,6 +11,8 @@ from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
+SECONDS_TO_NANO = 1e9
+
 
 @dataclass
 class TimeOfFlightReadoutParameters(Parameters):
@@ -32,7 +34,9 @@ class TimeOfFlightReadoutResults(Results):
     """Raw fitting output."""
 
 
-TimeOfFlightReadoutType = np.dtype([("samples", np.float64), ("window_size", np.int64)])
+TimeOfFlightReadoutType = np.dtype(
+    [("samples", np.float64), ("window_size", np.int64), ("sampling_rate", np.int64)]
+)
 
 
 @dataclass
@@ -44,16 +48,13 @@ class TimeOfFlightReadoutData(Data):
     )
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, samples, window_size):
+    def register_qubit(self, qubit, samples, window_size, sampling_rate):
         """Store output for single qubit."""
-        shape = (1,) if np.isscalar(samples) else samples.shape
-        ar = np.empty(shape, dtype=TimeOfFlightReadoutType)
+        ar = np.empty(samples.shape, dtype=TimeOfFlightReadoutType)
         ar["samples"] = samples
         ar["window_size"] = window_size
-        if qubit in self.data:
-            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
-        else:
-            self.data[qubit] = np.rec.array(ar)
+        ar["sampling_rate"] = sampling_rate
+        self.data[qubit] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -89,7 +90,7 @@ def _acquisition(
     for qubit in qubits:
         samples = results[ro_pulses[qubit].serial].magnitude
         # store the results
-        data.register_qubit(qubit, samples, params.window_size)
+        data.register_qubit(qubit, samples, params.window_size, platform.sampling_rate)
 
     return data
 
@@ -120,9 +121,7 @@ def _fit(data: TimeOfFlightReadoutData) -> TimeOfFlightReadoutResults:
             i += 1
 
         max_average_change = moving_average_deltas.index(max(moving_average_deltas))
-        # FIXME: Where do I get the sampling rate from ???
-        # time_of_flight_readout = max_average_change * sampling_rate
-        time_of_flight_readout = max_average_change
+        time_of_flight_readout = max_average_change / qubit_data.sampling_rate[0]
         fitted_parameters[qubit] = time_of_flight_readout
 
     return TimeOfFlightReadoutResults(fitted_parameters)
@@ -140,7 +139,6 @@ def _plot(data: TimeOfFlightReadoutData, fit: TimeOfFlightReadoutResults, qubit)
 
     fig.add_trace(
         go.Scatter(
-            # x=data.df["sample"],
             y=y,
             textposition="bottom center",
             name="Expectation value",
@@ -156,18 +154,14 @@ def _plot(data: TimeOfFlightReadoutData, fit: TimeOfFlightReadoutResults, qubit)
         yaxis_title="MSR (uV)",
     )
 
-    # FIXME: Need Sampling Rate again
     fig.add_vline(
-        x=fit.fitted_parameters[qubit],
-        # x=fit.fitted_parameters[qubit]/sampling_rate,
+        x=fit.fitted_parameters[qubit] * qubit_data.sampling_rate[0],
         line_width=2,
         line_dash="dash",
         line_color="grey",
     )
 
-    fitting_report += (
-        f"{qubit} | Time of flight(Sample) : {fit.fitted_parameters[qubit]}<br>"
-    )
+    fitting_report += f"{qubit} | Time of flight(ns) : {fit.fitted_parameters[qubit] * SECONDS_TO_NANO}<br>"
 
     fig.update_layout(
         showlegend=True,
