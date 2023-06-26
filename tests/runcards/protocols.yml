@@ -7,6 +7,7 @@ actions:
     operation: time_of_flight_readout
     parameters:
       nshots: 1024
+      readout_amplitud: 0.5
 
   - id: resonator high power high amplitude
     priority: 0
