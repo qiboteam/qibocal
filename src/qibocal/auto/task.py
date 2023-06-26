@@ -116,13 +116,14 @@ class Task:
                         qubits = allocate_qubits_pairs(platform, self.qubits)
                     else:
                         qubits = allocate_single_qubits(platform, self.qubits)
+                else:
+                    qubits = self.qubits
 
             self._data: Data = operation.acquisition(
                 parameters, platform=platform, qubits=qubits
             )
             # after acquisition we update the qubit parameter
             self.qubits = list(qubits)
-
         else:
             self._data: Data = operation.acquisition(parameters, platform=platform)
         self._data.save(path)
