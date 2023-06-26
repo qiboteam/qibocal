@@ -138,4 +138,4 @@ class Executor:
             self.head = self.next()
             if self.platform is not None:
                 if self.update and task.update:
-                    self.platform.update(task.results.update)
+                    self.platform.update(results.update)

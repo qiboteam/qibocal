@@ -151,9 +151,7 @@ class ReportBuilder:
         """Generate single qubit plot."""
         node = self.history[task_id]
         data = node.task.data
-        figures, fitting_report = node.task.operation.report(
-            data, node.task.results, qubit
-        )
+        figures, fitting_report = node.task.operation.report(data, node.results, qubit)
         with tempfile.NamedTemporaryFile(delete=False) as temp:
             html_list = []
             for figure in figures:

@@ -124,6 +124,6 @@ class Task:
             self.data: Data = operation.acquisition(parameters, platform=platform)
         self.data.save(path)
 
-        self.results: Results = operation.fit(self.data)
-        self.results.save(path)
-        return self.results
+        results: Results = operation.fit(self.data)
+        results.save(path)
+        return results

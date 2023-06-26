@@ -23,8 +23,12 @@ class Completed:
     """
     status: Status
     """Protocol status."""
-    results: Results
+    res: Results
     """Fitting output."""
+
+    @property
+    def results(self):
+        return self.res
 
     def __post_init__(self):
         self.task = copy.deepcopy(self.task)
