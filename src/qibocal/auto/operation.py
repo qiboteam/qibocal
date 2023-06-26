@@ -20,7 +20,7 @@ DATAFILE = "data.npz"
 """Name of the file where data acquired (arrays) by calibration are dumped."""
 JSONFILE = "conf.json"
 """Name of the file where data acquired (global configuration) by calibration are dumped."""
-RESULTFILE = "result.json"
+RESULTSFILE = "results.json"
 """Name of the file where results are dumped."""
 
 
@@ -131,7 +131,7 @@ class Results:
 
     def save(self, path):
         """Store results to json."""
-        (path / RESULTFILE).write_text(json.dumps(asdict(self), indent=4))
+        (path / RESULTSFILE).write_text(json.dumps(asdict(self), indent=4))
 
 
 # Internal types, in particular `_ParametersT` is used to address function

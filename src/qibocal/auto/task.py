@@ -89,14 +89,6 @@ class Task:
     def update(self):
         return self.action.update
 
-    @property
-    def data(self):
-        return self._data
-
-    @property
-    def results(self):
-        return self._results
-
     def datapath(self, base_dir: Path):
         path = base_dir / "data" / f"{self.id}_{self.iteration}"
         os.makedirs(path)
@@ -123,15 +115,15 @@ class Task:
                 else:
                     qubits = self.qubits
 
-            self._data: Data = operation.acquisition(
+            self.data: Data = operation.acquisition(
                 parameters, platform=platform, qubits=qubits
             )
             # after acquisition we update the qubit parameter
             self.qubits = list(qubits)
         else:
-            self._data: Data = operation.acquisition(parameters, platform=platform)
-        self._data.save(path)
+            self.data: Data = operation.acquisition(parameters, platform=platform)
+        self.data.save(path)
 
-        self._results: Results = operation.fit(self._data)
-        self._results.save(path)
-        return self._results
+        self.results: Results = operation.fit(self.data)
+        self.results.save(path)
+        return self.results
