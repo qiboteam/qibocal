@@ -2,6 +2,12 @@
 
 actions:
 
+  - id: time of flight
+    priority: 0
+    operation: time_of_flight_readout
+    parameters:
+      nshots: 1024
+
   - id: resonator high power high amplitude
     priority: 0
     operation: resonator_spectroscopy
