@@ -5,9 +5,10 @@ from qibolab.qubits import Qubit, QubitId
 
 
 def cast_str_to_int(key):
-    if key.isnumeric():
+    try:
         return int(key)
-    return key
+    except ValueError:
+        return key
 
 
 def my_eval(key):
