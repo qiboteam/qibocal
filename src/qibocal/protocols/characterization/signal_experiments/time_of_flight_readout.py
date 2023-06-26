@@ -17,6 +17,8 @@ from qibocal.protocols.characterization.utils import S_TO_NS
 class TimeOfFlightReadoutParameters(Parameters):
     """TimeOfFlightReadout runcard inputs."""
 
+    readout_amplitude: Optional[int] = None
+    """Amplitude of the readout pulse."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
@@ -69,7 +71,8 @@ def _acquisition(
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=RX_pulses[qubit].finish
         )
-
+        if params.readout_amplitude is not None:
+            ro_pulses[qubit].amplitude = params.readout_amplitude
         sequence.add(ro_pulses[qubit])
 
     results = platform.execute_pulse_sequence(
