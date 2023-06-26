@@ -11,6 +11,7 @@ from qibocal.config import log
 GHZ_TO_HZ = 1e9
 HZ_TO_GHZ = 1e-9
 V_TO_UV = 1e6
+S_TO_NS = 1e9
 
 
 class PowerLevel(str, Enum):

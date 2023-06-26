@@ -12,8 +12,9 @@ OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
 ParameterValue = Union[float, int]
 """Valid value for a routine and runcard parameter."""
-Qubits = dict[int, Qubit]
-"""Convenient way of passing qubits in the routines."""
+Qubits = dict[QubitId, Qubit]
+"""Convenient way of passing qubit pairs in the routines."""
+QubitsPairs = dict[tuple[QubitId, QubitId], Qubit]
 
 DATAFILE = "data.npz"
 """Name of the file where data acquired (arrays) by calibration are dumped."""
