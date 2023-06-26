@@ -110,8 +110,8 @@ class Task:
 
         path = self.datapath(folder)
         if operation.platform_dependent and operation.qubits_dependent:
-            if platform is not None:
-                if len(self.qubits) > 0:
+            if len(self.qubits) > 0:
+                if platform is not None:
                     if any(isinstance(i, tuple) for i in self.qubits):
                         qubits = allocate_qubits_pairs(platform, self.qubits)
                     else:

@@ -13,7 +13,6 @@ from scipy.optimize import curve_fit
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 
-from ..utils import V_TO_UV
 from . import utils
 
 
@@ -150,7 +149,7 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
         qubit_data = data[qubit]
 
         rabi_parameter = qubit_data.amp
-        voltages = qubit_data.msr * V_TO_UV
+        voltages = qubit_data.msr
 
         y_min = np.min(voltages)
         y_max = np.max(voltages)

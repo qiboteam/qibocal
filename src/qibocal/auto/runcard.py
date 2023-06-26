@@ -47,9 +47,7 @@ class Runcard:
     """Structure of an execution runcard."""
 
     actions: list[Action]
-    qubits: Union[list[QubitId], list[tuple[QubitId, QubitId]]] = Field(
-        default_facotry=list
-    )
+    qubits: Union[list[QubitId], list[tuple[QubitId, QubitId]]]
     backend: str = "qibolab"
     platform: str = "dummy"
     # TODO: pass custom runcard (?)
