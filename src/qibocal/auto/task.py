@@ -1,8 +1,10 @@
 """Action execution tracker."""
 import os
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from qibo.config import log
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
@@ -105,13 +107,23 @@ class Task:
                 else:
                     qubits = self.qubits
 
+            start_acq = time.time()
             self._data: Data = operation.acquisition(
                 parameters, platform=platform, qubits=qubits
             )
+            stop_acq = time.time()
             # after acquisition we update the qubit parameter
             self.qubits = list(qubits)
 
         else:
             self._data: Data = operation.acquisition(parameters, platform=platform)
         self._data.save(path)
-        return operation.fit(self._data)
+
+        start_fit = time.time()
+        res = operation.fit(self._data)
+        stop_fit = time.time()
+
+        log.info(f"Acquisition time: {stop_acq - start_acq}")
+        log.info(f"Fit time: {stop_fit - start_fit}")
+
+        return res

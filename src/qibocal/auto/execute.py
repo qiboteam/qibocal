@@ -1,8 +1,10 @@
 """Tasks execution."""
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional, Set
 
+from qibo.config import log
 from qibolab.platform import Platform
 
 from .graph import Graph
@@ -131,7 +133,9 @@ class Executor:
         self.head = self.graph.start
 
         while self.head is not None:
+            start_task = time.time()
             task = self.current
+            log.info(f"Task: {task.action.id}")
             output = task.run(self.output, platform=self.platform, qubits=self.qubits)
             completed = Completed(task, output, Normal())
             self.history.push(completed)
@@ -139,3 +143,5 @@ class Executor:
             if self.platform is not None:
                 if self.update and task.update:
                     self.platform.update(completed.res.update)
+            stop_task = time.time()
+            log.info(f"Tot: {stop_task - start_task}")
