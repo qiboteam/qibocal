@@ -1,3 +1,4 @@
+import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from scipy.special import mathieu_a, mathieu_b
@@ -139,6 +140,12 @@ def freq_r_mathieu(x, p0, p1, p2, p3, p4, p5, p6, p7=0.499):
     return f_r
 
 
+def line(x, p0, p1):
+    # Slope                   : p[0]
+    # Intercept               : p[1]
+    return p0 * x + p1
+
+
 def feature(x, order=3):
     """Generate polynomial feature of the form
     [1, x, x^2, ..., x^order] where x is the column of x-coordinates
@@ -149,12 +156,12 @@ def feature(x, order=3):
 
 
 def image_to_curve(x, y, z, alpha=0.0001, order=50):
-    max_y = np.max(y)
-    min_y = np.min(y)
-    leny = int((max_y - min_y) / (y[1] - y[0])) + 1
     max_x = np.max(x)
     min_x = np.min(x)
-    lenx = int(len(x) / (leny))
+    lenx = int((max_x - min_x) / (x[1] - x[0])) + 1
+    max_y = np.max(y)
+    min_y = np.min(y)
+    leny = int(len(y) / (lenx))
     x = np.linspace(min_x, max_x, lenx)
     y = np.linspace(min_y, max_y, leny)
     z = np.array(z, float)
