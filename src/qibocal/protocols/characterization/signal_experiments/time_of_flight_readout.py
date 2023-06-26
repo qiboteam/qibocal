@@ -10,8 +10,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-
-SECONDS_TO_NANO = 1e9
+from qibocal.protocols.characterization.utils import S_TO_NS
 
 
 @dataclass
@@ -22,7 +21,7 @@ class TimeOfFlightReadoutParameters(Parameters):
     """Number of shots."""
     relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
-    window_size: Optional[int] = 40
+    window_size: Optional[int] = 10
     """Window size for the moving average."""
 
 
@@ -154,7 +153,9 @@ def _plot(data: TimeOfFlightReadoutData, fit: TimeOfFlightReadoutResults, qubit)
         line_color="grey",
     )
 
-    fitting_report += f"{qubit} | Time of flight(ns) : {fit.fitted_parameters[qubit] * SECONDS_TO_NANO}<br>"
+    fitting_report += (
+        f"{qubit} | Time of flight(ns) : {fit.fitted_parameters[qubit] * S_TO_NS}<br>"
+    )
 
     fig.update_layout(
         showlegend=True,
