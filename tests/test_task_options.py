@@ -9,7 +9,7 @@ from qibolab import create_platform
 from qibocal.auto.execute import Executor
 from qibocal.auto.runcard import Runcard
 from qibocal.auto.task import Task
-from qibocal.utils import allocate_qubits
+from qibocal.utils import allocate_single_qubits
 
 PLATFORM = create_platform("dummy")
 QUBITS = list(PLATFORM.qubits)
@@ -61,7 +61,7 @@ def test_qubits_argument(local_qubits):
     task.run(
         pathlib.Path(tempfile.mkdtemp()),
         PLATFORM,
-        allocate_qubits(PLATFORM, QUBITS),
+        allocate_single_qubits(PLATFORM, QUBITS),
     )
     if local_qubits:
         assert task.qubits == local_qubits

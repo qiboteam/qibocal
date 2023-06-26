@@ -2,13 +2,22 @@
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Union
 
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
 from ..protocols.characterization import Operation
-from ..utils import allocate_qubits
-from .operation import Data, DummyPars, Qubits, Results, Routine, dummy_operation
+from ..utils import allocate_qubits_pairs, allocate_single_qubits
+from .operation import (
+    Data,
+    DummyPars,
+    Qubits,
+    QubitsPairs,
+    Results,
+    Routine,
+    dummy_operation,
+)
 from .runcard import Action, Id
 
 MAX_PRIORITY = int(1e9)
@@ -89,7 +98,9 @@ class Task:
         os.makedirs(path)
         return path
 
-    def run(self, folder: Path, platform: Platform, qubits: Qubits) -> Results:
+    def run(
+        self, folder: Path, platform: Platform, qubits: Union[Qubits, QubitsPairs]
+    ) -> Results:
         try:
             operation: Routine = self.operation
             parameters = self.parameters
@@ -101,7 +112,10 @@ class Task:
         if operation.platform_dependent and operation.qubits_dependent:
             if len(self.qubits) > 0:
                 if platform is not None:
-                    qubits = allocate_qubits(platform, self.qubits)
+                    if any(isinstance(i, tuple) for i in self.qubits):
+                        qubits = allocate_qubits_pairs(platform, self.qubits)
+                    else:
+                        qubits = allocate_single_qubits(platform, self.qubits)
                 else:
                     qubits = self.qubits
 
@@ -110,7 +124,6 @@ class Task:
             )
             # after acquisition we update the qubit parameter
             self.qubits = list(qubits)
-
         else:
             self._data: Data = operation.acquisition(parameters, platform=platform)
         self._data.save(path)
