@@ -34,26 +34,25 @@ class TimeOfFlightReadoutResults(Results):
     """Raw fitting output."""
 
 
-TimeOfFlightReadoutType = np.dtype(
-    [("samples", np.float64), ("window_size", np.int64), ("sampling_rate", np.int64)]
-)
+TimeOfFlightReadoutType = np.dtype([("samples", np.float64)])
 
 
 @dataclass
 class TimeOfFlightReadoutData(Data):
     """TimeOfFlightReadout acquisition outputs."""
 
+    windows_size: int
+    sampling_rate: int
+
     data: dict[QubitId, npt.NDArray[TimeOfFlightReadoutType]] = field(
         default_factory=dict
     )
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, samples, window_size, sampling_rate):
+    def register_qubit(self, qubit, samples):
         """Store output for single qubit."""
         ar = np.empty(samples.shape, dtype=TimeOfFlightReadoutType)
         ar["samples"] = samples
-        ar["window_size"] = window_size
-        ar["sampling_rate"] = sampling_rate
         self.data[qubit] = np.rec.array(ar)
 
 
@@ -84,13 +83,13 @@ def _acquisition(
         ),
     )
 
-    data = TimeOfFlightReadoutData()
+    data = TimeOfFlightReadoutData(params.window_size, platform.sampling_rate)
 
     # retrieve and store the results for every qubit
     for qubit in qubits:
         samples = results[ro_pulses[qubit].serial].magnitude
         # store the results
-        data.register_qubit(qubit, samples, params.window_size, platform.sampling_rate)
+        data.register_qubit(qubit, samples)
 
     return data
 
@@ -101,27 +100,20 @@ def _fit(data: TimeOfFlightReadoutData) -> TimeOfFlightReadoutResults:
     qubits = data.qubits
     fitted_parameters = {}
 
+    window_size = data.windows_size
+    sampling_rate = data.sampling_rate
+
     for qubit in qubits:
         qubit_data = data[qubit]
-        # Calculate moving average
-        # FIXME: This way of getting a parameter in the fit is saving it
-        # as many times as samples are on the data.
-        window_size = qubit_data.window_size[0]
-        i = 0
-        moving_average_deltas = []
-        last = None
-        while i < len(qubit_data) - window_size + 1:
-            window_average = (
-                np.sum(qubit_data[i : i + window_size].samples) / window_size
+        # Calculate moving average change per element
+        moving_average_deltas = np.ediff1d(
+            np.convolve(
+                qubit_data.samples, np.ones(window_size) / window_size, mode="valid"
             )
-            if last is None:
-                last = window_average
-            moving_average_deltas.append(window_average - last)
-            last = window_average
-            i += 1
+        )
 
-        max_average_change = moving_average_deltas.index(max(moving_average_deltas))
-        time_of_flight_readout = max_average_change / qubit_data.sampling_rate[0]
+        max_average_change = np.argmax(moving_average_deltas)
+        time_of_flight_readout = max_average_change / sampling_rate
         fitted_parameters[qubit] = time_of_flight_readout
 
     return TimeOfFlightReadoutResults(fitted_parameters)
@@ -135,6 +127,7 @@ def _plot(data: TimeOfFlightReadoutData, fit: TimeOfFlightReadoutResults, qubit)
     fig = go.Figure()
 
     qubit_data = data[qubit]
+    sampling_rate = data.sampling_rate
     y = qubit_data.samples
 
     fig.add_trace(
@@ -155,7 +148,7 @@ def _plot(data: TimeOfFlightReadoutData, fit: TimeOfFlightReadoutResults, qubit)
     )
 
     fig.add_vline(
-        x=fit.fitted_parameters[qubit] * qubit_data.sampling_rate[0],
+        x=fit.fitted_parameters[qubit] * sampling_rate,
         line_width=2,
         line_dash="dash",
         line_color="grey",
