@@ -116,7 +116,10 @@ class Task:
             self.qubits = list(qubits)
 
         else:
+            start_acq = time.time()
             self._data: Data = operation.acquisition(parameters, platform=platform)
+            stop_acq = time.time()
+
         self._data.save(path)
 
         start_fit = time.time()
