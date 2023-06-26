@@ -2,6 +2,7 @@
 import copy
 from dataclasses import dataclass
 
+from .operation import Results
 from .runcard import Id
 from .status import Status
 from .task import Task
@@ -21,6 +22,9 @@ class Completed:
 
     """
     status: Status
+    """Protocol status."""
+    results: Results
+    """Fitting output."""
 
     def __post_init__(self):
         self.task = copy.deepcopy(self.task)

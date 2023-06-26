@@ -132,8 +132,8 @@ class Executor:
 
         while self.head is not None:
             task = self.current
-            output = task.run(self.output, platform=self.platform, qubits=self.qubits)
-            completed = Completed(task, Normal())
+            results = task.run(self.output, platform=self.platform, qubits=self.qubits)
+            completed = Completed(task, Normal(), results)
             self.history.push(completed)
             self.head = self.next()
             if self.platform is not None:
