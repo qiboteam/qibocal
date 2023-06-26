@@ -60,11 +60,10 @@ class ActionBuilder:
         if self.platform is not None:
             if any(isinstance(i, list) for i in self.runcard.qubits):
                 return allocate_qubits_pairs(self.platform, self.runcard.qubits)
-            else:
-                return allocate_single_qubits(self.platform, self.runcard.qubits)
-        # TODO: check if this is needed
-        else:
-            return self.runcard.qubits
+
+            return allocate_single_qubits(self.platform, self.runcard.qubits)
+
+        return self.runcard.qubits
 
     def _prepare_output(self, runcard):
         """Methods that takes care of:
