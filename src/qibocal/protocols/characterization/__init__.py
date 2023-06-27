@@ -22,7 +22,7 @@ from .ramsey import ramsey
 from .ramsey_sequences import ramsey_sequences
 from .ramsey_unrolling import ramsey_unrolling
 from .randomized_benchmarking.standard_rb import standard_rb
-from .rb.std_rb_unrolling import std_rb_unrolling
+from .randomized_benchmarking_unrolling.std_rb_unrolling import std_rb_unrolling
 from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
