@@ -146,8 +146,11 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     """A wrapped calibration routine."""
 
     acquisition: Callable[[_ParametersT], _DataT]
+    """Data acquisition function."""
     fit: Callable[[_DataT], _ResultsT] = None
+    """Post-processing function."""
     report: Callable[[_DataT, _ResultsT], None] = None
+    """Plotting function."""
 
     def __post_init__(self):
         # TODO: this could be improved
@@ -158,25 +161,30 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
 
     @property
     def parameters_type(self):
+        """Input parameters type."""
         sig = inspect.signature(self.acquisition)
         param = next(iter(sig.parameters.values()))
         return param.annotation
 
     @property
     def data_type(self):
+        """ "Data object type return by data acquisition."""
         return inspect.signature(self.acquisition).return_annotation
 
     @property
     def results_type(self):
+        """ "Results object type return by data acquisition."""
         return inspect.signature(self.fit).return_annotation
 
     # TODO: I don't like these properties but it seems to work
     @property
     def platform_dependent(self):
+        """Check if acquisition involves platform."""
         return "platform" in inspect.signature(self.acquisition).parameters
 
     @property
     def qubits_dependent(self):
+        """Check if acquisition involves qubits."""
         return "qubits" in inspect.signature(self.acquisition).parameters
 
 
@@ -199,15 +207,19 @@ class DummyRes(Results):
 
 
 def _dummy_acquisition(pars: DummyPars, platform: Platform) -> DummyData:
+    """Dummy data acquisition."""
     return DummyData()
 
 
 def _dummy_fit(data: DummyData) -> DummyRes:
+    """Dummy fitting."""
     return DummyRes()
 
 
 def _dummy_report(data: DummyData, result: DummyRes):
+    """Dummy plotting."""
     return [], ""
 
 
 dummy_operation = Routine(_dummy_acquisition, _dummy_fit, _dummy_report)
+"""Example of a dummy operation."""
