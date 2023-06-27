@@ -42,16 +42,14 @@ class OptimalIntegrationWeightsResults(Results):
             )
 
 
-OptimalIntegrationWeightsType = np.dtype(
-    [("samples", np.complex128), ("state", np.int64)]
-)
+OptimalIntegrationWeightsType = np.dtype([("samples", np.complex128)])
 
 
 @dataclass
 class OptimalIntegrationWeightsData(Data):
     """OptimalIntegrationWeights acquisition outputs."""
 
-    data: dict[QubitId, npt.NDArray[OptimalIntegrationWeightsType]] = field(
+    data: dict[tuple[QubitId, int], npt.NDArray[OptimalIntegrationWeightsType]] = field(
         default_factory=dict
     )
     """Raw data acquired."""
@@ -60,11 +58,12 @@ class OptimalIntegrationWeightsData(Data):
         """Store output for single qubit."""
         ar = np.empty(samples.shape, dtype=OptimalIntegrationWeightsType)
         ar["samples"] = samples
-        ar["state"] = state
         if qubit in self.data:
-            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
+            self.data[qubit, state] = np.rec.array(
+                np.concatenate((self.data[qubit], ar))
+            )
         else:
-            self.data[qubit] = np.rec.array(ar)
+            self.data[qubit, state] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -89,44 +88,26 @@ def _acquisition(
 
     # create a DataUnits object to store the results
     data = OptimalIntegrationWeightsData()
-
-    # execute the first pulse sequence
-    state0_results = platform.execute_pulse_sequence(
-        state0_sequence,
-        options=ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.RAW,
-            averaging_mode=AveragingMode.CYCLIC,
-        ),
-    )
-
-    # retrieve and store the results for every qubit
-    for qubit in qubits:
-        samples = (
-            state0_results[ro_pulses[qubit].serial].voltage_i
-            + 1j * state0_results[ro_pulses[qubit].serial].voltage_q
+    for state in [0, 1]:
+        sequence = state0_sequence if state == 0 else state1_sequence
+        # execute the first pulse sequence
+        results = platform.execute_pulse_sequence(
+            sequence,
+            options=ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.RAW,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
         )
-        data.register_qubit(qubit, samples, [0] * len(samples))
 
-    # execute the second pulse sequence
-    state1_results = platform.execute_pulse_sequence(
-        state1_sequence,
-        options=ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.RAW,
-            averaging_mode=AveragingMode.CYCLIC,
-        ),
-    )
-    # retrieve and store the results for every qubit
-    for qubit in qubits:
-        samples = (
-            state1_results[ro_pulses[qubit].serial].voltage_i
-            + 1j * state1_results[ro_pulses[qubit].serial].voltage_q
-        )
-        data.register_qubit(qubit, samples, [1] * len(samples))
-
+        # retrieve and store the results for every qubit
+        for qubit in qubits:
+            samples = (
+                results[ro_pulses[qubit].serial].voltage_i
+                + 1j * results[ro_pulses[qubit].serial].voltage_q
+            )
+            data.register_qubit(qubit, samples, state)
     return data
 
 
@@ -139,11 +120,8 @@ def _fit(data: OptimalIntegrationWeightsData) -> OptimalIntegrationWeightsResult
     optimal_integration_weights = {}
 
     for qubit in qubits:
-        qubit_data = data[qubit]
-
-        truncate_index_state = np.min(np.where(qubit_data.state == 1))
-        state0 = qubit_data[:truncate_index_state].samples
-        state1 = qubit_data[truncate_index_state:].samples
+        state0 = data[qubit, 0].samples
+        state1 = data[qubit, 1].samples
 
         samples_kernel = np.conj(state1 - state0)
         # Remove nans
