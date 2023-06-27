@@ -329,7 +329,7 @@ actions:
 
   - id: StdRB
     priority: 0
-    operation: StdRB_unrolling
+    operation: std_rb_unrolling
     parameters:
       min_depth: 10
       max_depth: 70

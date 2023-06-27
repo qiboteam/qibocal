@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
@@ -5,12 +6,13 @@ import numpy as np
 import numpy.typing as npt
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
+from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
-from qibocal.protocols.characterization.RB import utils
+from qibocal.protocols.characterization.rb import utils
 
 """
 For info check
@@ -23,11 +25,11 @@ class StdRBParameters(Parameters):
     """Standard RB runcard inputs."""
 
     min_depth: int
-    """Minimum depth."""
+    """Minimum depth of the circuits."""
     max_depth: int
-    """Minimum amplitude multiplicative factor."""
+    """Maximum depth of the circuits."""
     step_depth: int
-    """Minimum amplitude multiplicative factor."""
+    """Depth increasing effect of the circuits."""
     runs: int
     """Number of random sequences per depth"""
     nshots: Optional[int] = None
@@ -41,9 +43,9 @@ class StdRBResults(Results):
     """Standard RB outputs."""
 
     fidelities: Dict[List[float], List]
-    """Fidelity after magic number"""
+    """The pulse fidelity of the gates acting on this qubit."""
     fidelities_primitive: Dict[List[float], List]
-    """Primitive for fidelity after magic number"""
+    """The overall fidelities of the qubits."""
     average_errors_gate: Dict[List[float], List]
     """Error per average gate as a percentage"""
     fitted_parameters: Dict[List[Tuple], List]
@@ -63,13 +65,14 @@ StdRBType = np.dtype(
 class StdRBData(Data):
     """StdRB data acquisition."""
 
+    sequences: List[PulseSequence] = None
+
     data: dict[QubitId, npt.NDArray[StdRBType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, sequence, length, prob):
+    def register_qubit(self, qubit, length, prob):
         """Store output for single qubit."""
         ar = np.empty((1,), dtype=StdRBType)
-        ar["sequence"] = sequence
         ar["length"] = length
         ar["probabilities"] = prob
         if qubit in self.data:
@@ -77,20 +80,34 @@ class StdRBData(Data):
         else:
             self.data[qubit] = np.rec.array(ar)
 
+    # Overwrite save to get the sequences in the JSON and data in npz
+    def save(self, path):
+        self.to_npz(path)
+        (path / "sequences.json").write_text(json.dumps(self.sequences, indent=4))
+
 
 def _acquisition(
     params: StdRBParameters, platform: Platform, qubits: Qubits
 ) -> StdRBData:
-    r"""
-    Data acquisition for Rabi experiment sweeping amplitude.
-    In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse amplitude
-    to find the drive pulse amplitude that creates a rotation of a desired angle.
+    """The data acquisition stage of Standard Randomized Benchmarking.
+
+    1. Set up the scan
+    2. Execute the scan
+    3. Post process the data and initialize a standard rb data object with it.
+
+    Args:
+        params (StandardRBParameters): All parameters in one object.
+        platform (Platform): Platform the experiment is executed on.
+        qubits (dict[QubitId, Union[str, int]] or list[Union[str, int]]): list of qubits the experiment is executed on.
+
+    Returns:
+        RBData: The depths, samples and ground state probability of each experiment in the scan.
     """
 
-    # create sequences of pulses for the experiment
-
+    # Circuit depths
     depths = list(range(params.min_depth, params.max_depth, params.step_depth))
 
+    # create sequences of pulses for the experiment
     rb_sequencer = utils.RBSequence(
         platform,
         depths,
@@ -100,8 +117,9 @@ def _acquisition(
     # create a Data object to store the results
     data = StdRBData()
 
-    # sweep the parameter
+    # Execute the scan
     for qubit in qubits.values():
+        # create the list of sequences for the experiment
         sequences, circuits, ro_pulses = rb_sequencer.get_sequences_list(qubit.name)
         results = platform.execute_pulse_sequences(
             sequences,
@@ -113,6 +131,7 @@ def _acquisition(
             ),
         )
 
+        # count the ro_pulses repeated serials per depth
         counts_depths = {}
         for depth in depths:
             starts = [pulse.start for pulse in ro_pulses[depth]]
@@ -128,7 +147,12 @@ def _acquisition(
                 for i in range(counts_depths[depth][ro_pulse]):
                     probs = results[ro_pulse.serial][i].probability(0)
                     qubit = ro_pulse.qubit
-                    data.register_qubit(qubit, 0, len(circuits[j]), probs)
+                    data.register_qubit(qubit, len(circuits[j]), probs)
+                    # Save circuits in JSON in a nice way
+                    circuits_serial = []
+                    for circuit in circuits:
+                        circuits_serial.append(str(circuit))
+                    data.sequences = circuits_serial
                     j += 1
 
     return data
@@ -196,5 +220,5 @@ def _plot(data: StdRBData, fit: StdRBResults, qubit):
     return utils.plot(data, fit, qubit)
 
 
-StdRB_unrolling = Routine(_acquisition, _fit, _plot)
+std_rb_unrolling = Routine(_acquisition, _fit, _plot)
 """Standard RB Routine object."""

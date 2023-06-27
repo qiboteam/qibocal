@@ -22,7 +22,7 @@ from .ramsey import ramsey
 from .ramsey_sequences import ramsey_sequences
 from .ramsey_unrolling import ramsey_unrolling
 from .randomized_benchmarking.standard_rb import standard_rb
-from .RB.std_rb_unrolling import StdRB_unrolling
+from .rb.std_rb_unrolling import std_rb_unrolling
 from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
@@ -57,5 +57,5 @@ class Operation(Enum):
     drag_pulse_tuning = drag_pulse_tuning
     flipping = flipping
     dispersive_shift = dispersive_shift
-    StdRB_unrolling = StdRB_unrolling
+    std_rb_unrolling = std_rb_unrolling
     standard_rb = standard_rb
