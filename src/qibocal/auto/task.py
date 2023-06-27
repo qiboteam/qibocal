@@ -1,7 +1,5 @@
 """Action execution tracker."""
-import os
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Union
 
 from qibolab.platform import Platform
@@ -89,14 +87,7 @@ class Task:
     def update(self):
         return self.action.update
 
-    def datapath(self, base_dir: Path):
-        path = base_dir / "data" / f"{self.id}_{self.iteration}"
-        os.makedirs(path)
-        return path
-
-    def run(
-        self, folder: Path, platform: Platform, qubits: Union[Qubits, QubitsPairs]
-    ) -> Results:
+    def run(self, platform: Platform, qubits: Union[Qubits, QubitsPairs]) -> Results:
         try:
             operation: Routine = self.operation
             parameters = self.parameters
@@ -104,7 +95,6 @@ class Task:
             operation = dummy_operation
             parameters = DummyPars()
 
-        path = self.datapath(folder)
         if operation.platform_dependent and operation.qubits_dependent:
             if len(self.qubits) > 0:
                 if platform is not None:
@@ -115,15 +105,13 @@ class Task:
                 else:
                     qubits = self.qubits
 
-            self.data: Data = operation.acquisition(
+            data: Data = operation.acquisition(
                 parameters, platform=platform, qubits=qubits
             )
             # after acquisition we update the qubit parameter
             self.qubits = list(qubits)
         else:
-            self.data: Data = operation.acquisition(parameters, platform=platform)
-        self.data.save(path)
-
-        results: Results = operation.fit(self.data)
-        results.save(path)
-        return results
+            data: Data = operation.acquisition(parameters, platform=platform)
+        yield data
+        results: Results = operation.fit(data)
+        yield results
