@@ -35,13 +35,13 @@ def data_uncertainties(data, method=None, data_median=None, homogeneous=True):
                 if homogeneous
                 else [np.meadian(row) for row in data]
             )
-        precentile_interval = (
+        percentile_inteval = (
             np.percentile(data, percentiles, axis=1)
             if homogeneous
             else np.array([np.percentile(row, percentiles) for row in data]).T
         )
         uncertainties = np.abs(
-            np.vstack([data_median, data_median]) - precentile_interval
+            np.vstack([data_median, data_median]) - percentile_inteval
         )
         return uncertainties
     return None

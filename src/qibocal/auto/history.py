@@ -1,7 +1,12 @@
 """Track execution history."""
 import copy
+import os
 from dataclasses import dataclass
+from functools import cached_property
+from pathlib import Path
+from typing import Optional
 
+from .operation import Data, Results
 from .runcard import Id
 from .status import Status
 from .task import Task
@@ -21,6 +26,38 @@ class Completed:
 
     """
     status: Status
+    """Protocol status."""
+    folder: Path
+    """Folder with data and results."""
+    _data: Optional[Data] = None
+    """Protocol data."""
+    _results: Optional[Results] = None
+    """Fitting output."""
+
+    @cached_property
+    def datapath(self):
+        path = self.folder / "data" / f"{self.task.id}_{self.task.iteration}"
+        os.makedirs(path)
+        return path
+
+    @property
+    def results(self):
+        return self._results
+
+    @results.setter
+    def results(self, results: Results):
+        self._results = results
+        self._results.save(self.datapath)
+
+    @property
+    def data(self):
+        self._data.save(self.datapath)
+        return self._data
+
+    @data.setter
+    def data(self, data: Data):
+        self._data = data
+        self._data.save(self.datapath)
 
     def __post_init__(self):
         self.task = copy.deepcopy(self.task)

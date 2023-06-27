@@ -53,10 +53,10 @@ class SingleShotClassificationResults(Results):
     """Threshold for classification."""
     rotation_angle: dict[QubitId, float] = field(metadata=dict(update="iq_angle"))
     """Threshold for classification."""
-    mean_gnd_states: dict[QubitId, complex] = field(
+    mean_gnd_states: dict[QubitId, list[float]] = field(
         metadata=dict(update="mean_gnd_states")
     )
-    mean_exc_states: dict[QubitId, complex] = field(
+    mean_exc_states: dict[QubitId, list[float]] = field(
         metadata=dict(update="mean_exc_states")
     )
     fidelity: dict[QubitId, float]
