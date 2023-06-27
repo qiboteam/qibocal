@@ -71,25 +71,24 @@ def _acquisition(
 ) -> OptimalIntegrationWeightsData:
     """Data acquisition for resonator spectroscopy."""
 
-    state0_sequence = PulseSequence()
-    state1_sequence = PulseSequence()
-
-    RX_pulses = {}
-    ro_pulses = {}
-    for qubit in qubits:
-        RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=RX_pulses[qubit].finish
-        )
-
-        state0_sequence.add(ro_pulses[qubit])
-        state1_sequence.add(RX_pulses[qubit])
-        state1_sequence.add(ro_pulses[qubit])
-
     # create a DataUnits object to store the results
     data = OptimalIntegrationWeightsData()
     for state in [0, 1]:
-        sequence = state0_sequence if state == 0 else state1_sequence
+        if state == 1:
+            RX_pulses = {}
+        ro_pulses = {}
+        sequence = PulseSequence()
+        for qubit in qubits:
+            if state == 1:
+                RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
+                ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+                    qubit, start=RX_pulses[qubit].finish
+                )
+                sequence.add(RX_pulses[qubit])
+            else:
+                ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
+                sequence.add(ro_pulses[qubit])
+            sequence.add(ro_pulses[qubit])
         # execute the first pulse sequence
         results = platform.execute_pulse_sequence(
             sequence,
