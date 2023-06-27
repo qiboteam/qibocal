@@ -65,12 +65,13 @@ class ResonatorFluxData(Data):
 
     def register_qubit(self, qubit, freq, bias, msr, phase):
         """Store output for single qubit."""
-        ar = np.empty(msr.shape, dtype=ResFluxType)
+        size = len(freq) * len(bias)
+        ar = np.empty(size, dtype=ResFluxType)
         frequency, biases = np.meshgrid(freq, bias)
-        ar["freq"] = frequency.flatten()
-        ar["bias"] = biases.flatten()
-        ar["msr"] = msr
-        ar["phase"] = phase
+        ar["freq"] = frequency.ravel()
+        ar["bias"] = biases.ravel()
+        ar["msr"] = msr.ravel()
+        ar["phase"] = phase.ravel()
         self.data[qubit] = np.rec.array(ar)
 
 
