@@ -91,7 +91,6 @@ def _acquisition(
                     ro_pulses[qubit] = platform.create_qubit_readout_pulse(
                         qubit, start=0
                     )
-                    sequence.add(ro_pulses[qubit])
                 sequence.add(ro_pulses[qubit])
 
             # execute the pulse sequence
