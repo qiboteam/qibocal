@@ -40,9 +40,6 @@ class FastResetResults(Results):
 FastResetType = np.dtype(
     [
         ("probability", np.float64),
-        ("state", np.int64),
-        ("iteration", np.int64),
-        ("fast_reset", np.int64),
     ]
 )
 """Custom dtype for FastReset."""
@@ -52,21 +49,22 @@ FastResetType = np.dtype(
 class FastResetData(Data):
     """FastReset acquisition outputs."""
 
-    data: dict[QubitId, npt.NDArray[FastResetType]] = field(default_factory=dict)
+    data: dict[tuple[QubitId, int, bool], npt.NDArray[FastResetType]] = field(
+        default_factory=dict
+    )
     """Raw data acquired."""
 
     def register_qubit(self, qubit, probability, state, fast_reset):
         """Store output for single qubit."""
         # to be able to handle the non-sweeper case
-        shape = (1,) if np.isscalar(probability) else probability.shape
-        ar = np.empty(shape, dtype=FastResetType)
+        ar = np.empty(probability.shape, dtype=FastResetType)
         ar["probability"] = probability
-        ar["state"] = state
-        ar["fast_reset"] = fast_reset
         if qubit in self.data:
-            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
+            self.data[qubit, state, fast_reset] = np.rec.array(
+                np.concatenate((self.data[qubit], ar))
+            )
         else:
-            self.data[qubit] = np.rec.array(ar)
+            self.data[qubit, state, fast_reset] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -75,105 +73,47 @@ def _acquisition(
     """Data acquisition for resonator spectroscopy."""
 
     data = FastResetData()
+    for state in [0, 1]:
+        for fast_reset in [True, False]:
+            # Define the pulse sequences
+            if state == 1:
+                RX_pulses = {}
+            ro_pulses = {}
+            sequence = PulseSequence()
+            for qubit in qubits:
+                if state == 1:
+                    RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
+                    ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+                        qubit, start=RX_pulses[qubit].finish
+                    )
+                    sequence.add(RX_pulses[qubit])
+                else:
+                    ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+                        qubit, start=0
+                    )
+                    sequence.add(ro_pulses[qubit])
+                sequence.add(ro_pulses[qubit])
 
-    RX_pulses = {}
-    ro_pulses = {}
-    sequence = PulseSequence()
-    for qubit in qubits:
-        RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=RX_pulses[qubit].finish
-        )
+            # execute the pulse sequence
+            results = platform.execute_pulse_sequence(
+                sequence,
+                ExecutionParameters(
+                    nshots=params.nshots,
+                    relaxation_time=params.relaxation_time,
+                    fast_reset=fast_reset,
+                ),
+            )
 
-        sequence.add(RX_pulses[qubit])
-        sequence.add(ro_pulses[qubit])
-
-    # execute the pulse sequence
-    results = platform.execute_pulse_sequence(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            fast_reset=True,
-        ),
-    )
-
-    for ro_pulse in ro_pulses.values():
-        result = results[ro_pulse.serial]
-        qubit = ro_pulse.qubit
-        data.register_qubit(
-            qubit,
-            probability=result.samples,
-            state=[1] * params.nshots,
-            fast_reset=[1] * params.nshots,
-        )
-
-    results = platform.execute_pulse_sequence(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            fast_reset=False,
-        ),
-    )
-
-    for ro_pulse in ro_pulses.values():
-        result = results[ro_pulse.serial]
-        qubit = ro_pulse.qubit
-        data.register_qubit(
-            qubit,
-            probability=result.samples,
-            state=[1] * params.nshots,
-            fast_reset=[0] * params.nshots,
-        )
-
-    # It's useful to inspect state 0 for things like active initialization
-    ro_pulses = {}
-    sequence = PulseSequence()
-    for qubit in qubits:
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
-        sequence.add(ro_pulses[qubit])
-
-    # execute the pulse sequence
-    results = platform.execute_pulse_sequence(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            fast_reset=True,
-        ),
-    )
-
-    # retrieve and store the results for every qubit
-    for ro_pulse in ro_pulses.values():
-        result = results[ro_pulse.serial]
-        qubit = ro_pulse.qubit
-        data.register_qubit(
-            qubit,
-            probability=result.samples,
-            state=[0] * params.nshots,
-            fast_reset=[1] * params.nshots,
-        )
-
-    results = platform.execute_pulse_sequence(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            fast_reset=False,
-        ),
-    )
-
-    # retrieve and store the results for every qubit
-    for ro_pulse in ro_pulses.values():
-        result = results[ro_pulse.serial]
-        qubit = ro_pulse.qubit
-        data.register_qubit(
-            qubit,
-            probability=result.samples,
-            state=[0] * params.nshots,
-            fast_reset=[0] * params.nshots,
-        )
+            # Save the data
+            for ro_pulse in ro_pulses.values():
+                result = results[ro_pulse.serial]
+                qubit = ro_pulse.qubit
+                data.register_qubit(
+                    qubit,
+                    probability=result.samples,
+                    state=state,
+                    fast_reset=fast_reset,
+                )
 
     return data
 
@@ -204,15 +144,9 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
         ),
     )
 
-    qubit_data = data[qubit]
-
-    truncate_index_state = np.min(np.where(qubit_data.state == 0))
-    state1 = qubit_data[:truncate_index_state]
-    state0 = qubit_data[truncate_index_state:]
-
-    truncate_index = np.min(np.where(state1.fast_reset == 0))
-    fr_states = state1.probability[:truncate_index]
-    nfr_states = state1.probability[truncate_index:]
+    # state 1
+    fr_states = data[qubit, 1, True].probability
+    nfr_states = data[qubit, 1, False].probability
 
     # FIXME crashes if all states are on the same counts
     unique, counts = np.unique(fr_states, return_counts=True)
@@ -225,9 +159,9 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
     state1_count_1nfr = counts[1]
     error_nfr1 = (state1_count_1nfr - state0_count_1nfr) / len(fr_states)
 
-    truncate_index = np.min(np.where(state0.fast_reset == 0))
-    fr_states = state0.probability[:truncate_index]
-    nfr_states = state0.probability[truncate_index:]
+    # state 0
+    fr_states = data[qubit, 0, True].probability
+    nfr_states = data[qubit, 0, False].probability
 
     unique, counts = np.unique(fr_states, return_counts=True)
     state0_count_0fr = counts[0]
