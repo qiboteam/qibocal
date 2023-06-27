@@ -203,7 +203,7 @@ actions:
       n_osc: 10
       nshots: 1024
 
-  - id: ramsey detuned sequences
+  - id: ramsey with unrolling
     priority: 0
     operation: ramsey_unrolling
     parameters:
@@ -237,7 +237,7 @@ actions:
       beta_param: null
       nshots: 10
 
-  - id: allXY
+  - id: allXY with unrolling
     priority: 0
     operation: allxy_unrolling
     parameters:
@@ -327,7 +327,7 @@ actions:
       noise_model: PauliErrorOnX
       noise_params: [0.01, 0.01, 0.01]
 
-  - id: StdRB
+  - id: standard rb with unrolling
     priority: 0
     operation: std_rb_unrolling
     parameters:

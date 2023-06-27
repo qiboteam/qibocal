@@ -10,10 +10,16 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.transpilers.unitary_decompositions import u3_decomposition
 
+from qibocal.protocols.characterization.randomized_benchmarking.fitting import (
+    exp1B_func as rb_fit,
+)
+from qibocal.protocols.characterization.randomized_benchmarking.utils import (
+    SINGLE_QUBIT_CLIFFORDS,
+)
 
-def rb_fit(x, a, p, b):
-    """A*p^x+B fit"""
-    return a * p**x + b
+# def rb_fit(x, a, p, b):
+#     """A*p^x+B fit"""
+#     return a * p**x + b
 
 
 def plot(data, fit, qubit):
@@ -73,11 +79,8 @@ def plot(data, fit, qubit):
         )
 
         fitting_report += f"{qubit} | p: {float(params[1]):.3f}<br>"
-
         fitting_report += f"{qubit} | fidelity primitive: {float(fit.fidelities_primitive[qubit]):.3f}<br>"
-
         fitting_report += f"{qubit} | fidelity: {float(fit.fidelities[qubit]):.3f}<br>"
-
         fitting_report += f"{qubit} | Average error per gate(%): {float(fit.average_errors_gate[qubit]):.3f}<br>"
 
     fig.update_layout(
@@ -90,42 +93,6 @@ def plot(data, fit, qubit):
     figures.append(fig)
 
     return figures, fitting_report
-
-
-# We pick gates according to random number we generated
-SINGLE_QUBIT_CLIFFORDS = {
-    # Virtual gates
-    0: gates.I,
-    1: gates.Z,
-    2: lambda q: gates.RZ(q, np.pi / 2),
-    3: lambda q: gates.RZ(q, -np.pi / 2),
-    # pi rotations
-    4: gates.X,  # U3(q, np.pi, 0, np.pi),
-    5: gates.Y,  # U3(q, np.pi, 0, 0),
-    # pi/2 rotations
-    6: lambda q: gates.RX(q, np.pi / 2),  # U3(q, np.pi / 2, -np.pi / 2, np.pi / 2),
-    7: lambda q: gates.RX(q, -np.pi / 2),  # U3(q, -np.pi / 2, -np.pi / 2, np.pi / 2),
-    8: lambda q: gates.RY(q, np.pi / 2),  # U3(q, np.pi / 2, 0, 0),
-    9: lambda q: gates.RY(q, -np.pi / 2),  # U3(q, -np.pi / 2, 0, 0),
-    # 2pi/3 rotations
-    10: lambda q: gates.U3(q, np.pi / 2, -np.pi / 2, 0),  # Rx(pi/2)Ry(pi/2)
-    11: lambda q: gates.U3(q, np.pi / 2, -np.pi / 2, np.pi),  # Rx(pi/2)Ry(-pi/2)
-    12: lambda q: gates.U3(q, np.pi / 2, np.pi / 2, 0),  # Rx(-pi/2)Ry(pi/2)
-    13: lambda q: gates.U3(q, np.pi / 2, np.pi / 2, -np.pi),  # Rx(-pi/2)Ry(-pi/2)
-    14: lambda q: gates.U3(q, np.pi / 2, 0, np.pi / 2),  # Ry(pi/2)Rx(pi/2)
-    15: lambda q: gates.U3(q, np.pi / 2, 0, -np.pi / 2),  # Ry(pi/2)Rx(-pi/2)
-    16: lambda q: gates.U3(q, np.pi / 2, -np.pi, np.pi / 2),  # Ry(-pi/2)Rx(pi/2)
-    17: lambda q: gates.U3(q, np.pi / 2, np.pi, -np.pi / 2),  # Ry(-pi/2)Rx(-pi/2)
-    # Hadamard-like
-    18: lambda q: gates.U3(q, np.pi / 2, -np.pi, 0),  # X Ry(pi/2)
-    19: lambda q: gates.U3(q, np.pi / 2, 0, np.pi),  # X Ry(-pi/2)
-    20: lambda q: gates.U3(q, np.pi / 2, np.pi / 2, np.pi / 2),  # Y Rx(pi/2)
-    21: lambda q: gates.U3(q, np.pi / 2, -np.pi / 2, -np.pi / 2),  # Y Rx(pi/2)
-    22: lambda q: gates.U3(q, np.pi, -np.pi / 4, np.pi / 4),  # Rx(pi/2)Ry(pi/2)Rx(pi/2)
-    23: lambda q: gates.U3(
-        q, np.pi, np.pi / 4, -np.pi / 4
-    ),  # Rx(-pi/2)Ry(pi/2)Rx(-pi/2)
-}
 
 
 class RBSequence:

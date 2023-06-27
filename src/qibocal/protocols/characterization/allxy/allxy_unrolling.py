@@ -5,34 +5,7 @@ from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Qubits, Routine
 
-from .allxy import AllXYData, AllXYParameters, _fit, _plot
-
-# from qibocal.data import Data
-
-
-gatelist = [
-    ["I", "I"],
-    ["RX(pi)", "RX(pi)"],
-    ["RY(pi)", "RY(pi)"],
-    ["RX(pi)", "RY(pi)"],
-    ["RY(pi)", "RX(pi)"],
-    ["RX(pi/2)", "I"],
-    ["RY(pi/2)", "I"],
-    ["RX(pi/2)", "RY(pi/2)"],
-    ["RY(pi/2)", "RX(pi/2)"],
-    ["RX(pi/2)", "RY(pi)"],
-    ["RY(pi/2)", "RX(pi)"],
-    ["RX(pi)", "RY(pi/2)"],
-    ["RY(pi)", "RX(pi/2)"],
-    ["RX(pi/2)", "RX(pi)"],
-    ["RX(pi)", "RX(pi/2)"],
-    ["RY(pi/2)", "RY(pi)"],
-    ["RY(pi)", "RY(pi/2)"],
-    ["RX(pi)", "I"],
-    ["RY(pi)", "I"],
-    ["RX(pi/2)", "RX(pi/2)"],
-    ["RY(pi/2)", "RY(pi/2)"],
-]
+from .allxy import AllXYData, AllXYParameters, _fit, _plot, gatelist
 
 
 def _acquisition(

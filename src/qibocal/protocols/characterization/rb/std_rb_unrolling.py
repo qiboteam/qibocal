@@ -1,4 +1,3 @@
-import json
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
@@ -79,11 +78,6 @@ class StdRBData(Data):
             self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
         else:
             self.data[qubit] = np.rec.array(ar)
-
-    # Overwrite save to get the sequences in the JSON and data in npz
-    def save(self, path):
-        self.to_npz(path)
-        (path / "sequences.json").write_text(json.dumps(self.sequences, indent=4))
 
 
 def _acquisition(
