@@ -56,15 +56,9 @@ class FastResetData(Data):
 
     def register_qubit(self, qubit, probability, state, fast_reset):
         """Store output for single qubit."""
-        # to be able to handle the non-sweeper case
         ar = np.empty(probability.shape, dtype=FastResetType)
         ar["probability"] = probability
-        if qubit in self.data:
-            self.data[qubit, state, fast_reset] = np.rec.array(
-                np.concatenate((self.data[qubit], ar))
-            )
-        else:
-            self.data[qubit, state, fast_reset] = np.rec.array(ar)
+        self.data[qubit, state, fast_reset] = np.rec.array(ar)
 
 
 def _acquisition(
