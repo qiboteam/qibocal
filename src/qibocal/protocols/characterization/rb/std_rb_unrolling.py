@@ -181,7 +181,7 @@ def _fit(data: StdRBData) -> StdRBResults:
         pguess = [a_guess, p_guess, b_guess]
         try:
             popt, pcov = curve_fit(
-                utils.RB_fit,
+                utils.rb_fit,
                 x,
                 y,
                 p0=pguess,
