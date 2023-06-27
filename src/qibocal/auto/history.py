@@ -2,7 +2,6 @@
 import copy
 from dataclasses import dataclass
 
-from .operation import Results
 from .runcard import Id
 from .status import Status
 from .task import Task
@@ -21,8 +20,6 @@ class Completed:
         be added
 
     """
-    res: Results
-    """An object containing result parameters."""
     status: Status
 
     def __post_init__(self):

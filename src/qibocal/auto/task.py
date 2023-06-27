@@ -93,6 +93,10 @@ class Task:
     def data(self):
         return self._data
 
+    @property
+    def results(self):
+        return self._results
+
     def datapath(self, base_dir: Path):
         path = base_dir / "data" / f"{self.id}_{self.iteration}"
         os.makedirs(path)
@@ -127,4 +131,7 @@ class Task:
         else:
             self._data: Data = operation.acquisition(parameters, platform=platform)
         self._data.save(path)
-        return operation.fit(self._data)
+
+        self._results: Results = operation.fit(self._data)
+        self._results.save(path)
+        return self._results

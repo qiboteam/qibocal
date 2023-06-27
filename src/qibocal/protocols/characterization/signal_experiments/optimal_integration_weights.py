@@ -1,15 +1,16 @@
-from dataclasses import dataclass
-from typing import Dict, Optional, Union
+from dataclasses import dataclass, field
+from typing import Optional
 
 import numpy as np
+import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.data import DataUnits
+from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
 
 @dataclass
@@ -26,21 +27,44 @@ class OptimalIntegrationWeightsParameters(Parameters):
 class OptimalIntegrationWeightsResults(Results):
     """OptimalIntegrationWeights outputs."""
 
-    optimal_integration_weights: Dict[Union[str, int], float]
+    optimal_integration_weights: dict[QubitId, dict[str, float]]
     """
     Optimal integration weights for a qubit given by amplifying the parts of the
     signal acquired which maximally distinguish between state 1 and 0.
     """
 
+    def save(self, path):
+        for q in self.optimal_integration_weights.keys():
+            # """Helper function to use np.savez while converting keys into strings."""
+            np.savez(
+                path / f"optimal_integration_weights_q{q}.npz",
+                self.optimal_integration_weights[q],
+            )
 
-class OptimalIntegrationWeightsData(DataUnits):
+
+OptimalIntegrationWeightsType = np.dtype(
+    [("samples", np.complex128), ("state", np.int64)]
+)
+
+
+@dataclass
+class OptimalIntegrationWeightsData(Data):
     """OptimalIntegrationWeights acquisition outputs."""
 
-    def __init__(self):
-        super().__init__(
-            "data",
-            options=["qubit", "sample", "state"],
-        )
+    data: dict[QubitId, npt.NDArray[OptimalIntegrationWeightsType]] = field(
+        default_factory=dict
+    )
+    """Raw data acquired."""
+
+    def register_qubit(self, qubit, samples, state):
+        """Store output for single qubit."""
+        ar = np.empty(samples.shape, dtype=OptimalIntegrationWeightsType)
+        ar["samples"] = samples
+        ar["state"] = state
+        if qubit in self.data:
+            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
+        else:
+            self.data[qubit] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -64,12 +88,6 @@ def _acquisition(
         state1_sequence.add(ro_pulses[qubit])
 
     # create a DataUnits object to store the results
-    data = DataUnits(
-        name="data",
-        quantities={"weights": "dimensionless"},
-        options=["qubit", "sample", "state"],
-    )
-
     data = OptimalIntegrationWeightsData()
 
     # execute the first pulse sequence
@@ -85,16 +103,11 @@ def _acquisition(
 
     # retrieve and store the results for every qubit
     for qubit in qubits:
-        r = state0_results[ro_pulses[qubit].serial].serialize
-        number_of_samples = len(r["MSR[V]"])
-        r.update(
-            {
-                "qubit": [qubit] * number_of_samples,
-                "sample": np.arange(number_of_samples),
-                "state": [0] * number_of_samples,
-            }
+        samples = (
+            state0_results[ro_pulses[qubit].serial].voltage_i
+            + 1j * state0_results[ro_pulses[qubit].serial].voltage_q
         )
-        data.add_data_from_dict(r)
+        data.register_qubit(qubit, samples, [0] * len(samples))
 
     # execute the second pulse sequence
     state1_results = platform.execute_pulse_sequence(
@@ -108,17 +121,11 @@ def _acquisition(
     )
     # retrieve and store the results for every qubit
     for qubit in qubits:
-        # average msr, phase, i and q over the number of shots defined in the runcard
-        r = state1_results[ro_pulses[qubit].serial].serialize
-        number_of_samples = len(r["MSR[V]"])
-        r.update(
-            {
-                "qubit": [qubit] * number_of_samples,
-                "sample": np.arange(number_of_samples),
-                "state": [1] * number_of_samples,
-            }
+        samples = (
+            state1_results[ro_pulses[qubit].serial].voltage_i
+            + 1j * state1_results[ro_pulses[qubit].serial].voltage_q
         )
-        data.add_data_from_dict(r)
+        data.register_qubit(qubit, samples, [1] * len(samples))
 
     return data
 
@@ -126,30 +133,17 @@ def _acquisition(
 def _fit(data: OptimalIntegrationWeightsData) -> OptimalIntegrationWeightsResults:
     """Post-processing function for OptimalIntegrationWeights."""
 
-    qubits = data.df["qubit"].unique()
+    qubits = data.qubits
 
     # np.conj to account the two phase-space evolutions of the readout state
-    integration_weights = {}
+    optimal_integration_weights = {}
 
     for qubit in qubits:
-        qubit_data_df = data.df[data.df["qubit"] == qubit]
+        qubit_data = data[qubit]
 
-        qubit_state0_data_df = qubit_data_df[qubit_data_df["state"] == 0]
-        qubit_state1_data_df = qubit_data_df[qubit_data_df["state"] == 1]
-
-        state0 = (
-            qubit_state0_data_df["i"].pint.to("uV").pint.magnitude
-            + 1j * qubit_state0_data_df["q"].pint.to("uV").pint.magnitude
-        )
-        state1 = (
-            qubit_state1_data_df["i"].pint.to("uV").pint.magnitude
-            + 1j * qubit_state1_data_df["q"].pint.to("uV").pint.magnitude
-        )
-
-        number_of_samples = len(qubit_state0_data_df["i"].pint.to("uV").pint.magnitude)
-
-        state0 = state0.to_numpy()
-        state1 = state1.to_numpy()
+        truncate_index_state = np.min(np.where(qubit_data.state == 1))
+        state0 = qubit_data[:truncate_index_state].samples
+        state1 = qubit_data[truncate_index_state:].samples
 
         samples_kernel = np.conj(state1 - state0)
         # Remove nans
@@ -162,9 +156,9 @@ def _fit(data: OptimalIntegrationWeightsData) -> OptimalIntegrationWeightsResult
             samples_kernel_origin / np.abs(samples_kernel_origin).max()
         )  # normalized
 
-        integration_weights[qubit] = abs(samples_kernel_normalized)
+        optimal_integration_weights[qubit] = abs(samples_kernel_normalized)
 
-    return OptimalIntegrationWeightsResults(integration_weights)
+    return OptimalIntegrationWeightsResults(optimal_integration_weights)
 
 
 def _plot(
