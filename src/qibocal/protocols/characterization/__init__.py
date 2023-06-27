@@ -25,6 +25,7 @@ from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
 from .resonator_spectroscopy_attenuation import resonator_spectroscopy_attenuation
 from .signal_experiments.optimal_integration_weights import optimal_integration_weights
+from .signal_experiments.time_of_flight_readout import time_of_flight_readout
 
 
 class Operation(Enum):
@@ -44,6 +45,7 @@ class Operation(Enum):
     t1_sequences = t1_sequences
     t2 = t2
     t2_sequences = t2_sequences
+    time_of_flight_readout = time_of_flight_readout
     single_shot_classification = single_shot_classification
     spin_echo = spin_echo
     allxy = allxy

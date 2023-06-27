@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
@@ -38,11 +38,11 @@ class QubitFluxParameters(Parameters):
 class QubitFluxResults(Results):
     """QubitFlux outputs."""
 
-    sweetspot: Dict[QubitId, float] = field(metadata=dict(update="sweetspot"))
+    sweetspot: dict[QubitId, float] = field(metadata=dict(update="sweetspot"))
     """Sweetspot for each qubit."""
-    frequency: Dict[QubitId, float] = field(metadata=dict(update="drive_frequency"))
+    frequency: dict[QubitId, float] = field(metadata=dict(update="drive_frequency"))
     """Drive frequency for each qubit."""
-    fitted_parameters: Dict[QubitId, Dict[str, float]]
+    fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
 
 

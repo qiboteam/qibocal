@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -13,6 +13,8 @@ from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
+
+from .utils import GHZ_TO_HZ, HZ_TO_GHZ, V_TO_UV
 
 
 @dataclass
@@ -38,13 +40,13 @@ class RamseyParameters(Parameters):
 class RamseyResults(Results):
     """Ramsey outputs."""
 
-    frequency: Dict[QubitId, float] = field(metadata=dict(update="drive_frequency"))
+    frequency: dict[QubitId, float] = field(metadata=dict(update="drive_frequency"))
     """Drive frequency [GHz] for each qubit."""
-    t2: Dict[QubitId, float]
+    t2: dict[QubitId, float]
     """T2 for each qubit [ns]."""
-    delta_phys: Dict[QubitId, float]
+    delta_phys: dict[QubitId, float]
     """Drive frequency [Hz] correction for each qubit."""
-    fitted_parameters: Dict[QubitId, Dict[str, float]]
+    fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
 
 
@@ -64,13 +66,14 @@ class RamseyData(Data):
     """Final delay between RX(pi/2) pulses in ns."""
     detuning_sign: int
     """Sign for induced detuning."""
-    qubit_freqs: Dict[QubitId, float] = field(default_factory=dict)
+    qubit_freqs: dict[QubitId, float] = field(default_factory=dict)
     """Qubit freqs for each qubit."""
-    data: Dict[QubitId, npt.NDArray[RamseyType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[RamseyType]] = field(default_factory=dict)
     """Raw data acquired."""
 
     def register_qubit(self, qubit, wait, msr, phase):
         """Store output for single qubit."""
+        # to be able to handle the non-sweeper case
         shape = (1,) if np.isscalar(wait) else wait.shape
         ar = np.empty(shape, dtype=RamseyType)
         ar["wait"] = wait
@@ -209,7 +212,7 @@ def _fit(data: RamseyData) -> RamseyResults:
 
     for qubit in qubits:
         qubit_data = data[qubit]
-        voltages = qubit_data.msr
+        voltages = qubit_data.msr * V_TO_UV
         times = qubit_data.wait
         qubit_freq = data.qubit_freqs[qubit]
 
@@ -253,7 +256,7 @@ def _fit(data: RamseyData) -> RamseyResults:
             ]
             delta_fitting = popt[2] / (2 * np.pi)
             delta_phys = data.detuning_sign * int(
-                (delta_fitting - data.n_osc / data.t_max) * 1e9
+                (delta_fitting - data.n_osc / data.t_max) * GHZ_TO_HZ
             )
             # FIXME: for qblox the correct formula is the following (there is a bug related to the phase)
             # corrected_qubit_frequency = int(qubit_freq + delta_phys)
@@ -269,7 +272,7 @@ def _fit(data: RamseyData) -> RamseyResults:
             delta_phys = 0
 
         fitted_parameters[qubit] = popt
-        corrected_qubit_frequencies[qubit] = corrected_qubit_frequency / 1e9
+        corrected_qubit_frequencies[qubit] = corrected_qubit_frequency * HZ_TO_GHZ
         t2s[qubit] = t2
         freqs_detuning[qubit] = delta_phys
 
@@ -289,7 +292,7 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
     fig.add_trace(
         go.Scatter(
             x=qubit_data.wait,
-            y=qubit_data.msr * 1e6,
+            y=qubit_data.msr * V_TO_UV,
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -314,8 +317,7 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
                 float(fit.fitted_parameters[qubit][2]),
                 float(fit.fitted_parameters[qubit][3]),
                 float(fit.fitted_parameters[qubit][4]),
-            )
-            * 1e6,
+            ),
             name="Fit",
             line=go.scatter.Line(dash="dot"),
         )
@@ -323,7 +325,7 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
     fitting_report = (
         fitting_report
         + (f"{qubit} | Delta_frequency: {fit.delta_phys[qubit]:,.1f} Hz<br>")
-        + (f"{qubit} | Drive_frequency: {fit.frequency[qubit] * 1e9} Hz<br>")
+        + (f"{qubit} | Drive_frequency: {fit.frequency[qubit] * GHZ_TO_HZ} Hz<br>")
         + (f"{qubit} | T2: {fit.t2[qubit]:,.0f} ns.<br><br>")
     )
 

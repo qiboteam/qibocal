@@ -2,14 +2,22 @@
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List
+from typing import Union
 
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
 from ..protocols.characterization import Operation
-from ..utils import allocate_qubits
-from .operation import Data, DummyPars, Qubits, Results, Routine, dummy_operation
+from ..utils import allocate_qubits_pairs, allocate_single_qubits
+from .operation import (
+    Data,
+    DummyPars,
+    Qubits,
+    QubitsPairs,
+    Results,
+    Routine,
+    dummy_operation,
+)
 from .runcard import Action, Id
 
 MAX_PRIORITY = int(1e9)
@@ -27,7 +35,7 @@ TaskId = tuple[Id, int]
 class Task:
     action: Action
     iteration: int = 0
-    qubits: List[QubitId] = field(default_factory=list)
+    qubits: list[QubitId] = field(default_factory=list)
 
     def __post_init__(self):
         if len(self.qubits) == 0:
@@ -59,7 +67,7 @@ class Task:
         return self.action.main
 
     @property
-    def next(self) -> List[Id]:
+    def next(self) -> list[Id]:
         if self.action.next is None:
             return []
         if isinstance(self.action.next, str):
@@ -90,7 +98,9 @@ class Task:
         os.makedirs(path)
         return path
 
-    def run(self, folder: Path, platform: Platform, qubits: Qubits) -> Results:
+    def run(
+        self, folder: Path, platform: Platform, qubits: Union[Qubits, QubitsPairs]
+    ) -> Results:
         try:
             operation: Routine = self.operation
             parameters = self.parameters
@@ -100,20 +110,21 @@ class Task:
 
         path = self.datapath(folder)
         if operation.platform_dependent and operation.qubits_dependent:
-            if platform is not None:
-                if len(self.qubits) > 0:
-                    qubits = allocate_qubits(platform, self.qubits)
+            if len(self.qubits) > 0:
+                if platform is not None:
+                    if any(isinstance(i, tuple) for i in self.qubits):
+                        qubits = allocate_qubits_pairs(platform, self.qubits)
+                    else:
+                        qubits = allocate_single_qubits(platform, self.qubits)
+                else:
+                    qubits = self.qubits
 
             self._data: Data = operation.acquisition(
                 parameters, platform=platform, qubits=qubits
             )
             # after acquisition we update the qubit parameter
             self.qubits = list(qubits)
-
         else:
             self._data: Data = operation.acquisition(parameters, platform=platform)
         self._data.save(path)
-
-        results = operation.fit(self._data)
-        results.save(path)
-        return results
+        return operation.fit(self._data)

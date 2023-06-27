@@ -2,6 +2,8 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+from ..utils import V_TO_UV
+
 
 def rabi_amplitude_fit(x, p0, p1, p2, p3):
     # A fit to Superconducting Qubit Rabi Oscillation
@@ -53,7 +55,7 @@ def plot(data, fit, qubit):
     fig.add_trace(
         go.Scatter(
             x=rabi_parameters,
-            y=qubit_data.msr * 1e6,
+            y=qubit_data.msr * V_TO_UV,
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -84,7 +86,7 @@ def plot(data, fit, qubit):
     fig.add_trace(
         go.Scatter(
             x=rabi_parameter_range,
-            y=fitting(rabi_parameter_range, *params) * 1e6,
+            y=fitting(rabi_parameter_range, *params) * V_TO_UV,
             name="Fit",
             line=go.scatter.Line(dash="dot"),
             marker_color="rgb(255, 130, 67)",
