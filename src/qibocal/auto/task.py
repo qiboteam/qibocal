@@ -1,10 +1,11 @@
 """Action execution tracker."""
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List
+from typing import Union
 
 from qibolab.platform import Platform
+from qibolab.qubits import QubitId
 
 from ..protocols.characterization import Operation
 from ..utils import allocate_qubits_pairs, allocate_single_qubits
@@ -26,9 +27,6 @@ But not so insanely big not to fit in a native integer.
 
 """
 
-DATAFILE = "data.csv"
-"""Name of the file where data acquired by calibration are dumped."""
-
 TaskId = tuple[Id, int]
 """Unique identifier for executed tasks."""
 
@@ -37,6 +35,11 @@ TaskId = tuple[Id, int]
 class Task:
     action: Action
     iteration: int = 0
+    qubits: list[QubitId] = field(default_factory=list)
+
+    def __post_init__(self):
+        if len(self.qubits) == 0:
+            self.qubits = self.action.qubits
 
     @classmethod
     def load(cls, card: dict):
@@ -64,7 +67,7 @@ class Task:
         return self.action.main
 
     @property
-    def next(self) -> List[Id]:
+    def next(self) -> list[Id]:
         if self.action.next is None:
             return []
         if isinstance(self.action.next, str):
@@ -83,10 +86,6 @@ class Task:
         return self.operation.parameters_type.load(self.action.parameters)
 
     @property
-    def qubits(self):
-        return self.action.qubits
-
-    @property
     def update(self):
         return self.action.update
 
@@ -99,7 +98,9 @@ class Task:
         os.makedirs(path)
         return path
 
-    def run(self, folder: Path, platform: Platform, qubits: Qubits) -> Results:
+    def run(
+        self, folder: Path, platform: Platform, qubits: Union[Qubits, QubitsPairs]
+    ) -> Results:
         try:
             operation: Routine = self.operation
             parameters = self.parameters
@@ -108,22 +109,22 @@ class Task:
             parameters = DummyPars()
 
         path = self.datapath(folder)
-
         if operation.platform_dependent and operation.qubits_dependent:
-            if self.qubits:
-                if isinstance(self.qubits, Qubits):
-                    qubits = allocate_single_qubits(platform, self.qubits)
-                elif isinstance(self.qubits, QubitsPairs):
-                    qubits = allocate_qubits_pairs(platform, self.qubits)
+            if len(self.qubits) > 0:
+                if platform is not None:
+                    if any(isinstance(i, tuple) for i in self.qubits):
+                        qubits = allocate_qubits_pairs(platform, self.qubits)
+                    else:
+                        qubits = allocate_single_qubits(platform, self.qubits)
+                else:
+                    qubits = self.qubits
 
             self._data: Data = operation.acquisition(
                 parameters, platform=platform, qubits=qubits
             )
+            # after acquisition we update the qubit parameter
+            self.qubits = list(qubits)
         else:
-            self._data: Data = operation.acquisition(
-                parameters,
-            )
-        self._data.to_csv(path)
-        # TODO: data dump
-        # path.write_text(yaml.dump(pydantic_encoder(self.data(base_dir))))
+            self._data: Data = operation.acquisition(parameters, platform=platform)
+        self._data.save(path)
         return operation.fit(self._data)
