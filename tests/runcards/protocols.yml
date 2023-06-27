@@ -2,6 +2,13 @@
 
 actions:
 
+  - id: time of flight
+    priority: 0
+    operation: time_of_flight_readout
+    parameters:
+      nshots: 1024
+      readout_amplitude: 0.5
+
   - id: resonator high power high amplitude
     priority: 0
     operation: resonator_spectroscopy
@@ -270,17 +277,31 @@ actions:
       nshots: 10
 
 
-  - id: standard rb
+  - id: standard rb no error
     priority: 0
     operation: standard_rb
-    qubits: [0]
     parameters:
-      depths: [1,3,5,10]
+      depths:
+        start: 1
+        stop: 10
+        step: 2
       niter: 2
-      nshots: 128
+      nshots: 50
+      uncertainties: None
+      n_bootstrap: 0
 
+  - id: standard rb bootstrap
+    priority: 0
+    operation: standard_rb
+    qubits: [1]
+    parameters:
+      depths: [1, 2, 3, 5]
+      niter: 5
+      nshots: 50
+      n_bootstrap: 10
+      noise_model: PauliErrorOnAll
 
-  - id: standard rb noise
+  - id: standard rb inhomogeneous
     priority: 0
     operation: standard_rb
     qubits: [0, 1, 3]

@@ -10,6 +10,7 @@ from qibocal.protocols.characterization.randomized_benchmarking import (
 )
 from qibocal.protocols.characterization.randomized_benchmarking.utils import (
     extract_from_data,
+    number_to_str,
     random_clifford,
 )
 
@@ -169,6 +170,19 @@ def test_random_clifford(qubits, seed):
     gates = random_clifford(qubits, seed=seed)
     matrix = reduce(np.kron, [gate.matrix for gate in gates])
     assert np.allclose(matrix, result)
+
+
+@pytest.mark.parametrize("value", [0.555555, 2, -0.1 + 0.1j])
+def test_number_to_str(value):
+    assert number_to_str(value) == f"{value:.3f}"
+    assert number_to_str(value, [None, None]) == f"{value:.3f}"
+    assert number_to_str(value, 0.0123) == f"{value:.3f} \u00B1 0.012"
+    assert number_to_str(value, [0.0123, 0.012]) == f"{value:.3f} \u00B1 0.012"
+    assert number_to_str(value, 0.1 + 0.02j) == f"{value:.3f} \u00B1 0.100+0.020j"
+    assert number_to_str(value, [0.203, 0.001]) == f"{value:.4f} +0.0010 / -0.2030"
+    assert (
+        number_to_str(value, [float("inf"), float("inf")]) == f"{value:.3f} \u00B1 inf"
+    )
 
 
 def test_extract_from_data():

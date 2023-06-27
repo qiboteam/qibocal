@@ -28,7 +28,9 @@ class Action:
     """Alternative subsequent actions, branching from the current one."""
     priority: Optional[int] = None
     """Priority level, determining the execution order."""
-    qubits: list[QubitId] = Field(default_factory=list)
+    qubits: Union[list[QubitId], list[tuple[QubitId, QubitId]]] = Field(
+        default_factory=list
+    )
     """Local qubits (optional)."""
     update: bool = True
     """Runcard update mechanism."""
@@ -45,7 +47,7 @@ class Runcard:
     """Structure of an execution runcard."""
 
     actions: list[Action]
-    qubits: list[QubitId] = Field(default_facotry=list)
+    qubits: Union[list[QubitId], list[tuple[QubitId, QubitId]]]
     backend: str = "qibolab"
     platform: str = "dummy"
     # TODO: pass custom runcard (?)
