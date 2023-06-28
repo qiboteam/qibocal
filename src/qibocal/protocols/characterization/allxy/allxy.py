@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -38,7 +38,7 @@ class AllXYData(Data):
 
     beta_param: float = None
     """Beta parameter for drag pulse."""
-    data: Dict[QubitId, npt.NDArray[AllXYType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[AllXYType]] = field(default_factory=dict)
     """Raw data acquired."""
 
     def register_qubit(self, qubit, prob, gate):
@@ -50,10 +50,6 @@ class AllXYData(Data):
             self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
         else:
             self.data[qubit] = np.rec.array(ar)
-
-    def save(self, path):
-        """Store results."""
-        self.to_npz(path, self.data)
 
 
 gatelist = [

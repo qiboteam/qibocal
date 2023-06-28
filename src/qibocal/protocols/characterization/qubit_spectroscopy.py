@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
@@ -36,13 +36,13 @@ class QubitSpectroscopyParameters(Parameters):
 class QubitSpectroscopyResults(Results):
     """QubitSpectroscopy outputs."""
 
-    frequency: Dict[QubitId, Dict[str, float]] = field(
+    frequency: dict[QubitId, dict[str, float]] = field(
         metadata=dict(update="drive_frequency")
     )
     """Drive frequecy [GHz] for each qubit."""
-    amplitude: Dict[QubitId, float]
+    amplitude: dict[QubitId, float]
     """Input drive amplitude. Same for all qubits."""
-    fitted_parameters: Dict[QubitId, Dict[str, float]]
+    fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
 
 

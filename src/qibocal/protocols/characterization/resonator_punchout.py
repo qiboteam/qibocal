@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from statistics import mode
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -15,7 +15,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 
-from . import utils
+from .utils import GHZ_TO_HZ, HZ_TO_GHZ, V_TO_UV, norm
 
 
 @dataclass
@@ -44,15 +44,15 @@ class ResonatorPunchoutParameters(Parameters):
 class ResonatorPunchoutResults(Results):
     """ResonatorPunchout outputs."""
 
-    readout_frequency: Dict[QubitId, float] = field(
+    readout_frequency: dict[QubitId, float] = field(
         metadata=dict(update="readout_frequency")
     )
     """Readout frequency [GHz] for each qubit."""
-    readout_amplitude: Dict[QubitId, float] = field(
+    readout_amplitude: dict[QubitId, float] = field(
         metadata=dict(update="readout_amplitude")
     )
     """Readout amplitude for each qubit."""
-    bare_frequency: Optional[Dict[QubitId, float]] = field(
+    bare_frequency: Optional[dict[QubitId, float]] = field(
         metadata=dict(update="bare_resonator_frequency")
     )
     """Bare resonator frequency [GHz] for each qubit."""
@@ -75,19 +75,20 @@ class ResonatorPunchoutData(Data):
 
     resonator_type: str
     """Resonator type."""
-    amplitudes: Dict[QubitId, float]
+    amplitudes: dict[QubitId, float]
     """Amplitudes provided by the user."""
-    data: Dict[QubitId, npt.NDArray[ResPunchoutType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[ResPunchoutType]] = field(default_factory=dict)
     """Raw data acquired."""
 
     def register_qubit(self, qubit, freq, amp, msr, phase):
         """Store output for single qubit."""
-        ar = np.empty(msr.shape, dtype=ResPunchoutType)
+        size = len(freq) * len(amp)
         frequency, amplitude = np.meshgrid(freq, amp)
-        ar["freq"] = frequency.flatten()
-        ar["amp"] = amplitude.flatten()
-        ar["msr"] = msr
-        ar["phase"] = phase
+        ar = np.empty(size, dtype=ResPunchoutType)
+        ar["freq"] = frequency.ravel()
+        ar["amp"] = amplitude.ravel()
+        ar["msr"] = msr.ravel()
+        ar["phase"] = phase.ravel()
         self.data[qubit] = np.rec.array(ar)
 
 
@@ -165,7 +166,7 @@ def _acquisition(
             msr=result.magnitude,
             phase=result.phase,
             freq=delta_frequency_range + ro_pulse.frequency,
-            amp=amplitude_range,
+            amp=amplitude_range * amplitudes[qubit],
         )
 
     return data
@@ -186,7 +187,7 @@ def _fit(data: ResonatorPunchoutData, fit_type="amp") -> ResonatorPunchoutResult
             n_amps = len(np.unique(qubit_data.amp))
             n_freq = len(np.unique(qubit_data.freq))
             for i in range(n_amps):
-                qubit_data.msr[i * n_freq : (i + 1) * n_freq] = utils.norm(
+                qubit_data.msr[i * n_freq : (i + 1) * n_freq] = norm(
                     qubit_data.msr[i * n_freq : (i + 1) * n_freq]
                 )
 
@@ -220,8 +221,8 @@ def _fit(data: ResonatorPunchoutData, fit_type="amp") -> ResonatorPunchoutResult
             freq_hp = 0.0
             ro_amp = 0.0
 
-        dressed_freqs[qubit] = freq_lp / 1e9
-        bare_freqs[qubit] = freq_hp / 1e9
+        dressed_freqs[qubit] = freq_lp * HZ_TO_GHZ
+        bare_freqs[qubit] = freq_hp * HZ_TO_GHZ
         ro_amplitudes[qubit] = ro_amp
 
     return ResonatorPunchoutResults(
@@ -248,19 +249,19 @@ def _plot(data: ResonatorPunchoutData, qubit, fit: ResonatorPunchoutResults = No
     )
 
     qubit_data = data[qubit]
-    frequencies = qubit_data.freq / 1e9
+    frequencies = qubit_data.freq * HZ_TO_GHZ
     amplitudes = qubit_data.amp
     n_amps = len(np.unique(qubit_data.amp))
     n_freq = len(np.unique(qubit_data.freq))
     for i in range(n_amps):
-        qubit_data.msr[i * n_freq : (i + 1) * n_freq] = utils.norm(
+        qubit_data.msr[i * n_freq : (i + 1) * n_freq] = norm(
             qubit_data.msr[i * n_freq : (i + 1) * n_freq]
         )
     fig.add_trace(
         go.Heatmap(
             x=frequencies,
             y=amplitudes,
-            z=qubit_data.msr * 1e6,
+            z=qubit_data.msr * V_TO_UV,
             colorbar_x=0.46,
         ),
         row=1,
@@ -299,8 +300,8 @@ def _plot(data: ResonatorPunchoutData, qubit, fit: ResonatorPunchoutResults = No
             )
         )
         title_text = ""
-        title_text += f"{qubit} | Resonator frequency at low power:  {fit.readout_frequency[qubit]*1e9:,.0f} Hz<br>"
-        title_text += f"{qubit} | Resonator frequency at high power: {fit.bare_frequency[qubit]*1e9:,.0f} Hz<br>"
+        title_text += f"{qubit} | Resonator frequency at low power:  {fit.readout_frequency[qubit]*GHZ_TO_HZ:,.0f} Hz<br>"
+        title_text += f"{qubit} | Resonator frequency at high power: {fit.bare_frequency[qubit]*GHZ_TO_HZ:,.0f} Hz<br>"
         title_text += f"{qubit} | Readout amplitude at low power: {fit.readout_amplitude[qubit]:,.3f} <br>"
 
         fitting_report = fitting_report + title_text

@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
@@ -10,6 +10,7 @@ from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
+from ..utils import V_TO_UV
 from .t1 import T1Data
 from .utils import exp_decay, exponential_fit
 
@@ -34,9 +35,9 @@ class SpinEchoParameters(Parameters):
 class SpinEchoResults(Results):
     """SpinEcho outputs."""
 
-    t2_spin_echo: Dict[QubitId, float] = field(metadata=dict(update="t2_spin_echo"))
+    t2_spin_echo: dict[QubitId, float] = field(metadata=dict(update="t2_spin_echo"))
     """T2 echo for each qubit."""
-    fitted_parameters: Dict[QubitId, Dict[str, float]]
+    fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
 
 
@@ -133,7 +134,7 @@ def _plot(data: SpinEchoData, qubit, fit: SpinEchoResults = None):
     fig.add_trace(
         go.Scatter(
             x=waits,
-            y=qubit_data.msr * 1e6,
+            y=qubit_data.msr * V_TO_UV,
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -153,7 +154,7 @@ def _plot(data: SpinEchoData, qubit, fit: SpinEchoResults = None):
         fig.add_trace(
             go.Scatter(
                 x=waitrange,
-                y=exp_decay(waitrange, *params) * 1e6,
+                y=exp_decay(waitrange, *params) * V_TO_UV,
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
             ),

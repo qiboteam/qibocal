@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -14,6 +14,7 @@ from scipy.optimize import curve_fit
 from qibocal.auto.operation import Data, Qubits, Results, Routine
 from qibocal.config import log
 
+from ..utils import V_TO_UV
 from . import allxy_drag_pulse_tuning
 
 
@@ -37,9 +38,9 @@ class DragPulseTuningParameters(allxy_drag_pulse_tuning.AllXYDragParameters):
 class DragPulseTuningResults(Results):
     """DragPulseTuning outputs."""
 
-    betas: Dict[QubitId, float] = field(metadata=dict(update="beta"))
+    betas: dict[QubitId, float] = field(metadata=dict(update="beta"))
     """Optimal beta paramter for each qubit."""
-    fitted_parameters: Dict[QubitId, Dict[str, float]]
+    fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
 
 
@@ -50,7 +51,7 @@ DragPulseTuningType = np.dtype([("msr", np.float64), ("beta", np.float64)])
 class DragPulseTuningData(Data):
     """DragPulseTuning acquisition outputs."""
 
-    data: Dict[QubitId, npt.NDArray[DragPulseTuningType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[DragPulseTuningType]] = field(default_factory=dict)
     """Raw data acquired."""
 
     def register_qubit(self, qubit, msr, beta):
@@ -62,10 +63,6 @@ class DragPulseTuningData(Data):
             self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
         else:
             self.data[qubit] = np.rec.array(ar)
-
-    def save(self, path):
-        """Store results."""
-        self.to_npz(path, self.data)
 
 
 def _acquisition(
@@ -185,7 +182,7 @@ def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
 
     for qubit in qubits:
         qubit_data = data[qubit]
-        voltages = qubit_data.msr * 1e6
+        voltages = qubit_data.msr * V_TO_UV
         beta_params = qubit_data.beta
 
         try:
@@ -219,7 +216,7 @@ def _plot(data: DragPulseTuningData, qubit, fit: DragPulseTuningResults):
     fig.add_trace(
         go.Scatter(
             x=qubit_data.beta,
-            y=qubit_data.msr * 1e6,
+            y=qubit_data.msr * V_TO_UV,
             mode="markers",
             name="Probability",
             showlegend=True,

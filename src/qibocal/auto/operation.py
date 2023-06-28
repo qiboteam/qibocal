@@ -1,7 +1,7 @@
 import inspect
 import json
 from dataclasses import asdict, dataclass, fields
-from typing import Callable, Dict, Generic, NewType, Tuple, TypeVar, Union
+from typing import Callable, Generic, NewType, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -14,14 +14,15 @@ OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
 ParameterValue = Union[float, int]
 """Valid value for a routine and runcard parameter."""
-Qubits = Dict[int, Qubit]
-"""Convenient way of passing qubits in the routines."""
+Qubits = dict[QubitId, Qubit]
+"""Convenient way of passing qubit pairs in the routines."""
+QubitsPairs = dict[tuple[QubitId, QubitId], Qubit]
 
 DATAFILE = "data.npz"
 """Name of the file where data acquired (arrays) by calibration are dumped."""
 JSONFILE = "conf.json"
 """Name of the file where data acquired (global configuration) by calibration are dumped."""
-RESULTFILE = "result.json"
+RESULTSFILE = "results.json"
 """Name of the file where results are dumped."""
 
 
@@ -58,7 +59,7 @@ class Parameters:
 class Data:
     """Data resulting from acquisition routine."""
 
-    data: dict[Union[Tuple, QubitId], npt.NDArray]
+    data: dict[Union[tuple[QubitId, int], QubitId], npt.NDArray]
     """Data object to store arrays"""
 
     @property
@@ -68,7 +69,7 @@ class Data:
             return list({q[0] for q in self.data})
         return [q for q in self.data]
 
-    def __getitem__(self, qubit: Union[QubitId, Tuple]):
+    def __getitem__(self, qubit: Union[QubitId, tuple[QubitId, int]]):
         """Access data attribute member."""
         return self.data[qubit]
 
@@ -81,18 +82,17 @@ class Data:
 
     def save(self, path):
         """Store results."""
-        self.to_json(path, self.global_params_dict)
-        self.to_npz(path, self.data)
+        self.to_json(path)
+        self.to_npz(path)
 
-    @staticmethod
-    def to_npz(path, data_dict: dict):
+    def to_npz(self, path):
         """Helper function to use np.savez while converting keys into strings."""
-        np.savez(path / DATAFILE, **{str(i): data_dict[i] for i in data_dict})
+        np.savez(path / DATAFILE, **{str(i): self.data[i] for i in self.data})
 
-    @staticmethod
-    def to_json(path, data_dict: dict):
+    def to_json(self, path):
         """Helper function to dump to json in JSONFILE path."""
-        (path / JSONFILE).write_text(json.dumps(data_dict, indent=4))
+        if self.global_params_dict:
+            (path / JSONFILE).write_text(json.dumps(self.global_params_dict, indent=4))
 
     @classmethod
     def load(cls, path):
@@ -132,13 +132,13 @@ class Results:
     """
 
     @property
-    def update(self) -> Dict[str, ParameterValue]:
+    def update(self) -> dict[str, ParameterValue]:
         """Produce an update from a result object.
 
         This is later used to update the runcard.
 
         """
-        up: Dict[str, ParameterValue] = {}
+        up: dict[str, ParameterValue] = {}
         for fld in fields(self):
             if "update" in fld.metadata:
                 up[fld.metadata["update"]] = getattr(self, fld.name)
@@ -147,7 +147,7 @@ class Results:
 
     def save(self, path):
         """Store results to json."""
-        (path / RESULTFILE).write_text(json.dumps(asdict(self), indent=4))
+        (path / RESULTSFILE).write_text(json.dumps(asdict(self), indent=4))
 
     @classmethod
     def load(cls, path):
@@ -174,8 +174,11 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     """A wrapped calibration routine."""
 
     acquisition: Callable[[_ParametersT], _DataT]
+    """Data acquisition function."""
     fit: Callable[[_DataT], _ResultsT] = None
+    """Post-processing function."""
     report: Callable[[_DataT, _ResultsT], None] = None
+    """Plotting function."""
 
     def __post_init__(self):
         # TODO: this could be improved
@@ -186,25 +189,30 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
 
     @property
     def parameters_type(self):
+        """Input parameters type."""
         sig = inspect.signature(self.acquisition)
         param = next(iter(sig.parameters.values()))
         return param.annotation
 
     @property
     def data_type(self):
+        """ "Data object type return by data acquisition."""
         return inspect.signature(self.acquisition).return_annotation
 
     @property
     def results_type(self):
+        """ "Results object type return by data acquisition."""
         return inspect.signature(self.fit).return_annotation
 
     # TODO: I don't like these properties but it seems to work
     @property
     def platform_dependent(self):
+        """Check if acquisition involves platform."""
         return "platform" in inspect.signature(self.acquisition).parameters
 
     @property
     def qubits_dependent(self):
+        """Check if acquisition involves qubits."""
         return "qubits" in inspect.signature(self.acquisition).parameters
 
 
@@ -227,15 +235,19 @@ class DummyRes(Results):
 
 
 def _dummy_acquisition(pars: DummyPars, platform: Platform) -> DummyData:
+    """Dummy data acquisition."""
     return DummyData()
 
 
 def _dummy_fit(data: DummyData) -> DummyRes:
+    """Dummy fitting."""
     return DummyRes()
 
 
 def _dummy_report(data: DummyData, result: DummyRes):
+    """Dummy plotting."""
     return [], ""
 
 
 dummy_operation = Routine(_dummy_acquisition, _dummy_fit, _dummy_report)
+"""Example of a dummy operation."""

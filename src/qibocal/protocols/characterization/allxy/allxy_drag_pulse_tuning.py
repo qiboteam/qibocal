@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Tuple
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -41,7 +41,7 @@ class AllXYDragData(Data):
 
     beta_param: float = None
     """Beta parameter for drag pulse."""
-    data: Dict[Tuple[QubitId, int], npt.NDArray[allxy.AllXYType]] = field(
+    data: dict[tuple[QubitId, int], npt.NDArray[allxy.AllXYType]] = field(
         default_factory=dict
     )
     """Raw data acquired."""
@@ -62,10 +62,6 @@ class AllXYDragData(Data):
     def beta_params(self):
         """Access qubits from data structure."""
         return np.unique([b[1] for b in self.data])
-
-    def save(self, path):
-        """Store results."""
-        self.to_npz(path, self.data)
 
 
 def _acquisition(
