@@ -133,13 +133,12 @@ class Executor:
             task = self.current
             completed = Completed(task, Normal(), self.output)
             task_execution = task.run(platform=self.platform, qubits=self.qubits)
-            if mode.name not in ["report"]:
+            if mode.name != "report":
                 completed.data = next(task_execution)
                 if mode.name in ["autocalibration", "fit"]:
                     completed.results = next(task_execution)
             self.history.push(completed)
             self.head = self.next()
-            if mode.name in ["autocalibration", "fit"]:
-                if self.platform is not None:
-                    if self.update and task.update:
+            update = self.update and task.update
+            if mode.name in ["autocalibration", "fit"] and self.platform is not None and update:
                         self.platform.update(completed.results.update)

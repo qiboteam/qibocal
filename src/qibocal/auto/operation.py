@@ -102,9 +102,9 @@ class Data:
         else:
             obj = cls()
         raw_data = np.load(path / DATAFILE)
-        for i in raw_data:
+        for i, ar in raw_data.items():
             # FIXME: change eval asap
-            obj.data[my_eval(i)] = np.rec.array(raw_data[i])
+            obj.data[my_eval(i)] = np.rec.array(ar)
 
         return obj
 
