@@ -205,7 +205,7 @@ def _plot(data: FlippingData, qubit, fit: FlippingResults = None):
     figures = []
     fig = go.Figure()
 
-    fitting_report = ""
+    fitting_report = None
     qubit_data = data[qubit]
 
     fig.add_trace(

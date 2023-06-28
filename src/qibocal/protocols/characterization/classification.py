@@ -223,7 +223,7 @@ def _plot(
 
     fig = go.Figure()
 
-    fitting_report = ""
+    fitting_report = None
     max_x, max_y, min_x, min_y = 0, 0, 0, 0
     state0_data = data[qubit, 0]
     state1_data = data[qubit, 1]

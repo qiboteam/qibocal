@@ -204,7 +204,7 @@ def _plot(data: DragPulseTuningData, qubit, fit: DragPulseTuningResults):
     """Plotting function for DragPulseTuning."""
 
     figures = []
-    fitting_report = ""
+    fitting_report = None
 
     fig = make_subplots(
         rows=1,

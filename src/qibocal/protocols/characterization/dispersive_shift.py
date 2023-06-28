@@ -236,7 +236,7 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
     )
     # iterate over multiple data folders
 
-    fitting_report = ""
+    fitting_report = None
 
     data_0 = data[qubit, 0]
     data_1 = data[qubit, 1]

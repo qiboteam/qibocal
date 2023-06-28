@@ -123,7 +123,7 @@ def _plot(data: T2Data, qubit, fit: T2Results = None):
 
     figures = []
     fig = go.Figure()
-    fitting_report = ""
+    fitting_report = None
 
     qubit_data = data[qubit]
 

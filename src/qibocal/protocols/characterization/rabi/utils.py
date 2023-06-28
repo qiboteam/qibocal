@@ -36,7 +36,7 @@ def plot(data, qubit, fit):
         fitting = rabi_length_fit
 
     figures = []
-    fitting_report = ""
+    fitting_report = None
 
     fig = make_subplots(
         rows=1,

@@ -237,7 +237,7 @@ def _plot(
     """Plotting for ResonatorPunchoutAttenuation."""
 
     figures = []
-    fitting_report = ""
+    fitting_report = None
     fig = make_subplots(
         rows=1,
         cols=2,

@@ -6,7 +6,7 @@ from ..utils import HZ_TO_GHZ, V_TO_UV
 
 def flux_dependence_plot(data, qubit, fit):
     figures = []
-    fitting_report = ""
+    fitting_report = None
     qubit_data = data[qubit]
 
     fig = make_subplots(

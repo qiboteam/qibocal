@@ -126,7 +126,7 @@ def _plot(data: SpinEchoData, qubit, fit: SpinEchoResults = None):
     fig = go.Figure()
 
     # iterate over multiple data folders
-    fitting_report = ""
+    fitting_report = None
 
     qubit_data = data[qubit]
     waits = qubit_data.wait

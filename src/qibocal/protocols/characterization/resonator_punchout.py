@@ -235,7 +235,7 @@ def _fit(data: ResonatorPunchoutData, fit_type="amp") -> ResonatorPunchoutResult
 def _plot(data: ResonatorPunchoutData, qubit, fit: ResonatorPunchoutResults = None):
     """Plotting function for ResonatorPunchout."""
     figures = []
-    fitting_report = ""
+    fitting_report = None
 
     fig = make_subplots(
         rows=1,

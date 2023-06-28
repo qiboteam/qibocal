@@ -87,7 +87,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
         vertical_spacing=0.1,
     )
     qubit_data = data[qubit]
-    fitting_report = ""
+    fitting_report = None
 
     frequencies = qubit_data.freq * HZ_TO_GHZ
     fig.add_trace(

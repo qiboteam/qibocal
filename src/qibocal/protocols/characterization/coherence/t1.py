@@ -160,7 +160,7 @@ def _plot(data: T1Data, qubit, fit: T1Results = None):
     figures = []
     fig = go.Figure()
 
-    fitting_report = ""
+    fitting_report = None
     qubit_data = data[qubit]
     waits = qubit_data.wait
 

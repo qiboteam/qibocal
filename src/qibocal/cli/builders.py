@@ -1,6 +1,5 @@
 import datetime
 import tempfile
-from dataclasses import dataclass
 from enum import Enum
 from functools import cached_property
 from pathlib import Path
@@ -20,7 +19,6 @@ UPDATED_PLATFORM = "new_platform.yml"
 PLATFORM = "platform.yml"
 
 
-@dataclass
 class ExecutionMode(Enum):
     acquire = "acquire"
     fit = "fit"
