@@ -36,26 +36,30 @@ class Completed:
 
     @cached_property
     def datapath(self):
+        """Path contaning data and results file for task."""
         path = self.folder / "data" / f"{self.task.id}_{self.task.iteration}"
         os.makedirs(path)
         return path
 
     @property
     def results(self):
+        """Access task's results."""
         return self._results
 
     @results.setter
     def results(self, results: Results):
+        """Set and store results."""
         self._results = results
         self._results.save(self.datapath)
 
     @property
     def data(self):
-        self._data.save(self.datapath)
+        """Access task's data."""
         return self._data
 
     @data.setter
     def data(self, data: Data):
+        """Set and store data."""
         self._data = data
         self._data.save(self.datapath)
 
@@ -73,6 +77,7 @@ class History(dict[tuple[Id, int], Completed]):
     """
 
     def push(self, completed: Completed):
+        """Adding completed task to history."""
         self[(completed.task.id, completed.task.iteration)] = completed
         completed.task.iteration += 1
 
