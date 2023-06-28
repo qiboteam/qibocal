@@ -2,11 +2,10 @@
 import copy
 import os
 from dataclasses import dataclass
-from functools import cached_property
 from pathlib import Path
 from typing import Optional
 
-from .operation import Data, Results
+from .operation import DATAFILE, RESULTSFILE, Data, Results
 from .runcard import Id
 from .status import Status
 from .task import Task
@@ -25,8 +24,6 @@ class Completed:
         be added
 
     """
-    data: Data
-    """Data acquired."""
     status: Status
     """Protocol status."""
     folder: Path
@@ -36,16 +33,22 @@ class Completed:
     _results: Optional[Results] = None
     """Fitting output."""
 
-    @cached_property
+    @property
     def datapath(self):
         """Path contaning data and results file for task."""
         path = self.folder / "data" / f"{self.task.id}_{self.task.iteration}"
-        os.makedirs(path)
+        if not os.path.isdir(path):
+            os.makedirs(path)
         return path
 
     @property
     def results(self):
         """Access task's results."""
+        if not (self.datapath / RESULTSFILE).is_file():
+            return self._results
+
+        Results = self.task.operation.results_type
+        self._results = Results.load(self.datapath)
         return self._results
 
     @results.setter
@@ -57,6 +60,11 @@ class Completed:
     @property
     def data(self):
         """Access task's data."""
+        if not (self.datapath / DATAFILE).is_file():
+            return self._data
+
+        Data = self.task.operation.data_type
+        self._data = Data.load(self.datapath)
         return self._data
 
     @data.setter
@@ -81,6 +89,10 @@ class History(dict[tuple[Id, int], Completed]):
     def push(self, completed: Completed):
         """Adding completed task to history."""
         self[(completed.task.id, completed.task.iteration)] = completed
-        completed.task.iteration += 1
+
+        # FIXME: I'm not too sure why but the code doesn't work anymore
+        # with this line. We can postpone it when we will have the
+        # ExceptionalFlow.
+        # completed.task.iteration += 1
 
     # TODO: implemet time_travel()

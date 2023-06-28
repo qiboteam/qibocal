@@ -67,7 +67,7 @@ def auto(runcard, folder, force, update):
     """
     card = yaml.safe_load(pathlib.Path(runcard).read_text(encoding="utf-8"))
     builder = ActionBuilder(card, folder, force, update=update)
-    builder.run(mode=ExecutionMode.run)
+    builder.run(mode=ExecutionMode.autocalibration)
     if update:
         builder.dump_platform_runcard()
     builder.dump_report()

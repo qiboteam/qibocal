@@ -1,6 +1,5 @@
 """Tasks execution."""
 from dataclasses import dataclass, field
-from enum import Enum
 from pathlib import Path
 from typing import Optional, Set
 
@@ -11,13 +10,6 @@ from .history import Completed, History
 from .runcard import Id, Runcard
 from .status import Normal
 from .task import Qubits, Task
-
-
-@dataclass
-class ExecutionMode(Enum):
-    acquire = "acquire"
-    fit = "fit"
-    run = "run"
 
 
 @dataclass
@@ -137,17 +129,17 @@ class Executor:
         - task.update is True
         """
         self.head = self.graph.start
-
         while self.head is not None:
             task = self.current
-            task_execution = task.run(platform=self.platform, qubits=self.qubits)
             completed = Completed(task, Normal(), self.output)
-            completed.data = next(task_execution)
-            completed.results = next(task_execution)
+            task_execution = task.run(platform=self.platform, qubits=self.qubits)
+            if mode.name not in ["report"]:
+                completed.data = next(task_execution)
+                if mode.name in ["autocalibration", "fit"]:
+                    completed.results = next(task_execution)
             self.history.push(completed)
             self.head = self.next()
-
-        if mode.name in ["run", "fit"]:
-            if self.platform is not None:
-                if self.update and task.update:
-                    self.platform.update(completed.results.update)
+            if mode.name in ["autocalibration", "fit"]:
+                if self.platform is not None:
+                    if self.update and task.update:
+                        self.platform.update(completed.results.update)

@@ -1,7 +1,8 @@
 import datetime
 import tempfile
 from dataclasses import dataclass
-from enum import Enum, auto
+from enum import Enum
+from functools import cached_property
 from pathlib import Path
 
 import yaml
@@ -21,10 +22,10 @@ PLATFORM = "platform.yml"
 
 @dataclass
 class ExecutionMode(Enum):
-    acquire = auto()
-    fit = auto()
-    run = auto()
-    report = auto()
+    acquire = "acquire"
+    fit = "fit"
+    autocalibration = "auto"
+    report = "report"
 
 
 class PostProcessingBuilder:
@@ -65,7 +66,7 @@ class ReportBuilder(PostProcessingBuilder):
         super().__init__(path)
         self.qubits = self.runcard.qubits
 
-    @property
+    @cached_property
     def history(self):
         self.executor.run(mode=ExecutionMode.report)
         return self.executor.history
@@ -77,12 +78,12 @@ class ReportBuilder(PostProcessingBuilder):
 
     def routine_qubits(self, task_id: TaskId):
         """Get local qubits parameter from Task if available otherwise use global one."""
-        local_qubits = self.executor.history[task_id].task.qubits
+        local_qubits = self.history[task_id].task.qubits
         return local_qubits if len(local_qubits) > 0 else self.qubits
 
     def single_qubit_plot(self, task_id: TaskId, qubit: QubitId):
         """Generate single qubit plot."""
-        node = self.executor.history[task_id]
+        node = self.history[task_id]
         figures, fitting_report = node.task.operation.report(
             node.data, qubit, node.results
         )

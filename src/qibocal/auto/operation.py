@@ -151,7 +151,7 @@ class Results:
 
     @classmethod
     def load(cls, path):
-        params = json.loads((path / RESULTFILE).read_text())
+        params = json.loads((path / RESULTSFILE).read_text())
 
         for key, elem in params.items():
             if isinstance(elem, dict):
