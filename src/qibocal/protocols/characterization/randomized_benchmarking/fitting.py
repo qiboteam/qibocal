@@ -124,6 +124,7 @@ def fit_exp1B_func(
                 ydata,
                 **kwargs,
             )
+            popt = tuple(popt)
             perr = tuple(np.sqrt(np.diag(pcov)))
         except Exception as e:
             log.warning("Ap^x+B fit: the fitting was not succesful. %s", e)
