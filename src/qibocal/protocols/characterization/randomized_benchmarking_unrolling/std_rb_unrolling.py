@@ -112,9 +112,9 @@ def _acquisition(
     data = StdRBData()
 
     # Execute the scan
-    for qubit in qubits.values():
+    for qubit in qubits:
         # create the list of sequences for the experiment
-        sequences, circuits, ro_pulses = rb_sequencer.get_sequences_list(qubit.name)
+        sequences, circuits, ro_pulses = rb_sequencer.get_sequences_list(qubit)
         results = platform.execute_pulse_sequences(
             sequences,
             ExecutionParameters(
@@ -137,7 +137,7 @@ def _acquisition(
         # average msr, phase, i and q over the number of shots defined in the runcard
         j = 0
         for depth in depths:
-            for ro_pulse in counts_depths[depth].keys():
+            for ro_pulse in counts_depths[depth]:
                 for i in range(counts_depths[depth][ro_pulse]):
                     probs = results[ro_pulse.serial][i].probability(0)
                     qubit = ro_pulse.qubit

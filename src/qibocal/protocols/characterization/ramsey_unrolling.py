@@ -80,16 +80,14 @@ def _acquisition(
     )
 
     # FIXME: Multiplex
-    i = 0
-    for sequence in sequences:
+    for sequence, wait in zip(sequences, waits):
         for ro_pulse in sequence.ro_pulses:
             # for qubit in qubits:
             result = results[ro_pulse.serial][0]
             qubit = ro_pulse.qubit
             data.register_qubit(
-                qubit, wait=waits[i], msr=result.magnitude, phase=result.phase
+                qubit, wait=wait, msr=result.magnitude, phase=result.phase
             )
-        i += 1
 
     return data
 

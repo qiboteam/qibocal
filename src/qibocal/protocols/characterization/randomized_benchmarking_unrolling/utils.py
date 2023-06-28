@@ -4,8 +4,6 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibo import gates
-
-# from qibolab import Platform
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.transpilers.unitary_decompositions import u3_decomposition
@@ -16,10 +14,6 @@ from qibocal.protocols.characterization.randomized_benchmarking.fitting import (
 from qibocal.protocols.characterization.randomized_benchmarking.utils import (
     SINGLE_QUBIT_CLIFFORDS,
 )
-
-# def rb_fit(x, a, p, b):
-#     """A*p^x+B fit"""
-#     return a * p**x + b
 
 
 def plot(data, fit, qubit):
