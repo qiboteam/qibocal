@@ -156,7 +156,7 @@ def _plot(data: TimeOfFlightReadoutData, fit: TimeOfFlightReadoutResults, qubit)
         line_color="grey",
     )
 
-    fitting_report += (
+    fitting_report = (
         f"{qubit} | Time of flight(ns) : {fit.fitted_parameters[qubit] * S_TO_NS}<br>"
     )
 

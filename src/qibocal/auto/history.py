@@ -45,7 +45,7 @@ class Completed:
     def results(self):
         """Access task's results."""
         if not (self.datapath / RESULTSFILE).is_file():
-            return self._results
+            return None
 
         Results = self.task.operation.results_type
         self._results = Results.load(self.datapath)
@@ -61,7 +61,7 @@ class Completed:
     def data(self):
         """Access task's data."""
         if not (self.datapath / DATAFILE).is_file():
-            return self._data
+            return None
 
         Data = self.task.operation.data_type
         self._data = Data.load(self.datapath)

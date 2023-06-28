@@ -96,7 +96,7 @@ def plot(data, qubit, fit):
             col=1,
         )
 
-        fitting_report += (
+        fitting_report = (
             f"{qubit} | pi_pulse_amplitude: {float(fit.amplitude[qubit]):.3f}<br>"
         )
         fitting_report += (

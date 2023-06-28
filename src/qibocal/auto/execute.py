@@ -131,8 +131,8 @@ class Executor:
         self.head = self.graph.start
         while self.head is not None:
             task = self.current
-            completed = Completed(task, Normal(), self.output)
             task_execution = task.run(platform=self.platform, qubits=self.qubits)
+            completed = Completed(task, Normal(), self.output)
             if mode.name != "report":
                 completed.data = next(task_execution)
                 if mode.name in ["autocalibration", "fit"]:

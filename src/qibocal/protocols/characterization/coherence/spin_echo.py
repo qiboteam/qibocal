@@ -160,7 +160,7 @@ def _plot(data: SpinEchoData, qubit, fit: SpinEchoResults = None):
             ),
         )
 
-        fitting_report = fitting_report + (
+        fitting_report = (
             f"{qubit} | T2 Spin Echo: {fit.t2_spin_echo[qubit]:,.0f} ns.<br><br>"
         )
 

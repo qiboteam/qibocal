@@ -34,8 +34,9 @@ class DispersiveShiftParameters(Parameters):
     """Relaxation time (ns)."""
 
 
+# FIXME: this is loaded as a dict from json
 @dataclass
-class StateResults(Results):
+class StateResults:
     """Resonator spectroscopy outputs."""
 
     frequency: dict[QubitId, float]
@@ -223,7 +224,6 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
 def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
     """Plotting function for dispersive shift."""
     figures = []
-
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -240,7 +240,6 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
 
     data_0 = data[qubit, 0]
     data_1 = data[qubit, 1]
-
     fit_data_0 = fit.results_0 if fit is not None else None
     fit_data_1 = fit.results_1 if fit is not None else None
 
@@ -254,7 +253,6 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
     ):
         opacity = 1
         frequencies = q_data.freq * HZ_TO_GHZ
-
         fig.add_trace(
             go.Scatter(
                 x=frequencies,
@@ -285,8 +283,7 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
                 max(frequencies),
                 2 * len(q_data),
             )
-
-            params = data_fit.fitted_parameters[qubit]
+            params = data_fit["fitted_parameters"][str(qubit)]
             fig.add_trace(
                 go.Scatter(
                     x=freqrange,
@@ -321,17 +318,11 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
             col=1,
         )
 
-        fitting_report = fitting_report + (
-            f"{qubit} | State zero freq : {fit_data_0.frequency[qubit]:,.0f} Hz.<br>"
-        )
-        fitting_report = fitting_report + (
-            f"{qubit} | State one freq : {fit_data_1.frequency[qubit]:,.0f} Hz.<br>"
-        )
-        fitting_report = fitting_report + (
-            f"{qubit} | Frequency shift : {(fit_data_1.frequency[qubit] - fit_data_0.frequency[qubit]):,.0f} Hz.<br>"
-        )
-        fitting_report = fitting_report + (
-            f"{qubit} | Best frequency : {fit.best_freq[qubit]:,.0f} Hz.<br>"
+        fitting_report = (
+            f"{qubit} | State zero freq : {fit_data_0['frequency'][str(qubit)]:,.0f} Hz.<br>"
+            + f"{qubit} | State one freq : {fit_data_1['frequency'][str(qubit)]:,.0f} Hz.<br>"
+            + f"{qubit} | Frequency shift : {(fit_data_1['frequency'][str(qubit)] - fit_data_0['frequency'][str(qubit)]):,.0f} Hz.<br>"
+            + f"{qubit} | Best frequency : {fit.best_freq[qubit]:,.0f} Hz.<br>"
         )
 
     fig.update_layout(

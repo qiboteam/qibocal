@@ -246,9 +246,7 @@ def _plot(data: DragPulseTuningData, qubit, fit: DragPulseTuningResults):
                 line=go.scatter.Line(dash="dot"),
             ),
         )
-        fitting_report = fitting_report + (
-            f"{qubit} | Optimal Beta Param: {fit.betas[qubit]:.4f}<br><br>"
-        )
+        fitting_report = f"{qubit} | Optimal Beta Param: {fit.betas[qubit]:.4f}<br><br>"
 
     fig.update_layout(
         showlegend=True,

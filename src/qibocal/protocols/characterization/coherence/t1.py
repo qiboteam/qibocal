@@ -191,9 +191,7 @@ def _plot(data: T1Data, qubit, fit: T1Results = None):
                 line=go.scatter.Line(dash="dot"),
             )
         )
-        fitting_report = fitting_report + (
-            f"{qubit} | t1: {fit.t1[qubit]:,.0f} ns.<br><br>"
-        )
+        fitting_report = f"{qubit} | t1: {fit.t1[qubit]:,.0f} ns.<br><br>"
 
     # last part
     fig.update_layout(
