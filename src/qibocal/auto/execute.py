@@ -140,5 +140,9 @@ class Executor:
             self.history.push(completed)
             self.head = self.next()
             update = self.update and task.update
-            if mode.name in ["autocalibration", "fit"] and self.platform is not None and update:
-                        self.platform.update(completed.results.update)
+            if (
+                mode.name in ["autocalibration", "fit"]
+                and self.platform is not None
+                and update
+            ):
+                self.platform.update(completed.results.update)
