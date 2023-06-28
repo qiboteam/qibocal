@@ -1,16 +1,17 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
+import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
-from qibolab.platform import Platform, QubitPair
+from qibolab.platform import Platform
 from qibolab.pulses import FluxPulse, Rectangular
+from qibolab.qubits import QubitId, QubitPair
 from qibolab.sweeper import Parameter, Sweeper
 
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.data import DataUnits
+from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
 
 @dataclass
@@ -35,6 +36,8 @@ class ChevronFluxTimeParameters(Parameters):
     """Wait time around the flux pulse in ns."""
     nshots: Optional[int] = None
     """Number of shots per point."""
+    relaxation_time: Optional[int] = None
+    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -42,20 +45,40 @@ class ChevronFluxTimeResults(Results):
     """ChevronFluxTime outputs when fitting will be done."""
 
 
-class ChevronFluxTimeData(DataUnits):
+ChevronFluxTimeType = np.dtype(
+    [
+        ("amplitude", np.float64),
+        ("duration", np.float64),
+        ("msr", np.float64),
+        ("phase", np.float64),
+        ("iq_distance", np.float64),
+    ]
+)
+
+
+@dataclass
+class ChevronFluxTimeData(Data):
     """ChevronFluxTime acquisition outputs."""
 
-    def __init__(self):
-        super().__init__(
-            name="data",
-            quantities={"amplitude": "dimensionless", "duration": "ns"},
-            options=[
-                "coupler",
-                "qubit",
-                "iq_distance",
-                "state",
-            ],
-        )
+    # qubit_pairs: dict[QubitId, QubitPair]
+    data: dict[tuple[QubitId, int, int], npt.NDArray[ChevronFluxTimeType]] = field(
+        default_factory=dict
+    )
+    """Raw data acquired."""
+
+    def register_qubit(
+        self, qubit, coupler, state, amps, durs, msr, phase, iq_distance
+    ):
+        """Store output for single qubit."""
+        size = len(amps) * len(durs)
+        ar = np.empty(size, dtype=ChevronFluxTimeType)
+        amplitude, durations = np.meshgrid(amps, durs)
+        ar["amplitude"] = amplitude.ravel()
+        ar["duration"] = durations.ravel()
+        ar["msr"] = msr.ravel()
+        ar["phase"] = phase.ravel()
+        ar["iq_distance"] = iq_distance.ravel()
+        self.data[qubit, coupler, state] = np.rec.array(ar)
 
 
 def _aquisition(
@@ -91,15 +114,18 @@ def _aquisition(
         params.duration_min, params.duration_max, params.duration_step
     )
 
-    dur, amp = np.meshgrid(delta_duration_range, delta_amplitude_range, indexing="ij")
-
     # create a DataUnits object to store the results,
-    sweep_data = ChevronFluxTimeData()
+
+    qubit_pairs = {}
+    qubit_pairs["0:1"] = QubitPair(qubits[0], qubits[1])
+    # import pdb; pdb.set_trace()
+    # data = ChevronFluxTimeData(qubit_pairs)
+    data = ChevronFluxTimeData()
 
     # sort high and low frequency qubit
-    for pair in qubits:
+    # for pair in qubits:
+    for pair in qubit_pairs.values():
         pair = sort_frequency(pair)
-
         q_lowfreq = pair.qubit1.name
         q_highfreq = pair.qubit2.name
 
@@ -113,8 +139,8 @@ def _aquisition(
             duration=params.duration_min,
             amplitude=1,
             shape=Rectangular(),
-            channel=pair[1].coupler.flux.name,
-            qubit=pair[1].coupler.name,
+            channel=pair.qubit1.flux_coupler.name,
+            qubit=pair.qubit1.flux_coupler.name,
         )
         sequence += fx_pulse
 
@@ -154,104 +180,85 @@ def _aquisition(
             # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulse.serial]
 
-            iq_distance = np.abs(
-                result.voltage_i
-                + 1j * result.voltage_q
-                - complex(platform.qubits[ro_pulse.qubit].mean_gnd_states)
-            ) / np.abs(
-                complex(platform.qubits[ro_pulse.qubit].mean_exc_states)
-                - complex(platform.qubits[ro_pulse.qubit].mean_gnd_states)
+            iq_distance = np.abs(result.voltage_i + 1j * result.voltage_q) * 0
+
+            # FIXME: New complex
+            # iq_distance = np.abs(
+            #     result.voltage_i
+            #     + 1j * result.voltage_q
+            #     - complex(platform.qubits[ro_pulse.qubit].mean_gnd_states)
+            # ) / np.abs(
+            #     complex(platform.qubits[ro_pulse.qubit].mean_exc_states)
+            #     - complex(platform.qubits[ro_pulse.qubit].mean_gnd_states)
+            # )
+
+            data.register_qubit(
+                qubit=ro_pulse.qubit,
+                coupler=f"c{q_lowfreq}",
+                state=state,
+                amps=delta_amplitude_range,
+                durs=delta_duration_range,
+                msr=result.magnitude,
+                phase=result.phase,
+                iq_distance=iq_distance,
             )
 
-            r = result.serialize
-            # store the results
-            r.update(
-                {
-                    "amplitude[dimensionless]": amp.flatten(),
-                    "duration[ns]": dur.flatten(),
-                    "coupler": len(delta_amplitude_range)
-                    * len(delta_duration_range)
-                    * [f"c{q_lowfreq}"],
-                    "qubit": len(delta_amplitude_range)
-                    * len(delta_duration_range)
-                    * [ro_pulse.qubit],
-                    "state": len(delta_amplitude_range)
-                    * len(delta_duration_range)
-                    * [state],
-                    "iq_distance": iq_distance.flatten(),
-                }
-            )
-            sweep_data.add_data_from_dict(r)
-
-    return sweep_data
+    return data
 
 
 def _plot(data: ChevronFluxTimeData, fit: ChevronFluxTimeResults, pair: QubitPair):
     states = ["low", "high"]
-
     figures = []
+    fig = make_subplots(rows=3, cols=2, subplot_titles=tuple(states))
     colouraxis = ["coloraxis", "coloraxis2"]
-    pair = sort_frequency(pair)
+    fitting_report = "No fitting data"
+    labels = ["MSR", "phase", "iq_distance"]
+    # import pdb; pdb.set_trace()
+    # pair = data.qubit_pairs["0:1"]
+    # pair = sort_frequency(pair)
+    if pair == 0:
+        # for state, q in zip(states, pair):
+        for state, q in zip(states, [0, 1]):
+            # duration = data[q, pair.qubit1.flux_coupler.name, state].duration
+            # amplitude = data[q, pair.qubit1.flux_coupler.name, state].amplitude
+            duration = data[q, "c0", state].duration
+            amplitude = data[q, "c0", state].amplitude
+            # for values, label in zip([data[q, pair.qubit1.flux_coupler.name, state].msr, data[q, pair.qubit1.flux_coupler.name, state].phase, data[q, pair.qubit1.flux_coupler.name, state].iq_distance], ["MSR", "phase", "iq_distance"]):
+            for values, label in zip(
+                [
+                    data[q, "c0", state].msr,
+                    data[q, "c0", state].phase,
+                    data[q, "c0", state].iq_distance,
+                ],
+                labels,
+            ):
+                fig.add_trace(
+                    go.Heatmap(
+                        y=duration,
+                        x=amplitude,
+                        z=values,
+                        name=f"Qubit {q} |{state}>",
+                        coloraxis=colouraxis[states.index(state)],
+                    ),
+                    row=labels.index(label) + 1,
+                    col=states.index(state) + 1,
+                )
 
-    for values, unit in zip(["MSR", "phase", "iq_distance"], ["V", "rad", None]):
-        fig = make_subplots(rows=1, cols=2, subplot_titles=tuple(states))
+                # fig.update_layout(
+                #     coloraxis=dict(colorscale="Viridis", colorbar=dict(x=0.45)),
+                #     coloraxis2=dict(colorscale="Cividis", colorbar=dict(x=1)),
+                # )
 
-        # Plot data
-        for state, q in zip(
-            states, pair
-        ):  # When multiplex works zip(["low","high"], [qubit, 2])
-            if unit is None:
-                z = data.df[
-                    (data.df["state"] == state)
-                    & (data.df["qubit"] == q)
-                    & (data.df["coupler"] == pair[1].coupler.name)
-                ][values]
-            else:
-                z = data.df[
-                    (data.df["state"] == state)
-                    & (data.df["qubit"] == q)
-                    & (data.df["coupler"] == pair[1].coupler.name)
-                ][values]
-                z = z.pint.to(unit).pint.magnitude
+                # fig.update_layout(
+                #     # title=f"Qubit {pair.name} Interaction {label}",
+                #     title=f"Qubit 0:1 Interaction {label}",
+                #     yaxis_title="Duration [ns]",
+                #     xaxis_title="Amplitude [dimensionless]",
+                #     legend_title="States",
+                # )
 
-            fig.add_trace(
-                go.Heatmap(
-                    y=data.df[
-                        (data.df["state"] == state)
-                        & (data.df["qubit"] == q)
-                        & (data.df["coupler"] == pair[1].coupler.name)
-                    ]["duration"]
-                    .pint.to("ns")
-                    .pint.magnitude,
-                    x=data.df[
-                        (data.df["state"] == state)
-                        & (data.df["qubit"] == q)
-                        & (data.df["coupler"] == pair[1].coupler.name)
-                    ]["amplitude"]
-                    .pint.to("dimensionless")
-                    .pint.magnitude,
-                    z=z,
-                    name=f"Qubit {q} |{state}>",
-                    coloraxis=colouraxis[states.index(state)],
-                ),
-                row=1,
-                col=states.index(state) + 1,
-            )
-
-            fig.update_layout(
-                coloraxis=dict(colorscale="Viridis", colorbar=dict(x=0.45)),
-                coloraxis2=dict(colorscale="Cividis", colorbar=dict(x=1)),
-            )
-
-        fig.update_layout(
-            title=f"Qubit {pair.name} Interaction {values}",
-            yaxis_title="Duration [ns]",
-            xaxis_title="Amplitude [dimensionless]",
-            legend_title="States",
-        )
-
-        figures.append(fig)
-    return figures, "No fitting data."
+            figures.append(fig)
+    return figures, fitting_report
 
 
 def _fit(data: ChevronFluxTimeData):
@@ -260,10 +267,10 @@ def _fit(data: ChevronFluxTimeData):
 
 def sort_frequency(pair: QubitPair):
     """Sorts the qubits in a pair by frequency."""
-    if pair.qubit1.frequency > pair.qubit2.frequency:
-        return pair.qubit2, pair.qubit1
+    if pair.qubit1.drive_frequency > pair.qubit2.drive_frequency:
+        return QubitPair(pair.qubit2, pair.qubit1)
     else:
-        return pair.qubit1, pair.qubit2
+        return QubitPair(pair.qubit1, pair.qubit2)
 
 
 chevron_flux_time = Routine(_aquisition, _fit, _plot)
