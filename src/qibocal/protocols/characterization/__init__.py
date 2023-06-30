@@ -8,8 +8,8 @@ from .coherence.spin_echo import spin_echo
 from .coherence.t1 import t1
 from .coherence.t1_sequences import t1_sequences
 from .coherence.t2 import t2
-from .couplers.chevron_flux_time import chevron_flux_time as coupler_chevron_flux_time
 from .coherence.t2_sequences import t2_sequences
+from .couplers.chevron_flux_time import chevron_flux_time as coupler_chevron_flux_time
 from .dispersive_shift import dispersive_shift
 from .flipping import flipping
 from .flux_depedence.qubit_flux_dependence import qubit_flux
