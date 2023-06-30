@@ -115,16 +115,15 @@ def _aquisition(
     )
 
     # create a DataUnits object to store the results,
-
-    qubit_pairs = {}
-    qubit_pairs["0:1"] = QubitPair(qubits[0], qubits[1])
-    # import pdb; pdb.set_trace()
-    # data = ChevronFluxTimeData(qubit_pairs)
     data = ChevronFluxTimeData()
 
     # sort high and low frequency qubit
-    # for pair in qubits:
-    for pair in qubit_pairs.values():
+    for pair in qubits.values():
+        for x in pair.qubit1.flux_coupler.keys():
+            if x in pair.qubit2.flux_coupler.keys():
+                shared_coupler = x
+                break
+
         pair = sort_frequency(pair)
         q_lowfreq = pair.qubit1.name
         q_highfreq = pair.qubit2.name
@@ -139,8 +138,8 @@ def _aquisition(
             duration=params.duration_min,
             amplitude=1,
             shape=Rectangular(),
-            channel=pair.qubit1.flux_coupler.name,
-            qubit=pair.qubit1.flux_coupler.name,
+            channel=shared_coupler,
+            qubit=shared_coupler,
         )
         sequence += fx_pulse
 
@@ -180,17 +179,14 @@ def _aquisition(
             # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulse.serial]
 
-            iq_distance = np.abs(result.voltage_i + 1j * result.voltage_q) * 0
-
-            # FIXME: New complex
-            # iq_distance = np.abs(
-            #     result.voltage_i
-            #     + 1j * result.voltage_q
-            #     - complex(platform.qubits[ro_pulse.qubit].mean_gnd_states)
-            # ) / np.abs(
-            #     complex(platform.qubits[ro_pulse.qubit].mean_exc_states)
-            #     - complex(platform.qubits[ro_pulse.qubit].mean_gnd_states)
-            # )
+            iq_distance = np.abs(
+                result.voltage_i
+                + 1j * result.voltage_q
+                - complex(platform.qubits[ro_pulse.qubit].mean_gnd_states)
+            ) / np.abs(
+                complex(platform.qubits[ro_pulse.qubit].mean_exc_states)
+                - complex(platform.qubits[ro_pulse.qubit].mean_gnd_states)
+            )
 
             data.register_qubit(
                 qubit=ro_pulse.qubit,
@@ -206,63 +202,77 @@ def _aquisition(
     return data
 
 
+def _fit(data: ChevronFluxTimeData):
+    return ChevronFluxTimeResults()
+
+
 def _plot(data: ChevronFluxTimeData, fit: ChevronFluxTimeResults, pair: QubitPair):
     states = ["low", "high"]
+    # FIXME: Get qubits
+    # pair = sort_frequency(pair)
+    titles = [
+        "low_MSR",
+        "high_MSR",
+        "low_phase",
+        "high_phase",
+        "low_iq distance",
+        "high_iq distance",
+    ]
     figures = []
-    fig = make_subplots(rows=3, cols=2, subplot_titles=tuple(states))
+    fig = make_subplots(
+        rows=3, cols=2, shared_xaxes=True, shared_yaxes=True, subplot_titles=titles
+    )
     colouraxis = ["coloraxis", "coloraxis2"]
     fitting_report = "No fitting data"
     labels = ["MSR", "phase", "iq_distance"]
-    # import pdb; pdb.set_trace()
-    # pair = data.qubit_pairs["0:1"]
-    # pair = sort_frequency(pair)
-    if pair == 0:
-        # for state, q in zip(states, pair):
-        for state, q in zip(states, [0, 1]):
-            # duration = data[q, pair.qubit1.flux_coupler.name, state].duration
-            # amplitude = data[q, pair.qubit1.flux_coupler.name, state].amplitude
-            duration = data[q, "c0", state].duration
-            amplitude = data[q, "c0", state].amplitude
-            # for values, label in zip([data[q, pair.qubit1.flux_coupler.name, state].msr, data[q, pair.qubit1.flux_coupler.name, state].phase, data[q, pair.qubit1.flux_coupler.name, state].iq_distance], ["MSR", "phase", "iq_distance"]):
-            for values, label in zip(
-                [
-                    data[q, "c0", state].msr,
-                    data[q, "c0", state].phase,
-                    data[q, "c0", state].iq_distance,
-                ],
-                labels,
-            ):
-                fig.add_trace(
-                    go.Heatmap(
-                        y=duration,
-                        x=amplitude,
-                        z=values,
-                        name=f"Qubit {q} |{state}>",
-                        coloraxis=colouraxis[states.index(state)],
-                    ),
-                    row=labels.index(label) + 1,
-                    col=states.index(state) + 1,
-                )
 
-                # fig.update_layout(
-                #     coloraxis=dict(colorscale="Viridis", colorbar=dict(x=0.45)),
-                #     coloraxis2=dict(colorscale="Cividis", colorbar=dict(x=1)),
-                # )
+    for state, q in zip(states, pair):
+        shared_coupler = "c0"
+        # FIXME: Get qubits
+        # for x in pair.qubit1.flux_coupler.keys():
+        #     if x in pair.qubit2.flux_coupler.keys():
+        #         shared_coupler = x
+        #         break
 
-                # fig.update_layout(
-                #     # title=f"Qubit {pair.name} Interaction {label}",
-                #     title=f"Qubit 0:1 Interaction {label}",
-                #     yaxis_title="Duration [ns]",
-                #     xaxis_title="Amplitude [dimensionless]",
-                #     legend_title="States",
-                # )
+        duration = data[q, shared_coupler, state].duration
+        amplitude = data[q, shared_coupler, state].amplitude
+        for values, label in zip(
+            [
+                data[q, shared_coupler, state].msr,
+                data[q, shared_coupler, state].phase,
+                data[q, shared_coupler, state].iq_distance,
+            ],
+            labels,
+        ):
+            fig.add_trace(
+                go.Heatmap(
+                    y=duration,
+                    x=amplitude,
+                    z=values,
+                    name=f"Qubit {q} |{state}>",
+                    coloraxis=colouraxis[states.index(state)],
+                ),
+                row=labels.index(label) + 1,
+                col=states.index(state) + 1,
+            )
 
-            figures.append(fig)
+        fig.update_layout(
+            coloraxis=dict(colorscale="Viridis", colorbar=dict(x=0.45)),
+            coloraxis2=dict(colorscale="Cividis", colorbar=dict(x=1)),
+        )
+
+    fig.update_layout(
+        title=f"Qubit {shared_coupler} Interaction {label}",
+        yaxis_title="Duration [ns]",
+        yaxis3_title="Duration [ns]",
+        yaxis5_title="Duration [ns]",
+        xaxis5_title="Amplitude [dimensionless]",
+        xaxis6_title="Amplitude [dimensionless]",
+        legend_title="States",
+    )
+
+    figures.append(fig)
     return figures, fitting_report
-
-
-def _fit(data: ChevronFluxTimeData):
-    return ChevronFluxTimeResults()
 
 
 def sort_frequency(pair: QubitPair):
