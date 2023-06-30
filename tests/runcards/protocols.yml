@@ -313,3 +313,19 @@ actions:
       n_bootstrap: 10
       noise_model: PauliErrorOnX
       noise_params: [0.01, 0.01, 0.01]
+
+
+  - id: coupler_cz_flux_time
+    priority: 0
+    operation: chevron_flux_time
+    qubits: [[0,2]]
+    parameters:
+      amplitude_factor_min: -0.6
+      amplitude_factor_max: -0.3
+      amplitude_factor_step: 0.01
+      duration_min: 40
+      duration_max: 100
+      duration_step: 5
+      native_gate: "CZ"
+      dt: 0
+      nshots: 1000

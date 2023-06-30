@@ -9,7 +9,7 @@ from qibolab import create_platform
 from qibocal.cli.builders import ActionBuilder
 
 PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/protocols.yml"
-PLATFORM = create_platform("dummy")
+PLATFORM = create_platform("dummy2")
 
 
 def generate_runcard_single_protocol():
