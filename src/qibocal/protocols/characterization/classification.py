@@ -53,10 +53,10 @@ class SingleShotClassificationResults(Results):
     """Threshold for classification."""
     rotation_angle: dict[QubitId, float] = field(metadata=dict(update="iq_angle"))
     """Threshold for classification."""
-    mean_gnd_states: dict[QubitId, complex] = field(
+    mean_gnd_states: dict[QubitId, list[float]] = field(
         metadata=dict(update="mean_gnd_states")
     )
-    mean_exc_states: dict[QubitId, complex] = field(
+    mean_exc_states: dict[QubitId, list[float]] = field(
         metadata=dict(update="mean_exc_states")
     )
     fidelity: dict[QubitId, float]
@@ -157,7 +157,6 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
     fidelities, assignment_fidelities = {}, {}
     mean_gnd_states = {}
     mean_exc_states = {}
-
     for qubit in qubits:
         iq_state0 = data[qubit, 0].i + 1.0j * data[qubit, 0].q
         iq_state1 = data[qubit, 1].i + 1.0j * data[qubit, 1].q
@@ -203,8 +202,8 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
             qubit
         ] = -rotation_angle  # TODO: qblox driver np.rad2deg(-rotation_angle)
         fidelities[qubit] = fidelity
-        mean_gnd_states[qubit] = iq_mean_state0
-        mean_exc_states[qubit] = iq_mean_state1
+        mean_gnd_states[qubit] = [iq_mean_state0.real, iq_mean_state0.imag]
+        mean_exc_states[qubit] = [iq_mean_state1.real, iq_mean_state1.imag]
         assignment_fidelities[qubit] = assignment_fidelity
 
     return SingleShotClassificationResults(
@@ -324,8 +323,8 @@ def _plot(
 
     fitting_report = (
         fitting_report
-        + f"{qubit} | Average Ground State: {fit.mean_gnd_states[qubit]:.4f} <br>"
-        + f"{qubit} | Average Excited State: {fit.mean_exc_states[qubit]:.4f} <br>"
+        + f"{qubit} | Average Ground State (i,q): ({fit.mean_gnd_states[qubit][0]:.3f}, {fit.mean_gnd_states[qubit][1]:.3f}) <br>"
+        + f"{qubit} | Average Excited State (i,q): ({fit.mean_exc_states[qubit][0]:.3f}, {fit.mean_exc_states[qubit][1]:.3f}) <br>"
         + f"{qubit} | Rotation Angle: {fit.rotation_angle[qubit]:.3f} rad <br>"
         + f"{qubit} | Threshold: {fit.threshold[qubit]:.4f} <br>"
         + f"{qubit} | Fidelity: {fit.fidelity[qubit]:.3f} <br>"
