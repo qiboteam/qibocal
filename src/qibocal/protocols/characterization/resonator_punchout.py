@@ -282,22 +282,23 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
         col=2,
     )
 
-    fig.add_trace(
-        go.Scatter(
-            x=[
-                fit.readout_frequency[qubit],
-            ],
-            y=[
-                fit.readout_amplitude[qubit],
-            ],
-            mode="markers",
-            marker=dict(
-                size=8,
-                color="gray",
-                symbol="circle",
-            ),
+    if fit.readout_frequency[qubit] != 0:
+        fig.add_trace(
+            go.Scatter(
+                x=[
+                    fit.readout_frequency[qubit],
+                ],
+                y=[
+                    fit.readout_amplitude[qubit],
+                ],
+                mode="markers",
+                marker=dict(
+                    size=8,
+                    color="gray",
+                    symbol="circle",
+                ),
+            )
         )
-    )
     title_text = ""
     title_text += f"{qubit} | Resonator frequency at low power:  {fit.readout_frequency[qubit]*GHZ_TO_HZ:,.0f} Hz<br>"
     title_text += f"{qubit} | Resonator frequency at high power: {fit.bare_frequency[qubit]*GHZ_TO_HZ:,.0f} Hz<br>"
