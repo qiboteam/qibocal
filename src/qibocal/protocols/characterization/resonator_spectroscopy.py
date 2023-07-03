@@ -89,6 +89,13 @@ class ResonatorSpectroscopyData(Data):
         ar["phase"] = phase
         self.data[qubit] = np.rec.array(ar)
 
+    @classmethod
+    def load(cls, path):
+        obj = super().load(path)
+        # Instantiate PowerLevel object
+        obj.power_level = PowerLevel(obj.power_level)
+        return obj
+
 
 def _acquisition(
     params: ResonatorSpectroscopyParameters, platform: Platform, qubits: Qubits
@@ -121,6 +128,7 @@ def _acquisition(
         pulses=[ro_pulses[qubit] for qubit in qubits],
         type=SweeperType.OFFSET,
     )
+
     data = ResonatorSpectroscopyData(
         amplitudes=amplitudes,
         power_level=params.power_level,

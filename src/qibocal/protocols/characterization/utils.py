@@ -145,7 +145,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
             label = "qubit frequency"
             freq = fit.frequency
 
-        fitting_report += f"{qubit} | {label}: {freq[qubit]*GHZ_TO_HZ:,.0f} Hz<br>"
+        fitting_report = f"{qubit} | {label}: {freq[qubit]*GHZ_TO_HZ:,.0f} Hz<br>"
 
         if fit.amplitude[qubit] is not None:
             fitting_report += f"{qubit} | amplitude: {fit.amplitude[qubit]} <br>"
