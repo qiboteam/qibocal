@@ -361,7 +361,7 @@ def _plot(data: RBData, result: StandardRBResult, qubit) -> tuple[list[go.Figure
             line=dict(color="#6597aa"),
             mode="markers",
             marker={"opacity": 0.2, "symbol": "square"},
-            name="itertarions",
+            name="iterations",
         )
     )
     fig.add_trace(
@@ -430,6 +430,14 @@ def _plot(data: RBData, result: StandardRBResult, qubit) -> tuple[list[go.Figure
             }.items()
         ]
     )
+
+    fig.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Circuit depth",
+        yaxis_title="Survival Probability",
+    )
+
     return [fig], table_str
 
 
