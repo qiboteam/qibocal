@@ -10,11 +10,10 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
-from scipy.stats import mode
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
-from .utils import GHZ_TO_HZ, HZ_TO_GHZ, V_TO_UV, norm
+from .utils import GHZ_TO_HZ, HZ_TO_GHZ, V_TO_UV, fit_punchout, norm
 
 
 @dataclass
@@ -47,14 +46,14 @@ class ResonatorPunchoutResults(Results):
         metadata=dict(update="readout_frequency")
     )
     """Readout frequency [GHz] for each qubit."""
-    readout_amplitude: dict[QubitId, float] = field(
-        metadata=dict(update="readout_amplitude")
-    )
-    """Readout amplitude for each qubit."""
     bare_frequency: Optional[dict[QubitId, float]] = field(
         metadata=dict(update="bare_resonator_frequency")
     )
     """Bare resonator frequency [GHz] for each qubit."""
+    readout_amplitude: dict[QubitId, float] = field(
+        metadata=dict(update="readout_amplitude")
+    )
+    """Readout amplitude for each qubit."""
 
 
 ResPunchoutType = np.dtype(
@@ -174,44 +173,7 @@ def _acquisition(
 def _fit(data: ResonatorPunchoutData, fit_type="amp") -> ResonatorPunchoutResults:
     """Fit frequency and attenuation at high and low power for a given resonator."""
 
-    qubits = data.qubits
-
-    bare_freqs = {}
-    dressed_freqs = {}
-    ro_amplitudes = {}
-
-    for qubit in qubits:
-        qubit_data = data[qubit]
-
-        freqs = np.unique(qubit_data.freq)
-        namps = len(np.unique(qubit_data.amp))
-        nfreq = len(freqs)
-        msrs = np.reshape(qubit_data.msr, (namps, nfreq))
-        if data.resonator_type == "3D":
-            peak_freqs = freqs[np.argmax(msrs, axis=1)]
-        else:
-            peak_freqs = freqs[np.argmin(msrs, axis=1)]
-        max_freq = np.max(peak_freqs)
-        min_freq = np.min(peak_freqs)
-        middle_freq = (max_freq + min_freq) / 2
-
-        freq_hp = peak_freqs[peak_freqs < middle_freq]
-        freq_lp = peak_freqs[peak_freqs >= middle_freq]
-        freq_hp = mode(freq_hp)[0]
-        freq_lp = mode(freq_lp)[0]
-
-        ro_amp = getattr(qubit_data, fit_type)[
-            np.argmax(qubit_data.msr[np.where(qubit_data.freq == freq_lp)[0]])
-        ]
-        dressed_freqs[qubit] = freq_lp.item() * HZ_TO_GHZ
-        bare_freqs[qubit] = freq_hp[0] * HZ_TO_GHZ
-        ro_amplitudes[qubit] = ro_amp.item()
-
-    return ResonatorPunchoutResults(
-        dressed_freqs,
-        ro_amplitudes,
-        bare_freqs,
-    )
+    return ResonatorPunchoutResults(*fit_punchout(data, fit_type))
 
 
 def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):

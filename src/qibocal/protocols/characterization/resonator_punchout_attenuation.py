@@ -10,12 +10,10 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
-from scipy.stats import mode
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.config import log
 
-from .utils import GHZ_TO_HZ, HZ_TO_GHZ, V_TO_UV, norm
+from .utils import GHZ_TO_HZ, HZ_TO_GHZ, V_TO_UV, fit_punchout, norm
 
 
 @dataclass
@@ -46,13 +44,13 @@ class ResonatorPunchoutAttenuationResults(Results):
         metadata=dict(update="readout_frequency")
     )
     """Readout frequency [GHz] for each qubit."""
+    bare_frequency: Optional[dict[QubitId, float]] = field(
+        metadata=dict(update="bare_resonator_frequency")
+    )
     readout_attenuation: dict[QubitId, int] = field(
         metadata=dict(update="readout_attenuation")
     )
     """Readout attenuation [dB] for each qubit."""
-    bare_frequency: Optional[dict[QubitId, float]] = field(
-        metadata=dict(update="bare_resonator_frequency")
-    )
 
 
 ResPunchoutAttType = np.dtype(
@@ -164,69 +162,7 @@ def _fit(
 ) -> ResonatorPunchoutAttenuationResults:
     """Fit frequency and attenuation at high and low power for a given resonator."""
 
-    qubits = data.qubits
-
-    freqs_low_att = {}
-    freqs_high_att = {}
-    ro_atts = {}
-
-    for qubit in qubits:
-        qubit_data = data[qubit]
-        try:
-            n_att = len(np.unique(qubit_data.att))
-            n_freq = len(np.unique(qubit_data.freq))
-            for i in range(n_att):
-                qubit_data.msr[i * n_freq : (i + 1) * n_freq] = norm(
-                    qubit_data.msr[i * n_freq : (i + 1) * n_freq]
-                )
-
-            min_msr_indices = np.where(
-                qubit_data.msr == (1 if data.resonator_type == "3D" else 0)
-            )[0]
-
-            max_freq = np.max(qubit_data.freq[min_msr_indices])
-            min_freq = np.min(qubit_data.freq[min_msr_indices])
-            middle_freq = (max_freq + min_freq) / 2
-
-            low_att_indices = np.where(qubit_data.freq[min_msr_indices] < middle_freq)[
-                0
-            ]
-            high_att_indices = np.where(
-                qubit_data.freq[min_msr_indices] >= middle_freq
-            )[0]
-
-            freq_high_att = mode(qubit_data.freq[high_att_indices])[0]
-            freq_low_att = mode(qubit_data.freq[low_att_indices])[0]
-
-            high_att_max = np.max(
-                getattr(qubit_data, fit_type)[
-                    np.where(qubit_data.freq == freq_low_att)[0]
-                ]
-            )
-            high_att_min = np.min(
-                getattr(qubit_data, fit_type)[
-                    np.where(qubit_data.freq == freq_low_att)[0]
-                ]
-            )
-
-            ro_att = round((high_att_max + high_att_min) / 2)
-            ro_att = ro_att + (ro_att % 2)
-
-        except:
-            log.warning("resonator_punchout_fit: the fitting was not succesful")
-            freq_high_att = 0.0
-            freq_low_att = 0.0
-            ro_att = 0.0
-
-        freqs_low_att[qubit] = freq_low_att * HZ_TO_GHZ
-        freqs_high_att[qubit] = freq_high_att * HZ_TO_GHZ
-        ro_atts[qubit] = ro_att
-
-    return ResonatorPunchoutAttenuationResults(
-        freqs_high_att,
-        ro_atts,
-        freqs_low_att,
-    )
+    return ResonatorPunchoutAttenuationResults(*fit_punchout(data, fit_type))
 
 
 def _plot(
