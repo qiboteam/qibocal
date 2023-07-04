@@ -230,7 +230,7 @@ def _plot(data: AllXYData, _fit: AllXYResults, qubit):
     fig = go.Figure()
 
     qubit_data = data[qubit]
-    
+
     fig.add_trace(
         go.Scatter(
             x=qubit_data.gate,
