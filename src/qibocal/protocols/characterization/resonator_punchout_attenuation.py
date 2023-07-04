@@ -73,14 +73,15 @@ class ResonatorPunchoutAttenuationData(Data):
     data: dict[QubitId, npt.NDArray[ResPunchoutAttType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def add_qubit_data(self, qubit, freq, att, msr, phase):
+    def register_qubit(self, qubit, freq, att, msr, phase):
         """Store output for single qubit."""
-        ar = np.empty(msr.shape, dtype=ResPunchoutAttType)
+        size = len(freq) * len(att)
+        ar = np.empty(size, dtype=ResPunchoutAttType)
         frequency, attenuation = np.meshgrid(freq, att)
-        ar["freq"] = frequency.flatten()
-        ar["att"] = attenuation.flatten()
-        ar["msr"] = msr
-        ar["phase"] = phase
+        ar["freq"] = frequency.ravel()
+        ar["att"] = attenuation.ravel()
+        ar["msr"] = msr.ravel()
+        ar["phase"] = phase.ravel()
         self.data[qubit] = np.rec.array(ar)
 
 
@@ -140,7 +141,7 @@ def _acquisition(
     for qubit in qubits:
         # average msr, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulses[qubit].serial]
-        data.add_qubit_data(
+        data.register_qubit(
             qubit,
             msr=result.magnitude,
             phase=result.phase,

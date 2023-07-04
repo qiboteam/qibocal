@@ -12,13 +12,16 @@ OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
 ParameterValue = Union[float, int]
 """Valid value for a routine and runcard parameter."""
-Qubits = dict[int, Qubit]
-"""Convenient way of passing qubits in the routines."""
+Qubits = dict[QubitId, Qubit]
+"""Convenient way of passing qubit pairs in the routines."""
+QubitsPairs = dict[tuple[QubitId, QubitId], Qubit]
 
 DATAFILE = "data.npz"
 """Name of the file where data acquired (arrays) by calibration are dumped."""
 JSONFILE = "conf.json"
 """Name of the file where data acquired (global configuration) by calibration are dumped."""
+RESULTSFILE = "results.json"
+"""Name of the file where results are dumped."""
 
 
 class Parameters:
@@ -61,7 +64,7 @@ class Data:
     def qubits(self):
         """Access qubits from data structure."""
         if set(map(type, self.data)) == {tuple}:
-            return np.unique([q[0] for q in self.data])
+            return list({q[0] for q in self.data})
         return [q for q in self.data]
 
     def __getitem__(self, qubit: Union[QubitId, tuple[QubitId, int]]):
@@ -126,6 +129,10 @@ class Results:
 
         return up
 
+    def save(self, path):
+        """Store results to json."""
+        (path / RESULTSFILE).write_text(json.dumps(asdict(self), indent=4))
+
 
 # Internal types, in particular `_ParametersT` is used to address function
 # contravariance on parameter type
@@ -139,8 +146,11 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     """A wrapped calibration routine."""
 
     acquisition: Callable[[_ParametersT], _DataT]
+    """Data acquisition function."""
     fit: Callable[[_DataT], _ResultsT] = None
+    """Post-processing function."""
     report: Callable[[_DataT, _ResultsT], None] = None
+    """Plotting function."""
 
     def __post_init__(self):
         # TODO: this could be improved
@@ -151,25 +161,30 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
 
     @property
     def parameters_type(self):
+        """Input parameters type."""
         sig = inspect.signature(self.acquisition)
         param = next(iter(sig.parameters.values()))
         return param.annotation
 
     @property
     def data_type(self):
+        """ "Data object type return by data acquisition."""
         return inspect.signature(self.acquisition).return_annotation
 
     @property
     def results_type(self):
+        """ "Results object type return by data acquisition."""
         return inspect.signature(self.fit).return_annotation
 
     # TODO: I don't like these properties but it seems to work
     @property
     def platform_dependent(self):
+        """Check if acquisition involves platform."""
         return "platform" in inspect.signature(self.acquisition).parameters
 
     @property
     def qubits_dependent(self):
+        """Check if acquisition involves qubits."""
         return "qubits" in inspect.signature(self.acquisition).parameters
 
 
@@ -192,15 +207,19 @@ class DummyRes(Results):
 
 
 def _dummy_acquisition(pars: DummyPars, platform: Platform) -> DummyData:
+    """Dummy data acquisition."""
     return DummyData()
 
 
 def _dummy_fit(data: DummyData) -> DummyRes:
+    """Dummy fitting."""
     return DummyRes()
 
 
 def _dummy_report(data: DummyData, result: DummyRes):
+    """Dummy plotting."""
     return [], ""
 
 
 dummy_operation = Routine(_dummy_acquisition, _dummy_fit, _dummy_report)
+"""Example of a dummy operation."""

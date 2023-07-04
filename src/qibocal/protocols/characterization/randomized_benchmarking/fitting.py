@@ -1,7 +1,6 @@
 """In this python script the fitting methods for the gate set protocols are defined.
 They consist mostly of exponential decay fitting.
 """
-
 from typing import Optional, Union
 
 import numpy as np
@@ -125,6 +124,7 @@ def fit_exp1B_func(
                 ydata,
                 **kwargs,
             )
+            popt = tuple(popt)
             perr = tuple(np.sqrt(np.diag(pcov)))
         except Exception as e:
             log.warning("Ap^x+B fit: the fitting was not succesful. %s", e)
