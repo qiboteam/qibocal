@@ -3,6 +3,7 @@ from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
+from pydantic.dataclasses import Field
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
@@ -68,7 +69,6 @@ ResSpecType = np.dtype(
 """Custom dtype for resonator spectroscopy."""
 
 
-@dataclass
 class ResonatorSpectroscopyData(Data):
     """Data structure for resonator spectroscopy."""
 
@@ -76,14 +76,15 @@ class ResonatorSpectroscopyData(Data):
     """Resonator type."""
     amplitudes: dict[QubitId, float]
     """Amplitudes provided by the user."""
-    data: dict[QubitId, npt.NDArray[ResSpecType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray] = Field(default_factory=dict)
     """Raw data acquired."""
     power_level: Optional[PowerLevel] = None
     """Power regime of the resonator."""
+    dtype: np.dtype = ResSpecType
 
     def register_qubit(self, qubit, freq, msr, phase):
         """Store output for single qubit."""
-        ar = np.empty(freq.shape, dtype=ResSpecType)
+        ar = np.empty(freq.shape, dtype=self.dtype)
         ar["freq"] = freq
         ar["msr"] = msr
         ar["phase"] = phase
@@ -93,7 +94,8 @@ class ResonatorSpectroscopyData(Data):
     def load(cls, path):
         obj = super().load(path)
         # Instantiate PowerLevel object
-        obj.power_level = PowerLevel(obj.power_level)
+        if obj.power_level is not None:
+            obj.power_level = PowerLevel(obj.power_level)
         return obj
 
 
@@ -113,11 +115,11 @@ def _acquisition(
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
         if params.amplitude is not None:
             ro_pulses[qubit].amplitude = params.amplitude
-
         amplitudes[qubit] = ro_pulses[qubit].amplitude
 
         sequence.add(ro_pulses[qubit])
 
+    print(amplitudes)
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(
         -params.freq_width // 2, params.freq_width // 2, params.freq_step
@@ -134,6 +136,8 @@ def _acquisition(
         power_level=params.power_level,
         resonator_type=platform.resonator_type,
     )
+
+    print(data.amplitudes)
     results = platform.sweep(
         sequence,
         ExecutionParameters(
@@ -156,6 +160,7 @@ def _acquisition(
             phase=result.phase,
             freq=delta_frequency_range + ro_pulses[qubit].frequency,
         )
+    print(data)
     return data
 
 

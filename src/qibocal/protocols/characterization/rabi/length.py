@@ -3,6 +3,7 @@ from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
+from pydantic.dataclasses import Field
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
@@ -52,20 +53,20 @@ RabiLenType = np.dtype(
 """Custom dtype for rabi amplitude."""
 
 
-@dataclass
 class RabiLengthData(Data):
     """RabiLength acquisition outputs."""
 
-    amplitudes: dict[QubitId, float] = field(default_factory=dict)
+    amplitudes: dict[QubitId, float] = Field(default_factory=dict)
     """Pulse durations provided by the user."""
-    data: dict[QubitId, npt.NDArray[RabiLenType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray] = Field(default_factory=dict)
     """Raw data acquired."""
+    dtype: np.dtype = RabiLenType
 
     def register_qubit(self, qubit, length, msr, phase):
         """Store output for single qubit."""
         # to be able to handle the non-sweeper case
         shape = (1,) if np.isscalar(length) else length.shape
-        ar = np.empty(shape, dtype=RabiLenType)
+        ar = np.empty(shape, dtype=self.dtype)
         ar["length"] = length
         ar["msr"] = msr
         ar["phase"] = phase

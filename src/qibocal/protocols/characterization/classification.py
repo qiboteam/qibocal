@@ -4,6 +4,7 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
+from pydantic.dataclasses import Field
 from qibolab import AcquisitionType, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
@@ -28,13 +29,11 @@ ClassificationType = np.dtype([("i", np.float64), ("q", np.float64)])
 """Custom dtype for rabi amplitude."""
 
 
-@dataclass
 class SingleShotClassificationData(Data):
     nshots: int
     """Number of shots."""
-    data: dict[tuple[QubitId, int], npt.NDArray[ClassificationType]] = field(
-        default_factory=dict
-    )
+    data: dict[tuple, npt.NDArray] = Field(default_factory=dict)
+    dtype: np.dtype = ClassificationType
     """Raw data acquired."""
 
     def register_qubit(self, qubit, state, i, q):
@@ -112,7 +111,7 @@ def _acquisition(
         state1_sequence.add(ro_pulses[qubit])
 
     # create a DataUnits object to store the results
-    data = SingleShotClassificationData(params.nshots)
+    data = SingleShotClassificationData(nshots=params.nshots)
 
     # execute the first pulse sequence
     state0_results = platform.execute_pulse_sequence(
@@ -147,7 +146,7 @@ def _acquisition(
         data.register_qubit(
             qubit=qubit, state=1, i=result.voltage_i, q=result.voltage_q
         )
-
+    print(data)
     return data
 
 

@@ -6,6 +6,7 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from pydantic.dataclasses import Field
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
@@ -66,19 +67,19 @@ ResPunchoutAttType = np.dtype(
 """Custom dtype for resonator punchout."""
 
 
-@dataclass
 class ResonatorPunchoutAttenuationData(Data):
     """ResonatorPunchoutAttenuation data acquisition."""
 
     resonator_type: str
     """Resonator type."""
-    data: dict[QubitId, npt.NDArray[ResPunchoutAttType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray] = Field(default_factory=dict)
     """Raw data acquired."""
+    dtype: np.dtype = ResPunchoutAttType
 
     def register_qubit(self, qubit, freq, att, msr, phase):
         """Store output for single qubit."""
         size = len(freq) * len(att)
-        ar = np.empty(size, dtype=ResPunchoutAttType)
+        ar = np.empty(size, dtype=self.dtype)
         frequency, attenuation = np.meshgrid(freq, att)
         ar["freq"] = frequency.ravel()
         ar["att"] = attenuation.ravel()
@@ -125,7 +126,7 @@ def _acquisition(
         type=SweeperType.ABSOLUTE,
     )
 
-    data = ResonatorPunchoutAttenuationData(platform.resonator_type)
+    data = ResonatorPunchoutAttenuationData(resonator_type=platform.resonator_type)
 
     results = platform.sweep(
         sequence,

@@ -5,6 +5,7 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+from pydantic.dataclasses import Field
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
@@ -71,19 +72,17 @@ DispersiveShiftType = np.dtype(
 """Custom dtype for rabi amplitude."""
 
 
-@dataclass
 class DispersiveShiftData(Data):
     """Dipsersive shift acquisition outputs."""
 
     resonator_type: str
     """Resonator type."""
-    data: dict[tuple[QubitId, int], npt.NDArray[DispersiveShiftType]] = field(
-        default_factory=dict
-    )
+    data: dict[tuple[QubitId, int], npt.NDArray] = Field(default_factory=dict)
+    dtype: np.dtype = DispersiveShiftType
 
     def register_qubit(self, qubit, state, freq, msr, phase, i, q):
         """Store output for single qubit."""
-        ar = np.empty(i.shape, dtype=DispersiveShiftType)
+        ar = np.empty(i.shape, dtype=self.dtype)
         ar["freq"] = freq
         ar["msr"] = msr
         ar["phase"] = phase
@@ -131,7 +130,7 @@ def _acquisition(
     )
 
     # create a DataUnits objects to store the results
-    data = DispersiveShiftData(platform.resonator_type)
+    data = DispersiveShiftData(resonator_type=platform.resonator_type)
     sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,

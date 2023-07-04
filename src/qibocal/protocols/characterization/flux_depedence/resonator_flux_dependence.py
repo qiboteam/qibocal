@@ -3,6 +3,7 @@ from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
+from pydantic.dataclasses import Field
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
@@ -56,17 +57,17 @@ ResFluxType = np.dtype(
 """Custom dtype for resonator flux dependence."""
 
 
-@dataclass
 class ResonatorFluxData(Data):
     """ResonatorFlux acquisition outputs."""
 
-    data: dict[QubitId, npt.NDArray[ResFluxType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray] = Field(default_factory=dict)
     """Raw data acquired."""
+    dtype: np.dtype = ResFluxType
 
     def register_qubit(self, qubit, freq, bias, msr, phase):
         """Store output for single qubit."""
         size = len(freq) * len(bias)
-        ar = np.empty(size, dtype=ResFluxType)
+        ar = np.empty(size, dtype=self.dtype)
         frequency, biases = np.meshgrid(freq, bias)
         ar["freq"] = frequency.ravel()
         ar["bias"] = biases.ravel()

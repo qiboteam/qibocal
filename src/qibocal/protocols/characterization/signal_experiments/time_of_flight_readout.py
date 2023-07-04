@@ -1,9 +1,10 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
+from pydantic.dataclasses import Field
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
@@ -38,21 +39,19 @@ class TimeOfFlightReadoutResults(Results):
 TimeOfFlightReadoutType = np.dtype([("samples", np.float64)])
 
 
-@dataclass
 class TimeOfFlightReadoutData(Data):
     """TimeOfFlightReadout acquisition outputs."""
 
     windows_size: int
     sampling_rate: int
 
-    data: dict[QubitId, npt.NDArray[TimeOfFlightReadoutType]] = field(
-        default_factory=dict
-    )
+    data: dict[QubitId, npt.NDArray] = Field(default_factory=dict)
     """Raw data acquired."""
+    dtype: np.dtype = TimeOfFlightReadoutType
 
     def register_qubit(self, qubit, samples):
         """Store output for single qubit."""
-        ar = np.empty(samples.shape, dtype=TimeOfFlightReadoutType)
+        ar = np.empty(samples.shape, dtype=self.dtype)
         ar["samples"] = samples
         self.data[qubit] = np.rec.array(ar)
 
@@ -85,7 +84,9 @@ def _acquisition(
         ),
     )
 
-    data = TimeOfFlightReadoutData(params.window_size, platform.sampling_rate)
+    data = TimeOfFlightReadoutData(
+        windows_size=params.window_size, sampling_rate=platform.sampling_rate
+    )
 
     # retrieve and store the results for every qubit
     for qubit in qubits:
@@ -121,13 +122,12 @@ def _fit(data: TimeOfFlightReadoutData) -> TimeOfFlightReadoutResults:
     return TimeOfFlightReadoutResults(fitted_parameters)
 
 
-def _plot(data: TimeOfFlightReadoutData, fit: TimeOfFlightReadoutResults, qubit):
+def _plot(data: TimeOfFlightReadoutData, qubit, fit: TimeOfFlightReadoutResults):
     """Plotting function for TimeOfFlightReadout."""
 
     figures = []
     fitting_report = None
     fig = go.Figure()
-
     qubit_data = data[qubit]
     sampling_rate = data.sampling_rate
     y = qubit_data.samples
@@ -148,17 +148,15 @@ def _plot(data: TimeOfFlightReadoutData, fit: TimeOfFlightReadoutResults, qubit)
         xaxis_title="Sample",
         yaxis_title="MSR (uV)",
     )
+    if fit is not None:
+        fig.add_vline(
+            x=fit.fitted_parameters[qubit] * sampling_rate,
+            line_width=2,
+            line_dash="dash",
+            line_color="grey",
+        )
 
-    fig.add_vline(
-        x=fit.fitted_parameters[qubit] * sampling_rate,
-        line_width=2,
-        line_dash="dash",
-        line_color="grey",
-    )
-
-    fitting_report = (
-        f"{qubit} | Time of flight(ns) : {fit.fitted_parameters[qubit] * S_TO_NS}<br>"
-    )
+        fitting_report = f"{qubit} | Time of flight(ns) : {fit.fitted_parameters[qubit] * S_TO_NS}<br>"
 
     fig.update_layout(
         showlegend=True,

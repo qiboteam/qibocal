@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
+from pydantic.dataclasses import Field
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
@@ -63,11 +64,10 @@ class ResonatorSpectroscopyAttenuationResults(Results):
     """Readout attenuation [dB] for each qubit."""
 
 
-@dataclass
 class ResonatorSpectroscopyAttenuationData(ResonatorSpectroscopyData):
     """Data structure for resonator spectroscopy with attenuation."""
 
-    attenuations: dict[QubitId, int] = field(default_factory=dict)
+    attenuations: dict[QubitId, int] = Field(default_factory=dict)
 
 
 def _acquisition(

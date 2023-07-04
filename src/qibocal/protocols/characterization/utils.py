@@ -86,6 +86,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
     )
+    print(data)
     qubit_data = data[qubit]
     fitting_report = None
 

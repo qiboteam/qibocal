@@ -4,19 +4,17 @@ from qibolab.platform import Platform
 from qibolab.qubits import Qubit, QubitId, QubitPair
 
 
-def cast_str_to_int(key):
+def cast_to_int(a):
     try:
-        return int(key)
-    except ValueError:
-        return key
+        return int(a)
+    except:
+        # remove double quotes
+        return a[1:-1]
 
 
-def my_eval(key):
-    if key.startswith("("):
-        test = key[key.find("(") + 1 : key.find(")")].replace(" ", "").split(",")
-        return tuple([cast_str_to_int(i) for i in test])
-
-    return cast_str_to_int(key)
+def conversion(name: str):
+    convert_to_list = name.strip("()").split(",")
+    return tuple(cast_to_int(i) for i in convert_to_list)
 
 
 def allocate_single_qubits(

@@ -5,10 +5,11 @@ from typing import Callable, Generic, NewType, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
+from pydantic import BaseModel, validator
 from qibolab.platform import Platform
 from qibolab.qubits import Qubit, QubitId
 
-from qibocal.utils import my_eval
+from qibocal.utils import cast_to_int, conversion
 
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
@@ -17,6 +18,7 @@ ParameterValue = Union[float, int]
 Qubits = dict[QubitId, Qubit]
 """Convenient way of passing qubit pairs in the routines."""
 QubitsPairs = dict[tuple[QubitId, QubitId], Qubit]
+
 
 DATAFILE = "data.npz"
 """Name of the file where data acquired (arrays) by calibration are dumped."""
@@ -56,11 +58,26 @@ class Parameters:
         return cls(**parameters)
 
 
-class Data:
+class Data(BaseModel):
     """Data resulting from acquisition routine."""
 
     data: dict[Union[tuple[QubitId, int], QubitId], npt.NDArray]
     """Data object to store arrays"""
+    dtype: np.dtype
+
+    class Config:
+        arbitrary_types_allowed = True
+        smart_union = True
+
+    @validator("data", pre=True)
+    def validate_data(cls, data):
+        new_data = {}
+        for i, ar in data.items():
+            if "(" in i:
+                new_data[conversion(i)] = np.rec.array(ar)
+            else:
+                new_data[cast_to_int(i)] = np.rec.array(ar)
+        return new_data
 
     @property
     def qubits(self):
@@ -76,8 +93,9 @@ class Data:
     @property
     def global_params_dict(self):
         """Convert non-arrays attributes into dict."""
-        global_dict = asdict(self)
+        global_dict = self.dict()
         global_dict.pop("data")
+        global_dict.pop("dtype")
         return global_dict
 
     def save(self, path):
@@ -96,15 +114,12 @@ class Data:
 
     @classmethod
     def load(cls, path):
+        data_dict = dict(np.load(path / DATAFILE))
         if (path / JSONFILE).is_file():
             params = json.loads((path / JSONFILE).read_text())
-            obj = cls(**params)
+            obj = cls(data=data_dict, **params)
         else:
-            obj = cls()
-        raw_data = np.load(path / DATAFILE)
-        for i, ar in raw_data.items():
-            # FIXME: change eval asap
-            obj.data[my_eval(i)] = np.rec.array(ar)
+            obj = cls(data=data_dict)
 
         return obj
 
@@ -157,7 +172,7 @@ class Results:
             if isinstance(elem, dict):
                 # FIXME: necessary since after loading QubitId is string and not int
                 # maybe convert all QubitIds into strings ?
-                params[key] = {my_eval(k): value for k, value in elem.items()}
+                params[key] = {conversion(k): value for k, value in elem.items()}
 
         return cls(**params)
 
