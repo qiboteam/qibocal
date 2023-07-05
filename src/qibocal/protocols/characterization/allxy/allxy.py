@@ -29,7 +29,7 @@ class AllXYResults(Results):
     """AllXY outputs."""
 
 
-AllXYType = np.dtype([("prob", np.float64), ("gate", "<U18")])
+AllXYType = np.dtype([("prob", np.float64), ("gate", "<U5")])
 
 
 @dataclass
@@ -45,7 +45,7 @@ class AllXYData(Data):
         """Store output for single qubit."""
         ar = np.empty((1,), dtype=AllXYType)
         ar["prob"] = prob
-        ar["gate"] = [gate]
+        ar["gate"] = gate
         if qubit in self.data:
             self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
         else:
@@ -95,7 +95,7 @@ def _acquisition(
 
     # repeat the experiment as many times as defined by software_averages
     # for iteration in range(params.software_averages):
-    for gateNumber, gates in enumerate(gatelist):
+    for gates in enumerate(gatelist):
         # create a sequence of pulses
         ro_pulses = {}
         sequence = PulseSequence()
@@ -103,7 +103,6 @@ def _acquisition(
             sequence, ro_pulses[qubit] = add_gate_pair_pulses_to_sequence(
                 platform, gates, qubit, sequence, params.beta_param
             )
-        # for i in range(2):
         # execute the pulse sequence
         results = platform.execute_pulse_sequence(
             sequence,
@@ -118,8 +117,6 @@ def _acquisition(
             z_proj = 2 * results[ro_pulses[qubit].serial].probability(0) - 1
             # store the results
             gate = str(gates[0]) + "-" + str(gates[1])
-            # if i == 1:
-            #     gate = str(gates[0]) + "-" + str(gates[1] + "1")
             data.register_qubit(qubit, z_proj, gate)
     # finally, save the remaining data
     return data
@@ -230,7 +227,7 @@ def _plot(data: AllXYData, _fit: AllXYResults, qubit):
     fig = go.Figure()
 
     qubit_data = data[qubit]
-    
+
     fig.add_trace(
         go.Scatter(
             x=qubit_data.gate,
