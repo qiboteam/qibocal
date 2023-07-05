@@ -1,15 +1,15 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
+import numpy.typing as npt
 import plotly.graph_objects as go
 from qibolab import AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.data import Data
-from qibocal.plots.utils import get_color
+from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
 from . import allxy
 
@@ -35,19 +35,33 @@ class AllXYDragResults(Results):
     """AllXYDrag outputs."""
 
 
+@dataclass
 class AllXYDragData(Data):
-    """AllXYDrag acquisition outputs."""
+    """AllXY acquisition outputs."""
 
-    def __init__(self):
-        super().__init__(
-            name="data",
-            quantities={
-                "probability",
-                "gateNumber",
-                "beta_param",
-                "qubit",
-            },
-        )
+    beta_param: float = None
+    """Beta parameter for drag pulse."""
+    data: dict[tuple[QubitId, int], npt.NDArray[allxy.AllXYType]] = field(
+        default_factory=dict
+    )
+    """Raw data acquired."""
+
+    def register_qubit(self, qubit, beta, prob, gate):
+        """Store output for single qubit."""
+        ar = np.empty((1,), dtype=allxy.AllXYType)
+        ar["prob"] = prob
+        ar["gate"] = gate
+        if (qubit, beta) in self.data:
+            self.data[qubit, beta] = np.rec.array(
+                np.concatenate((self.data[qubit, beta], ar))
+            )
+        else:
+            self.data[qubit, beta] = np.rec.array(ar)
+
+    @property
+    def beta_params(self):
+        """Access qubits from data structure."""
+        return np.unique([b[1] for b in self.data])
 
 
 def _acquisition(
@@ -68,13 +82,11 @@ def _acquisition(
 
     data = AllXYDragData()
 
-    count = 0
     # sweep the parameters
     for beta_param in np.arange(
         params.beta_start, params.beta_end, params.beta_step
     ).round(4):
-        gateNumber = 1
-        for gates in allxy.gatelist:
+        for gateNumber, gates in enumerate(allxy.gatelist):
             # create a sequence of pulses
             ro_pulses = {}
             sequence = PulseSequence()
@@ -94,17 +106,10 @@ def _acquisition(
             )
 
             # retrieve the results for every qubit
-            for ro_pulse in ro_pulses.values():
-                z_proj = 2 * results[ro_pulse.serial].probability(0) - 1
+            for qubit in qubits:
+                z_proj = 2 * results[ro_pulses[qubit].serial].probability(0) - 1
                 # store the results
-                r = {
-                    "probability": z_proj,
-                    "gateNumber": gateNumber,
-                    "beta_param": beta_param,
-                    "qubit": ro_pulse.qubit,
-                }
-                data.add(r)
-            gateNumber += 1
+                data.register_qubit(qubit, beta_param, z_proj, gateNumber)
     return data
 
 
@@ -120,17 +125,14 @@ def _plot(data: AllXYDragData, _fit: AllXYDragResults, qubit):
     fitting_report = "No fitting data"
 
     fig = go.Figure()
-    beta_params = data.df["beta_param"].unique()
-
-    qubit_data = data.df[data.df["qubit"] == qubit]
+    beta_params = data.beta_params
 
     for j, beta_param in enumerate(beta_params):
-        beta_param_data = qubit_data[qubit_data["beta_param"] == beta_param]
+        beta_param_data = data[qubit, beta_param]
         fig.add_trace(
             go.Scatter(
-                x=beta_param_data["gateNumber"],
-                y=beta_param_data["probability"],
-                marker_color=get_color(j),
+                x=beta_param_data.gate,
+                y=beta_param_data.prob,
                 mode="markers+lines",
                 opacity=0.5,
                 name=f"Beta {beta_param}",

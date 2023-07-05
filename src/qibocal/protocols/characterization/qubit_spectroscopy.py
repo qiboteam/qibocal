@@ -1,10 +1,11 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Union
+from typing import Optional
 
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
@@ -35,13 +36,13 @@ class QubitSpectroscopyParameters(Parameters):
 class QubitSpectroscopyResults(Results):
     """QubitSpectroscopy outputs."""
 
-    frequency: Dict[Union[str, int], Dict[str, float]] = field(
+    frequency: dict[QubitId, dict[str, float]] = field(
         metadata=dict(update="drive_frequency")
     )
     """Drive frequecy [GHz] for each qubit."""
-    amplitude: Dict[Union[str, int], float]
+    amplitude: dict[QubitId, float]
     """Input drive amplitude. Same for all qubits."""
-    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
+    fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
 
 
@@ -60,12 +61,16 @@ def _acquisition(
     sequence = PulseSequence()
     ro_pulses = {}
     qd_pulses = {}
+    amplitudes = {}
     for qubit in qubits:
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=params.drive_duration
         )
         if params.drive_amplitude is not None:
             qd_pulses[qubit].amplitude = params.drive_amplitude
+
+        amplitudes[qubit] = qd_pulses[qubit].amplitude
+
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=qd_pulses[qubit].finish
         )
@@ -85,7 +90,7 @@ def _acquisition(
 
     # Create data structure for data acquisition.
     data = QubitSpectroscopyData(
-        platform.resonator_type, amplitude=params.drive_amplitude
+        resonator_type=platform.resonator_type, amplitudes=amplitudes
     )
 
     results = platform.sweep(
@@ -103,34 +108,32 @@ def _acquisition(
     for qubit, ro_pulse in ro_pulses.items():
         # average msr, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulse.serial]
-        r = result.serialize
         # store the results
-        r.update(
-            {
-                "frequency[Hz]": delta_frequency_range + qd_pulses[qubit].frequency,
-                "qubit": len(delta_frequency_range) * [qubit],
-            }
+        data.register_qubit(
+            qubit,
+            msr=result.magnitude,
+            phase=result.phase,
+            freq=delta_frequency_range + qd_pulses[qubit].frequency,
         )
-        data.add_data_from_dict(r)
     return data
 
 
 def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
     """Post-processing function for QubitSpectroscopy."""
-    qubits = data.df["qubit"].unique()
-    amplitudes = {}
+    qubits = data.qubits
     frequency = {}
     fitted_parameters = {}
     for qubit in qubits:
-        freq, fitted_params = lorentzian_fit(data, qubit)
+        freq, fitted_params = lorentzian_fit(
+            data[qubit], resonator_type=data.resonator_type, fit="qubit"
+        )
         frequency[qubit] = freq
-        amplitudes[qubit] = data.amplitude
         fitted_parameters[qubit] = fitted_params
 
     return QubitSpectroscopyResults(
         frequency=frequency,
         fitted_parameters=fitted_parameters,
-        amplitude=amplitudes,
+        amplitude=data.amplitudes,
     )
 
 
