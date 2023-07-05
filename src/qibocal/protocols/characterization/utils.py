@@ -215,8 +215,9 @@ def fit_punchout(data: Data, fit_type: str):
         freq_hp = peak_freqs[peak_freqs < middle_freq]
         freq_lp = peak_freqs[peak_freqs >= middle_freq]
 
-        freq_hp = mode(freq_hp)[0]
-        freq_lp = mode(freq_lp)[0]
+        freq_hp = mode(freq_hp, keepdims=True)[0]
+        freq_lp = mode(freq_lp, keepdims=True)[0]
+
         if fit_type == "amp":
             if data.resonator_type == "3D":
                 ro_val = getattr(qubit_data, fit_type)[
