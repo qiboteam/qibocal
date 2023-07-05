@@ -226,11 +226,6 @@ def fit_punchout(data: Data, fit_type: str):
                 ro_val = getattr(qubit_data, fit_type)[
                     np.argmin(qubit_data.msr[np.where(qubit_data.freq == freq_lp)[0]])
                 ]
-                print(
-                    np.min(qubit_data.msr[np.where(qubit_data.freq == freq_lp)[0]]),
-                    qubit_data.msr[np.where(qubit_data.freq == freq_lp)[0]],
-                    ro_val,
-                )
         else:
             high_att_max = np.max(
                 getattr(qubit_data, fit_type)[np.where(qubit_data.freq == freq_hp)[0]]
