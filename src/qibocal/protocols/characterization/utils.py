@@ -239,5 +239,5 @@ def fit_punchout(data: Data, fit_type: str):
 
         low_freqs[qubit] = freq_lp.item() * HZ_TO_GHZ
         high_freqs[qubit] = freq_hp[0] * HZ_TO_GHZ
-        ro_values[qubit] = ro_val.item()
+        ro_values[qubit] = ro_val
     return [low_freqs, high_freqs, ro_values]
