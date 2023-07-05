@@ -201,6 +201,7 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
         qubit_data.msr[i * n_freq : (i + 1) * n_freq] = norm(
             qubit_data.msr[i * n_freq : (i + 1) * n_freq]
         )
+
     fig.add_trace(
         go.Heatmap(
             x=frequencies,

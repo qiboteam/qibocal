@@ -214,14 +214,35 @@ def fit_punchout(data: Data, fit_type: str):
 
         freq_hp = peak_freqs[peak_freqs < middle_freq]
         freq_lp = peak_freqs[peak_freqs >= middle_freq]
+
         freq_hp = mode(freq_hp)[0]
         freq_lp = mode(freq_lp)[0]
+        if fit_type == "amp":
+            if data.resonator_type == "3D":
+                ro_val = getattr(qubit_data, fit_type)[
+                    np.argmax(qubit_data.msr[np.where(qubit_data.freq == freq_lp)[0]])
+                ]
+            else:
+                ro_val = getattr(qubit_data, fit_type)[
+                    np.argmin(qubit_data.msr[np.where(qubit_data.freq == freq_lp)[0]])
+                ]
+                print(
+                    np.min(qubit_data.msr[np.where(qubit_data.freq == freq_lp)[0]]),
+                    qubit_data.msr[np.where(qubit_data.freq == freq_lp)[0]],
+                    ro_val,
+                )
+        else:
+            high_att_max = np.max(
+                getattr(qubit_data, fit_type)[np.where(qubit_data.freq == freq_hp)[0]]
+            )
+            high_att_min = np.min(
+                getattr(qubit_data, fit_type)[np.where(qubit_data.freq == freq_hp)[0]]
+            )
 
-        ro_values = getattr(qubit_data, fit_type)[
-            np.argmax(qubit_data.msr[np.where(qubit_data.freq == freq_lp)[0]])
-        ]
+            ro_val = round((high_att_max + high_att_min) / 2)
+            ro_val = ro_val + (ro_val % 2)
+
         low_freqs[qubit] = freq_lp.item() * HZ_TO_GHZ
         high_freqs[qubit] = freq_hp[0] * HZ_TO_GHZ
-        ro_values[qubit] = ro_values.item()
-
+        ro_values[qubit] = ro_val.item()
     return [low_freqs, high_freqs, ro_values]
