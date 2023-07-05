@@ -58,12 +58,7 @@ class OptimalIntegrationWeightsData(Data):
         """Store output for single qubit."""
         ar = np.empty(samples.shape, dtype=OptimalIntegrationWeightsType)
         ar["samples"] = samples
-        if qubit in self.data:
-            self.data[qubit, state] = np.rec.array(
-                np.concatenate((self.data[qubit], ar))
-            )
-        else:
-            self.data[qubit, state] = np.rec.array(ar)
+        self.data[qubit, state] = np.rec.array(ar)
 
 
 def _acquisition(
