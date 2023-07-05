@@ -9,6 +9,7 @@ from .coherence.t1 import t1
 from .coherence.t1_sequences import t1_sequences
 from .coherence.t2 import t2
 from .coherence.t2_sequences import t2_sequences
+from .coherence.zeno import zeno
 from .dispersive_shift import dispersive_shift
 from .flipping import flipping
 from .flux_dependence.qubit_flux_dependence import qubit_flux
@@ -53,3 +54,4 @@ class Operation(Enum):
     flipping = flipping
     dispersive_shift = dispersive_shift
     standard_rb = standard_rb
+    zeno = zeno
