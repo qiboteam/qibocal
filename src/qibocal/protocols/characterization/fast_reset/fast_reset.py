@@ -89,7 +89,6 @@ def _acquisition(
 
             # execute the pulse sequence
             results = platform.execute_pulse_sequence(
-                sequence,
                 ExecutionParameters(
                     nshots=params.nshots,
                     relaxation_time=params.relaxation_time,
@@ -100,6 +99,7 @@ def _acquisition(
             # Save the data
             for ro_pulse in ro_pulses.values():
                 result = results[ro_pulse.serial]
+                print(result.samples)
                 qubit = ro_pulse.qubit
                 data.register_qubit(
                     qubit,
@@ -141,16 +141,18 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
     fr_states = data[qubit, 1, True].probability
     nfr_states = data[qubit, 1, False].probability
 
+    nshots = len(fr_states)
+    
     # FIXME crashes if all states are on the same counts
     unique, counts = np.unique(fr_states, return_counts=True)
     state0_count_1fr = counts[0]
     state1_count_1fr = counts[1]
-    error_fr1 = (state1_count_1fr - state0_count_1fr) / len(fr_states)
+    error_fr1 = 1 - (nshots - state0_count_1fr) / nshots
 
     unique, counts = np.unique(nfr_states, return_counts=True)
     state0_count_1nfr = counts[0]
     state1_count_1nfr = counts[1]
-    error_nfr1 = (state1_count_1nfr - state0_count_1nfr) / len(fr_states)
+    error_nfr1 = 1 - (nshots - state0_count_1nfr) / nshots
 
     # state 0
     fr_states = data[qubit, 0, True].probability
@@ -159,25 +161,20 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
     unique, counts = np.unique(fr_states, return_counts=True)
     state0_count_0fr = counts[0]
     state1_count_0fr = counts[1]
-    error_fr0 = (state1_count_0fr - state0_count_0fr) / len(fr_states)
+    error_fr0 = (nshots - state0_count_0fr) / nshots
 
     unique, counts = np.unique(nfr_states, return_counts=True)
     state0_count_0nfr = counts[0]
     state1_count_0nfr = counts[1]
-    error_nfr0 = (state1_count_0nfr - state0_count_0nfr) / len(fr_states)
+    error_nfr0 = (nshots - state0_count_0nfr) / nshots
 
     fig.add_trace(
         go.Heatmap(
             z=[
-                [state0_count_0fr, state0_count_1fr],
                 [state1_count_0fr, state1_count_1fr],
-            ],
-            text=[
                 [state0_count_0fr, state0_count_1fr],
-                [state1_count_0fr, state1_count_1fr],
             ],
-            texttemplate="%{text}",
-            textfont={"size": 20},
+            
         ),
         row=1,
         col=1,
@@ -193,10 +190,9 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
     fig.add_trace(
         go.Heatmap(
             z=[
-                [state0_count_0nfr, state0_count_1nfr],
                 [state1_count_0nfr, state1_count_1nfr],
+                [state0_count_0nfr, state0_count_1nfr],
             ],
-            texttemplate="%{z}",
         ),
         row=1,
         col=2,
@@ -212,18 +208,19 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
 
     fitting_report += f"q{qubit}/r | Error FR0: {error_fr0:.6f}<br>"
     fitting_report += f"q{qubit}/r | Error FR1: {error_fr1:.6f}<br>"
-    fitting_report += f"q{qubit}/r | Fidelity FR: {(1 - error_fr0 - error_fr1):.6f}<br>"
+    fitting_report += f"q{qubit}/r | Assigment Fidelity FR: {(1 - (error_fr0 + error_fr1)/2):.6f}<br>"
     fitting_report += f"q{qubit}/r | Error NFR0: {error_nfr0:.6f}<br>"
     fitting_report += f"q{qubit}/r | Error NFR1: {error_nfr1:.6f}<br>"
     fitting_report += (
-        f"q{qubit}/r | Fidelity NFR: {(1 - error_nfr0 - error_nfr1):.6f}<br>"
+        f"q{qubit}/r | Assigment Fidelity NFR: {(1 - (error_nfr0 + error_nfr1)/2):.6f}<br>"
     )
 
     # last part
     fig.update_layout(
         showlegend=False,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Shot",
+        xaxis_title="State prepared",
+        yaxis_title="State read",
     )
 
     figures.append(fig)
