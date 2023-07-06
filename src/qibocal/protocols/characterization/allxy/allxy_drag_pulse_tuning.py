@@ -86,7 +86,7 @@ def _acquisition(
     for beta_param in np.arange(
         params.beta_start, params.beta_end, params.beta_step
     ).round(4):
-        for gateNumber, gates in enumerate(allxy.gatelist):
+        for gates in allxy.gatelist:
             # create a sequence of pulses
             ro_pulses = {}
             sequence = PulseSequence()
@@ -109,7 +109,8 @@ def _acquisition(
             for qubit in qubits:
                 z_proj = 2 * results[ro_pulses[qubit].serial].probability(0) - 1
                 # store the results
-                data.register_qubit(qubit, beta_param, z_proj, gateNumber)
+                gate = str(gates[0]) + "-" + str(gates[1])
+                data.register_qubit(qubit, beta_param, z_proj, gate)
     return data
 
 

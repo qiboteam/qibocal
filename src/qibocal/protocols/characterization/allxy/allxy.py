@@ -95,7 +95,7 @@ def _acquisition(
 
     # repeat the experiment as many times as defined by software_averages
     # for iteration in range(params.software_averages):
-    for gates in enumerate(gatelist):
+    for gates in gatelist:
         # create a sequence of pulses
         ro_pulses = {}
         sequence = PulseSequence()
