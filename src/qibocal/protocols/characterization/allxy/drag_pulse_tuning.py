@@ -195,7 +195,7 @@ def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
             popt = [0, 0, 1, 0]
             beta_optimal = 0
 
-        fitted_parameters[qubit] = popt
+        fitted_parameters[qubit] = popt.tolist()
         betas_optimal[qubit] = beta_optimal
     return DragPulseTuningResults(betas_optimal, fitted_parameters)
 
