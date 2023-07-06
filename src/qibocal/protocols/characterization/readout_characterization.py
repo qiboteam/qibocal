@@ -4,13 +4,13 @@ from typing import Dict, Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from qibolab import ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+
 
 @dataclass
 class ReadoutCharacterizationParameters(Parameters):
@@ -26,7 +26,7 @@ class ReadoutCharacterizationParameters(Parameters):
 class ReadoutCharacterizationResults(Results):
     """ReadoutCharacterization outputs."""
 
-    optimal_integration_weights: Dict[QubitId, float]
+    readout_characterization_results: Dict[QubitId, float]
     """
     Optimal integration weights for a qubit given by amplifying the parts of the
     signal acquired which maximally distinguish between state 1 and 0.
@@ -45,9 +45,9 @@ ReadoutCharacterizationType = np.dtype(
 class ReadoutCharacterizationData(Data):
     """ReadoutCharacterization acquisition outputs."""
 
-    data: dict[tuple[QubitId, int, bool], npt.NDArray[ReadoutCharacterizationType]] = field(
-        default_factory=dict
-    )
+    data: dict[
+        tuple[QubitId, int, bool], npt.NDArray[ReadoutCharacterizationType]
+    ] = field(default_factory=dict)
     """Raw data acquired."""
 
     def register_qubit(self, qubit, probability, state, number_readout):
@@ -63,11 +63,9 @@ def _acquisition(
     """Data acquisition for resonator spectroscopy."""
 
     data = ReadoutCharacterizationData()
-    
-    
-    #FIXME: ADD 1st measurament and post_selection for accurate state preparation ?
-    
-    
+
+    # FIXME: ADD 1st measurament and post_selection for accurate state preparation ?
+
     for state in [0, 1]:
         # Define the pulse sequences
         if state == 1:
@@ -84,7 +82,7 @@ def _acquisition(
                     start += ro_pulse.duration
                     sequence.add(ro_pulse)
                     ro_pulses[qubit].append(ro_pulse)
-                
+
                 sequence.add(RX_pulses[qubit])
             else:
                 start = 0
@@ -97,6 +95,7 @@ def _acquisition(
 
         # execute the pulse sequence
         results = platform.execute_pulse_sequence(
+            sequence,
             ExecutionParameters(
                 nshots=params.nshots,
                 relaxation_time=params.relaxation_time,
@@ -113,7 +112,7 @@ def _acquisition(
                     qubit,
                     probability=result.samples,
                     state=state,
-                    number_readout = i,
+                    number_readout=i,
                 )
 
     return data
@@ -127,119 +126,72 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
     return ReadoutCharacterizationResults({})
 
 
-def _plot(data: ReadoutCharacterizationData, fit: ReadoutCharacterizationResults, qubit):
+def _plot(
+    data: ReadoutCharacterizationData, fit: ReadoutCharacterizationResults, qubit
+):
     """Plotting function for ReadoutCharacterization."""
 
     # Maybe the plot can just be something like a confusion matrix between 0s and 1s ???
 
     figures = []
     fitting_report = ""
-    fig = make_subplots(
-        rows=1,
-        cols=2,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
-        subplot_titles=(
-            "Fast Reset",
-            "Relaxation Time",
-        ),
-    )
+    fig = go.Figure()
 
-    
-    
-    
     # 1st measurement (m=1)
     m1_states = data[qubit, 1, 0].probability
     nshots = len(m1_states)
     # state 1
     unique, counts = np.unique(m1_states, return_counts=True)
     state0_count_1_m1 = counts[0]
+    print(state0_count_1_m1)
     state1_count_1_m1 = counts[1]
     # state 0
-    unique, counts = np.unique(_m1_states, return_counts=True)
+    unique, counts = np.unique(m1_states, return_counts=True)
     state0_count_0_m1 = counts[0]
     state1_count_0_m1 = counts[1]
-    
-    Lambda_M =[
-                [state1_count_0_m1, state1_count_1_m1],
-                [state0_count_0_m1, state0_count_1_m1],
-            ]
-    
-    fidelity = 1 - (state0_count_0_m1 + state1_count_1_m1) / 2
-    
-    
-    P_0o_1i = 
-    P_0o_1i = 
-    
+
+    # 2nd measurement (m=2)
+    m2_states = data[qubit, 1, 1].probability
     # state 1
-    fr_states = data[qubit, 1, True].probability
-    
-    
-    # FIXME crashes if all states are on the same counts
-    unique, counts = np.unique(fr_states, return_counts=True)
-    state0_count_1fr = counts[0]
-    state1_count_1fr = counts[1]
-    error_fr1 = 1 - (nshots - state0_count_1fr) / nshots
-
-    
-
+    unique, counts = np.unique(m2_states, return_counts=True)
+    state0_count_1_m2 = counts[0]
+    state1_count_1_m2 = counts[1]
     # state 0
-    fr_states = data[qubit, 0, True].probability
-    nfr_states = data[qubit, 0, False].probability
+    unique, counts = np.unique(m2_states, return_counts=True)
+    state0_count_0_m2 = counts[0]
+    state1_count_0_m2 = counts[1]
 
-    unique, counts = np.unique(fr_states, return_counts=True)
-    state0_count_0fr = counts[0]
-    state1_count_0fr = counts[1]
-    error_fr0 = (nshots - state0_count_0fr) / nshots
+    # Repeat Lambda and fidelity for each measurement ?
+    Lambda_M = [
+        [state0_count_0_m1, state0_count_1_m1],
+        [state1_count_0_m1, state1_count_1_m1],
+    ]
 
-    
+    fidelity = 1 - (state0_count_0_m1 + state1_count_1_m1) / 2
 
-    fig.add_trace(
-        go.Heatmap(
-            z=[
-                [state1_count_0fr, state1_count_1fr],
-                [state0_count_0fr, state0_count_1fr],
-            ],
-            
-        ),
-        row=1,
-        col=1,
-    )
+    # QND FIXME: Careful revision
+    P_0o_m0_1i = state0_count_1_m1 * state0_count_0_m2
+    P_0o_m1_1i = state1_count_1_m1 * state0_count_1_m2
+    P_0o_1i = P_0o_m0_1i + P_0o_m1_1i
 
-    fig.update_xaxes(
-        title_text=f"{qubit}: Fast Reset",
-        row=1,
-        col=1,
-    )
-    fig.update_yaxes(title_text="State", row=1, col=1)
+    P_1o_m0_0i = state0_count_0_m1 * state1_count_0_m2
+    P_1o_m1_0i = state1_count_0_m1 * state1_count_1_m2
+    P_1o_0i = P_1o_m0_0i + P_1o_m1_0i
+
+    qnd = 1 - (P_0o_1i + P_1o_0i) / 2
 
     fig.add_trace(
         go.Heatmap(
-            z=[
-                [state1_count_0nfr, state1_count_1nfr],
-                [state0_count_0nfr, state0_count_1nfr],
-            ],
+            z=Lambda_M,
         ),
         row=1,
-        col=2,
-    )
-
-    fig.update_xaxes(
-        title_text=f"{qubit}: Relaxation Time",
-        row=1,
-        col=2,
+        col=1,
     )
 
     fig.update_xaxes(title_text="Shot", row=1, col=2)
 
-    fitting_report += f"q{qubit}/r | Error FR0: {error_fr0:.6f}<br>"
-    fitting_report += f"q{qubit}/r | Error FR1: {error_fr1:.6f}<br>"
-    fitting_report += f"q{qubit}/r | Assigment Fidelity FR: {(1 - (error_fr0 + error_fr1)/2):.6f}<br>"
-    fitting_report += f"q{qubit}/r | Error NFR0: {error_nfr0:.6f}<br>"
-    fitting_report += f"q{qubit}/r | Error NFR1: {error_nfr1:.6f}<br>"
-    fitting_report += (
-        f"q{qubit}/r | Assigment Fidelity NFR: {(1 - (error_nfr0 + error_nfr1)/2):.6f}<br>"
-    )
+    fitting_report += f"q{qubit}/r | Assigment Fidelity : {fidelity:.6f}<br>"
+    fitting_report += f"q{qubit}/r | QND: {qnd:.6f}<br>"
 
     # last part
     fig.update_layout(
