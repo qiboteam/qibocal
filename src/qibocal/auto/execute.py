@@ -1,5 +1,8 @@
 """Tasks execution."""
+import json
+import time
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import Optional, Set
 
@@ -130,14 +133,28 @@ class Executor:
         """
         self.head = self.graph.start
 
+        timings = {}
+        timings["date"] = str(datetime.now())
+
         while self.head is not None:
+            start_time_tot = time.time()
+            timing_task = {}
             task = self.current
             task_execution = task.run(platform=self.platform, qubits=self.qubits)
             completed = Completed(task, Normal(), self.output)
+            start_time_loc = time.time()
             completed.data = next(task_execution)
+            timing_task["acquisition"] = time.time() - start_time_loc
+            start_time_loc = time.time()
             completed.results = next(task_execution)
+            timing_task["fit"] = time.time() - start_time_loc
             self.history.push(completed)
             self.head = self.next()
             if self.platform is not None:
                 if self.update and task.update:
                     self.platform.update(completed.results.update)
+
+            timing_task["tot"] = time.time() - start_time_tot
+            timings[task.id] = timing_task
+
+        json.dump(timings, open(self.output / "timings.json", "a"), indent=2)
