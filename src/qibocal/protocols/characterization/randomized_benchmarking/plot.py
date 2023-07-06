@@ -39,7 +39,7 @@ def rb_figure(
             line=dict(color="#6597aa"),
             mode="markers",
             marker={"opacity": 0.2, "symbol": "square"},
-            name="itertarions",
+            name="iterations",
         )
     )
 
@@ -91,7 +91,15 @@ def rb_figure(
             line=go.scatter.Line(dash="dot", color="#00cc96"),
         )
     )
+
+    kwargs.setdefault("showlegend", True)
+    kwargs.setdefault(
+        "uirevision", "0"
+    )  # ``uirevision`` allows zooming while live plotting
+    kwargs.setdefault("xaxis_title", "Circuit depth")
+    kwargs.setdefault("yaxis_title", "RB signal")
     fig.update_layout(**kwargs)
+
     return fig
 
 
