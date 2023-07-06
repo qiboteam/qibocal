@@ -327,7 +327,7 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
         f"{qubit} | State one freq : {fit_data_1.frequency[qubit]*GHZ_TO_HZ:,.0f} Hz.<br>"
     )
     fitting_report = fitting_report + (
-        f"{qubit} | \u03A7 : {(fit_data_0.frequency[qubit]*GHZ_TO_HZ - fit_data_1.frequency[qubit]*GHZ_TO_HZ)/2:,.0f} Hz.<br>"
+        f"{qubit} | Chi : {(fit_data_0.frequency[qubit]*GHZ_TO_HZ - fit_data_1.frequency[qubit]*GHZ_TO_HZ)/2:,.0f} Hz.<br>"
     )
     fitting_report = fitting_report + (
         f"{qubit} | Best frequency : {fit.best_freq[qubit]*GHZ_TO_HZ:,.0f} Hz.<br>"
