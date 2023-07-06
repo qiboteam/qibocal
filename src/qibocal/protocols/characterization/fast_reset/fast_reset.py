@@ -89,6 +89,7 @@ def _acquisition(
 
             # execute the pulse sequence
             results = platform.execute_pulse_sequence(
+                sequence,
                 ExecutionParameters(
                     nshots=params.nshots,
                     relaxation_time=params.relaxation_time,
@@ -142,7 +143,7 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
     nfr_states = data[qubit, 1, False].probability
 
     nshots = len(fr_states)
-    
+
     # FIXME crashes if all states are on the same counts
     unique, counts = np.unique(fr_states, return_counts=True)
     state0_count_1fr = counts[0]
@@ -170,11 +171,11 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
 
     fig.add_trace(
         go.Heatmap(
+            y=[1, 0],
             z=[
-                [state1_count_0fr, state1_count_1fr],
                 [state0_count_0fr, state0_count_1fr],
+                [state1_count_0fr, state1_count_1fr],
             ],
-            
         ),
         row=1,
         col=1,
@@ -186,12 +187,15 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
         col=1,
     )
     fig.update_yaxes(title_text="State", row=1, col=1)
+    fig.update_yaxes(range=[1, 0])
+    fig.update_yaxes(tickvals=[1, 0])
+    fig.update_xaxes(tickvals=[0, 1])
 
     fig.add_trace(
         go.Heatmap(
             z=[
-                [state1_count_0nfr, state1_count_1nfr],
                 [state0_count_0nfr, state0_count_1nfr],
+                [state1_count_0nfr, state1_count_1nfr],
             ],
         ),
         row=1,
@@ -199,21 +203,24 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
     )
 
     fig.update_xaxes(
-        title_text=f"{qubit}: Relaxation Time",
+        title_text="State prepared",
+        row=1,
+        col=2,
+    )
+    fig.update_yaxes(
+        title_text="State read",
         row=1,
         col=2,
     )
 
-    fig.update_xaxes(title_text="Shot", row=1, col=2)
-
     fitting_report += f"q{qubit}/r | Error FR0: {error_fr0:.6f}<br>"
     fitting_report += f"q{qubit}/r | Error FR1: {error_fr1:.6f}<br>"
-    fitting_report += f"q{qubit}/r | Assigment Fidelity FR: {(1 - (error_fr0 + error_fr1)/2):.6f}<br>"
+    fitting_report += (
+        f"q{qubit}/r | Assigment Fidelity FR: {(1 - (error_fr0 + error_fr1)/2):.6f}<br>"
+    )
     fitting_report += f"q{qubit}/r | Error NFR0: {error_nfr0:.6f}<br>"
     fitting_report += f"q{qubit}/r | Error NFR1: {error_nfr1:.6f}<br>"
-    fitting_report += (
-        f"q{qubit}/r | Assigment Fidelity NFR: {(1 - (error_nfr0 + error_nfr1)/2):.6f}<br>"
-    )
+    fitting_report += f"q{qubit}/r | Assigment Fidelity NFR: {(1 - (error_nfr0 + error_nfr1)/2):.6f}<br>"
 
     # last part
     fig.update_layout(
@@ -222,6 +229,9 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
         xaxis_title="State prepared",
         yaxis_title="State read",
     )
+
+    fig.update_yaxes(range=[1, 0])
+    fig.update_xaxes(tickvals=[0, 1])
 
     figures.append(fig)
 
