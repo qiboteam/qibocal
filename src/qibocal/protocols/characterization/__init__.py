@@ -11,8 +11,8 @@ from .coherence.t2 import t2
 from .coherence.t2_sequences import t2_sequences
 from .dispersive_shift import dispersive_shift
 from .flipping import flipping
-from .flux_depedence.qubit_flux_dependence import qubit_flux
-from .flux_depedence.resonator_flux_dependence import resonator_flux
+from .flux_dependence.qubit_flux_dependence import qubit_flux
+from .flux_dependence.resonator_flux_dependence import resonator_flux
 from .qubit_spectroscopy import qubit_spectroscopy
 from .rabi.amplitude import rabi_amplitude
 from .rabi.length import rabi_length
@@ -25,6 +25,7 @@ from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
 from .resonator_spectroscopy_attenuation import resonator_spectroscopy_attenuation
+from .signal_experiments.time_of_flight_readout import time_of_flight_readout
 
 
 class Operation(Enum):
@@ -44,6 +45,7 @@ class Operation(Enum):
     t1_sequences = t1_sequences
     t2 = t2
     t2_sequences = t2_sequences
+    time_of_flight_readout = time_of_flight_readout
     single_shot_classification = single_shot_classification
     spin_echo = spin_echo
     allxy = allxy

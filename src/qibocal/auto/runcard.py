@@ -4,7 +4,7 @@ from typing import Any, NewType, Optional, Union
 
 from pydantic import Field
 from pydantic.dataclasses import dataclass
-from qibo.backends import Backend, construct_backend, set_backend
+from qibo.backends import Backend, GlobalBackend
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
@@ -28,7 +28,9 @@ class Action:
     """Alternative subsequent actions, branching from the current one."""
     priority: Optional[int] = None
     """Priority level, determining the execution order."""
-    qubits: list[QubitId] = Field(default_factory=list)
+    qubits: Union[list[QubitId], list[tuple[QubitId, QubitId]]] = Field(
+        default_factory=list
+    )
     """Local qubits (optional)."""
     update: bool = True
     """Runcard update mechanism."""
@@ -45,7 +47,7 @@ class Runcard:
     """Structure of an execution runcard."""
 
     actions: list[Action]
-    qubits: list[QubitId]
+    qubits: Union[list[QubitId], list[tuple[QubitId, QubitId]]]
     backend: str = "qibolab"
     platform: str = "dummy"
     # TODO: pass custom runcard (?)
@@ -53,8 +55,8 @@ class Runcard:
     @cached_property
     def backend_obj(self) -> Backend:
         """Allocate backend."""
-        set_backend(self.backend, self.platform)
-        return construct_backend(self.backend, self.platform)
+        GlobalBackend.set_backend(self.backend, self.platform)
+        return GlobalBackend()
 
     @property
     def platform_obj(self) -> Platform:

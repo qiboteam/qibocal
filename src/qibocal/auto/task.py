@@ -1,14 +1,21 @@
 """Action execution tracker."""
-import os
 from dataclasses import dataclass, field
-from pathlib import Path
+from typing import Iterator, Union
 
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
 from ..protocols.characterization import Operation
-from ..utils import allocate_qubits
-from .operation import Data, DummyPars, Qubits, Results, Routine, dummy_operation
+from ..utils import allocate_qubits_pairs, allocate_single_qubits
+from .operation import (
+    Data,
+    DummyPars,
+    Qubits,
+    QubitsPairs,
+    Results,
+    Routine,
+    dummy_operation,
+)
 from .runcard import Action, Id
 
 MAX_PRIORITY = int(1e9)
@@ -25,8 +32,11 @@ TaskId = tuple[Id, int]
 @dataclass
 class Task:
     action: Action
+    """Action object parsed from Runcard."""
     iteration: int = 0
+    """Task iteration (to be used for the ExceptionalFlow)."""
     qubits: list[QubitId] = field(default_factory=list)
+    """Local qubits."""
 
     def __post_init__(self):
         if len(self.qubits) == 0:
@@ -34,20 +44,24 @@ class Task:
 
     @classmethod
     def load(cls, card: dict):
+        """Loading action from Runcard."""
         descr = Action(**card)
 
         return cls(action=descr)
 
     @property
     def id(self) -> Id:
+        """Task Id."""
         return self.action.id
 
     @property
     def uid(self) -> TaskId:
+        """Task unique Id."""
         return (self.action.id, self.iteration)
 
     @property
     def operation(self):
+        """Routine object from Operation Enum."""
         if self.action.operation is None:
             raise RuntimeError("No operation specified")
 
@@ -55,10 +69,12 @@ class Task:
 
     @property
     def main(self):
+        """Main node to be executed next."""
         return self.action.main
 
     @property
     def next(self) -> list[Id]:
+        """Node unlocked after the execution of this task."""
         if self.action.next is None:
             return []
         if isinstance(self.action.next, str):
@@ -68,28 +84,34 @@ class Task:
 
     @property
     def priority(self):
+        """Priority level."""
         if self.action.priority is None:
             return MAX_PRIORITY
         return self.action.priority
 
     @property
     def parameters(self):
+        """Inputs parameters for self.operation."""
         return self.operation.parameters_type.load(self.action.parameters)
 
     @property
     def update(self):
+        """Local update parameter."""
         return self.action.update
 
-    @property
-    def data(self):
-        return self._data
+    def run(
+        self, platform: Platform, qubits: Union[Qubits, QubitsPairs]
+    ) -> Iterator[Union[Data, Results]]:
+        """Generator functions for data acquisition and fitting:
 
-    def datapath(self, base_dir: Path):
-        path = base_dir / "data" / f"{self.id}_{self.iteration}"
-        os.makedirs(path)
-        return path
+        Args:
+            platform (`Platform`): Qibolab's platform
+            qubits (`Union[Qubits, QubitsPairs]`): Qubit or QubitPairs dict.
 
-    def run(self, folder: Path, platform: Platform, qubits: Qubits) -> Results:
+        Yields:
+            data (`Data`): data acquisition output
+            results (`Results): data fitting output.
+        """
         try:
             operation: Routine = self.operation
             parameters = self.parameters
@@ -97,21 +119,23 @@ class Task:
             operation = dummy_operation
             parameters = DummyPars()
 
-        path = self.datapath(folder)
         if operation.platform_dependent and operation.qubits_dependent:
             if len(self.qubits) > 0:
                 if platform is not None:
-                    qubits = allocate_qubits(platform, self.qubits)
+                    if any(isinstance(i, tuple) for i in self.qubits):
+                        qubits = allocate_qubits_pairs(platform, self.qubits)
+                    else:
+                        qubits = allocate_single_qubits(platform, self.qubits)
                 else:
                     qubits = self.qubits
 
-            self._data: Data = operation.acquisition(
+            data: Data = operation.acquisition(
                 parameters, platform=platform, qubits=qubits
             )
             # after acquisition we update the qubit parameter
             self.qubits = list(qubits)
-
         else:
-            self._data: Data = operation.acquisition(parameters, platform=platform)
-        self._data.save(path)
-        return operation.fit(self._data)
+            data: Data = operation.acquisition(parameters, platform=platform)
+        yield data
+        results: Results = operation.fit(data)
+        yield results

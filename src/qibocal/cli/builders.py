@@ -9,7 +9,7 @@ from qibocal.auto.execute import Executor, History
 from qibocal.auto.runcard import Runcard
 from qibocal.auto.task import TaskId
 from qibocal.cli.utils import generate_output_folder
-from qibocal.utils import allocate_qubits
+from qibocal.utils import allocate_qubits_pairs, allocate_single_qubits
 
 META = "meta.yml"
 RUNCARD = "runcard.yml"
@@ -58,7 +58,10 @@ class ActionBuilder:
     def qubits(self):
         """Qubits dictionary."""
         if self.platform is not None:
-            return allocate_qubits(self.platform, self.runcard.qubits)
+            if any(isinstance(i, list) for i in self.runcard.qubits):
+                return allocate_qubits_pairs(self.platform, self.runcard.qubits)
+
+            return allocate_single_qubits(self.platform, self.runcard.qubits)
 
         return self.runcard.qubits
 
@@ -147,8 +150,9 @@ class ReportBuilder:
     def single_qubit_plot(self, task_id: TaskId, qubit: QubitId):
         """Generate single qubit plot."""
         node = self.history[task_id]
-        data = node.task.data
-        figures, fitting_report = node.task.operation.report(data, node.res, qubit)
+        figures, fitting_report = node.task.operation.report(
+            node.data, node.results, qubit
+        )
         with tempfile.NamedTemporaryFile(delete=False) as temp:
             html_list = []
             for figure in figures:

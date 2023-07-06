@@ -92,7 +92,7 @@ class StandardRBResult(Results):
     """Fitting parameters."""
     fit_uncertainties: tuple[float, float, float]
     """Fitting parameters uncertainties."""
-    error_bars: Optional[Union[float, list[float], np.ndarray]] = None
+    error_bars: Optional[Union[float, list[float]]] = None
     """Error bars for y."""
 
 
@@ -329,6 +329,10 @@ def _fit(data: RBData) -> StandardRBResult:
     infidelity = (1 - popt[1]) / 2
     fidelity = 1 - infidelity
     pulse_fidelity = 1 - infidelity / NPULSES_PER_CLIFFORD
+
+    # conversion from np.array to list/tuple
+    error_bars = error_bars.tolist() if error_bars is not None else error_bars
+    perr = perr if isinstance(perr, tuple) else perr.tolist()
     return StandardRBResult(fidelity, pulse_fidelity, popt, perr, error_bars)
 
 
@@ -371,13 +375,22 @@ def _plot(data: RBData, result: StandardRBResult, qubit) -> tuple[list[go.Figure
             f" | {key}: {value}<br>"
             for key, value in {
                 **meta_data,
-                "fidelity": number_to_str(result.fidelity, perr[1] / 2),
+                "fidelity": number_to_str(result.fidelity, np.array(perr[1]) / 2),
                 "pulse_fidelity": number_to_str(
-                    result.pulse_fidelity, perr[1] / (2 * NPULSES_PER_CLIFFORD)
+                    result.pulse_fidelity,
+                    np.array(perr[1]) / (2 * NPULSES_PER_CLIFFORD),
                 ),
             }.items()
         ]
     )
+
+    fig.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="Circuit depth",
+        yaxis_title="Survival Probability",
+    )
+
     return [fig], table_str
 
 
