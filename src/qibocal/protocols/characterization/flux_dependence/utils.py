@@ -61,23 +61,21 @@ def flux_dependence_plot(data, fit, qubit, label):
     # fitted_parameters = xi, d, f_q/f_rh, g, f_rh, f_qs, f_r_offset, C_ii
     # fitted_parameters = xi, d, g, Ec, Ej, f_rh, f_qs, f_r_offset, C_ii
     if fit.frequency[qubit] != 0:
-        fitting_report += (f"{qubit} | {label}: {fit.frequency[qubit]:,.1f} Hz<br>")
+        fitting_report += f"{qubit} | {label}: {fit.frequency[qubit]:,.1f} Hz<br>"
     else:
-        fitting_report += (f"{qubit} | {label}: Fitting not successful<br>")
+        fitting_report += f"{qubit} | {label}: Fitting not successful<br>"
 
     if fit.sweetspot[qubit] != 0:
-        fitting_report += (f"{qubit} | Sweetspot: {fit.sweetspot[qubit]} V<br>")
+        fitting_report += f"{qubit} | Sweetspot: {fit.sweetspot[qubit]} V<br>"
     else:
-        fitting_report += (f"{qubit} | Sweetspot: Fitting not successful<br>")
+        fitting_report += f"{qubit} | Sweetspot: Fitting not successful<br>"
 
     for key, value in fit.fitted_parameters[qubit].items():
-        if(value == 0):
+        if value == 0:
             value = "Fitting not successful"
             fitting_report += f"{qubit} | {key}: {value}<br>"
 
     fitting_report += "<br>"
-
-
 
     fig.update_layout(
         showlegend=False,

@@ -51,6 +51,7 @@ class QubitFluxResults(Results):
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
 
+
 QubitFluxType = np.dtype(
     [
         ("freq", np.float64),
@@ -61,11 +62,12 @@ QubitFluxType = np.dtype(
 )
 """Custom dtype for resonator flux dependence."""
 
+
 @dataclass
 class QubitFluxData(Data):
     """QubitFlux acquisition outputs."""
 
-    """Resonator type."""        
+    """Resonator type."""
     resonator_type: str
 
     """ResonatorFlux acquisition outputs."""
@@ -191,29 +193,29 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
 
     for qubit in qubits:
         qubit_data = data[qubit]
-        Ec = data.Ec[qubit] #qubit_data["Ec"]
-        Ej = data.Ej[qubit] #qubit_data["Ej"]
-        
+        Ec = data.Ec[qubit]  # qubit_data["Ec"]
+        Ej = data.Ej[qubit]  # qubit_data["Ej"]
+
         frequency[qubit] = 0
         sweetspot[qubit] = 0
         fitted_parameters[qubit] = {
-            'Xi': 0,
-            'd': 0,
-            'Ec': 0,
-            'Ej': 0,
-            'f_q_offset': 0,
-            'C_ii': 0,
+            "Xi": 0,
+            "d": 0,
+            "Ec": 0,
+            "Ej": 0,
+            "f_q_offset": 0,
+            "C_ii": 0,
         }
 
-        biases = qubit_data.bias 
-        frequencies = qubit_data.freq 
-        msr = qubit_data.msr 
+        biases = qubit_data.bias
+        frequencies = qubit_data.freq
+        msr = qubit_data.msr
 
         if data.resonator_type == "2D":
             msr = -msr
 
         frequencies, biases = utils.image_to_curve(frequencies, biases, msr)
-        #scaler = 10**9
+        # scaler = 10**9
         try:
             max_c = biases[np.argmax(frequencies)]
             min_c = biases[np.argmin(frequencies)]
@@ -227,7 +229,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                 popt = curve_fit(
                     utils.freq_q_transmon,
                     biases,
-                    frequencies, # / scaler,
+                    frequencies,  # / scaler,
                     p0=[max_c, xi, 0, f_q_0],
                     # p0=[max_c, xi, 0, f_q_0 / scaler],
                 )[0]
@@ -244,10 +246,10 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                 sweetspot[qubit] = popt[0]
                 # fitted_parameters = xi, d, f_q_offset, C_ii
                 fitted_parameters[qubit] = {
-                    'Xi': popt[1],
-                    'd': abs(popt[2]),
-                    'f_q_offset': f_q_offset,
-                    'C_ii': C_ii,
+                    "Xi": popt[1],
+                    "d": abs(popt[2]),
+                    "f_q_offset": f_q_offset,
+                    "C_ii": C_ii,
                 }
 
             # Second order approximation: Ec and Ej provided
@@ -256,9 +258,9 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                 popt = curve_fit(
                     freq_q_mathieu1,
                     biases,
-                    frequencies, # / scaler,
+                    frequencies,  # / scaler,
                     p0=[max_c, xi, 0, Ec, Ej],
-                    #p0=[max_c, xi, 0, Ec / scaler, Ej / scaler],
+                    # p0=[max_c, xi, 0, Ec / scaler, Ej / scaler],
                     method="dogbox",
                 )[0]
                 # popt[3] *= scaler
@@ -277,12 +279,12 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                 sweetspot[qubit] = popt[0]
                 # fitted_parameters = xi, d, Ec, Ej, f_q_offset, C_ii
                 fitted_parameters[qubit] = {
-                    'Xi': popt[1],
-                    'd': abs(popt[2]),
-                    'Ec': popt[3],
-                    'Ej': popt[4],
-                    'f_q_offset': f_q_offset,
-                    'C_ii': C_ii,
+                    "Xi": popt[1],
+                    "d": abs(popt[2]),
+                    "Ec": popt[3],
+                    "Ej": popt[4],
+                    "f_q_offset": f_q_offset,
+                    "C_ii": C_ii,
                 }
 
             else:
@@ -313,7 +315,6 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
         sweetspot=sweetspot,
         fitted_parameters=fitted_parameters,
     )
-
 
 
 def _plot(data: QubitFluxData, fit: QubitFluxResults, qubit):

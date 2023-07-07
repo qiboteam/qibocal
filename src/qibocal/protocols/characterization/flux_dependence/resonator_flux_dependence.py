@@ -11,7 +11,6 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
-
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 
@@ -62,7 +61,8 @@ ResFluxType = np.dtype(
 
 @dataclass
 class ResonatorFluxData(Data):
-    """Resonator type."""        
+    """Resonator type."""
+
     resonator_type: str
 
     """ResonatorFlux acquisition outputs."""
@@ -105,9 +105,9 @@ def _acquisition(
     ro_pulses = {}
     Ec = {}
     Ej = {}
-    g  = {}
+    g = {}
     f_rh = {}
-    for qubit in qubits:      
+    for qubit in qubits:
         Ec[qubit] = qubits[qubit].Ec
         Ej[qubit] = qubits[qubit].Ej
         g[qubit] = qubits[qubit].g
@@ -139,7 +139,9 @@ def _acquisition(
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
     # additionally include resonator frequency and flux bias
-    data = ResonatorFluxData(resonator_type=platform.resonator_type, Ec=Ec, Ej=Ej, g=g, f_rh=f_rh)
+    data = ResonatorFluxData(
+        resonator_type=platform.resonator_type, Ec=Ec, Ej=Ej, g=g, f_rh=f_rh
+    )
 
     # repeat the experiment as many times as defined by software_averages
     results = platform.sweep(
@@ -182,35 +184,35 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
 
     for qubit in qubits:
         qubit_data = data[qubit]
-        Ec = data.Ec[qubit] #qubit_data["Ec"]
-        Ej = data.Ej[qubit] #qubit_data["Ej"]
+        Ec = data.Ec[qubit]  # qubit_data["Ec"]
+        Ej = data.Ej[qubit]  # qubit_data["Ej"]
         fitted_parameters[qubit] = {
-            'Xi': 0,
-            'd': 0,
-            'g': 0,
-            'Ec': 0,
-            'Ej': 0,
-            'f_q/f_rh': 0,
-            'f_rh': 0,
-            'f_qs': 0,
-            'f_r_offset': 0,
-            'C_ii': 0,
+            "Xi": 0,
+            "d": 0,
+            "g": 0,
+            "Ec": 0,
+            "Ej": 0,
+            "f_q/f_rh": 0,
+            "f_rh": 0,
+            "f_qs": 0,
+            "f_r_offset": 0,
+            "C_ii": 0,
         }
 
-        biases = qubit_data.bias 
-        frequencies = qubit_data.freq 
-        msr = qubit_data.msr 
+        biases = qubit_data.bias
+        frequencies = qubit_data.freq
+        msr = qubit_data.msr
 
         if data.resonator_type == "2D":
             msr = -msr
 
         frequencies, biases = utils.image_to_curve(frequencies, biases, msr)
-        
-        #scaler = 10**9
-        fitted_parameters[qubit]=0
+
+        # scaler = 10**9
+        fitted_parameters[qubit] = 0
         try:
-            f_rh = data.f_rh[qubit] # Resonator frequency at high power.
-            g = data.g[qubit] # Readout coupling.
+            f_rh = data.f_rh[qubit]  # Resonator frequency at high power.
+            g = data.g[qubit]  # Readout coupling.
             max_c = biases[np.argmax(frequencies)]
             min_c = biases[np.argmin(frequencies)]
             xi = 1 / (2 * abs(max_c - min_c))  # Convert bias to flux.
@@ -223,29 +225,35 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 popt = curve_fit(
                     utils.freq_r_transmon,
                     biases,
-                    frequencies, #/ scaler,
+                    frequencies,  # / scaler,
                     p0=[max_c, xi, 0, f_q_0 / f_rh, g, f_rh],
-                    #p0=[max_c, xi, 0, f_q_0 / f_rh, g / scaler, f_rh / scaler],
+                    # p0=[max_c, xi, 0, f_q_0 / f_rh, g / scaler, f_rh / scaler],
                 )[0]
-                #popt[4] *= scaler
-                #popt[5] *= scaler
+                # popt[4] *= scaler
+                # popt[5] *= scaler
                 f_qs = popt[3] * popt[5]  # Qubit frequency at sweet spot.
-                f_rs = utils.freq_r_transmon(popt[0], *popt)  # Resonator frequency at sweet spot.
-                f_r_offset = utils.freq_r_transmon(0, *popt)  # Resonator frequency at zero current.
-                C_ii = (f_rs - f_r_offset) / popt[0]  # Corresponding flux matrix element.
+                f_rs = utils.freq_r_transmon(
+                    popt[0], *popt
+                )  # Resonator frequency at sweet spot.
+                f_r_offset = utils.freq_r_transmon(
+                    0, *popt
+                )  # Resonator frequency at zero current.
+                C_ii = (f_rs - f_r_offset) / popt[
+                    0
+                ]  # Corresponding flux matrix element.
 
                 frequency[qubit] = f_rs
                 sweetspot[qubit] = popt[0]
                 # fitted_parameters = xi, d, f_q/f_rh, g, f_rh, f_qs, f_r_offset, C_ii
                 fitted_parameters[qubit] = {
-                    'Xi': popt[1],
-                    'd': abs(popt[2]),
-                    'f_q/f_rh': popt[3],
-                    'g': g,
-                    'f_rh': f_rh,
-                    'f_qs': f_qs,
-                    'f_r_offset': f_r_offset,
-                    'C_ii': C_ii,
+                    "Xi": popt[1],
+                    "d": abs(popt[2]),
+                    "f_q/f_rh": popt[3],
+                    "g": g,
+                    "f_rh": f_rh,
+                    "f_qs": f_qs,
+                    "f_r_offset": f_r_offset,
+                    "C_ii": C_ii,
                 }
 
             # Second order approximation: f_rh, g, Ec, Ej provided
@@ -254,15 +262,15 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 popt = curve_fit(
                     freq_r_mathieu1,
                     biases,
-                    frequencies, # / scaler,
+                    frequencies,  # / scaler,
                     p0=[
-                        f_rh, # / scaler,
-                        g, # / scaler,
+                        f_rh,  # / scaler,
+                        g,  # / scaler,
                         max_c,
                         xi,
                         0,
-                        Ec, # / scaler,
-                        Ej, # / scaler,
+                        Ec,  # / scaler,
+                        Ej,  # / scaler,
                     ],
                     method="dogbox",
                 )[0]
@@ -270,24 +278,32 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 # popt[1] *= scaler
                 # popt[5] *= scaler
                 # popt[6] *= scaler
-                f_qs = utils.freq_q_mathieu(popt[2], *popt[2::])  # Qubit frequency at sweet spot.
-                f_rs = utils.freq_r_mathieu(popt[2], *popt)  # Resonator frequency at sweet spot.
-                f_r_offset = utils.freq_r_mathieu(0, *popt)  # Resonator frequenct at zero current.
-                C_ii = (f_rs - f_r_offset) / popt[2]  # Corresponding flux matrix element.
+                f_qs = utils.freq_q_mathieu(
+                    popt[2], *popt[2::]
+                )  # Qubit frequency at sweet spot.
+                f_rs = utils.freq_r_mathieu(
+                    popt[2], *popt
+                )  # Resonator frequency at sweet spot.
+                f_r_offset = utils.freq_r_mathieu(
+                    0, *popt
+                )  # Resonator frequenct at zero current.
+                C_ii = (f_rs - f_r_offset) / popt[
+                    2
+                ]  # Corresponding flux matrix element.
 
                 frequency[qubit] = f_rs
                 sweetspot[qubit] = popt[2]
                 # fitted_parameters = xi, d, g, Ec, Ej, f_rh, f_qs, f_r_offset, C_ii
                 fitted_parameters[qubit] = {
-                    'Xi': popt[3],
-                    'd': abs(popt[4]),
-                    'g': popt[1],
-                    'Ec': popt[5],
-                    'Ej': popt[6],
-                    'f_rh': popt[0],
-                    'f_qs' :f_qs,
-                    'f_r_offset': f_r_offset,
-                    'C_ii': C_ii,
+                    "Xi": popt[3],
+                    "d": abs(popt[4]),
+                    "g": popt[1],
+                    "Ec": popt[5],
+                    "Ej": popt[6],
+                    "f_rh": popt[0],
+                    "f_qs": f_qs,
+                    "f_r_offset": f_r_offset,
+                    "C_ii": C_ii,
                 }
 
             else:
@@ -298,7 +314,8 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
         except Exception as e:
             print("An exception occurred:", str(e))
             import traceback
-            traceback.print_exc()            
+
+            traceback.print_exc()
             log.warning("resonator_flux_fit: the fitting was not succesful")
 
         # else:
