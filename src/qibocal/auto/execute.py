@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Set
 
+from qibo.config import log
 from qibolab.platform import Platform
 
 from .graph import Graph
@@ -140,6 +141,7 @@ class Executor:
             start_time_tot = time.time()
             timing_task = {}
             task = self.current
+            log.info(f"Task Id: {task.id}")
             task_execution = task.run(platform=self.platform, qubits=self.qubits)
             completed = Completed(task, Normal(), self.output)
             start_time_loc = time.time()
