@@ -172,3 +172,18 @@ def spectroscopy_plot(data, fit: Results, qubit):
 
 def norm(x_mags):
     return (x_mags - np.min(x_mags)) / (np.max(x_mags) - np.min(x_mags))
+
+
+@njit(["float64[:] (float64[:], float64[:])"], parallel=True, cache=True)
+def cum_method(input_data, points):
+    # data and points sorted
+    input_data = np.sort(input_data)
+    points = np.sort(points)
+
+    prob = []
+    app = 0.0
+    for val in input_data:
+        app += np.maximum(np.searchsorted(points[app::], val), 0)
+        prob.append(app)
+
+    return np.array(prob)
