@@ -100,7 +100,6 @@ def _acquisition(
             # Save the data
             for ro_pulse in ro_pulses.values():
                 result = results[ro_pulse.serial]
-                print(result.samples)
                 qubit = ro_pulse.qubit
                 data.register_qubit(
                     qubit,
@@ -171,11 +170,11 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
 
     fig.add_trace(
         go.Heatmap(
-            y=[1, 0],
             z=[
                 [state0_count_0fr, state0_count_1fr],
                 [state1_count_0fr, state1_count_1fr],
             ],
+            colorbar_x=0.45,
         ),
         row=1,
         col=1,
@@ -187,8 +186,7 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
         col=1,
     )
     fig.update_yaxes(title_text="State", row=1, col=1)
-    fig.update_yaxes(range=[1, 0])
-    fig.update_yaxes(tickvals=[1, 0])
+    fig.update_yaxes(tickvals=[0, 1])
     fig.update_xaxes(tickvals=[0, 1])
 
     fig.add_trace(
@@ -202,13 +200,10 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
         col=2,
     )
 
+    fig.update_layout(coloraxis={"colorscale": "viridis"})
+
     fig.update_xaxes(
         title_text="State prepared",
-        row=1,
-        col=2,
-    )
-    fig.update_yaxes(
-        title_text="State read",
         row=1,
         col=2,
     )
@@ -216,11 +211,13 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
     fitting_report += f"q{qubit}/r | Error FR0: {error_fr0:.6f}<br>"
     fitting_report += f"q{qubit}/r | Error FR1: {error_fr1:.6f}<br>"
     fitting_report += (
-        f"q{qubit}/r | Assigment Fidelity FR: {(1 - (error_fr0 + error_fr1)/2):.6f}<br>"
+        f"q{qubit}/r | Fidelity FR: {(1 - (error_fr0 + error_fr1)/2):.6f}<br>"
     )
     fitting_report += f"q{qubit}/r | Error NFR0: {error_nfr0:.6f}<br>"
     fitting_report += f"q{qubit}/r | Error NFR1: {error_nfr1:.6f}<br>"
-    fitting_report += f"q{qubit}/r | Assigment Fidelity NFR: {(1 - (error_nfr0 + error_nfr1)/2):.6f}<br>"
+    fitting_report += (
+        f"q{qubit}/r | Fidelity NFR: {(1 - (error_nfr0 + error_nfr1)/2):.6f}<br>"
+    )
 
     # last part
     fig.update_layout(
@@ -230,8 +227,8 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
         yaxis_title="State read",
     )
 
-    fig.update_yaxes(range=[1, 0])
     fig.update_xaxes(tickvals=[0, 1])
+    fig.update_yaxes(tickvals=[0, 1])
 
     figures.append(fig)
 
