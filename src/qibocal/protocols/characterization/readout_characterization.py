@@ -114,6 +114,7 @@ def _acquisition(
                     state=state,
                     number_readout=i,
                 )
+                i += 1
 
     return data
 
@@ -138,26 +139,29 @@ def _plot(
     fig = go.Figure()
 
     # 1st measurement (m=1)
-    m1_states = data[qubit, 1, 0].probability
-    nshots = len(m1_states)
+    m1_state_1 = data[qubit, 1, 0].probability
+    nshots = len(m1_state_1)
     # state 1
-    unique, counts = np.unique(m1_states, return_counts=True)
+    unique, counts = np.unique(m1_state_1, return_counts=True)
     state0_count_1_m1 = counts[0]
-    print(state0_count_1_m1)
     state1_count_1_m1 = counts[1]
+
+    m1_state_0 = data[qubit, 0, 0].probability
     # state 0
-    unique, counts = np.unique(m1_states, return_counts=True)
+    unique, counts = np.unique(m1_state_0, return_counts=True)
     state0_count_0_m1 = counts[0]
     state1_count_0_m1 = counts[1]
 
     # 2nd measurement (m=2)
-    m2_states = data[qubit, 1, 1].probability
+    m2_state_1 = data[qubit, 1, 1].probability
     # state 1
-    unique, counts = np.unique(m2_states, return_counts=True)
+    unique, counts = np.unique(m2_state_1, return_counts=True)
     state0_count_1_m2 = counts[0]
     state1_count_1_m2 = counts[1]
+
+    m2_state_0 = data[qubit, 0, 1].probability
     # state 0
-    unique, counts = np.unique(m2_states, return_counts=True)
+    unique, counts = np.unique(m2_state_0, return_counts=True)
     state0_count_0_m2 = counts[0]
     state1_count_0_m2 = counts[1]
 
@@ -167,15 +171,15 @@ def _plot(
         [state1_count_0_m1, state1_count_1_m1],
     ]
 
-    fidelity = 1 - (state0_count_0_m1 + state1_count_1_m1) / 2
+    fidelity = 1 - (state1_count_0_m1 / nshots + state0_count_1_m1 / nshots) / 2
 
     # QND FIXME: Careful revision
-    P_0o_m0_1i = state0_count_1_m1 * state0_count_0_m2
-    P_0o_m1_1i = state1_count_1_m1 * state0_count_1_m2
+    P_0o_m0_1i = state0_count_1_m1 * state0_count_0_m2 / nshots**2
+    P_0o_m1_1i = state1_count_1_m1 * state0_count_1_m2 / nshots**2
     P_0o_1i = P_0o_m0_1i + P_0o_m1_1i
 
-    P_1o_m0_0i = state0_count_0_m1 * state1_count_0_m2
-    P_1o_m1_0i = state1_count_0_m1 * state1_count_1_m2
+    P_1o_m0_0i = state0_count_0_m1 * state1_count_0_m2 / nshots**2
+    P_1o_m1_0i = state1_count_0_m1 * state1_count_1_m2 / nshots**2
     P_1o_0i = P_1o_m0_0i + P_1o_m1_0i
 
     qnd = 1 - (P_0o_1i + P_1o_0i) / 2
@@ -184,13 +188,13 @@ def _plot(
         go.Heatmap(
             z=Lambda_M,
         ),
-        row=1,
-        col=1,
     )
 
-    fig.update_xaxes(title_text="Shot", row=1, col=2)
+    fig.update_xaxes(title_text="Shot")
+    fig.update_xaxes(tickvals=[0, 1])
+    fig.update_yaxes(tickvals=[0, 1])
 
-    fitting_report += f"q{qubit}/r | Assigment Fidelity : {fidelity:.6f}<br>"
+    fitting_report += f"q{qubit}/r | Fidelity : {fidelity:.6f}<br>"
     fitting_report += f"q{qubit}/r | QND: {qnd:.6f}<br>"
 
     # last part
