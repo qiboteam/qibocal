@@ -222,6 +222,11 @@ actions:
     parameters:
       nshots: 10
 
+  - id: readout characterization
+    priority: 0
+    operation: readout_characterization
+    parameters:
+      nshots: 10
 
   - id: allXY
     priority: 0
