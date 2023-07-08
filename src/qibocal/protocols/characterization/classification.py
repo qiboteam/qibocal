@@ -188,31 +188,6 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         cum_distribution_diff = np.abs(
             np.array(cum_distribution_state1) - np.array(cum_distribution_state0)
         )
-        import matplotlib.pyplot as plt
-
-        plt.subplot(1, 3, 1)
-        plt.scatter(
-            np.sort(real_values_combined),
-            cum_distribution_state1,
-        )
-        plt.scatter(
-            np.sort(real_values_combined),
-            cum_distribution_state0,
-        )
-        plt.legend()
-
-        plt.subplot(1, 3, 2)
-        plt.scatter(
-            np.sort(real_values_combined),
-            cum_distribution_diff,
-        )
-
-        plt.legend()
-
-        plt.subplot(1, 3, 3)
-        plt.scatter(iq_state0_rotated.real, iq_state0_rotated.imag)
-        plt.scatter(iq_state1_rotated.real, iq_state1_rotated.imag)
-        plt.savefig("CUMULATIVE_CLS.png")
 
         argmax = np.argmax(cum_distribution_diff)
         threshold = real_values_combined[argmax]
