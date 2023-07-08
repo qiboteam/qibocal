@@ -13,6 +13,8 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
+from ..utils import HZ_TO_GHZ, cumulative
+
 
 @dataclass
 class RoFrequencyParameters(Parameters):
@@ -163,7 +165,6 @@ def _fit(data: RoFrequencyData) -> RoFrequencyResults:
     fidelities_dict = {}
     fidelities = []
     best_freqs = {}
-    print(freqs)
     for qubit in qubits:
         for freq in freqs:
             iq_state0 = data[qubit, 0][data[qubit, 0].freq == freq][["i", "q"]]
@@ -181,7 +182,6 @@ def _fit(data: RoFrequencyData) -> RoFrequencyResults:
             iq_state1 = np.array(iq_state1)
             iq_state0 = np.array(iq_state0)
             nshots = len(iq_state0)
-            # print(iq_state0, iq_state1)
 
             iq_mean_state1 = np.mean(iq_state1)
             iq_mean_state0 = np.mean(iq_state0)
@@ -200,14 +200,12 @@ def _fit(data: RoFrequencyData) -> RoFrequencyResults:
             )
             real_values_combined.sort()
 
-            cum_distribution_state1 = [
-                sum(map(lambda x: x.real >= real_value, real_values_state1))
-                for real_value in real_values_combined
-            ]
-            cum_distribution_state0 = [
-                sum(map(lambda x: x.real >= real_value, real_values_state0))
-                for real_value in real_values_combined
-            ]
+            cum_distribution_state1 = cumulative(
+                real_values_combined, real_values_state1
+            )
+            cum_distribution_state0 = cumulative(
+                real_values_combined, real_values_state0
+            )
 
             cum_distribution_diff = np.abs(
                 np.array(cum_distribution_state1) - np.array(cum_distribution_state0)
@@ -215,45 +213,10 @@ def _fit(data: RoFrequencyData) -> RoFrequencyResults:
             argmax = np.argmax(cum_distribution_diff)
             errors_state1 = nshots - cum_distribution_state1[argmax]
             errors_state0 = cum_distribution_state0[argmax]
-            assignment_fidelity = 1 - (errors_state1 + errors_state0) / nshots / 2
-            print("AAAAAAAAAAAAA ", nshots, assignment_fidelity)
-            fidelities.append(assignment_fidelity)
-            plt.title(f"{assignment_fidelity}")
-            plt.savefig(f"PLOOOOT{freq}.pdf")
+            fidelities.append((errors_state1 + errors_state0) / nshots / 2)
         fidelities_dict[qubit] = fidelities
 
         best_freqs[qubit] = freqs[np.argmax(fidelities_dict[qubit])]
-        print(fidelities_dict, np.argmax(fidelities_dict[qubit]), best_freqs)
-    # results = []
-    # iq_couples = [[], []]  # axis 0: states, axis 1: qubit
-    # for i in range(2):
-    #     frequency = {}
-    #     fitted_parameters = {}
-    #     for qubit in qubits:
-    #         data_i = data[qubit, i]
-    #         freq, fitted_params = lorentzian_fit(
-    #             data_i, resonator_type=data.resonator_type, fit="resonator"
-    #         )
-    #         frequency[qubit] = freq
-    #         fitted_parameters[qubit] = fitted_params
-    #         i_measures = data_i.i
-    #         q_measures = data_i.q
-
-    #         iq_couples[i].append(np.stack((i_measures, q_measures), axis=-1))
-    #         results.append(StateResults(frequency, fitted_parameters))
-
-    # # for each qubit find the iq couple of 0-1 states that maximize the distance
-    # iq_couples = np.array(iq_couples)
-    # best_freqs = {}
-    # best_iqs = {}
-    # for qubit in qubits:
-    #     frequencies = data[qubit, 0].freq * HZ_TO_GHZ
-
-    #     max_index = np.argmax(
-    #         np.linalg.norm(iq_couples[0][qubit] - iq_couples[1][qubit], axis=-1)
-    #     )
-    #     best_freqs[qubit] = frequencies[max_index]
-    #     best_iqs[qubit] = iq_couples[:, qubit, max_index].tolist()
 
     return RoFrequencyResults(
         fidelities=fidelities_dict,
@@ -264,15 +227,12 @@ def _fit(data: RoFrequencyData) -> RoFrequencyResults:
 def _plot(data: RoFrequencyData, fit: RoFrequencyResults, qubit):
     """Plotting function for dispersive shift."""
     figures = []
-    freqs = np.unique(data[qubit, 0].freq)
+    freqs = np.unique(data[qubit, 0].freq) * HZ_TO_GHZ
     opacity = 1
     fitting_report = " "
     fig = make_subplots(
         rows=1,
         cols=1,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
-        subplot_titles=("RES FREQ",),
     )
 
     fig.add_trace(
@@ -280,129 +240,22 @@ def _plot(data: RoFrequencyData, fit: RoFrequencyResults, qubit):
             x=freqs,
             y=fit.fidelities[qubit],
             opacity=opacity,
-            # name=f"q{qubit}: {label}",
             showlegend=True,
-            # legendgroup=f"q{qubit}: {label}",
         ),
         row=1,
         col=1,
     )
 
-    # fig = make_subplots(
-    #     rows=1,
-    #     cols=2,
-    #     horizontal_spacing=0.1,
-    #     vertical_spacing=0.1,
-    #     subplot_titles=(
-    #         "MSR (V)",
-    #         "phase (rad)",
-    #     ),
-    # )
-    # # iterate over multiple data folders
-
-    # fitting_report = ""
-
-    # data_0 = data[qubit, 0]
-    # data_1 = data[qubit, 1]
-
-    # fit_data_0 = fit.results_0
-    # fit_data_1 = fit.results_1
-
-    # for i, label, q_data, data_fit in list(
-    #     zip(
-    #         (0, 1),
-    #         ("State 0", "State 1"),
-    #         (data_0, data_1),
-    #         (fit_data_0, fit_data_1),
-    #     )
-    # ):
-    #     opacity = 1
-    #     frequencies = q_data.freq * HZ_TO_GHZ
-
-    #     fig.add_trace(
-    #         go.Scatter(
-    #             x=frequencies,
-    #             y=q_data.msr * V_TO_UV,
-    #             opacity=opacity,
-    #             name=f"q{qubit}: {label}",
-    #             showlegend=True,
-    #             legendgroup=f"q{qubit}: {label}",
-    #         ),
-    #         row=1,
-    #         col=1,
-    #     )
-    #     fig.add_trace(
-    #         go.Scatter(
-    #             x=frequencies,
-    #             y=q_data.phase,
-    #             opacity=opacity,
-    #             showlegend=False,
-    #             legendgroup=f"q{qubit}: {label}",
-    #         ),
-    #         row=1,
-    #         col=2,
-    #     )
-
-    #     freqrange = np.linspace(
-    #         min(frequencies),
-    #         max(frequencies),
-    #         2 * len(q_data),
-    #     )
-
-    #     params = data_fit.fitted_parameters[qubit]
-    #     fig.add_trace(
-    #         go.Scatter(
-    #             x=freqrange,
-    #             y=lorentzian(freqrange, **params),
-    #             name=f"q{qubit}: {label} Fit",
-    #             line=go.scatter.Line(dash="dot"),
-    #         ),
-    #         row=1,
-    #         col=1,
-    #     )
-
-    # fig.add_trace(
-    #     go.Scatter(
-    #         x=[fit.best_freq[qubit], fit.best_freq[qubit]],
-    #         y=[
-    #             np.min(np.concatenate((data_0.msr, data_1.msr))),
-    #             np.max(np.concatenate((data_0.msr, data_1.msr))),
-    #         ],
-    #         mode="lines",
-    #         line=go.scatter.Line(color="orange", width=3, dash="dash"),
-    #         name="Best frequency",
-    #     ),
-    #     row=1,
-    #     col=1,
-    # )
-
-    # fig.add_vline(
-    #     x=fit.best_freq[qubit],
-    #     line=dict(color="orange", width=3, dash="dash"),
-    #     row=1,
-    #     col=1,
-    # )
+    fig.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        xaxis_title="RO Frequencies (GHz)",
+        yaxis_title="Assignment Fidelities",
+    )
 
     fitting_report = fitting_report + (
-        f"{qubit} | State zero freq : {0.03:,.0f} Hz.<br>"
+        f"{qubit} | Best RO Frequency (GHz) : {fit.best_freq[qubit]*HZ_TO_GHZ:,.4f} Hz.<br>"
     )
-    # fitting_report = fitting_report + (
-    #     f"{qubit} | State one freq : {fit_data_1.frequency[qubit]*GHZ_TO_HZ:,.0f} Hz.<br>"
-    # )
-    # fitting_report = fitting_report + (
-    #     f"{qubit} | Chi : {(fit_data_0.frequency[qubit]*GHZ_TO_HZ - fit_data_1.frequency[qubit]*GHZ_TO_HZ)/2:,.0f} Hz.<br>"
-    # )
-    # fitting_report = fitting_report + (
-    #     f"{qubit} | Best frequency : {fit.best_freq[qubit]*GHZ_TO_HZ:,.0f} Hz.<br>"
-    # )
-    # fig.update_layout(
-    #     showlegend=True,
-    #     uirevision="0",  # ``uirevision`` allows zooming while live plotting
-    #     xaxis_title="Frequency (GHz)",
-    #     yaxis_title="MSR (uV)",
-    #     xaxis2_title="Frequency (GHz)",
-    #     yaxis2_title="Phase (rad)",
-    # )
 
     figures.append(fig)
 

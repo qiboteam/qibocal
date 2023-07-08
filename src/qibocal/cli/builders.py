@@ -156,12 +156,9 @@ class ReportBuilder:
         with tempfile.NamedTemporaryFile(delete=False) as temp:
             html_list = []
             for figure in figures:
-                print(figure)
-                figure.write_html(temp.name, include_plotlyjs=False, full_html=True)
-                print(figure)
+                figure.write_html(temp.name, include_plotlyjs=False, full_html=False)
                 temp.seek(0)
                 fightml = temp.read().decode("utf-8")
-                print(fightml)
                 html_list.append(fightml)
 
         all_html = "".join(html_list)

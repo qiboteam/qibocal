@@ -183,15 +183,6 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         )
         real_values_combined.sort()
 
-        # cum_distribution_state1 = [
-        #     sum(map(lambda x: x.real >= real_value, real_values_state1))
-        #     for real_value in real_values_combined
-        # ]
-        # cum_distribution_state0 = [
-        #     sum(map(lambda x: x.real >= real_value, real_values_state0))
-        #     for real_value in real_values_combined
-        # ]
-        print(real_values_combined)
         cum_distribution_state1 = cumulative(real_values_combined, real_values_state1)
         cum_distribution_state0 = cumulative(real_values_combined, real_values_state0)
         cum_distribution_diff = np.abs(
@@ -224,7 +215,6 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         plt.savefig("CUMULATIVE_CLS.png")
 
         argmax = np.argmax(cum_distribution_diff)
-        print(np.max(cum_distribution_diff))
         threshold = real_values_combined[argmax]
         errors_state1 = data.nshots - cum_distribution_state1[argmax]
         errors_state0 = cum_distribution_state0[argmax]
