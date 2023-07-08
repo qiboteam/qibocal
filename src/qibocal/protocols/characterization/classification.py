@@ -11,6 +11,8 @@ from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
+from .utils import cumulative
+
 MESH_SIZE = 50
 
 
@@ -176,27 +178,58 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         real_values_state1 = iq_state1_rotated.real
         real_values_state0 = iq_state0_rotated.real
 
-        real_values_combined = np.concatenate((real_values_state1, real_values_state0))
+        real_values_combined = np.unique(
+            np.concatenate((real_values_state1, real_values_state0))
+        )
         real_values_combined.sort()
 
-        cum_distribution_state1 = [
-            sum(map(lambda x: x.real >= real_value, real_values_state1))
-            for real_value in real_values_combined
-        ]
-        cum_distribution_state0 = [
-            sum(map(lambda x: x.real >= real_value, real_values_state0))
-            for real_value in real_values_combined
-        ]
-
+        # cum_distribution_state1 = [
+        #     sum(map(lambda x: x.real >= real_value, real_values_state1))
+        #     for real_value in real_values_combined
+        # ]
+        # cum_distribution_state0 = [
+        #     sum(map(lambda x: x.real >= real_value, real_values_state0))
+        #     for real_value in real_values_combined
+        # ]
+        print(real_values_combined)
+        cum_distribution_state1 = cumulative(real_values_combined, real_values_state1)
+        cum_distribution_state0 = cumulative(real_values_combined, real_values_state0)
         cum_distribution_diff = np.abs(
             np.array(cum_distribution_state1) - np.array(cum_distribution_state0)
         )
+        import matplotlib.pyplot as plt
+
+        plt.subplot(1, 3, 1)
+        plt.scatter(
+            np.sort(real_values_combined),
+            cum_distribution_state1,
+        )
+        plt.scatter(
+            np.sort(real_values_combined),
+            cum_distribution_state0,
+        )
+        plt.legend()
+
+        plt.subplot(1, 3, 2)
+        plt.scatter(
+            np.sort(real_values_combined),
+            cum_distribution_diff,
+        )
+
+        plt.legend()
+
+        plt.subplot(1, 3, 3)
+        plt.scatter(iq_state0_rotated.real, iq_state0_rotated.imag)
+        plt.scatter(iq_state1_rotated.real, iq_state1_rotated.imag)
+        plt.savefig("CUMULATIVE_CLS.png")
+
         argmax = np.argmax(cum_distribution_diff)
+        print(np.max(cum_distribution_diff))
         threshold = real_values_combined[argmax]
         errors_state1 = data.nshots - cum_distribution_state1[argmax]
         errors_state0 = cum_distribution_state0[argmax]
         fidelity = cum_distribution_diff[argmax] / data.nshots
-        assignment_fidelity = 1 - (errors_state1 + errors_state0) / data.nshots / 2
+        assignment_fidelity = (errors_state1 + errors_state0) / data.nshots / 2
         thresholds[qubit] = threshold
         rotation_angles[
             qubit

@@ -160,6 +160,8 @@ def _acquisition(
     # retrieve the results for every qubit
     for qubit, ro_pulse in ro_pulses.items():
         # average msr, phase, i and q over the number of shots defined in the runcard
+        freq = delta_frequency_range + ro_pulse.frequency
+        print(type(freq), freq)
         result = results[ro_pulse.serial]
         data.register_qubit(
             qubit,

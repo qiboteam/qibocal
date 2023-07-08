@@ -3,6 +3,7 @@ from enum import Enum
 import lmfit
 import numpy as np
 import plotly.graph_objects as go
+from numba import njit
 from plotly.subplots import make_subplots
 
 from qibocal.auto.operation import Results
@@ -175,13 +176,17 @@ def norm(x_mags):
 
 
 @njit(["float64[:] (float64[:], float64[:])"], parallel=True, cache=True)
-def cum_method(input_data, points):
-    # data and points sorted
+def cumulative(input_data, points):
+    r"""Evaluates in data the cumulative distribution
+    function of `points`.
+    WARNING: `input_data` and `points` should be sorted data.
+    """
     input_data = np.sort(input_data)
     points = np.sort(points)
-
+    # data and points sorted
     prob = []
     app = 0.0
+
     for val in input_data:
         app += np.maximum(np.searchsorted(points[app::], val), 0)
         prob.append(app)
