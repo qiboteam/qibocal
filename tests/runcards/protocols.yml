@@ -320,4 +320,4 @@ actions:
     parameters:
       freq_width: 200.e+6
       freq_step: 25.e+6
-      nshots: 10
+      nshots: 1000

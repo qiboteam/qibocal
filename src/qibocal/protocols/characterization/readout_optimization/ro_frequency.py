@@ -159,15 +159,14 @@ def _acquisition(
 def _fit(data: RoFrequencyData) -> RoFrequencyResults:
     """Post-Processing for Optimization RO frequency"""
     qubits = data.qubits
-    freqs = np.unique(data[qubits[0], 0].freq)
     fidelities_dict = {}
-    fidelities = []
     best_freqs = {}
     for qubit in qubits:
+        fidelities = []
+        freqs = np.unique(data[qubit, 0].freq)
         for freq in freqs:
             iq_state0 = data[qubit, 0][data[qubit, 0].freq == freq][["i", "q"]]
             iq_state1 = data[qubit, 1][data[qubit, 1].freq == freq][["i", "q"]]
-
             iq_state0 = iq_state0.i + 1.0j * iq_state0.q
             iq_state1 = iq_state1.i + 1.0j * iq_state1.q
 
@@ -207,7 +206,6 @@ def _fit(data: RoFrequencyData) -> RoFrequencyResults:
             errors_state0 = cum_distribution_state0[argmax]
             fidelities.append((errors_state1 + errors_state0) / nshots / 2)
         fidelities_dict[qubit] = fidelities
-
         best_freqs[qubit] = freqs[np.argmax(fidelities_dict[qubit])]
 
     return RoFrequencyResults(
