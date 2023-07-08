@@ -164,7 +164,6 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
         """Input parameters type."""
         sig = inspect.signature(self.acquisition)
         param = next(iter(sig.parameters.values()))
-        print(param.annotation)
         return param.annotation
 
     @property

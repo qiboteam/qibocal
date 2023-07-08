@@ -18,7 +18,7 @@ from ..utils import HZ_TO_GHZ, cumulative
 
 @dataclass
 class RoFrequencyParameters(Parameters):
-    """Dispersive shift inputs."""
+    """Optimization RO frequency inputs."""
 
     freq_width: int
     """Width [Hz] for frequency sweep relative to the readout frequency (Hz)."""
@@ -32,7 +32,7 @@ class RoFrequencyParameters(Parameters):
 
 @dataclass
 class RoFrequencyResults(Results):
-    """Dispersive shift outputs."""
+    """ "Optimization RO frequency outputs."""
 
     fidelities: dict[QubitId, list]
 
@@ -48,12 +48,12 @@ RoFrequencyType = np.dtype(
         ("phase", np.float64),
     ]
 )
-"""Custom dtype for rabi amplitude."""
+"""Custom dtype for Optimization RO frequency."""
 
 
 @dataclass
 class RoFrequencyData(Data):
-    """Dipsersive shift acquisition outputs."""
+    """ "Optimization RO frequency acquisition outputs."""
 
     resonator_type: str
     """Resonator type."""
@@ -76,9 +76,11 @@ def _acquisition(
     params: RoFrequencyParameters, platform: Platform, qubits: Qubits
 ) -> RoFrequencyData:
     r"""
-    Data acquisition for dispersive shift experiment.
-    Perform spectroscopy on the readout resonator, with the qubit in ground and excited state, showing
-    the resonator shift produced by the coupling between the resonator and the qubit.
+    Data acquisition for readout frequency optimization.
+    While sweeping the readout frequency, the routine performs a single shot
+    classification and evaluates the assignement fidelity.
+    At the end, the readout frequency is updated, choosing the one that has
+    the highest assignment fidelity.
 
     Args:
         params (RoFrequencyParameters): experiment's parameters
@@ -124,7 +126,6 @@ def _acquisition(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
-            # averaging_mode=AveragingMode.SINGLESHOT,
         ),
         sweeper,
     )
@@ -135,14 +136,12 @@ def _acquisition(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
             acquisition_type=AcquisitionType.INTEGRATION,
-            # averaging_mode=AveragingMode.SINGLESHOT,
         ),
         sweeper,
     )
 
     # retrieve the results for every qubit
     for qubit in qubits:
-        # average msr, phase, i and q over the number of shots defined in the runcard
         for i, results in enumerate([results_0, results_1]):
             result = results[ro_pulses[qubit].serial]
             # store the results
@@ -159,7 +158,7 @@ def _acquisition(
 
 
 def _fit(data: RoFrequencyData) -> RoFrequencyResults:
-    """Post-Processing for dispersive shift"""
+    """Post-Processing for Optimization RO frequency"""
     qubits = data.qubits
     freqs = np.unique(data[qubits[0], 0].freq)
     fidelities_dict = {}
@@ -169,12 +168,6 @@ def _fit(data: RoFrequencyData) -> RoFrequencyResults:
         for freq in freqs:
             iq_state0 = data[qubit, 0][data[qubit, 0].freq == freq][["i", "q"]]
             iq_state1 = data[qubit, 1][data[qubit, 1].freq == freq][["i", "q"]]
-
-            import matplotlib.pyplot as plt
-
-            plt.subplots()
-            plt.scatter(iq_state0.i, iq_state0.q)
-            plt.scatter(iq_state1.i, iq_state1.q)
 
             iq_state0 = iq_state0.i + 1.0j * iq_state0.q
             iq_state1 = iq_state1.i + 1.0j * iq_state1.q
@@ -225,7 +218,7 @@ def _fit(data: RoFrequencyData) -> RoFrequencyResults:
 
 
 def _plot(data: RoFrequencyData, fit: RoFrequencyResults, qubit):
-    """Plotting function for dispersive shift."""
+    """Plotting function for Optimization RO frequency."""
     figures = []
     freqs = np.unique(data[qubit, 0].freq) * HZ_TO_GHZ
     opacity = 1
@@ -263,4 +256,4 @@ def _plot(data: RoFrequencyData, fit: RoFrequencyResults, qubit):
 
 
 ro_frequency = Routine(_acquisition, _fit, _plot)
-"""Dispersive shift Routine object."""
+""""Optimization RO frequency Routine object."""
