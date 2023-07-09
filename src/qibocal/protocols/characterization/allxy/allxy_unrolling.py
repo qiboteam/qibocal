@@ -21,7 +21,7 @@ def _acquisition(
 ) -> AllXYData:
     r"""
     Data acquisition for allXY experiment.
-    The AllXY experiment is a simple test of the calibration of single qubit gatesThe qubit (initialized in the |0> state)
+    The AllXY experiment is a simple test of the calibration of single qubit gates. The qubit (initialized in the |0> state)
     is subjected to two back-to-back single-qubit gates and measured. In each round, we run 21 different gate pairs:
     ideally, the first 5 return the qubit to |0>, the next 12 drive it to superposition state, and the last 4 put the
     qubit in |1> state.
