@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -30,11 +30,14 @@ class FastResetParameters(Parameters):
 class FastResetResults(Results):
     """FastReset outputs."""
 
-    optimal_integration_weights: Dict[QubitId, float]
-    """
-    Optimal integration weights for a qubit given by amplifying the parts of the
-    signal acquired which maximally distinguish between state 1 and 0.
-    """
+    fidelity_nfr: dict[QubitId, float]
+    "Fidelity of the measurement with relaxation time"
+    Lambda_M_nfr: dict[QubitId, float]
+    "Mapping between a given initial state to an outcome adter the measurement with relaxation time"
+    fidelity_fr: dict[QubitId, float]
+    "Fidelity of the measurement with fast reset"
+    Lambda_M_fr: dict[QubitId, float]
+    "Mapping between a given initial state to an outcome adter the measurement with fast reset"
 
 
 FastResetType = np.dtype(
@@ -114,9 +117,59 @@ def _acquisition(
 def _fit(data: FastResetData) -> FastResetResults:
     """Post-processing function for FastReset."""
 
-    # Getting some kind of fidelity
+    qubits = data.qubits
+    fidelity_nfr = {}
+    Lambda_M_nfr = {}
+    fidelity_fr = {}
+    Lambda_M_fr = {}
+    for qubit in qubits:
+        # state 1
+        fr_states = data[qubit, 1, True].probability
+        nfr_states = data[qubit, 1, False].probability
 
-    return FastResetResults({})
+        nshots = len(fr_states)
+
+        state1_count_1fr = np.count_nonzero(fr_states)
+        state0_count_1fr = nshots - state1_count_1fr
+        error_fr1 = 1 - (nshots - state0_count_1fr) / nshots
+
+        state1_count_1nfr = np.count_nonzero(nfr_states)
+        state0_count_1nfr = nshots - state1_count_1nfr
+        error_nfr1 = 1 - (nshots - state0_count_1nfr) / nshots
+
+        # state 0
+        fr_states = data[qubit, 0, True].probability
+        nfr_states = data[qubit, 0, False].probability
+
+        state1_count_0fr = np.count_nonzero(fr_states)
+        state0_count_0fr = nshots - state1_count_0fr
+        error_fr0 = (nshots - state0_count_0fr) / nshots
+
+        state1_count_0nfr = np.count_nonzero(nfr_states)
+        state0_count_0nfr = nshots - state1_count_0nfr
+        error_nfr0 = (nshots - state0_count_0nfr) / nshots
+
+        # Repeat Lambda and fidelity for each measurement ?
+        Lambda_M_nfr[qubit] = [
+            [state0_count_0nfr / nshots, state0_count_1nfr / nshots],
+            [state1_count_0nfr / nshots, state1_count_1nfr / nshots],
+        ]
+
+        # Repeat Lambda and fidelity for each measurement ?
+        Lambda_M_fr[qubit] = [
+            [state0_count_0fr / nshots, state0_count_1fr / nshots],
+            [state1_count_0fr / nshots, state1_count_1fr / nshots],
+        ]
+
+        fidelity_nfr[qubit] = (
+            1 - (state1_count_0nfr / nshots + state0_count_1nfr / nshots) / 2
+        )
+
+        fidelity_fr[qubit] = (
+            1 - (state1_count_0fr / nshots + state0_count_1fr / nshots) / 2
+        )
+
+    return FastResetResults(fidelity_nfr, Lambda_M_nfr, fidelity_fr, Lambda_M_fr)
 
 
 def _plot(data: FastResetData, fit: FastResetResults, qubit):
@@ -137,44 +190,10 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
         ),
     )
 
-    # state 1
-    fr_states = data[qubit, 1, True].probability
-    nfr_states = data[qubit, 1, False].probability
-
-    nshots = len(fr_states)
-
-    # FIXME crashes if all states are on the same counts
-    unique, counts = np.unique(fr_states, return_counts=True)
-    state0_count_1fr = counts[0]
-    state1_count_1fr = counts[1]
-    error_fr1 = 1 - (nshots - state0_count_1fr) / nshots
-
-    unique, counts = np.unique(nfr_states, return_counts=True)
-    state0_count_1nfr = counts[0]
-    state1_count_1nfr = counts[1]
-    error_nfr1 = 1 - (nshots - state0_count_1nfr) / nshots
-
-    # state 0
-    fr_states = data[qubit, 0, True].probability
-    nfr_states = data[qubit, 0, False].probability
-
-    unique, counts = np.unique(fr_states, return_counts=True)
-    state0_count_0fr = counts[0]
-    state1_count_0fr = counts[1]
-    error_fr0 = (nshots - state0_count_0fr) / nshots
-
-    unique, counts = np.unique(nfr_states, return_counts=True)
-    state0_count_0nfr = counts[0]
-    state1_count_0nfr = counts[1]
-    error_nfr0 = (nshots - state0_count_0nfr) / nshots
-
     fig.add_trace(
         go.Heatmap(
-            z=[
-                [state0_count_0fr, state0_count_1fr],
-                [state1_count_0fr, state1_count_1fr],
-            ],
-            colorbar_x=0.45,
+            z=fit.Lambda_M_fr[qubit],
+            coloraxis="coloraxis",
         ),
         row=1,
         col=1,
@@ -191,10 +210,8 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
 
     fig.add_trace(
         go.Heatmap(
-            z=[
-                [state0_count_0nfr, state0_count_1nfr],
-                [state1_count_0nfr, state1_count_1nfr],
-            ],
+            z=fit.Lambda_M_nfr[qubit],
+            coloraxis="coloraxis",
         ),
         row=1,
         col=2,
@@ -208,15 +225,11 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
         col=2,
     )
 
-    fitting_report += f"q{qubit}/r | Error FR0: {error_fr0:.6f}<br>"
-    fitting_report += f"q{qubit}/r | Error FR1: {error_fr1:.6f}<br>"
     fitting_report += (
-        f"q{qubit}/r | Fidelity FR: {(1 - (error_fr0 + error_fr1)/2):.6f}<br>"
+        f"q{qubit}/r | Fidelity [Fast Reset]: {fit.fidelity_fr[qubit]:.6f}<br>"
     )
-    fitting_report += f"q{qubit}/r | Error NFR0: {error_nfr0:.6f}<br>"
-    fitting_report += f"q{qubit}/r | Error NFR1: {error_nfr1:.6f}<br>"
     fitting_report += (
-        f"q{qubit}/r | Fidelity NFR: {(1 - (error_nfr0 + error_nfr1)/2):.6f}<br>"
+        f"q{qubit}/r | Fidelity [Relaxation Time]: {fit.fidelity_nfr[qubit]:.6f}<br>"
     )
 
     # last part
