@@ -12,8 +12,8 @@ from .coherence.t2_sequences import t2_sequences
 from .couplers.chevron_flux_time import chevron_flux_time as coupler_chevron_flux_time
 from .dispersive_shift import dispersive_shift
 from .flipping import flipping
-from .flux_depedence.qubit_flux_dependence import qubit_flux
-from .flux_depedence.resonator_flux_dependence import resonator_flux
+from .flux_dependence.qubit_flux_dependence import qubit_flux
+from .flux_dependence.resonator_flux_dependence import resonator_flux
 from .qubit_spectroscopy import qubit_spectroscopy
 from .rabi.amplitude import rabi_amplitude
 from .rabi.length import rabi_length
