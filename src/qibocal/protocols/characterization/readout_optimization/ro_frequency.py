@@ -244,7 +244,7 @@ def _plot(data: RoFrequencyData, fit: RoFrequencyResults, qubit):
     )
 
     fitting_report = fitting_report + (
-        f"{qubit} | Best RO Frequency (GHz) : {fit.best_freq[qubit]*HZ_TO_GHZ:,.4f} Hz.<br>"
+        f"{qubit} | Best Resonator Frequency (GHz) : {fit.best_freq[qubit]*HZ_TO_GHZ:,.4f} Hz.<br>"
     )
 
     figures.append(fig)
