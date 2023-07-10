@@ -66,8 +66,6 @@ class RoFrequencyData(Data):
         ar["freq"] = freq
         ar["msr"] = msr
         ar["phase"] = phase
-        ar["i"] = i
-        ar["q"] = q
         self.data[qubit, state] = np.rec.array(ar)
 
 
