@@ -148,8 +148,6 @@ def _acquisition(
                 qubit=qubit,
                 state=i,
                 freq=ro_pulses[qubit].frequency + delta_frequency_range,
-                msr=result.magnitude,
-                phase=result.phase,
                 i=result.voltage_i,
                 q=result.voltage_q,
             )
