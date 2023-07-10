@@ -211,9 +211,6 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
         frequencies = qubit_data.freq
         msr = qubit_data.msr
 
-        if data.resonator_type == "2D":
-            msr = -msr
-
         frequencies, biases = utils.image_to_curve(frequencies, biases, msr)
         scaler = 10**9
         try:
@@ -232,8 +229,9 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                     frequencies / scaler,
                     # p0=[max_c, xi, 0, f_q_0],
                     p0=[max_c, xi, 0, f_q_0 / scaler],
+                    bounds=((-np.inf, 0, 0, 0), (np.inf, np.inf, np.inf, np.inf)),
                 )[0]
-                # popt[3] *= scaler
+                popt[3] *= scaler
                 f_qs = popt[3]  # Qubit frequency at sweet spot.
                 f_q_offset = utils.freq_q_transmon(
                     0, *popt
@@ -261,7 +259,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                     frequencies / scaler,
                     # p0=[max_c, xi, 0, Ec, Ej],
                     p0=[max_c, xi, 0, Ec / scaler, Ej / scaler],
-                    method="dogbox",
+                    bounds=((-np.inf, 0, 0, 0), (np.inf, np.inf, np.inf, np.inf)),
                 )[0]
                 popt[3] *= scaler
                 popt[4] *= scaler

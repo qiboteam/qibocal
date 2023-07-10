@@ -206,9 +206,6 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
         frequencies = qubit_data.freq
         msr = qubit_data.msr
 
-        if data.resonator_type == "2D":
-            msr = -msr
-
         frequencies, biases = utils.image_to_curve(frequencies, biases, msr)
 
         scaler = 10**9
@@ -230,6 +227,10 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                     frequencies / scaler,
                     # p0=[max_c, xi, 0, f_q_0 / f_rh, g, f_rh],
                     p0=[max_c, xi, 0, f_q_0 / f_rh, g / scaler, f_rh / scaler],
+                    bounds=(
+                        (-np.inf, 0, 0, 0, 0, 0),
+                        (np.inf, np.inf, np.inf, np.inf, np.inf, np.inf),
+                    ),
                 )[0]
                 popt[4] *= scaler
                 popt[5] *= scaler
@@ -251,8 +252,8 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                     "Xi": popt[1],
                     "d": abs(popt[2]),
                     "f_q/f_rh": popt[3],
-                    "g": g,
-                    "f_rh": f_rh,
+                    "g": popt[4],
+                    "f_rh": popt[5],
                     "f_qs": f_qs,
                     "f_r_offset": f_r_offset,
                     "C_ii": C_ii,
@@ -274,7 +275,10 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                         Ec / scaler,
                         Ej / scaler,
                     ],
-                    method="dogbox",
+                    bounds=(
+                        (0, 0, -np.inf, 0, 0, 0, 0),
+                        (np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf),
+                    ),
                 )[0]
                 popt[0] *= scaler
                 popt[1] *= scaler

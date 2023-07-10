@@ -25,9 +25,7 @@ def flux_dependence_plot(data, fit, qubit, label):
     )
     frequencies = qubit_data.freq * HZ_TO_GHZ
 
-    frequencies1, biases1 = image_to_curve(
-        frequencies, qubit_data.bias, qubit_data.msr * V_TO_UV
-    )
+    frequencies1, biases1 = image_to_curve(frequencies, qubit_data.bias, qubit_data.msr)
 
     fig.add_trace(
         go.Heatmap(
@@ -255,9 +253,11 @@ def image_to_curve(x, y, z, alpha=0.0001, order=50):
     max_y = np.max(y)
     min_y = np.min(y)
     leny = int(len(y) / (lenx))
+    z = np.array(z, float)
+    if len(z) != leny * lenx:
+        lenx += 1
     x = np.linspace(min_x, max_x, lenx)
     y = np.linspace(min_y, max_y, leny)
-    z = np.array(z, float)
     z = np.reshape(z, (leny, lenx))
     zmax, zmin = z.max(), z.min()
     znorm = (z - zmin) / (zmax - zmin)
