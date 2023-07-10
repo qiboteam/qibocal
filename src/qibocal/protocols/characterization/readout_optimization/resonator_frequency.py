@@ -58,12 +58,10 @@ class ResonatorFrequencyData(Data):
         default_factory=dict
     )
 
-    def register_qubit(self, qubit, state, freq, msr, phase, i, q):
+    def register_qubit(self, qubit, state, freq):
         """Store output for single qubit."""
-        ar = np.empty(i.shape, dtype=ResonatorFrequencyType)
+        ar = np.empty(freq.shape, dtype=ResonatorFrequencyType)
         ar["freq"] = freq
-        ar["msr"] = msr
-        ar["phase"] = phase
         self.data[qubit, state] = np.rec.array(ar)
 
 
@@ -144,8 +142,6 @@ def _acquisition(
                 qubit=qubit,
                 state=i,
                 freq=ro_pulses[qubit].frequency + delta_frequency_range,
-                i=result.voltage_i,
-                q=result.voltage_q,
             )
     return data
 

@@ -314,9 +314,9 @@ actions:
       noise_model: PauliErrorOnX
       noise_params: [0.01, 0.01, 0.01]
 
-  - id : ro_frequency
+  - id : resonator_frequency
     priority: 0
-    operation: ro_frequency
+    operation: resonator_frequency
     parameters:
       freq_width: 200.e+6
       freq_step: 25.e+6
