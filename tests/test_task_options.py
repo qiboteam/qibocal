@@ -26,27 +26,17 @@ DUMMY_CARD = {
                 "nshots": 10,
             },
         },
-        {
-            "id": "resonator frequency",
-            "priority": 0,
-            "operation": "resonator_spectroscopy",
-            "parameters": {
-                "freq_width": 10_000_000,
-                "freq_step": 100_000,
-                "amplitude": 0.4,
-                "power_level": "high",
-            },
-        },
     ],
 }
 
 
 def modify_card(card, qubits=None, update=None):
     """Modify runcard to change local qubits or update."""
-    if qubits is not None:
-        card["actions"][0]["qubits"] = qubits
-    elif update is not None:
-        card["actions"][0]["update"] = update
+    for action in card["actions"]:
+        if qubits is not None:
+            action["qubits"] = qubits
+        elif update is not None:
+            action["update"] = update
     return card
 
 
@@ -74,12 +64,19 @@ UPDATE_CARD = {
             "id": "resonator frequency",
             "priority": 0,
             "operation": "resonator_spectroscopy",
+            "main": "classification",
             "parameters": {
                 "freq_width": 10_000_000,
                 "freq_step": 100_000,
                 "amplitude": 0.4,
                 "power_level": "low",
             },
+        },
+        {
+            "id": "classification",
+            "priority": 0,
+            "operation": "single_shot_classification",
+            "parameters": {"nshots": 100},
         },
     ],
 }
@@ -91,6 +88,7 @@ def test_update_argument(global_update, local_update):
     """Test possible update combinations between global and local."""
     platform = deepcopy(create_platform("dummy"))
     old_readout_frequency = platform.qubits[0].readout_frequency
+    old_iq_angle = platform.qubits[1].iq_angle
     NEW_CARD = modify_card(deepcopy(UPDATE_CARD), update=local_update)
     executor = Executor.load(
         Runcard.load(NEW_CARD),
@@ -99,8 +97,14 @@ def test_update_argument(global_update, local_update):
         platform.qubits,
         global_update,
     )
-    next(executor.run())
+
+    for _ in executor.run():
+        pass
+
     if local_update and global_update:
         assert old_readout_frequency != platform.qubits[0].readout_frequency
+        assert old_iq_angle != platform.qubits[1].iq_angle
+
     else:
         assert old_readout_frequency == platform.qubits[0].readout_frequency
+        assert old_iq_angle == platform.qubits[1].iq_angle
