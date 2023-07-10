@@ -43,8 +43,6 @@ RoFrequencyType = np.dtype(
         ("freq", np.float64),
         ("i", np.float64),
         ("q", np.float64),
-        ("msr", np.float64),
-        ("phase", np.float64),
     ]
 )
 """Custom dtype for Optimization RO frequency."""
