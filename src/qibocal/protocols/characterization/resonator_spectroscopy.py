@@ -74,7 +74,11 @@ class ResonatorSpectroscopyResults(Results):
         amplitude when running resonator spectroscopy at
         high power."""
         up: dict[str, ParameterValue] = {}
-        fields_to_updated = [fld for fld in fields(self) if fld.name != "amplitude"] if self.bare_frequency == {} else fields(self)
+        fields_to_updated = (
+            [fld for fld in fields(self) if fld.name != "amplitude"]
+            if self.bare_frequency == {}
+            else fields(self)
+        )
 
         for fld in fields_to_updated:
             if "update" in fld.metadata:
