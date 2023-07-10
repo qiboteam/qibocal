@@ -146,7 +146,6 @@ def _acquisition(
         data.register_qubit(
             qubit=qubit, state=1, i=result.voltage_i, q=result.voltage_q
         )
-    print(data)
     return data
 
 

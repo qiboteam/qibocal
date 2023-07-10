@@ -119,7 +119,6 @@ def _acquisition(
 
         sequence.add(ro_pulses[qubit])
 
-    print(amplitudes)
     # define the parameter to sweep and its range:
     delta_frequency_range = np.arange(
         -params.freq_width // 2, params.freq_width // 2, params.freq_step
@@ -137,7 +136,6 @@ def _acquisition(
         resonator_type=platform.resonator_type,
     )
 
-    print(data.amplitudes)
     results = platform.sweep(
         sequence,
         ExecutionParameters(
@@ -160,7 +158,6 @@ def _acquisition(
             phase=result.phase,
             freq=delta_frequency_range + ro_pulses[qubit].frequency,
         )
-    print(data)
     return data
 
 

@@ -66,7 +66,9 @@ class Data(BaseModel):
     dtype: np.dtype
 
     class Config:
+        # needed because we are using np.ndarray
         arbitrary_types_allowed = True
+        # needed to avoid loading dict keys as strings
         smart_union = True
 
     @validator("data", pre=True)
@@ -91,7 +93,7 @@ class Data(BaseModel):
         return self.data[qubit]
 
     @property
-    def global_params_dict(self):
+    def global_params(self) -> dict:
         """Convert non-arrays attributes into dict."""
         global_dict = self.dict()
         global_dict.pop("data")
@@ -109,12 +111,13 @@ class Data(BaseModel):
 
     def to_json(self, path):
         """Helper function to dump to json in JSONFILE path."""
-        if self.global_params_dict:
-            (path / JSONFILE).write_text(json.dumps(self.global_params_dict, indent=4))
+        if self.global_params:
+            (path / JSONFILE).write_text(json.dumps(self.global_params, indent=4))
 
     @classmethod
     def load(cls, path):
-        data_dict = dict(np.load(path / DATAFILE))
+        with open(path / DATAFILE) as f:
+            data_dict = dict(np.load(path / DATAFILE))
         if (path / JSONFILE).is_file():
             params = json.loads((path / JSONFILE).read_text())
             obj = cls(data=data_dict, **params)
