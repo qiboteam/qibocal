@@ -16,7 +16,7 @@ from qibocal.protocols.characterization.utils import HZ_TO_GHZ, cumulative
 
 
 @dataclass
-class RoFrequencyParameters(Parameters):
+class ResonatorFrequencyParameters(Parameters):
     """Optimization RO frequency inputs."""
 
     freq_width: int
@@ -30,7 +30,7 @@ class RoFrequencyParameters(Parameters):
 
 
 @dataclass
-class RoFrequencyResults(Results):
+class ResonatorFrequencyResults(Results):
     """ "Optimization RO frequency outputs."""
 
     fidelities: dict[QubitId, list]
@@ -38,7 +38,7 @@ class RoFrequencyResults(Results):
     best_freq: dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
 
 
-RoFrequencyType = np.dtype(
+ResonatorFrequencyType = np.dtype(
     [
         ("freq", np.float64),
         ("i", np.float64),
@@ -49,18 +49,18 @@ RoFrequencyType = np.dtype(
 
 
 @dataclass
-class RoFrequencyData(Data):
+class ResonatorFrequencyData(Data):
     """ "Optimization RO frequency acquisition outputs."""
 
     resonator_type: str
     """Resonator type."""
-    data: dict[tuple[QubitId, int, int], npt.NDArray[RoFrequencyType]] = field(
+    data: dict[tuple[QubitId, int, int], npt.NDArray[ResonatorFrequencyType]] = field(
         default_factory=dict
     )
 
     def register_qubit(self, qubit, state, freq, msr, phase, i, q):
         """Store output for single qubit."""
-        ar = np.empty(i.shape, dtype=RoFrequencyType)
+        ar = np.empty(i.shape, dtype=ResonatorFrequencyType)
         ar["freq"] = freq
         ar["msr"] = msr
         ar["phase"] = phase
@@ -68,8 +68,8 @@ class RoFrequencyData(Data):
 
 
 def _acquisition(
-    params: RoFrequencyParameters, platform: Platform, qubits: Qubits
-) -> RoFrequencyData:
+    params: ResonatorFrequencyParameters, platform: Platform, qubits: Qubits
+) -> ResonatorFrequencyData:
     r"""
     Data acquisition for readout frequency optimization.
     While sweeping the readout frequency, the routine performs a single shot
@@ -78,7 +78,7 @@ def _acquisition(
     the highest assignment fidelity.
 
     Args:
-        params (RoFrequencyParameters): experiment's parameters
+        params (ResonatorFrequencyParameters): experiment's parameters
         platform (Platform): Qibolab platform object
         qubits (dict): list of target qubits to perform the action
 
@@ -107,7 +107,7 @@ def _acquisition(
         -params.freq_width / 2, params.freq_width / 2, params.freq_step
     )
 
-    data = RoFrequencyData(platform.resonator_type)
+    data = ResonatorFrequencyData(platform.resonator_type)
     sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
@@ -150,7 +150,7 @@ def _acquisition(
     return data
 
 
-def _fit(data: RoFrequencyData) -> RoFrequencyResults:
+def _fit(data: ResonatorFrequencyData) -> ResonatorFrequencyResults:
     """Post-Processing for Optimization RO frequency"""
     qubits = data.qubits
     fidelities_dict = {}
@@ -202,13 +202,13 @@ def _fit(data: RoFrequencyData) -> RoFrequencyResults:
         fidelities_dict[qubit] = fidelities
         best_freqs[qubit] = freqs[np.argmax(fidelities_dict[qubit])]
 
-    return RoFrequencyResults(
+    return ResonatorFrequencyResults(
         fidelities=fidelities_dict,
         best_freq=best_freqs,
     )
 
 
-def _plot(data: RoFrequencyData, fit: RoFrequencyResults, qubit):
+def _plot(data: ResonatorFrequencyData, fit: ResonatorFrequencyResults, qubit):
     """Plotting function for Optimization RO frequency."""
     figures = []
     freqs = np.unique(data[qubit, 0].freq) * HZ_TO_GHZ
