@@ -239,7 +239,7 @@ def _plot(data: RoFrequencyData, fit: RoFrequencyResults, qubit):
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="RO Frequencies (GHz)",
+        xaxis_title="Resonator Frequencies (GHz)",
         yaxis_title="Assignment Fidelities",
     )
 
