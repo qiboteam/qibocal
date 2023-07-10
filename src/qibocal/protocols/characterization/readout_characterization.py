@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -26,11 +26,12 @@ class ReadoutCharacterizationParameters(Parameters):
 class ReadoutCharacterizationResults(Results):
     """ReadoutCharacterization outputs."""
 
-    readout_characterization_results: Dict[QubitId, float]
-    """
-    Optimal integration weights for a qubit given by amplifying the parts of the
-    signal acquired which maximally distinguish between state 1 and 0.
-    """
+    fidelity: dict[QubitId, float]
+    "Fidelity of the measurement"
+    qnd: dict[QubitId, float]
+    "QND-ness of the measurement"
+    Lambda_M: dict[QubitId, float]
+    "Mapping between a given initial state to an outcome adter the measurement"
 
 
 ReadoutCharacterizationType = np.dtype(
@@ -50,11 +51,11 @@ class ReadoutCharacterizationData(Data):
     ] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, probability, state, number_readout):
+    def register_qubit(self, qubit, probability, state, readout_number):
         """Store output for single qubit."""
         ar = np.empty(probability.shape, dtype=ReadoutCharacterizationType)
         ar["probability"] = probability
-        self.data[qubit, state, number_readout] = np.rec.array(ar)
+        self.data[qubit, state, readout_number] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -73,25 +74,17 @@ def _acquisition(
         ro_pulses = {}
         sequence = PulseSequence()
         for qubit in qubits:
+            start = 0
             if state == 1:
                 RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
-                start = RX_pulses[qubit].finish
-                ro_pulses[qubit] = []
-                for _ in range(2):
-                    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=start)
-                    start += ro_pulse.duration
-                    sequence.add(ro_pulse)
-                    ro_pulses[qubit].append(ro_pulse)
-
                 sequence.add(RX_pulses[qubit])
-            else:
-                start = 0
-                ro_pulses[qubit] = []
-                for _ in range(2):
-                    ro_pulse = platform.create_qubit_readout_pulse(qubit, start=start)
-                    start += ro_pulse.duration
-                    sequence.add(ro_pulse)
-                    ro_pulses[qubit].append(ro_pulse)
+                start = RX_pulses[qubit].finish
+            ro_pulses[qubit] = []
+            for _ in range(2):
+                ro_pulse = platform.create_qubit_readout_pulse(qubit, start=start)
+                start += ro_pulse.duration
+                sequence.add(ro_pulse)
+                ro_pulses[qubit].append(ro_pulse)
 
         # execute the pulse sequence
         results = platform.execute_pulse_sequence(
@@ -112,7 +105,7 @@ def _acquisition(
                     qubit,
                     probability=result.samples,
                     state=state,
-                    number_readout=i,
+                    readout_number=i,
                 )
                 i += 1
 
@@ -122,9 +115,56 @@ def _acquisition(
 def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
     """Post-processing function for ReadoutCharacterization."""
 
-    # Getting some kind of fidelity
+    qubits = data.qubits
+    fidelity = {}
+    qnd = {}
+    Lambda_M = {}
+    for qubit in qubits:
+        # 1st measurement (m=1)
+        m1_state_1 = data[qubit, 1, 0].probability
+        nshots = len(m1_state_1)
+        # state 1
+        state1_count_1_m1 = np.count_nonzero(m1_state_1)
+        state0_count_1_m1 = nshots - state1_count_1_m1
 
-    return ReadoutCharacterizationResults({})
+        m1_state_0 = data[qubit, 0, 0].probability
+        # state 0
+        state1_count_0_m1 = np.count_nonzero(m1_state_0)
+        state0_count_0_m1 = nshots - state1_count_0_m1
+
+        # 2nd measurement (m=2)
+        m2_state_1 = data[qubit, 1, 1].probability
+        # state 1
+        state1_count_1_m2 = np.count_nonzero(m2_state_1)
+        state0_count_1_m2 = nshots - state1_count_1_m2
+
+        m2_state_0 = data[qubit, 0, 1].probability
+        # state 0
+        state1_count_0_m2 = np.count_nonzero(m2_state_0)
+        state0_count_0_m2 = nshots - state1_count_0_m2
+
+        # Repeat Lambda and fidelity for each measurement ?
+        Lambda_M[qubit] = [
+            [state0_count_0_m1, state0_count_1_m1],
+            [state1_count_0_m1, state1_count_1_m1],
+        ]
+
+        fidelity[qubit] = (
+            1 - (state1_count_0_m1 / nshots + state0_count_1_m1 / nshots) / 2
+        )
+
+        # QND FIXME: Careful revision
+        P_0o_m0_1i = state0_count_1_m1 * state0_count_0_m2 / nshots**2
+        P_0o_m1_1i = state1_count_1_m1 * state0_count_1_m2 / nshots**2
+        P_0o_1i = P_0o_m0_1i + P_0o_m1_1i
+
+        P_1o_m0_0i = state0_count_0_m1 * state1_count_0_m2 / nshots**2
+        P_1o_m1_0i = state1_count_0_m1 * state1_count_1_m2 / nshots**2
+        P_1o_0i = P_1o_m0_0i + P_1o_m1_0i
+
+        qnd[qubit] = 1 - (P_0o_1i + P_1o_0i) / 2
+
+    return ReadoutCharacterizationResults(fidelity, qnd, Lambda_M)
 
 
 def _plot(
@@ -138,55 +178,9 @@ def _plot(
     fitting_report = ""
     fig = go.Figure()
 
-    # 1st measurement (m=1)
-    m1_state_1 = data[qubit, 1, 0].probability
-    nshots = len(m1_state_1)
-    # state 1
-    unique, counts = np.unique(m1_state_1, return_counts=True)
-    state0_count_1_m1 = counts[0]
-    state1_count_1_m1 = counts[1]
-
-    m1_state_0 = data[qubit, 0, 0].probability
-    # state 0
-    unique, counts = np.unique(m1_state_0, return_counts=True)
-    state0_count_0_m1 = counts[0]
-    state1_count_0_m1 = counts[1]
-
-    # 2nd measurement (m=2)
-    m2_state_1 = data[qubit, 1, 1].probability
-    # state 1
-    unique, counts = np.unique(m2_state_1, return_counts=True)
-    state0_count_1_m2 = counts[0]
-    state1_count_1_m2 = counts[1]
-
-    m2_state_0 = data[qubit, 0, 1].probability
-    # state 0
-    unique, counts = np.unique(m2_state_0, return_counts=True)
-    state0_count_0_m2 = counts[0]
-    state1_count_0_m2 = counts[1]
-
-    # Repeat Lambda and fidelity for each measurement ?
-    Lambda_M = [
-        [state0_count_0_m1, state0_count_1_m1],
-        [state1_count_0_m1, state1_count_1_m1],
-    ]
-
-    fidelity = 1 - (state1_count_0_m1 / nshots + state0_count_1_m1 / nshots) / 2
-
-    # QND FIXME: Careful revision
-    P_0o_m0_1i = state0_count_1_m1 * state0_count_0_m2 / nshots**2
-    P_0o_m1_1i = state1_count_1_m1 * state0_count_1_m2 / nshots**2
-    P_0o_1i = P_0o_m0_1i + P_0o_m1_1i
-
-    P_1o_m0_0i = state0_count_0_m1 * state1_count_0_m2 / nshots**2
-    P_1o_m1_0i = state1_count_0_m1 * state1_count_1_m2 / nshots**2
-    P_1o_0i = P_1o_m0_0i + P_1o_m1_0i
-
-    qnd = 1 - (P_0o_1i + P_1o_0i) / 2
-
     fig.add_trace(
         go.Heatmap(
-            z=Lambda_M,
+            z=fit.Lambda_M[qubit],
         ),
     )
 
@@ -194,8 +188,8 @@ def _plot(
     fig.update_xaxes(tickvals=[0, 1])
     fig.update_yaxes(tickvals=[0, 1])
 
-    fitting_report += f"q{qubit}/r | Fidelity : {fidelity:.6f}<br>"
-    fitting_report += f"q{qubit}/r | QND: {qnd:.6f}<br>"
+    fitting_report += f"{qubit} | Fidelity : {fit.fidelity[qubit]:.6f}<br>"
+    fitting_report += f"{qubit} | QND: {fit.qnd[qubit]:.6f}<br>"
 
     # last part
     fig.update_layout(
