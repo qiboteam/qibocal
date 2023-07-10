@@ -186,6 +186,9 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
         qubit_data = data[qubit]
         Ec = data.Ec[qubit]  # qubit_data["Ec"]
         Ej = data.Ej[qubit]  # qubit_data["Ej"]
+
+        frequency[qubit] = 0
+        sweetspot[qubit] = 0
         fitted_parameters[qubit] = {
             "Xi": 0,
             "d": 0,
@@ -208,8 +211,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
 
         frequencies, biases = utils.image_to_curve(frequencies, biases, msr)
 
-        # scaler = 10**9
-        fitted_parameters[qubit] = 0
+        scaler = 10**9
         try:
             f_rh = data.f_rh[qubit]  # Resonator frequency at high power.
             g = data.g[qubit]  # Readout coupling.
@@ -225,12 +227,12 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 popt = curve_fit(
                     utils.freq_r_transmon,
                     biases,
-                    frequencies,  # / scaler,
-                    p0=[max_c, xi, 0, f_q_0 / f_rh, g, f_rh],
-                    # p0=[max_c, xi, 0, f_q_0 / f_rh, g / scaler, f_rh / scaler],
+                    frequencies / scaler,
+                    # p0=[max_c, xi, 0, f_q_0 / f_rh, g, f_rh],
+                    p0=[max_c, xi, 0, f_q_0 / f_rh, g / scaler, f_rh / scaler],
                 )[0]
-                # popt[4] *= scaler
-                # popt[5] *= scaler
+                popt[4] *= scaler
+                popt[5] *= scaler
                 f_qs = popt[3] * popt[5]  # Qubit frequency at sweet spot.
                 f_rs = utils.freq_r_transmon(
                     popt[0], *popt
@@ -262,22 +264,22 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 popt = curve_fit(
                     freq_r_mathieu1,
                     biases,
-                    frequencies,  # / scaler,
+                    frequencies / scaler,
                     p0=[
-                        f_rh,  # / scaler,
-                        g,  # / scaler,
+                        f_rh / scaler,
+                        g / scaler,
                         max_c,
                         xi,
                         0,
-                        Ec,  # / scaler,
-                        Ej,  # / scaler,
+                        Ec / scaler,
+                        Ej / scaler,
                     ],
                     method="dogbox",
                 )[0]
-                # popt[0] *= scaler
-                # popt[1] *= scaler
-                # popt[5] *= scaler
-                # popt[6] *= scaler
+                popt[0] *= scaler
+                popt[1] *= scaler
+                popt[5] *= scaler
+                popt[6] *= scaler
                 f_qs = utils.freq_q_mathieu(
                     popt[2], *popt[2::]
                 )  # Qubit frequency at sweet spot.

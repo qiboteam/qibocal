@@ -24,6 +24,11 @@ def flux_dependence_plot(data, fit, qubit, label):
         ),
     )
     frequencies = qubit_data.freq * HZ_TO_GHZ
+
+    frequencies1, biases1 = image_to_curve(
+        frequencies, qubit_data.bias, qubit_data.msr * V_TO_UV
+    )
+
     fig.add_trace(
         go.Heatmap(
             x=frequencies,
@@ -34,6 +39,71 @@ def flux_dependence_plot(data, fit, qubit, label):
         row=1,
         col=1,
     )
+
+    fig.add_trace(
+        go.Scatter(
+            x=frequencies1,
+            y=biases1,
+            mode="markers",
+            marker_color="green",
+        ),
+        row=1,
+        col=1,
+    )
+
+    params = fit.fitted_parameters[qubit]
+
+    if fit.frequency[qubit] != 0:
+        if label[0:9] == "Resonator":
+            if {"Ec", "Ej"}.issubset(set(params.keys())):
+                popt = [
+                    params["f_rh"],
+                    params["g"],
+                    fit.sweetspot[qubit],
+                    params["Xi"],
+                    params["d"],
+                    params["Ec"],
+                    params["Ej"],
+                ]
+                freq_fit = freq_r_mathieu(biases1, *popt) * HZ_TO_GHZ
+            else:
+                popt = [
+                    fit.sweetspot[qubit],
+                    params["Xi"],
+                    params["d"],
+                    params["f_q/f_rh"],
+                    params["g"],
+                    params["f_rh"],
+                ]
+                freq_fit = freq_r_transmon(biases1, *popt) * HZ_TO_GHZ
+        elif label[0:5] == "Qubit":
+            if {"Ec", "Ej"}.issubset(set(params.keys())):
+                popt = [
+                    fit.sweetspot[qubit],
+                    params["Xi"],
+                    params["d"],
+                    params["Ec"],
+                    params["Ej"],
+                ]
+                freq_fit = freq_q_mathieu(biases1, *popt) * HZ_TO_GHZ
+            else:
+                popt = [
+                    fit.sweetspot[qubit],
+                    params["Xi"],
+                    params["d"],
+                    fit.frequency[qubit],
+                ]
+                freq_fit = freq_q_transmon(biases1, *popt) * HZ_TO_GHZ
+
+        fig.add_trace(
+            go.Scatter(
+                x=freq_fit,
+                y=biases1,
+            ),
+            row=1,
+            col=1,
+        )
+
     fig.update_xaxes(
         title_text=f"{qubit}: Frequency (Hz)",
         row=1,
@@ -73,6 +143,8 @@ def flux_dependence_plot(data, fit, qubit, label):
     for key, value in fit.fitted_parameters[qubit].items():
         if value == 0:
             value = "Fitting not successful"
+            fitting_report += f"{qubit} | {key}: {value}<br>"
+        else:
             fitting_report += f"{qubit} | {key}: {value}<br>"
 
     fitting_report += "<br>"
@@ -186,7 +258,7 @@ def image_to_curve(x, y, z, alpha=0.0001, order=50):
     x = np.linspace(min_x, max_x, lenx)
     y = np.linspace(min_y, max_y, leny)
     z = np.array(z, float)
-    z = np.reshape(z, (lenx, leny))
+    z = np.reshape(z, (leny, lenx))
     zmax, zmin = z.max(), z.min()
     znorm = (z - zmin) / (zmax - zmin)
 
@@ -195,9 +267,9 @@ def image_to_curve(x, y, z, alpha=0.0001, order=50):
     z = np.argwhere(mask)
     weights = znorm[mask] / float(znorm.max())
     # Column indices
-    x_fit = y[z[:, 1].reshape(-1, 1)]
+    x_fit = y[z[:, 0].reshape(-1, 1)]
     # Row indices to predict.
-    y_fit = x[z[:, 0]]
+    y_fit = x[z[:, 1]]
 
     # Ridge regression, i.e., least squares with l2 regularization
     A = feature(x_fit, order)
