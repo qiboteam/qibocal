@@ -34,7 +34,7 @@ DUMMY_CARD = {
                 "freq_width": 10_000_000,
                 "freq_step": 100_000,
                 "amplitude": 0.4,
-                "power_level": "low",
+                "power_level": "high",
             },
         },
     ],
@@ -99,7 +99,7 @@ def test_update_argument(global_update, local_update):
         platform.qubits,
         global_update,
     )
-    executor.run()
+    next(executor.run())
     if local_update and global_update:
         assert old_readout_frequency != platform.qubits[0].readout_frequency
     else:
