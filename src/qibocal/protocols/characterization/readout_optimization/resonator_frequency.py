@@ -246,5 +246,5 @@ def _plot(data: ResonatorFrequencyData, fit: ResonatorFrequencyResults, qubit):
     return figures, fitting_report
 
 
-ro_frequency = Routine(_acquisition, _fit, _plot)
+resonator_frequency = Routine(_acquisition, _fit, _plot)
 """"Optimization RO frequency Routine object."""
