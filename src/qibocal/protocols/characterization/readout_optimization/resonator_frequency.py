@@ -183,7 +183,6 @@ def _fit(data: ResonatorFrequencyData) -> ResonatorFrequencyResults:
             real_values_combined = np.concatenate(
                 (real_values_state1, real_values_state0)
             )
-            real_values_combined.sort()
 
             cum_distribution_state1 = cumulative(
                 real_values_combined, real_values_state1
