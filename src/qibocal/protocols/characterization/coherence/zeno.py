@@ -27,7 +27,7 @@ class ZenoParameters(Parameters):
     """Relaxation time (ns)."""
 
 
-ZenoType = np.dtype([("msr", np.float64), ("phase", np.float64), ("n_ros", np.float64)])
+ZenoType = np.dtype([("msr", np.float64), ("phase", np.float64)])
 """Custom dtype for Zeno."""
 
 
@@ -36,12 +36,11 @@ class ZenoData(Data):
     data: dict[tuple[QubitId, int], npt.NDArray[ZenoType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, msr, phase, n_ros):
+    def register_qubit(self, qubit, msr, phase):
         """Store output for single qubit."""
         ar = np.empty((1,), dtype=ZenoType)
         ar["msr"] = msr
         ar["phase"] = phase
-        ar["n_ros"] = n_ros
         if qubit in self.data:
             self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
         else:
@@ -118,13 +117,11 @@ def _acquisition(
 
     # retrieve and store the results for every qubit
     for qubit in qubits:
-        i = 1
         for ro_pulse in ro_pulses[qubit]:
             result = results[ro_pulse.serial]
             data.register_qubit(
-                qubit=qubit, msr=result.magnitude, phase=result.phase, n_ros=i
+                qubit=qubit, msr=result.magnitude, phase=result.phase  # , n_ros=i
             )
-            i += 1
 
     return data
 
@@ -150,7 +147,7 @@ def _plot(data: ZenoData, fit: ZenoResults, qubit):
 
     fitting_report = ""
     qubit_data = data[qubit]
-    n_ros = qubit_data.n_ros
+    n_ros = np.arange(1, len(qubit_data.msr) + 1)
 
     fig.add_trace(
         go.Scatter(

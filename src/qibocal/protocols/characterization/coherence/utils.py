@@ -70,7 +70,7 @@ def exponential_fit_zeno(data):
 
     for qubit in qubits:
         voltages = data[qubit].msr * V_TO_UV
-        times = data[qubit].n_ros
+        times = np.arange(1, len(data[qubit].msr) + 1)
 
         try:
             y_max = np.max(voltages)
