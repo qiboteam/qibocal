@@ -204,7 +204,7 @@ def _acquisition(
     noise_model = None
     if params.noise_model:
         # FIXME implement this check outside acquisition
-        if platform and platform.name != "dummy":
+        if platform and platform.name not in "dummy2":
             raise_error(
                 NotImplementedError,
                 f"Backend qibolab ({platform}) does not perform noise models simulation.",
