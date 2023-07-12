@@ -1,12 +1,16 @@
 import inspect
 import json
+import time
 from dataclasses import asdict, dataclass, fields
+from functools import wraps
 from typing import Callable, Generic, NewType, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
 from qibolab.platform import Platform
 from qibolab.qubits import Qubit, QubitId
+
+from qibocal.config import log
 
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
@@ -22,6 +26,21 @@ JSONFILE = "conf.json"
 """Name of the file where data acquired (global configuration) by calibration are dumped."""
 RESULTSFILE = "results.json"
 """Name of the file where results are dumped."""
+
+
+def add_logg(func):
+    """Decorator"""
+
+    @wraps(func)
+    def wrapper(*args, **kwds):
+        log.info(f"Starting {func.__name__[1:]}.")
+        start = time.time()
+        out = func(*args, **kwds)
+        end = time.time()
+        log.info(f"Finished {func.__name__[1:]} after {end-start:.2f} seconds.")
+        return out
+
+    return wrapper
 
 
 class Parameters:
@@ -153,6 +172,10 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     """Plotting function."""
 
     def __post_init__(self):
+        self.acquisition = add_logg(self.acquisition)
+        self.fit = add_logg(self.fit)
+        self.report = add_logg(self.report)
+
         # TODO: this could be improved
         if self.fit is None:
             self.fit = _dummy_fit
