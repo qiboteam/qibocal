@@ -12,9 +12,6 @@ from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
-# TODO: IBM Fast Reset until saturation loop
-# https://quantum-computing.ibm.com/lab/docs/iql/manage/systems/reset/backend_reset
-
 
 @dataclass
 class FastResetParameters(Parameters):
