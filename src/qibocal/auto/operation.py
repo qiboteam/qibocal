@@ -28,10 +28,11 @@ RESULTSFILE = "results.json"
 """Name of the file where results are dumped."""
 
 
-def add_logg(func):
-    """Decorator"""
+def show_logs(func):
+    """Decorator to add logs."""
 
     @wraps(func)
+    # necessary to maintain the function signature
     def wrapper(*args, **kwds):
         log.info(f"Starting {func.__name__[1:]}.")
         start = time.time()
@@ -172,9 +173,9 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     """Plotting function."""
 
     def __post_init__(self):
-        self.acquisition = add_logg(self.acquisition)
-        self.fit = add_logg(self.fit)
-        self.report = add_logg(self.report)
+        self.acquisition = show_logs(self.acquisition)
+        self.fit = show_logs(self.fit)
+        self.report = show_logs(self.report)
 
         # TODO: this could be improved
         if self.fit is None:
