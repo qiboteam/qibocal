@@ -119,9 +119,7 @@ def _acquisition(
     for qubit in qubits:
         for ro_pulse in ro_pulses[qubit]:
             result = results[ro_pulse.serial]
-            data.register_qubit(
-                qubit=qubit, msr=result.magnitude, phase=result.phase  # , n_ros=i
-            )
+            data.register_qubit(qubit=qubit, msr=result.magnitude, phase=result.phase)
 
     return data
 
@@ -134,7 +132,8 @@ def _fit(data: ZenoData) -> ZenoResults:
 
             y = p_0-p_1 e^{-x p_2}.
     """
-    t1s, fitted_parameters = utils.exponential_fit_zeno(data)
+
+    t1s, fitted_parameters = utils.exponential_fit(data, zeno=True)
 
     return ZenoResults(t1s, fitted_parameters)
 
