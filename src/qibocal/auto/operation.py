@@ -173,9 +173,9 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     """Plotting function."""
 
     def __post_init__(self):
+        # add decorator to show logs
         self.acquisition = show_logs(self.acquisition)
         self.fit = show_logs(self.fit)
-        self.report = show_logs(self.report)
 
         # TODO: this could be improved
         if self.fit is None:
