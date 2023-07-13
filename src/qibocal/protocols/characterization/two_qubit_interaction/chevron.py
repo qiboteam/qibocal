@@ -11,8 +11,10 @@ from qibolab.platform import Platform
 from qibolab.pulses import FluxPulse, PulseSequence, Rectangular
 from qibolab.qubits import Qubit, QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.config import log
 
 
 @dataclass
@@ -43,6 +45,7 @@ class ChevronParameters(Parameters):
 class ChevronResults(Results):
     """CzFluxTime outputs when fitting will be done."""
 
+    # FIXME: update runcard accordingly
     period: dict[str, float]
     """Period of the oscillation"""
 
@@ -236,9 +239,7 @@ def _plot(data: ChevronData, fit: ChevronResults, qubits):
         )
 
         fit_report += f"q{qubit} - {state} frequency| "
-        # fit_report += (
-        #     f"Period of oscillation: {fit.period[(str(qubits), str(q))]} ns<br>"
-        # )
+        fit_report += f"Period of oscillation: {fit.period[str(ordered_index)]} ns<br>"
 
         fig.update_layout(
             title=f"Qubits {qubits[0]}-{qubits[1]} swap frequency",
@@ -259,48 +260,36 @@ def fit_function(x, p0, p1, p2, p3):
 
 
 def _fit(data: ChevronData):
-    # pairs = data.qubits
-    # amplitudes = data.df["amplitude"].unique()
+    pairs = data.pairs
+    results = {}
+    for pair in pairs:
+        for qubit in pair:
+            qubit_data = data[pair[0], pair[1], qubit]
+            fft_freqs = []
+            for amp in np.unique(qubit_data.amp):
+                probability = qubit_data[qubit_data.amp == amp].prob
+                fft_freqs.append(max(np.abs(np.fft.fft(probability))))
 
-    # results = {}
+            min_idx = np.argmin(fft_freqs)
+            amp = np.unique(qubit_data.amp)[min_idx]
+            duration = qubit_data[qubit_data.amp == amp].length
+            probability = qubit_data[qubit_data.amp == amp].amp
+            guesses = [np.mean(probability), 1, np.min(fft_freqs), 0]
+            # bounds = []
+            # TODO maybe normalize
+            try:
+                popt, _ = curve_fit(
+                    fit_function, duration, probability, p0=guesses, maxfev=10000
+                )
 
-    # for pair in pairs:
-    #     data_pair = data[pair]
-    #     # qubits = data_pair["qubit"].unique()
-    #     for qubit in pair:
-    #         data_qubit = data_pair[data_pair["qubit"] == qubit]
-    #         fft_freqs = []
+                results[str((pair[0], pair[1], qubit))] = np.abs(1 / popt[2])
 
-    #         for amp in amplitudes:
-    #             data_amp = data_qubit[data_qubit["amplitude"] == amp]
+            except:
+                log.warning("chevron fit: the fitting was not succesful")
 
-    #             probability = data_amp["probability"]
+                results[str((pair, qubit))] = 0
 
-    #             fft_freqs.append(max(np.abs(np.fft.fft(probability))))
-
-    #         min_idx = np.argmin(fft_freqs)
-
-    #         amp = amplitudes[min_idx]
-    #         data_amp = data_qubit[data_qubit["amplitude"] == amp]
-    #         duration = data_amp["duration"]
-    #         probability = data_amp["probability"]
-
-    #         guesses = [np.mean(probability), 1, np.min(fft_freqs), 0]
-    #         # bounds = []
-    #         # TODO maybe normalize
-    #         try:
-    #             popt, _ = curve_fit(
-    #                 fit_function, duration, probability, p0=guesses, maxfev=10000
-    #             )
-
-    #             results[(pair, qubit)] = np.abs(1 / popt[2])
-
-    #         except:
-    #             log.warning("chevron fit: the fitting was not succesful")
-
-    #             results[(pair, qubit)] = 0
-
-    return ChevronResults({})
+    return ChevronResults(results)
 
 
 chevron = Routine(_aquisition, _fit, _plot)
