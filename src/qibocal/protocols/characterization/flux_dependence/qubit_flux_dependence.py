@@ -193,8 +193,8 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
 
     for qubit in qubits:
         qubit_data = data[qubit]
-        Ec = data.Ec[qubit]  # qubit_data["Ec"]
-        Ej = data.Ej[qubit]  # qubit_data["Ej"]
+        Ec = data.Ec[qubit]
+        Ej = data.Ej[qubit]
 
         frequency[qubit] = 0
         sweetspot[qubit] = 0
@@ -293,21 +293,6 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
         except:
             log.warning("qubit_flux_fit: the fitting was not succesful")
 
-        # else:
-        #     try:
-        #         freq_min = np.min(frequencies)
-        #         freq_max = np.max(frequencies)
-        #         freq_norm = (frequencies - freq_min) / (freq_max - freq_min)
-        #         popt = curve_fit(utils.line, biases, freq_norm)[0]
-        #         popt[0] = popt[0] * (freq_max - freq_min)
-        #         popt[1] = popt[1] * (freq_max - freq_min) + freq_min  # C_ij
-
-        #         frequency[qubit] = None
-        #         sweetspot[qubit] = None
-        #         fitted_parameters[qubit] = popt[0], popt[1]
-        #     except:
-        #         log.warning("qubit_flux_fit: the fitting was not succesful")
-
     return QubitFluxResults(
         frequency=frequency,
         sweetspot=sweetspot,
@@ -317,7 +302,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
 
 def _plot(data: QubitFluxData, fit: QubitFluxResults, qubit):
     """Plotting function for QubitFlux Experiment."""
-    return utils.flux_dependence_plot(data, fit, qubit, label="Qubit Frequency")
+    return utils.flux_dependence_plot(data, fit, qubit)
 
 
 qubit_flux = Routine(_acquisition, _fit, _plot)

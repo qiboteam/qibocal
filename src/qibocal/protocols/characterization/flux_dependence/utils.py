@@ -7,7 +7,7 @@ from sklearn.linear_model import Ridge
 from ..utils import HZ_TO_GHZ, V_TO_UV
 
 
-def flux_dependence_plot(data, fit, qubit, label):
+def flux_dependence_plot(data, fit, qubit):
     figures = []
     fitting_report = ""
 
@@ -50,12 +50,13 @@ def flux_dependence_plot(data, fit, qubit, label):
     )
 
     params = fit.fitted_parameters[qubit]
-
+    fitting_report_label = "Frequency"
     if fit.frequency[qubit] != 0:
-        if label[0:9] == "Resonator":
-            if {"Ec", "Ej"}.issubset(set(params.keys())):
+        if data.__class__.__name__ == "ResonatorFluxData":
+            fitting_report_label = "Resonator Frequency"
+            if all(param in params for param in ['Ec', 'Ej']):
                 popt = [
-                    params["f_rh"],
+                    params["bare_resonator_frequency"],
                     params["g"],
                     fit.sweetspot[qubit],
                     params["Xi"],
@@ -69,13 +70,14 @@ def flux_dependence_plot(data, fit, qubit, label):
                     fit.sweetspot[qubit],
                     params["Xi"],
                     params["d"],
-                    params["f_q/f_rh"],
+                    params["f_q/bare_resonator_frequency"],
                     params["g"],
-                    params["f_rh"],
+                    params["bare_resonator_frequency"],
                 ]
                 freq_fit = freq_r_transmon(biases1, *popt) * HZ_TO_GHZ
-        elif label[0:5] == "Qubit":
-            if {"Ec", "Ej"}.issubset(set(params.keys())):
+        elif data.__class__.__name__ == "QubitFluxData":
+            fitting_report_label = "Qubit Frequency"
+            if all(param in params for param in ['Ec', 'Ej']):
                 popt = [
                     fit.sweetspot[qubit],
                     params["Xi"],
@@ -126,12 +128,10 @@ def flux_dependence_plot(data, fit, qubit, label):
     )
     fig.update_yaxes(title_text="Bias (V)", row=1, col=2)
 
-    # fitted_parameters = xi, d, f_q/f_rh, g, f_rh, f_qs, f_r_offset, C_ii
-    # fitted_parameters = xi, d, g, Ec, Ej, f_rh, f_qs, f_r_offset, C_ii
     if fit.frequency[qubit] != 0:
-        fitting_report += f"{qubit} | {label}: {fit.frequency[qubit]:,.1f} Hz<br>"
+        fitting_report += f"{qubit} | {fitting_report_label}: {fit.frequency[qubit]:,.1f} Hz<br>"
     else:
-        fitting_report += f"{qubit} | {label}: Fitting not successful<br>"
+        fitting_report += f"{qubit} | {fitting_report_label}: Fitting not successful<br>"
 
     if fit.sweetspot[qubit] != 0:
         fitting_report += f"{qubit} | Sweetspot: {fit.sweetspot[qubit]} V<br>"
@@ -177,12 +177,12 @@ def freq_q_transmon(x, p0, p1, p2, p3):
 
 
 def freq_r_transmon(x, p0, p1, p2, p3, p4, p5):
-    # Current offset:                                      : p[0]
-    # 1/I_0, Phi0=Xi*I_0                                   : p[1]
-    # Junction asymmetry d                                 : p[2]
-    # f_q0/f_rh, f_q0 = Qubit frequency at zero flux       : p[3]
-    # Qubit-resonator coupling at zero magnetic flux, g_0  : p[4]
-    # High power resonator frequency, f_rh                 : p[5]
+    # Current offset:                                                          : p[0]
+    # 1/I_0, Phi0=Xi*I_0                                                       : p[1]
+    # Junction asymmetry d                                                     : p[2]
+    # f_q0/bare_resonator_frequency, f_q0 = Qubit frequency at zero flux       : p[3]
+    # Qubit-resonator coupling at zero magnetic flux, g_0                      : p[4]
+    # High power resonator frequency, bare_resonator_frequency                 : p[5]
     return p5 + p4**2 * G_f_d(x, p0, p1, p2) / (p5 - p3 * p5 * G_f_d(x, p0, p1, p2))
 
 
@@ -197,11 +197,9 @@ def kordering(m, ng=0.4999):
 def mathieu(index, x):
     # Mathieu's characteristic value a_index(x).
     if index < 0:
-        dummy = mathieu_b(-index, x)
+        return mathieu_b(-index, x)
     else:
-        dummy = mathieu_a(index, x)
-    return dummy
-
+        return mathieu_a(index, x)
 
 def freq_q_mathieu(x, p0, p1, p2, p3, p4, p5=0.499):
     # Current offset:                                      : p[0]
@@ -217,14 +215,14 @@ def freq_q_mathieu(x, p0, p1, p2, p3, p4, p5=0.499):
 
 
 def freq_r_mathieu(x, p0, p1, p2, p3, p4, p5, p6, p7=0.499):
-    # High power resonator frequency, f_rh                 : p[0]
-    # Qubit-resonator coupling at zero magnetic flux, g_0  : p[1]
-    # Current offset:                                      : p[2]
-    # 1/I_0, Phi0=Xi*I_0                                   : p[3]
-    # Junction asymmetry d                                 : p[4]
-    # Charging energy E_C                                  : p[5]
-    # Josephson energy E_J                                 : p[6]
-    # Effective offset charge ng                           : p[7]
+    # High power resonator frequency, bare_resonator_frequency  : p[0]
+    # Qubit-resonator coupling at zero magnetic flux, g_0       : p[1]
+    # Current offset:                                           : p[2]
+    # 1/I_0, Phi0=Xi*I_0                                        : p[3]
+    # Junction asymmetry d                                      : p[4]
+    # Charging energy E_C                                       : p[5]
+    # Josephson energy E_J                                      : p[6]
+    # Effective offset charge ng                                : p[7]
     G = G_f_d(x, p2, p3, p4)
     f_q = freq_q_mathieu(x, p2, p3, p4, p5, p6, p7)
     f_r = p0 + p1**2 * G / (p0 - f_q)

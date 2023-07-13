@@ -75,7 +75,7 @@ class ResonatorFluxData(Data):
     g: dict[QubitId, int] = field(default_factory=dict)
     """Qubit g provided by the user."""
 
-    f_rh: dict[QubitId, int] = field(default_factory=dict)
+    bare_resonator_frequency: dict[QubitId, int] = field(default_factory=dict)
     """Qubit bare resonator frequency power provided by the user."""
 
     data: dict[QubitId, npt.NDArray[ResFluxType]] = field(default_factory=dict)
@@ -106,12 +106,12 @@ def _acquisition(
     Ec = {}
     Ej = {}
     g = {}
-    f_rh = {}
+    bare_resonator_frequency = {}
     for qubit in qubits:
         Ec[qubit] = qubits[qubit].Ec
         Ej[qubit] = qubits[qubit].Ej
         g[qubit] = qubits[qubit].g
-        f_rh[qubit] = qubits[qubit].bare_resonator_frequency
+        bare_resonator_frequency[qubit] = qubits[qubit].bare_resonator_frequency
 
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
         sequence.add(ro_pulses[qubit])
@@ -140,7 +140,7 @@ def _acquisition(
     # DataUnits stores by default MSR, phase, i, q
     # additionally include resonator frequency and flux bias
     data = ResonatorFluxData(
-        resonator_type=platform.resonator_type, Ec=Ec, Ej=Ej, g=g, f_rh=f_rh
+        resonator_type=platform.resonator_type, Ec=Ec, Ej=Ej, g=g, bare_resonator_frequency=bare_resonator_frequency
     )
 
     # repeat the experiment as many times as defined by software_averages
@@ -184,8 +184,8 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
 
     for qubit in qubits:
         qubit_data = data[qubit]
-        Ec = data.Ec[qubit]  # qubit_data["Ec"]
-        Ej = data.Ej[qubit]  # qubit_data["Ej"]
+        Ec = data.Ec[qubit]
+        Ej = data.Ej[qubit]
 
         frequency[qubit] = 0
         sweetspot[qubit] = 0
@@ -195,8 +195,8 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
             "g": 0,
             "Ec": 0,
             "Ej": 0,
-            "f_q/f_rh": 0,
-            "f_rh": 0,
+            "f_q/bare_resonator_frequency": 0,
+            "bare_resonator_frequency": 0,
             "f_qs": 0,
             "f_r_offset": 0,
             "C_ii": 0,
@@ -210,23 +210,23 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
 
         scaler = 10**9
         try:
-            f_rh = data.f_rh[qubit]  # Resonator frequency at high power.
+            bare_resonator_frequency = data.bare_resonator_frequency[qubit]  # Resonator frequency at high power.
             g = data.g[qubit]  # Readout coupling.
             max_c = biases[np.argmax(frequencies)]
             min_c = biases[np.argmin(frequencies)]
             xi = 1 / (2 * abs(max_c - min_c))  # Convert bias to flux.
-            # First order approximation: f_rh, g provided
-            if ((Ec and Ej) == 0) and ((f_rh and g) != 0):
+            # First order approximation: bare_resonator_frequency, g provided
+            if ((Ec and Ej) == 0) and ((bare_resonator_frequency and g) != 0):
                 # Initial estimation for resonator frequency at sweet spot.
                 f_r_0 = np.max(frequencies)
                 # Initial estimation for qubit frequency at sweet spot.
-                f_q_0 = f_rh - g**2 / (f_r_0 - f_rh)
+                f_q_0 = bare_resonator_frequency - g**2 / (f_r_0 - bare_resonator_frequency)
                 popt = curve_fit(
                     utils.freq_r_transmon,
                     biases,
                     frequencies / scaler,
-                    # p0=[max_c, xi, 0, f_q_0 / f_rh, g, f_rh],
-                    p0=[max_c, xi, 0, f_q_0 / f_rh, g / scaler, f_rh / scaler],
+                    # p0=[max_c, xi, 0, f_q_0 / bare_resonator_frequency, g, bare_resonator_frequency],
+                    p0=[max_c, xi, 0, f_q_0 / bare_resonator_frequency, g / scaler, bare_resonator_frequency / scaler],
                     bounds=(
                         (-np.inf, 0, 0, 0, 0, 0),
                         (np.inf, np.inf, np.inf, np.inf, np.inf, np.inf),
@@ -247,27 +247,27 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
 
                 frequency[qubit] = f_rs
                 sweetspot[qubit] = popt[0]
-                # fitted_parameters = xi, d, f_q/f_rh, g, f_rh, f_qs, f_r_offset, C_ii
+                # fitted_parameters = xi, d, f_q/bare_resonator_frequency, g, bare_resonator_frequency, f_qs, f_r_offset, C_ii
                 fitted_parameters[qubit] = {
                     "Xi": popt[1],
                     "d": abs(popt[2]),
-                    "f_q/f_rh": popt[3],
+                    "f_q/bare_resonator_frequency": popt[3],
                     "g": popt[4],
-                    "f_rh": popt[5],
+                    "bare_resonator_frequency": popt[5],
                     "f_qs": f_qs,
                     "f_r_offset": f_r_offset,
                     "C_ii": C_ii,
                 }
 
-            # Second order approximation: f_rh, g, Ec, Ej provided
-            elif (Ec and Ej and f_rh and g) != 0:
+            # Second order approximation: bare_resonator_frequency, g, Ec, Ej provided
+            elif (Ec and Ej and bare_resonator_frequency and g) != 0:
                 freq_r_mathieu1 = partial(utils.freq_r_mathieu, p7=0.4999)
                 popt = curve_fit(
                     freq_r_mathieu1,
                     biases,
                     frequencies / scaler,
                     p0=[
-                        f_rh / scaler,
+                        bare_resonator_frequency / scaler,
                         g / scaler,
                         max_c,
                         xi,
@@ -299,14 +299,14 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
 
                 frequency[qubit] = f_rs
                 sweetspot[qubit] = popt[2]
-                # fitted_parameters = xi, d, g, Ec, Ej, f_rh, f_qs, f_r_offset, C_ii
+                # fitted_parameters = xi, d, g, Ec, Ej, bare_resonator_frequency, f_qs, f_r_offset, C_ii
                 fitted_parameters[qubit] = {
                     "Xi": popt[3],
                     "d": abs(popt[4]),
                     "g": popt[1],
                     "Ec": popt[5],
                     "Ej": popt[6],
-                    "f_rh": popt[0],
+                    "bare_resonator_frequency": popt[0],
                     "f_qs": f_qs,
                     "f_r_offset": f_r_offset,
                     "C_ii": C_ii,
@@ -324,21 +324,6 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
             traceback.print_exc()
             log.warning("resonator_flux_fit: the fitting was not succesful")
 
-        # else:
-        #     try:
-        #         freq_min = np.min(frequencies)
-        #         freq_max = np.max(frequencies)
-        #         freq_norm = (frequencies - freq_min) / (freq_max - freq_min)
-        #         popt = curve_fit(utils.line, biases, freq_norm)[0]
-        #         popt[0] = popt[0] * (freq_max - freq_min)
-        #         popt[1] = popt[1] * (freq_max - freq_min) + freq_min  # C_ij
-
-        #         frequency[qubit] = None
-        #         sweetspot[qubit] = None
-        #         fitted_parameters[qubit] = popt[0], popt[1]
-        #     except:
-        #         log.warning("resonator_flux_fit: the fitting was not succesful")
-
     return ResonatorFluxResults(
         frequency=frequency,
         sweetspot=sweetspot,
@@ -348,7 +333,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
 
 def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, qubit):
     """Plotting function for ResonatorFlux Experiment."""
-    return utils.flux_dependence_plot(data, fit, qubit, label="Resonator Frequency")
+    return utils.flux_dependence_plot(data, fit, qubit)
 
 
 resonator_flux = Routine(_acquisition, _fit, _plot)
