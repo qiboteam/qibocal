@@ -14,7 +14,6 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.data import DataUnits
 from qibocal.protocols.characterization.two_qubit_interaction.chevron import order_pairs
 
 
@@ -52,7 +51,7 @@ class CZVirtualZResults(Results):
     """Setup of the fit."""
 
 
-class CZVirtualZData(DataUnits):
+class CZVirtualZData:
     """CZVirtualZ data."""
 
     def __init__(self):
