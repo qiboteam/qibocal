@@ -145,8 +145,8 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
 
         # Repeat Lambda and fidelity for each measurement ?
         Lambda_M[qubit] = [
-            [state0_count_0_m1, state0_count_1_m1],
-            [state1_count_0_m1, state1_count_1_m1],
+            [state0_count_0_m1 / nshots, state0_count_1_m1 / nshots],
+            [state1_count_0_m1 / nshots, state1_count_1_m1 / nshots],
         ]
 
         fidelity[qubit] = (
