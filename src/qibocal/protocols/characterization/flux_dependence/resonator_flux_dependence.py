@@ -211,6 +211,9 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
         frequencies = qubit_data.freq
         msr = qubit_data.msr
 
+        if data.resonator_type == "3D":
+            msr = -msr
+
         frequencies, biases = utils.image_to_curve(frequencies, biases, msr)
 
         scaler = 10**9

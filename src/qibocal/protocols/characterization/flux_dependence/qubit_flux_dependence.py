@@ -212,6 +212,9 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
         frequencies = qubit_data.freq
         msr = qubit_data.msr
 
+        if data.resonator_type == "2D":
+            msr = -msr
+
         frequencies, biases = utils.image_to_curve(frequencies, biases, msr)
         scaler = 10**9
         try:
@@ -254,14 +257,17 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
 
             # Second order approximation: Ec and Ej provided
             elif (Ec and Ej) != 0:
-                freq_q_mathieu1 = partial(utils.freq_q_mathieu, p7=0.4999)
+                freq_q_mathieu1 = partial(utils.freq_q_mathieu, p5=0.4999)
                 popt = curve_fit(
                     freq_q_mathieu1,
                     biases,
                     frequencies / scaler,
                     # p0=[max_c, xi, 0, Ec, Ej],
                     p0=[max_c, xi, 0, Ec / scaler, Ej / scaler],
-                    bounds=((-np.inf, 0, 0, 0), (np.inf, np.inf, np.inf, np.inf)),
+                    bounds=(
+                        (-np.inf, 0, 0, 0, 0),
+                        (np.inf, np.inf, np.inf, np.inf, np.inf),
+                    ),
                     maxfev=2000000,
                 )[0]
                 popt[3] *= scaler

@@ -24,14 +24,19 @@ def flux_dependence_plot(data, fit, qubit):
         ),
     )
     frequencies = qubit_data.freq * HZ_TO_GHZ
+    msr = qubit_data.msr
+    if data.__class__.__name__ == "ResonatorFluxData" and data.resonator_type == "3D":
+        msr = -msr
+    elif data.__class__.__name__ == "QubitFluxData" and data.resonator_type == "2D":
+        msr = -msr
 
-    frequencies1, biases1 = image_to_curve(frequencies, qubit_data.bias, qubit_data.msr)
+    frequencies1, biases1 = image_to_curve(frequencies, qubit_data.bias, msr)
 
     fig.add_trace(
         go.Heatmap(
             x=frequencies,
             y=qubit_data.bias,
-            z=qubit_data.msr * V_TO_UV,
+            z=msr * V_TO_UV,
             colorbar_x=0.46,
         ),
         row=1,
@@ -151,6 +156,8 @@ def flux_dependence_plot(data, fit, qubit):
 
     fitting_report += "<br>"
 
+    fig.update_layout(xaxis1=dict(range=[np.min(frequencies), np.max(frequencies)]))
+
     fig.update_layout(
         showlegend=False,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
@@ -249,7 +256,7 @@ def feature(x, order=3):
     return np.power(x, np.arange(order + 1).reshape(1, -1))
 
 
-def image_to_curve(x, y, z, alpha=0.0001, order=50):
+def image_to_curve(x, y, z, alpha=0.00001, order=50):
     max_x = np.max(x)
     min_x = np.min(x)
     lenx = int((max_x - min_x) / (x[1] - x[0])) + 1
