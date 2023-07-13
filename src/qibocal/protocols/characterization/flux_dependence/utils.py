@@ -54,7 +54,7 @@ def flux_dependence_plot(data, fit, qubit):
     if fit.frequency[qubit] != 0:
         if data.__class__.__name__ == "ResonatorFluxData":
             fitting_report_label = "Resonator Frequency"
-            if all(param in params for param in ['Ec', 'Ej']):
+            if all(param in params for param in ["Ec", "Ej"]):
                 popt = [
                     params["bare_resonator_frequency"],
                     params["g"],
@@ -77,7 +77,7 @@ def flux_dependence_plot(data, fit, qubit):
                 freq_fit = freq_r_transmon(biases1, *popt) * HZ_TO_GHZ
         elif data.__class__.__name__ == "QubitFluxData":
             fitting_report_label = "Qubit Frequency"
-            if all(param in params for param in ['Ec', 'Ej']):
+            if all(param in params for param in ["Ec", "Ej"]):
                 popt = [
                     fit.sweetspot[qubit],
                     params["Xi"],
@@ -129,9 +129,13 @@ def flux_dependence_plot(data, fit, qubit):
     fig.update_yaxes(title_text="Bias (V)", row=1, col=2)
 
     if fit.frequency[qubit] != 0:
-        fitting_report += f"{qubit} | {fitting_report_label}: {fit.frequency[qubit]:,.1f} Hz<br>"
+        fitting_report += (
+            f"{qubit} | {fitting_report_label}: {fit.frequency[qubit]:,.1f} Hz<br>"
+        )
     else:
-        fitting_report += f"{qubit} | {fitting_report_label}: Fitting not successful<br>"
+        fitting_report += (
+            f"{qubit} | {fitting_report_label}: Fitting not successful<br>"
+        )
 
     if fit.sweetspot[qubit] != 0:
         fitting_report += f"{qubit} | Sweetspot: {fit.sweetspot[qubit]} V<br>"
@@ -200,6 +204,7 @@ def mathieu(index, x):
         return mathieu_b(-index, x)
     else:
         return mathieu_a(index, x)
+
 
 def freq_q_mathieu(x, p0, p1, p2, p3, p4, p5=0.499):
     # Current offset:                                      : p[0]

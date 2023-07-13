@@ -140,7 +140,11 @@ def _acquisition(
     # DataUnits stores by default MSR, phase, i, q
     # additionally include resonator frequency and flux bias
     data = ResonatorFluxData(
-        resonator_type=platform.resonator_type, Ec=Ec, Ej=Ej, g=g, bare_resonator_frequency=bare_resonator_frequency
+        resonator_type=platform.resonator_type,
+        Ec=Ec,
+        Ej=Ej,
+        g=g,
+        bare_resonator_frequency=bare_resonator_frequency,
     )
 
     # repeat the experiment as many times as defined by software_averages
@@ -210,7 +214,9 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
 
         scaler = 10**9
         try:
-            bare_resonator_frequency = data.bare_resonator_frequency[qubit]  # Resonator frequency at high power.
+            bare_resonator_frequency = data.bare_resonator_frequency[
+                qubit
+            ]  # Resonator frequency at high power.
             g = data.g[qubit]  # Readout coupling.
             max_c = biases[np.argmax(frequencies)]
             min_c = biases[np.argmin(frequencies)]
@@ -220,13 +226,22 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 # Initial estimation for resonator frequency at sweet spot.
                 f_r_0 = np.max(frequencies)
                 # Initial estimation for qubit frequency at sweet spot.
-                f_q_0 = bare_resonator_frequency - g**2 / (f_r_0 - bare_resonator_frequency)
+                f_q_0 = bare_resonator_frequency - g**2 / (
+                    f_r_0 - bare_resonator_frequency
+                )
                 popt = curve_fit(
                     utils.freq_r_transmon,
                     biases,
                     frequencies / scaler,
                     # p0=[max_c, xi, 0, f_q_0 / bare_resonator_frequency, g, bare_resonator_frequency],
-                    p0=[max_c, xi, 0, f_q_0 / bare_resonator_frequency, g / scaler, bare_resonator_frequency / scaler],
+                    p0=[
+                        max_c,
+                        xi,
+                        0,
+                        f_q_0 / bare_resonator_frequency,
+                        g / scaler,
+                        bare_resonator_frequency / scaler,
+                    ],
                     bounds=(
                         (-np.inf, 0, 0, 0, 0, 0),
                         (np.inf, np.inf, np.inf, np.inf, np.inf, np.inf),
