@@ -14,8 +14,8 @@ from scipy.optimize import curve_fit
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 
-from . import utils
 from ..utils import HZ_TO_GHZ
+from . import utils
 
 
 # TODO: implement cross-talk
@@ -231,7 +231,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                     # p0=[max_c, xi, 0, f_q_0],
                     p0=[max_c, xi, 0, f_q_0 / scaler],
                     bounds=((-np.inf, 0, 0, 0), (np.inf, np.inf, np.inf, np.inf)),
-                    maxfev=2000000
+                    maxfev=2000000,
                 )[0]
                 popt[3] *= scaler
                 f_qs = popt[3]  # Qubit frequency at sweet spot.
@@ -262,7 +262,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                     # p0=[max_c, xi, 0, Ec, Ej],
                     p0=[max_c, xi, 0, Ec / scaler, Ej / scaler],
                     bounds=((-np.inf, 0, 0, 0), (np.inf, np.inf, np.inf, np.inf)),
-                    maxfev=2000000
+                    maxfev=2000000,
                 )[0]
                 popt[3] *= scaler
                 popt[4] *= scaler

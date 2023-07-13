@@ -14,9 +14,8 @@ from scipy.optimize import curve_fit
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 
-from . import utils
 from ..utils import HZ_TO_GHZ
-
+from . import utils
 
 
 # TODO: implement cross-talk (maybe separate routine?)
@@ -248,7 +247,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                         (-np.inf, 0, 0, 0, 0, 0),
                         (np.inf, np.inf, np.inf, np.inf, np.inf, np.inf),
                     ),
-                    maxfev=2000000
+                    maxfev=2000000,
                 )[0]
                 popt[4] *= scaler
                 popt[5] *= scaler
@@ -297,7 +296,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                         (0, 0, -np.inf, 0, 0, 0, 0),
                         (np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf),
                     ),
-                    maxfev=2000000
+                    maxfev=2000000,
                 )[0]
                 popt[0] *= scaler
                 popt[1] *= scaler
