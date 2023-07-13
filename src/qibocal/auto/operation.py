@@ -1,7 +1,11 @@
 import inspect
-from dataclasses import dataclass, fields
+import json
+from dataclasses import asdict, dataclass, fields
 from typing import Callable, Generic, NewType, TypeVar, Union
 
+import numpy as np
+import numpy.typing as npt
+from qibolab.platform import Platform
 from qibolab.qubits import Qubit, QubitId
 
 OperationId = NewType("OperationId", str)
@@ -11,6 +15,13 @@ ParameterValue = Union[float, int]
 Qubits = dict[QubitId, Qubit]
 """Convenient way of passing qubit pairs in the routines."""
 QubitsPairs = dict[tuple[QubitId, QubitId], Qubit]
+
+DATAFILE = "data.npz"
+"""Name of the file where data acquired (arrays) by calibration are dumped."""
+JSONFILE = "conf.json"
+"""Name of the file where data acquired (global configuration) by calibration are dumped."""
+RESULTSFILE = "results.json"
+"""Name of the file where results are dumped."""
 
 
 class Parameters:
@@ -45,6 +56,41 @@ class Parameters:
 
 class Data:
     """Data resulting from acquisition routine."""
+
+    data: dict[Union[tuple[QubitId, int], QubitId], npt.NDArray]
+    """Data object to store arrays"""
+
+    @property
+    def qubits(self):
+        """Access qubits from data structure."""
+        if set(map(type, self.data)) == {tuple}:
+            return list({q[0] for q in self.data})
+        return [q for q in self.data]
+
+    def __getitem__(self, qubit: Union[QubitId, tuple[QubitId, int]]):
+        """Access data attribute member."""
+        return self.data[qubit]
+
+    @property
+    def global_params_dict(self):
+        """Convert non-arrays attributes into dict."""
+        global_dict = asdict(self)
+        global_dict.pop("data")
+        return global_dict
+
+    def save(self, path):
+        """Store results."""
+        self.to_json(path)
+        self.to_npz(path)
+
+    def to_npz(self, path):
+        """Helper function to use np.savez while converting keys into strings."""
+        np.savez(path / DATAFILE, **{str(i): self.data[i] for i in self.data})
+
+    def to_json(self, path):
+        """Helper function to dump to json in JSONFILE path."""
+        if self.global_params_dict:
+            (path / JSONFILE).write_text(json.dumps(self.global_params_dict, indent=4))
 
 
 @dataclass
@@ -83,6 +129,10 @@ class Results:
 
         return up
 
+    def save(self, path):
+        """Store results to json."""
+        (path / RESULTSFILE).write_text(json.dumps(asdict(self), indent=4))
+
 
 # Internal types, in particular `_ParametersT` is used to address function
 # contravariance on parameter type
@@ -96,8 +146,11 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     """A wrapped calibration routine."""
 
     acquisition: Callable[[_ParametersT], _DataT]
+    """Data acquisition function."""
     fit: Callable[[_DataT], _ResultsT] = None
+    """Post-processing function."""
     report: Callable[[_DataT, _ResultsT], None] = None
+    """Plotting function."""
 
     def __post_init__(self):
         # TODO: this could be improved
@@ -108,25 +161,30 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
 
     @property
     def parameters_type(self):
+        """Input parameters type."""
         sig = inspect.signature(self.acquisition)
         param = next(iter(sig.parameters.values()))
         return param.annotation
 
     @property
     def data_type(self):
+        """ "Data object type return by data acquisition."""
         return inspect.signature(self.acquisition).return_annotation
 
     @property
     def results_type(self):
+        """ "Results object type return by data acquisition."""
         return inspect.signature(self.fit).return_annotation
 
     # TODO: I don't like these properties but it seems to work
     @property
     def platform_dependent(self):
+        """Check if acquisition involves platform."""
         return "platform" in inspect.signature(self.acquisition).parameters
 
     @property
     def qubits_dependent(self):
+        """Check if acquisition involves qubits."""
         return "qubits" in inspect.signature(self.acquisition).parameters
 
 
@@ -139,7 +197,7 @@ class DummyPars(Parameters):
 class DummyData(Data):
     """Dummy data."""
 
-    def to_csv(self, path):
+    def save(self, path):
         """Dummy method for saving data"""
 
 
@@ -148,16 +206,20 @@ class DummyRes(Results):
     """Dummy results."""
 
 
-def _dummy_acquisition(pars: DummyPars) -> DummyData:
+def _dummy_acquisition(pars: DummyPars, platform: Platform) -> DummyData:
+    """Dummy data acquisition."""
     return DummyData()
 
 
 def _dummy_fit(data: DummyData) -> DummyRes:
+    """Dummy fitting."""
     return DummyRes()
 
 
 def _dummy_report(data: DummyData, result: DummyRes):
+    """Dummy plotting."""
     return [], ""
 
 
 dummy_operation = Routine(_dummy_acquisition, _dummy_fit, _dummy_report)
+"""Example of a dummy operation."""

@@ -1,7 +1,6 @@
 """Test graph execution."""
 import pathlib
 import tempfile
-from typing import List
 
 import pytest
 import yaml
@@ -17,7 +16,7 @@ cards = pathlib.Path(__file__).parent / "runcards"
 class Validation:
     """Values used to validate the result."""
 
-    result: List[str]
+    result: list[str]
     """Asserted history."""
     description: str
 
@@ -37,6 +36,7 @@ def test_execution(card: pathlib.Path):
     """
     testcard = TestCard(**yaml.safe_load(card.read_text(encoding="utf-8")))
     executor = Executor.load(testcard.runcard, output=pathlib.Path(tempfile.mkdtemp()))
-    executor.run()
+    for _ in executor.run():
+        pass
 
     assert testcard.validation.result == [step[0] for step in executor.history]

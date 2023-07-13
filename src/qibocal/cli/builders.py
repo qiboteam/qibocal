@@ -60,11 +60,10 @@ class ActionBuilder:
         if self.platform is not None:
             if any(isinstance(i, list) for i in self.runcard.qubits):
                 return allocate_qubits_pairs(self.platform, self.runcard.qubits)
-            else:
-                return allocate_single_qubits(self.platform, self.runcard.qubits)
-        # TODO: check if this is needed
-        else:
-            return self.runcard.qubits
+
+            return allocate_single_qubits(self.platform, self.runcard.qubits)
+
+        return self.runcard.qubits
 
     def _prepare_output(self, runcard):
         """Methods that takes care of:
@@ -96,13 +95,13 @@ class ActionBuilder:
 
     def run(self):
         """Execute protocols in runcard."""
-
         if self.platform is not None:
             self.platform.connect()
             self.platform.setup()
             self.platform.start()
 
-        self.executor.run()
+        for _ in self.executor.run():
+            self.dump_report()
 
         if self.platform is not None:
             self.platform.stop()
@@ -151,8 +150,9 @@ class ReportBuilder:
     def single_qubit_plot(self, task_id: TaskId, qubit: QubitId):
         """Generate single qubit plot."""
         node = self.history[task_id]
-        data = node.task.data
-        figures, fitting_report = node.task.operation.report(data, node.res, qubit)
+        figures, fitting_report = node.task.operation.report(
+            node.data, node.results, qubit
+        )
         with tempfile.NamedTemporaryFile(delete=False) as temp:
             html_list = []
             for figure in figures:
