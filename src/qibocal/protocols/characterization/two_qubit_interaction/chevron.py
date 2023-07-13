@@ -60,7 +60,7 @@ ChevronType = np.dtype(
 class ChevronData(Data):
     """CzFluxTime acquisition outputs."""
 
-    data: dict[tuple[QubitId, QubitId], npt.NDArray[ChevronType]] = field(
+    data: dict[tuple[QubitId, QubitId, QubitId], npt.NDArray[ChevronType]] = field(
         default_factory=dict
     )
 
