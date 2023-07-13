@@ -177,7 +177,7 @@ def _acquisition(
 
 def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     """
-    Post-processing for QubitFlux Experiment.
+    Post-processing for QubitFlux Experiment. See arxiv:0703002
     Fit frequency as a function of current for the flux qubit spectroscopy
     data (QubitFluxData): data object with information on the feature response at each current point.
     """
