@@ -15,6 +15,8 @@ from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 
 from . import utils
+from ..utils import HZ_TO_GHZ
+
 
 
 # TODO: implement cross-talk (maybe separate routine?)
@@ -231,6 +233,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                         (-np.inf, 0, 0, 0, 0, 0),
                         (np.inf, np.inf, np.inf, np.inf, np.inf, np.inf),
                     ),
+                    maxfev=2000000
                 )[0]
                 popt[4] *= scaler
                 popt[5] *= scaler
@@ -245,7 +248,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                     0
                 ]  # Corresponding flux matrix element.
 
-                frequency[qubit] = f_rs
+                frequency[qubit] = f_rs * HZ_TO_GHZ
                 sweetspot[qubit] = popt[0]
                 # fitted_parameters = xi, d, f_q/bare_resonator_frequency, g, bare_resonator_frequency, f_qs, f_r_offset, C_ii
                 fitted_parameters[qubit] = {
@@ -279,6 +282,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                         (0, 0, -np.inf, 0, 0, 0, 0),
                         (np.inf, np.inf, np.inf, np.inf, np.inf, np.inf, np.inf),
                     ),
+                    maxfev=2000000
                 )[0]
                 popt[0] *= scaler
                 popt[1] *= scaler
@@ -297,7 +301,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                     2
                 ]  # Corresponding flux matrix element.
 
-                frequency[qubit] = f_rs
+                frequency[qubit] = f_rs * HZ_TO_GHZ
                 sweetspot[qubit] = popt[2]
                 # fitted_parameters = xi, d, g, Ec, Ej, bare_resonator_frequency, f_qs, f_r_offset, C_ii
                 fitted_parameters[qubit] = {

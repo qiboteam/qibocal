@@ -4,7 +4,7 @@ from plotly.subplots import make_subplots
 from scipy.special import mathieu_a, mathieu_b
 from sklearn.linear_model import Ridge
 
-from ..utils import HZ_TO_GHZ, V_TO_UV
+from ..utils import HZ_TO_GHZ, V_TO_UV, GHZ_TO_HZ
 
 
 def flux_dependence_plot(data, fit, qubit):
@@ -91,7 +91,7 @@ def flux_dependence_plot(data, fit, qubit):
                     fit.sweetspot[qubit],
                     params["Xi"],
                     params["d"],
-                    fit.frequency[qubit],
+                    fit.frequency[qubit] * GHZ_TO_HZ,
                 ]
                 freq_fit = freq_q_transmon(biases1, *popt) * HZ_TO_GHZ
 
@@ -129,7 +129,7 @@ def flux_dependence_plot(data, fit, qubit):
     fig.update_yaxes(title_text="Bias (V)", row=1, col=2)
 
     if fit.frequency[qubit] != 0:
-        fitting_report += f"{qubit} | {fitting_report_label}: {fit.frequency[qubit]:,.1f} Hz<br>"
+        fitting_report += f"{qubit} | {fitting_report_label}: {fit.frequency[qubit]:,.5f} GHz<br>"
     else:
         fitting_report += f"{qubit} | {fitting_report_label}: Fitting not successful<br>"
 
