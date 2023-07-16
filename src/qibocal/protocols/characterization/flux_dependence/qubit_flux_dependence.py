@@ -92,7 +92,7 @@ def _acquisition(
         Parameter.bias,
         delta_bias_range,
         qubits=list(qubits.values()),
-        type=SweeperType.ABSOLUTE,
+        type=SweeperType.OFFSET,
     )
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q

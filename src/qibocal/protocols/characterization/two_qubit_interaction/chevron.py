@@ -110,6 +110,7 @@ def _aquisition(
         for qubit in ordered_pair:
             sequence.add(platform.create_RX_pulse(qubit, start=0))
 
+        # TODO: check if sequence.finish is the correct syntax
         # add flux pulse (ignoring virtual phases)
         cz, _ = platform.create_CZ_pulse_sequence(qubits=pair, start=sequence.finish)
         sequence.add(cz)
