@@ -124,7 +124,7 @@ def _acquisition(
 
         if params.drive_amplitude is not None:
             qd_pulses[qubit].amplitude = params.drive_amplitude
-        
+
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=qd_pulses[qubit].finish
         )
