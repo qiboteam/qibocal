@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import FluxPulse, PulseSequence, Rectangular
+from qibolab.pulses import PulseSequence
 from qibolab.qubits import Qubit, QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
@@ -33,10 +33,6 @@ class ChevronParameters(Parameters):
     """Duration maximum."""
     duration_step: float
     """Duration step."""
-    parking: bool = True
-    """Whether to park non interacting qubits or not."""
-    dt: int = 0
-    """Delay around flux pulse."""
     nshots: Optional[int] = None
     """Number of shots per point."""
 
@@ -84,60 +80,6 @@ def order_pairs(
     return pair
 
 
-def create_sequence(
-    ord_pair: list[QubitId, QubitId],
-    platform: Platform,
-    params: ChevronParameters,
-) -> PulseSequence:
-    """Create the experiment PulseSequence for a specific pair.
-
-    Returns:
-        PulseSequence, Dictionary of readout pulses, Dictionary of flux pulses
-    """
-    sequence = PulseSequence()
-
-    ro_pulses = {}
-    qd_pulses = {}
-
-    qd_pulses[ord_pair[0]] = platform.create_RX_pulse(ord_pair[0], start=0)
-    qd_pulses[ord_pair[1]] = platform.create_RX_pulse(ord_pair[1], start=0)
-    fx_pulse = FluxPulse(
-        start=max([qd_pulses[ord_pair[0]].se_finish, qd_pulses[ord_pair[1]].se_finish])
-        + params.dt,
-        duration=params.duration_min,
-        amplitude=1,
-        shape=Rectangular(),
-        channel=platform.qubits[ord_pair[0]].flux.name,
-        qubit=ord_pair[0],
-    )
-
-    ro_pulses[ord_pair[0]] = platform.create_MZ_pulse(
-        ord_pair[0], start=fx_pulse.se_finish + params.dt
-    )
-    ro_pulses[ord_pair[1]] = platform.create_MZ_pulse(
-        ord_pair[1], start=fx_pulse.se_finish + params.dt
-    )
-
-    sequence.add(qd_pulses[ord_pair[0]])
-    sequence.add(qd_pulses[ord_pair[1]])
-    sequence.add(fx_pulse)
-    sequence.add(ro_pulses[ord_pair[0]])
-    sequence.add(ro_pulses[ord_pair[1]])
-    if params.parking:
-        # if parking is true, create a cz pulse from the runcard and
-        # add to the sequence all parking pulses
-        cz_sequence, _ = platform.pairs[
-            tuple(sorted(ord_pair))
-        ].native_gates.CZ.sequence(start=0)
-        for pulse in cz_sequence:
-            if pulse.qubit not in ord_pair:
-                pulse.start = fx_pulse.start
-                pulse.duration = fx_pulse.duration
-                sequence.add(pulse)
-
-    return sequence
-
-
 def _aquisition(
     params: ChevronParameters,
     platform: Platform,
@@ -161,11 +103,22 @@ def _aquisition(
     data = ChevronData()
     for pair in qubits:
         # order the qubits so that the low frequency one is the first
-        ord_pair = order_pairs(pair, platform.qubits)
-        # create a sequence
-        sequence = create_sequence(ord_pair, platform, params)
-        fx_pulse = sequence.qf_pulses[0]
-        ro_pulses = {pulse.qubit: pulse for pulse in sequence.ro_pulses}
+        sequence = PulseSequence()
+        ordered_pair = order_pairs(pair, platform.qubits)
+
+        # initialize in system in 11 state
+        for qubit in ordered_pair:
+            sequence.add(platform.create_RX_pulse(qubit, start=0))
+
+        # add flux pulse (ignoring virtual phases)
+        cz, _ = platform.create_CZ_pulse_sequence(qubits=pair, start=sequence.finish)
+        sequence.add(cz)
+
+        # add readout
+        for qubit in ordered_pair:
+            sequence.add(
+                platform.create_qubit_readout_pulse(qubit, start=sequence.finish)
+            )
 
         # define the parameter to sweep and its range:
         delta_amplitude_range = np.arange(
@@ -176,20 +129,20 @@ def _aquisition(
         delta_duration_range = np.arange(
             params.duration_min, params.duration_max, params.duration_step
         )
-
         sweeper_amplitude = Sweeper(
             Parameter.amplitude,
             delta_amplitude_range,
-            pulses=[fx_pulse],
-            type=SweeperType.ABSOLUTE,
+            pulses=[cz.get_qubit_pulses(ordered_pair[1])[0]],
+            type=SweeperType.FACTOR,
         )
         sweeper_duration = Sweeper(
             Parameter.duration,
             delta_duration_range,
-            pulses=[fx_pulse],
+            pulses=[cz[:2]],  # get first two flux pulses
             type=SweeperType.ABSOLUTE,
         )
 
+        # TODO: check if drivers supports duration
         results = platform.sweep(
             sequence,
             ExecutionParameters(
@@ -200,18 +153,17 @@ def _aquisition(
             sweeper_amplitude,
             sweeper_duration,
         )
-        for qubit in ord_pair:
+        for qubit in ordered_pair:
             result = results[qubit]
-            prob = result.statistical_frequency
+            prob = result.probability(1)
             data.register_qubit(
-                ord_pair[0],
-                ord_pair[1],
+                ordered_pair[0],
+                ordered_pair[1],
                 qubit,
                 delta_duration_range,
                 delta_amplitude_range,
                 prob,
             )
-
     return data
 
 

@@ -313,7 +313,6 @@ actions:
       duration_max: 50
       duration_step: 1
       nshots: 1000
-      parking: False
 
   - id: tune landscape
     priority: 0
