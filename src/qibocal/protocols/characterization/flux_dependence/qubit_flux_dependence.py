@@ -31,8 +31,9 @@ class QubitFluxParameters(Parameters):
     """Width for bias sweep [V]."""
     bias_step: float
     """Bias step for sweep (V)."""
-    drive_amplitude: float
-    """Drive pulse amplitude. Same for all qubits."""
+    drive_amplitude: Optional[float] = None
+    """Readout amplitude (optional). If defined, same amplitude will be used in all qubits.
+    Otherwise the default amplitude defined on the platform runcard will be used"""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
@@ -121,7 +122,9 @@ def _acquisition(
                 qubits[qubit].anharmonicity / 2
             )  # TODO: add anharmonicity to platform runcard - single qubit gates settings
 
-        qd_pulses[qubit].amplitude = params.drive_amplitude
+        if params.drive_amplitude is not None:
+            qd_pulses[qubit].amplitude = params.drive_amplitude
+        
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=qd_pulses[qubit].finish
         )
@@ -146,7 +149,7 @@ def _acquisition(
         Parameter.bias,
         delta_bias_range,
         qubits=list(qubits.values()),
-        type=SweeperType.ABSOLUTE,
+        type=SweeperType.OFFSET,
     )
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
@@ -174,7 +177,7 @@ def _acquisition(
             msr=result.magnitude,
             phase=result.phase,
             freq=delta_frequency_range + qd_pulses[qubit].frequency,
-            bias=delta_bias_range,
+            bias=delta_bias_range + qubits[qubit].sweetspot,
         )
 
     return data
