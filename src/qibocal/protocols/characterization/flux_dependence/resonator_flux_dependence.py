@@ -14,7 +14,7 @@ from scipy.optimize import curve_fit
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 
-from ..utils import HZ_TO_GHZ
+from ..utils import HZ_TO_GHZ, GHZ_TO_HZ
 from . import utils
 
 
@@ -216,7 +216,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
 
         frequencies, biases = utils.image_to_curve(frequencies, biases, msr)
 
-        scaler = 10**9
+        # scaler = 10**9
         bare_resonator_frequency = data.bare_resonator_frequency[
             qubit
         ]  # Resonator frequency at high power.
@@ -226,7 +226,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
         xi = 1 / (2 * abs(max_c - min_c))  # Convert bias to flux.
 
         # First order approximation: bare_resonator_frequency, g provided
-        if ((Ec and Ej) == 0) and ((bare_resonator_frequency and g) != 0):
+        if ((Ec  == 0 and Ej == 0) and (bare_resonator_frequency != 0 and g != 0)):
             try:
                 # Initial estimation for resonator frequency at sweet spot.
                 f_r_0 = np.max(frequencies)
@@ -237,15 +237,14 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 popt = curve_fit(
                     utils.freq_r_transmon,
                     biases,
-                    frequencies / scaler,
-                    # p0=[max_c, xi, 0, f_q_0 / bare_resonator_frequency, g, bare_resonator_frequency],
+                    frequencies / GHZ_TO_HZ,
                     p0=[
                         max_c,
                         xi,
                         0,
                         f_q_0 / bare_resonator_frequency,
-                        g / scaler,
-                        bare_resonator_frequency / scaler,
+                        g / GHZ_TO_HZ,
+                        bare_resonator_frequency / GHZ_TO_HZ,
                     ],
                     bounds=(
                         (-np.inf, 0, 0, 0, 0, 0),
@@ -253,8 +252,8 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                     ),
                     maxfev=2000000,
                 )[0]
-                popt[4] *= scaler
-                popt[5] *= scaler
+                popt[4] *= GHZ_TO_HZ
+                popt[5] *= GHZ_TO_HZ
                 f_qs = popt[3] * popt[5]  # Qubit frequency at sweet spot.
                 f_rs = utils.freq_r_transmon(
                     popt[0], *popt
@@ -268,7 +267,6 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
 
                 frequency[qubit] = f_rs * HZ_TO_GHZ
                 sweetspot[qubit] = popt[0]
-                # fitted_parameters = xi, d, f_q/bare_resonator_frequency, g, bare_resonator_frequency, f_qs, f_r_offset, C_ii
                 fitted_parameters[qubit] = {
                     "Xi": popt[1],
                     "d": abs(popt[2]),
@@ -286,21 +284,21 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 )
 
         # Second order approximation: bare_resonator_frequency, g, Ec, Ej provided
-        elif (Ec and Ej and bare_resonator_frequency and g) != 0:
+        elif (Ec != 0 and Ej != 0  and bare_resonator_frequency != 0 and g != 0):
             try:
                 freq_r_mathieu1 = partial(utils.freq_r_mathieu, p7=0.4999)
                 popt = curve_fit(
                     freq_r_mathieu1,
                     biases,
-                    frequencies / scaler,
+                    frequencies / GHZ_TO_HZ,
                     p0=[
-                        bare_resonator_frequency / scaler,
-                        g / scaler,
+                        bare_resonator_frequency / GHZ_TO_HZ,
+                        g / GHZ_TO_HZ,
                         max_c,
                         xi,
                         0,
-                        Ec / scaler,
-                        Ej / scaler,
+                        Ec / GHZ_TO_HZ,
+                        Ej / GHZ_TO_HZ,
                     ],
                     bounds=(
                         (0, 0, -np.inf, 0, 0, 0, 0),
@@ -308,10 +306,10 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                     ),
                     maxfev=2000000,
                 )[0]
-                popt[0] *= scaler
-                popt[1] *= scaler
-                popt[5] *= scaler
-                popt[6] *= scaler
+                popt[0] *= GHZ_TO_HZ
+                popt[1] *= GHZ_TO_HZ
+                popt[5] *= GHZ_TO_HZ
+                popt[6] *= GHZ_TO_HZ
                 f_qs = utils.freq_q_mathieu(
                     popt[2], *popt[2::]
                 )  # Qubit frequency at sweet spot.
