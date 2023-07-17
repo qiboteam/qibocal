@@ -31,11 +31,12 @@ class ResonatorFrequencyParameters(Parameters):
 
 @dataclass
 class ResonatorFrequencyResults(Results):
-    """Optimization RO frequency outputs."""
+    """Optimization Resonator frequency outputs."""
 
     fidelities: dict[QubitId, list]
-
+    """Assignment fidelities."""
     best_freq: dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
+    """Resonator Frequency with the highest assignment fidelity."""
 
 
 ResonatorFrequencyType = np.dtype(
