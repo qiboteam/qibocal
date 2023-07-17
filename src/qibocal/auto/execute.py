@@ -141,3 +141,4 @@ class Executor:
             if self.platform is not None:
                 if self.update and task.update:
                     self.platform.update(completed.results.update)
+            yield
