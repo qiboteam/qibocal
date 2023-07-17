@@ -107,20 +107,30 @@ def _aquisition(
         ordered_pair = order_pairs(pair, platform.qubits)
 
         # initialize in system in 11 state
-        for qubit in ordered_pair:
-            sequence.add(platform.create_RX_pulse(qubit, start=0))
+        initialize_lowfreq = platform.create_RX_pulse(
+            ordered_pair[0], start=0, relative_phase=0
+        )
+        initialize_highfreq = platform.create_RX_pulse(
+            ordered_pair[1], start=0, relative_phase=0
+        )
 
-        # TODO: check if sequence.finish is the correct syntax
-        # add flux pulse (ignoring virtual phases)
-        cz, _ = platform.create_CZ_pulse_sequence(qubits=pair, start=sequence.finish)
+        sequence.add(initialize_highfreq)
+        sequence.add(initialize_lowfreq)
+        cz, _ = platform.create_CZ_pulse_sequence(
+            qubits=(ordered_pair[1], ordered_pair[0]), start=initialize_highfreq.finish
+        )
         sequence.add(cz)
 
         # add readout
-        for qubit in ordered_pair:
-            sequence.add(
-                platform.create_qubit_readout_pulse(qubit, start=sequence.finish)
-            )
+        measure_lowfreq = platform.create_qubit_readout_pulse(
+            ordered_pair[0], start=initialize_highfreq.finish + params.duration_max + 20
+        )
+        measure_highfreq = platform.create_qubit_readout_pulse(
+            ordered_pair[1], start=initialize_highfreq.finish + params.duration_max + 20
+        )
 
+        sequence.add(measure_lowfreq)
+        sequence.add(measure_highfreq)
         # define the parameter to sweep and its range:
         delta_amplitude_range = np.arange(
             params.amplitude_min,
@@ -133,30 +143,31 @@ def _aquisition(
         sweeper_amplitude = Sweeper(
             Parameter.amplitude,
             delta_amplitude_range,
-            pulses=[cz.get_qubit_pulses(ordered_pair[1])[0]],
-            type=SweeperType.FACTOR,
+            pulses=[cz.get_qubit_pulses(ordered_pair[1]).qf_pulses[0]],
+            type=SweeperType.ABSOLUTE,  # sweeper time FACTOR doesn't work for qblox
         )
         sweeper_duration = Sweeper(
             Parameter.duration,
             delta_duration_range,
-            pulses=[cz[:2]],  # get first two flux pulses
+            pulses=[
+                cz.get_qubit_pulses(ordered_pair[1]).qf_pulses[0]
+            ],  # get first two flux pulses
             type=SweeperType.ABSOLUTE,
         )
-
         # TODO: check if drivers supports duration
         results = platform.sweep(
             sequence,
             ExecutionParameters(
                 nshots=params.nshots,
-                acquisition_type=AcquisitionType.DISCRIMINATION,
+                acquisition_type=AcquisitionType.INTEGRATION,
                 averaging_mode=AveragingMode.CYCLIC,
             ),
-            sweeper_amplitude,
             sweeper_duration,
+            sweeper_amplitude,
         )
         for qubit in ordered_pair:
             result = results[qubit]
-            prob = result.probability(1)
+            prob = result.magnitude
             data.register_qubit(
                 ordered_pair[0],
                 ordered_pair[1],
