@@ -144,7 +144,7 @@ def _aquisition(
             Parameter.amplitude,
             delta_amplitude_range,
             pulses=[cz.get_qubit_pulses(ordered_pair[1]).qf_pulses[0]],
-            type=SweeperType.ABSOLUTE,  # sweeper time FACTOR doesn't work for qblox
+            type=SweeperType.OFFSET,  # sweeper time FACTOR doesn't work for qblox
         )
         sweeper_duration = Sweeper(
             Parameter.duration,
