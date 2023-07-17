@@ -135,7 +135,7 @@ def _acquisition(
         Parameter.bias,
         delta_bias_range,
         qubits=list(qubits.values()),
-        type=SweeperType.ABSOLUTE,
+        type=SweeperType.OFFSET,
     )
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
@@ -169,7 +169,7 @@ def _acquisition(
             msr=result.magnitude,
             phase=result.phase,
             freq=delta_frequency_range + ro_pulses[qubit].frequency,
-            bias=delta_bias_range,
+            bias=delta_bias_range + qubits[qubit].sweetspot,
         )
 
     return data
@@ -217,16 +217,17 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
         frequencies, biases = utils.image_to_curve(frequencies, biases, msr)
 
         scaler = 10**9
-        try:
-            bare_resonator_frequency = data.bare_resonator_frequency[
-                qubit
-            ]  # Resonator frequency at high power.
-            g = data.g[qubit]  # Readout coupling.
-            max_c = biases[np.argmax(frequencies)]
-            min_c = biases[np.argmin(frequencies)]
-            xi = 1 / (2 * abs(max_c - min_c))  # Convert bias to flux.
-            # First order approximation: bare_resonator_frequency, g provided
-            if ((Ec and Ej) == 0) and ((bare_resonator_frequency and g) != 0):
+        bare_resonator_frequency = data.bare_resonator_frequency[
+            qubit
+        ]  # Resonator frequency at high power.
+        g = data.g[qubit]  # Readout coupling.
+        max_c = biases[np.argmax(frequencies)]
+        min_c = biases[np.argmin(frequencies)]
+        xi = 1 / (2 * abs(max_c - min_c))  # Convert bias to flux.
+
+        # First order approximation: bare_resonator_frequency, g provided
+        if ((Ec and Ej) == 0) and ((bare_resonator_frequency and g) != 0):
+            try:
                 # Initial estimation for resonator frequency at sweet spot.
                 f_r_0 = np.max(frequencies)
                 # Initial estimation for qubit frequency at sweet spot.
@@ -279,8 +280,13 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                     "C_ii": C_ii,
                 }
 
-            # Second order approximation: bare_resonator_frequency, g, Ec, Ej provided
-            elif (Ec and Ej and bare_resonator_frequency and g) != 0:
+            except:
+                log.warning("resonator_flux_fit: First order approximation fitting was not succesful")            
+
+
+        # Second order approximation: bare_resonator_frequency, g, Ec, Ej provided
+        elif (Ec and Ej and bare_resonator_frequency and g) != 0:
+            try:
                 freq_r_mathieu1 = partial(utils.freq_r_mathieu, p7=0.4999)
                 popt = curve_fit(
                     freq_r_mathieu1,
@@ -332,18 +338,13 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                     "f_r_offset": f_r_offset,
                     "C_ii": C_ii,
                 }
+            except:
+                log.warning("resonator_flux_fit: Second order approximation fitting was not succesful")
 
-            else:
-                log.warning(
-                    "resonator_flux_fit: the fitting was not succesful. Not enought guess parameters provided"
-                )
-
-        except Exception as e:
-            print("An exception occurred:", str(e))
-            import traceback
-
-            traceback.print_exc()
-            log.warning("resonator_flux_fit: the fitting was not succesful")
+        else:
+            log.warning(
+                "resonator_flux_fit: Not enought guess parameters provided"
+            )
 
     return ResonatorFluxResults(
         frequency=frequency,

@@ -220,13 +220,13 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
 
         frequencies, biases = utils.image_to_curve(frequencies, biases, msr)
         scaler = 10**9
-        try:
-            max_c = biases[np.argmax(frequencies)]
-            min_c = biases[np.argmin(frequencies)]
-            xi = 1 / (2 * abs(max_c - min_c))  # Convert bias to flux.
+        max_c = biases[np.argmax(frequencies)]
+        min_c = biases[np.argmin(frequencies)]
+        xi = 1 / (2 * abs(max_c - min_c))  # Convert bias to flux.
 
-            # First order approximation: Ec and Ej NOT provided
-            if (Ec and Ej) == 0:
+        # First order approximation: Ec and Ej NOT provided
+        if (Ec and Ej) == 0:
+            try:
                 f_q_0 = np.max(
                     frequencies
                 )  # Initial estimation for qubit frequency at sweet spot.
@@ -257,9 +257,12 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                     "f_q_offset": f_q_offset,
                     "C_ii": C_ii,
                 }
+            except:
+                log.warning("qubit_flux_fit: The first order approximation fitting was not succesful")
 
-            # Second order approximation: Ec and Ej provided
-            elif (Ec and Ej) != 0:
+        # Second order approximation: Ec and Ej provided
+        elif (Ec and Ej) != 0:
+            try:
                 freq_q_mathieu1 = partial(utils.freq_q_mathieu, p5=0.4999)
                 popt = curve_fit(
                     freq_q_mathieu1,
@@ -296,14 +299,13 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                     "f_q_offset": f_q_offset,
                     "C_ii": C_ii,
                 }
+            except:
+                log.warning("qubit_flux_fit: The second order approximation fitting was not succesful")                
 
-            else:
-                log.warning(
-                    "qubit_flux_fit: the fitting was not succesful. Not enought guess parameters provided"
-                )
-
-        except:
-            log.warning("qubit_flux_fit: the fitting was not succesful")
+        else:
+            log.warning(
+                "qubit_flux_fit: the fitting was not succesful. Not enought guess parameters provided"
+            )
 
     return QubitFluxResults(
         frequency=frequency,
