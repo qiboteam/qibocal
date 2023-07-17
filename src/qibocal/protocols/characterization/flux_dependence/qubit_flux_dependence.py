@@ -14,7 +14,7 @@ from scipy.optimize import curve_fit
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 
-from ..utils import HZ_TO_GHZ, GHZ_TO_HZ
+from ..utils import GHZ_TO_HZ, HZ_TO_GHZ
 from . import utils
 
 
@@ -118,9 +118,7 @@ def _acquisition(
         )
 
         if params.transition == "02":
-            qd_pulses[qubit].frequency -= (
-                qubits[qubit].anharmonicity / 2
-            )
+            qd_pulses[qubit].frequency -= qubits[qubit].anharmonicity / 2
 
         if params.drive_amplitude is not None:
             qd_pulses[qubit].amplitude = params.drive_amplitude
@@ -224,7 +222,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
         xi = 1 / (2 * abs(max_c - min_c))  # Convert bias to flux.
 
         # First order approximation: Ec and Ej NOT provided
-        if (Ec == 0 and Ej == 0):
+        if Ec == 0 and Ej == 0:
             try:
                 f_q_0 = np.max(
                     frequencies

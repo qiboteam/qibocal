@@ -14,7 +14,7 @@ from scipy.optimize import curve_fit
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 
-from ..utils import HZ_TO_GHZ, GHZ_TO_HZ
+from ..utils import GHZ_TO_HZ, HZ_TO_GHZ
 from . import utils
 
 
@@ -226,7 +226,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
         xi = 1 / (2 * abs(max_c - min_c))  # Convert bias to flux.
 
         # First order approximation: bare_resonator_frequency, g provided
-        if ((Ec  == 0 and Ej == 0) and (bare_resonator_frequency != 0 and g != 0)):
+        if (Ec == 0 and Ej == 0) and (bare_resonator_frequency != 0 and g != 0):
             try:
                 # Initial estimation for resonator frequency at sweet spot.
                 f_r_0 = np.max(frequencies)
@@ -284,7 +284,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 )
 
         # Second order approximation: bare_resonator_frequency, g, Ec, Ej provided
-        elif (Ec != 0 and Ej != 0  and bare_resonator_frequency != 0 and g != 0):
+        elif Ec != 0 and Ej != 0 and bare_resonator_frequency != 0 and g != 0:
             try:
                 freq_r_mathieu1 = partial(utils.freq_r_mathieu, p7=0.4999)
                 popt = curve_fit(
