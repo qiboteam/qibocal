@@ -258,7 +258,9 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                     "C_ii": C_ii,
                 }
             except:
-                log.warning("qubit_flux_fit: The first order approximation fitting was not succesful")
+                log.warning(
+                    "qubit_flux_fit: The first order approximation fitting was not succesful"
+                )
 
         # Second order approximation: Ec and Ej provided
         elif (Ec and Ej) != 0:
@@ -300,7 +302,9 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                     "C_ii": C_ii,
                 }
             except:
-                log.warning("qubit_flux_fit: The second order approximation fitting was not succesful")                
+                log.warning(
+                    "qubit_flux_fit: The second order approximation fitting was not succesful"
+                )
 
         else:
             log.warning(

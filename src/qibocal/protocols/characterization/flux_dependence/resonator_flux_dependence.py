@@ -281,8 +281,9 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 }
 
             except:
-                log.warning("resonator_flux_fit: First order approximation fitting was not succesful")            
-
+                log.warning(
+                    "resonator_flux_fit: First order approximation fitting was not succesful"
+                )
 
         # Second order approximation: bare_resonator_frequency, g, Ec, Ej provided
         elif (Ec and Ej and bare_resonator_frequency and g) != 0:
@@ -339,12 +340,12 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                     "C_ii": C_ii,
                 }
             except:
-                log.warning("resonator_flux_fit: Second order approximation fitting was not succesful")
+                log.warning(
+                    "resonator_flux_fit: Second order approximation fitting was not succesful"
+                )
 
         else:
-            log.warning(
-                "resonator_flux_fit: Not enought guess parameters provided"
-            )
+            log.warning("resonator_flux_fit: Not enought guess parameters provided")
 
     return ResonatorFluxResults(
         frequency=frequency,
