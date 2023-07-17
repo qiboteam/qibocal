@@ -67,6 +67,11 @@ class Data:
             return list({q[0] for q in self.data})
         return [q for q in self.data]
 
+    @property
+    def pairs(self):
+        """Access qubit pairs from data structure."""
+        return [(q[0], q[1]) for q in self.data]
+
     def __getitem__(self, qubit: Union[QubitId, tuple[QubitId, int]]):
         """Access data attribute member."""
         return self.data[qubit]
