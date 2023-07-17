@@ -31,7 +31,7 @@ class ResonatorFrequencyParameters(Parameters):
 
 @dataclass
 class ResonatorFrequencyResults(Results):
-    """ "Optimization RO frequency outputs."""
+    """Optimization RO frequency outputs."""
 
     fidelities: dict[QubitId, list]
 
