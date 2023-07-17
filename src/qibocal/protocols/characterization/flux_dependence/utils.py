@@ -349,6 +349,7 @@ def image_to_curve(x, y, z, alpha=0.00001, order=50):
     z = np.array(z, float)
     if len(z) != leny * lenx:
         lenx += 1
+        leny = int(len(y) / (lenx))
     x = np.linspace(min_x, max_x, lenx)
     y = np.linspace(min_y, max_y, leny)
     z = np.reshape(z, (leny, lenx))
