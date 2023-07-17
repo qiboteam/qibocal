@@ -67,6 +67,9 @@ class ResonatorFrequencyData(Data):
         ar["q"] = q
         self.data[qubit, state] = np.rec.array(ar)
 
+    def unique_freqs(self, qubit: QubitId) -> np.ndarray:
+        return np.unique(self.data[qubit, 0].freq)
+
 
 def _acquisition(
     params: ResonatorFrequencyParameters, platform: Platform, qubits: Qubits
@@ -158,7 +161,7 @@ def _fit(data: ResonatorFrequencyData) -> ResonatorFrequencyResults:
     best_freqs = {}
     for qubit in qubits:
         fidelities = []
-        freqs = np.unique(data[qubit, 0].freq)
+        freqs = data.unique_freqs(qubit)
         for freq in freqs:
             iq_state0 = data[qubit, 0][data[qubit, 0].freq == freq][["i", "q"]]
             iq_state1 = data[qubit, 1][data[qubit, 1].freq == freq][["i", "q"]]
@@ -211,7 +214,7 @@ def _fit(data: ResonatorFrequencyData) -> ResonatorFrequencyResults:
 def _plot(data: ResonatorFrequencyData, fit: ResonatorFrequencyResults, qubit):
     """Plotting function for Optimization RO frequency."""
     figures = []
-    freqs = np.unique(data[qubit, 0].freq) * HZ_TO_GHZ
+    freqs = data.unique_freqs(qubit) * HZ_TO_GHZ
     opacity = 1
     fitting_report = " "
     fig = make_subplots(
