@@ -59,7 +59,6 @@ def command(runcard, folder, force, update):
     builder.run()
     if update:
         builder.dump_platform_runcard()
-    builder.dump_report()
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)

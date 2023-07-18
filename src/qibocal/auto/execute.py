@@ -159,4 +159,6 @@ class Executor:
             timing_task["tot"] = time.time() - start_time_tot
             timings[task.id] = timing_task
 
+            yield
+
         json.dump(timings, open(self.output / "timings.json", "a"), indent=2)
