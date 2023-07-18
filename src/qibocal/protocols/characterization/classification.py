@@ -10,6 +10,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.fitting.classifier import run
 
 MESH_SIZE = 50
 
@@ -22,6 +23,10 @@ class SingleShotClassificationParameters(Parameters):
     """Number of shots."""
     relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
+    classifiers_list: Optional[list[str]] = ["qubit_fit"]
+    """List of models to classify the qubit states"""
+    savedir: Optional[str] = "classification_results"
+    """Dumping folder of the classification results"""
 
 
 ClassificationType = np.dtype([("i", np.float64), ("q", np.float64)])
@@ -32,6 +37,10 @@ ClassificationType = np.dtype([("i", np.float64), ("q", np.float64)])
 class SingleShotClassificationData(Data):
     nshots: int
     """Number of shots."""
+    classifiers_list: Optional[str]
+    """List of models to classify the qubit states"""
+    savedir: Optional[str] = "classification_results"
+    """Dumping folder of the classification results"""
     data: dict[tuple[QubitId, int], npt.NDArray[ClassificationType]] = field(
         default_factory=dict
     )
@@ -112,7 +121,9 @@ def _acquisition(
         state1_sequence.add(ro_pulses[qubit])
 
     # create a DataUnits object to store the results
-    data = SingleShotClassificationData(params.nshots)
+    data = SingleShotClassificationData(
+        params.nshots, params.classifiers_list, params.savedir
+    )
 
     # execute the first pulse sequence
     state0_results = platform.execute_pulse_sequence(
@@ -153,58 +164,67 @@ def _acquisition(
 
 def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
     qubits = data.qubits
-    thresholds, rotation_angles = {}, {}
-    fidelities, assignment_fidelities = {}, {}
-    mean_gnd_states = {}
-    mean_exc_states = {}
+
     for qubit in qubits:
-        iq_state0 = data[qubit, 0].i + 1.0j * data[qubit, 0].q
-        iq_state1 = data[qubit, 1].i + 1.0j * data[qubit, 1].q
-
-        iq_state1 = np.array(iq_state1)
-        iq_state0 = np.array(iq_state0)
-
-        iq_mean_state1 = np.mean(iq_state1)
-        iq_mean_state0 = np.mean(iq_state0)
-
-        vector01 = iq_mean_state1 - iq_mean_state0
-        rotation_angle = np.angle(vector01)
-
-        iq_state1_rotated = iq_state1 * np.exp(-1j * rotation_angle)
-        iq_state0_rotated = iq_state0 * np.exp(-1j * rotation_angle)
-
-        real_values_state1 = iq_state1_rotated.real
-        real_values_state0 = iq_state0_rotated.real
-
-        real_values_combined = np.concatenate((real_values_state1, real_values_state0))
-        real_values_combined.sort()
-
-        cum_distribution_state1 = [
-            sum(map(lambda x: x.real >= real_value, real_values_state1))
-            for real_value in real_values_combined
-        ]
-        cum_distribution_state0 = [
-            sum(map(lambda x: x.real >= real_value, real_values_state0))
-            for real_value in real_values_combined
-        ]
-
-        cum_distribution_diff = np.abs(
-            np.array(cum_distribution_state1) - np.array(cum_distribution_state0)
+        benchmark_table, y_test, x_test, models, names, hpars_list = run.train_qubit(
+            data.save_dir,
+            qubits[qubit],
+            qubits_data=data.df,
+            classifiers=data.classifiers,
         )
-        argmax = np.argmax(cum_distribution_diff)
-        threshold = real_values_combined[argmax]
-        errors_state1 = data.nshots - cum_distribution_state1[argmax]
-        errors_state0 = cum_distribution_state0[argmax]
-        fidelity = cum_distribution_diff[argmax] / data.nshots
-        assignment_fidelity = 1 - (errors_state1 + errors_state0) / data.nshots / 2
-        thresholds[qubit] = threshold
-        rotation_angles[
-            qubit
-        ] = -rotation_angle  # TODO: qblox driver np.rad2deg(-rotation_angle)
-        fidelities[qubit] = fidelity
-        mean_gnd_states[qubit] = [iq_mean_state0.real, iq_mean_state0.imag]
-        mean_exc_states[qubit] = [iq_mean_state1.real, iq_mean_state1.imag]
-        assignment_fidelities[qubit] = assignment_fidelity
+
+    # thresholds, rotation_angles = {}, {}
+    # fidelities, assignment_fidelities = {}, {}
+    # mean_gnd_states = {}
+    # mean_exc_states = {}
+    # for qubit in qubits:
+    #     iq_state0 = data[qubit, 0].i + 1.0j * data[qubit, 0].q
+    #     iq_state1 = data[qubit, 1].i + 1.0j * data[qubit, 1].q
+
+    #     iq_state1 = np.array(iq_state1)
+    #     iq_state0 = np.array(iq_state0)
+
+    #     iq_mean_state1 = np.mean(iq_state1)
+    #     iq_mean_state0 = np.mean(iq_state0)
+
+    #     vector01 = iq_mean_state1 - iq_mean_state0
+    #     rotation_angle = np.angle(vector01)
+
+    #     iq_state1_rotated = iq_state1 * np.exp(-1j * rotation_angle)
+    #     iq_state0_rotated = iq_state0 * np.exp(-1j * rotation_angle)
+
+    #     real_values_state1 = iq_state1_rotated.real
+    #     real_values_state0 = iq_state0_rotated.real
+
+    #     real_values_combined = np.concatenate((real_values_state1, real_values_state0))
+    #     real_values_combined.sort()
+
+    #     cum_distribution_state1 = [
+    #         sum(map(lambda x: x.real >= real_value, real_values_state1))
+    #         for real_value in real_values_combined
+    #     ]
+    #     cum_distribution_state0 = [
+    #         sum(map(lambda x: x.real >= real_value, real_values_state0))
+    #         for real_value in real_values_combined
+    #     ]
+
+    #     cum_distribution_diff = np.abs(
+    #         np.array(cum_distribution_state1) - np.array(cum_distribution_state0)
+    #     )
+    #     argmax = np.argmax(cum_distribution_diff)
+    #     threshold = real_values_combined[argmax]
+    #     errors_state1 = data.nshots - cum_distribution_state1[argmax]
+    #     errors_state0 = cum_distribution_state0[argmax]
+    #     fidelity = cum_distribution_diff[argmax] / data.nshots
+    #     assignment_fidelity = 1 - (errors_state1 + errors_state0) / data.nshots / 2
+    #     thresholds[qubit] = threshold
+    #     rotation_angles[
+    #         qubit
+    #     ] = -rotation_angle  # TODO: qblox driver np.rad2deg(-rotation_angle)
+    #     fidelities[qubit] = fidelity
+    #     mean_gnd_states[qubit] = [iq_mean_state0.real, iq_mean_state0.imag]
+    #     mean_exc_states[qubit] = [iq_mean_state1.real, iq_mean_state1.imag]
+    #     assignment_fidelities[qubit] = assignment_fidelity
 
     return SingleShotClassificationResults(
         thresholds,
