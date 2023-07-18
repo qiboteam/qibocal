@@ -214,7 +214,9 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
         if data.resonator_type == "3D":
             msr = -msr
 
-        frequencies, biases = utils.image_to_curve(frequencies, biases, msr)
+        frequencies, biases = utils.image_to_curve(
+            frequencies, biases, msr, msr_mask=0.5
+        )
 
         # scaler = 10**9
         bare_resonator_frequency = data.bare_resonator_frequency[

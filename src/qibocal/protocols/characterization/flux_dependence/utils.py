@@ -25,12 +25,16 @@ def flux_dependence_plot(data, fit, qubit):
     )
     frequencies = qubit_data.freq * HZ_TO_GHZ
     msr = qubit_data.msr
-    if data.__class__.__name__ == "ResonatorFluxData" and data.resonator_type == "3D":
-        msr = -msr
-    elif data.__class__.__name__ == "QubitFluxData" and data.resonator_type == "2D":
-        msr = -msr
+    if data.__class__.__name__ == "ResonatorFluxData":
+        msr_mask = 0.5
+        if data.resonator_type == "3D":
+            msr = -msr
+    elif data.__class__.__name__ == "QubitFluxData":
+        msr_mask = 0.3
+        if data.resonator_type == "2D":
+            msr = -msr
 
-    frequencies1, biases1 = image_to_curve(frequencies, qubit_data.bias, msr)
+    frequencies1, biases1 = image_to_curve(frequencies, qubit_data.bias, msr, msr_mask)
 
     fig.add_trace(
         go.Heatmap(
@@ -327,7 +331,7 @@ def feature(x, order=3):
     return np.power(x, np.arange(order + 1).reshape(1, -1))
 
 
-def image_to_curve(x, y, z, alpha=0.00001, order=50):
+def image_to_curve(x, y, z, msr_mask=0.5, alpha=1e-5, order=50):
     """
     Extracts a feature characterized by min(z(x, y)). It considers all the data and applies Ridge regression on a polynomial ansatz in x. This allows obtaining a set of points describing the feature as y vs x.
 
@@ -349,6 +353,7 @@ def image_to_curve(x, y, z, alpha=0.00001, order=50):
     z = np.array(z, float)
     if len(z) != leny * lenx:
         lenx += 1
+        leny = int(len(y) / (lenx))
     x = np.linspace(min_x, max_x, lenx)
     y = np.linspace(min_y, max_y, leny)
     z = np.reshape(z, (leny, lenx))
@@ -356,7 +361,7 @@ def image_to_curve(x, y, z, alpha=0.00001, order=50):
     znorm = (z - zmin) / (zmax - zmin)
 
     # Mask out region
-    mask = znorm < 0.5
+    mask = znorm < msr_mask
     z = np.argwhere(mask)
     weights = znorm[mask] / float(znorm.max())
     # Column indices
