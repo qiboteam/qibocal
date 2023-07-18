@@ -12,11 +12,12 @@ import pandas as pd
 from qibolab.qubits import QubitId
 from sklearn.metrics import accuracy_score
 
-from qibocal.protocols.characterization.classification import (
-    SingleShotClassificationData,
-)
-
 from . import data, plots
+
+# from qibocal.protocols.characterization.classification import (
+#     SingleShotClassificationData,
+# )
+
 
 CLS_MODULES = [
     "linear_svm",
@@ -215,7 +216,7 @@ def plot_history(history, save_dir: pathlib.Path):
 
 
 def train_qubit(
-    data: SingleShotClassificationData,
+    cls_data,
     qubit: QubitId,
 ):
     r"""Given a dataset `qubits_data` with qubits' information, this function performs the benchmarking of some classifiers.
@@ -242,17 +243,21 @@ def train_qubit(
         - hpars_list(list): Models' hyper-parameters.
 
     """
-
-    # qubit_data = qubits_data[qubits_data["qubit"] == qubit.name]
+    # print(cls_data)
+    # qubit_data = cls_data.data[qubit,0]
     nn_epochs = 200
     nn_val_split = 0.2
     qubit_dir = base_dir / f"qubit{qubit}"
     qubit_dir.mkdir(parents=True, exist_ok=True)
-    x_train, x_test, y_train, y_test = data.generate_models(data)
+    # print(qubit_data)
+    x_train, x_test, y_train, y_test = data.generate_models(cls_data, qubit)
+    print(x_train, x_test, y_train, y_test)
     models = []
     results_list = []
     names = []
     hpars_list = []
+    print(cls_data.classifiers_list)
+    classifiers = cls_data.classifiers_list
     if classifiers is None:
         classifiers = CLS_MODULES
 
@@ -262,12 +267,12 @@ def train_qubit(
         classifier = Classifier(mod, qubit_dir)
         classifier.savedir.mkdir(exist_ok=True)
         logging.info(f"Classification model: {classifier.name}")
-        if classifier.name not in qubit.classifiers_hpars:
+        if classifier.name not in cls_data.hpars[qubit]:
             hyperpars = classifier.hyperopt(
                 x_train, y_train.astype(np.int64), classifier.savedir
             )
         else:
-            hyperpars = qubit.classifiers_hpars[classifier.name]
+            hyperpars = cls_data.hpars[qubit][classifier.name]
         hpars_list.append(hyperpars)
         classifier.dump_hyper(hyperpars)
         model = classifier.create_model(hyperpars)

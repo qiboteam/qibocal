@@ -1,6 +1,7 @@
 import pathlib
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
 from sklearn.model_selection import train_test_split
@@ -23,7 +24,7 @@ def load_qubit(data_path: pathlib.Path, qubit):
     return data
 
 
-def generate_models(data, test_size=0.25):
+def generate_models(data, qubit, test_size=0.25):
     r"""Extract from data the values stored
     in the keys `i` and `q` and split them in training and test sets.
 
@@ -38,12 +39,29 @@ def generate_models(data, test_size=0.25):
         - x_test: Test inputs.
         - y_test: Test outputs.
     """
-    data["i"] = data["i"].pint.magnitude
-    data["q"] = data["q"].pint.magnitude
-    input_data = data[["i", "q"]].to_numpy()
-    output_data = data["state"].values
+    qubit_data0 = data.data[qubit, 0]
+    qubit_data1 = data.data[qubit, 1]
+    i_shots = np.concatenate((qubit_data0.i, qubit_data1.i))
+    q_shots = np.concatenate((qubit_data0.q, qubit_data1.q))
+    states = np.concatenate(([0] * len(qubit_data0), [1] * len(qubit_data1)))
+    # data["i"] = data["i"].pint.magnitude
+    # data["q"] = data["q"].pint.magnitude
+    # input_data = data[["i", "q"]].to_numpy()
+    # output_data = data["state"].values
+    print(
+        i_shots,
+        q_shots,
+        states,
+        len(i_shots),
+        len(q_shots),
+        np.column_stack((i_shots, q_shots)),
+    )
     return train_test_split(
-        input_data, output_data, test_size=test_size, random_state=0, shuffle=True
+        np.column_stack((i_shots, q_shots)),
+        states,
+        test_size=test_size,
+        random_state=0,
+        shuffle=True,
     )
 
 
