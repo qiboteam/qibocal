@@ -277,21 +277,21 @@ def train_qubit(
         classifier.dump_hyper(hyperpars)
         model = classifier.create_model(hyperpars)
 
-        if classifier.name == "nn":
-            results, y_pred, model, fit_info = benchmarking(
-                model,
-                x_train,
-                y_train,
-                x_test,
-                y_test,
-                epochs=nn_epochs,
-                validation_split=nn_val_split,
-            )
-            plot_history(fit_info, classifier.savedir)
-        else:
-            results, y_pred, model, _ = benchmarking(
-                model, x_train, y_train, x_test, y_test
-            )
+        # if classifier.name == "nn":
+        #     results, y_pred, model, fit_info = benchmarking(
+        #         model,
+        #         x_train,
+        #         y_train,
+        #         x_test,
+        #         y_test,
+        #         epochs=nn_epochs,
+        #         validation_split=nn_val_split,
+        #     )
+        #     plot_history(fit_info, classifier.savedir)
+        # else:
+        results, y_pred, model, _ = benchmarking(
+            model, x_train, y_train, x_test, y_test
+        )
         models.append(model)  # save trained model
         results.name = classifier.name
         results_list.append(results)
