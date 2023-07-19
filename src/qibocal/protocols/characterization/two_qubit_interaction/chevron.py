@@ -63,7 +63,7 @@ class ChevronData(Data):
     def register_qubit(self, low_qubit, high_qubit, qubit, length, amp, prob):
         """Store output for single qubit."""
         size = len(length) * len(amp)
-        duration, amplitude = np.meshgrid(length, amp)
+        amplitude, duration = np.meshgrid(amp, length)
         ar = np.empty(size, dtype=ChevronType)
         ar["length"] = duration.ravel()
         ar["amp"] = amplitude.ravel()
@@ -144,7 +144,8 @@ def _aquisition(
             Parameter.amplitude,
             delta_amplitude_range,
             pulses=[cz.get_qubit_pulses(ordered_pair[1]).qf_pulses[0]],
-            type=SweeperType.ABSOLUTE,  # sweeper time FACTOR doesn't work for qblox
+            type=SweeperType.ABSOLUTE,
+            # type=SweeperType.OFFSET,  # sweeper time FACTOR doesn't work for qblox
         )
         sweeper_duration = Sweeper(
             Parameter.duration,
@@ -173,6 +174,7 @@ def _aquisition(
                 ordered_pair[1],
                 qubit,
                 delta_duration_range,
+                # delta_amplitude_range+cz.get_qubit_pulses(ordered_pair[1]).qf_pulses[0].amplitude,
                 delta_amplitude_range,
                 prob,
             )
