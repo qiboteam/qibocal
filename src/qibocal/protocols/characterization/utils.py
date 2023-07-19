@@ -180,7 +180,7 @@ def cumulative(input_data, points):
     points = np.sort(points)
     # data and points sorted
     prob = []
-    app = 0.0
+    app = 0
 
     for val in input_data:
         app += np.maximum(np.searchsorted(points[app::], val), 0)
