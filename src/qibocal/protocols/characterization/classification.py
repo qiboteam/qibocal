@@ -13,6 +13,7 @@ from sklearn.metrics import roc_auc_score, roc_curve
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.fitting.classifier import run
+from qibocal.protocols.characterization.utils import get_color_state0, get_color_state1
 
 MESH_SIZE = 50
 MARGIN = 0
@@ -48,7 +49,7 @@ class SingleShotClassificationData(Data):
     """Number of shots."""
     classifiers_list: Optional[str]
     """List of models to classify the qubit states"""
-    hpars: dict[QubitId, dict]
+    hpars: dict[QubitId, dict] = field(metadata=dict(update="classifiers_hpars"))
     """Models' hyperparameters"""
     savedir: Optional[str] = "classification_results"
     """Dumping folder of the classification results"""
@@ -74,19 +75,21 @@ class SingleShotClassificationResults(Results):
     x_tests: dict
     models: dict
     names: list
+    hpars: dict[QubitId, dict] = field(metadata=dict(update="classifiers_hpars"))
 
-    # threshold: dict[QubitId, float] = field(metadata=dict(update="threshold"))
-    # """Threshold for classification."""
-    # rotation_angle: dict[QubitId, float] = field(metadata=dict(update="iq_angle"))
-    # """Threshold for classification."""
-    # mean_gnd_states: dict[QubitId, list[float]] = field(
-    #     metadata=dict(update="mean_gnd_states")
-    # )
-    # mean_exc_states: dict[QubitId, list[float]] = field(
-    #     metadata=dict(update="mean_exc_states")
-    # )
-    # fidelity: dict[QubitId, float]
-    # assignment_fidelity: dict[QubitId, float]
+    threshold: dict[QubitId, float] = field(metadata=dict(update="threshold"))
+    """Threshold for classification."""
+    rotation_angle: dict[QubitId, float] = field(metadata=dict(update="iq_angle"))
+    """Threshold for classification."""
+    mean_gnd_states: dict[QubitId, list[float]] = field(
+        metadata=dict(update="mean_gnd_states")
+    )
+    mean_exc_states: dict[QubitId, list[float]] = field(
+        metadata=dict(update="mean_exc_states")
+    )
+    fidelity: dict[QubitId, float]
+    assignment_fidelity: dict[QubitId, float]
+
     def save(self, path):
         pass
 
@@ -141,7 +144,6 @@ def _acquisition(
         state1_sequence.add(ro_pulses[qubit])
         hpars[qubit] = qubits[qubit].classifiers_hpars
     # create a DataUnits object to store the results
-    print("GGGGG", hpars)
     data = SingleShotClassificationData(
         params.nshots, params.classifiers_list, hpars, params.savedir
     )
@@ -172,7 +174,6 @@ def _acquisition(
             acquisition_type=AcquisitionType.INTEGRATION,
         ),
     )
-    print("FFFFF ", qubits[0], qubits[0].classifiers_hpars)
     # retrieve and store the results for every qubit
     for qubit in qubits:
         result = state1_results[ro_pulses[qubit].serial]
@@ -185,11 +186,17 @@ def _acquisition(
 
 def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
     qubits = data.qubits
-    print(qubits)
     benchmark_tables = {}
     models_dict = {}
     y_tests = {}
     x_tests = {}
+    hpars = {}
+    threshold = {}
+    rotation_angle = {}
+    mean_gnd_states = {}
+    mean_exc_states = {}
+    fidelity = {}
+    assignment_fidelity = {}
     for qubit in qubits:
         benchmark_table, y_test, x_test, models, names, hpars_list = run.train_qubit(
             data, qubit
@@ -198,6 +205,16 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         models_dict[qubit] = models
         y_tests[qubit] = y_test
         x_tests[qubit] = x_test
+        hpars[qubit] = {}
+        for i, model_name in enumerate(names):
+            hpars[qubit][model_name] = hpars_list[i]
+            if model_name == "qubit_fit":
+                threshold[qubit] = models[i].threshold
+                rotation_angle[qubit] = models[i].angle
+                mean_gnd_states[qubit] = models[i].iq_mean0
+                mean_exc_states[qubit] = models[i].iq_mean1
+                fidelity[qubit] = models[i].fidelity
+                assignment_fidelity[qubit] = models[i].assignment_fidelity
 
     return SingleShotClassificationResults(
         benchmark_tables,
@@ -205,6 +222,13 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         x_tests,
         models_dict,
         names,
+        hpars,
+        threshold,
+        rotation_angle,
+        mean_gnd_states,
+        mean_exc_states,
+        fidelity,
+        assignment_fidelity,
     )
 
 
@@ -212,7 +236,7 @@ def _plot(
     data: SingleShotClassificationData, fit: SingleShotClassificationResults, qubit
 ):
     figures = []
-    fitting_report = " "
+    fitting_report = ""
 
     models_name = fit.names
     state0_data = data.data[qubit, 0]
@@ -301,9 +325,7 @@ def _plot(
                 y=tpr,
                 name=name,
                 mode="lines",
-                marker=dict(
-                    size=3,
-                ),  # color=get_color_state0(report_n)),
+                marker=dict(size=3, color=get_color_state0(i)),
             )
         )
 
@@ -319,9 +341,7 @@ def _plot(
                 mode="markers",
                 showlegend=False,
                 # opacity=0.7,
-                marker=dict(
-                    size=10,
-                ),  # color=get_color_state1(report_n)),
+                marker=dict(size=10, color=get_color_state1(i)),
             ),
             row=1,
             col=1,
@@ -334,9 +354,7 @@ def _plot(
                 mode="markers",
                 showlegend=False,
                 # opacity=0.7,
-                marker=dict(
-                    size=10,
-                ),  # color=get_color_state1(report_n)),
+                marker=dict(size=10, color=get_color_state1(i)),
             ),
             row=1,
             col=2,
@@ -349,9 +367,7 @@ def _plot(
                 mode="markers",
                 showlegend=False,
                 # opacity=0.7,
-                marker=dict(
-                    size=10,
-                ),  # color=get_color_state1(report_n)),
+                marker=dict(size=10, color=get_color_state1(i)),
             ),
             row=1,
             col=3,
@@ -366,9 +382,7 @@ def _plot(
                 mode="markers",
                 showlegend=True,
                 opacity=0.7,
-                marker=dict(
-                    size=3,
-                ),  # color=get_color_state0(report_n)),
+                marker=dict(size=3, color=get_color_state0(i)),
             ),
             row=1,
             col=i + 1,
@@ -383,9 +397,7 @@ def _plot(
                 mode="markers",
                 showlegend=True,
                 opacity=0.7,
-                marker=dict(
-                    size=3,
-                ),  # color=get_color_state1(report_n)),
+                marker=dict(size=3, color=get_color_state1(i)),
             ),
             row=1,
             col=i + 1,
@@ -414,9 +426,7 @@ def _plot(
                 legendgroup=f"q{qubit}/{model}: state 0",
                 showlegend=False,
                 mode="markers",
-                marker=dict(
-                    size=10,
-                ),  # color=get_color_state0(report_n)),
+                marker=dict(size=10, color=get_color_state0(i)),
             ),
             row=1,
             col=i + 1,
@@ -430,9 +440,7 @@ def _plot(
                 legendgroup=f"q{qubit}/{model}: state 1",
                 showlegend=False,
                 mode="markers",
-                marker=dict(
-                    size=10,
-                ),  # color=get_color_state1(report_n)),
+                marker=dict(size=10, color=get_color_state1(i)),
             ),
             row=1,
             col=i + 1,
