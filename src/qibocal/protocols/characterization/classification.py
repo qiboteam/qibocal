@@ -49,7 +49,7 @@ class SingleShotClassificationData(Data):
     """Number of shots."""
     classifiers_list: Optional[str]
     """List of models to classify the qubit states"""
-    hpars: dict[QubitId, dict] = field(metadata=dict(update="classifiers_hpars"))
+    hpars: dict[QubitId, dict]
     """Models' hyperparameters"""
     savedir: Optional[str] = "classification_results"
     """Dumping folder of the classification results"""
@@ -206,8 +206,10 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         y_tests[qubit] = y_test
         x_tests[qubit] = x_test
         hpars[qubit] = {}
+
         for i, model_name in enumerate(names):
             hpars[qubit][model_name] = hpars_list[i]
+
             if model_name == "qubit_fit":
                 threshold[qubit] = models[i].threshold
                 rotation_angle[qubit] = models[i].angle
@@ -280,10 +282,6 @@ def _plot(
     )
     grid = np.vstack([i_values.ravel(), q_values.ravel()]).T
 
-    accuracy = []
-    training_time = []
-    testing_time = []
-
     fig = make_subplots(
         rows=1,
         cols=len(models_name),
@@ -301,7 +299,6 @@ def _plot(
         vertical_spacing=SPACING,
         subplot_titles=("accuracy", "training time (s)", "testing time (s)"),
         # pylint: disable=E1101
-        # column_width = [COLUMNWIDTH]*3
     )
 
     y_test = fit.y_tests[qubit]
@@ -340,7 +337,6 @@ def _plot(
                 y=[fit.benchmark_table[qubit]["accuracy"][i]],
                 mode="markers",
                 showlegend=False,
-                # opacity=0.7,
                 marker=dict(size=10, color=get_color_state1(i)),
             ),
             row=1,
@@ -353,7 +349,6 @@ def _plot(
                 y=[fit.benchmark_table[qubit]["training_time"][i]],
                 mode="markers",
                 showlegend=False,
-                # opacity=0.7,
                 marker=dict(size=10, color=get_color_state1(i)),
             ),
             row=1,
@@ -366,7 +361,6 @@ def _plot(
                 y=[fit.benchmark_table[qubit]["testing_time"][i]],
                 mode="markers",
                 showlegend=False,
-                # opacity=0.7,
                 marker=dict(size=10, color=get_color_state1(i)),
             ),
             row=1,
@@ -409,7 +403,6 @@ def _plot(
                 y=grid[:, 1],
                 z=predictions.flatten(),
                 showscale=False,
-                # colorscale=["green", "red"],
                 opacity=0.4,
                 name="Score",
                 hoverinfo="skip",
@@ -465,10 +458,15 @@ def _plot(
         title_text = ""
 
         if models_name[i] == "qubit_fit":
-            title_text += f"q{qubit}/{model} | average state 0: {fit.models[qubit][i].iq_mean0}<br>"
-            title_text += f"q{qubit}/{model} | average state 1: {fit.models[qubit][i].iq_mean1}<br>"
-            title_text += f"q{qubit}/{model} | rotation angle: {fit.models[qubit][i].angle:.3f}<br>"
-            title_text += f"q{qubit}/{model} | threshold: {fit.models[qubit][i].threshold:.6f}<br>"
+            qubit_model = fit.models[qubit][i]
+            title_text += f"q{qubit}/{model} | average state 0: {np.round(qubit_model.iq_mean0,3)}<br>"
+            title_text += f"q{qubit}/{model} | average state 1: {np.round(qubit_model.iq_mean1, 3)}<br>"
+            title_text += (
+                f"q{qubit}/{model} | rotation angle: {qubit_model.angle:.3f}<br>"
+            )
+            title_text += (
+                f"q{qubit}/{model} | threshold: {qubit_model.threshold:.6f}<br>"
+            )
             title_text += (
                 f"q{qubit}/{model} | fidelity: {fit.models[qubit][i].fidelity:.3f}<br>"
             )
@@ -477,7 +475,6 @@ def _plot(
         fitting_report += title_text
 
         fig.update_layout(
-            # showlegend=False,
             uirevision="0",  # ``uirevision`` allows zooming while live plotting
             autosize=False,
             height=COLUMNWIDTH,
