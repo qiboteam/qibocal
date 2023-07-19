@@ -8,10 +8,8 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
-from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.config import log
 
 from . import utils
 
@@ -146,52 +144,11 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
     fitted_parameters = {}
 
     for qubit in qubits:
-        qubit_data = data[qubit]
-
-        rabi_parameter = qubit_data.amp
-        voltages = qubit_data.msr
-
-        y_min = np.min(voltages)
-        y_max = np.max(voltages)
-        x_min = np.min(rabi_parameter)
-        x_max = np.max(rabi_parameter)
-        x = (rabi_parameter - x_min) / (x_max - x_min)
-        y = (voltages - y_min) / (y_max - y_min)
-
-        # Guessing period using fourier transform
-        ft = np.fft.rfft(y)
-        mags = abs(ft)
-        index = np.argmax(mags) if np.argmax(mags) != 0 else np.argmax(mags[1:]) + 1
-        f = x[index] / (x[1] - x[0])
-
-        pguess = [0.5, 1, f, np.pi / 2]
-        try:
-            popt, _ = curve_fit(
-                utils.rabi_amplitude_fit,
-                x,
-                y,
-                p0=pguess,
-                maxfev=100000,
-                bounds=(
-                    [0, 0, 0, -np.pi],
-                    [1, 1, np.inf, np.pi],
-                ),
-            )
-            translated_popt = [
-                y_min + (y_max - y_min) * popt[0],
-                (y_max - y_min) * popt[1],
-                popt[2] / (x_max - x_min),
-                popt[3] - 2 * np.pi * x_min / (x_max - x_min) * popt[2],
-            ]
-            pi_pulse_parameter = np.abs((1.0 / translated_popt[2]) / 2)
-
-        except:
-            log.warning("rabi_fit: the fitting was not succesful")
-            pi_pulse_parameter = 0
-            fitted_parameters = [0] * 4
+        pi_pulse_parameter = 0
+        fitted_parameters = [0] * 4
 
         pi_pulse_amplitudes[qubit] = pi_pulse_parameter
-        fitted_parameters[qubit] = translated_popt
+        fitted_parameters[qubit] = [0, 0, 0, 0]
 
     return RabiAmplitudeResults(pi_pulse_amplitudes, data.durations, fitted_parameters)
 
