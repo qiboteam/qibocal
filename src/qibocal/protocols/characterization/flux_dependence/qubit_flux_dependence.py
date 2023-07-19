@@ -216,7 +216,9 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
         if data.resonator_type == "2D":
             msr = -msr
 
-        frequencies, biases = utils.image_to_curve(frequencies, biases, msr)
+        frequencies, biases = utils.image_to_curve(
+            frequencies, biases, msr, msr_mask=0.3
+        )
         max_c = biases[np.argmax(frequencies)]
         min_c = biases[np.argmin(frequencies)]
         xi = 1 / (2 * abs(max_c - min_c))  # Convert bias to flux.
