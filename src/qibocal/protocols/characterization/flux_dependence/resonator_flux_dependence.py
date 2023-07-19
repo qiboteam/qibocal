@@ -325,7 +325,6 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
 
                 frequency[qubit] = f_rs * HZ_TO_GHZ
                 sweetspot[qubit] = popt[2]
-                # fitted_parameters = xi, d, g, Ec, Ej, bare_resonator_frequency, f_qs, f_r_offset, C_ii
                 fitted_parameters[qubit] = {
                     "Xi": popt[3],
                     "d": abs(popt[4]),
