@@ -184,7 +184,7 @@ def cumulative(input_data, points):
 
     for val in input_data:
         app += np.maximum(np.searchsorted(points[app::], val), 0)
-        prob.append(app)
+        prob.append(float(app))
 
     return np.array(prob)
 
