@@ -1,0 +1,255 @@
+platform: tii1q_b1
+
+qubits: [0]
+
+actions:
+
+# 1D Sweepers
+# RO Frequency
+
+  # - id: resonator spectroscopy 1
+  #   # ideal 0.0184
+  #   priority: 00
+  #   operation: resonator_spectroscopy
+  #   main: resonator spectroscopy 10
+  #   parameters:
+  #     freq_width: 10_000
+  #     freq_step: 10_000
+  #     amplitude: 0.1
+  #     power_level: low
+  #     relaxation_time: 5_000
+  #     nshots: 1000
+
+  # - id: resonator spectroscopy 10
+  #   # ideal 0.1013
+  #   priority: 00
+  #   operation: resonator_spectroscopy
+  #   main: resonator spectroscopy 100
+  #   parameters:
+  #     freq_width: 100_000_000
+  #     freq_step: 10_000_000
+  #     amplitude: 0.1
+  #     power_level: low
+  #     relaxation_time: 5_000
+  #     nshots: 1000
+
+  # - id: resonator spectroscopy 100
+  #   # ideal 0.93
+  #   priority: 00
+  #   operation: resonator_spectroscopy
+  #   main: resonator spectroscopy 1000
+  #   parameters:
+  #     freq_width: 100_000_000
+  #     freq_step: 1_000_000
+  #     amplitude: 0.1
+  #     power_level: low
+  #     relaxation_time: 5_000
+  #     nshots: 1000
+
+  # - id: resonator spectroscopy 1000
+  #   # ideal 9.22
+  #   priority: 00
+  #   operation: resonator_spectroscopy
+  #   parameters:
+  #     freq_width: 100_000_000
+  #     freq_step: 100_000
+  #     amplitude: 0.1
+  #     power_level: low
+  #     relaxation_time: 5_000
+  #     nshots: 1000
+
+# Drive Frequency
+
+  #- id: qubit spectroscopy 1
+  #  # ideal 0.0286
+  #  priority: 00
+  #  operation: qubit_spectroscopy
+  #  main: qubit spectroscopy 10
+  #  parameters:
+  #    drive_amplitude: 0.001
+  #    drive_duration: 5000
+  #    freq_width: 30_000_000
+  #    freq_step: 30_000_000
+  #    relaxation_time: 5_000
+  #    nshots: 1000
+
+  #- id: qubit spectroscopy 10
+  #  # ideal 0.157
+  #  priority: 00
+  #  operation: qubit_spectroscopy
+  #  main: qubit spectroscopy 100
+  #  parameters:
+  #    drive_amplitude: 0.001
+  #    drive_duration: 5000
+  #    freq_width: 30_000_000
+  #    freq_step: 3_000_000
+  #    relaxation_time: 5_000
+  #    nshots: 1000
+
+  #- id: qubit spectroscopy 100
+  #  # ideal 1.44
+  #  priority: 00
+  #  operation: qubit_spectroscopy
+  #  main: qubit spectroscopy 1000
+  #  parameters:
+  #    drive_amplitude: 0.001
+  #    drive_duration: 5000
+  #    freq_width: 30_000_000
+  #    freq_step: 300_000
+  #    relaxation_time: 5_000
+  #    nshots: 1000
+
+  #- id: qubit spectroscopy 1000
+  #  # ideal 14.35
+  #  priority: 00
+  #  operation: qubit_spectroscopy
+  #  parameters:
+  #    drive_amplitude: 0.001
+  #    drive_duration: 5000
+  #    freq_width: 30_000_000
+  #    freq_step: 30_000
+  #    relaxation_time: 5_000
+  #    nshots: 1000
+
+# Pulse amplitude
+
+  #- id: rabi amplitude 1
+  #  priority: 00
+  #  operation: rabi_amplitude
+  #  main: rabi amplitude 10
+  #  parameters:
+  #    min_amp_factor: 0
+  #    max_amp_factor: 1.0000
+  #    step_amp_factor: 1
+  #    pulse_length: 40
+  #    relaxation_time: 5_000
+  #    nshots: 1000
+
+  #- id: rabi amplitude 10
+  #  priority: 00
+  #  operation: rabi_amplitude
+  #  main: rabi amplitude 100
+  #  parameters:
+  #    min_amp_factor: 0.0
+  #    max_amp_factor: 1.0000
+  #    step_amp_factor: 0.1
+  #    pulse_length: 40
+  #    relaxation_time: 5_000
+  #    nshots: 1000
+
+  #- id: rabi amplitude 100
+  #  priority: 00
+  #  operation: rabi_amplitude
+  #  main: rabi amplitude 1000
+  #  parameters:
+  #    min_amp_factor: 0.0
+  #    max_amp_factor: 1.0000
+  #    step_amp_factor: 0.01
+  #    pulse_length: 40
+  #    relaxation_time: 5_000
+  #    nshots: 1000
+
+  #- id: rabi amplitude 1000
+  #  priority: 00
+  #  operation: rabi_amplitude
+  #  parameters:
+  #    min_amp_factor: 0.0
+  #    max_amp_factor: 1.0000
+  #    step_amp_factor: 0.001
+  #    pulse_length: 40
+  #    relaxation_time: 5_000
+  #    nshots: 1000
+
+# Pulse duration
+
+  #- id: rabi lenght 1
+  #  priority: 00
+  #  operation: rabi_length
+  #  main: rabi lenght 10
+  #  parameters:
+  #    pulse_duration_start: 20
+  #    pulse_duration_end: 120
+  #    pulse_duration_step: 100
+  #    pulse_amplitude: 0.001
+  #    relaxation_time: 5_000
+  #    nshots: 1000
+
+  #- id: rabi lenght 10
+  #  priority: 00
+  #  operation: rabi_length
+  #  main: rabi lenght 100
+  #  parameters:
+  #    pulse_duration_start: 20
+  #    pulse_duration_end: 120
+  #    pulse_duration_step: 10
+  #    pulse_amplitude: 0.001
+  #    relaxation_time: 5_000
+  #    nshots: 1000
+
+  #- id: rabi lenght 100
+  #  priority: 00
+  #  operation: rabi_length
+  #  main: rabi lenght 1000
+  #  parameters:
+  #    pulse_duration_start: 20
+  #    pulse_duration_end: 120
+  #    pulse_duration_step: 1
+  #    pulse_amplitude: 0.001
+  #    relaxation_time: 5_000
+  #    nshots: 1000
+
+  #- id: rabi lenght 1000
+  #  priority: 00
+  #  operation: rabi_length
+  #  parameters:
+  #    pulse_duration_start: 20
+  #    pulse_duration_end: 1020
+  #    pulse_duration_step: 1
+  #    pulse_amplitude: 0.001
+  #    relaxation_time: 5_000
+  #    nshots: 1000
+
+# Pulse start
+
+  #- id: t1 1
+  #  priority: 00
+  #  operation: t1
+  #  main: t1 10
+  #  parameters:
+  #    delay_before_readout_start: 0
+  #    delay_before_readout_end: 3_00
+  #    delay_before_readout_step: 3_00
+  #    relaxation_time: 5_000
+  #    nshots: 1000
+
+  #- id: t1 10
+  #  priority: 00
+  #  operation: t1
+  #  main: t1 100
+  #  parameters:
+  #    delay_before_readout_start: 0
+  #    delay_before_readout_end: 30_00
+  #    delay_before_readout_step: 3_00
+  #    relaxation_time: 5_000
+  #    nshots: 1000
+
+  #- id: t1 100
+  #  priority: 00
+  #  operation: t1
+  #  main: t1 1000
+  #  parameters:
+  #    delay_before_readout_start: 0
+  #    delay_before_readout_end: 300_00
+  #    delay_before_readout_step: 3_00
+  #    relaxation_time: 5_000
+  #    nshots: 1000
+
+  #- id: t1 1000
+  #  priority: 00
+  #  operation: t1
+  #  parameters:
+  #    delay_before_readout_start: 0
+  #    delay_before_readout_end: 300_00
+  #    delay_before_readout_step: 30
+  #    relaxation_time: 5_000
+  #    nshots: 1000
