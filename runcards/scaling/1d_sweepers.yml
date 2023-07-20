@@ -253,3 +253,40 @@ actions:
 #      delay_before_readout_step: 30
 #      relaxation_time: 5_000
 #      nshots: 1000
+
+# Circuits
+
+ - id: standard rb bootstrap 1
+   priority: 0
+   operation: standard_rb
+   main: standard rb bootstrap 10
+   qubits: [0]
+   parameters:
+     depths: [10]
+     niter: 1
+     nshots: 128
+     n_bootstrap: 10
+     seed: 420
+
+ - id: standard rb bootstrap 10
+   priority: 0
+   operation: standard_rb
+   main: standard rb bootstrap 100
+   qubits: [0]
+   parameters:
+     depths: [10]
+     niter: 10
+     nshots: 128
+     n_bootstrap: 10
+     seed: 420
+
+ - id: standard rb bootstrap 100
+   priority: 0
+   operation: standard_rb
+   qubits: [0]
+   parameters:
+     depths: [10]
+     niter: 100
+     nshots: 128
+     n_bootstrap: 10
+     seed: 420

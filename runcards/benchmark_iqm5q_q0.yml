@@ -100,12 +100,7 @@ actions:
     operation: standard_rb
     # main: rotation circuit
     parameters:
-      depths: [10,30,50,100,150,200,300]
-      niter: 20
+      depths: [10, 20, 30, 40]
+      niter: 50
       nshots: 128
-
-  # - id: rotation circuit
-  #   priority: 100
-  #   operation: rotation_circuit
-  #   parameters:
-  #     nshots: 10_024
+      seed: 420
