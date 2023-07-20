@@ -1,8 +1,10 @@
-from dataclasses import dataclass, field
+import json
+from dataclasses import asdict, dataclass, field
 from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, ExecutionParameters
@@ -11,7 +13,14 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from sklearn.metrics import roc_auc_score, roc_curve
 
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import (
+    RESULTSFILE,
+    Data,
+    Parameters,
+    Qubits,
+    Results,
+    Routine,
+)
 from qibocal.fitting.classifier import run
 from qibocal.protocols.characterization.utils import get_color_state0, get_color_state1
 
@@ -70,13 +79,18 @@ class SingleShotClassificationData(Data):
 class SingleShotClassificationResults(Results):
     """SingleShotClassification outputs."""
 
-    benchmark_table: dict[QubitId, list]
+    benchmark_table: dict[QubitId, pd.DataFrame]
+    """Benchmark tables."""
     y_tests: dict[QubitId, list]
+    """States of the testing set."""
     x_tests: dict[QubitId, list]
+    """I,Q couples to evaluate accuracy and test time."""
     models: dict[QubitId, list]
+    """List of trained classification models."""
     names: list
+    """List of models name."""
     hpars: dict[QubitId, dict] = field(metadata=dict(update="classifiers_hpars"))
-
+    """Classifiers hyperparameters."""
     threshold: dict[QubitId, float] = field(metadata=dict(update="threshold"))
     """Threshold for classification."""
     rotation_angle: dict[QubitId, float] = field(metadata=dict(update="iq_angle"))
@@ -84,20 +98,34 @@ class SingleShotClassificationResults(Results):
     mean_gnd_states: dict[QubitId, list[float]] = field(
         metadata=dict(update="mean_gnd_states")
     )
+    """Centroid of the ground state blob."""
     mean_exc_states: dict[QubitId, list[float]] = field(
         metadata=dict(update="mean_exc_states")
     )
+    """Centroid of the excited state blob."""
     fidelity: dict[QubitId, float]
+    """Fidelity evaluated only with the `qubit_fit` model"""
     assignment_fidelity: dict[QubitId, float]
+    """Assignment fidelity evaluated only with the `qubit_fit` model"""
 
     def save(self, path):
         classifiers = run.import_classifiers(self.names)
         for qubit in self.models:
+            # Dump benchmark table
+            for table in self.benchmark_table.values():
+                run.dump_benchmarks_table(table, path)
+            # Dump models and hyperparameters
             for i, mod in enumerate(classifiers):
                 classifier = run.Classifier(mod, path / f"qubit{qubit}")
                 classifier.savedir.mkdir(parents=True, exist_ok=True)
                 dump_dir = classifier.base_dir / classifier.name / classifier.name
                 classifier.dump()(self.models[qubit][i], dump_dir)
+                classifier.dump_hyper(self.hpars[qubit][classifier.name])
+        asdict_class = asdict(self)
+        asdict_class.pop("models")
+        asdict_class.pop("benchmark_table")
+        asdict_class.pop("hpars")
+        (path / RESULTSFILE).write_text(json.dumps(asdict_class, indent=4))
 
 
 def _acquisition(
@@ -209,8 +237,8 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         )
         benchmark_tables[qubit] = benchmark_table
         models_dict[qubit] = models
-        y_tests[qubit] = y_test
-        x_tests[qubit] = x_test
+        y_tests[qubit] = y_test.tolist()
+        x_tests[qubit] = x_test.tolist()
         hpars[qubit] = {}
 
         for i, model_name in enumerate(names):
@@ -219,8 +247,8 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
             if model_name == "qubit_fit":
                 threshold[qubit] = models[i].threshold
                 rotation_angle[qubit] = models[i].angle
-                mean_gnd_states[qubit] = models[i].iq_mean0
-                mean_exc_states[qubit] = models[i].iq_mean1
+                mean_gnd_states[qubit] = models[i].iq_mean0.tolist()
+                mean_exc_states[qubit] = models[i].iq_mean1.tolist()
                 fidelity[qubit] = models[i].fidelity
                 assignment_fidelity[qubit] = models[i].assignment_fidelity
 
@@ -409,6 +437,7 @@ def _plot(
                 y=grid[:, 1],
                 z=predictions.flatten(),
                 showscale=False,
+                colorscale=[get_color_state0(i), get_color_state1(i)],
                 opacity=0.4,
                 name="Score",
                 hoverinfo="skip",
