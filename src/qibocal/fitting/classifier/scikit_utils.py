@@ -34,7 +34,3 @@ def scikit_dump(model, path: Path):
     onx = convert_sklearn(model, initial_types=initial_type)
     with open(path.with_suffix(".onnx"), "wb") as f:
         f.write(onx.SerializeToString())
-
-
-def identity(x):
-    return x

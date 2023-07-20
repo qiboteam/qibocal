@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import numpy as np
 import numpy.typing as npt
 
-from .utils import identity
+from . import qubit_fit as qfit
 
 
 def constructor(_hyperparams):
@@ -29,7 +29,9 @@ def hyperopt(_x_train, _y_train, _path):
     return {}
 
 
-normalize = identity
+normalize = lambda x: x
+dump = qfit.dump
+predict_from_file = qfit.predict_from_file
 
 
 @dataclass

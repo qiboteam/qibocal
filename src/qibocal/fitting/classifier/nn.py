@@ -2,7 +2,7 @@ import numpy as np
 from sklearn.model_selection import GridSearchCV, RepeatedStratifiedKFold
 from sklearn.neural_network import MLPClassifier
 
-from . import utils
+from . import scikit_utils
 
 
 def constructor(hyperpars):
@@ -38,6 +38,6 @@ def hyperopt(x_train, y_train, _path):
     return search.best_params_
 
 
-normalize = utils.scikit_normalize
-dump = utils.scikit_dump
-predict_from_file = utils.scikit_predict
+normalize = lambda x: x
+dump = scikit_utils.scikit_dump
+predict_from_file = scikit_utils.scikit_predict

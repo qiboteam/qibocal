@@ -70,10 +70,10 @@ class SingleShotClassificationData(Data):
 class SingleShotClassificationResults(Results):
     """SingleShotClassification outputs."""
 
-    benchmark_table: dict
-    y_tests: dict
-    x_tests: dict
-    models: dict
+    benchmark_table: dict[QubitId, list]
+    y_tests: dict[QubitId, list]
+    x_tests: dict[QubitId, list]
+    models: dict[QubitId, list]
     names: list
     hpars: dict[QubitId, dict] = field(metadata=dict(update="classifiers_hpars"))
 
@@ -91,7 +91,13 @@ class SingleShotClassificationResults(Results):
     assignment_fidelity: dict[QubitId, float]
 
     def save(self, path):
-        pass
+        classifiers = run.import_classifiers(self.names)
+        for qubit in self.models:
+            for i, mod in enumerate(classifiers):
+                classifier = run.Classifier(mod, path / f"qubit{qubit}")
+                classifier.savedir.mkdir(parents=True, exist_ok=True)
+                dump_dir = classifier.base_dir / classifier.name / classifier.name
+                classifier.dump()(self.models[qubit][i], dump_dir)
 
 
 def _acquisition(
