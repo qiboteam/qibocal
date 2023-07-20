@@ -313,3 +313,11 @@ actions:
       n_bootstrap: 10
       noise_model: PauliErrorOnX
       noise_params: [0.01, 0.01, 0.01]
+
+  - id : resonator_frequency
+    priority: 0
+    operation: resonator_frequency
+    parameters:
+      freq_width: 200.e+6
+      freq_step: 25.e+6
+      nshots: 1000
