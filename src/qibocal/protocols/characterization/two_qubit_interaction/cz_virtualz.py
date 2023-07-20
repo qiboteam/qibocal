@@ -101,13 +101,11 @@ def create_sequence(
         start=flux_sequence.finish + 20,
         relative_phase=virtual_z_phase[target_qubit],
     )
-
     RX_pulse_end = platform.create_RX_pulse(
         control_qubit,
         start=flux_sequence.finish + 20,
         relative_phase=virtual_z_phase[control_qubit],
     )
-
     measure_target = platform.create_qubit_readout_pulse(
         target_qubit, start=theta_pulse.finish
     )
@@ -168,11 +166,10 @@ def _acquisition(
         raise ValueError("You need to specify a list of pairs.")
 
     # create a DataUnits object to store the results,
-    thetas = np.deg2rad(
-        np.arange(params.theta_start, params.theta_end, params.theta_step)
-    )
-    data = CZVirtualZData(thetas=thetas.tolist())
 
+    thetas = np.arange(params.theta_start, params.theta_end, params.theta_step)
+
+    data = CZVirtualZData(thetas=thetas.tolist())
     for pair in qubits:
         # order the qubits so that the low frequency one is the first
         ord_pair = order_pairs(pair, platform.qubits)
@@ -182,6 +179,10 @@ def _acquisition(
             (ord_pair[1], ord_pair[0]),
         ):
             for setup in ("I", "X"):
+                theta = np.arange(
+                    params.theta_start, params.theta_end, params.theta_step
+                )
+
                 (
                     sequence,
                     virtual_z_phase,
@@ -190,9 +191,10 @@ def _acquisition(
                     platform, setup, target_q, control_q, ord_pair, params.parking
                 )
 
+                theta += virtual_z_phase[target_q]
                 sweeper = Sweeper(
                     Parameter.relative_phase,
-                    thetas,
+                    theta,
                     pulses=[theta_pulse],
                     type=SweeperType.ABSOLUTE,
                 )
