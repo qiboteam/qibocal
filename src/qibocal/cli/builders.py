@@ -95,13 +95,13 @@ class ActionBuilder:
 
     def run(self):
         """Execute protocols in runcard."""
-
         if self.platform is not None:
             self.platform.connect()
             self.platform.setup()
             self.platform.start()
 
-        self.executor.run()
+        for _ in self.executor.run():
+            self.dump_report()
 
         if self.platform is not None:
             self.platform.stop()

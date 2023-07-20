@@ -152,8 +152,7 @@ def _plot(data: T2Data, fit: T2Results, qubit):
             y=utils.exp_decay(
                 waitrange,
                 *params,
-            )
-            * V_TO_UV,
+            ),
             name="Fit",
             line=go.scatter.Line(dash="dot"),
         )
