@@ -1,5 +1,5 @@
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass, field, fields
+from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -9,7 +9,14 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import (
+    Data,
+    Parameters,
+    ParameterValue,
+    Qubits,
+    Results,
+    Routine,
+)
 
 from .utils import PowerLevel, lorentzian_fit, spectroscopy_plot
 
@@ -58,6 +65,24 @@ class ResonatorSpectroscopyResults(Results):
         default_factory=dict, metadata=dict(update="readout_attenuation")
     )
     """Readout attenuation [dB] for each qubit."""
+
+    @property
+    def update(self):
+        """Method overwritten from Results to not update
+        amplitude when running resonator spectroscopy at
+        high power."""
+        up: dict[str, ParameterValue] = {}
+        fields_to_updated = (
+            [fld for fld in fields(self) if fld.name != "amplitude"]
+            if self.bare_frequency == {}
+            else fields(self)
+        )
+
+        for fld in fields_to_updated:
+            if "update" in fld.metadata:
+                up[fld.metadata["update"]] = getattr(self, fld.name)
+
+        return up
 
 
 ResSpecType = np.dtype(
