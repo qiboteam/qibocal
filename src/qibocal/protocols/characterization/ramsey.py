@@ -267,7 +267,6 @@ def _fit(data: RamseyData) -> RamseyResults:
             log.warning(f"ramsey_fit: the fitting was not succesful. {e}")
             popt = [0] * 5
             t2 = 5.0
-            print(qubit_freq)
             corrected_qubit_frequency = int(qubit_freq)
             delta_phys = 0
 

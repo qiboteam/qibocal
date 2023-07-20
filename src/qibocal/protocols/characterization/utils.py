@@ -3,9 +3,11 @@ from enum import Enum
 import lmfit
 import numpy as np
 import plotly.graph_objects as go
+from numba import njit
 from plotly.subplots import make_subplots
+from scipy.stats import mode
 
-from qibocal.auto.operation import Results
+from qibocal.auto.operation import Data, Results
 from qibocal.config import log
 
 GHZ_TO_HZ = 1e9
@@ -89,7 +91,6 @@ def spectroscopy_plot(data, fit: Results, qubit):
     qubit_data = data[qubit]
 
     fitting_report = ""
-
     frequencies = qubit_data.freq * HZ_TO_GHZ
     fig.add_trace(
         go.Scatter(
@@ -144,14 +145,9 @@ def spectroscopy_plot(data, fit: Results, qubit):
     else:
         label = "qubit frequency"
         freq = fit.frequency
-
     fitting_report += f"{qubit} | {label}: {freq[qubit]*GHZ_TO_HZ:,.0f} Hz<br>"
-
     if fit.amplitude[qubit] is not None:
         fitting_report += f"{qubit} | amplitude: {fit.amplitude[qubit]} <br>"
-        if data.power_level is PowerLevel.high:
-            # TODO: find better solution for not updating amplitude in high power
-            fit.amplitude.pop(qubit)
 
     if data.__class__.__name__ == "ResonatorSpectroscopyAttenuationData":
         if fit.attenuation[qubit] is not None and fit.attenuation[qubit] != 0:
@@ -172,3 +168,91 @@ def spectroscopy_plot(data, fit: Results, qubit):
 
 def norm(x_mags):
     return (x_mags - np.min(x_mags)) / (np.max(x_mags) - np.min(x_mags))
+
+
+@njit(["float64[:] (float64[:], float64[:])"], parallel=True, cache=True)
+def cumulative(input_data, points):
+    r"""Evaluates in data the cumulative distribution
+    function of `points`.
+    WARNING: `input_data` and `points` should be sorted data.
+    """
+    input_data = np.sort(input_data)
+    points = np.sort(points)
+    # data and points sorted
+    prob = []
+    app = 0
+
+    for val in input_data:
+        app += np.maximum(np.searchsorted(points[app::], val), 0)
+        prob.append(float(app))
+
+    return np.array(prob)
+
+
+def fit_punchout(data: Data, fit_type: str):
+    """
+    Punchout fitting function.
+
+    Args:
+
+    data (Data): Punchout acquisition data.
+    fit_type (str): Punchout type, it could be `amp` (amplitude)
+    or `att` (attenuation).
+
+    Return:
+
+    List of dictionaries containing the low, high amplitude
+    (attenuation) frequencies and the readout amplitude (attenuation)
+    for each qubit.
+    """
+    qubits = data.qubits
+
+    low_freqs = {}
+    high_freqs = {}
+    ro_values = {}
+
+    for qubit in qubits:
+        qubit_data = data[qubit]
+        freqs = np.unique(qubit_data.freq)
+        nvalues = len(np.unique(qubit_data[fit_type]))
+        nfreq = len(freqs)
+        msrs = np.reshape(qubit_data.msr, (nvalues, nfreq))
+        if data.resonator_type == "3D":
+            peak_freqs = freqs[np.argmax(msrs, axis=1)]
+        else:
+            peak_freqs = freqs[np.argmin(msrs, axis=1)]
+
+        max_freq = np.max(peak_freqs)
+        min_freq = np.min(peak_freqs)
+        middle_freq = (max_freq + min_freq) / 2
+
+        freq_hp = peak_freqs[peak_freqs < middle_freq]
+        freq_lp = peak_freqs[peak_freqs >= middle_freq]
+
+        freq_hp = mode(freq_hp, keepdims=True)[0]
+        freq_lp = mode(freq_lp, keepdims=True)[0]
+
+        if fit_type == "amp":
+            if data.resonator_type == "3D":
+                ro_val = getattr(qubit_data, fit_type)[
+                    np.argmax(qubit_data.msr[np.where(qubit_data.freq == freq_lp)[0]])
+                ]
+            else:
+                ro_val = getattr(qubit_data, fit_type)[
+                    np.argmin(qubit_data.msr[np.where(qubit_data.freq == freq_lp)[0]])
+                ]
+        else:
+            high_att_max = np.max(
+                getattr(qubit_data, fit_type)[np.where(qubit_data.freq == freq_hp)[0]]
+            )
+            high_att_min = np.min(
+                getattr(qubit_data, fit_type)[np.where(qubit_data.freq == freq_hp)[0]]
+            )
+
+            ro_val = round((high_att_max + high_att_min) / 2)
+            ro_val = ro_val + (ro_val % 2)
+
+        low_freqs[qubit] = freq_lp.item() * HZ_TO_GHZ
+        high_freqs[qubit] = freq_hp[0] * HZ_TO_GHZ
+        ro_values[qubit] = ro_val
+    return [low_freqs, high_freqs, ro_values]

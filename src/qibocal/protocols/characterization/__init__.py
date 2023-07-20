@@ -12,8 +12,8 @@ from .coherence.t2_sequences import t2_sequences
 from .dispersive_shift import dispersive_shift
 from .fast_reset.fast_reset import fast_reset
 from .flipping import flipping
-from .flux_depedence.qubit_flux_dependence import qubit_flux
-from .flux_depedence.resonator_flux_dependence import resonator_flux
+from .flux_dependence.qubit_flux_dependence import qubit_flux
+from .flux_dependence.resonator_flux_dependence import resonator_flux
 from .qubit_spectroscopy import qubit_spectroscopy
 from .rabi.amplitude import rabi_amplitude
 from .rabi.length import rabi_length
@@ -21,6 +21,7 @@ from .rabi.length_sequences import rabi_length_sequences
 from .ramsey import ramsey
 from .ramsey_sequences import ramsey_sequences
 from .randomized_benchmarking.standard_rb import standard_rb
+from .readout_optimization.resonator_frequency import resonator_frequency
 from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
@@ -54,4 +55,5 @@ class Operation(Enum):
     flipping = flipping
     dispersive_shift = dispersive_shift
     standard_rb = standard_rb
+    resonator_frequency = resonator_frequency
     fast_reset = fast_reset
