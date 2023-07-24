@@ -33,8 +33,8 @@ ZenoType = np.dtype([("msr", np.float64), ("phase", np.float64)])
 
 @dataclass
 class ZenoData(Data):
-    readout_duration: int
-
+    readout_duration: dict[tuple[QubitId, int], int] = field(default_factory=dict)
+    """Readout durations for each qubit"""
     data: dict[tuple[QubitId, int], npt.NDArray[ZenoType]] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -77,6 +77,7 @@ def _acquisition(
     sequence = PulseSequence()
     RX_pulses = {}
     ro_pulses = {}
+    ro_pulse_duration = {}
     for qubit in qubits:
         RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
         sequence.add(RX_pulses[qubit])
@@ -87,9 +88,10 @@ def _acquisition(
             start += ro_pulse.duration
             sequence.add(ro_pulse)
             ro_pulses[qubit].append(ro_pulse)
+        ro_pulse_duration[qubit] = ro_pulse.duration
 
     # create a DataUnits object to store the results
-    data = ZenoData(ro_pulse.duration)
+    data = ZenoData(ro_pulse_duration)
 
     # execute the first pulse sequence
     results = platform.execute_pulse_sequence(
@@ -166,7 +168,7 @@ def _plot(data: ZenoData, fit: ZenoResults, qubit):
     )
     # FIXME: Pulse duration (+ time of flight ?)
     fitting_report = fitting_report + (
-        f"{qubit} | t1: {fit.zeno_t1[qubit]*data.readout_duration:,.0f} ns.<br><br>"
+        f"{qubit} | t1: {fit.zeno_t1[qubit]*data.readout_duration[qubit]:,.0f} ns.<br><br>"
     )
 
     # last part
