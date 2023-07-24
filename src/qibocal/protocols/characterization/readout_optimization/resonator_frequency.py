@@ -61,15 +61,6 @@ class ResonatorFrequencyData(Data):
         default_factory=dict
     )
 
-    def register_qubit(self, qubit, state, freq, i, q):
-        """Store output for single qubit."""
-        ar = np.empty(i.shape, dtype=ResonatorFrequencyType)
-        ar["freq"] = freq
-        ar["i"] = i
-        ar["q"] = q
-        ar["state"] = state
-        self.data[qubit] = np.rec.array(ar)
-
     def append_data(self, qubit, state, freq, i, q):
         """Append elements to data for single qubit."""
         ar = np.empty(i.shape, dtype=ResonatorFrequencyType)
@@ -77,7 +68,7 @@ class ResonatorFrequencyData(Data):
         ar["i"] = i
         ar["q"] = q
         ar["state"] = state
-        if self.data:
+        if qubit in self.data.keys():
             self.data[qubit] = np.append(self.data[qubit], np.rec.array(ar))
         else:
             self.data[qubit] = np.rec.array(ar)
