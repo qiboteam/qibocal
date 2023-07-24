@@ -110,7 +110,7 @@ class Classifier:
         Returns:
             Classification model.
         """
-        inst = cls(import_classifiers([name]), base_dir)
+        inst = cls(import_classifiers([name])[0], base_dir)
         hyperpars = inst.load_hyper()
         return inst.create_model(hyperpars)
 
@@ -122,11 +122,12 @@ class Classifier:
 
     def dump_hyper(self, hyperpars):
         r"""Saves the hyperparameters"""
+        self.hyperfile.parent.mkdir(parents=True, exist_ok=True)
         self.hyperfile.write_text(json.dumps(hyperpars, default=str), encoding="utf-8")
 
     def load_hyper(self):
         r"""Loads the hyperparameters and returns them."""
-        return json.loads(self.hyperfile.load_text(encoding="utf-8"))
+        return json.loads(self.hyperfile.read_text(encoding="utf-8"))
 
     def create_model(self, hyperpars):
         r"""Returns a model with the normalization stage.
