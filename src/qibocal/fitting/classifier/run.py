@@ -14,11 +14,6 @@ from sklearn.metrics import accuracy_score
 
 from . import data
 
-# from qibocal.protocols.characterization.classification import (
-#     SingleShotClassificationData,
-# )
-
-
 CLS_MODULES = [
     "linear_svm",
     "ada_boost",
@@ -277,9 +272,6 @@ def train_qubit(
         results.name = classifier.name
         results_list.append(results)
         names.append(classifier.name)
-        # classifier.dump_hyper(hyperpars)
-        # dump_preds(y_pred, classifier.savedir)
-        # classifier.dump(classifier.savedir / classifier.name)
 
     benchmarks_table = pd.DataFrame([asdict(res) for res in results_list])
     return benchmarks_table, y_test, x_test, models, names, hpars_list

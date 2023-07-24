@@ -87,9 +87,7 @@ class QubitFit:
         x_values_state1 = np.sort(iq_coord_rot[(states == 1)][:, 0])
 
         # evaluate threshold and fidelity
-        x_values = np.unique(
-            iq_coord_rot[:, 0]  # np.concatenate((x_values_state1, x_values_state0))
-        )
+        x_values = np.unique(iq_coord_rot[:, 0])
         cum_distribution_state1 = cumulative(x_values, x_values_state1) / len(
             x_values_state1
         )
