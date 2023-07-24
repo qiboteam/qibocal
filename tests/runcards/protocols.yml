@@ -170,7 +170,7 @@ actions:
     priority: 00
     operation: zeno
     parameters:
-      n_ros: 100
+      readouts: 100
       nshots: 4096
 
   - id: t2

@@ -166,7 +166,7 @@ def _plot(data: ZenoData, fit: ZenoResults, qubit):
     )
     # FIXME: Pulse duration (+ time of flight ?)
     fitting_report = fitting_report + (
-        f"{qubit} | t1: {fit.zeno_t1[qubit]*qubit_data.readout_duration:,.0f} ns.<br><br>"
+        f"{qubit} | t1: {fit.zeno_t1[qubit]*data.readout_duration:,.0f} ns.<br><br>"
     )
 
     # last part
