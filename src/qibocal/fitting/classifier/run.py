@@ -27,7 +27,6 @@ CLS_MODULES = [
 
 
 HYPERFILE = "hyperpars.json"
-PREDFILE = "predictions.npy"
 BENCHTABFILE = "benchmarks.csv"
 
 base_dir = pathlib.Path()
@@ -255,16 +254,6 @@ def train_qubit(
     return benchmarks_table, y_test, x_test, models, names, hpars_list
 
 
-def dump_preds(y_pred, dir_path):
-    r"""Dumps the predictions in `{dir_path}/predictions.npy`.
-
-    Args:
-        y_pred (list): Predictions.
-        dir_path (path): Saving path.
-    """
-    np.save(dir_path / PREDFILE, y_pred)
-
-
 def dump_benchmarks_table(table, dir_path):
     r"""Dumps the benchmark table in `{dir_path}/benchmarks.csv`.
 
@@ -273,24 +262,3 @@ def dump_benchmarks_table(table, dir_path):
         dir_path (path): Saving path.
     """
     table.to_csv(dir_path / BENCHTABFILE)
-
-
-def preds_from_file(dir_path):
-    r"""Load the predictions from a file
-
-    Args:
-        dir_path (path): Where the file `predictions.npy` is.
-
-    Returns:
-        Predictions.
-    """
-    return np.load(dir_path / PREDFILE)
-
-
-def table_from_file(dir_path):
-    r"""Load and return the benchmark table from a file
-
-    Args:
-        dir_path (path): Where the file `benchmarks.csv` is.
-    """
-    return pd.read_csv(dir_path / BENCHTABFILE)
