@@ -226,7 +226,7 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
     )
 
     fitting_report += (
-        f"q{qubit}/r | Fidelity [Fast Reset]: {fit.fidelity_fr[qubit]:.6f}<br>"
+        f"{qubit} | Fidelity [Fast Reset]: {fit.fidelity_fr[qubit]:.6f}<br>"
     )
     fitting_report += (
         f"q{qubit}/r | Fidelity [Relaxation Time]: {fit.fidelity_nfr[qubit]:.6f}<br>"
