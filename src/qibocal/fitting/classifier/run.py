@@ -6,7 +6,6 @@ import time
 from dataclasses import asdict, dataclass
 from typing import List, Optional
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from qibolab.qubits import QubitId
@@ -186,28 +185,6 @@ def benchmarking(model, x_train, y_train, x_test, y_test, **fit_kwargs):
     results = BenchmarkResults(score, test_time, training_time)
 
     return results, y_pred, model, fit_info
-
-
-def plot_history(history, save_dir: pathlib.Path):
-    r"""Plots the neural network history
-    and save it in `json` file.
-
-    Args:
-        history (keras.callbacks.History): History.
-        save_dir (Path): Storing path.
-    """
-    history_dict = history.history
-    epochs = len(history_dict["loss"])
-    plt.figure(figsize=(14, 7))
-    plt.plot(range(epochs), history_dict["loss"], label="loss")
-    plt.plot(range(epochs), history_dict["accuracy"], label="accurancy")
-    plt.plot(range(epochs), history_dict["val_loss"], label="val_loss")
-    plt.plot(range(epochs), history_dict["val_accuracy"], label="val_accuracy")
-    plt.legend()
-    plt.grid()
-    plt.tight_layout()
-    plt.savefig(save_dir / "NN_training.pdf")
-    json.dump(history_dict, open(save_dir / "NN_history.json", "w"))
 
 
 def train_qubit(
