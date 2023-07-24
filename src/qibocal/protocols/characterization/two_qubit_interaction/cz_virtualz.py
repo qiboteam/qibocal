@@ -176,10 +176,6 @@ def _acquisition(
     Population of the high frequency qubit yield the leakage to the non-computational states
     during the execution of the flux pulse.
     """
-    if not isinstance(list(qubits.keys())[0], tuple):
-        raise ValueError("You need to specify a list of pairs.")
-
-    # create a DataUnits object to store the results,
 
     thetas = np.arange(params.theta_start, params.theta_end, params.theta_step)
 
@@ -273,7 +269,7 @@ def _fit(
                     p0=pguess,
                     bounds=((0, 0, 0), (2.5, 2.5, 2 * np.pi)),
                 )
-                fitted_parameters[target, control, setup] = popt
+                fitted_parameters[target, control, setup] = popt.tolist()
 
             except:
                 log.warning("landscape_fit: the fitting was not succesful")
