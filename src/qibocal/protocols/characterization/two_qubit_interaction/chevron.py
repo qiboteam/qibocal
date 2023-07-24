@@ -101,10 +101,8 @@ def _aquisition(
         qubits: Qubits to use.
 
     Returns:
-        DataUnits: Acquisition data.
+        ChevronData: Acquisition data.
     """
-    if not isinstance(list(qubits.keys())[0], tuple):
-        raise ValueError("You need to specify a list of pairs.")
 
     # create a DataUnits object to store the results,
     data = ChevronData()
