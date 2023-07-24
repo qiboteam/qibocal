@@ -6,6 +6,8 @@ import numpy as np
 import numpy.typing as npt
 import skops.io as sio
 
+from qibocal.protocols.characterization.utils import cumulative
+
 
 def constructor(_hyperparams):
     r"""Return the model class.
@@ -69,7 +71,6 @@ class QubitFit:
         `iq_coordinates` and their relative ``states`
         (reference: <https://arxiv.org/abs/1004.4323>).
         """
-        nshots = len(iq_coordinates)
         iq_state1 = iq_coordinates[(states == 1)]
         iq_state0 = iq_coordinates[(states == 0)]
         self.iq_mean0 = np.mean(iq_state0, axis=0)
@@ -86,10 +87,11 @@ class QubitFit:
         x_values_state1 = np.sort(iq_coord_rot[(states == 1)][:, 0])
 
         # evaluate threshold and fidelity
-        x_values = iq_coord_rot[:, 0]
-        x_values.sort()
-        cum_distribution_state0 = _eval_cumulative(x_values, x_values_state0)
-        cum_distribution_state1 = _eval_cumulative(x_values, x_values_state1)
+        x_values = np.unique(
+            iq_coord_rot[:, 0]  # np.concatenate((x_values_state1, x_values_state0))
+        )
+        cum_distribution_state1 = cumulative(x_values, x_values_state1)
+        cum_distribution_state0 = cumulative(x_values, x_values_state0)
 
         cum_distribution_diff = np.abs(
             np.array(cum_distribution_state1) - np.array(cum_distribution_state0)
@@ -118,19 +120,3 @@ class QubitFit:
         translated = self.translate(inputs)
         rotated = self.rotate(translated)
         return (rotated[:, 0] > self.threshold).astype(int)
-
-
-def _eval_cumulative(input_data, points):
-    r"""Evaluates in data the cumulative distribution
-    function of `points`.
-    WARNING: `input_data` and `points` should be sorted data.
-    """
-    # data and points sorted
-    prob = []
-    app = 0
-
-    for val in input_data:
-        app += np.amax([np.searchsorted(points[app::], val) - 1, 0])
-        prob.append(app + 1)
-
-    return np.array(prob) / len(points)

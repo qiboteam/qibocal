@@ -4,6 +4,7 @@ from enum import Enum
 import lmfit
 import numpy as np
 import plotly.graph_objects as go
+from numba import njit
 from plotly.subplots import make_subplots
 from scipy.stats import mode
 
@@ -168,6 +169,25 @@ def spectroscopy_plot(data, fit: Results, qubit):
 
 def norm(x_mags):
     return (x_mags - np.min(x_mags)) / (np.max(x_mags) - np.min(x_mags))
+
+
+@njit(["float64[:] (float64[:], float64[:])"], parallel=True, cache=True)
+def cumulative(input_data, points):
+    r"""Evaluates in data the cumulative distribution
+    function of `points`.
+    WARNING: `input_data` and `points` should be sorted data.
+    """
+    input_data = np.sort(input_data)
+    points = np.sort(points)
+    # data and points sorted
+    prob = []
+    app = 0
+
+    for val in input_data:
+        app += np.maximum(np.searchsorted(points[app::], val), 0)
+        prob.append(float(app))
+
+    return np.array(prob)
 
 
 def fit_punchout(data: Data, fit_type: str):
