@@ -19,7 +19,7 @@ from . import utils
 class ZenoParameters(Parameters):
     """Zeno runcard inputs."""
 
-    n_ros: int
+    readouts: int
     "Number of readout pulses"
     nshots: Optional[int] = None
     """Number of shots."""
@@ -33,6 +33,8 @@ ZenoType = np.dtype([("msr", np.float64), ("phase", np.float64)])
 
 @dataclass
 class ZenoData(Data):
+    readout_duration: int
+
     data: dict[tuple[QubitId, int], npt.NDArray[ZenoType]] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -63,27 +65,12 @@ def _acquisition(
     qubits: Qubits,
 ) -> ZenoData:
     """
-    In a T1_Zeno experiment, we measure an excited qubit after a delay. Due to decoherence processes
-    (e.g. amplitude damping channel), it is possible that, at the time of measurement, after the delay,
-    the qubit will not be excited anymore. The larger the delay time is, the more likely is the qubit to
-    fall to the ground state. The goal of the experiment is to characterize the decay rate of the qubit
-    towards the ground state.
-    Args:
-        platform (:class:`qibolab.platforms.abstract.Platform`): custom abstract platform on which we perform the calibration.
-        qubits (dict): dict of target Qubit objects to perform the action
-        nshots (int): number of times the pulse sequence will be repeated.
-
-    Returns:
-        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
-
-            - **MSR[V]**: Resonator signal voltage mesurement in volts
-            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
-            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
-            - **phase[rad]**: Resonator signal phase mesurement in radians
-            - **iteration[dimensionless]**: Execution number
-            - **qubit**: The qubit being tested
-            - **iteration**: The iteration number of the many determined by software_averages
-
+    In a T1_Zeno experiment, we measure an excited qubit repeatedly. Due to decoherence processes,
+    it is possible that, at the time of measurement, the qubit will not be excited anymore.
+    The quantum zeno effect consists of measuring allowing a particle's time evolution to be slowed
+    down by measuring it frequently enough. However, in the experiments we see that due the QND-ness of the readout
+    pulse that the qubit decoheres faster.
+    Reference: https://link.aps.org/accepted/10.1103/PhysRevLett.118.240401.
     """
 
     # create sequence of pulses:
@@ -95,14 +82,14 @@ def _acquisition(
         sequence.add(RX_pulses[qubit])
         start = RX_pulses[qubit].finish
         ro_pulses[qubit] = []
-        for _ in range(params.n_ros):
+        for _ in range(params.readouts):
             ro_pulse = platform.create_qubit_readout_pulse(qubit, start=start)
             start += ro_pulse.duration
             sequence.add(ro_pulse)
             ro_pulses[qubit].append(ro_pulse)
 
     # create a DataUnits object to store the results
-    data = ZenoData()
+    data = ZenoData(ro_pulse.duration)
 
     # execute the first pulse sequence
     results = platform.execute_pulse_sequence(
@@ -146,11 +133,11 @@ def _plot(data: ZenoData, fit: ZenoResults, qubit):
 
     fitting_report = ""
     qubit_data = data[qubit]
-    n_ros = np.arange(1, len(qubit_data.msr) + 1)
+    readouts = np.arange(1, len(qubit_data.msr) + 1)
 
     fig.add_trace(
         go.Scatter(
-            x=n_ros,
+            x=readouts,
             y=qubit_data.msr * V_TO_UV,
             opacity=1,
             name="Voltage",
@@ -160,8 +147,8 @@ def _plot(data: ZenoData, fit: ZenoResults, qubit):
     )
 
     waitrange = np.linspace(
-        min(n_ros),
-        max(n_ros),
+        min(readouts),
+        max(readouts),
         2 * len(qubit_data),
     )
 
@@ -175,11 +162,11 @@ def _plot(data: ZenoData, fit: ZenoResults, qubit):
         )
     )
     fitting_report = fitting_report + (
-        f"{qubit} | t1: {fit.zeno_t1[qubit]:,.0f} readout pulses.<br><br>"
+        f"{qubit} | readout pulses: {fit.zeno_t1[qubit]:,.0f} readout pulses.<br><br>"
     )
     # FIXME: Pulse duration (+ time of flight ?)
     fitting_report = fitting_report + (
-        f"{qubit} | t1: {fit.zeno_t1[qubit]*2000:,.0f} ns.<br><br>"
+        f"{qubit} | t1: {fit.zeno_t1[qubit]*qubit_data.readout_duration:,.0f} ns.<br><br>"
     )
 
     # last part
