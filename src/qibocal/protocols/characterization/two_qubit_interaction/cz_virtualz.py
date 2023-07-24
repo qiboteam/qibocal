@@ -47,9 +47,6 @@ class CZVirtualZResults(Results):
     virtual_phase: dict[tuple[QubitId, QubitId], float]
     cz_phase: dict[tuple[QubitId, QubitId], float]
 
-    def save(self, path):
-        pass
-
 
 CZVirtualZType = np.dtype([("target", np.float64), ("control", np.float64)])
 
@@ -70,6 +67,21 @@ class CZVirtualZData(Data):
         ar["target"] = prob_target
         ar["control"] = prob_control
         self.data[target, control, setup] = np.rec.array(ar)
+
+    def __getitem__(self, pair):
+        return {
+            index: value
+            for index, value in self.data.items()
+            if set(pair).issubset(index)
+        }
+
+    @property
+    def global_params_dict(self):
+        """Convert non-arrays attributes into dict."""
+        data_dict = super().global_params_dict
+        # pop vphases since dict with tuple keys is not json seriazable
+        data_dict.pop("vphases")
+        return data_dict
 
 
 def create_sequence(
@@ -192,7 +204,7 @@ def _acquisition(
                 ) = create_sequence(
                     platform, setup, target_q, control_q, ord_pair, params.parking
                 )
-                data.vphases = dict(virtual_z_phase)
+                data.vphases[ord_pair] = dict(virtual_z_phase)
                 theta += virtual_z_phase[target_q]
                 sweeper = Sweeper(
                     Parameter.relative_phase,
@@ -220,7 +232,6 @@ def _acquisition(
                     prob_target=result_target,
                     prob_control=result_control,
                 )
-
     return data
 
 
@@ -242,45 +253,43 @@ def _fit(
         y = p_0 sin\Big(x + p_2\Big) + p_1.
     """
     fitted_parameters = {}
-    # TODO: generalize to more pairs
-    pair = data.pairs[0]
+    pairs = data.pairs
     virtual_phase = {}
     cz_phase = {}
+    for pair in pairs:
+        for target, control, setup in data[pair]:
+            target_data = data[pair][target, control, setup].target
+            pguess = [
+                np.max(target_data) - np.min(target_data),
+                np.mean(target_data),
+                3.14,
+            ]
 
-    for target, control, setup in data.data:
-        target_data = data[target, control, setup].target
-        pguess = [
-            np.max(target_data) - np.min(target_data),
-            np.mean(target_data),
-            3.14,
-        ]
+            try:
+                popt, _ = curve_fit(
+                    fit_function,
+                    data.thetas,
+                    target_data,
+                    p0=pguess,
+                    bounds=((0, 0, 0), (2.5, 2.5, 2 * np.pi)),
+                )
+                fitted_parameters[target, control, setup] = popt
 
-        try:
-            popt, _ = curve_fit(
-                fit_function,
-                data.thetas,
-                target_data,
-                p0=pguess,
-                bounds=((0, 0, 0), (2.5, 2.5, 2 * np.pi)),
+            except:
+                log.warning("landscape_fit: the fitting was not succesful")
+                fitted_parameters[target, control, setup] = [0] * 3
+
+        for target_q, control_q in (
+            pair,
+            list(pair)[::-1],
+        ):
+            virtual_phase[target_q, control_q] = fitted_parameters[
+                target_q, control_q, "I"
+            ][2]
+            cz_phase[target_q, control_q] = (
+                fitted_parameters[target_q, control_q, "X"][2]
+                - virtual_phase[target_q, control_q]
             )
-            fitted_parameters[target, control, setup] = popt
-
-        except:
-            log.warning("landscape_fit: the fitting was not succesful")
-            fitted_parameters[target, control, setup] = [0] * 3
-
-    for target_q, control_q in (
-        pair,
-        list(pair)[::-1],
-    ):
-        virtual_phase[target_q, control_q] = fitted_parameters[
-            target_q, control_q, "I"
-        ][2]
-        cz_phase[target_q, control_q] = (
-            fitted_parameters[target_q, control_q, "X"][2]
-            - virtual_phase[target_q, control_q]
-        )
-
     return CZVirtualZResults(
         virtual_phase=virtual_phase,
         cz_phase=cz_phase,
@@ -290,8 +299,9 @@ def _fit(
 
 def _plot(data: CZVirtualZData, data_fit: CZVirtualZResults, qubits):
     """Plot routine for CZVirtualZ."""
-    qubits = tuple(qubits)
-    reports = []
+    # TODO: currently qubits is not used
+    pair_data = data[qubits]
+    qubits = next(iter(pair_data))[:2]
     fig1 = make_subplots(
         rows=1,
         cols=2,
@@ -300,7 +310,7 @@ def _plot(data: CZVirtualZData, data_fit: CZVirtualZResults, qubits):
             f"Qubit {qubits[1]}",
         ),
     )
-
+    reports = []
     fig2 = make_subplots(
         rows=1,
         cols=2,
@@ -312,9 +322,10 @@ def _plot(data: CZVirtualZData, data_fit: CZVirtualZResults, qubits):
 
     fitting_report = ""
     thetas = data.thetas
-    for target, control, setup in data.data:
-        target_prob = data[target, control, setup].target
-        control_prob = data[target, control, setup].control
+
+    for target, control, setup in pair_data:
+        target_prob = pair_data[target, control, setup].target
+        control_prob = pair_data[target, control, setup].control
         fig = fig1 if (target, control) == qubits else fig2
         fig.add_trace(
             go.Scatter(
@@ -345,9 +356,8 @@ def _plot(data: CZVirtualZData, data_fit: CZVirtualZResults, qubits):
             row=1,
             col=1 if fig == fig1 else 2,
         )
-
         reports.append(
-            f"{target} | virtual phase: {data_fit.virtual_phase[target, control] + data.vphases[target]}<br>"
+            f"{target} | virtual phase: {data_fit.virtual_phase[target, control] + data.vphases[qubits][target]}<br>"
         )
         reports.append(f"{target} | cz phase: {data_fit.cz_phase[target, control]}<br>")
 
