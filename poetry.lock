@@ -2594,8 +2594,8 @@ zh = ["laboneq (==2.7.0)"]
 [package.source]
 type = "git"
 url = "https://github.com/qiboteam/qibolab.git"
-reference = "fix_dummy_pairs"
-resolved_reference = "1ec21c847609c595b2dcd4ba690bb8dec8991600"
+reference = "main"
+resolved_reference = "bcfe80866a7b8b0da311e72c958764804fd2e9a7"
 
 [[package]]
 name = "recommonmark"
@@ -3517,4 +3517,4 @@ viz = ["pydot"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.12"
-content-hash = "ddfa41eca5b68fd20750b4775d576261636629b22cdb2c9de13ee98750ab5140"
+content-hash = "d58f29785ab8b1305611e05dca40ff135a5d756fe31d3ec35a15beac7d55d686"
