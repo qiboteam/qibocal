@@ -12,7 +12,8 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.protocols.characterization.utils import HZ_TO_GHZ, cumulative
+from qibocal.fitting.classifier.qubit_fit import QubitFit
+from qibocal.protocols.characterization.utils import HZ_TO_GHZ
 
 
 @dataclass
@@ -44,6 +45,7 @@ ResonatorFrequencyType = np.dtype(
         ("freq", np.float64),
         ("i", np.float64),
         ("q", np.float64),
+        ("state", int),
     ]
 )
 """Custom dtype for Optimization RO frequency."""
@@ -65,10 +67,23 @@ class ResonatorFrequencyData(Data):
         ar["freq"] = freq
         ar["i"] = i
         ar["q"] = q
-        self.data[qubit, state] = np.rec.array(ar)
+        ar["state"] = state
+        self.data[qubit] = np.rec.array(ar)
+
+    def append_data(self, qubit, state, freq, i, q):
+        """Append elements to data for single qubit."""
+        ar = np.empty(i.shape, dtype=ResonatorFrequencyType)
+        ar["freq"] = freq
+        ar["i"] = i
+        ar["q"] = q
+        ar["state"] = state
+        if self.data:
+            self.data[qubit] = np.append(self.data[qubit], np.rec.array(ar))
+        else:
+            self.data[qubit] = np.rec.array(ar)
 
     def unique_freqs(self, qubit: QubitId) -> np.ndarray:
-        return np.unique(self.data[qubit, 0].freq)
+        return np.unique(self.data[qubit]["freq"])
 
 
 def _acquisition(
@@ -144,10 +159,10 @@ def _acquisition(
         for i, results in enumerate([results_0, results_1]):
             result = results[ro_pulses[qubit].serial]
             # store the results
-            data.register_qubit(
+            data.append_data(
                 qubit=qubit,
                 state=i,
-                freq=ro_pulses[qubit].frequency + delta_frequency_range,
+                freq=(ro_pulses[qubit].frequency + delta_frequency_range) * HZ_TO_GHZ,
                 i=result.voltage_i,
                 q=result.voltage_q,
             )
@@ -163,45 +178,12 @@ def _fit(data: ResonatorFrequencyData) -> ResonatorFrequencyResults:
         fidelities = []
         freqs = data.unique_freqs(qubit)
         for freq in freqs:
-            iq_state0 = data[qubit, 0][data[qubit, 0].freq == freq][["i", "q"]]
-            iq_state1 = data[qubit, 1][data[qubit, 1].freq == freq][["i", "q"]]
-            iq_state0 = iq_state0.i + 1.0j * iq_state0.q
-            iq_state1 = iq_state1.i + 1.0j * iq_state1.q
-
-            iq_state1 = np.array(iq_state1)
-            iq_state0 = np.array(iq_state0)
-            nshots = len(iq_state0)
-
-            iq_mean_state1 = np.mean(iq_state1)
-            iq_mean_state0 = np.mean(iq_state0)
-
-            vector01 = iq_mean_state1 - iq_mean_state0
-            rotation_angle = np.angle(vector01)
-
-            iq_state1_rotated = iq_state1 * np.exp(-1j * rotation_angle)
-            iq_state0_rotated = iq_state0 * np.exp(-1j * rotation_angle)
-
-            real_values_state1 = iq_state1_rotated.real
-            real_values_state0 = iq_state0_rotated.real
-
-            real_values_combined = np.concatenate(
-                (real_values_state1, real_values_state0)
-            )
-
-            cum_distribution_state1 = cumulative(
-                real_values_combined, real_values_state1
-            )
-            cum_distribution_state0 = cumulative(
-                real_values_combined, real_values_state0
-            )
-
-            cum_distribution_diff = np.abs(
-                np.array(cum_distribution_state1) - np.array(cum_distribution_state0)
-            )
-            argmax = np.argmax(cum_distribution_diff)
-            errors_state1 = nshots - cum_distribution_state1[argmax]
-            errors_state0 = cum_distribution_state0[argmax]
-            fidelities.append((errors_state1 + errors_state0) / nshots / 2)
+            fit_method = QubitFit()
+            data_freq = data[qubit][data[qubit]["freq"] == freq]
+            iq_couples = np.array(data_freq[["i", "q"]].tolist())[:, :]
+            states = np.array(data_freq[["state"]].tolist())[:, 0]
+            fit_method.fit(iq_couples, states)
+            fidelities.append(fit_method.assignment_fidelity)
         fidelities_dict[qubit] = fidelities
         best_freqs[qubit] = freqs[np.argmax(fidelities_dict[qubit])]
 
@@ -214,7 +196,7 @@ def _fit(data: ResonatorFrequencyData) -> ResonatorFrequencyResults:
 def _plot(data: ResonatorFrequencyData, fit: ResonatorFrequencyResults, qubit):
     """Plotting function for Optimization RO frequency."""
     figures = []
-    freqs = data.unique_freqs(qubit) * HZ_TO_GHZ
+    freqs = data.unique_freqs(qubit)
     opacity = 1
     fitting_report = " "
     fig = make_subplots(
@@ -241,7 +223,7 @@ def _plot(data: ResonatorFrequencyData, fit: ResonatorFrequencyResults, qubit):
     )
 
     fitting_report = fitting_report + (
-        f"{qubit} | Best Resonator Frequency (GHz) : {fit.best_freq[qubit]*HZ_TO_GHZ:,.4f} Hz.<br>"
+        f"{qubit} | Best Resonator Frequency (GHz) : {fit.best_freq[qubit]:,.4f} Hz.<br>"
     )
 
     figures.append(fig)

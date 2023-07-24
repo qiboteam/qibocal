@@ -66,7 +66,7 @@ class QubitFit:
     fidelity: float = None
     assignment_fidelity: float = None
 
-    def fit(self, iq_coordinates, states: list):
+    def fit(self, iq_coordinates: list, states: list):
         r"""Evaluate the model's parameters given the
         `iq_coordinates` and their relative ``states`
         (reference: <https://arxiv.org/abs/1004.4323>).
@@ -90,8 +90,12 @@ class QubitFit:
         x_values = np.unique(
             iq_coord_rot[:, 0]  # np.concatenate((x_values_state1, x_values_state0))
         )
-        cum_distribution_state1 = cumulative(x_values, x_values_state1)
-        cum_distribution_state0 = cumulative(x_values, x_values_state0)
+        cum_distribution_state1 = cumulative(x_values, x_values_state1) / len(
+            x_values_state1
+        )
+        cum_distribution_state0 = cumulative(x_values, x_values_state0) / len(
+            x_values_state1
+        )
 
         cum_distribution_diff = np.abs(
             np.array(cum_distribution_state1) - np.array(cum_distribution_state0)

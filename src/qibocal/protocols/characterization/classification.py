@@ -48,7 +48,7 @@ class SingleShotClassificationParameters(Parameters):
     """Dumping folder of the classification results"""
 
 
-ClassificationType = np.dtype([("i", np.float64), ("q", np.float64)])
+ClassificationType = np.dtype([("i", np.float64), ("q", np.float64), ("state", int)])
 """Custom dtype for rabi amplitude."""
 
 
@@ -72,7 +72,16 @@ class SingleShotClassificationData(Data):
         ar = np.empty(i.shape, dtype=ClassificationType)
         ar["i"] = i
         ar["q"] = q
-        self.data[qubit, state] = np.rec.array(ar)
+        ar["state"] = state
+        self.data[qubit] = np.rec.array(ar)
+
+    def add_data(self, qubit, state, i, q):
+        """Store output for single qubit."""
+        ar = np.empty(i.shape, dtype=ClassificationType)
+        ar["i"] = i
+        ar["q"] = q
+        ar["state"] = state
+        self.data[qubit] = np.append(self.data[qubit], np.rec.array(ar))
 
 
 @dataclass
@@ -211,9 +220,7 @@ def _acquisition(
     # retrieve and store the results for every qubit
     for qubit in qubits:
         result = state1_results[ro_pulses[qubit].serial]
-        data.register_qubit(
-            qubit=qubit, state=1, i=result.voltage_i, q=result.voltage_q
-        )
+        data.add_data(qubit=qubit, state=1, i=result.voltage_i, q=result.voltage_q)
 
     return data
 
@@ -275,8 +282,9 @@ def _plot(
     fitting_report = ""
 
     models_name = fit.names
-    state0_data = data.data[qubit, 0]
-    state1_data = data.data[qubit, 1]
+    qubit_data = data.data[qubit]
+    state0_data = qubit_data[qubit_data["state"] == 0]
+    state1_data = qubit_data[qubit_data["state"] == 1]
 
     max_x = (
         max(

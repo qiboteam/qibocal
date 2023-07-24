@@ -34,15 +34,10 @@ def generate_models(data, qubit, test_size=0.25):
         - x_test: Test inputs.
         - y_test: Test outputs.
     """
-    qubit_data0 = data.data[qubit, 0]
-    qubit_data1 = data.data[qubit, 1]
-    i_shots = np.concatenate((qubit_data0.i, qubit_data1.i))
-    q_shots = np.concatenate((qubit_data0.q, qubit_data1.q))
-    states = np.concatenate(([0] * len(qubit_data0), [1] * len(qubit_data1)))
-
+    qubit_data = data.data[qubit]
     return train_test_split(
-        np.column_stack((i_shots, q_shots)),
-        states,
+        np.array(qubit_data[["i", "q"]].tolist())[:, :],
+        np.array(qubit_data[["state"]].tolist())[:, 0],
         test_size=test_size,
         random_state=0,
         shuffle=True,
