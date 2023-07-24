@@ -140,11 +140,14 @@ class Results:
         result_dict = {}
         for result_name, result in asdict(self).items():
             result_dict[result_name] = {}
-            for key, elem in result.items():
-                if isinstance(key, tuple):
-                    result_dict[result_name][str(key)] = elem
-                else:
-                    result_dict[result_name][key] = elem
+            if isinstance(result, dict):
+                for key, elem in result.items():
+                    if isinstance(key, tuple):
+                        result_dict[result_name][str(key)] = elem
+                    else:
+                        result_dict[result_name][key] = elem
+            else:
+                result_dict[result_name] = result
         (path / RESULTSFILE).write_text(json.dumps(result_dict, indent=4))
 
 

@@ -194,7 +194,7 @@ def _acquisition(
         ):
             for setup in ("I", "X"):
                 theta = np.arange(
-                    params.theta_start, params.theta_end, params.theta_step
+                    params.theta_start, params.theta_end, params.theta_step, dtype=float
                 )
 
                 (
