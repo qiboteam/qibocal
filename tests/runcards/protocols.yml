@@ -283,7 +283,6 @@ actions:
       freq_step: 100_000
       nshots: 10
 
-
   - id: standard rb no error
     priority: 0
     operation: standard_rb
@@ -328,3 +327,9 @@ actions:
       freq_width: 200.e+6
       freq_step: 25.e+6
       nshots: 1000
+
+  - id: fast reset
+    priority: 0
+    operation: fast_reset
+    parameters:
+      nshots: 1024

@@ -11,6 +11,7 @@ from .coherence.t2 import t2
 from .coherence.t2_sequences import t2_sequences
 from .coherence.zeno import zeno
 from .dispersive_shift import dispersive_shift
+from .fast_reset.fast_reset import fast_reset
 from .flipping import flipping
 from .flux_dependence.qubit_flux_dependence import qubit_flux
 from .flux_dependence.resonator_flux_dependence import resonator_flux
@@ -56,4 +57,5 @@ class Operation(Enum):
     dispersive_shift = dispersive_shift
     standard_rb = standard_rb
     resonator_frequency = resonator_frequency
+    fast_reset = fast_reset
     zeno = zeno
