@@ -1,22 +1,5 @@
-import pathlib
-
 import numpy as np
-import pandas as pd
 from sklearn.model_selection import train_test_split
-
-
-def load_qubit(data_path: pathlib.Path, qubit):
-    r"""Load the information of the qubit `qubit`
-    stored in `data_path`.
-    Args:
-        data_path (path): Data path.
-        qubit: Qubit ID.
-    Returns:
-        Pandas.DataFrame with `qubit`'s data.
-    """
-    data = pd.read_csv(data_path, skiprows=[1])
-    data = data[data.qubit == qubit]
-    return data
 
 
 def generate_models(data, qubit, test_size=0.25):
