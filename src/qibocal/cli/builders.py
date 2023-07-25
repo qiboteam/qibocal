@@ -1,4 +1,5 @@
 import datetime
+import json
 import tempfile
 from pathlib import Path
 
@@ -11,7 +12,7 @@ from qibocal.auto.task import TaskId
 from qibocal.cli.utils import generate_output_folder
 from qibocal.utils import allocate_qubits_pairs, allocate_single_qubits
 
-META = "meta.yml"
+META = "meta.json"
 RUNCARD = "runcard.yml"
 UPDATED_PLATFORM = "new_platform.yml"
 PLATFORM = "platform.yml"
@@ -90,8 +91,7 @@ class ActionBuilder:
         meta["versions"] = self.backend.versions  # pylint: disable=E1101
         meta["versions"]["qibocal"] = qibocal.__version__
 
-        with open(self.folder / META, "w") as file:
-            yaml.dump(meta, file)
+        (self.folder / META).write_text(json.dumps(meta, indent=4))
 
         return meta
 
@@ -122,8 +122,7 @@ class ActionBuilder:
         # update end time
         e = datetime.datetime.now(datetime.timezone.utc)
         self.meta["end-time"] = e.strftime("%H:%M:%S")
-        with open(self.folder / META, "w") as file:
-            yaml.dump(self.meta, file)
+        (self.folder / META).write_text(json.dumps(self.meta, indent=4))
 
         create_report(self.folder, self.executor.history)
 
@@ -138,7 +137,7 @@ class ReportBuilder:
         """Helper class to generate html report."""
         # FIXME: currently the title of the report is the output folder
         self.path = self.title = path
-        self.metadata = yaml.safe_load((path / META).read_text())
+        self.metadata = json.loads((path / META).read_text())
         self.runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
         self.qubits = self.runcard.qubits
 
