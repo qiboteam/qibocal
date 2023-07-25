@@ -35,11 +35,11 @@ def show_logs(func):
     # necessary to maintain the function signature
     def wrapper(*args, **kwds):
         log.info(f"Starting {func.__name__[1:]}.")
-        start = time.time()
+        start = time.perf_counter()
         out = func(*args, **kwds)
-        end = time.time()
+        end = time.perf_counter()
         log.info(f"Finished {func.__name__[1:]} after {end-start:.2f} seconds.")
-        return out
+        return out, end - start
 
     return wrapper
 

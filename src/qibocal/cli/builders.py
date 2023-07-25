@@ -34,7 +34,7 @@ class ActionBuilder:
         # store update option
         self.update = update
         # prepare output
-        self._prepare_output(runcard)
+        self.meta = self._prepare_output(runcard)
         # allocate executor
         self.executor = Executor.load(
             self.runcard,
@@ -93,6 +93,8 @@ class ActionBuilder:
         with open(self.folder / META, "w") as file:
             yaml.dump(meta, file)
 
+        return meta
+
     def run(self):
         """Execute protocols in runcard."""
         if self.platform is not None:
@@ -100,7 +102,13 @@ class ActionBuilder:
             self.platform.setup()
             self.platform.start()
 
-        for _ in self.executor.run():
+        for data_time, result_time, task_id in self.executor.run():
+            timing_task = {}
+            timing_task["acquisition"] = data_time
+            timing_task["fit"] = result_time
+            timing_task["tot"] = data_time + result_time
+            self.meta[task_id] = timing_task
+
             self.dump_report()
 
         if self.platform is not None:
@@ -112,11 +120,10 @@ class ActionBuilder:
         from qibocal.web.report import create_report
 
         # update end time
-        meta = yaml.safe_load((self.folder / META).read_text())
         e = datetime.datetime.now(datetime.timezone.utc)
-        meta["end-time"] = e.strftime("%H:%M:%S")
+        self.meta["end-time"] = e.strftime("%H:%M:%S")
         with open(self.folder / META, "w") as file:
-            yaml.dump(meta, file)
+            yaml.dump(self.meta, file)
 
         create_report(self.folder, self.executor.history)
 
