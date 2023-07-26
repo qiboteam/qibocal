@@ -1,4 +1,5 @@
 import json
+import pathlib
 from dataclasses import asdict, dataclass, field
 from typing import Optional
 
@@ -44,7 +45,7 @@ class SingleShotClassificationParameters(Parameters):
     """Relaxation time (ns)."""
     classifiers_list: Optional[list[str]] = field(default_factory=lambda: ["qubit_fit"])
     """List of models to classify the qubit states"""
-    savedir: Optional[str] = "classification_results"
+    savedir: Optional[str] = " "
     """Dumping folder of the classification results"""
 
 
@@ -60,7 +61,7 @@ class SingleShotClassificationData(Data):
     """List of models to classify the qubit states"""
     hpars: dict[QubitId, dict]
     """Models' hyperparameters"""
-    savedir: Optional[str] = "classification_results"
+    savedir: str
     """Dumping folder of the classification results"""
     data: dict[tuple[QubitId, int], npt.NDArray[ClassificationType]] = field(
         default_factory=dict
@@ -116,6 +117,8 @@ class SingleShotClassificationResults(Results):
     """Fidelity evaluated only with the `qubit_fit` model"""
     assignment_fidelity: dict[QubitId, float]
     """Assignment fidelity evaluated only with the `qubit_fit` model"""
+    savedir: str
+    """Dumping folder of the classification results"""
 
     def save(self, path):
         classifiers = run.import_classifiers(self.names)
@@ -125,7 +128,12 @@ class SingleShotClassificationResults(Results):
                 run.dump_benchmarks_table(table, path)
             # Dump models and hyperparameters
             for i, mod in enumerate(classifiers):
-                classifier = run.Classifier(mod, path / f"qubit{qubit}")
+                if self.savedir == " ":
+                    save_path = pathlib.Path(path)
+                else:
+                    save_path = pathlib.Path(self.savedir)
+
+                classifier = run.Classifier(mod, save_path / f"qubit{qubit}")
                 classifier.savedir.mkdir(parents=True, exist_ok=True)
                 dump_dir = classifier.base_dir / classifier.name / classifier.name
                 classifier.dump()(self.models[qubit][i], dump_dir)
@@ -148,8 +156,6 @@ def _acquisition(
     this dataset is finally used to train the `classifiers`in order to discriminate the shots,
     given their coordinates in the IQ plane.
     Args:
-        platform (:class:`qibolab.platforms.abstract.Platform`): custom abstract platform on which we perform the calibration.
-        qubits (dict): Dict of target Qubit objects to perform the action
         nshots (int): number of times the pulse sequence will be repeated.
         classifiers (list): list of classifiers, the available ones are:
             - linear_svm
@@ -162,6 +168,20 @@ def _acquisition(
             - rbf_svm
             - qblox_fit.
         The default value is `["qubit_fit"]`.
+        savedir (str): Dumping folder of the classification results.
+        If not given the dumping folder will be the report one.
+        relaxation_time (float): Relaxation time.
+
+        Example:
+        .. code-block:: yaml
+
+            - id: single_shot_classification_1
+                priority: 0
+                operation: single_shot_classification
+                parameters:
+                nshots: 5000
+                savedir: "single_shot"
+                classifiers_list: ["qubit_fit","naive_bayes", "linear_svm"]
 
     """
 
@@ -272,6 +292,7 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         mean_exc_states,
         fidelity,
         assignment_fidelity,
+        data.savedir,
     )
 
 
@@ -332,9 +353,11 @@ def _plot(
         column_width=[COLUMNWIDTH] * len(models_name),
     )
     fig_roc = go.Figure()
-    fig_roc.add_shape(type="line", line=dict(dash="dash"), x0=0, x1=1, y0=0, y1=1)
+    fig_roc.add_shape(
+        type="line", line=dict(dash="dash"), x0=0.0, x1=1.0, y0=0.0, y1=1.0
+    )
 
-    if len(models_name) == 1:
+    if len(models_name) != 1:
         fig_benchmarks = make_subplots(
             rows=1,
             cols=3,
@@ -373,51 +396,7 @@ def _plot(
         max_y = max(grid[:, 1])
         min_x = min(grid[:, 0])
         min_y = min(grid[:, 1])
-        if len(models_name) == 1:
-            fig_benchmarks.add_trace(
-                go.Scatter(
-                    x=[model],
-                    y=[fit.benchmark_table[qubit]["accuracy"][i]],
-                    mode="markers",
-                    showlegend=False,
-                    marker=dict(size=10, color=get_color_state1(i)),
-                ),
-                row=1,
-                col=1,
-            )
 
-            fig_benchmarks.add_trace(
-                go.Scatter(
-                    x=[model],
-                    y=[fit.benchmark_table[qubit]["training_time"][i]],
-                    mode="markers",
-                    showlegend=False,
-                    marker=dict(size=10, color=get_color_state1(i)),
-                ),
-                row=1,
-                col=2,
-            )
-
-            fig_benchmarks.add_trace(
-                go.Scatter(
-                    x=[model],
-                    y=[fit.benchmark_table[qubit]["testing_time"][i]],
-                    mode="markers",
-                    showlegend=False,
-                    marker=dict(size=10, color=get_color_state1(i)),
-                ),
-                row=1,
-                col=3,
-            )
-
-            fig_benchmarks.update_yaxes(type="log", row=1, col=2)
-            fig_benchmarks.update_yaxes(type="log", row=1, col=3)
-            fig_benchmarks.update_layout(
-                autosize=False,
-                height=COLUMNWIDTH,
-                width=COLUMNWIDTH * 3,
-                title=dict(text="Benchmarks", font=dict(size=TITLE_SIZE)),
-            )
         fig.add_trace(
             go.Scatter(
                 x=state0_data["i"],
@@ -506,6 +485,51 @@ def _plot(
             row=1,
             col=i + 1,
         )
+        if len(models_name) != 1:
+            fig_benchmarks.add_trace(
+                go.Scatter(
+                    x=[model],
+                    y=[fit.benchmark_table[qubit]["accuracy"][i]],
+                    mode="markers",
+                    showlegend=False,
+                    marker=dict(size=10, color=get_color_state1(i)),
+                ),
+                row=1,
+                col=1,
+            )
+
+            fig_benchmarks.add_trace(
+                go.Scatter(
+                    x=[model],
+                    y=[fit.benchmark_table[qubit]["training_time"][i]],
+                    mode="markers",
+                    showlegend=False,
+                    marker=dict(size=10, color=get_color_state1(i)),
+                ),
+                row=1,
+                col=2,
+            )
+
+            fig_benchmarks.add_trace(
+                go.Scatter(
+                    x=[model],
+                    y=[fit.benchmark_table[qubit]["testing_time"][i]],
+                    mode="markers",
+                    showlegend=False,
+                    marker=dict(size=10, color=get_color_state1(i)),
+                ),
+                row=1,
+                col=3,
+            )
+
+            fig_benchmarks.update_yaxes(type="log", row=1, col=2)
+            fig_benchmarks.update_yaxes(type="log", row=1, col=3)
+            fig_benchmarks.update_layout(
+                autosize=False,
+                height=COLUMNWIDTH,
+                width=COLUMNWIDTH * 3,
+                title=dict(text="Benchmarks", font=dict(size=TITLE_SIZE)),
+            )
 
         title_text = ""
 
@@ -548,10 +572,18 @@ def _plot(
             title=dict(text="ROC curves", font=dict(size=TITLE_SIZE)),
             legend=dict(font=dict(size=LEGEND_FONT_SIZE)),
         )
+        fig_roc.update_xaxes(
+            title_text=f"False Positive Rate",
+            range=[0, 1],
+        )
+        fig_roc.update_yaxes(
+            title_text="True Positive Rate",
+            range=[0, 1],
+        )
 
     figures.append(fig_roc)
     figures.append(fig)
-    if len(models_name) == 1:
+    if len(models_name) != 1:
         figures.append(fig_benchmarks)
     return figures, fitting_report
 
