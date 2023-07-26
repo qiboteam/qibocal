@@ -264,7 +264,9 @@ def _fit(
     virtual_phase = {}
     cz_angle = {}
     for pair in pairs:
-        virtual_phase[pair] = {}
+        pair_data = data[pair]
+        qubits = next(iter(pair_data))[:2]
+        virtual_phase[qubits] = {}
         for target, control, setup in data[pair]:
             target_data = data[pair][target, control, setup].target
             pguess = [
@@ -296,11 +298,11 @@ def _fit(
                 - fitted_parameters[target_q, control_q, "I"][2]
             )
             if (target_q, control_q) == pair:
-                virtual_phase[pair][target_q] = fitted_parameters[
+                virtual_phase[qubits][target_q] = fitted_parameters[
                     target_q, control_q, "I"
                 ][2]
             else:
-                virtual_phase[pair][target_q] = (
+                virtual_phase[qubits][target_q] = (
                     fitted_parameters[target_q, control_q, "I"][2] - np.pi
                 )
 
@@ -369,6 +371,7 @@ def _plot(data: CZVirtualZData, data_fit: CZVirtualZResults, qubits):
             row=1,
             col=1 if fig == fig1 else 2,
         )
+
         reports.append(f"{target} | CZ angle: {data_fit.cz_angle[target, control]}<br>")
         reports.append(
             f"{target} | Virtual Z phase: {data.vphases[qubits][target] - data_fit.virtual_phase[qubits][target]}<br>"
