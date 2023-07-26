@@ -33,6 +33,8 @@ class ChevronParameters(Parameters):
     """Duration maximum."""
     duration_step: float
     """Duration step."""
+    dt: Optional[int] = 0
+    """Time delay between flux pulses and readout."""
     nshots: Optional[int] = None
     """Number of shots per point."""
 
@@ -128,10 +130,12 @@ def _aquisition(
 
         # add readout
         measure_lowfreq = platform.create_qubit_readout_pulse(
-            ordered_pair[0], start=initialize_lowfreq.finish + params.duration_max + 20
+            ordered_pair[0],
+            start=initialize_lowfreq.finish + params.duration_max + params.dt,
         )
         measure_highfreq = platform.create_qubit_readout_pulse(
-            ordered_pair[1], start=initialize_highfreq.finish + params.duration_max + 20
+            ordered_pair[1],
+            start=initialize_highfreq.finish + params.duration_max + params.dt,
         )
 
         sequence.add(measure_lowfreq)
