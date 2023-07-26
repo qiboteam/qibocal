@@ -143,25 +143,25 @@ def _acquisition(
     qubits: Qubits,
 ) -> SingleShotClassificationData:
     """
-    Method which implements the state's calibration of a chosen qubit. Two analogous tests are performed
-    for calibrate the ground state and the excited state of the oscillator.
-    The subscripts `exc` and `gnd` will represent the excited state |1> and the ground state |0>.
-
+    Method which implements the state's calibration of a chosen qubit.
+    For each qubit state, `nshots` time the qubit is preapared in the state and measured,
+    this dataset is finally used to train the `classifiers`in order to discriminate the shots,
+    given their coordinates in the IQ plane.
     Args:
         platform (:class:`qibolab.platforms.abstract.Platform`): custom abstract platform on which we perform the calibration.
-        qubits (dict): dict of target Qubit objects to perform the action
+        qubits (dict): Dict of target Qubit objects to perform the action
         nshots (int): number of times the pulse sequence will be repeated.
-
-    Returns:
-        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
-
-            - **MSR[V]**: Resonator signal voltage mesurement in volts
-            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
-            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
-            - **phase[rad]**: Resonator signal phase mesurement in radians
-            - **iteration[dimensionless]**: Execution number
-            - **qubit**: The qubit being tested
-            - **iteration**: The iteration number of the many determined by software_averages
+        classifiers (list): list of classifiers, the available ones are:
+            - linear_svm
+            - ada_boost
+            - gaussian_process
+            - naive_bayes
+            - nn
+            - qubit_fit
+            - random_forest
+            - rbf_svm
+            - qblox_fit.
+        The default value is `["qubit_fit"]`.
 
     """
 
@@ -323,7 +323,6 @@ def _plot(
         np.linspace(min_y, max_y, num=MESH_SIZE),
     )
     grid = np.vstack([i_values.ravel(), q_values.ravel()]).T
-
     fig = make_subplots(
         rows=1,
         cols=len(models_name),
@@ -334,14 +333,16 @@ def _plot(
     )
     fig_roc = go.Figure()
     fig_roc.add_shape(type="line", line=dict(dash="dash"), x0=0, x1=1, y0=0, y1=1)
-    fig_benchmarks = make_subplots(
-        rows=1,
-        cols=3,
-        horizontal_spacing=SPACING,
-        vertical_spacing=SPACING,
-        subplot_titles=("accuracy", "training time (s)", "testing time (s)"),
-        # pylint: disable=E1101
-    )
+
+    if len(models_name) == 1:
+        fig_benchmarks = make_subplots(
+            rows=1,
+            cols=3,
+            horizontal_spacing=SPACING,
+            vertical_spacing=SPACING,
+            subplot_titles=("accuracy", "training time (s)", "testing time (s)"),
+            # pylint: disable=E1101
+        )
 
     y_test = fit.y_tests[qubit]
     x_test = fit.x_tests[qubit]
@@ -372,43 +373,51 @@ def _plot(
         max_y = max(grid[:, 1])
         min_x = min(grid[:, 0])
         min_y = min(grid[:, 1])
+        if len(models_name) == 1:
+            fig_benchmarks.add_trace(
+                go.Scatter(
+                    x=[model],
+                    y=[fit.benchmark_table[qubit]["accuracy"][i]],
+                    mode="markers",
+                    showlegend=False,
+                    marker=dict(size=10, color=get_color_state1(i)),
+                ),
+                row=1,
+                col=1,
+            )
 
-        fig_benchmarks.add_trace(
-            go.Scatter(
-                x=[model],
-                y=[fit.benchmark_table[qubit]["accuracy"][i]],
-                mode="markers",
-                showlegend=False,
-                marker=dict(size=10, color=get_color_state1(i)),
-            ),
-            row=1,
-            col=1,
-        )
+            fig_benchmarks.add_trace(
+                go.Scatter(
+                    x=[model],
+                    y=[fit.benchmark_table[qubit]["training_time"][i]],
+                    mode="markers",
+                    showlegend=False,
+                    marker=dict(size=10, color=get_color_state1(i)),
+                ),
+                row=1,
+                col=2,
+            )
 
-        fig_benchmarks.add_trace(
-            go.Scatter(
-                x=[model],
-                y=[fit.benchmark_table[qubit]["training_time"][i]],
-                mode="markers",
-                showlegend=False,
-                marker=dict(size=10, color=get_color_state1(i)),
-            ),
-            row=1,
-            col=2,
-        )
+            fig_benchmarks.add_trace(
+                go.Scatter(
+                    x=[model],
+                    y=[fit.benchmark_table[qubit]["testing_time"][i]],
+                    mode="markers",
+                    showlegend=False,
+                    marker=dict(size=10, color=get_color_state1(i)),
+                ),
+                row=1,
+                col=3,
+            )
 
-        fig_benchmarks.add_trace(
-            go.Scatter(
-                x=[model],
-                y=[fit.benchmark_table[qubit]["testing_time"][i]],
-                mode="markers",
-                showlegend=False,
-                marker=dict(size=10, color=get_color_state1(i)),
-            ),
-            row=1,
-            col=3,
-        )
-
+            fig_benchmarks.update_yaxes(type="log", row=1, col=2)
+            fig_benchmarks.update_yaxes(type="log", row=1, col=3)
+            fig_benchmarks.update_layout(
+                autosize=False,
+                height=COLUMNWIDTH,
+                width=COLUMNWIDTH * 3,
+                title=dict(text="Benchmarks", font=dict(size=TITLE_SIZE)),
+            )
         fig.add_trace(
             go.Scatter(
                 x=state0_data["i"],
@@ -533,14 +542,6 @@ def _plot(
                 font=dict(size=LEGEND_FONT_SIZE),
             ),
         )
-        fig_benchmarks.update_yaxes(type="log", row=1, col=2)
-        fig_benchmarks.update_yaxes(type="log", row=1, col=3)
-        fig_benchmarks.update_layout(
-            autosize=False,
-            height=COLUMNWIDTH,
-            width=COLUMNWIDTH * 3,
-            title=dict(text="Benchmarks", font=dict(size=TITLE_SIZE)),
-        )
         fig_roc.update_layout(
             width=ROC_WIDTH,
             height=ROC_LENGHT,
@@ -550,7 +551,8 @@ def _plot(
 
     figures.append(fig_roc)
     figures.append(fig)
-    figures.append(fig_benchmarks)
+    if len(models_name) == 1:
+        figures.append(fig_benchmarks)
     return figures, fitting_report
 
 
