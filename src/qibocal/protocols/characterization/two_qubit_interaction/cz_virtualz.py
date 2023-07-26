@@ -45,6 +45,9 @@ class CZVirtualZResults(Results):
     fitted_parameters: dict[tuple[str, QubitId],]
     """Fitted parameters"""
     cz_angle: dict[tuple[QubitId, QubitId], float]
+    """CZ angle."""
+    virtual_phase: dict[tuple[QubitId, QubitId], float]
+    """Virtual Z phase correction."""
 
 
 CZVirtualZType = np.dtype([("target", np.float64), ("control", np.float64)])
@@ -59,7 +62,9 @@ class CZVirtualZData(Data):
     )
 
     thetas: list = field(default_factory=list)
-    vphases: dict = field(default_factory=dict)
+    vphases: dict[tuple[QubitId, QubitId], dict[QubitId, float]] = field(
+        default_factory=dict
+    )
 
     def register_qubit(self, target, control, setup, prob_target, prob_control):
         ar = np.empty(prob_target.shape, dtype=CZVirtualZType)
@@ -259,6 +264,7 @@ def _fit(
     virtual_phase = {}
     cz_angle = {}
     for pair in pairs:
+        virtual_phase[pair] = {}
         for target, control, setup in data[pair]:
             target_data = data[pair][target, control, setup].target
             pguess = [
@@ -289,8 +295,18 @@ def _fit(
                 fitted_parameters[target_q, control_q, "X"][2]
                 - fitted_parameters[target_q, control_q, "I"][2]
             )
+            if (target_q, control_q) == pair:
+                virtual_phase[pair][target_q] = fitted_parameters[
+                    target_q, control_q, "I"
+                ][2]
+            else:
+                virtual_phase[pair][target_q] = (
+                    fitted_parameters[target_q, control_q, "I"][2] - np.pi
+                )
+
     return CZVirtualZResults(
         cz_angle=cz_angle,
+        virtual_phase=virtual_phase,
         fitted_parameters=fitted_parameters,
     )
 
@@ -354,7 +370,9 @@ def _plot(data: CZVirtualZData, data_fit: CZVirtualZResults, qubits):
             col=1 if fig == fig1 else 2,
         )
         reports.append(f"{target} | CZ angle: {data_fit.cz_angle[target, control]}<br>")
-
+        reports.append(
+            f"{target} | Virtual Z phase: {data.vphases[qubits][target] - data_fit.virtual_phase[qubits][target]}<br>"
+        )
     fitting_report = "".join(list(dict.fromkeys(reports)))
 
     fig1.update_layout(
