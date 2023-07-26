@@ -30,6 +30,7 @@ RESULTSFILE = "results.json"
 
 def show_logs(func):
     """Decorator to add logs."""
+
     @wraps(func)
     # necessary to maintain the function signature
     def wrapper(*args, **kwds):
