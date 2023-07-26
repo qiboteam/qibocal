@@ -76,7 +76,7 @@ def _acquisition(
                 nshots=params.nshots,
                 relaxation_time=params.relaxation_time,
                 acquisition_type=AcquisitionType.INTEGRATION,
-                averaging_mode=AveragingMode.CYCLIC,
+                averaging_mode=AveragingMode.SINGLESHOT,
             ),
         )
         for qubit in qubits:

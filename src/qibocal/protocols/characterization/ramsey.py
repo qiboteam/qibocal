@@ -8,11 +8,10 @@ from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
-from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.bootstrap import bootstrap, data_uncertainties
+from qibocal.bootstrap import bootstrap
 from qibocal.config import log
 
 from .utils import GHZ_TO_HZ, V_TO_UV
@@ -137,63 +136,63 @@ def _acquisition(
         qubit_freqs=freqs,
     )
 
-    if params.n_osc != 0:
-        # sweep the parameter
-        for wait in waits:
-            for qubit in qubits:
-                RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
-                ro_pulses[qubit].start = RX90_pulses2[qubit].finish
-                if params.n_osc != 0:
-                    RX90_pulses2[qubit].relative_phase = (
-                        RX90_pulses2[qubit].start
-                        * (-2 * np.pi)
-                        * (params.n_osc)
-                        / params.delay_between_pulses_end
-                    )
-
-            # execute the pulse sequence
-            results = platform.execute_pulse_sequence(
-                sequence,
-                ExecutionParameters(
-                    nshots=params.nshots,
-                    relaxation_time=params.relaxation_time,
-                    acquisition_type=AcquisitionType.INTEGRATION,
-                    averaging_mode=AveragingMode.SINGLESHOT,
-                ),
-            )
-            for qubit in qubits:
-                result = results[ro_pulses[qubit].serial]
-                print(type(result.average), result.average, "CCCCCC")
-                data.register_qubit(
-                    qubit, wait=wait, msr=result.magnitude, phase=result.phase
+    # if params.n_osc != 0:
+    # sweep the parameter
+    for wait in waits:
+        for qubit in qubits:
+            RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
+            ro_pulses[qubit].start = RX90_pulses2[qubit].finish
+            if params.n_osc != 0:
+                RX90_pulses2[qubit].relative_phase = (
+                    RX90_pulses2[qubit].start
+                    * (-2 * np.pi)
+                    * (params.n_osc)
+                    / params.delay_between_pulses_end
                 )
 
-    else:
-        # TODO: change this part consistently
-        sweeper = Sweeper(
-            Parameter.start,
-            waits,
-            [RX90_pulses2[qubit] for qubit in qubits],
-            type=SweeperType.ABSOLUTE,
-        )
-
-        # execute the sweep
-        results = platform.sweep(
+        # execute the pulse sequence
+        results = platform.execute_pulse_sequence(
             sequence,
             ExecutionParameters(
                 nshots=params.nshots,
                 relaxation_time=params.relaxation_time,
                 acquisition_type=AcquisitionType.INTEGRATION,
-                averaging_mode=AveragingMode.CYCLIC,
+                averaging_mode=AveragingMode.SINGLESHOT,
             ),
-            sweeper,
         )
         for qubit in qubits:
             result = results[ro_pulses[qubit].serial]
-            print(type(result), result, "CCCCCC")
+            print(type(result.average), result.average, "CCCCCC")
             data.register_qubit(
-                qubit, wait=waits, msr=result.magnitude, phase=result.phase
+                qubit, wait=wait, msr=result.magnitude, phase=result.phase
             )
+
+    # else:
+    #     # TODO: change this part consistently
+    #     sweeper = Sweeper(
+    #         Parameter.start,
+    #         waits,
+    #         [RX90_pulses2[qubit] for qubit in qubits],
+    #         type=SweeperType.ABSOLUTE,
+    #     )
+
+    #     # execute the sweep
+    #     results = platform.sweep(
+    #         sequence,
+    #         ExecutionParameters(
+    #             nshots=params.nshots,
+    #             relaxation_time=params.relaxation_time,
+    #             acquisition_type=AcquisitionType.INTEGRATION,
+    #             averaging_mode=AveragingMode.SINGLESHOT,
+    #         ),
+    #         sweeper,
+    #     )
+    #     for qubit in qubits:
+    #         result = results[ro_pulses[qubit].serial]
+    #         print(type(result), result, "CCCCCC")
+    #         data.register_qubit(
+    #             qubit, wait=waits, msr=result.magnitude, phase=result.phase
+    #         )
     return data
 
 
@@ -285,7 +284,7 @@ def _fit(data: RamseyData) -> RamseyResults:
         voltages = np.array(qubit_data[["msr"]].tolist()) * V_TO_UV
         voltages = voltages.reshape((len(waits), -1))
 
-        voltages = np.median(voltages, axis=1).flatten()
+        voltages = np.mean(voltages, axis=1).flatten()
 
         try:
             popts[qubit] = fitting(waits, voltages)
@@ -406,17 +405,19 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
     waits = np.unique(data.data[qubit].wait)
     msrs = np.array(qubit_data[["msr"]].tolist()) * V_TO_UV
     msrs = msrs.reshape((len(waits), -1))
-    error_bars = data_uncertainties(msrs, method=68)
+    nsamples = msrs.shape[1]
+    print("UUUUUU ", nsamples)
+    error_bars = np.std(msrs, axis=1).flatten() / np.sqrt(nsamples)
     print("ZZZZZZZZZZZZ", error_bars)
-    msrs = np.median(msrs, axis=1).flatten()
+    msrs = np.mean(msrs, axis=1).flatten()
     fig.add_trace(
         go.Scatter(
             x=waits,
             y=msrs,
             error_y=dict(
                 type="data",  # value of error bar given in data coordinates
-                array=error_bars[0],
-                arrayminus=error_bars[1],
+                array=error_bars,
+                # arrayminus=error_bars[1],
                 visible=True,
             ),
             opacity=1,
@@ -451,13 +452,13 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
     fitting_report = (
         fitting_report
         + (
-            f"{qubit} | Delta_frequency: {fit.delta_phys[qubit]:,.1f} {chr(177)} {fit.error_delta_phys[qubit]} Hz<br>"
+            f"{qubit} | Delta_frequency: {fit.delta_phys[qubit]:,.1f} {chr(177)} {fit.error_delta_phys[qubit]:,.1f} Hz<br>"
         )
         + (
-            f"{qubit} | Drive_frequency: {fit.frequency[qubit] } {chr(177)} {fit.error_frequency[qubit]} Hz<br>"
+            f"{qubit} | Drive_frequency: {fit.frequency[qubit] } {chr(177)} {fit.error_frequency[qubit]:,.1f} Hz<br>"
         )
         + (
-            f"{qubit} | T2: {fit.t2[qubit]:,.0f} {chr(177)} {fit.error_t2[qubit]} ns.<br><br>"
+            f"{qubit} | T2: {fit.t2[qubit]:,.0f} {chr(177)} {fit.error_t2[qubit]:,.1f} ns.<br><br>"
         )
     )
 
