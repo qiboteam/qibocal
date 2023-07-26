@@ -69,7 +69,7 @@ class Data:
 
     @property
     def pairs(self):
-        """Access qubit pairs from data structure."""
+        """Access qubit pairs ordered alphanumerically from data structure."""
         return list({tuple(sorted(q[:2])) for q in self.data})
 
     def __getitem__(self, qubit: Union[QubitId, tuple[QubitId, int]]):
