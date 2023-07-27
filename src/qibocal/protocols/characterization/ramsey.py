@@ -291,11 +291,9 @@ def _fit(data: RamseyData) -> RamseyResults:
             t2 = 1.0 / popts[qubit][4]
 
             freq_av[qubit] = corrected_qubit_frequency
-            freq_err[qubit] = 0.0
             t2_av[qubit] = t2
-            t2_err[qubit] = 0.0
             delta_phys_av[qubit] = delta_phys
-            delta_phys_err[qubit] = 0.0
+            freq_err[qubit] = t2_err[qubit] = delta_phys_err[qubit] = 0.0
 
     return RamseyResults(
         freq_av,
