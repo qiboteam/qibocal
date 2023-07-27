@@ -231,9 +231,8 @@ def _fit(data: RamseyData) -> RamseyResults:
     for qubit in qubits:
         qubit_data = data[qubit]
         qubit_freq = data.qubit_freqs[qubit]
-        msrs = np.array(qubit_data[["msr"]].tolist()) * V_TO_UV
-
-        msrs = msrs.reshape((len(waits), -1))
+        msrs = qubit_data[["msr"]].tolist()
+        msrs = np.reshape(msrs, (len(waits), -1)) * V_TO_UV
         t2s = []
         deltas_phys_list = []
         new_freqs = []
@@ -311,13 +310,14 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
 
     qubit_data = data.data[qubit]
     waits = np.unique(data.data[qubit].wait)
-    msrs = np.array(qubit_data[["msr"]].tolist()).flatten() * V_TO_UV
+    msrs = qubit_data[["msr"]].tolist()
     if data.nboot != 0:
-        msrs = msrs.reshape((len(waits), -1))
+        msrs = np.reshape(msrs, (len(waits), -1)) * V_TO_UV
         nsamples = msrs.shape[1]
         error_bars = np.std(msrs, axis=1).flatten() / np.sqrt(nsamples)
         msrs = np.mean(msrs, axis=1).flatten()
     else:
+        msrs = np.reshape(msrs, (len(waits))) * V_TO_UV
         error_bars = np.zeros(len(msrs))
     fig.add_trace(
         go.Scatter(
