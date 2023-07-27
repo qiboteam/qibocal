@@ -251,8 +251,6 @@ def _fit(data: RamseyData) -> RamseyResults:
                         (delta_fitting - data.n_osc / data.t_max) * GHZ_TO_HZ
                     )
 
-                    # FIXME: for qblox the correct formula is the following (there is a bug related to the phase)
-                    # corrected_qubit_frequency = int(qubit_freq + delta_phys)
                     corrected_qubit_frequency = int(qubit_freq - delta_phys)
                     deltas_phys_list.append(delta_phys)
                     new_freqs.append(corrected_qubit_frequency)
@@ -286,8 +284,6 @@ def _fit(data: RamseyData) -> RamseyResults:
             delta_phys = data.detuning_sign * int(
                 (delta_fitting - data.n_osc / data.t_max) * GHZ_TO_HZ
             )
-            # FIXME: for qblox the correct formula is the following (there is a bug related to the phase)
-            # corrected_qubit_frequency = int(qubit_freq + delta_phys)
             corrected_qubit_frequency = int(qubit_freq - delta_phys)
             t2 = 1.0 / popts[qubit][4]
 
