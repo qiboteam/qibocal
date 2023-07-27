@@ -46,15 +46,15 @@ class RamseyResults(Results):
     frequency: dict[QubitId, float] = field(metadata=dict(update="drive_frequency"))
     """Drive frequency [GHz] for each qubit."""
     error_frequency: dict[QubitId, float]
-    """Drive frequency [GHz] for each qubit."""
+    """Error of the drive frequency [GHz]."""
     t2: dict[QubitId, float]
     """T2 for each qubit [ns]."""
     error_t2: dict[QubitId, float]
-    """T2 for each qubit [ns]."""
+    """Error T2 [ns]."""
     delta_phys: dict[QubitId, float]
     """Drive frequency [Hz] correction for each qubit."""
     error_delta_phys: dict[QubitId, float]
-    """Drive frequency [Hz] correction for each qubit."""
+    """Error of the drive frequency [Hz]."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
 
