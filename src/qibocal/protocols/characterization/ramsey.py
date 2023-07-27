@@ -221,7 +221,6 @@ def _fit(data: RamseyData) -> RamseyResults:
     """
     qubits = data.qubits
     waits = np.unique(data[qubits[0]].wait)
-    # nboot = 200
     popts = {}
     freq_av = {}
     freq_err = {}
@@ -317,9 +316,7 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
     fig = go.Figure()
     fitting_report = ""
 
-    # qubit_data = data[qubit]
     qubit_data = data.data[qubit]
-    # qubit_freq = data.qubit_freqs[qubit]
     waits = np.unique(data.data[qubit].wait)
     msrs = np.array(qubit_data[["msr"]].tolist()).flatten() * V_TO_UV
     if data.nboot != 0:
@@ -336,7 +333,6 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
             error_y=dict(
                 type="data",  # value of error bar given in data coordinates
                 array=error_bars,
-                # arrayminus=error_bars[1],
                 visible=True,
             ),
             opacity=1,
