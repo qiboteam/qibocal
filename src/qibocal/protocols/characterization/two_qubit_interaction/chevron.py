@@ -37,6 +37,8 @@ class ChevronParameters(Parameters):
     """Time delay between flux pulses and readout."""
     nshots: Optional[int] = None
     """Number of shots per point."""
+    parking: bool = True
+    """Wether to park non interacting qubits or not."""
 
 
 @dataclass
@@ -128,6 +130,18 @@ def _aquisition(
         )
         sequence.add(cz)
 
+        if params.parking:
+            # if parking is true, create a cz pulse from the runcard and
+            # add to the sequence all parking pulses
+            cz_sequence, _ = platform.pairs[
+                tuple(sorted(pair))
+            ].native_gates.CZ.sequence(start=0)
+            for pulse in cz_sequence:
+                if pulse.qubit not in {ordered_pair[0], ordered_pair[1]}:
+                    pulse.start = cz.start
+                    pulse.duration = cz.duration
+                    sequence.add(pulse)
+
         # add readout
         measure_lowfreq = platform.create_qubit_readout_pulse(
             ordered_pair[0],
@@ -140,6 +154,7 @@ def _aquisition(
 
         sequence.add(measure_lowfreq)
         sequence.add(measure_highfreq)
+
         # define the parameter to sweep and its range:
         delta_amplitude_range = np.arange(
             params.amplitude_min,

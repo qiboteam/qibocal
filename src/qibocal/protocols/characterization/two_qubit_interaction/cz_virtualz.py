@@ -153,8 +153,8 @@ def create_sequence(
         ].native_gates.CZ.sequence(start=0)
         for pulse in cz_sequence:
             if pulse.qubit not in {target_qubit, control_qubit}:
-                pulse.start = flux_sequence[setup].start
-                pulse.duration = flux_sequence[setup].duration
+                pulse.start = flux_sequence.start
+                pulse.duration = flux_sequence.duration
                 sequence.add(pulse)
 
     return sequence, virtual_z_phase, theta_pulse
@@ -293,7 +293,7 @@ def _fit(
             pair,
             list(pair)[::-1],
         ):
-            cz_angle[target_q, control_q] = (
+            cz_angle[target_q, control_q] = abs(
                 fitted_parameters[target_q, control_q, "X"][2]
                 - fitted_parameters[target_q, control_q, "I"][2]
             )
