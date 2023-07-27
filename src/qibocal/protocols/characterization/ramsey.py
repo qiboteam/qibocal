@@ -177,7 +177,9 @@ def _acquisition(
                     )
 
             # execute the pulse sequence
-            averaging_mode = AveragingMode.SINGLESHOT if params.nboot != 0 else AveragingMode.CYCLIC
+            averaging_mode = (
+                AveragingMode.SINGLESHOT if params.nboot != 0 else AveragingMode.CYCLIC
+            )
 
             results = platform.execute_pulse_sequence(
                 sequence,
