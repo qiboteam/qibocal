@@ -5,6 +5,8 @@ from typing import Optional, Set
 
 from qibolab.platform import Platform
 
+from qibocal.config import log
+
 from .graph import Graph
 from .history import Completed, History
 from .runcard import Id, Runcard
@@ -132,13 +134,14 @@ class Executor:
 
         while self.head is not None:
             task = self.current
+            log.info(f"Running task {task.id}.")
             task_execution = task.run(platform=self.platform, qubits=self.qubits)
             completed = Completed(task, Normal(), self.output)
-            completed.data = next(task_execution)
-            completed.results = next(task_execution)
+            completed.data, acquisition_time = next(task_execution)
+            completed.results, fit_time = next(task_execution)
             self.history.push(completed)
             self.head = self.next()
             if self.platform is not None:
                 if self.update and task.update:
                     self.platform.update(completed.results.update)
-            yield
+            yield acquisition_time, fit_time, task.id

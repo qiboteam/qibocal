@@ -1,12 +1,16 @@
 import inspect
 import json
+import time
 from dataclasses import asdict, dataclass, fields
+from functools import wraps
 from typing import Callable, Generic, NewType, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
 from qibolab.platform import Platform
 from qibolab.qubits import Qubit, QubitId
+
+from qibocal.config import log
 
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
@@ -22,6 +26,25 @@ JSONFILE = "conf.json"
 """Name of the file where data acquired (global configuration) by calibration are dumped."""
 RESULTSFILE = "results.json"
 """Name of the file where results are dumped."""
+
+
+def show_logs(func):
+    """Decorator to add logs."""
+
+    @wraps(func)
+    # necessary to maintain the function signature
+    def wrapper(*args, **kwds):
+        start = time.perf_counter()
+        out = func(*args, **kwds)
+        end = time.perf_counter()
+        if end - start < 1:
+            message = " in less than 1 second."
+        else:
+            message = f" in {end-start:.2f} seconds"
+        log.info(f"Finished {func.__name__[1:]}" + message)
+        return out, end - start
+
+    return wrapper
 
 
 class Parameters:
@@ -170,6 +193,10 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     """Plotting function."""
 
     def __post_init__(self):
+        # add decorator to show logs
+        self.acquisition = show_logs(self.acquisition)
+        self.fit = show_logs(self.fit)
+
         # TODO: this could be improved
         if self.fit is None:
             self.fit = _dummy_fit

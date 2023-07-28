@@ -10,6 +10,7 @@ from .coherence.t1_sequences import t1_sequences
 from .coherence.t2 import t2
 from .coherence.t2_sequences import t2_sequences
 from .dispersive_shift import dispersive_shift
+from .fast_reset.fast_reset import fast_reset
 from .flipping import flipping
 from .flux_dependence.qubit_flux_dependence import qubit_flux
 from .flux_dependence.resonator_flux_dependence import resonator_flux
@@ -20,6 +21,7 @@ from .rabi.length_sequences import rabi_length_sequences
 from .ramsey import ramsey
 from .ramsey_sequences import ramsey_sequences
 from .randomized_benchmarking.standard_rb import standard_rb
+from .readout_characterization import readout_characterization
 from .readout_optimization.resonator_frequency import resonator_frequency
 from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
@@ -58,4 +60,6 @@ class Operation(Enum):
     chevron = chevron
     cz_virtualz = cz_virtualz
     standard_rb = standard_rb
+    readout_characterization = readout_characterization
     resonator_frequency = resonator_frequency
+    fast_reset = fast_reset
