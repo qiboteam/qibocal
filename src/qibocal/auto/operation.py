@@ -90,6 +90,11 @@ class Data:
             return list({q[0] for q in self.data})
         return [q for q in self.data]
 
+    @property
+    def pairs(self):
+        """Access qubit pairs ordered alphanumerically from data structure."""
+        return list({tuple(sorted(q[:2])) for q in self.data})
+
     def __getitem__(self, qubit: Union[QubitId, tuple[QubitId, int]]):
         """Access data attribute member."""
         return self.data[qubit]
@@ -154,7 +159,19 @@ class Results:
 
     def save(self, path):
         """Store results to json."""
-        (path / RESULTSFILE).write_text(json.dumps(asdict(self), indent=4))
+        # FIXME: remove hardcoded conversion to str for tuple
+        result_dict = {}
+        for result_name, result in asdict(self).items():
+            result_dict[result_name] = {}
+            if isinstance(result, dict):
+                for key, elem in result.items():
+                    if isinstance(key, tuple):
+                        result_dict[result_name][str(key)] = elem
+                    else:
+                        result_dict[result_name][key] = elem
+            else:
+                result_dict[result_name] = result
+        (path / RESULTSFILE).write_text(json.dumps(result_dict, indent=4))
 
 
 # Internal types, in particular `_ParametersT` is used to address function
