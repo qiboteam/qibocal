@@ -15,7 +15,10 @@ from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
-from qibocal.protocols.characterization.two_qubit_interaction.chevron import order_pairs
+from qibocal.protocols.characterization.two_qubit_interaction.chevron import (
+    OrderedPair,
+    order_pair,
+)
 
 
 @dataclass
@@ -187,11 +190,11 @@ def _acquisition(
     data = CZVirtualZData(thetas=thetas.tolist())
     for pair in qubits:
         # order the qubits so that the low frequency one is the first
-        ord_pair = order_pairs(pair, platform.qubits)
+        ord_pair = order_pair(pair, platform.qubits)
 
         for target_q, control_q in (
-            (ord_pair[0], ord_pair[1]),
-            (ord_pair[1], ord_pair[0]),
+            (ord_pair.low_freq, ord_pair.high_freq),
+            (ord_pair.high_freq, ord_pair.low_freq),
         ):
             for setup in ("I", "X"):
                 theta = np.arange(
@@ -265,7 +268,7 @@ def _fit(
     cz_angle = {}
     for pair in pairs:
         pair_data = data[pair]
-        qubits = next(iter(pair_data))[:2]
+        qubits = OrderedPair(*next(iter(pair_data))[:2])
         virtual_phase[qubits] = {}
         for target, control, setup in data[pair]:
             target_data = data[pair][target, control, setup].target
@@ -316,13 +319,13 @@ def _fit(
 def _plot(data: CZVirtualZData, data_fit: CZVirtualZResults, qubits):
     """Plot routine for CZVirtualZ."""
     pair_data = data[qubits]
-    qubits = next(iter(pair_data))[:2]
+    qubits = OrderedPair(*next(iter(pair_data))[:2])
     fig1 = make_subplots(
         rows=1,
         cols=2,
         subplot_titles=(
-            f"Qubit {qubits[0]}",
-            f"Qubit {qubits[1]}",
+            f"Qubit {qubits.low_freq}",
+            f"Qubit {qubits.high_freq}",
         ),
     )
     reports = []
@@ -330,8 +333,8 @@ def _plot(data: CZVirtualZData, data_fit: CZVirtualZResults, qubits):
         rows=1,
         cols=2,
         subplot_titles=(
-            f"Qubit {qubits[0]}",
-            f"Qubit {qubits[1]}",
+            f"Qubit {qubits.low_freq}",
+            f"Qubit {qubits.high_freq}",
         ),
     )
 
@@ -379,7 +382,7 @@ def _plot(data: CZVirtualZData, data_fit: CZVirtualZResults, qubits):
     fitting_report = "".join(list(dict.fromkeys(reports)))
 
     fig1.update_layout(
-        title_text=f"Phase correction Qubit {qubits[0]}",
+        title_text=f"Phase correction Qubit {qubits.low_freq}",
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis1_title="theta [rad]",
@@ -388,7 +391,7 @@ def _plot(data: CZVirtualZData, data_fit: CZVirtualZResults, qubits):
     )
 
     fig2.update_layout(
-        title_text=f"Phase correction Qubit {qubits[1]}",
+        title_text=f"Phase correction Qubit {qubits.high_freq}",
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis1_title="theta [rad]",
