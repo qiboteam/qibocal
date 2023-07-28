@@ -120,18 +120,13 @@ def _aquisition(
             qubits=(ordered_pair.high_freq, ordered_pair.low_freq),
             start=initialize_highfreq.finish,
         )
-        sequence.add(cz)
+
+        sequence.add(cz.get_qubit_pulses(ordered_pair.low_freq))
+        sequence.add(cz.get_qubit_pulses(ordered_pair.high_freq))
 
         if params.parking:
-            # if parking is true, create a cz pulse from the runcard and
-            # add to the sequence all parking pulses
-            cz_sequence, _ = platform.pairs[
-                tuple(sorted(pair))
-            ].native_gates.CZ.sequence(start=0)
-            for pulse in cz_sequence:
-                if pulse.qubit not in set(ordered_pair):
-                    pulse.start = cz.start
-                    pulse.duration = cz.duration
+            for pulse in cz:
+                if pulse.qubit not in ordered_pair:
                     sequence.add(pulse)
 
         # add readout
