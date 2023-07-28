@@ -296,7 +296,6 @@ def _fit(
             virtual_phase[qubits][target_q] = fitted_parameters[
                 target_q, control_q, "I"
             ][2]
-            print(virtual_phase[qubits][target_q])
 
     return CZVirtualZResults(
         cz_angle=cz_angle,
