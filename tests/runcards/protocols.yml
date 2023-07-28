@@ -183,6 +183,13 @@ actions:
       delay_before_readout_step: 2000
       nshots: 10
 
+  - id: zeno
+    priority: 00
+    operation: zeno
+    parameters:
+      readouts: 100
+      nshots: 4096
+
   - id: t2
     priority: 0
     operation: t2
