@@ -335,7 +335,7 @@ def _plot(data: CZVirtualZData, data_fit: CZVirtualZResults, qubits):
         fig = fig1 if (target, control) == qubits else fig2
         fig.add_trace(
             go.Scatter(
-                x=np.array(thetas),
+                x=np.array(thetas) + data.vphases[qubits][target],
                 y=target_prob,
                 name=f"{setup} sequence",
                 legendgroup=setup,
@@ -346,7 +346,7 @@ def _plot(data: CZVirtualZData, data_fit: CZVirtualZResults, qubits):
 
         fig.add_trace(
             go.Scatter(
-                x=np.array(thetas),
+                x=np.array(thetas) + data.vphases[qubits][control],
                 y=control_prob,
                 name=f"{setup} sequence",
                 legendgroup=setup,
@@ -357,12 +357,12 @@ def _plot(data: CZVirtualZData, data_fit: CZVirtualZResults, qubits):
 
         angle_range = np.linspace(thetas[0], thetas[-1], 100)
         fitted_parameters = data_fit.fitted_parameters[target, control, setup]
-        # plot relative (set phase to 0)
-        fitted_parameters[2] = 0
         fig.add_trace(
             go.Scatter(
-                x=angle_range,
-                y=fit_function(angle_range, *fitted_parameters),
+                x=angle_range + data.vphases[qubits][target],
+                y=fit_function(
+                    angle_range + data.vphases[qubits][target], *fitted_parameters
+                ),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
             ),
@@ -380,8 +380,8 @@ def _plot(data: CZVirtualZData, data_fit: CZVirtualZResults, qubits):
         title_text=f"Phase correction Qubit {qubits.low_freq}",
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis1_title="theta [rad]",
-        xaxis2_title="theta [rad]",
+        xaxis1_title="theta [rad] + virtual phase[rad]",
+        xaxis2_title="theta [rad] + virtual phase [rad]",
         yaxis_title="MSR[V]",
     )
 
