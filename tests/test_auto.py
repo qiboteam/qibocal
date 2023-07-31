@@ -1,12 +1,10 @@
 """Test graph execution."""
 import pathlib
 import tempfile
-from typing import List
 
 import pytest
 import yaml
 from pydantic.dataclasses import dataclass
-from pydantic.json import pydantic_encoder
 
 from qibocal.auto.execute import Executor
 from qibocal.auto.runcard import Runcard
@@ -18,7 +16,7 @@ cards = pathlib.Path(__file__).parent / "runcards"
 class Validation:
     """Values used to validate the result."""
 
-    result: List[str]
+    result: list[str]
     """Asserted history."""
     description: str
 
@@ -37,9 +35,8 @@ def test_execution(card: pathlib.Path):
 
     """
     testcard = TestCard(**yaml.safe_load(card.read_text(encoding="utf-8")))
-    executor = Executor.load(
-        pydantic_encoder(testcard.runcard), output=pathlib.Path(tempfile.mkdtemp())
-    )
-    executor.run()
+    executor = Executor.load(testcard.runcard, output=pathlib.Path(tempfile.mkdtemp()))
+    for _ in executor.run():
+        pass
 
     assert testcard.validation.result == [step[0] for step in executor.history]

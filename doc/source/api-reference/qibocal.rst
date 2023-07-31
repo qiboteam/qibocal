@@ -1,4 +1,4 @@
-.. _calibration_routines:
+.. _calibration_routinestwo_qubit
 
 Calibration routines
 --------------------
@@ -36,7 +36,9 @@ Current and future ``qibocal`` routines are listed in the following table:
 +------------------------+-------------+------------------+---------------+
 | Cryoscope              | In progress |    In progress   |       No      |
 +------------------------+-------------+------------------+---------------+
-| CZ gate                |      No     |        No        |       No      |
+| Chevron SWAP (CZ)      |     Yes     |    In progress   |       No      |
++------------------------+-------------+------------------+---------------+
+| Tune Landscape (CZ)    |     Yes     |    In progress   |       No      |
 +------------------------+-------------+------------------+---------------+
 | RB & co (multi qubits) |      No     |        No        |       No      |
 +------------------------+-------------+------------------+---------------+
@@ -104,6 +106,24 @@ State calibration
    :undoc-members:
    :show-inheritance:
 
+Two Qubit
+^^^^^^^^^
+
+
+Chevron SWAP
+""""""""""""
+.. automodule:: qibocal.protocols.characterization.two_qubit_interaction.chevron
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Tune Landscape
+""""""""""""""
+.. automodule:: qibocal.protocols.characterization.two_qubit_interaction.cz_virtualz
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 
 Data structure
 --------------
@@ -147,6 +167,14 @@ Classifiers
    :undoc-members:
    :show-inheritance:
 
+Statistics
+^^^^^^^^^^
+.. automodule:: qibocal.bootstrap
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
 Gate set characterization
 -------------------------
 
@@ -155,66 +183,16 @@ Gate set characterization
 Abstract and Basic methods
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Circuit Factory
-"""""""""""""""
-.. automodule:: qibocal.calibrations.niGSC.basics.circuitfactory
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Experiment
-""""""""""
-.. automodule:: qibocal.calibrations.niGSC.basics.experiment
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Fitting methods
 """""""""""""""
-.. automodule:: qibocal.calibrations.niGSC.basics.fitting
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Plotting methods
-""""""""""""""""
-.. automodule:: qibocal.calibrations.niGSC.basics.plot
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Useful functions
-""""""""""""""""
-.. automodule:: qibocal.calibrations.niGSC.basics.utils
+.. automodule:: qibocal.protocols.characterization.randomized_benchmarking.fitting
    :members:
    :undoc-members:
    :show-inheritance:
 
 Prebuild noise models
 """""""""""""""""""""
-.. automodule:: qibocal.calibrations.niGSC.basics.noisemodels
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-
-Standard RB
-^^^^^^^^^^^
-.. automodule:: qibocal.calibrations.niGSC.standardrb
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Simultaneous Filtered RB
-^^^^^^^^^^^^^^^^^^^^^^^^
-.. automodule:: qibocal.calibrations.niGSC.simulfilteredrb
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-X-ID RB
-^^^^^^^
-.. automodule:: qibocal.calibrations.niGSC.XIdrb
+.. automodule:: qibocal.protocols.characterization.randomized_benchmarking.noisemodels
    :members:
    :undoc-members:
    :show-inheritance:

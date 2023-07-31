@@ -1,16 +1,19 @@
 from dataclasses import dataclass, field
-from typing import Dict, Union
+from typing import Optional
 
 import numpy as np
+import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 from scipy.optimize import curve_fit
 
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
-from qibocal.data import DataUnits
-from qibocal.plots.utils import get_color
+
+from .utils import V_TO_UV
 
 
 @dataclass
@@ -21,45 +24,54 @@ class FlippingParameters(Parameters):
     """Maximum number of flips ([RX(pi) - RX(pi)] sequences). """
     nflips_step: int
     """Flip step."""
+    nshots: Optional[int] = None
+    """Number of shots."""
+    relaxation_time: Optional[int] = None
+    """Relaxation time (ns)."""
 
 
 @dataclass
 class FlippingResults(Results):
     """Flipping outputs."""
 
-    amplitude: Dict[Union[str, int], float] = field(
-        metadata=dict(update="drive amplitude")
-    )
+    amplitude: dict[QubitId, float] = field(metadata=dict(update="drive amplitude"))
     """Drive amplitude for each qubit."""
-    amplitude_factors: Dict[Union[str, int], float]
+    amplitude_factors: dict[QubitId, float]
     """Drive amplitude correction factor for each qubit."""
-    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
+    fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
 
 
-class FlippngData(DataUnits):
+FlippingType = np.dtype([("flips", np.float64), ("msr", np.float64)])
+
+
+@dataclass
+class FlippingData(Data):
     """Flipping acquisition outputs."""
 
-    def __init__(self, resonator_type):
-        super().__init__(
-            name="data",
-            quantities={"flips": "dimensionless"},
-            options=["qubit"],
-        )
+    resonator_type: str
+    """Resonator type."""
+    pi_pulse_amplitudes: dict[QubitId, float]
+    """Pi pulse amplitudes for each qubit."""
+    data: dict[QubitId, npt.NDArray[FlippingType]] = field(default_factory=dict)
+    """Raw data acquired."""
 
-        self._resonator_type = resonator_type
-
-    @property
-    def resonator_type(self):
-        """Type of resonator (2D or 3D)."""
-        return self._resonator_type
+    def register_qubit(self, qubit, flips, msr):
+        """Store output for single qubit."""
+        ar = np.empty((1,), dtype=FlippingType)
+        ar["flips"] = flips
+        ar["msr"] = msr
+        if qubit in self.data:
+            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
+        else:
+            self.data[qubit] = np.rec.array(ar)
 
 
 def _acquisition(
     params: FlippingParameters,
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: Qubits,
-) -> FlippngData:
+) -> FlippingData:
     r"""
     Data acquisition for flipping.
 
@@ -68,16 +80,18 @@ def _acquisition(
 
     Args:
         params (:class:`SingleShotClassificationParameters`): input parameters
-        platform (:class:`AbstractPlatform`): Qibolab's platform
-        qubits (dict): Dict of target :class:`Qubit` objects to be characterized
+        platform (:class:`Platform`): Qibolab's platform
+        qubits (dict): dict of target :class:`Qubit` objects to be characterized
 
     Returns:
         data (:class:`FlippingData`)
     """
 
     # create a DataUnits object to store MSR, phase, i, q and the number of flips
-    data = FlippngData(platform.resonator_type)
-
+    data = FlippingData(
+        platform.resonator_type,
+        {qubit: qubits[qubit].pi_pulse_amplitude for qubit in qubits},
+    )
     # sweep the parameter
     for flips in range(0, params.nflips_max, params.nflips_step):
         # create a sequence of pulses for the experiment
@@ -100,20 +114,18 @@ def _acquisition(
             ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=start1)
             sequence.add(ro_pulses[qubit])
         # execute the pulse sequence
-        results = platform.execute_pulse_sequence(sequence)
-        for ro_pulse in ro_pulses.values():
-            # average msr, phase, i and q over the number of shots defined in the runcard
-
-            r = results[ro_pulse.serial].average.raw
-            r.update(
-                {
-                    "flips[dimensionless]": flips,
-                    "qubit": ro_pulse.qubit,
-                    "pi_pulse_amplitude": qubits[ro_pulse.qubit].pi_pulse_amplitude,
-                }
-            )
-
-            data.add(r)
+        results = platform.execute_pulse_sequence(
+            sequence,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
+        )
+        for qubit in qubits:
+            result = results[ro_pulses[qubit].serial]
+            data.register_qubit(qubit=qubit, flips=flips, msr=result.magnitude)
 
     return data
 
@@ -128,7 +140,7 @@ def flipping_fit(x, p0, p1, p2, p3):
 
 
 # FIXME: not working
-def _fit(data: FlippngData) -> FlippingResults:
+def _fit(data: FlippingData) -> FlippingResults:
     r"""Post-processing function for Flipping.
 
     The used model is
@@ -137,16 +149,15 @@ def _fit(data: FlippngData) -> FlippingResults:
 
         y = p_0 sin\Big(\frac{2 \pi x}{p_2} + p_3\Big) + p_1.
     """
-    qubits = data.df["qubit"].unique()
+    qubits = data.qubits
     corrected_amplitudes = {}
     fitted_parameters = {}
     amplitude_correction_factors = {}
     for qubit in qubits:
-        qubit_data_df = data.df[data.df["qubit"] == qubit]
-        pi_pulse_amplitude = qubit_data_df["pi_pulse_amplitude"].unique()
-        voltages = qubit_data_df["MSR"].pint.to("uV").pint.magnitude
-        flips = qubit_data_df["flips"].pint.magnitude
-
+        qubit_data = data[qubit]
+        pi_pulse_amplitude = data.pi_pulse_amplitudes[qubit]
+        voltages = qubit_data.msr * V_TO_UV
+        flips = qubit_data.flips
         if data.resonator_type == "3D":
             pguess = [
                 pi_pulse_amplitude / 2,
@@ -188,20 +199,19 @@ def _fit(data: FlippngData) -> FlippingResults:
     )
 
 
-def _plot(data: FlippngData, fit: FlippingResults, qubit):
+def _plot(data: FlippingData, fit: FlippingResults, qubit):
     """Plotting function for Flipping."""
 
     figures = []
     fig = go.Figure()
 
     fitting_report = ""
-    qubit_data = data.df[data.df["qubit"] == qubit]
+    qubit_data = data[qubit]
 
     fig.add_trace(
         go.Scatter(
-            x=qubit_data["flips"].pint.magnitude,
-            y=qubit_data["MSR"].pint.to("uV").pint.magnitude,
-            marker_color=get_color(0),
+            x=qubit_data.flips,
+            y=qubit_data.msr * V_TO_UV,
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -209,33 +219,30 @@ def _plot(data: FlippngData, fit: FlippingResults, qubit):
         ),
     )
 
-    # add fitting trace
-    if len(data) > 0:
-        flips_range = np.linspace(
-            min(data.df["flips"]),
-            max(data.df["flips"]),
-            2 * len(data),
-        )
+    flips_range = np.linspace(
+        min(qubit_data.flips),
+        max(qubit_data.flips),
+        2 * len(qubit_data),
+    )
 
-        fig.add_trace(
-            go.Scatter(
-                x=flips_range,
-                y=flipping_fit(
-                    flips_range,
-                    float(fit.fitted_parameters[qubit][0]),
-                    float(fit.fitted_parameters[qubit][1]),
-                    float(fit.fitted_parameters[qubit][2]),
-                    float(fit.fitted_parameters[qubit][3]),
-                ),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
-                marker_color=get_color(1),
+    fig.add_trace(
+        go.Scatter(
+            x=flips_range,
+            y=flipping_fit(
+                flips_range,
+                float(fit.fitted_parameters[qubit][0]),
+                float(fit.fitted_parameters[qubit][1]),
+                float(fit.fitted_parameters[qubit][2]),
+                float(fit.fitted_parameters[qubit][3]),
             ),
-        )
-        fitting_report = fitting_report + (
-            f"q{qubit} | Amplitude correction factor: {fit.amplitude_factors[qubit]:.4f}<br>"
-            + f"q{qubit} | Corrected amplitude: {fit.amplitude[qubit][0]:.4f}<br><br>"
-        )
+            name="Fit",
+            line=go.scatter.Line(dash="dot"),
+        ),
+    )
+    fitting_report = fitting_report + (
+        f"{qubit} | Amplitude correction factor: {fit.amplitude_factors[qubit]:.4f}<br>"
+        + f"{qubit} | Corrected amplitude: {fit.amplitude[qubit]:.4f}<br><br>"
+    )
 
     # last part
     fig.update_layout(

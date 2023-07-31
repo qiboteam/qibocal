@@ -1,14 +1,17 @@
 from dataclasses import dataclass, field
-from typing import Dict, List, Union
+from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
+from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.plots.utils import get_color
 
+from ..utils import V_TO_UV
 from . import t1, utils
 
 
@@ -22,15 +25,19 @@ class T2Parameters(Parameters):
     """Final delay between RX(pi/2) pulses in ns."""
     delay_between_pulses_step: int
     """Step delay between RX(pi/2) pulses in ns."""
+    nshots: Optional[int] = None
+    """Number of shots."""
+    relaxation_time: Optional[int] = None
+    """Relaxation time (ns)."""
 
 
 @dataclass
 class T2Results(Results):
     """T2 outputs."""
 
-    t2: Dict[Union[str, int], float] = field(metadata=dict(update="t2"))
+    t2: dict[QubitId, float] = field(metadata=dict(update="t2"))
     """T2 for each qubit (ns)."""
-    fitted_parameters: Dict[Union[str, int], Dict[str, float]]
+    fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
 
 
@@ -40,7 +47,7 @@ class T2Data(t1.T1Data):
 
 def _acquisition(
     params: T2Parameters,
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: Qubits,
 ) -> T2Data:
     """Data acquisition for Ramsey Experiment (detuned)."""
@@ -76,24 +83,28 @@ def _acquisition(
     # additionally include wait time and t_max
     data = T2Data()
 
-    # sweep the parameter
-    for wait in waits:
-        for qubit in qubits:
-            RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
-            ro_pulses[qubit].start = RX90_pulses2[qubit].finish
+    sweeper = Sweeper(
+        Parameter.start,
+        waits,
+        [RX90_pulses2[qubit] for qubit in qubits],
+        type=SweeperType.ABSOLUTE,
+    )
 
-        # execute the pulse sequence
-        results = platform.execute_pulse_sequence(sequence)
-        for qubit, ro_pulse in ro_pulses.items():
-            # average msr, phase, i and q over the number of shots defined in the runcard
-            r = results[ro_pulse.serial].average.raw
-            r.update(
-                {
-                    "wait[ns]": wait,
-                    "qubit": qubit,
-                }
-            )
-            data.add_data_from_dict(r)
+    # execute the sweep
+    results = platform.sweep(
+        sequence,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
+        ),
+        sweeper,
+    )
+
+    for qubit in qubits:
+        result = results[ro_pulses[qubit].serial]
+        data.register_qubit(qubit, wait=waits, msr=result.magnitude, phase=result.phase)
     return data
 
 
@@ -114,13 +125,12 @@ def _plot(data: T2Data, fit: T2Results, qubit):
     fig = go.Figure()
     fitting_report = ""
 
-    qubit_data = data.df[data.df["qubit"] == qubit]
+    qubit_data = data[qubit]
 
     fig.add_trace(
         go.Scatter(
-            x=qubit_data["wait"].pint.magnitude,
-            y=qubit_data["MSR"].pint.to("uV").pint.magnitude,
-            marker_color=get_color(0),
+            x=qubit_data.wait,
+            y=qubit_data.msr * V_TO_UV,
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -129,29 +139,27 @@ def _plot(data: T2Data, fit: T2Results, qubit):
     )
 
     # add fitting trace
-    if len(data) > 0:
-        waitrange = np.linspace(
-            min(qubit_data["wait"].pint.to("ns").pint.magnitude),
-            max(qubit_data["wait"].pint.to("ns").pint.magnitude),
-            2 * len(data),
-        )
+    waitrange = np.linspace(
+        min(qubit_data.wait),
+        max(qubit_data.wait),
+        2 * len(qubit_data),
+    )
 
-        params = fit.fitted_parameters[qubit]
-        fig.add_trace(
-            go.Scatter(
-                x=waitrange,
-                y=utils.exp_decay(
-                    waitrange,
-                    *params,
-                ),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
-                marker_color=get_color(1),
-            )
+    params = fit.fitted_parameters[qubit]
+    fig.add_trace(
+        go.Scatter(
+            x=waitrange,
+            y=utils.exp_decay(
+                waitrange,
+                *params,
+            ),
+            name="Fit",
+            line=go.scatter.Line(dash="dot"),
         )
-        fitting_report = fitting_report + (
-            f"{qubit} | T2: {fit.t2[qubit]:,.0f} ns.<br><br>"
-        )
+    )
+    fitting_report = fitting_report + (
+        f"{qubit} | T2: {fit.t2[qubit]:,.0f} ns.<br><br>"
+    )
 
     fig.update_layout(
         showlegend=True,

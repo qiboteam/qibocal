@@ -3,7 +3,7 @@ import logging
 import os
 
 # Logging levels available here https://docs.python.org/3/library/logging.html#logging-levels
-QIBOCAL_LOG_LEVEL = 30
+QIBOCAL_LOG_LEVEL = 10
 if "QIBOCAL_LOG_LEVEL" in os.environ:  # pragma: no cover
     QIBOCAL_LOG_LEVEL = 10 * int(os.environ.get("QIBOCAL_LOG_LEVEL"))
 

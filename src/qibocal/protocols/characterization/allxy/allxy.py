@@ -1,13 +1,15 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Optional
 
 import numpy as np
+import numpy.typing as npt
 import plotly.graph_objects as go
-from qibolab.platforms.abstract import AbstractPlatform
+from qibolab import AveragingMode, ExecutionParameters
+from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
+from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.data import Data
-from qibocal.plots.utils import get_color
+from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
 
 @dataclass
@@ -16,6 +18,10 @@ class AllXYParameters(Parameters):
 
     beta_param: float = None
     """Beta parameter for drag pulse."""
+    nshots: Optional[int] = None
+    """Number of shots."""
+    relaxation_time: Optional[int] = None
+    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -23,44 +29,57 @@ class AllXYResults(Results):
     """AllXY outputs."""
 
 
+AllXYType = np.dtype([("prob", np.float64), ("gate", "<U5")])
+
+
+@dataclass
 class AllXYData(Data):
     """AllXY acquisition outputs."""
 
-    def __init__(self):
-        super().__init__(
-            name="data",
-            quantities={"probability", "gateNumber", "qubit"},
-        )
+    beta_param: float = None
+    """Beta parameter for drag pulse."""
+    data: dict[QubitId, npt.NDArray[AllXYType]] = field(default_factory=dict)
+    """Raw data acquired."""
+
+    def register_qubit(self, qubit, prob, gate):
+        """Store output for single qubit."""
+        ar = np.empty((1,), dtype=AllXYType)
+        ar["prob"] = prob
+        ar["gate"] = gate
+        if qubit in self.data:
+            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
+        else:
+            self.data[qubit] = np.rec.array(ar)
 
 
 gatelist = [
     ["I", "I"],
-    ["RX(pi)", "RX(pi)"],
-    ["RY(pi)", "RY(pi)"],
-    ["RX(pi)", "RY(pi)"],
-    ["RY(pi)", "RX(pi)"],
-    ["RX(pi/2)", "I"],
-    ["RY(pi/2)", "I"],
-    ["RX(pi/2)", "RY(pi/2)"],
-    ["RY(pi/2)", "RX(pi/2)"],
-    ["RX(pi/2)", "RY(pi)"],
-    ["RY(pi/2)", "RX(pi)"],
-    ["RX(pi)", "RY(pi/2)"],
-    ["RY(pi)", "RX(pi/2)"],
-    ["RX(pi/2)", "RX(pi)"],
-    ["RX(pi)", "RX(pi/2)"],
-    ["RY(pi/2)", "RY(pi)"],
-    ["RY(pi)", "RY(pi/2)"],
-    ["RX(pi)", "I"],
-    ["RY(pi)", "I"],
-    ["RX(pi/2)", "RX(pi/2)"],
-    ["RY(pi/2)", "RY(pi/2)"],
+    ["Xp", "Xp"],
+    ["Yp", "Yp"],
+    ["Xp", "Yp"],
+    ["Yp", "Xp"],
+    ["X9", "I"],
+    ["Y9", "I"],
+    ["X9", "Y9"],
+    ["Y9", "X9"],
+    ["X9", "Yp"],
+    ["Y9", "Xp"],
+    ["Xp", "Y9"],
+    ["Yp", "X9"],
+    ["X9", "Xp"],
+    ["Xp", "X9"],
+    ["Y9", "Yp"],
+    ["Yp", "Y9"],
+    ["Xp", "I"],
+    ["Yp", "I"],
+    ["X9", "X9"],
+    ["Y9", "Y9"],
 ]
 
 
 def _acquisition(
     params: AllXYParameters,
-    platform: AbstractPlatform,
+    platform: Platform,
     qubits: Qubits,
 ) -> AllXYData:
     r"""
@@ -72,13 +91,11 @@ def _acquisition(
     """
 
     # create a Data object to store the results
-    data = AllXYData()
+    data = AllXYData(params.beta_param)
 
     # repeat the experiment as many times as defined by software_averages
     # for iteration in range(params.software_averages):
-    gateNumber = 1
-    # sweep the parameter
-    for gateNumber, gates in enumerate(gatelist):
+    for gates in gatelist:
         # create a sequence of pulses
         ro_pulses = {}
         sequence = PulseSequence()
@@ -86,27 +103,27 @@ def _acquisition(
             sequence, ro_pulses[qubit] = add_gate_pair_pulses_to_sequence(
                 platform, gates, qubit, sequence, params.beta_param
             )
-
         # execute the pulse sequence
-        results = platform.execute_pulse_sequence(sequence)
+        results = platform.execute_pulse_sequence(
+            sequence,
+            ExecutionParameters(
+                nshots=params.nshots,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
+        )
 
         # retrieve the results for every qubit
-        for ro_pulse in ro_pulses.values():
-            z_proj = 2 * results[ro_pulse.serial].ground_state_probability - 1
+        for qubit in qubits:
+            z_proj = 2 * results[ro_pulses[qubit].serial].probability(0) - 1
             # store the results
-            r = {
-                "probability": z_proj,
-                "gateNumber": gateNumber,
-                "beta_param": params.beta_param,
-                "qubit": ro_pulse.qubit,
-            }
-            data.add(r)
+            gate = "-".join(gates)
+            data.register_qubit(qubit, z_proj, gate)
     # finally, save the remaining data
     return data
 
 
 def add_gate_pair_pulses_to_sequence(
-    platform: AbstractPlatform,
+    platform: Platform,
     gates,
     qubit,
     sequence,
@@ -123,8 +140,8 @@ def add_gate_pair_pulses_to_sequence(
             # print("Transforming to sequence I gate")
             pass
 
-        if gate == "RX(pi)":
-            # print("Transforming to sequence RX(pi) gate")
+        if gate == "Xp":
+            # print("Transforming to sequence Xp gate")
             if beta_param == None:
                 RX_pulse = platform.create_RX_pulse(
                     qubit,
@@ -138,8 +155,8 @@ def add_gate_pair_pulses_to_sequence(
                 )
             sequence.add(RX_pulse)
 
-        if gate == "RX(pi/2)":
-            # print("Transforming to sequence RX(pi/2) gate")
+        if gate == "X9":
+            # print("Transforming to sequence X9 gate")
             if beta_param == None:
                 RX90_pulse = platform.create_RX90_pulse(
                     qubit,
@@ -153,8 +170,8 @@ def add_gate_pair_pulses_to_sequence(
                 )
             sequence.add(RX90_pulse)
 
-        if gate == "RY(pi)":
-            # print("Transforming to sequence RY(pi) gate")
+        if gate == "Yp":
+            # print("Transforming to sequence Yp gate")
             if beta_param == None:
                 RY_pulse = platform.create_RX_pulse(
                     qubit,
@@ -170,8 +187,8 @@ def add_gate_pair_pulses_to_sequence(
                 )
             sequence.add(RY_pulse)
 
-        if gate == "RY(pi/2)":
-            # print("Transforming to sequence RY(pi/2) gate")
+        if gate == "Y9":
+            # print("Transforming to sequence Y9 gate")
             if beta_param == None:
                 RY90_pulse = platform.create_RX90_pulse(
                     qubit,
@@ -209,17 +226,15 @@ def _plot(data: AllXYData, _fit: AllXYResults, qubit):
     fitting_report = "No fitting data"
     fig = go.Figure()
 
-    qubit_data = data.df[data.df["qubit"] == qubit].drop(columns=["qubit"])
+    qubit_data = data[qubit]
 
     fig.add_trace(
         go.Scatter(
-            x=qubit_data["gateNumber"],
-            y=qubit_data["probability"],
-            marker_color=get_color(0),
+            x=qubit_data.gate,
+            y=qubit_data.prob,
             mode="markers",
             text=gatelist,
             textposition="bottom center",
-            opacity=0.3,
             name="Expectation value",
             showlegend=True,
             legendgroup="group1",

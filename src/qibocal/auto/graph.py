@@ -1,6 +1,4 @@
 """Execution graph and navigation utilities."""
-from typing import Dict, List, Set, Tuple
-
 import networkx as nx
 
 from .runcard import Action, Id
@@ -11,7 +9,7 @@ class Graph(nx.DiGraph):
     """Execution graph."""
 
     @classmethod
-    def load(cls, actions: List[dict]):
+    def load(cls, actions: list[dict]):
         """Load graph from list of actions dump.
 
         Useful to load the graph from its description in a runcard.
@@ -20,7 +18,7 @@ class Graph(nx.DiGraph):
         return cls.from_actions([Action(**d) for d in actions])
 
     @classmethod
-    def from_actions(cls, actions: List[Action]):
+    def from_actions(cls, actions: list[Action]):
         """Load graph from list of actions.
 
         One node is added to the graph for each action, and the edges are
