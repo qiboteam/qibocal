@@ -3,6 +3,7 @@ from enum import Enum
 from .allxy.allxy import allxy
 from .allxy.allxy_drag_pulse_tuning import allxy_drag_pulse_tuning
 from .allxy.drag_pulse_tuning import drag_pulse_tuning
+from .chsh import chsh_circuits, chsh_pulses
 from .classification import single_shot_classification
 from .coherence.spin_echo import spin_echo
 from .coherence.t1 import t1
@@ -65,3 +66,5 @@ class Operation(Enum):
     resonator_frequency = resonator_frequency
     fast_reset = fast_reset
     zeno = zeno
+    chsh_pulses = chsh_pulses
+    chsh_circuits = chsh_circuits
