@@ -401,7 +401,7 @@ actions:
   #     bell_states: [0,1,2,3]
   #     native: True
 
-  #FIME: cannot add pair [0,3]
+  #FIXME: cannot add pair [0,3]
   - id: CHSH with circuits
     priority: 0
     operation: chsh_circuits
