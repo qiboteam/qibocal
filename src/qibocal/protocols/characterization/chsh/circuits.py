@@ -1,3 +1,5 @@
+"""Auxiliary functions to run CHSH using circuits."""
+
 import numpy as np
 from qibo import gates
 from qibo.models import Circuit
@@ -16,12 +18,11 @@ def create_bell_circuit(nqubits, qubits, theta=np.pi / 4, bell_state=0):
     """
     p = [0, 0]
     c = Circuit(nqubits)
-
+    print(qubits)
     c.add(gates.H(qubits[0]))
     c.add(gates.H(qubits[1]))
     c.add(gates.CZ(qubits[0], qubits[1]))
     c.add(gates.H(qubits[1]))
-
     if bell_state == 1:
         c.add(gates.Z(qubits[0]))
     elif bell_state == 2:
@@ -86,6 +87,7 @@ def create_chsh_circuits(
     create_bell = create_bell_circuit_native if native else create_bell_circuit
     chsh_circuits = {}
     nqubits = platform.nqubits if platform else max(qubits) + 1
+    print(qubits)
     for basis in readout_basis:
         c, p = create_bell(nqubits, qubits, theta, bell_state)
         for i, base in enumerate(basis):

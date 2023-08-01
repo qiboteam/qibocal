@@ -1,3 +1,5 @@
+"""Auxialiary functions to run CHSH using pulses."""
+
 from collections import defaultdict
 
 import numpy as np

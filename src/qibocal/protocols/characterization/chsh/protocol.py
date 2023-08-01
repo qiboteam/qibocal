@@ -1,3 +1,5 @@
+"""Protocol for CHSH experiment using both circuits and pulses."""
+
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -21,10 +23,14 @@ class CHSHParameters(Parameters):
     """Flipping runcard inputs."""
 
     bell_states: list
-    """"""
+    """Bell states to compute CHSH. Using all states is equivalent
+        to passing the list [0,1,2,3]."""
     nshots: int
+    """Number of shots."""
     ntheta: int
-    native: bool
+    """Number of angles probed linearly between 0 and 2 pi."""
+    native: Optional[bool] = False
+    """If True a circuit will be created using only GPI2 and CZ gates."""
     readout_error_model: Optional[str] = None
     """Error mitigation model"""
 
@@ -45,6 +51,7 @@ class CHSHData(Data):
             if i not in frequencies:
                 frequencies[i] = 0
 
+        # TODO: improve this
         for state, freq in frequencies.items():
             if (pair[0], pair[1], bell_state) not in self.data:
                 self.data[pair[0], pair[1], bell_state] = {}
@@ -107,6 +114,7 @@ def _acquisition_circuits(
     for pair in qubits:
         for bell_state in params.bell_states:
             for theta in thetas:
+                print(pair)
                 chsh_circuits = create_chsh_circuits(
                     platform,
                     qubits=pair,
@@ -151,6 +159,6 @@ def _fit(data: CHSHData) -> CHSHResults:
 
 
 chsh_circuits = Routine(_acquisition_circuits, _fit, _plot)
+"""CHSH experiment using circuits."""
 chsh_pulses = Routine(_acquisition_pulses, _fit, _plot)
-
-"""Flipping Routine  object."""
+"""CHSH experiment using pulses."""

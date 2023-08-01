@@ -1,3 +1,5 @@
+"""Auxiliary functions to run CHSH protocol."""
+
 import numpy as np
 
 READOUT_BASIS = [("Z", "Z"), ("Z", "X"), ("X", "Z"), ("X", "X")]
