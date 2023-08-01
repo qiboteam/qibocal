@@ -389,8 +389,8 @@ def _plot(data: CZVirtualZData, data_fit: CZVirtualZResults, qubits):
         title_text=f"Phase correction Qubit {qubits.high_freq}",
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis1_title="theta [rad]",
-        xaxis2_title="theta [rad]",
+        xaxis1_title="theta [rad] + virtual phase[rad]",
+        xaxis2_title="theta [rad] + virtual phase[rad]",
         yaxis_title="MSR[V]",
     )
 
