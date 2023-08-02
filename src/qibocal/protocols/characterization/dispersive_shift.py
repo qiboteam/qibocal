@@ -198,8 +198,7 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
             q_measures = data_i.q
 
             iq_couples[i].append(np.stack((i_measures, q_measures), axis=-1))
-            results.append(StateResults(frequency, fitted_parameters))
-
+        results.append(StateResults(frequency, fitted_parameters))
     # for each qubit find the iq couple of 0-1 states that maximize the distance
     iq_couples = np.array(iq_couples)
     best_freqs = {}
@@ -238,7 +237,6 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
     # iterate over multiple data folders
 
     fitting_report = ""
-
     data_0 = data[qubit, 0]
     data_1 = data[qubit, 1]
 
@@ -287,6 +285,7 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
         )
 
         params = data_fit.fitted_parameters[qubit]
+        print(label, data_fit)
         fig.add_trace(
             go.Scatter(
                 x=freqrange,
