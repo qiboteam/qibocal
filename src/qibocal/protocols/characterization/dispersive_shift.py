@@ -285,7 +285,6 @@ def _plot(data: DispersiveShiftData, fit: DispersiveShiftResults, qubit):
         )
 
         params = data_fit.fitted_parameters[qubit]
-        print(label, data_fit)
         fig.add_trace(
             go.Scatter(
                 x=freqrange,
