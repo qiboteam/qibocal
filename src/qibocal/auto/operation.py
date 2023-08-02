@@ -3,7 +3,7 @@ import json
 import time
 from dataclasses import asdict, dataclass, fields
 from functools import wraps
-from typing import Callable, Generic, NewType, TypeVar, Union
+from typing import Callable, Generic, NewType, Optional, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -191,6 +191,7 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     """Post-processing function."""
     report: Callable[[_DataT, _ResultsT], None] = None
     """Plotting function."""
+    repeat_plot_per_qubit: Optional[bool] = True
 
     def __post_init__(self):
         # add decorator to show logs

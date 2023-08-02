@@ -173,8 +173,7 @@ class ReportBuilder:
     def plot(self, task_id: TaskId):
         """ "Generate plot when only acquisition data are provided."""
         node = self.history[task_id]
-        data = node.task.data
-        figures, fitting_report = node.task.operation.report(data)
+        figures, fitting_report = node.task.operation.report(node.data, node.results)
         with tempfile.NamedTemporaryFile(delete=False) as temp:
             html_list = []
             for figure in figures:

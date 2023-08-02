@@ -411,3 +411,19 @@ actions:
       ntheta: 2
       bell_states: [0,1,2,3]
       native: False
+
+  - id: calibration_matrix
+    priority: 0
+    operation: calibration_matrix
+    qubits: [0,1,2]
+    parameters:
+      nshots: 100
+      pulses: True
+
+  - id: calibration_matrix
+    priority: 0
+    operation: calibration_matrix
+    qubits: [0,1,2]
+    parameters:
+      nshots: 100
+      pulses: False
