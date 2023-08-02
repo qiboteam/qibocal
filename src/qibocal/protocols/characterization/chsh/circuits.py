@@ -18,7 +18,6 @@ def create_bell_circuit(nqubits, qubits, theta=np.pi / 4, bell_state=0):
     """
     p = [0, 0]
     c = Circuit(nqubits)
-    print(qubits)
     c.add(gates.H(qubits[0]))
     c.add(gates.H(qubits[1]))
     c.add(gates.CZ(qubits[0], qubits[1]))

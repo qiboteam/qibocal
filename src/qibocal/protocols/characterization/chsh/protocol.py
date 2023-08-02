@@ -20,7 +20,7 @@ COMPUTATIONAL_BASIS = ["00", "01", "10", "11"]
 
 @dataclass
 class CHSHParameters(Parameters):
-    """Flipping runcard inputs."""
+    """CHSH runcard inputs."""
 
     bell_states: list
     """Bell states to compute CHSH. Using all states is equivalent
@@ -97,9 +97,7 @@ def _acquisition_pulses(
                     results = platform.execute_pulse_sequence(
                         sequence, ExecutionParameters(nshots=params.nshots)
                     )
-                    frequencies = calculate_frequencies(
-                        results[pair[0]], results[pair[1]]
-                    )
+                    frequencies = calculate_frequencies(results)
                     data.register_basis(pair, bell_state, basis, frequencies)
     return data
 
@@ -114,7 +112,6 @@ def _acquisition_circuits(
     for pair in qubits:
         for bell_state in params.bell_states:
             for theta in thetas:
-                print(pair)
                 chsh_circuits = create_chsh_circuits(
                     platform,
                     qubits=pair,
