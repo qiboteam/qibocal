@@ -12,6 +12,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.config import log
 
 from .chsh.utils import calculate_frequencies
 
@@ -32,14 +33,20 @@ class ReadoutMitigationMatrixParameters(Parameters):
 
 @dataclass
 class ReadoutMitigationMatrixResults(Results):
-    calibration_matrix: dict[tuple[QubitId, ...], npt.NDArray[np.float64]] = field(
+    readout_mitigation_matrix: dict[
+        tuple[QubitId, ...], npt.NDArray[np.float64]
+    ] = field(default_factory=dict)
+    measurement_matrix: dict[tuple[QubitId, ...], npt.NDArray[np.float64]] = field(
         default_factory=dict
     )
 
     def save(self, path):
         np.savez(
-            path / "calibration_matrix.npy",
-            **{str(i): self.calibration_matrix[i] for i in self.calibration_matrix},
+            path / "readout_mitigation_matrix.npy",
+            **{
+                str(i): self.readout_mitigation_matrix[i]
+                for i in self.readout_mitigation_matrix
+            },
         )
 
 
@@ -126,7 +133,8 @@ def _acquisition(
 
 
 def _fit(data: ReadoutMitigationMatrixData) -> ReadoutMitigationMatrixResults:
-    calibration_matrix = {}
+    readout_mitigation_matrix = {}
+    measurement_matrix = {}
     for qubit in data.qubits_list:
         qubit_data = data[qubit]
         matrix = np.zeros((2 ** len(qubit), 2 ** len(qubit)))
@@ -138,9 +146,19 @@ def _fit(data: ReadoutMitigationMatrixData) -> ReadoutMitigationMatrixResults:
                 column[(int(basis, 2))] = basis_freq / data.nshots
             matrix[:, int(state, 2)] = np.flip(column)
 
-        calibration_matrix[tuple(qubit)] = np.linalg.inv(matrix)
+        measurement_matrix[tuple(qubit)] = matrix
+        try:
+            readout_mitigation_matrix[tuple(qubit)] = np.linalg.inv(matrix)
+        except np.linalg.LinAlgError as e:
+            log.warning(f"ReadoutMitigationMatrix: the fitting was not succesful. {e}")
+            readout_mitigation_matrix[tuple(qubit)] = np.zeros(
+                (2 ** len(qubit), 2 ** len(qubit))
+            )
 
-    return ReadoutMitigationMatrixResults(calibration_matrix=calibration_matrix)
+    return ReadoutMitigationMatrixResults(
+        readout_mitigation_matrix=readout_mitigation_matrix,
+        measurement_matrix=measurement_matrix,
+    )
 
 
 def _plot(
@@ -155,7 +173,7 @@ def _plot(
         go.Heatmap(
             x=computational_basis,
             y=computational_basis[::-1],
-            z=np.linalg.inv(fit.calibration_matrix[tuple(qubit)]),
+            z=fit.measurement_matrix[tuple(qubit)],
         ),
     )
     fig.update_layout(
