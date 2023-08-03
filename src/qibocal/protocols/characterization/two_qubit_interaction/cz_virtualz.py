@@ -31,6 +31,8 @@ class CZVirtualZParameters(Parameters):
     """Final angle for the low frequency qubit measurement in radians."""
     theta_step: float
     """Step size for the theta sweep in radians."""
+    flux_pulse_amplitude: Optional[float] = None
+    """Amplitude of flux pulse implementing CZ."""
     nshots: Optional[int] = None
     """Number of shots per point."""
     relaxation_time: Optional[float] = None
@@ -68,6 +70,7 @@ class CZVirtualZData(Data):
     vphases: dict[tuple[QubitId, QubitId], dict[QubitId, float]] = field(
         default_factory=dict
     )
+    amplitudes: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
 
     def register_qubit(self, target, control, setup, prob_target, prob_control):
         ar = np.empty(prob_target.shape, dtype=CZVirtualZType)
@@ -88,6 +91,8 @@ class CZVirtualZData(Data):
         data_dict = super().global_params_dict
         # pop vphases since dict with tuple keys is not json seriazable
         data_dict.pop("vphases")
+        data_dict.pop("amplitudes")
+
         return data_dict
 
 
@@ -99,6 +104,7 @@ def create_sequence(
     ordered_pair: list[QubitId, QubitId],
     parking: bool,
     dt: float,
+    amplitude: float = None,
 ) -> tuple[
     PulseSequence, dict[QubitId, Pulse], dict[QubitId, Pulse], dict[QubitId, Pulse]
 ]:
@@ -111,19 +117,22 @@ def create_sequence(
     )
     RX_pulse_start = platform.create_RX_pulse(control_qubit, start=0, relative_phase=0)
 
-    flux_sequence, virtual_z_phase = platform.create_CZ_pulse_sequence(
+    cz, virtual_z_phase = platform.create_CZ_pulse_sequence(
         (ordered_pair.high_freq, ordered_pair.low_freq),
         start=max(Y90_pulse.finish, RX_pulse_start.finish),
     )
 
+    if amplitude is not None:
+        cz.get_qubit_pulses(ordered_pair.high_freq)[0].amplitude = amplitude
+
     theta_pulse = platform.create_RX90_pulse(
         target_qubit,
-        start=flux_sequence.finish + dt,
+        start=cz.finish + dt,
         relative_phase=virtual_z_phase[target_qubit],
     )
     RX_pulse_end = platform.create_RX_pulse(
         control_qubit,
-        start=flux_sequence.finish + dt,
+        start=cz.finish + dt,
         relative_phase=virtual_z_phase[control_qubit],
     )
     measure_target = platform.create_qubit_readout_pulse(
@@ -135,7 +144,8 @@ def create_sequence(
 
     sequence.add(
         Y90_pulse,
-        flux_sequence,
+        cz.get_qubit_pulses(ordered_pair.low_freq),
+        cz.get_qubit_pulses(ordered_pair.high_freq),
         theta_pulse,
         measure_target,
         measure_control,
@@ -147,12 +157,17 @@ def create_sequence(
         )
 
     if parking:
-        for pulse in flux_sequence:
+        for pulse in cz:
             if pulse.qubit not in ordered_pair:
                 pulse.duration = theta_pulse.finish
                 sequence.add(pulse)
 
-    return sequence, virtual_z_phase, theta_pulse
+    return (
+        sequence,
+        virtual_z_phase,
+        theta_pulse,
+        cz.get_qubit_pulses(ordered_pair.high_freq)[0].amplitude,
+    )
 
 
 def _acquisition(
@@ -193,6 +208,7 @@ def _acquisition(
                     sequence,
                     virtual_z_phase,
                     theta_pulse,
+                    data.amplitudes[ord_pair],
                 ) = create_sequence(
                     platform,
                     setup,
@@ -201,6 +217,7 @@ def _acquisition(
                     ord_pair,
                     params.dt,
                     params.parking,
+                    params.flux_pulse_amplitude,
                 )
                 data.vphases[ord_pair] = dict(virtual_z_phase)
                 theta = np.arange(
@@ -373,6 +390,9 @@ def _plot(data: CZVirtualZData, data_fit: CZVirtualZResults, qubits):
         reports.append(f"{target} | CZ angle: {data_fit.cz_angle[target, control]}<br>")
         reports.append(
             f"{target} | Virtual Z phase: { - data_fit.virtual_phase[qubits][target]}<br>"
+        )
+        reports.append(
+            f"{qubits.high_freq} | Flux pulse amplitude: { data.amplitudes[qubits]}<br>"
         )
     fitting_report = "".join(list(dict.fromkeys(reports)))
 

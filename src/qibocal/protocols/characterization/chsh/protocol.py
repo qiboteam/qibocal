@@ -131,7 +131,7 @@ def _plot(data: CHSHData, fit: CHSHResults, qubits):
     figures = []
 
     for bell_state in data.bell_states:
-        fig = go.Figure()
+        fig = go.Figure(layout_yaxis_range=[-3, 3])
         fig.add_trace(
             go.Scatter(
                 x=data.thetas,
@@ -139,7 +139,35 @@ def _plot(data: CHSHData, fit: CHSHResults, qubits):
             )
         )
         figures.append(fig)
-    fitting_report = ""
+        fig.add_hline(
+            y=2,
+            line_width=2,
+            line_color="red",
+        )
+        fig.add_hline(
+            y=-2,
+            line_width=2,
+            line_color="red",
+        )
+        fig.add_hline(
+            y=2 * np.sqrt(2),
+            line_width=2,
+            line_dash="dash",
+            line_color="grey",
+        )
+        fig.add_hline(
+            y=-2 * np.sqrt(2),
+            line_width=2,
+            line_dash="dash",
+            line_color="grey",
+        )
+
+        fig.update_layout(
+            uirevision="0",  # ``uirevision`` allows zooming while live plotting
+            xaxis_title="Theta[rad]",
+            yaxis_title="CHSH value",
+        )
+    fitting_report = "No fitting data"
 
     return figures, fitting_report
 
