@@ -191,7 +191,7 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     """Post-processing function."""
     report: Callable[[_DataT, _ResultsT], None] = None
     """Plotting function."""
-    repeat_plot_per_qubit: Optional[bool] = True
+    two_qubit_gates: Optional[bool] = False
 
     def __post_init__(self):
         # add decorator to show logs

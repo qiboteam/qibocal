@@ -397,5 +397,5 @@ def _plot(data: CZVirtualZData, data_fit: CZVirtualZResults, qubits):
     return [fig1, fig2], fitting_report
 
 
-cz_virtualz = Routine(_acquisition, _fit, _plot)
+cz_virtualz = Routine(_acquisition, _fit, _plot, two_qubit_gates=True)
 """CZ virtual Z correction routine."""

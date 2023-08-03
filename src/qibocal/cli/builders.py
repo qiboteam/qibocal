@@ -169,18 +169,3 @@ class ReportBuilder:
 
         all_html = "".join(html_list)
         return all_html, fitting_report
-
-    def plot(self, task_id: TaskId):
-        """ "Generate plot when only acquisition data are provided."""
-        node = self.history[task_id]
-        figures, fitting_report = node.task.operation.report(node.data, node.results)
-        with tempfile.NamedTemporaryFile(delete=False) as temp:
-            html_list = []
-            for figure in figures:
-                figure.write_html(temp.name, include_plotlyjs=False, full_html=False)
-                temp.seek(0)
-                fightml = temp.read().decode("utf-8")
-                html_list.append(fightml)
-
-        all_html = "".join(html_list)
-        return all_html, fitting_report

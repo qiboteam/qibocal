@@ -155,7 +155,7 @@ def _fit(data: CHSHData) -> CHSHResults:
     return CHSHResults(entropy=results)
 
 
-chsh_circuits = Routine(_acquisition_circuits, _fit, _plot)
+chsh_circuits = Routine(_acquisition_circuits, _fit, _plot, two_qubit_gates=True)
 """CHSH experiment using circuits."""
-chsh_pulses = Routine(_acquisition_pulses, _fit, _plot)
+chsh_pulses = Routine(_acquisition_pulses, _fit, _plot, two_qubit_gates=True)
 """CHSH experiment using pulses."""

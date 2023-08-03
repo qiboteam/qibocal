@@ -273,5 +273,5 @@ def _fit(data: ChevronData):
     return ChevronResults(results)
 
 
-chevron = Routine(_aquisition, _fit, _plot)
+chevron = Routine(_aquisition, _fit, _plot, two_qubit_gates=True)
 """Chevron routine."""

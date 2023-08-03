@@ -27,4 +27,4 @@ def calculate_frequencies(results):
     shots = np.stack([result.samples for result in set(results.values())]).T
     values, counts = np.unique(shots, axis=0, return_counts=True)
 
-    return {"".join(str(i) for i in v): cnt for v, cnt in zip(values, counts)}
+    return {"".join(str(int(i)) for i in v): cnt for v, cnt in zip(values, counts)}

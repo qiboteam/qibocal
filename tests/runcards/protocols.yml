@@ -412,18 +412,18 @@ actions:
       bell_states: [0,1,2,3]
       native: False
 
-  - id: calibration_matrix
+  - id: readout_mitigation_matrix pulses
     priority: 0
-    operation: calibration_matrix
-    qubits: [0,1,2]
+    operation: readout_mitigation_matrix
+    qubits: [[0,1,2],[1,2]]
     parameters:
       nshots: 100
       pulses: True
 
-  - id: calibration_matrix
+  - id: readout_mitigation_matrix circuits
     priority: 0
-    operation: calibration_matrix
-    qubits: [0,1,2]
+    operation: readout_mitigation_matrix
+    qubits: [[0,1,2],[1,2]]
     parameters:
       nshots: 100
       pulses: False
