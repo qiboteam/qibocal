@@ -76,7 +76,6 @@ def create_chsh_circuits(
     theta=np.pi / 4,
     bell_state=0,
     native=True,
-    rerr=None,
     readout_basis=READOUT_BASIS,
 ):
     """Creates the circuits needed for the 4 measurement settings for chsh.
@@ -86,7 +85,6 @@ def create_chsh_circuits(
     create_bell = create_bell_circuit_native if native else create_bell_circuit
     chsh_circuits = {}
     nqubits = platform.nqubits if platform else max(qubits) + 1
-    print(qubits)
     for basis in readout_basis:
         c, p = create_bell(nqubits, qubits, theta, bell_state)
         for i, base in enumerate(basis):
@@ -96,10 +94,6 @@ def create_chsh_circuits(
                 else:
                     c.add(gates.H(qubits[i]))
         for qubit in qubits:
-            if rerr is not None:
-                c.add(gates.M(qubit, p0=rerr[0], p1=rerr[1]))
-            else:
-                c.add(gates.M(qubit))
+            c.add(gates.M(qubit))
         chsh_circuits[basis] = c
-
     return chsh_circuits

@@ -42,7 +42,7 @@ class ReadoutMitigationMatrixResults(Results):
 
     def save(self, path):
         np.savez(
-            path / "readout_mitigation_matrix.npy",
+            path / "readout_mitigation_matrix",
             **{
                 str(i): self.readout_mitigation_matrix[i]
                 for i in self.readout_mitigation_matrix
