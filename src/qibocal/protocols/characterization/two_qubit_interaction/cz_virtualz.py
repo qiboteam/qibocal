@@ -144,12 +144,12 @@ def create_sequence(
 
     sequence.add(
         Y90_pulse,
-        cz.get_qubit_pulses(ordered_pair.low_freq),
         cz.get_qubit_pulses(ordered_pair.high_freq),
         theta_pulse,
         measure_target,
         measure_control,
     )
+
     if setup == "X":
         sequence.add(
             RX_pulse_start,

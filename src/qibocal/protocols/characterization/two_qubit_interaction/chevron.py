@@ -121,12 +121,13 @@ def _aquisition(
             start=initialize_highfreq.finish,
         )
 
-        sequence.add(cz.get_qubit_pulses(ordered_pair.low_freq))
         sequence.add(cz.get_qubit_pulses(ordered_pair.high_freq))
 
         if params.parking:
             for pulse in cz:
                 if pulse.qubit not in ordered_pair:
+                    pulse.start = 0
+                    pulse.duration = 100
                     sequence.add(pulse)
 
         # add readout

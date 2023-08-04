@@ -128,7 +128,7 @@ def _acquisition_pulses(
                     results = platform.execute_pulse_sequence(
                         sequence, ExecutionParameters(nshots=params.nshots)
                     )
-                    frequencies = calculate_frequencies(results)
+                    frequencies = calculate_frequencies(results, list(pair))
                     data.register_basis(pair, bell_state, basis, frequencies)
     return data
 
