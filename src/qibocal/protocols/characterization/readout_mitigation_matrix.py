@@ -108,7 +108,7 @@ def _acquisition(
                 results = platform.execute_pulse_sequence(
                     sequence, ExecutionParameters(nshots=params.nshots)
                 )
-                data.add(qubit_list, state, calculate_frequencies(results))
+                data.add(qubit_list, state, calculate_frequencies(results, qubit_list))
             else:
                 c = Circuit(platform.nqubits)
                 for q, bit in enumerate(state):

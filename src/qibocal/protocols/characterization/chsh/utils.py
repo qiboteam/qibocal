@@ -22,9 +22,9 @@ def compute_chsh(frequencies, basis, i):
     return chsh / nshots
 
 
-def calculate_frequencies(results):
+def calculate_frequencies(results, qubit_list):
     """Calculates outcome probabilities from individual shots."""
-    shots = np.stack([result.samples for result in set(results.values())]).T
+    shots = np.stack([results[i].samples for i in qubit_list]).T
     values, counts = np.unique(shots, axis=0, return_counts=True)
 
     return {"".join(str(int(i)) for i in v): cnt for v, cnt in zip(values, counts)}
