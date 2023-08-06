@@ -14,21 +14,19 @@ from qibolab.qubits import QubitId
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 
-from .chsh.utils import calculate_frequencies
+from .utils import calculate_frequencies
 
 
 @dataclass
 class ReadoutMitigationMatrixParameters(Parameters):
-    """Calibration matrix inputs."""
+    """ReadoutMitigationMatrix matrix inputs."""
 
     pulses: Optional[bool] = True
-    """Get calibration matrix using pulses. If False gates will be used."""
+    """Get readout mitigation matrix using pulses. If False gates will be used."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
-    bitflip_probabilities: Optional[list[int]] = None
-    """Readout error model."""
 
 
 @dataclass
@@ -36,11 +34,14 @@ class ReadoutMitigationMatrixResults(Results):
     readout_mitigation_matrix: dict[
         tuple[QubitId, ...], npt.NDArray[np.float64]
     ] = field(default_factory=dict)
+    """Readout mitigation matrices (inverse of measurement matrix)."""
     measurement_matrix: dict[tuple[QubitId, ...], npt.NDArray[np.float64]] = field(
         default_factory=dict
     )
+    """Matrix containing measurement matrices for each state."""
 
     def save(self, path):
+        """Store readout mitigation matrix to file."""
         np.savez(
             path / "readout_mitigation_matrix",
             **{
@@ -55,8 +56,11 @@ class ReadoutMitigationMatrixData(Data):
     """ReadoutMitigationMatrix acquisition outputs."""
 
     qubits_list: list
+    """List of qubit ids"""
     nshots: int
+    """Number of shots"""
     data: dict = field(default_factory=dict)
+    """Raw data acquited."""
 
     def add(self, qubits, state, freqs):
         for result_state, freq in freqs.items():
@@ -80,9 +84,8 @@ class ReadoutMitigationMatrixData(Data):
 def _acquisition(
     params: ReadoutMitigationMatrixParameters,
     platform: Platform,
-    qubits: Qubits,
+    qubits: list[Qubits],
 ) -> ReadoutMitigationMatrixData:
-    # conversion from list to list in list to make only one plot
     data = ReadoutMitigationMatrixData(
         nshots=params.nshots, qubits_list=[list(qq) for qq in qubits]
     )
@@ -114,16 +117,7 @@ def _acquisition(
                 for q, bit in enumerate(state):
                     if bit == "1":
                         c.add(gates.X(qubit_list[q]))
-                    if params.bitflip_probabilities is not None:
-                        c.add(
-                            gates.M(
-                                q,
-                                p0=params.bitflip_probabilities[0],
-                                p1=params.bitflip_probabilities[1],
-                            )
-                        )
-                    else:
-                        c.add(gates.M(q))
+                    c.add(gates.M(q))
 
                 results = c(nshots=params.nshots)
 
@@ -133,6 +127,7 @@ def _acquisition(
 
 
 def _fit(data: ReadoutMitigationMatrixData) -> ReadoutMitigationMatrixResults:
+    """Post processing for readout mitigation matrix protocol."""
     readout_mitigation_matrix = {}
     measurement_matrix = {}
     for qubit in data.qubits_list:
@@ -164,7 +159,7 @@ def _fit(data: ReadoutMitigationMatrixData) -> ReadoutMitigationMatrixResults:
 def _plot(
     data: ReadoutMitigationMatrixData, fit: ReadoutMitigationMatrixResults, qubit
 ):
-    """Plotting function for Flipping."""
+    """Plotting function for readout mitigation matrix."""
     fitting_report = "No fitting data"
     fig = go.Figure()
     computational_basis = [format(i, f"0{len(qubit)}b") for i in range(2 ** len(qubit))]
@@ -186,4 +181,4 @@ def _plot(
 
 
 readout_mitigation_matrix = Routine(_acquisition, _fit, _plot)
-"""Flipping Routine  object."""
+"""Readout mitigation matrix protocol."""

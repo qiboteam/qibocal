@@ -1,6 +1,5 @@
 """Auxiliary functions to run CHSH protocol."""
 
-import numpy as np
 
 READOUT_BASIS = [("Z", "Z"), ("Z", "X"), ("X", "Z"), ("X", "X")]
 
@@ -20,11 +19,3 @@ def compute_chsh(frequencies, basis, i):
         aux += 1
     nshots = sum(freq[x][i] for x in freq)
     return chsh / nshots
-
-
-def calculate_frequencies(results, qubit_list):
-    """Calculates outcome probabilities from individual shots."""
-    shots = np.stack([results[i].samples for i in qubit_list]).T
-    values, counts = np.unique(shots, axis=0, return_counts=True)
-
-    return {"".join(str(int(i)) for i in v): cnt for v, cnt in zip(values, counts)}

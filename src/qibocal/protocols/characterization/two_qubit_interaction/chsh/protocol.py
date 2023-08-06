@@ -12,14 +12,15 @@ from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
-from ..readout_mitigation_matrix import (
+from ...readout_mitigation_matrix import (
     ReadoutMitigationMatrixParameters as mitigation_params,
 )
-from ..readout_mitigation_matrix import _acquisition as mitigation_acquisition
-from ..readout_mitigation_matrix import _fit as mitigation_fit
+from ...readout_mitigation_matrix import _acquisition as mitigation_acquisition
+from ...readout_mitigation_matrix import _fit as mitigation_fit
+from ...utils import calculate_frequencies
 from .circuits import create_chsh_circuits
 from .pulses import create_chsh_sequences
-from .utils import calculate_frequencies, compute_chsh
+from .utils import compute_chsh
 
 COMPUTATIONAL_BASIS = ["00", "01", "10", "11"]
 
@@ -29,8 +30,13 @@ class CHSHParameters(Parameters):
     """CHSH runcard inputs."""
 
     bell_states: list
-    """Bell states to compute CHSH. Using all states is equivalent
-        to passing the list [0,1,2,3]."""
+    """List with Bell states to compute CHSH.
+    The following notation it is used:
+    0 -> |00>+|11>
+    1 -> |00>-|11>
+    2 -> |10>-|01>
+    3 -> |10>+|01>
+    """
     nshots: int
     """Number of shots."""
     ntheta: int
@@ -44,12 +50,15 @@ class CHSHParameters(Parameters):
 @dataclass
 class CHSHData(Data):
     bell_states: list
+    """Bell states list."""
     thetas: list
+    """Angles probed."""
     data: dict[QubitId, QubitId, int, tuple, str] = field(default_factory=dict)
     """Raw data acquired."""
     mitigation_matrix: dict[tuple[QubitId, ...], npt.NDArray] = field(
         default_factory=dict
     )
+    """Mitigation matrix computed using the readout_mitigation_matrix protocol."""
 
     def register_basis(self, pair, bell_state, basis, frequencies):
         """Store output for single qubit."""
@@ -71,7 +80,8 @@ class CHSHData(Data):
             else:
                 self.data[pair[0], pair[1], bell_state][basis][state] = [freq]
 
-    def compute_frequencies(self, pair, bell_state):
+    def merge_frequencies(self, pair, bell_state):
+        """Merge frequencies with different measurement basis."""
         freqs = []
         data = self.data[pair[0], pair[1], bell_state]
         for freq_basis in data.values():
@@ -100,7 +110,7 @@ def _acquisition_pulses(
     platform: Platform,
     qubits: Qubits,
 ) -> CHSHData:
-    r""" """
+    r"""Data acquisition for CHSH protocol using pulse sequences."""
 
     thetas = np.linspace(0, 2 * np.pi, params.ntheta)
     data = CHSHData(bell_states=params.bell_states, thetas=thetas.tolist())
@@ -138,6 +148,7 @@ def _acquisition_circuits(
     platform: Platform,
     qubits: Qubits,
 ) -> CHSHData:
+    """Data acquisition for CHSH protocol using circuits."""
     thetas = np.linspace(0, 2 * np.pi, params.ntheta)
     data = CHSHData(
         bell_states=params.bell_states,
@@ -171,6 +182,7 @@ def _acquisition_circuits(
 
 
 def _plot(data: CHSHData, fit: CHSHResults, qubits):
+    """Plotting function for CHSH protocol."""
     figures = []
 
     for bell_state in data.bell_states:
@@ -190,7 +202,8 @@ def _plot(data: CHSHData, fit: CHSHResults, qubits):
                     name="Mitigated",
                 )
             )
-        figures.append(fig)
+
+        # classical bounds
         fig.add_hline(
             y=2,
             line_width=2,
@@ -201,6 +214,8 @@ def _plot(data: CHSHData, fit: CHSHResults, qubits):
             line_width=2,
             line_color="red",
         )
+
+        # maximum values
         fig.add_hline(
             y=2 * np.sqrt(2),
             line_width=2,
@@ -219,17 +234,19 @@ def _plot(data: CHSHData, fit: CHSHResults, qubits):
             xaxis_title="Theta[rad]",
             yaxis_title="CHSH value",
         )
+        figures.append(fig)
     fitting_report = "No fitting data"
 
     return figures, fitting_report
 
 
 def _fit(data: CHSHData) -> CHSHResults:
+    """Fitting for CHSH protocol."""
     results = {}
     mitigated_results = {}
     for pair in data.pairs:
         for bell_state in data.bell_states:
-            freq = data.compute_frequencies(pair, bell_state)
+            freq = data.merge_frequencies(pair, bell_state)
             if data.mitigation_matrix:
                 matrix = data.mitigation_matrix[pair]
 
