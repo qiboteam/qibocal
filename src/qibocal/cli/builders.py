@@ -74,6 +74,15 @@ class ActionBuilder:
         if self.backend.name == "qibolab":
             self.platform.dump(self.folder / PLATFORM)
 
+        # DEBUG: debug folder = report folder
+        import os
+
+        folder = str(self.folder) + "/debug/"
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        for name in self.platform.instruments[0].modules:
+            self.platform.instruments[0].modules[name]._debug_folder = folder
+
         with open(self.folder / RUNCARD, "w") as file:
             yaml.dump(runcard, file)
 
