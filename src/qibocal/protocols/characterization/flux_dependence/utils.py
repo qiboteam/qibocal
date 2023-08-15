@@ -4,6 +4,7 @@ from plotly.subplots import make_subplots
 from scipy.special import mathieu_a, mathieu_b
 from sklearn.linear_model import Ridge
 
+# from .qubit_flux_dependence import FluxCrosstalkData, FluxCrosstalkResults
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, V_TO_UV
 
 
@@ -11,10 +12,13 @@ def flux_dependence_plot(data, fit, qubit):
     figures = []
     fitting_report = ""
 
-    qubit_data = data[qubit]
+    if isinstance(data[qubit], dict):
+        all_qubit_data = data[qubit]
+    else:
+        all_qubit_data = {qubit: data[qubit]}
 
     fig = make_subplots(
-        rows=1,
+        rows=len(all_qubit_data),
         cols=2,
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
@@ -23,146 +27,150 @@ def flux_dependence_plot(data, fit, qubit):
             "Phase [rad]",
         ),
     )
-    frequencies = qubit_data.freq * HZ_TO_GHZ
-    msr = qubit_data.msr
-    if data.__class__.__name__ == "ResonatorFluxData":
-        msr_mask = 0.5
-        if data.resonator_type == "3D":
-            msr = -msr
-    elif data.__class__.__name__ == "QubitFluxData":
-        msr_mask = 0.3
-        if data.resonator_type == "2D":
-            msr = -msr
-
-    frequencies1, biases1 = image_to_curve(frequencies, qubit_data.bias, msr, msr_mask)
-
-    fig.add_trace(
-        go.Heatmap(
-            x=frequencies,
-            y=qubit_data.bias,
-            z=qubit_data.msr * V_TO_UV,
-            colorbar_x=0.46,
-        ),
-        row=1,
-        col=1,
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=frequencies1,
-            y=biases1,
-            mode="markers",
-            marker_color="green",
-        ),
-        row=1,
-        col=1,
-    )
-
-    params = fit.fitted_parameters[qubit]
-    fitting_report_label = "Frequency"
-    if fit.frequency[qubit] != 0:
+    for row, (flux_qubit, qubit_data) in enumerate(all_qubit_data.items()):
+        frequencies = qubit_data.freq * HZ_TO_GHZ
+        msr = qubit_data.msr
         if data.__class__.__name__ == "ResonatorFluxData":
-            fitting_report_label = "Resonator Frequency"
-            if all(param in params for param in ["Ec", "Ej"]):
-                popt = [
-                    params["bare_resonator_frequency"],
-                    params["g"],
-                    fit.sweetspot[qubit],
-                    params["Xi"],
-                    params["d"],
-                    params["Ec"],
-                    params["Ej"],
-                ]
-                freq_fit = freq_r_mathieu(biases1, *popt) * HZ_TO_GHZ
-            else:
-                popt = [
-                    fit.sweetspot[qubit],
-                    params["Xi"],
-                    params["d"],
-                    params["f_q/bare_resonator_frequency"],
-                    params["g"],
-                    params["bare_resonator_frequency"],
-                ]
-                freq_fit = freq_r_transmon(biases1, *popt) * HZ_TO_GHZ
+            msr_mask = 0.5
+            if data.resonator_type == "3D":
+                msr = -msr
         elif data.__class__.__name__ == "QubitFluxData":
-            fitting_report_label = "Qubit Frequency"
-            if all(param in params for param in ["Ec", "Ej"]):
-                popt = [
-                    fit.sweetspot[qubit],
-                    params["Xi"],
-                    params["d"],
-                    params["Ec"],
-                    params["Ej"],
-                ]
-                freq_fit = freq_q_mathieu(biases1, *popt) * HZ_TO_GHZ
-            else:
-                popt = [
-                    fit.sweetspot[qubit],
-                    params["Xi"],
-                    params["d"],
-                    fit.frequency[qubit] * GHZ_TO_HZ,
-                ]
-                freq_fit = freq_q_transmon(biases1, *popt) * HZ_TO_GHZ
+            msr_mask = 0.3
+            if data.resonator_type == "2D":
+                msr = -msr
 
         fig.add_trace(
+            go.Heatmap(
+                x=frequencies,
+                y=qubit_data.bias,
+                z=qubit_data.msr * V_TO_UV,
+                colorbar_x=0.46,
+            ),
+            row=row + 1,
+            col=1,
+        )
+
+        fig.update_xaxes(
+            title_text=f"{qubit}: Frequency (Hz)",
+            row=row + 1,
+            col=1,
+        )
+        fig.update_yaxes(title_text=f"{flux_qubit}: Bias (V)", row=row + 1, col=1)
+
+        fig.add_trace(
+            go.Heatmap(
+                x=frequencies,
+                y=qubit_data.bias,
+                z=qubit_data.phase,
+                colorbar_x=1.01,
+            ),
+            row=row + 1,
+            col=2,
+        )
+        fig.update_xaxes(
+            title_text=f"{qubit}: Frequency (Hz)",
+            row=row + 1,
+            col=2,
+        )
+        fig.update_yaxes(title_text=f"{flux_qubit}: Bias (V)", row=row + 1, col=2)
+
+    if not isinstance(data[qubit], dict):
+        frequencies1, biases1 = image_to_curve(
+            frequencies, qubit_data.bias, msr, msr_mask
+        )
+        fig.add_trace(
             go.Scatter(
-                x=freq_fit,
+                x=frequencies1,
                 y=biases1,
+                mode="markers",
+                marker_color="green",
             ),
             row=1,
             col=1,
         )
 
-    fig.update_xaxes(
-        title_text=f"{qubit}: Frequency (Hz)",
-        row=1,
-        col=1,
-    )
-    fig.update_yaxes(title_text="Bias (V)", row=1, col=1)
+        params = fit.fitted_parameters[qubit]
+        fitting_report_label = "Frequency"
+        if fit.frequency[qubit] != 0:
+            if data.__class__.__name__ == "ResonatorFluxData":
+                fitting_report_label = "Resonator Frequency"
+                if all(param in params for param in ["Ec", "Ej"]):
+                    popt = [
+                        params["bare_resonator_frequency"],
+                        params["g"],
+                        fit.sweetspot[qubit],
+                        params["Xi"],
+                        params["d"],
+                        params["Ec"],
+                        params["Ej"],
+                    ]
+                    freq_fit = freq_r_mathieu(biases1, *popt) * HZ_TO_GHZ
+                else:
+                    popt = [
+                        fit.sweetspot[qubit],
+                        params["Xi"],
+                        params["d"],
+                        params["f_q/bare_resonator_frequency"],
+                        params["g"],
+                        params["bare_resonator_frequency"],
+                    ]
+                    freq_fit = freq_r_transmon(biases1, *popt) * HZ_TO_GHZ
+            elif data.__class__.__name__ == "QubitFluxData":
+                fitting_report_label = "Qubit Frequency"
+                if all(param in params for param in ["Ec", "Ej"]):
+                    popt = [
+                        fit.sweetspot[qubit],
+                        params["Xi"],
+                        params["d"],
+                        params["Ec"],
+                        params["Ej"],
+                    ]
+                    freq_fit = freq_q_mathieu(biases1, *popt) * HZ_TO_GHZ
+                else:
+                    popt = [
+                        fit.sweetspot[qubit],
+                        params["Xi"],
+                        params["d"],
+                        fit.frequency[qubit] * GHZ_TO_HZ,
+                    ]
+                    freq_fit = freq_q_transmon(biases1, *popt) * HZ_TO_GHZ
 
-    fig.add_trace(
-        go.Heatmap(
-            x=frequencies,
-            y=qubit_data.bias,
-            z=qubit_data.phase,
-            colorbar_x=1.01,
-        ),
-        row=1,
-        col=2,
-    )
-    fig.update_xaxes(
-        title_text=f"{qubit}: Frequency (Hz)",
-        row=1,
-        col=2,
-    )
-    fig.update_yaxes(title_text="Bias (V)", row=1, col=2)
+            fig.add_trace(
+                go.Scatter(
+                    x=freq_fit,
+                    y=biases1,
+                ),
+                row=1,
+                col=1,
+            )
 
-    if fit.frequency[qubit] != 0:
-        fitting_report += (
-            f"{qubit} | {fitting_report_label}: {fit.frequency[qubit]:,.5f} GHz<br>"
-        )
-    else:
-        fitting_report += (
-            f"{qubit} | {fitting_report_label}: Fitting not successful<br>"
-        )
-
-    if fit.sweetspot[qubit] != 0:
-        fitting_report += f"{qubit} | Sweetspot: {fit.sweetspot[qubit]} V<br>"
-    else:
-        fitting_report += f"{qubit} | Sweetspot: Fitting not successful<br>"
-
-    for key, value in fit.fitted_parameters[qubit].items():
-        if value == 0:
-            value = "Fitting not successful"
-            fitting_report += f"{qubit} | {key}: {value}<br>"
+        if fit.frequency[qubit] != 0:
+            fitting_report += (
+                f"{qubit} | {fitting_report_label}: {fit.frequency[qubit]:,.5f} GHz<br>"
+            )
         else:
-            fitting_report += f"{qubit} | {key}: {value}<br>"
+            fitting_report += (
+                f"{qubit} | {fitting_report_label}: Fitting not successful<br>"
+            )
 
-    fitting_report += "<br>"
+        if fit.sweetspot[qubit] != 0:
+            fitting_report += f"{qubit} | Sweetspot: {fit.sweetspot[qubit]} V<br>"
+        else:
+            fitting_report += f"{qubit} | Sweetspot: Fitting not successful<br>"
+
+        for key, value in fit.fitted_parameters[qubit].items():
+            if value == 0:
+                value = "Fitting not successful"
+                fitting_report += f"{qubit} | {key}: {value}<br>"
+            else:
+                fitting_report += f"{qubit} | {key}: {value}<br>"
+
+        fitting_report += "<br>"
 
     fig.update_layout(xaxis1=dict(range=[np.min(frequencies), np.max(frequencies)]))
 
     fig.update_layout(
+        height=500 * len(all_qubit_data),
         showlegend=False,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
     )
