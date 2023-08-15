@@ -38,7 +38,6 @@ class QubitFluxParameters(Parameters):
     If ``None`` flux will be swept on all qubits that we are running the routine on in a multiplex fashion.
     If given
     """
-    # TODO: Expand this docstring
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None

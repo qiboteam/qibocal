@@ -134,6 +134,23 @@ actions:
 
 
 
+  - id: qubit flux crosstalk #"02" transition
+    priority: 0
+    operation: qubit_flux
+    qubits: [0]
+    parameters:
+      freq_width: 150_000_000
+      freq_step: 500_000
+      bias_width: 0.2
+      bias_step:  0.005
+      drive_amplitude: 0.5
+      flux_qubits: [1, 2]
+      nshots: 1024
+      relaxation_time: 2000
+      transition: "02"
+
+
+
   - id: rabi
     priority: 0
     operation: rabi_amplitude
