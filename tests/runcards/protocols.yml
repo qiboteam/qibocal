@@ -134,7 +134,7 @@ actions:
 
 
 
-  - id: qubit flux crosstalk #"02" transition
+  - id: qubit flux crosstalk # using ``flux_qubits``
     priority: 0
     operation: qubit_flux
     qubits: [0]
