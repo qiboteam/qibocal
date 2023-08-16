@@ -253,7 +253,7 @@ actions:
       nshots: 10
       savedir: "cls_results"
       classifiers_list: ["qubit_fit","naive_bayes", "linear_svm"]
-      
+
   - id: readout characterization
     priority: 0
     operation: readout_characterization
