@@ -104,16 +104,33 @@ actions:
 
 
 
-  - id: qubit flux dependence
+  - id: qubit flux dependence #"01" transition
     priority: 0
     operation: qubit_flux
     parameters:
-      freq_width: 10_000_000
-      freq_step: 1_000_000
-      bias_width: 0.8 #0.1
-      bias_step:  0.1 # 0.001
-      drive_amplitude: 0.005
-      nshots: 10
+      freq_width: 150_000_000
+      freq_step: 500_000
+      bias_width: 0.2
+      bias_step:  0.005
+      drive_amplitude: 0.5
+      nshots: 1024
+      relaxation_time: 2000
+      transition: "01"
+
+
+
+  - id: qubit flux dependence #"02" transition
+    priority: 0
+    operation: qubit_flux
+    parameters:
+      freq_width: 150_000_000
+      freq_step: 500_000
+      bias_width: 0.2
+      bias_step:  0.005
+      drive_amplitude: 0.5
+      nshots: 1024
+      relaxation_time: 2000
+      transition: "02"
 
 
 
@@ -165,6 +182,13 @@ actions:
       delay_before_readout_end: 20_000
       delay_before_readout_step: 2000
       nshots: 10
+
+  - id: zeno
+    priority: 00
+    operation: zeno
+    parameters:
+      readouts: 100
+      nshots: 4096
 
   - id: t2
     priority: 0
@@ -229,6 +253,12 @@ actions:
       nshots: 10
       savedir: "cls_results"
       classifiers_list: ["qubit_fit","naive_bayes", "linear_svm"]
+      
+  - id: readout characterization
+    priority: 0
+    operation: readout_characterization
+    parameters:
+      nshots: 10
 
   - id: allXY
     priority: 0
@@ -283,7 +313,6 @@ actions:
       freq_step: 100_000
       nshots: 10
 
-
   - id: standard rb no error
     priority: 0
     operation: standard_rb
@@ -308,6 +337,31 @@ actions:
       n_bootstrap: 10
       noise_model: PauliErrorOnAll
 
+  - id: chevron id
+    priority: 0
+    operation: chevron
+    qubits: [[0, 1],[1,2],[0,3]]
+    parameters:
+      amplitude_min: 0.1
+      amplitude_max: 0.6
+      amplitude_step: 0.01
+      duration_min: 10
+      duration_max: 50
+      duration_step: 1
+      nshots: 1000
+      parking: True
+
+  - id: tune landscape
+    priority: 0
+    operation: cz_virtualz
+    qubits: [[0, 1],[1,2],[0,3]]
+    parameters:
+      theta_start: 0
+      theta_end: 180
+      theta_step: 10
+      dt: 0
+      parking: True
+
   - id: standard rb inhomogeneous
     priority: 0
     operation: standard_rb
@@ -328,3 +382,9 @@ actions:
       freq_width: 200.e+6
       freq_step: 25.e+6
       nshots: 1000
+
+  - id: fast reset
+    priority: 0
+    operation: fast_reset
+    parameters:
+      nshots: 1024
