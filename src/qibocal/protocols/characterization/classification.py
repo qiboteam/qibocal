@@ -531,7 +531,7 @@ def _plot(
                 title=dict(text="Benchmarks", font=dict(size=TITLE_SIZE)),
             )
 
-        title_text = "No fitting data"
+        title_text = ""
 
         if models_name[i] == "qubit_fit":
             qubit_model = fit.models[qubit][i]
@@ -580,7 +580,7 @@ def _plot(
             title_text="True Positive Rate",
             range=[0, 1],
         )
-
+    fitting_report = "No fitting data" if fitting_report == "" else fitting_report
     figures.append(fig_roc)
     figures.append(fig)
     if len(models_name) != 1:
