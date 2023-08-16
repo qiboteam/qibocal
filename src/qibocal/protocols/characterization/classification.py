@@ -531,11 +531,11 @@ def _plot(
                 title=dict(text="Benchmarks", font=dict(size=TITLE_SIZE)),
             )
 
-        title_text = ""
+        title_text = "No fitting data"
 
         if models_name[i] == "qubit_fit":
             qubit_model = fit.models[qubit][i]
-            title_text += f"q{qubit}/{model} | average state 0: {np.round(qubit_model.iq_mean0,3)}<br>"
+            title_text = f"q{qubit}/{model} | average state 0: {np.round(qubit_model.iq_mean0,3)}<br>"
             title_text += f"q{qubit}/{model} | average state 1: {np.round(qubit_model.iq_mean1, 3)}<br>"
             title_text += (
                 f"q{qubit}/{model} | rotation angle: {qubit_model.angle:.3f}<br>"
