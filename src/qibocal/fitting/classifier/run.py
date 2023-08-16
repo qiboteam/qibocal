@@ -57,6 +57,11 @@ def import_classifiers(cls_names: List[str]):
     return classifiers
 
 
+def pretty_name(classifier_name: str):
+    """Understandable model's name"""
+    return PRETTY_NAME[CLS_MODULES.index(classifier_name)]
+
+
 class Classifier:
     r"""Classs to define the different classifiers used in the benchmarking.
 
@@ -75,11 +80,6 @@ class Classifier:
     def name(self):
         r"""Model's name."""
         return self.mod.__name__.split(".")[-1]
-
-    @property
-    def pretty_name(self):
-        """Understandable model's name"""
-        return PRETTY_NAME[CLS_MODULES.index(self.name)]
 
     @property
     def hyperopt(self):
@@ -248,7 +248,7 @@ def train_qubit(
     for mod in classifiers:
         classifier = Classifier(mod, qubit_dir)
         classifier.savedir.mkdir(exist_ok=True)
-        logging.info(f"Training quibt with classifier: {classifier.pretty_name}")
+        logging.info(f"Training quibt with classifier: {pretty_name(classifier.name)}")
         if classifier.name not in cls_data.hpars[qubit]:
             hyperpars = classifier.hyperopt(
                 x_train, y_train.astype(np.int64), classifier.savedir
@@ -265,7 +265,7 @@ def train_qubit(
         models.append(model)  # save trained model
         results.name = classifier.name
         results_list.append(results)
-        names.append(classifier.pretty_name)
+        names.append(classifier.name)
 
     benchmarks_table = pd.DataFrame([asdict(res) for res in results_list])
     return benchmarks_table, y_test, x_test, models, names, hpars_list

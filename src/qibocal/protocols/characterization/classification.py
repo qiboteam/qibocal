@@ -380,7 +380,7 @@ def _plot(
         # Evaluate the ROC curve
         fpr, tpr, _ = roc_curve(y_test, y_pred)
         auc_score = roc_auc_score(y_test, y_pred)
-
+        model = run.pretty_name(model)
         name = f"{model} (AUC={auc_score:.2f})"
         fig_roc.add_trace(
             go.Scatter(
