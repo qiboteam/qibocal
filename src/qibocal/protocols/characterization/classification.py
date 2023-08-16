@@ -434,7 +434,7 @@ def _plot(
                 z=predictions.flatten(),
                 showscale=False,
                 colorscale=[get_color_state0(i), get_color_state1(i)],
-                opacity=0.4,
+                opacity=0.2,
                 name="Score",
                 hoverinfo="skip",
             ),
