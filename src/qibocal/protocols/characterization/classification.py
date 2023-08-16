@@ -401,8 +401,8 @@ def _plot(
             go.Scatter(
                 x=state0_data["i"],
                 y=state0_data["q"],
-                name=f"q{qubit}/{model}: state 0",
-                legendgroup=f"q{qubit}/{model}: state 0",
+                name=f"{qubit}/{model}: state 0",
+                legendgroup=f"{qubit}/{model}: state 0",
                 mode="markers",
                 showlegend=True,
                 opacity=0.7,
@@ -416,8 +416,8 @@ def _plot(
             go.Scatter(
                 x=state1_data["i"],
                 y=state1_data["q"],
-                name=f"q{qubit}/{model}: state 1",
-                legendgroup=f"q{qubit}/{model}: state 1",
+                name=f"{qubit}/{model}: state 1",
+                legendgroup=f"{qubit}/{model}: state 1",
                 mode="markers",
                 showlegend=True,
                 opacity=0.7,
@@ -446,8 +446,8 @@ def _plot(
             go.Scatter(
                 x=[np.average(state0_data["i"])],
                 y=[np.average(state0_data["q"])],
-                name=f"q{qubit}/{model}: state 0",
-                legendgroup=f"q{qubit}/{model}: state 0",
+                name=f"{qubit}/{model}: state 0",
+                legendgroup=f"{qubit}/{model}: state 0",
                 showlegend=False,
                 mode="markers",
                 marker=dict(size=10, color=get_color_state0(i)),
@@ -460,8 +460,8 @@ def _plot(
             go.Scatter(
                 x=[np.average(state1_data["i"])],
                 y=[np.average(state1_data["q"])],
-                name=f"q{qubit}/{model}: state 1",
-                legendgroup=f"q{qubit}/{model}: state 1",
+                name=f"{qubit}/{model}: state 1",
+                legendgroup=f"{qubit}/{model}: state 1",
                 showlegend=False,
                 mode="markers",
                 marker=dict(size=10, color=get_color_state1(i)),
@@ -535,18 +535,18 @@ def _plot(
 
         if models_name[i] == "qubit_fit":
             qubit_model = fit.models[qubit][i]
-            title_text = f"q{qubit}/{model} | average state 0: {np.round(qubit_model.iq_mean0,3)}<br>"
-            title_text += f"q{qubit}/{model} | average state 1: {np.round(qubit_model.iq_mean1, 3)}<br>"
+            title_text = f"{qubit}/{model} | average state 0: {np.round(qubit_model.iq_mean0,3)}<br>"
+            title_text += f"{qubit}/{model} | average state 1: {np.round(qubit_model.iq_mean1, 3)}<br>"
             title_text += (
-                f"q{qubit}/{model} | rotation angle: {qubit_model.angle:.3f}<br>"
+                f"{qubit}/{model} | rotation angle: {qubit_model.angle:.3f}<br>"
             )
             title_text += (
-                f"q{qubit}/{model} | threshold: {qubit_model.threshold:.6f}<br>"
+                f"{qubit}/{model} | threshold: {qubit_model.threshold:.6f}<br>"
             )
             title_text += (
-                f"q{qubit}/{model} | fidelity: {fit.models[qubit][i].fidelity:.3f}<br>"
+                f"{qubit}/{model} | fidelity: {fit.models[qubit][i].fidelity:.3f}<br>"
             )
-            title_text += f"q{qubit}/{model} | assignment fidelity: {fit.models[qubit][i].assignment_fidelity:.3f}<br>"
+            title_text += f"{qubit}/{model} | assignment fidelity: {fit.models[qubit][i].assignment_fidelity:.3f}<br>"
 
         fitting_report += title_text
 
