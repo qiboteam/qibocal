@@ -25,6 +25,18 @@ CLS_MODULES = [
     "qblox_fit",
 ]
 
+PRETTY_NAME = [
+    "Linear SVM",
+    "Ada Boost",
+    "Gaussian Process",
+    "Naive Bayes",
+    "Neural Network",
+    "Qubit Fit",
+    "Random Forest",
+    "RBF SVM",
+    "Qblox Fit",
+]
+
 
 HYPERFILE = "hyperpars.json"
 BENCHTABFILE = "benchmarks.csv"
@@ -65,6 +77,11 @@ class Classifier:
         return self.mod.__name__.split(".")[-1]
 
     @property
+    def pretty_name(self):
+        """Understandable model's name"""
+        return PRETTY_NAME[CLS_MODULES.index(self.name)]
+
+    @property
     def hyperopt(self):
         r"""The function that performs the hyperparameters optimization."""
         return self.mod.hyperopt
@@ -97,7 +114,7 @@ class Classifier:
         return self.savedir / HYPERFILE
 
     def dump(self):
-        return self.mod.dump  # (self.trainable_model, path)
+        return self.mod.dump
 
     @classmethod
     def load_model(cls, name: str, base_dir: pathlib.Path):
@@ -231,7 +248,7 @@ def train_qubit(
     for mod in classifiers:
         classifier = Classifier(mod, qubit_dir)
         classifier.savedir.mkdir(exist_ok=True)
-        logging.info(f"Classification model: {classifier.name}")
+        logging.info(f"Training quibt with classifier: {classifier.pretty_name}")
         if classifier.name not in cls_data.hpars[qubit]:
             hyperpars = classifier.hyperopt(
                 x_train, y_train.astype(np.int64), classifier.savedir
@@ -248,7 +265,7 @@ def train_qubit(
         models.append(model)  # save trained model
         results.name = classifier.name
         results_list.append(results)
-        names.append(classifier.name)
+        names.append(classifier.pretty_name)
 
     benchmarks_table = pd.DataFrame([asdict(res) for res in results_list])
     return benchmarks_table, y_test, x_test, models, names, hpars_list
