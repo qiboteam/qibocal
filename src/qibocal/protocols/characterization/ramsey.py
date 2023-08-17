@@ -43,19 +43,15 @@ class RamseyParameters(Parameters):
 class RamseyResults(Results):
     """Ramsey outputs."""
 
-    frequency: dict[QubitId, float] = field(metadata=dict(update="drive_frequency"))
+    frequency: dict[QubitId, tuple[float, Optional[float]]] = field(
+        metadata=dict(update="drive_frequency")
+    )
     """Drive frequency [GHz] for each qubit."""
-    error_frequency: dict[QubitId, float]
-    """Error of the drive frequency [GHz]."""
-    t2: dict[QubitId, float]
+    t2: dict[QubitId, tuple[float, Optional[float]]]
     """T2 for each qubit [ns]."""
-    error_t2: dict[QubitId, float]
-    """Error T2 [ns]."""
-    delta_phys: dict[QubitId, float]
+    delta_phys: dict[QubitId, tuple[float, Optional[float]]]
     """Drive frequency [Hz] correction for each qubit."""
-    error_delta_phys: dict[QubitId, float]
-    """Error of the drive frequency [Hz]."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
+    fitted_parameters: dict[QubitId, list[float]]
     """Raw fitting output."""
 
 
@@ -221,17 +217,15 @@ def _fit(data: RamseyData) -> RamseyResults:
     qubits = data.qubits
     waits = np.unique(data[qubits[0]].wait)
     popts = {}
-    freq_av = {}
-    freq_err = {}
-    t2_av = {}
-    t2_err = {}
-    delta_phys_av = {}
-    delta_phys_err = {}
+    freq_measure = {}
+    t2_measure = {}
+    # t2_err = {}
+    delta_phys_measure = {}
 
     for qubit in qubits:
         qubit_data = data[qubit]
         qubit_freq = data.qubit_freqs[qubit]
-        msrs = qubit_data[["msr"]].tolist()
+        msrs = qubit_data[["msr"]]
         msrs = np.reshape(msrs, (len(waits), -1)) * V_TO_UV
         t2s = []
         deltas_phys_list = []
@@ -261,12 +255,12 @@ def _fit(data: RamseyData) -> RamseyResults:
                     deltas_phys_list.append(0)
                     new_freqs.append(0)
 
-                freq_av[qubit] = np.mean(new_freqs)
-                freq_err[qubit] = np.std(new_freqs)
-                t2_av[qubit] = np.mean(t2s)
-                t2_err[qubit] = np.std(t2s)
-                delta_phys_av[qubit] = np.mean(deltas_phys_list)
-                delta_phys_err[qubit] = np.std(deltas_phys_list)
+                freq_measure[qubit] = (np.mean(new_freqs), np.std(new_freqs))
+                t2_measure[qubit] = (np.mean(new_freqs), np.std(new_freqs))
+                delta_phys_measure[qubit] = (
+                    np.mean(deltas_phys_list),
+                    np.std(deltas_phys_list),
+                )
 
         msrs = np.mean(msrs, axis=1).flatten()
 
@@ -285,18 +279,14 @@ def _fit(data: RamseyData) -> RamseyResults:
             corrected_qubit_frequency = int(qubit_freq - delta_phys)
             t2 = 1.0 / popts[qubit][4]
 
-            freq_av[qubit] = corrected_qubit_frequency
-            t2_av[qubit] = t2
-            delta_phys_av[qubit] = delta_phys
-            freq_err[qubit] = t2_err[qubit] = delta_phys_err[qubit] = 0.0
+            freq_measure[qubit] = (corrected_qubit_frequency, None)
+            t2_measure[qubit] = (t2, None)
+            delta_phys_measure[qubit] = (delta_phys, None)
 
     return RamseyResults(
-        freq_av,
-        freq_err,
-        t2_av,
-        t2_err,
-        delta_phys_av,
-        delta_phys_err,
+        freq_measure,
+        t2_measure,
+        delta_phys_measure,
         popts,
     )
 
@@ -360,13 +350,13 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
     fitting_report = (
         fitting_report
         + (
-            f"{qubit} | Delta_frequency: {fit.delta_phys[qubit]:,.1f} {chr(177)} {fit.error_delta_phys[qubit]:,.1f} Hz<br>"
+            f"{qubit} | Delta_frequency: {fit.delta_phys[qubit][0]:,.1f} {chr(177)} {fit.delta_phys[qubit][1]:,.1f} Hz<br>"
         )
         + (
-            f"{qubit} | Drive_frequency: {fit.frequency[qubit] } {chr(177)} {fit.error_frequency[qubit]:,.0f} Hz<br>"
+            f"{qubit} | Drive_frequency: {fit.frequency[qubit][0] } {chr(177)} {fit.frequency[qubit][1]:,.0f} Hz<br>"
         )
         + (
-            f"{qubit} | T2*: {fit.t2[qubit]:,.0f} {chr(177)} {fit.error_t2[qubit]:,.0f} ns.<br><br>"
+            f"{qubit} | T2*: {fit.t2[qubit][0]:,.0f} {chr(177)} {fit.t2[qubit][1]:,.0f} ns.<br><br>"
         )
     )
 
