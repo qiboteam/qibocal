@@ -1,9 +1,11 @@
 import datetime
+import json
 import tempfile
 from pathlib import Path
 
 import yaml
 from qibolab.qubits import QubitId
+from qibolab.serialize import dump_runcard
 
 from qibocal.auto.execute import Executor, History
 from qibocal.auto.runcard import Runcard
@@ -11,7 +13,7 @@ from qibocal.auto.task import TaskId
 from qibocal.cli.utils import generate_output_folder
 from qibocal.utils import allocate_qubits_pairs, allocate_single_qubits
 
-META = "meta.yml"
+META = "meta.json"
 RUNCARD = "runcard.yml"
 UPDATED_PLATFORM = "new_platform.yml"
 PLATFORM = "platform.yml"
@@ -34,7 +36,7 @@ class ActionBuilder:
         # store update option
         self.update = update
         # prepare output
-        self._prepare_output(runcard)
+        self.meta = self._prepare_output(runcard)
         # allocate executor
         self.executor = Executor.load(
             self.runcard,
@@ -72,7 +74,7 @@ class ActionBuilder:
         - generating meta.yml
         """
         if self.backend.name == "qibolab":
-            self.platform.dump(self.folder / PLATFORM)
+            dump_runcard(self.platform, self.folder / PLATFORM)
 
         with open(self.folder / RUNCARD, "w") as file:
             yaml.dump(runcard, file)
@@ -90,8 +92,9 @@ class ActionBuilder:
         meta["versions"] = self.backend.versions  # pylint: disable=E1101
         meta["versions"]["qibocal"] = qibocal.__version__
 
-        with open(self.folder / META, "w") as file:
-            yaml.dump(meta, file)
+        (self.folder / META).write_text(json.dumps(meta, indent=4))
+
+        return meta
 
     def run(self):
         """Execute protocols in runcard."""
@@ -100,7 +103,13 @@ class ActionBuilder:
             self.platform.setup()
             self.platform.start()
 
-        for _ in self.executor.run():
+        for data_time, result_time, task_id in self.executor.run():
+            timing_task = {}
+            timing_task["acquisition"] = data_time
+            timing_task["fit"] = result_time
+            timing_task["tot"] = data_time + result_time
+            self.meta[task_id] = timing_task
+
             self.dump_report()
 
         if self.platform is not None:
@@ -112,18 +121,16 @@ class ActionBuilder:
         from qibocal.web.report import create_report
 
         # update end time
-        meta = yaml.safe_load((self.folder / META).read_text())
         e = datetime.datetime.now(datetime.timezone.utc)
-        meta["end-time"] = e.strftime("%H:%M:%S")
-        with open(self.folder / META, "w") as file:
-            yaml.dump(meta, file)
+        self.meta["end-time"] = e.strftime("%H:%M:%S")
+        (self.folder / META).write_text(json.dumps(self.meta, indent=4))
 
         create_report(self.folder, self.executor.history)
 
     def dump_platform_runcard(self):
         """Dump platform runcard."""
         if self.platform is not None:
-            self.platform.dump(self.folder / UPDATED_PLATFORM)
+            dump_runcard(self.platform, self.folder / UPDATED_PLATFORM)
 
 
 class ReportBuilder:
@@ -131,7 +138,7 @@ class ReportBuilder:
         """Helper class to generate html report."""
         # FIXME: currently the title of the report is the output folder
         self.path = self.title = path
-        self.metadata = yaml.safe_load((path / META).read_text())
+        self.metadata = json.loads((path / META).read_text())
         self.runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
         self.qubits = self.runcard.qubits
 

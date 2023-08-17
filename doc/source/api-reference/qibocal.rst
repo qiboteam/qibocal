@@ -1,4 +1,4 @@
-.. _calibration_routines:
+.. _calibration_routinestwo_qubit
 
 Calibration routines
 --------------------
@@ -36,7 +36,9 @@ Current and future ``qibocal`` routines are listed in the following table:
 +------------------------+-------------+------------------+---------------+
 | Cryoscope              | In progress |    In progress   |       No      |
 +------------------------+-------------+------------------+---------------+
-| CZ gate                |      No     |        No        |       No      |
+| Chevron SWAP (CZ)      |     Yes     |    In progress   |       No      |
++------------------------+-------------+------------------+---------------+
+| Tune Landscape (CZ)    |     Yes     |    In progress   |       No      |
 +------------------------+-------------+------------------+---------------+
 | RB & co (multi qubits) |      No     |        No        |       No      |
 +------------------------+-------------+------------------+---------------+
@@ -100,6 +102,24 @@ All-XY
 State calibration
 """""""""""""""""
 .. automodule:: qibocal.calibrations.characterization.calibrate_qubit_states
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Two Qubit
+^^^^^^^^^
+
+
+Chevron SWAP
+""""""""""""
+.. automodule:: qibocal.protocols.characterization.two_qubit_interaction.chevron
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Tune Landscape
+""""""""""""""
+.. automodule:: qibocal.protocols.characterization.two_qubit_interaction.cz_virtualz
    :members:
    :undoc-members:
    :show-inheritance:

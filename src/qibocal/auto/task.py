@@ -129,13 +129,13 @@ class Task:
                 else:
                     qubits = self.qubits
 
-            data: Data = operation.acquisition(
+            data, time = operation.acquisition(
                 parameters, platform=platform, qubits=qubits
             )
             # after acquisition we update the qubit parameter
             self.qubits = list(qubits)
         else:
-            data: Data = operation.acquisition(parameters, platform=platform)
-        yield data
-        results: Results = operation.fit(data)
-        yield results
+            data, time = operation.acquisition(parameters, platform=platform)
+        yield data, time
+        results, time = operation.fit(data)
+        yield results, time

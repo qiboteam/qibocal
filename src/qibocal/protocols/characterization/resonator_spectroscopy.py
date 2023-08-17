@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field, fields
-from typing import Optional, Union
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -49,21 +49,19 @@ class ResonatorSpectroscopyParameters(Parameters):
 class ResonatorSpectroscopyResults(Results):
     """ResonatorSpectroscopy outputs."""
 
-    frequency: dict[Union[str, int], float] = field(
-        metadata=dict(update="readout_frequency")
-    )
+    frequency: dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
     """Readout frequency [GHz] for each qubit."""
-    fitted_parameters: dict[Union[str, int], dict[str, float]]
+    fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitted parameters."""
-    bare_frequency: Optional[dict[Union[str, int], float]] = field(
+    bare_frequency: Optional[dict[QubitId, float]] = field(
         default_factory=dict, metadata=dict(update="bare_resonator_frequency")
     )
     """Bare resonator frequency [GHz] for each qubit."""
-    amplitude: Optional[dict[Union[str, int], float]] = field(
+    amplitude: Optional[dict[QubitId, float]] = field(
         default_factory=dict, metadata=dict(update="readout_amplitude")
     )
     """Readout amplitude for each qubit."""
-    attenuation: Optional[dict[Union[str, int], int]] = field(
+    attenuation: Optional[dict[QubitId, int]] = field(
         default_factory=dict, metadata=dict(update="readout_attenuation")
     )
     """Readout attenuation [dB] for each qubit."""
