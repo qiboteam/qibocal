@@ -212,15 +212,15 @@ actions:
 #       nshots: 1024
 
 
-#   - id: ramsey
-#     priority: 0
-#     operation: ramsey
-#     parameters:
-#       delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
-#       delay_between_pulses_end: 5000
-#       delay_between_pulses_step: 500 # must be a multiple of 4
-#       n_osc: 0
-#       nshots: 1024
+  - id: ramsey
+    priority: 0
+    operation: ramsey
+    parameters:
+      delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
+      delay_between_pulses_end: 5000
+      delay_between_pulses_step: 500 # must be a multiple of 4
+      n_osc: 5
+      nshots: 1024
 
 
 #   - id: single shot classification
