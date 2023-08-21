@@ -203,14 +203,14 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
     iq_couples = np.array(iq_couples)
     best_freqs = {}
     best_iqs = {}
-    for qubit in qubits:
+    for idx, qubit in enumerate(qubits):
         frequencies = data[qubit, 0].freq * HZ_TO_GHZ
 
         max_index = np.argmax(
-            np.linalg.norm(iq_couples[0][qubit] - iq_couples[1][qubit], axis=-1)
+            np.linalg.norm(iq_couples[0][idx] - iq_couples[1][idx], axis=-1)
         )
         best_freqs[qubit] = frequencies[max_index]
-        best_iqs[qubit] = iq_couples[:, qubit, max_index].tolist()
+        best_iqs[qubit] = iq_couples[:, idx, max_index].tolist()
 
     return DispersiveShiftResults(
         results_0=results[0],
