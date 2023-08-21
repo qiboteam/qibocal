@@ -1,14 +1,19 @@
 from enum import Enum
+from typing import Optional
 
 import lmfit
 import numpy as np
 import plotly.graph_objects as go
 from numba import njit
 from plotly.subplots import make_subplots
+from qibolab.qubits import QubitId
 from scipy.stats import mode
 
 from qibocal.auto.operation import Data, Results
 from qibocal.config import log
+from qibocal.protocols.characterization.randomized_benchmarking.utils import (
+    significant_digit,
+)
 
 GHZ_TO_HZ = 1e9
 HZ_TO_GHZ = 1e-9
@@ -256,3 +261,21 @@ def fit_punchout(data: Data, fit_type: str):
         high_freqs[qubit] = freq_hp[0] * HZ_TO_GHZ
         ro_values[qubit] = ro_val
     return [low_freqs, high_freqs, ro_values]
+
+
+def fill_table(
+    qubit: QubitId,
+    name: str,
+    value: float,
+    error: Optional[float],
+    unit: str,
+    ndigits: int = 2,
+) -> str:
+    table = f"{qubit}| {name}: "
+    if error:
+        ndigits = significant_digit(error)
+        table += f"{round(value, ndigits)} {chr(177)} {round(error, ndigits)}"
+    else:
+        table += f"{round(value, ndigits)} "
+    table += f" {unit} <br>"
+    return table
