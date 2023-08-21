@@ -14,7 +14,11 @@ def cast_to_int(a):
 
 def conversion(name: str):
     convert_to_list = name.strip("()").split(",")
-    return tuple(cast_to_int(i) for i in convert_to_list)
+    return (
+        tuple(cast_to_int(i) for i in convert_to_list)
+        if len(convert_to_list) > 1
+        else cast_to_int(name)
+    )
 
 
 def allocate_single_qubits(

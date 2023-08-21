@@ -1,4 +1,5 @@
 import datetime
+import json
 import tempfile
 from enum import Enum
 from functools import cached_property
@@ -6,6 +7,7 @@ from pathlib import Path
 
 import yaml
 from qibolab.qubits import QubitId
+from qibolab.serialize import dump_runcard
 
 from qibocal.auto.execute import Executor
 from qibocal.auto.runcard import Runcard
@@ -13,7 +15,7 @@ from qibocal.auto.task import TaskId
 from qibocal.cli.utils import generate_output_folder
 from qibocal.utils import allocate_qubits_pairs, allocate_single_qubits
 
-META = "meta.yml"
+META = "meta.json"
 RUNCARD = "runcard.yml"
 UPDATED_PLATFORM = "new_platform.yml"
 PLATFORM = "platform.yml"
@@ -39,16 +41,16 @@ class PostProcessingBuilder:
         )
         self.qubits = self.runcard.qubits
 
-    def run(self, mode: ExecutionMode = None):
-        """PostProcessing task."""
-        self.executor.run(mode=mode)
-
 
 class FitBuilder(PostProcessingBuilder):
     """Builder to run fitting on output folder"""
 
     def run(self, mode: ExecutionMode = ExecutionMode.fit):
-        super().run(mode=mode)
+        for _, result_time, task_id in self.executor.run(mode=mode):
+            timing_task = {}
+            timing_task["fit"] = result_time
+            timing_task["tot"] = timing_task["acquisition"] + result_time
+            self.meta[task_id] = timing_task
 
         # update time in meta.yml
         e = datetime.datetime.now(datetime.timezone.utc)
@@ -66,7 +68,8 @@ class ReportBuilder(PostProcessingBuilder):
 
     @cached_property
     def history(self):
-        self.executor.run(mode=ExecutionMode.report)
+        for _, _, _ in self.executor.run(mode=ExecutionMode.report):
+            pass
         return self.executor.history
 
     def routine_name(self, routine, iteration):
@@ -83,8 +86,24 @@ class ReportBuilder(PostProcessingBuilder):
         """Generate single qubit plot."""
         node = self.history[task_id]
         figures, fitting_report = node.task.operation.report(
-            node.data, qubit, node.results
+            data=node.data, fit=node.results, qubit=qubit
         )
+        with tempfile.NamedTemporaryFile(delete=False) as temp:
+            html_list = []
+            for figure in figures:
+                figure.write_html(temp.name, include_plotlyjs=False, full_html=False)
+                temp.seek(0)
+                fightml = temp.read().decode("utf-8")
+                html_list.append(fightml)
+
+        all_html = "".join(html_list)
+        return all_html, fitting_report
+
+    def plot(self, task_id: TaskId):
+        """ "Generate plot when only acquisition data are provided."""
+        node = self.history[task_id]
+        data = node.task.data
+        figures, fitting_report = node.task.operation.report(data)
         with tempfile.NamedTemporaryFile(delete=False) as temp:
             html_list = []
             for figure in figures:
@@ -109,8 +128,11 @@ class Builder:
     def __init__(self, runcard, folder, force):
         self.folder = generate_output_folder(folder, force)
         self.runcard = Runcard.load(runcard)
-        self._prepare_output(runcard)
+        # store update option
         self.update = None
+        # prepare output
+        self.meta = self._prepare_output(runcard)
+        # allocate executor
         self.executor = Executor.load(
             self.runcard, self.folder, self.platform, self.qubits, self.update
         )
@@ -123,7 +145,7 @@ class Builder:
             self.platform.setup()
             self.platform.start()
 
-        self.executor.run(mode=mode)
+        self._run(mode=mode)
 
         if self.platform is not None:
             self.platform.stop()
@@ -157,7 +179,7 @@ class Builder:
         - generating meta.yml
         """
         if self.backend.name == "qibolab":
-            self.platform.dump(self.folder / PLATFORM)
+            dump_runcard(self.platform, self.folder / PLATFORM)
 
         (self.folder / RUNCARD).write_text(yaml.dump(runcard))
 
@@ -174,11 +196,24 @@ class Builder:
         meta["versions"] = self.backend.versions  # pylint: disable=E1101
         meta["versions"]["qibocal"] = qibocal.__version__
 
-        (self.folder / META).write_text(yaml.dump(meta))
+        (self.folder / META).write_text(json.dumps(meta, indent=4))
+
+        return meta
 
 
 class AcquisitionBuilder(Builder):
     """Builder for perfoming only data acquisition."""
+
+    def _run(self, mode: ExecutionMode):
+        for data_time, _, task_id in self.executor.run(mode=mode):
+            timing_task = {}
+            timing_task["acquisition"] = data_time
+            timing_task["tot"] = data_time
+            self.meta[task_id] = timing_task
+
+        e = datetime.datetime.now(datetime.timezone.utc)
+        self.meta["end-time"] = e.strftime("%H:%M:%S")
+        (self.folder / META).write_text(json.dumps(self.meta, indent=4))
 
 
 class ActionBuilder(Builder):
@@ -194,11 +229,23 @@ class ActionBuilder(Builder):
         super().__init__(runcard, folder, force)
         self.update = update
 
+    def _run(self, mode: ExecutionMode):
+        for data_time, _, task_id in self.executor.run(mode=mode):
+            timing_task = {}
+            timing_task["acquisition"] = data_time
+            timing_task["tot"] = data_time
+            self.meta[task_id] = timing_task
+            self.dump_report()
+
     def dump_report(self):
+        # update end time
+        e = datetime.datetime.now(datetime.timezone.utc)
+        self.meta["end-time"] = e.strftime("%H:%M:%S")
+        (self.folder / META).write_text(json.dumps(self.meta, indent=4))
         report = ReportBuilder(self.folder)
         report.run()
 
     def dump_platform_runcard(self):
         """Dump platform runcard."""
         if self.platform is not None:
-            self.platform.dump(self.folder / UPDATED_PLATFORM)
+            dump_runcard(self.platform, self.folder / UPDATED_PLATFORM)

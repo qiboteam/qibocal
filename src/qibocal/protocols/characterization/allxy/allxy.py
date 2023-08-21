@@ -30,7 +30,7 @@ class AllXYResults(Results):
     """AllXY outputs."""
 
 
-AllXYType = np.dtype([("prob", np.float64), ("gate", np.int64)])
+AllXYType = np.dtype([("prob", np.float64), ("gate", "<U5")])
 
 
 class AllXYData(Data):
@@ -55,26 +55,26 @@ class AllXYData(Data):
 
 gatelist = [
     ["I", "I"],
-    ["RX(pi)", "RX(pi)"],
-    ["RY(pi)", "RY(pi)"],
-    ["RX(pi)", "RY(pi)"],
-    ["RY(pi)", "RX(pi)"],
-    ["RX(pi/2)", "I"],
-    ["RY(pi/2)", "I"],
-    ["RX(pi/2)", "RY(pi/2)"],
-    ["RY(pi/2)", "RX(pi/2)"],
-    ["RX(pi/2)", "RY(pi)"],
-    ["RY(pi/2)", "RX(pi)"],
-    ["RX(pi)", "RY(pi/2)"],
-    ["RY(pi)", "RX(pi/2)"],
-    ["RX(pi/2)", "RX(pi)"],
-    ["RX(pi)", "RX(pi/2)"],
-    ["RY(pi/2)", "RY(pi)"],
-    ["RY(pi)", "RY(pi/2)"],
-    ["RX(pi)", "I"],
-    ["RY(pi)", "I"],
-    ["RX(pi/2)", "RX(pi/2)"],
-    ["RY(pi/2)", "RY(pi/2)"],
+    ["Xp", "Xp"],
+    ["Yp", "Yp"],
+    ["Xp", "Yp"],
+    ["Yp", "Xp"],
+    ["X9", "I"],
+    ["Y9", "I"],
+    ["X9", "Y9"],
+    ["Y9", "X9"],
+    ["X9", "Yp"],
+    ["Y9", "Xp"],
+    ["Xp", "Y9"],
+    ["Yp", "X9"],
+    ["X9", "Xp"],
+    ["Xp", "X9"],
+    ["Y9", "Yp"],
+    ["Yp", "Y9"],
+    ["Xp", "I"],
+    ["Yp", "I"],
+    ["X9", "X9"],
+    ["Y9", "Y9"],
 ]
 
 
@@ -96,7 +96,7 @@ def _acquisition(
 
     # repeat the experiment as many times as defined by software_averages
     # for iteration in range(params.software_averages):
-    for gateNumber, gates in enumerate(gatelist):
+    for gates in gatelist:
         # create a sequence of pulses
         ro_pulses = {}
         sequence = PulseSequence()
@@ -104,7 +104,6 @@ def _acquisition(
             sequence, ro_pulses[qubit] = add_gate_pair_pulses_to_sequence(
                 platform, gates, qubit, sequence, params.beta_param
             )
-
         # execute the pulse sequence
         results = platform.execute_pulse_sequence(
             sequence,
@@ -118,7 +117,8 @@ def _acquisition(
         for qubit in qubits:
             z_proj = 2 * results[ro_pulses[qubit].serial].probability(0) - 1
             # store the results
-            data.register_qubit(qubit, z_proj, gateNumber)
+            gate = "-".join(gates)
+            data.register_qubit(qubit, z_proj, gate)
     # finally, save the remaining data
     return data
 
@@ -141,8 +141,8 @@ def add_gate_pair_pulses_to_sequence(
             # print("Transforming to sequence I gate")
             pass
 
-        if gate == "RX(pi)":
-            # print("Transforming to sequence RX(pi) gate")
+        if gate == "Xp":
+            # print("Transforming to sequence Xp gate")
             if beta_param == None:
                 RX_pulse = platform.create_RX_pulse(
                     qubit,
@@ -156,8 +156,8 @@ def add_gate_pair_pulses_to_sequence(
                 )
             sequence.add(RX_pulse)
 
-        if gate == "RX(pi/2)":
-            # print("Transforming to sequence RX(pi/2) gate")
+        if gate == "X9":
+            # print("Transforming to sequence X9 gate")
             if beta_param == None:
                 RX90_pulse = platform.create_RX90_pulse(
                     qubit,
@@ -171,8 +171,8 @@ def add_gate_pair_pulses_to_sequence(
                 )
             sequence.add(RX90_pulse)
 
-        if gate == "RY(pi)":
-            # print("Transforming to sequence RY(pi) gate")
+        if gate == "Yp":
+            # print("Transforming to sequence Yp gate")
             if beta_param == None:
                 RY_pulse = platform.create_RX_pulse(
                     qubit,
@@ -188,8 +188,8 @@ def add_gate_pair_pulses_to_sequence(
                 )
             sequence.add(RY_pulse)
 
-        if gate == "RY(pi/2)":
-            # print("Transforming to sequence RY(pi/2) gate")
+        if gate == "Y9":
+            # print("Transforming to sequence Y9 gate")
             if beta_param == None:
                 RY90_pulse = platform.create_RX90_pulse(
                     qubit,

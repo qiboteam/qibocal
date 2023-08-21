@@ -70,7 +70,6 @@ def auto(runcard, folder, force, update):
     builder.run(mode=ExecutionMode.autocalibration)
     if update:
         builder.dump_platform_runcard()
-    builder.dump_report()
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)

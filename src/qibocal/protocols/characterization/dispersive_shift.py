@@ -14,6 +14,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.protocols.characterization.utils import (
+    GHZ_TO_HZ,
     HZ_TO_GHZ,
     V_TO_UV,
     lorentzian,
@@ -197,14 +198,13 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
             q_measures = data_i.q
 
             iq_couples[i].append(np.stack((i_measures, q_measures), axis=-1))
-            results.append(StateResults(frequency, fitted_parameters))
-
+        results.append(StateResults(frequency, fitted_parameters))
     # for each qubit find the iq couple of 0-1 states that maximize the distance
     iq_couples = np.array(iq_couples)
     best_freqs = {}
     best_iqs = {}
     for qubit in qubits:
-        frequencies = data[qubit, 0].freq
+        frequencies = data[qubit, 0].freq * HZ_TO_GHZ
 
         max_index = np.argmax(
             np.linalg.norm(iq_couples[0][qubit] - iq_couples[1][qubit], axis=-1)
@@ -310,20 +310,40 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
             col=1,
         )
 
-        fig.add_vline(
-            x=fit.best_freq[qubit] * HZ_TO_GHZ,
-            line=dict(color="orange", width=3, dash="dash"),
-            row=1,
-            col=1,
-        )
+    fig.add_trace(
+        go.Scatter(
+            x=[fit.best_freq[qubit], fit.best_freq[qubit]],
+            y=[
+                np.min(np.concatenate((data_0.msr, data_1.msr))),
+                np.max(np.concatenate((data_0.msr, data_1.msr))),
+            ],
+            mode="lines",
+            line=go.scatter.Line(color="orange", width=3, dash="dash"),
+            name="Best frequency",
+        ),
+        row=1,
+        col=1,
+    )
 
-        fitting_report = (
-            f"{qubit} | State zero freq : {fit_data_0['frequency'][str(qubit)]:,.0f} Hz.<br>"
-            + f"{qubit} | State one freq : {fit_data_1['frequency'][str(qubit)]:,.0f} Hz.<br>"
-            + f"{qubit} | Frequency shift : {(fit_data_1['frequency'][str(qubit)] - fit_data_0['frequency'][str(qubit)]):,.0f} Hz.<br>"
-            + f"{qubit} | Best frequency : {fit.best_freq[qubit]:,.0f} Hz.<br>"
-        )
+    fig.add_vline(
+        x=fit.best_freq[qubit],
+        line=dict(color="orange", width=3, dash="dash"),
+        row=1,
+        col=1,
+    )
 
+    fitting_report = fitting_report + (
+        f"{qubit} | State zero freq : {fit_data_0.frequency[qubit]*GHZ_TO_HZ:,.0f} Hz.<br>"
+    )
+    fitting_report = fitting_report + (
+        f"{qubit} | State one freq : {fit_data_1.frequency[qubit]*GHZ_TO_HZ:,.0f} Hz.<br>"
+    )
+    fitting_report = fitting_report + (
+        f"{qubit} | Chi : {(fit_data_0.frequency[qubit]*GHZ_TO_HZ - fit_data_1.frequency[qubit]*GHZ_TO_HZ)/2:,.0f} Hz.<br>"
+    )
+    fitting_report = fitting_report + (
+        f"{qubit} | Best frequency : {fit.best_freq[qubit]*GHZ_TO_HZ:,.0f} Hz.<br>"
+    )
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting

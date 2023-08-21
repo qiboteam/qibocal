@@ -4,7 +4,7 @@ from typing import Any, NewType, Optional, Union
 
 from pydantic import Field
 from pydantic.dataclasses import dataclass
-from qibo.backends import Backend, construct_backend, set_backend
+from qibo.backends import Backend, GlobalBackend
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
@@ -55,8 +55,8 @@ class Runcard:
     @cached_property
     def backend_obj(self) -> Backend:
         """Allocate backend."""
-        set_backend(self.backend, self.platform)
-        return construct_backend(self.backend, self.platform)
+        GlobalBackend.set_backend(self.backend, self.platform)
+        return GlobalBackend()
 
     @property
     def platform_obj(self) -> Platform:
