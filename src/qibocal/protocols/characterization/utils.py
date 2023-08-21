@@ -288,9 +288,6 @@ def fill_table(
     table = f"{qubit}| {name}: "
     magnitude = floor(log10(abs(value)))  # number of non decimal digits in value
     if error:
-        # magnitude_error = floor(log10(abs(error)))
-        # if magnitude_error == magnitude:
-        #     magnitude -= 1
         ndigits = max(significant_digit(error * 10 ** (-1 * magnitude)), 0)
         table += f"({round(value*10**(-1*magnitude), ndigits)} {chr(177)} {round(error*10**(-1*magnitude), ndigits)}) 10^{magnitude}"
     else:
