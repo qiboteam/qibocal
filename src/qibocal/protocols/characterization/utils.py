@@ -1,4 +1,5 @@
 from enum import Enum
+from math import floor, log10
 from typing import Optional
 
 import lmfit
@@ -268,14 +269,31 @@ def fill_table(
     name: str,
     value: float,
     error: Optional[float],
-    unit: str,
+    unit: str = None,
     ndigits: int = 2,
 ) -> str:
+    """
+    Return a row of the report table with the correct number of
+    significant digits.
+
+    Args:
+        qubit (QubitId): Qubit.
+        name (str): Variable's name.
+        value (float): Variable's value.
+        error (float): Error associated to the variable.
+        unit (str): Measurement unit. Default value `None`.
+        ndigits (int): Number of decimal digits to display when error is `None`
+            (i.e. it is not evaluated).
+    """
     table = f"{qubit}| {name}: "
+    magnitude = floor(log10(abs(value)))  # number of non decimal digits in value
     if error:
-        ndigits = significant_digit(error)
-        table += f"{round(value, ndigits)} {chr(177)} {round(error, ndigits)}"
+        # magnitude_error = floor(log10(abs(error)))
+        # if magnitude_error == magnitude:
+        #     magnitude -= 1
+        ndigits = max(significant_digit(error * 10 ** (-1 * magnitude)), 0)
+        table += f"({round(value*10**(-1*magnitude), ndigits)} {chr(177)} {round(error*10**(-1*magnitude), ndigits)}) 10^{magnitude}"
     else:
-        table += f"{round(value, ndigits)} "
-    table += f" {unit} <br>"
+        table += f"{round(value*10**(-1* magnitude), ndigits)} * 10^{magnitude}"
+    table += f" {unit} <br>" if unit else f"<br>"
     return table

@@ -225,7 +225,7 @@ def _fit(data: RamseyData) -> RamseyResults:
     for qubit in qubits:
         qubit_data = data[qubit]
         qubit_freq = data.qubit_freqs[qubit]
-        msrs = qubit_data[["msr"]]
+        msrs = qubit_data[["msr"]].tolist()
         msrs = np.reshape(msrs, (len(waits), -1)) * V_TO_UV
         t2s = []
         deltas_phys_list = []
@@ -370,7 +370,6 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
         + (fill_table(qubit, "T2*", fit.t2[qubit][0], fit.t2[qubit][1], "ns"))
         + "<br>"
     )
-
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting

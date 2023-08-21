@@ -221,7 +221,7 @@ actions:
       delay_between_pulses_step: 500 # must be a multiple of 4
       n_osc: 5
       nshots: 1024
-
+      nboot: 10
 
 #   - id: single shot classification
 #     priority: 0
