@@ -85,7 +85,7 @@ def _acquisition(
         ),
     )
 
-    data = TimeOfFlightReadoutData(params.window_size, platform.sampling_rate)
+    data = TimeOfFlightReadoutData(params.window_size, platform.settings.sampling_rate)
 
     # retrieve and store the results for every qubit
     for qubit in qubits:

@@ -1,12 +1,16 @@
 import inspect
 import json
+import time
 from dataclasses import asdict, dataclass, fields
+from functools import wraps
 from typing import Callable, Generic, NewType, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
 from qibolab.platform import Platform
 from qibolab.qubits import Qubit, QubitId
+
+from qibocal.config import log
 
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
@@ -22,6 +26,25 @@ JSONFILE = "conf.json"
 """Name of the file where data acquired (global configuration) by calibration are dumped."""
 RESULTSFILE = "results.json"
 """Name of the file where results are dumped."""
+
+
+def show_logs(func):
+    """Decorator to add logs."""
+
+    @wraps(func)
+    # necessary to maintain the function signature
+    def wrapper(*args, **kwds):
+        start = time.perf_counter()
+        out = func(*args, **kwds)
+        end = time.perf_counter()
+        if end - start < 1:
+            message = " in less than 1 second."
+        else:
+            message = f" in {end-start:.2f} seconds"
+        log.info(f"Finished {func.__name__[1:]}" + message)
+        return out, end - start
+
+    return wrapper
 
 
 class Parameters:
@@ -66,6 +89,11 @@ class Data:
         if set(map(type, self.data)) == {tuple}:
             return list({q[0] for q in self.data})
         return [q for q in self.data]
+
+    @property
+    def pairs(self):
+        """Access qubit pairs ordered alphanumerically from data structure."""
+        return list({tuple(sorted(q[:2])) for q in self.data})
 
     def __getitem__(self, qubit: Union[QubitId, tuple[QubitId, int]]):
         """Access data attribute member."""
@@ -131,7 +159,19 @@ class Results:
 
     def save(self, path):
         """Store results to json."""
-        (path / RESULTSFILE).write_text(json.dumps(asdict(self), indent=4))
+        # FIXME: remove hardcoded conversion to str for tuple
+        result_dict = {}
+        for result_name, result in asdict(self).items():
+            result_dict[result_name] = {}
+            if isinstance(result, dict):
+                for key, elem in result.items():
+                    if isinstance(key, tuple):
+                        result_dict[result_name][str(key)] = elem
+                    else:
+                        result_dict[result_name][key] = elem
+            else:
+                result_dict[result_name] = result
+        (path / RESULTSFILE).write_text(json.dumps(result_dict, indent=4))
 
 
 # Internal types, in particular `_ParametersT` is used to address function
@@ -153,6 +193,10 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     """Plotting function."""
 
     def __post_init__(self):
+        # add decorator to show logs
+        self.acquisition = show_logs(self.acquisition)
+        self.fit = show_logs(self.fit)
+
         # TODO: this could be improved
         if self.fit is None:
             self.fit = _dummy_fit
