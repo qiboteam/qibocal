@@ -47,8 +47,6 @@ class SingleShotClassificationParameters(Parameters):
     """List of models to classify the qubit states"""
     savedir: Optional[str] = " "
     """Dumping folder of the classification results"""
-    show_contour: bool = True
-    """Show the contour plots of the models' predictions"""
 
 
 ClassificationType = np.dtype([("i", np.float64), ("q", np.float64), ("state", int)])
@@ -65,8 +63,6 @@ class SingleShotClassificationData(Data):
     """Models' hyperparameters"""
     savedir: str
     """Dumping folder of the classification results"""
-    show_contour: bool = True
-    """Show the contour plots of the models' predictions"""
     data: dict[tuple[QubitId, int], npt.NDArray[ClassificationType]] = field(
         default_factory=dict
     )
@@ -216,7 +212,6 @@ def _acquisition(
         params.classifiers_list,
         hpars,
         params.savedir,
-        params.show_contour,
     )
 
     # execute the first pulse sequence
@@ -358,7 +353,7 @@ def _plot(
         cols=len(models_name),
         horizontal_spacing=SPACING * 3 / len(models_name),
         vertical_spacing=SPACING,
-        subplot_titles=(models_name),
+        subplot_titles=[run.pretty_name(model) for model in models_name],
         column_width=[COLUMNWIDTH] * len(models_name),
     )
     fig_roc = go.Figure()
@@ -383,10 +378,9 @@ def _plot(
             y_pred = fit.models[qubit][i].predict_proba(x_test)[:, 1]
         except AttributeError:
             y_pred = fit.models[qubit][i].predict(x_test)
-        if data.show_contour:
-            predictions = np.round(
-                np.reshape(fit.models[qubit][i].predict(grid), q_values.shape)
-            ).astype(np.int64)
+        predictions = np.round(
+            np.reshape(fit.models[qubit][i].predict(grid), q_values.shape)
+        ).astype(np.int64)
         # Evaluate the ROC curve
         fpr, tpr, _ = roc_curve(y_test, y_pred)
         auc_score = roc_auc_score(y_test, y_pred)
@@ -436,21 +430,21 @@ def _plot(
             row=1,
             col=i + 1,
         )
-        if data.show_contour:
-            fig.add_trace(
-                go.Contour(
-                    x=grid[:, 0],
-                    y=grid[:, 1],
-                    z=predictions.flatten(),
-                    showscale=False,
-                    colorscale=[get_color_state0(i), get_color_state1(i)],
-                    opacity=0.2,
-                    name="Score",
-                    hoverinfo="skip",
-                ),
-                row=1,
-                col=i + 1,
-            )
+        fig.add_trace(
+            go.Contour(
+                x=grid[:, 0],
+                y=grid[:, 1],
+                z=predictions.flatten(),
+                showscale=False,
+                colorscale=[get_color_state0(i), get_color_state1(i)],
+                opacity=0.2,
+                name="Score",
+                hoverinfo="skip",
+                showlegend=True,
+            ),
+            row=1,
+            col=i + 1,
+        )
 
         fig.add_trace(
             go.Scatter(
