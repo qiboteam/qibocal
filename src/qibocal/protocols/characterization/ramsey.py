@@ -219,7 +219,6 @@ def _fit(data: RamseyData) -> RamseyResults:
     popts = {}
     freq_measure = {}
     t2_measure = {}
-    # t2_err = {}
     delta_phys_measure = {}
 
     for qubit in qubits:
