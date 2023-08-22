@@ -87,7 +87,7 @@ def random_clifford(qubits, seed=None):
     return clifford_gates
 
 
-def significant_digit(number: Number):
+def significant_digit(number: float):
     """Computes the position of the first significant digit of a given number.
 
     Args:

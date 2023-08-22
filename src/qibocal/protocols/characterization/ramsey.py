@@ -15,7 +15,7 @@ from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.bootstrap import bootstrap
 from qibocal.config import log
 
-from .utils import GHZ_TO_HZ, V_TO_UV
+from .utils import GHZ_TO_HZ, V_TO_UV, fill_table
 
 
 @dataclass
@@ -225,7 +225,7 @@ def _fit(data: RamseyData) -> RamseyResults:
     for qubit in qubits:
         qubit_data = data[qubit]
         qubit_freq = data.qubit_freqs[qubit]
-        msrs = qubit_data[["msr"]]
+        msrs = qubit_data[["msr"]].tolist()
         msrs = np.reshape(msrs, (len(waits), -1)) * V_TO_UV
         t2s = []
         deltas_phys_list = []
@@ -350,16 +350,26 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
     fitting_report = (
         fitting_report
         + (
-            f"{qubit} | Delta_frequency: {fit.delta_phys[qubit][0]:,.1f} {chr(177)} {fit.delta_phys[qubit][1]:,.1f} Hz<br>"
+            fill_table(
+                qubit,
+                "Delta_frequency",
+                fit.delta_phys[qubit][0],
+                fit.delta_phys[qubit][1],
+                "Hz",
+            )
         )
         + (
-            f"{qubit} | Drive_frequency: {fit.frequency[qubit][0] } {chr(177)} {fit.frequency[qubit][1]:,.0f} Hz<br>"
+            fill_table(
+                qubit,
+                "Drive_frequency",
+                fit.frequency[qubit][0],
+                fit.frequency[qubit][1],
+                "Hz",
+            )
         )
-        + (
-            f"{qubit} | T2*: {fit.t2[qubit][0]:,.0f} {chr(177)} {fit.t2[qubit][1]:,.0f} ns.<br><br>"
-        )
+        + (fill_table(qubit, "T2*", fit.t2[qubit][0], fit.t2[qubit][1], "ns"))
+        + "<br>"
     )
-
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
