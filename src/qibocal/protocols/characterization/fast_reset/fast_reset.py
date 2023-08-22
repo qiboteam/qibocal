@@ -49,7 +49,6 @@ FastResetType = np.dtype(
 """Custom dtype for FastReset."""
 
 
-@dataclass
 class FastResetData(Data):
     """FastReset acquisition outputs."""
 
@@ -178,7 +177,7 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
     # Maybe the plot can just be something like a confusion matrix between 0s and 1s ???
 
     figures = []
-    fitting_report = ""
+    fitting_report = None
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -190,14 +189,32 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
         ),
     )
 
-    fig.add_trace(
-        go.Heatmap(
-            z=fit.Lambda_M_fr[qubit],
-            coloraxis="coloraxis",
-        ),
-        row=1,
-        col=1,
-    )
+    if fit is not None:
+        fitting_report = ""
+        fig.add_trace(
+            go.Heatmap(
+                z=fit.Lambda_M_fr[qubit],
+                coloraxis="coloraxis",
+            ),
+            row=1,
+            col=1,
+        )
+
+        fitting_report += (
+            f"{qubit} | Fidelity [Fast Reset]: {fit.fidelity_fr[qubit]:.6f}<br>"
+        )
+        fitting_report += (
+            f"{qubit}| Fidelity [Relaxation Time]: {fit.fidelity_nfr[qubit]:.6f}<br>"
+        )
+
+        fig.add_trace(
+            go.Heatmap(
+                z=fit.Lambda_M_nfr[qubit],
+                coloraxis="coloraxis",
+            ),
+            row=1,
+            col=2,
+        )
 
     fig.update_xaxes(
         title_text=f"{qubit}: Fast Reset",
@@ -208,28 +225,12 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
     fig.update_yaxes(tickvals=[0, 1])
     fig.update_xaxes(tickvals=[0, 1])
 
-    fig.add_trace(
-        go.Heatmap(
-            z=fit.Lambda_M_nfr[qubit],
-            coloraxis="coloraxis",
-        ),
-        row=1,
-        col=2,
-    )
-
     fig.update_layout(coloraxis={"colorscale": "viridis"})
 
     fig.update_xaxes(
         title_text="State prepared",
         row=1,
         col=2,
-    )
-
-    fitting_report += (
-        f"{qubit} | Fidelity [Fast Reset]: {fit.fidelity_fr[qubit]:.6f}<br>"
-    )
-    fitting_report += (
-        f"{qubit}| Fidelity [Relaxation Time]: {fit.fidelity_nfr[qubit]:.6f}<br>"
     )
 
     # last part
@@ -239,9 +240,6 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
         xaxis_title="State prepared",
         yaxis_title="State read",
     )
-
-    fig.update_xaxes(tickvals=[0, 1])
-    fig.update_yaxes(tickvals=[0, 1])
 
     figures.append(fig)
 

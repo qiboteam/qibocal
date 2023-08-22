@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-from .operation import DATAFILE, RESULTSFILE, Data, Results
+from .operation import DATAFILE, RB_DATAFILE, RESULTSFILE, Data, Results
 from .runcard import Id
 from .status import Status
 from .task import Task
@@ -60,7 +60,10 @@ class Completed:
     @property
     def data(self):
         """Access task's data."""
-        if not (self.datapath / DATAFILE).is_file():
+        if (
+            not (self.datapath / DATAFILE).is_file()
+            and not (self.datapath / RB_DATAFILE).is_file()
+        ):
             return None
 
         Data = self.task.operation.data_type

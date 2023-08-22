@@ -9,3 +9,7 @@ class RBData(DataFrame):
 
     def save(self, path):
         super().to_csv(f"{path}/{self.__class__.__name__}.csv")
+
+    @classmethod
+    def load(cls, path):
+        return super().read_csv(path)

@@ -12,10 +12,8 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
-from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.config import log
 
 from .utils import OrderedPair, order_pair
 
@@ -47,10 +45,6 @@ class ChevronParameters(Parameters):
 @dataclass
 class ChevronResults(Results):
     """CzFluxTime outputs when fitting will be done."""
-
-    # FIXME: update runcard accordingly
-    period: dict[str, float]
-    """Period of the oscillation"""
 
 
 ChevronType = np.dtype(
@@ -189,10 +183,10 @@ def _aquisition(
     return data
 
 
-def _plot(data: ChevronData, fit: ChevronResults, qubits):
+def _plot(data: ChevronData, fit: ChevronResults, qubit):
     """Plot the experiment result for a single pair."""
     colouraxis = ["coloraxis", "coloraxis2"]
-    pair_data = data[qubits]
+    pair_data = data[qubit]
     # order qubits
     qubits = OrderedPair(*next(iter(pair_data))[:2])
 
@@ -204,7 +198,7 @@ def _plot(data: ChevronData, fit: ChevronResults, qubits):
             f"Qubit {qubits.high_freq} - High Frequency",
         ),
     )
-    fit_report = ""
+    fit_report = None
     for target, control, measure in pair_data:
         fig.add_trace(
             go.Heatmap(
@@ -215,11 +209,6 @@ def _plot(data: ChevronData, fit: ChevronResults, qubits):
             ),
             row=1,
             col=1 if measure == qubits[0] else 2,
-        )
-
-        fit_report += f"{measure} |"
-        fit_report += (
-            f"Period of oscillation: {fit.period[target, control, measure]} ns<br>"
         )
 
         fig.update_layout(
@@ -235,43 +224,8 @@ def _plot(data: ChevronData, fit: ChevronResults, qubits):
     return [fig], fit_report
 
 
-def fit_function(x, p0, p1, p2, p3):
-    """Sinusoidal fit function."""
-    return p0 + p1 * np.sin(2 * np.pi * p2 * x + p3)
-
-
-def _fit(data: ChevronData):
-    # TODO: check this fitting
-    pairs = data.pairs
-    results = {}
-    for pair in pairs:
-        for target, control, measure in data[pair]:
-            qubit_data = data[pair][target, control, measure]
-            fft_freqs = []
-            for amp in np.unique(qubit_data.amp):
-                probability = qubit_data[qubit_data.amp == amp].prob
-                fft_freqs.append(max(np.abs(np.fft.fft(probability))))
-
-            min_idx = np.argmin(fft_freqs)
-            amp = np.unique(qubit_data.amp)[min_idx]
-            duration = qubit_data[qubit_data.amp == amp].length
-            probability = qubit_data[qubit_data.amp == amp].amp
-            guesses = [np.mean(probability), 1, np.min(fft_freqs), 0]
-            # bounds = []
-            # TODO maybe normalize
-            try:
-                popt, _ = curve_fit(
-                    fit_function, duration, probability, p0=guesses, maxfev=10000
-                )
-
-                results[target, control, measure] = np.abs(1 / popt[2])
-
-            except:
-                log.warning("chevron fit: the fitting was not succesful")
-
-                results[target, control, measure] = 0
-
-    return ChevronResults(results)
+def _fit(data: ChevronData) -> ChevronResults:
+    return ChevronResults()
 
 
 chevron = Routine(_aquisition, _fit, _plot)

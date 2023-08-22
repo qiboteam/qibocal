@@ -33,9 +33,9 @@ ZenoType = np.dtype([("msr", np.float64), ("phase", np.float64)])
 
 
 class ZenoData(Data):
-    readout_duration: dict[tuple, int] = Field(default_factory=dict)
+    readout_duration: dict[QubitId, float] = Field(default_factory=dict)
     """Readout durations for each qubit"""
-    data: dict[tuple, npt.NDArray] = Field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray] = Field(default_factory=dict)
     """Raw data acquired."""
     dtype: np.dtype = ZenoType
 
@@ -54,7 +54,7 @@ class ZenoData(Data):
 class ZenoResults(Results):
     """Zeno outputs."""
 
-    zeno_t1: dict[QubitId, float] = field(metadata=dict(update="t1"))
+    zeno_t1: dict[QubitId, int] = field(metadata=dict(update="t1"))
     """T1 for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
@@ -92,7 +92,7 @@ def _acquisition(
         ro_pulse_duration[qubit] = ro_pulse.duration
 
     # create a DataUnits object to store the results
-    data = ZenoData(ro_pulse_duration)
+    data = ZenoData(readout_duration=ro_pulse_duration)
 
     # execute the first pulse sequence
     results = platform.execute_pulse_sequence(
@@ -110,7 +110,6 @@ def _acquisition(
         for ro_pulse in ro_pulses[qubit]:
             result = results[ro_pulse.serial]
             data.register_qubit(qubit=qubit, msr=result.magnitude, phase=result.phase)
-
     return data
 
 
@@ -130,7 +129,6 @@ def _fit(data: ZenoData) -> ZenoResults:
 
 def _plot(data: ZenoData, fit: ZenoResults, qubit):
     """Plotting function for T1 experiment."""
-
     figures = []
     fig = go.Figure()
 
@@ -149,28 +147,29 @@ def _plot(data: ZenoData, fit: ZenoResults, qubit):
         )
     )
 
-    waitrange = np.linspace(
-        min(readouts),
-        max(readouts),
-        2 * len(qubit_data),
-    )
-
-    params = fit.fitted_parameters[qubit]
-    fig.add_trace(
-        go.Scatter(
-            x=waitrange,
-            y=utils.exp_decay(waitrange, *params),
-            name="Fit",
-            line=go.scatter.Line(dash="dot"),
+    if fit is not None:
+        fitting_report = ""
+        waitrange = np.linspace(
+            min(readouts),
+            max(readouts),
+            2 * len(qubit_data),
         )
-    )
-    fitting_report = fitting_report + (
-        f"{qubit} | readout pulses: {fit.zeno_t1[qubit]:,.0f} readout pulses.<br><br>"
-    )
-    # FIXME: Pulse duration (+ time of flight ?)
-    fitting_report = fitting_report + (
-        f"{qubit} | t1: {fit.zeno_t1[qubit]*data.readout_duration[qubit]:,.0f} ns.<br><br>"
-    )
+        params = fit.fitted_parameters[qubit]
+        fig.add_trace(
+            go.Scatter(
+                x=waitrange,
+                y=utils.exp_decay(waitrange, *params),
+                name="Fit",
+                line=go.scatter.Line(dash="dot"),
+            )
+        )
+        fitting_report = fitting_report + (
+            f"{qubit} | readout pulses: {fit.zeno_t1[qubit]:,.0f} readout pulses.<br><br>"
+        )
+        # FIXME: Pulse duration (+ time of flight ?)
+        fitting_report = fitting_report + (
+            f"{qubit} | t1: {fit.zeno_t1[qubit]*data.readout_duration[qubit]:,.0f} ns.<br><br>"
+        )
 
     # last part
     fig.update_layout(

@@ -41,7 +41,7 @@ class AllXYDragData(Data):
 
     beta_param: float = None
     """Beta parameter for drag pulse."""
-    data: dict[tuple[QubitId, int], npt.NDArray] = Field(default_factory=dict)
+    data: dict[tuple[QubitId, float], npt.NDArray] = Field(default_factory=dict)
     """Raw data acquired."""
     dtype: np.dtype = allxy.AllXYType
 
@@ -81,10 +81,9 @@ def _acquisition(
 
     data = AllXYDragData()
 
+    betas = np.arange(params.beta_start, params.beta_end, params.beta_step).round(4)
     # sweep the parameters
-    for beta_param in np.arange(
-        params.beta_start, params.beta_end, params.beta_step
-    ).round(4):
+    for beta_param in betas:
         for gates in allxy.gatelist:
             # create a sequence of pulses
             ro_pulses = {}

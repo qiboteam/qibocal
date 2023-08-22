@@ -223,6 +223,7 @@ def _plot(data: FlippingData, qubit, fit: FlippingResults = None):
     )
 
     if fit is not None:
+        fitting_report = ""
         flips_range = np.linspace(
             min(qubit_data.flips),
             max(qubit_data.flips),

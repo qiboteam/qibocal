@@ -154,7 +154,7 @@ def _plot(data: SpinEchoData, qubit, fit: SpinEchoResults = None):
         fig.add_trace(
             go.Scatter(
                 x=waitrange,
-                y=exp_decay(waitrange, *params) * V_TO_UV,
+                y=exp_decay(waitrange, *params),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
             ),

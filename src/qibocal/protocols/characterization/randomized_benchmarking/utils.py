@@ -177,6 +177,7 @@ def extract_from_data(
     """
     if isinstance(data, list):
         data = DataFrame(data)
+
     # Check what parameters where given.
     if not groupby_key and not agg_type:
         # No grouping and no aggreagtion is wanted. Just return the wanted output key.

@@ -57,7 +57,6 @@ class CZVirtualZResults(Results):
 CZVirtualZType = np.dtype([("target", np.float64), ("control", np.float64)])
 
 
-@dataclass
 class CZVirtualZData(Data):
     """CZVirtualZ data."""
 
@@ -82,13 +81,13 @@ class CZVirtualZData(Data):
             if set(pair).issubset(index)
         }
 
-    @property
-    def global_params_dict(self):
-        """Convert non-arrays attributes into dict."""
-        data_dict = super().global_params_dict
-        # pop vphases since dict with tuple keys is not json seriazable
-        data_dict.pop("vphases")
-        return data_dict
+    # @property
+    # def global_params(self):
+    #     """Convert non-arrays attributes into dict."""
+    #     data_dict = super().global_params
+    #     # pop vphases since dict with tuple keys is not json seriazable
+    #     data_dict["vphases"] =
+    #     return data_dict
 
 
 def create_sequence(
@@ -304,9 +303,9 @@ def _fit(
     )
 
 
-def _plot(data: CZVirtualZData, data_fit: CZVirtualZResults, qubits):
+def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
     """Plot routine for CZVirtualZ."""
-    pair_data = data[qubits]
+    pair_data = data[qubit]
     qubits = OrderedPair(*next(iter(pair_data))[:2])
     fig1 = make_subplots(
         rows=1,
@@ -326,7 +325,7 @@ def _plot(data: CZVirtualZData, data_fit: CZVirtualZResults, qubits):
         ),
     )
 
-    fitting_report = ""
+    fitting_report = None
     thetas = data.thetas
 
     for target, control, setup in pair_data:
@@ -354,27 +353,29 @@ def _plot(data: CZVirtualZData, data_fit: CZVirtualZResults, qubits):
             row=1,
             col=2 if fig == fig1 else 1,
         )
-
-        angle_range = np.linspace(thetas[0], thetas[-1], 100)
-        fitted_parameters = data_fit.fitted_parameters[target, control, setup]
-        fig.add_trace(
-            go.Scatter(
-                x=angle_range + data.vphases[qubits][target],
-                y=fit_function(
-                    angle_range + data.vphases[qubits][target], *fitted_parameters
+        if fit is not None:
+            angle_range = np.linspace(thetas[0], thetas[-1], 100)
+            fitted_parameters = data_fit.fitted_parameters[target, control, setup]
+            fig.add_trace(
+                go.Scatter(
+                    x=angle_range + data.vphases[qubits][target],
+                    y=fit_function(
+                        angle_range + data.vphases[qubits][target], *fitted_parameters
+                    ),
+                    name="Fit",
+                    line=go.scatter.Line(dash="dot"),
                 ),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
-            ),
-            row=1,
-            col=1 if fig == fig1 else 2,
-        )
+                row=1,
+                col=1 if fig == fig1 else 2,
+            )
 
-        reports.append(f"{target} | CZ angle: {data_fit.cz_angle[target, control]}<br>")
-        reports.append(
-            f"{target} | Virtual Z phase: { - data_fit.virtual_phase[qubits][target]}<br>"
-        )
-    fitting_report = "".join(list(dict.fromkeys(reports)))
+            reports.append(
+                f"{target} | CZ angle: {data_fit.cz_angle[target, control]}<br>"
+            )
+            reports.append(
+                f"{target} | Virtual Z phase: { - data_fit.virtual_phase[qubits][target]}<br>"
+            )
+        fitting_report = "".join(list(dict.fromkeys(reports)))
 
     fig1.update_layout(
         title_text=f"Phase correction Qubit {qubits.low_freq}",

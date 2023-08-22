@@ -333,7 +333,7 @@ def _fit(data: RBData) -> StandardRBResult:
     return StandardRBResult(fidelity, pulse_fidelity, popt, perr, error_bars)
 
 
-def _plot(data: RBData, result: StandardRBResult, qubit) -> tuple[list[go.Figure], str]:
+def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], str]:
     """Builds the table for the qq pipe, calls the plot function of the result object
     and returns the figure es list.
 
@@ -345,7 +345,6 @@ def _plot(data: RBData, result: StandardRBResult, qubit) -> tuple[list[go.Figure
     Returns:
         tuple[list[go.Figure], str]:
     """
-
     x, y_scatter = extract_from_data(data, "signal", "depth", list)
     y = [np.mean(y_row) for y_row in y_scatter]
     popt, perr = result.fit_parameters, result.fit_uncertainties

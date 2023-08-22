@@ -206,7 +206,7 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
 
 def _plot(data: RabiLengthData, fit: RabiLengthResults, qubit):
     """Plotting function for RabiLength experiment."""
-    return utils.plot(data, fit, qubit)
+    return utils.plot(data, qubit, fit)
 
 
 rabi_length = Routine(_acquisition, _fit, _plot)

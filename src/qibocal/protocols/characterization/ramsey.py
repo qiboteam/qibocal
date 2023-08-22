@@ -301,6 +301,7 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
     )
 
     if fit is not None:
+        fitting_report = ""
         # add fitting trace
         waitrange = np.linspace(
             min(qubit_data.wait),

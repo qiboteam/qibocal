@@ -55,7 +55,7 @@ class ResonatorFrequencyData(Data):
 
     resonator_type: str
     """Resonator type."""
-    data: dict[tuple[QubitId, int, int], npt.NDArray] = Field(default_factory=dict)
+    data: dict[tuple[QubitId, int], npt.NDArray] = Field(default_factory=dict)
     dtype: np.dtype = ResonatorFrequencyType
 
     def register_qubit(self, qubit, state, freq, i, q):
@@ -110,7 +110,7 @@ def _acquisition(
         -params.freq_width / 2, params.freq_width / 2, params.freq_step
     )
 
-    data = ResonatorFrequencyData(platform.resonator_type)
+    data = ResonatorFrequencyData(resonator_type=platform.resonator_type)
     sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
@@ -215,32 +215,33 @@ def _plot(data: ResonatorFrequencyData, fit: ResonatorFrequencyResults, qubit):
     figures = []
     freqs = data.unique_freqs(qubit) * HZ_TO_GHZ
     opacity = 1
-    fitting_report = " "
+    fitting_report = None
     fig = make_subplots(
         rows=1,
         cols=1,
     )
 
-    fig.add_trace(
-        go.Scatter(
-            x=freqs,
-            y=fit.fidelities[qubit],
-            opacity=opacity,
-            showlegend=True,
-        ),
-        row=1,
-        col=1,
-    )
+    if fit is not None:
+        fig.add_trace(
+            go.Scatter(
+                x=freqs,
+                y=fit.fidelities[qubit],
+                opacity=opacity,
+                showlegend=True,
+            ),
+            row=1,
+            col=1,
+        )
+
+        fitting_report = "" + (
+            f"{qubit} | Best Resonator Frequency (GHz) : {fit.best_freq[qubit]*HZ_TO_GHZ:,.4f} Hz.<br>"
+        )
 
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Resonator Frequencies (GHz)",
         yaxis_title="Assignment Fidelities",
-    )
-
-    fitting_report = fitting_report + (
-        f"{qubit} | Best Resonator Frequency (GHz) : {fit.best_freq[qubit]*HZ_TO_GHZ:,.4f} Hz.<br>"
     )
 
     figures.append(fig)

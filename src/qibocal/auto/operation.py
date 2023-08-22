@@ -12,7 +12,6 @@ from qibolab.platform import Platform
 from qibolab.qubits import Qubit, QubitId
 
 from qibocal.config import log
-from qibocal.utils import conversion
 
 from .keys import GenericKey
 
@@ -27,6 +26,9 @@ QubitsPairs = dict[tuple[QubitId, QubitId], Qubit]
 
 DATAFILE = "data.npz"
 """Name of the file where data acquired (arrays) by calibration are dumped."""
+# TODO: Remove it.
+RB_DATAFILE = "RBData.json"
+"""Name of file where RB is dumped."""
 JSONFILE = "conf.json"
 """Name of the file where data acquired (global configuration) by calibration are dumped."""
 RESULTSFILE = "results.json"
@@ -144,10 +146,17 @@ class Data(BaseModel):
 
     @classmethod
     def load(cls, path):
+        key = GenericKey()
         with open(path / DATAFILE) as f:
             data_dict = dict(np.load(path / DATAFILE))
         if (path / JSONFILE).is_file():
             params = json.loads((path / JSONFILE).read_text())
+            # TODO: check if this can be improved
+            for param_key, param_value in params.items():
+                if isinstance(param_value, dict):
+                    params[param_key] = {
+                        key.load(k): kk for k, kk in param_value.items()
+                    }
             obj = cls(data=data_dict, **params)
         else:
             obj = cls(data=data_dict)
@@ -193,16 +202,14 @@ class Results:
 
     def save(self, path):
         """Store results to json."""
-        # FIXME: remove hardcoded conversion to str for tuple
         result_dict = {}
+        convert = GenericKey()
         for result_name, result in asdict(self).items():
             result_dict[result_name] = {}
             if isinstance(result, dict):
                 for key, elem in result.items():
-                    if isinstance(key, tuple):
-                        result_dict[result_name][str(key)] = elem
-                    else:
-                        result_dict[result_name][key] = elem
+                    result_dict[result_name][convert.dump(key)] = elem
+
             else:
                 result_dict[result_name] = result
         (path / RESULTSFILE).write_text(json.dumps(result_dict, indent=4))
@@ -210,11 +217,13 @@ class Results:
     @classmethod
     def load(cls, path):
         params = json.loads((path / RESULTSFILE).read_text())
+        convert = GenericKey()
         for key, elem in params.items():
             if isinstance(elem, dict):
                 # FIXME: necessary since after loading QubitId is string and not int
                 # maybe convert all QubitIds into strings ?
-                params[key] = {conversion(k): value for k, value in elem.items()}
+
+                params[key] = {convert.load(k): value for k, value in elem.items()}
 
         return cls(**params)
 

@@ -37,6 +37,7 @@ class DispersiveShiftParameters(Parameters):
 
 
 # FIXME: this is loaded as a dict from json
+# FIXME: remove it
 @dataclass
 class StateResults:
     """Resonator spectroscopy outputs."""
@@ -57,8 +58,6 @@ class DispersiveShiftResults(Results):
     """Resonator spectroscopy outputs in the excited state"""
     best_freq: dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
     """Readout frequency that maximizes the distance of ground and excited states in iq-plane"""
-    best_iqs: dict[QubitId, npt.NDArray[np.float64]]
-    """iq-couples of ground and excited states with best frequency"""
 
 
 DispersiveShiftType = np.dtype(
@@ -202,7 +201,6 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
     # for each qubit find the iq couple of 0-1 states that maximize the distance
     iq_couples = np.array(iq_couples)
     best_freqs = {}
-    best_iqs = {}
     for qubit in qubits:
         frequencies = data[qubit, 0].freq * HZ_TO_GHZ
 
@@ -210,13 +208,11 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
             np.linalg.norm(iq_couples[0][qubit] - iq_couples[1][qubit], axis=-1)
         )
         best_freqs[qubit] = frequencies[max_index]
-        best_iqs[qubit] = iq_couples[:, qubit, max_index].tolist()
 
     return DispersiveShiftResults(
         results_0=results[0],
         results_1=results[1],
         best_freq=best_freqs,
-        best_iqs=best_iqs,
     )
 
 
@@ -295,9 +291,11 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
             )
 
     if fit is not None:
+        fitting_report = ""
+
         fig.add_trace(
             go.Scatter(
-                x=[fit.best_freq[qubit] * HZ_TO_GHZ, fit.best_freq[qubit] * HZ_TO_GHZ],
+                x=[fit.best_freq[qubit], fit.best_freq[qubit]],
                 y=[
                     np.min(np.concatenate((data_0.msr, data_1.msr))),
                     np.max(np.concatenate((data_0.msr, data_1.msr))),
@@ -310,40 +308,25 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
             col=1,
         )
 
-    fig.add_trace(
-        go.Scatter(
-            x=[fit.best_freq[qubit], fit.best_freq[qubit]],
-            y=[
-                np.min(np.concatenate((data_0.msr, data_1.msr))),
-                np.max(np.concatenate((data_0.msr, data_1.msr))),
-            ],
-            mode="lines",
-            line=go.scatter.Line(color="orange", width=3, dash="dash"),
-            name="Best frequency",
-        ),
-        row=1,
-        col=1,
-    )
+        fig.add_vline(
+            x=fit.best_freq[qubit],
+            line=dict(color="orange", width=3, dash="dash"),
+            row=1,
+            col=1,
+        )
 
-    fig.add_vline(
-        x=fit.best_freq[qubit],
-        line=dict(color="orange", width=3, dash="dash"),
-        row=1,
-        col=1,
-    )
-
-    fitting_report = fitting_report + (
-        f"{qubit} | State zero freq : {fit_data_0.frequency[qubit]*GHZ_TO_HZ:,.0f} Hz.<br>"
-    )
-    fitting_report = fitting_report + (
-        f"{qubit} | State one freq : {fit_data_1.frequency[qubit]*GHZ_TO_HZ:,.0f} Hz.<br>"
-    )
-    fitting_report = fitting_report + (
-        f"{qubit} | Chi : {(fit_data_0.frequency[qubit]*GHZ_TO_HZ - fit_data_1.frequency[qubit]*GHZ_TO_HZ)/2:,.0f} Hz.<br>"
-    )
-    fitting_report = fitting_report + (
-        f"{qubit} | Best frequency : {fit.best_freq[qubit]*GHZ_TO_HZ:,.0f} Hz.<br>"
-    )
+        fitting_report = fitting_report + (
+            f"{qubit} | State zero freq : {fit_data_0['frequency'][str(qubit)]*GHZ_TO_HZ:,.0f} Hz.<br>"
+        )
+        fitting_report = fitting_report + (
+            f"{qubit} | State one freq : {fit_data_1['frequency'][str(qubit)]*GHZ_TO_HZ:,.0f} Hz.<br>"
+        )
+        fitting_report = fitting_report + (
+            f"{qubit} | Chi : {(fit_data_0['frequency'][str(qubit)]*GHZ_TO_HZ - fit_data_1['frequency'][str(qubit)]*GHZ_TO_HZ)/2:,.0f} Hz.<br>"
+        )
+        fitting_report = fitting_report + (
+            f"{qubit} | Best frequency : {fit.best_freq[qubit]*GHZ_TO_HZ:,.0f} Hz.<br>"
+        )
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
