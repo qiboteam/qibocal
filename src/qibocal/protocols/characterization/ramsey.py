@@ -256,7 +256,7 @@ def _fit(data: RamseyData) -> RamseyResults:
                     new_freqs.append(0)
 
                 freq_measure[qubit] = (np.mean(new_freqs), np.std(new_freqs))
-                t2_measure[qubit] = (np.mean(new_freqs), np.std(new_freqs))
+                t2_measure[qubit] = (np.mean(t2s), np.std(t2s))
                 delta_phys_measure[qubit] = (
                     np.mean(deltas_phys_list),
                     np.std(deltas_phys_list),

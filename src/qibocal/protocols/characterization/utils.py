@@ -289,7 +289,7 @@ def fill_table(
     magnitude = floor(log10(abs(value)))  # number of non decimal digits in value
     if error:
         ndigits = max(significant_digit(error * 10 ** (-1 * magnitude)), 0)
-        table += f"({round(value*10**(-1*magnitude), ndigits)} {chr(177)} {round(error*10**(-1*magnitude), ndigits)}) 10^{magnitude}"
+        table += f"({round(value*10**(-1*magnitude), ndigits)} {chr(177)} {np.format_float_positional(round(error*10**(-1*magnitude), ndigits), trim = '-')}) 10^{magnitude}"
     else:
         table += f"{round(value*10**(-1* magnitude), ndigits)} * 10^{magnitude}"
     table += f" {unit} <br>" if unit else f"<br>"
