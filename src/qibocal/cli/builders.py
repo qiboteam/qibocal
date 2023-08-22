@@ -5,6 +5,7 @@ from pathlib import Path
 
 import yaml
 from qibolab.qubits import QubitId
+from qibolab.serialize import dump_runcard
 
 from qibocal.auto.execute import Executor, History
 from qibocal.auto.runcard import Runcard
@@ -73,7 +74,7 @@ class ActionBuilder:
         - generating meta.yml
         """
         if self.backend.name == "qibolab":
-            self.platform.dump(self.folder / PLATFORM)
+            dump_runcard(self.platform, self.folder / PLATFORM)
 
         with open(self.folder / RUNCARD, "w") as file:
             yaml.dump(runcard, file)
@@ -129,7 +130,7 @@ class ActionBuilder:
     def dump_platform_runcard(self):
         """Dump platform runcard."""
         if self.platform is not None:
-            self.platform.dump(self.folder / UPDATED_PLATFORM)
+            dump_runcard(self.platform, self.folder / UPDATED_PLATFORM)
 
 
 class ReportBuilder:
