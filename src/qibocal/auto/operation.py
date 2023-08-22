@@ -98,7 +98,7 @@ class Data(BaseModel):
         smart_union = True
 
     @validator("data", pre=True)
-    def validate_data(cls, data):
+    def validate_data(self, data):
         key = GenericKey()
         new_data = {}
         for i, ar in data.items():

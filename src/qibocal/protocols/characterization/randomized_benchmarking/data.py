@@ -1,4 +1,4 @@
-from pandas import DataFrame
+from pandas import DataFrame, read_csv
 
 
 class RBData(DataFrame):
@@ -12,4 +12,4 @@ class RBData(DataFrame):
 
     @classmethod
     def load(cls, path):
-        return super().read_csv(path)
+        return read_csv(path)

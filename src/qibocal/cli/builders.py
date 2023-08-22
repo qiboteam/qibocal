@@ -50,7 +50,7 @@ class FitBuilder(PostProcessingBuilder):
             timing_task = {}
             timing_task["fit"] = result_time
             timing_task["tot"] = timing_task["acquisition"] + result_time
-            self.meta[task_id] = timing_task
+            self.metadata[task_id] = timing_task
 
         # update time in meta.yml
         e = datetime.datetime.now(datetime.timezone.utc)
@@ -150,6 +150,9 @@ class Builder:
         if self.platform is not None:
             self.platform.stop()
             self.platform.disconnect()
+
+    def _run(self, mode: ExecutionMode):
+        raise (NotImplementedError)
 
     @property
     def platform(self):

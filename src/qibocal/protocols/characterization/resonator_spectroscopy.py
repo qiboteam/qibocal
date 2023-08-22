@@ -117,8 +117,8 @@ class ResonatorSpectroscopyData(Data):
     def load(cls, path):
         obj = super().load(path)
         # Instantiate PowerLevel object
-        if obj.power_level is not None:
-            obj.power_level = PowerLevel(obj.power_level)
+        if obj.power_level is not None:  # pylint: disable=E1101
+            obj.power_level = PowerLevel(obj.power_level)  # pylint: disable=E1101
         return obj
 
 

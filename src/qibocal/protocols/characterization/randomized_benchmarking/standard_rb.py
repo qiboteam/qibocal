@@ -339,7 +339,7 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
 
     Args:
         data (RBData): Data object used for the table.
-        result (StandardRBResult): Is called for the plot.
+        fit (StandardRBResult): Is called for the plot.
         qubit (_type_): Not used yet.
 
     Returns:
@@ -347,7 +347,7 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
     """
     x, y_scatter = extract_from_data(data, "signal", "depth", list)
     y = [np.mean(y_row) for y_row in y_scatter]
-    popt, perr = result.fit_parameters, result.fit_uncertainties
+    popt, perr = fit.fit_parameters, fit.fit_uncertainties
     label = "Fit: y=Ap^x<br>A: {}<br>p: {}<br>B: {}".format(
         number_to_str(popt[0], perr[0]),
         number_to_str(popt[1], perr[1]),
@@ -375,20 +375,20 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
     )
     # Create a dictionary for the error bars
     error_y_dict = None
-    if result.error_bars is not None:
+    if fit.error_bars is not None:
         # Constant error bars
-        if isinstance(result.error_bars, Iterable) is False:
-            error_y_dict = {"type": "constant", "value": result.error_bars}
+        if isinstance(fit.error_bars, Iterable) is False:
+            error_y_dict = {"type": "constant", "value": fit.error_bars}
         # Symmetric error bars
-        elif isinstance(result.error_bars[0], Iterable) is False:
-            error_y_dict = {"type": "data", "array": result.error_bars}
+        elif isinstance(fit.error_bars[0], Iterable) is False:
+            error_y_dict = {"type": "data", "array": fit.error_bars}
         # Asymmetric error bars
         else:
             error_y_dict = {
                 "type": "data",
                 "symmetric": False,
-                "array": result.error_bars[1],
-                "arrayminus": result.error_bars[0],
+                "array": fit.error_bars[1],
+                "arrayminus": fit.error_bars[0],
             }
         fig.add_trace(
             go.Scatter(
@@ -422,9 +422,9 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
             f" | {key}: {value}<br>"
             for key, value in {
                 **meta_data,
-                "fidelity": number_to_str(result.fidelity, np.array(perr[1]) / 2),
+                "fidelity": number_to_str(fit.fidelity, np.array(perr[1]) / 2),
                 "pulse_fidelity": number_to_str(
-                    result.pulse_fidelity,
+                    fit.pulse_fidelity,
                     np.array(perr[1]) / (2 * NPULSES_PER_CLIFFORD),
                 ),
             }.items()

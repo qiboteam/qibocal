@@ -14,6 +14,7 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Physics",
 ]
 
+
 [tool.poetry.dependencies]
 python = ">=3.9,<3.12"
 qibolab = { git = "https://github.com/qiboteam/qibolab.git", branch = "main" }
@@ -127,6 +128,7 @@ jobs = 1
 
 [tool.pylint.messages_control]
 disable = ["invalid-name", "fixme"]
+extension-pkg-whitelist = "pydantic"
 
 [tool.pylint.reports]
 # Available formats are:

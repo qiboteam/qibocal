@@ -355,7 +355,7 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
         )
         if fit is not None:
             angle_range = np.linspace(thetas[0], thetas[-1], 100)
-            fitted_parameters = data_fit.fitted_parameters[target, control, setup]
+            fitted_parameters = fit.fitted_parameters[target, control, setup]
             fig.add_trace(
                 go.Scatter(
                     x=angle_range + data.vphases[qubits][target],
@@ -369,11 +369,9 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
                 col=1 if fig == fig1 else 2,
             )
 
+            reports.append(f"{target} | CZ angle: {fit.cz_angle[target, control]}<br>")
             reports.append(
-                f"{target} | CZ angle: {data_fit.cz_angle[target, control]}<br>"
-            )
-            reports.append(
-                f"{target} | Virtual Z phase: { - data_fit.virtual_phase[qubits][target]}<br>"
+                f"{target} | Virtual Z phase: { - fit.virtual_phase[qubits][target]}<br>"
             )
         fitting_report = "".join(list(dict.fromkeys(reports)))
 
