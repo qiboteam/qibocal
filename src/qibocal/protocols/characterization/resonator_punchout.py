@@ -181,7 +181,6 @@ def _plot(data: ResonatorPunchoutData, qubit, fit: ResonatorPunchoutResults = No
     """Plotting function for ResonatorPunchout."""
     figures = []
     fitting_report = None
-
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -192,7 +191,6 @@ def _plot(data: ResonatorPunchoutData, qubit, fit: ResonatorPunchoutResults = No
             "phase (rad)",
         ),
     )
-
     qubit_data = data[qubit]
     frequencies = qubit_data.freq * HZ_TO_GHZ
     amplitudes = qubit_data.amp
@@ -250,7 +248,7 @@ def _plot(data: ResonatorPunchoutData, qubit, fit: ResonatorPunchoutResults = No
         title_text += f"{qubit} | Resonator frequency at high power: {fit.bare_frequency[qubit]*GHZ_TO_HZ:,.0f} Hz<br>"
         title_text += f"{qubit} | Readout amplitude at low power: {fit.readout_amplitude[qubit]:,.3f} <br>"
 
-        fitting_report = fitting_report + title_text
+        fitting_report = title_text
 
     fig.update_layout(
         showlegend=False,

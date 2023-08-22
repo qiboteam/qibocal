@@ -24,7 +24,7 @@ PLATFORM = "platform.yml"
 class ExecutionMode(Enum):
     acquire = "acquire"
     fit = "fit"
-    autocalibration = "auto"
+    autocalibration = "autocalibration"
     report = "report"
 
 
@@ -230,12 +230,14 @@ class ActionBuilder(Builder):
         self.update = update
 
     def _run(self, mode: ExecutionMode):
-        for data_time, _, task_id in self.executor.run(mode=mode):
+        for data_time, result_time, task_id in self.executor.run(mode=mode):
             timing_task = {}
             timing_task["acquisition"] = data_time
-            timing_task["tot"] = data_time
+            timing_task["fit"] = result_time
+            timing_task["tot"] = timing_task["acquisition"] + result_time
             self.meta[task_id] = timing_task
-            self.dump_report()
+            # TODO: reactivate iterative dump
+            # self.dump_report()
 
     def dump_report(self):
         # update end time

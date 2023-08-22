@@ -12,7 +12,9 @@ from qibolab.platform import Platform
 from qibolab.qubits import Qubit, QubitId
 
 from qibocal.config import log
-from qibocal.utils import cast_to_int, conversion
+from qibocal.utils import conversion
+
+from .keys import GenericKey
 
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
@@ -95,12 +97,10 @@ class Data(BaseModel):
 
     @validator("data", pre=True)
     def validate_data(cls, data):
+        key = GenericKey()
         new_data = {}
         for i, ar in data.items():
-            if "(" in i:
-                new_data[conversion(i)] = np.rec.array(ar)
-            else:
-                new_data[cast_to_int(i)] = np.rec.array(ar)
+            new_data[key.load(i)] = np.rec.array(ar)
         return new_data
 
     @property
@@ -134,7 +134,8 @@ class Data(BaseModel):
 
     def to_npz(self, path):
         """Helper function to use np.savez while converting keys into strings."""
-        np.savez(path / DATAFILE, **{str(i): self.data[i] for i in self.data})
+        key = GenericKey()
+        np.savez(path / DATAFILE, **{key.dump(i): self.data[i] for i in self.data})
 
     def to_json(self, path):
         """Helper function to dump to json in JSONFILE path."""

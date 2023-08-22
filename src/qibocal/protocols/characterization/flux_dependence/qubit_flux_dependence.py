@@ -66,7 +66,6 @@ QubitFluxType = np.dtype(
 """Custom dtype for resonator flux dependence."""
 
 
-@dataclass
 class QubitFluxData(Data):
     """QubitFlux acquisition outputs."""
 

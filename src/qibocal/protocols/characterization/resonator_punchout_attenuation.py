@@ -245,7 +245,7 @@ def _plot(
         )
         title_text += f"{qubit} | Resonator Frequency at High Power: {fit.bare_frequency[qubit] * GHZ_TO_HZ} Hz.<br>"
 
-        fitting_report = fitting_report + title_text
+        fitting_report = title_text
 
     fig.update_layout(
         showlegend=False,

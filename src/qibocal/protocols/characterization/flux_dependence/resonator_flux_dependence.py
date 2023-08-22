@@ -61,7 +61,6 @@ ResFluxType = np.dtype(
 """Custom dtype for resonator flux dependence."""
 
 
-@dataclass
 class ResonatorFluxData(Data):
     """Resonator type."""
 
