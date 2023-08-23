@@ -1,3 +1,7 @@
+# platform: dummy
+
+# backend: numpy
+
 platform: dummy
 
 qubits: [0, 1]
@@ -548,16 +552,16 @@ actions:
 #     native: True
 #     apply_error_mitigation: True
 
-# - id: CHSH with circuits
-#   priority: 0
-#   operation: chsh_circuits
-#   qubits: [[0,1],[1,2]]
-#   parameters:
-#     nshots: 1000
-#     ntheta: 2
-#     bell_states: [0,1,2,3]
-#     native: False
-#     apply_error_mitigation: True
+- id: CHSH with circuits
+  priority: 0
+  operation: chsh_circuits
+  qubits: [[0,1],[1,2]]
+  parameters:
+    nshots: 1000
+    ntheta: 100
+    bell_states: [0]
+    native: False
+    apply_error_mitigation: True
 
 # - id: readout_mitigation_matrix pulses
 #   priority: 0

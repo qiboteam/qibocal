@@ -157,7 +157,7 @@ def _acquisition_circuits(
 
     if params.apply_error_mitigation:
         mitigation_data = mitigation_acquisition(
-            mitigation_params(pulses=True, nshots=params.nshots), platform, qubits
+            mitigation_params(pulses=False, nshots=params.nshots), platform, qubits
         )
         mitigation_results = mitigation_fit(mitigation_data)
     for pair in qubits:
