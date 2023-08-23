@@ -1,6 +1,6 @@
 """Action execution tracker."""
 from dataclasses import dataclass, field
-from typing import Iterator, Union
+from typing import Union
 
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
@@ -99,18 +99,16 @@ class Task:
         """Local update parameter."""
         return self.action.update
 
-    def run(
-        self, platform: Platform, qubits: Union[Qubits, QubitsPairs]
-    ) -> Iterator[Union[Data, Results]]:
-        """Generator functions for data acquisition and fitting:
+    def acquire(self, platform: Platform, qubits: Union[Qubits, QubitsPairs]) -> Data:
+        """Acquisition
 
         Args:
             platform (`Platform`): Qibolab's platform
             qubits (`Union[Qubits, QubitsPairs]`): Qubit or QubitPairs dict.
 
-        Yields:
+        Returns:
             data (`Data`): data acquisition output
-            results (`Results): data fitting output.
+            time (float): acquisition time
         """
         try:
             operation: Routine = self.operation
@@ -136,6 +134,23 @@ class Task:
             self.qubits = list(qubits)
         else:
             data, time = operation.acquisition(parameters, platform=platform)
-        yield data, time
-        results, time = operation.fit(data)
-        yield results, time
+        return data, time
+        # yield data, time
+        # results, time = operation.fit(data)
+        # yield results, time
+
+    def fit(self, data: Data) -> Results:
+        """Fitting
+
+        Args:
+            data (`Data`): data acquisition
+
+        Returns:
+            results (`Results`): fitting output
+            time (float): fitting time
+        """
+        try:
+            operation: Routine = self.operation
+        except RuntimeError:
+            operation = dummy_operation
+        return operation.fit(data)

@@ -49,7 +49,7 @@ class FitBuilder(PostProcessingBuilder):
         for _, result_time, task_id in self.executor.run(mode=mode):
             timing_task = {}
             timing_task["fit"] = result_time
-            timing_task["tot"] = timing_task["acquisition"] + result_time
+            timing_task["tot"] = self.metadata[task_id]["acquisition"] + result_time
             self.metadata[task_id] = timing_task
 
         # update time in meta.yml

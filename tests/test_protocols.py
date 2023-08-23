@@ -6,7 +6,12 @@ import pytest
 import yaml
 from qibolab import create_platform
 
-from qibocal.cli.builders import AcquisitionBuilder, ActionBuilder, ExecutionMode
+from qibocal.cli.builders import (
+    AcquisitionBuilder,
+    ActionBuilder,
+    ExecutionMode,
+    FitBuilder,
+)
 
 PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/protocols.yml"
 PLATFORM = create_platform("dummy")
@@ -26,7 +31,7 @@ def idfn(val):
 
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
 def test_action_builder(runcard):
-    """Test possible update combinations between global and local."""
+    """Test ActionBuilder for all protocols."""
     build = ActionBuilder(runcard, tempfile.mkdtemp(), force=True, update=False)
     build.run(mode=ExecutionMode.autocalibration)
     build.dump_report()
@@ -34,6 +39,20 @@ def test_action_builder(runcard):
 
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
 def test_acquisition_builder(runcard):
-    """Test possible update combinations between global and local."""
+    """Test AcquisitionBuilder for all protocols."""
     build = AcquisitionBuilder(runcard, tempfile.mkdtemp(), force=True)
     build.run(mode=ExecutionMode.acquire)
+
+
+@pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
+def test_fit_builder(runcard):
+    """Test FitBuilder."""
+    output_folder = tempfile.mkdtemp()
+    build = AcquisitionBuilder(runcard, output_folder, force=True)
+    build.run(mode=ExecutionMode.acquire)
+
+    fit_builder = FitBuilder(pathlib.Path(output_folder))
+    fit_builder.run(mode=ExecutionMode.fit)
+
+
+# TODO: compare report by calling qq report

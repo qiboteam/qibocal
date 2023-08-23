@@ -136,12 +136,14 @@ class Executor:
             fit_time = None
             task = self.current
             log.info(f"Running task {task.id}.")
-            task_execution = task.run(platform=self.platform, qubits=self.qubits)
+            # task_execution = task.run(platform=self.platform, qubits=self.qubits)
             completed = Completed(task, Normal(), self.output)
             if mode.name in ["autocalibration", "acquire"]:
-                completed.data, acquisition_time = next(task_execution)
+                completed.data, acquisition_time = task.acquire(
+                    platform=self.platform, qubits=self.qubits
+                )
             if mode.name in ["autocalibration", "fit"]:
-                completed.results, fit_time = next(task_execution)
+                completed.results, fit_time = task.fit(completed.data)
             self.history.push(completed)
             self.head = self.next()
             update = self.update and task.update
