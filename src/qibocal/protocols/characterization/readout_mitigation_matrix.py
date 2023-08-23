@@ -117,8 +117,7 @@ def _acquisition(
                 for q, bit in enumerate(state):
                     if bit == "1":
                         c.add(gates.X(qubit_list[q]))
-                    c.add(gates.M(q))
-
+                    c.add(gates.M(qubit_list[q]))
                 results = c(nshots=params.nshots)
 
                 data.add(qubit_list, state, dict(results.frequencies()))
