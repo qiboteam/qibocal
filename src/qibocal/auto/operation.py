@@ -220,9 +220,6 @@ class Results:
         convert = GenericKey()
         for key, elem in params.items():
             if isinstance(elem, dict):
-                # FIXME: necessary since after loading QubitId is string and not int
-                # maybe convert all QubitIds into strings ?
-
                 params[key] = {convert.load(k): value for k, value in elem.items()}
 
         return cls(**params)

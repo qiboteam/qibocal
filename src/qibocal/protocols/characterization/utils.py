@@ -1,3 +1,4 @@
+from colorsys import hls_to_rgb
 from enum import Enum
 
 import lmfit
@@ -264,3 +265,11 @@ def fit_punchout(data: Data, fit_type: str):
         high_freqs[qubit] = freq_hp[0] * HZ_TO_GHZ
         ro_values[qubit] = ro_val
     return [low_freqs, high_freqs, ro_values]
+
+
+def get_color_state0(number):
+    return "rgb" + str(hls_to_rgb((-0.35 - number * 9 / 20) % 1, 0.6, 0.75))
+
+
+def get_color_state1(number):
+    return "rgb" + str(hls_to_rgb((-0.02 - number * 9 / 20) % 1, 0.6, 0.75))
