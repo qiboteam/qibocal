@@ -53,6 +53,8 @@ def flux_dependence_plot(data, fit, qubit):
             y=biases1,
             mode="markers",
             marker_color="green",
+            showlegend=True,
+            name="Curve estimation",
         ),
         row=1,
         col=1,
@@ -108,13 +110,15 @@ def flux_dependence_plot(data, fit, qubit):
             go.Scatter(
                 x=freq_fit,
                 y=biases1,
+                showlegend=True,
+                name="Fit",
             ),
             row=1,
             col=1,
         )
 
     fig.update_xaxes(
-        title_text=f"{qubit}: Frequency (Hz)",
+        title_text=f"Frequency (GHz)",
         row=1,
         col=1,
     )
@@ -131,7 +135,7 @@ def flux_dependence_plot(data, fit, qubit):
         col=2,
     )
     fig.update_xaxes(
-        title_text=f"{qubit}: Frequency (Hz)",
+        title_text=f"Frequency (GHz)",
         row=1,
         col=2,
     )
@@ -145,17 +149,21 @@ def flux_dependence_plot(data, fit, qubit):
         fitting_report += (
             f"{qubit} | {fitting_report_label}: Fitting not successful<br>"
         )
-
     if fit.sweetspot[qubit] != 0:
-        fitting_report += f"{qubit} | Sweetspot: {fit.sweetspot[qubit]} V<br>"
+        fitting_report += (
+            f"{qubit} | Sweetspot: {float(fit.sweetspot[qubit]):.3f} V<br>"
+        )
     else:
         fitting_report += f"{qubit} | Sweetspot: Fitting not successful<br>"
 
     for key, value in fit.fitted_parameters[qubit].items():
+        if key in ["Xi", "d"]:
+            fitting_report += f"{qubit} | {key}: {float(value):.3f}<br>"
+        else:
+            fitting_report += f"{qubit} | {key}: {int(value)}<br>"
+
         if value == 0:
             value = "Fitting not successful"
-            fitting_report += f"{qubit} | {key}: {value}<br>"
-        else:
             fitting_report += f"{qubit} | {key}: {value}<br>"
 
     fitting_report += "<br>"
@@ -163,8 +171,9 @@ def flux_dependence_plot(data, fit, qubit):
     fig.update_layout(xaxis1=dict(range=[np.min(frequencies), np.max(frequencies)]))
 
     fig.update_layout(
-        showlegend=False,
+        showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        legend=dict(orientation="h"),
     )
 
     figures.append(fig)
