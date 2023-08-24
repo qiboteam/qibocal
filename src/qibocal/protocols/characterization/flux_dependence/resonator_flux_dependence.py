@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from functools import partial
-from typing import Optional
+from typing import Optional, List
 
 import numpy as np
 import numpy.typing as npt
@@ -47,6 +47,8 @@ class ResonatorFluxResults(Results):
     """Readout frequency for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
+    resonator_polycoef_flux: dict[QubitId, List[float]] = field(metadata=dict(update="resonator_polycoef_flux"))
+    """Optimal coeficents for flux curve fited for each qubit."""
 
 
 ResFluxType = np.dtype(
@@ -186,6 +188,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     frequency = {}
     sweetspot = {}
     fitted_parameters = {}
+    resonator_polycoef_flux = {}
 
     for qubit in qubits:
         qubit_data = data[qubit]
@@ -206,6 +209,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
             "f_r_offset": 0,
             "C_ii": 0,
         }
+        resonator_polycoef_flux[qubit] = 0
 
         biases = qubit_data.bias
         frequencies = qubit_data.freq
@@ -254,6 +258,9 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                     ),
                     maxfev=2000000,
                 )[0]
+
+                resonator_polycoef_flux[qubit] = popt
+
                 popt[4] *= GHZ_TO_HZ
                 popt[5] *= GHZ_TO_HZ
                 f_qs = popt[3] * popt[5]  # Qubit frequency at sweet spot.
@@ -280,6 +287,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                     "C_ii": C_ii,
                 }
 
+                
             except:
                 log.warning(
                     "resonator_flux_fit: First order approximation fitting was not succesful"
@@ -308,6 +316,9 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                     ),
                     maxfev=2000000,
                 )[0]
+
+                resonator_polycoef_flux[qubit] = popt
+                
                 popt[0] *= GHZ_TO_HZ
                 popt[1] *= GHZ_TO_HZ
                 popt[5] *= GHZ_TO_HZ
