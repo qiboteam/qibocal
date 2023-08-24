@@ -40,6 +40,8 @@ class QubitFluxParameters(Parameters):
     """Relaxation time (ns)."""
     transition: Optional[str] = "01"
     """Flux spectroscopy transition type ("01" or "02"). Default value is 01"""
+    track: Optional[bool] = False
+    """Enable Qubit Flux spectroscopy trancking. tracking disabled by default"""
 
 
 @dataclass
@@ -133,6 +135,11 @@ def _acquisition(
     delta_frequency_range = np.arange(
         -params.freq_width // 2, params.freq_width // 2, params.freq_step
     )
+
+    delta_bias_range = np.arange(
+        -params.bias_width / 2, params.bias_width / 2, params.bias_step
+    )
+
     freq_sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
@@ -140,43 +147,78 @@ def _acquisition(
         type=SweeperType.OFFSET,
     )
 
-    delta_bias_range = np.arange(
-        -params.bias_width / 2, params.bias_width / 2, params.bias_step
-    )
-    bias_sweeper = Sweeper(
-        Parameter.bias,
-        delta_bias_range,
-        qubits=list(qubits.values()),
-        type=SweeperType.OFFSET,
-    )
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
     # additionally include resonator frequency and flux bias
     data = QubitFluxData(resonator_type=platform.resonator_type, Ec=Ec, Ej=Ej)
 
-    # repeat the experiment as many times as defined by software_averages
-    results = platform.sweep(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
-        ),
-        bias_sweeper,
-        freq_sweeper,
-    )
-
-    # retrieve the results for every qubit
-    for qubit in qubits:
-        result = results[ro_pulses[qubit].serial]
-        data.register_qubit(
-            qubit,
-            msr=result.magnitude,
-            phase=result.phase,
-            freq=delta_frequency_range + qd_pulses[qubit].frequency,
-            bias=delta_bias_range + qubits[qubit].sweetspot,
+    if not params.track:
+        #not qubit tracking, then sweep bias
+        bias_sweeper = Sweeper(
+            Parameter.bias,
+            delta_bias_range,
+            qubits=list(qubits.values()),
+            type=SweeperType.OFFSET,
         )
+
+        results = platform.sweep(
+            sequence,
+            ExecutionParameters(
+                nshots=params.nshots,
+                relaxation_time=params.relaxation_time,
+                acquisition_type=AcquisitionType.INTEGRATION,
+                averaging_mode=AveragingMode.CYCLIC,
+            ),
+            bias_sweeper,
+            freq_sweeper,
+        )
+
+        # retrieve the results for every qubit
+        for qubit in qubits:
+            result = results[ro_pulses[qubit].serial]
+            data.register_qubit(
+                qubit,
+                msr=result.magnitude,
+                phase=result.phase,
+                freq=delta_frequency_range + qd_pulses[qubit].frequency,
+                bias=delta_bias_range + qubits[qubit].sweetspot,
+            )
+    else:
+        #qubit tracking mode activated
+        for bias in delta_bias_range:
+            for qubit in qubits:
+                # using resonator_polycoef_flux, obtain estimated resonator freq from function utils.freq_r_trasmon or utils.freq_r_matheu
+                freq_resonator = utils.get_resonator_freq_flux(bias, qubits[qubit].resonator_polycoef_flux)
+
+                # modify qubit resonator frequency
+                qubits[qubit].readout_frequency = freq_resonator
+                
+                # modify qubit flux
+                qubits[qubit].flux = bias
+                
+                #execute pulse sequence sweeping only qubit resonator
+                results = platform.sweep
+                (
+                    sequence,
+                    ExecutionParameters(
+                        nshots=params.nshots,
+                        relaxation_time=params.relaxation_time,
+                        acquisition_type=AcquisitionType.INTEGRATION,
+                        averaging_mode=AveragingMode.CYCLIC,
+                    ),
+                    freq_sweeper,
+                )
+
+            # retrieve the results for every qubit
+            for qubit in qubits:
+                result = results[ro_pulses[qubit].serial]
+                data.register_qubit(
+                    qubit,
+                    msr=result.magnitude,
+                    phase=result.phase,
+                    freq=delta_frequency_range + qd_pulses[qubit].frequency,
+                    bias=delta_bias_range + qubits[qubit].sweetspot,
+                )
 
     return data
 
