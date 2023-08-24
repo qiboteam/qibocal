@@ -1,4 +1,4 @@
-platform: iqm5q
+platform: dummy
 
 qubits: [0]
 
