@@ -153,7 +153,7 @@ def _acquisition(
     data = QubitFluxData(resonator_type=platform.resonator_type, Ec=Ec, Ej=Ej)
 
     if not params.track:
-        #not qubit tracking, then sweep bias
+        # not qubit tracking, then sweep bias
         bias_sweeper = Sweeper(
             Parameter.bias,
             delta_bias_range,
@@ -184,19 +184,21 @@ def _acquisition(
                 bias=delta_bias_range + qubits[qubit].sweetspot,
             )
     else:
-        #qubit tracking mode activated
+        # qubit tracking mode activated
         for bias in delta_bias_range:
             for qubit in qubits:
                 # using resonator_polycoef_flux, obtain estimated resonator freq from function utils.freq_r_trasmon or utils.freq_r_matheu
-                freq_resonator = utils.get_resonator_freq_flux(bias, qubits[qubit].resonator_polycoef_flux)
+                freq_resonator = utils.get_resonator_freq_flux(
+                    bias, qubits[qubit].resonator_polycoef_flux
+                )
 
                 # modify qubit resonator frequency
                 qubits[qubit].readout_frequency = freq_resonator
-                
+
                 # modify qubit flux
                 qubits[qubit].flux = bias
-                
-                #execute pulse sequence sweeping only qubit resonator
+
+                # execute pulse sequence sweeping only qubit resonator
                 results = platform.sweep
                 (
                     sequence,

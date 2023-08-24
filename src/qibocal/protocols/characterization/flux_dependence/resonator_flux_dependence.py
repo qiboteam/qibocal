@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from functools import partial
-from typing import Optional, List
+from typing import List, Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -47,7 +47,9 @@ class ResonatorFluxResults(Results):
     """Readout frequency for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
-    resonator_polycoef_flux: dict[QubitId, List[float]] = field(metadata=dict(update="resonator_polycoef_flux"))
+    resonator_polycoef_flux: dict[QubitId, List[float]] = field(
+        metadata=dict(update="resonator_polycoef_flux")
+    )
     """Optimal coeficents for flux curve fited for each qubit."""
 
 
@@ -287,7 +289,6 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                     "C_ii": C_ii,
                 }
 
-                
             except:
                 log.warning(
                     "resonator_flux_fit: First order approximation fitting was not succesful"
