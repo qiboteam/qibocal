@@ -209,6 +209,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
             "f_r_offset": 0,
             "C_ii": 0,
         }
+
         resonator_polycoef_flux[qubit] = 0
 
         biases = qubit_data.bias
@@ -222,7 +223,6 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
             frequencies, biases, msr, msr_mask=0.5
         )
 
-        # scaler = 10**9
         bare_resonator_frequency = data.bare_resonator_frequency[
             qubit
         ]  # Resonator frequency at high power.
@@ -259,7 +259,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                     maxfev=2000000,
                 )[0]
 
-                resonator_polycoef_flux[qubit] = popt
+                resonator_polycoef_flux[qubit] = popt.tolist()
 
                 popt[4] *= GHZ_TO_HZ
                 popt[5] *= GHZ_TO_HZ
@@ -317,8 +317,8 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                     maxfev=2000000,
                 )[0]
 
-                resonator_polycoef_flux[qubit] = popt
-                
+                resonator_polycoef_flux[qubit] = popt.tolist()
+
                 popt[0] *= GHZ_TO_HZ
                 popt[1] *= GHZ_TO_HZ
                 popt[5] *= GHZ_TO_HZ
@@ -361,6 +361,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
         frequency=frequency,
         sweetspot=sweetspot,
         fitted_parameters=fitted_parameters,
+        resonator_polycoef_flux=resonator_polycoef_flux,
     )
 
 
