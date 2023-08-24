@@ -3,7 +3,7 @@ How to use Qibocal?
 
 In this section we present the different commands implemented in ``Qibocal`` and how to use them.
 
-.. image:: Qibocal.png
+.. image:: qq_qibocal.svg
 
 ``qq``
 ^^^^^^
