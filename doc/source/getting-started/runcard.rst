@@ -1,41 +1,48 @@
 .. _runcard:
 
-How to write your runcard?
-==========================
+How to execute a single protocol in ``Qibocal``?
+================================================
 
-In ``qibocal`` we adopt a declarative programming paradigm, i.e. the user should specify directly
+In ``Qibocal`` we adopt a declarative programming paradigm, i.e. the user should specify directly
 what he wants to do without caring about the underlying implementation.
 
-This paradigm is implemented in ``qibocal`` in the form of runcards. A runcard will contain all
-the essential information to run a specific task.
+This paradigm is implemented in ``Qibocal`` in the form of runcards. A runcard is essentally
+a set of instructions that are specified in a file.
 
-In the case of the ``qq`` command a possible runcard should look like this:
+Down below we present how to write a runcard to execute a single protocol using `qq`.
 
 .. code-block:: yaml
 
-    platform: tii5q
+    backend: <qibo backend>
 
-    runcard: <path_to_platform_runcard>
+    platform: <qibolab platform name>
 
-    qubits: [0]
+    qubits: <list of qubit ids where all the protocols will be performed.>
 
-    format: pickle
 
     actions:
-        first_routine:
+        - id: <protocol id>
+          priority: 0
+          operation: <qibocal protocol>
+          parameters:
             arg1: ...
             arg2: ...
 
-        second_routine:
-            arg1: ...
-            arg2: ...
+Here is a description of the global parameters to be specified:
+    * ``backend``: ``Qibo`` backend, if not provided ``Qibolab`` will be used.
+    * ``platform``: QPU where the experiments will be executed. Possible choices
+        for TII users are available in this `repository <https:/https://github.com/qiboteam/qibolab_platforms_qrc>`_.
+        For non-TII users it is possible a setup a custom platform using  `Qibolab <https://qibo.science/qibolab/stable/tutorials/lab.html>`_.
+    * ``qubits``: list of qubit names for a specific platform. It can also be a list of qubit pairs
+        in the case of protocols for qubit pairs.
 
 
-First, the user will need to specify some global parameters including:
-    * ``platform``: the platform name.
-    * ``runcard``: path to the platform runcard (optional). If not specified it will be used the platform runcard available in qibolab.
-    * ``qubits``: the qubit(s) that we are calibrating.
-    * ``format``: the format for storing the measurements.
 
-After those the user will simply populate ``actions`` with all the routines
-that he will like to run followed by their respective arguments.
+
+Under ``actions`` are listed the protocols that will be executed.
+For each protocol the user needs to specify the following:
+    - ``id``: custom id chosen by the user.
+    * ``priority``: protocol priority in increasing order. The protocols with lower priority will be executed first.
+                    Always start from a node with priority 0.
+    * ``operation``: protocol available in ``Qibocal``. See ADD REF for a complete list of the protocols available.
+    * ``parameters``: input parameters.

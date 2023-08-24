@@ -22,11 +22,24 @@ distributed with pypi* for the packages listed above.
 
 .. _installing-qibocal:
 
+Installing with pip
+"""""""""""""""""""
+
+The installation using ``pip`` is the recommended approach to install ``Qibocal``.
+
+.. code-block::
+
+      pip install qibocal
+
+.. note::
+      Make sure to update ``pip`` if needed.
+
+
 Installing from source
 """"""""""""""""""""""
 
 In order to install ``qibocal`` from source, you can simply clone the GitHub repository
-with:
+and perform the installation by following these instructions.
 
 .. code-block::
 
@@ -55,4 +68,4 @@ To do this procedure correctly, visit the `Qibolab installation page`_, where it
 
 
 
-.. _`Qibolab installation page`: https://qibolab.readthedocs.io/en/latest/getting-started/installation.html
+.. _`Qibolab installation page`: https://qibo.science/qibolab/stable/index.html
