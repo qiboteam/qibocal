@@ -75,13 +75,12 @@ class QubitFit:
         iq_state0 = iq_coordinates[(states == 0)]
         self.iq_mean0 = np.mean(iq_state0, axis=0)
         self.iq_mean1 = np.mean(iq_state1, axis=0)
-        # translate
-        iq_coordinates_translated = self.translate(iq_coordinates)
-        iq_state1_trans = self.translate(self.iq_mean1)
-        self.angle = -1 * atan2(iq_state1_trans[1], iq_state1_trans[0])
+
+        vector01 = self.iq_mean1 - self.iq_mean0
+        self.angle = -1 * atan2(vector01[1], vector01[0])
 
         # rotate
-        iq_coord_rot = self.rotate(iq_coordinates_translated)
+        iq_coord_rot = self.rotate(iq_coordinates)
 
         x_values_state0 = np.sort(iq_coord_rot[(states == 0)][:, 0])
         x_values_state1 = np.sort(iq_coord_rot[(states == 1)][:, 0])
@@ -110,15 +109,11 @@ class QubitFit:
         rot = np.array([[c, -s], [s, c]])
         return v @ rot.T
 
-    def translate(self, v):
-        return v - self.iq_mean0
-
     def predict(self, inputs: npt.NDArray):
         r"""Classify the `inputs`.
 
         Returns:
             List of predictions.
         """
-        translated = self.translate(inputs)
-        rotated = self.rotate(translated)
+        rotated = self.rotate(inputs)
         return (rotated[:, 0] > self.threshold).astype(int)
