@@ -3,6 +3,7 @@ from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
+import plotly.figure_factory as ff
 import plotly.graph_objects as go
 from qibo import gates
 from qibo.models import Circuit
@@ -163,17 +164,20 @@ def _plot(
     fig = go.Figure()
     computational_basis = [format(i, f"0{len(qubit)}b") for i in range(2 ** len(qubit))]
 
-    fig.add_trace(
-        go.Heatmap(
-            x=computational_basis,
-            y=computational_basis[::-1],
-            z=fit.measurement_matrix[tuple(qubit)],
-        ),
-    )
+    x = computational_basis
+    y = computational_basis[::-1]
+
+    [X, Y] = np.meshgrid(x, y)
+
+    Z = fit.measurement_matrix[tuple(qubit)]
+
+    fig = ff.create_annotated_heatmap(Z, showscale=True)
     fig.update_layout(
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="State prepared",
         yaxis_title="State measured",
+        width=700,
+        height=700,
     )
 
     return [fig], fitting_report
