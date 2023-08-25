@@ -382,29 +382,32 @@ def image_to_curve(x, y, z, msr_mask=0.5, alpha=1e-5, order=50):
 def get_resonator_freq_flux(bias, resonator_polycoef_flux):
     if len(resonator_polycoef_flux) == 6:
         # First order approximation used during resonator flux fitting
-        freq_resonator = freq_r_transmon(bias, 
-                                        resonator_polycoef_flux[0], 
-                                        resonator_polycoef_flux[1], 
-                                        resonator_polycoef_flux[2], 
-                                        resonator_polycoef_flux[3], 
-                                        resonator_polycoef_flux[4], 
-                                        resonator_polycoef_flux[5], 
-                                        )
+        freq_resonator = freq_r_transmon(
+            bias,
+            resonator_polycoef_flux[0],
+            resonator_polycoef_flux[1],
+            resonator_polycoef_flux[2],
+            resonator_polycoef_flux[3],
+            resonator_polycoef_flux[4],
+            resonator_polycoef_flux[5],
+        )
         return freq_resonator
-    
+
     elif len(resonator_polycoef_flux) == 7:
         # Second order approximation used during resonator flux fitting
-        freq_resonator = freq_r_mathieu(bias, 
-                                        resonator_polycoef_flux[0], 
-                                        resonator_polycoef_flux[1], 
-                                        resonator_polycoef_flux[2], 
-                                        resonator_polycoef_flux[3], 
-                                        resonator_polycoef_flux[4], 
-                                        resonator_polycoef_flux[5], 
-                                        resonator_polycoef_flux[6], 
-                                        )
+        freq_resonator = freq_r_mathieu(
+            bias,
+            resonator_polycoef_flux[0],
+            resonator_polycoef_flux[1],
+            resonator_polycoef_flux[2],
+            resonator_polycoef_flux[3],
+            resonator_polycoef_flux[4],
+            resonator_polycoef_flux[5],
+            resonator_polycoef_flux[6],
+        )
         return freq_resonator
-    
-    else:
-        raise ValueError("Void resonator_polycoef_flux in runcard. Track mode not supported")
 
+    else:
+        raise ValueError(
+            "Void resonator_polycoef_flux in runcard. Track mode not supported"
+        )
