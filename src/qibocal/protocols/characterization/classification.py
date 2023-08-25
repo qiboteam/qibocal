@@ -351,17 +351,17 @@ def _plot(
     fig = make_subplots(
         rows=1,
         cols=len(models_name),
-        horizontal_spacing=SPACING * 3 / len(models_name),
+        horizontal_spacing=SPACING / len(models_name) * 3,
         vertical_spacing=SPACING,
         subplot_titles=[run.pretty_name(model) for model in models_name],
         column_width=[COLUMNWIDTH] * len(models_name),
     )
-    fig_roc = go.Figure()
-    fig_roc.add_shape(
-        type="line", line=dict(dash="dash"), x0=0.0, x1=1.0, y0=0.0, y1=1.0
-    )
 
     if len(models_name) != 1:
+        fig_roc = go.Figure()
+        fig_roc.add_shape(
+            type="line", line=dict(dash="dash"), x0=0.0, x1=1.0, y0=0.0, y1=1.0
+        )
         fig_benchmarks = make_subplots(
             rows=1,
             cols=3,
@@ -381,20 +381,6 @@ def _plot(
         predictions = np.round(
             np.reshape(fit.models[qubit][i].predict(grid), q_values.shape)
         ).astype(np.int64)
-        # Evaluate the ROC curve
-        fpr, tpr, _ = roc_curve(y_test, y_pred)
-        auc_score = roc_auc_score(y_test, y_pred)
-        model = run.pretty_name(model)
-        name = f"{model} (AUC={auc_score:.2f})"
-        fig_roc.add_trace(
-            go.Scatter(
-                x=fpr,
-                y=tpr,
-                name=name,
-                mode="lines",
-                marker=dict(size=3, color=get_color_state0(i)),
-            )
-        )
 
         max_x = max(grid[:, 0])
         max_y = max(grid[:, 1])
@@ -490,6 +476,20 @@ def _plot(
             col=i + 1,
         )
         if len(models_name) != 1:
+            # Evaluate the ROC curve
+            fpr, tpr, _ = roc_curve(y_test, y_pred)
+            auc_score = roc_auc_score(y_test, y_pred)
+            model = run.pretty_name(model)
+            name = f"{model} (AUC={auc_score:.2f})"
+            fig_roc.add_trace(
+                go.Scatter(
+                    x=fpr,
+                    y=tpr,
+                    name=name,
+                    mode="lines",
+                    marker=dict(size=3, color=get_color_state0(i)),
+                )
+            )
             fig_benchmarks.add_trace(
                 go.Scatter(
                     x=[model],
@@ -568,6 +568,13 @@ def _plot(
                 font=dict(size=LEGEND_FONT_SIZE),
             ),
         )
+
+    fitting_report = "No fitting data" if fitting_report == "" else fitting_report
+
+    figures.append(fig)
+    if len(models_name) != 1:
+        figures.append(fig_roc)
+        figures.append(fig_benchmarks)
         fig_roc.update_layout(
             width=ROC_WIDTH,
             height=ROC_LENGHT,
@@ -582,11 +589,6 @@ def _plot(
             title_text="True Positive Rate",
             range=[0, 1],
         )
-    fitting_report = "No fitting data" if fitting_report == "" else fitting_report
-    figures.append(fig_roc)
-    figures.append(fig)
-    if len(models_name) != 1:
-        figures.append(fig_benchmarks)
     return figures, fitting_report
 
 
