@@ -168,7 +168,6 @@ def _plot(
             x=computational_basis,
             y=computational_basis[::-1],
             z=fit.measurement_matrix[tuple(qubit)],
-            text_auto=True,
         ),
     )
     fig.update_layout(
