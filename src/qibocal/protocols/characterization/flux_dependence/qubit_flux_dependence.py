@@ -95,6 +95,19 @@ class QubitFluxData(Data):
         ar["phase"] = phase.ravel()
         self.data[qubit] = np.rec.array(ar)
 
+    def register_qubit_track(self, qubit, freq, bias, msr, phase):
+        """Store output for single qubit."""
+        # to be able to handle the 1D sweeper case
+        size = len(freq)
+        ar = np.empty(size, dtype=QubitFluxType)
+        ar["freq"] = freq
+        ar["bias"] = [bias] * size #np.repeat(bias, size)
+        ar["msr"] = msr
+        ar["phase"] = phase
+        if qubit in self.data:
+            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
+        else:
+            self.data[qubit] = np.rec.array(ar)        
 
 def _acquisition(
     params: QubitFluxParameters,
@@ -189,16 +202,16 @@ def _acquisition(
             for qubit in qubits:
                 # using resonator_polycoef_flux, obtain estimated resonator freq from function utils.freq_r_trasmon or utils.freq_r_matheu
                 freq_resonator = utils.get_resonator_freq_flux(bias, qubits[qubit].resonator_polycoef_flux)
+                #print(freq_resonator)
 
                 # modify qubit resonator frequency
                 qubits[qubit].readout_frequency = freq_resonator
                 
                 # modify qubit flux
-                qubits[qubit].flux = bias
+                qubits[qubit].flux = bias + qubits[qubit].sweetspot
                 
                 #execute pulse sequence sweeping only qubit resonator
-                results = platform.sweep
-                (
+                results = platform.sweep(
                     sequence,
                     ExecutionParameters(
                         nshots=params.nshots,
@@ -212,12 +225,12 @@ def _acquisition(
             # retrieve the results for every qubit
             for qubit in qubits:
                 result = results[ro_pulses[qubit].serial]
-                data.register_qubit(
+                data.register_qubit_track(
                     qubit,
                     msr=result.magnitude,
                     phase=result.phase,
                     freq=delta_frequency_range + qd_pulses[qubit].frequency,
-                    bias=delta_bias_range + qubits[qubit].sweetspot,
+                    bias=bias + qubits[qubit].sweetspot, #delta_bias_range + qubits[qubit].sweetspot,
                 )
 
     return data
