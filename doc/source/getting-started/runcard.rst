@@ -36,14 +36,11 @@ Here is a description of the global parameters to be specified:
     * ``qubits``: list of qubit names for a specific platform. It can also be a list of qubit pairs
         in the case of protocols for qubit pairs.
 
-
-
-
 Under ``actions`` are listed the protocols that will be executed.
-For each protocol the user needs to specify the following:
 
+For each protocol the user needs to specify the following:
     * ``id``: custom id chosen by the user.
     * ``priority``: protocol priority in increasing order. The protocols with lower priority will be executed first.
                     Always start from a node with priority 0.
-    * ``operation``: protocol available in ``Qibocal``. See ADD REF for a complete list of the protocols available.
+    * ``operation``: protocol available in ``Qibocal``. See :ref:`calibration_routines` for a complete list of the protocols available.
     * ``parameters``: input parameters.
