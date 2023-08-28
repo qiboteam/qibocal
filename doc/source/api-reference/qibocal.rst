@@ -181,6 +181,18 @@ Classification experiment
    :show-inheritance:
 
 
+Flipping
+--------
+
+Flipping experiment
+^^^^^^^^^^^^^^^^^^^
+
+.. automodule:: qibocal.protocols.characterization.flipping
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
 AllXY and Drag pulse tuning
 ---------------------------
 
@@ -213,6 +225,14 @@ Drag pulse tuning
 
 Readout optimization
 --------------------
+
+Dispersive shift
+^^^^^^^^^^^^^^^^
+
+.. automodule:: qibocal.protocols.characterization.dispersive_shift
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Fine-tuning of the readout pulse frequency
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
