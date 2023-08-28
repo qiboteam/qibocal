@@ -232,11 +232,13 @@ def _fit(data: RamseyData) -> RamseyResults:
         if data.nboot != 0:
             bootstrap_samples = bootstrap(msrs, data.nboot)
             voltages = np.mean(bootstrap_samples, axis=1)
+            fit_out = []
             for i in range(data.nboot):
                 y = voltages[:, i]
                 x = waits
                 try:
                     popt = fitting(x, y)
+
                     delta_fitting = popt[2] / (2 * np.pi)
                     delta_phys = data.detuning_sign * int(
                         (delta_fitting - data.n_osc / data.t_max) * GHZ_TO_HZ
@@ -249,38 +251,48 @@ def _fit(data: RamseyData) -> RamseyResults:
                     new_freqs.append(corrected_qubit_frequency)
 
                 except Exception as e:
+                    popt = [0] * 5
                     log.warning(f"ramsey_fit: the fitting was not succesful. {e}")
                     t2s.append(0)
                     deltas_phys_list.append(0)
                     new_freqs.append(0)
 
+                fit_out.append(popt)
                 freq_measure[qubit] = (np.mean(new_freqs), np.std(new_freqs))
                 t2_measure[qubit] = (np.mean(t2s), np.std(t2s))
                 delta_phys_measure[qubit] = (
                     np.mean(deltas_phys_list),
                     np.std(deltas_phys_list),
                 )
-
+                popts[qubit] = np.mean(fit_out, axis=0).tolist()
         msrs = np.mean(msrs, axis=1).flatten()
 
-        try:
-            popts[qubit] = fitting(waits, msrs)
+        # try:
+        #    popts[qubit] = fitting(waits, msrs)
 
-        except Exception as e:
-            log.warning(f"ramsey_fit: the fitting was not succesful. {e}")
-            popts[qubit] = [0] * 5
+        # except Exception as e:
+        #    log.warning(f"ramsey_fit: the fitting was not succesful. {e}")
+        #    popts[qubit] = [0] * 5
 
         if data.nboot == 0:
-            delta_fitting = popts[qubit][2] / (2 * np.pi)
+            popt = fitting(waits, msrs)
+            delta_fitting = popt[2] / (2 * np.pi)
             delta_phys = data.detuning_sign * int(
                 (delta_fitting - data.n_osc / data.t_max) * GHZ_TO_HZ
             )
             corrected_qubit_frequency = int(qubit_freq - delta_phys)
-            t2 = 1.0 / popts[qubit][4]
+            t2 = 1.0 / popt[4]
 
             freq_measure[qubit] = (corrected_qubit_frequency, None)
             t2_measure[qubit] = (t2, None)
             delta_phys_measure[qubit] = (delta_phys, None)
+            popts[qubit] = popt
+        msrs_av = np.mean(msrs, axis=1).flatten()  # TODO: it holds only for nboot != 0
+        error_bars = np.std(msrs, axis=1).flatten() / np.sqrt(len(msrs))
+        print(
+            "SSSSSSS", ((ramsey_fit(waits, *popts[qubit]) - msrs_av) ** 2) / error_bars
+        )
+        print(np.sum(((ramsey_fit(waits, *popts[qubit]) - msrs_av) ** 2) / error_bars))
 
     return RamseyResults(
         freq_measure,
