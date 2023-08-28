@@ -351,7 +351,7 @@ def _plot(
     fig = make_subplots(
         rows=1,
         cols=len(models_name),
-        horizontal_spacing=SPACING / len(models_name) * 3,
+        horizontal_spacing=SPACING * 3/ len(models_name) * 3,
         vertical_spacing=SPACING,
         subplot_titles=[run.pretty_name(model) for model in models_name],
         column_width=[COLUMNWIDTH] * len(models_name),
