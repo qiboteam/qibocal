@@ -1,10 +1,8 @@
-.. _calibration_routinestwo_qubit
+.. _calibration_routines:
 
-Calibration routines
-====================
 
-Introduction
-^^^^^^^^^^^^
+Protocols
+=========
 
 The calibration routines are techniques used to reduce execution errors in quantum circuits.
 To perform calibrations, the expected theoretical results of an experiment are compared with readouts obtained by
@@ -16,23 +14,19 @@ running that same experiment using quantum devices. There are at least two objec
   on the hardware are no longer reliable due to machine overload.
 
 
-
-Single Qubit Characterization
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 Resonator spectroscopy
-^^^^^^^^^^^^^^^^^^^^^^
+----------------------
 
-Standard resonator spectroscopy
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Resonator spectroscopy sweeping amplitude
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. automodule:: qibocal.protocols.characterization.resonator_spectroscopy
    :members:
    :undoc-members:
    :show-inheritance:
 
-Resonator spectroscopy over attenuation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Resonator spectroscopy sweeping attenuation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. automodule:: qibocal.protocols.characterization.resonator_spectroscopy_attenuation
    :members:
@@ -41,19 +35,19 @@ Resonator spectroscopy over attenuation
 
 
 Resonator punchout
-^^^^^^^^^^^^^^^^^^
+------------------
 
 
-Standard resonator spectroscopy
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Punchout sweeping amplitude
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. automodule:: qibocal.protocols.characterization.resonator_punchout
    :members:
    :undoc-members:
    :show-inheritance:
 
-Resonator spectroscopy over attenuation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Punchout sweeping attenuation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. automodule:: qibocal.protocols.characterization.resonator_punchout_attenuation
    :members:
@@ -62,9 +56,11 @@ Resonator spectroscopy over attenuation
 
 
 
-
 Qubit spectroscopy
-^^^^^^^^^^^^^^^^^^
+------------------
+
+Qubit spectroscopy protocol
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 .. automodule:: qibocal.protocols.characterization.qubit_spectroscopy
    :members:
@@ -72,42 +68,212 @@ Qubit spectroscopy
    :show-inheritance:
 
 
+Flux dependence experiments
+---------------------------
+
+Resonator dependence with flux
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+.. automodule:: qibocal.protocols.characterization.flux_dependence.resonator_flux_dependence
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+Qubit dependence with flux
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. automodule:: qibocal.protocols.characterization.flux_dependence.qubit_flux_dependence
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
 Rabi experiments
-^^^^^^^^^^^^^^^^
+----------------
 
 Rabi amplitude
-~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^
 
 .. automodule:: qibocal.protocols.characterization.rabi.amplitude
    :members:
    :undoc-members:
    :show-inheritance:
 
+Rabi length
+^^^^^^^^^^^
+
 .. automodule:: qibocal.protocols.characterization.rabi.length
    :members:
    :undoc-members:
    :show-inheritance:
 
+Ramsey experiments
+------------------
+
+Ramsey with sweeper
+^^^^^^^^^^^^^^^^^^^
+
+.. automodule:: qibocal.protocols.characterization.ramsey
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Ramsey without sweeper
+^^^^^^^^^^^^^^^^^^^^^^
+.. automodule:: qibocal.protocols.characterization.ramsey_sequences
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 
-Two Qubit
+Coherence experiments
+---------------------
+
+T1
+^^
+.. automodule:: qibocal.protocols.characterization.coherence.t1
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+T1 (using pulse sequences)
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. automodule:: qibocal.protocols.characterization.coherence.t1_sequences
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+T2
+^^
+.. automodule:: qibocal.protocols.characterization.coherence.t2
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+T2 (using pulse sequences)
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+.. automodule:: qibocal.protocols.characterization.coherence.t2_sequences
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+Spin Echo
 ^^^^^^^^^
 
+.. automodule:: qibocal.protocols.characterization.coherence.zeno
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
-Chevron SWAP
-""""""""""""
+
+Single shot classification
+--------------------------
+
+Classification experiment
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. automodule:: qibocal.protocols.characterization.classification
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+AllXY and Drag pulse tuning
+---------------------------
+
+
+AllXY
+^^^^^
+
+.. automodule:: qibocal.protocols.characterization.allxy.allxy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+AllXY (multiple beta values)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. automodule:: qibocal.protocols.characterization.allxy.allxy_drag_pulse_tuning
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Drag pulse tuning
+^^^^^^^^^^^^^^^^^
+
+.. automodule:: qibocal.protocols.characterization.allxy.drag_pulse_tuning
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+Readout optimization
+--------------------
+
+Fine-tuning of the readout pulse frequency
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. automodule:: qibocal.protocols.characterization.readout_optimization.resonator_frequency
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Fast-Reset
+^^^^^^^^^^
+
+.. automodule:: qibocal.protocols.characterization.fast_reset.fast_reset
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+Signal experiments
+------------------
+
+Time of flight
+^^^^^^^^^^^^^^
+
+.. automodule:: qibocal.protocols.characterization.signal_experiments.time_of_flight_readout
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Readout characterization experiments
+------------------------------------
+
+
+Computing fidelity and QND
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. automodule:: qibocal.protocols.characterization.readout_characterization
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+Two qubit gates experiments
+---------------------------
+
+
+Chevron
+^^^^^^^
+
 .. automodule:: qibocal.protocols.characterization.two_qubit_interaction.chevron
    :members:
    :undoc-members:
    :show-inheritance:
 
 Tune Landscape
-""""""""""""""
+^^^^^^^^^^^^^^
+
 .. automodule:: qibocal.protocols.characterization.two_qubit_interaction.cz_virtualz
    :members:
    :undoc-members:
    :show-inheritance:
-
 
 
 Fitting functions
