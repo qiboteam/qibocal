@@ -4,6 +4,7 @@ from typing import Optional
 
 import lmfit
 import numpy as np
+import numpy.typing as npt
 import plotly.graph_objects as go
 from numba import njit
 from plotly.subplots import make_subplots
@@ -289,8 +290,22 @@ def fill_table(
     magnitude = floor(log10(abs(value)))  # number of non decimal digits in value
     if error:
         ndigits = max(significant_digit(error * 10 ** (-1 * magnitude)), 0)
-        table += f"({round(value*10**(-1*magnitude), ndigits)} {chr(177)} {np.format_float_positional(round(error*10**(-1*magnitude), ndigits), trim = '-')}) 10^{magnitude}"
+        table += f"({round(value*10**(-1*magnitude), ndigits)} {chr(177)} {np.format_float_positional(round(error*10**(-1*magnitude), ndigits), trim = '-')})"
     else:
-        table += f"{round(value*10**(-1* magnitude), ndigits)} * 10^{magnitude}"
+        table += f"{round(value*10**(-1* magnitude), ndigits)}"
+    if magnitude != 0:
+        table += f"* 10^{magnitude}"
     table += f" {unit} <br>" if unit else f"<br>"
     return table
+
+
+def chi2_reduced(
+    observed: npt.NDArray,
+    estimated: npt.NDArray,
+    errors: npt.NDArray,
+    dof: float = None,
+):
+    if dof is None:
+        dof = len(observed) - 1
+
+    return np.sum(np.square((observed - estimated) / errors)) / dof

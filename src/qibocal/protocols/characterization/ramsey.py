@@ -15,7 +15,7 @@ from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.bootstrap import bootstrap
 from qibocal.config import log
 
-from .utils import GHZ_TO_HZ, V_TO_UV, fill_table
+from .utils import GHZ_TO_HZ, V_TO_UV, chi2_reduced, fill_table
 
 
 @dataclass
@@ -53,6 +53,7 @@ class RamseyResults(Results):
     """Drive frequency [Hz] correction for each qubit."""
     fitted_parameters: dict[QubitId, list[float]]
     """Raw fitting output."""
+    chi2: dict[QubitId, float]
 
 
 RamseyType = np.dtype(
@@ -220,16 +221,18 @@ def _fit(data: RamseyData) -> RamseyResults:
     freq_measure = {}
     t2_measure = {}
     delta_phys_measure = {}
-
+    chi2 = {}
     for qubit in qubits:
         qubit_data = data[qubit]
         qubit_freq = data.qubit_freqs[qubit]
         msrs = qubit_data[["msr"]].tolist()
-        msrs = np.reshape(msrs, (len(waits), -1)) * V_TO_UV
         t2s = []
         deltas_phys_list = []
         new_freqs = []
         if data.nboot != 0:
+            msrs = np.reshape(msrs, (len(waits), -1)) * V_TO_UV
+            nsamples = msrs.shape[1]
+            error_bars = np.std(msrs, axis=1).flatten() / np.sqrt(nsamples)
             bootstrap_samples = bootstrap(msrs, data.nboot)
             voltages = np.mean(bootstrap_samples, axis=1)
             fit_out = []
@@ -265,16 +268,12 @@ def _fit(data: RamseyData) -> RamseyResults:
                     np.std(deltas_phys_list),
                 )
                 popts[qubit] = np.mean(fit_out, axis=0).tolist()
-        msrs = np.mean(msrs, axis=1).flatten()
+                y = np.array(y)
+                x = np.array(x)
+                chi2[qubit] = chi2_reduced(y, ramsey_fit(x, *popts[qubit]), error_bars)
 
-        # try:
-        #    popts[qubit] = fitting(waits, msrs)
-
-        # except Exception as e:
-        #    log.warning(f"ramsey_fit: the fitting was not succesful. {e}")
-        #    popts[qubit] = [0] * 5
-
-        if data.nboot == 0:
+        else:
+            msrs = np.reshape(msrs, (len(waits))) * V_TO_UV
             popt = fitting(waits, msrs)
             delta_fitting = popt[2] / (2 * np.pi)
             delta_phys = data.detuning_sign * int(
@@ -287,19 +286,8 @@ def _fit(data: RamseyData) -> RamseyResults:
             t2_measure[qubit] = (t2, None)
             delta_phys_measure[qubit] = (delta_phys, None)
             popts[qubit] = popt
-        msrs_av = np.mean(msrs, axis=1).flatten()  # TODO: it holds only for nboot != 0
-        error_bars = np.std(msrs, axis=1).flatten() / np.sqrt(len(msrs))
-        print(
-            "SSSSSSS", ((ramsey_fit(waits, *popts[qubit]) - msrs_av) ** 2) / error_bars
-        )
-        print(np.sum(((ramsey_fit(waits, *popts[qubit]) - msrs_av) ** 2) / error_bars))
 
-    return RamseyResults(
-        freq_measure,
-        t2_measure,
-        delta_phys_measure,
-        popts,
-    )
+    return RamseyResults(freq_measure, t2_measure, delta_phys_measure, popts, chi2)
 
 
 def _plot(data: RamseyData, fit: RamseyResults, qubit):
@@ -320,6 +308,7 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
     else:
         msrs = np.reshape(msrs, (len(waits))) * V_TO_UV
         error_bars = np.zeros(len(msrs))
+
     fig.add_trace(
         go.Scatter(
             x=waits,
@@ -381,6 +370,8 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
         + (fill_table(qubit, "T2*", fit.t2[qubit][0], fit.t2[qubit][1], "ns"))
         + "<br>"
     )
+    if fit.chi2:
+        fitting_report += fill_table(qubit, "chi2 reduced", fit.chi2[qubit], error=None)
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
