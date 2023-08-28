@@ -166,7 +166,6 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
         index = local_maxima[0] if len(local_maxima) > 0 else None
         # 0.5 hardcoded guess for less than one oscillation
         f = x[index] / (x[1] - x[0]) if index is not None else 0.5
-        print(f)
         pguess = [0.5, 1, f, np.pi / 2]
         try:
             popt, _ = curve_fit(
