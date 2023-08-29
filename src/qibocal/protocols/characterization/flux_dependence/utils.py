@@ -158,9 +158,9 @@ def flux_dependence_plot(data, fit, qubit):
 
     for key, value in fit.fitted_parameters[qubit].items():
         if key in ["Xi", "d"]:
-            fitting_report += f"{qubit} | {key}: {float(value):.3f}<br>"
+            fitting_report += f"{qubit} | {key}: {float(value):,.3f}<br>"
         else:
-            fitting_report += f"{qubit} | {key}: {int(value)}<br>"
+            fitting_report += f"{qubit} | {key}: {int(value):,}<br>"
 
         if value == 0:
             value = "Fitting not successful"
