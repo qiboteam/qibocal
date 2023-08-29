@@ -123,6 +123,7 @@ def _aquisition(
 
         sequence.add(cz.get_qubit_pulses(ordered_pair.low_freq))
         sequence.add(cz.get_qubit_pulses(ordered_pair.high_freq))
+        sequence.add(cz.get_coupler_pulses(platform.get_coupler_pair(ordered_pair)))
 
         if params.parking:
             for pulse in cz:
