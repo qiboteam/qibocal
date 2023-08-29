@@ -2732,7 +2732,7 @@ develop = false
 more-itertools = "^9.1.0"
 networkx = "^3.0"
 pyyaml = "^6.0"
-qibo = ">=0.2.0,<0.3"
+qibo = ">=0.1.16,<0.3"
 
 [package.extras]
 qblox = ["pyvisa-py (==0.5.3)", "qblox-instruments (==0.9.0)", "qcodes (>=0.37.0,<0.38.0)", "qcodes_contrib_drivers (==0.18.0)"]
@@ -2744,7 +2744,7 @@ zh = ["laboneq (==2.7.0)"]
 type = "git"
 url = "https://github.com/qiboteam/qibolab.git"
 reference = "add_twpa_dummy"
-resolved_reference = "0815c41c98670561a9142155096a1d28c71c559c"
+resolved_reference = "0807f1d7219ffecaa60e1849d1f075450da819f8"
 
 [[package]]
 name = "recommonmark"
@@ -3735,4 +3735,4 @@ viz = ["pydot"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.12"
-content-hash = "4e88a826b2a1c80179e5310e7c81f3e17c9be008cf0f50eb3eaf259f531937c8"
+content-hash = "d83b1fc5be6af5e733263739b47206861bef148c96e59a38f033937c645f8722"
