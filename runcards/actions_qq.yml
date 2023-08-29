@@ -233,7 +233,9 @@ actions:
 #     priority: 0
 #     operation: single_shot_classification
 #     parameters:
-#       nshots: 10
+#       nshots: 2000
+#       classifiers_list: ["qubit_fit", "naive_bayes", "qblox_fit"]
+#       savedir: results
 
 
 #   - id: allXY

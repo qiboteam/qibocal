@@ -1,3 +1,4 @@
+from colorsys import hls_to_rgb
 from enum import Enum
 from math import floor, log10
 from typing import Optional
@@ -265,6 +266,7 @@ def fit_punchout(data: Data, fit_type: str):
     return [low_freqs, high_freqs, ro_values]
 
 
+
 def fill_table(
     qubit: QubitId,
     name: str,
@@ -309,3 +311,11 @@ def chi2_reduced(
         dof = len(observed) - 1
 
     return np.sum(np.square((observed - estimated) / errors)) / dof
+
+def get_color_state0(number):
+    return "rgb" + str(hls_to_rgb((-0.35 - number * 9 / 20) % 1, 0.6, 0.75))
+
+
+def get_color_state1(number):
+    return "rgb" + str(hls_to_rgb((-0.02 - number * 9 / 20) % 1, 0.6, 0.75))
+
