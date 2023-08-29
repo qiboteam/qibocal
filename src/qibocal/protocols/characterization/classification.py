@@ -275,7 +275,7 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         state0_data = qubit_data[qubit_data["state"] == 0]
         state1_data = qubit_data[qubit_data["state"] == 1]
 
-        grid, q_shape = evaluate_grid(state0_data, state1_data)
+        grid = evaluate_grid(state0_data, state1_data)
         for i, model_name in enumerate(names):
             hpars[qubit][model_name] = hpars_list[i]
             try:
@@ -283,7 +283,7 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
             except AttributeError:
                 y_preds.append(models[i].predict(x_test).tolist())
             grid_preds.append(
-                np.round(np.reshape(models[i].predict(grid), q_shape))
+                np.round(np.reshape(models[i].predict(grid), (MESH_SIZE, MESH_SIZE)))
                 .astype(np.int64)
                 .tolist()
             )
@@ -325,7 +325,7 @@ def _plot(
     qubit_data = data.data[qubit]
     state0_data = qubit_data[qubit_data["state"] == 0]
     state1_data = qubit_data[qubit_data["state"] == 1]
-    grid, _ = evaluate_grid(state0_data, state1_data)
+    grid = evaluate_grid(state0_data, state1_data)
 
     fig = make_subplots(
         rows=1,
@@ -567,7 +567,14 @@ def _plot(
 single_shot_classification = Routine(_acquisition, _fit, _plot)
 
 
-def evaluate_grid(state0_data, state1_data):
+def evaluate_grid(
+    state0_data: npt.NDArray,
+    state1_data: npt.NDArray,
+):
+    """
+    This function returns a matrix grid evaluated from
+    the datapoints `state0_data` and `state1_data`.
+    """
     max_x = (
         max(
             0,
@@ -604,4 +611,4 @@ def evaluate_grid(state0_data, state1_data):
         np.linspace(min_x, max_x, num=MESH_SIZE),
         np.linspace(min_y, max_y, num=MESH_SIZE),
     )
-    return np.vstack([i_values.ravel(), q_values.ravel()]).T, q_values.shape
+    return np.vstack([i_values.ravel(), q_values.ravel()]).T
