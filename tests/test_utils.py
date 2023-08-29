@@ -14,8 +14,7 @@ def test_fill_table():
     value = 10
     error = 5
     unit = "bar"
-    output = f"{qubit}| {name}: (1.0 ± 0.5) 10^1 bar <br>"
-    output_no_error = f"{qubit}| {name}: 1.0 * 10^1<br>"
-
+    output = f"{qubit}| {name}: (1.0 ± 0.5)* 10^1 bar <br>"
+    output_no_error = f"{qubit}| {name}: 1.0* 10^1<br>"
     assert fill_table(qubit, name, value, error, unit) == output
     assert fill_table(qubit, name, value, None) == output_no_error
