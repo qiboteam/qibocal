@@ -9,6 +9,7 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from scipy.optimize import curve_fit
+from scipy.signal import find_peaks
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
@@ -136,10 +137,9 @@ def flipping_fit(x, p0, p1, p2, p3):
     # Offset                        : p[1]
     # Period of oscillation         : p[2]
     # phase for the first point corresponding to pi/2 rotation   : p[3]
-    return np.sin(x * 2 * np.pi / p2 + p3) * p0 + p1
+    return np.sin(x * 2 * np.pi * p2 + p3) * p1 + p0
 
 
-# FIXME: not working
 def _fit(data: FlippingData) -> FlippingResults:
     r"""Post-processing function for Flipping.
 
@@ -158,31 +158,48 @@ def _fit(data: FlippingData) -> FlippingResults:
         pi_pulse_amplitude = data.pi_pulse_amplitudes[qubit]
         voltages = qubit_data.msr * V_TO_UV
         flips = qubit_data.flips
-        if data.resonator_type == "3D":
-            pguess = [
-                pi_pulse_amplitude / 2,
-                np.mean(voltages),
-                -40,
-                0,
-            ]  # epsilon guess parameter
-        else:
-            pguess = [
-                pi_pulse_amplitude / 2,
-                np.mean(voltages),
-                40,
-                0,
-            ]  # epsilon guess parameter
+        y_min = np.min(voltages)
+        y_max = np.max(voltages)
+        x_min = np.min(flips)
+        x_max = np.max(flips)
+        x = (flips - x_min) / (x_max - x_min)
+        y = (voltages - y_min) / (y_max - y_min)
+
+        # Guessing period using fourier transform
+        ft = np.fft.rfft(y)
+        mags = abs(ft)
+        local_maxima = find_peaks(mags, threshold=10)[0]
+        index = local_maxima[0] if len(local_maxima) > 0 else None
+        # 0.5 hardcoded guess for less than one oscillation
+        f = x[index] / (x[1] - x[0]) if index is not None else 0.5
+        pguess = [0.5, 1, f, np.pi / 2]
 
         try:
-            popt, _ = curve_fit(flipping, flips, voltages, p0=pguess, maxfev=2000000)
+            popt, _ = curve_fit(
+                flipping_fit,
+                x,
+                y,
+                p0=pguess,
+                maxfev=2000000,
+                bounds=(
+                    [0, 0, 0, -np.pi],
+                    [1, 1, np.inf, np.pi],
+                ),
+            )
 
         except:
             log.warning("flipping_fit: the fitting was not succesful")
-            popt = [0, 0, 2, 0]
+            popt = [0, 0, 0, 0]
 
+        translated_popt = [
+            y_min + (y_max - y_min) * popt[0],
+            (y_max - y_min) * popt[1],
+            popt[2] / (x_max - x_min),
+            popt[3] - 2 * np.pi * x_min / (x_max - x_min) * popt[2],
+        ]
         # sen fitting succesful
-        if popt[2] != 2:
-            eps = -1 / popt[2]
+        if popt[2] != 0:
+            eps = -translated_popt[2]
             amplitude_correction_factor = eps / (eps - 1)
             corrected_amplitude = amplitude_correction_factor * pi_pulse_amplitude
         # sen fitting not succesful = amplitude well adjusted
@@ -191,7 +208,7 @@ def _fit(data: FlippingData) -> FlippingResults:
             corrected_amplitude = amplitude_correction_factor * pi_pulse_amplitude
 
         corrected_amplitudes[qubit] = corrected_amplitude
-        fitted_parameters[qubit] = popt
+        fitted_parameters[qubit] = translated_popt
         amplitude_correction_factors[qubit] = amplitude_correction_factor
 
     return FlippingResults(
