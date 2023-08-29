@@ -153,9 +153,9 @@ def _plot(data: TwpaFrequencyData, fit: TwpaFrequencyResults, qubit):
         fidelities.append(qubit_fit[qubit, freq])
 
     fitting_report = f"{qubit} | Best assignment fidelity: {np.max(fidelities):.3f}<br>"
-    fitting_report = f"{qubit} | TWPA Frequency: {int(freqs[np.argmax(fidelities)]*GHZ_TO_HZ)} Hz <br>"
+    fitting_report += f"{qubit} | TWPA Frequency: {int(freqs[np.argmax(fidelities)]*GHZ_TO_HZ)} Hz <br>"
 
-    fig = go.Figure([go.Scatter(x=freqs, y=fidelities)])
+    fig = go.Figure([go.Scatter(x=freqs, y=fidelities, name="Fidelity")])
     figures.append(fig)
 
     fig.update_layout(

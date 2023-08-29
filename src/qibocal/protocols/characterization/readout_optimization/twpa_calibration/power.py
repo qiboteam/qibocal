@@ -103,11 +103,11 @@ def _plot(data: TwpaPowerData, fit: TwpaPowerResults, qubit):
         fidelities.append(qubit_fit[qubit, power])
 
     fitting_report = f"{qubit} | Best assignment fidelity: {np.max(fidelities):.3f}<br>"
-    fitting_report = (
+    fitting_report += (
         f"{qubit} | TWPA power: {powers[np.argmax(fidelities)]:.3f} dB <br>"
     )
 
-    fig = go.Figure([go.Scatter(x=powers, y=fidelities)])
+    fig = go.Figure([go.Scatter(x=powers, y=fidelities, name="Fidelity")])
     figures.append(fig)
 
     fig.update_layout(
