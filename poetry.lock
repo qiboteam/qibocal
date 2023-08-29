@@ -2622,13 +2622,13 @@ files = [
 
 [[package]]
 name = "qibo"
-version = "0.1.16"
+version = "0.2.0"
 description = "A framework for quantum computing with hardware acceleration."
 optional = false
 python-versions = ">=3.8,<3.12"
 files = [
-    {file = "qibo-0.1.16-py3-none-any.whl", hash = "sha256:ef31f63d8994827e3b104dbae32a5ebf6f07c0555fd93bc26fab2445b93a9f07"},
-    {file = "qibo-0.1.16.tar.gz", hash = "sha256:37d5a5590927684a8d1f12a0736dc3073fcadf00ed736489c61515b3340e32d3"},
+    {file = "qibo-0.2.0-py3-none-any.whl", hash = "sha256:542c6f26de56e48a47a1e2ca56c382f426d5ddda8e9325d9fb821709b75e195b"},
+    {file = "qibo-0.2.0.tar.gz", hash = "sha256:c497a9c115577c0e0c5c09ab2f55147675bd82384af4f186a65c9c7fa916b8bf"},
 ]
 
 [package.dependencies]
@@ -2653,7 +2653,7 @@ develop = false
 more-itertools = "^9.1.0"
 networkx = "^3.0"
 pyyaml = "^6.0"
-qibo = ">=0.1.16,<0.3"
+qibo = ">=0.2.0,<0.3"
 
 [package.extras]
 qblox = ["pyvisa-py (==0.5.3)", "qblox-instruments (==0.9.0)", "qcodes (>=0.37.0,<0.38.0)", "qcodes_contrib_drivers (==0.18.0)"]
@@ -2665,7 +2665,7 @@ zh = ["laboneq (==2.7.0)"]
 type = "git"
 url = "https://github.com/qiboteam/qibolab.git"
 reference = "dummy2-now-with-couplers!"
-resolved_reference = "cc1f28aad335823b7fe199f878c50186e4efe104"
+resolved_reference = "7e404be9a2faa533b287d60b0efa48b2c8ae9082"
 
 [[package]]
 name = "recommonmark"
@@ -3595,4 +3595,4 @@ viz = ["pydot"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.12"
-content-hash = "bd576c4a1820331ace2cd90a52969e91b43cd379abc5dc046be066e2328c59dd"
+content-hash = "d9fe97a1900af91e95b0d70025d96a0e6798a9f7143b5a59445bbff8814cc0bc"
