@@ -402,5 +402,5 @@ actions:
     operation: twpa_power
     parameters:
       nshots: 10
-      frequency_width: 10
-      frequency_step: 1
+      power_width: 10
+      power_step: 1
