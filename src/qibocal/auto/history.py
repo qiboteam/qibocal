@@ -31,6 +31,10 @@ class Completed:
     """Protocol data."""
     _results: Optional[Results] = None
     """Fitting output."""
+    data_time: Optional[float] = 0
+    """Protocol data."""
+    results_time: Optional[float] = 0
+    """Fitting output."""
 
     @property
     def datapath(self):

@@ -7,6 +7,7 @@ from qibolab.qubits import QubitId
 
 from ..protocols.characterization import Operation
 from ..utils import allocate_qubits_pairs, allocate_single_qubits
+from .mode import ExecutionMode
 from .operation import (
     Data,
     DummyPars,
@@ -99,7 +100,22 @@ class Task:
         """Local update parameter."""
         return self.action.update
 
-    def acquire(self, platform: Platform, qubits: Union[Qubits, QubitsPairs]) -> Data:
+    def run(
+        self,
+        platform: Platform = None,
+        qubits: Union[Qubits, QubitsPairs] = dict,
+        mode: ExecutionMode = None,
+        completed=None,
+    ):
+        if mode.name in ["autocalibration", "acquire"]:
+            completed.data, completed.data_time = self._acquire(
+                platform=platform, qubits=qubits
+            )
+
+        if mode.name in ["autocalibration", "fit"]:
+            completed.results, completed.results_time = self._fit(completed.data)
+
+    def _acquire(self, platform: Platform, qubits: Union[Qubits, QubitsPairs]) -> Data:
         """Acquisition
 
         Args:
@@ -139,7 +155,7 @@ class Task:
         # results, time = operation.fit(data)
         # yield results, time
 
-    def fit(self, data: Data) -> Results:
+    def _fit(self, data: Data) -> Results:
         """Fitting
 
         Args:
