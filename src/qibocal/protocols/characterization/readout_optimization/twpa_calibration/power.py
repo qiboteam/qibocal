@@ -6,18 +6,19 @@ import plotly.graph_objects as go
 from qibolab.platform import Platform
 
 from qibocal.auto.operation import Parameters, Qubits, Routine
+from qibocal.protocols.characterization import classification
 
-from ... import classification
 from . import frequency
 
 
 @dataclass
 class TwpaPowerParameters(Parameters):
-    """Flipping runcard inputs."""
+    """TwpaPower runcard inputs."""
 
     power_width: float
+    """Power total width."""
     power_step: float
-
+    """Power step to be probed."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
@@ -40,7 +41,10 @@ def _acquisition(
     qubits: Qubits,
 ) -> TwpaPowerData:
     r"""
-    Data acquisition for twpa frequency optmization.
+    Data acquisition for TWPA power optmization.
+    This protocol perform a classification protocol for twpa powers
+    in the range [twpa_power - power_width / 2, twpa_power + power_width / 2]
+    with step power_step.
 
     Args:
         params (:class:`TwpaPowerParameters`): input parameters
@@ -78,7 +82,7 @@ def _acquisition(
         for qubit in qubits:
             data.register_freq(
                 qubit,
-                platform.qubits[qubit].twpa.local_oscillator.frequency,
+                platform.qubits[qubit].twpa.local_oscillator.power,
                 classification_data,
             )
 
@@ -86,7 +90,8 @@ def _acquisition(
 
 
 def _plot(data: TwpaPowerData, fit: TwpaPowerResults, qubit):
-    """Plotting function for Flipping."""
+    """Plotting function that shows the assignment fidelity
+    for different values of the twpa power for a single qubit."""
 
     figures = []
     fitting_report = "No fitting data"
@@ -98,7 +103,9 @@ def _plot(data: TwpaPowerData, fit: TwpaPowerResults, qubit):
         fidelities.append(qubit_fit[qubit, power])
 
     fitting_report = f"{qubit} | Best assignment fidelity: {np.max(fidelities):.3f}<br>"
-    fitting_report = f"{qubit} | TWPA power: {power[np.argmax(fidelities)]:.3f} dB <br>"
+    fitting_report = (
+        f"{qubit} | TWPA power: {powers[np.argmax(fidelities)]:.3f} dB <br>"
+    )
 
     fig = go.Figure([go.Scatter(x=powers, y=fidelities)])
     figures.append(fig)
@@ -114,4 +121,4 @@ def _plot(data: TwpaPowerData, fit: TwpaPowerResults, qubit):
 
 
 twpa_power = Routine(_acquisition, frequency._fit, _plot)
-"""Twpa frequency Routine  object."""
+"""Twpa power Routine  object."""

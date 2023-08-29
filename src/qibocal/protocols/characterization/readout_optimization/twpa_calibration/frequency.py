@@ -11,9 +11,8 @@ from sklearn.model_selection import train_test_split
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.fitting.classifier.run import benchmarking
+from qibocal.protocols.characterization import classification
 from qibocal.protocols.characterization.utils import GHZ_TO_HZ, HZ_TO_GHZ
-
-from ... import classification
 
 
 @dataclass
@@ -67,7 +66,10 @@ def _acquisition(
     qubits: Qubits,
 ) -> TwpaFrequencyData:
     r"""
-    Data acquisition for twpa frequency optmization.
+    Data acquisition for TWPA power optmization.
+    This protocol perform a classification protocol for twpa frequencies
+    in the range [twpa_frequency - frequency_width / 2, twpa_frequency + frequency_width / 2]
+    with step frequency_step.
 
     Args:
         params (:class:`TwpaFrequencyParameters`): input parameters
@@ -115,14 +117,8 @@ def _acquisition(
 
 
 def _fit(data: TwpaFrequencyData) -> TwpaFrequencyResults:
-    r"""Post-processing function for Flipping.
-
-    The used model is
-
-    .. math::
-
-        y = p_0 sin\Big(\frac{2 \pi x}{p_2} + p_3\Big) + p_1.
-    """
+    """Extract fidelity for each configuration qubit / param.
+    Where param can be either frequency or power."""
     fidelities = {}
     for qubit, param in data.data:
         qubit_data = data.data[qubit, param]
@@ -144,7 +140,8 @@ def _fit(data: TwpaFrequencyData) -> TwpaFrequencyResults:
 
 
 def _plot(data: TwpaFrequencyData, fit: TwpaFrequencyResults, qubit):
-    """Plotting function for Flipping."""
+    """Plotting function that shows the assignment fidelity
+    for different values of the twpa frequency for a single qubit"""
 
     figures = []
     fitting_report = "No fitting data"
