@@ -4,23 +4,6 @@ from qibolab.platform import Platform
 from qibolab.qubits import Qubit, QubitId, QubitPair
 
 
-def cast_to_int(a):
-    try:
-        return int(a)
-    except:
-        # remove double quotes
-        return a[1:-1]
-
-
-def conversion(name: str):
-    convert_to_list = name.strip("()").split(",")
-    return (
-        tuple(cast_to_int(i) for i in convert_to_list)
-        if len(convert_to_list) > 1
-        else cast_to_int(name)
-    )
-
-
 def allocate_single_qubits(
     platform: Optional[Platform], qubit_ids: list[QubitId]
 ) -> dict[QubitId, Qubit]:

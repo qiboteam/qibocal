@@ -1,6 +1,5 @@
 """Track execution history."""
 import copy
-import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -37,8 +36,8 @@ class Completed:
     def datapath(self):
         """Path contaning data and results file for task."""
         path = self.folder / "data" / f"{self.task.id}_{self.task.iteration}"
-        if not os.path.isdir(path):
-            os.makedirs(path)
+        if not path.is_dir():
+            path.mkdir(parents=True)
         return path
 
     @property
@@ -47,8 +46,9 @@ class Completed:
         if not (self.datapath / RESULTSFILE).is_file():
             return None
 
-        Results = self.task.operation.results_type
-        self._results = Results.load(self.datapath)
+        if self._results is None:
+            Results = self.task.operation.results_type
+            self._results = Results.load(self.datapath)
         return self._results
 
     @results.setter
@@ -65,9 +65,9 @@ class Completed:
             and not (self.datapath / RB_DATAFILE).is_file()
         ):
             return None
-
-        Data = self.task.operation.data_type
-        self._data = Data.load(self.datapath)
+        if self._data is None:
+            Data = self.task.operation.data_type
+            self._data = Data.load(self.datapath)
         return self._data
 
     @data.setter
