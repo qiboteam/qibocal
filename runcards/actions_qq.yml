@@ -1,6 +1,6 @@
-platform: dummy
+platform: iqm5q
 
-qubits: [0, 1]
+qubits: [0]
 
 
 actions:
@@ -13,15 +13,16 @@ actions:
 #       readout_amplitude: 0.5
 
 
-#   - id: resonator high power high amplitude
-#     priority: 0
-#     operation: resonator_spectroscopy
-#     parameters:
-#       freq_width: 10_000_000 # 20_000_000
-#       freq_step: 100_000 # 500_00
-#       amplitude: 0.4
-#       power_level: high
-#       nshots: 10
+  # - id: resonator high power high amplitude
+  #   priority: 0
+  #   operation: resonator_spectroscopy
+  #   next: resonator_punchout_attenuation
+  #   parameters:
+  #     freq_width: 10_000_000 # 20_000_000
+  #     freq_step: 50_000 # 500_00
+  #     amplitude: 0.4
+  #     power_level: high
+  #     nshots: 10
 
 
 #   - id: resonator high power low attenuation
@@ -59,39 +60,42 @@ actions:
 #       nshots: 100
 
 
-#   - id: resonator_punchout_attenuation
-#     priority: 0
-#     operation: resonator_punchout_attenuation
-#     parameters:
-#       freq_width: 10_000_000
-#       freq_step: 500_000
-#       min_att: 4
-#       max_att: 60
-#       step_att: 4
-#       nshots: 1000
+  # - id: resonator_punchout_attenuation
+  #   priority: 1
+  #   operation: resonator_punchout_attenuation
+  #   next: resonator spectroscopy low power
+  #   parameters:
+  #     freq_width: 10_000_000
+  #     freq_step: 500_000
+  #     min_att: 4
+  #     max_att: 60
+  #     step_att: 4
+  #     nshots: 1000
 
 
 
-#   - id: resonator spectroscopy low power
-#     priority: 0
-#     operation: resonator_spectroscopy
-#     parameters:
-#       freq_width: 10_000_000
-#       freq_step: 50_000
-#       amplitude: 0.022
-#       power_level: low
-#       nshots: 10
+  # - id: resonator spectroscopy low power
+  #   priority: 5
+  #   operation: resonator_spectroscopy
+  #   next: qubit spectroscopy
+  #   parameters:
+  #     freq_width: 20_000_000
+  #     freq_step: 50_000
+  #     amplitude: 0.9
+  #     power_level: low
+  #     nshots: 1000
 
 
-#   - id: qubit spectroscopy
-#     priority: 0
-#     operation: qubit_spectroscopy
-#     parameters:
-#       drive_amplitude: 0.001
-#       drive_duration: 1000
-#       freq_width: 2_000_000
-#       freq_step: 500_000
-#       nshots: 10
+  # - id: qubit spectroscopy
+  #   priority: 10
+  #   operation: qubit_spectroscopy
+  #   # next: rabi
+  #   parameters:
+  #     drive_amplitude: 0.001
+  #     drive_duration: 1000
+  #     freq_width: 500_000_000
+  #     freq_step: 5_000_000
+  #     nshots: 1000
 
 
 #   - id: resonator flux dependence
@@ -117,15 +121,15 @@ actions:
 #       nshots: 10
 
 
-#   - id: rabi
-#     priority: 0
-#     operation: rabi_amplitude
-#     parameters:
-#       min_amp_factor: 0.0
-#       max_amp_factor: 4.0
-#       step_amp_factor: 0.1
-#       pulse_length: 30
-#       nshots: 1024
+  # - id: rabi
+  #   priority: 20
+  #   operation: rabi_amplitude
+  #   parameters:
+  #     min_amp_factor: 0.0
+  #     max_amp_factor: 4.0
+  #     step_amp_factor: 0.1
+  #     pulse_length: 30
+  #     nshots: 1024
 
 
 #   - id: rabi length
@@ -170,24 +174,26 @@ actions:
 #       nshots: 10
 
 
-#   - id: t2
-#     priority: 0
-#     operation: t2
-#     parameters:
-#       delay_between_pulses_start: 16
-#       delay_between_pulses_end: 20000
-#       delay_between_pulses_step: 100
-#       nshots: 10
+  # - id: t2
+  #   priority: 0
+  #   operation: t2
+  #   next: ramsey
+  #   parameters:
+  #     delay_between_pulses_start: 16
+  #     delay_between_pulses_end: 20000
+  #     delay_between_pulses_step: 100
+  #     nshots: 100
 
 
-#   - id: t2 sequences
-#     priority: 0
-#     operation: t2_sequences
-#     parameters:
-#       delay_between_pulses_start: 16
-#       delay_between_pulses_end: 20000
-#       delay_between_pulses_step: 100
-#       nshots: 1024
+  # - id: t2 sequences
+  #   priority: 0
+  #   operation: t2_sequences
+  #   next: ramsey
+  #   parameters:
+  #     delay_between_pulses_start: 16
+  #     delay_between_pulses_end: 20000
+  #     delay_between_pulses_step: 100
+  #     nshots: 1024
 
 
 #   - id: ramsey_detuned
@@ -201,27 +207,27 @@ actions:
 #       nshots: 10
 
 
-#   - id: ramsey detuned sequences
-#     priority: 0
-#     operation: ramsey_sequences
-#     parameters:
-#       delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
-#       delay_between_pulses_end: 5000
-#       delay_between_pulses_step: 500 # must be a multiple of 4
-#       n_osc: 10
-#       nshots: 1024
-
+  # - id: ramsey detuned sequences
+  #   priority: 0
+  #   operation: ramsey_sequences
+  #   next: ramsey
+  #   parameters:
+  #     delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
+  #     delay_between_pulses_end: 10000
+  #     delay_between_pulses_step: 200 # must be a multiple of 4
+  #     n_osc: 0
+  #     nshots: 1024
 
   - id: ramsey
     priority: 0
     operation: ramsey
     parameters:
       delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
-      delay_between_pulses_end: 5000
-      delay_between_pulses_step: 500 # must be a multiple of 4
-      n_osc: 5
-      nshots: 1024
-      nboot: 10
+      delay_between_pulses_end: 50000
+      delay_between_pulses_step: 1000 # must be a multiple of 4
+      n_osc: 10
+      nshots: 3000
+      nboot: 1000
 
 #   - id: single shot classification
 #     priority: 0
