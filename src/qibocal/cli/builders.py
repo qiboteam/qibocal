@@ -240,7 +240,7 @@ class ActionBuilder(Builder):
             timing_task["tot"] = timing_task["acquisition"] + result_time
             self.meta[task_id] = timing_task
             # TODO: reactivate iterative dump
-            # self.dump_report()
+            self.dump_report()
 
     def dump_report(self):
         # update end time
