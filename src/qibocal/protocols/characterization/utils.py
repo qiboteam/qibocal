@@ -288,7 +288,10 @@ def fill_table(
             (i.e. it is not evaluated).
     """
     table = f"{qubit}| {name}: "
-    magnitude = floor(log10(abs(value)))  # number of non decimal digits in value
+    if value:
+        magnitude = floor(log10(abs(value)))  # number of non decimal digits in value
+    else:
+        magnitude = 0
     if error:
         ndigits = max(significant_digit(error * 10 ** (-1 * magnitude)), 0)
         table += f"({round(value*10**(-1*magnitude), ndigits)} {chr(177)} {np.format_float_positional(round(error*10**(-1*magnitude), ndigits), trim = '-')})"
