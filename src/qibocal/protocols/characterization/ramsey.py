@@ -35,8 +35,6 @@ class RamseyParameters(Parameters):
     """Number of shots."""
     relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
-    nboot: int = 0
-    """Number of bootstrap samples"""
 
 
 @dataclass

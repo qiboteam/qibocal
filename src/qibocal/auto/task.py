@@ -118,7 +118,6 @@ class Task:
         except RuntimeError:
             operation = dummy_operation
             parameters = DummyPars()
-
         if operation.platform_dependent and operation.qubits_dependent:
             if len(self.qubits) > 0:
                 if platform is not None:
