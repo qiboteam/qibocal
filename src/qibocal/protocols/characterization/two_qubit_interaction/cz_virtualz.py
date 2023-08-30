@@ -261,7 +261,7 @@ def _fit(
             try:
                 popt, _ = curve_fit(
                     fit_function,
-                    np.array(data.thetas) + data.vphases[qubits][target],
+                    np.array(data.thetas) + data.vphases[qubits][str(target)],
                     target_data,
                     p0=pguess,
                     bounds=((0, 0, 0), (2.5, 2.5, 2 * np.pi)),
@@ -291,6 +291,7 @@ def _fit(
     )
 
 
+# TODO: remove str
 def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
     """Plot routine for CZVirtualZ."""
     pair_data = data[qubit]
@@ -315,14 +316,13 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
 
     fitting_report = None
     thetas = data.thetas
-
     for target, control, setup in pair_data:
         target_prob = pair_data[target, control, setup].target
         control_prob = pair_data[target, control, setup].control
         fig = fig1 if (target, control) == qubits else fig2
         fig.add_trace(
             go.Scatter(
-                x=np.array(thetas) + data.vphases[qubits][target],
+                x=np.array(thetas) + data.vphases[qubits][str(target)],
                 y=target_prob,
                 name=f"{setup} sequence",
                 legendgroup=setup,
@@ -333,7 +333,7 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
 
         fig.add_trace(
             go.Scatter(
-                x=np.array(thetas) + data.vphases[qubits][control],
+                x=np.array(thetas) + data.vphases[qubits][str(control)],
                 y=control_prob,
                 name=f"{setup} sequence",
                 legendgroup=setup,
@@ -346,9 +346,10 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
             fitted_parameters = fit.fitted_parameters[target, control, setup]
             fig.add_trace(
                 go.Scatter(
-                    x=angle_range + data.vphases[qubits][target],
+                    x=angle_range + data.vphases[qubits][str(target)],
                     y=fit_function(
-                        angle_range + data.vphases[qubits][target], *fitted_parameters
+                        angle_range + data.vphases[qubits][str(target)],
+                        *fitted_parameters,
                     ),
                     name="Fit",
                     line=go.scatter.Line(dash="dot"),
@@ -359,7 +360,7 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
 
             reports.append(f"{target} | CZ angle: {fit.cz_angle[target, control]}<br>")
             reports.append(
-                f"{target} | Virtual Z phase: { - fit.virtual_phase[qubits][target]}<br>"
+                f"{target} | Virtual Z phase: { - fit.virtual_phase[qubits][str(target)]}<br>"
             )
         fitting_report = "".join(list(dict.fromkeys(reports)))
 

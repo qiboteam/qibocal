@@ -11,10 +11,10 @@ import click
 import yaml
 from qibo.config import log, raise_error
 
-from .acquisition import acquire
+from .acquisition import acquire as acquisition
 from .autocalibration import autocalibrate
-from .fit import fit
-from .report import report
+from .fit import fit as fitting
+from .report import report as reporting
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -36,11 +36,13 @@ def command():
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
-@click.argument("runcard", metavar="RUNCARD", type=click.Path(exists=True))
+@click.argument(
+    "runcard", metavar="RUNCARD", type=click.Path(exists=True, path_type=pathlib.Path)
+)
 @click.option(
     "folder",
     "-o",
-    type=click.Path(path_type=pathlib.Path()),
+    type=click.Path(path_type=pathlib.Path),
     help="Output folder. If not provided a standard name will generated.",
 )
 @click.option(
@@ -67,11 +69,13 @@ def auto(runcard, folder, force, update):
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
-@click.argument("runcard", metavar="RUNCARD", type=click.Path(exists=True))
+@click.argument(
+    "runcard", metavar="RUNCARD", type=click.Path(exists=True, path_type=pathlib.Path)
+)
 @click.option(
     "folder",
     "-o",
-    type=click.Path(path_type=pathlib.Path()),
+    type=click.Path(path_type=pathlib.Path),
     help="Output folder. If not provided a standard name will generated.",
 )
 @click.option(
@@ -88,12 +92,12 @@ def acquire(runcard, folder, force):
      - RUNCARD: runcard with declarative inputs.
     """
     card = yaml.safe_load(runcard.read_text(encoding="utf-8"))
-    acquire(card, folder, force)
+    acquisition(card, folder, force)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
 @click.argument(
-    "folder", metavar="folder", type=click.Path(exists=True, path_type=pathlib.Path())
+    "folder", metavar="folder", type=click.Path(exists=True, path_type=pathlib.Path)
 )
 def report(folder):
     """Report generation
@@ -103,12 +107,12 @@ def report(folder):
     - FOLDER: input folder.
 
     """
-    report(folder)
+    reporting(folder)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
 @click.argument(
-    "folder", metavar="folder", type=click.Path(exists=True, path_type=pathlib.Path())
+    "folder", metavar="folder", type=click.Path(exists=True, path_type=pathlib.Path)
 )
 @click.option(
     "--update/--no-update",
@@ -124,12 +128,12 @@ def fit(folder: pathlib.Path, update):
     - FOLDER: input folder.
 
     """
-    fit(folder, update)
+    fitting(folder, update)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
 @click.argument(
-    "path", metavar="FOLDER", type=click.Path(exists=True, path_type=pathlib.Path())
+    "path", metavar="FOLDER", type=click.Path(exists=True, path_type=pathlib.Path)
 )
 def upload(path):
     """Uploads output folder to server
