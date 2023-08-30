@@ -16,7 +16,7 @@ UPDATED_PLATFORM = "new_platform.yml"
 PLATFORM = "platform.yml"
 
 
-def generate_report(folder):
+def report(folder):
     """Report generation
 
     Arguments:

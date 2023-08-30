@@ -14,7 +14,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
-from .utils import OrderedPair, order_pair
+from .utils import order_pair
 
 
 @dataclass
@@ -103,20 +103,20 @@ def _aquisition(
         ordered_pair = order_pair(pair, platform.qubits)
         # initialize in system in 11 state
         initialize_lowfreq = platform.create_RX_pulse(
-            ordered_pair.low_freq, start=0, relative_phase=0
+            ordered_pair[0], start=0, relative_phase=0
         )
         initialize_highfreq = platform.create_RX_pulse(
-            ordered_pair.high_freq, start=0, relative_phase=0
+            ordered_pair[1], start=0, relative_phase=0
         )
         sequence.add(initialize_highfreq)
         sequence.add(initialize_lowfreq)
         cz, _ = platform.create_CZ_pulse_sequence(
-            qubits=(ordered_pair.high_freq, ordered_pair.low_freq),
+            qubits=(ordered_pair[1], ordered_pair[0]),
             start=initialize_highfreq.finish,
         )
 
-        sequence.add(cz.get_qubit_pulses(ordered_pair.low_freq))
-        sequence.add(cz.get_qubit_pulses(ordered_pair.high_freq))
+        sequence.add(cz.get_qubit_pulses(ordered_pair[0]))
+        sequence.add(cz.get_qubit_pulses(ordered_pair[1]))
 
         if params.parking:
             for pulse in cz:
@@ -125,11 +125,11 @@ def _aquisition(
 
         # add readout
         measure_lowfreq = platform.create_qubit_readout_pulse(
-            ordered_pair.low_freq,
+            ordered_pair[0],
             start=initialize_lowfreq.finish + params.duration_max + params.dt,
         )
         measure_highfreq = platform.create_qubit_readout_pulse(
-            ordered_pair.high_freq,
+            ordered_pair[1],
             start=initialize_highfreq.finish + params.duration_max + params.dt,
         )
 
@@ -149,13 +149,13 @@ def _aquisition(
         sweeper_amplitude = Sweeper(
             Parameter.amplitude,
             delta_amplitude_range,
-            pulses=[cz.get_qubit_pulses(ordered_pair.high_freq).qf_pulses[0]],
+            pulses=[cz.get_qubit_pulses(ordered_pair[1]).qf_pulses[0]],
             type=SweeperType.ABSOLUTE,
         )
         sweeper_duration = Sweeper(
             Parameter.duration,
             delta_duration_range,
-            pulses=[cz.get_qubit_pulses(ordered_pair.high_freq).qf_pulses[0]],
+            pulses=[cz.get_qubit_pulses(ordered_pair[1]).qf_pulses[0]],
             type=SweeperType.ABSOLUTE,
         )
         results = platform.sweep(
@@ -172,8 +172,8 @@ def _aquisition(
             result = results[qubit]
             prob = result.magnitude
             data.register_qubit(
-                ordered_pair.low_freq,
-                ordered_pair.high_freq,
+                ordered_pair[0],
+                ordered_pair[1],
                 qubit,
                 delta_duration_range,
                 delta_amplitude_range,
@@ -187,14 +187,14 @@ def _plot(data: ChevronData, fit: ChevronResults, qubit):
     colouraxis = ["coloraxis", "coloraxis2"]
     pair_data = data[qubit]
     # order qubits
-    qubits = OrderedPair(*next(iter(pair_data))[:2])
+    qubits = next(iter(pair_data))[:2]
 
     fig = make_subplots(
         rows=1,
         cols=2,
         subplot_titles=(
-            f"Qubit {qubits.low_freq} - Low Frequency",
-            f"Qubit {qubits.high_freq} - High Frequency",
+            f"Qubit {qubits[0]} - Low Frequency",
+            f"Qubit {qubits[1]} - High Frequency",
         ),
     )
     fit_report = None

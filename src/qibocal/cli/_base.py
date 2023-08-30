@@ -11,10 +11,10 @@ import click
 import yaml
 from qibo.config import log, raise_error
 
-from .acquisition import run_acquisition
-from .autocalibration import run_autocalibration
-from .fit import run_fit
-from .report import generate_report
+from .acquisition import acquire
+from .autocalibration import autocalibrate
+from .fit import fit
+from .report import report
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
 
@@ -63,11 +63,11 @@ def auto(runcard, folder, force, update):
      - RUNCARD: runcard with declarative inputs.
     """
     card = yaml.safe_load(pathlib.Path(runcard).read_text(encoding="utf-8"))
-    run_autocalibration(card, folder, force, update)
+    autocalibrate(card, folder, force, update)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
-@click.argument("runcard_path", metavar="RUNCARD", type=click.Path(exists=True))
+@click.argument("runcard", metavar="RUNCARD", type=click.Path(exists=True))
 @click.option(
     "folder",
     "-o",
@@ -88,7 +88,7 @@ def acquire(runcard, folder, force):
      - RUNCARD: runcard with declarative inputs.
     """
     card = yaml.safe_load(pathlib.Path(runcard).read_text(encoding="utf-8"))
-    run_acquisition(card, folder, force)
+    acquire(card, folder, force)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
@@ -101,7 +101,7 @@ def report(folder):
     - FOLDER: input folder.
 
     """
-    generate_report(folder)
+    report(folder)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
@@ -120,7 +120,7 @@ def fit(folder, update):
     - FOLDER: input folder.
 
     """
-    run_fit(folder, update)
+    fit(folder, update)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)

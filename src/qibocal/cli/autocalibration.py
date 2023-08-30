@@ -20,7 +20,7 @@ from .utils import (
 )
 
 
-def run_autocalibration(card, folder, force, update):
+def autocalibrate(card, folder, force, update):
     """Autocalibration
 
     Arguments:
@@ -39,7 +39,7 @@ def run_autocalibration(card, folder, force, update):
     if runcard.backend == "qibolab":
         dump_runcard(runcard.platform_obj, path / PLATFORM)
     # dump action runcard
-    (path / RUNCARD).write_text(yaml.dump(asdict(runcard)))
+    (path / RUNCARD).write_text(yaml.safe_dump(asdict(runcard)))
     # dump meta
     (path / META).write_text(json.dumps(meta, indent=4))
 

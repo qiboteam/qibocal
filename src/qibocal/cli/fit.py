@@ -12,7 +12,7 @@ from ..auto.runcard import Runcard
 from .utils import META, RUNCARD, UPDATED_PLATFORM
 
 
-def run_fit(folder, update):
+def fit(folder, update):
     """Post-processing analysis
 
     Arguments:

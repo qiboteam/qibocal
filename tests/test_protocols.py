@@ -6,9 +6,9 @@ import pytest
 import yaml
 from qibolab import create_platform
 
-from qibocal.cli.acquisition import run_acquisition
-from qibocal.cli.autocalibration import run_autocalibration
-from qibocal.cli.fit import run_fit
+from qibocal.cli.acquisition import acquire
+from qibocal.cli.autocalibration import autocalibrate
+from qibocal.cli.fit import fit
 
 PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/protocols.yml"
 PLATFORM = create_platform("dummy")
@@ -29,21 +29,21 @@ def idfn(val):
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
 def test_action_builder(runcard):
     """Test ActionBuilder for all protocols."""
-    run_autocalibration(runcard, tempfile.mkdtemp(), force=True, update=False)
+    autocalibrate(runcard, tempfile.mkdtemp(), force=True, update=False)
 
 
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
 def test_acquisition_builder(runcard):
     """Test AcquisitionBuilder for all protocols."""
-    run_acquisition(runcard, tempfile.mkdtemp(), force=True)
+    acquire(runcard, tempfile.mkdtemp(), force=True)
 
 
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
 def test_fit_builder(runcard):
     """Test FitBuilder."""
     output_folder = tempfile.mkdtemp()
-    run_acquisition(runcard, output_folder, force=True)
-    run_fit(output_folder, update=False)
+    acquire(runcard, output_folder, force=True)
+    fit(output_folder, update=False)
 
 
 # TODO: compare report by calling qq report

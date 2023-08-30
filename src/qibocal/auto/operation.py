@@ -125,7 +125,17 @@ class Data:
     def to_json(self, path):
         """Helper function to dump to json in JSONFILE path."""
         if self.global_params:
-            (path / JSONFILE).write_text(json.dumps(self.global_params, indent=4))
+            key = Key()
+            json_dict = {}
+            for global_param_key, global_param in self.global_params.items():
+                if isinstance(global_param, dict):
+                    json_dict[global_param_key] = {
+                        key.dump(param_key): value
+                        for param_key, value in global_param.items()
+                    }
+                else:
+                    json_dict[global_param_key] = global_param
+            (path / JSONFILE).write_text(json.dumps(json_dict, indent=4))
 
     @classmethod
     def load(cls, path):
