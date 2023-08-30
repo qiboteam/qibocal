@@ -481,38 +481,38 @@ def _plot(
                     col=1,
                 )
 
-            fig_benchmarks.add_trace(
-                go.Scatter(
-                    x=[model],
-                    y=[fit.benchmark_table[qubit][i][2]],
-                    mode="markers",
-                    showlegend=False,
-                    marker=dict(size=10, color=get_color_state1(i)),
-                ),
-                row=1,
-                col=2,
-            )
+                fig_benchmarks.add_trace(
+                    go.Scatter(
+                        x=[model],
+                        y=[fit.benchmark_table[qubit][i][2]],
+                        mode="markers",
+                        showlegend=False,
+                        marker=dict(size=10, color=get_color_state1(i)),
+                    ),
+                    row=1,
+                    col=2,
+                )
 
-            fig_benchmarks.add_trace(
-                go.Scatter(
-                    x=[model],
-                    y=[fit.benchmark_table[qubit][i][1]],
-                    mode="markers",
-                    showlegend=False,
-                    marker=dict(size=10, color=get_color_state1(i)),
-                ),
-                row=1,
-                col=3,
-            )
+                fig_benchmarks.add_trace(
+                    go.Scatter(
+                        x=[model],
+                        y=[fit.benchmark_table[qubit][i][1]],
+                        mode="markers",
+                        showlegend=False,
+                        marker=dict(size=10, color=get_color_state1(i)),
+                    ),
+                    row=1,
+                    col=3,
+                )
 
-            fig_benchmarks.update_yaxes(type="log", row=1, col=2)
-            fig_benchmarks.update_yaxes(type="log", row=1, col=3)
-            fig_benchmarks.update_layout(
-                autosize=False,
-                height=COLUMNWIDTH,
-                width=COLUMNWIDTH * 3,
-                title=dict(text="Benchmarks", font=dict(size=TITLE_SIZE)),
-            )
+                fig_benchmarks.update_yaxes(type="log", row=1, col=2)
+                fig_benchmarks.update_yaxes(type="log", row=1, col=3)
+                fig_benchmarks.update_layout(
+                    autosize=False,
+                    height=COLUMNWIDTH,
+                    width=COLUMNWIDTH * 3,
+                    title=dict(text="Benchmarks", font=dict(size=TITLE_SIZE)),
+                )
 
             if models_name[i] == "qubit_fit":
                 fitting_report += f"{qubit} | average state 0: {np.round(fit.mean_gnd_states[qubit], 3)}<br>"
