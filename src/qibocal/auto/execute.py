@@ -148,4 +148,4 @@ class Executor:
                 and update
             ):
                 self.platform.update(completed.results.update)
-            yield task
+            yield task.uid

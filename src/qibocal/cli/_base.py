@@ -15,6 +15,7 @@ from qibo.config import log, raise_error
 from qibolab.serialize import dump_runcard
 
 from ..auto.execute import Executor
+from ..auto.history import add_timings_to_meta
 from ..auto.mode import ExecutionMode
 from ..auto.runcard import Runcard
 from ..cli.builders import ReportBuilder
@@ -76,7 +77,7 @@ def auto(runcard, folder, force, update):
     card = yaml.safe_load(pathlib.Path(runcard).read_text(encoding="utf-8"))
     folder = generate_output_folder(folder, force)
     runcard = Runcard.load(card)
-    meta = prepare_output(runcard, folder)
+    meta = prepare_output(card, runcard, folder)
 
     qubits = create_qubits_dict(runcard)
     platform = runcard.platform_obj
@@ -88,15 +89,8 @@ def auto(runcard, folder, force, update):
         platform.setup()
         platform.start()
 
-    for task in executor.run(mode=ExecutionMode.autocalibration):
-        timing_task = {}
-        timing_task["acquisition"] = executor.history[task.uid].data_time
-        timing_task["fit"] = executor.history[task.uid].results_time
-        timing_task["tot"] = timing_task["acquisition"] + timing_task["fit"]
-        # TODO: Change this to task.uid which is JSON friendly
-        meta[task.id] = timing_task
-        # TODO: reactivate iterative dump (it fails with more than one action)
-        # self.dump_report()
+    executed = list(executor.run(mode=ExecutionMode.autocalibration))
+    meta = add_timings_to_meta(meta, executor.history)
 
     if platform is not None:
         dump_runcard(platform, folder / UPDATED_PLATFORM)
@@ -146,12 +140,9 @@ def acquire(runcard, folder, force):
         platform.setup()
         platform.start()
 
-    for task in executor.run(mode=ExecutionMode.acquire):
-        timing_task = {}
-        timing_task["acquisition"] = executor.history[task.uid].data_time
-        timing_task["tot"] = timing_task["acquisition"]
-        # TODO: Change this to task.uid which is JSON friendly
-        meta[task.id] = timing_task
+    executed = list(executor.run(mode=ExecutionMode.acquire))
+
+    meta = add_timings_to_meta(meta, executor.history)
 
     e = datetime.datetime.now(datetime.timezone.utc)
     meta["end-time"] = e.strftime("%H:%M:%S")
@@ -197,11 +188,8 @@ def fit(folder):
     runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
     executor = Executor.load(runcard, path)
 
-    for task in executor.run(mode=ExecutionMode.fit):
-        timing_task = {}
-        timing_task["fit"] = executor.history[task.uid].results_time
-        timing_task["tot"] = executor.history[task.uid].data_time + timing_task["fit"]
-        metadata[task.id] = timing_task
+    executed = list(executor.run(mode=ExecutionMode.fit))
+    metadata = add_timings_to_meta(metadata, executor.history)
 
     # update time in meta.yml
     e = datetime.datetime.now(datetime.timezone.utc)
