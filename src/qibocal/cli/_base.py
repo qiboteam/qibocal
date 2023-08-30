@@ -7,6 +7,7 @@ import shutil
 import socket
 import subprocess
 import uuid
+from dataclasses import asdict
 from urllib.parse import urljoin
 
 import click
@@ -21,11 +22,12 @@ from ..auto.runcard import Runcard
 from ..cli.builders import ReportBuilder
 from .utils import (
     META,
+    PLATFORM,
     RUNCARD,
     UPDATED_PLATFORM,
     create_qubits_dict,
+    generate_meta,
     generate_output_folder,
-    prepare_output,
 )
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
@@ -74,38 +76,55 @@ def auto(runcard, folder, force, update):
 
      - RUNCARD: runcard with declarative inputs.
     """
+    # load and initialize Runcard from file
     card = yaml.safe_load(pathlib.Path(runcard).read_text(encoding="utf-8"))
-    folder = generate_output_folder(folder, force)
     runcard = Runcard.load(card)
-    meta = prepare_output(card, runcard, folder)
 
+    # generate output folder
+    path = generate_output_folder(folder, force)
+    # generate meta
+    meta = generate_meta(runcard, path)
+
+    # dump platform
+    if runcard.backend == "qibolab":
+        dump_runcard(runcard.platform_obj, path / PLATFORM)
+    # dump action runcard
+    (path / RUNCARD).write_text(yaml.dump(asdict(runcard)))
+    # dump meta
+    (path / META).write_text(json.dumps(meta, indent=4))
+
+    # allocate qubits, runcard and executor
     qubits = create_qubits_dict(runcard)
     platform = runcard.platform_obj
-    # TODO: check if update can be removed
-    executor = Executor.load(runcard, folder, platform, qubits, update=update)
+    executor = Executor.load(runcard, path, platform, qubits, update)
 
+    # connect and initialize platform
     if platform is not None:
         platform.connect()
         platform.setup()
         platform.start()
 
+    # run protocols
     executor.run(mode=ExecutionMode.autocalibration)
-    meta = add_timings_to_meta(meta, executor.history)
 
-    if platform is not None:
-        dump_runcard(platform, folder / UPDATED_PLATFORM)
-
-    e = datetime.datetime.now(datetime.timezone.utc)
-    meta["end-time"] = e.strftime("%H:%M:%S")
-    (folder / META).write_text(json.dumps(meta, indent=4))
-
+    # stop and disconnect platform
     if platform is not None:
         platform.stop()
         platform.disconnect()
 
+    # dump updated runcard
+    if platform is not None:
+        dump_runcard(platform, path / UPDATED_PLATFORM)
+
+    # dump updated meta
+    meta = add_timings_to_meta(meta, executor.history)
+    e = datetime.datetime.now(datetime.timezone.utc)
+    meta["end-time"] = e.strftime("%H:%M:%S")
+    (path / META).write_text(json.dumps(meta, indent=4))
+
 
 @command.command(context_settings=CONTEXT_SETTINGS)
-@click.argument("runcard", metavar="RUNCARD", type=click.Path(exists=True))
+@click.argument("runcard_path", metavar="RUNCARD", type=click.Path(exists=True))
 @click.option(
     "folder",
     "-o",
@@ -118,39 +137,55 @@ def auto(runcard, folder, force, update):
     is_flag=True,
     help="Use --force option to overwrite the output folder.",
 )
-def acquire(runcard, folder, force):
+def acquire(runcard_path, folder, force):
     """Data acquisition
 
     Arguments:
 
      - RUNCARD: runcard with declarative inputs.
     """
-    card = yaml.safe_load(pathlib.Path(runcard).read_text(encoding="utf-8"))
-    folder = generate_output_folder(folder, force)
+    # load and initialize Runcard from file
+    card = yaml.safe_load(pathlib.Path(runcard_path).read_text(encoding="utf-8"))
     runcard = Runcard.load(card)
-    meta = prepare_output(card, runcard, folder)
 
+    # generate output folder
+    path = generate_output_folder(folder, force)
+    # generate meta
+    meta = generate_meta(runcard, path)
+
+    # dump platform
+    if runcard.backend == "qibolab":
+        dump_runcard(runcard.platform_obj, path / PLATFORM)
+
+    # dump action runcard
+    (path / RUNCARD).write_text(yaml.dump(asdict(runcard)))
+    # dump meta
+    (path / META).write_text(json.dumps(meta, indent=4))
+
+    # allocate qubits, runcard and executor
     qubits = create_qubits_dict(runcard)
     platform = runcard.platform_obj
-    # TODO: check if update can be removed
-    executor = Executor.load(runcard, folder, platform, qubits, update=None)
+    executor = Executor.load(runcard, path, platform, qubits)
 
+    # connect and initialize platform
     if platform is not None:
         platform.connect()
         platform.setup()
         platform.start()
 
+    # run protocols
     executor.run(mode=ExecutionMode.acquire)
 
-    meta = add_timings_to_meta(meta, executor.history)
-
-    e = datetime.datetime.now(datetime.timezone.utc)
-    meta["end-time"] = e.strftime("%H:%M:%S")
-    (folder / META).write_text(json.dumps(meta, indent=4))
-
+    # stop and disconnect platform
     if platform is not None:
         platform.stop()
         platform.disconnect()
+
+    # dump updated meta
+    meta = add_timings_to_meta(meta, executor.history)
+    e = datetime.datetime.now(datetime.timezone.utc)
+    meta["end-time"] = e.strftime("%H:%M:%S")
+    (path / META).write_text(json.dumps(meta, indent=4))
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
@@ -163,19 +198,28 @@ def report(folder):
     - FOLDER: input folder.
 
     """
+    # load path, meta and runcard
     path = pathlib.Path(folder)
     meta = yaml.safe_load((path / META).read_text())
     runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
-    executor = Executor.load(runcard, path)
-    qubits = runcard.qubits
 
-    builder = ReportBuilder(path, qubits, executor, meta)
+    # load executor
+    executor = Executor.load(runcard, path)
+
+    # produce html
+    builder = ReportBuilder(path, runcard.qubits, executor, meta)
     builder.run(path)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
 @click.argument("folder", metavar="folder", type=click.Path(exists=True))
-def fit(folder):
+@click.option(
+    "--update/--no-update",
+    default=True,
+    help="Use --no-update option to avoid updating iteratively the platform."
+    "With this option the new runcard will not be produced.",
+)
+def fit(folder, update):
     """Post-processing analysis
 
     Arguments:
@@ -183,19 +227,26 @@ def fit(folder):
     - FOLDER: input folder.
 
     """
+    # load path, meta, runcard and executor
     path = pathlib.Path(folder)
     meta = yaml.safe_load((path / META).read_text())
     runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
-    executor = Executor.load(runcard, path)
+    executor = Executor.load(
+        runcard, path, update=update, platform=runcard.platform_obj
+    )
 
+    # perform post-processing
     executor.run(mode=ExecutionMode.fit)
-    meta = add_timings_to_meta(meta, executor.history)
+
+    # dump updated runcard
+    if runcard.platform_obj is not None and update:
+        dump_runcard(runcard.platform_obj, path / UPDATED_PLATFORM)
 
     # update time in meta.yml
+    meta = add_timings_to_meta(meta, executor.history)
     e = datetime.datetime.now(datetime.timezone.utc)
     meta["end-time"] = e.strftime("%H:%M:%S")
-    with open(path / META, "w") as file:
-        yaml.dump(meta, file)
+    (path / META).write_text(json.dumps(meta, indent=4))
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
