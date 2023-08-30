@@ -8,9 +8,8 @@ from qibolab.platform import Platform
 from qibocal.config import log
 
 from .graph import Graph
-from .history import Completed, History
+from .history import History
 from .runcard import Id, Runcard
-from .status import Normal
 from .task import Qubits, Task
 
 
@@ -134,12 +133,11 @@ class Executor:
         while self.head is not None:
             task = self.current
             log.info(f"Running task {task.id}.")
-            completed = Completed(task, Normal(), self.output)
-            task.run(
+            completed = task.run(
                 platform=self.platform,
                 qubits=self.qubits,
+                folder=self.output,
                 mode=mode,
-                completed=completed,
             )
             self.history.push(completed)
             self.head = self.next()
@@ -150,4 +148,4 @@ class Executor:
                 and update
             ):
                 self.platform.update(completed.results.update)
-            yield completed.data_time, completed.results_time, task.id
+            yield task

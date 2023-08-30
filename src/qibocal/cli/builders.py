@@ -1,7 +1,6 @@
 import datetime
 import json
 import tempfile
-from enum import Enum
 from functools import cached_property
 from pathlib import Path
 
@@ -10,6 +9,7 @@ from qibolab.qubits import QubitId
 from qibolab.serialize import dump_runcard
 
 from qibocal.auto.execute import Executor
+from qibocal.auto.mode import ExecutionMode
 from qibocal.auto.runcard import Runcard
 from qibocal.auto.task import TaskId
 from qibocal.cli.utils import generate_output_folder
@@ -19,13 +19,6 @@ META = "meta.json"
 RUNCARD = "runcard.yml"
 UPDATED_PLATFORM = "new_platform.yml"
 PLATFORM = "platform.yml"
-
-
-class ExecutionMode(Enum):
-    acquire = "acquire"
-    fit = "fit"
-    autocalibration = "autocalibration"
-    report = "report"
 
 
 class PostProcessingBuilder:
@@ -46,11 +39,13 @@ class FitBuilder(PostProcessingBuilder):
     """Builder to run fitting on output folder"""
 
     def run(self, mode: ExecutionMode = ExecutionMode.fit):
-        for _, result_time, task_id in self.executor.run(mode=mode):
+        for task in self.executor.run(mode=mode):
             timing_task = {}
-            timing_task["fit"] = result_time
-            timing_task["tot"] = self.metadata[task_id]["acquisition"] + result_time
-            self.metadata[task_id] = timing_task
+            timing_task["fit"] = self.executor.history[task.uid].results_time
+            timing_task["tot"] = (
+                self.executor.history[task.uid].data_time + timing_task["fit"]
+            )
+            self.metadata[task.id] = timing_task
 
         # update time in meta.yml
         e = datetime.datetime.now(datetime.timezone.utc)
@@ -68,7 +63,7 @@ class ReportBuilder(PostProcessingBuilder):
 
     @cached_property
     def history(self):
-        for _, _, _ in self.executor.run(mode=ExecutionMode.report):
+        for task in self.executor.run(mode=ExecutionMode.report):
             pass
         return self.executor.history
 
@@ -208,11 +203,12 @@ class AcquisitionBuilder(Builder):
     """Builder for perfoming only data acquisition."""
 
     def _run(self, mode: ExecutionMode):
-        for data_time, _, task_id in self.executor.run(mode=mode):
+        for task in self.executor.run(mode=mode):
             timing_task = {}
-            timing_task["acquisition"] = data_time
-            timing_task["tot"] = data_time
-            self.meta[task_id] = timing_task
+            timing_task["acquisition"] = self.executor.history[task.uid].data_time
+            timing_task["tot"] = timing_task["acquisition"]
+            # TODO: Change this to task.uid which is JSON friendly
+            self.meta[task.id] = timing_task
 
         e = datetime.datetime.now(datetime.timezone.utc)
         self.meta["end-time"] = e.strftime("%H:%M:%S")
@@ -233,14 +229,15 @@ class ActionBuilder(Builder):
         self.update = update
 
     def _run(self, mode: ExecutionMode):
-        for data_time, result_time, task_id in self.executor.run(mode=mode):
+        for task in self.executor.run(mode=mode):
             timing_task = {}
-            timing_task["acquisition"] = data_time
-            timing_task["fit"] = result_time
-            timing_task["tot"] = timing_task["acquisition"] + result_time
-            self.meta[task_id] = timing_task
-            # TODO: reactivate iterative dump
-            # self.dump_report()
+            timing_task["acquisition"] = self.executor.history[task.uid].data_time
+            timing_task["fit"] = self.executor.history[task.uid].results_time
+            timing_task["tot"] = timing_task["acquisition"] + timing_task["fit"]
+            # TODO: Change this to task.uid which is JSON friendly
+            self.meta[task.id] = timing_task
+            # TODO: reactivate iterative dump (it fails with more than one action)
+            self.dump_report()
 
     def dump_report(self):
         # update end time
