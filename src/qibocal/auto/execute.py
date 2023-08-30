@@ -132,7 +132,7 @@ class Executor:
         self.head = self.graph.start
         while self.head is not None:
             task = self.current
-            log.info(f"Running task {task.id}.")
+            log.info(f"Executing mode {mode.name} on {task.id}.")
             completed = task.run(
                 platform=self.platform,
                 qubits=self.qubits,
@@ -148,4 +148,3 @@ class Executor:
                 and update
             ):
                 self.platform.update(completed.results.update)
-            yield task.uid

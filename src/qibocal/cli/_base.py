@@ -89,7 +89,7 @@ def auto(runcard, folder, force, update):
         platform.setup()
         platform.start()
 
-    executed = list(executor.run(mode=ExecutionMode.autocalibration))
+    executor.run(mode=ExecutionMode.autocalibration)
     meta = add_timings_to_meta(meta, executor.history)
 
     if platform is not None:
@@ -140,7 +140,7 @@ def acquire(runcard, folder, force):
         platform.setup()
         platform.start()
 
-    executed = list(executor.run(mode=ExecutionMode.acquire))
+    executor.run(mode=ExecutionMode.acquire)
 
     meta = add_timings_to_meta(meta, executor.history)
 
@@ -164,12 +164,12 @@ def report(folder):
 
     """
     path = pathlib.Path(folder)
-    metadata = yaml.safe_load((path / META).read_text())
+    meta = yaml.safe_load((path / META).read_text())
     runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
     executor = Executor.load(runcard, path)
     qubits = runcard.qubits
 
-    builder = ReportBuilder(path, qubits, executor, metadata)
+    builder = ReportBuilder(path, qubits, executor, meta)
     builder.run(path)
 
 
@@ -184,18 +184,18 @@ def fit(folder):
 
     """
     path = pathlib.Path(folder)
-    metadata = yaml.safe_load((path / META).read_text())
+    meta = yaml.safe_load((path / META).read_text())
     runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
     executor = Executor.load(runcard, path)
 
-    executed = list(executor.run(mode=ExecutionMode.fit))
-    metadata = add_timings_to_meta(metadata, executor.history)
+    executor.run(mode=ExecutionMode.fit)
+    meta = add_timings_to_meta(meta, executor.history)
 
     # update time in meta.yml
     e = datetime.datetime.now(datetime.timezone.utc)
-    metadata["end-time"] = e.strftime("%H:%M:%S")
+    meta["end-time"] = e.strftime("%H:%M:%S")
     with open(path / META, "w") as file:
-        yaml.dump(metadata, file)
+        yaml.dump(meta, file)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)

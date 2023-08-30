@@ -18,15 +18,14 @@ class ReportBuilder:
     """Builder to produce html report."""
 
     def __init__(self, path: Path, qubits, executor: Executor, metadata):
-        self.path = path
+        self.path = self.title = path
         self.qubits = qubits
         self.executor = executor
         self.metadata = metadata
 
     @cached_property
     def history(self):
-        for task in self.executor.run(mode=ExecutionMode.report):
-            pass
+        self.executor.run(mode=ExecutionMode.report)
         return self.executor.history
 
     def routine_name(self, routine, iteration):
