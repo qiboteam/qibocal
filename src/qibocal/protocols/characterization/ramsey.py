@@ -84,12 +84,19 @@ class RamseyData(Data):
         # to be able to handle the non-sweeper case
         ar = np.empty(msr.shape, dtype=RamseyType)
         ar["wait"] = wait
-        ar["msr"] = msr
-        ar["phase"] = phase
+        ar["msr"] = np.array([msr])
+        ar["phase"] = np.array([phase])
         if qubit in self.data:
             self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
         else:
             self.data[qubit] = np.rec.array(ar)
+
+    @property
+    def waits(self):
+        """
+        Return a list with the waiting times without repetitions.
+        """
+        return np.unique(data[qubits[0]].wait)
 
 
 def _acquisition(
@@ -173,18 +180,17 @@ def _acquisition(
                         / params.delay_between_pulses_end
                     )
 
-            # execute the pulse sequence
-            averaging_mode = (
-                AveragingMode.SINGLESHOT if params.nboot != 0 else AveragingMode.CYCLIC
-            )
-
             results = platform.execute_pulse_sequence(
                 sequence,
                 ExecutionParameters(
                     nshots=params.nshots,
                     relaxation_time=params.relaxation_time,
                     acquisition_type=AcquisitionType.INTEGRATION,
-                    averaging_mode=averaging_mode,
+                    averaging_mode=(
+                        AveragingMode.SINGLESHOT
+                        if params.nboot != 0
+                        else AveragingMode.CYCLIC
+                    ),
                 ),
             )
             for qubit in qubits:
@@ -192,8 +198,8 @@ def _acquisition(
                 data.register_qubit(
                     qubit,
                     wait=wait,
-                    msr=np.array([result.magnitude]),
-                    phase=np.array([result.phase]),
+                    msr=result.magnitude,
+                    phase=result.phase,
                 )
 
     return data
@@ -298,7 +304,7 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
     fitting_report = ""
 
     qubit_data = data.data[qubit]
-    waits = np.unique(data.data[qubit].wait)
+    waits = data.waits
     msrs = qubit_data[["msr"]].tolist()
     if data.nboot != 0:
         msrs = np.reshape(msrs, (len(waits), -1)) * V_TO_UV
@@ -388,7 +394,11 @@ ramsey = Routine(_acquisition, _fit, _plot)
 """Ramsey Routine object."""
 
 
-def fitting(x, y):
+def fitting(x: list, y: list) -> list:
+    """
+    Given the inputs list `x` and outputs one `y`, this function fits the
+    `ramsey_fit` function and returns a list with the fit parameters.
+    """
     y_max = np.max(y)
     y_min = np.min(y)
     y = (y - y_min) / (y_max - y_min)
