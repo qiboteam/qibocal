@@ -96,7 +96,8 @@ class RamseyData(Data):
         """
         Return a list with the waiting times without repetitions.
         """
-        return np.unique(data[qubits[0]].wait)
+        qubit = next(iter(self.data))
+        return np.unique(self.data[qubit].wait)
 
 
 def _acquisition(
@@ -222,7 +223,7 @@ def _fit(data: RamseyData) -> RamseyResults:
         y = p_0 + p_1 sin \Big(p_2 x + p_3 \Big) e^{-x p_4}.
     """
     qubits = data.qubits
-    waits = np.unique(data[qubits[0]].wait)
+    waits = data.waits
     popts = {}
     freq_measure = {}
     t2_measure = {}
