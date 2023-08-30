@@ -6,13 +6,6 @@ import pytest
 import yaml
 from qibolab import create_platform
 
-from qibocal.cli.builders import (
-    AcquisitionBuilder,
-    ActionBuilder,
-    ExecutionMode,
-    FitBuilder,
-)
-
 PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/protocols.yml"
 PLATFORM = create_platform("dummy")
 

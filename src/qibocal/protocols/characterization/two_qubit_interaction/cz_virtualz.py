@@ -1,12 +1,11 @@
 """CZ virtual correction experiment for two qubit gates, tune landscape."""
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from pydantic.dataclasses import Field
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import Pulse, PulseSequence
@@ -57,14 +56,14 @@ class CZVirtualZResults(Results):
 CZVirtualZType = np.dtype([("target", np.float64), ("control", np.float64)])
 
 
+@dataclass
 class CZVirtualZData(Data):
     """CZVirtualZ data."""
 
-    data: dict[tuple, npt.NDArray] = Field(default_factory=dict)
-    dtype: np.dtype = CZVirtualZType
+    data: dict[tuple, npt.NDArray[CZVirtualZType]] = field(default_factory=dict)
 
-    thetas: list = Field(default_factory=list)
-    vphases: dict[tuple[QubitId, QubitId], dict[QubitId, float]] = Field(
+    thetas: list = field(default_factory=list)
+    vphases: dict[tuple[QubitId, QubitId], dict[QubitId, float]] = field(
         default_factory=dict
     )
 

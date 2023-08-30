@@ -1,13 +1,12 @@
 import inspect
 import json
 import time
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, dataclass, field, fields
 from functools import wraps
 from typing import Callable, Generic, NewType, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
-from pydantic import BaseModel, validator
 from qibolab.platform import Platform
 from qibolab.qubits import Qubit, QubitId
 
@@ -84,26 +83,13 @@ class Parameters:
         return cls(**parameters)
 
 
-class Data(BaseModel):
+class Data:
     """Data resulting from acquisition routine."""
 
-    data: dict[Union[tuple[QubitId, int], QubitId], npt.NDArray]
+    data: dict[Union[tuple[QubitId, int], QubitId], npt.NDArray] = field(
+        default_factory=dict
+    )
     """Data object to store arrays"""
-    dtype: np.dtype
-
-    class Config:
-        # needed because we are using np.ndarray
-        arbitrary_types_allowed = True
-        # needed to avoid loading dict keys as strings
-        smart_union = True
-
-    @validator("data", pre=True)
-    def validate_data(cls, data):  # pylint: disable=E0213
-        key = Key()
-        new_data = {}
-        for i, ar in data.items():
-            new_data[key.load(i)] = np.rec.array(ar)
-        return new_data
 
     @property
     def qubits(self):
@@ -124,9 +110,8 @@ class Data(BaseModel):
     @property
     def global_params(self) -> dict:
         """Convert non-arrays attributes into dict."""
-        global_dict = self.dict()
+        global_dict = asdict(self)
         global_dict.pop("data")
-        global_dict.pop("dtype")
         return global_dict
 
     def save(self, path):
@@ -148,7 +133,11 @@ class Data(BaseModel):
     def load(cls, path):
         key = Key()
         with open(path / DATAFILE) as f:
-            data_dict = dict(np.load(path / DATAFILE))
+            raw_data_dict = dict(np.load(path / DATAFILE))
+            data_dict = {}
+
+            for data_key, array in raw_data_dict.items():
+                data_dict[key.load(data_key)] = np.rec.array(array)
         if (path / JSONFILE).is_file():
             params = json.loads((path / JSONFILE).read_text())
             # TODO: check if this can be improved

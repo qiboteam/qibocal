@@ -1,12 +1,11 @@
 """SWAP experiment for two qubit gates, chevron plot."""
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from pydantic.dataclasses import Field
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
@@ -53,13 +52,13 @@ ChevronType = np.dtype(
 """Custom dtype for Chevron."""
 
 
+@dataclass
 class ChevronData(Data):
-    """CzFluxTime acquisition outputs."""
+    """Chevron acquisition outputs."""
 
-    data: dict[tuple[QubitId, QubitId, QubitId], npt.NDArray] = Field(
+    data: dict[tuple[QubitId, QubitId, QubitId], npt.NDArray[ChevronType]] = field(
         default_factory=dict
     )
-    dtype: np.dtype = ChevronType
 
     def register_qubit(self, low_qubit, high_qubit, qubit, length, amp, prob):
         """Store output for single qubit."""
