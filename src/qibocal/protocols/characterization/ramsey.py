@@ -4,7 +4,6 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from pydantic.dataclasses import Field
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
@@ -57,6 +56,7 @@ RamseyType = np.dtype(
 """Custom dtype for coherence routines."""
 
 
+@dataclass
 class RamseyData(Data):
     """Ramsey acquisition outputs."""
 
@@ -66,17 +66,16 @@ class RamseyData(Data):
     """Final delay between RX(pi/2) pulses in ns."""
     detuning_sign: int
     """Sign for induced detuning."""
-    qubit_freqs: dict[QubitId, float] = Field(default_factory=dict)
+    qubit_freqs: dict[QubitId, float] = field(default_factory=dict)
     """Qubit freqs for each qubit."""
-    data: dict[QubitId, npt.NDArray] = Field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
-    dtype: np.dtype = RamseyType
 
     def register_qubit(self, qubit, wait, msr, phase):
         """Store output for single qubit."""
         # to be able to handle the non-sweeper case
         shape = (1,) if np.isscalar(wait) else wait.shape
-        ar = np.empty(shape, dtype=self.dtype)
+        ar = np.empty(shape, dtype=RamseyType)
         ar["wait"] = wait
         ar["msr"] = msr
         ar["phase"] = phase

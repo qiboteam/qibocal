@@ -5,7 +5,6 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from pydantic.dataclasses import Field
 from qibolab import AcquisitionType, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
@@ -52,13 +51,15 @@ ResonatorFrequencyType = np.dtype(
 """Custom dtype for Optimization RO frequency."""
 
 
+@dataclass
 class ResonatorFrequencyData(Data):
     """ "Optimization RO frequency acquisition outputs."""
 
     resonator_type: str
     """Resonator type."""
-    data: dict[QubitId, npt.NDArray] = Field(default_factory=dict)
-    dtype: np.dtype = ResonatorFrequencyType
+    data: dict[QubitId, npt.NDArray[ResonatorFrequencyType]] = field(
+        default_factory=dict
+    )
 
     def append_data(self, qubit, state, freq, i, q):
         """Append elements to data for single qubit."""

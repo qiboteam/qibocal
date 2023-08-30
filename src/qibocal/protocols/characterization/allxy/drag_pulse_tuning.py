@@ -5,7 +5,6 @@ import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from pydantic.dataclasses import Field
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
@@ -48,12 +47,12 @@ class DragPulseTuningResults(Results):
 DragPulseTuningType = np.dtype([("msr", np.float64), ("beta", np.float64)])
 
 
+@dataclass
 class DragPulseTuningData(Data):
     """DragPulseTuning acquisition outputs."""
 
-    data: dict[QubitId, npt.NDArray] = Field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[DragPulseTuningType]] = field(default_factory=dict)
     """Raw data acquired."""
-    dtype: np.dtype = DragPulseTuningType
 
     def register_qubit(self, qubit, msr, beta):
         """Store output for single qubit."""

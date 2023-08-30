@@ -4,7 +4,7 @@ import pathlib
 from jinja2 import Environment, FileSystemLoader
 
 from qibocal import __version__
-from qibocal.cli.builders import ReportBuilder
+from qibocal.cli.report import ReportBuilder
 
 WEB_DIR = pathlib.Path(__file__).parent
 STYLES = WEB_DIR / "static" / "styles.css"

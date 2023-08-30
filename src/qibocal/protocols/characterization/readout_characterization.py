@@ -1,10 +1,9 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from pydantic.dataclasses import Field
 from qibolab import ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
@@ -43,12 +42,14 @@ ReadoutCharacterizationType = np.dtype(
 """Custom dtype for ReadoutCharacterization."""
 
 
+@dataclass
 class ReadoutCharacterizationData(Data):
     """ReadoutCharacterization acquisition outputs."""
 
-    data: dict[tuple, npt.NDArray] = Field(default_factory=dict)
+    data: dict[tuple, npt.NDArray[ReadoutCharacterizationType]] = field(
+        default_factory=dict
+    )
     """Raw data acquired."""
-    dtype: np.dtype = ReadoutCharacterizationType
 
     def register_qubit(self, qubit, probability, state, readout_number):
         """Store output for single qubit."""

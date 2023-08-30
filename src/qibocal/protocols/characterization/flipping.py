@@ -4,7 +4,6 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from pydantic.dataclasses import Field
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
@@ -46,6 +45,7 @@ class FlippingResults(Results):
 FlippingType = np.dtype([("flips", np.float64), ("msr", np.float64)])
 
 
+@dataclass
 class FlippingData(Data):
     """Flipping acquisition outputs."""
 
@@ -53,9 +53,8 @@ class FlippingData(Data):
     """Resonator type."""
     pi_pulse_amplitudes: dict[QubitId, float]
     """Pi pulse amplitudes for each qubit."""
-    data: dict[QubitId, npt.NDArray] = Field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[FlippingType]] = field(default_factory=dict)
     """Raw data acquired."""
-    dtype: np.dtype = FlippingType
 
     def register_qubit(self, qubit, flips, msr):
         """Store output for single qubit."""

@@ -1,11 +1,10 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from pydantic.dataclasses import Field
 from qibolab import ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
@@ -49,12 +48,12 @@ FastResetType = np.dtype(
 """Custom dtype for FastReset."""
 
 
+@dataclass
 class FastResetData(Data):
     """FastReset acquisition outputs."""
 
-    data: dict[tuple, npt.NDArray] = Field(default_factory=dict)
+    data: dict[tuple, npt.NDArray[FastResetType]] = field(default_factory=dict)
     """Raw data acquired."""
-    dtype: np.dtype = FastResetType
 
     def register_qubit(self, qubit, probability, state, fast_reset):
         """Store output for single qubit."""

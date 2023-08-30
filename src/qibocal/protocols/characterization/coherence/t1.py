@@ -4,7 +4,6 @@ from typing import Optional
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from pydantic.dataclasses import Field
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
@@ -49,12 +48,12 @@ CoherenceType = np.dtype(
 """Custom dtype for coherence routines."""
 
 
+@dataclass
 class T1Data(Data):
     """T1 acquisition outputs."""
 
-    data: dict[QubitId, npt.NDArray] = Field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
-    dtype: np.dtype = CoherenceType
 
     def register_qubit(self, qubit, wait, msr, phase):
         """Store output for single qubit."""

@@ -63,6 +63,7 @@ class ResonatorSpectroscopyAttenuationResults(Results):
     """Readout attenuation [dB] for each qubit."""
 
 
+@dataclass
 class ResonatorSpectroscopyAttenuationData(ResonatorSpectroscopyData):
     """Data structure for resonator spectroscopy with attenuation."""
 

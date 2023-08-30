@@ -2,16 +2,39 @@ import tempfile
 from functools import cached_property
 from pathlib import Path
 
+import yaml
 from qibolab.qubits import QubitId
 
 from qibocal.auto.execute import Executor
 from qibocal.auto.mode import ExecutionMode
+from qibocal.auto.runcard import Runcard
 from qibocal.auto.task import TaskId
 
 META = "meta.json"
 RUNCARD = "runcard.yml"
 UPDATED_PLATFORM = "new_platform.yml"
 PLATFORM = "platform.yml"
+
+
+def generate_report(folder):
+    """Report generation
+
+    Arguments:
+
+    - FOLDER: input folder.
+
+    """
+    # load path, meta and runcard
+    path = Path(folder)
+    meta = yaml.safe_load((path / META).read_text())
+    runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
+
+    # load executor
+    executor = Executor.load(runcard, path)
+
+    # produce html
+    builder = ReportBuilder(path, runcard.qubits, executor, meta)
+    builder.run(path)
 
 
 class ReportBuilder:

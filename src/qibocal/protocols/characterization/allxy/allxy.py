@@ -1,10 +1,9 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
 import plotly.graph_objects as go
-from pydantic.dataclasses import Field
 from qibolab import AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
@@ -33,14 +32,14 @@ class AllXYResults(Results):
 AllXYType = np.dtype([("prob", np.float64), ("gate", "<U5")])
 
 
+@dataclass
 class AllXYData(Data):
     """AllXY acquisition outputs."""
 
     beta_param: float = None
     """Beta parameter for drag pulse."""
-    data: dict[QubitId, npt.NDArray] = Field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
-    dtype: np.dtype = AllXYType
 
     def register_qubit(self, qubit, prob, gate):
         """Store output for single qubit."""

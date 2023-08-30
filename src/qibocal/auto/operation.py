@@ -1,7 +1,7 @@
 import inspect
 import json
 import time
-from dataclasses import asdict, dataclass, field, fields
+from dataclasses import asdict, dataclass, fields
 from functools import wraps
 from typing import Callable, Generic, NewType, TypeVar, Union
 
@@ -86,9 +86,7 @@ class Parameters:
 class Data:
     """Data resulting from acquisition routine."""
 
-    data: dict[Union[tuple[QubitId, int], QubitId], npt.NDArray] = field(
-        default_factory=dict
-    )
+    data: dict[Union[tuple[QubitId, int], QubitId], npt.NDArray]
     """Data object to store arrays"""
 
     @property

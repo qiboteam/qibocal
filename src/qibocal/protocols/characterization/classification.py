@@ -8,7 +8,6 @@ import numpy.typing as npt
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from pydantic.dataclasses import Field
 from qibolab import AcquisitionType, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
@@ -54,18 +53,18 @@ ClassificationType = np.dtype([("i", np.float64), ("q", np.float64), ("state", i
 """Custom dtype for rabi amplitude."""
 
 
+@dataclass
 class SingleShotClassificationData(Data):
     nshots: int
     """Number of shots."""
-    classifiers_list: Optional[list[str]] = Field(default_factory=lambda: ["qubit_fit"])
-    """List of models to classify the qubit states"""
     hpars: dict[QubitId, dict]
     """Models' hyperparameters"""
     savedir: str
     """Dumping folder of the classification results"""
-    data: dict[QubitId, npt.NDArray] = Field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
-    dtype: np.dtype = ClassificationType
+    classifiers_list: Optional[list[str]] = field(default_factory=lambda: ["qubit_fit"])
+    """List of models to classify the qubit states"""
 
     def register_qubit(self, qubit, state, i, q):
         """Store output for single qubit."""
