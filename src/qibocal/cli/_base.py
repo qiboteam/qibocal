@@ -40,7 +40,7 @@ def command():
 @click.option(
     "folder",
     "-o",
-    type=click.Path(),
+    type=click.Path(path_type=pathlib.Path()),
     help="Output folder. If not provided a standard name will generated.",
 )
 @click.option(
@@ -62,7 +62,7 @@ def auto(runcard, folder, force, update):
 
      - RUNCARD: runcard with declarative inputs.
     """
-    card = yaml.safe_load(pathlib.Path(runcard).read_text(encoding="utf-8"))
+    card = yaml.safe_load(runcard.read_text(encoding="utf-8"))
     autocalibrate(card, folder, force, update)
 
 
@@ -71,7 +71,7 @@ def auto(runcard, folder, force, update):
 @click.option(
     "folder",
     "-o",
-    type=click.Path(),
+    type=click.Path(path_type=pathlib.Path()),
     help="Output folder. If not provided a standard name will generated.",
 )
 @click.option(
@@ -87,12 +87,14 @@ def acquire(runcard, folder, force):
 
      - RUNCARD: runcard with declarative inputs.
     """
-    card = yaml.safe_load(pathlib.Path(runcard).read_text(encoding="utf-8"))
+    card = yaml.safe_load(runcard.read_text(encoding="utf-8"))
     acquire(card, folder, force)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
-@click.argument("folder", metavar="folder", type=click.Path(exists=True))
+@click.argument(
+    "folder", metavar="folder", type=click.Path(exists=True, path_type=pathlib.Path())
+)
 def report(folder):
     """Report generation
 
@@ -105,14 +107,16 @@ def report(folder):
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
-@click.argument("folder", metavar="folder", type=click.Path(exists=True))
+@click.argument(
+    "folder", metavar="folder", type=click.Path(exists=True, path_type=pathlib.Path())
+)
 @click.option(
     "--update/--no-update",
     default=True,
     help="Use --no-update option to avoid updating iteratively the platform."
     "With this option the new runcard will not be produced.",
 )
-def fit(folder, update):
+def fit(folder: pathlib.Path, update):
     """Post-processing analysis
 
     Arguments:
@@ -124,16 +128,16 @@ def fit(folder, update):
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
-@click.argument("folder", metavar="FOLDER", type=click.Path(exists=True))
-def upload(folder):
+@click.argument(
+    "path", metavar="FOLDER", type=click.Path(exists=True, path_type=pathlib.Path())
+)
+def upload(path):
     """Uploads output folder to server
 
     Arguments:
 
     - FOLDER: input folder.
     """
-
-    output_path = pathlib.Path(folder)
 
     # check the rsync command exists.
     if not shutil.which("rsync"):
@@ -182,11 +186,11 @@ def upload(folder):
         "rsync",
         "-aLz",
         "--chmod=ug=rwx,o=rx",
-        f"{output_path}/",
+        f"{path}/",
         f"{UPLOAD_HOST}:{newdir}",
     )
 
-    log.info(f"Uploading output ({output_path}) to {UPLOAD_HOST}")
+    log.info(f"Uploading output ({path}) to {UPLOAD_HOST}")
     try:
         subprocess.run(rsync_command, check=True)
     except subprocess.CalledProcessError as e:

@@ -29,19 +29,19 @@ def idfn(val):
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
 def test_action_builder(runcard):
     """Test ActionBuilder for all protocols."""
-    autocalibrate(runcard, tempfile.mkdtemp(), force=True, update=False)
+    autocalibrate(runcard, pathlib.Path(tempfile.mkdtemp()), force=True, update=False)
 
 
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
 def test_acquisition_builder(runcard):
     """Test AcquisitionBuilder for all protocols."""
-    acquire(runcard, tempfile.mkdtemp(), force=True)
+    acquire(runcard, pathlib.Path(tempfile.mkdtemp()), force=True)
 
 
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
 def test_fit_builder(runcard):
     """Test FitBuilder."""
-    output_folder = tempfile.mkdtemp()
+    output_folder = pathlib.Path(tempfile.mkdtemp())
     acquire(runcard, output_folder, force=True)
     fit(output_folder, update=False)
 

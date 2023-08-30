@@ -1,6 +1,5 @@
 import datetime
 import json
-import pathlib
 
 import yaml
 from qibolab.serialize import dump_runcard
@@ -12,7 +11,7 @@ from ..auto.runcard import Runcard
 from .utils import META, RUNCARD, UPDATED_PLATFORM
 
 
-def fit(folder, update):
+def fit(path, update):
     """Post-processing analysis
 
     Arguments:
@@ -21,7 +20,6 @@ def fit(folder, update):
 
     """
     # load path, meta, runcard and executor
-    path = pathlib.Path(folder)
     meta = yaml.safe_load((path / META).read_text())
     runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
     executor = Executor.load(

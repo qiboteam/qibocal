@@ -16,7 +16,7 @@ UPDATED_PLATFORM = "new_platform.yml"
 PLATFORM = "platform.yml"
 
 
-def report(folder):
+def report(path):
     """Report generation
 
     Arguments:
@@ -25,7 +25,6 @@ def report(folder):
 
     """
     # load path, meta and runcard
-    path = Path(folder)
     meta = yaml.safe_load((path / META).read_text())
     runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
 
