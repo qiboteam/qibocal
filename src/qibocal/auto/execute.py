@@ -8,9 +8,8 @@ from qibolab.platform import Platform
 from qibocal.config import log
 
 from .graph import Graph
-from .history import Completed, History
+from .history import History
 from .runcard import Id, Runcard
-from .status import Normal
 from .task import Qubits, Task
 
 
@@ -132,18 +131,14 @@ class Executor:
         """
         self.head = self.graph.start
         while self.head is not None:
-            acquisition_time = None
-            fit_time = None
             task = self.current
             log.info(f"Running task {task.id}.")
-            # task_execution = task.run(platform=self.platform, qubits=self.qubits)
-            completed = Completed(task, Normal(), self.output)
-            if mode.name in ["autocalibration", "acquire"]:
-                completed.data, acquisition_time = task.acquire(
-                    platform=self.platform, qubits=self.qubits
-                )
-            if mode.name in ["autocalibration", "fit"]:
-                completed.results, fit_time = task.fit(completed.data)
+            completed = task.run(
+                platform=self.platform,
+                qubits=self.qubits,
+                folder=self.output,
+                mode=mode,
+            )
             self.history.push(completed)
             self.head = self.next()
             update = self.update and task.update
@@ -153,4 +148,4 @@ class Executor:
                 and update
             ):
                 self.platform.update(completed.results.update)
-            yield acquisition_time, fit_time, task.id
+            yield task

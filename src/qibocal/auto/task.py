@@ -1,13 +1,19 @@
 """Action execution tracker."""
+import copy
 from dataclasses import dataclass, field
-from typing import Union
+from pathlib import Path
+from typing import Optional, Union
 
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
 from ..protocols.characterization import Operation
 from ..utils import allocate_qubits_pairs, allocate_single_qubits
+from .mode import ExecutionMode
 from .operation import (
+    DATAFILE,
+    RB_DATAFILE,
+    RESULTSFILE,
     Data,
     DummyPars,
     Qubits,
@@ -17,6 +23,7 @@ from .operation import (
     dummy_operation,
 )
 from .runcard import Action, Id
+from .status import Normal, Status
 
 MAX_PRIORITY = int(1e9)
 """A number bigger than whatever will be manually typed.
@@ -99,7 +106,26 @@ class Task:
         """Local update parameter."""
         return self.action.update
 
-    def acquire(self, platform: Platform, qubits: Union[Qubits, QubitsPairs]) -> Data:
+    def run(
+        self,
+        platform: Platform = None,
+        qubits: Union[Qubits, QubitsPairs] = dict,
+        mode: ExecutionMode = None,
+        folder: Path = None,
+    ):
+        completed = Completed(self, Normal(), folder)
+
+        if mode.name in ["autocalibration", "acquire"]:
+            completed.data, completed.data_time = self._acquire(
+                platform=platform, qubits=qubits
+            )
+
+        if mode.name in ["autocalibration", "fit"]:
+            completed.results, completed.results_time = self._fit(completed.data)
+
+        return completed
+
+    def _acquire(self, platform: Platform, qubits: Union[Qubits, QubitsPairs]) -> Data:
         """Acquisition
 
         Args:
@@ -135,11 +161,8 @@ class Task:
         else:
             data, time = operation.acquisition(parameters, platform=platform)
         return data, time
-        # yield data, time
-        # results, time = operation.fit(data)
-        # yield results, time
 
-    def fit(self, data: Data) -> Results:
+    def _fit(self, data: Data) -> Results:
         """Fitting
 
         Args:
@@ -154,3 +177,77 @@ class Task:
         except RuntimeError:
             operation = dummy_operation
         return operation.fit(data)
+
+
+@dataclass
+class Completed:
+    """A completed task."""
+
+    task: Task
+    """A snapshot of the task when it was completed.
+
+    .. todo::
+
+        once tasks will be immutable, a separate `iteration` attribute should
+        be added
+
+    """
+    status: Status
+    """Protocol status."""
+    folder: Path
+    """Folder with data and results."""
+    _data: Optional[Data] = None
+    """Protocol data."""
+    _results: Optional[Results] = None
+    """Fitting output."""
+    data_time: float = 0
+    """Protocol data."""
+    results_time: float = 0
+    """Fitting output."""
+
+    @property
+    def datapath(self):
+        """Path contaning data and results file for task."""
+        path = self.folder / "data" / f"{self.task.id}_{self.task.iteration}"
+        if not path.is_dir():
+            path.mkdir(parents=True)
+        return path
+
+    @property
+    def results(self):
+        """Access task's results."""
+        if not (self.datapath / RESULTSFILE).is_file():
+            return None
+
+        if self._results is None:
+            Results = self.task.operation.results_type
+            self._results = Results.load(self.datapath)
+        return self._results
+
+    @results.setter
+    def results(self, results: Results):
+        """Set and store results."""
+        self._results = results
+        self._results.save(self.datapath)
+
+    @property
+    def data(self):
+        """Access task's data."""
+        if (
+            not (self.datapath / DATAFILE).is_file()
+            and not (self.datapath / RB_DATAFILE).is_file()
+        ):
+            return None
+        if self._data is None:
+            Data = self.task.operation.data_type
+            self._data = Data.load(self.datapath)
+        return self._data
+
+    @data.setter
+    def data(self, data: Data):
+        """Set and store data."""
+        self._data = data
+        self._data.save(self.datapath)
+
+    def __post_init__(self):
+        self.task = copy.deepcopy(self.task)

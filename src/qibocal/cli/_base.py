@@ -1,5 +1,7 @@
 """Adds global CLI options."""
 import base64
+import datetime
+import json
 import pathlib
 import shutil
 import socket
@@ -10,13 +12,19 @@ from urllib.parse import urljoin
 import click
 import yaml
 from qibo.config import log, raise_error
+from qibolab.serialize import dump_runcard
 
-from ..cli.builders import (
-    AcquisitionBuilder,
-    ActionBuilder,
-    ExecutionMode,
-    FitBuilder,
-    ReportBuilder,
+from ..auto.execute import Executor
+from ..auto.mode import ExecutionMode
+from ..auto.runcard import Runcard
+from ..cli.builders import ReportBuilder
+from .utils import (
+    META,
+    RUNCARD,
+    UPDATED_PLATFORM,
+    create_qubits_dict,
+    generate_output_folder,
+    prepare_output,
 )
 
 CONTEXT_SETTINGS = dict(help_option_names=["-h", "--help"])
@@ -66,10 +74,40 @@ def auto(runcard, folder, force, update):
      - RUNCARD: runcard with declarative inputs.
     """
     card = yaml.safe_load(pathlib.Path(runcard).read_text(encoding="utf-8"))
-    builder = ActionBuilder(card, folder, force, update=update)
-    builder.run(mode=ExecutionMode.autocalibration)
-    if update:
-        builder.dump_platform_runcard()
+    folder = generate_output_folder(folder, force)
+    runcard = Runcard.load(card)
+    meta = prepare_output(runcard, folder)
+
+    qubits = create_qubits_dict(runcard)
+    platform = runcard.platform_obj
+    # TODO: check if update can be removed
+    executor = Executor.load(runcard, folder, platform, qubits, update=update)
+
+    if platform is not None:
+        platform.connect()
+        platform.setup()
+        platform.start()
+
+    for task in executor.run(mode=ExecutionMode.autocalibration):
+        timing_task = {}
+        timing_task["acquisition"] = executor.history[task.uid].data_time
+        timing_task["fit"] = executor.history[task.uid].results_time
+        timing_task["tot"] = timing_task["acquisition"] + timing_task["fit"]
+        # TODO: Change this to task.uid which is JSON friendly
+        meta[task.id] = timing_task
+        # TODO: reactivate iterative dump (it fails with more than one action)
+        # self.dump_report()
+
+    if platform is not None:
+        dump_runcard(platform, folder / UPDATED_PLATFORM)
+
+    e = datetime.datetime.now(datetime.timezone.utc)
+    meta["end-time"] = e.strftime("%H:%M:%S")
+    (folder / META).write_text(json.dumps(meta, indent=4))
+
+    if platform is not None:
+        platform.stop()
+        platform.disconnect()
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
@@ -94,8 +132,34 @@ def acquire(runcard, folder, force):
      - RUNCARD: runcard with declarative inputs.
     """
     card = yaml.safe_load(pathlib.Path(runcard).read_text(encoding="utf-8"))
-    builder = AcquisitionBuilder(card, folder, force)
-    builder.run(mode=ExecutionMode.acquire)
+    folder = generate_output_folder(folder, force)
+    runcard = Runcard.load(card)
+    meta = prepare_output(card, runcard, folder)
+
+    qubits = create_qubits_dict(runcard)
+    platform = runcard.platform_obj
+    # TODO: check if update can be removed
+    executor = Executor.load(runcard, folder, platform, qubits, update=None)
+
+    if platform is not None:
+        platform.connect()
+        platform.setup()
+        platform.start()
+
+    for task in executor.run(mode=ExecutionMode.acquire):
+        timing_task = {}
+        timing_task["acquisition"] = executor.history[task.uid].data_time
+        timing_task["tot"] = timing_task["acquisition"]
+        # TODO: Change this to task.uid which is JSON friendly
+        meta[task.id] = timing_task
+
+    e = datetime.datetime.now(datetime.timezone.utc)
+    meta["end-time"] = e.strftime("%H:%M:%S")
+    (folder / META).write_text(json.dumps(meta, indent=4))
+
+    if platform is not None:
+        platform.stop()
+        platform.disconnect()
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
@@ -108,8 +172,14 @@ def report(folder):
     - FOLDER: input folder.
 
     """
-    builder = ReportBuilder(pathlib.Path(folder))
-    builder.run()
+    path = pathlib.Path(folder)
+    metadata = yaml.safe_load((path / META).read_text())
+    runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
+    executor = Executor.load(runcard, path)
+    qubits = runcard.qubits
+
+    builder = ReportBuilder(path, qubits, executor, metadata)
+    builder.run(path)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
@@ -122,8 +192,22 @@ def fit(folder):
     - FOLDER: input folder.
 
     """
-    builder = FitBuilder(pathlib.Path(folder))
-    builder.run()
+    path = pathlib.Path(folder)
+    metadata = yaml.safe_load((path / META).read_text())
+    runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
+    executor = Executor.load(runcard, path)
+
+    for task in executor.run(mode=ExecutionMode.fit):
+        timing_task = {}
+        timing_task["fit"] = executor.history[task.uid].results_time
+        timing_task["tot"] = executor.history[task.uid].data_time + timing_task["fit"]
+        metadata[task.id] = timing_task
+
+    # update time in meta.yml
+    e = datetime.datetime.now(datetime.timezone.utc)
+    metadata["end-time"] = e.strftime("%H:%M:%S")
+    with open(path / META, "w") as file:
+        yaml.dump(metadata, file)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)

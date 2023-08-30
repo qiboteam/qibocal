@@ -13,7 +13,7 @@ from qibolab.qubits import Qubit, QubitId
 
 from qibocal.config import log
 
-from .keys import GenericKey
+from .keys import Key
 
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
@@ -99,7 +99,7 @@ class Data(BaseModel):
 
     @validator("data", pre=True)
     def validate_data(cls, data):  # pylint: disable=E0213
-        key = GenericKey()
+        key = Key()
         new_data = {}
         for i, ar in data.items():
             new_data[key.load(i)] = np.rec.array(ar)
@@ -136,7 +136,7 @@ class Data(BaseModel):
 
     def to_npz(self, path):
         """Helper function to use np.savez while converting keys into strings."""
-        key = GenericKey()
+        key = Key()
         np.savez(path / DATAFILE, **{key.dump(i): self.data[i] for i in self.data})
 
     def to_json(self, path):
@@ -146,7 +146,7 @@ class Data(BaseModel):
 
     @classmethod
     def load(cls, path):
-        key = GenericKey()
+        key = Key()
         with open(path / DATAFILE) as f:
             data_dict = dict(np.load(path / DATAFILE))
         if (path / JSONFILE).is_file():
@@ -203,7 +203,7 @@ class Results:
     def save(self, path):
         """Store results to json."""
         result_dict = {}
-        convert = GenericKey()
+        convert = Key()
         for result_name, result in asdict(self).items():
             result_dict[result_name] = {}
             if isinstance(result, dict):
@@ -217,7 +217,7 @@ class Results:
     @classmethod
     def load(cls, path):
         params = json.loads((path / RESULTSFILE).read_text())
-        convert = GenericKey()
+        convert = Key()
         for key, elem in params.items():
             if isinstance(elem, dict):
                 params[key] = {convert.load(k): value for k, value in elem.items()}
