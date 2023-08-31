@@ -1,16 +1,16 @@
-from pandas import DataFrame, read_csv
-
-from qibocal.auto.operation import Data
+import pandas as pd
 
 
-class RBData(Data, DataFrame):
+class RBData(pd.DataFrame):
     """A pandas DataFrame child. The output of the acquisition function."""
 
     def __init__(self, *args, **kwargs) -> None:
-        super(DataFrame).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     def save(self, path):
-        super(DataFrame).to_csv(f"{path}/{self.__class__.__name__}.csv")
+        """Overwrite because qibocal action builder calls this function with a directory."""
+        super().to_json(f"{path}/{self.__class__.__name__}.json", default_handler=str)
 
-    def load(self, path):
-        return read_csv(f"{path}/{self.__class__.__name__}.csv")
+    @classmethod
+    def load(cls, path):
+        return cls(pd.read_json(f"{path}/RBData.json"))
