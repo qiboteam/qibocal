@@ -25,9 +25,6 @@ QubitsPairs = dict[tuple[QubitId, QubitId], Qubit]
 
 DATAFILE = "data.npz"
 """Name of the file where data acquired (arrays) by calibration are dumped."""
-# TODO: Remove it.
-RB_DATAFILE = "RBData.json"
-"""Name of file where RB is dumped."""
 JSONFILE = "conf.json"
 """Name of the file where data acquired (global configuration) by calibration are dumped."""
 RESULTSFILE = "results.json"

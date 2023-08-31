@@ -12,7 +12,6 @@ from ..utils import allocate_qubits_pairs, allocate_single_qubits
 from .mode import ExecutionMode
 from .operation import (
     DATAFILE,
-    RB_DATAFILE,
     RESULTSFILE,
     Data,
     DummyPars,
@@ -233,10 +232,7 @@ class Completed:
     @property
     def data(self):
         """Access task's data."""
-        if (
-            not (self.datapath / DATAFILE).is_file()
-            and not (self.datapath / RB_DATAFILE).is_file()
-        ):
+        if not (self.datapath / DATAFILE).is_file():
             return None
         if self._data is None:
             Data = self.task.operation.data_type
