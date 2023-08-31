@@ -12,7 +12,7 @@ from qibolab.qubits import Qubit, QubitId
 
 from qibocal.config import log
 
-from .keys import Key
+from .serialize import deserialize, load, serialize
 
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
@@ -114,46 +114,35 @@ class Data:
 
     def save(self, path):
         """Store results."""
-        self.to_json(path)
-        self.to_npz(path)
+        self._to_json(path)
+        self._to_npz(path)
 
-    def to_npz(self, path):
+    def _to_npz(self, path):
         """Helper function to use np.savez while converting keys into strings."""
-        key = Key()
-        np.savez(path / DATAFILE, **{key.dump(i): self.data[i] for i in self.data})
+        np.savez(path / DATAFILE, **{json.dumps(i): self.data[i] for i in self.data})
 
-    def to_json(self, path):
+    def _to_json(self, path):
         """Helper function to dump to json in JSONFILE path."""
         if self.global_params:
-            key = Key()
-            json_dict = {}
-            for global_param_key, global_param in self.global_params.items():
-                if isinstance(global_param, dict):
-                    json_dict[global_param_key] = {
-                        key.dump(param_key): value
-                        for param_key, value in global_param.items()
-                    }
-                else:
-                    json_dict[global_param_key] = global_param
-            (path / JSONFILE).write_text(json.dumps(json_dict, indent=4))
+            (path / JSONFILE).write_text(
+                json.dumps(serialize(self.global_params), indent=4)
+            )
 
     @classmethod
     def load(cls, path):
-        key = Key()
         with open(path / DATAFILE) as f:
             raw_data_dict = dict(np.load(path / DATAFILE))
             data_dict = {}
 
             for data_key, array in raw_data_dict.items():
-                data_dict[key.load(data_key)] = np.rec.array(array)
+                data_dict[load(data_key)] = np.rec.array(array)
         if (path / JSONFILE).is_file():
             params = json.loads((path / JSONFILE).read_text())
-            # TODO: check if this can be improved
+
             for param_key, param_value in params.items():
                 if isinstance(param_value, dict):
-                    params[param_key] = {
-                        key.load(k): kk for k, kk in param_value.items()
-                    }
+                    params[param_key] = deserialize(param_value)
+
             obj = cls(data=data_dict, **params)
         else:
             obj = cls(data=data_dict)
@@ -199,25 +188,14 @@ class Results:
 
     def save(self, path):
         """Store results to json."""
-        result_dict = {}
-        convert = Key()
-        for result_name, result in asdict(self).items():
-            result_dict[result_name] = {}
-            if isinstance(result, dict):
-                for key, elem in result.items():
-                    result_dict[result_name][convert.dump(key)] = elem
-
-            else:
-                result_dict[result_name] = result
-        (path / RESULTSFILE).write_text(json.dumps(result_dict, indent=4))
+        (path / RESULTSFILE).write_text(json.dumps(serialize(asdict(self)), indent=4))
 
     @classmethod
     def load(cls, path):
         params = json.loads((path / RESULTSFILE).read_text())
-        convert = Key()
         for key, elem in params.items():
             if isinstance(elem, dict):
-                params[key] = {convert.load(k): value for k, value in elem.items()}
+                params[key] = deserialize(elem)
 
         return cls(**params)
 
