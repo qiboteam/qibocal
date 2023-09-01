@@ -13,11 +13,9 @@ def deserialize(raw: dict):
 def serialize(raw: dict):
     """JSON-friendly serialization for nested dict."""
     return {
-        key
-        if isinstance(key, str)
-        else json.dumps(key): value
-        if not isinstance(value, dict)
-        else serialize(value)
+        (key if isinstance(key, str) else json.dumps(key)): (
+            value if not isinstance(value, dict) else serialize(value)
+        )
         for key, value in raw.items()
     }
 
