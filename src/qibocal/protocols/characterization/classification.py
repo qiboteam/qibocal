@@ -22,10 +22,9 @@ from qibocal.auto.operation import (
     Results,
     Routine,
 )
+from qibocal.auto.serialize import serialize
 from qibocal.fitting.classifier import run
 from qibocal.protocols.characterization.utils import get_color_state0, get_color_state1
-
-from ...auto.serialize import serialize
 
 MESH_SIZE = 50
 MARGIN = 0
