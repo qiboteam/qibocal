@@ -9,6 +9,7 @@ from ..auto.execute import Executor
 from ..auto.history import add_timings_to_meta
 from ..auto.mode import ExecutionMode
 from ..auto.runcard import Runcard
+from ..cli.report import ReportBuilder
 from .utils import (
     META,
     PLATFORM,
@@ -55,7 +56,9 @@ def autocalibrate(card, folder, force, update):
         platform.start()
 
     # run protocols
-    executor.run(mode=ExecutionMode.autocalibration)
+    for task_uid in executor.run(mode=ExecutionMode.autocalibration):
+        report = ReportBuilder(path, runcard.qubits, executor, meta, executor.history)
+        report.run(path)
 
     # stop and disconnect platform
     if platform is not None:

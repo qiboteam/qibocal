@@ -39,16 +39,20 @@ def report(path):
 class ReportBuilder:
     """Builder to produce html report."""
 
-    def __init__(self, path: Path, qubits, executor: Executor, metadata):
+    def __init__(self, path: Path, qubits, executor: Executor, metadata, history=None):
         self.path = self.title = path
         self.qubits = qubits
         self.executor = executor
         self.metadata = metadata
+        self._history = history
 
     @cached_property
     def history(self):
-        self.executor.run(mode=ExecutionMode.report)
-        return self.executor.history
+        if self._history is None:
+            list(self.executor.run(mode=ExecutionMode.report))
+            return self.executor.history
+        else:
+            return self._history
 
     def routine_name(self, routine, iteration):
         """Prettify routine's name for report headers."""

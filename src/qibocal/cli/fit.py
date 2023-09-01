@@ -27,7 +27,7 @@ def fit(path, update):
     )
 
     # perform post-processing
-    executor.run(mode=ExecutionMode.fit)
+    list(executor.run(mode=ExecutionMode.fit))
 
     # dump updated runcard
     if runcard.platform_obj is not None and update:

@@ -98,7 +98,7 @@ def test_update_argument(global_update, local_update):
         global_update,
     )
 
-    executor.run(mode=ExecutionMode.autocalibration)
+    list(executor.run(mode=ExecutionMode.autocalibration))
 
     if local_update and global_update:
         assert old_readout_frequency != platform.qubits[0].readout_frequency

@@ -55,7 +55,7 @@ def acquire(card, folder, force):
         platform.start()
 
     # run protocols
-    executor.run(mode=ExecutionMode.acquire)
+    list(executor.run(mode=ExecutionMode.acquire))
 
     # stop and disconnect platform
     if platform is not None:
