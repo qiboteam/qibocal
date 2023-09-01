@@ -25,6 +25,8 @@ from qibocal.auto.operation import (
 from qibocal.fitting.classifier import run
 from qibocal.protocols.characterization.utils import get_color_state0, get_color_state1
 
+from ...auto.serialize import serialize
+
 MESH_SIZE = 50
 MARGIN = 0
 COLUMNWIDTH = 600
@@ -141,7 +143,7 @@ class SingleShotClassificationResults(Results):
         asdict_class = asdict(self)
         asdict_class.pop("models")
         asdict_class.pop("hpars")
-        (path / RESULTSFILE).write_text(json.dumps(asdict_class, indent=4))
+        (path / RESULTSFILE).write_text(json.dumps(serialize(asdict_class)))
 
 
 def _acquisition(

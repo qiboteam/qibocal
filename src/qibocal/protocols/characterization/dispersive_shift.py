@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import Optional
 
 import numpy as np
@@ -35,28 +35,28 @@ class DispersiveShiftParameters(Parameters):
     """Relaxation time (ns)."""
 
 
-# FIXME: this is loaded as a dict from json
-# FIXME: remove it
-@dataclass
-class StateResults:
-    """Resonator spectroscopy outputs."""
-
-    frequency: dict[QubitId, float]
-    """Readout frequency for each qubit."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
-    """Raw fitted parameters."""
-
-
 @dataclass
 class DispersiveShiftResults(Results):
     """Dispersive shift outputs."""
 
-    results_0: StateResults
-    """Resonator spectroscopy outputs in the ground state."""
-    results_1: StateResults
-    """Resonator spectroscopy outputs in the excited state"""
+    frequency_state_zero: dict[QubitId, float]
+    """State zero frequency."""
+    frequency_state_one: dict[QubitId, float]
+    """State one frequency."""
+    fitted_parameters_state_zero: dict[QubitId, dict[str, float]]
+    """Fitted parameters state zero."""
+    fitted_parameters_state_one: dict[QubitId, dict[str, float]]
+    """Fitted parameters state one."""
     best_freq: dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
     """Readout frequency that maximizes the distance of ground and excited states in iq-plane"""
+
+    @property
+    def state_zero(self):
+        return {key: value for key, value in asdict(self).items() if "zero" in key}
+
+    @property
+    def state_one(self):
+        return {key: value for key, value in asdict(self).items() if "one" in key}
 
 
 DispersiveShiftType = np.dtype(
@@ -184,21 +184,28 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
     qubits = data.qubits
     results = []
     iq_couples = [[], []]  # axis 0: states, axis 1: qubit
+
+    frequency_0 = {}
+    frequency_1 = {}
+    fitted_parameters_0 = {}
+    fitted_parameters_1 = {}
+
     for i in range(2):
-        frequency = {}
-        fitted_parameters = {}
         for qubit in qubits:
             data_i = data[qubit, i]
             freq, fitted_params = lorentzian_fit(
                 data_i, resonator_type=data.resonator_type, fit="resonator"
             )
-            frequency[qubit] = freq
-            fitted_parameters[qubit] = fitted_params
+            if i == 0:
+                frequency_0[qubit] = freq
+                fitted_parameters_0[qubit] = fitted_params
+            else:
+                frequency_1[qubit] = freq
+                fitted_parameters_1[qubit] = fitted_params
             i_measures = data_i.i
             q_measures = data_i.q
 
             iq_couples[i].append(np.stack((i_measures, q_measures), axis=-1))
-        results.append(StateResults(frequency, fitted_parameters))
     # for each qubit find the iq couple of 0-1 states that maximize the distance
     iq_couples = np.array(iq_couples)
     best_freqs = {}
@@ -211,8 +218,10 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
         best_freqs[qubit] = frequencies[max_index]
 
     return DispersiveShiftResults(
-        results_0=results[0],
-        results_1=results[1],
+        frequency_state_zero=frequency_0,
+        frequency_state_one=frequency_1,
+        fitted_parameters_state_one=fitted_parameters_1,
+        fitted_parameters_state_zero=fitted_parameters_0,
         best_freq=best_freqs,
     )
 
@@ -236,8 +245,8 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
 
     data_0 = data[qubit, 0]
     data_1 = data[qubit, 1]
-    fit_data_0 = fit.results_0 if fit is not None else None
-    fit_data_1 = fit.results_1 if fit is not None else None
+    fit_data_0 = fit.state_zero if fit is not None else None
+    fit_data_1 = fit.state_one if fit is not None else None
 
     for i, label, q_data, data_fit in list(
         zip(
@@ -279,7 +288,11 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
                 max(frequencies),
                 2 * len(q_data),
             )
-            params = data_fit["fitted_parameters"][str(qubit)]
+            params = data_fit[
+                "fitted_parameters_state_zero"
+                if i == 0
+                else "fitted_parameters_state_one"
+            ][qubit]
             fig.add_trace(
                 go.Scatter(
                     x=freqrange,
@@ -317,13 +330,13 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
         )
 
         fitting_report = fitting_report + (
-            f"{qubit} | State zero freq : {fit_data_0['frequency'][str(qubit)]*GHZ_TO_HZ:,.0f} Hz.<br>"
+            f"{qubit} | State zero freq : {fit_data_0['frequency_state_zero'][qubit]*GHZ_TO_HZ:,.0f} Hz.<br>"
         )
         fitting_report = fitting_report + (
-            f"{qubit} | State one freq : {fit_data_1['frequency'][str(qubit)]*GHZ_TO_HZ:,.0f} Hz.<br>"
+            f"{qubit} | State one freq : {fit_data_1['frequency_state_one'][qubit]*GHZ_TO_HZ:,.0f} Hz.<br>"
         )
         fitting_report = fitting_report + (
-            f"{qubit} | Chi : {(fit_data_0['frequency'][str(qubit)]*GHZ_TO_HZ - fit_data_1['frequency'][str(qubit)]*GHZ_TO_HZ)/2:,.0f} Hz.<br>"
+            f"{qubit} | Chi : {(fit_data_0['frequency_state_zero'][qubit]*GHZ_TO_HZ - fit_data_1['frequency_state_one'][qubit]*GHZ_TO_HZ)/2:,.0f} Hz.<br>"
         )
         fitting_report = fitting_report + (
             f"{qubit} | Best frequency : {fit.best_freq[qubit]*GHZ_TO_HZ:,.0f} Hz.<br>"

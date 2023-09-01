@@ -136,10 +136,7 @@ class Data:
         if (path / JSONFILE).is_file():
             params = json.loads((path / JSONFILE).read_text())
 
-            for param_key, param_value in params.items():
-                if isinstance(param_value, dict):
-                    params[param_key] = deserialize(param_value)
-
+            params = deserialize(params)
             obj = cls(data=data_dict, **params)
         else:
             obj = cls(data=data_dict)
@@ -190,10 +187,7 @@ class Results:
     @classmethod
     def load(cls, path):
         params = json.loads((path / RESULTSFILE).read_text())
-        for key, elem in params.items():
-            if isinstance(elem, dict):
-                params[key] = deserialize(elem)
-
+        params = deserialize(params)
         return cls(**params)
 
 
