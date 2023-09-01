@@ -35,20 +35,7 @@ class History(dict[tuple[Id, int], Completed]):
         """Adding completed task to history."""
         self[(completed.task.id, completed.task.iteration)] = completed
 
-        # FIXME: I'm not too sure why but the code doesn't work anymore
-        # with this line. We can postpone it when we will have the
-        # ExceptionalFlow.
+        # TODO: re-implement this
         # completed.task.iteration += 1
 
     # TODO: implemet time_travel()
-
-    @property
-    def timing(self):
-        time = {}
-        for task_id, iteration in self:
-            completed = self[(task_id, iteration)]
-            time[task_id] = {}
-            time[task_id]["acquisition"] = completed.data_time
-            time[task_id]["fit"] = completed.results_time
-            time[task_id]["tot"] = completed.data_time + completed.results_time
-        return time
