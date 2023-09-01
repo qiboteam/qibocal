@@ -15,4 +15,4 @@ class RBData(pd.DataFrame):
 
     @classmethod
     def load(cls, path):
-        return cls(pd.read_json(f"{path}/{DATAFILE}"))
+        return cls(pd.read_json(path / DATAFILE))
