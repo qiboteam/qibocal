@@ -25,6 +25,7 @@ from .randomized_benchmarking.standard_rb import standard_rb
 from .readout_characterization import readout_characterization
 from .readout_optimization.resonator_frequency import resonator_frequency
 from .readout_optimization.twpa_calibration.frequency import twpa_frequency
+from .readout_optimization.twpa_calibration.frequency_power import twpa_frequency_power
 from .readout_optimization.twpa_calibration.power import twpa_power
 from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
@@ -69,3 +70,4 @@ class Operation(Enum):
     zeno = zeno
     twpa_frequency = twpa_frequency
     twpa_power = twpa_power
+    twpa_frequency_power = twpa_frequency_power
