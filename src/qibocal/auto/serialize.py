@@ -3,21 +3,21 @@ import json
 
 def deserialize(raw: dict):
     """Deserialization of nested dict."""
-    for key, value in raw.items():
-        if isinstance(value, dict):
-            raw[key] = deserialize(value)
-
-    return {load(key): value for key, value in raw.items()}
+    return {
+        # TODO: don't apply load(key) if the key is an actual string
+        load(key): value if not isinstance(value, dict) else deserialize(value)
+        for key, value in raw.items()
+    }
 
 
 def serialize(raw: dict):
     """JSON-friendly serialization for nested dict."""
-    for key, value in raw.items():
-        if isinstance(value, dict):
-            raw[key] = serialize(value)
-
     return {
-        key if isinstance(key, str) else json.dumps(key): value
+        key
+        if isinstance(key, str)
+        else json.dumps(key): value
+        if not isinstance(value, dict)
+        else serialize(value)
         for key, value in raw.items()
     }
 

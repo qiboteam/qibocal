@@ -11,7 +11,7 @@ class RBData(pd.DataFrame):
 
     def save(self, path):
         """Overwrite because qibocal action builder calls this function with a directory."""
-        super().to_json(f"{path}/{DATAFILE}", default_handler=str)
+        super().to_json(path / DATAFILE, default_handler=str)
 
     @classmethod
     def load(cls, path):

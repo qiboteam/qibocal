@@ -185,7 +185,7 @@ class Results:
 
     def save(self, path):
         """Store results to json."""
-        (path / RESULTSFILE).write_text(json.dumps(serialize(asdict(self)), indent=4))
+        (path / RESULTSFILE).write_text(json.dumps(serialize(asdict(self))))
 
     @classmethod
     def load(cls, path):
