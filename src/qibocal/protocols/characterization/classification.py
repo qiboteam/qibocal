@@ -319,7 +319,7 @@ def _plot(
     data: SingleShotClassificationData, qubit, fit: SingleShotClassificationResults
 ):
     figures = []
-    fitting_report = ""
+    fitting_report = None
     models_name = data.classifiers_list
     qubit_data = data.data[qubit]
     state0_data = qubit_data[qubit_data["state"] == 0]
@@ -329,17 +329,17 @@ def _plot(
     fig = make_subplots(
         rows=1,
         cols=len(models_name),
-        horizontal_spacing=SPACING * 3 / len(models_name),
+        horizontal_spacing=SPACING * 3 / len(models_name) * 3,
         vertical_spacing=SPACING,
         subplot_titles=[run.pretty_name(model) for model in models_name],
         column_width=[COLUMNWIDTH] * len(models_name),
     )
-    fig_roc = go.Figure()
-    fig_roc.add_shape(
-        type="line", line=dict(dash="dash"), x0=0.0, x1=1.0, y0=0.0, y1=1.0
-    )
 
-    if len(models_name) != 1:
+    if len(models_name) != 1 and fit is not None:
+        fig_roc = go.Figure()
+        fig_roc.add_shape(
+            type="line", line=dict(dash="dash"), x0=0.0, x1=1.0, y0=0.0, y1=1.0
+        )
         fig_benchmarks = make_subplots(
             rows=1,
             cols=3,
@@ -357,19 +357,6 @@ def _plot(
         if fit is not None:
             y_pred = fit.y_preds[qubit][i]
             predictions = fit.grid_preds[qubit][i]
-            # Evaluate the ROC curve
-            fpr, tpr, _ = roc_curve(y_test, y_pred)
-            auc_score = roc_auc_score(y_test, y_pred)
-            name = f"{model} (AUC={auc_score:.2f})"
-            fig_roc.add_trace(
-                go.Scatter(
-                    x=fpr,
-                    y=tpr,
-                    name=name,
-                    mode="lines",
-                    marker=dict(size=3, color=get_color_state0(i)),
-                )
-            )
             fig.add_trace(
                 go.Contour(
                     x=grid[:, 0],
@@ -468,6 +455,19 @@ def _plot(
 
         if fit is not None:
             if len(models_name) != 1:
+                # Evaluate the ROC curve
+                fpr, tpr, _ = roc_curve(y_test, y_pred)
+                auc_score = roc_auc_score(y_test, y_pred)
+                name = f"{model} (AUC={auc_score:.2f})"
+                fig_roc.add_trace(
+                    go.Scatter(
+                        x=fpr,
+                        y=tpr,
+                        name=name,
+                        mode="lines",
+                        marker=dict(size=3, color=get_color_state0(i)),
+                    )
+                )
                 fig_benchmarks.add_trace(
                     go.Scatter(
                         x=[model],
@@ -512,8 +512,23 @@ def _plot(
                     width=COLUMNWIDTH * 3,
                     title=dict(text="Benchmarks", font=dict(size=TITLE_SIZE)),
                 )
+                fig_roc.update_layout(
+                    width=ROC_WIDTH,
+                    height=ROC_LENGHT,
+                    title=dict(text="ROC curves", font=dict(size=TITLE_SIZE)),
+                    legend=dict(font=dict(size=LEGEND_FONT_SIZE)),
+                )
+                fig_roc.update_xaxes(
+                    title_text=f"False Positive Rate",
+                    range=[0, 1],
+                )
+                fig_roc.update_yaxes(
+                    title_text="True Positive Rate",
+                    range=[0, 1],
+                )
 
             if models_name[i] == "qubit_fit":
+                fitting_report = ""
                 fitting_report += f"{qubit} | average state 0: {np.round(fit.mean_gnd_states[qubit], 3)}<br>"
                 fitting_report += f"{qubit} | average state 1: {np.round(fit.mean_exc_states[qubit], 3)}<br>"
                 fitting_report += (
@@ -523,43 +538,27 @@ def _plot(
                 fitting_report += f"{qubit} | fidelity: {fit.fidelity[qubit]:.3f}<br>"
                 fitting_report += f"{qubit} | assignment fidelity: {fit.assignment_fidelity[qubit]:.3f}<br>"
 
-        fig.update_layout(
-            uirevision="0",  # ``uirevision`` allows zooming while live plotting
-            autosize=False,
-            height=COLUMNWIDTH,
-            width=COLUMNWIDTH * len(models_name),
-            title=dict(text="Results", font=dict(size=TITLE_SIZE)),
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                xanchor="left",
-                y=-0.3,
-                x=0,
-                itemsizing="constant",
-                font=dict(size=LEGEND_FONT_SIZE),
-            ),
-        )
-
-        if fit is not None:
-            fig_roc.update_layout(
-                width=ROC_WIDTH,
-                height=ROC_LENGHT,
-                title=dict(text="ROC curves", font=dict(size=TITLE_SIZE)),
-                legend=dict(font=dict(size=LEGEND_FONT_SIZE)),
-            )
-            fig_roc.update_xaxes(
-                title_text=f"False Positive Rate",
-                range=[0, 1],
-            )
-            fig_roc.update_yaxes(
-                title_text="True Positive Rate",
-                range=[0, 1],
-            )
+    fig.update_layout(
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        autosize=False,
+        height=COLUMNWIDTH,
+        width=COLUMNWIDTH * len(models_name),
+        title=dict(text="Results", font=dict(size=TITLE_SIZE)),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            xanchor="left",
+            y=-0.3,
+            x=0,
+            itemsizing="constant",
+            font=dict(size=LEGEND_FONT_SIZE),
+        ),
+    )
     figures.append(fig)
-    if fit is not None:
+
+    if len(models_name) != 1 and fit is not None:
         figures.append(fig_roc)
-        if len(models_name) != 1:
-            figures.append(fig_benchmarks)
+        figures.append(fig_benchmarks)
     return figures, fitting_report
 
 
