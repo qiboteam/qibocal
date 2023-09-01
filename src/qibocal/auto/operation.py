@@ -214,12 +214,6 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
         self.acquisition = show_logs(self.acquisition)
         self.fit = show_logs(self.fit)
 
-        # TODO: this could be improved
-        if self.fit is None:
-            self.fit = _dummy_fit
-        if self.report is None:
-            self.report = _dummy_report
-
     @property
     def parameters_type(self):
         """Input parameters type."""
@@ -272,15 +266,5 @@ def _dummy_acquisition(pars: DummyPars, platform: Platform) -> DummyData:
     return DummyData()
 
 
-def _dummy_fit(data: DummyData) -> DummyRes:
-    """Dummy fitting."""
-    return DummyRes()
-
-
-def _dummy_report(data: DummyData, result: DummyRes):
-    """Dummy plotting."""
-    return [], ""
-
-
-dummy_operation = Routine(_dummy_acquisition, _dummy_fit, _dummy_report)
+dummy_operation = Routine(_dummy_acquisition)
 """Example of a dummy operation."""
