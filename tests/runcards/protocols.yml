@@ -263,6 +263,14 @@ actions:
     parameters:
       nshots: 10
 
+  - id: single shot classification
+    priority: 0
+    operation: single_shot_classification
+    parameters:
+      nshots: 10
+      savedir: "cls_results"
+      classifiers_list: ["qubit_fit","naive_bayes", "linear_svm"]
+
   - id: readout characterization
     priority: 0
     operation: readout_characterization

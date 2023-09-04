@@ -1,19 +1,38 @@
-from dataclasses import dataclass, field
+import json
+import pathlib
+from dataclasses import asdict, dataclass, field
 from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
+from sklearn.metrics import roc_auc_score, roc_curve
 
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-
-from .utils import cumulative
+from qibocal.auto.operation import (
+    RESULTSFILE,
+    Data,
+    Parameters,
+    Qubits,
+    Results,
+    Routine,
+)
+from qibocal.fitting.classifier import run
+from qibocal.protocols.characterization.utils import get_color_state0, get_color_state1
 
 MESH_SIZE = 50
+MARGIN = 0
+COLUMNWIDTH = 600
+ROC_LENGHT = 800
+ROC_WIDTH = 800
+LEGEND_FONT_SIZE = 20
+TITLE_SIZE = 25
+SPACING = 0.1
 
 
 @dataclass
@@ -24,9 +43,13 @@ class SingleShotClassificationParameters(Parameters):
     """Number of shots."""
     relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
+    classifiers_list: Optional[list[str]] = field(default_factory=lambda: ["qubit_fit"])
+    """List of models to classify the qubit states"""
+    savedir: Optional[str] = " "
+    """Dumping folder of the classification results"""
 
 
-ClassificationType = np.dtype([("i", np.float64), ("q", np.float64)])
+ClassificationType = np.dtype([("i", np.float64), ("q", np.float64), ("state", int)])
 """Custom dtype for rabi amplitude."""
 
 
@@ -34,6 +57,12 @@ ClassificationType = np.dtype([("i", np.float64), ("q", np.float64)])
 class SingleShotClassificationData(Data):
     nshots: int
     """Number of shots."""
+    classifiers_list: Optional[str]
+    """List of models to classify the qubit states"""
+    hpars: dict[QubitId, dict]
+    """Models' hyperparameters"""
+    savedir: str
+    """Dumping folder of the classification results"""
     data: dict[tuple[QubitId, int], npt.NDArray[ClassificationType]] = field(
         default_factory=dict
     )
@@ -44,13 +73,34 @@ class SingleShotClassificationData(Data):
         ar = np.empty(i.shape, dtype=ClassificationType)
         ar["i"] = i
         ar["q"] = q
-        self.data[qubit, state] = np.rec.array(ar)
+        ar["state"] = state
+        self.data[qubit] = np.rec.array(ar)
+
+    def add_data(self, qubit, state, i, q):
+        """Store output for single qubit."""
+        ar = np.empty(i.shape, dtype=ClassificationType)
+        ar["i"] = i
+        ar["q"] = q
+        ar["state"] = state
+        self.data[qubit] = np.append(self.data[qubit], np.rec.array(ar))
 
 
 @dataclass
 class SingleShotClassificationResults(Results):
     """SingleShotClassification outputs."""
 
+    benchmark_table: dict[QubitId, pd.DataFrame]
+    """Benchmark tables."""
+    y_tests: dict[QubitId, list]
+    """States of the testing set."""
+    x_tests: dict[QubitId, list]
+    """I,Q couples to evaluate accuracy and test time."""
+    models: dict[QubitId, list]
+    """List of trained classification models."""
+    names: list
+    """List of models name."""
+    hpars: dict[QubitId, dict] = field(metadata=dict(update="classifiers_hpars"))
+    """Classifiers hyperparameters."""
     threshold: dict[QubitId, float] = field(metadata=dict(update="threshold"))
     """Threshold for classification."""
     rotation_angle: dict[QubitId, float] = field(metadata=dict(update="iq_angle"))
@@ -58,11 +108,41 @@ class SingleShotClassificationResults(Results):
     mean_gnd_states: dict[QubitId, list[float]] = field(
         metadata=dict(update="mean_gnd_states")
     )
+    """Centroid of the ground state blob."""
     mean_exc_states: dict[QubitId, list[float]] = field(
         metadata=dict(update="mean_exc_states")
     )
+    """Centroid of the excited state blob."""
     fidelity: dict[QubitId, float]
+    """Fidelity evaluated only with the `qubit_fit` model"""
     assignment_fidelity: dict[QubitId, float]
+    """Assignment fidelity evaluated only with the `qubit_fit` model"""
+    savedir: str
+    """Dumping folder of the classification results"""
+
+    def save(self, path):
+        classifiers = run.import_classifiers(self.names)
+        for qubit in self.models:
+            # Dump benchmark table
+            for table in self.benchmark_table.values():
+                run.dump_benchmarks_table(table, path)
+            # Dump models and hyperparameters
+            for i, mod in enumerate(classifiers):
+                if self.savedir == " ":
+                    save_path = pathlib.Path(path)
+                else:
+                    save_path = pathlib.Path(self.savedir)
+
+                classifier = run.Classifier(mod, save_path / f"qubit{qubit}")
+                classifier.savedir.mkdir(parents=True, exist_ok=True)
+                dump_dir = classifier.base_dir / classifier.name / classifier.name
+                classifier.dump()(self.models[qubit][i], dump_dir)
+                classifier.dump_hyper(self.hpars[qubit][classifier.name])
+        asdict_class = asdict(self)
+        asdict_class.pop("models")
+        asdict_class.pop("benchmark_table")
+        asdict_class.pop("hpars")
+        (path / RESULTSFILE).write_text(json.dumps(asdict_class, indent=4))
 
 
 def _acquisition(
@@ -71,25 +151,37 @@ def _acquisition(
     qubits: Qubits,
 ) -> SingleShotClassificationData:
     """
-    Method which implements the state's calibration of a chosen qubit. Two analogous tests are performed
-    for calibrate the ground state and the excited state of the oscillator.
-    The subscripts `exc` and `gnd` will represent the excited state |1> and the ground state |0>.
-
+    Method which implements the state's calibration of a chosen qubit.
+    For each qubit state, `nshots` time the qubit is preapared in the state and measured,
+    this dataset is finally used to train the `classifiers`in order to discriminate the shots,
+    given their coordinates in the IQ plane.
     Args:
-        platform (:class:`qibolab.platforms.abstract.Platform`): custom abstract platform on which we perform the calibration.
-        qubits (dict): dict of target Qubit objects to perform the action
         nshots (int): number of times the pulse sequence will be repeated.
+        classifiers (list): list of classifiers, the available ones are:
+            - linear_svm
+            - ada_boost
+            - gaussian_process
+            - naive_bayes
+            - nn
+            - qubit_fit
+            - random_forest
+            - rbf_svm
+            - qblox_fit.
+        The default value is `["qubit_fit"]`.
+        savedir (str): Dumping folder of the classification results.
+        If not given the dumping folder will be the report one.
+        relaxation_time (float): Relaxation time.
 
-    Returns:
-        A DataUnits object with the raw data obtained for the fast and precision sweeps with the following keys
+        Example:
+        .. code-block:: yaml
 
-            - **MSR[V]**: Resonator signal voltage mesurement in volts
-            - **i[V]**: Resonator signal voltage mesurement for the component I in volts
-            - **q[V]**: Resonator signal voltage mesurement for the component Q in volts
-            - **phase[rad]**: Resonator signal phase mesurement in radians
-            - **iteration[dimensionless]**: Execution number
-            - **qubit**: The qubit being tested
-            - **iteration**: The iteration number of the many determined by software_averages
+            - id: single_shot_classification_1
+                priority: 0
+                operation: single_shot_classification
+                parameters:
+                nshots: 5000
+                savedir: "single_shot"
+                classifiers_list: ["qubit_fit","naive_bayes", "linear_svm"]
 
     """
 
@@ -103,6 +195,7 @@ def _acquisition(
 
     RX_pulses = {}
     ro_pulses = {}
+    hpars = {}
     for qubit in qubits:
         RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
@@ -112,9 +205,14 @@ def _acquisition(
         state0_sequence.add(ro_pulses[qubit])
         state1_sequence.add(RX_pulses[qubit])
         state1_sequence.add(ro_pulses[qubit])
-
+        hpars[qubit] = qubits[qubit].classifiers_hpars
     # create a DataUnits object to store the results
-    data = SingleShotClassificationData(params.nshots)
+    data = SingleShotClassificationData(
+        params.nshots,
+        params.classifiers_list,
+        hpars,
+        params.savedir,
+    )
 
     # execute the first pulse sequence
     state0_results = platform.execute_pulse_sequence(
@@ -142,75 +240,62 @@ def _acquisition(
             acquisition_type=AcquisitionType.INTEGRATION,
         ),
     )
-
     # retrieve and store the results for every qubit
     for qubit in qubits:
         result = state1_results[ro_pulses[qubit].serial]
-        data.register_qubit(
-            qubit=qubit, state=1, i=result.voltage_i, q=result.voltage_q
-        )
+        data.add_data(qubit=qubit, state=1, i=result.voltage_i, q=result.voltage_q)
 
     return data
 
 
 def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
     qubits = data.qubits
-    thresholds, rotation_angles = {}, {}
-    fidelities, assignment_fidelities = {}, {}
+    benchmark_tables = {}
+    models_dict = {}
+    y_tests = {}
+    x_tests = {}
+    hpars = {}
+    threshold = {}
+    rotation_angle = {}
     mean_gnd_states = {}
     mean_exc_states = {}
+    fidelity = {}
+    assignment_fidelity = {}
     for qubit in qubits:
-        iq_state0 = data[qubit, 0].i + 1.0j * data[qubit, 0].q
-        iq_state1 = data[qubit, 1].i + 1.0j * data[qubit, 1].q
-
-        iq_state1 = np.array(iq_state1)
-        iq_state0 = np.array(iq_state0)
-
-        iq_mean_state1 = np.mean(iq_state1)
-        iq_mean_state0 = np.mean(iq_state0)
-
-        vector01 = iq_mean_state1 - iq_mean_state0
-        rotation_angle = np.angle(vector01)
-
-        iq_state1_rotated = iq_state1 * np.exp(-1j * rotation_angle)
-        iq_state0_rotated = iq_state0 * np.exp(-1j * rotation_angle)
-
-        real_values_state1 = iq_state1_rotated.real
-        real_values_state0 = iq_state0_rotated.real
-
-        real_values_combined = np.unique(
-            np.concatenate((real_values_state1, real_values_state0))
+        benchmark_table, y_test, x_test, models, names, hpars_list = run.train_qubit(
+            data, qubit
         )
-        real_values_combined.sort()
+        benchmark_tables[qubit] = benchmark_table
+        models_dict[qubit] = models
+        y_tests[qubit] = y_test.tolist()
+        x_tests[qubit] = x_test.tolist()
+        hpars[qubit] = {}
 
-        cum_distribution_state1 = cumulative(real_values_combined, real_values_state1)
-        cum_distribution_state0 = cumulative(real_values_combined, real_values_state0)
-        cum_distribution_diff = np.abs(
-            np.array(cum_distribution_state1) - np.array(cum_distribution_state0)
-        )
+        for i, model_name in enumerate(names):
+            hpars[qubit][model_name] = hpars_list[i]
 
-        argmax = np.argmax(cum_distribution_diff)
-        threshold = real_values_combined[argmax]
-        errors_state1 = data.nshots - cum_distribution_state1[argmax]
-        errors_state0 = cum_distribution_state0[argmax]
-        fidelity = cum_distribution_diff[argmax] / data.nshots
-        assignment_fidelity = (errors_state1 + errors_state0) / data.nshots / 2
-        thresholds[qubit] = threshold
-        rotation_angles[
-            qubit
-        ] = -rotation_angle  # TODO: qblox driver np.rad2deg(-rotation_angle)
-        fidelities[qubit] = fidelity
-        mean_gnd_states[qubit] = [iq_mean_state0.real, iq_mean_state0.imag]
-        mean_exc_states[qubit] = [iq_mean_state1.real, iq_mean_state1.imag]
-        assignment_fidelities[qubit] = assignment_fidelity
+            if model_name == "qubit_fit":
+                threshold[qubit] = models[i].threshold
+                rotation_angle[qubit] = models[i].angle
+                mean_gnd_states[qubit] = models[i].iq_mean0.tolist()
+                mean_exc_states[qubit] = models[i].iq_mean1.tolist()
+                fidelity[qubit] = models[i].fidelity
+                assignment_fidelity[qubit] = models[i].assignment_fidelity
 
     return SingleShotClassificationResults(
-        thresholds,
-        rotation_angles,
+        benchmark_tables,
+        y_tests,
+        x_tests,
+        models_dict,
+        names,
+        hpars,
+        threshold,
+        rotation_angle,
         mean_gnd_states,
         mean_exc_states,
-        fidelities,
-        assignment_fidelities,
+        fidelity,
+        assignment_fidelity,
+        data.savedir,
     )
 
 
@@ -218,132 +303,292 @@ def _plot(
     data: SingleShotClassificationData, fit: SingleShotClassificationResults, qubit
 ):
     figures = []
-
-    fig = go.Figure()
-
     fitting_report = ""
-    max_x, max_y, min_x, min_y = 0, 0, 0, 0
 
-    state0_data = data[qubit, 0]
-    state1_data = data[qubit, 1]
+    models_name = fit.names
+    qubit_data = data.data[qubit]
+    state0_data = qubit_data[qubit_data["state"] == 0]
+    state1_data = qubit_data[qubit_data["state"] == 1]
 
-    fig.add_trace(
-        go.Scatter(
-            x=state0_data.i,
-            y=state0_data.q,
-            name="Ground State",
-            legendgroup="Ground State",
-            mode="markers",
-            showlegend=True,
-            opacity=0.7,
-            marker=dict(size=3),
-        ),
+    max_x = (
+        max(
+            0,
+            state0_data["i"].max(),
+            state1_data["i"].max(),
+        )
+        + MARGIN
     )
-
-    fig.add_trace(
-        go.Scatter(
-            x=state1_data.i,
-            y=state1_data.q,
-            name="Excited State",
-            legendgroup="Excited State",
-            mode="markers",
-            showlegend=True,
-            opacity=0.7,
-            marker=dict(size=3),
-        ),
+    max_y = (
+        max(
+            0,
+            state0_data["q"].max(),
+            state1_data["q"].max(),
+        )
+        + MARGIN
     )
-
-    fig.add_trace(
-        go.Scatter(
-            x=[np.mean(state0_data.i)],
-            y=[np.mean(state0_data.q)],
-            name="Average Ground State",
-            legendgroup="Average Ground State",
-            showlegend=True,
-            mode="markers",
-            marker=dict(size=10),
-        ),
+    min_x = (
+        min(
+            0,
+            state0_data["i"].min(),
+            state1_data["i"].min(),
+        )
+        - MARGIN
     )
+    min_y = (
+        min(
+            0,
+            state0_data["q"].min(),
+            state1_data["q"].min(),
+        )
+        - MARGIN
+    )
+    i_values, q_values = np.meshgrid(
+        np.linspace(min_x, max_x, num=MESH_SIZE),
+        np.linspace(min_y, max_y, num=MESH_SIZE),
+    )
+    grid = np.vstack([i_values.ravel(), q_values.ravel()]).T
 
-    fig.add_trace(
-        go.Scatter(
-            x=[np.mean(state1_data.i)],
-            y=[np.mean(state1_data.q)],
-            name="Average Excited State",
-            legendgroup="Average Excited State",
-            showlegend=True,
-            mode="markers",
-            marker=dict(size=10),
-        ),
+    fig = make_subplots(
+        rows=1,
+        cols=len(models_name),
+        horizontal_spacing=SPACING * 3 / len(models_name) * 3,
+        vertical_spacing=SPACING,
+        subplot_titles=[run.pretty_name(model) for model in models_name],
+        column_width=[COLUMNWIDTH] * len(models_name),
     )
 
-    max_x = max(
-        max_x,
-        np.max(state0_data.i),
-        np.max(state1_data.i),
-    )
-    max_y = max(
-        max_y,
-        np.max(state0_data.q),
-        np.max(state1_data.q),
-    )
-    min_x = min(
-        min_x,
-        np.min(state0_data.i),
-        np.min(state1_data.i),
-    )
-    min_y = min(
-        min_y,
-        np.min(state0_data.q),
-        np.min(state1_data.q),
-    )
+    if len(models_name) != 1:
+        fig_roc = go.Figure()
+        fig_roc.add_shape(
+            type="line", line=dict(dash="dash"), x0=0.0, x1=1.0, y0=0.0, y1=1.0
+        )
+        fig_benchmarks = make_subplots(
+            rows=1,
+            cols=3,
+            horizontal_spacing=SPACING,
+            vertical_spacing=SPACING,
+            subplot_titles=("accuracy", "training time (s)", "testing time (s)"),
+            # pylint: disable=E1101
+        )
 
-    feature_x = np.linspace(min_x, max_x, MESH_SIZE)
-    feature_y = np.linspace(min_y, max_y, MESH_SIZE)
+    y_test = fit.y_tests[qubit]
+    x_test = fit.x_tests[qubit]
+    for i, model in enumerate(models_name):
+        try:
+            y_pred = fit.models[qubit][i].predict_proba(x_test)[:, 1]
+        except AttributeError:
+            y_pred = fit.models[qubit][i].predict(x_test)
+        predictions = np.round(
+            np.reshape(fit.models[qubit][i].predict(grid), q_values.shape)
+        ).astype(np.int64)
 
-    [x, y] = np.meshgrid(feature_x, feature_y)
+        max_x = max(grid[:, 0])
+        max_y = max(grid[:, 1])
+        min_x = min(grid[:, 0])
+        min_y = min(grid[:, 1])
 
-    z = (
-        (np.exp(1j * fit.rotation_angle[qubit]) * (x + 1j * y)).real
-        > fit.threshold[qubit]
-    ).astype(int)
-    fig.add_trace(
-        go.Contour(
-            x=feature_x,
-            y=feature_y,
-            z=z,
-            showscale=False,
-            opacity=0.4,
-            name="Score",
-            hoverinfo="skip",
-        ),
-    )
+        fig.add_trace(
+            go.Scatter(
+                x=state0_data["i"],
+                y=state0_data["q"],
+                name=f"{model}: state 0",
+                legendgroup=f"{model}: state 0",
+                mode="markers",
+                showlegend=True,
+                opacity=0.7,
+                marker=dict(size=3, color=get_color_state0(i)),
+            ),
+            row=1,
+            col=i + 1,
+        )
 
-    fitting_report = (
-        fitting_report
-        + f"{qubit} | Average Ground State (i,q): ({fit.mean_gnd_states[qubit][0]:.3f}, {fit.mean_gnd_states[qubit][1]:.3f}) <br>"
-        + f"{qubit} | Average Excited State (i,q): ({fit.mean_exc_states[qubit][0]:.3f}, {fit.mean_exc_states[qubit][1]:.3f}) <br>"
-        + f"{qubit} | Rotation Angle: {fit.rotation_angle[qubit]:.3f} rad <br>"
-        + f"{qubit} | Threshold: {fit.threshold[qubit]:.4f} <br>"
-        + f"{qubit} | Fidelity: {fit.fidelity[qubit]:.3f} <br>"
-        + f"{qubit} | Assignment Fidelity: {fit.assignment_fidelity[qubit]:.3f} <br>"
-    )
+        fig.add_trace(
+            go.Scatter(
+                x=state1_data["i"],
+                y=state1_data["q"],
+                name=f"{model}: state 1",
+                legendgroup=f"{model}: state 1",
+                mode="markers",
+                showlegend=True,
+                opacity=0.7,
+                marker=dict(size=3, color=get_color_state1(i)),
+            ),
+            row=1,
+            col=i + 1,
+        )
+        fig.add_trace(
+            go.Contour(
+                x=grid[:, 0],
+                y=grid[:, 1],
+                z=predictions.flatten(),
+                showscale=False,
+                colorscale=[get_color_state0(i), get_color_state1(i)],
+                opacity=0.2,
+                name="Score",
+                hoverinfo="skip",
+                showlegend=True,
+            ),
+            row=1,
+            col=i + 1,
+        )
 
-    fig.update_layout(
-        showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="i (V)",
-        yaxis_title="q (V)",
-        xaxis_range=(min_x, max_x),
-        yaxis_range=(min_y, max_y),
-    )
-    fig.update_yaxes(
-        scaleanchor="x",
-        scaleratio=1,
-    )
+        fig.add_trace(
+            go.Scatter(
+                x=[np.average(state0_data["i"])],
+                y=[np.average(state0_data["q"])],
+                name=f"{model}: state 0",
+                legendgroup=f"{model}: state 0",
+                showlegend=False,
+                mode="markers",
+                marker=dict(size=10, color=get_color_state0(i)),
+            ),
+            row=1,
+            col=i + 1,
+        )
+
+        fig.add_trace(
+            go.Scatter(
+                x=[np.average(state1_data["i"])],
+                y=[np.average(state1_data["q"])],
+                name=f"{model}: state 1",
+                legendgroup=f"{model}: state 1",
+                showlegend=False,
+                mode="markers",
+                marker=dict(size=10, color=get_color_state1(i)),
+            ),
+            row=1,
+            col=i + 1,
+        )
+        fig.update_xaxes(
+            title_text=f"i (V)",
+            range=[min_x, max_x],
+            row=1,
+            col=i + 1,
+            autorange=False,
+            rangeslider=dict(visible=False),
+        )
+        fig.update_yaxes(
+            title_text="q (V)",
+            range=[min_y, max_y],
+            scaleanchor="x",
+            scaleratio=1,
+            row=1,
+            col=i + 1,
+        )
+        if len(models_name) != 1:
+            # Evaluate the ROC curve
+            fpr, tpr, _ = roc_curve(y_test, y_pred)
+            auc_score = roc_auc_score(y_test, y_pred)
+            model = run.pretty_name(model)
+            name = f"{model} (AUC={auc_score:.2f})"
+            fig_roc.add_trace(
+                go.Scatter(
+                    x=fpr,
+                    y=tpr,
+                    name=name,
+                    mode="lines",
+                    marker=dict(size=3, color=get_color_state0(i)),
+                )
+            )
+            fig_benchmarks.add_trace(
+                go.Scatter(
+                    x=[model],
+                    y=[fit.benchmark_table[qubit]["accuracy"][i]],
+                    mode="markers",
+                    showlegend=False,
+                    marker=dict(size=10, color=get_color_state1(i)),
+                ),
+                row=1,
+                col=1,
+            )
+
+            fig_benchmarks.add_trace(
+                go.Scatter(
+                    x=[model],
+                    y=[fit.benchmark_table[qubit]["training_time"][i]],
+                    mode="markers",
+                    showlegend=False,
+                    marker=dict(size=10, color=get_color_state1(i)),
+                ),
+                row=1,
+                col=2,
+            )
+
+            fig_benchmarks.add_trace(
+                go.Scatter(
+                    x=[model],
+                    y=[fit.benchmark_table[qubit]["testing_time"][i]],
+                    mode="markers",
+                    showlegend=False,
+                    marker=dict(size=10, color=get_color_state1(i)),
+                ),
+                row=1,
+                col=3,
+            )
+
+            fig_benchmarks.update_yaxes(type="log", row=1, col=2)
+            fig_benchmarks.update_yaxes(type="log", row=1, col=3)
+            fig_benchmarks.update_layout(
+                autosize=False,
+                height=COLUMNWIDTH,
+                width=COLUMNWIDTH * 3,
+                title=dict(text="Benchmarks", font=dict(size=TITLE_SIZE)),
+            )
+
+        title_text = ""
+
+        if models_name[i] == "qubit_fit":
+            qubit_model = fit.models[qubit][i]
+            title_text = (
+                f"{qubit} | average state 0: {np.round(qubit_model.iq_mean0,3)}<br>"
+            )
+            title_text += (
+                f"{qubit} | average state 1: {np.round(qubit_model.iq_mean1, 3)}<br>"
+            )
+            title_text += f"{qubit} | rotation angle: {qubit_model.angle:.3f}<br>"
+            title_text += f"{qubit} | threshold: {qubit_model.threshold:.6f}<br>"
+            title_text += f"{qubit} | fidelity: {fit.models[qubit][i].fidelity:.3f}<br>"
+            title_text += f"{qubit} | assignment fidelity: {fit.models[qubit][i].assignment_fidelity:.3f}<br>"
+
+        fitting_report += title_text
+
+        fig.update_layout(
+            uirevision="0",  # ``uirevision`` allows zooming while live plotting
+            autosize=False,
+            height=COLUMNWIDTH,
+            width=COLUMNWIDTH * len(models_name),
+            title=dict(text="Results", font=dict(size=TITLE_SIZE)),
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                xanchor="left",
+                y=-0.3,
+                x=0,
+                itemsizing="constant",
+                font=dict(size=LEGEND_FONT_SIZE),
+            ),
+        )
+
+    fitting_report = "No fitting data" if fitting_report == "" else fitting_report
 
     figures.append(fig)
-
+    if len(models_name) != 1:
+        figures.append(fig_roc)
+        figures.append(fig_benchmarks)
+        fig_roc.update_layout(
+            width=ROC_WIDTH,
+            height=ROC_LENGHT,
+            title=dict(text="ROC curves", font=dict(size=TITLE_SIZE)),
+            legend=dict(font=dict(size=LEGEND_FONT_SIZE)),
+        )
+        fig_roc.update_xaxes(
+            title_text=f"False Positive Rate",
+            range=[0, 1],
+        )
+        fig_roc.update_yaxes(
+            title_text="True Positive Rate",
+            range=[0, 1],
+        )
     return figures, fitting_report
 
 
