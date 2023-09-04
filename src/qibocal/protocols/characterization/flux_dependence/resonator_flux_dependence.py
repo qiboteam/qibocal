@@ -70,18 +70,6 @@ ResFluxType = np.dtype(
 """Custom dtype for resonator flux dependence."""
 
 
-def create_data_array(freq, bias, msr, phase):
-    """Create custom dtype array for acquired data."""
-    size = len(freq) * len(bias)
-    ar = np.empty(size, dtype=ResFluxType)
-    frequency, biases = np.meshgrid(freq, bias)
-    ar["freq"] = frequency.ravel()
-    ar["bias"] = biases.ravel()
-    ar["msr"] = msr.ravel()
-    ar["phase"] = phase.ravel()
-    return np.rec.array(ar)
-
-
 @dataclass
 class ResonatorFluxData(Data):
     """Resonator type."""
@@ -106,7 +94,9 @@ class ResonatorFluxData(Data):
 
     def register_qubit(self, qubit, flux_qubit, freq, bias, msr, phase):
         """Store output for single qubit."""
-        self.data[qubit] = create_data_array(freq, bias, msr, phase)
+        self.data[qubit] = utils.create_data_array(
+            freq, bias, msr, phase, dtype=ResFluxType
+        )
 
 
 @dataclass
@@ -120,7 +110,7 @@ class FluxCrosstalkData(ResonatorFluxData):
 
     def register_qubit(self, qubit, flux_qubit, freq, bias, msr, phase):
         """Store output for single qubit."""
-        ar = create_data_array(freq, bias, msr, phase)
+        ar = utils.create_data_array(freq, bias, msr, phase, dtype=ResFluxType)
         if qubit in self.data:
             self.data[qubit][flux_qubit] = ar
         else:
