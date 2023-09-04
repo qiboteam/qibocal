@@ -36,7 +36,8 @@ class QubitFluxParameters(Parameters):
     flux_qubits: Optional[list[QubitId]] = None
     """IDs of the qubits that we will sweep the flux on.
     If ``None`` flux will be swept on all qubits that we are running the routine on in a multiplex fashion.
-    If given
+    If given flux will be swept on the given qubits in a sequential fashion (n qubits will result to n different executions).
+    Multiple qubits may be measured in each execution as specified by the ``qubits`` option in the runcard.
     """
     nshots: Optional[int] = None
     """Number of shots."""
@@ -183,8 +184,6 @@ def _acquisition(
                 type=SweeperType.OFFSET,
             )
         ]
-        # create a DataUnits object to store the results,
-        # DataUnits stores by default MSR, phase, i, q
         data = QubitFluxData(resonator_type=platform.resonator_type, Ec=Ec, Ej=Ej)
 
     else:
@@ -198,8 +197,6 @@ def _acquisition(
             )
             for flux_qubit in flux_qubits
         ]
-        # create a DataUnits object to store the results,
-        # DataUnits stores by default MSR, phase, i, q
         data = FluxCrosstalkData(resonator_type=platform.resonator_type, Ec=Ec, Ej=Ej)
 
     options = ExecutionParameters(

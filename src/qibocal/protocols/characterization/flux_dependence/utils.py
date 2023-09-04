@@ -4,7 +4,6 @@ from plotly.subplots import make_subplots
 from scipy.special import mathieu_a, mathieu_b
 from sklearn.linear_model import Ridge
 
-# from .qubit_flux_dependence import FluxCrosstalkData, FluxCrosstalkResults
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, V_TO_UV
 
 
