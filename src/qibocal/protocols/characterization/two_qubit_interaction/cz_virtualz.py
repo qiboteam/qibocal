@@ -362,7 +362,7 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
             reports.append(
                 f"{target} | Virtual Z phase: { - fit.virtual_phase[qubits][target]}<br>"
             )
-        fitting_report = "".join(list(dict.fromkeys(reports)))
+            fitting_report = "".join(list(dict.fromkeys(reports)))
 
     fig1.update_layout(
         title_text=f"Phase correction Qubit {qubits[0]}",
