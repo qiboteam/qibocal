@@ -13,4 +13,5 @@ your quantum hardware.
     runcard
     autoruncard
     niGSC/niGSC_and_standardrb
+    protocols
     example
