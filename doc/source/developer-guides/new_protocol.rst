@@ -1,24 +1,21 @@
 How to add a new protocol
 =========================
 
-In this tutorial we show how to add new protocol to ``Qibocal``.
+In this tutorial we show how to add a new protocol to ``Qibocal``.
 
 Protocol implementation in ``Qibocal``
 --------------------------------------
 
-Currently, characterization/calibration protocols in ``Qibocal`` are implemented
-by performing a clear separation between *input parameters*, *data acquired* and
-*results*.
+Currently, characterization/calibration protocols are divided in three steps: `acquisition`, `fit` and `plot`. ``Qibocal`` provides three data structures  *input parameters*, *data acquired* and
+*results*, that collect all the information concerning the routine.
 
-These are then connected through the following functions:
+The relationship between steps and data structures are summarized in the following bullets:
 
-* `acquisition` that receives as input `parameters` and outputs `data`
-* `fit` that receives as input `data` and outputs `results`
-* `plot` that receives as input `data` and `results` to visualize the protocol
+* `acquisition` receives as input `parameters` and outputs `data`
+* `fit` receives as input `data` and outputs `results`
+* `plot` receives as input `data` and `results` to visualize the protocol
 
-We believe that this approach is useful in order to code protocols that
-aims at achieving a specific task. However, this approach is flexible enough
-to show some data acquired without performing a post-processing analysis.
+This approach is flexible enough to allow the data acquisition without performing a post-processing analysis.
 
 Step by step tutorial
 ---------------------
@@ -65,7 +62,7 @@ Data structure
 ^^^^^^^^^^^^^^
 Secondly, we define a data structure aims at storing both the angles and
 the probabilities measured for each qubit. A generic data structure is usually composed
-by some raw data (the data attribute), which is usually coded as a dictionary of arrays
+of some raw data (the data attribute), which is usually coded as a dictionary of arrays
 plus additional information if required.
 
 .. code-block:: python
@@ -170,7 +167,7 @@ Result class
 Here we decided to code a generic `Result` that contains the fitted
 parameters for each quibt.
 
-.. code-block::python
+.. code-block:: python
 
     from qibolab.qubits import QubitId
 
