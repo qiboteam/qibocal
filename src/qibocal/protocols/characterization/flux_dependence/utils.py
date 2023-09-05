@@ -156,15 +156,31 @@ def flux_dependence_plot(data, fit, qubit):
     else:
         fitting_report += f"{qubit} | Sweetspot: Fitting not successful<br>"
 
-    for key, value in fit.fitted_parameters[qubit].items():
-        if key in ["Xi", "d"]:
-            fitting_report += f"{qubit} | {key}: {float(value):,.3f}<br>"
-        else:
-            fitting_report += f"{qubit} | {key}: {int(value):,}<br>"
+    params = {
+        "Xi": ["Constant to map flux to bias", "V"],
+        "d": ["Junction asymmetry d", "(1)"],
+        "Ec": ["Charge energy Ec", "GHz"],
+        "Ej": ["Josephson energy Ej", "GHz"],
+        "f_q_offset": ["Qubit frequency offset", "GHz"],
+        "C_ii": ["Flux matrix element C_ii", "GHz/V"],
+        "g": ["Readout coupling", "(1)"],
+        "bare_resonator_frequency": ["Bare resonator frequency", "GHz"],
+        "f_qs": ["Qubit frequency", "GHz"],
+        "f_r_offset": ["Resonator frequency offset", "GHz"],
+    }
 
-        if value == 0:
+    for key, value in fit.fitted_parameters[qubit].items():
+        if params[key][1] == "GHz":
+            value *= HZ_TO_GHZ
+        if key == "f_q/bare_resonator_frequency":
+            pass
+        elif key != "d" and value == 0:
             value = "Fitting not successful"
-            fitting_report += f"{qubit} | {key}: {value}<br>"
+            fitting_report += f"{qubit} | {params[key][0]}: {value}<br>"
+        else:
+            fitting_report += (
+                f"{qubit} | {params[key][0]}: {float(value):,.3f} {params[key][1]}<br>"
+            )
 
     fitting_report += "<br>"
 
