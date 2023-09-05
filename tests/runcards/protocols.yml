@@ -227,6 +227,17 @@ actions:
       delay_between_pulses_step: 500 # must be a multiple of 4
       n_osc: 10
       nshots: 1024
+      nboot: 2
+
+  - id: ramsey detuned sequences
+    priority: 0
+    operation: ramsey_sequences
+    parameters:
+      delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
+      delay_between_pulses_end: 5000
+      delay_between_pulses_step: 500 # must be a multiple of 4
+      n_osc: 10
+      nshots: 1024
 
   - id: ramsey
     priority: 0
@@ -238,7 +249,16 @@ actions:
       n_osc: 0
       nshots: 1024
 
-
+  - id: ramsey
+    priority: 0
+    operation: ramsey
+    parameters:
+      delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
+      delay_between_pulses_end: 5000
+      delay_between_pulses_step: 500 # must be a multiple of 4
+      n_osc: 0
+      nshots: 1024
+      nboot: 2
 
   - id: single shot classification
     priority: 0
