@@ -16,6 +16,8 @@ from qibocal.config import log
 
 from .utils import V_TO_UV
 
+ZERO_PHASE_THRESHOLD = 1e-6
+
 
 @dataclass
 class FlippingParameters(Parameters):
@@ -35,7 +37,7 @@ class FlippingParameters(Parameters):
 class FlippingResults(Results):
     """Flipping outputs."""
 
-    amplitude: dict[QubitId, float] = field(metadata=dict(update="drive amplitude"))
+    amplitude: dict[QubitId, float] = field(metadata=dict(update="drive_amplitude"))
     """Drive amplitude for each qubit."""
     amplitude_factors: dict[QubitId, float]
     """Drive amplitude correction factor for each qubit."""
@@ -131,13 +133,8 @@ def _acquisition(
     return data
 
 
-def flipping_fit(x, p0, p1, p2, p3):
-    # A fit to Flipping Qubit oscillation
-    # Epsilon?? should be Amplitude : p[0]
-    # Offset                        : p[1]
-    # Period of oscillation         : p[2]
-    # phase for the first point corresponding to pi/2 rotation   : p[3]
-    return np.sin(x * 2 * np.pi * p2 + p3) * p1 + p0
+def flipping_fit(x, offset, amplitude, omega, phase):
+    return np.sin(x * omega + phase) * amplitude + offset
 
 
 def _fit(data: FlippingData) -> FlippingResults:
@@ -182,8 +179,8 @@ def _fit(data: FlippingData) -> FlippingResults:
                 p0=pguess,
                 maxfev=2000000,
                 bounds=(
-                    [0, 0, 0, -np.pi],
-                    [1, 1, np.inf, np.pi],
+                    [0, 0, 0, -2 * np.pi],
+                    [1, 1, np.inf, 2 * np.pi],
                 ),
             )
 
@@ -195,21 +192,23 @@ def _fit(data: FlippingData) -> FlippingResults:
             y_min + (y_max - y_min) * popt[0],
             (y_max - y_min) * popt[1],
             popt[2] / (x_max - x_min),
-            popt[3] - 2 * np.pi * x_min / (x_max - x_min) * popt[2],
+            popt[3] - x_min / (x_max - x_min) * popt[2],
         ]
-        # sen fitting succesful
-        if popt[2] != 0:
-            eps = -translated_popt[2]
-            amplitude_correction_factor = eps / (eps - 1)
-            corrected_amplitude = amplitude_correction_factor * pi_pulse_amplitude
-        # sen fitting not succesful = amplitude well adjusted
-        else:
-            amplitude_correction_factor = 1
-            corrected_amplitude = amplitude_correction_factor * pi_pulse_amplitude
 
-        corrected_amplitudes[qubit] = corrected_amplitude
+        unsigned_correction = translated_popt[2] / 2
+        signed_correction = (
+            unsigned_correction
+            if translated_popt[3] < ZERO_PHASE_THRESHOLD
+            else -unsigned_correction
+        )
+
+        corrected_amplitudes[qubit] = (
+            signed_correction / np.pi * pi_pulse_amplitude + pi_pulse_amplitude
+        )
         fitted_parameters[qubit] = translated_popt
-        amplitude_correction_factors[qubit] = amplitude_correction_factor
+        amplitude_correction_factors[qubit] = (
+            signed_correction / np.pi * pi_pulse_amplitude
+        )
 
     return FlippingResults(
         corrected_amplitudes, amplitude_correction_factors, fitted_parameters
