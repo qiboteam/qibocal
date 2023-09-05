@@ -186,13 +186,14 @@ def flux_dependence_plot(data, fit, qubit):
 
 def flux_crosstalk_plot(data, fit, qubit):
     figures = []
-    fitting_report = ""
+    fitting_report = "No fitting data"
 
     all_qubit_data = data[qubit]
 
     fig = make_subplots(
         rows=1,
         cols=len(all_qubit_data),
+        horizontal_spacing=0.3 / len(all_qubit_data),
         vertical_spacing=0.1,
         subplot_titles=len(all_qubit_data) * ("MSR [V]",),
     )
@@ -214,11 +215,11 @@ def flux_crosstalk_plot(data, fit, qubit):
         )
 
         fig.update_xaxes(
-            title_text=f"{qubit}: Frequency (Hz)",
+            title_text="Frequency (Hz)",
             row=1,
             col=col + 1,
         )
-        fig.update_yaxes(title_text=f"{flux_qubit}: Bias (V)", row=1, col=col + 1)
+        fig.update_yaxes(title_text=f"Qubit {flux_qubit}: Bias (V)", row=1, col=col + 1)
 
     fig.update_layout(xaxis1=dict(range=[np.min(frequencies), np.max(frequencies)]))
     fig.update_traces(showscale=False)  # disable colorbar
