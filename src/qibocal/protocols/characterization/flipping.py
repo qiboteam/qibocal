@@ -17,6 +17,7 @@ from qibocal.config import log
 from .utils import V_TO_UV
 
 ZERO_PHASE_THRESHOLD = 1e-6
+"""Threshold to estimate the sign of the correction."""
 
 
 @dataclass
@@ -196,6 +197,8 @@ def _fit(data: FlippingData) -> FlippingResults:
         ]
 
         unsigned_correction = translated_popt[2] / 2
+        # check if the sin has a phase zero or pi to
+        # determine the sign of the correction
         signed_correction = (
             unsigned_correction
             if translated_popt[3] < ZERO_PHASE_THRESHOLD
