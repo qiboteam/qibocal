@@ -91,7 +91,9 @@ def _acquisition(
     amplitudes = {}
     for qubit in qubits:
         # TODO: made duration optional for qd pulse?
-        qd_pulses[qubit] = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
+        qd_pulses[qubit] = platform.create_qubit_drive_pulse(
+            qubit, start=0, duration=params.pulse_duration_start
+        )
         if params.pulse_amplitude is not None:
             qd_pulses[qubit].amplitude = params.pulse_amplitude
         amplitudes[qubit] = qd_pulses[qubit].amplitude
