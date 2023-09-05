@@ -86,17 +86,17 @@ wrapt = [
 
 [[package]]
 name = "asttokens"
-version = "2.2.1"
+version = "2.4.0"
 description = "Annotate AST trees with source code positions"
 optional = false
 python-versions = "*"
 files = [
-    {file = "asttokens-2.2.1-py2.py3-none-any.whl", hash = "sha256:6b0ac9e93fb0335014d382b8fa9b3afa7df546984258005da0b9e7095b3deb1c"},
-    {file = "asttokens-2.2.1.tar.gz", hash = "sha256:4622110b2a6f30b77e1473affaa97e711bc2f07d3f10848420ff1898edbe94f3"},
+    {file = "asttokens-2.4.0-py2.py3-none-any.whl", hash = "sha256:cf8fc9e61a86461aa9fb161a14a0841a03c405fa829ac6b202670b3495d2ce69"},
+    {file = "asttokens-2.4.0.tar.gz", hash = "sha256:2e0171b991b2c959acc6c49318049236844a5da1d65ba2672c4880c1c894834e"},
 ]
 
 [package.dependencies]
-six = "*"
+six = ">=1.12.0"
 
 [package.extras]
 test = ["astroid", "pytest"]
@@ -745,13 +745,13 @@ woff = ["brotli (>=1.0.1)", "brotlicffi (>=0.8.0)", "zopfli (>=0.1.4)"]
 
 [[package]]
 name = "fsspec"
-version = "2023.6.0"
+version = "2023.9.0"
 description = "File-system specification"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "fsspec-2023.6.0-py3-none-any.whl", hash = "sha256:1cbad1faef3e391fba6dc005ae9b5bdcbf43005c9167ce78c915549c352c869a"},
-    {file = "fsspec-2023.6.0.tar.gz", hash = "sha256:d0b2f935446169753e7a5c5c55681c54ea91996cc67be93c39a154fb3a2742af"},
+    {file = "fsspec-2023.9.0-py3-none-any.whl", hash = "sha256:d55b9ab2a4c1f2b759888ae9f93e40c2aa72c0808132e87e282b549f9e6c4254"},
+    {file = "fsspec-2023.9.0.tar.gz", hash = "sha256:4dbf0fefee035b7c6d3bbbe6bc99b2f201f40d4dca95b67c2b719be77bcd917f"},
 ]
 
 [package.extras]
@@ -818,28 +818,27 @@ files = [
 
 [[package]]
 name = "google-auth"
-version = "2.22.0"
+version = "2.17.3"
 description = "Google Authentication Library"
 optional = true
-python-versions = ">=3.6"
+python-versions = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*"
 files = [
-    {file = "google-auth-2.22.0.tar.gz", hash = "sha256:164cba9af4e6e4e40c3a4f90a1a6c12ee56f14c0b4868d1ca91b32826ab334ce"},
-    {file = "google_auth-2.22.0-py2.py3-none-any.whl", hash = "sha256:d61d1b40897407b574da67da1a833bdc10d5a11642566e506565d1b1a46ba873"},
+    {file = "google-auth-2.17.3.tar.gz", hash = "sha256:ce311e2bc58b130fddf316df57c9b3943c2a7b4f6ec31de9663a9333e4064efc"},
+    {file = "google_auth-2.17.3-py2.py3-none-any.whl", hash = "sha256:f586b274d3eb7bd932ea424b1c702a30e0393a2e2bc4ca3eae8263ffd8be229f"},
 ]
 
 [package.dependencies]
 cachetools = ">=2.0.0,<6.0"
 pyasn1-modules = ">=0.2.1"
-rsa = ">=3.1.4,<5"
+rsa = {version = ">=3.1.4,<5", markers = "python_version >= \"3.6\""}
 six = ">=1.9.0"
-urllib3 = "<2.0"
 
 [package.extras]
-aiohttp = ["aiohttp (>=3.6.2,<4.0.0.dev0)", "requests (>=2.20.0,<3.0.0.dev0)"]
+aiohttp = ["aiohttp (>=3.6.2,<4.0.0dev)", "requests (>=2.20.0,<3.0.0dev)"]
 enterprise-cert = ["cryptography (==36.0.2)", "pyopenssl (==22.0.0)"]
 pyopenssl = ["cryptography (>=38.0.3)", "pyopenssl (>=20.0.0)"]
 reauth = ["pyu2f (>=0.1.5)"]
-requests = ["requests (>=2.20.0,<3.0.0.dev0)"]
+requests = ["requests (>=2.20.0,<3.0.0dev)"]
 
 [[package]]
 name = "google-auth-oauthlib"
@@ -1082,13 +1081,13 @@ files = [
 
 [[package]]
 name = "ipython"
-version = "8.14.0"
+version = "8.15.0"
 description = "IPython: Productive Interactive Computing"
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "ipython-8.14.0-py3-none-any.whl", hash = "sha256:248aca623f5c99a6635bc3857677b7320b9b8039f99f070ee0d20a5ca5a8e6bf"},
-    {file = "ipython-8.14.0.tar.gz", hash = "sha256:1d197b907b6ba441b692c48cf2a3a2de280dc0ac91a3405b39349a50272ca0a1"},
+    {file = "ipython-8.15.0-py3-none-any.whl", hash = "sha256:45a2c3a529296870a97b7de34eda4a31bee16bc7bf954e07d39abe49caf8f887"},
+    {file = "ipython-8.15.0.tar.gz", hash = "sha256:2baeb5be6949eeebf532150f81746f8333e2ccce02de1c7eedde3f23ed5e9f1e"},
 ]
 
 [package.dependencies]
@@ -1096,6 +1095,7 @@ appnope = {version = "*", markers = "sys_platform == \"darwin\""}
 backcall = "*"
 colorama = {version = "*", markers = "sys_platform == \"win32\""}
 decorator = "*"
+exceptiongroup = {version = "*", markers = "python_version < \"3.11\""}
 jedi = ">=0.16"
 matplotlib-inline = "*"
 pexpect = {version = ">4.3", markers = "sys_platform != \"win32\""}
@@ -1107,9 +1107,9 @@ traitlets = ">=5"
 typing-extensions = {version = "*", markers = "python_version < \"3.10\""}
 
 [package.extras]
-all = ["black", "curio", "docrepr", "ipykernel", "ipyparallel", "ipywidgets", "matplotlib", "matplotlib (!=3.2.0)", "nbconvert", "nbformat", "notebook", "numpy (>=1.21)", "pandas", "pytest (<7)", "pytest (<7.1)", "pytest-asyncio", "qtconsole", "setuptools (>=18.5)", "sphinx (>=1.3)", "sphinx-rtd-theme", "stack-data", "testpath", "trio", "typing-extensions"]
+all = ["black", "curio", "docrepr", "exceptiongroup", "ipykernel", "ipyparallel", "ipywidgets", "matplotlib", "matplotlib (!=3.2.0)", "nbconvert", "nbformat", "notebook", "numpy (>=1.21)", "pandas", "pytest (<7)", "pytest (<7.1)", "pytest-asyncio", "qtconsole", "setuptools (>=18.5)", "sphinx (>=1.3)", "sphinx-rtd-theme", "stack-data", "testpath", "trio", "typing-extensions"]
 black = ["black"]
-doc = ["docrepr", "ipykernel", "matplotlib", "pytest (<7)", "pytest (<7.1)", "pytest-asyncio", "setuptools (>=18.5)", "sphinx (>=1.3)", "sphinx-rtd-theme", "stack-data", "testpath", "typing-extensions"]
+doc = ["docrepr", "exceptiongroup", "ipykernel", "matplotlib", "pytest (<7)", "pytest (<7.1)", "pytest-asyncio", "setuptools (>=18.5)", "sphinx (>=1.3)", "sphinx-rtd-theme", "stack-data", "testpath", "typing-extensions"]
 kernel = ["ipykernel"]
 nbconvert = ["nbconvert"]
 nbformat = ["nbformat"]
@@ -2491,13 +2491,13 @@ files = [
 
 [[package]]
 name = "pytest"
-version = "7.4.0"
+version = "7.4.1"
 description = "pytest: simple powerful testing with Python"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "pytest-7.4.0-py3-none-any.whl", hash = "sha256:78bf16451a2eb8c7a2ea98e32dc119fd2aa758f1d5d66dbf0a59d69a3969df32"},
-    {file = "pytest-7.4.0.tar.gz", hash = "sha256:b4bf8c45bd59934ed84001ad51e11b4ee40d40a1229d2c79f9c592b0a3f6bd8a"},
+    {file = "pytest-7.4.1-py3-none-any.whl", hash = "sha256:460c9a59b14e27c602eb5ece2e47bec99dc5fc5f6513cf924a7d03a578991b1f"},
+    {file = "pytest-7.4.1.tar.gz", hash = "sha256:2f2301e797521b23e4d2585a0a3d7b5e50fdddaaf7e7d6773ea26ddb17c213ab"},
 ]
 
 [package.dependencies]
@@ -2562,13 +2562,13 @@ six = ">=1.5"
 
 [[package]]
 name = "pytz"
-version = "2023.3"
+version = "2023.3.post1"
 description = "World timezone definitions, modern and historical"
 optional = false
 python-versions = "*"
 files = [
-    {file = "pytz-2023.3-py2.py3-none-any.whl", hash = "sha256:a151b3abb88eda1d4e34a9814df37de2a80e301e68ba0fd856fb9b46bfbbbffb"},
-    {file = "pytz-2023.3.tar.gz", hash = "sha256:1d8ce29db189191fb55338ee6d0387d82ab59f3d00eac103412d64e0ebd0c588"},
+    {file = "pytz-2023.3.post1-py2.py3-none-any.whl", hash = "sha256:ce42d816b81b68506614c11e8937d3aa9e41007ceb50bfdcb0749b921bf646c7"},
+    {file = "pytz-2023.3.post1.tar.gz", hash = "sha256:7b4fddbeb94a1eba4b557da24f19fdf9db575192544270a9101d8509f9f43d7b"},
 ]
 
 [[package]]
@@ -2675,7 +2675,7 @@ zh = ["laboneq (==2.7.0)"]
 type = "git"
 url = "https://github.com/qiboteam/qibolab.git"
 reference = "main"
-resolved_reference = "522ee54d9514c76e48b9655bdf5b4f49c972ff72"
+resolved_reference = "20c61f7be306ca5e54f5368bb9fae6175b49dc94"
 
 [[package]]
 name = "recommonmark"
@@ -2943,13 +2943,13 @@ files = [
 
 [[package]]
 name = "soupsieve"
-version = "2.4.1"
+version = "2.5"
 description = "A modern CSS selector implementation for Beautiful Soup."
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 files = [
-    {file = "soupsieve-2.4.1-py3-none-any.whl", hash = "sha256:1c1bfee6819544a3447586c889157365a27e10d88cde3ad3da0cf0ddf646feb8"},
-    {file = "soupsieve-2.4.1.tar.gz", hash = "sha256:89d12b2d5dfcd2c9e8c22326da9d9aa9cb3dfab0a83a024f05704076ee8d35ea"},
+    {file = "soupsieve-2.5-py3-none-any.whl", hash = "sha256:eaa337ff55a1579b6549dc679565eac1e3d000563bcb1c8ab0d0fefbc0c2cdc7"},
+    {file = "soupsieve-2.5.tar.gz", hash = "sha256:5663d5a7b3bfaeee0bc4372e7fc48f9cff4940b3eec54a6451cc5299f1097690"},
 ]
 
 [[package]]
@@ -3239,26 +3239,26 @@ files = [
 
 [[package]]
 name = "tensorflow"
-version = "2.14.0rc0"
+version = "2.14.0rc1"
 description = "TensorFlow is an open source machine learning framework for everyone."
 optional = true
 python-versions = ">=3.9"
 files = [
-    {file = "tensorflow-2.14.0rc0-cp310-cp310-macosx_10_15_x86_64.whl", hash = "sha256:8d7cb2b8d8960b6052e1176323f615e8865581df0ed206a0f399c15e1a80dea7"},
-    {file = "tensorflow-2.14.0rc0-cp310-cp310-macosx_12_0_arm64.whl", hash = "sha256:f486b01647216fcb2c470fbf7ba4037ab2f0f6d2822b844854cbb1e1bb2bfda4"},
-    {file = "tensorflow-2.14.0rc0-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:9d6586e230faee8d62788adb410571ddb86a7fc0ed054fef4ca0fe2ed189bfde"},
-    {file = "tensorflow-2.14.0rc0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c3ca94a19143623fd3b082ee225cb1943be6147b951c4f18f72644bd2abd9935"},
-    {file = "tensorflow-2.14.0rc0-cp310-cp310-win_amd64.whl", hash = "sha256:a944b48feb58b04911513e9bdd82de66ed94588914228c9f32a2934b7e0f3d21"},
-    {file = "tensorflow-2.14.0rc0-cp311-cp311-macosx_10_15_x86_64.whl", hash = "sha256:183355e132741997410f397da6c831c38e086bd6d50bcde53ea04df6989950ba"},
-    {file = "tensorflow-2.14.0rc0-cp311-cp311-macosx_12_0_arm64.whl", hash = "sha256:278c576545f1f7add9bf02845c2c226d4013ae53fea56f48680725f4fa515965"},
-    {file = "tensorflow-2.14.0rc0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:c35c5de4d122b28874d0038717dbce69d9c45213ce452056797a0fff4f35f231"},
-    {file = "tensorflow-2.14.0rc0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f81db29265c4d442a9390a2e6e027821d610662e4c347026079d9147a98a4b6b"},
-    {file = "tensorflow-2.14.0rc0-cp311-cp311-win_amd64.whl", hash = "sha256:a47f87a01aeb713964b3852b0c2cc651d6c927b5e52894e64dc49fd1f704413f"},
-    {file = "tensorflow-2.14.0rc0-cp39-cp39-macosx_10_15_x86_64.whl", hash = "sha256:d4537b1427cb1f17dd1725f18d5b47a31e16f467cd59da9d425eccbf68438233"},
-    {file = "tensorflow-2.14.0rc0-cp39-cp39-macosx_12_0_arm64.whl", hash = "sha256:73640b41fd1751c926d628485007d3fbfad590ccdb29834e22530a963ca57c10"},
-    {file = "tensorflow-2.14.0rc0-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:627ba4e164dc1e4b3c3420ff989255c9118c3efa0fa4767577319761f6312bab"},
-    {file = "tensorflow-2.14.0rc0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:eada02600a77d967d56d8b214c87c1b27871400823a09b10a38535f0cf52fc6e"},
-    {file = "tensorflow-2.14.0rc0-cp39-cp39-win_amd64.whl", hash = "sha256:510e66ac33ce8efe0f2f8b4a86829b69534332d223be7b2f53fbd36db3e0bf06"},
+    {file = "tensorflow-2.14.0rc1-cp310-cp310-macosx_10_15_x86_64.whl", hash = "sha256:7367acf391f9082911e2cfb4c2e250e9d18e84c79f9421ff41f8e376a10b7d54"},
+    {file = "tensorflow-2.14.0rc1-cp310-cp310-macosx_12_0_arm64.whl", hash = "sha256:86a31a945304932d2f5e1b57aa38bfa53250f07047a8464bd7011f6881bb07f9"},
+    {file = "tensorflow-2.14.0rc1-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:a9d27ccadc975c7006437e7f85ae30893f810827f7571b5476e16eb7c5f41a54"},
+    {file = "tensorflow-2.14.0rc1-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:522f7b4118dc9fd562ca8501c9a015a2a3ae50e6994d2395c6efdec64f74b107"},
+    {file = "tensorflow-2.14.0rc1-cp310-cp310-win_amd64.whl", hash = "sha256:63e2846950eee4fb2abfc7fe420bf4f730694ca54086bfbfcdf27f1576efc670"},
+    {file = "tensorflow-2.14.0rc1-cp311-cp311-macosx_10_15_x86_64.whl", hash = "sha256:3336d3eb34f44ed26d53adaf95e80816a6baca9e5e3a8dbdf8bdd24b711a87b3"},
+    {file = "tensorflow-2.14.0rc1-cp311-cp311-macosx_12_0_arm64.whl", hash = "sha256:79ff90bb72755e1d9e45aba4552cdf5341cfaedb16d063e3375c587964b35767"},
+    {file = "tensorflow-2.14.0rc1-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:a9993b94860cb712909218c78aa5383487c879a31f18a86fd8f08f38c85413b3"},
+    {file = "tensorflow-2.14.0rc1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:467ffce032c94025998fe126fd7a2a57c5afe7f0359961be874a3ad54d8947ac"},
+    {file = "tensorflow-2.14.0rc1-cp311-cp311-win_amd64.whl", hash = "sha256:41172d5d2c659afb0682b2cb8d167a4e6d33501dc733546ae4aaf9554ef43475"},
+    {file = "tensorflow-2.14.0rc1-cp39-cp39-macosx_10_15_x86_64.whl", hash = "sha256:c63d59c9d16ae17bd19957796479365a934a0f1b399011dc16186df80d182947"},
+    {file = "tensorflow-2.14.0rc1-cp39-cp39-macosx_12_0_arm64.whl", hash = "sha256:cf40096373e678666c09e78b78b13149d4a724f4e03aa875fc9cb6074cf11b89"},
+    {file = "tensorflow-2.14.0rc1-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:706a3cfd35080773f99137ba927530cf525cba729808d10802453ed0048b94e0"},
+    {file = "tensorflow-2.14.0rc1-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:808c61c0d166161e59dc529b9a89d1288368d1e9e2246ea28f9fbc8f1d90e2d0"},
+    {file = "tensorflow-2.14.0rc1-cp39-cp39-win_amd64.whl", hash = "sha256:adca1d48c11508bb88e6c45ec9f777dd7aab92d4fb6a7c3d37fec7aeef77a930"},
 ]
 
 [package.dependencies]
@@ -3443,19 +3443,20 @@ tests = ["nose", "numpy"]
 
 [[package]]
 name = "urllib3"
-version = "1.26.16"
+version = "2.0.4"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, !=3.5.*"
+python-versions = ">=3.7"
 files = [
-    {file = "urllib3-1.26.16-py2.py3-none-any.whl", hash = "sha256:8d36afa7616d8ab714608411b4a3b13e58f463aee519024578e062e141dce20f"},
-    {file = "urllib3-1.26.16.tar.gz", hash = "sha256:8f135f6502756bde6b2a9b28989df5fbe87c9970cecaa69041edcce7f0589b14"},
+    {file = "urllib3-2.0.4-py3-none-any.whl", hash = "sha256:de7df1803967d2c2a98e4b11bb7d6bd9210474c46e8a0401514e3a42a75ebde4"},
+    {file = "urllib3-2.0.4.tar.gz", hash = "sha256:8d22f86aae8ef5e410d4f539fde9ce6b2113a001bb4d189e0aed70642d602b11"},
 ]
 
 [package.extras]
-brotli = ["brotli (>=1.0.9)", "brotlicffi (>=0.8.0)", "brotlipy (>=0.6.0)"]
-secure = ["certifi", "cryptography (>=1.3.4)", "idna (>=2.0.0)", "ipaddress", "pyOpenSSL (>=0.14)", "urllib3-secure-extra"]
-socks = ["PySocks (>=1.5.6,!=1.5.7,<2.0)"]
+brotli = ["brotli (>=1.0.9)", "brotlicffi (>=0.8.0)"]
+secure = ["certifi", "cryptography (>=1.9)", "idna (>=2.0.0)", "pyopenssl (>=17.1.0)", "urllib3-secure-extra"]
+socks = ["pysocks (>=1.5.6,!=1.5.7,<2.0)"]
+zstd = ["zstandard (>=0.18.0)"]
 
 [[package]]
 name = "wcwidth"

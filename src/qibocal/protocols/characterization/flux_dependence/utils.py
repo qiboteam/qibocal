@@ -7,6 +7,18 @@ from sklearn.linear_model import Ridge
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, V_TO_UV
 
 
+def create_data_array(freq, bias, msr, phase, dtype):
+    """Create custom dtype array for acquired data."""
+    size = len(freq) * len(bias)
+    ar = np.empty(size, dtype=dtype)
+    frequency, biases = np.meshgrid(freq, bias)
+    ar["freq"] = frequency.ravel()
+    ar["bias"] = biases.ravel()
+    ar["msr"] = msr.ravel()
+    ar["phase"] = phase.ravel()
+    return np.rec.array(ar)
+
+
 def flux_dependence_plot(data, fit, qubit):
     figures = []
     fitting_report = None
@@ -161,6 +173,55 @@ def flux_dependence_plot(data, fit, qubit):
 
     fig.update_layout(xaxis1=dict(range=[np.min(frequencies), np.max(frequencies)]))
 
+    fig.update_layout(
+        showlegend=False,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+    )
+
+    figures.append(fig)
+
+    return figures, fitting_report
+
+
+def flux_crosstalk_plot(data, fit, qubit):
+    figures = []
+    fitting_report = None
+
+    all_qubit_data = data[qubit]
+
+    fig = make_subplots(
+        rows=1,
+        cols=len(all_qubit_data),
+        horizontal_spacing=0.3 / len(all_qubit_data),
+        vertical_spacing=0.1,
+        subplot_titles=len(all_qubit_data) * ("MSR [V]",),
+    )
+
+    for col, (flux_qubit, qubit_data) in enumerate(all_qubit_data.items()):
+        frequencies = qubit_data.freq * HZ_TO_GHZ
+        msr = qubit_data.msr
+        if data.resonator_type == "2D":
+            msr = -msr
+
+        fig.add_trace(
+            go.Heatmap(
+                x=frequencies,
+                y=qubit_data.bias,
+                z=qubit_data.msr * V_TO_UV,
+            ),
+            row=1,
+            col=col + 1,
+        )
+
+        fig.update_xaxes(
+            title_text="Frequency (Hz)",
+            row=1,
+            col=col + 1,
+        )
+        fig.update_yaxes(title_text=f"Qubit {flux_qubit}: Bias (V)", row=1, col=col + 1)
+
+    fig.update_layout(xaxis1=dict(range=[np.min(frequencies), np.max(frequencies)]))
+    fig.update_traces(showscale=False)  # disable colorbar
     fig.update_layout(
         showlegend=False,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting

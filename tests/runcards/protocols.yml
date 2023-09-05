@@ -105,6 +105,19 @@ actions:
       nshots: 10
 
 
+  - id: resonator flux crosstalk # using ``flux_qubits``
+    priority: 0
+    operation: resonator_flux
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 500_000
+      bias_width: 0.8
+      bias_step:  0.1
+      flux_qubits: [0, 1, 2, 3]
+      nshots: 10
+      relaxation_time: 100
+
+
 
   - id: qubit flux dependence #"01" transition
     priority: 0
@@ -133,6 +146,21 @@ actions:
       nshots: 1024
       relaxation_time: 2000
       transition: "02"
+
+
+
+  - id: qubit flux crosstalk # using ``flux_qubits``
+    priority: 0
+    operation: qubit_flux
+    parameters:
+      freq_width: 150_000_000
+      freq_step: 500_000
+      bias_width: 0.2
+      bias_step:  0.005
+      drive_amplitude: 0.5
+      flux_qubits: [1, 2]
+      nshots: 1024
+      relaxation_time: 2000
 
 
 
@@ -215,8 +243,8 @@ actions:
     operation: ramsey
     parameters:
       delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
-      delay_between_pulses_end: 5000
-      delay_between_pulses_step: 500 # must be a multiple of 4
+      delay_between_pulses_end: 50
+      delay_between_pulses_step: 5 # must be a multiple of 4
       n_osc: 10
       nshots: 10
 
@@ -228,7 +256,7 @@ actions:
       delay_between_pulses_end: 5000
       delay_between_pulses_step: 500 # must be a multiple of 4
       n_osc: 10
-      nshots: 1024
+      nshots: 10
 
   - id: ramsey
     priority: 0
@@ -238,7 +266,7 @@ actions:
       delay_between_pulses_end: 5000
       delay_between_pulses_step: 500 # must be a multiple of 4
       n_osc: 0
-      nshots: 1024
+      nshots: 10
 
 
 
@@ -390,3 +418,19 @@ actions:
     operation: fast_reset
     parameters:
       nshots: 1024
+
+  - id: twpa frequency
+    priority: 0
+    operation: twpa_frequency
+    parameters:
+      nshots: 10
+      frequency_width: 1_000_000
+      frequency_step: 100_000
+
+  - id: twpa power
+    priority: 0
+    operation: twpa_power
+    parameters:
+      nshots: 10
+      power_width: 10
+      power_step: 1
