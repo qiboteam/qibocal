@@ -18,7 +18,6 @@ from ..utils import GHZ_TO_HZ, HZ_TO_GHZ
 from . import utils
 
 
-# TODO: implement cross-talk
 @dataclass
 class QubitFluxParameters(Parameters):
     """QubitFlux runcard inputs."""
@@ -34,6 +33,12 @@ class QubitFluxParameters(Parameters):
     drive_amplitude: Optional[float] = None
     """Drive amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
+    flux_qubits: Optional[list[QubitId]] = None
+    """IDs of the qubits that we will sweep the flux on.
+    If ``None`` flux will be swept on all qubits that we are running the routine on in a multiplex fashion.
+    If given flux will be swept on the given qubits in a sequential fashion (n qubits will result to n different executions).
+    Multiple qubits may be measured in each execution as specified by the ``qubits`` option in the runcard.
+    """
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
@@ -52,6 +57,11 @@ class QubitFluxResults(Results):
     """Drive frequency for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
+
+
+@dataclass
+class FluxCrosstalkResults(Results):
+    """Empty fitting outputs for cross talk because fitting is not implemented in this case."""
 
 
 QubitFluxType = np.dtype(
@@ -82,16 +92,29 @@ class QubitFluxData(Data):
     data: dict[QubitId, npt.NDArray[QubitFluxType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, freq, bias, msr, phase):
+    def register_qubit(self, qubit, flux_qubit, freq, bias, msr, phase):
         """Store output for single qubit."""
-        size = len(freq) * len(bias)
-        ar = np.empty(size, dtype=QubitFluxType)
-        frequency, biases = np.meshgrid(freq, bias)
-        ar["freq"] = frequency.ravel()
-        ar["bias"] = biases.ravel()
-        ar["msr"] = msr.ravel()
-        ar["phase"] = phase.ravel()
-        self.data[qubit] = np.rec.array(ar)
+        self.data[qubit] = utils.create_data_array(
+            freq, bias, msr, phase, dtype=QubitFluxType
+        )
+
+
+@dataclass
+class FluxCrosstalkData(QubitFluxData):
+    """QubitFlux acquisition outputs when ``flux_qubits`` are given."""
+
+    data: dict[QubitId, dict[QubitId, npt.NDArray[QubitFluxType]]] = field(
+        default_factory=dict
+    )
+    """Raw data acquired for (qubit, qubit_flux) pairs saved in nested dictionaries."""
+
+    def register_qubit(self, qubit, flux_qubit, freq, bias, msr, phase):
+        """Store output for single qubit."""
+        ar = utils.create_data_array(freq, bias, msr, phase, dtype=QubitFluxType)
+        if qubit in self.data:
+            self.data[qubit][flux_qubit] = ar
+        else:
+            self.data[qubit] = {flux_qubit: ar}
 
 
 def _acquisition(
@@ -100,8 +123,6 @@ def _acquisition(
     qubits: Qubits,
 ) -> QubitFluxData:
     """Data acquisition for QubitFlux Experiment."""
-    # create a sequence of pulses for the experiment:
-    # MZ
 
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     sequence = PulseSequence()
@@ -143,40 +164,54 @@ def _acquisition(
     delta_bias_range = np.arange(
         -params.bias_width / 2, params.bias_width / 2, params.bias_step
     )
-    bias_sweeper = Sweeper(
-        Parameter.bias,
-        delta_bias_range,
-        qubits=list(qubits.values()),
-        type=SweeperType.OFFSET,
-    )
-    # create a DataUnits object to store the results,
-    # DataUnits stores by default MSR, phase, i, q
-    # additionally include resonator frequency and flux bias
-    data = QubitFluxData(resonator_type=platform.resonator_type, Ec=Ec, Ej=Ej)
+    if params.flux_qubits is None:
+        flux_qubits = [None]
+        bias_sweepers = [
+            Sweeper(
+                Parameter.bias,
+                delta_bias_range,
+                qubits=list(qubits.values()),
+                type=SweeperType.OFFSET,
+            )
+        ]
+        data = QubitFluxData(resonator_type=platform.resonator_type, Ec=Ec, Ej=Ej)
 
-    # repeat the experiment as many times as defined by software_averages
-    results = platform.sweep(
-        sequence,
-        ExecutionParameters(
-            nshots=params.nshots,
-            relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
-        ),
-        bias_sweeper,
-        freq_sweeper,
-    )
+    else:
+        flux_qubits = params.flux_qubits
+        bias_sweepers = [
+            Sweeper(
+                Parameter.bias,
+                delta_bias_range,
+                qubits=[platform.qubits[flux_qubit]],
+                type=SweeperType.OFFSET,
+            )
+            for flux_qubit in flux_qubits
+        ]
+        data = FluxCrosstalkData(resonator_type=platform.resonator_type, Ec=Ec, Ej=Ej)
 
-    # retrieve the results for every qubit
-    for qubit in qubits:
-        result = results[ro_pulses[qubit].serial]
-        data.register_qubit(
-            qubit,
-            msr=result.magnitude,
-            phase=result.phase,
-            freq=delta_frequency_range + qd_pulses[qubit].frequency,
-            bias=delta_bias_range + qubits[qubit].sweetspot,
-        )
+    options = ExecutionParameters(
+        nshots=params.nshots,
+        relaxation_time=params.relaxation_time,
+        acquisition_type=AcquisitionType.INTEGRATION,
+        averaging_mode=AveragingMode.CYCLIC,
+    )
+    for flux_qubit, bias_sweeper in zip(flux_qubits, bias_sweepers):
+        results = platform.sweep(sequence, options, bias_sweeper, freq_sweeper)
+        # retrieve the results for every qubit
+        for qubit in qubits:
+            result = results[ro_pulses[qubit].serial]
+            if flux_qubit is None:
+                sweetspot = qubits[qubit].sweetspot
+            else:
+                sweetspot = platform.qubits[flux_qubit].sweetspot
+            data.register_qubit(
+                qubit,
+                flux_qubit,
+                msr=result.magnitude,
+                phase=result.phase,
+                freq=delta_frequency_range + qd_pulses[qubit].frequency,
+                bias=delta_bias_range + sweetspot,
+            )
 
     return data
 
@@ -187,6 +222,8 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
     Fit frequency as a function of current for the flux qubit spectroscopy
     data (QubitFluxData): data object with information on the feature response at each current point.
     """
+    if isinstance(data, FluxCrosstalkData):
+        return FluxCrosstalkResults()
 
     qubits = data.qubits
     frequency = {}
@@ -310,6 +347,8 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
 
 def _plot(data: QubitFluxData, fit: QubitFluxResults, qubit):
     """Plotting function for QubitFlux Experiment."""
+    if isinstance(data[qubit], dict):
+        return utils.flux_crosstalk_plot(data, fit, qubit)
     return utils.flux_dependence_plot(data, fit, qubit)
 
 
