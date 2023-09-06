@@ -7,5 +7,5 @@ developers.
 .. toctree::
     :maxdepth: 2
 
-    general
     contributing
+    new_protocol

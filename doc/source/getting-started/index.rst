@@ -13,5 +13,5 @@ your quantum hardware.
     runcard
     autoruncard
     niGSC/niGSC_and_standardrb
-    resonator_sample/resonator_spectroscopy_sample
+    protocols
     example
