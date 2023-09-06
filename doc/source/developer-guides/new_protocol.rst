@@ -138,7 +138,7 @@ In the acquisition function we are going to perform the experiment.
         """
 
         # costruct range from RotationParameters
-        angles = np.linspace(params.theta_start, params.theta_end, params.theta_step)
+        angles = np.arange(params.theta_start, params.theta_end, params.theta_step)
         # create data structure
         data = RotationData()
 
@@ -201,15 +201,15 @@ The following function performs a sinusoidal fit for each qubit.
         freqs = {}
         fitted_parameters = {}
 
-        def sin_fit(x, offset, amplitude, omega):
-            return offset + amplitude * np.sin(omega*x)
+        def cos_fit(x, offset, amplitude, omega):
+            return offset + amplitude * np.cos(omega*x)
 
         for qubit in qubits:
             qubit_data = data[qubit]
             thetas = qubit_data.theta
             probs = qubit_data.prob
 
-            popt, _ = curve_fit(sin_fit, thetas, probs)
+            popt, _ = curve_fit(cos_fit, thetas, probs)
 
             freqs[qubit] = popt[2] / 2*np.pi
             fitted_parameters[qubit]=popt.tolist()
@@ -278,7 +278,7 @@ Here is the plotting function for the protocol that we are coding:
         fig.add_trace(
             go.Scatter(
                 x=qubit_data.theta,
-                y=sin_fit(
+                y=cos_fit(
                     qubit_data.theta,
                     *fit.fitted_parameters[qubit],
                 ),
@@ -323,7 +323,7 @@ to the ``Operation`` `Enum` in `src/qibocal/protocols/characterization/__init__.
 
     class Operation(Enum):
     ### other protocols...
-    rotation = "rotation"
+    rotation = rotation
 
 Write a runcard
 ^^^^^^^^^^^^^^^
@@ -339,7 +339,7 @@ To launch the protocol a possible runcard could be the following one:
 
 
     actions:
-        - id: my rotation
+        - id: rotate
           priority: 0
           operation: rotation
           parameters:
@@ -349,3 +349,8 @@ To launch the protocol a possible runcard could be the following one:
             nshots: 1024
 
 For more information about how to execute runcards see :ref:`runcard`.
+
+Here is the expected output:
+
+
+.. image:: output.png
