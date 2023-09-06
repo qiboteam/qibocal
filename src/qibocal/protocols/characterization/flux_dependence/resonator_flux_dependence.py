@@ -200,7 +200,6 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
             "g": 0,
             "Ec": 0,
             "Ej": 0,
-            "f_q/bare_resonator_frequency": 0,
             "bare_resonator_frequency": 0,
             "f_qs": 0,
             "f_r_offset": 0,
@@ -272,7 +271,6 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 fitted_parameters[qubit] = {
                     "Xi": popt[1],
                     "d": abs(popt[2]),
-                    "f_q/bare_resonator_frequency": popt[3],
                     "g": popt[4],
                     "bare_resonator_frequency": popt[5],
                     "f_qs": f_qs,

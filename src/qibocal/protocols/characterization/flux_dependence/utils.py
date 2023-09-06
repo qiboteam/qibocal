@@ -172,8 +172,6 @@ def flux_dependence_plot(data, fit, qubit):
     for key, value in fit.fitted_parameters[qubit].items():
         if params[key][1] == "GHz":
             value *= HZ_TO_GHZ
-        if key == "f_q/bare_resonator_frequency":
-            pass
         elif key != "d" and value == 0:
             value = "Fitting not successful"
             fitting_report += f"{qubit} | {params[key][0]}: {value}<br>"
