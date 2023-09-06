@@ -33,6 +33,7 @@ from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
 from .resonator_spectroscopy_attenuation import resonator_spectroscopy_attenuation
+from .rotate import rotation
 from .signal_experiments.time_of_flight_readout import time_of_flight_readout
 from .two_qubit_interaction.chevron import chevron
 from .two_qubit_interaction.cz_virtualz import cz_virtualz
@@ -74,3 +75,4 @@ class Operation(Enum):
     zeno = zeno
     twpa_frequency = twpa_frequency
     twpa_power = twpa_power
+    rotate = rotation
