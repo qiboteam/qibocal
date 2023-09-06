@@ -31,7 +31,7 @@ Down below we present how to write a runcard to execute a single protocol using 
 Here is a description of the global parameters to be specified:
     * ``backend``: ``Qibo`` backend, if not provided ``Qibolab`` will be used.
     * ``platform``: QPU where the experiments will be executed. Possible choices
-        for TII users are available in this `repository <https:/https://github.com/qiboteam/qibolab_platforms_qrc>`_.
+        for TII users are available in this `repository <https://github.com/qiboteam/qibolab_platforms_qrc>`_.
         For non-TII users it is possible a setup a custom platform using  `Qibolab <https://qibo.science/qibolab/stable/tutorials/lab.html>`_.
     * ``qubits``: list of qubit names for a specific platform. It can also be a list of qubit pairs
         in the case of protocols for qubit pairs.
