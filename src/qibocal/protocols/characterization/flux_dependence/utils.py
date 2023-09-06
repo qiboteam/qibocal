@@ -7,6 +7,11 @@ from sklearn.linear_model import Ridge
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, V_TO_UV
 
 
+def is_crosstalk(data):
+    """Check if keys are tuple which corresponds to crosstalk data structure."""
+    return all(isinstance(key, tuple) for key in data.data.keys())
+
+
 def create_data_array(freq, bias, msr, phase, dtype):
     """Create custom dtype array for acquired data."""
     size = len(freq) * len(bias)
@@ -187,7 +192,11 @@ def flux_crosstalk_plot(data, fit, qubit):
     figures = []
     fitting_report = None
 
-    all_qubit_data = data[qubit]
+    all_qubit_data = {
+        index: data_qubit
+        for index, data_qubit in data.data.items()
+        if index[0] == qubit
+    }
 
     fig = make_subplots(
         rows=1,
