@@ -40,18 +40,27 @@ class ResonatorFluxParameters(Parameters):
 @dataclass
 class ResonatorFluxResults(Results):
     """ResonatoFlux outputs."""
-
+    #pop[0]
     sweetspot: dict[QubitId, float] = field(metadata=dict(update="sweetspot"))
     """Sweetspot for each qubit."""
     frequency: dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
     """Readout frequency for each qubit."""
     #TODO: add a dict per each fitted popt coeff (asymmetry, Ec, Ej, g)
+    
+    #popt[0] = ss
+    #popt[1] = Xi
+    #popt[2] = asimmetry
+    #popt[3] = asimmetry
+    #popt[4] = asimmetry
+    #popt[5] = Ec
+    #popt[6] = Ej
+
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
-    resonator_polycoef_flux: dict[QubitId, List[float]] = field(
-        metadata=dict(update="resonator_polycoef_flux")
-    )
-    """Optimal coeficents for flux curve fited for each qubit."""
+    # resonator_polycoef_flux: dict[QubitId, List[float]] = field(
+    #     metadata=dict(update="resonator_polycoef_flux")
+    # )
+    # """Optimal coeficents for flux curve fited for each qubit."""
 
 
 ResFluxType = np.dtype(
