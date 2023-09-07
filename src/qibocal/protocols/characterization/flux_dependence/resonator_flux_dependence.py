@@ -45,6 +45,7 @@ class ResonatorFluxResults(Results):
     """Sweetspot for each qubit."""
     frequency: dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
     """Readout frequency for each qubit."""
+    #TODO: add a dict per each fitted popt coeff (asymmetry, Ec, Ej, g)
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
     resonator_polycoef_flux: dict[QubitId, List[float]] = field(
@@ -261,6 +262,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                     maxfev=2000000,
                 )[0]
 
+                #TODO: save each popt value as single qubit attribute
                 resonator_polycoef_flux[qubit] = popt.tolist()
 
                 popt[4] *= GHZ_TO_HZ
