@@ -111,10 +111,22 @@ actions:
 #     parameters:
 #       freq_width: 10_000_000
 #       freq_step: 1_000_000
-#       bias_width: 0.8 #0.1
-#       bias_step:  0.1 # 0.001
+#       bias_width: 0.8
+#       bias_step:  0.1
 #       drive_amplitude: 0.005
 #       nshots: 10
+
+#   - id: qubit flux dependence tracking
+#     priority: 0
+#     operation: qubit_flux_tracking
+#     parameters:
+#       freq_width: 150_000_000
+#       freq_step: 500_000
+#       bias_width: 0.2
+#       bias_step:  0.005      
+#       nshots: 1024
+#       relaxation_time: 2000
+#       transition: "01"
 
 
 #   - id: rabi
