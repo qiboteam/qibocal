@@ -46,7 +46,7 @@ extensions = [
     "recommonmark",
     "sphinx.ext.viewcode",
     "sphinx.ext.todo",
-    "sphinx.ext.copy_button",
+    "sphinx_copybutton",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
