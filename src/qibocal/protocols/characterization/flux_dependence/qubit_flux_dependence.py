@@ -101,13 +101,14 @@ class QubitFluxData(Data):
         size = len(freq)
         ar = np.empty(size, dtype=QubitFluxType)
         ar["freq"] = freq
-        ar["bias"] = [bias] * size #np.repeat(bias, size)
+        ar["bias"] = [bias] * size  # np.repeat(bias, size)
         ar["msr"] = msr
         ar["phase"] = phase
         if qubit in self.data:
             self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
         else:
-            self.data[qubit] = np.rec.array(ar)        
+            self.data[qubit] = np.rec.array(ar)
+
 
 def _acquisition(
     params: QubitFluxParameters,
@@ -201,16 +202,18 @@ def _acquisition(
         for bias in delta_bias_range:
             for qubit in qubits:
                 # using resonator_polycoef_flux, obtain estimated resonator freq from function utils.freq_r_trasmon or utils.freq_r_matheu
-                freq_resonator = utils.get_resonator_freq_flux(bias, qubits[qubit].resonator_polycoef_flux)
-                #print(freq_resonator)
+                freq_resonator = utils.get_resonator_freq_flux(
+                    bias, qubits[qubit].resonator_polycoef_flux
+                )
+                # print(freq_resonator)
 
                 # modify qubit resonator frequency
                 qubits[qubit].readout_frequency = freq_resonator
 
                 # modify qubit flux
                 qubits[qubit].flux = bias + qubits[qubit].sweetspot
-                
-                #execute pulse sequence sweeping only qubit resonator
+
+                # execute pulse sequence sweeping only qubit resonator
                 results = platform.sweep(
                     sequence,
                     ExecutionParameters(
@@ -230,7 +233,10 @@ def _acquisition(
                     msr=result.magnitude,
                     phase=result.phase,
                     freq=delta_frequency_range + qd_pulses[qubit].frequency,
-                    bias=bias + qubits[qubit].sweetspot, #delta_bias_range + qubits[qubit].sweetspot,
+                    bias=bias
+                    + qubits[
+                        qubit
+                    ].sweetspot,  # delta_bias_range + qubits[qubit].sweetspot,
                 )
 
     return data
