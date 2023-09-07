@@ -54,7 +54,7 @@ class ResonatorFluxResults(Results):
     """flux_to_bias for each qubit."""
     asymmetry: dict[QubitId, float] = field(metadata=dict(update="asymmetry"))
     """asymmetry for each qubit."""
-    Gs: dict[QubitId, float] = field(metadata=dict(update="readout_coupling"))
+    Gs: dict[QubitId, int] = field(metadata=dict(update="readout_coupling"))
     """readout_coupling for each qubit."""
     brf: dict[QubitId, float] = field(metadata=dict(update="brf"))
     """bare_resonator_frequency for each qubit."""
