@@ -330,5 +330,5 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, qubit):
     return utils.flux_dependence_plot(data, fit, qubit)
 
 
-qubit_flux = Routine(_acquisition, _fit, _plot)
+qubit_flux_tracking = Routine(_acquisition, _fit, _plot)
 """QubitFlux Routine object."""

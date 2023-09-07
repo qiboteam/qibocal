@@ -14,6 +14,7 @@ from .dispersive_shift import dispersive_shift
 from .fast_reset.fast_reset import fast_reset
 from .flipping import flipping
 from .flux_dependence.qubit_flux_dependence import qubit_flux
+from .flux_dependence.qubit_flux_tracking import qubit_flux_tracking
 from .flux_dependence.resonator_flux_dependence import resonator_flux
 from .qubit_spectroscopy import qubit_spectroscopy
 from .rabi.amplitude import rabi_amplitude
@@ -43,6 +44,7 @@ class Operation(Enum):
     resonator_flux = resonator_flux
     qubit_spectroscopy = qubit_spectroscopy
     qubit_flux = qubit_flux
+    qubit_flux_tracking = qubit_flux_tracking
     rabi_amplitude = rabi_amplitude
     rabi_length = rabi_length
     rabi_length_sequences = rabi_length_sequences
