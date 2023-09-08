@@ -38,13 +38,6 @@ class Task:
         if len(self.qubits) == 0:
             self.qubits = self.action.qubits
 
-    @classmethod
-    def load(cls, card: dict):
-        """Loading action from Runcard."""
-        descr = Action(**card)
-
-        return cls(action=descr)
-
     @property
     def id(self) -> Id:
         """Task Id."""
