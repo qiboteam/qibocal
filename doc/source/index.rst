@@ -7,6 +7,14 @@ What is Qibocal?
 Qibocal is a python module that implements Quatum Characterization Validation and Verification using
 `Qibo <https://github.com/qiboteam/qibo>`_ and `Qibolab <https://github.com/qiboteam/qibolab>`_.
 
+
+Protocols
+---------
+
+Here is a scheme with the protocols currently available in Qibocal:
+
+.. image:: getting-started/qpu_characterization.svg
+
 Key features
 ------------
 
