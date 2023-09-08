@@ -16,10 +16,6 @@ from qibocal.config import log
 
 from .utils import V_TO_UV
 
-ZERO_PHASE_THRESHOLD = 1e-6
-"""Threshold to estimate the sign of the correction."""
-THRESHOLD = 1
-
 
 @dataclass
 class FlippingParameters(Parameters):
