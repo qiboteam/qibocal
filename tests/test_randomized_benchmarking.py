@@ -168,7 +168,7 @@ def test_random_clifford(qubits, seed):
     result = result_single if (isinstance(qubits, int) and qubits == 1) else result_two
 
     gates = random_clifford(qubits, seed=seed)
-    matrix = reduce(np.kron, [gate.matrix() for gate in gates])
+    matrix = reduce(np.kron, [gate.matrix for gate in gates])
     assert np.allclose(matrix, result)
 
 
