@@ -18,6 +18,7 @@ from .utils import V_TO_UV
 
 ZERO_PHASE_THRESHOLD = 1e-6
 """Threshold to estimate the sign of the correction."""
+THRESHOLD = 1
 
 
 @dataclass
@@ -134,8 +135,8 @@ def _acquisition(
     return data
 
 
-def flipping_fit(x, offset, amplitude, omega, phase):
-    return np.sin(x * omega + phase) * amplitude + offset
+def flipping_fit(x, offset, amplitude, omega, phase, gamma):
+    return np.sin(x * omega + phase) * amplitude * np.exp(-x * gamma) + offset
 
 
 def _fit(data: FlippingData) -> FlippingResults:
@@ -154,24 +155,29 @@ def _fit(data: FlippingData) -> FlippingResults:
     for qubit in qubits:
         qubit_data = data[qubit]
         pi_pulse_amplitude = data.pi_pulse_amplitudes[qubit]
-        voltages = qubit_data.msr * V_TO_UV
+        voltages = qubit_data.msr
         flips = qubit_data.flips
         y_min = np.min(voltages)
+        # Guessing period using Fourier transform
+        ft = np.fft.rfft(voltages)
+        # Remove the zero frequency mode
+        mags = abs(ft)[1:]
+        local_maxima = find_peaks(mags, height=0)
+        peak_heights = local_maxima[1]["peak_heights"]
+        # Select the frequency with the highest peak
+        index = (
+            int(local_maxima[0][np.argmax(peak_heights)] + 1)
+            if len(local_maxima[0]) > 0
+            else None
+        )
+        f = flips[index] / (flips[1] - flips[0]) if index is not None else 1
         y_max = np.max(voltages)
         x_min = np.min(flips)
         x_max = np.max(flips)
-        x = (flips - x_min) / (x_max - x_min)
+        x = (flips - x_min) * 2 * np.pi * f / (x_max - x_min)
         y = (voltages - y_min) / (y_max - y_min)
 
-        # Guessing period using fourier transform
-        ft = np.fft.rfft(y)
-        mags = abs(ft)
-        local_maxima = find_peaks(mags, threshold=10)[0]
-        index = local_maxima[0] if len(local_maxima) > 0 else None
-        # 0.5 hardcoded guess for less than one oscillation
-        f = x[index] / (x[1] - x[0]) if index is not None else 0.5
-        pguess = [0.5, 1, f, np.pi / 2]
-
+        pguess = [0.5, 0.5, 1, np.pi, 0]
         try:
             popt, _ = curve_fit(
                 flipping_fit,
@@ -180,33 +186,30 @@ def _fit(data: FlippingData) -> FlippingResults:
                 p0=pguess,
                 maxfev=2000000,
                 bounds=(
-                    [0, 0, 0, -2 * np.pi],
-                    [1, 1, np.inf, 2 * np.pi],
+                    [0, 0, -np.inf, 0, 0],
+                    [1, np.inf, np.inf, 2 * np.pi, np.inf],
                 ),
             )
-
         except:
             log.warning("flipping_fit: the fitting was not succesful")
             popt = [0, 0, 0, 0]
 
         translated_popt = [
             y_min + (y_max - y_min) * popt[0],
-            (y_max - y_min) * popt[1],
-            popt[2] / (x_max - x_min),
-            popt[3] - x_min / (x_max - x_min) * popt[2],
+            (y_max - y_min)
+            * popt[1]
+            * np.exp(x_min * popt[4] * 2 * np.pi * f / (x_max - x_min)),
+            popt[2] * 2 * np.pi * f / (x_max - x_min),
+            popt[3] - x_min * 2 * np.pi * f / (x_max - x_min) * popt[2],
+            popt[4] * 2 * np.pi * f / (x_max - x_min),
         ]
-
-        unsigned_correction = translated_popt[2] / 2
-        # check if the sin has a phase zero or pi to
-        # determine the sign of the correction
-        signed_correction = (
-            unsigned_correction
-            if translated_popt[3] < ZERO_PHASE_THRESHOLD
-            else -unsigned_correction
-        )
-
-        corrected_amplitudes[qubit] = (
-            signed_correction / np.pi * pi_pulse_amplitude + pi_pulse_amplitude
+        if popt[3] > np.pi / 2 and popt[3] < 3 * np.pi / 2:
+            signed_correction = -translated_popt[2] / 2
+        else:
+            signed_correction = translated_popt[2] / 2
+        # The amplitude is directly proportional to the rotation angle
+        corrected_amplitudes[qubit] = (pi_pulse_amplitude * np.pi) / (
+            np.pi + signed_correction
         )
         fitted_parameters[qubit] = translated_popt
         amplitude_correction_factors[qubit] = (
@@ -253,7 +256,9 @@ def _plot(data: FlippingData, fit: FlippingResults, qubit):
                 float(fit.fitted_parameters[qubit][1]),
                 float(fit.fitted_parameters[qubit][2]),
                 float(fit.fitted_parameters[qubit][3]),
-            ),
+                float(fit.fitted_parameters[qubit][4]),
+            )
+            * V_TO_UV,
             name="Fit",
             line=go.scatter.Line(dash="dot"),
         ),
