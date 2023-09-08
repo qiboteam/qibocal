@@ -326,19 +326,3 @@ actions:
 #       n_bootstrap: 10
 #       noise_model: PauliErrorOnX
 #       noise_params: [0.01, 0.01, 0.01]
-
-
-#   - id: twpa
-#     priority: 0
-#     operation: twpa_frequency
-#     main: twpa_power
-#     parameters:
-#       frequency_width: 20_000_000
-#       frequency_step: 2_000_000
-
-#   - id: twpa_power
-#     priority: 0
-#     operation: twpa_power
-#     parameters:
-#       power_width: 10
-#       power_step: 1
