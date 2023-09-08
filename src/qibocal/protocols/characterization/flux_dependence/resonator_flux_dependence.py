@@ -54,15 +54,15 @@ class ResonatorFluxResults(Results):
     """flux_to_bias for each qubit."""
     asymmetry: dict[QubitId, float] = field(metadata=dict(update="asymmetry"))
     """asymmetry for each qubit."""
-    Gs: dict[QubitId, int] = field(metadata=dict(update="readout_coupling"))
+    Gs: dict[QubitId, float] = field(metadata=dict(update="readout_coupling"))
     """readout_coupling for each qubit."""
     brf: dict[QubitId, float] = field(metadata=dict(update="brf"))
     """bare_resonator_frequency for each qubit."""
     ssf_brf: dict[QubitId, float] = field(metadata=dict(update="ssf_brf"))
     """sweetspot_qubit_frequency/bare_resonator_frequency for each qubit."""
-    ECs: dict[QubitId, int] = field(metadata=dict(update="Ec"))
+    ECs: dict[QubitId, float] = field(metadata=dict(update="Ec"))
     """Ec for each qubit."""
-    EJs: dict[QubitId, int] = field(metadata=dict(update="Ej"))
+    EJs: dict[QubitId, float] = field(metadata=dict(update="Ej"))
     """Ej for each qubit."""
 
     # New fitted parameters added in the runcard
@@ -110,13 +110,13 @@ class ResonatorFluxData(Data):
     resonator_type: str
 
     """ResonatorFlux acquisition outputs."""
-    Ec: dict[QubitId, int] = field(default_factory=dict)
+    Ec: dict[QubitId, float] = field(default_factory=dict)
     """Qubit Ec provided by the user."""
 
-    Ej: dict[QubitId, int] = field(default_factory=dict)
+    Ej: dict[QubitId, float] = field(default_factory=dict)
     """Qubit Ej provided by the user."""
 
-    g: dict[QubitId, int] = field(default_factory=dict)
+    g: dict[QubitId, float] = field(default_factory=dict)
     """Qubit g provided by the user."""
 
     bare_resonator_frequency: dict[QubitId, int] = field(default_factory=dict)

@@ -83,10 +83,10 @@ class QubitFluxData(Data):
     resonator_type: str
 
     """ResonatorFlux acquisition outputs."""
-    Ec: dict[QubitId, int] = field(default_factory=dict)
+    Ec: dict[QubitId, float] = field(default_factory=dict)
     """Qubit Ec provided by the user."""
 
-    Ej: dict[QubitId, int] = field(default_factory=dict)
+    Ej: dict[QubitId, float] = field(default_factory=dict)
     """Qubit Ej provided by the user."""
 
     data: dict[QubitId, npt.NDArray[QubitFluxType]] = field(default_factory=dict)

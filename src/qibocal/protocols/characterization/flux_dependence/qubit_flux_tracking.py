@@ -12,7 +12,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.config import log
+from qibocal.config import log, raise_error
 
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ
 from . import utils
@@ -154,19 +154,23 @@ def _acquisition(
     data = QubitFluxData(resonator_type=platform.resonator_type, Ec=Ec, Ej=Ej)
 
     for bias in delta_bias_range:
-        for qubit in qubits:
-            
-            #TODO: Obtain estimated resonator freq from function utils.freq_r_trasmon or utils.freq_r_matheu
-            freq_resonator = utils.get_resonator_freq_flux(
-                bias, qubits[qubit].sweetspot, qubits[qubit].flux_to_bias, qubits[qubit].asymmetry, 
-                qubits[qubit].g, qubits[qubit].brf, qubits[qubit].ssf_brf, qubits[qubit].Ec, qubits[qubit].Ej
-            )
-            # print(freq_resonator)
-            
-            # modify qubit resonator frequency
-            qubits[qubit].readout_frequency = freq_resonator
-
+        for qubit in qubits:       
+            try:
+                freq_resonator = utils.get_resonator_freq_flux(
+                    bias, qubits[qubit].sweetspot, qubits[qubit].flux_to_bias, qubits[qubit].asymmetry, 
+                    qubits[qubit].g, qubits[qubit].brf, qubits[qubit].ssf_brf, qubits[qubit].Ec, qubits[qubit].Ej
+                )
+                # modify qubit resonator frequency
+                qubits[qubit].readout_frequency = freq_resonator
+            except:
+                raise_error
+                (
+                    RuntimeError,
+                    "qubit_flux_track: Not enough parameters to estimate the resonator freq for the given bias. Please run resonator spectroscopy flux and update the runcard"
+                )   
+                            
             # modify qubit flux
+            # TODO: Check if this works in all drivers
             qubits[qubit].flux = bias + qubits[qubit].sweetspot
 
             # execute pulse sequence sweeping only qubit resonator

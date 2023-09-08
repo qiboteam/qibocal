@@ -463,6 +463,10 @@ def image_to_curve(x, y, z, msr_mask=0.5, alpha=1e-5, order=50):
     return y_pred, x_pred
 
 def get_resonator_freq_flux(bias, sweetspot, flux_to_bias, asymmetry, g, brf, ssf_brf, Ec, Ej):
+    
+    if( flux_to_bias == 0.0 or asymmetry == 0.0 or g == 0.0 or brf == 0.0 or Ec == 0.0 or Ej == 0.0 ):
+        raise ValueError("Not enough parameters to estimate the resonator frequency for the given bias")
+
     if ssf_brf == 0:
         # First order approximation used during resonator flux fitting
             #   'sweetspot_0':p0, 
@@ -480,8 +484,6 @@ def get_resonator_freq_flux(bias, sweetspot, flux_to_bias, asymmetry, g, brf, ss
             g,
             brf,
         )
-        return freq_resonator
-
     else:
         # Second order approximation used during resonator flux fitting
             #   'sweetspot_0':p2, 
@@ -501,4 +503,5 @@ def get_resonator_freq_flux(bias, sweetspot, flux_to_bias, asymmetry, g, brf, ss
             Ec,
             Ej,
         )
-        return freq_resonator
+
+    return freq_resonator
