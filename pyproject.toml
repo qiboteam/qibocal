@@ -16,7 +16,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.12"
-qibolab = { git = "https://github.com/qiboteam/qibolab.git", branch = "main" }
+qibolab = "^0.1.0"
 qibo = "^0.2.0"
 numpy = "^1.24.0"
 scipy = "^1.10.1"
