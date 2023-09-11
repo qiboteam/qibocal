@@ -27,8 +27,6 @@ from .ramsey_sequences import ramsey_sequences
 from .randomized_benchmarking.standard_rb import standard_rb
 from .readout_characterization import readout_characterization
 from .readout_optimization.resonator_frequency import resonator_frequency
-from .readout_optimization.twpa_calibration.frequency import twpa_frequency
-from .readout_optimization.twpa_calibration.power import twpa_power
 from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
@@ -72,5 +70,3 @@ class Operation(Enum):
     resonator_frequency = resonator_frequency
     fast_reset = fast_reset
     zeno = zeno
-    twpa_frequency = twpa_frequency
-    twpa_power = twpa_power

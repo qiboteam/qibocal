@@ -25,11 +25,7 @@ from .runcard import Action, Id
 from .status import Normal, Status
 
 MAX_PRIORITY = int(1e9)
-"""A number bigger than whatever will be manually typed.
-
-But not so insanely big not to fit in a native integer.
-
-"""
+"""A number bigger than whatever will be manually typed. But not so insanely big not to fit in a native integer."""
 
 TaskId = tuple[Id, int]
 """Unique identifier for executed tasks."""
