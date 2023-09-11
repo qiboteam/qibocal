@@ -428,7 +428,7 @@ def fitting(x: list, y: list) -> list:
         x,
         y,
         p0=p0,
-        maxfev=2000000,
+        maxfev=5000,
         bounds=(
             [0, 0, 0, -np.pi, 0],
             [1, 1, np.inf, np.pi, np.inf],
