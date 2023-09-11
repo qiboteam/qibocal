@@ -249,7 +249,7 @@ actions:
       n_osc: 0
       nshots: 1024
 
-  - id: ramsey
+  - id: ramsey with bootstrap
     priority: 0
     operation: ramsey
     parameters:
