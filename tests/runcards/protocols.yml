@@ -218,7 +218,7 @@ actions:
       n_osc: 10
       nshots: 10
 
-  - id: ramsey detuned sequences
+  - id: ramsey detuned sequences with bootstrap
     priority: 0
     operation: ramsey_sequences
     parameters:
