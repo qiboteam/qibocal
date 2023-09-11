@@ -283,7 +283,7 @@ def _fit(data: RamseyData) -> RamseyResults:
             try:
                 popt = fitting(waits, msrs)
             except:
-                popt = [0, 0, 0, 1, 0]
+                popt = [0, 0, 0, 0, 1]
             delta_fitting = popt[2] / (2 * np.pi)
             delta_phys = data.detuning_sign * int(
                 (delta_fitting - data.n_osc / data.t_max) * GHZ_TO_HZ
