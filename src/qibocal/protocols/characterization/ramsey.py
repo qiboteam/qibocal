@@ -280,8 +280,10 @@ def _fit(data: RamseyData) -> RamseyResults:
 
         else:
             msrs = np.reshape(msrs, (len(waits))) * V_TO_UV
-            popt = fitting(waits, msrs)
-
+            try:
+                popt = fitting(waits, msrs)
+            except:
+                popt = [0, 0, 0, 1, 0]
             delta_fitting = popt[2] / (2 * np.pi)
             delta_phys = data.detuning_sign * int(
                 (delta_fitting - data.n_osc / data.t_max) * GHZ_TO_HZ
