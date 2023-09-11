@@ -19,11 +19,7 @@ from .operation import (
 from .runcard import Action, Id
 
 MAX_PRIORITY = int(1e9)
-"""A number bigger than whatever will be manually typed.
-
-But not so insanely big not to fit in a native integer.
-
-"""
+"""A number bigger than whatever will be manually typed. But not so insanely big not to fit in a native integer."""
 
 TaskId = tuple[Id, int]
 """Unique identifier for executed tasks."""
@@ -41,13 +37,6 @@ class Task:
     def __post_init__(self):
         if len(self.qubits) == 0:
             self.qubits = self.action.qubits
-
-    @classmethod
-    def load(cls, card: dict):
-        """Loading action from Runcard."""
-        descr = Action(**card)
-
-        return cls(action=descr)
 
     @property
     def id(self) -> Id:

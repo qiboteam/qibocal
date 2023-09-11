@@ -10,6 +10,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
+from scipy.signal import find_peaks
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.bootstrap import bootstrap
@@ -280,6 +281,7 @@ def _fit(data: RamseyData) -> RamseyResults:
         else:
             msrs = np.reshape(msrs, (len(waits))) * V_TO_UV
             popt = fitting(waits, msrs)
+
             delta_fitting = popt[2] / (2 * np.pi)
             delta_phys = data.detuning_sign * int(
                 (delta_fitting - data.n_osc / data.t_max) * GHZ_TO_HZ
@@ -408,8 +410,10 @@ def fitting(x: list, y: list) -> list:
     ft = np.fft.rfft(y)
     freqs = np.fft.rfftfreq(len(y), x[1] - x[0])
     mags = abs(ft)
-    index = np.argmax(mags) if np.argmax(mags) != 0 else np.argmax(mags[1:]) + 1
-    f = freqs[index] * 2 * np.pi
+    local_maxima = find_peaks(mags, threshold=10)[0]
+    index = local_maxima[0] if len(local_maxima) > 0 else None
+    # 0.5 hardcoded guess for less than one oscillation
+    f = freqs[index] * 2 * np.pi if index is not None else 0.5
     p0 = [
         0.5,
         0.5,
