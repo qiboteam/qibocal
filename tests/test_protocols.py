@@ -27,11 +27,12 @@ def idfn(val):
     return val["actions"][0]["id"]
 
 
+@pytest.mark.parametrize("update", [True, False])
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
-def test_action_builder(runcard):
+def test_action_builder(runcard, update):
     """Test ActionBuilder for all protocols."""
     path = pathlib.Path(tempfile.mkdtemp())
-    autocalibrate(runcard, path, force=True, update=False)
+    autocalibrate(runcard, path, force=True, update=update)
     report(path)
 
 

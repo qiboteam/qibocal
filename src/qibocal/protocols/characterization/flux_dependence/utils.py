@@ -6,6 +6,19 @@ from sklearn.linear_model import Ridge
 
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, V_TO_UV
 
+FLUX_PARAMETERS = {
+    "Xi": ["Constant to map flux to bias", "V"],
+    "d": ["Junction asymmetry d", "(1)"],
+    "Ec": ["Charge energy Ec", "GHz"],
+    "Ej": ["Josephson energy Ej", "GHz"],
+    "f_q_offset": ["Qubit frequency offset", "GHz"],
+    "C_ii": ["Flux matrix element C_ii", "GHz/V"],
+    "g": ["Readout coupling", "(1)"],
+    "bare_resonator_frequency": ["Bare resonator frequency", "GHz"],
+    "f_qs": ["Qubit frequency", "GHz"],
+    "f_r_offset": ["Resonator frequency offset", "GHz"],
+}
+
 
 def is_crosstalk(data):
     """Check if keys are tuple which corresponds to crosstalk data structure."""
@@ -148,27 +161,16 @@ def flux_dependence_plot(data, fit, qubit):
             else:
                 fitting_report += f"{qubit} | Sweetspot: Fitting not successful<br>"
 
-            params = {
-                "Xi": ["Constant to map flux to bias", "V"],
-                "d": ["Junction asymmetry d", "(1)"],
-                "Ec": ["Charge energy Ec", "GHz"],
-                "Ej": ["Josephson energy Ej", "GHz"],
-                "f_q_offset": ["Qubit frequency offset", "GHz"],
-                "C_ii": ["Flux matrix element C_ii", "GHz/V"],
-                "g": ["Readout coupling", "(1)"],
-                "bare_resonator_frequency": ["Bare resonator frequency", "GHz"],
-                "f_qs": ["Qubit frequency", "GHz"],
-                "f_r_offset": ["Resonator frequency offset", "GHz"],
-            }
-
             for key, value in fit.fitted_parameters[qubit].items():
-                if params[key][1] == "GHz":
+                if FLUX_PARAMETERS[key][1] == "GHz":
                     value *= HZ_TO_GHZ
                 elif key != "d" and value == 0:
                     value = "Fitting not successful"
-                    fitting_report += f"{qubit} | {params[key][0]}: {value}<br>"
+                    fitting_report += (
+                        f"{qubit} | {FLUX_PARAMETERS[key][0]}: {value}<br>"
+                    )
                 else:
-                    fitting_report += f"{qubit} | {params[key][0]}: {float(value):,.3f} {params[key][1]}<br>"
+                    fitting_report += f"{qubit} | {FLUX_PARAMETERS[key][0]}: {float(value):,.3f} {FLUX_PARAMETERS[key][1]}<br>"
 
             fitting_report += "<br>"
 
