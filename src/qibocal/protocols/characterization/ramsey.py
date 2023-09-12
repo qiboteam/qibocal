@@ -358,7 +358,7 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
             )
         )
         fitting_report = (
-            fitting_report
+            ""
             + (
                 fill_table(
                     qubit,
