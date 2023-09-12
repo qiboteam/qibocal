@@ -1,15 +1,22 @@
 from colorsys import hls_to_rgb
 from enum import Enum
+from math import floor, log10
+from typing import Optional
 
 import lmfit
 import numpy as np
+import numpy.typing as npt
 import plotly.graph_objects as go
 from numba import njit
 from plotly.subplots import make_subplots
+from qibolab.qubits import QubitId
 from scipy.stats import mode
 
 from qibocal.auto.operation import Data, Results
 from qibocal.config import log
+from qibocal.protocols.characterization.randomized_benchmarking.utils import (
+    significant_digit,
+)
 
 GHZ_TO_HZ = 1e9
 HZ_TO_GHZ = 1e-9
@@ -257,6 +264,55 @@ def fit_punchout(data: Data, fit_type: str):
         high_freqs[qubit] = freq_hp[0] * HZ_TO_GHZ
         ro_values[qubit] = ro_val
     return [low_freqs, high_freqs, ro_values]
+
+
+def fill_table(
+    qubit: QubitId,
+    name: str,
+    value: float,
+    error: Optional[float],
+    unit: str = None,
+    ndigits: int = 2,
+) -> str:
+    """
+    Return a row of the report table with the correct number of
+    significant digits.
+
+    Args:
+        qubit (QubitId): Qubit.
+        name (str): Variable's name.
+        value (float): Variable's value.
+        error (float): Error associated to the variable.
+        unit (str): Measurement unit. Default value `None`.
+        ndigits (int): Number of decimal digits to display when error is `None`
+            (i.e. it is not evaluated).
+    """
+    table = f"{qubit}| {name}: "
+    if value:
+        magnitude = floor(log10(abs(value)))  # number of non decimal digits in value
+    else:
+        magnitude = 0
+    if error:
+        ndigits = max(significant_digit(error * 10 ** (-1 * magnitude)), 0)
+        table += f"({round(value*10**(-1*magnitude), ndigits)} {chr(177)} {np.format_float_positional(round(error*10**(-1*magnitude), ndigits), trim = '-')})"
+    else:
+        table += f"{round(value*10**(-1* magnitude), ndigits)}"
+    if magnitude != 0:
+        table += f"* 10^{magnitude}"
+    table += f" {unit} <br>" if unit else f"<br>"
+    return table
+
+
+def chi2_reduced(
+    observed: npt.NDArray,
+    estimated: npt.NDArray,
+    errors: npt.NDArray,
+    dof: float = None,
+):
+    if dof is None:
+        dof = len(observed) - 1
+
+    return np.sum(np.square((observed - estimated) / errors)) / dof
 
 
 def get_color_state0(number):

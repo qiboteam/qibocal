@@ -61,6 +61,8 @@ class Parameters:
     """Number of executions on hardware"""
     relaxation_time: float
     """Wait time for the qubit to decohere back to the `gnd` state"""
+    nboot: int
+    """Number of bootstrap samples"""
 
     @classmethod
     def load(cls, parameters):
@@ -74,7 +76,10 @@ class Parameters:
             the linked outputs
 
         """
-        return cls(**parameters)
+        nboot = parameters.pop("nboot", 0)
+        par = cls(**parameters)
+        par.nboot = nboot
+        return par
 
 
 class Data:
