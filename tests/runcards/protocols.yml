@@ -248,6 +248,17 @@ actions:
       n_osc: 2
       nshots: 10
 
+  - id: ramsey detuned sequences with bootstrap
+    priority: 0
+    operation: ramsey_sequences
+    parameters:
+      delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
+      delay_between_pulses_end: 5000
+      delay_between_pulses_step: 500 # must be a multiple of 4
+      n_osc: 10
+      nshots: 1024
+      nboot: 2
+
   - id: ramsey detuned sequences
     priority: 0
     operation: ramsey_sequences
@@ -266,8 +277,18 @@ actions:
       delay_between_pulses_end: 20
       delay_between_pulses_step: 1
       n_osc: 0
-      nshots: 10
+      nshots: 1024
 
+  - id: ramsey with bootstrap
+    priority: 0
+    operation: ramsey
+    parameters:
+      delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
+      delay_between_pulses_end: 5000
+      delay_between_pulses_step: 500 # must be a multiple of 4
+      n_osc: 0
+      nshots: 1024
+      nboot: 2
 
   - id: single shot classification
     priority: 0
@@ -417,3 +438,19 @@ actions:
     operation: fast_reset
     parameters:
       nshots: 1024
+
+  - id: twpa frequency
+    priority: 0
+    operation: twpa_frequency
+    parameters:
+      nshots: 10
+      frequency_width: 1_000_000
+      frequency_step: 100_000
+
+  - id: twpa power
+    priority: 0
+    operation: twpa_power
+    parameters:
+      nshots: 10
+      power_width: 10
+      power_step: 1
