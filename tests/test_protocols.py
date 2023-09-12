@@ -26,9 +26,10 @@ def idfn(val):
 
 
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
-def test_builder(runcard):
+@pytest.mark.parametrize("update", [True, False])
+def test_builder(runcard, update):
     """Test possible update combinations between global and local."""
-    builder = ActionBuilder(runcard, tempfile.mkdtemp(), force=True, update=True)
+    builder = ActionBuilder(runcard, tempfile.mkdtemp(), force=True, update=update)
     builder.run()
     builder.dump_platform_runcard()
     builder.dump_report()
