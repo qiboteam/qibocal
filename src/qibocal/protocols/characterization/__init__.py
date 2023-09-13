@@ -26,6 +26,7 @@ from .ramsey import ramsey
 from .ramsey_sequences import ramsey_sequences
 from .randomized_benchmarking.standard_rb import standard_rb
 from .readout_characterization import readout_characterization
+from .readout_optimization.amplitude import ro_amplitude
 from .readout_optimization.resonator_frequency import resonator_frequency
 from .readout_optimization.twpa_calibration.frequency import twpa_frequency
 from .readout_optimization.twpa_calibration.power import twpa_power
@@ -74,3 +75,4 @@ class Operation(Enum):
     zeno = zeno
     twpa_frequency = twpa_frequency
     twpa_power = twpa_power
+    ro_amplitude = ro_amplitude
