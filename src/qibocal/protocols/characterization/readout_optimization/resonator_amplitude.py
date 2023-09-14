@@ -83,7 +83,7 @@ def _acquisition(
 ) -> ResonatorAmplitudeData:
     r"""
     Data acquisition for resoantor amplitude optmization.
-    This protocol perform a classification protocol for twpa powers
+    This protocol perform a classification protocol for amplitude optimization
     with step amplitude_step.
 
     Args:
@@ -92,7 +92,7 @@ def _acquisition(
         qubits (dict): dict of target :class:`Qubit` objects to be characterized
 
     Returns:
-        data (:class:`TwpaFrequencyData`)
+        data (:class:`ResonatorAmplitudeData`)
     """
 
     data = ResonatorAmplitudeData()
@@ -172,7 +172,7 @@ def _fit(data: ResonatorAmplitudeData) -> ResonatorAmplitudeResults:
 
 
 def _plot(data: ResonatorAmplitudeData, fit: ResonatorAmplitudeResults, qubit):
-    """Plotting function for Optimization RO frequency."""
+    """Plotting function for Optimization RO amplitude."""
     figures = []
     opacity = 1
     fitting_report = None
@@ -210,4 +210,4 @@ def _plot(data: ResonatorAmplitudeData, fit: ResonatorAmplitudeResults, qubit):
 
 
 resonator_amplitude = Routine(_acquisition, _fit, _plot)
-"""Twpa power Routine  object."""
+"""Resonator Amplitude Routine  object."""
