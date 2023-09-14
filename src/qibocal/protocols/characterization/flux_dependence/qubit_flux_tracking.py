@@ -177,8 +177,8 @@ def _acquisition(
                 )
 
             # modify qubit flux
-            # TODO: Check if this works in all drivers
-            qubits[qubit].flux = bias + qubits[qubit].sweetspot
+            qubits[qubit].flux.offset = bias
+            # qubits[qubit].flux = bias + qubits[qubit].sweetspot
 
             # execute pulse sequence sweeping only qubit resonator
             results = platform.sweep(
