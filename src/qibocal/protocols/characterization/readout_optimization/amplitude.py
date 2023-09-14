@@ -1,4 +1,3 @@
-import copy
 from dataclasses import dataclass, field
 from os import error
 from typing import Optional
@@ -15,8 +14,8 @@ from qibolab.qubits import QubitId
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.fitting.classifier.qubit_fit import QubitFit
 
-MAXITER = 50
-ERROR_THRESHOLD = 0.03
+MAXITER = 10
+ERROR_THRESHOLD = 0.003
 
 
 @dataclass
@@ -97,13 +96,14 @@ def _acquisition(
     """
 
     data = RoAmplitudeData()
-    platform_copy = copy.deepcopy(platform)
     for qubit in qubits:
         errors = []
         n = 0
         error = 1
-        while error < ERROR_THRESHOLD or n <= MAXITER:
-            platform_copy.qubits[qubit].readout.amplitude = (
+        old_amp = platform.qubits[qubit].native_gates.MZ.amplitude
+        MAXITER = (1 - params.amplitude_start) / params.amplitude_step
+        while error > ERROR_THRESHOLD and n <= MAXITER:
+            platform.qubits[qubit].native_gates.MZ.amplitude = (
                 params.amplitude_start + n * params.amplitude_step
             )
             n += 1
@@ -147,14 +147,16 @@ def _acquisition(
             model.fit(iq_values, np.array(states))
             error = 1 - model.fidelity
             errors.append(error)
+            print(errors, n)
             data.append_data(
                 qubit=qubit,
-                amp=platform_copy.qubits[qubit].readout.amplitude,
+                amp=platform.qubits[qubit].native_gates.MZ.amplitude,
                 state=states,
                 i=i_values,
                 q=q_values,
                 errors=error,
             )
+            platform.qubits[qubit].native_gates.MZ.amplitude = old_amp
     return data
 
 
