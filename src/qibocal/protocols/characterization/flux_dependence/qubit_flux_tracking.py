@@ -178,7 +178,7 @@ def _acquisition(
 
             # modify qubit flux
             qubits[qubit].flux.offset = bias
-            # qubits[qubit].flux = bias + qubits[qubit].sweetspot
+            # platform.set_bias(qubit, bias)
 
             # execute pulse sequence sweeping only qubit resonator
             results = platform.sweep(
