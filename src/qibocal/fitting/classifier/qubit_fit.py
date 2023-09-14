@@ -105,7 +105,9 @@ class QubitFit:
         self.fidelity = cum_distribution_diff[max_index]
         self.assignment_fidelity = (errors_state1 + errors_state0) / 2
         predictions = self.predict(iq_coordinates)
-        self.probability_error = np.absolute(states - predictions) / len(predictions)
+        self.probability_error = np.sum(np.absolute(states - predictions)) / len(
+            predictions
+        )
 
     def rotate(self, v):
         c, s = np.cos(self.angle), np.sin(self.angle)

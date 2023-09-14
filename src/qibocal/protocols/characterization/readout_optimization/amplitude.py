@@ -14,25 +14,24 @@ from qibolab.qubits import QubitId
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.fitting.classifier.qubit_fit import QubitFit
 
-MAXITER = 10
-ERROR_THRESHOLD = 0.003
-
 
 @dataclass
-class RoAmplitudeParameters(Parameters):
-    """RoAmplitude runcard inputs."""
+class ResonatorAmplitudeParameters(Parameters):
+    """ResonatorAmplitude runcard inputs."""
 
     amplitude_start: float
-    """Power total width."""
+    """Amplitude start."""
     amplitude_step: float
-    """Power step to be probed."""
+    """Amplituude step to be probed."""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
+    error_threshold: float = 0.003
+    """Probability error threshold to stop the best amplitude search"""
 
 
-RoAmplitudeType = np.dtype(
+ResonatorAmplitudeType = np.dtype(
     [
         ("amp", np.float64),
         ("i", np.float64),
@@ -41,18 +40,20 @@ RoAmplitudeType = np.dtype(
         ("errors", np.float64),
     ]
 )
-"""Custom dtype for Optimization RO frequency."""
+"""Custom dtype for Optimization RO amplitude."""
 
 
 @dataclass
-class RoAmplitudeData(Data):
-    """Data class for twpa power protocol."""
+class ResonatorAmplitudeData(Data):
+    """Data class for `resoantor_amplitude` protocol."""
 
-    data: dict[QubitId, npt.NDArray[RoAmplitudeType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray[ResonatorAmplitudeType]] = field(
+        default_factory=dict
+    )
 
     def append_data(self, qubit, state, amp, i, q, errors):
         """Append elements to data for single qubit."""
-        ar = np.empty(i.shape, dtype=RoAmplitudeType)
+        ar = np.empty(i.shape, dtype=ResonatorAmplitudeType)
         ar["amp"] = amp
         ar["i"] = i
         ar["q"] = q
@@ -68,26 +69,25 @@ class RoAmplitudeData(Data):
 
 
 @dataclass
-class RoAmplitudeResults(Results):
-    """Result class for twpa power protocol."""
+class ResonatorAmplitudeResults(Results):
+    """Result class for `resonator_amplitude` protocol."""
 
     lowest_errors: dict[QubitId, list]
     best_amp: dict[QubitId, list]
 
 
 def _acquisition(
-    params: RoAmplitudeParameters,
+    params: ResonatorAmplitudeParameters,
     platform: Platform,
     qubits: Qubits,
-) -> RoAmplitudeData:
+) -> ResonatorAmplitudeData:
     r"""
-    Data acquisition for TWPA power optmization.
+    Data acquisition for resoantor amplitude optmization.
     This protocol perform a classification protocol for twpa powers
-    in the range [twpa_power - amplitude_width / 2, twpa_power + amplitude_width / 2]
     with step amplitude_step.
 
     Args:
-        params (:class:`RoAmplitudeParameters`): input parameters
+        params (:class:`ResonatorAmplitudeParameters`): input parameters
         platform (:class:`Platform`): Qibolab's platform
         qubits (dict): dict of target :class:`Qubit` objects to be characterized
 
@@ -95,14 +95,13 @@ def _acquisition(
         data (:class:`TwpaFrequencyData`)
     """
 
-    data = RoAmplitudeData()
+    data = ResonatorAmplitudeData()
     for qubit in qubits:
-        errors = []
         n = 0
         error = 1
         old_amp = platform.qubits[qubit].native_gates.MZ.amplitude
-        MAXITER = (1 - params.amplitude_start) / params.amplitude_step
-        while error > ERROR_THRESHOLD and n <= MAXITER:
+        maxiter = (1 - params.amplitude_start) / params.amplitude_step
+        while error > params.error_threshold and n <= maxiter:
             platform.qubits[qubit].native_gates.MZ.amplitude = (
                 params.amplitude_start + n * params.amplitude_step
             )
@@ -145,8 +144,8 @@ def _acquisition(
             states = [0] * nshots + [1] * nshots
             model = QubitFit()
             model.fit(iq_values, np.array(states))
-            errors.append(model.probability_error)
-            print(errors, n)
+            error = model.probability_error
+            print(error, n)
             data.append_data(
                 qubit=qubit,
                 amp=platform.qubits[qubit].native_gates.MZ.amplitude,
@@ -159,7 +158,7 @@ def _acquisition(
     return data
 
 
-def _fit(data: RoAmplitudeData) -> RoAmplitudeResults:
+def _fit(data: ResonatorAmplitudeData) -> ResonatorAmplitudeResults:
     qubits = data.qubits
     best_amps = {}
     lowest_err = {}
@@ -169,10 +168,10 @@ def _fit(data: RoAmplitudeData) -> RoAmplitudeResults:
         lowest_err[qubit] = data_qubit["errors"][index_best_err]
         best_amps[qubit] = data_qubit["amp"][index_best_err]
 
-    return RoAmplitudeResults(lowest_err, best_amps)
+    return ResonatorAmplitudeResults(lowest_err, best_amps)
 
 
-def _plot(data: RoAmplitudeData, fit: RoAmplitudeResults, qubit):
+def _plot(data: ResonatorAmplitudeData, fit: ResonatorAmplitudeResults, qubit):
     """Plotting function for Optimization RO frequency."""
     figures = []
     opacity = 1
@@ -188,6 +187,7 @@ def _plot(data: RoAmplitudeData, fit: RoAmplitudeResults, qubit):
                 y=data[qubit]["errors"],
                 opacity=opacity,
                 showlegend=True,
+                mode="lines+markers",
             ),
             row=1,
             col=1,
@@ -200,8 +200,8 @@ def _plot(data: RoAmplitudeData, fit: RoAmplitudeResults, qubit):
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Readout Amplitude (GHz)",
-        yaxis_title="Errors",
+        xaxis_title="Readout Amplitude",
+        yaxis_title="Probability Error",
     )
 
     figures.append(fig)
@@ -209,5 +209,5 @@ def _plot(data: RoAmplitudeData, fit: RoAmplitudeResults, qubit):
     return figures, fitting_report
 
 
-ro_amplitude = Routine(_acquisition, _fit, _plot)
+resonator_amplitude = Routine(_acquisition, _fit, _plot)
 """Twpa power Routine  object."""
