@@ -246,7 +246,7 @@ def _plot(data: ChevronData, fit: ChevronResults, qubit):
             f"Qubit {qubits[1]} - High Frequency",
         ),
     )
-    fit_report = None
+    fitting_report = None
     for target, control, measure in pair_data:
         fig.add_trace(
             go.Heatmap(
@@ -292,7 +292,14 @@ def _plot(data: ChevronData, fit: ChevronResults, qubit):
             coloraxis={"colorscale": "Oryel", "colorbar": {"x": -0.15}},
             coloraxis2={"colorscale": "Darkmint", "colorbar": {"x": 1.15}},
         )
-    return [fig], fit_report
+
+    if fit is not None:
+        reports = []
+        reports.append(f"{qubits[1]} | CZ amplitude: {fit.amplitude[qubits]}<br>")
+        reports.append(f"{qubits[1]} | CZ duration: {fit.duration[qubits]}<br>")
+        fitting_report = "".join(list(dict.fromkeys(reports)))
+
+    return [fig], fitting_report
 
 
 chevron = Routine(_aquisition, _fit, _plot)
