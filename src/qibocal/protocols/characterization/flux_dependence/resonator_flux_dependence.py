@@ -67,20 +67,20 @@ class ResonatorFluxResults(Results):
 
     # New fitted parameters added in the runcard
     # freq_r_trasmon (First order approx):
-    #   'sweetspot_0':p0, 
-    #   'flux_to_bias':p1, 
-    #   'asymmetry':p2, 
-    #   'readout_coupling':p4, 
+    #   'sweetspot_0':p0,
+    #   'flux_to_bias':p1,
+    #   'asymmetry':p2,
+    #   'readout_coupling':p4,
     #   'bare_resonator_frequency_0':p5
-    #   'sweetspot_qubit_frequency/bare_resonator_frequency':p3, 
+    #   'sweetspot_qubit_frequency/bare_resonator_frequency':p3,
 
     # freq_r_mattheu (Second order approx):
-    #   'sweetspot_0':p2, 
+    #   'sweetspot_0':p2,
     #   'flux_to_bias':p3,
     #   'asymmetry':p4,
-    #   'readout_coupling':p1,   
-    #   'bare_resonator_frequency_0':p0, 
-    #   'Ec':p5, 
+    #   'readout_coupling':p1,
+    #   'bare_resonator_frequency_0':p0,
+    #   'Ec':p5,
     #   'Ej:p6'
 
     fitted_parameters: dict[QubitId, dict[str, float]]
@@ -266,7 +266,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     ssf_brf = {}
     ECs = {}
     EJs = {}
-    
+
     fitted_parameters = {}
 
     for qubit in qubits:
@@ -283,7 +283,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
         ssf_brf[qubit] = 0
         ECs[qubit] = 0
         EJs[qubit] = 0
-        
+
         fitted_parameters[qubit] = {
             "Xi": 0,
             "d": 0,
@@ -350,7 +350,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 Gs[qubit] = popt[4]
                 brf[qubit] = popt[5]
                 ssf_brf[qubit] = popt[3]
-            
+
                 popt[4] *= GHZ_TO_HZ
                 popt[5] *= GHZ_TO_HZ
                 f_qs = popt[3] * popt[5]  # Qubit frequency at sweet spot.
@@ -412,7 +412,6 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 ECs[qubit] = popt[5]
                 EJs[qubit] = popt[6]
 
-
                 popt[0] *= GHZ_TO_HZ
                 popt[1] *= GHZ_TO_HZ
                 popt[5] *= GHZ_TO_HZ
@@ -454,13 +453,13 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     return ResonatorFluxResults(
         frequency=frequency,
         sweetspot=sweetspot,
-        flux_to_bias = flux_to_bias,
-        asymmetry = asymmetry,
-        Gs = Gs,
-        brf = brf,
-        ssf_brf = ssf_brf,
-        ECs = ECs,
-        EJs = EJs, 
+        flux_to_bias=flux_to_bias,
+        asymmetry=asymmetry,
+        Gs=Gs,
+        brf=brf,
+        ssf_brf=ssf_brf,
+        ECs=ECs,
+        EJs=EJs,
         fitted_parameters=fitted_parameters,
     )
 

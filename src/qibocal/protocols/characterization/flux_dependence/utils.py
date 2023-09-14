@@ -462,19 +462,30 @@ def image_to_curve(x, y, z, msr_mask=0.5, alpha=1e-5, order=50):
     y_pred = model.predict(X_pred)
     return y_pred, x_pred
 
-def get_resonator_freq_flux(bias, sweetspot, flux_to_bias, asymmetry, g, brf, ssf_brf, Ec, Ej):
-    
-    if( flux_to_bias == 0.0 or asymmetry == 0.0 or g == 0.0 or brf == 0.0 or Ec == 0.0 or Ej == 0.0 ):
-        raise ValueError("Not enough parameters to estimate the resonator frequency for the given bias")
+
+def get_resonator_freq_flux(
+    bias, sweetspot, flux_to_bias, asymmetry, g, brf, ssf_brf, Ec, Ej
+):
+    if (
+        flux_to_bias == 0.0
+        or asymmetry == 0.0
+        or g == 0.0
+        or brf == 0.0
+        or Ec == 0.0
+        or Ej == 0.0
+    ):
+        raise ValueError(
+            "Not enough parameters to estimate the resonator frequency for the given bias"
+        )
 
     if ssf_brf == 0:
         # First order approximation used during resonator flux fitting
-            #   'sweetspot_0':p0, 
-            #   'flux_to_bias':p1, 
-            #   'asymmetry':p2, 
-            #   'readout_coupling':p4, 
-            #   'bare_resonator_frequency_0':p5
-            #   'sweetspot_qubit_frequency/bare_resonator_frequency':p3, 
+        #   'sweetspot_0':p0,
+        #   'flux_to_bias':p1,
+        #   'asymmetry':p2,
+        #   'readout_coupling':p4,
+        #   'bare_resonator_frequency_0':p5
+        #   'sweetspot_qubit_frequency/bare_resonator_frequency':p3,
         freq_resonator = freq_r_transmon(
             bias,
             sweetspot,
@@ -486,13 +497,13 @@ def get_resonator_freq_flux(bias, sweetspot, flux_to_bias, asymmetry, g, brf, ss
         )
     else:
         # Second order approximation used during resonator flux fitting
-            #   'sweetspot_0':p2, 
-            #   'flux_to_bias':p3,
-            #   'asymmetry':p4,
-            #   'readout_coupling':p1,   
-            #   'bare_resonator_frequency_0':p0, 
-            #   'Ec':p5, 
-            #   'Ej:p6'
+        #   'sweetspot_0':p2,
+        #   'flux_to_bias':p3,
+        #   'asymmetry':p4,
+        #   'readout_coupling':p1,
+        #   'bare_resonator_frequency_0':p0,
+        #   'Ec':p5,
+        #   'Ej:p6'
         freq_resonator = freq_r_mathieu(
             bias,
             brf,

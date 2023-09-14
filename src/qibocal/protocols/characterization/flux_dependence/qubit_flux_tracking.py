@@ -154,11 +154,18 @@ def _acquisition(
     data = QubitFluxData(resonator_type=platform.resonator_type, Ec=Ec, Ej=Ej)
 
     for bias in delta_bias_range:
-        for qubit in qubits:       
+        for qubit in qubits:
             try:
                 freq_resonator = utils.get_resonator_freq_flux(
-                    bias, qubits[qubit].sweetspot, qubits[qubit].flux_to_bias, qubits[qubit].asymmetry, 
-                    qubits[qubit].g, qubits[qubit].brf, qubits[qubit].ssf_brf, qubits[qubit].Ec, qubits[qubit].Ej
+                    bias,
+                    qubits[qubit].sweetspot,
+                    qubits[qubit].flux_to_bias,
+                    qubits[qubit].asymmetry,
+                    qubits[qubit].g,
+                    qubits[qubit].brf,
+                    qubits[qubit].ssf_brf,
+                    qubits[qubit].Ec,
+                    qubits[qubit].Ej,
                 )
                 # modify qubit resonator frequency
                 qubits[qubit].readout_frequency = freq_resonator
@@ -166,9 +173,9 @@ def _acquisition(
                 raise_error
                 (
                     RuntimeError,
-                    "qubit_flux_track: Not enough parameters to estimate the resonator freq for the given bias. Please run resonator spectroscopy flux and update the runcard"
-                )   
-                            
+                    "qubit_flux_track: Not enough parameters to estimate the resonator freq for the given bias. Please run resonator spectroscopy flux and update the runcard",
+                )
+
             # modify qubit flux
             # TODO: Check if this works in all drivers
             qubits[qubit].flux = bias + qubits[qubit].sweetspot
