@@ -358,9 +358,11 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
                 col=1 if fig == fig1 else 2,
             )
 
-            reports.append(f"{target} | CZ angle: {fit.cz_angle[target, control]}<br>")
             reports.append(
-                f"{target} | Virtual Z phase: { - fit.virtual_phase[qubits][target]}<br>"
+                f"{target} | CZ angle: {fit.cz_angle[target, control]:.4f}<br>"
+            )
+            reports.append(
+                f"{target} | Virtual Z phase: { - fit.virtual_phase[qubits][target]:.4f}<br>"
             )
             fitting_report = "".join(list(dict.fromkeys(reports)))
 

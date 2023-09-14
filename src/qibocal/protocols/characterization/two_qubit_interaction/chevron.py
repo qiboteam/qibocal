@@ -38,6 +38,8 @@ class ChevronParameters(Parameters):
     """Time delay between flux pulses and readout."""
     nshots: Optional[int] = None
     """Number of shots per point."""
+    relaxation_time: Optional[int] = None
+    """Relaxation time [ns]"""
     parking: bool = True
     """Wether to park non interacting qubits or not."""
 
@@ -295,7 +297,7 @@ def _plot(data: ChevronData, fit: ChevronResults, qubit):
 
     if fit is not None:
         reports = []
-        reports.append(f"{qubits[1]} | CZ amplitude: {fit.amplitude[qubits]}<br>")
+        reports.append(f"{qubits[1]} | CZ amplitude: {fit.amplitude[qubits]:.4f}<br>")
         reports.append(f"{qubits[1]} | CZ duration: {fit.duration[qubits]}<br>")
         fitting_report = "".join(list(dict.fromkeys(reports)))
 
