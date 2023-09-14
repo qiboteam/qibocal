@@ -145,8 +145,7 @@ def _acquisition(
             states = [0] * nshots + [1] * nshots
             model = QubitFit()
             model.fit(iq_values, np.array(states))
-            error = 1 - model.fidelity
-            errors.append(error)
+            errors.append(model.probability_error)
             print(errors, n)
             data.append_data(
                 qubit=qubit,
