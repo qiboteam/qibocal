@@ -1,6 +1,5 @@
 from colorsys import hls_to_rgb
 from enum import Enum
-from math import floor, log10
 from typing import Optional
 
 import lmfit
@@ -266,6 +265,11 @@ def fit_punchout(data: Data, fit_type: str):
     return [low_freqs, high_freqs, ro_values]
 
 
+def eval_magnitude(value):
+    """number of non decimal digits in `value`"""
+    return np.floor(np.log10(abs(value)))
+
+
 def fill_table(
     qubit: QubitId,
     name: str,
@@ -287,20 +291,20 @@ def fill_table(
         ndigits (int): Number of decimal digits to display when error is `None`
             (i.e. it is not evaluated).
     """
-    table = f"{qubit}| {name}: "
+    row = f"{qubit}| {name}: "
     if value:
-        magnitude = floor(log10(abs(value)))  # number of non decimal digits in value
+        magnitude = eval_magnitude(value)
     else:
         magnitude = 0
     if error:
         ndigits = max(significant_digit(error * 10 ** (-1 * magnitude)), 0)
-        table += f"({round(value*10**(-1*magnitude), ndigits)} {chr(177)} {np.format_float_positional(round(error*10**(-1*magnitude), ndigits), trim = '-')})"
+        row += f"({round(value*10**(-1*magnitude), ndigits)} {chr(177)} {np.format_float_positional(round(error*10**(-1*magnitude), ndigits), trim = '-')})"
     else:
-        table += f"{round(value*10**(-1* magnitude), ndigits)}"
+        row += f"{round(value*10**(-1* magnitude), ndigits)}"
     if magnitude != 0:
-        table += f"* 10^{magnitude}"
-    table += f" {unit} <br>" if unit else f"<br>"
-    return table
+        row += f"* 10^{magnitude}"
+    row += f" {unit} <br>" if unit else f"<br>"
+    return row
 
 
 def chi2_reduced(
