@@ -5,17 +5,17 @@ qubits: [0, 1]
 
 actions:
 
-  - id: resonator_spectroscopy high power
-    priority: 0
-    operation: resonator_spectroscopy
-    # main: resonator punchout
-    parameters:
-      freq_width: 10_000_000
-      freq_step: 500_000
-      amplitude: 0.4
-      power_level: high
-      nshots: 1024
-      relaxation_time: 0
+# - id: resonator_spectroscopy high power
+#   priority: 0
+#   operation: resonator_spectroscopy
+#   main: resonator punchout
+#   parameters:
+#    freq_width: 10_000_000
+#     freq_step: 500_000
+#     amplitude: 0.4
+#     power_level: high
+#     nshots: 1024
+#     relaxation_time: 0
 
   # - id: resonator punchout
   #   priority: 0
