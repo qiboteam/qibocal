@@ -295,7 +295,7 @@ def fill_table(
         magnitude = 0
     if error:
         ndigits = max(significant_digit(error * 10 ** (-1 * magnitude)), 0)
-        row += f"({round(value*10**(-1*magnitude), ndigits)} {chr(177)} {np.format_float_positional(round(error*10**(-1*magnitude), ndigits), trim = '-')})"
+        row += f"({round(value*10**(-1*magnitude), ndigits)} ± {np.format_float_positional(round(error*10**(-1*magnitude), ndigits), trim = '-')})"
     else:
         row += f"{round(value*10**(-1* magnitude), ndigits)}"
     if magnitude != 0:
