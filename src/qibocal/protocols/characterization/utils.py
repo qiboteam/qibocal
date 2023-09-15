@@ -1,6 +1,5 @@
 from colorsys import hls_to_rgb
 from enum import Enum
-from math import floor, log10
 from typing import Optional
 
 import lmfit
@@ -14,9 +13,6 @@ from scipy.stats import mode
 
 from qibocal.auto.operation import Data, Results
 from qibocal.config import log
-from qibocal.protocols.characterization.randomized_benchmarking.utils import (
-    significant_digit,
-)
 
 GHZ_TO_HZ = 1e9
 HZ_TO_GHZ = 1e-9
@@ -271,6 +267,11 @@ def fit_punchout(data: Data, fit_type: str):
     return [low_freqs, high_freqs, ro_values]
 
 
+def eval_magnitude(value):
+    """number of non decimal digits in `value`"""
+    return int(np.floor(np.log10(abs(value))))
+
+
 def fill_table(
     qubit: QubitId,
     name: str,
@@ -292,20 +293,20 @@ def fill_table(
         ndigits (int): Number of decimal digits to display when error is `None`
             (i.e. it is not evaluated).
     """
-    table = f"{qubit}| {name}: "
+    row = f"{qubit}| {name}: "
     if value:
-        magnitude = floor(log10(abs(value)))  # number of non decimal digits in value
+        magnitude = eval_magnitude(value)
     else:
         magnitude = 0
     if error:
         ndigits = max(significant_digit(error * 10 ** (-1 * magnitude)), 0)
-        table += f"({round(value*10**(-1*magnitude), ndigits)} {chr(177)} {np.format_float_positional(round(error*10**(-1*magnitude), ndigits), trim = '-')})"
+        row += f"({round(value*10**(-1*magnitude), ndigits)} ± {np.format_float_positional(round(error*10**(-1*magnitude), ndigits), trim = '-')})"
     else:
-        table += f"{round(value*10**(-1* magnitude), ndigits)}"
+        row += f"{round(value*10**(-1* magnitude), ndigits)}"
     if magnitude != 0:
-        table += f"* 10^{magnitude}"
-    table += f" {unit} <br>" if unit else f"<br>"
-    return table
+        row += f"* 10^{magnitude}"
+    row += f" {unit} <br>" if unit else f"<br>"
+    return row
 
 
 def chi2_reduced(
@@ -326,3 +327,25 @@ def get_color_state0(number):
 
 def get_color_state1(number):
     return "rgb" + str(hls_to_rgb((-0.02 - number * 9 / 20) % 1, 0.6, 0.75))
+
+
+def significant_digit(number: float):
+    """Computes the position of the first significant digit of a given number.
+
+    Args:
+        number (Number): number for which the significant digit is computed. Can be complex.
+
+    Returns:
+        int: position of the first significant digit. Returns ``-1`` if the given number
+            is ``>= 1``, ``= 0`` or ``inf``.
+    """
+
+    if np.isinf(np.real(number)) or np.real(number) >= 1 or number == 0:
+        return -1
+
+    position = max(np.ceil(-np.log10(abs(np.real(number)))), -1)
+
+    if np.imag(number) != 0:
+        position = max(position, np.ceil(-np.log10(abs(np.imag(number)))))
+
+    return int(position)
