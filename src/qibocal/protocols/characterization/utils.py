@@ -13,9 +13,6 @@ from scipy.stats import mode
 
 from qibocal.auto.operation import Data, Results
 from qibocal.config import log
-from qibocal.protocols.characterization.randomized_benchmarking.utils import (
-    significant_digit,
-)
 
 GHZ_TO_HZ = 1e9
 HZ_TO_GHZ = 1e-9
@@ -267,7 +264,7 @@ def fit_punchout(data: Data, fit_type: str):
 
 def eval_magnitude(value):
     """number of non decimal digits in `value`"""
-    return np.floor(np.log10(abs(value)))
+    return int(np.floor(np.log10(abs(value))))
 
 
 def fill_table(
@@ -325,3 +322,25 @@ def get_color_state0(number):
 
 def get_color_state1(number):
     return "rgb" + str(hls_to_rgb((-0.02 - number * 9 / 20) % 1, 0.6, 0.75))
+
+
+def significant_digit(number: float):
+    """Computes the position of the first significant digit of a given number.
+
+    Args:
+        number (Number): number for which the significant digit is computed. Can be complex.
+
+    Returns:
+        int: position of the first significant digit. Returns ``-1`` if the given number
+            is ``>= 1``, ``= 0`` or ``inf``.
+    """
+
+    if np.isinf(np.real(number)) or np.real(number) >= 1 or number == 0:
+        return -1
+
+    position = max(np.ceil(-np.log10(abs(np.real(number)))), -1)
+
+    if np.imag(number) != 0:
+        position = max(position, np.ceil(-np.log10(abs(np.imag(number)))))
+
+    return int(position)
