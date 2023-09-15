@@ -1,9 +1,10 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
 from qibolab.platform import Platform
+from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Parameters, Qubits, Routine
 from qibocal.protocols.characterization import classification
@@ -28,6 +29,9 @@ class TwpaPowerParameters(Parameters):
 @dataclass
 class TwpaPowerData(frequency.TwpaFrequencyData):
     """Data class for twpa power protocol."""
+
+    powers: dict[QubitId, float] = field(default_factory=dict)
+    """Frequencies for each qubit."""
 
 
 @dataclass
@@ -64,6 +68,9 @@ def _acquisition(
     initial_twpa_power = {}
     for qubit in qubits:
         initial_twpa_power[qubit] = platform.qubits[qubit].twpa.local_oscillator.power
+        data.powers[qubit] = list(
+            platform.qubits[qubit].twpa.local_oscillator.power + power_range
+        )
 
     for power in power_range:
         for qubit in qubits:
@@ -93,12 +100,11 @@ def _plot(data: TwpaPowerData, fit: TwpaPowerResults, qubit):
 
     figures = []
     fitting_report = "No fitting data"
-    qubit_fit = fit[qubit]
-    powers = []
     fidelities = []
-    for _, power in qubit_fit:
-        powers.append(power)
-        fidelities.append(qubit_fit[qubit, power])
+    powers = np.array(data.powers[qubit])
+    for qubit_id, power in fit.fidelities:
+        if qubit_id == qubit:
+            fidelities.append(fit.fidelities[qubit, power])
 
     fitting_report = f"{qubit} | Best assignment fidelity: {np.max(fidelities):.3f}<br>"
     fitting_report += (
