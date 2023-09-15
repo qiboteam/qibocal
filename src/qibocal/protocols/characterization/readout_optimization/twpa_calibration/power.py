@@ -60,7 +60,6 @@ def _acquisition(
     power_range = np.arange(
         -params.power_width / 2, params.power_width / 2, params.power_step
     )
-    data = TwpaPowerData()
 
     initial_twpa_power = {}
     for qubit in qubits:
