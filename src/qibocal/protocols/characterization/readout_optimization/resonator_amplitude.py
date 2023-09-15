@@ -19,10 +19,12 @@ from qibocal.fitting.classifier.qubit_fit import QubitFit
 class ResonatorAmplitudeParameters(Parameters):
     """ResonatorAmplitude runcard inputs."""
 
-    amplitude_start: float
-    """Amplitude start."""
     amplitude_step: float
     """Amplituude step to be probed."""
+    amplitude_start: float = 0.0
+    """Amplitude start."""
+    amplitude_stop: float = 1.0
+    """Amplitude stop value"""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
@@ -100,12 +102,9 @@ def _acquisition(
         n = 0
         error = 1
         old_amp = platform.qubits[qubit].native_gates.MZ.amplitude
-        maxiter = (1 - params.amplitude_start) / params.amplitude_step
-        while error > params.error_threshold and n <= maxiter:
-            platform.qubits[qubit].native_gates.MZ.amplitude = (
-                params.amplitude_start + n * params.amplitude_step
-            )
-            n += 1
+        new_amp = params.amplitude_start
+        while error > params.error_threshold and new_amp <= params.amplitude_stop:
+            platform.qubits[qubit].native_gates.MZ.amplitude = new_amp
             sequence_0 = PulseSequence()
             sequence_1 = PulseSequence()
 
@@ -145,16 +144,17 @@ def _acquisition(
             model = QubitFit()
             model.fit(iq_values, np.array(states))
             error = model.probability_error
-            print(error, n)
             data.append_data(
                 qubit=qubit,
-                amp=platform.qubits[qubit].native_gates.MZ.amplitude,
+                amp=new_amp,
                 state=states,
                 i=i_values,
                 q=q_values,
                 errors=error,
             )
             platform.qubits[qubit].native_gates.MZ.amplitude = old_amp
+            n += 1
+            new_amp += params.amplitude_step
     return data
 
 
