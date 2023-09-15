@@ -46,7 +46,9 @@ class CZVirtualZResults(Results):
     """Fitted parameters"""
     cz_angle: dict[tuple[QubitId, QubitId], float]
     """CZ angle."""
-    virtual_phase: dict[tuple[QubitId, QubitId], float]
+    virtual_phase: dict[tuple[QubitId, QubitId], float] = field(
+        metadata=dict(update="virtual_z_phase")
+    )
     """Virtual Z phase correction."""
 
 
@@ -280,7 +282,7 @@ def _fit(
                 fitted_parameters[target_q, control_q, "X"][2]
                 - fitted_parameters[target_q, control_q, "I"][2]
             )
-            virtual_phase[qubits][target_q] = fitted_parameters[
+            virtual_phase[qubits][target_q] = -fitted_parameters[
                 target_q, control_q, "I"
             ][2]
 
@@ -362,7 +364,7 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
                 f"{target} | CZ angle: {fit.cz_angle[target, control]:.4f}<br>"
             )
             reports.append(
-                f"{target} | Virtual Z phase: { - fit.virtual_phase[qubits][target]:.4f}<br>"
+                f"{target} | Virtual Z phase: {fit.virtual_phase[qubits][target]:.4f}<br>"
             )
             fitting_report = "".join(list(dict.fromkeys(reports)))
 
