@@ -13,8 +13,11 @@ from .coherence.zeno import zeno
 from .dispersive_shift import dispersive_shift
 from .fast_reset.fast_reset import fast_reset
 from .flipping import flipping
-from .flux_dependence.qubit_flux_dependence import qubit_flux
-from .flux_dependence.resonator_flux_dependence import resonator_flux
+from .flux_dependence.qubit_flux_dependence import qubit_crosstalk, qubit_flux
+from .flux_dependence.resonator_flux_dependence import (
+    resonator_crosstalk,
+    resonator_flux,
+)
 from .qubit_spectroscopy import qubit_spectroscopy
 from .rabi.amplitude import rabi_amplitude
 from .rabi.length import rabi_length
@@ -41,8 +44,10 @@ class Operation(Enum):
     resonator_punchout = resonator_punchout
     resonator_punchout_attenuation = resonator_punchout_attenuation
     resonator_flux = resonator_flux
+    resonator_crosstalk = resonator_crosstalk
     qubit_spectroscopy = qubit_spectroscopy
     qubit_flux = qubit_flux
+    qubit_crosstalk = qubit_crosstalk
     rabi_amplitude = rabi_amplitude
     rabi_length = rabi_length
     rabi_length_sequences = rabi_length_sequences

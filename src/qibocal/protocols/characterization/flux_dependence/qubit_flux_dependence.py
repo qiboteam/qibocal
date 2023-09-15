@@ -16,6 +16,7 @@ from qibocal.config import log
 
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ
 from . import utils
+from .resonator_flux_dependence import _fit_crosstalk
 
 
 @dataclass
@@ -111,10 +112,12 @@ class FluxCrosstalkData(QubitFluxData):
     def register_qubit(self, qubit, flux_qubit, freq, bias, msr, phase):
         """Store output for single qubit."""
         ar = utils.create_data_array(freq, bias, msr, phase, dtype=QubitFluxType)
-        if qubit in self.data:
-            self.data[qubit][flux_qubit] = ar
+        if (qubit, flux_qubit) in self.data:
+            self.data[qubit, flux_qubit] = np.rec.array(
+                np.concatenate((self.data[qubit, flux_qubit], ar))
+            )
         else:
-            self.data[qubit] = {flux_qubit: ar}
+            self.data[qubit, flux_qubit] = ar
 
 
 def _acquisition(
@@ -222,8 +225,6 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
     Fit frequency as a function of current for the flux qubit spectroscopy
     data (QubitFluxData): data object with information on the feature response at each current point.
     """
-    if isinstance(data, FluxCrosstalkData):
-        return FluxCrosstalkResults()
 
     qubits = data.qubits
     frequency = {}
@@ -347,10 +348,12 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
 
 def _plot(data: QubitFluxData, fit: QubitFluxResults, qubit):
     """Plotting function for QubitFlux Experiment."""
-    if isinstance(data[qubit], dict):
+    if utils.is_crosstalk(data):
         return utils.flux_crosstalk_plot(data, fit, qubit)
     return utils.flux_dependence_plot(data, fit, qubit)
 
 
 qubit_flux = Routine(_acquisition, _fit, _plot)
 """QubitFlux Routine object."""
+qubit_crosstalk = Routine(_acquisition, _fit_crosstalk, _plot)
+"""Qubit crosstalk Routine object"""

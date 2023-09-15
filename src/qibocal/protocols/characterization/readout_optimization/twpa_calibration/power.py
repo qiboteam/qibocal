@@ -99,27 +99,31 @@ def _plot(data: TwpaPowerData, fit: TwpaPowerResults, qubit):
     for different values of the twpa power for a single qubit."""
 
     figures = []
-    fitting_report = "No fitting data"
-    fidelities = []
-    powers = np.array(data.powers[qubit])
-    for qubit_id, power in fit.fidelities:
-        if qubit_id == qubit:
-            fidelities.append(fit.fidelities[qubit, power])
+    fitting_report = None
 
-    fitting_report = f"{qubit} | Best assignment fidelity: {np.max(fidelities):.3f}<br>"
-    fitting_report += (
-        f"{qubit} | TWPA power: {powers[np.argmax(fidelities)]:.3f} dB <br>"
-    )
+    if fit is not None:
+        fidelities = []
+        powers = np.array(data.powers[qubit])
+        for qubit_id, power in fit.fidelities:
+            if qubit_id == qubit:
+                fidelities.append(fit.fidelities[qubit, power])
 
-    fig = go.Figure([go.Scatter(x=powers, y=fidelities, name="Fidelity")])
-    figures.append(fig)
+        fitting_report = (
+            f"{qubit} | Best assignment fidelity: {np.max(fidelities):.3f}<br>"
+        )
+        fitting_report += (
+            f"{qubit} | TWPA power: {powers[np.argmax(fidelities)]:.3f} dB <br>"
+        )
 
-    fig.update_layout(
-        showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="TWPA Power [dB]",
-        yaxis_title="Assignment Fidelity",
-    )
+        fig = go.Figure([go.Scatter(x=powers, y=fidelities, name="Fidelity")])
+        figures.append(fig)
+
+        fig.update_layout(
+            showlegend=True,
+            uirevision="0",  # ``uirevision`` allows zooming while live plotting
+            xaxis_title="TWPA Power [dB]",
+            yaxis_title="Assignment Fidelity",
+        )
 
     return figures, fitting_report
 

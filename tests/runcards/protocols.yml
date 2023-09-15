@@ -1,4 +1,6 @@
+platform: dummy
 
+qubits: [0,1]
 
 actions:
 
@@ -105,7 +107,7 @@ actions:
 
   - id: resonator flux crosstalk # using ``flux_qubits``
     priority: 0
-    operation: resonator_flux
+    operation: resonator_crosstalk
     parameters:
       freq_width: 10_000_000
       freq_step: 500_000
@@ -132,7 +134,7 @@ actions:
 
 
 
-  - id: qubit flux dependence #"02" transition
+  - id: qubit flux dependence 02
     priority: 0
     operation: qubit_flux
     parameters:
@@ -149,7 +151,7 @@ actions:
 
   - id: qubit flux crosstalk # using ``flux_qubits``
     priority: 0
-    operation: qubit_flux
+    operation: qubit_crosstalk
     parameters:
       freq_width: 150_000_000
       freq_step: 500_000
@@ -294,7 +296,7 @@ actions:
     parameters:
       nshots: 10
 
-  - id: single shot classification
+  - id: single shot classification with classifiers
     priority: 0
     operation: single_shot_classification
     parameters:
@@ -321,7 +323,7 @@ actions:
     operation: allxy_drag_pulse_tuning
     parameters:
       beta_start: 0
-      beta_end: 0.02
+      beta_end: 0.04
       beta_step: 0.01
       nshots: 10
 
@@ -331,7 +333,7 @@ actions:
     operation: drag_pulse_tuning
     parameters:
       beta_start: 0
-      beta_end: 0.02
+      beta_end: 0.1
       beta_step: 0.01
       nshots: 10
 

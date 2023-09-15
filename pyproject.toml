@@ -14,6 +14,7 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Physics",
 ]
 
+
 [tool.poetry.dependencies]
 python = ">=3.9,<3.12"
 qibolab = "^0.1.1"
@@ -108,7 +109,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 qq = "qibocal:command"
-qq-upload = "qibocal:upload"
+
 
 [tool.poe.tasks]
 test = "pytest"
@@ -130,6 +131,7 @@ jobs = 1
 
 [tool.pylint.messages_control]
 disable = ["invalid-name", "fixme"]
+extension-pkg-whitelist = "pydantic"
 
 [tool.pylint.reports]
 # Available formats are:

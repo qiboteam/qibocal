@@ -84,7 +84,7 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         return guess_center, fit_res.params.valuesdict()
 
 
-def spectroscopy_plot(data, fit: Results, qubit):
+def spectroscopy_plot(data, qubit, fit: Results = None):
     figures = []
     fig = make_subplots(
         rows=1,
@@ -93,8 +93,8 @@ def spectroscopy_plot(data, fit: Results, qubit):
         vertical_spacing=0.1,
     )
     qubit_data = data[qubit]
+    fitting_report = None
 
-    fitting_report = ""
     frequencies = qubit_data.freq * HZ_TO_GHZ
     fig.add_trace(
         go.Scatter(
@@ -127,35 +127,40 @@ def spectroscopy_plot(data, fit: Results, qubit):
         2 * len(frequencies),
     )
 
-    params = fit.fitted_parameters[qubit]
+    if fit is not None:
+        params = fit.fitted_parameters[qubit]
 
-    fig.add_trace(
-        go.Scatter(
-            x=freqrange,
-            y=lorentzian(freqrange, **params),
-            name="Fit",
-            line=go.scatter.Line(dash="dot"),
-        ),
-        row=1,
-        col=1,
-    )
+        fig.add_trace(
+            go.Scatter(
+                x=freqrange,
+                y=lorentzian(freqrange, **params),
+                name="Fit",
+                line=go.scatter.Line(dash="dot"),
+            ),
+            row=1,
+            col=1,
+        )
 
-    if data.power_level is PowerLevel.low:
-        label = "readout frequency"
-        freq = fit.frequency
-    elif data.power_level is PowerLevel.high:
-        label = "bare resonator frequency"
-        freq = fit.bare_frequency
-    else:
-        label = "qubit frequency"
-        freq = fit.frequency
-    fitting_report += f"{qubit} | {label}: {freq[qubit]*GHZ_TO_HZ:,.0f} Hz<br>"
-    if fit.amplitude[qubit] is not None:
-        fitting_report += f"{qubit} | amplitude: {fit.amplitude[qubit]} <br>"
+        if data.power_level is PowerLevel.low:
+            label = "readout frequency"
+            freq = fit.frequency
+        elif data.power_level is PowerLevel.high:
+            label = "bare resonator frequency"
+            freq = fit.bare_frequency
+        else:
+            label = "qubit frequency"
+            freq = fit.frequency
 
-    if data.__class__.__name__ == "ResonatorSpectroscopyAttenuationData":
-        if fit.attenuation[qubit] is not None and fit.attenuation[qubit] != 0:
-            fitting_report += f"{qubit} | attenuation: {fit.attenuation[qubit]} <br>"
+        fitting_report = f"{qubit} | {label}: {freq[qubit]*GHZ_TO_HZ:,.0f} Hz<br>"
+
+        if fit.amplitude[qubit] is not None:
+            fitting_report += f"{qubit} | amplitude: {fit.amplitude[qubit]} <br>"
+
+        if data.__class__.__name__ == "ResonatorSpectroscopyAttenuationData":
+            if fit.attenuation[qubit] is not None and fit.attenuation[qubit] != 0:
+                fitting_report += (
+                    f"{qubit} | attenuation: {fit.attenuation[qubit]} <br>"
+                )
 
     fig.update_layout(
         showlegend=True,

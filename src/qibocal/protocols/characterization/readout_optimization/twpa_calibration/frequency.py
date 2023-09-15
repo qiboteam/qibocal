@@ -141,29 +141,31 @@ def _plot(data: TwpaFrequencyData, fit: TwpaFrequencyResults, qubit):
     for different values of the twpa frequency for a single qubit"""
 
     figures = []
-    fitting_report = "No fitting data"
-    fidelities = []
-    frequencies = np.array(data.frequencies[qubit])
-    for qubit_id, freq in fit.fidelities:
-        if qubit == qubit_id:
-            fidelities.append(fit.fidelities[qubit, freq])
+    fitting_report = None
+    if fit is not None:
+        fidelities = []
+        frequencies = np.array(data.frequencies[qubit])
+        for qubit_id, freq in fit.fidelities:
+            if qubit == qubit_id:
+                fidelities.append(fit.fidelities[qubit, freq])
 
-    fitting_report = f"{qubit} | Best assignment fidelity: {np.max(fidelities):.3f}<br>"
-    fitting_report += (
-        f"{qubit} | TWPA Frequency: {int(frequencies[np.argmax(fidelities)])} Hz <br>"
-    )
+        fitting_report = (
+            f"{qubit} | Best assignment fidelity: {np.max(fidelities):.3f}<br>"
+        )
+        fitting_report += f"{qubit} | TWPA Frequency: {int(frequencies[np.argmax(fidelities)])} Hz <br>"
 
-    fig = go.Figure(
-        [go.Scatter(x=frequencies * HZ_TO_GHZ, y=fidelities, name="Fidelity")]
-    )
-    figures.append(fig)
+        fig = go.Figure(
+            [go.Scatter(x=frequencies * HZ_TO_GHZ, y=fidelities, name="Fidelity")]
+        )
 
-    fig.update_layout(
-        showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="TWPA Frequency [GHz]",
-        yaxis_title="Assignment Fidelity",
-    )
+        fig.update_layout(
+            showlegend=True,
+            uirevision="0",  # ``uirevision`` allows zooming while live plotting
+            xaxis_title="TWPA Frequency [GHz]",
+            yaxis_title="Assignment Fidelity",
+        )
+
+        figures.append(fig)
 
     return figures, fitting_report
 

@@ -75,7 +75,7 @@ class RamseyData(Data):
     """Number of bootstrap samples"""
     qubit_freqs: dict[QubitId, float] = field(default_factory=dict)
     """Qubit freqs for each qubit."""
-    data: dict[QubitId, npt.NDArray[RamseyType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
 
     def register_qubit(self, qubit, wait, msr, phase):
@@ -299,12 +299,12 @@ def _fit(data: RamseyData) -> RamseyResults:
     return RamseyResults(freq_measure, t2_measure, delta_phys_measure, popts, chi2)
 
 
-def _plot(data: RamseyData, fit: RamseyResults, qubit):
+def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
     """Plotting function for Ramsey Experiment."""
 
     figures = []
     fig = go.Figure()
-    fitting_report = ""
+    fitting_report = None
 
     qubit_data = data.data[qubit]
     waits = data.waits
@@ -334,53 +334,56 @@ def _plot(data: RamseyData, fit: RamseyResults, qubit):
         )
     )
 
-    # add fitting trace
-    waitrange = np.linspace(
-        min(waits),
-        max(waits),
-        2 * len(qubit_data),
-    )
+    if fit is not None:
+        # add fitting trace
+        waitrange = np.linspace(
+            min(waits),
+            max(waits),
+            2 * len(qubit_data),
+        )
 
-    fig.add_trace(
-        go.Scatter(
-            x=waitrange,
-            y=ramsey_fit(
-                waitrange,
-                float(fit.fitted_parameters[qubit][0]),
-                float(fit.fitted_parameters[qubit][1]),
-                float(fit.fitted_parameters[qubit][2]),
-                float(fit.fitted_parameters[qubit][3]),
-                float(fit.fitted_parameters[qubit][4]),
-            ),
-            name="Fit",
-            line=go.scatter.Line(dash="dot"),
-        )
-    )
-    fitting_report = (
-        fitting_report
-        + (
-            fill_table(
-                qubit,
-                "Delta_frequency",
-                fit.delta_phys[qubit][0],
-                fit.delta_phys[qubit][1],
-                "Hz",
+        fig.add_trace(
+            go.Scatter(
+                x=waitrange,
+                y=ramsey_fit(
+                    waitrange,
+                    float(fit.fitted_parameters[qubit][0]),
+                    float(fit.fitted_parameters[qubit][1]),
+                    float(fit.fitted_parameters[qubit][2]),
+                    float(fit.fitted_parameters[qubit][3]),
+                    float(fit.fitted_parameters[qubit][4]),
+                ),
+                name="Fit",
+                line=go.scatter.Line(dash="dot"),
             )
         )
-        + (
-            fill_table(
-                qubit,
-                "Drive_frequency",
-                fit.frequency[qubit][0],
-                fit.frequency[qubit][1],
-                "Hz",
+        fitting_report = (
+            ""
+            + (
+                fill_table(
+                    qubit,
+                    "Delta_frequency",
+                    fit.delta_phys[qubit][0],
+                    fit.delta_phys[qubit][1],
+                    "Hz",
+                )
             )
+            + (
+                fill_table(
+                    qubit,
+                    "Drive_frequency",
+                    fit.frequency[qubit][0],
+                    fit.frequency[qubit][1],
+                    "Hz",
+                )
+            )
+            + (fill_table(qubit, "T2*", fit.t2[qubit][0], fit.t2[qubit][1], "ns"))
+            + "<br>"
         )
-        + (fill_table(qubit, "T2*", fit.t2[qubit][0], fit.t2[qubit][1], "ns"))
-        + "<br>"
-    )
-    if fit.chi2:
-        fitting_report += fill_table(qubit, "chi2 reduced", fit.chi2[qubit], error=None)
+        if fit.chi2:
+            fitting_report += fill_table(
+                qubit, "chi2 reduced", fit.chi2[qubit], error=None
+            )
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
