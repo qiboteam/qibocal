@@ -86,7 +86,6 @@ def _acquisition(
         -params.frequency_width / 2, params.frequency_width / 2, params.frequency_step
     ).astype(int)
 
-
     initial_twpa_freq = {}
     for qubit in qubits:
         initial_twpa_freq[qubit] = platform.qubits[
