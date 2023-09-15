@@ -436,3 +436,19 @@ actions:
     operation: fast_reset
     parameters:
       nshots: 1024
+
+  - id: twpa frequency
+    priority: 0
+    operation: twpa_frequency
+    parameters:
+      nshots: 10
+      frequency_width: 1_000_000
+      frequency_step: 100_000
+
+  - id: twpa power
+    priority: 0
+    operation: twpa_power
+    parameters:
+      nshots: 10
+      power_width: 10
+      power_step: 1
