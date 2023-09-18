@@ -32,4 +32,4 @@ Run the routine
 
 .. code-block::
 
-    qq example.yml -o resonator_spectroscopy_routine
+    qq auto example.yml -o resonator_spectroscopy_routine

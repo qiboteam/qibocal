@@ -198,9 +198,9 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
     return RabiAmplitudeResults(pi_pulse_amplitudes, data.durations, fitted_parameters)
 
 
-def _plot(data: RabiAmplitudeData, fit: RabiAmplitudeResults, qubit):
+def _plot(data: RabiAmplitudeData, qubit, fit: RabiAmplitudeResults = None):
     """Plotting function for RabiAmplitude."""
-    return utils.plot(data, fit, qubit)
+    return utils.plot(data, qubit, fit)
 
 
 rabi_amplitude = Routine(_acquisition, _fit, _plot)

@@ -90,8 +90,10 @@ def _acquisition(
 
     # create a DataUnits object to store MSR, phase, i, q and the number of flips
     data = FlippingData(
-        platform.resonator_type,
-        {qubit: qubits[qubit].pi_pulse_amplitude for qubit in qubits},
+        resonator_type=platform.resonator_type,
+        pi_pulse_amplitudes={
+            qubit: qubits[qubit].pi_pulse_amplitude for qubit in qubits
+        },
     )
     # sweep the parameter
     for flips in range(0, params.nflips_max, params.nflips_step):
@@ -217,13 +219,13 @@ def _fit(data: FlippingData) -> FlippingResults:
     )
 
 
-def _plot(data: FlippingData, fit: FlippingResults, qubit):
+def _plot(data: FlippingData, qubit, fit: FlippingResults = None):
     """Plotting function for Flipping."""
 
     figures = []
     fig = go.Figure()
 
-    fitting_report = ""
+    fitting_report = None
     qubit_data = data[qubit]
 
     fig.add_trace(
@@ -237,32 +239,33 @@ def _plot(data: FlippingData, fit: FlippingResults, qubit):
         ),
     )
 
-    flips_range = np.linspace(
-        min(qubit_data.flips),
-        max(qubit_data.flips),
-        2 * len(qubit_data),
-    )
+    if fit is not None:
+        fitting_report = ""
+        flips_range = np.linspace(
+            min(qubit_data.flips),
+            max(qubit_data.flips),
+            2 * len(qubit_data),
+        )
 
-    fig.add_trace(
-        go.Scatter(
-            x=flips_range,
-            y=flipping_fit(
-                flips_range,
-                float(fit.fitted_parameters[qubit][0]),
-                float(fit.fitted_parameters[qubit][1]),
-                float(fit.fitted_parameters[qubit][2]),
-                float(fit.fitted_parameters[qubit][3]),
-                float(fit.fitted_parameters[qubit][4]),
-            )
-            * V_TO_UV,
-            name="Fit",
-            line=go.scatter.Line(dash="dot"),
-        ),
-    )
-    fitting_report = fitting_report + (
-        f"{qubit} | Amplitude correction factor: {fit.amplitude_factors[qubit]:.4f}<br>"
-        + f"{qubit} | Corrected amplitude: {fit.amplitude[qubit]:.4f}<br><br>"
-    )
+        fig.add_trace(
+            go.Scatter(
+                x=flips_range,
+                y=flipping_fit(
+                    flips_range,
+                    float(fit.fitted_parameters[qubit][0]),
+                    float(fit.fitted_parameters[qubit][1]),
+                    float(fit.fitted_parameters[qubit][2]),
+                    float(fit.fitted_parameters[qubit][3]),
+                    float(fit.fitted_parameters[qubit][4]),
+                ),
+                name="Fit",
+                line=go.scatter.Line(dash="dot"),
+            ),
+        )
+        fitting_report = fitting_report + (
+            f"{qubit} | Amplitude correction factor: {fit.amplitude_factors[qubit]:.4f}<br>"
+            + f"{qubit} | Corrected amplitude: {fit.amplitude[qubit]:.4f}<br><br>"
+        )
 
     # last part
     fig.update_layout(

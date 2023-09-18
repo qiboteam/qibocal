@@ -13,8 +13,11 @@ from .coherence.zeno import zeno
 from .dispersive_shift import dispersive_shift
 from .fast_reset.fast_reset import fast_reset
 from .flipping import flipping
-from .flux_dependence.qubit_flux_dependence import qubit_flux
-from .flux_dependence.resonator_flux_dependence import resonator_flux
+from .flux_dependence.qubit_flux_dependence import qubit_crosstalk, qubit_flux
+from .flux_dependence.resonator_flux_dependence import (
+    resonator_crosstalk,
+    resonator_flux,
+)
 from .qubit_spectroscopy import qubit_spectroscopy
 from .rabi.amplitude import rabi_amplitude
 from .rabi.length import rabi_length
@@ -24,6 +27,8 @@ from .ramsey_sequences import ramsey_sequences
 from .randomized_benchmarking.standard_rb import standard_rb
 from .readout_characterization import readout_characterization
 from .readout_optimization.resonator_frequency import resonator_frequency
+from .readout_optimization.twpa_calibration.frequency import twpa_frequency
+from .readout_optimization.twpa_calibration.power import twpa_power
 from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
@@ -39,8 +44,10 @@ class Operation(Enum):
     resonator_punchout = resonator_punchout
     resonator_punchout_attenuation = resonator_punchout_attenuation
     resonator_flux = resonator_flux
+    resonator_crosstalk = resonator_crosstalk
     qubit_spectroscopy = qubit_spectroscopy
     qubit_flux = qubit_flux
+    qubit_crosstalk = qubit_crosstalk
     rabi_amplitude = rabi_amplitude
     rabi_length = rabi_length
     rabi_length_sequences = rabi_length_sequences
@@ -65,3 +72,5 @@ class Operation(Enum):
     resonator_frequency = resonator_frequency
     fast_reset = fast_reset
     zeno = zeno
+    twpa_frequency = twpa_frequency
+    twpa_power = twpa_power

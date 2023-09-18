@@ -46,9 +46,9 @@ ReadoutCharacterizationType = np.dtype(
 class ReadoutCharacterizationData(Data):
     """ReadoutCharacterization acquisition outputs."""
 
-    data: dict[
-        tuple[QubitId, int, bool], npt.NDArray[ReadoutCharacterizationType]
-    ] = field(default_factory=dict)
+    data: dict[tuple, npt.NDArray[ReadoutCharacterizationType]] = field(
+        default_factory=dict
+    )
     """Raw data acquired."""
 
     def register_qubit(self, qubit, probability, state, readout_number):
@@ -175,21 +175,21 @@ def _plot(
     # Maybe the plot can just be something like a confusion matrix between 0s and 1s ???
 
     figures = []
-    fitting_report = ""
+    fitting_report = None
     fig = go.Figure()
-
-    fig.add_trace(
-        go.Heatmap(
-            z=fit.Lambda_M[qubit],
-        ),
-    )
+    if fit is not None:
+        fitting_report = ""
+        fig.add_trace(
+            go.Heatmap(
+                z=fit.Lambda_M[qubit],
+            ),
+        )
+        fitting_report += f"{qubit} | Fidelity : {fit.fidelity[qubit]:.6f}<br>"
+        fitting_report += f"{qubit} | QND: {fit.qnd[qubit]:.6f}<br>"
 
     fig.update_xaxes(title_text="Shot")
     fig.update_xaxes(tickvals=[0, 1])
     fig.update_yaxes(tickvals=[0, 1])
-
-    fitting_report += f"{qubit} | Fidelity : {fit.fidelity[qubit]:.6f}<br>"
-    fitting_report += f"{qubit} | QND: {fit.qnd[qubit]:.6f}<br>"
 
     # last part
     fig.update_layout(
