@@ -1,7 +1,7 @@
 """Auxiliary functions to run CHSH protocol."""
 
 
-READOUT_BASIS = [("Z", "Z"), ("Z", "X"), ("X", "Z"), ("X", "X")]
+READOUT_BASIS = ["ZZ", "ZX", "XZ", "XX"]
 
 
 def compute_chsh(frequencies, basis, i):

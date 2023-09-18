@@ -20,7 +20,7 @@ from ...readout_mitigation_matrix import _fit as mitigation_fit
 from ...utils import calculate_frequencies
 from .circuits import create_chsh_circuits
 from .pulses import create_chsh_sequences
-from .utils import compute_chsh
+from .utils import READOUT_BASIS, compute_chsh
 
 COMPUTATIONAL_BASIS = ["00", "01", "10", "11"]
 
@@ -70,28 +70,48 @@ class CHSHData(Data):
                 frequencies[i] = 0
 
         # TODO: improve this
+        # for state, freq in frequencies.items():
+        #     if (pair[0], pair[1], bell_state) not in self.data:
+        #         self.data[pair[0], pair[1], bell_state] = {}
+        #     if basis not in self.data[pair[0], pair[1], bell_state]:
+        #         self.data[pair[0], pair[1], bell_state][basis] = {}
+        #     if state in self.data[pair[0], pair[1], bell_state][basis]:
+        #         self.data[pair[0], pair[1], bell_state][basis][state].append(freq)
+        #     else:
+        #         self.data[pair[0], pair[1], bell_state][basis][state] = [freq]
+
         for state, freq in frequencies.items():
-            if (pair[0], pair[1], bell_state) not in self.data:
-                self.data[pair[0], pair[1], bell_state] = {}
-            if basis not in self.data[pair[0], pair[1], bell_state]:
-                self.data[pair[0], pair[1], bell_state][basis] = {}
-            if state in self.data[pair[0], pair[1], bell_state][basis]:
-                self.data[pair[0], pair[1], bell_state][basis][state].append(freq)
+            if (pair[0], pair[1], bell_state, basis, state) in self.data:
+                self.data[pair[0], pair[1], bell_state, basis, state] = np.concatenate(
+                    (
+                        self.data[pair[0], pair[1], bell_state, basis, state],
+                        np.array([freq]),
+                    )
+                )
             else:
-                self.data[pair[0], pair[1], bell_state][basis][state] = [freq]
+                self.data[pair[0], pair[1], bell_state, basis, state] = np.array([freq])
 
     def merge_frequencies(self, pair, bell_state):
         """Merge frequencies with different measurement basis."""
         freqs = []
-        data = self.data[pair[0], pair[1], bell_state]
-        for freq_basis in data.values():
-            freqs.append(freq_basis)
+        bell_data = {
+            (index[3], index[4]): value
+            for index, value in self.data.items()
+            if index[:3] == (pair[0], pair[1], bell_state)
+        }
+
+        freqs = []
+        for i in READOUT_BASIS:
+            freqs.append(
+                {state[1]: value for state, value in bell_data.items() if state[0] == i}
+            )
+
         return freqs
 
     @property
-    def global_params_dict(self):
+    def global_params(self):
         """Convert non-arrays attributes into dict."""
-        data_dict = super().global_params_dict
+        data_dict = super().global_params
         data_dict.pop("mitigation_matrix")
 
         return data_dict
@@ -178,30 +198,32 @@ def _acquisition_circuits(
                     result = circuit(nshots=params.nshots)
                     frequencies = result.frequencies()
                     data.register_basis(pair, bell_state, basis, frequencies)
+
     return data
 
 
-def _plot(data: CHSHData, fit: CHSHResults, qubits):
+def _plot(data: CHSHData, fit: CHSHResults, qubit):
     """Plotting function for CHSH protocol."""
     figures = []
 
     for bell_state in data.bell_states:
         fig = go.Figure(layout_yaxis_range=[-3, 3])
-        fig.add_trace(
-            go.Scatter(
-                x=data.thetas,
-                y=fit.chsh[qubits[0], qubits[1], bell_state],
-                name="Bare",
-            )
-        )
-        if fit.chsh_mitigated:
+        if fit is not None:
             fig.add_trace(
                 go.Scatter(
                     x=data.thetas,
-                    y=fit.chsh_mitigated[qubits[0], qubits[1], bell_state],
-                    name="Mitigated",
+                    y=fit.chsh[qubit[0], qubit[1], bell_state],
+                    name="Bare",
                 )
             )
+            if fit.chsh_mitigated:
+                fig.add_trace(
+                    go.Scatter(
+                        x=data.thetas,
+                        y=fit.chsh_mitigated[qubit[0], qubit[1], bell_state],
+                        name="Mitigated",
+                    )
+                )
 
         # classical bounds
         fig.add_hline(
@@ -235,9 +257,8 @@ def _plot(data: CHSHData, fit: CHSHResults, qubits):
             yaxis_title="CHSH value",
         )
         figures.append(fig)
-    fitting_report = "No fitting data"
 
-    return figures, fitting_report
+    return figures, None
 
 
 def _fit(data: CHSHData) -> CHSHResults:

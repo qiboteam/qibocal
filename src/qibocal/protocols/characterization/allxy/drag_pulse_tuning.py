@@ -200,11 +200,11 @@ def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
     return DragPulseTuningResults(betas_optimal, fitted_parameters)
 
 
-def _plot(data: DragPulseTuningData, fit: DragPulseTuningResults, qubit):
+def _plot(data: DragPulseTuningData, qubit, fit: DragPulseTuningResults):
     """Plotting function for DragPulseTuning."""
 
     figures = []
-    fitting_report = ""
+    fitting_report = None
 
     fig = make_subplots(
         rows=1,
@@ -218,7 +218,6 @@ def _plot(data: DragPulseTuningData, fit: DragPulseTuningResults, qubit):
             x=qubit_data.beta,
             y=qubit_data.msr * V_TO_UV,
             mode="markers",
-            opacity=0.3,
             name="Probability",
             showlegend=True,
             legendgroup="group1",
@@ -226,30 +225,28 @@ def _plot(data: DragPulseTuningData, fit: DragPulseTuningResults, qubit):
     )
 
     # add fitting traces
+    if fit is not None:
+        beta_range = np.linspace(
+            min(qubit_data.beta),
+            max(qubit_data.beta),
+            20,
+        )
 
-    beta_range = np.linspace(
-        min(qubit_data.beta),
-        max(qubit_data.beta),
-        20,
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=beta_range,
-            y=drag_fit(
-                beta_range,
-                float(fit.fitted_parameters[qubit][0]),
-                float(fit.fitted_parameters[qubit][1]),
-                float(fit.fitted_parameters[qubit][2]),
-                float(fit.fitted_parameters[qubit][3]),
+        fig.add_trace(
+            go.Scatter(
+                x=beta_range,
+                y=drag_fit(
+                    beta_range,
+                    float(fit.fitted_parameters[qubit][0]),
+                    float(fit.fitted_parameters[qubit][1]),
+                    float(fit.fitted_parameters[qubit][2]),
+                    float(fit.fitted_parameters[qubit][3]),
+                ),
+                name="Fit",
+                line=go.scatter.Line(dash="dot"),
             ),
-            name="Fit",
-            line=go.scatter.Line(dash="dot"),
-        ),
-    )
-    fitting_report = fitting_report + (
-        f"{qubit} | Optimal Beta Param: {fit.betas[qubit]:.4f}<br><br>"
-    )
+        )
+        fitting_report = f"{qubit} | Optimal Beta Param: {fit.betas[qubit]:.4f}<br><br>"
 
     fig.update_layout(
         showlegend=True,
