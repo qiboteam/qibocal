@@ -231,8 +231,8 @@ def _fit(data: ChevronData) -> ChevronResults:
             pair_amplitude.append(amplitude)
             pair_duration.append(duration)
 
-        amplitudes[qubits] = np.mean(pair_amplitude)
-        durations[qubits] = int(np.mean(duration))
+        amplitudes[pair] = np.mean(pair_amplitude)
+        durations[pair] = int(np.mean(duration))
 
     return ChevronResults(amplitude=amplitudes, duration=durations)
 
@@ -269,10 +269,10 @@ def _plot(data: ChevronData, fit: ChevronResults, qubit):
             fig.add_trace(
                 go.Scatter(
                     x=[
-                        fit.duration[qubits],
+                        fit.duration[qubit],
                     ],
                     y=[
-                        fit.amplitude[qubits],
+                        fit.amplitude[qubit],
                     ],
                     mode="markers",
                     marker=dict(
@@ -301,8 +301,8 @@ def _plot(data: ChevronData, fit: ChevronResults, qubit):
 
     if fit is not None:
         reports = []
-        reports.append(f"{qubits[1]} | CZ amplitude: {fit.amplitude[qubits]:.4f}<br>")
-        reports.append(f"{qubits[1]} | CZ duration: {fit.duration[qubits]}<br>")
+        reports.append(f"{qubits[1]} | CZ amplitude: {fit.amplitude[qubit]:.4f}<br>")
+        reports.append(f"{qubits[1]} | CZ duration: {fit.duration[qubit]}<br>")
         fitting_report = "".join(list(dict.fromkeys(reports)))
 
     return [fig], fitting_report
