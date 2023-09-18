@@ -1,16 +1,16 @@
 platform: dummy
 
-qubits: [0]
+qubits: [0,1]
 
 
 actions:
 
-  # - id: resoantor_amplitude
-  #   priority: 0
-  #   operation: resonator_amplitude
-  #   parameters:
-  #     amplitude_step: 0.1
-  #     amplitude_stop: 0.5
+  - id: resoantor_amplitude
+    priority: 0
+    operation: resonator_amplitude
+    parameters:
+      amplitude_step: 0.1
+      amplitude_stop: 0.5
 
   # - id: resonator_spectroscopy high power
   #   priority: 0
