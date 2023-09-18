@@ -41,7 +41,7 @@ class AllXYDragData(Data):
 
     beta_param: float = None
     """Beta parameter for drag pulse."""
-    data: dict[tuple[QubitId, int], npt.NDArray[allxy.AllXYType]] = field(
+    data: dict[tuple[QubitId, float], npt.NDArray[allxy.AllXYType]] = field(
         default_factory=dict
     )
     """Raw data acquired."""
@@ -82,11 +82,10 @@ def _acquisition(
 
     data = AllXYDragData()
 
+    betas = np.arange(params.beta_start, params.beta_end, params.beta_step).round(4)
     # sweep the parameters
-    for beta_param in np.arange(
-        params.beta_start, params.beta_end, params.beta_step
-    ).round(4):
-        for gateNumber, gates in enumerate(allxy.gatelist):
+    for beta_param in betas:
+        for gates in allxy.gatelist:
             # create a sequence of pulses
             ro_pulses = {}
             sequence = PulseSequence()
@@ -109,7 +108,8 @@ def _acquisition(
             for qubit in qubits:
                 z_proj = 2 * results[ro_pulses[qubit].serial].probability(0) - 1
                 # store the results
-                data.register_qubit(qubit, beta_param, z_proj, gateNumber)
+                gate = "-".join(gates)
+                data.register_qubit(qubit, beta_param, z_proj, gate)
     return data
 
 
@@ -118,11 +118,11 @@ def _fit(_data: AllXYDragData) -> AllXYDragResults:
     return AllXYDragResults()
 
 
-def _plot(data: AllXYDragData, _fit: AllXYDragResults, qubit):
+def _plot(data: AllXYDragData, qubit, fit: AllXYDragResults = None):
     """Plotting function for allXYDrag."""
 
     figures = []
-    fitting_report = "No fitting data"
+    fitting_report = None
 
     fig = go.Figure()
     beta_params = data.beta_params

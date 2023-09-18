@@ -8,6 +8,7 @@ from qibo.config import PRECISION_TOL
 from uncertainties import ufloat
 
 from qibocal.config import raise_error
+from qibocal.protocols.characterization.utils import significant_digit
 
 SINGLE_QUBIT_CLIFFORDS = {
     # Virtual gates
@@ -173,6 +174,7 @@ def extract_from_data(
     """
     if isinstance(data, list):
         data = DataFrame(data)
+
     # Check what parameters where given.
     if not groupby_key and not agg_type:
         # No grouping and no aggreagtion is wanted. Just return the wanted output key.

@@ -22,11 +22,24 @@ distributed with pypi* for the packages listed above.
 
 .. _installing-qibocal:
 
+Installing with pip
+"""""""""""""""""""
+
+The installation using ``pip`` is the recommended approach to install ``Qibocal``.
+
+.. code-block::
+
+      pip install qibocal
+
+.. note::
+      Make sure to update ``pip`` if needed.
+
+
 Installing from source
 """"""""""""""""""""""
 
 In order to install ``qibocal`` from source, you can simply clone the GitHub repository
-with:
+and perform the installation by following these instructions.
 
 .. code-block::
 
@@ -41,18 +54,3 @@ You can also use `poetry <https://python-poetry.org/>`_ to install ``qibocal`` f
       git clone https://github.com/qiboteam/qibocal.git
       cd qibocal
       poetry install
-
-
-Qibocal needs Qibolab!
-""""""""""""""""""""""
-
-The ``qibocal`` package works closely with ``qibolab``.
-Indeed, in order to carry out calibrations appropriately, it is essential to be able
-to translate appropriate theoretical tests into the corresponding pulse sequences that interpret them in hardware.
-In this section we explain how to perform calibration of a device belonging to the `tii platform`.
-To do this, it is necessary to have ``qibolab`` properly installed.
-To do this procedure correctly, visit the `Qibolab installation page`_, where it is explained how to install the appropriate `extra_dependencies`.
-
-
-
-.. _`Qibolab installation page`: https://qibolab.readthedocs.io/en/latest/getting-started/installation.html

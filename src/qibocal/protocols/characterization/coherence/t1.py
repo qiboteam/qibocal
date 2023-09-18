@@ -52,7 +52,7 @@ CoherenceType = np.dtype(
 class T1Data(Data):
     """T1 acquisition outputs."""
 
-    data: dict[QubitId, npt.NDArray[CoherenceType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
 
     def register_qubit(self, qubit, wait, msr, phase):
@@ -154,13 +154,13 @@ def _fit(data: T1Data) -> T1Results:
     return T1Results(t1s, fitted_parameters)
 
 
-def _plot(data: T1Data, fit: T1Results, qubit):
+def _plot(data: T1Data, qubit, fit: T1Results = None):
     """Plotting function for T1 experiment."""
 
     figures = []
     fig = go.Figure()
 
-    fitting_report = ""
+    fitting_report = None
     qubit_data = data[qubit]
     waits = qubit_data.wait
 
@@ -175,24 +175,23 @@ def _plot(data: T1Data, fit: T1Results, qubit):
         )
     )
 
-    waitrange = np.linspace(
-        min(waits),
-        max(waits),
-        2 * len(qubit_data),
-    )
-
-    params = fit.fitted_parameters[qubit]
-    fig.add_trace(
-        go.Scatter(
-            x=waitrange,
-            y=utils.exp_decay(waitrange, *params),
-            name="Fit",
-            line=go.scatter.Line(dash="dot"),
+    if fit is not None:
+        waitrange = np.linspace(
+            min(waits),
+            max(waits),
+            2 * len(qubit_data),
         )
-    )
-    fitting_report = fitting_report + (
-        f"{qubit} | t1: {fit.t1[qubit]:,.0f} ns.<br><br>"
-    )
+
+        params = fit.fitted_parameters[qubit]
+        fig.add_trace(
+            go.Scatter(
+                x=waitrange,
+                y=utils.exp_decay(waitrange, *params),
+                name="Fit",
+                line=go.scatter.Line(dash="dot"),
+            )
+        )
+        fitting_report = f"{qubit} | t1: {fit.t1[qubit]:,.0f} ns.<br><br>"
 
     # last part
     fig.update_layout(

@@ -10,7 +10,7 @@ def exp_decay(x, *p):
     return p[0] - p[1] * np.exp(-1 * x * p[2])
 
 
-def exponential_fit(data):
+def exponential_fit(data, zeno=None):
     qubits = data.qubits
 
     decay = {}
@@ -18,7 +18,10 @@ def exponential_fit(data):
 
     for qubit in qubits:
         voltages = data[qubit].msr * V_TO_UV
-        times = data[qubit].wait
+        if zeno:
+            times = np.arange(1, len(data[qubit].msr) + 1)
+        else:
+            times = data[qubit].wait
 
         try:
             y_max = np.max(voltages)

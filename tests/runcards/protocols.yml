@@ -1,4 +1,6 @@
+platform: dummy
 
+qubits: [0,1]
 
 actions:
 
@@ -103,17 +105,62 @@ actions:
       nshots: 10
 
 
+  - id: resonator flux crosstalk # using ``flux_qubits``
+    priority: 0
+    operation: resonator_crosstalk
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 500_000
+      bias_width: 0.8
+      bias_step:  0.1
+      flux_qubits: [0, 1, 2, 3]
+      nshots: 10
+      relaxation_time: 100
 
-  - id: qubit flux dependence
+
+
+  - id: qubit flux dependence #"01" transition
     priority: 0
     operation: qubit_flux
     parameters:
-      freq_width: 10_000_000
-      freq_step: 1_000_000
-      bias_width: 0.8 #0.1
-      bias_step:  0.1 # 0.001
-      drive_amplitude: 0.005
-      nshots: 10
+      freq_width: 150_000_000
+      freq_step: 500_000
+      bias_width: 0.2
+      bias_step:  0.005
+      drive_amplitude: 0.5
+      nshots: 1024
+      relaxation_time: 2000
+      transition: "01"
+
+
+
+  - id: qubit flux dependence 02
+    priority: 0
+    operation: qubit_flux
+    parameters:
+      freq_width: 150_000_000
+      freq_step: 500_000
+      bias_width: 0.2
+      bias_step:  0.005
+      drive_amplitude: 0.5
+      nshots: 1024
+      relaxation_time: 2000
+      transition: "02"
+
+
+
+  - id: qubit flux crosstalk # using ``flux_qubits``
+    priority: 0
+    operation: qubit_crosstalk
+    parameters:
+      freq_width: 150_000_000
+      freq_step: 500_000
+      bias_width: 0.2
+      bias_step:  0.005
+      drive_amplitude: 0.5
+      flux_qubits: [1, 2]
+      nshots: 1024
+      relaxation_time: 2000
 
 
 
@@ -166,6 +213,13 @@ actions:
       delay_before_readout_step: 2000
       nshots: 10
 
+  - id: zeno
+    priority: 00
+    operation: zeno
+    parameters:
+      readouts: 2
+      nshots: 10
+
   - id: t2
     priority: 0
     operation: t2
@@ -182,19 +236,19 @@ actions:
       delay_between_pulses_start: 16
       delay_between_pulses_end: 20000
       delay_between_pulses_step: 100
-      nshots: 1024
+      nshots: 10
 
   - id: ramsey_detuned
     priority: 0
     operation: ramsey
     parameters:
-      delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
-      delay_between_pulses_end: 5000
-      delay_between_pulses_step: 500 # must be a multiple of 4
-      n_osc: 10
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 20
+      delay_between_pulses_step: 1
+      n_osc: 2
       nshots: 10
 
-  - id: ramsey detuned sequences
+  - id: ramsey detuned sequences with bootstrap
     priority: 0
     operation: ramsey_sequences
     parameters:
@@ -203,8 +257,29 @@ actions:
       delay_between_pulses_step: 500 # must be a multiple of 4
       n_osc: 10
       nshots: 1024
+      nboot: 2
+
+  - id: ramsey detuned sequences
+    priority: 0
+    operation: ramsey_sequences
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 20
+      delay_between_pulses_step: 1
+      n_osc: 2
+      nshots: 10
 
   - id: ramsey
+    priority: 0
+    operation: ramsey
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 20
+      delay_between_pulses_step: 1
+      n_osc: 0
+      nshots: 1024
+
+  - id: ramsey with bootstrap
     priority: 0
     operation: ramsey
     parameters:
@@ -213,8 +288,7 @@ actions:
       delay_between_pulses_step: 500 # must be a multiple of 4
       n_osc: 0
       nshots: 1024
-
-
+      nboot: 2
 
   - id: single shot classification
     priority: 0
@@ -222,6 +296,19 @@ actions:
     parameters:
       nshots: 10
 
+  - id: single shot classification with classifiers
+    priority: 0
+    operation: single_shot_classification
+    parameters:
+      nshots: 10
+      savedir: "cls_results"
+      classifiers_list: ["qubit_fit","naive_bayes", "linear_svm"]
+
+  - id: readout characterization
+    priority: 0
+    operation: readout_characterization
+    parameters:
+      nshots: 10
 
   - id: allXY
     priority: 0
@@ -236,7 +323,7 @@ actions:
     operation: allxy_drag_pulse_tuning
     parameters:
       beta_start: 0
-      beta_end: 0.02
+      beta_end: 0.04
       beta_step: 0.01
       nshots: 10
 
@@ -246,7 +333,7 @@ actions:
     operation: drag_pulse_tuning
     parameters:
       beta_start: 0
-      beta_end: 0.02
+      beta_end: 0.1
       beta_step: 0.01
       nshots: 10
 
@@ -255,8 +342,8 @@ actions:
     operation: spin_echo
     parameters:
       delay_between_pulses_start: 0
-      delay_between_pulses_end: 20000
-      delay_between_pulses_step: 2000
+      delay_between_pulses_end: 5
+      delay_between_pulses_step: 1
       nshots: 10
 
 
@@ -289,6 +376,31 @@ actions:
       uncertainties: None
       n_bootstrap: 0
 
+  - id: chevron id
+    priority: 0
+    operation: chevron
+    qubits: [[0, 1],[1,2],[0,3]]
+    parameters:
+      amplitude_min: 0.1
+      amplitude_max: 0.6
+      amplitude_step: 0.01
+      duration_min: 10
+      duration_max: 50
+      duration_step: 1
+      nshots: 1000
+      parking: True
+
+  - id: tune landscape
+    priority: 0
+    operation: cz_virtualz
+    qubits: [[0, 1],[1,2],[0,3]]
+    parameters:
+      theta_start: 0
+      theta_end: 180
+      theta_step: 10
+      dt: 0
+      parking: True
+
   - id: standard rb inhomogeneous
     priority: 0
     operation: standard_rb
@@ -301,6 +413,36 @@ actions:
       n_bootstrap: 10
       noise_model: PauliErrorOnX
       noise_params: [0.01, 0.01, 0.01]
+
+  - id : resonator_frequency
+    priority: 0
+    operation: resonator_frequency
+    parameters:
+      freq_width: 200.e+6
+      freq_step: 25.e+6
+      nshots: 1000
+
+  - id: fast reset
+    priority: 0
+    operation: fast_reset
+    parameters:
+      nshots: 1024
+
+  - id: twpa frequency
+    priority: 0
+    operation: twpa_frequency
+    parameters:
+      nshots: 10
+      frequency_width: 1_000_000
+      frequency_step: 100_000
+
+  - id: twpa power
+    priority: 0
+    operation: twpa_power
+    parameters:
+      nshots: 10
+      power_width: 10
+      power_step: 1
 
   - id: clifford rb no error
     priority: 0

@@ -1,5 +1,5 @@
-from dataclasses import dataclass, field
-from typing import Optional, Union
+from dataclasses import dataclass, field, fields
+from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -9,7 +9,14 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import (
+    Data,
+    Parameters,
+    ParameterValue,
+    Qubits,
+    Results,
+    Routine,
+)
 
 from .utils import PowerLevel, lorentzian_fit, spectroscopy_plot
 
@@ -42,24 +49,40 @@ class ResonatorSpectroscopyParameters(Parameters):
 class ResonatorSpectroscopyResults(Results):
     """ResonatorSpectroscopy outputs."""
 
-    frequency: dict[Union[str, int], float] = field(
-        metadata=dict(update="readout_frequency")
-    )
+    frequency: dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
     """Readout frequency [GHz] for each qubit."""
-    fitted_parameters: dict[Union[str, int], dict[str, float]]
+    fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitted parameters."""
-    bare_frequency: Optional[dict[Union[str, int], float]] = field(
+    bare_frequency: Optional[dict[QubitId, float]] = field(
         default_factory=dict, metadata=dict(update="bare_resonator_frequency")
     )
     """Bare resonator frequency [GHz] for each qubit."""
-    amplitude: Optional[dict[Union[str, int], float]] = field(
+    amplitude: Optional[dict[QubitId, float]] = field(
         default_factory=dict, metadata=dict(update="readout_amplitude")
     )
     """Readout amplitude for each qubit."""
-    attenuation: Optional[dict[Union[str, int], int]] = field(
+    attenuation: Optional[dict[QubitId, int]] = field(
         default_factory=dict, metadata=dict(update="readout_attenuation")
     )
     """Readout attenuation [dB] for each qubit."""
+
+    @property
+    def update(self):
+        """Method overwritten from Results to not update
+        amplitude when running resonator spectroscopy at
+        high power."""
+        up: dict[str, ParameterValue] = {}
+        fields_to_updated = (
+            [fld for fld in fields(self) if fld.name != "amplitude"]
+            if self.bare_frequency == {}
+            else fields(self)
+        )
+
+        for fld in fields_to_updated:
+            if "update" in fld.metadata:
+                up[fld.metadata["update"]] = getattr(self, fld.name)
+
+        return up
 
 
 ResSpecType = np.dtype(
@@ -89,6 +112,14 @@ class ResonatorSpectroscopyData(Data):
         ar["phase"] = phase
         self.data[qubit] = np.rec.array(ar)
 
+    @classmethod
+    def load(cls, path):
+        obj = super().load(path)
+        # Instantiate PowerLevel object
+        if obj.power_level is not None:  # pylint: disable=E1101
+            obj.power_level = PowerLevel(obj.power_level)  # pylint: disable=E1101
+        return obj
+
 
 def _acquisition(
     params: ResonatorSpectroscopyParameters, platform: Platform, qubits: Qubits
@@ -106,7 +137,6 @@ def _acquisition(
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=0)
         if params.amplitude is not None:
             ro_pulses[qubit].amplitude = params.amplitude
-
         amplitudes[qubit] = ro_pulses[qubit].amplitude
 
         sequence.add(ro_pulses[qubit])
@@ -121,11 +151,13 @@ def _acquisition(
         pulses=[ro_pulses[qubit] for qubit in qubits],
         type=SweeperType.OFFSET,
     )
+
     data = ResonatorSpectroscopyData(
         amplitudes=amplitudes,
         power_level=params.power_level,
         resonator_type=platform.resonator_type,
     )
+
     results = platform.sweep(
         sequence,
         ExecutionParameters(
@@ -182,9 +214,9 @@ def _fit(data: ResonatorSpectroscopyData) -> ResonatorSpectroscopyResults:
         )
 
 
-def _plot(data: ResonatorSpectroscopyData, fit: ResonatorSpectroscopyResults, qubit):
+def _plot(data: ResonatorSpectroscopyData, qubit, fit: ResonatorSpectroscopyResults):
     """Plotting function for ResonatorSpectroscopy."""
-    return spectroscopy_plot(data, fit, qubit)
+    return spectroscopy_plot(data, qubit, fit)
 
 
 resonator_spectroscopy = Routine(_acquisition, _fit, _plot)

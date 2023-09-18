@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from statistics import mode
 from typing import Optional
 
 import numpy as np
@@ -13,9 +12,8 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.config import log
 
-from .utils import GHZ_TO_HZ, HZ_TO_GHZ, V_TO_UV, norm
+from .utils import GHZ_TO_HZ, HZ_TO_GHZ, V_TO_UV, fit_punchout, norm
 
 
 @dataclass
@@ -46,13 +44,13 @@ class ResonatorPunchoutAttenuationResults(Results):
         metadata=dict(update="readout_frequency")
     )
     """Readout frequency [GHz] for each qubit."""
+    bare_frequency: Optional[dict[QubitId, float]] = field(
+        metadata=dict(update="bare_resonator_frequency")
+    )
     readout_attenuation: dict[QubitId, int] = field(
         metadata=dict(update="readout_attenuation")
     )
     """Readout attenuation [dB] for each qubit."""
-    bare_frequency: Optional[dict[QubitId, float]] = field(
-        metadata=dict(update="bare_resonator_frequency")
-    )
 
 
 ResPunchoutAttType = np.dtype(
@@ -125,7 +123,7 @@ def _acquisition(
         type=SweeperType.ABSOLUTE,
     )
 
-    data = ResonatorPunchoutAttenuationData(platform.resonator_type)
+    data = ResonatorPunchoutAttenuationData(resonator_type=platform.resonator_type)
 
     results = platform.sweep(
         sequence,
@@ -164,80 +162,18 @@ def _fit(
 ) -> ResonatorPunchoutAttenuationResults:
     """Fit frequency and attenuation at high and low power for a given resonator."""
 
-    qubits = data.qubits
-
-    freqs_low_att = {}
-    freqs_high_att = {}
-    ro_atts = {}
-
-    for qubit in qubits:
-        qubit_data = data[qubit]
-        try:
-            n_att = len(np.unique(qubit_data.att))
-            n_freq = len(np.unique(qubit_data.freq))
-            for i in range(n_att):
-                qubit_data.msr[i * n_freq : (i + 1) * n_freq] = norm(
-                    qubit_data.msr[i * n_freq : (i + 1) * n_freq]
-                )
-
-            min_msr_indices = np.where(
-                qubit_data.msr == (1 if data.resonator_type == "3D" else 0)
-            )[0]
-
-            max_freq = np.max(qubit_data.freq[min_msr_indices])
-            min_freq = np.min(qubit_data.freq[min_msr_indices])
-            middle_freq = (max_freq + min_freq) / 2
-
-            low_att_indices = np.where(qubit_data.freq[min_msr_indices] < middle_freq)[
-                0
-            ]
-            high_att_indices = np.where(
-                qubit_data.freq[min_msr_indices] >= middle_freq
-            )[0]
-
-            freq_high_att = mode(qubit_data.freq[high_att_indices])
-            freq_low_att = mode(qubit_data.freq[low_att_indices])
-
-            high_att_max = np.max(
-                getattr(qubit_data, fit_type)[
-                    np.where(qubit_data.freq == freq_low_att)[0]
-                ]
-            )
-            high_att_min = np.min(
-                getattr(qubit_data, fit_type)[
-                    np.where(qubit_data.freq == freq_low_att)[0]
-                ]
-            )
-
-            ro_att = round((high_att_max + high_att_min) / 2)
-            ro_att = ro_att + 1 if ro_att % 2 == 1 else ro_att
-
-        except:
-            log.warning("resonator_punchout_fit: the fitting was not succesful")
-            freq_high_att = 0.0
-            freq_low_att = 0.0
-            ro_att = 0.0
-
-        freqs_low_att[qubit] = freq_low_att * HZ_TO_GHZ
-        freqs_high_att[qubit] = freq_high_att * HZ_TO_GHZ
-        ro_atts[qubit] = ro_att
-
-    return ResonatorPunchoutAttenuationResults(
-        freqs_high_att,
-        ro_atts,
-        freqs_low_att,
-    )
+    return ResonatorPunchoutAttenuationResults(*fit_punchout(data, fit_type))
 
 
 def _plot(
     data: ResonatorPunchoutAttenuationData,
-    fit: ResonatorPunchoutAttenuationResults,
     qubit,
+    fit: ResonatorPunchoutAttenuationResults = None,
 ):
     """Plotting for ResonatorPunchoutAttenuation."""
 
     figures = []
-    fitting_report = ""
+    fitting_report = None
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -269,8 +205,8 @@ def _plot(
         row=1,
         col=1,
     )
-    fig.update_xaxes(title_text=f"{qubit}: Frequency (Hz)", row=1, col=1)
-    fig.update_yaxes(title_text="Attenuation", row=1, col=1)
+    fig.update_xaxes(title_text="Frequency (Hz)", row=1, col=1)
+    fig.update_yaxes(title_text="Attenuation (dB)", row=1, col=1)
     fig.add_trace(
         go.Heatmap(
             x=frequencies,
@@ -281,33 +217,34 @@ def _plot(
         row=1,
         col=2,
     )
-    fig.update_xaxes(title_text=f"{qubit}/: Frequency (Hz)", row=1, col=2)
-    fig.update_yaxes(title_text="Attenuation", row=1, col=2)
+    fig.update_xaxes(title_text="Frequency (Hz)", row=1, col=2)
+    fig.update_yaxes(title_text="Attenuation (dB)", row=1, col=2)
 
-    fig.add_trace(
-        go.Scatter(
-            x=[
-                fit.readout_frequency[qubit],
-            ],
-            y=[
-                fit.readout_attenuation[qubit],
-            ],
-            mode="markers",
-            marker=dict(
-                size=8,
-                color="gray",
-                symbol="circle",
-            ),
+    if fit is not None:
+        fig.add_trace(
+            go.Scatter(
+                x=[
+                    fit.readout_frequency[qubit],
+                ],
+                y=[
+                    fit.readout_attenuation[qubit],
+                ],
+                mode="markers",
+                marker=dict(
+                    size=8,
+                    color="gray",
+                    symbol="circle",
+                ),
+            )
         )
-    )
-    title_text = ""
-    title_text += f"{qubit} | Resonator Frequency at Low Power:  {fit.readout_frequency[qubit] * GHZ_TO_HZ} Hz.<br>"
-    title_text += (
-        f"{qubit} | Readout Attenuation: {fit.readout_attenuation[qubit]} db.<br>"
-    )
-    title_text += f"{qubit} | Resonator Frequency at High Power: {fit.bare_frequency[qubit] * GHZ_TO_HZ} Hz.<br>"
+        title_text = ""
+        title_text += f"{qubit} | Resonator Frequency at Low Power:  {fit.readout_frequency[qubit] * GHZ_TO_HZ} Hz.<br>"
+        title_text += (
+            f"{qubit} | Readout Attenuation: {fit.readout_attenuation[qubit]} db.<br>"
+        )
+        title_text += f"{qubit} | Resonator Frequency at High Power: {fit.bare_frequency[qubit] * GHZ_TO_HZ} Hz.<br>"
 
-    fitting_report = fitting_report + title_text
+        fitting_report = title_text
 
     fig.update_layout(
         showlegend=False,

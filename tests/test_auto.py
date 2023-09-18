@@ -7,6 +7,7 @@ import yaml
 from pydantic.dataclasses import dataclass
 
 from qibocal.auto.execute import Executor
+from qibocal.auto.mode import ExecutionMode
 from qibocal.auto.runcard import Runcard
 
 cards = pathlib.Path(__file__).parent / "runcards"
@@ -36,6 +37,6 @@ def test_execution(card: pathlib.Path):
     """
     testcard = TestCard(**yaml.safe_load(card.read_text(encoding="utf-8")))
     executor = Executor.load(testcard.runcard, output=pathlib.Path(tempfile.mkdtemp()))
-    executor.run()
+    list(executor.run(mode=ExecutionMode.acquire))
 
     assert testcard.validation.result == [step[0] for step in executor.history]

@@ -118,12 +118,12 @@ def _fit(data: T2Data) -> T2Results:
     return T2Results(t2s, fitted_parameters)
 
 
-def _plot(data: T2Data, fit: T2Results, qubit):
+def _plot(data: T2Data, qubit, fit: T2Results = None):
     """Plotting function for Ramsey Experiment."""
 
     figures = []
     fig = go.Figure()
-    fitting_report = ""
+    fitting_report = None
 
     qubit_data = data[qubit]
 
@@ -138,29 +138,27 @@ def _plot(data: T2Data, fit: T2Results, qubit):
         )
     )
 
-    # add fitting trace
-    waitrange = np.linspace(
-        min(qubit_data.wait),
-        max(qubit_data.wait),
-        2 * len(qubit_data),
-    )
-
-    params = fit.fitted_parameters[qubit]
-    fig.add_trace(
-        go.Scatter(
-            x=waitrange,
-            y=utils.exp_decay(
-                waitrange,
-                *params,
-            )
-            * V_TO_UV,
-            name="Fit",
-            line=go.scatter.Line(dash="dot"),
+    if fit is not None:
+        # add fitting trace
+        waitrange = np.linspace(
+            min(qubit_data.wait),
+            max(qubit_data.wait),
+            2 * len(qubit_data),
         )
-    )
-    fitting_report = fitting_report + (
-        f"{qubit} | T2: {fit.t2[qubit]:,.0f} ns.<br><br>"
-    )
+
+        params = fit.fitted_parameters[qubit]
+        fig.add_trace(
+            go.Scatter(
+                x=waitrange,
+                y=utils.exp_decay(
+                    waitrange,
+                    *params,
+                ),
+                name="Fit",
+                line=go.scatter.Line(dash="dot"),
+            )
+        )
+        fitting_report = f"{qubit} | T2: {fit.t2[qubit]:,.0f} ns.<br><br>"
 
     fig.update_layout(
         showlegend=True,

@@ -2,31 +2,32 @@ platform: dummy
 
 qubits: [0, 1]
 
+
 actions:
 
-  - id: resonator_spectroscopy high power
-    priority: 0
-    operation: resonator_spectroscopy
-    # main: resonator punchout
-    parameters:
-      freq_width: 10_000_000
-      freq_step: 500_000
-      amplitude: 0.4
-      power_level: high
-      nshots: 1024
-      relaxation_time: 0
+# - id: resonator_spectroscopy high power
+#   priority: 0
+#   operation: resonator_spectroscopy
+#   main: resonator punchout
+#   parameters:
+#    freq_width: 10_000_000
+#     freq_step: 500_000
+#     amplitude: 0.4
+#     power_level: high
+#     nshots: 1024
+#     relaxation_time: 0
 
   # - id: resonator punchout
-  #   priority: 10
+  #   priority: 0
   #   operation: resonator_punchout
-  #   #main: resonator_spectroscopy low power
+  #   main: resonator_spectroscopy low power
   #   parameters:
   #     freq_width: 5_000_000
   #     freq_step: 1_000_000
   #     min_amp_factor: 0.02
   #     max_amp_factor: 2.4
   #     step_amp_factor: 0.1
-  #     nshots: 1
+  #     nshots: 10
   #     relaxation_time: 50
 
   # - id: resonator_punchout_attenuation
@@ -43,10 +44,10 @@ actions:
   #     nshots: 1000
   #     relaxation_time: 0
 
-  # - id: resonator spectroscopy low power
+  # - id: resonator_spectroscopy low power
   #   priority: 0
   #   operation: resonator_spectroscopy
-  #   #main: qubit_spectroscopy
+  #   main: qubit_spectroscopy
   #   parameters:
   #     freq_width: 10_000_000
   #     freq_step: 1_000_000
@@ -54,7 +55,7 @@ actions:
   #     power_level: low
   #     nshots: 1024
   #     relaxation_time: 50
-  #     attenuation: 20
+  #     # attenuation: 20
 
   # - id: resonator flux dependence
   #   priority: 0
@@ -146,12 +147,13 @@ actions:
   #     delay_between_pulses_end: 200
   #     delay_between_pulses_step: 4 # must be a multiple of 4
 
-  - id: single shot classification
-    priority: 0
-    # main: allXY
-    operation: single_shot_classification
-    parameters:
-      nshots: 1024
+  # - id: single shot classification
+  #   priority: 0
+  #   # main: allXY
+  #   operation: single_shot_classification
+  #   parameters:
+  #     nshots: 1024
+      # classifiers_list: ["qblox_fit", "naive_bayes"]
 
   # - id: allXY
   #   priority: 0
@@ -208,13 +210,213 @@ actions:
   #     freq_width: 10_000_000
   #     freq_step: 400_000
 
-  # - id: standard rb
-  #   priority: 0
-  #   operation: standard_rb
-  #   qubits: [1]
-  #   parameters:
-  #     depths: [1,3,5,10,15,20,30]
-  #     niter: 20
-  #     nshots: 128
-  #     # noise_model: PauliErrorOnAll
-  #     # noise_params: [0.01, 0.01, 0.01]
+
+#   - id: rabi
+#     priority: 0
+#     operation: rabi_amplitude
+#     parameters:
+#       min_amp_factor: 0.0
+#       max_amp_factor: 4.0
+#       step_amp_factor: 0.1
+#       pulse_length: 30
+#       nshots: 1024
+
+
+#   - id: rabi length
+#     priority: 0
+#     operation: rabi_length
+#     parameters:
+#       pulse_duration_start: 4
+#       pulse_duration_end: 84
+#       pulse_duration_step: 8
+#       pulse_amplitude: 0.5
+#       nshots: 1024
+
+
+#   - id: rabi length sequences
+#     priority: 0
+#     operation: rabi_length_sequences
+#     parameters:
+#       pulse_duration_start: 4
+#       pulse_duration_end: 84
+#       pulse_duration_step: 8
+#       pulse_amplitude: 0.5
+#       nshots: 1024
+
+
+#   - id: t1
+#     priority: 0
+#     operation: t1
+#     parameters:
+#       delay_before_readout_start: 0
+#       delay_before_readout_end: 20_000
+#       delay_before_readout_step: 2000
+#       nshots: 1024
+
+
+#   - id: t1 sequences
+#     priority: 0
+#     operation: t1_sequences
+#     parameters:
+#       delay_before_readout_start: 0
+#       delay_before_readout_end: 20_000
+#       delay_before_readout_step: 2000
+#       nshots: 10
+
+
+#   - id: t2
+#     priority: 0
+#     operation: t2
+#     parameters:
+#       delay_between_pulses_start: 16
+#       delay_between_pulses_end: 20000
+#       delay_between_pulses_step: 100
+#       nshots: 10
+
+
+#   - id: t2 sequences
+#     priority: 0
+#     operation: t2_sequences
+#     parameters:
+#       delay_between_pulses_start: 16
+#       delay_between_pulses_end: 20000
+#       delay_between_pulses_step: 100
+#       nshots: 1024
+
+
+#   - id: ramsey_detuned
+#     priority: 0
+#     operation: ramsey
+#     parameters:
+#       delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
+#       delay_between_pulses_end: 5000
+#       delay_between_pulses_step: 500 # must be a multiple of 4
+#       n_osc: 10
+#       nshots: 10
+
+
+#   - id: ramsey detuned sequences
+#     priority: 0
+#     operation: ramsey_sequences
+#     parameters:
+#       delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
+#       delay_between_pulses_end: 5000
+#       delay_between_pulses_step: 500 # must be a multiple of 4
+#       n_osc: 10
+#       nshots: 1024
+
+
+#   - id: ramsey
+#     priority: 0
+#     operation: ramsey
+#     parameters:
+#       delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
+#       delay_between_pulses_end: 5000
+#       delay_between_pulses_step: 500 # must be a multiple of 4
+#       n_osc: 0
+#       nshots: 1024
+
+
+#   - id: single shot classification
+#     priority: 0
+#     operation: single_shot_classification
+#     parameters:
+#       nshots: 2000
+#       classifiers_list: ["qubit_fit", "naive_bayes", "qblox_fit"]
+#       savedir: results
+
+
+#   - id: allXY
+#     priority: 0
+#     operation: allxy
+#     parameters:
+#       beta_param: null
+#       nshots: 10
+
+
+#   - id: allxy_drag_pulse_tuning
+#     priority: 0
+#     operation: allxy_drag_pulse_tuning
+#     parameters:
+#       beta_start: 0
+#       beta_end: 0.02
+#       beta_step: 0.01
+#       nshots: 10
+
+
+#   - id: drag_pulse_tuning
+#     priority: 0
+#     operation: drag_pulse_tuning
+#     parameters:
+#       beta_start: 0
+#       beta_end: 0.02
+#       beta_step: 0.01
+#       nshots: 10
+
+
+#   - id: spin_echo
+#     priority: 0
+#     operation: spin_echo
+#     parameters:
+#       delay_between_pulses_start: 0
+#       delay_between_pulses_end: 20000
+#       delay_between_pulses_step: 2000
+#       nshots: 10
+
+
+#   - id: flipping
+#     priority: 0
+#     operation: flipping
+#     parameters:
+#       nflips_max: 5
+#       nflips_step: 1
+#       nshots: 10
+
+
+#   - id: dispersive shift
+#     priority: 0
+#     operation: dispersive_shift
+#     parameters:
+#       freq_width: 10_000_000
+#       freq_step: 100_000
+#       nshots: 10
+
+
+#   - id: standard rb no error
+#     priority: 0
+#     operation: standard_rb
+#     parameters:
+#       depths:
+#         start: 1
+#         stop: 10
+#         step: 2
+#       niter: 2
+#       nshots: 50
+#       uncertainties: None
+#       n_bootstrap: 0
+
+
+#   - id: standard rb bootstrap
+#     priority: 0
+#     operation: standard_rb
+#     qubits: [1]
+#     parameters:
+#       depths: [1, 2, 3, 5]
+#       niter: 5
+#       nshots: 50
+#       n_bootstrap: 10
+#       noise_model: PauliErrorOnAll
+
+
+#   - id: standard rb inhomogeneous
+#     priority: 0
+#     operation: standard_rb
+#     qubits: [0, 1, 3]
+#     parameters:
+#       depths: [1, 3, 3, 5]
+#       niter: 5
+#       nshots: 50
+#       uncertainties: std
+#       n_bootstrap: 10
+#       noise_model: PauliErrorOnX
+#       noise_params: [0.01, 0.01, 0.01]
