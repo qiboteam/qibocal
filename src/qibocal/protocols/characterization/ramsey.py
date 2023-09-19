@@ -356,7 +356,7 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
     #     probs = np.mean(probs, axis=1).flatten()
     # else:
     probs = np.reshape(probs, (len(waits)))
-    error_bars = np.zeros(len(probs))
+    error_bars = qubit_data["errors"]
 
     fig.add_trace(
         go.Scatter(
