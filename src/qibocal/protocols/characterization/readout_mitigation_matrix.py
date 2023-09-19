@@ -41,16 +41,6 @@ class ReadoutMitigationMatrixResults(Results):
     )
     """Matrix containing measurement matrices for each state."""
 
-    def save(self, path):
-        """Store readout mitigation matrix to file."""
-        np.savez(
-            path / "readout_mitigation_matrix",
-            **{
-                str(i): self.readout_mitigation_matrix[i]
-                for i in self.readout_mitigation_matrix
-            },
-        )
-
 
 @dataclass
 class ReadoutMitigationMatrixData(Data):
@@ -65,20 +55,36 @@ class ReadoutMitigationMatrixData(Data):
 
     def add(self, qubits, state, freqs):
         for result_state, freq in freqs.items():
-            label = qubits + (state,)
-            if label not in self.data:
-                self.data[label] = {}
-            self.data[label][result_state] = freq
+            self.data[
+                qubits
+                + (
+                    state,
+                    result_state,
+                )
+            ] = freq
 
         for basis in [format(i, f"0{len(qubits)}b") for i in range(2 ** len(qubits))]:
-            if basis not in self.data[qubits + (state,)]:
-                self.data[qubits + (state,)][basis] = 0
+            if (
+                qubits
+                + (
+                    state,
+                    basis,
+                )
+                not in self.data
+            ):
+                self.data[
+                    qubits
+                    + (
+                        state,
+                        basis,
+                    )
+                ] = 0
 
     def __getitem__(self, qubits):
         return {
             index: value
             for index, value in self.data.items()
-            if qubits == list(index[: len(index) - 1])
+            if qubits == list(index[: len(index) - 2])
         }
 
 
@@ -122,7 +128,6 @@ def _acquisition(
                 results = c(nshots=params.nshots)
 
                 data.add(qubit_list, state, dict(results.frequencies()))
-
     return data
 
 
@@ -133,22 +138,28 @@ def _fit(data: ReadoutMitigationMatrixData) -> ReadoutMitigationMatrixResults:
     for qubit in data.qubits_list:
         qubit_data = data[qubit]
         matrix = np.zeros((2 ** len(qubit), 2 ** len(qubit)))
-
-        for label, state_data in qubit_data.items():
-            state = label[-1]
+        computational_basis = [
+            format(i, f"0{len(qubit)}b") for i in range(2 ** len(qubit))
+        ]
+        for state in computational_basis:
             column = np.zeros(2 ** len(qubit))
-            for basis, basis_freq in state_data.items():
-                column[(int(basis, 2))] = basis_freq / data.nshots
+            qubit_state_data = {
+                index: value
+                for index, value in qubit_data.items()
+                if index[-2] == state
+            }
+            for index, value in qubit_state_data.items():
+                column[(int(index[-1], 2))] = value / data.nshots
             matrix[:, int(state, 2)] = np.flip(column)
 
-        measurement_matrix[tuple(qubit)] = matrix
+        measurement_matrix[tuple(qubit)] = matrix.tolist()
         try:
-            readout_mitigation_matrix[tuple(qubit)] = np.linalg.inv(matrix)
+            readout_mitigation_matrix[tuple(qubit)] = np.linalg.inv(matrix).tolist()
         except np.linalg.LinAlgError as e:
             log.warning(f"ReadoutMitigationMatrix: the fitting was not succesful. {e}")
             readout_mitigation_matrix[tuple(qubit)] = np.zeros(
                 (2 ** len(qubit), 2 ** len(qubit))
-            )
+            ).tolist()
 
     return ReadoutMitigationMatrixResults(
         readout_mitigation_matrix=readout_mitigation_matrix,
@@ -162,25 +173,29 @@ def _plot(
     """Plotting function for readout mitigation matrix."""
     fitting_report = "No fitting data"
     fig = go.Figure()
-    computational_basis = [format(i, f"0{len(qubit)}b") for i in range(2 ** len(qubit))]
 
-    x = computational_basis
-    y = computational_basis[::-1]
+    if fit is not None:
+        computational_basis = [
+            format(i, f"0{len(qubit)}b") for i in range(2 ** len(qubit))
+        ]
 
-    [X, Y] = np.meshgrid(x, y)
+        x = computational_basis
+        y = computational_basis[::-1]
 
-    Z = fit.measurement_matrix[tuple(qubit)]
+        [X, Y] = np.meshgrid(x, y)
 
-    fig = ff.create_annotated_heatmap(Z, showscale=True)
-    fig.update_layout(
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="State prepared",
-        yaxis_title="State measured",
-        width=700,
-        height=700,
-    )
+        Z = fit.measurement_matrix[tuple(qubit)]
 
-    return [fig], fitting_report
+        fig = ff.create_annotated_heatmap(Z, showscale=True)
+        fig.update_layout(
+            uirevision="0",  # ``uirevision`` allows zooming while live plotting
+            xaxis_title="State prepared",
+            yaxis_title="State measured",
+            width=700,
+            height=700,
+        )
+
+    return [fig], None
 
 
 readout_mitigation_matrix = Routine(_acquisition, _fit, _plot)

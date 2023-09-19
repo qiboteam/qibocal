@@ -8,7 +8,11 @@ from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
 from ..protocols.characterization import Operation
-from ..utils import allocate_qubits_pairs, allocate_single_qubits
+from ..utils import (
+    allocate_qubits_pairs,
+    allocate_single_qubits,
+    allocate_single_qubits_lists,
+)
 from .mode import ExecutionMode
 from .operation import (
     DATAFILE,
