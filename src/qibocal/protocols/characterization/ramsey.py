@@ -13,10 +13,9 @@ from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.bootstrap import bootstrap
-from qibocal.config import log
+from qibocal.fitting.classifier import qubit_fit
 
-from .utils import GHZ_TO_HZ, V_TO_UV, chi2_reduced, fill_table
+from .utils import GHZ_TO_HZ
 
 
 @dataclass
@@ -56,7 +55,7 @@ class RamseyResults(Results):
 
 
 RamseyType = np.dtype(
-    [("wait", np.float64), ("msr", np.float64), ("phase", np.float64)]
+    [("wait", np.float64), ("prob", np.float64), ("errors", np.float64)]
 )
 """Custom dtype for coherence routines."""
 
@@ -75,17 +74,24 @@ class RamseyData(Data):
     """Number of bootstrap samples"""
     qubit_freqs: dict[QubitId, float] = field(default_factory=dict)
     """Qubit freqs for each qubit."""
+
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, wait, msr, phase):
+    def register_qubit(self, qubit, wait, prob, errors):
         """Store output for single qubit."""
         # to be able to handle the non-sweeper case
-        ar = np.empty(msr.shape, dtype=RamseyType)
-        ar["wait"] = wait
-        ar["msr"] = np.array([msr])
-        ar["phase"] = np.array([phase])
+        ar = np.empty(prob.shape, dtype=RamseyType)
+        ar["wait"] = np.array([wait])
+        ar["prob"] = np.array([prob])
+
+        ar["errors"] = np.array([errors])
+
         if qubit in self.data:
+            # print(type(self.data[qubit]["prob"]), type(ar))
+            # print(self.data[qubit])
+            # self.data[qubit] = np.rec.array(self.data[qubit]["wait"])
+            # l = np.concatenate((self.data[qubit]["prob"], ar["prob"]))
             self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
         else:
             self.data[qubit] = np.rec.array(ar)
@@ -142,7 +148,7 @@ def _acquisition(
         qubit_freqs=freqs,
     )
 
-    if params.n_osc == 0 and params.nboot == 0:
+    if params.n_osc == 0:
         sweeper = Sweeper(
             Parameter.start,
             waits,
@@ -163,11 +169,12 @@ def _acquisition(
         )
         for qubit in qubits:
             result = results[ro_pulses[qubit].serial]
-            data.register_qubit(
-                qubit, wait=waits, msr=result.magnitude, phase=result.phase
-            )
+            prob = []  # TODO: evaluate prob
+            data.register_qubit(qubit, wait=waits, prob=prob)
 
     else:
+        probs = [[] for _ in qubits]
+        errors = [[] for _ in qubits]
         for wait in waits:
             for qubit in qubits:
                 RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
@@ -188,20 +195,51 @@ def _acquisition(
                     acquisition_type=AcquisitionType.INTEGRATION,
                     averaging_mode=(
                         AveragingMode.SINGLESHOT
-                        if params.nboot != 0
-                        else AveragingMode.CYCLIC
+                        # if params.nboot != 0
+                        # else AveragingMode.CYCLIC
                     ),
                 ),
             )
-            for qubit in qubits:
+            # print("PROVA")
+            print("DDDD ", probs)
+            for i, qubit in enumerate(qubits):
                 result = results[ro_pulses[qubit].serial]
-                data.register_qubit(
-                    qubit,
-                    wait=wait,
-                    msr=result.magnitude,
-                    phase=result.phase,
+                i_values = result.voltage_i
+                # print(len(i_values))
+                q_values = result.voltage_q
+                iq_couples = np.stack((i_values, q_values), axis=-1)
+                # print(iq_couples)
+                model = qubit_fit.QubitFit()
+                model.angle = platform.qubits[qubit].iq_angle
+                model.threshold = platform.qubits[qubit].threshold
+                model.iq_mean0 = platform.qubits[qubit].mean_gnd_states
+                model.iq_mean1 = platform.qubits[qubit].mean_exc_states
+                states = model.predict(iq_couples)
+                # print(states)
+                # states = np.reshape(states, (len(waits), -1))
+                prob = np.average(
+                    states,
                 )
-
+                number_ones = np.sum(states)
+                print(probs)
+                errors[i].append(
+                    np.sqrt(number_ones * (len(states) - number_ones) / len(states))
+                )
+                print(probs)
+                # print(errors[i])
+                print(probs, prob)
+                probs[i].append(prob)
+    # print(errors)
+    for i, qubit in enumerate(qubits):
+        print(len(probs[i]), len(errors[i]), len(waits))
+        print(errors[i])
+        data.register_qubit(
+            qubit,
+            wait=np.array(waits),
+            prob=np.array(probs[i]),
+            errors=np.array(errors[i]),
+        )
+    # print(data)
     return data
 
 
@@ -231,71 +269,72 @@ def _fit(data: RamseyData) -> RamseyResults:
     for qubit in qubits:
         qubit_data = data[qubit]
         qubit_freq = data.qubit_freqs[qubit]
-        msrs = qubit_data[["msr"]].tolist()
-        t2s = []
-        deltas_phys_list = []
-        new_freqs = []
-        if data.nboot != 0:
-            msrs = np.reshape(msrs, (len(waits), -1)) * V_TO_UV
-            nsamples = msrs.shape[1]
-            error_bars = np.std(msrs, axis=1).flatten() / np.sqrt(nsamples)
-            bootstrap_samples = bootstrap(msrs, data.nboot)
-            voltages = np.mean(bootstrap_samples, axis=1)
-            fit_out = []
-            for i in range(data.nboot):
-                y = voltages[:, i]
-                x = waits
-                try:
-                    popt = fitting(x, y)
+        probs = qubit_data[["prob"]].tolist()
+        # t2s = []
+        # deltas_phys_list = []
+        # new_freqs = []
 
-                    delta_fitting = popt[2] / (2 * np.pi)
-                    delta_phys = data.detuning_sign * int(
-                        (delta_fitting - data.n_osc / data.t_max) * GHZ_TO_HZ
-                    )
+        #     nsamples = probs.shape[1]
+        #     # error_bars = np.std(probs, axis=1).flatten() / np.sqrt(nsamples)
+        # bootstrap_samples = bootstrap(probs, data.nboot)
+        # voltages = np.mean(bootstrap_samples, axis=1)
+        # fit_out = []
+        # for i in range(data.nboot):
+        #     y = voltages[:, i]
+        #     x = waits
+        #     try:
+        #         popt = fitting(x, y)
 
-                    corrected_qubit_frequency = int(qubit_freq - delta_phys)
-                    deltas_phys_list.append(delta_phys)
-                    new_freqs.append(corrected_qubit_frequency)
-                    t2s.append(1.0 / popt[4])
-                    new_freqs.append(corrected_qubit_frequency)
+        #         delta_fitting = popt[2] / (2 * np.pi)
+        #         delta_phys = data.detuning_sign * int(
+        #             (delta_fitting - data.n_osc / data.t_max) * GHZ_TO_HZ
+        #         )
 
-                except Exception as e:
-                    popt = [0] * 5
-                    log.warning(f"ramsey_fit: the fitting was not succesful. {e}")
-                    t2s.append(0)
-                    deltas_phys_list.append(0)
-                    new_freqs.append(0)
+        #         corrected_qubit_frequency = int(qubit_freq - delta_phys)
+        #         deltas_phys_list.append(delta_phys)
+        #         new_freqs.append(corrected_qubit_frequency)
+        #         t2s.append(1.0 / popt[4])
+        #         new_freqs.append(corrected_qubit_frequency)
 
-                fit_out.append(popt)
-                freq_measure[qubit] = (np.mean(new_freqs), np.std(new_freqs))
-                t2_measure[qubit] = (np.mean(t2s), np.std(t2s))
-                delta_phys_measure[qubit] = (
-                    np.mean(deltas_phys_list),
-                    np.std(deltas_phys_list),
-                )
-                popts[qubit] = np.mean(fit_out, axis=0).tolist()
-                y = np.array(y)
-                x = np.array(x)
-                chi2[qubit] = chi2_reduced(y, ramsey_fit(x, *popts[qubit]), error_bars)
+        #     except Exception as e:
+        #         popt = [0] * 5
+        #         log.warning(f"ramsey_fit: the fitting was not succesful. {e}")
+        #         t2s.append(0)
+        #         deltas_phys_list.append(0)
+        #         new_freqs.append(0)
 
-        else:
-            msrs = np.reshape(msrs, (len(waits))) * V_TO_UV
-            try:
-                popt = fitting(waits, msrs)
-            except:
-                popt = [0, 0, 0, 0, 1]
-            delta_fitting = popt[2] / (2 * np.pi)
-            delta_phys = data.detuning_sign * int(
-                (delta_fitting - data.n_osc / data.t_max) * GHZ_TO_HZ
-            )
-            corrected_qubit_frequency = int(qubit_freq - delta_phys)
-            t2 = 1.0 / popt[4]
+        #     fit_out.append(popt)
+        #     freq_measure[qubit] = (np.mean(new_freqs), np.std(new_freqs))
+        #     t2_measure[qubit] = (np.mean(t2s), np.std(t2s))
+        #     delta_phys_measure[qubit] = (
+        #         np.mean(deltas_phys_list),
+        #         np.std(deltas_phys_list),
+        #     )
+        #     popts[qubit] = np.mean(fit_out, axis=0).tolist()
+        #     y = np.array(y)
+        #     x = np.array(x)
+        #     chi2[qubit] = chi2_reduced(y, ramsey_fit(x, *popts[qubit]), error_bars)
 
-            freq_measure[qubit] = (corrected_qubit_frequency, None)
-            t2_measure[qubit] = (t2, None)
-            delta_phys_measure[qubit] = (delta_phys, None)
-            popts[qubit] = popt
+        # else:
+        # import matplotlib.pyplot as plt
+        # plt.scatter(waits, prob)
+        # plt.savefig("ramsey.png")
+        try:
+            popt = fitting(waits, probs)
+        except:
+            popt = [0, 0, 0, 0, 1]
+        delta_fitting = popt[2] / (2 * np.pi)
+        delta_phys = data.detuning_sign * int(
+            (delta_fitting - data.n_osc / data.t_max) * GHZ_TO_HZ
+        )
+        corrected_qubit_frequency = int(qubit_freq - delta_phys)
+        t2 = 1.0 / popt[4]
 
+        freq_measure[qubit] = (corrected_qubit_frequency, None)
+        t2_measure[qubit] = (t2, None)
+        popts[qubit] = popt
+        delta_phys_measure[qubit] = delta_phys
+        chi2[qubit] = [0, 0]  # TODO:remove
     return RamseyResults(freq_measure, t2_measure, delta_phys_measure, popts, chi2)
 
 
@@ -308,20 +347,21 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
 
     qubit_data = data.data[qubit]
     waits = data.waits
-    msrs = qubit_data[["msr"]].tolist()
-    if data.nboot != 0:
-        msrs = np.reshape(msrs, (len(waits), -1)) * V_TO_UV
-        nsamples = msrs.shape[1]
-        error_bars = np.std(msrs, axis=1).flatten() / np.sqrt(nsamples)
-        msrs = np.mean(msrs, axis=1).flatten()
-    else:
-        msrs = np.reshape(msrs, (len(waits))) * V_TO_UV
-        error_bars = np.zeros(len(msrs))
+    probs = qubit_data[["prob"]].tolist()
+    # if data.nboot != 0:
+    #     # print(probs.shape)
+    #     probs = np.reshape(probs, (len(waits), -1))
+    #     nsamples = probs.shape[1]
+    #     error_bars = np.std(probs, axis=1).flatten() / np.sqrt(nsamples)
+    #     probs = np.mean(probs, axis=1).flatten()
+    # else:
+    probs = np.reshape(probs, (len(waits)))
+    error_bars = np.zeros(len(probs))
 
     fig.add_trace(
         go.Scatter(
             x=waits,
-            y=msrs,
+            y=probs,
             error_y=dict(
                 type="data",  # value of error bar given in data coordinates
                 array=error_bars,
@@ -357,33 +397,34 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
                 line=go.scatter.Line(dash="dot"),
             )
         )
-        fitting_report = (
-            ""
-            + (
-                fill_table(
-                    qubit,
-                    "Delta_frequency",
-                    fit.delta_phys[qubit][0],
-                    fit.delta_phys[qubit][1],
-                    "Hz",
-                )
-            )
-            + (
-                fill_table(
-                    qubit,
-                    "Drive_frequency",
-                    fit.frequency[qubit][0],
-                    fit.frequency[qubit][1],
-                    "Hz",
-                )
-            )
-            + (fill_table(qubit, "T2*", fit.t2[qubit][0], fit.t2[qubit][1], "ns"))
-            + "<br>"
-        )
-        if fit.chi2:
-            fitting_report += fill_table(
-                qubit, "chi2 reduced", fit.chi2[qubit], error=None
-            )
+        fitting_report = ""
+        # fitting_report = (
+        #     ""
+        #     + (
+        #         fill_table(
+        #             qubit,
+        #             "Delta_frequency",
+        #             fit.delta_phys[qubit][0],
+        #             fit.delta_phys[qubit][1],
+        #             "Hz",
+        #         )
+        #     )
+        #     + (
+        #         fill_table(
+        #             qubit,
+        #             "Drive_frequency",
+        #             fit.frequency[qubit][0],
+        #             fit.frequency[qubit][1],
+        #             "Hz",
+        #         )
+        #     )
+        #     + (fill_table(qubit, "T2*", fit.t2[qubit][0], fit.t2[qubit][1], "ns"))
+        #     + "<br>"
+        # )
+        # if fit.chi2:
+        #     fitting_report += fill_table(
+        #         qubit, "chi2 reduced", fit.chi2[qubit], error=None
+        #     )
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
