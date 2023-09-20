@@ -17,6 +17,11 @@ from qibocal.auto.operation import (
     Results,
     Routine,
 )
+from qibocal.update import (
+    update_bare_resonator_frequency,
+    update_readout_amplitude,
+    update_readout_frequency,
+)
 
 from .utils import PowerLevel, lorentzian_fit, spectroscopy_plot
 
@@ -219,5 +224,16 @@ def _plot(data: ResonatorSpectroscopyData, qubit, fit: ResonatorSpectroscopyResu
     return spectroscopy_plot(data, qubit, fit)
 
 
-resonator_spectroscopy = Routine(_acquisition, _fit, _plot)
+def _update(results: ResonatorSpectroscopyResults, platform: Platform):
+    update_readout_frequency(results.frequency, platform)
+
+    update_bare_resonator_frequency(results.bare_frequency, platform)
+
+    # if this condition is satifisfied means that we are in the low power regime
+    # therefore we update also the readout amplitude
+    if len(results.bare_frequency) == 0:
+        update_readout_amplitude(results.amplitude, platform)
+
+
+resonator_spectroscopy = Routine(_acquisition, _fit, _plot, _update)
 """ResonatorSpectroscopy Routine object."""

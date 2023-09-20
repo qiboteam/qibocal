@@ -213,6 +213,8 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     """Post-processing function."""
     report: Callable[[_DataT, _ResultsT], None] = None
     """Plotting function."""
+    update: Callable[[_ResultsT, Platform], None] = None
+    """Update function platform."""
 
     def __post_init__(self):
         # add decorator to show logs
