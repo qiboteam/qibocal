@@ -1,5 +1,6 @@
 """Upload report to server."""
 import base64
+import json
 import pathlib
 import shutil
 import socket
@@ -7,7 +8,10 @@ import subprocess
 import uuid
 from urllib.parse import urljoin
 
+import yaml
 from qibo.config import log, raise_error
+
+from .utils import META
 
 # options for report upload
 UPLOAD_HOST = (
