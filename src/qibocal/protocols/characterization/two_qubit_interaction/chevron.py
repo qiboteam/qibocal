@@ -48,13 +48,9 @@ class ChevronParameters(Parameters):
 class ChevronResults(Results):
     """CzFluxTime outputs when fitting will be done."""
 
-    amplitude: dict[tuple[QubitId, QubitId], float] = field(
-        metadata=dict(update="CZ_flux_amplitude")
-    )
+    amplitude: dict[tuple[QubitId, QubitId], float]
     """CZ angle."""
-    duration: dict[tuple[QubitId, QubitId], int] = field(
-        metadata=dict(update="CZ_flux_duration")
-    )
+    duration: dict[tuple[QubitId, QubitId], int]
     """Virtual Z phase correction."""
 
 

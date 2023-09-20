@@ -46,9 +46,7 @@ class CZVirtualZResults(Results):
     """Fitted parameters"""
     cz_angle: dict[tuple[QubitId, QubitId], float]
     """CZ angle."""
-    virtual_phase: dict[tuple[QubitId, QubitId], float] = field(
-        metadata=dict(update="virtual_z_phase")
-    )
+    virtual_phase: dict[tuple[QubitId, QubitId], float]
     """Virtual Z phase correction."""
 
 
