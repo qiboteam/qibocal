@@ -2,6 +2,7 @@
 import random
 
 from qibolab import create_platform
+from qibolab.native import VirtualZPulse
 
 from qibocal import update
 from qibocal.protocols.characterization.utils import GHZ_TO_HZ
@@ -31,7 +32,7 @@ def test_readout_frequency_update():
             )
 
 
-def test_update_bare_resonator_frequency():
+def test_update_bare_resonator_frequency_update():
     update.bare_resonator_frequency(FREQUENCIES_GHZ, PLATFORM)
     for qubit_id, qubit in PLATFORM.qubits.items():
         assert qubit.bare_resonator_frequency == FREQUENCIES_HZ[qubit_id]
@@ -85,3 +86,59 @@ def test_classification_update():
         assert qubit.mean_gnd_states == mean_gnd_state[qubit_id]
         assert qubit.mean_exc_states == mean_exc_state[qubit_id]
         assert qubit.classifiers_hpars == classifiers_hpars[qubit_id]
+
+
+def test_virtual_phases_update():
+    results = {
+        pair_name: {qubit: RANDOM_FLOAT for qubit in pair_name}
+        for pair_name, pair in PLATFORM.pairs.items()
+        if pair.native_gates.CZ is not None
+    }
+    update.virtual_phases(results, PLATFORM)
+    for name, pair in PLATFORM.pairs.items():
+        if pair.native_gates.CZ is not None:
+            for pulse in pair.native_gates.CZ.pulses:
+                if isinstance(pulse, VirtualZPulse):
+                    assert pulse == VirtualZPulse(
+                        qubit=pulse.qubit, phase=results[name][pulse.qubit.name]
+                    )
+
+
+def test_CZ_params_update():
+    amplitudes = {
+        name: random.random()
+        for name, pair in PLATFORM.pairs.items()
+        if pair.native_gates.CZ is not None
+    }
+    durations = {
+        name: random.randint(0, 10)
+        for name, pair in PLATFORM.pairs.items()
+        if pair.native_gates.CZ is not None
+    }
+
+    update.CZ_amplitude(amplitudes, PLATFORM)
+    update.CZ_duration(durations, PLATFORM)
+
+    for name, pair in PLATFORM.pairs.items():
+        if pair.native_gates.CZ is not None:
+            for pulse in pair.native_gates.CZ.pulses:
+                if pulse.qubit.name == name[1]:
+                    assert pulse.duration == durations[name]
+                    assert pulse.amplitude == amplitudes[name]
+
+
+def drive_duration_update():
+    update.readout_amplitude(RANDOM_INT, PLATFORM)
+    for qubit_id, qubit in PLATFORM.qubits.items():
+        assert qubit.native_gates.RX.duration == RANDOM_FLOAT[qubit_id]
+
+
+def test_coherence_params_update():
+    update.t1(RANDOM_INT, PLATFORM)
+    update.t2(RANDOM_INT, PLATFORM)
+    update.t2_spin_echo(RANDOM_INT, PLATFORM)
+
+    for qubit_id, qubit in PLATFORM.qubits.items():
+        assert qubit.t1 == RANDOM_INT[qubit_id]
+        assert qubit.t2 == RANDOM_INT[qubit_id]
+        assert qubit.t2_spin_echo == RANDOM_INT[qubit_id]

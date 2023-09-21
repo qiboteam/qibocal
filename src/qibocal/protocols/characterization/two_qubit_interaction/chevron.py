@@ -13,6 +13,7 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
 from .utils import fit_flux_amplitude, order_pair
@@ -48,7 +49,7 @@ class ChevronParameters(Parameters):
 class ChevronResults(Results):
     """CzFluxTime outputs when fitting will be done."""
 
-    amplitude: dict[tuple[QubitId, QubitId], float]
+    amplitude: dict[tuple[QubitId, QubitId], int]
     """CZ angle."""
     duration: dict[tuple[QubitId, QubitId], int]
     """Virtual Z phase correction."""
@@ -304,5 +305,10 @@ def _plot(data: ChevronData, fit: ChevronResults, qubit):
     return [fig], fitting_report
 
 
-chevron = Routine(_aquisition, _fit, _plot)
+def _update(results: ChevronResults, platform: Platform):
+    update.CZ_duration(results.duration, platform)
+    update.CZ_amplitude(results.amplitude, platform)
+
+
+chevron = Routine(_aquisition, _fit, _plot, _update)
 """Chevron routine."""

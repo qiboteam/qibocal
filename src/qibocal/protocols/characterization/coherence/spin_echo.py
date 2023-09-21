@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
@@ -35,7 +35,7 @@ class SpinEchoParameters(Parameters):
 class SpinEchoResults(Results):
     """SpinEcho outputs."""
 
-    t2_spin_echo: dict[QubitId, float] = field(metadata=dict(update="t2_spin_echo"))
+    t2_spin_echo: dict[QubitId, float]
     """T2 echo for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
@@ -176,5 +176,9 @@ def _plot(data: SpinEchoData, qubit, fit: SpinEchoResults = None):
     return figures, fitting_report
 
 
-spin_echo = Routine(_acquisition, _fit, _plot)
+def _update(results: SpinEchoResults, platform: Platform):
+    update.t2_spin_echo(results.t2_spin_echo, platform)
+
+
+spin_echo = Routine(_acquisition, _fit, _plot, _update)
 """SpinEcho Routine object."""

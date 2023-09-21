@@ -11,6 +11,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.protocols.characterization.utils import HZ_TO_GHZ
@@ -36,7 +37,7 @@ class ResonatorFrequencyResults(Results):
 
     fidelities: dict[QubitId, list]
     """Assignment fidelities."""
-    best_freq: dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
+    best_freq: dict[QubitId, float]
     """Resonator Frequency with the highest assignment fidelity."""
 
 
@@ -223,5 +224,9 @@ def _plot(data: ResonatorFrequencyData, fit: ResonatorFrequencyResults, qubit):
     return figures, fitting_report
 
 
-resonator_frequency = Routine(_acquisition, _fit, _plot)
+def _update(results: ResonatorFrequencyResults, platform: Platform):
+    update.readout_frequency(results.best_freq, platform)
+
+
+resonator_frequency = Routine(_acquisition, _fit, _plot, _update)
 """"Optimization RO frequency Routine object."""

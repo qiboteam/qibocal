@@ -13,6 +13,7 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 from qibocal.protocols.characterization.two_qubit_interaction.chevron import order_pair
@@ -46,7 +47,7 @@ class CZVirtualZResults(Results):
     """Fitted parameters"""
     cz_angle: dict[tuple[QubitId, QubitId], float]
     """CZ angle."""
-    virtual_phase: dict[tuple[QubitId, QubitId], float]
+    virtual_phase: dict[tuple[QubitId, QubitId], dict[QubitId, float]]
     """Virtual Z phase correction."""
 
 
@@ -58,7 +59,6 @@ class CZVirtualZData(Data):
     """CZVirtualZ data."""
 
     data: dict[tuple, npt.NDArray[CZVirtualZType]] = field(default_factory=dict)
-
     thetas: list = field(default_factory=list)
     vphases: dict[tuple[QubitId, QubitId], dict[QubitId, float]] = field(
         default_factory=dict
@@ -247,8 +247,6 @@ def _fit(
     virtual_phase = {}
     cz_angle = {}
     for pair in pairs:
-        pair_data = data[pair]
-        qubits = next(iter(pair_data))[:2]
         virtual_phase[pair] = {}
         for target, control, setup in data[pair]:
             target_data = data[pair][target, control, setup].target
@@ -387,5 +385,9 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
     return [fig1, fig2], fitting_report
 
 
-cz_virtualz = Routine(_acquisition, _fit, _plot)
+def _update(results: CZVirtualZResults, platform: Platform):
+    update.virtual_phases(results.virtual_phase, platform)
+
+
+cz_virtualz = Routine(_acquisition, _fit, _plot, _update)
 """CZ virtual Z correction routine."""
