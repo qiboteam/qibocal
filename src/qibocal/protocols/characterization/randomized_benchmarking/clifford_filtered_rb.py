@@ -324,6 +324,8 @@ def _plot(data: RBData, fit: CliffordRBResult, qubit) -> tuple[list[go.Figure], 
         Tuple[List[go.Figure], str]:
     """
 
+    #TODO: If fit is None: loop to separate plotting for fitting in qq
+    
     def crosstalk(q0, q1):
         p0 = fit.fit_results["fit_parameters"][f"irrep{2 ** q0}"][1]
         p1 = fit.fit_results["fit_parameters"][f"irrep{2 ** q1}"][1]
