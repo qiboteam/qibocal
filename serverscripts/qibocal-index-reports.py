@@ -6,7 +6,6 @@ import pathlib
 import sys
 from collections import ChainMap
 
-
 ROOT = "/home/users/qibocal/qibocal-reports"
 ROOT_URL = "http://login.qrccluster.com:9000/"
 OUT = "/home/users/qibocal/qibocal-reports/index.json"
