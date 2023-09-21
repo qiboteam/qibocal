@@ -15,7 +15,7 @@ AMPLITUDES = {qubit: random.random for qubit in PLATFORM.qubits}
 
 
 def test_readout_frequency_update():
-    update.update_readout_frequency(FREQUENCIES_GHZ, PLATFORM)
+    update.readout_frequency(FREQUENCIES_GHZ, PLATFORM)
     for qubit_id, qubit in PLATFORM.qubits.items():
         assert qubit.native_gates.MZ.frequency == FREQUENCIES_HZ[qubit_id]
         if qubit.native_gates.MZ.if_frequency is not None:
@@ -27,12 +27,12 @@ def test_readout_frequency_update():
 
 
 def test_update_bare_resonator_frequency():
-    update.update_bare_resonator_frequency(FREQUENCIES_GHZ, PLATFORM)
+    update.bare_resonator_frequency(FREQUENCIES_GHZ, PLATFORM)
     for qubit_id, qubit in PLATFORM.qubits.items():
         assert qubit.bare_resonator_frequency == FREQUENCIES_HZ[qubit_id]
 
 
 def test_readout_amplitude_update():
-    update.update_readout_amplitude(AMPLITUDES, PLATFORM)
+    update.readout_amplitude(AMPLITUDES, PLATFORM)
     for qubit_id, qubit in PLATFORM.qubits.items():
         assert qubit.native_gates.MZ.amplitude == AMPLITUDES[qubit_id]

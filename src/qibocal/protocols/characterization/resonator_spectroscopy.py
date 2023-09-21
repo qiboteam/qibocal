@@ -17,11 +17,6 @@ from qibocal.auto.operation import (
     Results,
     Routine,
 )
-from qibocal.update import (
-    update_bare_resonator_frequency,
-    update_readout_amplitude,
-    update_readout_frequency,
-)
 
 from .utils import PowerLevel, lorentzian_fit, spectroscopy_plot
 
