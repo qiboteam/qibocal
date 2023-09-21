@@ -73,11 +73,11 @@ class QubitFluxData(Data):
     resonator_type: str
 
     """ResonatorFlux acquisition outputs."""
-    Ec: dict[QubitId, int] = field(default_factory=dict)
-    """Qubit Ec provided by the user."""
+    ec: dict[QubitId, int] = field(default_factory=dict)
+    """Qubit ec provided by the user."""
 
-    Ej: dict[QubitId, int] = field(default_factory=dict)
-    """Qubit Ej provided by the user."""
+    ej: dict[QubitId, int] = field(default_factory=dict)
+    """Qubit ej provided by the user."""
 
     data: dict[QubitId, npt.NDArray[QubitFluxType]] = field(default_factory=dict)
     """Raw data acquired."""
@@ -110,11 +110,11 @@ def _acquisition(
     sequence = PulseSequence()
     ro_pulses = {}
     qd_pulses = {}
-    Ec = {}
-    Ej = {}
+    ec = {}
+    ej = {}
     for qubit in qubits:
-        Ec[qubit] = qubits[qubit].Ec
-        Ej[qubit] = qubits[qubit].Ej
+        ec[qubit] = qubits[qubit].ec
+        ej[qubit] = qubits[qubit].ej
 
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=2000
@@ -151,7 +151,7 @@ def _acquisition(
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
     # additionally include resonator frequency and flux bias
-    data = QubitFluxData(resonator_type=platform.resonator_type, Ec=Ec, Ej=Ej)
+    data = QubitFluxData(resonator_type=platform.resonator_type, ec=ec, ej=ej)
 
     for bias in delta_bias_range:
         for qubit in qubits:
@@ -164,8 +164,8 @@ def _acquisition(
                     qubits[qubit].g,
                     qubits[qubit].brf,
                     qubits[qubit].ssf_brf,
-                    qubits[qubit].Ec,
-                    qubits[qubit].Ej,
+                    qubits[qubit].ec,
+                    qubits[qubit].ej,
                 )
                 # modify qubit resonator frequency
                 qubits[qubit].readout_frequency = freq_resonator
@@ -192,9 +192,11 @@ def _acquisition(
                 freq_sweeper,
             )
 
+            log.warning(f"result: {results}")
+
         # retrieve the results for every qubit
         for qubit in qubits:
-            result = results[ro_pulses[qubit].serial]
+            result = results[ro_pulses[qubit].serial]            
             data.register_qubit_track(
                 qubit,
                 msr=result.magnitude,
@@ -223,16 +225,16 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
 
     for qubit in qubits:
         qubit_data = data[qubit]
-        Ec = data.Ec[qubit]
-        Ej = data.Ej[qubit]
+        ec = data.ec[qubit]
+        ej = data.ej[qubit]
 
         frequency[qubit] = 0
         sweetspot[qubit] = 0
         fitted_parameters[qubit] = {
             "Xi": 0,
             "d": 0,
-            "Ec": 0,
-            "Ej": 0,
+            "ec": 0,
+            "ej": 0,
             "f_q_offset": 0,
             "C_ii": 0,
         }
@@ -251,8 +253,8 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
         min_c = biases[np.argmin(frequencies)]
         xi = 1 / (2 * abs(max_c - min_c))  # Convert bias to flux.
 
-        # First order approximation: Ec and Ej NOT provided
-        if Ec == 0 and Ej == 0:
+        # First order approximation: ec and ej NOT provided
+        if ec == 0 and ej == 0:
             try:
                 f_q_0 = np.max(
                     frequencies
@@ -287,7 +289,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                     "qubit_flux_fit: The first order approximation fitting was not succesful"
                 )
 
-        # Second order approximation: Ec and Ej provided
+        # Second order approximation: ec and ej provided
         else:
             try:
                 freq_q_mathieu1 = partial(utils.freq_q_mathieu, p5=0.4999)
@@ -295,7 +297,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                     freq_q_mathieu1,
                     biases,
                     frequencies / GHZ_TO_HZ,
-                    p0=[max_c, xi, 0, Ec / GHZ_TO_HZ, Ej / GHZ_TO_HZ],
+                    p0=[max_c, xi, 0, ec / GHZ_TO_HZ, ej / GHZ_TO_HZ],
                     bounds=(
                         (-np.inf, 0, 0, 0, 0),
                         (np.inf, np.inf, np.inf, np.inf, np.inf),
@@ -319,8 +321,8 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                 fitted_parameters[qubit] = {
                     "Xi": popt[1],
                     "d": abs(popt[2]),
-                    "Ec": popt[3],
-                    "Ej": popt[4],
+                    "ec": popt[3],
+                    "ej": popt[4],
                     "f_q_offset": f_q_offset,
                     "C_ii": C_ii,
                 }
