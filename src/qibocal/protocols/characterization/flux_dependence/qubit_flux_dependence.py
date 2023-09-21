@@ -83,11 +83,11 @@ class QubitFluxData(Data):
     resonator_type: str
 
     """ResonatorFlux acquisition outputs."""
-    ej: dict[QubitId, float] = field(default_factory=dict)
-    """Qubit ej provided by the user."""
+    Ec: dict[QubitId, float] = field(default_factory=dict)
+    """Qubit Ec provided by the user."""
 
-    ej: dict[QubitId, float] = field(default_factory=dict)
-    """Qubit ej provided by the user."""
+    Ej: dict[QubitId, float] = field(default_factory=dict)
+    """Qubit Ej provided by the user."""
 
     data: dict[QubitId, npt.NDArray[QubitFluxType]] = field(default_factory=dict)
     """Raw data acquired."""
@@ -128,11 +128,11 @@ def _acquisition(
     sequence = PulseSequence()
     ro_pulses = {}
     qd_pulses = {}
-    ej = {}
-    ej = {}
+    Ec = {}
+    Ej = {}
     for qubit in qubits:
-        ej[qubit] = qubits[qubit].ej
-        ej[qubit] = qubits[qubit].ej
+        Ec[qubit] = qubits[qubit].Ec
+        Ej[qubit] = qubits[qubit].Ej
 
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=2000
@@ -174,7 +174,7 @@ def _acquisition(
                 type=SweeperType.OFFSET,
             )
         ]
-        data = QubitFluxData(resonator_type=platform.resonator_type, ej=ej, ej=ej)
+        data = QubitFluxData(resonator_type=platform.resonator_type, Ec=Ec, Ej=Ej)
 
     else:
         flux_qubits = params.flux_qubits
@@ -187,7 +187,7 @@ def _acquisition(
             )
             for flux_qubit in flux_qubits
         ]
-        data = FluxCrosstalkData(resonator_type=platform.resonator_type, ej=ej, ej=ej)
+        data = FluxCrosstalkData(resonator_type=platform.resonator_type, Ec=Ec, Ej=Ej)
 
     options = ExecutionParameters(
         nshots=params.nshots,
@@ -232,16 +232,16 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
 
     for qubit in qubits:
         qubit_data = data[qubit]
-        ej = data.ej[qubit]
-        ej = data.ej[qubit]
+        Ec = data.Ec[qubit]
+        Ej = data.Ej[qubit]
 
         frequency[qubit] = 0
         sweetspot[qubit] = 0
         fitted_parameters[qubit] = {
             "Xi": 0,
             "d": 0,
-            "ej": 0,
-            "ej": 0,
+            "Ec": 0,
+            "Ej": 0,
             "f_q_offset": 0,
             "C_ii": 0,
         }
@@ -260,8 +260,8 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
         min_c = biases[np.argmin(frequencies)]
         xi = 1 / (2 * abs(max_c - min_c))  # Convert bias to flux.
 
-        # First order approximation: ej and ej NOT provided
-        if ej == 0 and ej == 0:
+        # First order approximation: Ec and Ej NOT provided
+        if Ec == 0 and Ej == 0:
             try:
                 f_q_0 = np.max(
                     frequencies
@@ -296,7 +296,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                     "qubit_flux_fit: The first order approximation fitting was not succesful"
                 )
 
-        # Second order approximation: ej and ej provided
+        # Second order approximation: Ec and Ej provided
         else:
             try:
                 freq_q_mathieu1 = partial(utils.freq_q_mathieu, p5=0.4999)
@@ -304,7 +304,7 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                     freq_q_mathieu1,
                     biases,
                     frequencies / GHZ_TO_HZ,
-                    p0=[max_c, xi, 0, ej / GHZ_TO_HZ, ej / GHZ_TO_HZ],
+                    p0=[max_c, xi, 0, Ec / GHZ_TO_HZ, Ej / GHZ_TO_HZ],
                     bounds=(
                         (-np.inf, 0, 0, 0, 0),
                         (np.inf, np.inf, np.inf, np.inf, np.inf),
@@ -328,8 +328,8 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
                 fitted_parameters[qubit] = {
                     "Xi": popt[1],
                     "d": abs(popt[2]),
-                    "ej": popt[3],
-                    "ej": popt[4],
+                    "Ec": popt[3],
+                    "Ej": popt[4],
                     "f_q_offset": f_q_offset,
                     "C_ii": C_ii,
                 }

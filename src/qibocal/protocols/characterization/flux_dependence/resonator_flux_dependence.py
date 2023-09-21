@@ -60,10 +60,28 @@ class ResonatorFluxResults(Results):
     """bare_resonator_frequency for each qubit."""
     ssf_brf: dict[QubitId, float] = field(metadata=dict(update="ssf_brf"))
     """sweetspot_qubit_frequency/bare_resonator_frequency for each qubit."""
-    ecs: dict[QubitId, float] = field(metadata=dict(update="ec"))
-    """ec for each qubit."""
-    ejs: dict[QubitId, float] = field(metadata=dict(update="ej"))
-    """ej for each qubit."""
+    ECs: dict[QubitId, float] = field(metadata=dict(update="Ec"))
+    """Ec for each qubit."""
+    EJs: dict[QubitId, float] = field(metadata=dict(update="Ej"))
+    """Ej for each qubit."""
+
+    # New fitted parameters added in the runcard
+    # freq_r_trasmon (First order approx):
+    #   'sweetspot_0':p0,
+    #   'flux_to_bias':p1,
+    #   'asymmetry':p2,
+    #   'readout_coupling':p4,
+    #   'bare_resonator_frequency_0':p5
+    #   'sweetspot_qubit_frequency/bare_resonator_frequency':p3,
+
+    # freq_r_mattheu (Second order approx):
+    #   'sweetspot_0':p2,
+    #   'flux_to_bias':p3,
+    #   'asymmetry':p4,
+    #   'readout_coupling':p1,
+    #   'bare_resonator_frequency_0':p0,
+    #   'Ec':p5,
+    #   'Ej:p6'
 
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
@@ -92,11 +110,11 @@ class ResonatorFluxData(Data):
     resonator_type: str
 
     """ResonatorFlux acquisition outputs."""
-    ec: dict[QubitId, float] = field(default_factory=dict)
-    """Qubit ec provided by the user."""
+    Ec: dict[QubitId, float] = field(default_factory=dict)
+    """Qubit Ec provided by the user."""
 
-    ej: dict[QubitId, float] = field(default_factory=dict)
-    """Qubit ej provided by the user."""
+    Ej: dict[QubitId, float] = field(default_factory=dict)
+    """Qubit Ej provided by the user."""
 
     g: dict[QubitId, float] = field(default_factory=dict)
     """Qubit g provided by the user."""
@@ -142,13 +160,13 @@ def _acquisition(
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     sequence = PulseSequence()
     ro_pulses = {}
-    ec = {}
-    ej = {}
+    Ec = {}
+    Ej = {}
     g = {}
     bare_resonator_frequency = {}
     for qubit in qubits:
-        ec[qubit] = qubits[qubit].ec
-        ej[qubit] = qubits[qubit].ej
+        Ec[qubit] = qubits[qubit].Ec
+        Ej[qubit] = qubits[qubit].Ej
         g[qubit] = qubits[qubit].g
         bare_resonator_frequency[qubit] = qubits[qubit].bare_resonator_frequency
 
@@ -196,8 +214,8 @@ def _acquisition(
 
     data = data_cls(
         resonator_type=platform.resonator_type,
-        ec=ec,
-        ej=ej,
+        Ec=Ec,
+        Ej=Ej,
         g=g,
         bare_resonator_frequency=bare_resonator_frequency,
     )
@@ -246,15 +264,15 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     Gs = {}
     brf = {}
     ssf_brf = {}
-    ecs = {}
-    ejs = {}
+    ECs = {}
+    EJs = {}
 
     fitted_parameters = {}
 
     for qubit in qubits:
         qubit_data = data[qubit]
-        ec = data.ec[qubit]
-        ej = data.ej[qubit]
+        Ec = data.Ec[qubit]
+        Ej = data.Ej[qubit]
 
         frequency[qubit] = 0
         sweetspot[qubit] = 0
@@ -263,15 +281,15 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
         Gs[qubit] = 0
         brf[qubit] = 0
         ssf_brf[qubit] = 0
-        ecs[qubit] = 0
-        ejs[qubit] = 0
+        ECs[qubit] = 0
+        EJs[qubit] = 0
 
         fitted_parameters[qubit] = {
             "Xi": 0,
             "d": 0,
             "g": 0,
-            "ec": 0,
-            "ej": 0,
+            "Ec": 0,
+            "Ej": 0,
             "bare_resonator_frequency": 0,
             "f_qs": 0,
             "f_r_offset": 0,
@@ -299,7 +317,7 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
         xi = 1 / (2 * abs(max_c - min_c))  # Convert bias to flux.
 
         # First order approximation: bare_resonator_frequency, g provided
-        if (ec == 0 and ej == 0) and (bare_resonator_frequency != 0 and g != 0):
+        if (Ec == 0 and Ej == 0) and (bare_resonator_frequency != 0 and g != 0):
             try:
                 # Initial estimation for resonator frequency at sweet spot.
                 f_r_0 = np.max(frequencies)
@@ -362,8 +380,8 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                     "resonator_flux_fit: First order approximation fitting was not succesful"
                 )
 
-        # Second order approximation: bare_resonator_frequency, g, ec, ej provided
-        elif ec != 0 and ej != 0 and bare_resonator_frequency != 0 and g != 0:
+        # Second order approximation: bare_resonator_frequency, g, Ec, Ej provided
+        elif Ec != 0 and Ej != 0 and bare_resonator_frequency != 0 and g != 0:
             try:
                 freq_r_mathieu1 = partial(utils.freq_r_mathieu, p7=0.4999)
                 popt = curve_fit(
@@ -376,8 +394,8 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                         max_c,
                         xi,
                         0,
-                        ec / GHZ_TO_HZ,
-                        ej / GHZ_TO_HZ,
+                        Ec / GHZ_TO_HZ,
+                        Ej / GHZ_TO_HZ,
                     ],
                     bounds=(
                         (0, 0, -np.inf, 0, 0, 0, 0),
@@ -417,8 +435,8 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                     "Xi": popt[3],
                     "d": abs(popt[4]),
                     "g": popt[1],
-                    "ec": popt[5],
-                    "ej": popt[6],
+                    "Ec": popt[5],
+                    "Ej": popt[6],
                     "bare_resonator_frequency": popt[0],
                     "f_qs": f_qs,
                     "f_r_offset": f_r_offset,
