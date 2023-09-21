@@ -11,7 +11,7 @@ import qibo
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Qubits, Results, Routine
+from qibocal.auto.operation import RESULTSFILE, Qubits, Results, Routine
 from qibocal.bootstrap import bootstrap, data_uncertainties
 from qibocal.config import log, raise_error
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
@@ -30,6 +30,11 @@ class CliffordRBResult(Results):
     filtered_data: pd.DataFrame
     """Raw fitting parameters and uncertainties."""
     fit_results: pd.DataFrame
+
+    def save(self, path):
+        """Store results to json."""
+        self.filtered_data.to_json(path / RESULTSFILE, default_handler=str)
+        self.fit_results.to_json(path / "results_fit.json", default_handler=str)
 
 
 def filter_function(samples_list, circuit_list) -> list:
@@ -74,7 +79,7 @@ def filter_function(samples_list, circuit_list) -> list:
             ideal_states = np.tile(np.array([1, 0]), nqubits).reshape(nqubits, 2)
         else:
             ideal_states = np.array(
-                [fused_circuit.queue[k].matrix[:, 0] for k in range(nqubits)]
+                [fused_circuit.queue[k].matrix()[:, 0] for k in range(nqubits)]
             )
         # Go through every irrep.
         f_list = []
@@ -306,7 +311,7 @@ def _fit(data: RBData) -> CliffordRBResult:
     )
 
 
-def _plot(data: RBData, result: CliffordRBResult, qubit) -> tuple[list[go.Figure], str]:
+def _plot(data: RBData, fit: CliffordRBResult, qubit) -> tuple[list[go.Figure], str]:
     """Builds the table for the qq pipe, calls the plot function of the result object
     and returns the figure es list.
 
@@ -320,27 +325,27 @@ def _plot(data: RBData, result: CliffordRBResult, qubit) -> tuple[list[go.Figure
     """
 
     def crosstalk(q0, q1):
-        p0 = result.fit_results["fit_parameters"][f"irrep{2 ** q0}"][1]
-        p1 = result.fit_results["fit_parameters"][f"irrep{2 ** q1}"][1]
-        p01 = result.fit_results["fit_parameters"][f"irrep{2 ** q1 + 2 ** q0}"][1]
+        p0 = fit.fit_results["fit_parameters"][f"irrep{2 ** q0}"][1]
+        p1 = fit.fit_results["fit_parameters"][f"irrep{2 ** q1}"][1]
+        p01 = fit.fit_results["fit_parameters"][f"irrep{2 ** q1 + 2 ** q0}"][1]
         if p0 == 0 or p1 == 0:
             return None
         return p01 / (p0 * p1)
 
-    nqubits = int(np.log2(len(result.fit_results.index)))
+    nqubits = int(np.log2(len(fit.fit_results.index)))
     qubits = data.attrs.get("qubits", list(range(nqubits)))
     if isinstance(qubits, dict):
         qubits = [q.name for q in qubits.values()]
 
     rb_params = {}
     fig_list = []
-    for kk, irrep_key in enumerate(result.filtered_data.columns[3:]):
+    for kk, irrep_key in enumerate(fit.filtered_data.columns[3:]):
         irrep_binary = np.binary_repr(kk, width=nqubits)
 
         popt, perr, error_bars = (
-            result.fit_results["fit_parameters"][irrep_key],
-            result.fit_results["fit_uncertainties"][irrep_key],
-            result.fit_results["error_bars"][irrep_key],
+            fit.fit_results["fit_parameters"][irrep_key],
+            fit.fit_results["fit_uncertainties"][irrep_key],
+            fit.fit_results["error_bars"][irrep_key],
         )
         label = "Fit: y=Ap^x<br>A: {}<br>p: {}".format(
             number_to_str(popt[0], perr[0]),
@@ -349,7 +354,7 @@ def _plot(data: RBData, result: CliffordRBResult, qubit) -> tuple[list[go.Figure
         rb_params[f"Irrep {irrep_binary}"] = number_to_str(popt[1], perr[1])
 
         fig_irrep = rb_figure(
-            result.filtered_data,
+            fit.filtered_data,
             model=lambda x: exp1_func(x, *popt),
             fit_label=label,
             signal_label=irrep_key,

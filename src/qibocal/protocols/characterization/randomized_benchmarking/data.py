@@ -9,6 +9,7 @@ from qibocal.auto.operation import DATAFILE
 
 def circ_toJSON(circuit):
     circ_json = []
+    # Look into circuit.moments for noise matters
     for gate in circuit.queue:
         circ_json.append(gate.toJSON())
     return circ_json
@@ -60,7 +61,6 @@ class RBData(pd.DataFrame):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
-    # Modifies at save, do a copy ?
     def save(self, path):
         """Overwrite because qibocal action builder calls this function with a directory."""
         save_copy = self.copy()
