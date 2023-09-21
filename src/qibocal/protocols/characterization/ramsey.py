@@ -15,7 +15,7 @@ from scipy.signal import find_peaks
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.fitting.classifier import qubit_fit
 
-from .utils import GHZ_TO_HZ
+from .utils import GHZ_TO_HZ, chi2_reduced, fill_table
 
 
 @dataclass
@@ -217,17 +217,16 @@ def _acquisition(
                 states = model.predict(iq_couples)
                 # print(states)
                 # states = np.reshape(states, (len(waits), -1))
-                prob = np.average(
+                prob = 1 - np.average(
                     states,
                 )
                 number_ones = np.sum(states)
                 print(probs)
                 errors[i].append(
-                    np.sqrt(number_ones * (len(states) - number_ones) / len(states))
+                    np.sqrt(
+                        number_ones * (len(states) - number_ones) / len(states) ** 3
+                    )
                 )
-                print(probs)
-                # print(errors[i])
-                print(probs, prob)
                 probs[i].append(prob)
     # print(errors)
     for i, qubit in enumerate(qubits):
@@ -239,7 +238,7 @@ def _acquisition(
             prob=np.array(probs[i]),
             errors=np.array(errors[i]),
         )
-    # print(data)
+    print(errors)
     return data
 
 
@@ -319,22 +318,28 @@ def _fit(data: RamseyData) -> RamseyResults:
         # import matplotlib.pyplot as plt
         # plt.scatter(waits, prob)
         # plt.savefig("ramsey.png")
-        try:
-            popt = fitting(waits, probs)
-        except:
-            popt = [0, 0, 0, 0, 1]
+        # try:
+        popt, perr = fitting(waits, np.concatenate(probs), qubit_data.errors)
+
+        #     popt = [0, 0, 0, 0, 1]
         delta_fitting = popt[2] / (2 * np.pi)
         delta_phys = data.detuning_sign * int(
             (delta_fitting - data.n_osc / data.t_max) * GHZ_TO_HZ
         )
         corrected_qubit_frequency = int(qubit_freq - delta_phys)
-        t2 = 1.0 / popt[4]
-
-        freq_measure[qubit] = (corrected_qubit_frequency, None)
-        t2_measure[qubit] = (t2, None)
+        t2 = popt[4]
+        # print(perr)
+        freq_measure[qubit] = (
+            corrected_qubit_frequency,
+            perr[2] / (2 * np.pi * data.t_max),
+        )
+        t2_measure[qubit] = (t2, perr[4])
         popts[qubit] = popt
-        delta_phys_measure[qubit] = delta_phys
-        chi2[qubit] = [0, 0]  # TODO:remove
+        delta_phys_measure[qubit] = (delta_phys, popt[2] / (2 * np.pi * data.t_max))
+        chi2[qubit] = chi2_reduced(
+            np.concatenate(probs), ramsey_fit(waits, *popts[qubit]), qubit_data.errors
+        )
+        print("CHI:", chi2[qubit])
     return RamseyResults(freq_measure, t2_measure, delta_phys_measure, popts, chi2)
 
 
@@ -397,34 +402,34 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
                 line=go.scatter.Line(dash="dot"),
             )
         )
-        fitting_report = ""
-        # fitting_report = (
-        #     ""
-        #     + (
-        #         fill_table(
-        #             qubit,
-        #             "Delta_frequency",
-        #             fit.delta_phys[qubit][0],
-        #             fit.delta_phys[qubit][1],
-        #             "Hz",
-        #         )
-        #     )
-        #     + (
-        #         fill_table(
-        #             qubit,
-        #             "Drive_frequency",
-        #             fit.frequency[qubit][0],
-        #             fit.frequency[qubit][1],
-        #             "Hz",
-        #         )
-        #     )
-        #     + (fill_table(qubit, "T2*", fit.t2[qubit][0], fit.t2[qubit][1], "ns"))
-        #     + "<br>"
-        # )
-        # if fit.chi2:
-        #     fitting_report += fill_table(
-        #         qubit, "chi2 reduced", fit.chi2[qubit], error=None
-        #     )
+        # fitting_report = ""
+        fitting_report = (
+            ""
+            + (
+                fill_table(
+                    qubit,
+                    "Delta_frequency",
+                    fit.delta_phys[qubit][0],
+                    fit.delta_phys[qubit][1],
+                    "Hz",
+                )
+            )
+            + (
+                fill_table(
+                    qubit,
+                    "Drive_frequency",
+                    fit.frequency[qubit][0],
+                    fit.frequency[qubit][1],
+                    "Hz",
+                )
+            )
+            + (fill_table(qubit, "T2*", fit.t2[qubit][0], fit.t2[qubit][1], "ns"))
+            + "<br>"
+        )
+        if fit.chi2:
+            fitting_report += fill_table(
+                qubit, "chi2 reduced", fit.chi2[qubit], error=None
+            )
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
@@ -441,7 +446,7 @@ ramsey = Routine(_acquisition, _fit, _plot)
 """Ramsey Routine object."""
 
 
-def fitting(x: list, y: list) -> list:
+def fitting(x: list, y: list, errors: list) -> list:
     """
     Given the inputs list `x` and outputs one `y`, this function fits the
     `ramsey_fit` function and returns a list with the fit parameters.
@@ -452,10 +457,12 @@ def fitting(x: list, y: list) -> list:
     x_max = np.max(x)
     x_min = np.min(x)
     x = (x - x_min) / (x_max - x_min)
-
+    err = errors / (y_max - y_min)
+    print(x)
     ft = np.fft.rfft(y)
     freqs = np.fft.rfftfreq(len(y), x[1] - x[0])
     mags = abs(ft)
+    print(mags)
     local_maxima = find_peaks(mags, threshold=10)[0]
     index = local_maxima[0] if len(local_maxima) > 0 else None
     # 0.5 hardcoded guess for less than one oscillation
@@ -465,9 +472,10 @@ def fitting(x: list, y: list) -> list:
         0.5,
         f,
         0,
-        0,
+        1,
     ]
-    popt = curve_fit(
+    print(x, y)
+    popt, perr = curve_fit(
         ramsey_fit,
         x,
         y,
@@ -477,7 +485,8 @@ def fitting(x: list, y: list) -> list:
             [0, 0, 0, -np.pi, 0],
             [1, 1, np.inf, np.pi, np.inf],
         ),
-    )[0]
+        sigma=err,
+    )
     popt = [
         (y_max - y_min) * popt[0] + y_min,
         (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
@@ -485,4 +494,16 @@ def fitting(x: list, y: list) -> list:
         popt[3] - x_min * popt[2] / (x_max - x_min),
         popt[4] / (x_max - x_min),
     ]
-    return popt
+    perr = np.sqrt(np.diag(perr))
+    print(perr)
+    print(perr[0])
+    perr = [
+        (y_max - y_min) * perr[0],
+        (y_max - y_min)
+        * perr[1]
+        * np.exp(x_min * popt[4] / (x_max - x_min)),  # TODO: check this formula
+        perr[2] / (x_max - x_min),
+        np.sqrt(perr[3] ** 2 + perr[2] ** 2 * (x_min / (x_max - x_min)) ** 2),
+        perr[4] / (x_max - x_min),
+    ]
+    return popt, perr
