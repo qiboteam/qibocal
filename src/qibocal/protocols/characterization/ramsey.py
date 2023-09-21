@@ -12,6 +12,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.bootstrap import bootstrap
 from qibocal.config import log
@@ -396,7 +397,11 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
     return figures, fitting_report
 
 
-ramsey = Routine(_acquisition, _fit, _plot)
+def _update(results: RamseyResults, platform: Platform):
+    update.drive_frequency(results.frequency, platform)
+
+
+ramsey = Routine(_acquisition, _fit, _plot, _update)
 """Ramsey Routine object."""
 
 

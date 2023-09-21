@@ -14,6 +14,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from sklearn.metrics import roc_auc_score, roc_curve
 
+from qibocal import update
 from qibocal.auto.operation import (
     RESULTSFILE,
     Data,
@@ -58,7 +59,7 @@ ClassificationType = np.dtype([("i", np.float64), ("q", np.float64), ("state", i
 class SingleShotClassificationData(Data):
     nshots: int
     """Number of shots."""
-    hpars: dict[QubitId, dict]
+    classifiers_hpars: dict[QubitId, dict]
     """Models' hyperparameters"""
     savedir: str
     """Dumping folder of the classification results"""
@@ -94,17 +95,13 @@ class SingleShotClassificationResults(Results):
     """I,Q couples to evaluate accuracy and test time."""
     names: list
     """List of models name."""
-    threshold: dict[QubitId, float] = field(metadata=dict(update="threshold"))
+    threshold: dict[QubitId, float]
     """Threshold for classification."""
-    rotation_angle: dict[QubitId, float] = field(metadata=dict(update="iq_angle"))
+    rotation_angle: dict[QubitId, float]
     """Threshold for classification."""
-    mean_gnd_states: dict[QubitId, list[float]] = field(
-        metadata=dict(update="mean_gnd_states")
-    )
+    mean_gnd_states: dict[QubitId, list[float]]
     """Centroid of the ground state blob."""
-    mean_exc_states: dict[QubitId, list[float]] = field(
-        metadata=dict(update="mean_exc_states")
-    )
+    mean_exc_states: dict[QubitId, list[float]]
     """Centroid of the excited state blob."""
     fidelity: dict[QubitId, float]
     """Fidelity evaluated only with the `qubit_fit` model."""
@@ -120,9 +117,7 @@ class SingleShotClassificationResults(Results):
     """List of trained classification models."""
     benchmark_table: Optional[dict[QubitId, pd.DataFrame]] = field(default_factory=dict)
     """Benchmark tables."""
-    hpars: Optional[dict[QubitId, dict]] = field(
-        metadata=dict(update="classifiers_hpars"), default_factory=dict
-    )
+    classifiers_hpars: Optional[dict[QubitId, dict]] = field(default_factory=dict)
     """Classifiers hyperparameters."""
 
     def save(self, path):
@@ -138,10 +133,10 @@ class SingleShotClassificationResults(Results):
                 classifier.savedir.mkdir(parents=True, exist_ok=True)
                 dump_dir = classifier.base_dir / classifier.name / classifier.name
                 classifier.dump()(self.models[qubit][i], dump_dir)
-                classifier.dump_hyper(self.hpars[qubit][classifier.name])
+                classifier.dump_hyper(self.classifiers_hpars[qubit][classifier.name])
         asdict_class = asdict(self)
         asdict_class.pop("models")
-        asdict_class.pop("hpars")
+        asdict_class.pop("classifiers_hpars")
         (path / RESULTSFILE).write_text(json.dumps(serialize(asdict_class)))
 
 
@@ -206,7 +201,7 @@ def _acquisition(
     data = SingleShotClassificationData(
         nshots=params.nshots,
         classifiers_list=params.classifiers_list,
-        hpars=hpars,
+        classifiers_hpars=hpars,
         savedir=params.savedir,
     )
 
@@ -302,7 +297,7 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         y_tests=y_tests,
         x_tests=x_tests,
         names=names,
-        hpars=hpars,
+        classifiers_hpars=hpars,
         models=models_dict,
         threshold=threshold,
         rotation_angle=rotation_angle,
@@ -563,7 +558,15 @@ def _plot(
     return figures, fitting_report
 
 
-single_shot_classification = Routine(_acquisition, _fit, _plot)
+def _update(results: SingleShotClassificationResults, platform: Platform):
+    update.iq_angle(results.rotation_angle, platform)
+    update.threshold(results.threshold, platform)
+    update.mean_gnd_states(results.mean_gnd_states, platform)
+    update.mean_exc_states(results.mean_exc_states, platform)
+    update.classifiers_hpars(results.classifiers_hpars, platform)
+
+
+single_shot_classification = Routine(_acquisition, _fit, _plot, _update)
 
 
 def evaluate_grid(

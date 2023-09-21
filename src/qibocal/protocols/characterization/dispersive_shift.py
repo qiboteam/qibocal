@@ -11,6 +11,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.protocols.characterization.utils import (
     GHZ_TO_HZ,
@@ -47,7 +48,7 @@ class DispersiveShiftResults(Results):
     """Fitted parameters state zero."""
     fitted_parameters_state_one: dict[QubitId, dict[str, float]]
     """Fitted parameters state one."""
-    best_freq: dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
+    best_freq: dict[QubitId, float]
     """Readout frequency that maximizes the distance of ground and excited states in iq-plane"""
 
     @property
@@ -353,6 +354,10 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
     figures.append(fig)
 
     return figures, fitting_report
+
+
+def _update(results: DispersiveShiftResults, platform: Platform):
+    update.readout_frequency(results.best_freq, platform)
 
 
 dispersive_shift = Routine(_acquisition, _fit, _plot)

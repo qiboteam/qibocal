@@ -9,6 +9,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
+from qibocal import update
 from qibocal.auto.operation import (
     Data,
     Parameters,
@@ -220,14 +221,14 @@ def _plot(data: ResonatorSpectroscopyData, qubit, fit: ResonatorSpectroscopyResu
 
 
 def _update(results: ResonatorSpectroscopyResults, platform: Platform):
-    update_readout_frequency(results.frequency, platform)
+    update.readout_frequency(results.frequency, platform)
 
-    update_bare_resonator_frequency(results.bare_frequency, platform)
+    update.bare_resonator_frequency(results.bare_frequency, platform)
 
     # if this condition is satifisfied means that we are in the low power regime
     # therefore we update also the readout amplitude
     if len(results.bare_frequency) == 0:
-        update_readout_amplitude(results.amplitude, platform)
+        update.readout_amplitude(results.amplitude, platform)
 
 
 resonator_spectroscopy = Routine(_acquisition, _fit, _plot, _update)

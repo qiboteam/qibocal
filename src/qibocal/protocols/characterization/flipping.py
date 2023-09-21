@@ -11,6 +11,7 @@ from qibolab.qubits import QubitId
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 
@@ -35,7 +36,7 @@ class FlippingParameters(Parameters):
 class FlippingResults(Results):
     """Flipping outputs."""
 
-    amplitude: dict[QubitId, float] = field(metadata=dict(update="drive_amplitude"))
+    amplitude: dict[QubitId, float]
     """Drive amplitude for each qubit."""
     amplitude_factors: dict[QubitId, float]
     """Drive amplitude correction factor for each qubit."""
@@ -92,7 +93,7 @@ def _acquisition(
     data = FlippingData(
         resonator_type=platform.resonator_type,
         pi_pulse_amplitudes={
-            qubit: qubits[qubit].pi_pulse_amplitude for qubit in qubits
+            qubit: qubits[qubit].native_gates.RX.frequency for qubit in qubits
         },
     )
     # sweep the parameter
@@ -280,5 +281,9 @@ def _plot(data: FlippingData, qubit, fit: FlippingResults = None):
     return figures, fitting_report
 
 
-flipping = Routine(_acquisition, _fit, _plot)
+def _update(results: FlippingResults, platform: Platform):
+    update.drive_amplitude(results.amplitude, platform)
+
+
+flipping = Routine(_acquisition, _fit, _plot, _update)
 """Flipping Routine  object."""

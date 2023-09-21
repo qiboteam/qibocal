@@ -95,7 +95,8 @@ class Task:
         return self.action.update
 
     def update_platform(self, results: Results, platform: Platform):
-        self.operation.update(results=results, platform=platform)
+        if self.update:
+            self.operation.update(results=results, platform=platform)
 
     def run(
         self,
