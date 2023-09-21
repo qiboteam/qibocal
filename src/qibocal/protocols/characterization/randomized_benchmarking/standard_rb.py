@@ -21,7 +21,6 @@ from .circuit_tools import (
 )
 from .data import RBData
 from .fitting import exp1B_func, fit_exp1B_func
-from .plot import rb_figure
 from .utils import extract_from_data, number_to_str, random_clifford
 
 NPULSES_PER_CLIFFORD = 1.875

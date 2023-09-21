@@ -8,7 +8,6 @@ from qibo.config import PRECISION_TOL
 from uncertainties import ufloat
 
 from qibocal.config import raise_error
-from qibocal.protocols.characterization.utils import significant_digit
 
 SINGLE_QUBIT_CLIFFORDS = {
     # Virtual gates
