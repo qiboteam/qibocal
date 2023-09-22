@@ -11,6 +11,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from scipy.optimize import curve_fit
 
+from qibocal import update
 from qibocal.auto.operation import Data, Qubits, Results, Routine
 from qibocal.config import log
 
@@ -38,7 +39,7 @@ class DragPulseTuningParameters(allxy_drag_pulse_tuning.AllXYDragParameters):
 class DragPulseTuningResults(Results):
     """DragPulseTuning outputs."""
 
-    betas: dict[QubitId, float] = field(metadata=dict(update="beta"))
+    betas: dict[QubitId, float]
     """Optimal beta paramter for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
@@ -258,6 +259,10 @@ def _plot(data: DragPulseTuningData, qubit, fit: DragPulseTuningResults):
     figures.append(fig)
 
     return figures, fitting_report
+
+
+def _update(results: DragPulseTuningResults, platform: Platform):
+    update.drag_pulse_beta(results.betas, platform)
 
 
 drag_pulse_tuning = Routine(_acquisition, _fit, _plot)

@@ -11,6 +11,7 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 
@@ -404,7 +405,12 @@ def _plot(
     return utils.flux_dependence_plot(data, fit, qubit)
 
 
-resonator_flux = Routine(_acquisition, _fit, _plot)
+def _update(results: ResonatorFluxResults, platform: Platform):
+    update.readout_frequency(results.frequency, platform)
+    update.sweetspot(results.sweetspot, platform)
+
+
+resonator_flux = Routine(_acquisition, _fit, _plot, _update)
 """ResonatorFlux Routine object."""
 resonator_crosstalk = Routine(_acquisition, _fit_crosstalk, _plot)
 """Resonator crosstalk Routine object"""

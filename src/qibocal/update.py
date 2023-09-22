@@ -1,6 +1,8 @@
 """Helper functions to update parameters in platform."""
+import re
 from typing import Union
 
+from qibolab import pulses
 from qibolab.native import VirtualZPulse
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
@@ -14,8 +16,6 @@ CLASSIFICATION_PARAMS = [
     "mean_exc_states",
     "classifier_hpars",
 ]
-
-# TODO: cast all return types
 
 
 def readout_frequency(results: dict[QubitId, float], platform: Platform):
@@ -156,3 +156,20 @@ def t2_spin_echo(results: dict[QubitId, float], platform: Platform):
     """Update mean excited state value in platform for each qubit in results."""
     for qubit, t2_spin_echo in results.items():
         platform.qubits[qubit].t2_spin_echo = int(t2_spin_echo)
+
+
+def drag_pulse_beta(results: dict[QubitId, float], platform: Platform):
+    """Update beta parameter e value in platform for each qubit in results."""
+    for qubit, beta in results.items():
+        shape = platform.qubits[qubit].native_gates.RX.shape
+        rel_sigma = re.findall(r"[\d]+[.\d]+|[\d]*[.][\d]+|[\d]+", shape)[0]
+        drag_pulse = pulses.Drag(rel_sigma=rel_sigma, beta=beta)
+        platform.qubits[qubit].native_gates.RX.shape = repr(drag_pulse)
+
+
+def sweetspot(results: dict[QubitId, float], platform: Platform):
+    for qubit, sweetspot in results.items():
+        platform.qubits[qubit].sweetspot = float(sweetspot)
+        if platform.qubits[qubit].flux is not None:
+            # set sweetspot as the flux offset (IS THIS NEEDED?)
+            platform.qubits[qubit].flux.offset = sweetspot

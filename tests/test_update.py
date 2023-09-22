@@ -1,8 +1,10 @@
 """Testing update_* helper functions. """
 import random
+import re
 
 from qibolab import create_platform
 from qibolab.native import VirtualZPulse
+from qibolab.pulses import Drag
 
 from qibocal import update
 from qibocal.protocols.characterization.utils import GHZ_TO_HZ
@@ -141,3 +143,23 @@ def test_coherence_params_update():
         assert qubit.t1 == RANDOM_INT[qubit_id]
         assert qubit.t2 == RANDOM_INT[qubit_id]
         assert qubit.t2_spin_echo == RANDOM_INT[qubit_id]
+
+
+def test_drag_pulse_beta_update():
+    update.drag_pulse_beta(RANDOM_FLOAT, PLATFORM)
+
+    for qubit_id, qubit in PLATFORM.qubits.items():
+        rel_sigma = re.findall(
+            r"[\d]+[.\d]+|[\d]*[.][\d]+|[\d]+", qubit.native_gates.RX.shape
+        )[0]
+        assert qubit.native_gates.RX.shape == repr(
+            Drag(rel_sigma, RANDOM_FLOAT[qubit_id])
+        )
+
+
+def test_sweetspot_update():
+    update.sweetspot(RANDOM_FLOAT, PLATFORM)
+    for qubit_id, qubit in PLATFORM.qubits.items():
+        assert qubit.sweetspot == RANDOM_FLOAT[qubit_id]
+        if qubit.flux is not None:
+            assert qubit.flux.offset == RANDOM_FLOAT[qubit_id]
