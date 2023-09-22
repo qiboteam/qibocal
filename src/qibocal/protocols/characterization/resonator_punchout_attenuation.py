@@ -41,11 +41,11 @@ class ResonatorPunchoutAttenuationParameters(Parameters):
 class ResonatorPunchoutAttenuationResults(Results):
     """ResonatorPunchoutAttenation outputs."""
 
-    readout_frequency: dict[QubitId, float] = field()
+    readout_frequency: dict[QubitId, float]
     """Readout frequency [GHz] for each qubit."""
-    bare_frequency: Optional[dict[QubitId, float]] = field()
+    bare_frequency: Optional[dict[QubitId, float]]
     """Bare resonator frequency [GHZ] for each qubit."""
-    readout_attenuation: dict[QubitId, int] = field()
+    readout_attenuation: dict[QubitId, int]
     """Readout attenuation [dB] for each qubit."""
 
 
@@ -253,7 +253,7 @@ def _plot(
 
 
 def _update(results: ResonatorPunchoutAttenuationResults, platform: Platform):
-    update.readout_frequency(results.frequency, platform)
+    update.readout_frequency(results.readout_frequency, platform)
     update.bare_resonator_frequency(results.bare_frequency, platform)
     update.readout_attenuation(results.readout_attenuation, platform)
 

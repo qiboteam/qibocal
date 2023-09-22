@@ -211,5 +211,5 @@ def _update(results: T1Results, platform: Platform):
     update.t1(results.t1, platform)
 
 
-t1 = Routine(_acquisition, _fit, _plot)
+t1 = Routine(_acquisition, _fit, _plot, _update)
 """T1 Routine object."""

@@ -43,11 +43,11 @@ class ResonatorPunchoutParameters(Parameters):
 class ResonatorPunchoutResults(Results):
     """ResonatorPunchout outputs."""
 
-    readout_frequency: dict[QubitId, float] = field()
+    readout_frequency: dict[QubitId, float]
     """Readout frequency [GHz] for each qubit."""
-    bare_frequency: Optional[dict[QubitId, float]] = field()
+    bare_frequency: Optional[dict[QubitId, float]]
     """Bare resonator frequency [GHz] for each qubit."""
-    readout_amplitude: dict[QubitId, float] = field()
+    readout_amplitude: dict[QubitId, float]
     """Readout amplitude for each qubit."""
 
 
@@ -255,9 +255,9 @@ def _plot(data: ResonatorPunchoutData, qubit, fit: ResonatorPunchoutResults = No
 
 
 def _update(results: ResonatorPunchoutResults, platform: Platform):
-    update.readout_frequency(results.frequency, platform)
+    update.readout_frequency(results.readout_frequency, platform)
     update.bare_resonator_frequency(results.bare_frequency, platform)
-    update.readout_amplitude(results.amplitude, platform)
+    update.readout_amplitude(results.readout_amplitude, platform)
 
 
 resonator_punchout = Routine(_acquisition, _fit, _plot, _update)

@@ -220,6 +220,8 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
         # add decorator to show logs
         self.acquisition = show_logs(self.acquisition)
         self.fit = show_logs(self.fit)
+        if self.update is None:
+            self.update = _dummy_update
 
     @property
     def parameters_type(self):
@@ -271,6 +273,10 @@ class DummyRes(Results):
 def _dummy_acquisition(pars: DummyPars, platform: Platform) -> DummyData:
     """Dummy data acquisition."""
     return DummyData()
+
+
+def _dummy_update(results: DummyRes, platform: Platform) -> None:
+    """Dummy update function"""
 
 
 dummy_operation = Routine(_dummy_acquisition)

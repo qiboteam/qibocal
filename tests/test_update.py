@@ -12,12 +12,12 @@ FREQUENCIES_GHZ = {qubit: random.randint(5, 9) for qubit in PLATFORM.qubits}
 FREQUENCIES_HZ = {
     qubit: int(freq * GHZ_TO_HZ) for qubit, freq in FREQUENCIES_GHZ.items()
 }
-RANDOM_FLOAT = {qubit: random.random for qubit in PLATFORM.qubits}
+RANDOM_FLOAT = {qubit: random.random() for qubit in PLATFORM.qubits}
 RANDOM_INT = {qubit: random.randint(0, 10) for qubit in PLATFORM.qubits}
 
 
 def generate_update_list(length):
-    return {qubit: [random.random] * length for qubit in PLATFORM.qubits}
+    return {qubit: [random.random()] * length for qubit in PLATFORM.qubits}
 
 
 def test_readout_frequency_update():
@@ -71,7 +71,6 @@ def test_classification_update():
     mean_gnd_state = generate_update_list(2)
     mean_exc_state = generate_update_list(2)
     classifiers_hpars = generate_update_list(4)
-
     # perform update
     update.iq_angle(RANDOM_FLOAT, PLATFORM)
     update.threshold(RANDOM_FLOAT, PLATFORM)

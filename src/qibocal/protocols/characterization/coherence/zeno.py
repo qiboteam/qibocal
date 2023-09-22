@@ -188,4 +188,4 @@ def _update(results: ZenoResults, platform: Platform):
     update.t1(results.zeno_t1, platform)
 
 
-zeno = Routine(_acquisition, _fit, _plot)
+zeno = Routine(_acquisition, _fit, _plot, _update)

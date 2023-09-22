@@ -87,13 +87,13 @@ def threshold(results: dict[QubitId, float], platform: Platform):
 def mean_gnd_states(results: dict[QubitId, float], platform: Platform):
     """Update mean ground state value in platform for each qubit in results."""
     for qubit, gnd_state in results.items():
-        platform.qubits[qubit].mean_gnd_states = float(gnd_state)
+        platform.qubits[qubit].mean_gnd_states = [float(state) for state in gnd_state]
 
 
 def mean_exc_states(results: dict[QubitId, float], platform: Platform):
     """Update mean excited state value in platform for each qubit in results."""
     for qubit, exc_state in results.items():
-        platform.qubits[qubit].mean_exc_states = float(exc_state)
+        platform.qubits[qubit].mean_exc_states = [float(state) for state in exc_state]
 
 
 def classifiers_hpars(results: dict[QubitId, float], platform: Platform):
