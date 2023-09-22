@@ -7,11 +7,11 @@ from qibo.models import Circuit
 from qibocal.auto.operation import DATAFILE
 
 
-def circ_toJSON(circuit):
+def circ_to_json(circuit):
     circ_json = []
     # Look into circuit.moments for noise matters
     for gate in circuit.queue:
-        circ_json.append(gate.toJSON())
+        circ_json.append(gate.to_json())
     return circ_json
 
 
@@ -65,7 +65,7 @@ class RBData(pd.DataFrame):
         """Overwrite because qibocal action builder calls this function with a directory."""
         save_copy = self.copy()
         for index, circuit in enumerate(self.circuit):
-            save_copy.at[index, "circuit"] = circ_toJSON(circuit)
+            save_copy.at[index, "circuit"] = circ_to_json(circuit)
 
         save_copy.to_json(path / DATAFILE, default_handler=str)
 
