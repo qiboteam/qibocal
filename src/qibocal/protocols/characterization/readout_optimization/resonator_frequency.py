@@ -224,8 +224,8 @@ def _plot(data: ResonatorFrequencyData, fit: ResonatorFrequencyResults, qubit):
     return figures, fitting_report
 
 
-def _update(results: ResonatorFrequencyResults, platform: Platform):
-    update.readout_frequency(results.best_freq, platform)
+def _update(results: ResonatorFrequencyResults, platform: Platform, qubit: QubitId):
+    update.readout_frequency(results.best_freq[qubit], platform, qubit)
 
 
 resonator_frequency = Routine(_acquisition, _fit, _plot, _update)

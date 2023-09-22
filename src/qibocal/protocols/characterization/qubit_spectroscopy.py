@@ -141,8 +141,8 @@ def _plot(data: QubitSpectroscopyData, qubit, fit: QubitSpectroscopyResults):
     return spectroscopy_plot(data, qubit, fit)
 
 
-def _update(results: QubitSpectroscopyResults, platform: Platform):
-    update.drive_frequency(results.frequency, platform)
+def _update(results: QubitSpectroscopyResults, platform: Platform, qubit: QubitId):
+    update.drive_frequency(results.frequency[qubit], platform, qubit)
 
 
 qubit_spectroscopy = Routine(_acquisition, _fit, _plot, _update)

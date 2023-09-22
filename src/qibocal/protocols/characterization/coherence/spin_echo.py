@@ -177,8 +177,8 @@ def _plot(data: SpinEchoData, qubit, fit: SpinEchoResults = None):
     return figures, fitting_report
 
 
-def _update(results: SpinEchoResults, platform: Platform):
-    update.t2_spin_echo(results.t2_spin_echo, platform)
+def _update(results: SpinEchoResults, platform: Platform, qubit: QubitId):
+    update.t2_spin_echo(results.t2_spin_echo[qubit], platform, qubit)
 
 
 spin_echo = Routine(_acquisition, _fit, _plot, _update)

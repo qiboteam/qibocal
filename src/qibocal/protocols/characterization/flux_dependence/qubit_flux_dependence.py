@@ -354,9 +354,9 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, qubit):
     return utils.flux_dependence_plot(data, fit, qubit)
 
 
-def _update(results: QubitFluxResults, platform: Platform):
-    update.drive_frequency(results.frequency, platform)
-    update.sweetspot(results.sweetspot, platform)
+def _update(results: QubitFluxResults, platform: Platform, qubit: QubitId):
+    update.drive_frequency(results.frequency[qubit], platform, qubit)
+    update.sweetspot(results.sweetspot[qubit], platform, qubit)
 
 
 qubit_flux = Routine(_acquisition, _fit, _plot, _update)

@@ -405,9 +405,9 @@ def _plot(
     return utils.flux_dependence_plot(data, fit, qubit)
 
 
-def _update(results: ResonatorFluxResults, platform: Platform):
-    update.readout_frequency(results.frequency, platform)
-    update.sweetspot(results.sweetspot, platform)
+def _update(results: ResonatorFluxResults, platform: Platform, qubit: QubitId):
+    update.readout_frequency(results.frequency[qubit], platform, qubit)
+    update.sweetspot(results.sweetspot[qubit], platform, qubit)
 
 
 resonator_flux = Routine(_acquisition, _fit, _plot, _update)

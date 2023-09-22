@@ -9,7 +9,7 @@ from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
+from qibolab.qubits import QubitId, QubitPairId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
@@ -49,9 +49,9 @@ class ChevronParameters(Parameters):
 class ChevronResults(Results):
     """CzFluxTime outputs when fitting will be done."""
 
-    amplitude: dict[tuple[QubitId, QubitId], int]
+    amplitude: dict[QubitPairId, int]
     """CZ angle."""
-    duration: dict[tuple[QubitId, QubitId], int]
+    duration: dict[QubitPairId, int]
     """Virtual Z phase correction."""
 
 
@@ -305,9 +305,9 @@ def _plot(data: ChevronData, fit: ChevronResults, qubit):
     return [fig], fitting_report
 
 
-def _update(results: ChevronResults, platform: Platform):
-    update.CZ_duration(results.duration, platform)
-    update.CZ_amplitude(results.amplitude, platform)
+def _update(results: ChevronResults, platform: Platform, qubit_pair: QubitPairId):
+    update.CZ_duration(results.duration[qubit_pair], platform, qubit_pair)
+    update.CZ_amplitude(results.amplitude[qubit_pair], platform, qubit_pair)
 
 
 chevron = Routine(_aquisition, _fit, _plot, _update)

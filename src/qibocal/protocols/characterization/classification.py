@@ -558,12 +558,14 @@ def _plot(
     return figures, fitting_report
 
 
-def _update(results: SingleShotClassificationResults, platform: Platform):
-    update.iq_angle(results.rotation_angle, platform)
-    update.threshold(results.threshold, platform)
-    update.mean_gnd_states(results.mean_gnd_states, platform)
-    update.mean_exc_states(results.mean_exc_states, platform)
-    update.classifiers_hpars(results.classifiers_hpars, platform)
+def _update(
+    results: SingleShotClassificationResults, platform: Platform, qubit: QubitId
+):
+    update.iq_angle(results.rotation_angle[qubit], platform, qubit)
+    update.threshold(results.threshold[qubit], platform, qubit)
+    update.mean_gnd_states(results.mean_gnd_states[qubit], platform, qubit)
+    update.mean_exc_states(results.mean_exc_states[qubit], platform, qubit)
+    update.classifiers_hpars(results.classifiers_hpars[qubit], platform, qubit)
 
 
 single_shot_classification = Routine(_acquisition, _fit, _plot, _update)

@@ -209,8 +209,8 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
     return RabiLengthResults(durations, data.amplitudes, fitted_parameters)
 
 
-def _update(results: RabiLengthResults, platform: Platform):
-    update.drive_duration(results.length, platform)
+def _update(results: RabiLengthResults, platform: Platform, qubit: QubitId):
+    update.drive_duration(results.length[qubit], platform, qubit)
 
 
 def _plot(data: RabiLengthData, fit: RabiLengthResults, qubit):

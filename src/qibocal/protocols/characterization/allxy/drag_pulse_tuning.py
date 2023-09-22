@@ -261,9 +261,9 @@ def _plot(data: DragPulseTuningData, qubit, fit: DragPulseTuningResults):
     return figures, fitting_report
 
 
-def _update(results: DragPulseTuningResults, platform: Platform):
-    update.drag_pulse_beta(results.betas, platform)
+def _update(results: DragPulseTuningResults, platform: Platform, qubit: QubitId):
+    update.drag_pulse_beta(results.betas[qubit], platform, qubit)
 
 
-drag_pulse_tuning = Routine(_acquisition, _fit, _plot)
+drag_pulse_tuning = Routine(_acquisition, _fit, _plot, _update)
 """DragPulseTuning Routine object."""

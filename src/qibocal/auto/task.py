@@ -96,7 +96,8 @@ class Task:
 
     def update_platform(self, results: Results, platform: Platform):
         if self.update:
-            self.operation.update(results=results, platform=platform)
+            for qubit in self.qubits:
+                self.operation.update(results, platform, qubit)
 
     def run(
         self,

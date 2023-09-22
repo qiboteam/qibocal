@@ -195,15 +195,15 @@ def _plot(data: ResonatorSpectroscopyData, qubit, fit: ResonatorSpectroscopyResu
     return spectroscopy_plot(data, qubit, fit)
 
 
-def _update(results: ResonatorSpectroscopyResults, platform: Platform):
-    update.readout_frequency(results.frequency, platform)
-
-    update.bare_resonator_frequency(results.bare_frequency, platform)
+def _update(results: ResonatorSpectroscopyResults, platform: Platform, qubit: QubitId):
+    update.readout_frequency(results.frequency[qubit], platform, qubit)
 
     # if this condition is satifisfied means that we are in the low power regime
     # therefore we update also the readout amplitude
     if len(results.bare_frequency) == 0:
-        update.readout_amplitude(results.amplitude, platform)
+        update.readout_amplitude(results.amplitude[qubit], platform, qubit)
+    else:
+        update.bare_resonator_frequency(results.bare_frequency[qubit], platform, qubit)
 
 
 resonator_spectroscopy = Routine(_acquisition, _fit, _plot, _update)

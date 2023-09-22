@@ -173,8 +173,8 @@ def _plot(data: T2Data, qubit, fit: T2Results = None):
     return figures, fitting_report
 
 
-def _update(results: T2Results, platform: Platform):
-    update.t2(results.t2, platform)
+def _update(results: T2Results, platform: Platform, qubit: QubitId):
+    update.t2(results.t2[qubit], platform, qubit)
 
 
 t2 = Routine(_acquisition, _fit, _plot, _update)

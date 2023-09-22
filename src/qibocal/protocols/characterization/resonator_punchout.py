@@ -254,10 +254,10 @@ def _plot(data: ResonatorPunchoutData, qubit, fit: ResonatorPunchoutResults = No
     return figures, fitting_report
 
 
-def _update(results: ResonatorPunchoutResults, platform: Platform):
-    update.readout_frequency(results.readout_frequency, platform)
-    update.bare_resonator_frequency(results.bare_frequency, platform)
-    update.readout_amplitude(results.readout_amplitude, platform)
+def _update(results: ResonatorPunchoutResults, platform: Platform, qubit: QubitId):
+    update.readout_frequency(results.readout_frequency[qubit], platform, qubit)
+    update.bare_resonator_frequency(results.bare_frequency[qubit], platform, qubit)
+    update.readout_amplitude(results.readout_amplitude[qubit], platform, qubit)
 
 
 resonator_punchout = Routine(_acquisition, _fit, _plot, _update)

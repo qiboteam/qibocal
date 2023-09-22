@@ -281,8 +281,8 @@ def _plot(data: FlippingData, qubit, fit: FlippingResults = None):
     return figures, fitting_report
 
 
-def _update(results: FlippingResults, platform: Platform):
-    update.drive_amplitude(results.amplitude, platform)
+def _update(results: FlippingResults, platform: Platform, qubit: QubitId):
+    update.drive_amplitude(results.amplitude[qubit], platform, qubit)
 
 
 flipping = Routine(_acquisition, _fit, _plot, _update)

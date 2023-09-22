@@ -8,7 +8,7 @@ from typing import Callable, Generic, NewType, TypeVar, Union
 import numpy as np
 import numpy.typing as npt
 from qibolab.platform import Platform
-from qibolab.qubits import Qubit, QubitId
+from qibolab.qubits import Qubit, QubitId, QubitPairId
 
 from qibocal.config import log
 
@@ -261,7 +261,9 @@ def _dummy_acquisition(pars: DummyPars, platform: Platform) -> DummyData:
     return DummyData()
 
 
-def _dummy_update(results: DummyRes, platform: Platform) -> None:
+def _dummy_update(
+    results: DummyRes, platform: Platform, qubit: Union[QubitId, QubitPairId]
+) -> None:
     """Dummy update function"""
 
 
