@@ -77,10 +77,8 @@ by other users as well.
 
     qq upload <output_folder>
 
-
-
-
 In order to upload the report to a centralized server, send to the server administrators
 your public ssh key (from the machine(s) you are planning to upload the report) and then
 use the ``qq upload <output_folder>`` command.
+You can also add a tag to be displayed on the server using ``qq upload <output_folder> --tag <tag_name>``.
 This program will upload your report to the server and generate an unique URL.
