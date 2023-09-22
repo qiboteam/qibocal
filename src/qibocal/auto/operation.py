@@ -1,7 +1,7 @@
 import inspect
 import json
 import time
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, dataclass
 from functools import wraps
 from typing import Callable, Generic, NewType, TypeVar, Union
 
@@ -170,20 +170,6 @@ class Results:
         name in the class, corresponding to the same field in ``Result``
 
     """
-
-    @property
-    def update(self) -> dict[str, ParameterValue]:
-        """Produce an update from a result object.
-
-        This is later used to update the runcard.
-
-        """
-        up: dict[str, ParameterValue] = {}
-        for fld in fields(self):
-            if "update" in fld.metadata:
-                up[fld.metadata["update"]] = getattr(self, fld.name)
-
-        return up
 
     def save(self, path):
         """Store results to json."""

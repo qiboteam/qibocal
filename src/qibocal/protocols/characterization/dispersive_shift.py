@@ -360,5 +360,5 @@ def _update(results: DispersiveShiftResults, platform: Platform):
     update.readout_frequency(results.best_freq, platform)
 
 
-dispersive_shift = Routine(_acquisition, _fit, _plot)
+dispersive_shift = Routine(_acquisition, _fit, _plot, _update)
 """Dispersive shift Routine object."""
