@@ -76,3 +76,13 @@ by other users as well.
 .. code-block::
 
     qq upload <output_folder>
+
+
+Uploading reports to server
+"""""""""""""""""""""""""""
+
+
+In order to upload the report to a centralized server, send to the server administrators
+your public ssh key (from the machine(s) you are planning to upload the report) and then
+use the ``qq upload <output_folder>`` command.
+This program will upload your report to the server and generate an unique URL.
