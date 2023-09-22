@@ -78,8 +78,6 @@ by other users as well.
     qq upload <output_folder>
 
 
-Uploading reports to server
-"""""""""""""""""""""""""""
 
 
 In order to upload the report to a centralized server, send to the server administrators
