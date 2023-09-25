@@ -226,7 +226,7 @@ def _fit(data: ChevronData) -> ChevronResults:
 
 def _plot(data: ChevronData, fit: ChevronResults, qubit):
     """Plot the experiment result for a single pair."""
-    colouraxis = ["coloraxis", "coloraxis2"]
+    colouraxis = ["coloraxis2", "coloraxis1"]
 
     # reverse qubit order if not found in data
     if qubit not in data.data:
@@ -297,8 +297,8 @@ def _plot(data: ChevronData, fit: ChevronResults, qubit):
         legend=dict(orientation="h"),
     )
     fig.update_layout(
-        coloraxis={"colorscale": "Oryel", "colorbar": {"x": -0.15}},
-        coloraxis2={"colorscale": "Darkmint", "colorbar": {"x": 1.15}},
+        coloraxis={"colorscale": "Oryel", "colorbar": {"x": 1.15}},
+        coloraxis2={"colorscale": "Darkmint", "colorbar": {"x": -0.15}},
     )
 
     if fit is not None:
