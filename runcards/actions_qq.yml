@@ -1,7 +1,3 @@
-# platform: dummy
-
-# backend: numpy
-
 platform: dummy
 
 qubits: [0, 1]
@@ -374,192 +370,6 @@ actions:
 #     parameters:
 #       nflips_max: 5
 #       nflips_step: 1
-# - id : resonator_frequency
-#   priority: 0
-#   operation: resonator_frequency
-#   parameters:
-#     freq_width: 200.e+6
-#     freq_step: 25.e+6
-#     nshots: 1000
-
-# - id: fast reset
-#   priority: 0
-#   operation: fast_reset
-#   parameters:
-# - id : resonator_frequency
-#   priority: 0
-#   operation: resonator_frequency
-#   parameters:
-#     freq_width: 200.e+6
-#     freq_step: 25.e+6
-#     nshots: 1000
-
-# - id: fast reset
-#   priority: 0
-#   operation: fast_reset
-#   parameters:
-#     nshots: 1024
-
-# - id: CHSH with pulses
-#   priority: 0
-#   operation: chsh_pulses
-#   qubits: [[0,1],[1,2],[0,3]]
-#   parameters:
-#     nshots: 1000
-#     ntheta: 10
-#     bell_states: [0,1,2,3]
-#     apply_error_mitigation: True
-
-# - id: CHSH with natives
-#   priority: 0
-#   operation: chsh_circuits
-#   qubits: [[0,1],[1,2]]
-#   parameters:
-#     nshots: 1000
-#     ntheta: 10
-#     bell_states: [0,1,2,3]
-#     native: True
-#     apply_error_mitigation: True
-
-# - id: CHSH with circuits
-#   priority: 0
-#   operation: chsh_circuits
-#   qubits: [[0,1],[1,2]]
-# - id : resonator_frequency
-#   priority: 0
-#   operation: resonator_frequency
-#   parameters:
-#     freq_width: 200.e+6
-#     freq_step: 25.e+6
-#     nshots: 1000
-
-# - id: fast reset
-#   priority: 0
-#   operation: fast_reset
-#   parameters:
-#     nshots: 1024
-
-# - id: CHSH with pulses
-#   priority: 0
-#   operation: chsh_pulses
-#   qubits: [[0,1],[1,2],[0,3]]
-#   parameters:
-#     nshots: 1000
-#     ntheta: 10
-#     bell_states: [0,1,2,3]
-#     apply_error_mitigation: True
-
-# - id: CHSH with natives
-#   priority: 0
-#   operation: chsh_circuits
-#   qubits: [[0,1],[1,2]]
-#   parameters:
-#     nshots: 1000
-#     ntheta: 10
-#     bell_states: [0,1,2,3]
-#     native: True
-#     apply_error_mitigation: True
-
-# - id: CHSH with circuits
-#   priority: 0
-#   operation: chsh_circuits
-#   qubits: [[0,1],[1,2]]
-#   parameters:
-#     nshots: 1000
-#     ntheta: 2
-#     bell_states: [0,1,2,3]
-#     native: False
-#     apply_error_mitigation: True
-
-# - id: readout_mitigation_matrix pulses
-#   priority: 0
-#   operation: readout_mitigation_matrix
-#   qubits: [[0,1,2],[1,2]]
-#   parameters:
-#     nshots: 100
-#     pulses: True
-
-
-# - id: readout_mitigation_matrix circuits
-#   priority: 0
-#   operation: readout_mitigation_matrix
-#   qubits: [[0,1,2],[1,2]]
-#   parameters:
-#     nshots: 100
-#     pulses: False
-#   parameters:
-#     nshots: 1000
-#     ntheta: 2
-#     bell_states: [0,1,2,3]
-#     native: False
-#     apply_error_mitigation: True
-
-# - id: readout_mitigation_matrix pulses
-#   priority: 0
-#   operation: readout_mitigation_matrix
-#   qubits: [[0,1,2],[1,2]]
-#   parameters:
-#     nshots: 100
-#     pulses: True
-
-
-# - id: readout_mitigation_matrix circuits
-#   priority: 0
-#   operation: readout_mitigation_matrix
-#   qubits: [[0,1,2],[1,2]]
-#   parameters:
-#     nshots: 100
-#     pulses: False
-#     nshots: 1024
-
-# - id: CHSH with pulses
-#   priority: 0
-#   operation: chsh_pulses
-#   qubits: [[0,1],[1,2],[0,3]]
-#   parameters:
-#     nshots: 1000
-#     ntheta: 10
-#     bell_states: [0,1,2,3]
-#     apply_error_mitigation: True
-
-# - id: CHSH with natives
-#   priority: 0
-#   operation: chsh_circuits
-#   qubits: [[0,1],[1,2]]
-#   parameters:
-#     nshots: 1000
-#     ntheta: 10
-#     bell_states: [0,1,2,3]
-#     native: True
-#     apply_error_mitigation: True
-
-# - id: CHSH with circuits
-#   priority: 0
-#   operation: chsh_circuits
-#   qubits: [[0,1],[1,2]]
-#   parameters:
-#     nshots: 1000
-#     ntheta: 2
-#     bell_states: [0,1,2,3]
-#     native: False
-#     apply_error_mitigation: True
-
-# - id: readout_mitigation_matrix pulses
-#   priority: 0
-#   operation: readout_mitigation_matrix
-#   qubits: [[0,1,2],[1,2]]
-#   parameters:
-#     nshots: 100
-#     pulses: True
-
-
-# - id: readout_mitigation_matrix circuits
-#   priority: 0
-#   operation: readout_mitigation_matrix
-#   qubits: [[0,1,2],[1,2]]
-#   parameters:
-#     nshots: 100
-#     pulses: False
 #       nshots: 10
 
 
@@ -611,65 +421,53 @@ actions:
 #       noise_model: PauliErrorOnX
 #       noise_params: [0.01, 0.01, 0.01]
 
-# - id : resonator_frequency
-#   priority: 0
-#   operation: resonator_frequency
-#   parameters:
-#     freq_width: 200.e+6
-#     freq_step: 25.e+6
-#     nshots: 1000
 
-# - id: fast reset
-#   priority: 0
-#   operation: fast_reset
-#   parameters:
-#     nshots: 1024
-
-# - id: CHSH with pulses
-#   priority: 0
-#   operation: chsh_pulses
-#   qubits: [[0,1],[1,2],[0,3]]
-#   parameters:
-#     nshots: 1000
-#     ntheta: 10
-#     bell_states: [0,1,2,3]
-#     apply_error_mitigation: True
-
-# - id: CHSH with natives
-#   priority: 0
-#   operation: chsh_circuits
-#   qubits: [[0,1],[1,2]]
-#   parameters:
-#     nshots: 1000
-#     ntheta: 10
-#     bell_states: [0,1,2,3]
-#     native: True
-#     apply_error_mitigation: True
-
-- id: CHSH with circuits
-  priority: 0
-  operation: chsh_circuits
-  qubits: [[0,1],[1,2]]
-  parameters:
-    nshots: 1000
-    ntheta: 100
-    bell_states: [0]
-    native: False
-    apply_error_mitigation: True
-
-# - id: readout_mitigation_matrix pulses
-#   priority: 0
-#   operation: readout_mitigation_matrix
-#   qubits: [[0,1,2],[1,2]]
-#   parameters:
-#     nshots: 100
-#     pulses: True
+#   - id: CHSH with pulses
+#     priority: 0
+#     operation: chsh_pulses
+#     qubits: [[0,1],[1,2],[0,3]]
+#     parameters:
+#       nshots: 1000
+#       ntheta: 10
+#       bell_states: [0,1,2,3]
+#       apply_error_mitigation: True
 
 
-# - id: readout_mitigation_matrix circuits
-#   priority: 0
-#   operation: readout_mitigation_matrix
-#   qubits: [[0,1,2],[1,2]]
-#   parameters:
-#     nshots: 100
-#     pulses: False
+#   - id: CHSH with natives
+#     priority: 0
+#     operation: chsh_circuits
+#     qubits: [[0,1],[1,2]]
+#     parameters:
+#       nshots: 1000
+#       ntheta: 10
+#       bell_states: [0,1,2,3]
+#       native: True
+#       apply_error_mitigation: True
+
+
+#   - id: CHSH with circuits
+#     priority: 0
+#     operation: chsh_circuits
+#     qubits: [[0,1],[1,2]]
+#     parameters:
+#       nshots: 1000
+#       ntheta: 10
+#       bell_states: [0,1,2,3]
+
+
+#   - id: readout_mitigation_matrix pulses
+#     priority: 0
+#     operation: readout_mitigation_matrix
+#     qubits: [[0,1,2],[1,2]]
+#     parameters:
+#       nshots: 100
+#       pulses: True
+
+
+#   - id: readout_mitigation_matrix circuits
+#     priority: 0
+#     operation: readout_mitigation_matrix
+#     qubits: [[0,1,2],[1,2]]
+#     parameters:
+#       nshots: 100
+#       pulses: False
