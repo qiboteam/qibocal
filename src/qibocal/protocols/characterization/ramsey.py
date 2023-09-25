@@ -189,11 +189,7 @@ def _acquisition(
                     nshots=params.nshots,
                     relaxation_time=params.relaxation_time,
                     acquisition_type=AcquisitionType.INTEGRATION,
-                    averaging_mode=(
-                        AveragingMode.SINGLESHOT
-                        # if params.nboot != 0
-                        # else AveragingMode.CYCLIC
-                    ),
+                    averaging_mode=(AveragingMode.SINGLESHOT),
                 ),
             )
             for i, qubit in enumerate(qubits):
@@ -204,19 +200,13 @@ def _acquisition(
                 model = qubit_fit.QubitFit()
                 model.angle = platform.qubits[qubit].iq_angle
                 model.threshold = platform.qubits[qubit].threshold
-                model.iq_mean0 = platform.qubits[qubit].mean_gnd_states
-                model.iq_mean1 = platform.qubits[qubit].mean_exc_states
                 states = model.predict(iq_couples)
-                prob = 1 - np.average(
+                prob_ground = 1 - np.average(
                     states,
                 )
-                number_ones = np.sum(states)
-                errors[i].append(
-                    np.sqrt(
-                        number_ones * (len(states) - number_ones) / len(states) ** 3
-                    )
-                )
-                probs[i].append(prob)
+                errors[i].append(np.sqrt(prob_ground * (1 - prob_ground) / len(states)))
+                probs[i].append(prob_ground)
+
     for i, qubit in enumerate(qubits):
         data.register_qubit(
             qubit,
@@ -224,6 +214,7 @@ def _acquisition(
             prob=np.array(probs[i]),
             errors=np.array(errors[i]),
         )
+
     return data
 
 
@@ -253,11 +244,13 @@ def _fit(data: RamseyData) -> RamseyResults:
     for qubit in qubits:
         qubit_data = data[qubit]
         qubit_freq = data.qubit_freqs[qubit]
-        probs = qubit_data[["prob"]].tolist()
+        probs = np.concatenate(qubit_data[["prob"]].tolist())
         try:
-            popt, perr = fitting(waits, np.concatenate(probs), qubit_data.errors)
+            popt, perr = fitting(waits, probs, qubit_data.errors)
         except:
             popt = [0, 0, 0, 0, 1]
+            perr = [1] * 5
+
         delta_fitting = popt[2] / (2 * np.pi)
         delta_phys = data.detuning_sign * int(
             (delta_fitting - data.n_osc / data.t_max) * GHZ_TO_HZ
@@ -272,8 +265,10 @@ def _fit(data: RamseyData) -> RamseyResults:
         popts[qubit] = popt
         delta_phys_measure[qubit] = (delta_phys, popt[2] / (2 * np.pi * data.t_max))
         chi2[qubit] = chi2_reduced(
-            np.concatenate(probs), ramsey_fit(waits, *popts[qubit]), qubit_data.errors
+            probs, ramsey_fit(waits, *popts[qubit]), qubit_data.errors
         )
+        print(qubit_data.errors)
+        print("DDDDD ", chi2[qubit])
     return RamseyResults(freq_measure, t2_measure, delta_phys_measure, popts, chi2)
 
 
@@ -352,7 +347,8 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
             + (fill_table(qubit, "T2*", fit.t2[qubit][0], fit.t2[qubit][1], "ns"))
             + "<br>"
         )
-        if fit.chi2:
+        if fit.chi2[qubit]:
+            print(fit.chi2[qubit])
             fitting_report += fill_table(
                 qubit, "chi2 reduced", fit.chi2[qubit], error=None
             )
@@ -360,7 +356,7 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Time (ns)",
-        yaxis_title="MSR (uV)",
+        yaxis_title="P_g",
     )
 
     figures.append(fig)
