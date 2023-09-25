@@ -17,6 +17,8 @@ from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
 from .utils import fit_flux_amplitude, order_pair
 
+COLORAXIS = ["coloraxis2", "coloraxis1"]
+
 
 @dataclass
 class ChevronParameters(Parameters):
@@ -195,23 +197,19 @@ def _fit(data: ChevronData) -> ChevronResults:
     for pair in data.data:
         pair_amplitude = []
         pair_duration = []
+        amps = np.unique(data[pair].amp)
+        times = np.unique(data[pair].length)
 
         for qubit in pair:
-            amps = data[pair].amp
-            times = data[pair].length
             msr = data[pair].prob_low if pair[0] == qubit else data[pair].prob_high
-            msr_matrix = msr.reshape(len(np.unique(times)), len(np.unique(amps))).T
+            msr_matrix = msr.reshape(len(times), len(amps)).T
 
             # guess amplitude computing FFT
-            amplitude, index, delta = fit_flux_amplitude(
-                msr_matrix, np.unique(amps), np.unique(times)
-            )
-
+            amplitude, index, delta = fit_flux_amplitude(msr_matrix, amps, times)
             # estimate duration by rabi curve at amplitude previously estimated
             y = msr_matrix[index, :].ravel()
-            popt, _ = curve_fit(
-                cos, np.unique(times), y, p0=[delta, 0, np.mean(y), np.mean(y)]
-            )
+
+            popt, _ = curve_fit(cos, times, y, p0=[delta, 0, np.mean(y), np.mean(y)])
 
             # duration can be estimated as the period of the oscillation
             duration = 1 / (popt[0] / 2 / np.pi)
@@ -226,7 +224,6 @@ def _fit(data: ChevronData) -> ChevronResults:
 
 def _plot(data: ChevronData, fit: ChevronResults, qubit):
     """Plot the experiment result for a single pair."""
-    colouraxis = ["coloraxis2", "coloraxis1"]
 
     # reverse qubit order if not found in data
     if qubit not in data.data:
@@ -249,7 +246,7 @@ def _plot(data: ChevronData, fit: ChevronResults, qubit):
             x=pair_data.length,
             y=pair_data.amp,
             z=pair_data.prob_low,
-            coloraxis=colouraxis[0],
+            coloraxis=COLORAXIS[0],
         ),
         row=1,
         col=1,
@@ -260,7 +257,7 @@ def _plot(data: ChevronData, fit: ChevronResults, qubit):
             x=pair_data.length,
             y=pair_data.amp,
             z=pair_data.prob_high,
-            coloraxis=colouraxis[1],
+            coloraxis=COLORAXIS[1],
         ),
         row=1,
         col=2,
