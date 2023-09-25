@@ -298,6 +298,7 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
                 type="data",  # value of error bar given in data coordinates
                 array=error_bars,
                 visible=True,
+                color="cornflowerblue",
             ),
             opacity=1,
             name="Voltage",
@@ -307,18 +308,11 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
     )
 
     if fit is not None:
-        # add fitting trace
-        waitrange = np.linspace(
-            min(waits),
-            max(waits),
-            2 * len(qubit_data),
-        )
-
         fig.add_trace(
             go.Scatter(
-                x=waitrange,
+                x=waits,
                 y=ramsey_fit(
-                    waitrange,
+                    waits,
                     float(fit.fitted_parameters[qubit][0]),
                     float(fit.fitted_parameters[qubit][1]),
                     float(fit.fitted_parameters[qubit][2]),
@@ -360,7 +354,7 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Time (ns)",
-        yaxis_title="MSR (uV)",
+        yaxis_title="Ground state probability",
     )
 
     figures.append(fig)
