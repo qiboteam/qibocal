@@ -244,7 +244,7 @@ def _fit(data: RamseyData) -> RamseyResults:
     for qubit in qubits:
         qubit_data = data[qubit]
         qubit_freq = data.qubit_freqs[qubit]
-        probs = np.concatenate(qubit_data[["prob"]].tolist())
+        probs = qubit_data[["prob"]].tolist()
         try:
             popt, perr = fitting(waits, probs, qubit_data.errors)
         except:
@@ -266,7 +266,7 @@ def _fit(data: RamseyData) -> RamseyResults:
         delta_phys_measure[qubit] = (delta_phys, popt[2] / (2 * np.pi * data.t_max))
         chi2[qubit] = (
             chi2_reduced(
-                np.concatenate(probs),
+                probs,
                 ramsey_fit(waits, *popts[qubit]),
                 qubit_data.errors,
             ),
