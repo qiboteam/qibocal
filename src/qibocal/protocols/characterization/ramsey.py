@@ -189,11 +189,7 @@ def _acquisition(
                     nshots=params.nshots,
                     relaxation_time=params.relaxation_time,
                     acquisition_type=AcquisitionType.INTEGRATION,
-                    averaging_mode=(
-                        AveragingMode.SINGLESHOT
-                        # if params.nboot != 0
-                        # else AveragingMode.CYCLIC
-                    ),
+                    averaging_mode=(AveragingMode.SINGLESHOT),
                 ),
             )
             for i, qubit in enumerate(qubits):
@@ -204,19 +200,13 @@ def _acquisition(
                 model = qubit_fit.QubitFit()
                 model.angle = platform.qubits[qubit].iq_angle
                 model.threshold = platform.qubits[qubit].threshold
-                model.iq_mean0 = platform.qubits[qubit].mean_gnd_states
-                model.iq_mean1 = platform.qubits[qubit].mean_exc_states
                 states = model.predict(iq_couples)
-                prob = 1 - np.average(
+                prob_ground = 1 - np.average(
                     states,
                 )
-                number_ones = np.sum(states)
-                errors[i].append(
-                    np.sqrt(
-                        number_ones * (len(states) - number_ones) / len(states) ** 3
-                    )
-                )
-                probs[i].append(prob)
+                errors[i].append(np.sqrt(prob_ground * (1 - prob_ground) / len(states)))
+                probs[i].append(prob_ground)
+
     for i, qubit in enumerate(qubits):
         data.register_qubit(
             qubit,
@@ -224,6 +214,7 @@ def _acquisition(
             prob=np.array(probs[i]),
             errors=np.array(errors[i]),
         )
+
     return data
 
 
@@ -253,11 +244,13 @@ def _fit(data: RamseyData) -> RamseyResults:
     for qubit in qubits:
         qubit_data = data[qubit]
         qubit_freq = data.qubit_freqs[qubit]
-        probs = qubit_data[["prob"]].tolist()
+        probs = np.concatenate(qubit_data[["prob"]].tolist())
         try:
-            popt, perr = fitting(waits, np.concatenate(probs), qubit_data.errors)
+            popt, perr = fitting(waits, probs, qubit_data.errors)
         except:
             popt = [0, 0, 0, 0, 1]
+            perr = [1] * 5
+
         delta_fitting = popt[2] / (2 * np.pi)
         delta_phys = data.detuning_sign * int(
             (delta_fitting - data.n_osc / data.t_max) * GHZ_TO_HZ
@@ -377,11 +370,13 @@ def fitting(x: list, y: list, errors: list) -> list:
     """
     y_max = np.max(y)
     y_min = np.min(y)
-    y = (y - y_min) / (y_max - y_min)
     x_max = np.max(x)
     x_min = np.min(x)
-    x = (x - x_min) / (x_max - x_min)
-    err = errors / (y_max - y_min)
+    delta_y = y_max - y_min
+    delta_x = x_max - x_min
+    y = (y - y_min) / delta_y
+    x = (x - x_min) / delta_x
+    err = errors / delta_y
     ft = np.fft.rfft(y)
     freqs = np.fft.rfftfreq(len(y), x[1] - x[0])
     mags = abs(ft)
@@ -409,20 +404,20 @@ def fitting(x: list, y: list, errors: list) -> list:
         sigma=err,
     )
     popt = [
-        (y_max - y_min) * popt[0] + y_min,
-        (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
-        popt[2] / (x_max - x_min),
-        popt[3] - x_min * popt[2] / (x_max - x_min),
-        popt[4] / (x_max - x_min),
+        delta_y * popt[0] + y_min,
+        delta_y * popt[1] * np.exp(x_min * popt[4] / delta_x),
+        popt[2] / delta_x,
+        popt[3] - x_min * popt[2] / delta_x,
+        popt[4] / delta_x,
     ]
     perr = np.sqrt(np.diag(perr))
     perr = [
-        (y_max - y_min) * perr[0],
-        (y_max - y_min)
-        * perr[1]
-        * np.exp(x_min * popt[4] / (x_max - x_min)),  # TODO: check this formula
-        perr[2] / (x_max - x_min),
-        np.sqrt(perr[3] ** 2 + perr[2] ** 2 * (x_min / (x_max - x_min)) ** 2),
-        perr[4] / (x_max - x_min),
+        delta_y * perr[0],
+        delta_y
+        * np.exp(-x_min * popt[4] / delta_x)
+        * np.sqrt(perr[1] ** 2 + (popt[1] * x_min * perr[4] / delta_x) ** 2),
+        perr[2] / delta_x,
+        np.sqrt(perr[3] ** 2 + (perr[2] * x_min / delta_x) ** 2),
+        perr[4] / delta_x,
     ]
     return popt, perr

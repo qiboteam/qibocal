@@ -269,6 +269,8 @@ def fit_punchout(data: Data, fit_type: str):
 
 def eval_magnitude(value):
     """number of non decimal digits in `value`"""
+    if value == 0:
+        return 0
     return int(np.floor(np.log10(abs(value))))
 
 
@@ -315,6 +317,9 @@ def chi2_reduced(
     errors: npt.NDArray,
     dof: float = None,
 ):
+    if np.count_nonzero(errors) == 0:
+        return None
+
     if dof is None:
         dof = len(observed) - 1
 
