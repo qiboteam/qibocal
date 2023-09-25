@@ -119,14 +119,14 @@ def _fit(data: SpinEchoData) -> SpinEchoResults:
     return SpinEchoResults(t2Echos, fitted_parameters)
 
 
-def _plot(data: SpinEchoData, fit: SpinEchoResults, qubit: int):
+def _plot(data: SpinEchoData, qubit, fit: SpinEchoResults = None):
     """Plotting for SpinEcho"""
 
     figures = []
     fig = go.Figure()
 
     # iterate over multiple data folders
-    fitting_report = ""
+    fitting_report = None
 
     qubit_data = data[qubit]
     waits = qubit_data.wait
@@ -142,26 +142,27 @@ def _plot(data: SpinEchoData, fit: SpinEchoResults, qubit: int):
         ),
     )
 
-    # add fitting trace
-    waitrange = np.linspace(
-        min(waits),
-        max(waits),
-        2 * len(qubit_data),
-    )
-    params = fit.fitted_parameters[qubit]
+    if fit is not None:
+        # add fitting trace
+        waitrange = np.linspace(
+            min(waits),
+            max(waits),
+            2 * len(qubit_data),
+        )
+        params = fit.fitted_parameters[qubit]
 
-    fig.add_trace(
-        go.Scatter(
-            x=waitrange,
-            y=exp_decay(waitrange, *params),
-            name="Fit",
-            line=go.scatter.Line(dash="dot"),
-        ),
-    )
+        fig.add_trace(
+            go.Scatter(
+                x=waitrange,
+                y=exp_decay(waitrange, *params),
+                name="Fit",
+                line=go.scatter.Line(dash="dot"),
+            ),
+        )
 
-    fitting_report = fitting_report + (
-        f"{qubit} | T2 Spin Echo: {fit.t2_spin_echo[qubit]:,.0f} ns.<br><br>"
-    )
+        fitting_report = (
+            f"{qubit} | T2 Spin Echo: {fit.t2_spin_echo[qubit]:,.0f} ns.<br><br>"
+        )
 
     fig.update_layout(
         showlegend=True,

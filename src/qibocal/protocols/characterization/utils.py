@@ -1,11 +1,14 @@
 from colorsys import hls_to_rgb
 from enum import Enum
+from typing import Optional
 
 import lmfit
 import numpy as np
+import numpy.typing as npt
 import plotly.graph_objects as go
 from numba import njit
 from plotly.subplots import make_subplots
+from qibolab.qubits import QubitId
 from scipy.stats import mode
 
 from qibocal.auto.operation import Data, Results
@@ -81,7 +84,7 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         return guess_center, fit_res.params.valuesdict()
 
 
-def spectroscopy_plot(data, fit: Results, qubit):
+def spectroscopy_plot(data, qubit, fit: Results = None):
     figures = []
     fig = make_subplots(
         rows=1,
@@ -90,8 +93,8 @@ def spectroscopy_plot(data, fit: Results, qubit):
         vertical_spacing=0.1,
     )
     qubit_data = data[qubit]
+    fitting_report = None
 
-    fitting_report = ""
     frequencies = qubit_data.freq * HZ_TO_GHZ
     fig.add_trace(
         go.Scatter(
@@ -124,35 +127,40 @@ def spectroscopy_plot(data, fit: Results, qubit):
         2 * len(frequencies),
     )
 
-    params = fit.fitted_parameters[qubit]
+    if fit is not None:
+        params = fit.fitted_parameters[qubit]
 
-    fig.add_trace(
-        go.Scatter(
-            x=freqrange,
-            y=lorentzian(freqrange, **params),
-            name="Fit",
-            line=go.scatter.Line(dash="dot"),
-        ),
-        row=1,
-        col=1,
-    )
+        fig.add_trace(
+            go.Scatter(
+                x=freqrange,
+                y=lorentzian(freqrange, **params),
+                name="Fit",
+                line=go.scatter.Line(dash="dot"),
+            ),
+            row=1,
+            col=1,
+        )
 
-    if data.power_level is PowerLevel.low:
-        label = "readout frequency"
-        freq = fit.frequency
-    elif data.power_level is PowerLevel.high:
-        label = "bare resonator frequency"
-        freq = fit.bare_frequency
-    else:
-        label = "qubit frequency"
-        freq = fit.frequency
-    fitting_report += f"{qubit} | {label}: {freq[qubit]*GHZ_TO_HZ:,.0f} Hz<br>"
-    if fit.amplitude[qubit] is not None:
-        fitting_report += f"{qubit} | amplitude: {fit.amplitude[qubit]} <br>"
+        if data.power_level is PowerLevel.low:
+            label = "readout frequency"
+            freq = fit.frequency
+        elif data.power_level is PowerLevel.high:
+            label = "bare resonator frequency"
+            freq = fit.bare_frequency
+        else:
+            label = "qubit frequency"
+            freq = fit.frequency
 
-    if data.__class__.__name__ == "ResonatorSpectroscopyAttenuationData":
-        if fit.attenuation[qubit] is not None and fit.attenuation[qubit] != 0:
-            fitting_report += f"{qubit} | attenuation: {fit.attenuation[qubit]} <br>"
+        fitting_report = f"{qubit} | {label}: {freq[qubit]*GHZ_TO_HZ:,.0f} Hz<br>"
+
+        if fit.amplitude[qubit] is not None:
+            fitting_report += f"{qubit} | amplitude: {fit.amplitude[qubit]} <br>"
+
+        if data.__class__.__name__ == "ResonatorSpectroscopyAttenuationData":
+            if fit.attenuation[qubit] is not None and fit.attenuation[qubit] != 0:
+                fitting_report += (
+                    f"{qubit} | attenuation: {fit.attenuation[qubit]} <br>"
+                )
 
     fig.update_layout(
         showlegend=True,
@@ -259,9 +267,85 @@ def fit_punchout(data: Data, fit_type: str):
     return [low_freqs, high_freqs, ro_values]
 
 
+def eval_magnitude(value):
+    """number of non decimal digits in `value`"""
+    return int(np.floor(np.log10(abs(value))))
+
+
+def fill_table(
+    qubit: QubitId,
+    name: str,
+    value: float,
+    error: Optional[float],
+    unit: str = None,
+    ndigits: int = 2,
+) -> str:
+    """
+    Return a row of the report table with the correct number of
+    significant digits.
+
+    Args:
+        qubit (QubitId): Qubit.
+        name (str): Variable's name.
+        value (float): Variable's value.
+        error (float): Error associated to the variable.
+        unit (str): Measurement unit. Default value `None`.
+        ndigits (int): Number of decimal digits to display when error is `None`
+            (i.e. it is not evaluated).
+    """
+    row = f"{qubit}| {name}: "
+    if value:
+        magnitude = eval_magnitude(value)
+    else:
+        magnitude = 0
+    if error:
+        ndigits = max(significant_digit(error * 10 ** (-1 * magnitude)), 0)
+        row += f"({round(value*10**(-1*magnitude), ndigits)} ± {np.format_float_positional(round(error*10**(-1*magnitude), ndigits), trim = '-')})"
+    else:
+        row += f"{round(value*10**(-1* magnitude), ndigits)}"
+    if magnitude != 0:
+        row += f"* 10^{magnitude}"
+    row += f" {unit} <br>" if unit else f"<br>"
+    return row
+
+
+def chi2_reduced(
+    observed: npt.NDArray,
+    estimated: npt.NDArray,
+    errors: npt.NDArray,
+    dof: float = None,
+):
+    if dof is None:
+        dof = len(observed) - 1
+
+    return np.sum(np.square((observed - estimated) / errors)) / dof
+
+
 def get_color_state0(number):
     return "rgb" + str(hls_to_rgb((-0.35 - number * 9 / 20) % 1, 0.6, 0.75))
 
 
 def get_color_state1(number):
     return "rgb" + str(hls_to_rgb((-0.02 - number * 9 / 20) % 1, 0.6, 0.75))
+
+
+def significant_digit(number: float):
+    """Computes the position of the first significant digit of a given number.
+
+    Args:
+        number (Number): number for which the significant digit is computed. Can be complex.
+
+    Returns:
+        int: position of the first significant digit. Returns ``-1`` if the given number
+            is ``>= 1``, ``= 0`` or ``inf``.
+    """
+
+    if np.isinf(np.real(number)) or np.real(number) >= 1 or number == 0:
+        return -1
+
+    position = max(np.ceil(-np.log10(abs(np.real(number)))), -1)
+
+    if np.imag(number) != 0:
+        position = max(position, np.ceil(-np.log10(abs(np.imag(number)))))
+
+    return int(position)

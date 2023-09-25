@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from functools import partial
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -103,7 +103,7 @@ class ResonatorFluxData(Data):
 class FluxCrosstalkData(ResonatorFluxData):
     """QubitFlux acquisition outputs when ``flux_qubits`` are given."""
 
-    data: dict[QubitId, dict[QubitId, npt.NDArray[ResFluxType]]] = field(
+    data: dict[tuple[QubitId, QubitId], npt.NDArray[ResFluxType]] = field(
         default_factory=dict
     )
     """Raw data acquired for (qubit, qubit_flux) pairs saved in nested dictionaries."""
@@ -111,10 +111,12 @@ class FluxCrosstalkData(ResonatorFluxData):
     def register_qubit(self, qubit, flux_qubit, freq, bias, msr, phase):
         """Store output for single qubit."""
         ar = utils.create_data_array(freq, bias, msr, phase, dtype=ResFluxType)
-        if qubit in self.data:
-            self.data[qubit][flux_qubit] = ar
+        if (qubit, flux_qubit) in self.data:
+            self.data[qubit, flux_qubit] = np.rec.array(
+                np.concatenate((self.data[qubit, flux_qubit], ar))
+            )
         else:
-            self.data[qubit] = {flux_qubit: ar}
+            self.data[qubit, flux_qubit] = ar
 
 
 def _acquisition(
@@ -186,7 +188,6 @@ def _acquisition(
         g=g,
         bare_resonator_frequency=bare_resonator_frequency,
     )
-
     options = ExecutionParameters(
         nshots=params.nshots,
         relaxation_time=params.relaxation_time,
@@ -220,8 +221,6 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     Fit frequency as a function of current for the flux qubit spectroscopy
     data (QubitFluxData): data object with information on the feature response at each current point.
     """
-    if isinstance(data, FluxCrosstalkData):
-        return FluxCrosstalkResults()
 
     qubits = data.qubits
     frequency = {}
@@ -392,12 +391,20 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     )
 
 
-def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, qubit):
+def _fit_crosstalk(data: FluxCrosstalkData) -> FluxCrosstalkResults:
+    return FluxCrosstalkResults()
+
+
+def _plot(
+    data: Union[ResonatorFluxData, FluxCrosstalkData], fit: ResonatorFluxResults, qubit
+):
     """Plotting function for ResonatorFlux Experiment."""
-    if isinstance(data[qubit], dict):
+    if utils.is_crosstalk(data):
         return utils.flux_crosstalk_plot(data, fit, qubit)
     return utils.flux_dependence_plot(data, fit, qubit)
 
 
 resonator_flux = Routine(_acquisition, _fit, _plot)
 """ResonatorFlux Routine object."""
+resonator_crosstalk = Routine(_acquisition, _fit_crosstalk, _plot)
+"""Resonator crosstalk Routine object"""

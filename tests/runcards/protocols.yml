@@ -1,4 +1,6 @@
+platform: dummy
 
+qubits: [0,1]
 
 actions:
 
@@ -105,7 +107,7 @@ actions:
 
   - id: resonator flux crosstalk # using ``flux_qubits``
     priority: 0
-    operation: resonator_flux
+    operation: resonator_crosstalk
     parameters:
       freq_width: 10_000_000
       freq_step: 500_000
@@ -132,7 +134,7 @@ actions:
 
 
 
-  - id: qubit flux dependence #"02" transition
+  - id: qubit flux dependence 02
     priority: 0
     operation: qubit_flux
     parameters:
@@ -149,7 +151,7 @@ actions:
 
   - id: qubit flux crosstalk # using ``flux_qubits``
     priority: 0
-    operation: qubit_flux
+    operation: qubit_crosstalk
     parameters:
       freq_width: 150_000_000
       freq_step: 500_000
@@ -246,6 +248,17 @@ actions:
       n_osc: 2
       nshots: 10
 
+  - id: ramsey detuned sequences with bootstrap
+    priority: 0
+    operation: ramsey_sequences
+    parameters:
+      delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
+      delay_between_pulses_end: 5000
+      delay_between_pulses_step: 500 # must be a multiple of 4
+      n_osc: 10
+      nshots: 1024
+      nboot: 2
+
   - id: ramsey detuned sequences
     priority: 0
     operation: ramsey_sequences
@@ -264,8 +277,18 @@ actions:
       delay_between_pulses_end: 20
       delay_between_pulses_step: 1
       n_osc: 0
-      nshots: 10
+      nshots: 1024
 
+  - id: ramsey with bootstrap
+    priority: 0
+    operation: ramsey
+    parameters:
+      delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
+      delay_between_pulses_end: 5000
+      delay_between_pulses_step: 500 # must be a multiple of 4
+      n_osc: 0
+      nshots: 1024
+      nboot: 2
 
   - id: single shot classification
     priority: 0
@@ -273,7 +296,7 @@ actions:
     parameters:
       nshots: 10
 
-  - id: single shot classification
+  - id: single shot classification with classifiers
     priority: 0
     operation: single_shot_classification
     parameters:
@@ -300,7 +323,7 @@ actions:
     operation: allxy_drag_pulse_tuning
     parameters:
       beta_start: 0
-      beta_end: 0.02
+      beta_end: 0.04
       beta_step: 0.01
       nshots: 10
 
@@ -310,7 +333,7 @@ actions:
     operation: drag_pulse_tuning
     parameters:
       beta_start: 0
-      beta_end: 0.02
+      beta_end: 0.1
       beta_step: 0.01
       nshots: 10
 
@@ -415,3 +438,19 @@ actions:
     operation: fast_reset
     parameters:
       nshots: 1024
+
+  - id: twpa frequency
+    priority: 0
+    operation: twpa_frequency
+    parameters:
+      nshots: 10
+      frequency_width: 1_000_000
+      frequency_step: 100_000
+
+  - id: twpa power
+    priority: 0
+    operation: twpa_power
+    parameters:
+      nshots: 10
+      power_width: 10
+      power_step: 1

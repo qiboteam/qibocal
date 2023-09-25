@@ -12,6 +12,8 @@ from qibolab.qubits import Qubit, QubitId
 
 from qibocal.config import log
 
+from .serialize import deserialize, load, serialize
+
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
 ParameterValue = Union[float, int]
@@ -19,6 +21,7 @@ ParameterValue = Union[float, int]
 Qubits = dict[QubitId, Qubit]
 """Convenient way of passing qubit pairs in the routines."""
 QubitsPairs = dict[tuple[QubitId, QubitId], Qubit]
+
 
 DATAFILE = "data.npz"
 """Name of the file where data acquired (arrays) by calibration are dumped."""
@@ -61,6 +64,8 @@ class Parameters:
     """Number of executions on hardware"""
     relaxation_time: float
     """Wait time for the qubit to decohere back to the `gnd` state"""
+    nboot: int
+    """Number of bootstrap samples"""
 
     @classmethod
     def load(cls, parameters):
@@ -74,7 +79,10 @@ class Parameters:
             the linked outputs
 
         """
-        return cls(**parameters)
+        nboot = parameters.pop("nboot", 0)
+        par = cls(**parameters)
+        par.nboot = nboot
+        return par
 
 
 class Data:
@@ -100,7 +108,7 @@ class Data:
         return self.data[qubit]
 
     @property
-    def global_params_dict(self):
+    def global_params(self) -> dict:
         """Convert non-arrays attributes into dict."""
         global_dict = asdict(self)
         global_dict.pop("data")
@@ -108,17 +116,37 @@ class Data:
 
     def save(self, path):
         """Store results."""
-        self.to_json(path)
-        self.to_npz(path)
+        self._to_json(path)
+        self._to_npz(path)
 
-    def to_npz(self, path):
+    def _to_npz(self, path):
         """Helper function to use np.savez while converting keys into strings."""
-        np.savez(path / DATAFILE, **{str(i): self.data[i] for i in self.data})
+        np.savez(path / DATAFILE, **{json.dumps(i): self.data[i] for i in self.data})
 
-    def to_json(self, path):
+    def _to_json(self, path):
         """Helper function to dump to json in JSONFILE path."""
-        if self.global_params_dict:
-            (path / JSONFILE).write_text(json.dumps(self.global_params_dict, indent=4))
+        if self.global_params:
+            (path / JSONFILE).write_text(
+                json.dumps(serialize(self.global_params), indent=4)
+            )
+
+    @classmethod
+    def load(cls, path):
+        with open(path / DATAFILE) as f:
+            raw_data_dict = dict(np.load(path / DATAFILE))
+            data_dict = {}
+
+            for data_key, array in raw_data_dict.items():
+                data_dict[load(data_key)] = np.rec.array(array)
+        if (path / JSONFILE).is_file():
+            params = json.loads((path / JSONFILE).read_text())
+
+            params = deserialize(params)
+            obj = cls(data=data_dict, **params)
+        else:
+            obj = cls(data=data_dict)
+
+        return obj
 
 
 @dataclass
@@ -159,19 +187,13 @@ class Results:
 
     def save(self, path):
         """Store results to json."""
-        # FIXME: remove hardcoded conversion to str for tuple
-        result_dict = {}
-        for result_name, result in asdict(self).items():
-            result_dict[result_name] = {}
-            if isinstance(result, dict):
-                for key, elem in result.items():
-                    if isinstance(key, tuple):
-                        result_dict[result_name][str(key)] = elem
-                    else:
-                        result_dict[result_name][key] = elem
-            else:
-                result_dict[result_name] = result
-        (path / RESULTSFILE).write_text(json.dumps(result_dict, indent=4))
+        (path / RESULTSFILE).write_text(json.dumps(serialize(asdict(self))))
+
+    @classmethod
+    def load(cls, path):
+        params = json.loads((path / RESULTSFILE).read_text())
+        params = deserialize(params)
+        return cls(**params)
 
 
 # Internal types, in particular `_ParametersT` is used to address function
@@ -196,12 +218,6 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
         # add decorator to show logs
         self.acquisition = show_logs(self.acquisition)
         self.fit = show_logs(self.fit)
-
-        # TODO: this could be improved
-        if self.fit is None:
-            self.fit = _dummy_fit
-        if self.report is None:
-            self.report = _dummy_report
 
     @property
     def parameters_type(self):
@@ -255,15 +271,5 @@ def _dummy_acquisition(pars: DummyPars, platform: Platform) -> DummyData:
     return DummyData()
 
 
-def _dummy_fit(data: DummyData) -> DummyRes:
-    """Dummy fitting."""
-    return DummyRes()
-
-
-def _dummy_report(data: DummyData, result: DummyRes):
-    """Dummy plotting."""
-    return [], ""
-
-
-dummy_operation = Routine(_dummy_acquisition, _dummy_fit, _dummy_report)
+dummy_operation = Routine(_dummy_acquisition)
 """Example of a dummy operation."""
