@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
@@ -9,14 +9,8 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal.auto.operation import (
-    Data,
-    Parameters,
-    ParameterValue,
-    Qubits,
-    Results,
-    Routine,
-)
+from qibocal import update
+from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
 from .utils import PowerLevel, lorentzian_fit, spectroscopy_plot
 
@@ -65,24 +59,6 @@ class ResonatorSpectroscopyResults(Results):
         default_factory=dict, metadata=dict(update="readout_attenuation")
     )
     """Readout attenuation [dB] for each qubit."""
-
-    @property
-    def update(self):
-        """Method overwritten from Results to not update
-        amplitude when running resonator spectroscopy at
-        high power."""
-        up: dict[str, ParameterValue] = {}
-        fields_to_updated = (
-            [fld for fld in fields(self) if fld.name != "amplitude"]
-            if self.bare_frequency == {}
-            else fields(self)
-        )
-
-        for fld in fields_to_updated:
-            if "update" in fld.metadata:
-                up[fld.metadata["update"]] = getattr(self, fld.name)
-
-        return up
 
 
 ResSpecType = np.dtype(
@@ -219,5 +195,16 @@ def _plot(data: ResonatorSpectroscopyData, qubit, fit: ResonatorSpectroscopyResu
     return spectroscopy_plot(data, qubit, fit)
 
 
-resonator_spectroscopy = Routine(_acquisition, _fit, _plot)
+def _update(results: ResonatorSpectroscopyResults, platform: Platform, qubit: QubitId):
+    update.readout_frequency(results.frequency[qubit], platform, qubit)
+
+    # if this condition is satifisfied means that we are in the low power regime
+    # therefore we update also the readout amplitude
+    if len(results.bare_frequency) == 0:
+        update.readout_amplitude(results.amplitude[qubit], platform, qubit)
+    else:
+        update.bare_resonator_frequency(results.bare_frequency[qubit], platform, qubit)
+
+
+resonator_spectroscopy = Routine(_acquisition, _fit, _plot, _update)
 """ResonatorSpectroscopy Routine object."""

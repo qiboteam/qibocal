@@ -147,5 +147,5 @@ class Executor:
                 and self.platform is not None
                 and update
             ):
-                self.platform.update(completed.results.update)
+                task.update_platform(results=completed.results, platform=self.platform)
             yield task.uid

@@ -10,6 +10,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
 from ..utils import V_TO_UV
@@ -36,7 +37,7 @@ class T1Parameters(Parameters):
 class T1Results(Results):
     """T1 outputs."""
 
-    t1: dict[QubitId, float] = field(metadata=dict(update="t1"))
+    t1: dict[QubitId, float]
     """T1 for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
@@ -206,5 +207,9 @@ def _plot(data: T1Data, qubit, fit: T1Results = None):
     return figures, fitting_report
 
 
-t1 = Routine(_acquisition, _fit, _plot)
+def _update(results: T1Results, platform: Platform, qubit: QubitId):
+    update.t1(results.t1[qubit], platform, qubit)
+
+
+t1 = Routine(_acquisition, _fit, _plot, _update)
 """T1 Routine object."""

@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
@@ -9,6 +9,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
+from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
 from ..utils import V_TO_UV
@@ -35,7 +36,7 @@ class T2Parameters(Parameters):
 class T2Results(Results):
     """T2 outputs."""
 
-    t2: dict[QubitId, float] = field(metadata=dict(update="t2"))
+    t2: dict[QubitId, float]
     """T2 for each qubit (ns)."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
@@ -172,5 +173,9 @@ def _plot(data: T2Data, qubit, fit: T2Results = None):
     return figures, fitting_report
 
 
-t2 = Routine(_acquisition, _fit, _plot)
+def _update(results: T2Results, platform: Platform, qubit: QubitId):
+    update.t2(results.t2[qubit], platform, qubit)
+
+
+t2 = Routine(_acquisition, _fit, _plot, _update)
 """T2 Routine object."""

@@ -12,6 +12,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.fitting.classifier import qubit_fit
 
@@ -41,9 +42,7 @@ class RamseyParameters(Parameters):
 class RamseyResults(Results):
     """Ramsey outputs."""
 
-    frequency: dict[QubitId, tuple[float, Optional[float]]] = field(
-        metadata=dict(update="drive_frequency")
-    )
+    frequency: dict[QubitId, tuple[float, Optional[float]]]
     """Drive frequency [GHz] for each qubit."""
     t2: dict[QubitId, tuple[float, Optional[float]]]
     """T2 for each qubit [ns]."""
@@ -361,7 +360,11 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
     return figures, fitting_report
 
 
-ramsey = Routine(_acquisition, _fit, _plot)
+def _update(results: RamseyResults, platform: Platform, qubit: QubitId):
+    update.drive_frequency(results.frequency[qubit], platform, qubit)
+
+
+ramsey = Routine(_acquisition, _fit, _plot, _update)
 """Ramsey Routine object."""
 
 

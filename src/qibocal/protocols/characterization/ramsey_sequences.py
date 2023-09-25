@@ -5,7 +5,7 @@ from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Qubits, Routine
 
-from .ramsey import RamseyData, RamseyParameters, _fit, _plot, eval_prob
+from .ramsey import RamseyData, RamseyParameters, _fit, _plot, _update, eval_prob
 
 
 def _acquisition(
@@ -98,5 +98,5 @@ def _acquisition(
     return data
 
 
-ramsey_sequences = Routine(_acquisition, _fit, _plot)
+ramsey_sequences = Routine(_acquisition, _fit, _plot, _update)
 """Ramsey Routine object."""
