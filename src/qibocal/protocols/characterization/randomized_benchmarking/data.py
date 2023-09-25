@@ -9,7 +9,7 @@ from qibocal.auto.operation import DATAFILE
 
 def circ_to_json(circuit):
     circ_json = []
-    # Look into circuit.moments for noise matters 
+    # Look into circuit.moments for noise matters
     # when then get implemented in Qibo
     for gate in circuit.queue:
         circ_json.append(gate.to_json())
