@@ -247,8 +247,6 @@ def _fit(
     virtual_phase = {}
     cz_angle = {}
     for pair in pairs:
-        pair_data = data[pair]
-        qubits = next(iter(pair_data))[:2]
         virtual_phase[pair] = {}
         for target, control, setup in data[pair]:
             target_data = data[pair][target, control, setup].target

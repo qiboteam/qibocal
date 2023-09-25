@@ -16,9 +16,15 @@ def order_pair(pair: list[QubitId, QubitId], qubits: dict[QubitId, Qubit]) -> tu
 
 
 def fit_flux_amplitude(matrix, amps, times):
-    """Estimate amplitude of Chevron plot by computing
-    FFT for each amplitude and chooses the amplitude
-    which lowers the frequency.
+    """Estimate amplitude for CZ gate.
+
+
+    Given the pattern of a chevron plot (see for example Fig. 2 here
+    https://arxiv.org/pdf/1907.04818.pdf). This function estimates
+    the CZ amplitude by finding the amplitude which gives the highest
+    oscillation period. In case there are multiple values with the same
+    period, given the symmetry, the median value is chosen.
+    The FFT also gives a first estimate for the duration of the CZ gate.
 
     Args:
      matrix (np.ndarray): msr matrix
@@ -47,10 +53,10 @@ def fit_flux_amplitude(matrix, amps, times):
             else None
         )
 
-        samplingFrequency = 1 / time_step
+        sampling_freq = 1 / time_step
         values = np.arange(int(len(y) / 2))
-        timePeriod = len(y) / samplingFrequency
-        frequencies = values / timePeriod
+        period = len(y) / sampling_freq
+        frequencies = values / period
         f = frequencies[index] if index is not None else RANDOM_HIGH_VALUE
         fs.append(2 * np.pi * f)
 
