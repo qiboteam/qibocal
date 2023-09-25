@@ -29,6 +29,7 @@ from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
 from .resonator_spectroscopy_attenuation import resonator_spectroscopy_attenuation
 from .signal_experiments.time_of_flight_readout import time_of_flight_readout
+from .t1_t2_vs_temperature import t1_t2_vs_temperature
 from .two_qubit_interaction.chevron import chevron
 from .two_qubit_interaction.cz_virtualz import cz_virtualz
 
@@ -65,3 +66,4 @@ class Operation(Enum):
     resonator_frequency = resonator_frequency
     fast_reset = fast_reset
     zeno = zeno
+    t1_t2_vs_temperature = t1_t2_vs_temperature

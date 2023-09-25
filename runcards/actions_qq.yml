@@ -326,3 +326,17 @@ actions:
 #       n_bootstrap: 10
 #       noise_model: PauliErrorOnX
 #       noise_params: [0.01, 0.01, 0.01]
+
+
+#   - id: T1 and T2 vs Temperature
+#     priority: 10
+#     operation: t1_t2_vs_temperature
+#     parameters:
+#       temperature_controller_ip: '192.168.0.197'
+#       max_heater_power: 3000  # uW
+#       min_heater_power: 0    # uW
+#       stabilization_time: 3600 # 1h
+#       num_datapoints: 24
+#       intermediate_measurements: false
+#       nshots: 50_000
+#       relaxation_time: 50_000
