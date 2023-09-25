@@ -9,7 +9,7 @@ from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId, QubitPairId
+from qibolab.qubits import QubitPairId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
@@ -17,6 +17,8 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
 from .utils import fit_flux_amplitude, order_pair
+
+COLORAXIS = ["coloraxis2", "coloraxis1"]
 
 
 @dataclass
@@ -49,14 +51,19 @@ class ChevronParameters(Parameters):
 class ChevronResults(Results):
     """CzFluxTime outputs when fitting will be done."""
 
-    amplitude: dict[QubitPairId, int]
+    amplitude: dict[QubitPairId, float]
     """CZ angle."""
     duration: dict[QubitPairId, int]
     """Virtual Z phase correction."""
 
 
 ChevronType = np.dtype(
-    [("amp", np.float64), ("length", np.float64), ("prob", np.float64)]
+    [
+        ("amp", np.float64),
+        ("length", np.float64),
+        ("prob_high", np.float64),
+        ("prob_low", np.float64),
+    ]
 )
 """Custom dtype for Chevron."""
 
@@ -65,26 +72,18 @@ ChevronType = np.dtype(
 class ChevronData(Data):
     """Chevron acquisition outputs."""
 
-    data: dict[tuple[QubitId, QubitId, QubitId], npt.NDArray[ChevronType]] = field(
-        default_factory=dict
-    )
+    data: dict[QubitPairId, npt.NDArray[ChevronType]] = field(default_factory=dict)
 
-    def register_qubit(self, low_qubit, high_qubit, qubit, length, amp, prob):
+    def register_qubit(self, low_qubit, high_qubit, length, amp, prob_low, prob_high):
         """Store output for single qubit."""
         size = len(length) * len(amp)
         amplitude, duration = np.meshgrid(amp, length)
         ar = np.empty(size, dtype=ChevronType)
         ar["length"] = duration.ravel()
         ar["amp"] = amplitude.ravel()
-        ar["prob"] = prob.ravel()
-        self.data[low_qubit, high_qubit, qubit] = np.rec.array(ar)
-
-    def __getitem__(self, pair):
-        return {
-            index: value
-            for index, value in self.data.items()
-            if set(pair).issubset(index)
-        }
+        ar["prob_low"] = prob_low.ravel()
+        ar["prob_high"] = prob_high.ravel()
+        self.data[low_qubit, high_qubit] = np.rec.array(ar)
 
 
 def _aquisition(
@@ -177,51 +176,41 @@ def _aquisition(
             sweeper_duration,
             sweeper_amplitude,
         )
-        for qubit in ordered_pair:
-            result = results[qubit]
-            prob = result.magnitude
-            data.register_qubit(
-                ordered_pair[0],
-                ordered_pair[1],
-                qubit,
-                delta_duration_range,
-                delta_amplitude_range,
-                prob,
-            )
+        data.register_qubit(
+            ordered_pair[0],
+            ordered_pair[1],
+            delta_duration_range,
+            delta_amplitude_range,
+            results[ordered_pair[0]].magnitude,
+            results[ordered_pair[1]].magnitude,
+        )
     return data
+
+
+# fitting function for single row in chevron plot (rabi-like curve)
+def cos(x, omega, phase, amplitude, offset):
+    return amplitude * np.cos(x * omega + phase) + offset
 
 
 def _fit(data: ChevronData) -> ChevronResults:
     durations = {}
     amplitudes = {}
-    pairs = data.pairs
-    for pair in pairs:
-        pair_data = data[pair]
-        qubits = next(iter(pair_data))[:2]
+    for pair in data.data:
         pair_amplitude = []
         pair_duration = []
-        for target, control, setup in data[pair]:
-            amps = data[pair][target, control, setup].amp
-            times = data[pair][target, control, setup].length
-            msr_matrix = (
-                data[pair][target, control, setup]
-                .prob.reshape(len(np.unique(times)), len(np.unique(amps)))
-                .T
-            )
+        amps = np.unique(data[pair].amp)
+        times = np.unique(data[pair].length)
+
+        for qubit in pair:
+            msr = data[pair].prob_low if pair[0] == qubit else data[pair].prob_high
+            msr_matrix = msr.reshape(len(times), len(amps)).T
 
             # guess amplitude computing FFT
-            amplitude, index, delta = fit_flux_amplitude(
-                msr_matrix, np.unique(amps), np.unique(times)
-            )
-
+            amplitude, index, delta = fit_flux_amplitude(msr_matrix, amps, times)
             # estimate duration by rabi curve at amplitude previously estimated
-            def cos(x, omega, phase, amplitude, offset):
-                return amplitude * np.cos(x * omega + phase) + offset
-
             y = msr_matrix[index, :].ravel()
-            popt, _ = curve_fit(
-                cos, np.unique(times), y, p0=[delta, 0, np.mean(y), np.mean(y)]
-            )
+
+            popt, _ = curve_fit(cos, times, y, p0=[delta, 0, np.mean(y), np.mean(y)])
 
             # duration can be estimated as the period of the oscillation
             duration = 1 / (popt[0] / 2 / np.pi)
@@ -236,32 +225,46 @@ def _fit(data: ChevronData) -> ChevronResults:
 
 def _plot(data: ChevronData, fit: ChevronResults, qubit):
     """Plot the experiment result for a single pair."""
-    colouraxis = ["coloraxis", "coloraxis2"]
+
+    # reverse qubit order if not found in data
+    if qubit not in data.data:
+        qubit = (qubit[1], qubit[0])
+
     pair_data = data[qubit]
-    # order qubits
-    qubits = next(iter(pair_data))[:2]
 
     fig = make_subplots(
         rows=1,
         cols=2,
         subplot_titles=(
-            f"Qubit {qubits[0]} - Low Frequency",
-            f"Qubit {qubits[1]} - High Frequency",
+            f"Qubit {qubit[0]} - Low Frequency",
+            f"Qubit {qubit[1]} - High Frequency",
         ),
     )
     fitting_report = None
-    for target, control, measure in pair_data:
-        fig.add_trace(
-            go.Heatmap(
-                x=pair_data[target, control, measure].length,
-                y=pair_data[target, control, measure].amp,
-                z=pair_data[target, control, measure].prob,
-                coloraxis=colouraxis[0 if measure == qubits[0] else 1],
-            ),
-            row=1,
-            col=1 if measure == qubits[0] else 2,
-        )
 
+    fig.add_trace(
+        go.Heatmap(
+            x=pair_data.length,
+            y=pair_data.amp,
+            z=pair_data.prob_low,
+            coloraxis=COLORAXIS[0],
+        ),
+        row=1,
+        col=1,
+    )
+
+    fig.add_trace(
+        go.Heatmap(
+            x=pair_data.length,
+            y=pair_data.amp,
+            z=pair_data.prob_high,
+            coloraxis=COLORAXIS[1],
+        ),
+        row=1,
+        col=2,
+    )
+
+    for measured_qubit in qubit:
         if fit is not None:
             fig.add_trace(
                 go.Scatter(
@@ -278,28 +281,28 @@ def _plot(data: ChevronData, fit: ChevronResults, qubit):
                         symbol="cross",
                     ),
                     name="CZ estimate",
-                    showlegend=True if measure == qubits[0] else False,
+                    showlegend=True if measured_qubit == qubit[0] else False,
                     legendgroup="Voltage",
                 ),
                 row=1,
-                col=1 if measure == qubits[0] else 2,
+                col=1 if measured_qubit == qubit[0] else 2,
             )
 
-        fig.update_layout(
-            xaxis_title="Duration [ns]",
-            xaxis2_title="Duration [ns]",
-            yaxis_title="Amplitude [dimensionless]",
-            legend=dict(orientation="h"),
-        )
-        fig.update_layout(
-            coloraxis={"colorscale": "Oryel", "colorbar": {"x": -0.15}},
-            coloraxis2={"colorscale": "Darkmint", "colorbar": {"x": 1.15}},
-        )
+    fig.update_layout(
+        xaxis_title="Duration [ns]",
+        xaxis2_title="Duration [ns]",
+        yaxis_title="Amplitude [dimensionless]",
+        legend=dict(orientation="h"),
+    )
+    fig.update_layout(
+        coloraxis={"colorscale": "Oryel", "colorbar": {"x": 1.15}},
+        coloraxis2={"colorscale": "Darkmint", "colorbar": {"x": -0.15}},
+    )
 
     if fit is not None:
         reports = []
-        reports.append(f"{qubits[1]} | CZ amplitude: {fit.amplitude[qubit]:.4f}<br>")
-        reports.append(f"{qubits[1]} | CZ duration: {fit.duration[qubit]}<br>")
+        reports.append(f"{qubit[1]} | CZ amplitude: {fit.amplitude[qubit]:.4f}<br>")
+        reports.append(f"{qubit[1]} | CZ duration: {fit.duration[qubit]}<br>")
         fitting_report = "".join(list(dict.fromkeys(reports)))
 
     return [fig], fitting_report
