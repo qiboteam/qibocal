@@ -246,7 +246,7 @@ def _fit(data: RamseyData) -> RamseyResults:
     for qubit in qubits:
         qubit_data = data[qubit]
         qubit_freq = data.qubit_freqs[qubit]
-        probs = np.concatenate(qubit_data[["prob"]].tolist())
+        probs = qubit_data[["prob"]].tolist()
         try:
             popt, perr = fitting(waits, probs, qubit_data.errors)
         except:
