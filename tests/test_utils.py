@@ -1,6 +1,10 @@
 import numpy as np
 
-from qibocal.protocols.characterization.utils import cumulative, fill_table
+from qibocal.protocols.characterization.utils import (
+    cumulative,
+    eval_magnitude,
+    fill_table,
+)
 
 
 def test_cumulative():
@@ -18,3 +22,7 @@ def test_fill_table():
     output_no_error = f"{qubit}| {name}: 1.0* 10^1<br>"
     assert fill_table(qubit, name, value, error, unit) == output
     assert fill_table(qubit, name, value, None) == output_no_error
+
+
+def test_eval_magnitude():
+    assert 0 == eval_magnitude(0)
