@@ -230,7 +230,7 @@ def _acquisition(
             circuit = noise_model.apply(circuit)
         samples = circuit.execute(nshots=params.nshots).samples()
         # Every executed circuit gets a row where the data is stored.
-        data_list.append({"depth": depth, "samples": samples})
+        data_list.append({"depth": depth, "circuit": circuit, "samples": samples})
     # Build the data object which will be returned and later saved.
     data = pd.DataFrame(data_list)
 

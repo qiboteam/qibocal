@@ -9,7 +9,8 @@ from qibocal.auto.operation import DATAFILE
 
 def circ_to_json(circuit):
     circ_json = []
-    # Look into circuit.moments for noise matters
+    # Look into circuit.moments for noise matters 
+    # when then get implemented in Qibo
     for gate in circuit.queue:
         circ_json.append(gate.to_json())
     return circ_json
@@ -50,6 +51,7 @@ def json_tocircuit(circuit, nqubits):
         if gate["name"] == "y":
             gatelist.append(gates.Y(gate["_target_qubits"][0]))
 
+    nqubits = max(max(gate.qubits) for gate in gatelist) + 1
     new_circuit = Circuit(nqubits)
     new_circuit.add(gatelist)
     return new_circuit
