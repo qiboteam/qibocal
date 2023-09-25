@@ -271,7 +271,6 @@ def eval_magnitude(value):
     """number of non decimal digits in `value`"""
     if value == 0:
         return 0
-    print(value)
     return int(np.floor(np.log10(abs(value))))
 
 
