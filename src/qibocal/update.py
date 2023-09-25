@@ -1,5 +1,4 @@
 """Helper functions to update parameters in platform."""
-import re
 from typing import Union
 
 from qibolab import pulses
@@ -139,8 +138,8 @@ def t2_spin_echo(t2_spin_echo: float, platform: Platform, qubit: QubitId):
 
 def drag_pulse_beta(beta: float, platform: Platform, qubit: QubitId):
     """Update beta parameter e value in platform for specific qubit."""
-    shape = platform.qubits[qubit].native_gates.RX.shape
-    rel_sigma = re.findall(r"[\d]+[.\d]+|[\d]*[.][\d]+|[\d]+", shape)[0]
+    pulse = platform.qubits[qubit].native_gates.RX.pulse(start=0)
+    rel_sigma = pulse.shape.rel_sigma
     drag_pulse = pulses.Drag(rel_sigma=rel_sigma, beta=beta)
     platform.qubits[qubit].native_gates.RX.shape = repr(drag_pulse)
 

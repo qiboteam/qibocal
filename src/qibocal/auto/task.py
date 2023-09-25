@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional, Union
 
 from qibolab.platform import Platform
-from qibolab.qubits import QubitId
+from qibolab.qubits import QubitId, QubitPairId
 
 from ..protocols.characterization import Operation
 from ..utils import allocate_qubits_pairs, allocate_single_qubits
@@ -37,8 +37,8 @@ class Task:
     """Action object parsed from Runcard."""
     iteration: int = 0
     """Task iteration (to be used for the ExceptionalFlow)."""
-    qubits: list[QubitId] = field(default_factory=list)
-    """Local qubits."""
+    qubits: list[QubitId, QubitPairId] = field(default_factory=list)
+    """List of QubitIds or QubitPairIds for task."""
 
     def __post_init__(self):
         if len(self.qubits) == 0:
@@ -95,6 +95,7 @@ class Task:
         return self.action.update
 
     def update_platform(self, results: Results, platform: Platform):
+        """Perform update on platform' parameters by looping over qubits or pairs."""
         if self.update:
             for qubit in self.qubits:
                 self.operation.update(results, platform, qubit)
