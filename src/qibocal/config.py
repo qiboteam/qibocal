@@ -51,7 +51,8 @@ class CustomHandler(logging.StreamHandler):
             logging.CRITICAL: bold_red + fmt + reset,
         }
         log_fmt = self.FORMATS.get(record.levelno)
-        return logging.Formatter(log_fmt, datefmt="%Y-%m-%d %H:%M:%S").format(record)
+        # return logging.Formatter(log_fmt, datefmt="%Y-%m-%d %H:%M:%S").format(record)
+        return logging.Formatter(fmt, datefmt="%Y-%m-%d %H:%M:%S").format(record)
 
 
 # allocate logger object
