@@ -72,7 +72,6 @@ class RamseyData(Data):
     """Sign for induced detuning."""
     qubit_freqs: dict[QubitId, float] = field(default_factory=dict)
     """Qubit freqs for each qubit."""
-
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
 
@@ -82,13 +81,9 @@ class RamseyData(Data):
         ar = np.empty(prob.shape, dtype=RamseyType)
         ar["wait"] = np.array([wait])
         ar["prob"] = np.array([prob])
-
         ar["errors"] = np.array([errors])
 
-        if qubit in self.data:
-            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
-        else:
-            self.data[qubit] = np.rec.array(ar)
+        self.data[qubit] = np.rec.array(ar)
 
     @property
     def waits(self):
