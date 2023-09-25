@@ -309,6 +309,8 @@ def _plot(data: ChevronData, fit: ChevronResults, qubit):
 
 
 def _update(results: ChevronResults, platform: Platform, qubit_pair: QubitPairId):
+    if qubit_pair not in results.duration:
+        qubit_pair = (qubit_pair[1], qubit_pair[0])
     update.CZ_duration(results.duration[qubit_pair], platform, qubit_pair)
     update.CZ_amplitude(results.amplitude[qubit_pair], platform, qubit_pair)
 
