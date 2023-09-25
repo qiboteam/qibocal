@@ -9,10 +9,11 @@ from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import Pulse, PulseSequence
-from qibolab.qubits import QubitId
+from qibolab.qubits import QubitId, QubitPairId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 from qibocal.protocols.characterization.two_qubit_interaction.chevron import order_pair
@@ -44,9 +45,9 @@ class CZVirtualZResults(Results):
 
     fitted_parameters: dict[tuple[str, QubitId],]
     """Fitted parameters"""
-    cz_angle: dict[tuple[QubitId, QubitId], float]
+    cz_angle: dict[QubitPairId, float]
     """CZ angle."""
-    virtual_phase: dict[tuple[QubitId, QubitId], float]
+    virtual_phase: dict[QubitPairId, dict[QubitId, float]]
     """Virtual Z phase correction."""
 
 
@@ -58,11 +59,8 @@ class CZVirtualZData(Data):
     """CZVirtualZ data."""
 
     data: dict[tuple, npt.NDArray[CZVirtualZType]] = field(default_factory=dict)
-
     thetas: list = field(default_factory=list)
-    vphases: dict[tuple[QubitId, QubitId], dict[QubitId, float]] = field(
-        default_factory=dict
-    )
+    vphases: dict[QubitPairId, dict[QubitId, float]] = field(default_factory=dict)
 
     def register_qubit(self, target, control, setup, prob_target, prob_control):
         ar = np.empty(prob_target.shape, dtype=CZVirtualZType)
@@ -385,5 +383,9 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
     return [fig1, fig2], fitting_report
 
 
-cz_virtualz = Routine(_acquisition, _fit, _plot)
+def _update(results: CZVirtualZResults, platform: Platform, qubit_pair: QubitPairId):
+    update.virtual_phases(results.virtual_phase[qubit_pair], platform, qubit_pair)
+
+
+cz_virtualz = Routine(_acquisition, _fit, _plot, _update)
 """CZ virtual Z correction routine."""

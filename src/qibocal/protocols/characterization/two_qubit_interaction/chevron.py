@@ -13,6 +13,7 @@ from qibolab.qubits import QubitPairId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
 from .utils import fit_flux_amplitude, order_pair
@@ -307,5 +308,12 @@ def _plot(data: ChevronData, fit: ChevronResults, qubit):
     return [fig], fitting_report
 
 
-chevron = Routine(_aquisition, _fit, _plot)
+def _update(results: ChevronResults, platform: Platform, qubit_pair: QubitPairId):
+    if qubit_pair not in results.duration:
+        qubit_pair = (qubit_pair[1], qubit_pair[0])
+    update.CZ_duration(results.duration[qubit_pair], platform, qubit_pair)
+    update.CZ_amplitude(results.amplitude[qubit_pair], platform, qubit_pair)
+
+
+chevron = Routine(_aquisition, _fit, _plot, _update)
 """Chevron routine."""
