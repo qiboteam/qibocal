@@ -51,7 +51,7 @@ class RamseyResults(Results):
     """Drive frequency [Hz] correction for each qubit."""
     fitted_parameters: dict[QubitId, list[float]]
     """Raw fitting output."""
-    chi2: dict[QubitId, float]
+    chi2: dict[QubitId, tuple[float, Optional[float]]]
 
 
 RamseyType = np.dtype(
@@ -271,8 +271,13 @@ def _fit(data: RamseyData) -> RamseyResults:
         t2_measure[qubit] = (t2, perr[4])
         popts[qubit] = popt
         delta_phys_measure[qubit] = (delta_phys, popt[2] / (2 * np.pi * data.t_max))
-        chi2[qubit] = chi2_reduced(
-            np.concatenate(probs), ramsey_fit(waits, *popts[qubit]), qubit_data.errors
+        chi2[qubit] = (
+            chi2_reduced(
+                np.concatenate(probs),
+                ramsey_fit(waits, *popts[qubit]),
+                qubit_data.errors,
+            ),
+            np.sqrt(2 / len(probs)),
         )
     return RamseyResults(freq_measure, t2_measure, delta_phys_measure, popts, chi2)
 
@@ -345,11 +350,10 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
             )
             + (fill_table(qubit, "T2*", fit.t2[qubit][0], fit.t2[qubit][1], "ns"))
             + "<br>"
-        )
-        if fit.chi2:
-            fitting_report += fill_table(
-                qubit, "chi2 reduced", fit.chi2[qubit], error=None
+            + fill_table(
+                qubit, "chi2 reduced", fit.chi2[qubit][0], error=fit.chi2[qubit][1]
             )
+        )
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
