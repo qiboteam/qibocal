@@ -318,12 +318,17 @@ def chi2_reduced(
     dof: float = None,
 ):
     if np.count_nonzero(errors) == 0:
-        return None
+        return 100
 
     if dof is None:
         dof = len(observed) - 1
 
-    return np.sum(np.square((observed - estimated) / errors)) / dof
+    chi2 = np.sum(np.square((observed - estimated) / errors)) / dof
+
+    if chi2 == np.inf:
+        return 100_000
+
+    return chi2
 
 
 def get_color_state0(number):

@@ -70,8 +70,6 @@ class RamseyData(Data):
     """Final delay between RX(pi/2) pulses in ns."""
     detuning_sign: int
     """Sign for induced detuning."""
-    nboot: int
-    """Number of bootstrap samples"""
     qubit_freqs: dict[QubitId, float] = field(default_factory=dict)
     """Qubit freqs for each qubit."""
 
@@ -140,7 +138,6 @@ def _acquisition(
         n_osc=params.n_osc,
         t_max=params.delay_between_pulses_end,
         detuning_sign=+1,
-        nboot=params.nboot,
         qubit_freqs=freqs,
     )
 
@@ -159,14 +156,26 @@ def _acquisition(
                 nshots=params.nshots,
                 relaxation_time=params.relaxation_time,
                 acquisition_type=AcquisitionType.INTEGRATION,
-                averaging_mode=AveragingMode.CYCLIC,
+                averaging_mode=AveragingMode.SINGLESHOT,
             ),
             sweeper,
         )
-        for qubit in qubits:
+        for i, qubit in enumerate(qubits):
             result = results[ro_pulses[qubit].serial]
-            prob = []  # TODO: evaluate prob
-            data.register_qubit(qubit, wait=waits, prob=prob)
+            probs = []
+            errors = []
+            for i, wait in enumerate(waits):
+                prob, error = eval_prob(
+                    result.voltage_i[i], result.voltage_q[i], platform, qubit
+                )
+                probs.append(prob)
+                errors.append(error)
+            data.register_qubit(
+                qubit,
+                wait=np.array(waits),
+                prob=np.array(probs),
+                errors=np.array(errors),
+            )
 
     else:
         probs = [[] for _ in qubits]
@@ -194,26 +203,19 @@ def _acquisition(
             )
             for i, qubit in enumerate(qubits):
                 result = results[ro_pulses[qubit].serial]
-                i_values = result.voltage_i
-                q_values = result.voltage_q
-                iq_couples = np.stack((i_values, q_values), axis=-1)
-                model = qubit_fit.QubitFit()
-                model.angle = platform.qubits[qubit].iq_angle
-                model.threshold = platform.qubits[qubit].threshold
-                states = model.predict(iq_couples)
-                prob_ground = 1 - np.average(
-                    states,
+                prob, error = eval_prob(
+                    result.voltage_i, result.voltage_q, platform, qubit
                 )
-                errors[i].append(np.sqrt(prob_ground * (1 - prob_ground) / len(states)))
-                probs[i].append(prob_ground)
+                errors[i].append(error)
+                probs[i].append(prob)
 
-    for i, qubit in enumerate(qubits):
-        data.register_qubit(
-            qubit,
-            wait=np.array(waits),
-            prob=np.array(probs[i]),
-            errors=np.array(errors[i]),
-        )
+        for i, qubit in enumerate(qubits):
+            data.register_qubit(
+                qubit,
+                wait=np.array(waits),
+                prob=np.array(probs[i]),
+                errors=np.array(errors[i]),
+            )
 
     return data
 
@@ -266,7 +268,7 @@ def _fit(data: RamseyData) -> RamseyResults:
         delta_phys_measure[qubit] = (delta_phys, popt[2] / (2 * np.pi * data.t_max))
         chi2[qubit] = (
             chi2_reduced(
-                np.concatenate(probs),
+                probs,
                 ramsey_fit(waits, *popts[qubit]),
                 qubit_data.errors,
             ),
@@ -421,3 +423,26 @@ def fitting(x: list, y: list, errors: list) -> list:
         perr[4] / delta_x,
     ]
     return popt, perr
+
+
+def eval_prob(i_values, q_values, platform, qubit):
+    """Function evaluating the probabilities and their errors.
+
+    Args:
+        reults(RamseyResults): Ramsey experiment results.
+        platform (Platform)
+        qubit(QubitId)
+
+    Return:
+        probability of the ground state and associated error evaluated using binomial distribution.
+    """
+    iq_couples = np.stack((i_values, q_values), axis=-1)
+    model = qubit_fit.QubitFit()
+    model.angle = platform.qubits[qubit].iq_angle
+    model.threshold = platform.qubits[qubit].threshold
+    states = model.predict(iq_couples)
+    prob_ground = 1 - np.average(
+        states,
+    )
+    error = np.sqrt(prob_ground * (1 - prob_ground) / len(states))
+    return prob_ground, error
