@@ -11,6 +11,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
 from .utils import GHZ_TO_HZ, HZ_TO_GHZ, V_TO_UV, fit_punchout, norm
@@ -40,16 +41,11 @@ class ResonatorPunchoutAttenuationParameters(Parameters):
 class ResonatorPunchoutAttenuationResults(Results):
     """ResonatorPunchoutAttenation outputs."""
 
-    readout_frequency: dict[QubitId, float] = field(
-        metadata=dict(update="readout_frequency")
-    )
+    readout_frequency: dict[QubitId, float]
     """Readout frequency [GHz] for each qubit."""
-    bare_frequency: Optional[dict[QubitId, float]] = field(
-        metadata=dict(update="bare_resonator_frequency")
-    )
-    readout_attenuation: dict[QubitId, int] = field(
-        metadata=dict(update="readout_attenuation")
-    )
+    bare_frequency: Optional[dict[QubitId, float]]
+    """Bare resonator frequency [GHZ] for each qubit."""
+    readout_attenuation: dict[QubitId, int]
     """Readout attenuation [dB] for each qubit."""
 
 
@@ -256,5 +252,13 @@ def _plot(
     return figures, fitting_report
 
 
-resonator_punchout_attenuation = Routine(_acquisition, _fit, _plot)
+def _update(
+    results: ResonatorPunchoutAttenuationResults, platform: Platform, qubit: QubitId
+):
+    update.readout_frequency(results.readout_frequency[qubit], platform, qubit)
+    update.bare_resonator_frequency(results.bare_frequency[qubit], platform, qubit)
+    update.readout_attenuation(results.readout_attenuation[qubit], platform, qubit)
+
+
+resonator_punchout_attenuation = Routine(_acquisition, _fit, _plot, _update)
 """ResonatorPunchoutAttenuation Routine object."""

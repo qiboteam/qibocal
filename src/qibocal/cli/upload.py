@@ -1,5 +1,6 @@
 """Upload report to server."""
 import base64
+import json
 import pathlib
 import shutil
 import socket
@@ -7,7 +8,10 @@ import subprocess
 import uuid
 from urllib.parse import urljoin
 
+import yaml
 from qibo.config import log, raise_error
+
+from .utils import META
 
 # options for report upload
 UPLOAD_HOST = (
@@ -19,7 +23,13 @@ TARGET_DIR = "qibocal-reports/"
 ROOT_URL = "http://login.qrccluster.com:9000/"
 
 
-def upload_report(path: pathlib.Path):
+def upload_report(path: pathlib.Path, tag: str):
+    # load meta and update tag
+    if tag is not None:
+        meta = yaml.safe_load((path / META).read_text())
+        meta["tag"] = tag
+        (path / META).write_text(json.dumps(meta, indent=4))
+
     # check the rsync command exists.
     if not shutil.which("rsync"):
         raise_error(

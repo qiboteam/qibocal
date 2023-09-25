@@ -1,14 +1,14 @@
 import inspect
 import json
 import time
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, dataclass
 from functools import wraps
 from typing import Callable, Generic, NewType, Optional, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
 from qibolab.platform import Platform
-from qibolab.qubits import Qubit, QubitId
+from qibolab.qubits import Qubit, QubitId, QubitPairId
 
 from qibocal.config import log
 
@@ -171,20 +171,6 @@ class Results:
 
     """
 
-    @property
-    def update(self) -> dict[str, ParameterValue]:
-        """Produce an update from a result object.
-
-        This is later used to update the runcard.
-
-        """
-        up: dict[str, ParameterValue] = {}
-        for fld in fields(self):
-            if "update" in fld.metadata:
-                up[fld.metadata["update"]] = getattr(self, fld.name)
-
-        return up
-
     def save(self, path):
         """Store results to json."""
         (path / RESULTSFILE).write_text(json.dumps(serialize(asdict(self))))
@@ -213,12 +199,17 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     """Post-processing function."""
     report: Callable[[_DataT, _ResultsT], None] = None
     """Plotting function."""
+    update: Callable[[_ResultsT, Platform], None] = None
+    """Update function platform."""
     two_qubit_gates: Optional[bool] = False
+    """Flag to determine whether to allocate list of Qubits or Pairs."""
 
     def __post_init__(self):
         # add decorator to show logs
         self.acquisition = show_logs(self.acquisition)
         self.fit = show_logs(self.fit)
+        if self.update is None:
+            self.update = _dummy_update
 
     @property
     def parameters_type(self):
@@ -270,6 +261,12 @@ class DummyRes(Results):
 def _dummy_acquisition(pars: DummyPars, platform: Platform) -> DummyData:
     """Dummy data acquisition."""
     return DummyData()
+
+
+def _dummy_update(
+    results: DummyRes, platform: Platform, qubit: Union[QubitId, QubitPairId]
+) -> None:
+    """Dummy update function"""
 
 
 dummy_operation = Routine(_dummy_acquisition)
