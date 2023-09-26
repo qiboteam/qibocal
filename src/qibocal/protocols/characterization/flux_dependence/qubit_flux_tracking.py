@@ -192,16 +192,13 @@ def _acquisition(
 
         # retrieve the results for every qubit
         for qubit in qubits:
-            result = results[ro_pulses[qubit].serial]            
+            result = results[ro_pulses[qubit].serial]
             data.register_qubit_track(
                 qubit,
                 msr=result.magnitude,
                 phase=result.phase,
                 freq=delta_frequency_range + qd_pulses[qubit].frequency,
-                bias=bias
-                + qubits[
-                    qubit
-                ].sweetspot,
+                bias=bias + qubits[qubit].sweetspot,
             )
 
     return data
