@@ -167,9 +167,14 @@ def bare_resonator_frequency_sweetspot(
     bare_resonator_frequency_sweetspot: int, platform: Platform, qubit: QubitId
 ):
     """Update bare resonator frequency at sweetspot parameter for specific qubit."""
-    platform.qubits[qubit].bare_resonator_frequency_sweetspot = int(
-        bare_resonator_frequency_sweetspot * GHZ_TO_HZ
-    )
+    platform.qubits[qubit].brf = int(bare_resonator_frequency_sweetspot * GHZ_TO_HZ)
+
+
+def ratio_sweetspot_qubit_freq_bare_resonator_freq(
+    ratio: float, platform: Platform, qubit: QubitId
+):
+    """Update ratio between qubit freq at sweetspot and bare res freq for specific qubit."""
+    platform.qubits[qubit].ssf_brf = float(ratio)
 
 
 def charging_energy(charging_energy: float, platform: Platform, qubit: QubitId):

@@ -459,11 +459,13 @@ def _plot(
 
 
 def _update(results: ResonatorFluxResults, platform: Platform, qubit: QubitId):
-    update.bare_resonator_frequency(results.brf[qubit], platform, qubit)
+    update.bare_resonator_frequency_sweetspot(results.brf[qubit], platform, qubit)
     update.readout_frequency(results.frequency[qubit], platform, qubit)
     update.flux_to_bias(results.flux_to_bias[qubit], platform, qubit)
     update.asymmetry(results.asymmetry[qubit], platform, qubit)
-    update.bare_resonator_frequency_sweetspot(results.ssf_brf[qubit], platform, qubit)
+    update.ratio_sweetspot_qubit_freq_bare_resonator_freq(
+        results.ssf_brf[qubit], platform, qubit
+    )
     update.charging_energy(results.ECs[qubit], platform, qubit)
     update.josephson_energy(results.EJs[qubit], platform, qubit)
     update.coupling(results.Gs[qubit], platform, qubit)
