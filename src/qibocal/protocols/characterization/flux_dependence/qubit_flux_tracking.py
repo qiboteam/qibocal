@@ -18,7 +18,6 @@ from ..utils import GHZ_TO_HZ, HZ_TO_GHZ
 from . import utils
 
 
-# TODO: implement cross-talk
 @dataclass
 class QubitFluxParameters(Parameters):
     """QubitFlux runcard inputs."""
@@ -148,9 +147,6 @@ def _acquisition(
         type=SweeperType.OFFSET,
     )
 
-    # create a DataUnits object to store the results,
-    # DataUnits stores by default MSR, phase, i, q
-    # additionally include resonator frequency and flux bias
     data = QubitFluxData(resonator_type=platform.resonator_type, Ec=Ec, Ej=Ej)
 
     for bias in delta_bias_range:
@@ -205,7 +201,7 @@ def _acquisition(
                 bias=bias
                 + qubits[
                     qubit
-                ].sweetspot,  # delta_bias_range + qubits[qubit].sweetspot,
+                ].sweetspot,
             )
 
     return data

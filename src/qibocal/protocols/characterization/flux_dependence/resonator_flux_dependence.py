@@ -64,25 +64,6 @@ class ResonatorFluxResults(Results):
     """Ec for each qubit."""
     EJs: dict[QubitId, float] = field(metadata=dict(update="Ej"))
     """Ej for each qubit."""
-
-    # New fitted parameters added in the runcard
-    # freq_r_trasmon (First order approx):
-    #   'sweetspot_0':p0,
-    #   'flux_to_bias':p1,
-    #   'asymmetry':p2,
-    #   'readout_coupling':p4,
-    #   'bare_resonator_frequency_0':p5
-    #   'sweetspot_qubit_frequency/bare_resonator_frequency':p3,
-
-    # freq_r_mattheu (Second order approx):
-    #   'sweetspot_0':p2,
-    #   'flux_to_bias':p3,
-    #   'asymmetry':p4,
-    #   'readout_coupling':p1,
-    #   'bare_resonator_frequency_0':p0,
-    #   'Ec':p5,
-    #   'Ej:p6'
-
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
 
