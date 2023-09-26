@@ -11,6 +11,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.protocols.characterization.utils import HZ_TO_GHZ
@@ -36,7 +37,7 @@ class ResonatorFrequencyResults(Results):
 
     fidelities: dict[QubitId, list]
     """Assignment fidelities."""
-    best_freq: dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
+    best_freq: dict[QubitId, float]
     """Resonator Frequency with the highest assignment fidelity."""
 
 
@@ -57,7 +58,7 @@ class ResonatorFrequencyData(Data):
 
     resonator_type: str
     """Resonator type."""
-    data: dict[tuple[QubitId, int, int], npt.NDArray[ResonatorFrequencyType]] = field(
+    data: dict[QubitId, npt.NDArray[ResonatorFrequencyType]] = field(
         default_factory=dict
     )
 
@@ -117,7 +118,7 @@ def _acquisition(
         -params.freq_width / 2, params.freq_width / 2, params.freq_step
     )
 
-    data = ResonatorFrequencyData(platform.resonator_type)
+    data = ResonatorFrequencyData(resonator_type=platform.resonator_type)
     sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
@@ -189,22 +190,27 @@ def _plot(data: ResonatorFrequencyData, fit: ResonatorFrequencyResults, qubit):
     figures = []
     freqs = data.unique_freqs(qubit)
     opacity = 1
-    fitting_report = " "
+    fitting_report = None
     fig = make_subplots(
         rows=1,
         cols=1,
     )
 
-    fig.add_trace(
-        go.Scatter(
-            x=freqs,
-            y=fit.fidelities[qubit],
-            opacity=opacity,
-            showlegend=True,
-        ),
-        row=1,
-        col=1,
-    )
+    if fit is not None:
+        fig.add_trace(
+            go.Scatter(
+                x=freqs,
+                y=fit.fidelities[qubit],
+                opacity=opacity,
+                showlegend=True,
+            ),
+            row=1,
+            col=1,
+        )
+
+        fitting_report = "" + (
+            f"{qubit} | Best Resonator Frequency (GHz) : {fit.best_freq[qubit]*HZ_TO_GHZ:,.4f} Hz.<br>"
+        )
 
     fig.update_layout(
         showlegend=True,
@@ -213,14 +219,14 @@ def _plot(data: ResonatorFrequencyData, fit: ResonatorFrequencyResults, qubit):
         yaxis_title="Assignment Fidelities",
     )
 
-    fitting_report = fitting_report + (
-        f"{qubit} | Best Resonator Frequency (GHz) : {fit.best_freq[qubit]:,.4f} Hz.<br>"
-    )
-
     figures.append(fig)
 
     return figures, fitting_report
 
 
-resonator_frequency = Routine(_acquisition, _fit, _plot)
+def _update(results: ResonatorFrequencyResults, platform: Platform, qubit: QubitId):
+    update.readout_frequency(results.best_freq[qubit], platform, qubit)
+
+
+resonator_frequency = Routine(_acquisition, _fit, _plot, _update)
 """"Optimization RO frequency Routine object."""

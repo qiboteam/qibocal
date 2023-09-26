@@ -5,7 +5,7 @@ from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Qubits, Routine
 
-from .ramsey import RamseyData, RamseyParameters, _fit, _plot
+from .ramsey import RamseyData, RamseyParameters, _fit, _plot, _update
 
 
 def _acquisition(
@@ -50,6 +50,7 @@ def _acquisition(
         n_osc=params.n_osc,
         t_max=params.delay_between_pulses_end,
         detuning_sign=+1,
+        nboot=params.nboot,
         qubit_freqs=freqs,
     )
 
@@ -68,7 +69,10 @@ def _acquisition(
                     * (params.n_osc)
                     / params.delay_between_pulses_end
                 )
-
+        if params.nboot != 0:
+            averaging_mode = AveragingMode.SINGLESHOT
+        else:
+            averaging_mode = AveragingMode.CYCLIC
         # execute the pulse sequence
         results = platform.execute_pulse_sequence(
             sequence,
@@ -76,16 +80,19 @@ def _acquisition(
                 nshots=params.nshots,
                 relaxation_time=params.relaxation_time,
                 acquisition_type=AcquisitionType.INTEGRATION,
-                averaging_mode=AveragingMode.CYCLIC,
+                averaging_mode=averaging_mode,
             ),
         )
         for qubit in qubits:
             result = results[ro_pulses[qubit].serial]
             data.register_qubit(
-                qubit, wait=wait, msr=result.magnitude, phase=result.phase
+                qubit,
+                wait=wait,
+                msr=np.array([result.magnitude]),
+                phase=np.array([result.phase]),
             )
     return data
 
 
-ramsey_sequences = Routine(_acquisition, _fit, _plot)
+ramsey_sequences = Routine(_acquisition, _fit, _plot, _update)
 """Ramsey Routine object."""

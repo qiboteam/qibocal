@@ -38,7 +38,7 @@ class AllXYData(Data):
 
     beta_param: float = None
     """Beta parameter for drag pulse."""
-    data: dict[QubitId, npt.NDArray[AllXYType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
 
     def register_qubit(self, qubit, prob, gate):
@@ -91,7 +91,7 @@ def _acquisition(
     """
 
     # create a Data object to store the results
-    data = AllXYData(params.beta_param)
+    data = AllXYData(beta_param=params.beta_param)
 
     # repeat the experiment as many times as defined by software_averages
     # for iteration in range(params.software_averages):
@@ -219,11 +219,11 @@ def _fit(_data: AllXYData) -> AllXYResults:
 
 
 # allXY
-def _plot(data: AllXYData, _fit: AllXYResults, qubit):
+def _plot(data: AllXYData, qubit, fit: AllXYResults = None):
     """Plotting function for allXY."""
 
     figures = []
-    fitting_report = "No fitting data"
+    fitting_report = None
     fig = go.Figure()
 
     qubit_data = data[qubit]

@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
@@ -8,6 +8,7 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
+from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
 from ..utils import V_TO_UV
@@ -35,7 +36,7 @@ class SpinEchoParameters(Parameters):
 class SpinEchoResults(Results):
     """SpinEcho outputs."""
 
-    t2_spin_echo: dict[QubitId, float] = field(metadata=dict(update="t2_spin_echo"))
+    t2_spin_echo: dict[QubitId, float]
     """T2 echo for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
@@ -119,14 +120,14 @@ def _fit(data: SpinEchoData) -> SpinEchoResults:
     return SpinEchoResults(t2Echos, fitted_parameters)
 
 
-def _plot(data: SpinEchoData, fit: SpinEchoResults, qubit: int):
+def _plot(data: SpinEchoData, qubit, fit: SpinEchoResults = None):
     """Plotting for SpinEcho"""
 
     figures = []
     fig = go.Figure()
 
     # iterate over multiple data folders
-    fitting_report = ""
+    fitting_report = None
 
     qubit_data = data[qubit]
     waits = qubit_data.wait
@@ -142,26 +143,27 @@ def _plot(data: SpinEchoData, fit: SpinEchoResults, qubit: int):
         ),
     )
 
-    # add fitting trace
-    waitrange = np.linspace(
-        min(waits),
-        max(waits),
-        2 * len(qubit_data),
-    )
-    params = fit.fitted_parameters[qubit]
+    if fit is not None:
+        # add fitting trace
+        waitrange = np.linspace(
+            min(waits),
+            max(waits),
+            2 * len(qubit_data),
+        )
+        params = fit.fitted_parameters[qubit]
 
-    fig.add_trace(
-        go.Scatter(
-            x=waitrange,
-            y=exp_decay(waitrange, *params),
-            name="Fit",
-            line=go.scatter.Line(dash="dot"),
-        ),
-    )
+        fig.add_trace(
+            go.Scatter(
+                x=waitrange,
+                y=exp_decay(waitrange, *params),
+                name="Fit",
+                line=go.scatter.Line(dash="dot"),
+            ),
+        )
 
-    fitting_report = fitting_report + (
-        f"{qubit} | T2 Spin Echo: {fit.t2_spin_echo[qubit]:,.0f} ns.<br><br>"
-    )
+        fitting_report = (
+            f"{qubit} | T2 Spin Echo: {fit.t2_spin_echo[qubit]:,.0f} ns.<br><br>"
+        )
 
     fig.update_layout(
         showlegend=True,
@@ -175,5 +177,9 @@ def _plot(data: SpinEchoData, fit: SpinEchoResults, qubit: int):
     return figures, fitting_report
 
 
-spin_echo = Routine(_acquisition, _fit, _plot)
+def _update(results: SpinEchoResults, platform: Platform, qubit: QubitId):
+    update.t2_spin_echo(results.t2_spin_echo[qubit], platform, qubit)
+
+
+spin_echo = Routine(_acquisition, _fit, _plot, _update)
 """SpinEcho Routine object."""

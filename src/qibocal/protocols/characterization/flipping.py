@@ -9,7 +9,9 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from scipy.optimize import curve_fit
+from scipy.signal import find_peaks
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 
@@ -34,7 +36,7 @@ class FlippingParameters(Parameters):
 class FlippingResults(Results):
     """Flipping outputs."""
 
-    amplitude: dict[QubitId, float] = field(metadata=dict(update="drive amplitude"))
+    amplitude: dict[QubitId, float]
     """Drive amplitude for each qubit."""
     amplitude_factors: dict[QubitId, float]
     """Drive amplitude correction factor for each qubit."""
@@ -89,8 +91,10 @@ def _acquisition(
 
     # create a DataUnits object to store MSR, phase, i, q and the number of flips
     data = FlippingData(
-        platform.resonator_type,
-        {qubit: qubits[qubit].pi_pulse_amplitude for qubit in qubits},
+        resonator_type=platform.resonator_type,
+        pi_pulse_amplitudes={
+            qubit: qubits[qubit].native_gates.RX.frequency for qubit in qubits
+        },
     )
     # sweep the parameter
     for flips in range(0, params.nflips_max, params.nflips_step):
@@ -130,16 +134,10 @@ def _acquisition(
     return data
 
 
-def flipping_fit(x, p0, p1, p2, p3):
-    # A fit to Flipping Qubit oscillation
-    # Epsilon?? should be Amplitude : p[0]
-    # Offset                        : p[1]
-    # Period of oscillation         : p[2]
-    # phase for the first point corresponding to pi/2 rotation   : p[3]
-    return np.sin(x * 2 * np.pi / p2 + p3) * p0 + p1
+def flipping_fit(x, offset, amplitude, omega, phase, gamma):
+    return np.sin(x * omega + phase) * amplitude * np.exp(-x * gamma) + offset
 
 
-# FIXME: not working
 def _fit(data: FlippingData) -> FlippingResults:
     r"""Post-processing function for Flipping.
 
@@ -156,56 +154,79 @@ def _fit(data: FlippingData) -> FlippingResults:
     for qubit in qubits:
         qubit_data = data[qubit]
         pi_pulse_amplitude = data.pi_pulse_amplitudes[qubit]
-        voltages = qubit_data.msr * V_TO_UV
+        voltages = qubit_data.msr
         flips = qubit_data.flips
-        if data.resonator_type == "3D":
-            pguess = [
-                pi_pulse_amplitude / 2,
-                np.mean(voltages),
-                -40,
-                0,
-            ]  # epsilon guess parameter
-        else:
-            pguess = [
-                pi_pulse_amplitude / 2,
-                np.mean(voltages),
-                40,
-                0,
-            ]  # epsilon guess parameter
+        y_min = np.min(voltages)
+        # Guessing period using Fourier transform
+        ft = np.fft.rfft(voltages)
+        # Remove the zero frequency mode
+        mags = abs(ft)[1:]
+        local_maxima = find_peaks(mags, height=0)
+        peak_heights = local_maxima[1]["peak_heights"]
+        # Select the frequency with the highest peak
+        index = (
+            int(local_maxima[0][np.argmax(peak_heights)] + 1)
+            if len(local_maxima[0]) > 0
+            else None
+        )
+        f = flips[index] / (flips[1] - flips[0]) if index is not None else 1
+        y_max = np.max(voltages)
+        x_min = np.min(flips)
+        x_max = np.max(flips)
+        x = (flips - x_min) * 2 * np.pi * f / (x_max - x_min)
+        y = (voltages - y_min) / (y_max - y_min)
 
+        pguess = [0.5, 0.5, 1, np.pi, 0]
         try:
-            popt, _ = curve_fit(flipping, flips, voltages, p0=pguess, maxfev=2000000)
-
+            popt, _ = curve_fit(
+                flipping_fit,
+                x,
+                y,
+                p0=pguess,
+                maxfev=2000000,
+                bounds=(
+                    [0, 0, -np.inf, 0, 0],
+                    [1, np.inf, np.inf, 2 * np.pi, np.inf],
+                ),
+            )
         except:
             log.warning("flipping_fit: the fitting was not succesful")
-            popt = [0, 0, 2, 0]
+            popt = [0, 0, 0, 0]
 
-        # sen fitting succesful
-        if popt[2] != 2:
-            eps = -1 / popt[2]
-            amplitude_correction_factor = eps / (eps - 1)
-            corrected_amplitude = amplitude_correction_factor * pi_pulse_amplitude
-        # sen fitting not succesful = amplitude well adjusted
+        translated_popt = [
+            y_min + (y_max - y_min) * popt[0],
+            (y_max - y_min)
+            * popt[1]
+            * np.exp(x_min * popt[4] * 2 * np.pi * f / (x_max - x_min)),
+            popt[2] * 2 * np.pi * f / (x_max - x_min),
+            popt[3] - x_min * 2 * np.pi * f / (x_max - x_min) * popt[2],
+            popt[4] * 2 * np.pi * f / (x_max - x_min),
+        ]
+        if popt[3] > np.pi / 2 and popt[3] < 3 * np.pi / 2:
+            signed_correction = -translated_popt[2] / 2
         else:
-            amplitude_correction_factor = 1
-            corrected_amplitude = amplitude_correction_factor * pi_pulse_amplitude
-
-        corrected_amplitudes[qubit] = corrected_amplitude
-        fitted_parameters[qubit] = popt
-        amplitude_correction_factors[qubit] = amplitude_correction_factor
+            signed_correction = translated_popt[2] / 2
+        # The amplitude is directly proportional to the rotation angle
+        corrected_amplitudes[qubit] = (pi_pulse_amplitude * np.pi) / (
+            np.pi + signed_correction
+        )
+        fitted_parameters[qubit] = translated_popt
+        amplitude_correction_factors[qubit] = (
+            signed_correction / np.pi * pi_pulse_amplitude
+        )
 
     return FlippingResults(
         corrected_amplitudes, amplitude_correction_factors, fitted_parameters
     )
 
 
-def _plot(data: FlippingData, fit: FlippingResults, qubit):
+def _plot(data: FlippingData, qubit, fit: FlippingResults = None):
     """Plotting function for Flipping."""
 
     figures = []
     fig = go.Figure()
 
-    fitting_report = ""
+    fitting_report = None
     qubit_data = data[qubit]
 
     fig.add_trace(
@@ -219,30 +240,33 @@ def _plot(data: FlippingData, fit: FlippingResults, qubit):
         ),
     )
 
-    flips_range = np.linspace(
-        min(qubit_data.flips),
-        max(qubit_data.flips),
-        2 * len(qubit_data),
-    )
+    if fit is not None:
+        fitting_report = ""
+        flips_range = np.linspace(
+            min(qubit_data.flips),
+            max(qubit_data.flips),
+            2 * len(qubit_data),
+        )
 
-    fig.add_trace(
-        go.Scatter(
-            x=flips_range,
-            y=flipping_fit(
-                flips_range,
-                float(fit.fitted_parameters[qubit][0]),
-                float(fit.fitted_parameters[qubit][1]),
-                float(fit.fitted_parameters[qubit][2]),
-                float(fit.fitted_parameters[qubit][3]),
+        fig.add_trace(
+            go.Scatter(
+                x=flips_range,
+                y=flipping_fit(
+                    flips_range,
+                    float(fit.fitted_parameters[qubit][0]),
+                    float(fit.fitted_parameters[qubit][1]),
+                    float(fit.fitted_parameters[qubit][2]),
+                    float(fit.fitted_parameters[qubit][3]),
+                    float(fit.fitted_parameters[qubit][4]),
+                ),
+                name="Fit",
+                line=go.scatter.Line(dash="dot"),
             ),
-            name="Fit",
-            line=go.scatter.Line(dash="dot"),
-        ),
-    )
-    fitting_report = fitting_report + (
-        f"{qubit} | Amplitude correction factor: {fit.amplitude_factors[qubit]:.4f}<br>"
-        + f"{qubit} | Corrected amplitude: {fit.amplitude[qubit]:.4f}<br><br>"
-    )
+        )
+        fitting_report = fitting_report + (
+            f"{qubit} | Amplitude correction factor: {fit.amplitude_factors[qubit]:.4f}<br>"
+            + f"{qubit} | Corrected amplitude: {fit.amplitude[qubit]:.4f}<br><br>"
+        )
 
     # last part
     fig.update_layout(
@@ -257,5 +281,9 @@ def _plot(data: FlippingData, fit: FlippingResults, qubit):
     return figures, fitting_report
 
 
-flipping = Routine(_acquisition, _fit, _plot)
+def _update(results: FlippingResults, platform: Platform, qubit: QubitId):
+    update.drive_amplitude(results.amplitude[qubit], platform, qubit)
+
+
+flipping = Routine(_acquisition, _fit, _plot, _update)
 """Flipping Routine  object."""
