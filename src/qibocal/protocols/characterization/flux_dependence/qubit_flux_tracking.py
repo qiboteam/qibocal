@@ -11,6 +11,7 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log, raise_error
 
@@ -45,9 +46,9 @@ class QubitFluxParameters(Parameters):
 class QubitFluxResults(Results):
     """QubitFlux outputs."""
 
-    sweetspot: dict[QubitId, float] = field(metadata=dict(update="sweetspot"))
+    sweetspot: dict[QubitId, float]
     """Sweetspot for each qubit."""
-    frequency: dict[QubitId, float] = field(metadata=dict(update="drive_frequency"))
+    frequency: dict[QubitId, float]
     """Drive frequency for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
@@ -192,16 +193,13 @@ def _acquisition(
 
         # retrieve the results for every qubit
         for qubit in qubits:
-            result = results[ro_pulses[qubit].serial]            
+            result = results[ro_pulses[qubit].serial]
             data.register_qubit_track(
                 qubit,
                 msr=result.magnitude,
                 phase=result.phase,
                 freq=delta_frequency_range + qd_pulses[qubit].frequency,
-                bias=bias
-                + qubits[
-                    qubit
-                ].sweetspot,
+                bias=bias + qubits[qubit].sweetspot,
             )
 
     return data
@@ -339,5 +337,10 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, qubit):
     return utils.flux_dependence_plot(data, fit, qubit)
 
 
-qubit_flux_tracking = Routine(_acquisition, _fit, _plot)
+def _update(results: QubitFluxResults, platform: Platform, qubit: QubitId):
+    update.sweetspot(results.sweetspot[qubit], platform, qubit)
+    update.drive_frequency(results.frequency[qubit], platform, qubit)
+
+
+qubit_flux_tracking = Routine(_acquisition, _fit, _plot, _update)
 """QubitFlux Routine object."""

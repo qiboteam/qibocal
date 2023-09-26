@@ -12,16 +12,17 @@ from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.fitting.classifier.qubit_fit import QubitFit
 from qibocal.fitting.classifier.run import benchmarking
 from qibocal.protocols.characterization import classification
-from qibocal.protocols.characterization.utils import GHZ_TO_HZ, HZ_TO_GHZ
+from qibocal.protocols.characterization.utils import HZ_TO_GHZ
 
 
 @dataclass
 class TwpaFrequencyParameters(Parameters):
-    """Flipping runcard inputs."""
+    """TwpaFrequency runcard inputs."""
 
     frequency_width: float
+    """Relative frequency width [Hz]"""
     frequency_step: float
-
+    """Frequency step [Hz]"""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
@@ -30,12 +31,14 @@ class TwpaFrequencyParameters(Parameters):
 
 @dataclass
 class TwpaFrequencyData(Data):
-    """Flipping acquisition outputs."""
+    """TwpaFrequency acquisition outputs."""
 
     data: dict[
         tuple[QubitId, float], npt.NDArray[classification.ClassificationType]
     ] = field(default_factory=dict)
     """Raw data acquired."""
+    frequencies: dict[QubitId, float] = field(default_factory=dict)
+    """Frequencies for each qubit."""
 
     def register_freq(
         self,
@@ -51,13 +54,6 @@ class TwpaFrequencyResults(Results):
     """TwpaFrequency outputs."""
 
     fidelities: dict[QubitId, float] = field(default_factory=dict)
-
-    def __getitem__(self, qubit: QubitId):
-        return {
-            index: value
-            for index, value in self.fidelities.items()
-            if index[0] == qubit
-        }
 
 
 def _acquisition(
@@ -86,13 +82,14 @@ def _acquisition(
         -params.frequency_width / 2, params.frequency_width / 2, params.frequency_step
     ).astype(int)
 
-    data = TwpaFrequencyData()
-
     initial_twpa_freq = {}
     for qubit in qubits:
         initial_twpa_freq[qubit] = platform.qubits[
             qubit
         ].twpa.local_oscillator.frequency
+        data.frequencies[qubit] = list(
+            platform.qubits[qubit].twpa.local_oscillator.frequency + freq_range
+        )
 
     for freq in freq_range:
         for qubit in qubits:
@@ -144,26 +141,31 @@ def _plot(data: TwpaFrequencyData, fit: TwpaFrequencyResults, qubit):
     for different values of the twpa frequency for a single qubit"""
 
     figures = []
-    fitting_report = "No fitting data"
-    qubit_fit = fit[qubit]
-    freqs = []
-    fidelities = []
-    for _, freq in qubit_fit:
-        freqs.append(freq * HZ_TO_GHZ)
-        fidelities.append(qubit_fit[qubit, freq])
+    fitting_report = None
+    if fit is not None:
+        fidelities = []
+        frequencies = np.array(data.frequencies[qubit])
+        for qubit_id, freq in fit.fidelities:
+            if qubit == qubit_id:
+                fidelities.append(fit.fidelities[qubit, freq])
 
-    fitting_report = f"{qubit} | Best assignment fidelity: {np.max(fidelities):.3f}<br>"
-    fitting_report += f"{qubit} | TWPA Frequency: {int(freqs[np.argmax(fidelities)]*GHZ_TO_HZ)} Hz <br>"
+        fitting_report = (
+            f"{qubit} | Best assignment fidelity: {np.max(fidelities):.3f}<br>"
+        )
+        fitting_report += f"{qubit} | TWPA Frequency: {int(frequencies[np.argmax(fidelities)])} Hz <br>"
 
-    fig = go.Figure([go.Scatter(x=freqs, y=fidelities, name="Fidelity")])
-    figures.append(fig)
+        fig = go.Figure(
+            [go.Scatter(x=frequencies * HZ_TO_GHZ, y=fidelities, name="Fidelity")]
+        )
 
-    fig.update_layout(
-        showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="TWPA Frequency [GHz]",
-        yaxis_title="Assignment Fidelity",
-    )
+        fig.update_layout(
+            showlegend=True,
+            uirevision="0",  # ``uirevision`` allows zooming while live plotting
+            xaxis_title="TWPA Frequency [GHz]",
+            yaxis_title="Assignment Fidelity",
+        )
+
+        figures.append(fig)
 
     return figures, fitting_report
 

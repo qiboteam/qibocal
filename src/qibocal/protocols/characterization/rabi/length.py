@@ -11,6 +11,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 
@@ -92,7 +93,9 @@ def _acquisition(
     amplitudes = {}
     for qubit in qubits:
         # TODO: made duration optional for qd pulse?
-        qd_pulses[qubit] = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
+        qd_pulses[qubit] = platform.create_qubit_drive_pulse(
+            qubit, start=0, duration=params.pulse_duration_start
+        )
         if params.pulse_amplitude is not None:
             qd_pulses[qubit].amplitude = params.pulse_amplitude
         amplitudes[qubit] = qd_pulses[qubit].amplitude
@@ -206,10 +209,14 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
     return RabiLengthResults(durations, data.amplitudes, fitted_parameters)
 
 
+def _update(results: RabiLengthResults, platform: Platform, qubit: QubitId):
+    update.drive_duration(results.length[qubit], platform, qubit)
+
+
 def _plot(data: RabiLengthData, fit: RabiLengthResults, qubit):
     """Plotting function for RabiLength experiment."""
-    return utils.plot(data, fit, qubit)
+    return utils.plot(data, qubit, fit)
 
 
-rabi_length = Routine(_acquisition, _fit, _plot)
+rabi_length = Routine(_acquisition, _fit, _plot, _update)
 """RabiLength Routine object."""
