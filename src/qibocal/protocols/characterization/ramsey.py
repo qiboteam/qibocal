@@ -162,15 +162,14 @@ def _acquisition(
             sweeper,
         )
         for qubit in qubits:
-            for wait in waits:
-                prob = results[qubit].probability()
-                error = np.sqrt(prob * (1 - prob) / params.nshots)
-                data.register_qubit(
-                    qubit,
-                    wait=np.array([wait]),
-                    prob=np.array([prob]),
-                    errors=np.array([error]),
-                )
+            probs = results[qubit].probability()
+            errors = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs]
+            data.register_qubit(
+                qubit,
+                wait=np.array(waits),
+                prob=np.array(probs),
+                errors=np.array(errors),
+            )
 
     else:
         for wait in waits:
