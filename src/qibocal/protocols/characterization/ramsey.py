@@ -14,15 +14,14 @@ from scipy.signal import find_peaks
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.fitting.classifier import qubit_fit
 
 from .utils import GHZ_TO_HZ, chi2_reduced, fill_table
 
-POPT_EXCEPTON = [0, 0, 0, 0, 1]
+POPT_EXCEPTON = [0, 0, 0, 0, 0]
 """Fit parameters output to handle exceptions"""
 PERR_EXCEPTION = [1] * 5
-"""Fit errors to handle exceptions, their choice has no physical meaning and is
-intended not to brake the code"""
+"""Fit errors to handle exceptions; their choice has no physical meaning
+and is meant to avoid breaking the code."""
 
 
 @dataclass
@@ -163,21 +162,15 @@ def _acquisition(
             sweeper,
         )
         for qubit in qubits:
-            result = results[ro_pulses[qubit].serial]
-            probs = []
-            errors = []
-            for i, wait in enumerate(waits):
-                prob, error = eval_prob(
-                    result.voltage_i[i], result.voltage_q[i], platform, qubit
+            for wait in waits:
+                prob = results[qubit].probability()
+                error = np.sqrt(prob * (1 - prob) / params.nshots)
+                data.register_qubit(
+                    qubit,
+                    wait=np.array([wait]),
+                    prob=np.array([prob]),
+                    errors=np.array([error]),
                 )
-                probs.append(prob)
-                errors.append(error)
-            data.register_qubit(
-                qubit,
-                wait=np.array(waits),
-                prob=np.array(probs),
-                errors=np.array(errors),
-            )
 
     else:
         for wait in waits:
@@ -197,17 +190,14 @@ def _acquisition(
                 ExecutionParameters(
                     nshots=params.nshots,
                     relaxation_time=params.relaxation_time,
-                    acquisition_type=AcquisitionType.INTEGRATION,
+                    acquisition_type=AcquisitionType.DISCRIMINATION,
                     averaging_mode=(AveragingMode.SINGLESHOT),
                 ),
             )
 
             for qubit in qubits:
-                result = results[ro_pulses[qubit].serial]
-                print(result.proba)
-                prob, error = eval_prob(
-                    result.voltage_i, result.voltage_q, platform, qubit
-                )
+                prob = results[qubit].probability()
+                error = np.sqrt(prob * (1 - prob) / params.nshots)
                 data.register_qubit(
                     qubit,
                     wait=np.array([wait]),
@@ -283,10 +273,9 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
 
     qubit_data = data.data[qubit]
     waits = data.waits
-    probs = qubit_data[["prob"]]
+    probs = qubit_data[["prob"]].tolist()
     probs = np.reshape(probs, (len(waits)))
     error_bars = qubit_data["errors"]
-
     fig.add_trace(
         go.Scatter(
             x=waits,
@@ -424,26 +413,3 @@ def fitting(x: list, y: list, errors: list) -> list:
         perr[4] / delta_x,
     ]
     return popt, perr
-
-
-def eval_prob(i_values, q_values, platform, qubit):
-    """Function evaluating the probabilities and their errors.
-
-    Args:
-        reults(RamseyResults): Ramsey experiment results.
-        platform (Platform)
-        qubit(QubitId)
-
-    Return:
-        probability of the ground state and associated error evaluated using binomial distribution.
-    """
-    iq_couples = np.stack((i_values, q_values), axis=-1)
-    model = qubit_fit.QubitFit()
-    model.angle = platform.qubits[qubit].iq_angle
-    model.threshold = platform.qubits[qubit].threshold
-    states = model.predict(iq_couples)
-    prob_ground = 1 - np.average(
-        states,
-    )
-    error = np.sqrt(prob_ground * (1 - prob_ground) / len(states))
-    return prob_ground, error
