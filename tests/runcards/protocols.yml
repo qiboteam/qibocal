@@ -92,6 +92,15 @@ actions:
       freq_step: 500_000
       nshots: 10
 
+  - id: qubit spectroscopy ef
+    priority: 0
+    operation: qubit_spectroscopy_ef
+    parameters:
+      drive_amplitude: 0.001
+      drive_duration: 1000
+      freq_width: 2_000_000
+      freq_step: 500_000
+      nshots: 10
 
 
   - id: resonator flux dependence

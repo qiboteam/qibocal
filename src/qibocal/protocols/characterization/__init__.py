@@ -19,6 +19,7 @@ from .flux_dependence.resonator_flux_dependence import (
     resonator_flux,
 )
 from .qubit_spectroscopy import qubit_spectroscopy
+from .qubit_spectroscopy_ef import qubit_spectroscopy_ef
 from .rabi.amplitude import rabi_amplitude
 from .rabi.ef import rabi_amplitude_ef
 from .rabi.length import rabi_length
@@ -76,3 +77,4 @@ class Operation(Enum):
     twpa_frequency = twpa_frequency
     twpa_power = twpa_power
     rabi_amplitude_ef = rabi_amplitude_ef
+    qubit_spectroscopy_ef = qubit_spectroscopy_ef
