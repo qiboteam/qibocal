@@ -18,6 +18,8 @@ GHZ_TO_HZ = 1e9
 HZ_TO_GHZ = 1e-9
 V_TO_UV = 1e6
 S_TO_NS = 1e9
+EXTREME_CHI = 1e4
+"""Chi2 output when errors list contain zero elemens"""
 
 
 class PowerLevel(str, Enum):
@@ -317,16 +319,13 @@ def chi2_reduced(
     errors: npt.NDArray,
     dof: float = None,
 ):
-    if np.count_nonzero(errors) == 0:
-        return 100
+    if np.count_nonzero(errors) < len(errors):
+        return EXTREME_CHI
 
     if dof is None:
         dof = len(observed) - 1
 
     chi2 = np.sum(np.square((observed - estimated) / errors)) / dof
-
-    if chi2 == np.inf:
-        return 100_000
 
     return chi2
 

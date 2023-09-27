@@ -18,6 +18,12 @@ from qibocal.fitting.classifier import qubit_fit
 
 from .utils import GHZ_TO_HZ, chi2_reduced, fill_table
 
+POPT_EXCEPTON = [0, 0, 0, 0, 1]
+"""Fit parameters output to handle exceptions"""
+PERR_EXCEPTION = [1] * 5
+"""Fit errors to handle exceptions, their choice has no physical meaning and is
+intended not to brake the code"""
+
 
 @dataclass
 class RamseyParameters(Parameters):
@@ -77,12 +83,14 @@ class RamseyData(Data):
     def register_qubit(self, qubit, wait, prob, errors):
         """Store output for single qubit."""
         # to be able to handle the non-sweeper case
-        ar = np.empty(prob.shape, dtype=RamseyType)
-        ar["wait"] = np.array([wait])
-        ar["prob"] = np.array([prob])
-        ar["errors"] = np.array([errors])
-
-        self.data[qubit] = np.rec.array(ar)
+        ar = np.empty(np.shape(prob), dtype=RamseyType)
+        ar["wait"] = wait
+        ar["prob"] = prob
+        ar["errors"] = errors
+        if qubit in self.data:
+            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
+        else:
+            self.data[qubit] = np.rec.array(ar)
 
     @property
     def waits(self):
@@ -149,12 +157,12 @@ def _acquisition(
             ExecutionParameters(
                 nshots=params.nshots,
                 relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.INTEGRATION,
+                acquisition_type=AcquisitionType.DISCRIMINATION,
                 averaging_mode=AveragingMode.SINGLESHOT,
             ),
             sweeper,
         )
-        for i, qubit in enumerate(qubits):
+        for qubit in qubits:
             result = results[ro_pulses[qubit].serial]
             probs = []
             errors = []
@@ -172,8 +180,6 @@ def _acquisition(
             )
 
     else:
-        probs = [[] for _ in qubits]
-        errors = [[] for _ in qubits]
         for wait in waits:
             for qubit in qubits:
                 RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
@@ -195,22 +201,19 @@ def _acquisition(
                     averaging_mode=(AveragingMode.SINGLESHOT),
                 ),
             )
-            for i, qubit in enumerate(qubits):
+
+            for qubit in qubits:
                 result = results[ro_pulses[qubit].serial]
+                print(result.proba)
                 prob, error = eval_prob(
                     result.voltage_i, result.voltage_q, platform, qubit
                 )
-                errors[i].append(error)
-                probs[i].append(prob)
-
-        for i, qubit in enumerate(qubits):
-            data.register_qubit(
-                qubit,
-                wait=np.array(waits),
-                prob=np.array(probs[i]),
-                errors=np.array(errors[i]),
-            )
-
+                data.register_qubit(
+                    qubit,
+                    wait=np.array([wait]),
+                    prob=np.array([prob]),
+                    errors=np.array([error]),
+                )
     return data
 
 
@@ -244,8 +247,8 @@ def _fit(data: RamseyData) -> RamseyResults:
         try:
             popt, perr = fitting(waits, probs, qubit_data.errors)
         except:
-            popt = [0, 0, 0, 0, 1]
-            perr = [1] * 5
+            popt = POPT_EXCEPTON
+            perr = PERR_EXCEPTION
 
         delta_fitting = popt[2] / (2 * np.pi)
         delta_phys = data.detuning_sign * int(
@@ -280,7 +283,7 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
 
     qubit_data = data.data[qubit]
     waits = data.waits
-    probs = qubit_data[["prob"]].tolist()
+    probs = qubit_data[["prob"]]
     probs = np.reshape(probs, (len(waits)))
     error_bars = qubit_data["errors"]
 

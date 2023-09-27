@@ -54,8 +54,6 @@ def _acquisition(
     )
 
     # sweep the parameter
-    probs = [[] for _ in qubits]
-    errors = [[] for _ in qubits]
     for wait in waits:
         for qubit in qubits:
             RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
@@ -81,20 +79,15 @@ def _acquisition(
             ),
         )
 
-        for i, qubit in enumerate(qubits):
+        for qubit in qubits:
             result = results[ro_pulses[qubit].serial]
             prob, error = eval_prob(result.voltage_i, result.voltage_q, platform, qubit)
-            errors[i].append(error)
-            probs[i].append(prob)
-
-    for i, qubit in enumerate(qubits):
-        data.register_qubit(
-            qubit,
-            wait=np.array(waits),
-            prob=np.array(probs[i]),
-            errors=np.array(errors[i]),
-        )
-
+            data.register_qubit(
+                qubit,
+                wait=np.array([wait]),
+                prob=np.array([prob]),
+                errors=np.array([error]),
+            )
     return data
 
 
