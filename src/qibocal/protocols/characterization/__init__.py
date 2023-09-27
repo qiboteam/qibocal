@@ -20,6 +20,7 @@ from .flux_dependence.resonator_flux_dependence import (
 )
 from .qubit_spectroscopy import qubit_spectroscopy
 from .rabi.amplitude import rabi_amplitude
+from .rabi.ef import rabi_amplitude_ef
 from .rabi.length import rabi_length
 from .rabi.length_sequences import rabi_length_sequences
 from .ramsey import ramsey
@@ -74,3 +75,4 @@ class Operation(Enum):
     zeno = zeno
     twpa_frequency = twpa_frequency
     twpa_power = twpa_power
+    rabi_amplitude_ef = rabi_amplitude_ef
