@@ -2691,7 +2691,7 @@ zh = ["laboneq (>=2.12.0)"]
 type = "git"
 url = "https://github.com/qiboteam/qibolab.git"
 reference = "add_RX12_pulse"
-resolved_reference = "07687b480c8e7c9fd2bdd0d3a1b72f97c72d9fde"
+resolved_reference = "e543aba72002f05c1e2e59c6449d076ff622c5c9"
 
 [[package]]
 name = "recommonmark"
