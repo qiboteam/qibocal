@@ -150,5 +150,13 @@ def drag_pulse_beta(beta: float, platform: Platform, qubit: QubitId):
 
 def sweetspot(sweetspot: float, platform: Platform, qubit: QubitId):
     platform.qubits[qubit].sweetspot = float(sweetspot)
-    if platform.qubits[qubit].flux is not None:
-        platform.qubits[qubit].flux.offset = sweetspot
+
+
+def frequency_12_transition(frequency: int, platform: Platform, qubit: QubitId):
+    pulse = platform.qubits[qubit].native_gates.RX12.frequency = int(
+        frequency * GHZ_TO_HZ
+    )
+
+
+def drive_12_amplitude(amplitude: float, platform: Platform, qubit: QubitId):
+    platform.qubits[qubit].native_gates.RX12.amplitude = float(amplitude)

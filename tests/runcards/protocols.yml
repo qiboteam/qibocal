@@ -81,7 +81,6 @@ actions:
       nshots: 10
 
 
-
   - id: qubit spectroscopy
     priority: 0
     operation: qubit_spectroscopy
@@ -188,7 +187,7 @@ actions:
     operation: rabi_amplitude_ef
     parameters:
       min_amp_factor: 0.0
-      max_amp_factor: 4.0
+      max_amp_factor: 1.0
       step_amp_factor: 0.1
       pulse_length: 30
       nshots: 1024

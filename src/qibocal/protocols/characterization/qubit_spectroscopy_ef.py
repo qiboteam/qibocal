@@ -7,6 +7,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
+from qibocal import update
 from qibocal.auto.operation import Qubits, Routine
 
 from .qubit_spectroscopy import (
@@ -113,6 +114,7 @@ def _plot(data: QubitSpectroscopyEFData, qubit, fit: QubitSpectroscopyEFResults)
 
 def _update(results: QubitSpectroscopyEFResults, platform: Platform, qubit: QubitId):
     """Update w12 frequency"""
+    update.frequency_12_transition(results.frequency[qubit], platform, qubit)
 
 
 qubit_spectroscopy_ef = Routine(_acquisition, _fit, _plot, _update)

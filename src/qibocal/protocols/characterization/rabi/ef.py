@@ -7,6 +7,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
+from qibocal import update
 from qibocal.auto.operation import Qubits, Results, Routine
 
 from . import amplitude, utils
@@ -117,7 +118,7 @@ def _plot(data: RabiAmplitudeEFData, qubit, fit: RabiAmplitudeEFResults = None):
 
 def _update(results: RabiAmplitudeEFResults, platform: Platform, qubit: QubitId):
     """Update RX2 amplitude"""
-    # perform update of RX2 pulse amplitude
+    update.drive_12_amplitude(results.amplitude[qubit], platform, qubit)
 
 
 rabi_amplitude_ef = Routine(_acquisition, amplitude._fit, _plot, _update)

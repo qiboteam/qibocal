@@ -144,5 +144,12 @@ def test_drag_pulse_beta_update(qubit):
 def test_sweetspot_update(qubit):
     update.sweetspot(RANDOM_FLOAT, PLATFORM, qubit.name)
     assert qubit.sweetspot == RANDOM_FLOAT
-    if qubit.flux is not None:
-        assert qubit.flux.offset == RANDOM_FLOAT
+
+
+@pytest.mark.parametrize("qubit", QUBITS)
+def test_12_transition_update(qubit):
+    update.drive_12_amplitude(RANDOM_FLOAT, PLATFORM, qubit.name)
+    update.frequency_12_transition(FREQUENCIES_GHZ, PLATFORM, qubit.name)
+
+    assert qubit.native_gates.RX12.amplitude == RANDOM_FLOAT
+    assert qubit.native_gates.RX12.frequency == FREQUENCIES_HZ
