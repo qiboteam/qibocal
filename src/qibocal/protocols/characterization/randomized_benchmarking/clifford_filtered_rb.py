@@ -36,6 +36,11 @@ class CliffordRBResult(Results):
         self.filtered_data.to_json(path / RESULTSFILE, default_handler=str)
         self.fit_results.to_json(path / "results_fit.json", default_handler=str)
 
+    # FIXME: Load this properly
+    def load(self, path):
+        self.filtered_data = pd.read_json(path / RESULTSFILE)
+        self.fit_results = pd.read_json(path / "results_fit.json")
+
 
 def filter_function(samples_list, circuit_list) -> list:
     """Calculates the filtered signal for every crosstalk irrep.
@@ -215,6 +220,7 @@ def _acquisition(
     # data = pd.DataFrame(data_list)
     clifford_rb_data = RBData(data_list)
 
+    # TODO: They save noise model and noise params ...
     # Store the parameters to display them later.
     clifford_rb_data.attrs = params.__dict__
     clifford_rb_data.attrs.setdefault("qubits", qubits)
@@ -231,6 +237,7 @@ def _fit(data: RBData) -> CliffordRBResult:
     Returns:
         CliffordRBResult: Aggregated and processed data.
     """
+
     # Post-processing: compute the filter functions of each random circuit given samples
     irrep_signal = filter_function(data.samples.tolist(), data.circuit.tolist())
     filtered_data = data.join(pd.DataFrame(irrep_signal, index=data.index))
@@ -326,6 +333,8 @@ def _plot(data: RBData, fit: CliffordRBResult, qubit) -> tuple[list[go.Figure], 
 
     # TODO: If fit is None: loop to separate plotting for fitting in qq
 
+    # TODO: fit doesn't get loaded on acquisition tests
+
     def crosstalk(q0, q1):
         p0 = fit.fit_results["fit_parameters"][f"irrep{2 ** q0}"][1]
         p1 = fit.fit_results["fit_parameters"][f"irrep{2 ** q1}"][1]
@@ -334,66 +343,69 @@ def _plot(data: RBData, fit: CliffordRBResult, qubit) -> tuple[list[go.Figure], 
             return None
         return p01 / (p0 * p1)
 
-    nqubits = int(np.log2(len(fit.fit_results.index)))
-    qubits = data.attrs.get("qubits", list(range(nqubits)))
-    if isinstance(qubits, dict):
-        qubits = [q.name for q in qubits.values()]
-
     rb_params = {}
     fig_list = []
-    for kk, irrep_key in enumerate(fit.filtered_data.columns[3:]):
-        irrep_binary = np.binary_repr(kk, width=nqubits)
+    result_fig = go.Figure()
+    table_str = ""
+    if fit:
+        nqubits = int(np.log2(len(fit.fit_results.index)))
+        qubits = data.attrs.get("qubits", list(range(nqubits)))
+        if isinstance(qubits, dict):
+            qubits = [q.name for q in qubits.values()]
 
-        popt, perr, error_bars = (
-            fit.fit_results["fit_parameters"][irrep_key],
-            fit.fit_results["fit_uncertainties"][irrep_key],
-            fit.fit_results["error_bars"][irrep_key],
-        )
-        label = "Fit: y=Ap^x<br>A: {}<br>p: {}".format(
-            number_to_str(popt[0], perr[0]),
-            number_to_str(popt[1], perr[1]),
-        )
-        rb_params[f"Irrep {irrep_binary}"] = number_to_str(popt[1], perr[1])
+        for kk, irrep_key in enumerate(fit.filtered_data.columns[3:]):
+            irrep_binary = np.binary_repr(kk, width=nqubits)
 
-        fig_irrep = rb_figure(
-            fit.filtered_data,
-            model=lambda x: exp1_func(x, *popt),
-            fit_label=label,
-            signal_label=irrep_key,
-            error_bars=error_bars,
-            legend=dict(yanchor="bottom", y=1.02, xanchor="right", x=1),
-            title=dict(text=irrep_binary),
-        )
-        fig_list.append(fig_irrep)
-    result_fig = [carousel(fig_list)]
+            popt, perr, error_bars = (
+                fit.fit_results["fit_parameters"][irrep_key],
+                fit.fit_results["fit_uncertainties"][irrep_key],
+                fit.fit_results["error_bars"][irrep_key],
+            )
+            label = "Fit: y=Ap^x<br>A: {}<br>p: {}".format(
+                number_to_str(popt[0], perr[0]),
+                number_to_str(popt[1], perr[1]),
+            )
+            rb_params[f"Irrep {irrep_binary}"] = number_to_str(popt[1], perr[1])
 
-    if nqubits > 1:
-        crosstalk_heatmap = np.array(
-            [
-                [crosstalk(i, j) if i > j else np.nan for j in range(nqubits)]
-                for i in range(nqubits)
-            ]
-        )
-        np.fill_diagonal(crosstalk_heatmap, 1)
-        crosstalk_fig = px.imshow(
-            crosstalk_heatmap,
-            zmin=np.nanmin(crosstalk_heatmap, initial=0),
-            zmax=np.nanmax(crosstalk_heatmap),
-        )
-        crosstalk_fig.update_layout(
-            plot_bgcolor="rgba(0, 0, 0, 0)",
-            xaxis=dict(
-                showgrid=False,
-                tickvals=list(range(nqubits)),
-                ticktext=qubits,
-            ),
-            yaxis=dict(
-                showgrid=False,
-                tickvals=list(range(nqubits)),
-                ticktext=qubits,
-            ),
-        )
-        result_fig.append(crosstalk_fig)
+            fig_irrep = rb_figure(
+                fit.filtered_data,
+                model=lambda x: exp1_func(x, *popt),
+                fit_label=label,
+                signal_label=irrep_key,
+                error_bars=error_bars,
+                legend=dict(yanchor="bottom", y=1.02, xanchor="right", x=1),
+                title=dict(text=irrep_binary),
+            )
+            fig_list.append(fig_irrep)
+        result_fig = [carousel(fig_list)]
+
+        if nqubits > 1:
+            crosstalk_heatmap = np.array(
+                [
+                    [crosstalk(i, j) if i > j else np.nan for j in range(nqubits)]
+                    for i in range(nqubits)
+                ]
+            )
+            np.fill_diagonal(crosstalk_heatmap, 1)
+            crosstalk_fig = px.imshow(
+                crosstalk_heatmap,
+                zmin=np.nanmin(crosstalk_heatmap, initial=0),
+                zmax=np.nanmax(crosstalk_heatmap),
+            )
+            crosstalk_fig.update_layout(
+                plot_bgcolor="rgba(0, 0, 0, 0)",
+                xaxis=dict(
+                    showgrid=False,
+                    tickvals=list(range(nqubits)),
+                    ticktext=qubits,
+                ),
+                yaxis=dict(
+                    showgrid=False,
+                    tickvals=list(range(nqubits)),
+                    ticktext=qubits,
+                ),
+            )
+            result_fig.append(crosstalk_fig)
 
     meta_data = deepcopy(data.attrs)
     meta_data.pop("depths", None)
@@ -406,6 +418,7 @@ def _plot(data: RBData, fit: CliffordRBResult, qubit) -> tuple[list[go.Figure], 
     table_str = "".join(
         [f" | {key}: {value}<br>" for key, value in {**meta_data, **rb_params}.items()]
     )
+
     return result_fig, table_str
 
 

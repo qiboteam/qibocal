@@ -1,5 +1,6 @@
 import json
 
+import numpy as np
 import pandas as pd
 from qibo import gates
 from qibo.models import Circuit
@@ -51,7 +52,10 @@ def json_tocircuit(circuit, nqubits):
         if gate["name"] == "y":
             gatelist.append(gates.Y(gate["_target_qubits"][0]))
 
-    nqubits = max(max(gate.qubits) for gate in gatelist) + 1
+    if gatelist:
+        nqubits = max(max(gate.qubits) for gate in gatelist) + 1
+    else:
+        nqubits = max(gate["_target_qubits"])
     new_circuit = Circuit(nqubits)
     new_circuit.add(gatelist)
     return new_circuit
@@ -73,12 +77,15 @@ class RBData(pd.DataFrame):
 
     # When loading add inverse gate or measurament if needed.
     # I skipped them as they may not be needed.
+    # TODO: Store and load noise model and noise params
     @classmethod
     def load(cls, path):
         new_data = cls(pd.read_json(path / DATAFILE))
+        new_data.samples = np.array(new_data.samples)
 
         nqubits = len(new_data.samples[0][0])
         for index, circuit in enumerate(new_data.circuit):
             new_data.at[index, "circuit"] = json_tocircuit(circuit, nqubits)
+            new_data.at[index, "samples"] = np.array(new_data.samples[index])
 
         return new_data
