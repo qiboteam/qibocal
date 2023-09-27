@@ -162,7 +162,7 @@ def test_resonator_coefficients_update(qubit):
 
     # assert
     assert qubit.readout_frequency == FREQUENCIES_HZ
-    assert qubit.brf == FREQUENCIES_HZ
+    assert qubit.bare_resonator_frequency_sweetspot == FREQUENCIES_HZ
     assert qubit.flux_to_bias == RANDOM_FLOAT
     assert qubit.asymmetry == RANDOM_FLOAT
     assert qubit.ssf_brf == RANDOM_FLOAT
