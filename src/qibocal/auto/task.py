@@ -8,7 +8,11 @@ from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 
 from ..protocols.characterization import Operation
-from ..utils import allocate_qubits_pairs, allocate_single_qubits
+from ..utils import (
+    allocate_qubits_pairs,
+    allocate_single_qubits,
+    allocate_single_qubits_lists,
+)
 from .mode import ExecutionMode
 from .operation import (
     DATAFILE,
@@ -139,8 +143,12 @@ class Task:
         if operation.platform_dependent and operation.qubits_dependent:
             if len(self.qubits) > 0:
                 if platform is not None:
-                    if any(isinstance(i, tuple) for i in self.qubits):
+                    if operation.two_qubit_gates:
                         qubits = allocate_qubits_pairs(platform, self.qubits)
+                    elif any(
+                        isinstance(i, tuple) or isinstance(i, list) for i in self.qubits
+                    ):
+                        qubits = allocate_single_qubits_lists(platform, self.qubits)
                     else:
                         qubits = allocate_single_qubits(platform, self.qubits)
                 else:
