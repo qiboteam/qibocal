@@ -8,6 +8,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
+from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
 from .resonator_spectroscopy import ResonatorSpectroscopyData
@@ -45,20 +46,20 @@ class ResonatorSpectroscopyAttenuationParameters(Parameters):
 class ResonatorSpectroscopyAttenuationResults(Results):
     """ResonatorSpectroscopy outputs."""
 
-    frequency: dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
+    frequency: dict[QubitId, float]
     """Readout frequency [GHz] for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitted parameters."""
     bare_frequency: Optional[dict[QubitId, float]] = field(
-        default_factory=dict, metadata=dict(update="bare_resonator_frequency")
+        default_factory=dict,
     )
     """Bare resonator frequency [GHz] for each qubit."""
     amplitude: Optional[dict[QubitId, float]] = field(
-        default_factory=dict, metadata=dict(update="readout_amplitude")
+        default_factory=dict,
     )
     """Readout amplitude for each qubit."""
     attenuation: Optional[dict[QubitId, int]] = field(
-        default_factory=dict, metadata=dict(update="readout_attenuation")
+        default_factory=dict,
     )
     """Readout attenuation [dB] for each qubit."""
 
@@ -178,12 +179,26 @@ def _fit(
 
 def _plot(
     data: ResonatorSpectroscopyAttenuationData,
-    fit: ResonatorSpectroscopyAttenuationResults,
     qubit,
+    fit: ResonatorSpectroscopyAttenuationResults,
 ):
     """Plotting function for ResonatorSpectroscopyAttenuation."""
-    return spectroscopy_plot(data, fit, qubit)
+    return spectroscopy_plot(data, qubit, fit)
 
 
-resonator_spectroscopy_attenuation = Routine(_acquisition, _fit, _plot)
+def _update(
+    results: ResonatorSpectroscopyAttenuationResults, platform: Platform, qubit: QubitId
+):
+    update.readout_frequency(results.frequency[qubit], platform, qubit)
+
+    # if this condition is satifisfied means that we are in the low power regime
+    # therefore we update also the readout amplitude
+    if len(results.bare_frequency) == 0:
+        update.readout_amplitude(results.amplitude[qubit], platform, qubit)
+        update.readout_attenuation(results.attenuation[qubit], platform, qubit)
+    else:
+        update.bare_resonator_frequency(results.bare_frequency[qubit], platform, qubit)
+
+
+resonator_spectroscopy_attenuation = Routine(_acquisition, _fit, _plot, _update)
 """ResonatorSpectroscopyAttenuation Routine object."""

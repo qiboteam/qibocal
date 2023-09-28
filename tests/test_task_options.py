@@ -9,6 +9,7 @@ from qibolab import create_platform
 from qibocal.auto.execute import Executor
 from qibocal.auto.runcard import Runcard
 from qibocal.auto.task import Task
+from qibocal.cli.report import ExecutionMode
 from qibocal.utils import allocate_single_qubits
 
 PLATFORM = create_platform("dummy")
@@ -49,8 +50,7 @@ def test_qubits_argument(platform, local_qubits):
     global_qubits = (
         allocate_single_qubits(platform, QUBITS) if platform is not None else QUBITS
     )
-    execution = task.run(platform, global_qubits)
-    data = next(execution)
+    data, time = task._acquire(platform, global_qubits)
     if local_qubits:
         assert task.qubits == local_qubits
     else:
@@ -98,8 +98,7 @@ def test_update_argument(global_update, local_update):
         global_update,
     )
 
-    for _ in executor.run():
-        pass
+    list(executor.run(mode=ExecutionMode.autocalibration))
 
     if local_update and global_update:
         assert old_readout_frequency != platform.qubits[0].readout_frequency

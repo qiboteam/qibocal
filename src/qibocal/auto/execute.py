@@ -8,9 +8,8 @@ from qibolab.platform import Platform
 from qibocal.config import log
 
 from .graph import Graph
-from .history import Completed, History
+from .history import History
 from .runcard import Id, Runcard
-from .status import Normal
 from .task import Qubits, Task
 
 
@@ -123,7 +122,7 @@ class Executor:
         assert self.head is not None
         return self.graph.task(self.head)
 
-    def run(self):
+    def run(self, mode):
         """Actual execution.
 
         The platform's update method is called if:
@@ -131,17 +130,22 @@ class Executor:
         - task.update is True
         """
         self.head = self.graph.start
-
         while self.head is not None:
             task = self.current
-            log.info(f"Running task {task.id}.")
-            task_execution = task.run(platform=self.platform, qubits=self.qubits)
-            completed = Completed(task, Normal(), self.output)
-            completed.data, acquisition_time = next(task_execution)
-            completed.results, fit_time = next(task_execution)
+            log.info(f"Executing mode {mode.name} on {task.id}.")
+            completed = task.run(
+                platform=self.platform,
+                qubits=self.qubits,
+                folder=self.output,
+                mode=mode,
+            )
             self.history.push(completed)
             self.head = self.next()
-            if self.platform is not None:
-                if self.update and task.update:
-                    self.platform.update(completed.results.update)
-            yield acquisition_time, fit_time, task.id
+            update = self.update and task.update
+            if (
+                mode.name in ["autocalibration", "fit"]
+                and self.platform is not None
+                and update
+            ):
+                task.update_platform(results=completed.results, platform=self.platform)
+            yield task.uid

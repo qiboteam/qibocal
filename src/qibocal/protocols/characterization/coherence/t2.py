@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
@@ -9,6 +9,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
+from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
 from ..utils import V_TO_UV
@@ -35,7 +36,7 @@ class T2Parameters(Parameters):
 class T2Results(Results):
     """T2 outputs."""
 
-    t2: dict[QubitId, float] = field(metadata=dict(update="t2"))
+    t2: dict[QubitId, float]
     """T2 for each qubit (ns)."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
@@ -118,12 +119,12 @@ def _fit(data: T2Data) -> T2Results:
     return T2Results(t2s, fitted_parameters)
 
 
-def _plot(data: T2Data, fit: T2Results, qubit):
+def _plot(data: T2Data, qubit, fit: T2Results = None):
     """Plotting function for Ramsey Experiment."""
 
     figures = []
     fig = go.Figure()
-    fitting_report = ""
+    fitting_report = None
 
     qubit_data = data[qubit]
 
@@ -138,28 +139,27 @@ def _plot(data: T2Data, fit: T2Results, qubit):
         )
     )
 
-    # add fitting trace
-    waitrange = np.linspace(
-        min(qubit_data.wait),
-        max(qubit_data.wait),
-        2 * len(qubit_data),
-    )
-
-    params = fit.fitted_parameters[qubit]
-    fig.add_trace(
-        go.Scatter(
-            x=waitrange,
-            y=utils.exp_decay(
-                waitrange,
-                *params,
-            ),
-            name="Fit",
-            line=go.scatter.Line(dash="dot"),
+    if fit is not None:
+        # add fitting trace
+        waitrange = np.linspace(
+            min(qubit_data.wait),
+            max(qubit_data.wait),
+            2 * len(qubit_data),
         )
-    )
-    fitting_report = fitting_report + (
-        f"{qubit} | T2: {fit.t2[qubit]:,.0f} ns.<br><br>"
-    )
+
+        params = fit.fitted_parameters[qubit]
+        fig.add_trace(
+            go.Scatter(
+                x=waitrange,
+                y=utils.exp_decay(
+                    waitrange,
+                    *params,
+                ),
+                name="Fit",
+                line=go.scatter.Line(dash="dot"),
+            )
+        )
+        fitting_report = f"{qubit} | T2: {fit.t2[qubit]:,.0f} ns.<br><br>"
 
     fig.update_layout(
         showlegend=True,
@@ -173,5 +173,9 @@ def _plot(data: T2Data, fit: T2Results, qubit):
     return figures, fitting_report
 
 
-t2 = Routine(_acquisition, _fit, _plot)
+def _update(results: T2Results, platform: Platform, qubit: QubitId):
+    update.t2(results.t2[qubit], platform, qubit)
+
+
+t2 = Routine(_acquisition, _fit, _plot, _update)
 """T2 Routine object."""

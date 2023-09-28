@@ -6,10 +6,40 @@ from sklearn.linear_model import Ridge
 
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, V_TO_UV
 
+FLUX_PARAMETERS = {
+    "Xi": ["Constant to map flux to bias", "V"],
+    "d": ["Junction asymmetry d", "(1)"],
+    "Ec": ["Charge energy Ec", "GHz"],
+    "Ej": ["Josephson energy Ej", "GHz"],
+    "f_q_offset": ["Qubit frequency offset", "GHz"],
+    "C_ii": ["Flux matrix element C_ii", "GHz/V"],
+    "g": ["Readout coupling", "(1)"],
+    "bare_resonator_frequency": ["Bare resonator frequency", "GHz"],
+    "f_qs": ["Qubit frequency", "GHz"],
+    "f_r_offset": ["Resonator frequency offset", "GHz"],
+}
+
+
+def is_crosstalk(data):
+    """Check if keys are tuple which corresponds to crosstalk data structure."""
+    return all(isinstance(key, tuple) for key in data.data.keys())
+
+
+def create_data_array(freq, bias, msr, phase, dtype):
+    """Create custom dtype array for acquired data."""
+    size = len(freq) * len(bias)
+    ar = np.empty(size, dtype=dtype)
+    frequency, biases = np.meshgrid(freq, bias)
+    ar["freq"] = frequency.ravel()
+    ar["bias"] = biases.ravel()
+    ar["msr"] = msr.ravel()
+    ar["phase"] = phase.ravel()
+    return np.rec.array(ar)
+
 
 def flux_dependence_plot(data, fit, qubit):
     figures = []
-    fitting_report = ""
+    fitting_report = None
 
     qubit_data = data[qubit]
 
@@ -53,68 +83,99 @@ def flux_dependence_plot(data, fit, qubit):
             y=biases1,
             mode="markers",
             marker_color="green",
+            showlegend=True,
+            name="Curve estimation",
         ),
         row=1,
         col=1,
     )
+    if fit is not None:
+        fitting_report = ""
+        params = fit.fitted_parameters[qubit]
+        fitting_report_label = "Frequency"
+        if fit.frequency[qubit] != 0:
+            if data.__class__.__name__ == "ResonatorFluxData":
+                fitting_report_label = "Resonator Frequency"
+                if all(param in params for param in ["Ec", "Ej"]):
+                    popt = [
+                        params["bare_resonator_frequency"],
+                        params["g"],
+                        fit.sweetspot[qubit],
+                        params["Xi"],
+                        params["d"],
+                        params["Ec"],
+                        params["Ej"],
+                    ]
+                    freq_fit = freq_r_mathieu(biases1, *popt) * HZ_TO_GHZ
+                else:
+                    popt = [
+                        fit.sweetspot[qubit],
+                        params["Xi"],
+                        params["d"],
+                        params["f_q/bare_resonator_frequency"],
+                        params["g"],
+                        params["bare_resonator_frequency"],
+                    ]
+                    freq_fit = freq_r_transmon(biases1, *popt) * HZ_TO_GHZ
+            elif data.__class__.__name__ == "QubitFluxData":
+                fitting_report_label = "Qubit Frequency"
+                if all(param in params for param in ["Ec", "Ej"]):
+                    popt = [
+                        fit.sweetspot[qubit],
+                        params["Xi"],
+                        params["d"],
+                        params["Ec"],
+                        params["Ej"],
+                    ]
+                    freq_fit = freq_q_mathieu(biases1, *popt) * HZ_TO_GHZ
+                else:
+                    popt = [
+                        fit.sweetspot[qubit],
+                        params["Xi"],
+                        params["d"],
+                        fit.frequency[qubit] * GHZ_TO_HZ,
+                    ]
+                    freq_fit = freq_q_transmon(biases1, *popt) * HZ_TO_GHZ
 
-    params = fit.fitted_parameters[qubit]
-    fitting_report_label = "Frequency"
-    if fit.frequency[qubit] != 0:
-        if data.__class__.__name__ == "ResonatorFluxData":
-            fitting_report_label = "Resonator Frequency"
-            if all(param in params for param in ["Ec", "Ej"]):
-                popt = [
-                    params["bare_resonator_frequency"],
-                    params["g"],
-                    fit.sweetspot[qubit],
-                    params["Xi"],
-                    params["d"],
-                    params["Ec"],
-                    params["Ej"],
-                ]
-                freq_fit = freq_r_mathieu(biases1, *popt) * HZ_TO_GHZ
-            else:
-                popt = [
-                    fit.sweetspot[qubit],
-                    params["Xi"],
-                    params["d"],
-                    params["f_q/bare_resonator_frequency"],
-                    params["g"],
-                    params["bare_resonator_frequency"],
-                ]
-                freq_fit = freq_r_transmon(biases1, *popt) * HZ_TO_GHZ
-        elif data.__class__.__name__ == "QubitFluxData":
-            fitting_report_label = "Qubit Frequency"
-            if all(param in params for param in ["Ec", "Ej"]):
-                popt = [
-                    fit.sweetspot[qubit],
-                    params["Xi"],
-                    params["d"],
-                    params["Ec"],
-                    params["Ej"],
-                ]
-                freq_fit = freq_q_mathieu(biases1, *popt) * HZ_TO_GHZ
-            else:
-                popt = [
-                    fit.sweetspot[qubit],
-                    params["Xi"],
-                    params["d"],
-                    fit.frequency[qubit] * GHZ_TO_HZ,
-                ]
-                freq_fit = freq_q_transmon(biases1, *popt) * HZ_TO_GHZ
+            fig.add_trace(
+                go.Scatter(
+                    x=freq_fit,
+                    y=biases1,
+                    showlegend=True,
+                    name="Fit",
+                ),
+                row=1,
+                col=1,
+            )
 
-        fig.add_trace(
-            go.Scatter(
-                x=freq_fit,
-                y=biases1,
-            ),
-            row=1,
-            col=1,
-        )
+            if fit.frequency[qubit] != 0:
+                fitting_report += f"{qubit} | {fitting_report_label}: {fit.frequency[qubit]:,.5f} GHz<br>"
+            else:
+                fitting_report += (
+                    f"{qubit} | {fitting_report_label}: Fitting not successful<br>"
+                )
+            if fit.sweetspot[qubit] != 0:
+                fitting_report += (
+                    f"{qubit} | Sweetspot: {float(fit.sweetspot[qubit]):.3f} V<br>"
+                )
+            else:
+                fitting_report += f"{qubit} | Sweetspot: Fitting not successful<br>"
+
+            for key, value in fit.fitted_parameters[qubit].items():
+                if FLUX_PARAMETERS[key][1] == "GHz":
+                    value *= HZ_TO_GHZ
+                elif key != "d" and value == 0:
+                    value = "Fitting not successful"
+                    fitting_report += (
+                        f"{qubit} | {FLUX_PARAMETERS[key][0]}: {value}<br>"
+                    )
+                else:
+                    fitting_report += f"{qubit} | {FLUX_PARAMETERS[key][0]}: {float(value):,.3f} {FLUX_PARAMETERS[key][1]}<br>"
+
+            fitting_report += "<br>"
 
     fig.update_xaxes(
-        title_text=f"{qubit}: Frequency (Hz)",
+        title_text=f"Frequency (GHz)",
         row=1,
         col=1,
     )
@@ -131,37 +192,70 @@ def flux_dependence_plot(data, fit, qubit):
         col=2,
     )
     fig.update_xaxes(
-        title_text=f"{qubit}: Frequency (Hz)",
+        title_text=f"Frequency (GHz)",
         row=1,
         col=2,
     )
     fig.update_yaxes(title_text="Bias (V)", row=1, col=2)
 
-    if fit.frequency[qubit] != 0:
-        fitting_report += (
-            f"{qubit} | {fitting_report_label}: {fit.frequency[qubit]:,.5f} GHz<br>"
-        )
-    else:
-        fitting_report += (
-            f"{qubit} | {fitting_report_label}: Fitting not successful<br>"
-        )
-
-    if fit.sweetspot[qubit] != 0:
-        fitting_report += f"{qubit} | Sweetspot: {fit.sweetspot[qubit]} V<br>"
-    else:
-        fitting_report += f"{qubit} | Sweetspot: Fitting not successful<br>"
-
-    for key, value in fit.fitted_parameters[qubit].items():
-        if value == 0:
-            value = "Fitting not successful"
-            fitting_report += f"{qubit} | {key}: {value}<br>"
-        else:
-            fitting_report += f"{qubit} | {key}: {value}<br>"
-
-    fitting_report += "<br>"
-
     fig.update_layout(xaxis1=dict(range=[np.min(frequencies), np.max(frequencies)]))
 
+    fig.update_layout(
+        showlegend=True,
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        legend=dict(orientation="h"),
+    )
+
+    figures.append(fig)
+
+    return figures, fitting_report
+
+
+def flux_crosstalk_plot(data, fit, qubit):
+    figures = []
+    fitting_report = None
+
+    all_qubit_data = {
+        index: data_qubit
+        for index, data_qubit in data.data.items()
+        if index[0] == qubit
+    }
+
+    fig = make_subplots(
+        rows=1,
+        cols=len(all_qubit_data),
+        horizontal_spacing=0.3 / len(all_qubit_data),
+        vertical_spacing=0.1,
+        subplot_titles=len(all_qubit_data) * ("MSR [V]",),
+    )
+
+    for col, (flux_qubit, qubit_data) in enumerate(all_qubit_data.items()):
+        frequencies = qubit_data.freq * HZ_TO_GHZ
+        msr = qubit_data.msr
+        if data.resonator_type == "2D":
+            msr = -msr
+
+        fig.add_trace(
+            go.Heatmap(
+                x=frequencies,
+                y=qubit_data.bias,
+                z=qubit_data.msr * V_TO_UV,
+            ),
+            row=1,
+            col=col + 1,
+        )
+
+        fig.update_xaxes(
+            title_text="Frequency (Hz)",
+            row=1,
+            col=col + 1,
+        )
+        fig.update_yaxes(
+            title_text=f"Qubit {flux_qubit[1]}: Bias (V)", row=1, col=col + 1
+        )
+
+    fig.update_layout(xaxis1=dict(range=[np.min(frequencies), np.max(frequencies)]))
+    fig.update_traces(showscale=False)  # disable colorbar
     fig.update_layout(
         showlegend=False,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
