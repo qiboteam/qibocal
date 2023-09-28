@@ -126,8 +126,13 @@ def _aquisition(
         sequence.add(cz.get_qubit_pulses(ordered_pair[0]))
         sequence.add(cz.get_qubit_pulses(ordered_pair[1]))
 
+        if pair[0] > pair[1]:
+            pair = platform.pairs[pair[1], pair[0]]
+        else:
+            pair = platform.pairs[pair[0], pair[1]]
+
         # Patch to get the coupler until the routines use QubitPair
-        sequence.add(cz.coupler_pulses(platform.pairs[pair[0], pair[1]].coupler.name))
+        sequence.add(cz.coupler_pulses(pair.coupler.name))
 
         if params.parking:
             for pulse in cz:
