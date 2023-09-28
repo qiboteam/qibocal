@@ -1,4 +1,3 @@
-from copy import deepcopy
 from dataclasses import dataclass
 from itertools import product
 from typing import Iterable, Union
@@ -37,9 +36,10 @@ class CliffordRBResult(Results):
         self.fit_results.to_json(path / "results_fit.json", default_handler=str)
 
     # FIXME: Load this properly
-    def load(self, path):
-        self.filtered_data = pd.read_json(path / RESULTSFILE)
-        self.fit_results = pd.read_json(path / "results_fit.json")
+    @classmethod
+    def load(cls, path):
+        cls.filtered_data = pd.read_json(path / RESULTSFILE)
+        cls.fit_results = pd.read_json(path / "results_fit.json")
 
 
 def filter_function(samples_list, circuit_list) -> list:
@@ -345,8 +345,8 @@ def _plot(data: RBData, fit: CliffordRBResult, qubit) -> tuple[list[go.Figure], 
 
     rb_params = {}
     fig_list = []
-    result_fig = go.Figure()
-    table_str = ""
+    result_fig = [go.Figure()]
+    table_str = None
     if fit:
         nqubits = int(np.log2(len(fit.fit_results.index)))
         qubits = data.attrs.get("qubits", list(range(nqubits)))
@@ -407,17 +407,18 @@ def _plot(data: RBData, fit: CliffordRBResult, qubit) -> tuple[list[go.Figure], 
             )
             result_fig.append(crosstalk_fig)
 
-    meta_data = deepcopy(data.attrs)
-    meta_data.pop("depths", None)
-    if not meta_data["noise_model"]:
-        meta_data.pop("noise_model")
-        meta_data.pop("noise_params")
-    elif meta_data.get("noise_params", None) is not None:
-        meta_data["noise_params"] = np.round(meta_data["noise_params"], 3)
+    # TODO: This mess as well ...
+    # meta_data = deepcopy(data.attrs)
+    # meta_data.pop("depths", None)
+    # if not meta_data["noise_model"]:
+    #     meta_data.pop("noise_model")
+    #     meta_data.pop("noise_params")
+    # elif meta_data.get("noise_params", None) is not None:
+    #     meta_data["noise_params"] = np.round(meta_data["noise_params"], 3)
 
-    table_str = "".join(
-        [f" | {key}: {value}<br>" for key, value in {**meta_data, **rb_params}.items()]
-    )
+    # table_str = "".join(
+    #     [f" | {key}: {value}<br>" for key, value in {**meta_data, **rb_params}.items()]
+    # )
 
     return result_fig, table_str
 
