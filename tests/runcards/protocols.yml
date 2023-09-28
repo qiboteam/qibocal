@@ -390,7 +390,7 @@ actions:
   - id: chevron id
     priority: 0
     operation: chevron
-    qubits: [[0, 1],[1,2],[0,3]]
+    qubits: [[0, 2],[1,2],[3,2]]
     parameters:
       amplitude_min: 0.1
       amplitude_max: 0.6
@@ -404,7 +404,7 @@ actions:
   - id: tune landscape
     priority: 0
     operation: cz_virtualz
-    qubits: [[0, 1],[1,2],[0,3]]
+    qubits: [[0, 2],[1,2],[3,2]]
     parameters:
       theta_start: 0
       theta_end: 180
