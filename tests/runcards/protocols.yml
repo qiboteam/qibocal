@@ -469,9 +469,23 @@ actions:
     operation: qubit_flux_tracking
     parameters:
       freq_width: 150_000_000
+      drive_amplitude: 0.1
       freq_step: 500_000
       bias_width: 0.2
       bias_step:  0.005
       nshots: 1024
       relaxation_time: 2000
       transition: "01"
+
+  - id: qubit flux dependence tracking 02
+    priority: 0
+    operation: qubit_flux_tracking
+    parameters:
+      freq_width: 150_000_000
+      drive_amplitude: 0.1
+      freq_step: 500_000
+      bias_width: 0.2
+      bias_step:  0.005
+      nshots: 1024
+      relaxation_time: 2000
+      transition: "02"
