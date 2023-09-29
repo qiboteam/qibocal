@@ -17,7 +17,7 @@ from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
 from .utils import GHZ_TO_HZ, chi2_reduced, fill_table
 
-POPT_EXCEPTON = [0, 0, 0, 0, 0]
+POPT_EXCEPTION = [0, 0, 0, 0, 0]
 """Fit parameters output to handle exceptions"""
 PERR_EXCEPTION = [1] * 5
 """Fit errors to handle exceptions; their choice has no physical meaning
