@@ -247,11 +247,14 @@ def _fit(data: RamseyData) -> RamseyResults:
         t2 = popt[4]
         freq_measure[qubit] = (
             corrected_qubit_frequency,
-            perr[2] / (2 * np.pi * data.t_max),
+            perr[2] * GHZ_TO_HZ / (2 * np.pi * data.t_max),
         )
         t2_measure[qubit] = (t2, perr[4])
         popts[qubit] = popt
-        delta_phys_measure[qubit] = (delta_phys, popt[2] / (2 * np.pi * data.t_max))
+        delta_phys_measure[qubit] = (
+            delta_phys,
+            popt[2] * GHZ_TO_HZ / (2 * np.pi * data.t_max),
+        )
         chi2[qubit] = (
             chi2_reduced(
                 probs,
