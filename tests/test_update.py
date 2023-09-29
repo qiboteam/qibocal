@@ -144,5 +144,28 @@ def test_drag_pulse_beta_update(qubit):
 def test_sweetspot_update(qubit):
     update.sweetspot(RANDOM_FLOAT, PLATFORM, qubit.name)
     assert qubit.sweetspot == RANDOM_FLOAT
-    if qubit.flux is not None:
-        assert qubit.flux.offset == RANDOM_FLOAT
+
+
+@pytest.mark.parametrize("qubit", QUBITS)
+def test_resonator_coefficients_update(qubit):
+    # perform update
+    update.readout_frequency(FREQUENCIES_GHZ, PLATFORM, qubit.name)
+    update.bare_resonator_frequency_sweetspot(FREQUENCIES_GHZ, PLATFORM, qubit.name)
+    update.flux_to_bias(RANDOM_FLOAT, PLATFORM, qubit.name)
+    update.asymmetry(RANDOM_FLOAT, PLATFORM, qubit.name)
+    update.ratio_sweetspot_qubit_freq_bare_resonator_freq(
+        RANDOM_FLOAT, PLATFORM, qubit.name
+    )
+    update.charging_energy(RANDOM_FLOAT, PLATFORM, qubit.name)
+    update.josephson_energy(RANDOM_FLOAT, PLATFORM, qubit.name)
+    update.coupling(RANDOM_FLOAT, PLATFORM, qubit.name)
+
+    # assert
+    assert qubit.readout_frequency == FREQUENCIES_HZ
+    assert qubit.bare_resonator_frequency_sweetspot == FREQUENCIES_HZ
+    assert qubit.flux_to_bias == RANDOM_FLOAT
+    assert qubit.asymmetry == RANDOM_FLOAT
+    assert qubit.ssf_brf == RANDOM_FLOAT
+    assert qubit.Ec == RANDOM_FLOAT
+    assert qubit.Ej == RANDOM_FLOAT
+    assert qubit.g == RANDOM_FLOAT

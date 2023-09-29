@@ -141,7 +141,7 @@ def t2_spin_echo(t2_spin_echo: float, platform: Platform, qubit: QubitId):
 
 
 def drag_pulse_beta(beta: float, platform: Platform, qubit: QubitId):
-    """Update beta parameter e value in platform for specific qubit."""
+    """Update beta parameter value in platform for specific qubit."""
     pulse = platform.qubits[qubit].native_gates.RX.pulse(start=0)
     rel_sigma = pulse.shape.rel_sigma
     drag_pulse = pulses.Drag(rel_sigma=rel_sigma, beta=beta)
@@ -149,6 +149,46 @@ def drag_pulse_beta(beta: float, platform: Platform, qubit: QubitId):
 
 
 def sweetspot(sweetspot: float, platform: Platform, qubit: QubitId):
+    """Update sweetspot parameter in platform for specific qubit."""
     platform.qubits[qubit].sweetspot = float(sweetspot)
-    if platform.qubits[qubit].flux is not None:
-        platform.qubits[qubit].flux.offset = sweetspot
+
+
+def flux_to_bias(flux_to_bias: float, platform: Platform, qubit: QubitId):
+    """Update flux to bias parameter for specific qubit."""
+    platform.qubits[qubit].flux_to_bias = float(flux_to_bias)
+
+
+def asymmetry(asymmetry: float, platform: Platform, qubit: QubitId):
+    """Update asymmetry parameter for specific qubit."""
+    platform.qubits[qubit].asymmetry = float(asymmetry)
+
+
+def bare_resonator_frequency_sweetspot(
+    bare_resonator_frequency_sweetspot: int, platform: Platform, qubit: QubitId
+):
+    """Update bare resonator frequency at sweetspot parameter for specific qubit."""
+    platform.qubits[qubit].bare_resonator_frequency_sweetspot = int(
+        bare_resonator_frequency_sweetspot * GHZ_TO_HZ
+    )
+
+
+def ratio_sweetspot_qubit_freq_bare_resonator_freq(
+    ratio: float, platform: Platform, qubit: QubitId
+):
+    """Update ratio between qubit freq at sweetspot and bare res freq for specific qubit."""
+    platform.qubits[qubit].ssf_brf = float(ratio)
+
+
+def charging_energy(charging_energy: float, platform: Platform, qubit: QubitId):
+    """Update charging energy parameter for specific qubit."""
+    platform.qubits[qubit].Ec = float(charging_energy)
+
+
+def josephson_energy(josephson_energy: float, platform: Platform, qubit: QubitId):
+    """Update josephson energy parameter for specific qubit."""
+    platform.qubits[qubit].Ej = float(josephson_energy)
+
+
+def coupling(coupling: float, platform: Platform, qubit: QubitId):
+    """Update coupling parameter for specific qubit."""
+    platform.qubits[qubit].g = float(coupling)
