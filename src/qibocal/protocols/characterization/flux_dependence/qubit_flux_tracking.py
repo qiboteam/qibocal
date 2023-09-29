@@ -88,14 +88,13 @@ class QubitFluxData(Data):
         size = len(freq)
         ar = np.empty(size, dtype=QubitFluxType)
         ar["freq"] = freq
-        ar["bias"] = [bias] * size  # np.repeat(bias, size)
+        ar["bias"] = [bias] * size
         ar["msr"] = msr
         ar["phase"] = phase
         if qubit in self.data:
             self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
         else:
             self.data[qubit] = np.rec.array(ar)
-
 
 def _acquisition(
     params: QubitFluxParameters,
@@ -188,8 +187,6 @@ def _acquisition(
                 ),
                 freq_sweeper,
             )
-
-            log.warning(f"result: {results}")
 
         # retrieve the results for every qubit
         for qubit in qubits:
