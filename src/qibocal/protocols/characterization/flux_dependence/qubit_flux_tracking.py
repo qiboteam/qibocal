@@ -96,6 +96,7 @@ class QubitFluxData(Data):
         else:
             self.data[qubit] = np.rec.array(ar)
 
+
 def _acquisition(
     params: QubitFluxParameters,
     platform: Platform,
