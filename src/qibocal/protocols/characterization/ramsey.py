@@ -274,21 +274,28 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
     waits = data.waits
     probs = qubit_data["prob"]
     error_bars = qubit_data["errors"]
-    fig.add_trace(
-        go.Scatter(
-            x=waits,
-            y=probs,
-            error_y=dict(
-                type="data",  # value of error bar given in data coordinates
-                array=error_bars,
-                visible=True,
-                color="cornflowerblue",
+    fig = go.Figure(
+        [
+            go.Scatter(
+                x=waits,
+                y=probs,
+                opacity=1,
+                name="Voltage",
+                showlegend=True,
+                legendgroup="Voltage",
+                mode="lines",
             ),
-            opacity=1,
-            name="Voltage",
-            showlegend=True,
-            legendgroup="Voltage",
-        )
+            go.Scatter(
+                x=np.concatenate((waits, waits[::-1])),
+                y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
+                fill="toself",
+                fillcolor="rgba(0,100,80,0.2)",
+                line=dict(color="rgba(255,255,255,0)"),
+                hoverinfo="skip",
+                showlegend=True,
+                name="Errors",
+            ),
+        ]
     )
 
     if fit is not None:
