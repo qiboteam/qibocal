@@ -267,9 +267,7 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
     """Plotting function for Ramsey Experiment."""
 
     figures = []
-    fig = go.Figure()
     fitting_report = None
-
     qubit_data = data.data[qubit]
     waits = data.waits
     probs = qubit_data["prob"]
@@ -291,7 +289,6 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
                 fill="toself",
                 fillcolor="rgba(0,100,80,0.2)",
                 line=dict(color="rgba(255,255,255,0)"),
-                hoverinfo="skip",
                 showlegend=True,
                 name="Errors",
             ),
