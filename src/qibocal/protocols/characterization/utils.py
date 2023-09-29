@@ -19,7 +19,7 @@ HZ_TO_GHZ = 1e-9
 V_TO_UV = 1e6
 S_TO_NS = 1e9
 EXTREME_CHI = 1e4
-"""Chi2 output when errors list contains zero elemens"""
+"""Chi2 output when errors list contains zero elements"""
 
 
 class PowerLevel(str, Enum):
