@@ -236,7 +236,7 @@ def _fit(data: RamseyData) -> RamseyResults:
         try:
             popt, perr = fitting(waits, probs, qubit_data.errors)
         except:
-            popt = POPT_EXCEPTON
+            popt = POPT_EXCEPTION
             perr = PERR_EXCEPTION
 
         delta_fitting = popt[2] / (2 * np.pi)
