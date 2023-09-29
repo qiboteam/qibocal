@@ -243,7 +243,7 @@ actions:
     operation: ramsey
     parameters:
       delay_between_pulses_start: 0
-      delay_between_pulses_end: 20
+      delay_between_pulses_end: 50
       delay_between_pulses_step: 1
       n_osc: 2
       nshots: 10
@@ -253,8 +253,8 @@ actions:
     operation: ramsey_sequences
     parameters:
       delay_between_pulses_start: 0 # must be a multiple of 4 incl 0
-      delay_between_pulses_end: 5000
-      delay_between_pulses_step: 500 # must be a multiple of 4
+      delay_between_pulses_end: 50
+      delay_between_pulses_step: 1 # must be a multiple of 4
       n_osc: 10
       nshots: 1024
       nboot: 2
@@ -264,7 +264,7 @@ actions:
     operation: ramsey_sequences
     parameters:
       delay_between_pulses_start: 0
-      delay_between_pulses_end: 20
+      delay_between_pulses_end: 50
       delay_between_pulses_step: 1
       n_osc: 2
       nshots: 10
