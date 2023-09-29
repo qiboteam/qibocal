@@ -232,7 +232,7 @@ def _fit(data: RamseyData) -> RamseyResults:
     for qubit in qubits:
         qubit_data = data[qubit]
         qubit_freq = data.qubit_freqs[qubit]
-        probs = np.concatenate(qubit_data[["prob"]].tolist())
+        probs = qubit_data["prob"]
         try:
             popt, perr = fitting(waits, probs, qubit_data.errors)
         except:
@@ -272,8 +272,7 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
 
     qubit_data = data.data[qubit]
     waits = data.waits
-    probs = qubit_data[["prob"]].tolist()
-    probs = np.reshape(probs, (len(waits)))
+    probs = qubit_data["prob"]
     error_bars = qubit_data["errors"]
     fig.add_trace(
         go.Scatter(
