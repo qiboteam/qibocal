@@ -45,7 +45,7 @@ class CliffordRBResult(Results):
 def filter_function(samples_list, circuit_list) -> list:
     """Calculates the filtered signal for every crosstalk irrep.
 
-    Every irrep has a projector charactarized with a bit string
+    Every irrep has a projector characterized with a bitstring
     :math:`\\boldsymbol{\\lambda}\\in\\mathbb{F}_2^N` where :math:`N` is the
     number of qubits.
     The experimental outcome for each qubit is denoted as
