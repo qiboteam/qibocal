@@ -43,7 +43,7 @@ def layer_circuit(layer_gen: Callable, depth: int, **kwargs) -> Circuit:
     """
 
     if not isinstance(depth, int) or depth < 0:
-        raise_error(ValueError, "Depth must be type int and >= 0.")
+        raise_error(ValueError, f"Depth: {depth}, must be type int and >= 0.")
 
     # Generate a layer to get nqubits.
     new_layer = layer_gen()

@@ -107,9 +107,11 @@ def number_to_str(
     """
 
     def _sign(val):
+        "Return the correct sign to display imaginary numbers"
         return "+" if float(val) > -PRECISION_TOL else "-"
 
     def _display(val, dev):
+        "Gets a string representing imaginary numbers"
         # inf uncertainty
         if np.isinf(dev):
             return f"{value:.{precision}f}", "inf"
@@ -191,3 +193,12 @@ def extract_from_data(
     df = data.get([output_key, groupby_key])
     grouped_df = df.groupby(groupby_key, group_keys=True).agg(agg_type)
     return grouped_df.index.to_numpy(), grouped_df[output_key].values.tolist()
+
+
+def crosstalk(q0, q1, fit_results):
+    p0 = fit_results["fit_parameters"][f"irrep{2 ** q0}"][1]
+    p1 = fit_results["fit_parameters"][f"irrep{2 ** q1}"][1]
+    p01 = fit_results["fit_parameters"][f"irrep{2 ** q1 + 2 ** q0}"][1]
+    if p0 == 0 or p1 == 0:
+        return None
+    return p01 / (p0 * p1)

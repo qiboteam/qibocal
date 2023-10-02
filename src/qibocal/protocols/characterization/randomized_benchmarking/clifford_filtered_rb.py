@@ -19,7 +19,7 @@ from .circuit_tools import add_measurement_layer, embed_circuit, layer_circuit
 from .fitting import exp1_func, fit_exp1_func
 from .plot import carousel, rb_figure
 from .standard_rb import RBData, StandardRBParameters
-from .utils import extract_from_data, number_to_str, random_clifford
+from .utils import crosstalk, extract_from_data, number_to_str, random_clifford
 
 
 @dataclass
@@ -112,7 +112,7 @@ def filter_function(samples_list, circuit_list) -> list:
                         a += (-1) ** sum(b) * np.prod(
                             d * np.abs(suppl[~b][np.eye(2, dtype=bool)[s[~b]]]) ** 2
                         )
-            # Normalize with inverse of effective measuremetn.
+            # Normalize with inverse of effective measurement.
             f_list.append(a * (d + 1) ** sum(l) / d**nqubits)
         for kk in range(len(f_list)):
             datarow[f"irrep{kk}"].append(f_list[kk] / nshots)
@@ -335,14 +335,6 @@ def _plot(data: RBData, fit: CliffordRBResult, qubit) -> tuple[list[go.Figure], 
 
     # TODO: fit doesn't get loaded on acquisition tests
 
-    def crosstalk(q0, q1):
-        p0 = fit.fit_results["fit_parameters"][f"irrep{2 ** q0}"][1]
-        p1 = fit.fit_results["fit_parameters"][f"irrep{2 ** q1}"][1]
-        p01 = fit.fit_results["fit_parameters"][f"irrep{2 ** q1 + 2 ** q0}"][1]
-        if p0 == 0 or p1 == 0:
-            return None
-        return p01 / (p0 * p1)
-
     rb_params = {}
     fig_list = []
     result_fig = [go.Figure()]
@@ -382,7 +374,10 @@ def _plot(data: RBData, fit: CliffordRBResult, qubit) -> tuple[list[go.Figure], 
         if nqubits > 1:
             crosstalk_heatmap = np.array(
                 [
-                    [crosstalk(i, j) if i > j else np.nan for j in range(nqubits)]
+                    [
+                        crosstalk(i, j, fit.fit_results) if i > j else np.nan
+                        for j in range(nqubits)
+                    ]
                     for i in range(nqubits)
                 ]
             )
