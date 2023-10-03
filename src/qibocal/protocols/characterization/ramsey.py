@@ -22,6 +22,8 @@ POPT_EXCEPTION = [0, 0, 0, 0, 0]
 PERR_EXCEPTION = [1] * 5
 """Fit errors to handle exceptions; their choice has no physical meaning
 and is meant to avoid breaking the code."""
+COLORBAND = "rgba(0,100,80,0.2)"
+COLORBAND_LINE = "rgba(255,255,255,0)"
 
 
 @dataclass
@@ -164,6 +166,7 @@ def _acquisition(
         )
         for qubit in qubits:
             probs = results[qubit].probability()
+            # The probability errors are the standard errors of the binomial distribution
             errors = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs]
             data.register_qubit(
                 qubit,
@@ -291,8 +294,8 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
                 x=np.concatenate((waits, waits[::-1])),
                 y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
                 fill="toself",
-                fillcolor="rgba(0,100,80,0.2)",
-                line=dict(color="rgba(255,255,255,0)"),
+                fillcolor=COLORBAND,
+                line=dict(color=COLORBAND_LINE),
                 showlegend=True,
                 name="Errors",
             ),

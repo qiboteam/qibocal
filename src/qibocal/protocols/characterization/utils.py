@@ -271,7 +271,7 @@ def fit_punchout(data: Data, fit_type: str):
 
 def eval_magnitude(value):
     """number of non decimal digits in `value`"""
-    if value == 0:
+    if value == 0 or not np.isfinite(value):
         return 0
     return int(np.floor(np.log10(abs(value))))
 
