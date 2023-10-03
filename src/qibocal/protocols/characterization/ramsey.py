@@ -82,7 +82,8 @@ class RamseyData(Data):
     def register_qubit(self, qubit, wait, prob, errors):
         """Store output for single qubit."""
         # to be able to handle the non-sweeper case
-        ar = np.empty(np.shape(prob), dtype=RamseyType)
+        shape = (1,) if np.isscalar(prob) else prob.shape
+        ar = np.empty(shape, dtype=RamseyType)
         ar["wait"] = wait
         ar["prob"] = prob
         ar["errors"] = errors
