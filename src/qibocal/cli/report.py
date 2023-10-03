@@ -30,7 +30,6 @@ def report(path):
 
     # load executor
     executor = Executor.load(runcard, path)
-
     # produce html
     builder = ReportBuilder(path, runcard.qubits, executor, meta)
     builder.run(path)

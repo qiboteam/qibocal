@@ -25,10 +25,13 @@ from qibocal.auto.operation import (
 )
 from qibocal.auto.serialize import serialize
 from qibocal.fitting.classifier import run
-from qibocal.protocols.characterization.utils import get_color_state0, get_color_state1
+from qibocal.protocols.characterization.utils import (
+    MESH_SIZE,
+    evaluate_grid,
+    get_color_state0,
+    get_color_state1,
+)
 
-MESH_SIZE = 50
-MARGIN = 0
 COLUMNWIDTH = 600
 ROC_LENGHT = 800
 ROC_WIDTH = 800
@@ -70,55 +73,51 @@ class SingleShotClassificationData(Data):
 
     def register_qubit(self, qubit, state, i, q):
         """Store output for single qubit."""
-        ar = np.empty(i.shape, dtype=ClassificationType)
+        shape = (1,) if np.isscalar(i) else i.shape
+        ar = np.empty(shape, dtype=ClassificationType)
         ar["i"] = i
         ar["q"] = q
         ar["state"] = state
-        self.data[qubit] = np.rec.array(ar)
-
-    def add_data(self, qubit, state, i, q):
-        """Store output for single qubit."""
-        ar = np.empty(i.shape, dtype=ClassificationType)
-        ar["i"] = i
-        ar["q"] = q
-        ar["state"] = state
-        self.data[qubit] = np.append(self.data[qubit], np.rec.array(ar))
+        if qubit in self.data:
+            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
+        else:
+            self.data[qubit] = np.rec.array(ar)
 
 
 @dataclass
 class SingleShotClassificationResults(Results):
     """SingleShotClassification outputs."""
 
-    y_tests: dict[QubitId, list]
-    """States of the testing set."""
-    x_tests: dict[QubitId, list]
-    """I,Q couples to evaluate accuracy and test time."""
     names: list
     """List of models name."""
-    threshold: dict[QubitId, float]
-    """Threshold for classification."""
-    rotation_angle: dict[QubitId, float]
-    """Threshold for classification."""
-    mean_gnd_states: dict[QubitId, list[float]]
-    """Centroid of the ground state blob."""
-    mean_exc_states: dict[QubitId, list[float]]
-    """Centroid of the excited state blob."""
-    fidelity: dict[QubitId, float]
-    """Fidelity evaluated only with the `qubit_fit` model."""
-    assignment_fidelity: dict[QubitId, float]
-    """Assignment fidelity evaluated only with the `qubit_fit` model."""
     savedir: str
     """Dumping folder of the classification results."""
     y_preds: dict[QubitId, list]
     """Models' predictions of the test set."""
     grid_preds: dict[QubitId, list]
     """Models' prediction of the contour grid."""
+    threshold: dict[QubitId, float] = field(default_factory=dict)
+    """Threshold for classification."""
+    rotation_angle: dict[QubitId, float] = field(default_factory=dict)
+    """Threshold for classification."""
+    mean_gnd_states: dict[QubitId, list[float]] = field(default_factory=dict)
+    """Centroid of the ground state blob."""
+    mean_exc_states: dict[QubitId, list[float]] = field(default_factory=dict)
+    """Centroid of the excited state blob."""
+    fidelity: dict[QubitId, float] = field(default_factory=dict)
+    """Fidelity evaluated only with the `qubit_fit` model."""
+    assignment_fidelity: dict[QubitId, float] = field(default_factory=dict)
+    """Assignment fidelity evaluated only with the `qubit_fit` model."""
     models: dict[QubitId, list] = field(default_factory=list)
     """List of trained classification models."""
     benchmark_table: Optional[dict[QubitId, pd.DataFrame]] = field(default_factory=dict)
     """Benchmark tables."""
     classifiers_hpars: Optional[dict[QubitId, dict]] = field(default_factory=dict)
     """Classifiers hyperparameters."""
+    x_tests: dict[QubitId, list] = field(default_factory=dict)
+    """Test set."""
+    y_tests: dict[QubitId, list] = field(default_factory=dict)
+    """Test set."""
 
     def save(self, path):
         classifiers = run.import_classifiers(self.names)
@@ -234,7 +233,9 @@ def _acquisition(
     # retrieve and store the results for every qubit
     for qubit in qubits:
         result = state1_results[ro_pulses[qubit].serial]
-        data.add_data(qubit=qubit, state=1, i=result.voltage_i, q=result.voltage_q)
+        data.register_qubit(
+            qubit=qubit, state=1, i=result.voltage_i, q=result.voltage_q
+        )
 
     return data
 
@@ -267,10 +268,8 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         hpars[qubit] = {}
         y_preds = []
         grid_preds = []
-        state0_data = qubit_data[qubit_data["state"] == 0]
-        state1_data = qubit_data[qubit_data["state"] == 1]
 
-        grid = evaluate_grid(state0_data, state1_data)
+        grid = evaluate_grid(qubit_data)
         for i, model_name in enumerate(names):
             hpars[qubit][model_name] = hpars_list[i]
             try:
@@ -320,7 +319,7 @@ def _plot(
     qubit_data = data.data[qubit]
     state0_data = qubit_data[qubit_data["state"] == 0]
     state1_data = qubit_data[qubit_data["state"] == 1]
-    grid = evaluate_grid(state0_data, state1_data)
+    grid = evaluate_grid(qubit_data)
 
     fig = make_subplots(
         rows=1,
@@ -569,50 +568,3 @@ def _update(
 
 
 single_shot_classification = Routine(_acquisition, _fit, _plot, _update)
-
-
-def evaluate_grid(
-    state0_data: npt.NDArray,
-    state1_data: npt.NDArray,
-):
-    """
-    This function returns a matrix grid evaluated from
-    the datapoints `state0_data` and `state1_data`.
-    """
-    max_x = (
-        max(
-            0,
-            state0_data["i"].max(),
-            state1_data["i"].max(),
-        )
-        + MARGIN
-    )
-    max_y = (
-        max(
-            0,
-            state0_data["q"].max(),
-            state1_data["q"].max(),
-        )
-        + MARGIN
-    )
-    min_x = (
-        min(
-            0,
-            state0_data["i"].min(),
-            state1_data["i"].min(),
-        )
-        - MARGIN
-    )
-    min_y = (
-        min(
-            0,
-            state0_data["q"].min(),
-            state1_data["q"].min(),
-        )
-        - MARGIN
-    )
-    i_values, q_values = np.meshgrid(
-        np.linspace(min_x, max_x, num=MESH_SIZE),
-        np.linspace(min_y, max_y, num=MESH_SIZE),
-    )
-    return np.vstack([i_values.ravel(), q_values.ravel()]).T

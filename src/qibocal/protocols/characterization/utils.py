@@ -18,6 +18,8 @@ GHZ_TO_HZ = 1e9
 HZ_TO_GHZ = 1e-9
 V_TO_UV = 1e6
 S_TO_NS = 1e9
+MESH_SIZE = 50
+MARGIN = 0
 
 
 class PowerLevel(str, Enum):
@@ -349,3 +351,45 @@ def significant_digit(number: float):
         position = max(position, np.ceil(-np.log10(abs(np.imag(number)))))
 
     return int(position)
+
+
+def evaluate_grid(
+    data: npt.NDArray,
+):
+    """
+    This function returns a matrix grid evaluated from
+    the datapoints `data`.
+    """
+    max_x = (
+        max(
+            0,
+            data["i"].max(),
+        )
+        + MARGIN
+    )
+    max_y = (
+        max(
+            0,
+            data["q"].max(),
+        )
+        + MARGIN
+    )
+    min_x = (
+        min(
+            0,
+            data["i"].min(),
+        )
+        - MARGIN
+    )
+    min_y = (
+        min(
+            0,
+            data["q"].min(),
+        )
+        - MARGIN
+    )
+    i_values, q_values = np.meshgrid(
+        np.linspace(min_x, max_x, num=MESH_SIZE),
+        np.linspace(min_y, max_y, num=MESH_SIZE),
+    )
+    return np.vstack([i_values.ravel(), q_values.ravel()]).T
