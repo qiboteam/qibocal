@@ -409,6 +409,7 @@ actions:
       theta_start: 0
       theta_end: 180
       theta_step: 10
+      flux_pulse_amplitude: 0.5
       dt: 0
       parking: True
 
@@ -438,6 +439,55 @@ actions:
     operation: fast_reset
     parameters:
       nshots: 1024
+
+  - id: CHSH with pulses
+    priority: 0
+    operation: chsh_pulses
+    qubits: [[0,1],[1,2],[0,3]]
+    parameters:
+      nshots: 1000
+      ntheta: 10
+      bell_states: [0,1,2,3]
+      apply_error_mitigation: True
+
+  - id: CHSH with natives
+    priority: 0
+    operation: chsh_circuits
+    qubits: [[0,1],[1,2]]
+    parameters:
+      nshots: 1000
+      ntheta: 10
+      bell_states: [0,1,2,3]
+      native: True
+      apply_error_mitigation: True
+
+  #FIXME: cannot add pair [0,3]
+  - id: CHSH with circuits
+    priority: 0
+    operation: chsh_circuits
+    qubits: [[0,1],[1,2]]
+    parameters:
+      nshots: 1000
+      ntheta: 2
+      bell_states: [0,1,2,3]
+      native: False
+      apply_error_mitigation: True
+
+  - id: readout_mitigation_matrix pulses
+    priority: 0
+    operation: readout_mitigation_matrix
+    qubits: [[0,1,2],[1,2]]
+    parameters:
+      nshots: 100
+      pulses: True
+
+  - id: readout_mitigation_matrix circuits
+    priority: 0
+    operation: readout_mitigation_matrix
+    qubits: [[0,1,2],[1,2]]
+    parameters:
+      nshots: 100
+      pulses: False
 
   - id: twpa frequency
     priority: 0

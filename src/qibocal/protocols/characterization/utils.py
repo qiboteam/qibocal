@@ -20,6 +20,21 @@ V_TO_UV = 1e6
 S_TO_NS = 1e9
 
 
+def calculate_frequencies(results, qubit_list):
+    """Calculates outcome frequencies from individual shots.
+    Args:
+        results (dict): return of execute_pulse_sequence
+        qubit_list (list): list of qubit ids executed in pulse sequence.
+
+    Returns:
+        dictionary containing frequencies.
+    """
+    shots = np.stack([results[i].samples for i in qubit_list]).T
+    values, counts = np.unique(shots, axis=0, return_counts=True)
+
+    return {"".join(str(int(i)) for i in v): cnt for v, cnt in zip(values, counts)}
+
+
 class PowerLevel(str, Enum):
     """Power Regime for Resonator Spectroscopy"""
 

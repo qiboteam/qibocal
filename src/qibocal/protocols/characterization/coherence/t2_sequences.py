@@ -5,7 +5,7 @@ from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Qubits, Routine
 
-from .t2 import T2Data, T2Parameters, _fit, _plot
+from .t2 import T2Data, T2Parameters, _fit, _plot, _update
 
 
 def _acquisition(
@@ -70,5 +70,5 @@ def _acquisition(
     return data
 
 
-t2_sequences = Routine(_acquisition, _fit, _plot)
+t2_sequences = Routine(_acquisition, _fit, _plot, _update)
 """T2 Routine object."""
