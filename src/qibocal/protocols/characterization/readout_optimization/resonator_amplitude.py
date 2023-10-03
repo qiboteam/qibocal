@@ -75,7 +75,9 @@ class ResonatorAmplitudeResults(Results):
     """Result class for `resonator_amplitude` protocol."""
 
     lowest_errors: dict[QubitId, list]
+    """Lowest probability errors"""
     best_amp: dict[QubitId, list]
+    """Amplitude with lowest error"""
 
 
 def _acquisition(
@@ -85,8 +87,9 @@ def _acquisition(
 ) -> ResonatorAmplitudeData:
     r"""
     Data acquisition for resoantor amplitude optmization.
-    This protocol perform a classification protocol for amplitude optimization
-    with step amplitude_step.
+    This protocol sweeps the readout amplitude performing a classification routine
+    and evaluating the error probability at each step. The sweep will be interrupted
+    if the probability error is less than the `error_threshold`.
 
     Args:
         params (:class:`ResonatorAmplitudeParameters`): input parameters
@@ -207,5 +210,9 @@ def _plot(data: ResonatorAmplitudeData, fit: ResonatorAmplitudeResults, qubit):
     return figures, fitting_report
 
 
-resonator_amplitude = Routine(_acquisition, _fit, _plot)
+def _update(results: ResonatorAmplitudeResults, platform: Platform, qubit: QubitId):
+    update.readout_amplitude(results.best_amp[qubit], platform, qubit)
+
+
+resonator_amplitude = Routine(_acquisition, _fit, _plot, _update)
 """Resonator Amplitude Routine  object."""
