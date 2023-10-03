@@ -84,9 +84,9 @@ def _acquisition(
             error = np.sqrt(prob * (1 - prob) / params.nshots)
             data.register_qubit(
                 qubit,
-                wait=np.array([wait]),
-                prob=np.array([prob]),
-                errors=np.array([error]),
+                wait=wait,
+                prob=prob,
+                errors=error,
             )
     return data
 
