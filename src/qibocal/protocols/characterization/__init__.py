@@ -27,6 +27,7 @@ from .ramsey_sequences import ramsey_sequences
 from .randomized_benchmarking.standard_rb import standard_rb
 from .readout_characterization import readout_characterization
 from .readout_mitigation_matrix import readout_mitigation_matrix
+from .readout_optimization.resonator_amplitude import resonator_amplitude
 from .readout_optimization.resonator_frequency import resonator_frequency
 from .readout_optimization.twpa_calibration.frequency import twpa_frequency
 from .readout_optimization.twpa_calibration.power import twpa_power
@@ -77,3 +78,4 @@ class Operation(Enum):
     readout_mitigation_matrix = readout_mitigation_matrix
     twpa_frequency = twpa_frequency
     twpa_power = twpa_power
+    resonator_amplitude = resonator_amplitude

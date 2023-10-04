@@ -504,3 +504,10 @@ actions:
       nshots: 10
       power_width: 10
       power_step: 1
+
+  - id: resoantor_amplitude
+    priority: 0
+    operation: resonator_amplitude
+    parameters:
+      amplitude_step: 0.1
+      amplitude_stop: 0.5
