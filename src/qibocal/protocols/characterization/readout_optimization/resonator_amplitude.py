@@ -67,9 +67,6 @@ class ResonatorAmplitudeData(Data):
         else:
             self.data[qubit] = np.rec.array(ar)
 
-    def unique_amplitudes(self, qubit: QubitId) -> np.ndarray:
-        return np.unique(self.data[qubit]["amp"])
-
 
 @dataclass
 class ResonatorAmplitudeResults(Results):
