@@ -415,7 +415,7 @@ def fitting(x: list, y: list, errors: list) -> list:
     perr = [
         delta_y * perr[0],
         delta_y
-        * np.exp(-x_min * popt[4] / delta_x)
+        * np.exp(x_min * popt[4] / delta_x)
         * np.sqrt(perr[1] ** 2 + (popt[1] * x_min * perr[4] / delta_x) ** 2),
         perr[2] / delta_x,
         np.sqrt(perr[3] ** 2 + (perr[2] * x_min / delta_x) ** 2),
