@@ -414,19 +414,6 @@ def plot_results(data: Data, qubit, qubit_states, fit: Results):
         subplot_titles=[run.pretty_name(model) for model in models_name],
         column_width=[COLUMNWIDTH] * len(models_name),
     )
-    if len(models_name) != 1 and fit is not None:
-        fig_benchmarks = make_subplots(
-            rows=1,
-            cols=3,
-            horizontal_spacing=SPACING,
-            vertical_spacing=SPACING,
-            subplot_titles=(
-                "accuracy",
-                "testing time (s)",
-                "training time (s)",
-            )
-            # pylint: disable=E1101
-        )
 
     for i, model in enumerate(models_name):
         if fit is not None:
@@ -502,30 +489,6 @@ def plot_results(data: Data, qubit, qubit_states, fit: Results):
             col=i + 1,
         )
 
-        if fit is not None:
-            if len(models_name) != 1:
-                for plot in range(3):
-                    fig_benchmarks.add_trace(
-                        go.Scatter(
-                            x=[model],
-                            y=[fit.benchmark_table[qubit][i][plot]],
-                            mode="markers",
-                            showlegend=False,
-                            marker=dict(size=10, color=get_color_state1(i)),
-                        ),
-                        row=1,
-                        col=plot + 1,
-                    )
-
-                fig_benchmarks.update_yaxes(type="log", row=1, col=2)
-                fig_benchmarks.update_yaxes(type="log", row=1, col=3)
-                fig_benchmarks.update_layout(
-                    autosize=False,
-                    height=COLUMNWIDTH,
-                    width=COLUMNWIDTH * 3,
-                    title=dict(text="Benchmarks", font=dict(size=TITLE_SIZE)),
-                )
-
     fig.update_layout(
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         autosize=False,
@@ -544,6 +507,41 @@ def plot_results(data: Data, qubit, qubit_states, fit: Results):
     )
     figures.append(fig)
 
-    if len(models_name) != 1 and fit is not None:
+    if fit is not None and len(models_name) != 1:
+        fig_benchmarks = make_subplots(
+            rows=1,
+            cols=3,
+            horizontal_spacing=SPACING,
+            vertical_spacing=SPACING,
+            subplot_titles=(
+                "accuracy",
+                "testing time (s)",
+                "training time (s)",
+            )
+            # pylint: disable=E1101
+        )
+        for i, model in enumerate(models_name):
+            for plot in range(3):
+                fig_benchmarks.add_trace(
+                    go.Scatter(
+                        x=[model],
+                        y=[fit.benchmark_table[qubit][i][plot]],
+                        mode="markers",
+                        showlegend=False,
+                        marker=dict(size=10, color=get_color_state1(i)),
+                    ),
+                    row=1,
+                    col=plot + 1,
+                )
+
+        fig_benchmarks.update_yaxes(type="log", row=1, col=2)
+        fig_benchmarks.update_yaxes(type="log", row=1, col=3)
+        fig_benchmarks.update_layout(
+            autosize=False,
+            height=COLUMNWIDTH,
+            width=COLUMNWIDTH * 3,
+            title=dict(text="Benchmarks", font=dict(size=TITLE_SIZE)),
+        )
+
         figures.append(fig_benchmarks)
     return figures
