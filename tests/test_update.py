@@ -78,6 +78,8 @@ def test_classification_update(qubit):
     update.mean_gnd_states(mean_gnd_state, PLATFORM, qubit.name)
     update.mean_exc_states(mean_exc_state, PLATFORM, qubit.name)
     update.classifiers_hpars(classifiers_hpars, PLATFORM, qubit.name)
+    update.fidelity(RANDOM_FLOAT, PLATFORM, qubit.name)
+    update.assignment_fidelity(RANDOM_FLOAT, PLATFORM, qubit.name)
 
     # assert
     assert qubit.iq_angle == RANDOM_FLOAT
@@ -85,6 +87,8 @@ def test_classification_update(qubit):
     assert qubit.mean_gnd_states == mean_gnd_state
     assert qubit.mean_exc_states == mean_exc_state
     assert qubit.classifiers_hpars == classifiers_hpars
+    assert qubit.fidelity == RANDOM_FLOAT
+    assert qubit.assignment_fidelity == RANDOM_FLOAT
 
 
 @pytest.mark.parametrize("pair", PAIRS)
