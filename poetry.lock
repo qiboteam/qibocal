@@ -3698,4 +3698,4 @@ viz = ["pydot"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.12"
-content-hash = "c336e25f566fb7984b92fa866a508585808a7c697cae8788a40e13d6997ed920"
+content-hash = "10a426fb223796d54a9fd0fd53583fcf746b0a07e3de65065296843d05a2cb86"
