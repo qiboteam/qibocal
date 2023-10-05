@@ -13,7 +13,7 @@ from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
 from ..utils import V_TO_UV
-from . import t1, utils
+from . import t1_msr, utils
 
 
 @dataclass
@@ -42,7 +42,7 @@ class T2Results(Results):
     """Raw fitting output."""
 
 
-class T2Data(t1.T1Data):
+class T2Data(t1_msr.T1MSRData):
     """T2 acquisition outputs."""
 
 

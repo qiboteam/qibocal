@@ -12,7 +12,7 @@ from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
 from ..utils import V_TO_UV
-from .t1 import T1Data
+from .t1_msr import T1MSRData
 from .utils import exp_decay, exponential_fit
 
 
@@ -42,7 +42,7 @@ class SpinEchoResults(Results):
     """Raw fitting output."""
 
 
-class SpinEchoData(T1Data):
+class SpinEchoData(T1MSRData):
     """SpinEcho acquisition outputs."""
 
 

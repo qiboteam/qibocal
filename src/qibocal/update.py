@@ -127,7 +127,10 @@ def CZ_amplitude(amp: float, platform: Platform, pair: QubitPairId):
 
 def t1(t1: int, platform: Platform, qubit: QubitId):
     """Update mean excited state value in platform for specific qubit."""
-    platform.qubits[qubit].t1 = int(t1)
+    if isinstance(t1, tuple):
+        platform.qubits[qubit].t1 = int(t1[0])
+    else:
+        platform.qubits[qubit].t1 = int(t1)
 
 
 def t2(t2: int, platform: Platform, qubit: QubitId):

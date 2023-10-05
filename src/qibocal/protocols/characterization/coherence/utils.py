@@ -63,3 +63,47 @@ def exponential_fit(data, zeno=None):
         decay[qubit] = t2
 
     return decay, fitted_parameters
+
+
+def exponential_fit_probability(data):
+    qubits = data.qubits
+
+    decay = {}
+    fitted_parameters = {}
+
+    for qubit in qubits:
+        probability = data[qubit].prob
+
+        p0 = [
+            0.5,
+            0.5,
+            5,
+        ]
+
+        try:
+            popt, perr = curve_fit(
+                exp_decay,
+                data[qubit].wait,
+                probability,
+                p0=p0,
+                maxfev=2000000,
+                bounds=(
+                    [-2, -2, 0],
+                    [2, 2, np.inf],
+                ),
+                sigma=data[qubit].error,
+            )
+
+            perr = np.sqrt(np.diag(perr))
+
+        except Exception as e:
+            log.warning(f"Exp decay fitting was not succesful. {e}")
+            popt = [0] * 3
+            dec = 5
+            perr = [1] * 3
+
+        fitted_parameters[qubit] = popt.tolist()
+        dec = popt[2]
+        decay[qubit] = (dec, perr[2])
+
+    return decay, fitted_parameters
