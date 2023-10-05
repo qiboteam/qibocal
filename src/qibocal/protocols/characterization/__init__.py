@@ -27,6 +27,8 @@ from .ramsey_sequences import ramsey_sequences
 from .randomized_benchmarking.clifford_filtered_rb import clifford_filtered_rb
 from .randomized_benchmarking.standard_rb import standard_rb
 from .readout_characterization import readout_characterization
+from .readout_mitigation_matrix import readout_mitigation_matrix
+from .readout_optimization.resonator_amplitude import resonator_amplitude
 from .readout_optimization.resonator_frequency import resonator_frequency
 from .readout_optimization.twpa_calibration.frequency import twpa_frequency
 from .readout_optimization.twpa_calibration.power import twpa_power
@@ -35,8 +37,7 @@ from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
 from .resonator_spectroscopy_attenuation import resonator_spectroscopy_attenuation
 from .signal_experiments.time_of_flight_readout import time_of_flight_readout
-from .two_qubit_interaction.chevron import chevron
-from .two_qubit_interaction.cz_virtualz import cz_virtualz
+from .two_qubit_interaction import chevron, chsh_circuits, chsh_pulses, cz_virtualz
 
 
 class Operation(Enum):
@@ -73,6 +74,10 @@ class Operation(Enum):
     resonator_frequency = resonator_frequency
     fast_reset = fast_reset
     zeno = zeno
+    chsh_pulses = chsh_pulses
+    chsh_circuits = chsh_circuits
+    readout_mitigation_matrix = readout_mitigation_matrix
     twpa_frequency = twpa_frequency
     twpa_power = twpa_power
+    resonator_amplitude = resonator_amplitude
     clifford_filtered_rb = clifford_filtered_rb

@@ -11,6 +11,7 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 
@@ -52,9 +53,9 @@ class QubitFluxParameters(Parameters):
 class QubitFluxResults(Results):
     """QubitFlux outputs."""
 
-    sweetspot: dict[QubitId, float] = field(metadata=dict(update="sweetspot"))
+    sweetspot: dict[QubitId, float]
     """Sweetspot for each qubit."""
-    frequency: dict[QubitId, float] = field(metadata=dict(update="drive_frequency"))
+    frequency: dict[QubitId, float]
     """Drive frequency for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
@@ -353,7 +354,12 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, qubit):
     return utils.flux_dependence_plot(data, fit, qubit)
 
 
-qubit_flux = Routine(_acquisition, _fit, _plot)
+def _update(results: QubitFluxResults, platform: Platform, qubit: QubitId):
+    update.drive_frequency(results.frequency[qubit], platform, qubit)
+    update.sweetspot(results.sweetspot[qubit], platform, qubit)
+
+
+qubit_flux = Routine(_acquisition, _fit, _plot, _update)
 """QubitFlux Routine object."""
 qubit_crosstalk = Routine(_acquisition, _fit_crosstalk, _plot)
 """Qubit crosstalk Routine object"""

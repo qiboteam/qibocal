@@ -12,11 +12,18 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.bootstrap import bootstrap
-from qibocal.config import log
 
-from .utils import GHZ_TO_HZ, V_TO_UV, chi2_reduced, fill_table
+from .utils import GHZ_TO_HZ, chi2_reduced, fill_table
+
+POPT_EXCEPTION = [0, 0, 0, 0, 0]
+"""Fit parameters output to handle exceptions"""
+PERR_EXCEPTION = [1] * 5
+"""Fit errors to handle exceptions; their choice has no physical meaning
+and is meant to avoid breaking the code."""
+COLORBAND = "rgba(0,100,80,0.2)"
+COLORBAND_LINE = "rgba(255,255,255,0)"
 
 
 @dataclass
@@ -42,9 +49,7 @@ class RamseyParameters(Parameters):
 class RamseyResults(Results):
     """Ramsey outputs."""
 
-    frequency: dict[QubitId, tuple[float, Optional[float]]] = field(
-        metadata=dict(update="drive_frequency")
-    )
+    frequency: dict[QubitId, tuple[float, Optional[float]]]
     """Drive frequency [GHz] for each qubit."""
     t2: dict[QubitId, tuple[float, Optional[float]]]
     """T2 for each qubit [ns]."""
@@ -52,11 +57,11 @@ class RamseyResults(Results):
     """Drive frequency [Hz] correction for each qubit."""
     fitted_parameters: dict[QubitId, list[float]]
     """Raw fitting output."""
-    chi2: dict[QubitId, float]
+    chi2: dict[QubitId, tuple[float, Optional[float]]]
 
 
 RamseyType = np.dtype(
-    [("wait", np.float64), ("msr", np.float64), ("phase", np.float64)]
+    [("wait", np.float64), ("prob", np.float64), ("errors", np.float64)]
 )
 """Custom dtype for coherence routines."""
 
@@ -71,20 +76,19 @@ class RamseyData(Data):
     """Final delay between RX(pi/2) pulses in ns."""
     detuning_sign: int
     """Sign for induced detuning."""
-    nboot: int
-    """Number of bootstrap samples"""
     qubit_freqs: dict[QubitId, float] = field(default_factory=dict)
     """Qubit freqs for each qubit."""
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, wait, msr, phase):
+    def register_qubit(self, qubit, wait, prob, errors):
         """Store output for single qubit."""
         # to be able to handle the non-sweeper case
-        ar = np.empty(msr.shape, dtype=RamseyType)
+        shape = (1,) if np.isscalar(prob) else prob.shape
+        ar = np.empty(shape, dtype=RamseyType)
         ar["wait"] = wait
-        ar["msr"] = np.array([msr])
-        ar["phase"] = np.array([phase])
+        ar["prob"] = prob
+        ar["errors"] = errors
         if qubit in self.data:
             self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
         else:
@@ -138,11 +142,10 @@ def _acquisition(
         n_osc=params.n_osc,
         t_max=params.delay_between_pulses_end,
         detuning_sign=+1,
-        nboot=params.nboot,
         qubit_freqs=freqs,
     )
 
-    if params.n_osc == 0 and params.nboot == 0:
+    if params.n_osc == 0:
         sweeper = Sweeper(
             Parameter.start,
             waits,
@@ -156,15 +159,20 @@ def _acquisition(
             ExecutionParameters(
                 nshots=params.nshots,
                 relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.INTEGRATION,
-                averaging_mode=AveragingMode.CYCLIC,
+                acquisition_type=AcquisitionType.DISCRIMINATION,
+                averaging_mode=AveragingMode.SINGLESHOT,
             ),
             sweeper,
         )
         for qubit in qubits:
-            result = results[ro_pulses[qubit].serial]
+            probs = results[qubit].probability()
+            # The probability errors are the standard errors of the binomial distribution
+            errors = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs]
             data.register_qubit(
-                qubit, wait=waits, msr=result.magnitude, phase=result.phase
+                qubit,
+                wait=waits,
+                prob=probs,
+                errors=errors,
             )
 
     else:
@@ -185,23 +193,20 @@ def _acquisition(
                 ExecutionParameters(
                     nshots=params.nshots,
                     relaxation_time=params.relaxation_time,
-                    acquisition_type=AcquisitionType.INTEGRATION,
-                    averaging_mode=(
-                        AveragingMode.SINGLESHOT
-                        if params.nboot != 0
-                        else AveragingMode.CYCLIC
-                    ),
+                    acquisition_type=AcquisitionType.DISCRIMINATION,
+                    averaging_mode=(AveragingMode.SINGLESHOT),
                 ),
             )
+
             for qubit in qubits:
-                result = results[ro_pulses[qubit].serial]
+                prob = results[qubit].probability()
+                error = np.sqrt(prob * (1 - prob) / params.nshots)
                 data.register_qubit(
                     qubit,
                     wait=wait,
-                    msr=result.magnitude,
-                    phase=result.phase,
+                    prob=prob,
+                    errors=error,
                 )
-
     return data
 
 
@@ -231,71 +236,37 @@ def _fit(data: RamseyData) -> RamseyResults:
     for qubit in qubits:
         qubit_data = data[qubit]
         qubit_freq = data.qubit_freqs[qubit]
-        msrs = qubit_data[["msr"]].tolist()
-        t2s = []
-        deltas_phys_list = []
-        new_freqs = []
-        if data.nboot != 0:
-            msrs = np.reshape(msrs, (len(waits), -1)) * V_TO_UV
-            nsamples = msrs.shape[1]
-            error_bars = np.std(msrs, axis=1).flatten() / np.sqrt(nsamples)
-            bootstrap_samples = bootstrap(msrs, data.nboot)
-            voltages = np.mean(bootstrap_samples, axis=1)
-            fit_out = []
-            for i in range(data.nboot):
-                y = voltages[:, i]
-                x = waits
-                try:
-                    popt = fitting(x, y)
+        probs = qubit_data["prob"]
+        try:
+            popt, perr = fitting(waits, probs, qubit_data.errors)
+        except:
+            popt = POPT_EXCEPTION
+            perr = PERR_EXCEPTION
 
-                    delta_fitting = popt[2] / (2 * np.pi)
-                    delta_phys = data.detuning_sign * int(
-                        (delta_fitting - data.n_osc / data.t_max) * GHZ_TO_HZ
-                    )
-
-                    corrected_qubit_frequency = int(qubit_freq - delta_phys)
-                    deltas_phys_list.append(delta_phys)
-                    new_freqs.append(corrected_qubit_frequency)
-                    t2s.append(1.0 / popt[4])
-                    new_freqs.append(corrected_qubit_frequency)
-
-                except Exception as e:
-                    popt = [0] * 5
-                    log.warning(f"ramsey_fit: the fitting was not succesful. {e}")
-                    t2s.append(0)
-                    deltas_phys_list.append(0)
-                    new_freqs.append(0)
-
-                fit_out.append(popt)
-                freq_measure[qubit] = (np.mean(new_freqs), np.std(new_freqs))
-                t2_measure[qubit] = (np.mean(t2s), np.std(t2s))
-                delta_phys_measure[qubit] = (
-                    np.mean(deltas_phys_list),
-                    np.std(deltas_phys_list),
-                )
-                popts[qubit] = np.mean(fit_out, axis=0).tolist()
-                y = np.array(y)
-                x = np.array(x)
-                chi2[qubit] = chi2_reduced(y, ramsey_fit(x, *popts[qubit]), error_bars)
-
-        else:
-            msrs = np.reshape(msrs, (len(waits))) * V_TO_UV
-            try:
-                popt = fitting(waits, msrs)
-            except:
-                popt = [0, 0, 0, 0, 1]
-            delta_fitting = popt[2] / (2 * np.pi)
-            delta_phys = data.detuning_sign * int(
-                (delta_fitting - data.n_osc / data.t_max) * GHZ_TO_HZ
-            )
-            corrected_qubit_frequency = int(qubit_freq - delta_phys)
-            t2 = 1.0 / popt[4]
-
-            freq_measure[qubit] = (corrected_qubit_frequency, None)
-            t2_measure[qubit] = (t2, None)
-            delta_phys_measure[qubit] = (delta_phys, None)
-            popts[qubit] = popt
-
+        delta_fitting = popt[2] / (2 * np.pi)
+        delta_phys = data.detuning_sign * int(
+            (delta_fitting - data.n_osc / data.t_max) * GHZ_TO_HZ
+        )
+        corrected_qubit_frequency = int(qubit_freq - delta_phys)
+        t2 = popt[4]
+        freq_measure[qubit] = (
+            corrected_qubit_frequency,
+            perr[2] * GHZ_TO_HZ / (2 * np.pi * data.t_max),
+        )
+        t2_measure[qubit] = (t2, perr[4])
+        popts[qubit] = popt
+        delta_phys_measure[qubit] = (
+            delta_phys,
+            popt[2] * GHZ_TO_HZ / (2 * np.pi * data.t_max),
+        )
+        chi2[qubit] = (
+            chi2_reduced(
+                probs,
+                ramsey_fit(waits, *popts[qubit]),
+                qubit_data.errors,
+            ),
+            np.sqrt(2 / len(probs)),
+        )
     return RamseyResults(freq_measure, t2_measure, delta_phys_measure, popts, chi2)
 
 
@@ -303,50 +274,40 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
     """Plotting function for Ramsey Experiment."""
 
     figures = []
-    fig = go.Figure()
     fitting_report = None
-
     qubit_data = data.data[qubit]
     waits = data.waits
-    msrs = qubit_data[["msr"]].tolist()
-    if data.nboot != 0:
-        msrs = np.reshape(msrs, (len(waits), -1)) * V_TO_UV
-        nsamples = msrs.shape[1]
-        error_bars = np.std(msrs, axis=1).flatten() / np.sqrt(nsamples)
-        msrs = np.mean(msrs, axis=1).flatten()
-    else:
-        msrs = np.reshape(msrs, (len(waits))) * V_TO_UV
-        error_bars = np.zeros(len(msrs))
-
-    fig.add_trace(
-        go.Scatter(
-            x=waits,
-            y=msrs,
-            error_y=dict(
-                type="data",  # value of error bar given in data coordinates
-                array=error_bars,
-                visible=True,
+    probs = qubit_data["prob"]
+    error_bars = qubit_data["errors"]
+    fig = go.Figure(
+        [
+            go.Scatter(
+                x=waits,
+                y=probs,
+                opacity=1,
+                name="Voltage",
+                showlegend=True,
+                legendgroup="Voltage",
+                mode="lines",
             ),
-            opacity=1,
-            name="Voltage",
-            showlegend=True,
-            legendgroup="Voltage",
-        )
+            go.Scatter(
+                x=np.concatenate((waits, waits[::-1])),
+                y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
+                fill="toself",
+                fillcolor=COLORBAND,
+                line=dict(color=COLORBAND_LINE),
+                showlegend=True,
+                name="Errors",
+            ),
+        ]
     )
 
     if fit is not None:
-        # add fitting trace
-        waitrange = np.linspace(
-            min(waits),
-            max(waits),
-            2 * len(qubit_data),
-        )
-
         fig.add_trace(
             go.Scatter(
-                x=waitrange,
+                x=waits,
                 y=ramsey_fit(
-                    waitrange,
+                    waits,
                     float(fit.fitted_parameters[qubit][0]),
                     float(fit.fitted_parameters[qubit][1]),
                     float(fit.fitted_parameters[qubit][2]),
@@ -379,16 +340,15 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
             )
             + (fill_table(qubit, "T2*", fit.t2[qubit][0], fit.t2[qubit][1], "ns"))
             + "<br>"
-        )
-        if fit.chi2:
-            fitting_report += fill_table(
-                qubit, "chi2 reduced", fit.chi2[qubit], error=None
+            + fill_table(
+                qubit, "chi2 reduced", fit.chi2[qubit][0], error=fit.chi2[qubit][1]
             )
+        )
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Time (ns)",
-        yaxis_title="MSR (uV)",
+        yaxis_title="Ground state probability",
     )
 
     figures.append(fig)
@@ -396,22 +356,28 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
     return figures, fitting_report
 
 
-ramsey = Routine(_acquisition, _fit, _plot)
+def _update(results: RamseyResults, platform: Platform, qubit: QubitId):
+    update.drive_frequency(results.frequency[qubit], platform, qubit)
+
+
+ramsey = Routine(_acquisition, _fit, _plot, _update)
 """Ramsey Routine object."""
 
 
-def fitting(x: list, y: list) -> list:
+def fitting(x: list, y: list, errors: list) -> list:
     """
     Given the inputs list `x` and outputs one `y`, this function fits the
     `ramsey_fit` function and returns a list with the fit parameters.
     """
     y_max = np.max(y)
     y_min = np.min(y)
-    y = (y - y_min) / (y_max - y_min)
     x_max = np.max(x)
     x_min = np.min(x)
-    x = (x - x_min) / (x_max - x_min)
-
+    delta_y = y_max - y_min
+    delta_x = x_max - x_min
+    y = (y - y_min) / delta_y
+    x = (x - x_min) / delta_x
+    err = errors / delta_y
     ft = np.fft.rfft(y)
     freqs = np.fft.rfftfreq(len(y), x[1] - x[0])
     mags = abs(ft)
@@ -424,9 +390,9 @@ def fitting(x: list, y: list) -> list:
         0.5,
         f,
         0,
-        0,
+        1,
     ]
-    popt = curve_fit(
+    popt, perr = curve_fit(
         ramsey_fit,
         x,
         y,
@@ -436,12 +402,23 @@ def fitting(x: list, y: list) -> list:
             [0, 0, 0, -np.pi, 0],
             [1, 1, np.inf, np.pi, np.inf],
         ),
-    )[0]
+        sigma=err,
+    )
     popt = [
-        (y_max - y_min) * popt[0] + y_min,
-        (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
-        popt[2] / (x_max - x_min),
-        popt[3] - x_min * popt[2] / (x_max - x_min),
-        popt[4] / (x_max - x_min),
+        delta_y * popt[0] + y_min,
+        delta_y * popt[1] * np.exp(x_min * popt[4] / delta_x),
+        popt[2] / delta_x,
+        popt[3] - x_min * popt[2] / delta_x,
+        popt[4] / delta_x,
     ]
-    return popt
+    perr = np.sqrt(np.diag(perr))
+    perr = [
+        delta_y * perr[0],
+        delta_y
+        * np.exp(x_min * popt[4] / delta_x)
+        * np.sqrt(perr[1] ** 2 + (popt[1] * x_min * perr[4] / delta_x) ** 2),
+        perr[2] / delta_x,
+        np.sqrt(perr[3] ** 2 + (perr[2] * x_min / delta_x) ** 2),
+        perr[4] / delta_x,
+    ]
+    return popt, perr
