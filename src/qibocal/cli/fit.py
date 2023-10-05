@@ -8,7 +8,7 @@ from ..auto.execute import Executor
 from ..auto.history import add_timings_to_meta
 from ..auto.mode import ExecutionMode
 from ..auto.runcard import Runcard
-from .utils import META, RUNCARD, UPDATED_PLATFORM
+from .utils import META, RUNCARD, UPDATED_PLATFORM, create_qubits_dict
 
 
 def fit(path, update):
@@ -22,8 +22,9 @@ def fit(path, update):
     # load path, meta, runcard and executor
     meta = yaml.safe_load((path / META).read_text())
     runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
+    qubits = create_qubits_dict(runcard)
     executor = Executor.load(
-        runcard, path, update=update, platform=runcard.platform_obj
+        runcard, path, update=update, platform=runcard.platform_obj, qubits=qubits
     )
 
     # perform post-processing
