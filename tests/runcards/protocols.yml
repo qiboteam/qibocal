@@ -421,7 +421,7 @@ actions:
   - id: CHSH with pulses
     priority: 0
     operation: chsh_pulses
-    qubits: [[0,1],[1,2],[0,3]]
+    qubits: [[0,2],[1,2],[2,3]]
     parameters:
       nshots: 1000
       ntheta: 10
@@ -431,7 +431,7 @@ actions:
   - id: CHSH with natives
     priority: 0
     operation: chsh_circuits
-    qubits: [[0,1],[1,2]]
+    qubits: [[0,2],[1,2]]
     parameters:
       nshots: 1000
       ntheta: 10
@@ -443,7 +443,7 @@ actions:
   - id: CHSH with circuits
     priority: 0
     operation: chsh_circuits
-    qubits: [[0,1],[1,2]]
+    qubits: [[0,2],[1,2]]
     parameters:
       nshots: 1000
       ntheta: 2
