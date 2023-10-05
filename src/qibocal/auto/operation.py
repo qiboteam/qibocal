@@ -3,7 +3,7 @@ import json
 import time
 from dataclasses import asdict, dataclass
 from functools import wraps
-from typing import Callable, Generic, NewType, TypeVar, Union
+from typing import Callable, Generic, NewType, Optional, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -64,8 +64,6 @@ class Parameters:
     """Number of executions on hardware"""
     relaxation_time: float
     """Wait time for the qubit to decohere back to the `gnd` state"""
-    nboot: int
-    """Number of bootstrap samples"""
 
     @classmethod
     def load(cls, parameters):
@@ -79,10 +77,7 @@ class Parameters:
             the linked outputs
 
         """
-        nboot = parameters.pop("nboot", 0)
-        par = cls(**parameters)
-        par.nboot = nboot
-        return par
+        return cls(**parameters)
 
 
 class Data:
@@ -201,6 +196,8 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     """Plotting function."""
     update: Callable[[_ResultsT, Platform], None] = None
     """Update function platform."""
+    two_qubit_gates: Optional[bool] = False
+    """Flag to determine whether to allocate list of Qubits or Pairs."""
 
     def __post_init__(self):
         # add decorator to show logs

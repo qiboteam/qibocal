@@ -16,3 +16,13 @@ def allocate_qubits_pairs(
 ) -> dict[tuple[QubitId, QubitId], QubitPair]:
     """Construct the map from the chosen id pairs to the corresponding physical qubit pairs available on the platform."""
     return {tuple(qq): platform.pairs[tuple(sorted(qq))] for qq in qubit_pairs_ids}
+
+
+def allocate_single_qubits_lists(
+    platform: Optional[Platform], qubit_lists: list[list[QubitId]]
+) -> dict[tuple[QubitId, ...], dict[QubitId, Qubit]]:
+    """Construct the map from the chosen id to the corresponding list of physical qubits available on the platform."""
+    return {
+        tuple(qubits): allocate_single_qubits(platform, qubits)
+        for qubits in qubit_lists
+    }

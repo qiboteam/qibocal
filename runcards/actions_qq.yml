@@ -1,21 +1,28 @@
 platform: dummy
 
-qubits: [0, 1]
+qubits: [0,1]
 
 
 actions:
 
-# - id: resonator_spectroscopy high power
-#   priority: 0
-#   operation: resonator_spectroscopy
-#   main: resonator punchout
-#   parameters:
-#    freq_width: 10_000_000
-#     freq_step: 500_000
-#     amplitude: 0.4
-#     power_level: high
-#     nshots: 1024
-#     relaxation_time: 0
+#   - id: resoantor_amplitude
+#     priority: 0
+#     operation: resonator_amplitude
+#     parameters:
+#       amplitude_step: 0.1
+#       amplitude_stop: 0.5
+
+  # - id: resonator_spectroscopy high power
+  #   priority: 0
+  #   operation: resonator_spectroscopy
+  #   # main: resonator punchout
+  #   parameters:
+  #     freq_width: 10_000_000
+  #     freq_step: 500_000
+  #     amplitude: 0.4
+  #     power_level: high
+  #     nshots: 1024
+  #     relaxation_time: 0
 
   # - id: resonator punchout
   #   priority: 0
@@ -420,3 +427,54 @@ actions:
 #       n_bootstrap: 10
 #       noise_model: PauliErrorOnX
 #       noise_params: [0.01, 0.01, 0.01]
+
+
+#   - id: CHSH with pulses
+#     priority: 0
+#     operation: chsh_pulses
+#     qubits: [[0,1],[1,2],[0,3]]
+#     parameters:
+#       nshots: 1000
+#       ntheta: 10
+#       bell_states: [0,1,2,3]
+#       apply_error_mitigation: True
+
+
+#   - id: CHSH with natives
+#     priority: 0
+#     operation: chsh_circuits
+#     qubits: [[0,1],[1,2]]
+#     parameters:
+#       nshots: 1000
+#       ntheta: 10
+#       bell_states: [0,1,2,3]
+#       native: True
+#       apply_error_mitigation: True
+
+
+#   - id: CHSH with circuits
+#     priority: 0
+#     operation: chsh_circuits
+#     qubits: [[0,1],[1,2]]
+#     parameters:
+#       nshots: 1000
+#       ntheta: 10
+#       bell_states: [0,1,2,3]
+
+
+#   - id: readout_mitigation_matrix pulses
+#     priority: 0
+#     operation: readout_mitigation_matrix
+#     qubits: [[0,1,2],[1,2]]
+#     parameters:
+#       nshots: 100
+#       pulses: True
+
+
+#   - id: readout_mitigation_matrix circuits
+#     priority: 0
+#     operation: readout_mitigation_matrix
+#     qubits: [[0,1,2],[1,2]]
+#     parameters:
+#       nshots: 100
+#       pulses: False
