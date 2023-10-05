@@ -18,6 +18,23 @@ GHZ_TO_HZ = 1e9
 HZ_TO_GHZ = 1e-9
 V_TO_UV = 1e6
 S_TO_NS = 1e9
+EXTREME_CHI = 1e4
+"""Chi2 output when errors list contains zero elements"""
+
+
+def calculate_frequencies(results, qubit_list):
+    """Calculates outcome frequencies from individual shots.
+    Args:
+        results (dict): return of execute_pulse_sequence
+        qubit_list (list): list of qubit ids executed in pulse sequence.
+
+    Returns:
+        dictionary containing frequencies.
+    """
+    shots = np.stack([results[i].samples for i in qubit_list]).T
+    values, counts = np.unique(shots, axis=0, return_counts=True)
+
+    return {"".join(str(int(i)) for i in v): cnt for v, cnt in zip(values, counts)}
 
 
 class PowerLevel(str, Enum):
@@ -269,6 +286,8 @@ def fit_punchout(data: Data, fit_type: str):
 
 def eval_magnitude(value):
     """number of non decimal digits in `value`"""
+    if value == 0 or not np.isfinite(value):
+        return 0
     return int(np.floor(np.log10(abs(value))))
 
 
@@ -315,10 +334,15 @@ def chi2_reduced(
     errors: npt.NDArray,
     dof: float = None,
 ):
+    if np.count_nonzero(errors) < len(errors):
+        return EXTREME_CHI
+
     if dof is None:
         dof = len(observed) - 1
 
-    return np.sum(np.square((observed - estimated) / errors)) / dof
+    chi2 = np.sum(np.square((observed - estimated) / errors)) / dof
+
+    return chi2
 
 
 def get_color_state0(number):

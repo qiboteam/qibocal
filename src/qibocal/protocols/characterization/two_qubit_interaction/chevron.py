@@ -134,6 +134,8 @@ def _aquisition(
         if params.parking:
             for pulse in cz:
                 if pulse.qubit not in ordered_pair:
+                    pulse.start = 0
+                    pulse.duration = 100
                     sequence.add(pulse)
 
         # add readout
@@ -320,5 +322,5 @@ def _update(results: ChevronResults, platform: Platform, qubit_pair: QubitPairId
     update.CZ_amplitude(results.amplitude[qubit_pair], platform, qubit_pair)
 
 
-chevron = Routine(_aquisition, _fit, _plot, _update)
+chevron = Routine(_aquisition, _fit, _plot, _update, two_qubit_gates=True)
 """Chevron routine."""

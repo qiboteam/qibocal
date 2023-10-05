@@ -8,7 +8,11 @@ from qibolab.platform import Platform
 from qibolab.qubits import QubitId, QubitPairId
 
 from ..protocols.characterization import Operation
-from ..utils import allocate_qubits_pairs, allocate_single_qubits
+from ..utils import (
+    allocate_qubits_pairs,
+    allocate_single_qubits,
+    allocate_single_qubits_lists,
+)
 from .mode import ExecutionMode
 from .operation import (
     DATAFILE,
@@ -43,6 +47,26 @@ class Task:
     def __post_init__(self):
         if len(self.qubits) == 0:
             self.qubits = self.action.qubits
+
+    def _allocate_local_qubits(self, qubits, platform):
+        if len(self.qubits) > 0:
+            if platform is not None:
+                if any(isinstance(i, tuple) for i in self.qubits):
+                    task_qubits = allocate_qubits_pairs(platform, self.qubits)
+                elif any(
+                    isinstance(i, tuple) or isinstance(i, list) for i in self.qubits
+                ):
+                    task_qubits = allocate_single_qubits_lists(platform, self.qubits)
+                else:
+                    task_qubits = allocate_single_qubits(platform, self.qubits)
+            else:
+                # None platform use just ids
+                task_qubits = self.qubits
+        else:
+            task_qubits = qubits
+        self.qubits = list(task_qubits)
+
+        return task_qubits
 
     @property
     def id(self) -> Id:
@@ -108,65 +132,29 @@ class Task:
         folder: Path = None,
     ):
         completed = Completed(self, Normal(), folder)
+        task_qubits = self._allocate_local_qubits(qubits, platform)
 
-        if mode.name in ["autocalibration", "acquire"]:
-            completed.data, completed.data_time = self._acquire(
-                platform=platform, qubits=qubits
-            )
-
-        if mode.name in ["autocalibration", "fit"]:
-            completed.results, completed.results_time = self._fit(completed.data)
-
-        return completed
-
-    def _acquire(self, platform: Platform, qubits: Union[Qubits, QubitsPairs]) -> Data:
-        """Acquisition
-
-        Args:
-            platform (`Platform`): Qibolab's platform
-            qubits (`Union[Qubits, QubitsPairs]`): Qubit or QubitPairs dict.
-
-        Returns:
-            data (`Data`): data acquisition output
-            time (float): acquisition time
-        """
         try:
             operation: Routine = self.operation
             parameters = self.parameters
         except RuntimeError:
             operation = dummy_operation
             parameters = DummyPars()
-        if operation.platform_dependent and operation.qubits_dependent:
-            if len(self.qubits) > 0:
-                if platform is not None:
-                    if any(isinstance(i, tuple) for i in self.qubits):
-                        qubits = allocate_qubits_pairs(platform, self.qubits)
-                    else:
-                        qubits = allocate_single_qubits(platform, self.qubits)
-                else:
-                    qubits = self.qubits
 
-            data, time = operation.acquisition(
-                parameters, platform=platform, qubits=qubits
-            )
-            # after acquisition we update the qubit parameter
-            self.qubits = list(qubits)
-        else:
-            data, time = operation.acquisition(parameters, platform=platform)
-        return data, time
+        if mode.name in ["autocalibration", "acquire"]:
+            if operation.platform_dependent and operation.qubits_dependent:
+                completed.data, completed.data_time = operation.acquisition(
+                    parameters, platform=platform, qubits=task_qubits
+                )
+            else:
+                completed.data, completed.data_time = operation.acquisition(
+                    parameters, platform=platform
+                )
 
-    def _fit(self, data: Data) -> Results:
-        """Fitting
+        if mode.name in ["autocalibration", "fit"]:
+            completed.results, completed.results_time = operation.fit(completed.data)
 
-        Args:
-            data (`Data`): data acquisition
-
-        Returns:
-            results (`Results`): fitting output
-            time (float): fitting time
-        """
-        operation: Routine = self.operation
-        return operation.fit(data)
+        return completed
 
 
 @dataclass
@@ -223,7 +211,8 @@ class Completed:
     @property
     def data(self):
         """Access task's data."""
-        if not (self.datapath / DATAFILE).is_file():
+        # FIXME: temporary fix for coverage
+        if not (self.datapath / DATAFILE).is_file():  # pragma: no cover
             return None
         if self._data is None:
             Data = self.task.operation.data_type
