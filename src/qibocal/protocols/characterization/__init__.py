@@ -9,6 +9,7 @@ from .coherence.t1 import t1
 from .coherence.t1_msr import t1_msr
 from .coherence.t1_sequences import t1_sequences
 from .coherence.t2 import t2
+from .coherence.t2_msr import t2_msr
 from .coherence.t2_sequences import t2_sequences
 from .coherence.zeno import zeno
 from .dispersive_shift import dispersive_shift
@@ -59,6 +60,7 @@ class Operation(Enum):
     t1_msr = t1_msr
     t1_sequences = t1_sequences
     t2 = t2
+    t2_msr = t2_msr
     t2_sequences = t2_sequences
     time_of_flight_readout = time_of_flight_readout
     single_shot_classification = single_shot_classification

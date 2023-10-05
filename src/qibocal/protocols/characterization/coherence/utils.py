@@ -93,7 +93,7 @@ def exponential_fit_probability(data):
                 ),
                 sigma=data[qubit].error,
             )
-
+            popt = popt.tolist()
             perr = np.sqrt(np.diag(perr))
 
         except Exception as e:
@@ -102,7 +102,7 @@ def exponential_fit_probability(data):
             dec = 5
             perr = [1] * 3
 
-        fitted_parameters[qubit] = popt.tolist()
+        fitted_parameters[qubit] = popt
         dec = popt[2]
         decay[qubit] = (dec, perr[2])
 

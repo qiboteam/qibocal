@@ -135,7 +135,10 @@ def t1(t1: int, platform: Platform, qubit: QubitId):
 
 def t2(t2: int, platform: Platform, qubit: QubitId):
     """Update mean excited state value in platform for specific qubit."""
-    platform.qubits[qubit].t2 = int(t2)
+    if isinstance(t2, tuple):
+        platform.qubits[qubit].t2 = int(t2[0])
+    else:
+        platform.qubits[qubit].t2 = int(t2)
 
 
 def t2_spin_echo(t2_spin_echo: float, platform: Platform, qubit: QubitId):
