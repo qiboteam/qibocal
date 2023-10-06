@@ -368,7 +368,16 @@ def significant_digit(number: float):
     return int(position)
 
 
-def table_html(data: dict):
+def table_html(data: dict) -> str:
+    """This function converts a dictionary into an HTML table.
+
+    Args:
+        data (dict): the keys will be converted into table entries and the
+        values will be the columns of the table.
+
+    Return:
+        str
+    """
     fitting_report = pd.DataFrame(data, index=[0])
     ncols = len(fitting_report.columns)
     css = pd.DataFrame(
