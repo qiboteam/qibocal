@@ -81,6 +81,7 @@ actions:
       nshots: 10
 
 
+
   - id: qubit spectroscopy
     priority: 0
     operation: qubit_spectroscopy
@@ -91,9 +92,12 @@ actions:
       freq_step: 500_000
       nshots: 10
 
+
   - id: qubit spectroscopy ef
     priority: 0
     operation: qubit_spectroscopy_ef
+    #FIXME: add RX12 for qubit 4
+    qubits: [0, 1, 2, 3]
     parameters:
       drive_amplitude: 0.001
       drive_duration: 1000
@@ -185,13 +189,14 @@ actions:
   - id: rabi_ef
     priority: 0
     operation: rabi_amplitude_ef
+    #FIXME: add RX12 for qubit 4
+    qubits: [0, 1, 2, 3]
     parameters:
       min_amp_factor: 0.0
       max_amp_factor: 1.0
       step_amp_factor: 0.1
       pulse_length: 30
       nshots: 1024
-
 
   - id: rabi length
     priority: 0
@@ -261,7 +266,7 @@ actions:
     operation: ramsey
     parameters:
       delay_between_pulses_start: 0
-      delay_between_pulses_end: 20
+      delay_between_pulses_end: 50
       delay_between_pulses_step: 1
       n_osc: 2
       nshots: 10
@@ -271,7 +276,7 @@ actions:
     operation: ramsey_sequences
     parameters:
       delay_between_pulses_start: 0
-      delay_between_pulses_end: 20
+      delay_between_pulses_end: 50
       delay_between_pulses_step: 1
       n_osc: 2
       nshots: 10
@@ -386,7 +391,7 @@ actions:
   - id: chevron id
     priority: 0
     operation: chevron
-    qubits: [[0, 1],[1,2],[0,3]]
+    qubits: [[0, 2],[1,2],[3,2], [2,3]]
     parameters:
       amplitude_min: 0.1
       amplitude_max: 0.6
@@ -400,7 +405,7 @@ actions:
   - id: tune landscape
     priority: 0
     operation: cz_virtualz
-    qubits: [[0, 1],[1,2],[0,3]]
+    qubits: [[0, 2],[1,2],[3,2]]
     parameters:
       theta_start: 0
       theta_end: 180
@@ -439,7 +444,7 @@ actions:
   - id: CHSH with pulses
     priority: 0
     operation: chsh_pulses
-    qubits: [[0,1],[1,2],[0,3]]
+    qubits: [[0,2],[1,2],[2,3]]
     parameters:
       nshots: 1000
       ntheta: 10
@@ -449,7 +454,7 @@ actions:
   - id: CHSH with natives
     priority: 0
     operation: chsh_circuits
-    qubits: [[0,1],[1,2]]
+    qubits: [[0,2],[1,2]]
     parameters:
       nshots: 1000
       ntheta: 10
@@ -461,7 +466,7 @@ actions:
   - id: CHSH with circuits
     priority: 0
     operation: chsh_circuits
-    qubits: [[0,1],[1,2]]
+    qubits: [[0,2],[1,2]]
     parameters:
       nshots: 1000
       ntheta: 2

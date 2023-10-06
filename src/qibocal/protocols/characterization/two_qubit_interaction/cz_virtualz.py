@@ -372,8 +372,9 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
             reports.append(
                 f"{target} | CZ angle: {fit.cz_angle[target, control]:.4f}<br>"
             )
+
             reports.append(
-                f"{target} | Virtual Z phase: {fit.virtual_phase[qubit][target]:.4f}<br>"
+                f"{target} | Virtual Z phase: {fit.virtual_phase[tuple(sorted(qubit))][target]:.4f}<br>"
             )
             reports.append(
                 f"{qubits[1]} | Flux pulse amplitude: { data.amplitudes[qubits]}<br>"
@@ -402,6 +403,8 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
 
 
 def _update(results: CZVirtualZResults, platform: Platform, qubit_pair: QubitPairId):
+    # FIXME: quick fix for qubit order
+    qubit_pair = tuple(sorted(qubit_pair))
     update.virtual_phases(results.virtual_phase[qubit_pair], platform, qubit_pair)
 
 
