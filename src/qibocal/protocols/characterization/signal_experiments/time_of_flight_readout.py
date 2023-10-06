@@ -125,7 +125,7 @@ def _plot(data: TimeOfFlightReadoutData, qubit, fit: TimeOfFlightReadoutResults)
     """Plotting function for TimeOfFlightReadout."""
 
     figures = []
-    fitting_report = None
+    fitting_report = ""
     fig = go.Figure()
     qubit_data = data[qubit]
     sampling_rate = data.sampling_rate
