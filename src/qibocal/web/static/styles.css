@@ -149,7 +149,7 @@
   border-radius: 15px;
 }
 
-.col_heading
+.div-fitting th
 {
   background-color: #f0e6ff;
   padding: 8px;
@@ -157,7 +157,7 @@
   font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue","Noto Sans","Liberation Sans",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";
 }
 
-.td_styles
+.div-fitting td_styles
 {
   padding: 8px;
   text-align: center;

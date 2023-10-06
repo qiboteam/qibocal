@@ -8,7 +8,6 @@ import numpy.typing as npt
 import pandas as pd
 import plotly.graph_objects as go
 from numba import njit
-from pandas.io.formats.style import Styler
 from plotly.subplots import make_subplots
 from qibolab.qubits import QubitId
 from scipy.stats import mode
@@ -425,17 +424,6 @@ def table_html(data: dict) -> str:
         str
     """
     fitting_report = pd.DataFrame(data)
-    ncols = len(fitting_report.columns)
-    css = pd.DataFrame(
-        [["td_styles"] * ncols],
-        index=fitting_report.index,
-        columns=fitting_report.columns,
-    )
-    style = Styler(fitting_report, uuid_len=0, cell_ids=False)
-    style.set_td_classes(css)
-    style.set_table_attributes('class="fitting-table"')
-    dummy_formatter = lambda s: s  # To avoid the use of the pandas default one
-    style.format(dummy_formatter)
-    fitting_report = style.hide(axis="index").to_html()
+    fitting_report = fitting_report.to_html(classes="fitting-table", index=False)
     fitting_report = '<div class="div-fitting">' + fitting_report + "</div>"
     return fitting_report
