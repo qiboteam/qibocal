@@ -50,7 +50,9 @@ def test_qubits_argument(platform, local_qubits):
     global_qubits = (
         allocate_single_qubits(platform, QUBITS) if platform is not None else QUBITS
     )
-    data, time = task._acquire(platform, global_qubits)
+    task._allocate_local_qubits(global_qubits, platform)
+
+    _, _ = task.operation.acquisition(task.parameters, platform, global_qubits)
     if local_qubits:
         assert task.qubits == local_qubits
     else:
