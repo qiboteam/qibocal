@@ -1,5 +1,6 @@
 from colorsys import hls_to_rgb
 from enum import Enum
+from typing import Union
 
 import lmfit
 import numpy as np
@@ -9,6 +10,7 @@ import plotly.graph_objects as go
 from numba import njit
 from pandas.io.formats.style import Styler
 from plotly.subplots import make_subplots
+from qibolab.qubits import QubitId
 from scipy.stats import mode
 
 from qibocal.auto.operation import Data, Results
@@ -301,19 +303,12 @@ def eval_magnitude(value):
 
 def round_report(
     values: list,
-):
+) -> tuple[list, list]:
     """
-    Return a row of the report table with the correct number of
-    significant digits.
+    Rounds the measured values and their errors according to their significant digits.
 
     Args:
-        qubit (QubitId): Qubit.
-        name (str): Variable's name.
-        value (float): Variable's value.
-        error (float): Error associated to the variable.
-        unit (str): Measurement unit. Default value `None`.
-        ndigits (int): Number of decimal digits to display when error is `None`
-            (i.e. it is not evaluated).
+        value (float): Variable-Errors couples.
     """
     rounded_values = []
     rounded_errors = []
@@ -381,10 +376,26 @@ def significant_digit(number: float):
     return int(position)
 
 
-def table_dict(qubit, parameters, values: list):
+def table_dict(
+    qubit: Union[list[QubitId], QubitId], names: list[str], values: list
+) -> dict:
+    """
+    Build a dictionary to generate HTML table with `table_html`.
+
+    Args:
+        qubit (Union[list[QubitId], QubitId]): If qubit is a scalar value,
+        the "Qubit" entries will have only this value repeated.
+        names (list[str]): List of the names of the parameters.
+        values (list): List of the values of the parameters.
+
+    Return:
+        A dictionary with keys `Qubit`, `Parameters`, `Values`, if values is a list of couples (`value`, `error`)
+        the function will round them according to their significant digits and allocate an "Errors"
+        key in the dictionary.
+    """
     if not np.isscalar(values):
         if np.isscalar(qubit):
-            qubit = [qubit] * len(parameters)
+            qubit = [qubit] * len(names)
 
         values = np.array(values)
         if values.ndim == 2:
@@ -392,7 +403,7 @@ def table_dict(qubit, parameters, values: list):
 
             return {
                 "Qubit": qubit,
-                "Parameters": parameters,
+                "Parameters": names,
                 "Values": rounded_values,
                 "Errors": rounded_errors,
             }
@@ -400,7 +411,7 @@ def table_dict(qubit, parameters, values: list):
         qubit = [
             qubit
         ]  # In this way when the Dataframe is generated, an index is not required.
-    return {"Qubit": qubit, "Parameters": parameters, "Values": values}
+    return {"Qubit": qubit, "Parameters": names, "Values": values}
 
 
 def table_html(data: dict) -> str:
