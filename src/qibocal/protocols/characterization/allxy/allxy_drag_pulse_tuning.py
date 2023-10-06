@@ -122,7 +122,7 @@ def _plot(data: AllXYDragData, qubit, fit: AllXYDragResults = None):
     """Plotting function for allXYDrag."""
 
     figures = []
-    fitting_report = None
+    fitting_report = ""
 
     fig = go.Figure()
     beta_params = data.beta_params

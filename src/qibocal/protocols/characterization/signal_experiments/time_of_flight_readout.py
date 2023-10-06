@@ -10,7 +10,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.protocols.characterization.utils import S_TO_NS, table_html
+from qibocal.protocols.characterization.utils import S_TO_NS, table_dict, table_html
 
 
 @dataclass
@@ -155,11 +155,9 @@ def _plot(data: TimeOfFlightReadoutData, qubit, fit: TimeOfFlightReadoutResults)
             line_color="grey",
         )
         fitting_report = table_html(
-            {
-                "qubit": qubit,
-                "Parameter": "Time of flights [ns]",
-                "Value": fit.fitted_parameters[qubit] * S_TO_NS,
-            }
+            table_dict(
+                qubit, "Time of flights [ns]", fit.fitted_parameters[qubit] * S_TO_NS
+            )
         )
     fig.update_layout(
         showlegend=True,

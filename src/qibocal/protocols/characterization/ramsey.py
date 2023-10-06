@@ -303,7 +303,7 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
 
     figures = []
     fig = go.Figure()
-    fitting_report = None
+    fitting_report = ""
 
     qubit_data = data.data[qubit]
     waits = data.waits
@@ -356,6 +356,29 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
                 line=go.scatter.Line(dash="dot"),
             )
         )
+        # fitting_report = table_html(
+        #     table_dict(
+        #         qubit,
+        #         [
+        #             "Delta frequnecy [Hz]",
+        #             "Drive Frequency [Hz]",
+        #             "T2* [ns]",
+        #             "chi2 reduced"
+        #         ],
+        #         [
+        #             fit.delta_phys[qubit][0],
+        #             fit.frequency[qubit][0],
+        #             fit.t2[qubit][0],
+        #             fit.chi2[qubit],
+        #         ],
+        #         errors=[
+        #             fit.delta_phys[qubit][1],
+        #             fit.frequency[qubit][1],
+        #             fit.t2[qubit][1],
+        #             None
+        #         ]
+        #     )
+        # )
         fitting_report = (
             ""
             + (

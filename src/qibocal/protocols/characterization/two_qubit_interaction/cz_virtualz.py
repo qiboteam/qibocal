@@ -17,6 +17,7 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 from qibocal.protocols.characterization.two_qubit_interaction.chevron import order_pair
+from qibocal.protocols.characterization.utils import table_dict, table_html
 
 
 @dataclass
@@ -325,7 +326,7 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
         ),
     )
 
-    fitting_report = None
+    fitting_report = ""
     thetas = data.thetas
     for target, control, setup in pair_data:
         target_prob = pair_data[target, control, setup].target
@@ -369,16 +370,17 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
                 col=1 if fig == fig1 else 2,
             )
 
-            reports.append(
-                f"{target} | CZ angle: {fit.cz_angle[target, control]:.4f}<br>"
+            fitting_report = table_html(
+                table_dict(
+                    [target, target, qubits[1]],
+                    ["CZ angle", "Virtual Z phase", "Flux pulse amplitude"],
+                    [
+                        fit.cz_angle[target, control],
+                        fit.virtual_phase[qubit][target],
+                        data.amplitudes[qubits],
+                    ],
+                )
             )
-            reports.append(
-                f"{target} | Virtual Z phase: {fit.virtual_phase[qubit][target]:.4f}<br>"
-            )
-            reports.append(
-                f"{qubits[1]} | Flux pulse amplitude: { data.amplitudes[qubits]}<br>"
-            )
-            fitting_report = "".join(list(dict.fromkeys(reports)))
 
     fig1.update_layout(
         title_text=f"Phase correction Qubit {qubits[0]}",

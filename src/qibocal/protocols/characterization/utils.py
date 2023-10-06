@@ -110,7 +110,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
         vertical_spacing=0.1,
     )
     qubit_data = data[qubit]
-    fitting_report = None
+    fitting_report = ""
 
     frequencies = qubit_data.freq * HZ_TO_GHZ
     fig.add_trace(
@@ -168,15 +168,23 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
             label = "qubit frequency"
             freq = fit.frequency
 
-        fitting_report = f"{qubit} | {label}: {freq[qubit]*GHZ_TO_HZ:,.0f} Hz<br>"
-
         if fit.amplitude[qubit] is not None:
-            fitting_report += f"{qubit} | amplitude: {fit.amplitude[qubit]} <br>"
+            fitting_report = table_html(
+                table_dict(
+                    qubit,
+                    [label, "amplitude"],
+                    [np.round(freq[qubit] * GHZ_TO_HZ, 0), fit.amplitude[qubit]],
+                )
+            )
 
         if data.__class__.__name__ == "ResonatorSpectroscopyAttenuationData":
             if fit.attenuation[qubit] is not None and fit.attenuation[qubit] != 0:
-                fitting_report += (
-                    f"{qubit} | attenuation: {fit.attenuation[qubit]} <br>"
+                fitting_report = table_html(
+                    table_dict(
+                        qubit,
+                        [label, "attenuation"],
+                        [np.round(freq[qubit] * GHZ_TO_HZ, 0), fit.attenuation[qubit]],
+                    )
                 )
 
     fig.update_layout(
@@ -368,6 +376,22 @@ def significant_digit(number: float):
     return int(position)
 
 
+def table_dict(qubit, parameters, values, errors=None):
+    qubit = (
+        [qubit]
+        if np.isscalar(parameters) or not np.isscalar(qubit)
+        else [qubit] * len(parameters)
+    )
+    if errors:
+        return {
+            "Qubit": qubit,
+            "Parameters": parameters,
+            "Values": values,
+            "Error": errors,
+        }
+    return {"Qubit": qubit, "Parameters": parameters, "Values": values}
+
+
 def table_html(data: dict) -> str:
     """This function converts a dictionary into an HTML table.
 
@@ -378,7 +402,7 @@ def table_html(data: dict) -> str:
     Return:
         str
     """
-    fitting_report = pd.DataFrame(data, index=[0])
+    fitting_report = pd.DataFrame(data)
     ncols = len(fitting_report.columns)
     css = pd.DataFrame(
         [["td_styles"] * ncols],
@@ -388,6 +412,8 @@ def table_html(data: dict) -> str:
     style = Styler(fitting_report, uuid_len=0, cell_ids=False)
     style.set_td_classes(css)
     style.set_table_attributes('class="fitting-table"')
+    dummy_formatter = lambda s: s
+    style.format(dummy_formatter)
     fitting_report = style.hide(axis="index").to_html()
     fitting_report = '<div class="div-fitting">' + fitting_report + "</div>"
     return fitting_report

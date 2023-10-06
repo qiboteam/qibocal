@@ -39,7 +39,7 @@ def create_data_array(freq, bias, msr, phase, dtype):
 
 def flux_dependence_plot(data, fit, qubit):
     figures = []
-    fitting_report = None
+    fitting_report = ""
 
     qubit_data = data[qubit]
 
