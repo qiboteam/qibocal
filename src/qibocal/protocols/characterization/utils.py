@@ -376,7 +376,10 @@ def significant_digit(number: float):
 
 
 def table_dict(
-    qubit: Union[list[QubitId], QubitId], names: list[str], values: list
+    qubit: Union[list[QubitId], QubitId],
+    names: list[str],
+    values: list,
+    display_error=False,
 ) -> dict:
     """
     Build a dictionary to generate HTML table with `table_html`.
@@ -386,18 +389,17 @@ def table_dict(
         the "Qubit" entries will have only this value repeated.
         names (list[str]): List of the names of the parameters.
         values (list): List of the values of the parameters.
+        display_errors (bool): if `True`, it means that `values` is a list of value-error couples,
+        so an `Errors` key will be displayed in the dictionary. The function will round the couples according to their significant digits. Default False.
 
     Return:
-        A dictionary with keys `Qubit`, `Parameters`, `Values`, if values is a list of couples (`value`, `error`)
-        the function will round them according to their significant digits and allocate an "Errors"
-        key in the dictionary.
+        A dictionary with keys `Qubit`, `Parameters`, `Values` (`Errors`).
     """
     if not np.isscalar(values):
         if np.isscalar(qubit):
             qubit = [qubit] * len(names)
 
-        values = np.array(values)
-        if values.ndim == 2:
+        if display_error:
             rounded_values, rounded_errors = round_report(values)
 
             return {

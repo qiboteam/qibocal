@@ -335,6 +335,7 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
                     fit.t2[qubit],
                     fit.chi2[qubit],
                 ],
+                display_error=True,
             )
         )
 
