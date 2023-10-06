@@ -157,7 +157,7 @@ def _plot(data: TimeOfFlightReadoutData, qubit, fit: TimeOfFlightReadoutResults)
         fitting_report = table_html(
             {
                 "qubit": qubit,
-                "Parameter": "Time of flights(ns)",
+                "Parameter": "Time of flights [ns]",
                 "Value": fit.fitted_parameters[qubit] * S_TO_NS,
             }
         )
