@@ -1,6 +1,5 @@
 from colorsys import hls_to_rgb
 from enum import Enum
-from typing import Optional
 
 import lmfit
 import numpy as np
@@ -10,7 +9,6 @@ import plotly.graph_objects as go
 from numba import njit
 from pandas.io.formats.style import Styler
 from plotly.subplots import make_subplots
-from qibolab.qubits import QubitId
 from scipy.stats import mode
 
 from qibocal.auto.operation import Data, Results
@@ -301,14 +299,9 @@ def eval_magnitude(value):
     return int(np.floor(np.log10(abs(value))))
 
 
-def fill_table(
-    qubit: QubitId,
-    name: str,
-    value: float,
-    error: Optional[float],
-    unit: str = None,
-    ndigits: int = 2,
-) -> str:
+def round_report(
+    values: list,
+):
     """
     Return a row of the report table with the correct number of
     significant digits.
@@ -322,20 +315,23 @@ def fill_table(
         ndigits (int): Number of decimal digits to display when error is `None`
             (i.e. it is not evaluated).
     """
-    row = f"{qubit}| {name}: "
-    if value:
-        magnitude = eval_magnitude(value)
-    else:
-        magnitude = 0
-    if error:
+    rounded_values = []
+    rounded_errors = []
+    for value, error in values:
+        if value:
+            magnitude = eval_magnitude(value)
+        else:
+            magnitude = 0
+
         ndigits = max(significant_digit(error * 10 ** (-1 * magnitude)), 0)
-        row += f"({round(value*10**(-1*magnitude), ndigits)} ± {np.format_float_positional(round(error*10**(-1*magnitude), ndigits), trim = '-')})"
-    else:
-        row += f"{round(value*10**(-1* magnitude), ndigits)}"
-    if magnitude != 0:
-        row += f"* 10^{magnitude}"
-    row += f" {unit} <br>" if unit else f"<br>"
-    return row
+        rounded_values.append(
+            round(value * 10 ** (-1 * magnitude), ndigits) * 10 ** (magnitude)
+        )
+        rounded_errors.append(
+            round(error * 10 ** (-1 * magnitude), ndigits) * 10 ** (magnitude)
+        )
+
+    return rounded_values, rounded_errors
 
 
 def chi2_reduced(
@@ -385,19 +381,25 @@ def significant_digit(number: float):
     return int(position)
 
 
-def table_dict(qubit, parameters, values, errors=None):
-    qubit = (
-        [qubit]
-        if np.isscalar(parameters) or not np.isscalar(qubit)
-        else [qubit] * len(parameters)
-    )
-    if errors:
-        return {
-            "Qubit": qubit,
-            "Parameters": parameters,
-            "Values": values,
-            "Error": errors,
-        }
+def table_dict(qubit, parameters, values: list):
+    if not np.isscalar(values):
+        if np.isscalar(qubit):
+            qubit = [qubit] * len(parameters)
+
+        values = np.array(values)
+        if values.ndim == 2:
+            rounded_values, rounded_errors = round_report(values)
+
+            return {
+                "Qubit": qubit,
+                "Parameters": parameters,
+                "Values": rounded_values,
+                "Errors": rounded_errors,
+            }
+    else:
+        qubit = [
+            qubit
+        ]  # In this way when the Dataframe is generated, an index is not required.
     return {"Qubit": qubit, "Parameters": parameters, "Values": values}
 
 
@@ -421,7 +423,7 @@ def table_html(data: dict) -> str:
     style = Styler(fitting_report, uuid_len=0, cell_ids=False)
     style.set_td_classes(css)
     style.set_table_attributes('class="fitting-table"')
-    dummy_formatter = lambda s: s
+    dummy_formatter = lambda s: s  # To avoid the use of the pandas default one
     style.format(dummy_formatter)
     fitting_report = style.hide(axis="index").to_html()
     fitting_report = '<div class="div-fitting">' + fitting_report + "</div>"
