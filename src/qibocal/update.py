@@ -83,9 +83,9 @@ def mean_exc_states(exc_state: list, platform: Platform, qubit: QubitId):
     platform.qubits[qubit].mean_exc_states = exc_state
 
 
-def fidelity(fidelity: float, platform: Platform, qubit: QubitId):
+def readout_fidelity(fidelity: float, platform: Platform, qubit: QubitId):
     """Update fidelity of single shot classification."""
-    platform.qubits[qubit].fidelity = float(fidelity)
+    platform.qubits[qubit].readout_fidelity = float(fidelity)
 
 
 def assignment_fidelity(fidelity: float, platform: Platform, qubit: QubitId):

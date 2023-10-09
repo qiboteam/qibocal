@@ -565,7 +565,7 @@ def _update(
     update.mean_gnd_states(results.mean_gnd_states[qubit], platform, qubit)
     update.mean_exc_states(results.mean_exc_states[qubit], platform, qubit)
     update.classifiers_hpars(results.classifiers_hpars[qubit], platform, qubit)
-    update.fidelity(results.fidelity[qubit], platform, qubit)
+    update.readout_fidelity(results.fidelity[qubit], platform, qubit)
     update.assignment_fidelity(results.assignment_fidelity[qubit], platform, qubit)
 
 
