@@ -188,7 +188,7 @@ def _plot(data: QutritClassificationData, qubit, fit: SingleShotClassificationRe
 def _update(
     results: SingleShotClassificationResults, platform: Platform, qubit: QubitId
 ):
-    update.classifiers_hpars(
+    update.qutrit_classifiers_hpars(
         results.classifiers_hpars[qubit], platform, qubit
     )  # TODO: implement a qutrit classifiers hpars (?)
 

@@ -23,6 +23,7 @@ CLS_MODULES = [
     "random_forest",
     "rbf_svm",
     "qblox_fit",
+    "decision_tree",
 ]
 
 PRETTY_NAME = [
@@ -35,6 +36,7 @@ PRETTY_NAME = [
     "Random Forest",
     "RBF SVM",
     "Qblox Fit",
+    "Decision Tree",
 ]
 
 

@@ -88,6 +88,11 @@ def classifiers_hpars(hpars: list, platform: Platform, qubit: QubitId):
     platform.qubits[qubit].classifiers_hpars = hpars
 
 
+def qutrit_classifiers_hpars(hpars: list, platform: Platform, qubit: QubitId):
+    """Update qutrit classifier hyperparameters in platform for specific qubit."""
+    platform.qubits[qubit].qutrit_classifiers_hpars = hpars
+
+
 def virtual_phases(phases: dict[QubitId, float], platform: Platform, pair: QubitPairId):
     """Update virtual phases for given qubits in pair in results."""
     virtual_z_pulses = {
