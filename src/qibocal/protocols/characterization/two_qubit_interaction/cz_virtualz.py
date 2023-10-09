@@ -376,7 +376,7 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
                     ["CZ angle", "Virtual Z phase", "Flux pulse amplitude"],
                     [
                         np.round(fit.cz_angle[target, control], 4),
-                        np.round(fit.virtual_phase[qubit][target], 4),
+                        np.round(fit.virtual_phase[tuple(sorted(qubit))][target], 4),
                         np.round(data.amplitudes[qubits]),
                     ],
                 )
