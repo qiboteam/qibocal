@@ -153,7 +153,10 @@ def _plot(data: TwpaFrequencyData, fit: TwpaFrequencyResults, qubit):
             table_dict(
                 qubit,
                 ["Best assignment fidelity", "TWPA Frequency"],
-                [np.max(fidelities), int(frequencies[np.argmax(fidelities)])],
+                [
+                    np.round(np.max(fidelities), 3),
+                    int(frequencies[np.argmax(fidelities)]),
+                ],
             )
         )
         fig = go.Figure(

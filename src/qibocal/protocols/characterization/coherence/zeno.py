@@ -167,7 +167,10 @@ def _plot(data: ZenoData, fit: ZenoResults, qubit):
             table_dict(
                 qubit,
                 ["Readout Pulse", "T1"],
-                [fit.zeno_t1[qubit], fit.zeno_t1[qubit] * data.readout_duration[qubit]],
+                [
+                    np.round(fit.zeno_t1[qubit]),
+                    np.round(fit.zeno_t1[qubit] * data.readout_duration[qubit]),
+                ],
             )
         )
         # FIXME: Pulse duration (+ time of flight ?)

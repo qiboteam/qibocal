@@ -248,7 +248,7 @@ def _plot(data: DragPulseTuningData, qubit, fit: DragPulseTuningResults):
             ),
         )
         fitting_report = table_html(
-            table_dict(qubit, "Optimal Beta Param", fit.betas[qubit])
+            table_dict(qubit, "Optimal Beta Param", np.round(fit.betas[qubit], 4))
         )
 
     fig.update_layout(

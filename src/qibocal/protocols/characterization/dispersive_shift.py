@@ -334,8 +334,8 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
                 qubit,
                 ["State zero freq", "State one freq", "ChiBest", "Frequency"],
                 [
-                    np.round(fit_data_1["frequency_state_one"][qubit] * GHZ_TO_HZ),
                     np.round(fit_data_0["frequency_state_zero"][qubit] * GHZ_TO_HZ),
+                    np.round(fit_data_1["frequency_state_one"][qubit] * GHZ_TO_HZ),
                     np.round(
                         (
                             fit_data_0["frequency_state_zero"][qubit] * GHZ_TO_HZ

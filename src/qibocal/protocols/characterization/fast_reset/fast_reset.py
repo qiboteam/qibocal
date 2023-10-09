@@ -202,7 +202,10 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
             table_dict(
                 qubit,
                 ["Fidelity [Fast Reset]", "Fidelity [Relaxation Time]"],
-                [fit.fidelity_fr[qubit], fit.fidelity_nfr[qubit]],
+                [
+                    np.round(fit.fidelity_fr[qubit], 6),
+                    np.round(fit.fidelity_nfr[qubit], 6),
+                ],
             )
         )
 

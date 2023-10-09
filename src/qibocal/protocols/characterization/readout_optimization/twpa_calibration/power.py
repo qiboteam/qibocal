@@ -112,7 +112,10 @@ def _plot(data: TwpaPowerData, fit: TwpaPowerResults, qubit):
             table_dict(
                 qubit,
                 ["Best assignment fidelity", "TWPA Power"],
-                [np.max(fidelities), int(powers[np.argmax(fidelities)])],
+                [
+                    np.round(np.max(fidelities), 3),
+                    np.round(powers[np.argmax(fidelities)], 3),
+                ],
             )
         )
         fig = go.Figure([go.Scatter(x=powers, y=fidelities, name="Fidelity")])

@@ -212,7 +212,7 @@ def _plot(data: ResonatorFrequencyData, fit: ResonatorFrequencyResults, qubit):
             table_dict(
                 qubit,
                 "Best Resonator Frequency [GHz]",
-                fit.best_freq[qubit] * HZ_TO_GHZ,
+                np.round(fit.best_freq[qubit] * HZ_TO_GHZ, 4),
             )
         )
 
