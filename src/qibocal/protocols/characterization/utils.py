@@ -428,8 +428,4 @@ def table_html(data: dict) -> str:
     Return:
         str
     """
-    fitting_report = pd.DataFrame(data).to_html(
-        classes="fitting-table", index=False, border=0
-    )
-    fitting_report = '<div class="div-fitting">' + fitting_report + "</div>"
-    return fitting_report
+    return pd.DataFrame(data).to_html(classes="fitting-table", index=False, border=0)

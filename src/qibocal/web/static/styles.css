@@ -106,17 +106,6 @@
   font-size: 0.7em;
 }
 
-.div-fitting
-{
-  margin: 0 0 0 -100px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-top: 40px;
-  font-family: Verdana;
-  font-size: 0.8em;
-}
-
 .interval-refresh
 {
   width: 12em;
@@ -144,8 +133,9 @@
   width: 30%;
   border-collapse: collapse;
   text-align: center;
-  margin-left: 15px;
+  margin: 40px auto 0 auto;
   font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue","Noto Sans","Liberation Sans",Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";
+  font-size: 0.8em;
   border-radius: 15px;
 }
 
