@@ -301,17 +301,20 @@ def eval_magnitude(value):
 
 
 def round_report(
-    values: list,
+    measure: list,
 ) -> tuple[list, list]:
     """
     Rounds the measured values and their errors according to their significant digits.
 
     Args:
         value (float): Variable-Errors couples.
+
+    Returns:
+        A tuple with the lists of values and errors in the correct string format.
     """
     rounded_values = []
     rounded_errors = []
-    for value, error in values:
+    for value, error in measure:
         if value:
             magnitude = eval_magnitude(value)
         else:
@@ -319,10 +322,10 @@ def round_report(
 
         ndigits = max(significant_digit(error * 10 ** (-1 * magnitude)), 0)
         rounded_values.append(
-            round(value * 10 ** (-1 * magnitude), ndigits) * 10 ** (magnitude)
+            f"{round(value * 10 ** (-1 * magnitude), ndigits)} * 10 ^{magnitude}"
         )
         rounded_errors.append(
-            round(error * 10 ** (-1 * magnitude), ndigits) * 10 ** (magnitude)
+            f"{np.format_float_positional(round(error*10**(-1*magnitude), ndigits), trim = '-')}* 10 ^ {magnitude}"
         )
 
     return rounded_values, rounded_errors
@@ -408,7 +411,7 @@ def table_dict(
                 "Values": rounded_values,
                 "Errors": rounded_errors,
             }
-    else:
+    else:  # If `values` is scalar also `qubit` should be a scalar
         qubit = [
             qubit
         ]  # In this way when the Dataframe is generated, an index is not required.
