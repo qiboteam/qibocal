@@ -8,6 +8,7 @@ from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Parameters, Qubits, Routine
 from qibocal.protocols.characterization import classification
+from qibocal.protocols.characterization.utils import table_dict, table_html
 
 from . import frequency
 
@@ -99,7 +100,7 @@ def _plot(data: TwpaPowerData, fit: TwpaPowerResults, qubit):
     for different values of the twpa power for a single qubit."""
 
     figures = []
-    fitting_report = None
+    fitting_report = ""
 
     if fit is not None:
         fidelities = []
@@ -107,14 +108,16 @@ def _plot(data: TwpaPowerData, fit: TwpaPowerResults, qubit):
         for qubit_id, power in fit.fidelities:
             if qubit_id == qubit:
                 fidelities.append(fit.fidelities[qubit, power])
-
-        fitting_report = (
-            f"{qubit} | Best assignment fidelity: {np.max(fidelities):.3f}<br>"
+        fitting_report = table_html(
+            table_dict(
+                qubit,
+                ["Best assignment fidelity", "TWPA Power"],
+                [
+                    np.round(np.max(fidelities), 3),
+                    np.round(powers[np.argmax(fidelities)], 3),
+                ],
+            )
         )
-        fitting_report += (
-            f"{qubit} | TWPA power: {powers[np.argmax(fidelities)]:.3f} dB <br>"
-        )
-
         fig = go.Figure([go.Scatter(x=powers, y=fidelities, name="Fidelity")])
         figures.append(fig)
 

@@ -7,6 +7,10 @@ coverage:
   precision: 2
   round: down
   range: "70...100"
+  status:
+    project:
+      default:
+        threshold: 1%
 
 parsers:
   gcov:
@@ -23,7 +27,3 @@ comment:
 
 github_checks:
   annotations: false
-
-ignore:
-  - "src/qibocal/cli"
-  - "src/qibocal/calibrations"
