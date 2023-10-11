@@ -18,6 +18,14 @@ FLUX_PARAMETERS = {
     "f_qs": "Qubit frequency [GHz]",
     "f_r_offset": "Resonator frequency offset [GHz]",
 }
+FREQUENCY_PARAMETERS = [
+    "Ec",
+    "Ej",
+    "f_q_offset",
+    "bare_resonator_frequency",
+    "f_qs",
+    "f_r_offset",
+]
 
 
 def is_crosstalk(data):
@@ -152,14 +160,7 @@ def flux_dependence_plot(data, fit, qubit):
             values = []
 
             for key, value in fit.fitted_parameters[qubit].items():
-                if key in [
-                    "Ec",
-                    "Ej",
-                    "f_q_offset",
-                    "bare_resonator_frequency",
-                    "f_qs",
-                    "f_r_offset",
-                ]:  # Select frequency parameters
+                if key in FREQUENCY_PARAMETERS:  # Select frequency parameters
                     value *= HZ_TO_GHZ
                 values.append(np.round(value, 5))
                 parameters.append(FLUX_PARAMETERS[key])
