@@ -126,7 +126,7 @@ def flux_dependence_plot(data, fit, qubit):
                     ]
                     freq_fit = freq_r_transmon(biases1, *popt) * HZ_TO_GHZ
             elif data.__class__.__name__ == "QubitFluxData":
-                fitting_report_label = "Qubit Frequency [Ghz]"
+                fitting_report_label = "Qubit Frequency [GHz]"
                 if all(param in params for param in ["Ec", "Ej"]):
                     popt = [
                         fit.sweetspot[qubit],
