@@ -537,7 +537,7 @@ def _plot(
                             "Average state 1",
                             "Rotational Angle",
                             "Threshold",
-                            "Fidelity",
+                            "Readout Fidelity",
                             "Assignment Fidelity",
                         ],
                         [
