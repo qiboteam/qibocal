@@ -241,7 +241,6 @@ def _plot(
                 ),
             )
         )
-        print(np.round(fit.readout_frequency[qubit] * GHZ_TO_HZ, 0))
         fitting_report = table_html(
             table_dict(
                 qubit,
@@ -257,7 +256,6 @@ def _plot(
                 ],
             )
         )
-        print(fitting_report)
     fig.update_layout(
         showlegend=False,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
