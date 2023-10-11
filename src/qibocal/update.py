@@ -75,12 +75,22 @@ def threshold(threshold: float, platform: Platform, qubit: QubitId):
 
 def mean_gnd_states(gnd_state: list, platform: Platform, qubit: QubitId):
     """Update mean ground state value in platform for specific qubit."""
-    platform.qubits[qubit].mean_gnd_states = [float(state) for state in gnd_state]
+    platform.qubits[qubit].mean_gnd_states = gnd_state
 
 
 def mean_exc_states(exc_state: list, platform: Platform, qubit: QubitId):
     """Update mean excited state value in platform for specific qubit."""
-    platform.qubits[qubit].mean_exc_states = [float(state) for state in exc_state]
+    platform.qubits[qubit].mean_exc_states = exc_state
+
+
+def readout_fidelity(fidelity: float, platform: Platform, qubit: QubitId):
+    """Update fidelity of single shot classification."""
+    platform.qubits[qubit].readout_fidelity = float(fidelity)
+
+
+def assignment_fidelity(fidelity: float, platform: Platform, qubit: QubitId):
+    """Update fidelity of single shot classification."""
+    platform.qubits[qubit].assignment_fidelity = float(fidelity)
 
 
 def classifiers_hpars(hpars: list, platform: Platform, qubit: QubitId):
