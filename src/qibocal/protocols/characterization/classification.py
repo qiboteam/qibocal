@@ -533,8 +533,8 @@ def _plot(
                     table_dict(
                         qubit,
                         [
-                            "Average state 0",
-                            "Average state 1",
+                            "Average State 0",
+                            "Average State 1",
                             "Rotational Angle",
                             "Threshold",
                             "Readout Fidelity",
