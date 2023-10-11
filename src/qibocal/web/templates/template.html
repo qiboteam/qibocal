@@ -136,7 +136,6 @@
         <h4
           class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
           {{ report.routine_name(*task_uid) }}</h4>
-        {% if report.qubits != [] %}
         {% for qubit in report.routine_qubits(task_uid) %}
         <div id="{{ routine }}-{{ iteration }}-{{ qubit }}" style="scroll-margin-top: 4em;">
             <h5
@@ -176,10 +175,6 @@
 
             </div>
             {% endfor %}
-            {% else %}
-            {% set figures, fitting_report = report.plot(routine, iteration) %}
-            {{ figures }}
-            {% endif %}
       </div>
       {% endfor %}
 

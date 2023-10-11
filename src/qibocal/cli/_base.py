@@ -120,11 +120,17 @@ def fit(folder: pathlib.Path, update):
 @click.argument(
     "path", metavar="FOLDER", type=click.Path(exists=True, path_type=pathlib.Path)
 )
-def upload(path):
+@click.option(
+    "--tag",
+    default=None,
+    type=str,
+    help="Optional tag.",
+)
+def upload(path, tag):
     """Uploads output folder to server
 
     Arguments:
 
     - FOLDER: input folder.
     """
-    upload_report(path)
+    upload_report(path, tag)

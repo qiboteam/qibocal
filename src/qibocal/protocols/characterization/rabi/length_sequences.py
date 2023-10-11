@@ -5,7 +5,7 @@ from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Qubits, Routine
 
-from .length import RabiLengthData, RabiLengthParameters, _fit, _plot
+from .length import RabiLengthData, RabiLengthParameters, _fit, _plot, _update
 
 
 def _acquisition(
@@ -78,5 +78,5 @@ def _acquisition(
     return data
 
 
-rabi_length_sequences = Routine(_acquisition, _fit, _plot)
+rabi_length_sequences = Routine(_acquisition, _fit, _plot, _update)
 """RabiLength Routine object."""

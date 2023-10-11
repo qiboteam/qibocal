@@ -9,6 +9,7 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
 from ..utils import V_TO_UV
@@ -53,7 +54,7 @@ class ZenoData(Data):
 class ZenoResults(Results):
     """Zeno outputs."""
 
-    zeno_t1: dict[QubitId, int] = field(metadata=dict(update="t1"))
+    zeno_t1: dict[QubitId, int]
     """T1 for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
@@ -183,4 +184,8 @@ def _plot(data: ZenoData, fit: ZenoResults, qubit):
     return figures, fitting_report
 
 
-zeno = Routine(_acquisition, _fit, _plot)
+def _update(results: ZenoResults, platform: Platform, qubit: QubitId):
+    update.t1(results.zeno_t1[qubit], platform, qubit)
+
+
+zeno = Routine(_acquisition, _fit, _plot, _update)

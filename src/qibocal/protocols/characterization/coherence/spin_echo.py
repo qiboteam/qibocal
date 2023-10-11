@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
@@ -8,6 +8,7 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
+from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
 from ..utils import V_TO_UV
@@ -35,7 +36,7 @@ class SpinEchoParameters(Parameters):
 class SpinEchoResults(Results):
     """SpinEcho outputs."""
 
-    t2_spin_echo: dict[QubitId, float] = field(metadata=dict(update="t2_spin_echo"))
+    t2_spin_echo: dict[QubitId, float]
     """T2 echo for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
@@ -176,5 +177,9 @@ def _plot(data: SpinEchoData, qubit, fit: SpinEchoResults = None):
     return figures, fitting_report
 
 
-spin_echo = Routine(_acquisition, _fit, _plot)
+def _update(results: SpinEchoResults, platform: Platform, qubit: QubitId):
+    update.t2_spin_echo(results.t2_spin_echo[qubit], platform, qubit)
+
+
+spin_echo = Routine(_acquisition, _fit, _plot, _update)
 """SpinEcho Routine object."""
