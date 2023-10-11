@@ -296,7 +296,6 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
                 assignment_fidelity[qubit] = models[i].assignment_fidelity
         y_test_predict[qubit] = y_preds
         grid_preds_dict[qubit] = grid_preds
-
     return SingleShotClassificationResults(
         benchmark_table=benchmark_tables,
         y_tests=y_tests,
@@ -583,6 +582,8 @@ def _update(
     update.mean_gnd_states(results.mean_gnd_states[qubit], platform, qubit)
     update.mean_exc_states(results.mean_exc_states[qubit], platform, qubit)
     update.classifiers_hpars(results.classifiers_hpars[qubit], platform, qubit)
+    update.readout_fidelity(results.fidelity[qubit], platform, qubit)
+    update.assignment_fidelity(results.assignment_fidelity[qubit], platform, qubit)
 
 
 single_shot_classification = Routine(_acquisition, _fit, _plot, _update)
