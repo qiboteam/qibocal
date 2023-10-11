@@ -307,7 +307,7 @@ def round_report(
     Rounds the measured values and their errors according to their significant digits.
 
     Args:
-        value (float): Variable-Errors couples.
+        measure (list): Variable-Errors couples.
 
     Returns:
         A tuple with the lists of values and errors in the correct string format.
