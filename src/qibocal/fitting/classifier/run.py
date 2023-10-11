@@ -186,6 +186,9 @@ def benchmarking(model, x_train, y_train, x_test, y_test, **fit_kwargs):
     # Evaluate training time
     start = time.time()
     y_train = y_train.astype("int")
+    # x_train = x_train[["i", "q"]].astype("float")
+    # print(x_train.type())
+    # print(type(x_train), type(y_train), x_train)
     fit_info = model.fit(x_train, y_train, **fit_kwargs)
     stop = time.time()
     training_time = stop - start

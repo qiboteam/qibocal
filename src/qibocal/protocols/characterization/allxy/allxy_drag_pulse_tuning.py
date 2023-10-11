@@ -46,18 +46,6 @@ class AllXYDragData(Data):
     )
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, beta, prob, gate):
-        """Store output for single qubit."""
-        ar = np.empty((1,), dtype=allxy.AllXYType)
-        ar["prob"] = prob
-        ar["gate"] = gate
-        if (qubit, beta) in self.data:
-            self.data[qubit, beta] = np.rec.array(
-                np.concatenate((self.data[qubit, beta], ar))
-            )
-        else:
-            self.data[qubit, beta] = np.rec.array(ar)
-
     @property
     def beta_params(self):
         """Access qubits from data structure."""
@@ -109,7 +97,9 @@ def _acquisition(
                 z_proj = 2 * results[ro_pulses[qubit].serial].probability(0) - 1
                 # store the results
                 gate = "-".join(gates)
-                data.register_qubit(qubit, beta_param, z_proj, gate)
+                data.register_qubit(
+                    allxy.AllXYType, qubit, beta_param, prob=z_proj, gate=gate
+                )
     return data
 
 

@@ -105,7 +105,13 @@ def _acquisition(
 
     for qubit in qubits:
         result = results[ro_pulses[qubit].serial]
-        data.register_qubit(qubit, wait=waits, msr=result.magnitude, phase=result.phase)
+        data.register_qubit(
+            t1.CoherenceType,
+            qubit,
+            wait=waits,
+            msr=result.magnitude,
+            phase=result.phase,
+        )
     return data
 
 

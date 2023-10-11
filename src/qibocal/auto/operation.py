@@ -143,6 +143,19 @@ class Data:
 
         return obj
 
+    def register_qubit(self, dtype, *args, **kwargs):
+        """Store output for single qubit."""
+        # to be able to handle the non-sweeper case
+        ar = np.empty(np.shape(kwargs[list(kwargs.keys())[0]]), dtype=dtype)
+        for key, value in kwargs.items():
+            ar[key] = value
+        if len(args) == 1:
+            args = args[0]
+        if args in self.data:
+            self.data[args] = np.rec.array(np.concatenate((self.data[args], ar)))
+        else:
+            self.data[args] = np.rec.array(ar)
+
 
 @dataclass
 class Results:

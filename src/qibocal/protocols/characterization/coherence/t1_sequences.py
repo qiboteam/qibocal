@@ -5,7 +5,7 @@ from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Qubits, Routine
 
-from .t1 import T1Data, T1Parameters, _fit, _plot, _update
+from .t1 import CoherenceType, T1Data, T1Parameters, _fit, _plot, _update
 
 
 def _acquisition(params: T1Parameters, platform: Platform, qubits: Qubits) -> T1Data:
@@ -71,7 +71,11 @@ def _acquisition(params: T1Parameters, platform: Platform, qubits: Qubits) -> T1
             # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulses[qubit].serial]
             data.register_qubit(
-                qubit, wait=wait, msr=result.magnitude, phase=result.phase
+                CoherenceType,
+                qubit,
+                wait=np.array([wait]),
+                msr=np.array([result.magnitude]),
+                phase=np.array([result.phase]),
             )
     return data
 

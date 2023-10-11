@@ -4,6 +4,7 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Qubits, Routine
+from qibocal.protocols.characterization.coherence.t1 import CoherenceType
 
 from .t2 import T2Data, T2Parameters, _fit, _plot, _update
 
@@ -65,7 +66,11 @@ def _acquisition(
         for qubit in qubits:
             result = results[ro_pulses[qubit].serial]
             data.register_qubit(
-                qubit, wait=wait, msr=result.magnitude, phase=result.phase
+                CoherenceType,
+                qubit,
+                wait=np.array([wait]),
+                msr=np.array([result.magnitude]),
+                phase=np.array([result.phase]),
             )
     return data
 
