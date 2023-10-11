@@ -36,11 +36,8 @@ class ResonatorAmplitudeParameters(Parameters):
 
 ResonatorAmplitudeType = np.dtype(
     [
+        ("error", np.float64),
         ("amp", np.float64),
-        ("i", np.float64),
-        ("q", np.float64),
-        ("state", int),
-        ("errors", np.float64),
     ]
 )
 """Custom dtype for Optimization RO amplitude."""
@@ -50,22 +47,20 @@ ResonatorAmplitudeType = np.dtype(
 class ResonatorAmplitudeData(Data):
     """Data class for `resoantor_amplitude` protocol."""
 
-    data: dict[QubitId, npt.NDArray[ResonatorAmplitudeType]] = field(
-        default_factory=dict
-    )
+    data: dict[tuple, npt.NDArray[ResonatorAmplitudeType]] = field(default_factory=dict)
 
-    def append_data(self, qubit, state, amp, i, q, errors):
-        """Append elements to data for single qubit."""
-        ar = np.empty(i.shape, dtype=ResonatorAmplitudeType)
-        ar["amp"] = amp
-        ar["i"] = i
-        ar["q"] = q
-        ar["state"] = state
-        ar["errors"] = errors
-        if qubit in self.data.keys():
-            self.data[qubit] = np.append(self.data[qubit], np.rec.array(ar))
-        else:
-            self.data[qubit] = np.rec.array(ar)
+    # def append_data(self, qubit, state, amp, i, q, errors):
+    #     """Append elements to data for single qubit."""
+    #     ar = np.empty(i.shape, dtype=ResonatorAmplitudeType)
+    #     ar["amp"] = amp
+    #     ar["i"] = i
+    #     ar["q"] = q
+    #     ar["state"] = state
+    #     ar["errors"] = errors
+    #     if qubit in self.data.keys():
+    #         self.data[qubit] = np.append(self.data[qubit], np.rec.array(ar))
+    #     else:
+    #         self.data[qubit] = np.rec.array(ar)
 
 
 @dataclass
@@ -144,13 +139,11 @@ def _acquisition(
             model = QubitFit()
             model.fit(iq_values, np.array(states))
             error = model.probability_error
-            data.append_data(
-                qubit=qubit,
-                amp=new_amp,
-                state=states,
-                i=i_values,
-                q=q_values,
-                errors=error,
+            data.register_qubit(
+                ResonatorAmplitudeType,
+                qubit,
+                amp=np.array([new_amp]),
+                error=np.array([error]),
             )
             platform.qubits[qubit].native_gates.MZ.amplitude = old_amp
             new_amp += params.amplitude_step
@@ -163,8 +156,8 @@ def _fit(data: ResonatorAmplitudeData) -> ResonatorAmplitudeResults:
     lowest_err = {}
     for qubit in qubits:
         data_qubit = data[qubit]
-        index_best_err = np.argmin(data_qubit["errors"])
-        lowest_err[qubit] = data_qubit["errors"][index_best_err]
+        index_best_err = np.argmin(data_qubit["error"])
+        lowest_err[qubit] = data_qubit["error"][index_best_err]
         best_amps[qubit] = data_qubit["amp"][index_best_err]
 
     return ResonatorAmplitudeResults(lowest_err, best_amps)
@@ -183,7 +176,7 @@ def _plot(data: ResonatorAmplitudeData, fit: ResonatorAmplitudeResults, qubit):
         fig.add_trace(
             go.Scatter(
                 x=data[qubit]["amp"],
-                y=data[qubit]["errors"],
+                y=data[qubit]["error"],
                 opacity=opacity,
                 showlegend=True,
                 mode="lines+markers",

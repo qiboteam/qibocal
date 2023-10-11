@@ -58,15 +58,15 @@ class FlippingData(Data):
     data: dict[QubitId, npt.NDArray[FlippingType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, flips, msr):
-        """Store output for single qubit."""
-        ar = np.empty((1,), dtype=FlippingType)
-        ar["flips"] = flips
-        ar["msr"] = msr
-        if qubit in self.data:
-            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
-        else:
-            self.data[qubit] = np.rec.array(ar)
+    # def register_qubit(self, qubit, flips, msr):
+    #     """Store output for single qubit."""
+    #     ar = np.empty((1,), dtype=FlippingType)
+    #     ar["flips"] = flips
+    #     ar["msr"] = msr
+    #     if qubit in self.data:
+    #         self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
+    #     else:
+    #         self.data[qubit] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -129,7 +129,12 @@ def _acquisition(
         )
         for qubit in qubits:
             result = results[ro_pulses[qubit].serial]
-            data.register_qubit(qubit=qubit, flips=flips, msr=result.magnitude)
+            data.register_qubit(
+                FlippingType,
+                qubit,
+                flips=np.array([flips]),
+                msr=np.array([result.magnitude]),
+            )
 
     return data
 

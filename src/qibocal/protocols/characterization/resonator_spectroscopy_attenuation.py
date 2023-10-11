@@ -11,7 +11,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
-from .resonator_spectroscopy import ResonatorSpectroscopyData
+from .resonator_spectroscopy import ResonatorSpectroscopyData, ResSpecType
 from .utils import PowerLevel, lorentzian_fit, spectroscopy_plot
 
 
@@ -134,6 +134,7 @@ def _acquisition(
         result = results[ro_pulses[qubit].serial]
         # store the results
         data.register_qubit(
+            ResSpecType,
             qubit,
             msr=result.magnitude,
             phase=result.phase,

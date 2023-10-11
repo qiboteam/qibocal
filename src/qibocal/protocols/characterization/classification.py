@@ -76,13 +76,13 @@ class SingleShotClassificationData(Data):
     #     ar["state"] = state
     #     self.data[qubit] = np.rec.array(ar)
 
-    def add_data(self, qubit, state, i, q):
-        """Store output for single qubit."""
-        ar = np.empty(i.shape, dtype=ClassificationType)
-        ar["i"] = i
-        ar["q"] = q
-        # ar["state"] = state
-        self.data[qubit, state] = np.append(self.data[qubit, state], np.rec.array(ar))
+    # def add_data(self, qubit, state, i, q):
+    #     """Store output for single qubit."""
+    #     ar = np.empty(i.shape, dtype=ClassificationType)
+    #     ar["i"] = i
+    #     ar["q"] = q
+    #     # ar["state"] = state
+    #     self.data[qubit, state] = np.append(self.data[qubit, state], np.rec.array(ar))
 
 
 @dataclass

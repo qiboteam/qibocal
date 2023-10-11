@@ -55,11 +55,11 @@ class FastResetData(Data):
     data: dict[tuple, npt.NDArray[FastResetType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, probability, state, fast_reset):
-        """Store output for single qubit."""
-        ar = np.empty(probability.shape, dtype=FastResetType)
-        ar["probability"] = probability
-        self.data[qubit, state, fast_reset] = np.rec.array(ar)
+    # def register_qubit(self, qubit, probability, state, fast_reset):
+    #     """Store output for single qubit."""
+    #     ar = np.empty(probability.shape, dtype=FastResetType)
+    #     ar["probability"] = probability
+    #     self.data[qubit, state, fast_reset] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -103,10 +103,11 @@ def _acquisition(
                 result = results[ro_pulse.serial]
                 qubit = ro_pulse.qubit
                 data.register_qubit(
+                    FastResetType,
                     qubit,
+                    state,
+                    fast_reset,
                     probability=result.samples,
-                    state=state,
-                    fast_reset=fast_reset,
                 )
 
     return data

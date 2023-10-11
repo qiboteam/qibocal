@@ -5,7 +5,7 @@ from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Qubits, Routine
 
-from .ramsey import RamseyData, RamseyParameters, _fit, _plot, _update
+from .ramsey import RamseyData, RamseyParameters, RamseyType, _fit, _plot, _update
 
 
 def _acquisition(
@@ -83,10 +83,11 @@ def _acquisition(
             prob = results[qubit].probability()
             error = np.sqrt(prob * (1 - prob) / params.nshots)
             data.register_qubit(
+                RamseyType,
                 qubit,
-                wait=wait,
-                prob=prob,
-                errors=error,
+                wait=np.array([wait]),
+                prob=np.array([prob]),
+                errors=np.array([error]),
             )
     return data
 

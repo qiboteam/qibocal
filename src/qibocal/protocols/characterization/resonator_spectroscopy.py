@@ -80,13 +80,13 @@ class ResonatorSpectroscopyData(Data):
     power_level: Optional[PowerLevel] = None
     """Power regime of the resonator."""
 
-    def register_qubit(self, qubit, freq, msr, phase):
-        """Store output for single qubit."""
-        ar = np.empty(freq.shape, dtype=ResSpecType)
-        ar["freq"] = freq
-        ar["msr"] = msr
-        ar["phase"] = phase
-        self.data[qubit] = np.rec.array(ar)
+    # def register_qubit(self, qubit, freq, msr, phase):
+    #     """Store output for single qubit."""
+    #     ar = np.empty(freq.shape, dtype=ResSpecType)
+    #     ar["freq"] = freq
+    #     ar["msr"] = msr
+    #     ar["phase"] = phase
+    #     self.data[qubit] = np.rec.array(ar)
 
     @classmethod
     def load(cls, path):
@@ -151,6 +151,7 @@ def _acquisition(
         result = results[ro_pulses[qubit].serial]
         # store the results
         data.register_qubit(
+            ResSpecType,
             qubit,
             msr=result.magnitude,
             phase=result.phase,

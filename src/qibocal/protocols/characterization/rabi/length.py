@@ -63,18 +63,18 @@ class RabiLengthData(Data):
     data: dict[QubitId, npt.NDArray[RabiLenType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, length, msr, phase):
-        """Store output for single qubit."""
-        # to be able to handle the non-sweeper case
-        shape = (1,) if np.isscalar(length) else length.shape
-        ar = np.empty(shape, dtype=RabiLenType)
-        ar["length"] = length
-        ar["msr"] = msr
-        ar["phase"] = phase
-        if qubit in self.data:
-            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
-        else:
-            self.data[qubit] = np.rec.array(ar)
+    # def register_qubit(self, qubit, length, msr, phase):
+    #     """Store output for single qubit."""
+    #     # to be able to handle the non-sweeper case
+    #     shape = (1,) if np.isscalar(length) else length.shape
+    #     ar = np.empty(shape, dtype=RabiLenType)
+    #     ar["length"] = length
+    #     ar["msr"] = msr
+    #     ar["phase"] = phase
+    #     if qubit in self.data:
+    #         self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
+    #     else:
+    #         self.data[qubit] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -142,6 +142,7 @@ def _acquisition(
         # average msr, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulses[qubit].serial]
         data.register_qubit(
+            RabiLenType,
             qubit,
             length=qd_pulse_duration_range,
             msr=result.magnitude,
