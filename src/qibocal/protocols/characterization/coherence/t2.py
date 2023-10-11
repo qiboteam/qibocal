@@ -12,6 +12,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
+from ..utils import fill_table
 from . import t1, utils
 
 
@@ -169,7 +170,9 @@ def _plot(data: T2Data, qubit, fit: T2Results = None):
                 line=go.scatter.Line(dash="dot"),
             )
         )
-        fitting_report = f"{qubit} | T2: {fit.t2[qubit][0]:,.0f} ns.<br><br>"
+        fitting_report = fill_table(
+            qubit, "T2", fit.t2[qubit][0], fit.t2[qubit][1], "ns"
+        )
 
     fig.update_layout(
         showlegend=True,

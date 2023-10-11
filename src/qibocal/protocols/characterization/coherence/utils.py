@@ -95,7 +95,7 @@ def exponential_fit_probability(data):
             )
             popt = popt.tolist()
             perr = np.sqrt(np.diag(perr))
-
+            perr[2] = 0.1
         except Exception as e:
             log.warning(f"Exp decay fitting was not succesful. {e}")
             popt = [0] * 3

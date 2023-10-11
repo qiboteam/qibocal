@@ -13,6 +13,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
+from ..utils import fill_table
 from . import utils
 
 COLORBAND = "rgba(0,100,80,0.2)"
@@ -203,7 +204,13 @@ def _plot(data: T1Data, qubit, fit: T1Results = None):
                 line=go.scatter.Line(dash="dot"),
             )
         )
-        fitting_report = f"{qubit} | t1: {fit.t1[qubit][0]:,.0f} ns.<br><br>"
+        fitting_report = fill_table(
+            qubit,
+            "T1",
+            fit.t1[qubit][0],
+            fit.t1[qubit][1],
+            "ns",
+        )
 
     # last part
     fig.update_layout(
