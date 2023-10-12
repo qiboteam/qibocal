@@ -409,7 +409,7 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
     #     meta_data.pop("noise_model")
     #     meta_data.pop("noise_params")
 
-    table_str = None
+    table_str = ""
     # TODO: and this mess
     # table_str = "".join(
     #     [
