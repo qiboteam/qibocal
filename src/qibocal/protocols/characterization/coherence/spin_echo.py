@@ -12,7 +12,7 @@ from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
 from ..utils import V_TO_UV
-from .t1 import T1Data
+from .t1 import CoherenceType, T1Data
 from .utils import exp_decay, exponential_fit
 
 
@@ -108,7 +108,11 @@ def _acquisition(
         for qubit in qubits:
             result = results[ro_pulses[qubit].serial]
             data.register_qubit(
-                qubit, wait=wait, msr=result.magnitude, phase=result.phase
+                CoherenceType,
+                qubit,
+                wait=np.array([wait]),
+                msr=np.array([result.magnitude]),
+                phase=np.array([result.phase]),
             )
     return data
 

@@ -6,11 +6,8 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
-from sklearn.model_selection import train_test_split
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.fitting.classifier.qubit_fit import QubitFit
-from qibocal.fitting.classifier.run import benchmarking
 from qibocal.protocols.characterization import classification
 from qibocal.protocols.characterization.utils import HZ_TO_GHZ
 
@@ -29,6 +26,14 @@ class TwpaFrequencyParameters(Parameters):
     """Relaxation time (ns)."""
 
 
+TwpaFrequencyType = np.dtype(
+    [
+        ("freq", np.float64),
+        ("assignment_fidelity", np.float64),
+    ]
+)
+
+
 @dataclass
 class TwpaFrequencyData(Data):
     """TwpaFrequency acquisition outputs."""
@@ -40,20 +45,21 @@ class TwpaFrequencyData(Data):
     frequencies: dict[QubitId, float] = field(default_factory=dict)
     """Frequencies for each qubit."""
 
-    def register_freq(
-        self,
-        qubit: QubitId,
-        freq: float,
-        classification_data: npt.NDArray[classification.ClassificationType],
-    ):
-        self.data[qubit, freq] = classification_data[qubit]
+    # def register_freq(
+    #     self,
+    #     qubit: QubitId,
+    #     freq: float,
+    #     classification_data: npt.NDArray[classification.ClassificationType],
+    # ):
+    #     self.data[qubit, freq] = classification_data[qubit]
 
 
 @dataclass
 class TwpaFrequencyResults(Results):
     """TwpaFrequency outputs."""
 
-    fidelities: dict[QubitId, float] = field(default_factory=dict)
+    best_freqs: dict[QubitId, float] = field(default_factory=dict)
+    best_fidelities: dict[QubitId, float] = field(default_factory=dict)
 
 
 def _acquisition(
@@ -102,12 +108,16 @@ def _acquisition(
             platform,
             qubits,
         )
+        classification_result = classification._fit(classification_data)
 
         for qubit in qubits:
-            data.register_freq(
+            data.register_qubit(
+                TwpaFrequencyType,
                 qubit,
-                platform.qubits[qubit].twpa.local_oscillator.frequency,
-                classification_data,
+                freq=np.array([platform.qubits[qubit].twpa.local_oscillator.frequency]),
+                assignment_fidelity=np.array(
+                    [classification_result.assignment_fidelity[qubit]]
+                ),
             )
 
     return data
@@ -116,24 +126,17 @@ def _acquisition(
 def _fit(data: TwpaFrequencyData) -> TwpaFrequencyResults:
     """Extract fidelity for each configuration qubit / param.
     Where param can be either frequency or power."""
-    fidelities = {}
-    for qubit, param in data.data:
-        qubit_data = data.data[qubit, param]
-        x_train, x_test, y_train, y_test = train_test_split(
-            np.array(qubit_data[["i", "q"]].tolist())[:, :],
-            np.array(qubit_data[["state"]].tolist())[:, 0],
-            test_size=0.25,
-            random_state=0,
-            shuffle=True,
-        )
 
-        model = QubitFit()
-        results, y_pred, model, fit_info = benchmarking(
-            model, x_train, y_train, x_test, y_test
-        )
-        fidelities[qubit, param] = model.assignment_fidelity
+    qubits = data.qubits
+    best_freq = {}
+    best_fidelity = {}
+    for qubit in qubits:
+        data_qubit = data[qubit]
+        index_best_err = np.argmax(data_qubit["assignment_fidelity"])
+        best_fidelity[qubit] = data_qubit["assignment_fidelity"][index_best_err]
+        best_freq[qubit] = data_qubit["freq"][index_best_err]
 
-    return TwpaFrequencyResults(fidelities=fidelities)
+    return TwpaFrequencyResults(best_freq, best_fidelity)
 
 
 def _plot(data: TwpaFrequencyData, fit: TwpaFrequencyResults, qubit):
@@ -143,16 +146,13 @@ def _plot(data: TwpaFrequencyData, fit: TwpaFrequencyResults, qubit):
     figures = []
     fitting_report = None
     if fit is not None:
-        fidelities = []
-        frequencies = np.array(data.frequencies[qubit])
-        for qubit_id, freq in fit.fidelities:
-            if qubit == qubit_id:
-                fidelities.append(fit.fidelities[qubit, freq])
-
+        qubit_data = data.data[qubit]
+        fidelities = qubit_data["assignment_fidelity"]
+        frequencies = qubit_data["freq"]
         fitting_report = (
-            f"{qubit} | Best assignment fidelity: {np.max(fidelities):.3f}<br>"
+            f"{qubit} | Best assignment fidelity: {fit.best_fidelities[qubit]:.3f}<br>"
         )
-        fitting_report += f"{qubit} | TWPA Frequency: {int(frequencies[np.argmax(fidelities)])} Hz <br>"
+        fitting_report += f"{qubit} | TWPA Frequency: {fit.best_freqs[qubit]} Hz <br>"
 
         fig = go.Figure(
             [go.Scatter(x=frequencies * HZ_TO_GHZ, y=fidelities, name="Fidelity")]

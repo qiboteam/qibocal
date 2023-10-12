@@ -205,9 +205,9 @@ def _acquisition(
                 data.register_qubit(
                     RamseyType,
                     qubit,
-                    wait=wait,
-                    prob=prob,
-                    errors=error,
+                    wait=np.array([wait]),
+                    prob=np.array([prob]),
+                    errors=np.array([error]),
                 )
     return data
 

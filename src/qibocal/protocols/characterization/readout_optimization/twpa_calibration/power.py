@@ -6,7 +6,7 @@ import plotly.graph_objects as go
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
-from qibocal.auto.operation import Parameters, Qubits, Routine
+from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.protocols.characterization import classification
 
 from . import frequency
@@ -26,6 +26,14 @@ class TwpaPowerParameters(Parameters):
     """Relaxation time (ns)."""
 
 
+TwpaPowerType = np.dtype(
+    [
+        ("power", np.float64),
+        ("assignment_fidelity", np.float64),
+    ]
+)
+
+
 @dataclass
 class TwpaPowerData(frequency.TwpaFrequencyData):
     """Data class for twpa power protocol."""
@@ -35,8 +43,11 @@ class TwpaPowerData(frequency.TwpaFrequencyData):
 
 
 @dataclass
-class TwpaPowerResults(frequency.TwpaFrequencyResults):
+class TwpaPowerResults(Results):
     """Result class for twpa power protocol."""
+
+    best_powers: dict[QubitId, float] = field(default_factory=dict)
+    best_fidelities: dict[QubitId, float] = field(default_factory=dict)
 
 
 def _acquisition(
@@ -83,15 +94,35 @@ def _acquisition(
             platform,
             qubits,
         )
+        classification_result = classification._fit(classification_data)
 
         for qubit in qubits:
-            data.register_freq(
+            data.register_qubit(
+                TwpaPowerType,
                 qubit,
-                platform.qubits[qubit].twpa.local_oscillator.power,
-                classification_data,
+                power=np.array([platform.qubits[qubit].twpa.local_oscillator.power]),
+                assignment_fidelity=np.array(
+                    [classification_result.assignment_fidelity[qubit]]
+                ),
             )
 
     return data
+
+
+def _fit(data: TwpaPowerData) -> TwpaPowerResults:
+    """Extract fidelity for each configuration qubit / param.
+    Where param can be either frequency or power."""
+
+    qubits = data.qubits
+    best_power = {}
+    best_fidelity = {}
+    for qubit in qubits:
+        data_qubit = data[qubit]
+        index_best_err = np.argmax(data_qubit["assignment_fidelity"])
+        best_fidelity[qubit] = data_qubit["assignment_fidelity"][index_best_err]
+        best_power[qubit] = data_qubit["power"][index_best_err]
+
+    return TwpaPowerResults(best_power, best_fidelity)
 
 
 def _plot(data: TwpaPowerData, fit: TwpaPowerResults, qubit):
@@ -102,18 +133,13 @@ def _plot(data: TwpaPowerData, fit: TwpaPowerResults, qubit):
     fitting_report = None
 
     if fit is not None:
-        fidelities = []
-        powers = np.array(data.powers[qubit])
-        for qubit_id, power in fit.fidelities:
-            if qubit_id == qubit:
-                fidelities.append(fit.fidelities[qubit, power])
-
+        qubit_data = data.data[qubit]
+        fidelities = qubit_data["assignment_fidelity"]
+        powers = qubit_data["power"]
         fitting_report = (
-            f"{qubit} | Best assignment fidelity: {np.max(fidelities):.3f}<br>"
+            f"{qubit} | Best assignment fidelity: {fit.best_fidelities[qubit]:.3f}<br>"
         )
-        fitting_report += (
-            f"{qubit} | TWPA power: {powers[np.argmax(fidelities)]:.3f} dB <br>"
-        )
+        fitting_report += f"{qubit} | TWPA power: {fit.best_powers[qubit]:.3f} dB <br>"
 
         fig = go.Figure([go.Scatter(x=powers, y=fidelities, name="Fidelity")])
         figures.append(fig)
@@ -128,5 +154,5 @@ def _plot(data: TwpaPowerData, fit: TwpaPowerResults, qubit):
     return figures, fitting_report
 
 
-twpa_power = Routine(_acquisition, frequency._fit, _plot)
+twpa_power = Routine(_acquisition, _fit, _plot)
 """Twpa power Routine  object."""
