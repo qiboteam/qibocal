@@ -14,7 +14,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.fitting.classifier.qubit_fit import QubitFit
-from qibocal.protocols.characterization.utils import HZ_TO_GHZ
+from qibocal.protocols.characterization.utils import HZ_TO_GHZ, table_dict, table_html
 
 
 @dataclass
@@ -186,7 +186,7 @@ def _plot(data: ResonatorFrequencyData, fit: ResonatorFrequencyResults, qubit):
     figures = []
     freqs = data[qubit]["freq"]
     opacity = 1
-    fitting_report = None
+    fitting_report = ""
     fig = make_subplots(
         rows=1,
         cols=1,
@@ -203,8 +203,12 @@ def _plot(data: ResonatorFrequencyData, fit: ResonatorFrequencyResults, qubit):
             col=1,
         )
 
-        fitting_report = "" + (
-            f"{qubit} | Best Resonator Frequency (GHz) : {fit.best_freq[qubit]:,.4f} Hz.<br>"
+        fitting_report = table_html(
+            table_dict(
+                qubit,
+                "Best Resonator Frequency [GHz]",
+                np.round(fit.best_freq[qubit] * HZ_TO_GHZ, 4),
+            )
         )
 
     fig.update_layout(

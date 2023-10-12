@@ -13,7 +13,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
-from ..utils import V_TO_UV
+from ..utils import V_TO_UV, table_dict, table_html
 from . import utils
 
 
@@ -152,7 +152,7 @@ def _plot(data: T1Data, qubit, fit: T1Results = None):
     figures = []
     fig = go.Figure()
 
-    fitting_report = None
+    fitting_report = ""
     qubit_data = data[qubit]
     waits = qubit_data.wait
 
@@ -183,8 +183,7 @@ def _plot(data: T1Data, qubit, fit: T1Results = None):
                 line=go.scatter.Line(dash="dot"),
             )
         )
-        fitting_report = f"{qubit} | t1: {fit.t1[qubit]:,.0f} ns.<br><br>"
-
+        fitting_report = table_html(table_dict(qubit, "t1", np.round(fit.t1[qubit])))
     # last part
     fig.update_layout(
         showlegend=True,

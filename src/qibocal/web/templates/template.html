@@ -144,34 +144,8 @@
 
 
             {% set figures, fitting_report = report.single_qubit_plot(task_uid, qubit) %}
-            {% if fitting_report is not none %}
-                                    {% set fitting_params= fitting_report.split('<br>') %}
-                                      <div class="div-fitting">
-                                        <table class="fitting-table">
-                                          <thead>
-                                            <tr>
-                                              <th class="th_styles">qubit </th>
-                                              <th class="th_styles">Fitting Parameter	</th>
-                                              <th class="th_styles">Value</th>
-                                            </tr>
-                                          </thead>
-                                          <tbody>
-                                            {% for row in fitting_params %}
-                                              {% if row != '' %}
-                                                {% set run = row.split('|') %}
-                                                {% set fparam_value = run[1].split(':') %}
-                                                <tr>
-                                                  <td class="td_styles">{{ run[0] }}</td>
-                                                  <td class="td_styles">{{ fparam_value[0] }}</td>
-                                                  <td class="td_styles">{{ fparam_value[1] }}</td>
-                                                </tr>
-                                              {% endif %}
-                                            {% endfor %}
-                                          </tbody>
-                                        </table>
-                                      </div>
-                                  {% endif %}
-                                  {{ figures }}
+            {{ fitting_report }}
+            {{ figures }}
 
             </div>
             {% endfor %}

@@ -15,7 +15,7 @@ from qibocal import update
 from qibocal.auto.operation import Data, Qubits, Results, Routine
 from qibocal.config import log
 
-from ..utils import V_TO_UV
+from ..utils import V_TO_UV, table_dict, table_html
 from . import allxy_drag_pulse_tuning
 
 
@@ -200,7 +200,7 @@ def _plot(data: DragPulseTuningData, qubit, fit: DragPulseTuningResults):
     """Plotting function for DragPulseTuning."""
 
     figures = []
-    fitting_report = None
+    fitting_report = ""
 
     fig = make_subplots(
         rows=1,
@@ -242,7 +242,9 @@ def _plot(data: DragPulseTuningData, qubit, fit: DragPulseTuningResults):
                 line=go.scatter.Line(dash="dot"),
             ),
         )
-        fitting_report = f"{qubit} | Optimal Beta Param: {fit.betas[qubit]:.4f}<br><br>"
+        fitting_report = table_html(
+            table_dict(qubit, "Optimal Beta Param", np.round(fit.betas[qubit], 4))
+        )
 
     fig.update_layout(
         showlegend=True,

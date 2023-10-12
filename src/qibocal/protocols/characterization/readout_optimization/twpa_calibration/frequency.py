@@ -9,7 +9,7 @@ from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.protocols.characterization import classification
-from qibocal.protocols.characterization.utils import HZ_TO_GHZ
+from qibocal.protocols.characterization.utils import HZ_TO_GHZ, table_dict, table_html
 
 
 @dataclass
@@ -144,16 +144,21 @@ def _plot(data: TwpaFrequencyData, fit: TwpaFrequencyResults, qubit):
     for different values of the twpa frequency for a single qubit"""
 
     figures = []
-    fitting_report = None
+    fitting_report = ""
     if fit is not None:
         qubit_data = data.data[qubit]
         fidelities = qubit_data["assignment_fidelity"]
         frequencies = qubit_data["freq"]
-        fitting_report = (
-            f"{qubit} | Best assignment fidelity: {fit.best_fidelities[qubit]:.3f}<br>"
+        fitting_report = table_html(
+            table_dict(
+                qubit,
+                ["Best assignment fidelity", "TWPA Frequency"],
+                [
+                    np.round(fit.best_fidelities[qubit], 3),
+                    fit.best_freqs[qubit],
+                ],
+            )
         )
-        fitting_report += f"{qubit} | TWPA Frequency: {fit.best_freqs[qubit]} Hz <br>"
-
         fig = go.Figure(
             [go.Scatter(x=frequencies * HZ_TO_GHZ, y=fidelities, name="Fidelity")]
         )

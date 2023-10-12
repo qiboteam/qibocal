@@ -11,7 +11,7 @@ from qibolab.qubits import QubitId
 from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
-from ..utils import V_TO_UV
+from ..utils import V_TO_UV, table_dict, table_html
 from .t1 import CoherenceType, T1Data
 from .utils import exp_decay, exponential_fit
 
@@ -131,7 +131,7 @@ def _plot(data: SpinEchoData, qubit, fit: SpinEchoResults = None):
     fig = go.Figure()
 
     # iterate over multiple data folders
-    fitting_report = None
+    fitting_report = ""
 
     qubit_data = data[qubit]
     waits = qubit_data.wait
@@ -165,8 +165,12 @@ def _plot(data: SpinEchoData, qubit, fit: SpinEchoResults = None):
             ),
         )
 
-        fitting_report = (
-            f"{qubit} | T2 Spin Echo: {fit.t2_spin_echo[qubit]:,.0f} ns.<br><br>"
+        fitting_report = table_html(
+            table_dict(
+                qubit,
+                "T2 Spin Echo",
+                np.round(fit.t2_spin_echo[qubit]),
+            )
         )
 
     fig.update_layout(

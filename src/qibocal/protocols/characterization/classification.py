@@ -25,7 +25,12 @@ from qibocal.auto.operation import (
 )
 from qibocal.auto.serialize import serialize
 from qibocal.fitting.classifier import run
-from qibocal.protocols.characterization.utils import get_color_state0, get_color_state1
+from qibocal.protocols.characterization.utils import (
+    get_color_state0,
+    get_color_state1,
+    table_dict,
+    table_html,
+)
 
 MESH_SIZE = 50
 MARGIN = 0
@@ -314,7 +319,7 @@ def _plot(
     data: SingleShotClassificationData, qubit, fit: SingleShotClassificationResults
 ):
     figures = []
-    fitting_report = None
+    fitting_report = ""
     models_name = data.classifiers_list
     state0_data = data.data[qubit, 0]
     state1_data = data.data[qubit, 1]
@@ -522,15 +527,27 @@ def _plot(
                 )
 
             if models_name[i] == "qubit_fit":
-                fitting_report = ""
-                fitting_report += f"{qubit} | average state 0: {np.round(fit.mean_gnd_states[qubit], 3)}<br>"
-                fitting_report += f"{qubit} | average state 1: {np.round(fit.mean_exc_states[qubit], 3)}<br>"
-                fitting_report += (
-                    f"{qubit} | rotation angle: {fit.rotation_angle[qubit]:.3f}<br>"
+                fitting_report = table_html(
+                    table_dict(
+                        qubit,
+                        [
+                            "Average State 0",
+                            "Average State 1",
+                            "Rotational Angle",
+                            "Threshold",
+                            "Readout Fidelity",
+                            "Assignment Fidelity",
+                        ],
+                        [
+                            np.round(fit.mean_gnd_states[qubit], 3),
+                            np.round(fit.mean_exc_states[qubit], 3),
+                            np.round(fit.rotation_angle[qubit], 3),
+                            np.round(fit.threshold[qubit], 6),
+                            np.round(fit.fidelity[qubit], 3),
+                            np.round(fit.assignment_fidelity[qubit], 3),
+                        ],
+                    )
                 )
-                fitting_report += f"{qubit} | threshold: {fit.threshold[qubit]:.6f}<br>"
-                fitting_report += f"{qubit} | fidelity: {fit.fidelity[qubit]:.3f}<br>"
-                fitting_report += f"{qubit} | assignment fidelity: {fit.assignment_fidelity[qubit]:.3f}<br>"
 
     fig.update_layout(
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
