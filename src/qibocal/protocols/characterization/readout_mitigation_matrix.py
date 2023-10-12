@@ -171,7 +171,7 @@ def _plot(
     data: ReadoutMitigationMatrixData, fit: ReadoutMitigationMatrixResults, qubit
 ):
     """Plotting function for readout mitigation matrix."""
-    fitting_report = "No fitting data"
+    fitting_report = ""
     fig = go.Figure()
 
     if fit is not None:

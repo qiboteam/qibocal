@@ -342,6 +342,14 @@ actions:
       delay_between_pulses_step: 1
       nshots: 10
 
+  - id: spin_echo_msr
+    priority: 0
+    operation: spin_echo_msr
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 5
+      delay_between_pulses_step: 1
+      nshots: 10
 
   - id: flipping
     priority: 0

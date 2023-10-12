@@ -14,7 +14,15 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
-from .utils import GHZ_TO_HZ, HZ_TO_GHZ, V_TO_UV, fit_punchout, norm
+from .utils import (
+    GHZ_TO_HZ,
+    HZ_TO_GHZ,
+    V_TO_UV,
+    fit_punchout,
+    norm,
+    table_dict,
+    table_html,
+)
 
 
 @dataclass
@@ -169,7 +177,7 @@ def _plot(
     """Plotting for ResonatorPunchoutAttenuation."""
 
     figures = []
-    fitting_report = None
+    fitting_report = ""
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -233,15 +241,21 @@ def _plot(
                 ),
             )
         )
-        title_text = ""
-        title_text += f"{qubit} | Resonator Frequency at Low Power:  {fit.readout_frequency[qubit] * GHZ_TO_HZ} Hz.<br>"
-        title_text += (
-            f"{qubit} | Readout Attenuation: {fit.readout_attenuation[qubit]} db.<br>"
+        fitting_report = table_html(
+            table_dict(
+                qubit,
+                [
+                    "Low Power Resonator Frequency",
+                    "Readout Attenuation",
+                    "High Power Resonator Frequency",
+                ],
+                [
+                    np.round(fit.readout_frequency[qubit] * GHZ_TO_HZ, 0),
+                    fit.readout_attenuation[qubit],
+                    np.round(fit.bare_frequency[qubit] * GHZ_TO_HZ),
+                ],
+            )
         )
-        title_text += f"{qubit} | Resonator Frequency at High Power: {fit.bare_frequency[qubit] * GHZ_TO_HZ} Hz.<br>"
-
-        fitting_report = title_text
-
     fig.update_layout(
         showlegend=False,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting

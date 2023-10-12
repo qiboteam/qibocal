@@ -11,7 +11,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Data, Qubits, Routine
 
-from ..utils import V_TO_UV
+from ..utils import V_TO_UV, table_dict, table_html
 from . import t1, utils
 
 
@@ -176,7 +176,9 @@ def _plot(data: T1MSRData, qubit, fit: T1MSRResults = None):
                 line=go.scatter.Line(dash="dot"),
             )
         )
-        fitting_report = f"{qubit} | t1: {fit.t1[qubit]:,.0f} ns.<br><br>"
+        fitting_report = table_html(
+            table_dict(qubit, "T1 [ns]", np.round(fit.t1[qubit]))
+        )
 
     # last part
     fig.update_layout(

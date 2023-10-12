@@ -14,6 +14,7 @@ from scipy.signal import find_peaks
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
+from qibocal.protocols.characterization.utils import table_dict, table_html
 
 from .utils import V_TO_UV
 
@@ -226,7 +227,7 @@ def _plot(data: FlippingData, qubit, fit: FlippingResults = None):
     figures = []
     fig = go.Figure()
 
-    fitting_report = None
+    fitting_report = ""
     qubit_data = data[qubit]
 
     fig.add_trace(
@@ -241,7 +242,6 @@ def _plot(data: FlippingData, qubit, fit: FlippingResults = None):
     )
 
     if fit is not None:
-        fitting_report = ""
         flips_range = np.linspace(
             min(qubit_data.flips),
             max(qubit_data.flips),
@@ -263,9 +263,15 @@ def _plot(data: FlippingData, qubit, fit: FlippingResults = None):
                 line=go.scatter.Line(dash="dot"),
             ),
         )
-        fitting_report = fitting_report + (
-            f"{qubit} | Amplitude correction factor: {fit.amplitude_factors[qubit]:.4f}<br>"
-            + f"{qubit} | Corrected amplitude: {fit.amplitude[qubit]:.4f}<br><br>"
+        fitting_report = table_html(
+            table_dict(
+                qubit,
+                ["Amplitude correction factor", "Corrected amplitude"],
+                [
+                    np.round(fit.amplitude_factors[qubit], 4),
+                    np.round(fit.amplitude[qubit], 4),
+                ],
+            )
         )
 
     # last part

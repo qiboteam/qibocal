@@ -12,7 +12,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
-from ..utils import fill_table
+from ..utils import table_dict, table_html
 from . import t1, utils
 
 
@@ -121,7 +121,7 @@ def _plot(data: T2Data, qubit, fit: T2Results = None):
     """Plotting function for Ramsey Experiment."""
 
     figures = []
-    fitting_report = None
+    fitting_report = ""
     qubit_data = data[qubit]
     waits = qubit_data.wait
     probs = qubit_data.prob
@@ -170,10 +170,9 @@ def _plot(data: T2Data, qubit, fit: T2Results = None):
                 line=go.scatter.Line(dash="dot"),
             )
         )
-        fitting_report = fill_table(
-            qubit, "T2", fit.t2[qubit][0], fit.t2[qubit][1], "ns"
+        fitting_report = table_html(
+            table_dict(qubit, ["T2"], [fit.t2[qubit]], display_error=True)
         )
-
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting

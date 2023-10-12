@@ -12,7 +12,7 @@ from qibolab.qubits import QubitId
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
-from ..utils import V_TO_UV
+from ..utils import V_TO_UV, table_dict, table_html
 from . import utils
 
 
@@ -163,13 +163,17 @@ def _plot(data: ZenoData, fit: ZenoResults, qubit):
                 line=go.scatter.Line(dash="dot"),
             )
         )
-        fitting_report = fitting_report + (
-            f"{qubit} | readout pulses: {fit.zeno_t1[qubit]:,.0f} readout pulses.<br><br>"
+        fitting_report = table_html(
+            table_dict(
+                qubit,
+                ["Readout Pulse", "T1"],
+                [
+                    np.round(fit.zeno_t1[qubit]),
+                    np.round(fit.zeno_t1[qubit] * data.readout_duration[qubit]),
+                ],
+            )
         )
         # FIXME: Pulse duration (+ time of flight ?)
-        fitting_report = fitting_report + (
-            f"{qubit} | t1: {fit.zeno_t1[qubit]*data.readout_duration[qubit]:,.0f} ns.<br><br>"
-        )
 
     # last part
     fig.update_layout(

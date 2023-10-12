@@ -111,7 +111,6 @@ class Task:
     @property
     def parameters(self):
         """Inputs parameters for self.operation."""
-        print(self.action.parameters)
         return self.operation.parameters_type.load(self.action.parameters)
 
     @property

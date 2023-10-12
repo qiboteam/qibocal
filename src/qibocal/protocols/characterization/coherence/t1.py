@@ -13,7 +13,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
-from ..utils import fill_table
+from ..utils import table_dict, table_html
 from . import utils
 
 COLORBAND = "rgba(0,100,80,0.2)"
@@ -156,7 +156,7 @@ def _plot(data: T1Data, qubit, fit: T1Results = None):
     """Plotting function for T1 experiment."""
 
     figures = []
-    fitting_report = None
+    fitting_report = ""
     qubit_data = data[qubit]
     waits = qubit_data.wait
     probs = qubit_data.prob
@@ -201,14 +201,9 @@ def _plot(data: T1Data, qubit, fit: T1Results = None):
                 line=go.scatter.Line(dash="dot"),
             )
         )
-        fitting_report = fill_table(
-            qubit,
-            "T1",
-            fit.t1[qubit][0],
-            fit.t1[qubit][1],
-            "ns",
+        fitting_report = table_html(
+            table_dict(qubit, ["T1 [ns]"], [fit.t1[qubit]], display_error=True)
         )
-
     # last part
     fig.update_layout(
         showlegend=True,
