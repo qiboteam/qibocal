@@ -489,3 +489,13 @@ actions:
     parameters:
       amplitude_step: 0.1
       amplitude_stop: 0.5
+
+  - id: residual excited population
+    priority: 0
+    operation: residual_excited_population
+    qubits: [0, 1]
+    parameters:
+      pulse_duration_start: 0
+      pulse_duration_end: 100
+      pulse_duration_step: 1
+      nshots: 1024

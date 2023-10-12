@@ -1,21 +1,27 @@
+"""Find remaining excited state population and qubit effective temperature."""
+
 from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
+from scipy.constants import hbar, k
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
-from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
+from qibocal.protocols.characterization.utils import V_TO_UV, table_dict, table_html
 
 from .rabi import utils
+from .rabi.utils import rabi_length_fit as fitting
 
 
 @dataclass
@@ -42,7 +48,7 @@ class ResidualPopulationResults(Results):
     """Residual population in state |1>."""
     effective_qubit_temperature: dict[QubitId, float]
     """Effective qubit teperature."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
+    fitted_parameters: dict[QubitId, tuple[dict[str, float]]]
     """Raw fitting output."""
 
 
@@ -59,7 +65,10 @@ class ResidualPopulationData(Data):
     data: dict[QubitId, npt.NDArray[ResPopType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, length, msr_g_start, msr_e_start):
+    frequencies: dict[QubitId, np.float64] = field(default_factory=dict)
+    """Transition frequencies 0-1."""
+
+    def register_qubit(self, qubit, length, msr_g_start, msr_e_start, frequency):
         """Store output for single qubit."""
         # to be able to handle the non-sweeper case
         shape = (1,) if np.isscalar(length) else length.shape
@@ -72,18 +81,20 @@ class ResidualPopulationData(Data):
         else:
             self.data[qubit] = np.rec.array(ar)
 
+        self.frequencies[qubit] = frequency
+
 
 def _acquisition(
     params: ResidualPopulationParameters, platform: Platform, qubits: Qubits
 ) -> ResidualPopulationData:
-    r"""
+    """Perform the experiment.
+
     Data acquisition for ResidualPopulation Experiment.
     In the residual population experiment we probe a rabi-like oscillation between the
     first and second excited state. First, by applying nothing before the RX12, then
     by applying a pi-pulse first. The relative amplitude between the two oscillations
     is related to the residual excited population in a qubit and its effective temperature.
     """
-
     # create a sequence of pulses for the experiment
     sequence_g_start = PulseSequence()
     sequence_e_start = PulseSequence()
@@ -107,7 +118,7 @@ def _acquisition(
         # sequence starting from e
         rx_pulse = platform.create_RX_pulse(qubit, start=0)
         rx12_e_pulses[qubit] = platform.create_RX_pulse(qubit, start=rx_pulse.finish)
-        ro_g_pulses[qubit] = platform.create_MZ_pulse(
+        ro_e_pulses[qubit] = platform.create_MZ_pulse(
             qubit, start=rx12_e_pulses[qubit].finish
         )
 
@@ -173,77 +184,182 @@ def _acquisition(
             length=rx12_duration_range,
             msr_g_start=result_g.magnitude,
             msr_e_start=result_e.magnitude,
+            frequency=qubits[qubit].native_gates.RX.frequency,
         )
     return data
 
 
+def _fit_and_get_amplitude(
+    rabi_parameter: npt.NDArray[np.float64], voltages: npt.NDArray[np.float64]
+):
+    """Fit."""
+    y_min = np.min(voltages)
+    y_max = np.max(voltages)
+    x_min = np.min(rabi_parameter)
+    x_max = np.max(rabi_parameter)
+    x = (rabi_parameter - x_min) / (x_max - x_min)
+    y = (voltages - y_min) / (y_max - y_min)
+
+    # Guessing period using fourier transform
+    ft = np.fft.rfft(y)
+    mags = abs(ft)
+    local_maxima = find_peaks(mags, threshold=1)[0]
+    index = local_maxima[0] if len(local_maxima) > 0 else None
+    # 0.5 hardcoded guess for less than one oscillation
+    f = x[index] / (x[1] - x[0]) if index is not None else 0.5
+
+    pguess = [1, 1, f, np.pi / 2, 0]
+    try:
+        popt, pcov = curve_fit(
+            utils.rabi_length_fit,
+            x,
+            y,
+            p0=pguess,
+            maxfev=100000,
+            bounds=(
+                [0, 0, 0, -np.pi, 0],
+                [1, 1, np.inf, np.pi, np.inf],
+            ),
+        )
+        translated_popt = [
+            (y_max - y_min) * popt[0] + y_min,
+            (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
+            popt[2] / (x_max - x_min),
+            popt[3] - 2 * np.pi * x_min * popt[2] / (x_max - x_min),
+            popt[4] / (x_max - x_min),
+        ]
+        pi_pulse_parameter = np.abs((1.0 / translated_popt[2]) / 2)
+    except:
+        log.warning("rabi_fit: the fitting was not succesful")
+        pi_pulse_parameter = 0
+        translated_popt = [0] * 5
+
+    return pi_pulse_parameter, translated_popt
+
+
 def _fit(data: ResidualPopulationData) -> ResidualPopulationResults:
     """Post-processing for ResidualPopulation experiment."""
-
     qubits = data.qubits
     fitted_parameters = {}
-    durations = {}
+    res_population = {}
+    temperature = {}
 
     for qubit in qubits:
         qubit_data = data[qubit]
         rabi_parameter = qubit_data.length
-        voltages = qubit_data.msr
+        voltages_g_start = qubit_data.msr_g_start
+        voltages_e_start = qubit_data.msr_e_start
 
-        y_min = np.min(voltages)
-        y_max = np.max(voltages)
-        x_min = np.min(rabi_parameter)
-        x_max = np.max(rabi_parameter)
-        x = (rabi_parameter - x_min) / (x_max - x_min)
-        y = (voltages - y_min) / (y_max - y_min)
+        g_start_amp, raw_fit_g = _fit_and_get_amplitude(
+            rabi_parameter, voltages_g_start
+        )
+        e_start_amp, raw_fit_e = _fit_and_get_amplitude(
+            rabi_parameter, voltages_e_start
+        )
 
-        # Guessing period using fourier transform
-        ft = np.fft.rfft(y)
-        mags = abs(ft)
-        local_maxima = find_peaks(mags, threshold=1)[0]
-        index = local_maxima[0] if len(local_maxima) > 0 else None
-        # 0.5 hardcoded guess for less than one oscillation
-        f = x[index] / (x[1] - x[0]) if index is not None else 0.5
+        fitted_parameters[qubit] = (raw_fit_g, raw_fit_e)
+        r = e_start_amp / g_start_amp
+        res_population[qubit] = r / (r + 1)
+        temperature[qubit] = -(hbar * data.frequencies[qubit]) / (np.log(r) * k)
 
-        pguess = [1, 1, f, np.pi / 2, 0]
-        try:
-            popt, pcov = curve_fit(
-                utils.rabi_length_fit,
-                x,
-                y,
-                p0=pguess,
-                maxfev=100000,
-                bounds=(
-                    [0, 0, 0, -np.pi, 0],
-                    [1, 1, np.inf, np.pi, np.inf],
-                ),
-            )
-            translated_popt = [
-                (y_max - y_min) * popt[0] + y_min,
-                (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
-                popt[2] / (x_max - x_min),
-                popt[3] - 2 * np.pi * x_min * popt[2] / (x_max - x_min),
-                popt[4] / (x_max - x_min),
-            ]
-            pi_pulse_parameter = np.abs((1.0 / translated_popt[2]) / 2)
-        except:
-            log.warning("rabi_fit: the fitting was not succesful")
-            pi_pulse_parameter = 0
-            translated_popt = [0] * 5
-
-        durations[qubit] = pi_pulse_parameter
-        fitted_parameters[qubit] = translated_popt
-
-    return ResidualPopulationResults(durations, data.amplitudes, fitted_parameters)
+    return ResidualPopulationResults(res_population, temperature, fitted_parameters)
 
 
 def _update(results: ResidualPopulationResults, platform: Platform, qubit: QubitId):
-    update.drive_duration(results.length[qubit], platform, qubit)
+    """Do not update anything."""
 
 
 def _plot(data: ResidualPopulationData, fit: ResidualPopulationResults, qubit):
-    """Plotting function for ResidualPopulation experiment."""
-    return utils.plot(data, qubit, fit)
+    """Plot function for ResidualPopulation experiment."""
+
+    figures = []
+    fitting_report = ""
+
+    fig = make_subplots(
+        rows=1,
+        cols=1,
+        horizontal_spacing=0.1,
+        vertical_spacing=0.1,
+        subplot_titles=("MSR (V)",),
+    )
+
+    qubit_data = data[qubit]
+
+    fig.add_trace(
+        go.Scatter(
+            x=qubit_data.length,
+            y=qubit_data.msr_g_start * V_TO_UV,
+            name="Rabi starting from g",
+            opacity=1,
+            showlegend=True,
+        ),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=qubit_data.length,
+            y=qubit_data.msr_e_start,
+            opacity=1,
+            name="Rabi starting from e",
+            showlegend=True,
+        ),
+        row=1,
+        col=1,
+    )
+
+    if fit is not None:
+        rabi_parameter_range = np.linspace(
+            min(qubit_data.length),
+            max(qubit_data.length),
+            2 * len(qubit_data.length),
+        )
+        params = fit.fitted_parameters[qubit]
+        fig.add_trace(
+            go.Scatter(
+                x=rabi_parameter_range,
+                y=fitting(rabi_parameter_range, *(params[0])) * V_TO_UV,
+                name="Fit starting from g",
+                line=go.scatter.Line(dash="dot"),
+                marker_color="rgb(255, 130, 67)",
+            ),
+            row=1,
+            col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=rabi_parameter_range,
+                y=fitting(rabi_parameter_range, *(params[1])) * V_TO_UV,
+                name="Fit starting from e",
+                line=go.scatter.Line(dash="dot"),
+                marker_color="rgb(255, 67, 130)",
+            ),
+            row=1,
+            col=1,
+        )
+
+        fitting_report = table_html(
+            table_dict(
+                qubit,
+                ["Pi pulse amplitude", "Pi pulse length"],
+                [
+                    fit.residual_excited_population[qubit],
+                    fit.effective_qubit_temperature[qubit],
+                ],
+            )
+        )
+
+        fig.update_layout(
+            showlegend=True,
+            uirevision="0",  # ``uirevision`` allows zooming while live plotting
+            xaxis_title="Length pulse [ns]",
+            yaxis_title="MSR (uV)",
+        )
+
+    figures.append(fig)
+
+    return figures, fitting_report
 
 
-rabi_length = Routine(_acquisition, _fit, _plot, _update)
+residual_excited_population = Routine(_acquisition, _fit, _plot, _update)
 """ResidualPopulation Routine object."""

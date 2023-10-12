@@ -11,6 +11,7 @@ from .coherence.t2 import t2
 from .coherence.t2_sequences import t2_sequences
 from .coherence.zeno import zeno
 from .dispersive_shift import dispersive_shift
+from .excited_state_population import residual_excited_population
 from .fast_reset.fast_reset import fast_reset
 from .flipping import flipping
 from .flux_dependence.qubit_flux_dependence import qubit_crosstalk, qubit_flux
@@ -79,3 +80,4 @@ class Operation(Enum):
     twpa_frequency = twpa_frequency
     twpa_power = twpa_power
     resonator_amplitude = resonator_amplitude
+    residual_excited_population = residual_excited_population
