@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -27,10 +26,6 @@ class T1Parameters(Parameters):
     """Final delay before readout (ns)."""
     delay_before_readout_step: int
     """Step delay before readout (ns)."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 @dataclass

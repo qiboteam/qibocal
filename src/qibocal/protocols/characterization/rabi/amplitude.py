@@ -30,10 +30,6 @@ class RabiAmplitudeParameters(Parameters):
     """Step amplitude multiplicative factor."""
     pulse_length: Optional[float]
     """RX pulse duration (ns)."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 @dataclass

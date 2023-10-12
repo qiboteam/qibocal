@@ -77,7 +77,20 @@ class Parameters:
             the linked outputs
 
         """
-        return cls(**parameters)
+        parent_parameters = [
+            {"name": "nshots", "value": None},
+            {"name": "relaxation_time", "value": None},
+        ]
+        for parent_parameter in parent_parameters:
+            parent_parameter["value"] = parameters.pop(
+                parent_parameter["name"], parent_parameter["value"]
+            )
+        instantiated_class = cls(**parameters)
+        for parent_parameter in parent_parameters:
+            setattr(
+                instantiated_class, parent_parameter["name"], parent_parameter["value"]
+            )
+        return instantiated_class
 
 
 class Data:

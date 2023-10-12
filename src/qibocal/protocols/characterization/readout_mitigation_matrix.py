@@ -24,10 +24,6 @@ class ReadoutMitigationMatrixParameters(Parameters):
 
     pulses: Optional[bool] = True
     """Get readout mitigation matrix using pulses. If False gates will be used."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 @dataclass
