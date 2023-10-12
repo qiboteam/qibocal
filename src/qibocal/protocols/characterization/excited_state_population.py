@@ -299,7 +299,7 @@ def _plot(data: ResidualPopulationData, fit: ResidualPopulationResults, qubit):
     fig.add_trace(
         go.Scatter(
             x=qubit_data.length,
-            y=qubit_data.msr_e_start,
+            y=qubit_data.msr_e_start * V_TO_UV,
             opacity=1,
             name="Rabi starting from e",
             showlegend=True,
@@ -321,7 +321,7 @@ def _plot(data: ResidualPopulationData, fit: ResidualPopulationResults, qubit):
                 y=fitting(rabi_parameter_range, *(params[0])) * V_TO_UV,
                 name="Fit starting from g",
                 line=go.scatter.Line(dash="dot"),
-                marker_color="rgb(255, 130, 67)",
+                marker_color="rgb(102, 0, 204)",
             ),
             row=1,
             col=1,
@@ -341,7 +341,7 @@ def _plot(data: ResidualPopulationData, fit: ResidualPopulationResults, qubit):
         fitting_report = table_html(
             table_dict(
                 qubit,
-                ["Pi pulse amplitude", "Pi pulse length"],
+                ["Residual excited population", "Effective qubit temperature [K]"],
                 [
                     fit.residual_excited_population[qubit],
                     fit.effective_qubit_temperature[qubit],
