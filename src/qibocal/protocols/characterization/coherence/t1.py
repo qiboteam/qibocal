@@ -59,7 +59,7 @@ class T1Data(Data):
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, wait, prob, error):
+    def register_qubit(self, qubit, prob, error, wait):
         """Store output for single qubit."""
         # to be able to handle the non-sweeper case
         shape = (1,) if np.isscalar(wait) else wait.shape

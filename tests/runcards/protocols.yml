@@ -226,7 +226,14 @@ actions:
     priority: 00
     operation: zeno
     parameters:
-      readouts: 2
+      readouts: 10
+      nshots: 10
+
+  - id: zeno_msr
+    priority: 00
+    operation: zeno_msr
+    parameters:
+      readouts: 10
       nshots: 10
 
   - id: t2

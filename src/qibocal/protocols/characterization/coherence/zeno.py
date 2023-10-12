@@ -2,7 +2,6 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 import numpy as np
-import numpy.typing as npt
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
@@ -10,10 +9,10 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
-from ..utils import V_TO_UV, table_dict, table_html
-from . import utils
+from ..utils import table_dict, table_html
+from . import t1, utils
 
 
 @dataclass
@@ -28,26 +27,10 @@ class ZenoParameters(Parameters):
     """Relaxation time (ns)."""
 
 
-ZenoType = np.dtype([("msr", np.float64), ("phase", np.float64)])
-"""Custom dtype for Zeno."""
-
-
 @dataclass
-class ZenoData(Data):
+class ZenoData(t1.T1Data):
     readout_duration: dict[QubitId, float] = field(default_factory=dict)
     """Readout durations for each qubit"""
-    data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
-    """Raw data acquired."""
-
-    def register_qubit(self, qubit, msr, phase):
-        """Store output for single qubit."""
-        ar = np.empty((1,), dtype=ZenoType)
-        ar["msr"] = msr
-        ar["phase"] = phase
-        if qubit in self.data:
-            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
-        else:
-            self.data[qubit] = np.rec.array(ar)
 
 
 @dataclass
@@ -100,16 +83,23 @@ def _acquisition(
         ExecutionParameters(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
+            acquisition_type=AcquisitionType.DISCRIMINATION,
+            averaging_mode=AveragingMode.SINGLESHOT,
         ),
     )
 
     # retrieve and store the results for every qubit
+    probs = {qubit: [] for qubit in qubits}
     for qubit in qubits:
         for ro_pulse in ro_pulses[qubit]:
-            result = results[ro_pulse.serial]
-            data.register_qubit(qubit=qubit, msr=result.magnitude, phase=result.phase)
+            probs[qubit].append(results[ro_pulse.serial].probability(state=1))
+        errors = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs[qubit]]
+        data.register_qubit(
+            qubit,
+            wait=np.arange(1, len(probs[qubit]) + 1),
+            prob=probs[qubit],
+            error=errors,
+        )
     return data
 
 
@@ -121,30 +111,42 @@ def _fit(data: ZenoData) -> ZenoResults:
 
             y = p_0-p_1 e^{-x p_2}.
     """
-
-    t1s, fitted_parameters = utils.exponential_fit(data, zeno=True)
+    t1s, fitted_parameters = utils.exponential_fit_probability(data)
 
     return ZenoResults(t1s, fitted_parameters)
 
 
 def _plot(data: ZenoData, fit: ZenoResults, qubit):
     """Plotting function for T1 experiment."""
-    figures = []
-    fig = go.Figure()
 
+    figures = []
     fitting_report = ""
     qubit_data = data[qubit]
-    readouts = np.arange(1, len(qubit_data.msr) + 1)
+    probs = qubit_data.prob
+    error_bars = qubit_data.error
+    readouts = np.arange(1, len(qubit_data.prob) + 1)
 
-    fig.add_trace(
-        go.Scatter(
-            x=readouts,
-            y=qubit_data.msr * V_TO_UV,
-            opacity=1,
-            name="Voltage",
-            showlegend=True,
-            legendgroup="Voltage",
-        )
+    fig = go.Figure(
+        [
+            go.Scatter(
+                x=readouts,
+                y=probs,
+                opacity=1,
+                name="Probability of 1",
+                showlegend=True,
+                legendgroup="Probability of 1",
+                mode="lines",
+            ),
+            go.Scatter(
+                x=np.concatenate((readouts, readouts[::-1])),
+                y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
+                fill="toself",
+                fillcolor=t1.COLORBAND,
+                line=dict(color=t1.COLORBAND_LINE),
+                showlegend=True,
+                name="Errors",
+            ),
+        ]
     )
 
     if fit is not None:
@@ -166,11 +168,12 @@ def _plot(data: ZenoData, fit: ZenoResults, qubit):
         fitting_report = table_html(
             table_dict(
                 qubit,
-                ["Readout Pulse", "T1"],
+                ["T1 [ns]", "Readout Pulse [ns]"],
                 [
-                    np.round(fit.zeno_t1[qubit]),
-                    np.round(fit.zeno_t1[qubit] * data.readout_duration[qubit]),
+                    fit.zeno_t1[qubit],
+                    np.array(fit.zeno_t1[qubit]) * data.readout_duration[qubit],
                 ],
+                display_error=True,
             )
         )
         # FIXME: Pulse duration (+ time of flight ?)
@@ -178,9 +181,8 @@ def _plot(data: ZenoData, fit: ZenoResults, qubit):
     # last part
     fig.update_layout(
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Number of readouts",
-        yaxis_title="MSR (uV)",
+        yaxis_title="Probability of State 1",
     )
 
     figures.append(fig)

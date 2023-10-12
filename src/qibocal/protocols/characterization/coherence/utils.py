@@ -72,8 +72,8 @@ def exponential_fit_probability(data):
     fitted_parameters = {}
 
     for qubit in qubits:
+        x = data[qubit].wait
         probability = data[qubit].prob
-
         p0 = [
             0.5,
             0.5,
@@ -83,7 +83,7 @@ def exponential_fit_probability(data):
         try:
             popt, perr = curve_fit(
                 exp_decay,
-                data[qubit].wait,
+                x,
                 probability,
                 p0=p0,
                 maxfev=2000000,
