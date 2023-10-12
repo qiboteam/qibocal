@@ -67,10 +67,7 @@ class T1Data(Data):
         ar["wait"] = wait
         ar["prob"] = prob
         ar["error"] = error
-        if qubit in self.data:
-            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
-        else:
-            self.data[qubit] = np.rec.array(ar)
+        self.data[qubit] = np.rec.array(ar)
 
 
 def _acquisition(params: T1Parameters, platform: Platform, qubits: Qubits) -> T1Data:

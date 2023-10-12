@@ -238,6 +238,15 @@ actions:
       delay_between_pulses_step: 100
       nshots: 10
 
+  - id: t2_msr
+    priority: 0
+    operation: t2_msr
+    parameters:
+      delay_between_pulses_start: 16
+      delay_between_pulses_end: 20000
+      delay_between_pulses_step: 100
+      nshots: 10
+
   - id: t2 sequences
     priority: 0
     operation: t2_sequences
