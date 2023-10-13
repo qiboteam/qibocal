@@ -76,6 +76,9 @@ class Parameters:
         """Load parameters from runcard.
 
         Possibly looking into previous steps outputs.
+        Parameters defined in Parameters class are removed from `parameters`
+        before `cls` is created.
+        Then `nshots` and `relaxation_time` are assigned to cls.
 
         .. todo::
 
