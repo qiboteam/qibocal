@@ -50,6 +50,12 @@ def show_logs(func):
     return wrapper
 
 
+DEFAULT_PARENT_PARAMETERS = {
+    "nshots": None,
+    "relaxation_time": None,
+}
+
+
 class Parameters:
     """Generic action parameters.
 
@@ -77,19 +83,11 @@ class Parameters:
             the linked outputs
 
         """
-        parent_parameters = [
-            {"name": "nshots", "value": None},
-            {"name": "relaxation_time", "value": None},
-        ]
-        for parent_parameter in parent_parameters:
-            parent_parameter["value"] = parameters.pop(
-                parent_parameter["name"], parent_parameter["value"]
-            )
+        for parameter, value in DEFAULT_PARENT_PARAMETERS.items():
+            DEFAULT_PARENT_PARAMETERS[parameter] = parameters.pop(parameter, value)
         instantiated_class = cls(**parameters)
-        for parent_parameter in parent_parameters:
-            setattr(
-                instantiated_class, parent_parameter["name"], parent_parameter["value"]
-            )
+        for parameter, value in DEFAULT_PARENT_PARAMETERS.items():
+            setattr(instantiated_class, parameter, value)
         return instantiated_class
 
 
