@@ -54,6 +54,7 @@ DEFAULT_PARENT_PARAMETERS = {
     "nshots": None,
     "relaxation_time": None,
 }
+"""Default values of the parameters of `Parameters`"""
 
 
 class Parameters:
