@@ -93,7 +93,9 @@ def _acquisition(
             )
 
         classification_data = classification._acquisition(
-            classification.SingleShotClassificationParameters(nshots=params.nshots),
+            classification.SingleShotClassificationParameters.load(
+                {"nshots": params.nshots}
+            ),
             platform,
             qubits,
         )
