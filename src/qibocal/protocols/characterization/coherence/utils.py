@@ -7,7 +7,7 @@ from ..utils import V_TO_UV
 
 
 def exp_decay(x, *p):
-    return p[0] - p[1] * np.exp(-1 * x * p[2])
+    return p[0] - p[1] * np.exp(-1 * x / p[2])
 
 
 def exponential_fit(data, zeno=None):
@@ -52,7 +52,7 @@ def exponential_fit(data, zeno=None):
                 (y_max - y_min) * popt[1] * np.exp(x_min * popt[2] / (x_max - x_min)),
                 popt[2] / (x_max - x_min),
             ]
-            t2 = 1.0 / popt[2]
+            t2 = popt[2]
 
         except Exception as e:
             log.warning(f"Exp decay fitting was not succesful. {e}")
@@ -95,7 +95,6 @@ def exponential_fit_probability(data):
             )
             popt = popt.tolist()
             perr = np.sqrt(np.diag(perr))
-            perr[2] = 0.1
         except Exception as e:
             log.warning(f"Exp decay fitting was not succesful. {e}")
             popt = [0] * 3
