@@ -39,16 +39,6 @@ class ZenoData(Data):
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
 
-    # def register_qubit(self, qubit, msr, phase):
-    #     """Store output for single qubit."""
-    #     ar = np.empty((1,), dtype=ZenoType)
-    #     ar["msr"] = msr
-    #     ar["phase"] = phase
-    #     if qubit in self.data:
-    #         self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
-    #     else:
-    #         self.data[qubit] = np.rec.array(ar)
-
 
 @dataclass
 class ZenoResults(Results):

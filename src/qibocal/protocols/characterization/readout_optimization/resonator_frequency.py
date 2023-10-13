@@ -57,18 +57,6 @@ class ResonatorFrequencyData(Data):
         default_factory=dict
     )
 
-    # def append_data(self, qubit, state, freq, i, q):
-    #     """Append elements to data for single qubit."""
-    #     ar = np.empty(i.shape, dtype=ResonatorFrequencyType)
-    #     ar["freq"] = freq
-    #     ar["i"] = i
-    #     ar["q"] = q
-    #     ar["state"] = state
-    #     if qubit in self.data.keys():
-    #         self.data[qubit] = np.append(self.data[qubit], np.rec.array(ar))
-    #     else:
-    #         self.data[qubit] = np.rec.array(ar)
-
     def unique_freqs(self, qubit: QubitId) -> np.ndarray:
         return np.unique(self.data[qubit]["freq"])
 

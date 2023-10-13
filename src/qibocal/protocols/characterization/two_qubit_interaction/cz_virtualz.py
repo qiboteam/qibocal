@@ -66,12 +66,6 @@ class CZVirtualZData(Data):
     vphases: dict[QubitPairId, dict[QubitId, float]] = field(default_factory=dict)
     amplitudes: dict[tuple[QubitId, QubitId], float] = field(default_factory=dict)
 
-    # def register_qubit(self, target, control, setup, prob_target, prob_control):
-    #     ar = np.empty(prob_target.shape, dtype=CZVirtualZType)
-    #     ar["target"] = prob_target
-    #     ar["control"] = prob_control
-    #     self.data[target, control, setup] = np.rec.array(ar)
-
     def __getitem__(self, pair):
         return {
             index: value

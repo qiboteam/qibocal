@@ -49,19 +49,6 @@ class ResonatorAmplitudeData(Data):
 
     data: dict[tuple, npt.NDArray[ResonatorAmplitudeType]] = field(default_factory=dict)
 
-    # def append_data(self, qubit, state, amp, i, q, errors):
-    #     """Append elements to data for single qubit."""
-    #     ar = np.empty(i.shape, dtype=ResonatorAmplitudeType)
-    #     ar["amp"] = amp
-    #     ar["i"] = i
-    #     ar["q"] = q
-    #     ar["state"] = state
-    #     ar["errors"] = errors
-    #     if qubit in self.data.keys():
-    #         self.data[qubit] = np.append(self.data[qubit], np.rec.array(ar))
-    #     else:
-    #         self.data[qubit] = np.rec.array(ar)
-
 
 @dataclass
 class ResonatorAmplitudeResults(Results):

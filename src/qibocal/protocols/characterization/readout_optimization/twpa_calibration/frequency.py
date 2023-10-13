@@ -45,14 +45,6 @@ class TwpaFrequencyData(Data):
     frequencies: dict[QubitId, float] = field(default_factory=dict)
     """Frequencies for each qubit."""
 
-    # def register_freq(
-    #     self,
-    #     qubit: QubitId,
-    #     freq: float,
-    #     classification_data: npt.NDArray[classification.ClassificationType],
-    # ):
-    #     self.data[qubit, freq] = classification_data[qubit]
-
 
 @dataclass
 class TwpaFrequencyResults(Results):

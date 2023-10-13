@@ -80,14 +80,6 @@ class ResonatorSpectroscopyData(Data):
     power_level: Optional[PowerLevel] = None
     """Power regime of the resonator."""
 
-    # def register_qubit(self, qubit, freq, msr, phase):
-    #     """Store output for single qubit."""
-    #     ar = np.empty(freq.shape, dtype=ResSpecType)
-    #     ar["freq"] = freq
-    #     ar["msr"] = msr
-    #     ar["phase"] = phase
-    #     self.data[qubit] = np.rec.array(ar)
-
     @classmethod
     def load(cls, path):
         obj = super().load(path)

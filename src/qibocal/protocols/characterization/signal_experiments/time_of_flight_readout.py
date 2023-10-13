@@ -48,12 +48,6 @@ class TimeOfFlightReadoutData(Data):
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
 
-    # def register_qubit(self, qubit, samples):
-    #     """Store output for single qubit."""
-    #     ar = np.empty(samples.shape, dtype=TimeOfFlightReadoutType)
-    #     ar["samples"] = samples
-    #     self.data[qubit] = np.rec.array(ar)
-
 
 def _acquisition(
     params: TimeOfFlightReadoutParameters, platform: Platform, qubits: Qubits

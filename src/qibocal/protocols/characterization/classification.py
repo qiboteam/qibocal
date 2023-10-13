@@ -73,22 +73,6 @@ class SingleShotClassificationData(Data):
     classifiers_list: Optional[list[str]] = field(default_factory=lambda: ["qubit_fit"])
     """List of models to classify the qubit states"""
 
-    # def register_qubit(self, qubit, state, i, q):
-    #     """Store output for single qubit."""
-    #     ar = np.empty(i.shape, dtype=ClassificationType)
-    #     ar["i"] = i
-    #     ar["q"] = q
-    #     ar["state"] = state
-    #     self.data[qubit] = np.rec.array(ar)
-
-    # def add_data(self, qubit, state, i, q):
-    #     """Store output for single qubit."""
-    #     ar = np.empty(i.shape, dtype=ClassificationType)
-    #     ar["i"] = i
-    #     ar["q"] = q
-    #     # ar["state"] = state
-    #     self.data[qubit, state] = np.append(self.data[qubit, state], np.rec.array(ar))
-
 
 @dataclass
 class SingleShotClassificationResults(Results):
