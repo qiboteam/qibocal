@@ -66,7 +66,7 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
             np.argmax(voltages)
         ]  # Argmax = Returns the indices of the maximum values along an axis.
         guess_offset = np.mean(
-            voltages[np.abs(voltages - np.mean(voltages) < np.std(voltages))]
+            voltages[np.abs(voltages - np.mean(voltages)) < np.std(voltages)]
         )
         guess_sigma = abs(frequencies[np.argmin(voltages)] - guess_center)
         guess_amp = (np.max(voltages) - guess_offset) * guess_sigma * np.pi
@@ -76,7 +76,7 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
             np.argmin(voltages)
         ]  # Argmin = Returns the indices of the minimum values along an axis.
         guess_offset = np.mean(
-            voltages[np.abs(voltages - np.mean(voltages) < np.std(voltages))]
+            voltages[np.abs(voltages - np.mean(voltages)) < np.std(voltages)]
         )
         guess_sigma = abs(frequencies[np.argmax(voltages)] - guess_center)
         guess_amp = (np.min(voltages) - guess_offset) * guess_sigma * np.pi
