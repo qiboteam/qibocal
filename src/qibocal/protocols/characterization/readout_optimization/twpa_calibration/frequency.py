@@ -6,12 +6,10 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
-from sklearn.model_selection import train_test_split
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.fitting.classifier.qubit_fit import QubitFit
-from qibocal.fitting.classifier.run import benchmarking
 from qibocal.protocols.characterization import classification
 from qibocal.protocols.characterization.utils import HZ_TO_GHZ, table_dict, table_html
 
@@ -122,17 +120,11 @@ def _fit(data: TwpaFrequencyData) -> TwpaFrequencyResults:
     best_param = {}
     for qubit, param in data.data:
         qubit_data = data.data[qubit, param]
-        x_train, x_test, y_train, y_test = train_test_split(
-            np.array(qubit_data[["i", "q"]].tolist())[:, :],
-            np.array(qubit_data[["state"]].tolist())[:, 0],
-            test_size=0.25,
-            random_state=0,
-            shuffle=True,
-        )
 
         model = QubitFit()
-        results, y_pred, model, fit_info = benchmarking(
-            model, x_train, y_train, x_test, y_test
+        model.fit(
+            np.array(qubit_data[["i", "q"]].tolist())[:, :],
+            np.array(qubit_data[["state"]].tolist())[:, 0],
         )
         fidelities[qubit, param] = model.assignment_fidelity
 
