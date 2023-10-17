@@ -164,7 +164,7 @@ def _plot(data: SpinEchoData, qubit, fit: SpinEchoResults = None):
         fitting_report = table_html(
             table_dict(
                 qubit,
-                "T2 Spin Echo",
+                "T2 Spin Echo [ns]",
                 np.round(fit.t2_spin_echo[qubit]),
             )
         )

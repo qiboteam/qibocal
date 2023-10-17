@@ -159,7 +159,9 @@ def _plot(data: T2Data, qubit, fit: T2Results = None):
                 line=go.scatter.Line(dash="dot"),
             )
         )
-        fitting_report = table_html(table_dict(qubit, "T2", np.round(fit.t2[qubit])))
+        fitting_report = table_html(
+            table_dict(qubit, "T2 [ns]", np.round(fit.t2[qubit]))
+        )
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting

@@ -192,7 +192,9 @@ def _plot(data: T1Data, qubit, fit: T1Results = None):
                 line=go.scatter.Line(dash="dot"),
             )
         )
-        fitting_report = table_html(table_dict(qubit, "t1", np.round(fit.t1[qubit])))
+        fitting_report = table_html(
+            table_dict(qubit, "T1 [ns]", np.round(fit.t1[qubit]))
+        )
     # last part
     fig.update_layout(
         showlegend=True,
