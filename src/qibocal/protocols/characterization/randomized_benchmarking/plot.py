@@ -91,7 +91,6 @@ def rb_figure(
             line=go.scatter.Line(dash="dot", color="#00cc96"),
         )
     )
-
     kwargs.setdefault("showlegend", True)
     kwargs.setdefault(
         "uirevision", "0"
@@ -99,6 +98,8 @@ def rb_figure(
     kwargs.setdefault("xaxis_title", "Circuit depth")
     kwargs.setdefault("yaxis_title", "RB signal")
     fig.update_layout(**kwargs)
+
+    fig.update_layout(legend=dict(yanchor="top", y=0.99, xanchor="right", x=0.99))
 
     return fig
 

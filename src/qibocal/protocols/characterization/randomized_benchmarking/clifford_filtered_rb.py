@@ -216,8 +216,6 @@ def _acquisition(
         samples = circuit.execute(nshots=params.nshots).samples()
         data_list[-1]["samples"] = samples
 
-    # Build the data object which will be returned and later saved.
-    # data = pd.DataFrame(data_list)
     clifford_rb_data = RBData(data_list)
 
     # TODO: They save noise model and noise params ...
@@ -338,7 +336,7 @@ def _plot(data: RBData, fit: CliffordRBResult, qubit) -> tuple[list[go.Figure], 
     rb_params = {}
     fig_list = []
     result_fig = [go.Figure()]
-    table_str = None
+    table_str = ""
     if fit:
         nqubits = int(np.log2(len(fit.fit_results.index)))
         qubits = data.attrs.get("qubits", list(range(nqubits)))
@@ -414,6 +412,8 @@ def _plot(data: RBData, fit: CliffordRBResult, qubit) -> tuple[list[go.Figure], 
     # table_str = "".join(
     #     [f" | {key}: {value}<br>" for key, value in {**meta_data, **rb_params}.items()]
     # )
+
+    # table_str = table_html(table_dict("Something"))
 
     return result_fig, table_str
 
