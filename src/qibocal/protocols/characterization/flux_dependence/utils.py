@@ -71,6 +71,10 @@ def flux_dependence_plot(data, fit, qubit):
         msr_mask = 0.3
         if data.resonator_type == "2D":
             msr = -msr
+    else:
+        msr_mask = 0.3
+        if data.resonator_type == "2D":
+            msr = -msr
 
     frequencies1, biases1 = image_to_curve(frequencies, qubit_data.bias, msr, msr_mask)
 

@@ -10,6 +10,7 @@ from .coherence.t1_sequences import t1_sequences
 from .coherence.t2 import t2
 from .coherence.t2_sequences import t2_sequences
 from .coherence.zeno import zeno
+from .couplers.coupler_resonator_spectroscopy import coupler_resonator_spectroscopy
 from .dispersive_shift import dispersive_shift
 from .fast_reset.fast_reset import fast_reset
 from .flipping import flipping
@@ -79,3 +80,4 @@ class Operation(Enum):
     twpa_frequency = twpa_frequency
     twpa_power = twpa_power
     resonator_amplitude = resonator_amplitude
+    coupler_resonator_spectroscopy = coupler_resonator_spectroscopy
