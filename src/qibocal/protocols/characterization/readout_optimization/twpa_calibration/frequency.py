@@ -90,7 +90,7 @@ def _acquisition(
             qubit
         ].twpa.local_oscillator.frequency
         data.frequencies[qubit] = list(
-            platform.qubits[qubit].twpa.local_oscillator.frequency + freq_range
+            float(platform.qubits[qubit].twpa.local_oscillator.frequency) + freq_range
         )
 
     for freq in freq_range:
@@ -108,7 +108,7 @@ def _acquisition(
         for qubit in qubits:
             data.register_freq(
                 qubit,
-                platform.qubits[qubit].twpa.local_oscillator.frequency,
+                float(platform.qubits[qubit].twpa.local_oscillator.frequency),
                 classification_data,
             )
 
@@ -141,7 +141,6 @@ def _fit(data: TwpaFrequencyData) -> TwpaFrequencyResults:
             key: fidelity for key, fidelity in fidelities.items() if key[0] == qubit
         }
         best_param[qubit] = max(qubit_fidelities, key=qubit_fidelities.get)[1]
-
     return TwpaFrequencyResults(fidelities=fidelities, best=best_param)
 
 
