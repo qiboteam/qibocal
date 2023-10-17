@@ -155,8 +155,6 @@ class Data:
         ar = np.empty(np.shape(data_dict[list(data_dict.keys())[0]]), dtype=dtype)
         for key, value in data_dict.items():
             ar[key] = value
-        # if len(data_keys) == 1:
-        #     data_keys = data_keys[0]
         if data_keys in self.data:
             self.data[data_keys] = np.rec.array(
                 np.concatenate((self.data[data_keys], ar))
