@@ -219,7 +219,6 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
             np.linalg.norm(iq_couples[0][idx] - iq_couples[1][idx], axis=-1)
         )
         best_freqs[qubit] = frequencies[max_index]
-
     return DispersiveShiftResults(
         frequency_state_zero=frequency_0,
         frequency_state_one=frequency_1,
@@ -332,25 +331,29 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
         fitting_report = table_html(
             table_dict(
                 qubit,
-                ["State zero freq", "State one freq", "ChiBest", "Frequency"],
+                [
+                    "State Zero Frequency [Hz]",
+                    "State One Frequency [Hz]",
+                    "Chi Best [Hz]",
+                    "Best Frequency [Hz]",
+                ],
                 np.round(
                     [
-                        fit_data_0["frequency_state_zero"][qubit],
-                        fit_data_1["frequency_state_one"][qubit],
+                        fit_data_0["frequency_state_zero"][qubit] * GHZ_TO_HZ,
+                        fit_data_1["frequency_state_one"][qubit] * GHZ_TO_HZ,
                         (
                             fit_data_0["frequency_state_zero"][qubit]
                             - fit_data_1["frequency_state_one"][qubit]
                         )
-                        / 2,
-                        fit.best_freq[qubit],
+                        / 2
+                        * GHZ_TO_HZ,
+                        fit.best_freq[qubit] * GHZ_TO_HZ,
                     ]
-                )
-                * GHZ_TO_HZ,
+                ),
             )
         )
     fig.update_layout(
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Frequency (GHz)",
         yaxis_title="MSR (uV)",
         xaxis2_title="Frequency (GHz)",
