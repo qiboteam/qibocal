@@ -83,11 +83,11 @@ def _acquisition(
 
     initial_twpa_freq = {}
     for qubit in qubits:
-        initial_twpa_freq[qubit] = platform.qubits[
-            qubit
-        ].twpa.local_oscillator.frequency
+        initial_twpa_freq[qubit] = float(
+            platform.qubits[qubit].twpa.local_oscillator.frequency
+        )
         data.frequencies[qubit] = list(
-            platform.qubits[qubit].twpa.local_oscillator.frequency + freq_range
+            float(platform.qubits[qubit].twpa.local_oscillator.frequency) + freq_range
         )
 
     for freq in freq_range:
@@ -108,13 +108,15 @@ def _acquisition(
                 (qubit),
                 dict(
                     freq=np.array(
-                        [float(platform.qubits[qubit].twpa.local_oscillator.frequency)]
+                        [platform.qubits[qubit].twpa.local_oscillator.frequency],
+                        dtype=np.float64,
                     ),
                     assignment_fidelity=np.array(
-                        [classification_result.assignment_fidelity[qubit]]
+                        [classification_result.assignment_fidelity[qubit]],
                     ),
                 ),
             )
+    print(data)
     return data
 
 

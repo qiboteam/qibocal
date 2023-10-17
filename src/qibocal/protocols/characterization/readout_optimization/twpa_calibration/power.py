@@ -104,7 +104,7 @@ def _acquisition(
                 (qubit),
                 dict(
                     power=np.array(
-                        [platform.qubits[qubit].twpa.local_oscillator.power]
+                        [float(platform.qubits[qubit].twpa.local_oscillator.power)]
                     ),
                     assignment_fidelity=np.array(
                         [classification_result.assignment_fidelity[qubit]]
