@@ -17,8 +17,8 @@ from ..two_qubit_interaction.utils import order_pair
 
 
 @dataclass
-class CouplerResonatorSpectroscopyParameters(Parameters):
-    """CouplerResonatorSpectroscopy runcard inputs."""
+class CouplerQubitSpectroscopyParameters(Parameters):
+    """CouplerQubitSpectroscopy runcard inputs."""
 
     offset_width: int
     """Width for offset (V)."""
@@ -30,7 +30,7 @@ class CouplerResonatorSpectroscopyParameters(Parameters):
     """Frequency step for frequency sweep (Hz)."""
     measured_qubit: QubitId
     """Qubit to readout from the pair"""
-    amplitude: Optional[float] = None
+    drive_amplitude: Optional[float] = None
     """Readout amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
     nshots: Optional[int] = None
@@ -40,16 +40,18 @@ class CouplerResonatorSpectroscopyParameters(Parameters):
 
 
 @dataclass
-class CouplerResonatorSpectroscopyResults(Results):
-    """CouplerResonatorSpectroscopy outputs."""
+class CouplerQubitSpectroscopyResults(Results):
+    """CouplerQubitSpectroscopy outputs."""
 
+    # sweetspot: dict[QubitId, float]
+    # """Sweetspot for each coupler."""
     frequency: dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
     """Readout frequency [GHz] for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitted parameters."""
 
 
-CResSpecType = np.dtype(
+CouplerSpecType = np.dtype(
     [
         ("freq", np.float64),
         ("bias", np.float64),
@@ -61,29 +63,33 @@ CResSpecType = np.dtype(
 
 
 @dataclass
-class CouplerResonatorSpectroscopyData(Data):
-    """Data structure for CouplerResonator spectroscopy."""
+class CouplerQubitSpectroscopyData(Data):
+    """Data structure for CouplerQubit spectroscopy."""
 
-    resonator_type: str
     """Resonator type."""
-    data: dict[QubitId, npt.NDArray[CResSpecType]] = field(default_factory=dict)
+    resonator_type: str
+
+    data: dict[QubitId, npt.NDArray[CouplerSpecType]] = field(default_factory=dict)
     """Raw data acquired."""
 
     def register_qubit(self, qubit, freq, bias, msr, phase):
         """Store output for single qubit."""
-        self.data[qubit] = create_data_array(freq, bias, msr, phase, dtype=CResSpecType)
+        self.data[qubit] = create_data_array(
+            freq, bias, msr, phase, dtype=CouplerSpecType
+        )
 
 
 def _acquisition(
-    params: CouplerResonatorSpectroscopyParameters, platform: Platform, qubits: Qubits
-) -> CouplerResonatorSpectroscopyData:
-    """Data acquisition for CouplerResonator spectroscopy."""
+    params: CouplerQubitSpectroscopyParameters, platform: Platform, qubits: Qubits
+) -> CouplerQubitSpectroscopyData:
+    """Data acquisition for CouplerQubit spectroscopy."""
     # create a sequence of pulses for the experiment:
     # MZ
 
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     sequence = PulseSequence()
     ro_pulses = {}
+    qd_pulses = {}
     coupler_pulses = {}
 
     for pair in qubits:
@@ -93,15 +99,18 @@ def _acquisition(
         ordered_pair = order_pair(pair, platform.qubits)
         coupler = platform.pairs[tuple(sorted(ordered_pair))].coupler
 
-        # TODO: Does it need time or can it start at 0 ???
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=1000)
+        qd_pulses[qubit] = platform.create_qubit_drive_pulse(
+            qubit, start=0, duration=2000
+        )
         # TODO: This is not being used for now
         coupler_pulses[coupler.name] = platform.create_coupler_pulse(
-            coupler, start=0, duration=ro_pulses[qubit].duration, amplitude=1
+            coupler, start=0, duration=ro_pulses[qubit].duration + 2000, amplitude=1
         )
-        if params.amplitude is not None:
-            ro_pulses[qubit].amplitude = params.amplitude
+        if params.drive_amplitude is not None:
+            qd_pulses[qubit].amplitude = params.drive_amplitude
 
+        sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
         sequence.add(coupler_pulses[coupler.name])
 
@@ -114,7 +123,7 @@ def _acquisition(
     sweeper_freq = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
-        pulses=[ro_pulses[qubit] for qubit in [params.measured_qubit]],
+        pulses=[qd_pulses[qubit] for qubit in [params.measured_qubit]],
         type=SweeperType.OFFSET,
     )
 
@@ -131,14 +140,7 @@ def _acquisition(
         type=SweeperType.ABSOLUTE,
     )
 
-    # sweeper_offset = Sweeper(
-    #     Parameter.amplitude,
-    #     delta_offset_range,
-    #     pulses=[coupler_pulses[coupler.name] for coupler in [platform.pairs[tuple(sorted(ordered_pair))].coupler]],
-    #     type=SweeperType.FACTOR,
-    # )
-
-    data = CouplerResonatorSpectroscopyData(
+    data = CouplerQubitSpectroscopyData(
         resonator_type=platform.resonator_type,
     )
 
@@ -167,14 +169,14 @@ def _acquisition(
             qubit,
             msr=result.magnitude,
             phase=result.phase,
-            freq=delta_frequency_range + ro_pulses[qubit].frequency,
+            freq=delta_frequency_range + qd_pulses[qubit].frequency,
             bias=delta_offset_range,
         )
     return data
 
 
-def _fit(data: CouplerResonatorSpectroscopyData) -> CouplerResonatorSpectroscopyResults:
-    """Post-processing function for CouplerResonatorSpectroscopy."""
+def _fit(data: CouplerQubitSpectroscopyData) -> CouplerQubitSpectroscopyResults:
+    """Post-processing function for CouplerQubitSpectroscopy."""
     qubits = data.qubits
     frequency = {}
     fitted_parameters = {}
@@ -188,29 +190,29 @@ def _fit(data: CouplerResonatorSpectroscopyData) -> CouplerResonatorSpectroscopy
         frequency[qubit] = 0
         fitted_parameters[qubit] = {}
 
-    return CouplerResonatorSpectroscopyResults(
+    return CouplerQubitSpectroscopyResults(
         frequency=frequency,
         fitted_parameters=fitted_parameters,
     )
 
 
 def _plot(
-    data: CouplerResonatorSpectroscopyData,
+    data: CouplerQubitSpectroscopyData,
     qubit,
-    fit: CouplerResonatorSpectroscopyResults,
+    fit: CouplerQubitSpectroscopyResults,
 ):
-    """Plotting function for CouplerResonatorSpectroscopy."""
+    """Plotting function for CouplerQubitSpectroscopy."""
     # TODO: fix loop
-    qubit = 0
+    qubit = 1
     return flux_dependence_plot(data, fit, qubit)
 
 
 def _update(
-    results: CouplerResonatorSpectroscopyResults, platform: Platform, qubit: QubitId
+    results: CouplerQubitSpectroscopyResults, platform: Platform, qubit: QubitId
 ):
     if 1 == 0:
         update.readout_frequency(results.frequency[qubit], platform, qubit)
 
 
-coupler_resonator_spectroscopy = Routine(_acquisition, _fit, _plot, _update)
-"""CouplerResonatorSpectroscopy Routine object."""
+coupler_qubit_spectroscopy = Routine(_acquisition, _fit, _plot, _update)
+"""CouplerQubitSpectroscopy Routine object."""
