@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -22,10 +21,6 @@ class ZenoParameters(Parameters):
 
     readouts: int
     "Number of readout pulses"
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 ZenoType = np.dtype([("msr", np.float64), ("phase", np.float64)])

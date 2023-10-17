@@ -50,6 +50,13 @@ def show_logs(func):
     return wrapper
 
 
+DEFAULT_PARENT_PARAMETERS = {
+    "nshots": None,
+    "relaxation_time": None,
+}
+"""Default values of the parameters of `Parameters`"""
+
+
 class Parameters:
     """Generic action parameters.
 
@@ -70,6 +77,9 @@ class Parameters:
         """Load parameters from runcard.
 
         Possibly looking into previous steps outputs.
+        Parameters defined in Parameters class are removed from `parameters`
+        before `cls` is created.
+        Then `nshots` and `relaxation_time` are assigned to cls.
 
         .. todo::
 
@@ -77,7 +87,12 @@ class Parameters:
             the linked outputs
 
         """
-        return cls(**parameters)
+        for parameter, value in DEFAULT_PARENT_PARAMETERS.items():
+            DEFAULT_PARENT_PARAMETERS[parameter] = parameters.pop(parameter, value)
+        instantiated_class = cls(**parameters)
+        for parameter, value in DEFAULT_PARENT_PARAMETERS.items():
+            setattr(instantiated_class, parameter, value)
+        return instantiated_class
 
 
 class Data:
