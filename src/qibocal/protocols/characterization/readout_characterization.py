@@ -98,10 +98,8 @@ def _acquisition(
                 qubit = ro_pulse.qubit
                 data.register_qubit(
                     ReadoutCharacterizationType,
-                    qubit,
-                    state,
-                    i,
-                    probability=result.samples,
+                    (qubit, state, i),
+                    dict(probability=result.samples),
                 )
                 i += 1
 

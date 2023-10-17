@@ -97,7 +97,7 @@ def _acquisition(
             sequence.add(RX90_pulse)
             # execute sequence RX(pi/2) - [RX(pi) - RX(pi)] from 0...flips times - RO
             start1 = RX90_pulse.duration
-            for j in range(flips):
+            for _ in range(flips):
                 RX_pulse1 = platform.create_RX_pulse(qubit, start=start1)
                 start2 = start1 + RX_pulse1.duration
                 RX_pulse2 = platform.create_RX_pulse(qubit, start=start2)
@@ -122,9 +122,11 @@ def _acquisition(
             result = results[ro_pulses[qubit].serial]
             data.register_qubit(
                 FlippingType,
-                qubit,
-                flips=np.array([flips]),
-                msr=np.array([result.magnitude]),
+                (qubit),
+                dict(
+                    flips=np.array([flips]),
+                    msr=np.array([result.magnitude]),
+                ),
             )
 
     return data

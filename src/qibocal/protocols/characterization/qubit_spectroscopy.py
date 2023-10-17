@@ -110,10 +110,12 @@ def _acquisition(
         # store the results
         data.register_qubit(
             ResSpecType,
-            qubit,
-            msr=result.magnitude,
-            phase=result.phase,
-            freq=delta_frequency_range + qd_pulses[qubit].frequency,
+            (qubit),
+            dict(
+                msr=result.magnitude,
+                phase=result.phase,
+                freq=delta_frequency_range + qd_pulses[qubit].frequency,
+            ),
         )
     return data
 

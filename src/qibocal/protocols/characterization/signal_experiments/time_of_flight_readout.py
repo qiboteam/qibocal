@@ -85,7 +85,7 @@ def _acquisition(
     for qubit in qubits:
         samples = results[ro_pulses[qubit].serial].magnitude
         # store the results
-        data.register_qubit(TimeOfFlightReadoutType, qubit, samples=samples)
+        data.register_qubit(TimeOfFlightReadoutType, (qubit), dict(samples=samples))
     return data
 
 

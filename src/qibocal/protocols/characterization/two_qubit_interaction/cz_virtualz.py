@@ -225,11 +225,11 @@ def _acquisition(
 
                 data.register_qubit(
                     CZVirtualZType,
-                    target_q,
-                    control_q,
-                    setup,
-                    target=result_target,
-                    control=result_control,
+                    (target_q, control_q, setup),
+                    dict(
+                        target=result_target,
+                        control=result_control,
+                    ),
                 )
     return data
 

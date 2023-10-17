@@ -77,10 +77,12 @@ def _acquisition(
             result = results[ro_pulses[qubit].serial]
             data.register_qubit(
                 RabiLenType,
-                qubit,
-                length=np.array([duration]),
-                msr=np.array([result.magnitude]),
-                phase=np.array([result.phase]),
+                (qubit),
+                dict(
+                    length=np.array([duration]),
+                    msr=np.array([result.magnitude]),
+                    phase=np.array([result.phase]),
+                ),
             )
 
     return data

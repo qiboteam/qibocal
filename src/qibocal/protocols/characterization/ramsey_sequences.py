@@ -84,10 +84,12 @@ def _acquisition(
             error = np.sqrt(prob * (1 - prob) / params.nshots)
             data.register_qubit(
                 RamseyType,
-                qubit,
-                wait=np.array([wait]),
-                prob=np.array([prob]),
-                errors=np.array([error]),
+                (qubit),
+                dict(
+                    wait=np.array([wait]),
+                    prob=np.array([prob]),
+                    errors=np.array([error]),
+                ),
             )
     return data
 

@@ -36,9 +36,9 @@ def show_logs(func):
 
     @wraps(func)
     # necessary to maintain the function signature
-    def wrapper(*args, **kwds):
+    def wrapper(*data_keys, **kwds):
         start = time.perf_counter()
-        out = func(*args, **kwds)
+        out = func(*data_keys, **kwds)
         end = time.perf_counter()
         if end - start < 1:
             message = " in less than 1 second."
@@ -143,18 +143,26 @@ class Data:
 
         return obj
 
-    def register_qubit(self, dtype, *args, **kwargs):
-        """Store output for single qubit."""
+    def register_qubit(self, dtype, data_keys, data_dict):
+        """Store output for single qubit.
+
+        Args:
+            data_keys (tuple): Keys of Data.data.
+            data_dict (dict): The keys are the fields of `dtype` and
+            the values are the related arrays.
+        """
         # to be able to handle the non-sweeper case
-        ar = np.empty(np.shape(kwargs[list(kwargs.keys())[0]]), dtype=dtype)
-        for key, value in kwargs.items():
+        ar = np.empty(np.shape(data_dict[list(data_dict.keys())[0]]), dtype=dtype)
+        for key, value in data_dict.items():
             ar[key] = value
-        if len(args) == 1:
-            args = args[0]
-        if args in self.data:
-            self.data[args] = np.rec.array(np.concatenate((self.data[args], ar)))
+        # if len(data_keys) == 1:
+        #     data_keys = data_keys[0]
+        if data_keys in self.data:
+            self.data[data_keys] = np.rec.array(
+                np.concatenate((self.data[data_keys], ar))
+            )
         else:
-            self.data[args] = np.rec.array(ar)
+            self.data[data_keys] = np.rec.array(ar)
 
 
 @dataclass

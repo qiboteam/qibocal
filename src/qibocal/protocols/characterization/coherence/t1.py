@@ -124,10 +124,12 @@ def _acquisition(params: T1Parameters, platform: Platform, qubits: Qubits) -> T1
         result = results[ro_pulses[qubit].serial]
         data.register_qubit(
             CoherenceType,
-            qubit,
-            wait=ro_wait_range,
-            msr=result.magnitude,
-            phase=result.phase,
+            (qubit),
+            dict(
+                wait=ro_wait_range,
+                msr=result.magnitude,
+                phase=result.phase,
+            ),
         )
 
     return data

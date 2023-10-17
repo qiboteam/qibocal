@@ -100,7 +100,7 @@ def _acquisition(
         for ro_pulse in ro_pulses[qubit]:
             result = results[ro_pulse.serial]
             data.register_qubit(
-                ZenoType, qubit, msr=result.magnitude, phase=result.phase
+                ZenoType, (qubit), dict(msr=result.magnitude, phase=result.phase)
             )
     return data
 

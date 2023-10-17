@@ -147,9 +147,11 @@ def _acquisition(
             # store the results
             data.register_qubit(
                 DragPulseTuningType,
-                qubit,
-                msr=r1.magnitude - r2.magnitude,
-                beta=beta_param,
+                (qubit),
+                dict(
+                    msr=r1.magnitude - r2.magnitude,
+                    beta=beta_param,
+                ),
             )
 
     return data

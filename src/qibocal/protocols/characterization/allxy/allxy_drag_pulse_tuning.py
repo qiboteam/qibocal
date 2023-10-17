@@ -39,7 +39,7 @@ class AllXYDragResults(Results):
 class AllXYDragData(Data):
     """AllXY acquisition outputs."""
 
-    beta_param: float = None
+    beta_param: Optional[float] = None
     """Beta parameter for drag pulse."""
     data: dict[tuple[QubitId, float], npt.NDArray[allxy.AllXYType]] = field(
         default_factory=dict
@@ -98,7 +98,7 @@ def _acquisition(
                 # store the results
                 gate = "-".join(gates)
                 data.register_qubit(
-                    allxy.AllXYType, qubit, beta_param, prob=z_proj, gate=gate
+                    allxy.AllXYType, (qubit, beta_param), dict(prob=z_proj, gate=gate)
                 )
     return data
 

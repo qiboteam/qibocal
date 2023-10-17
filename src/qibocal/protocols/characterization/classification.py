@@ -208,7 +208,7 @@ def _acquisition(
     for qubit in qubits:
         result = state0_results[ro_pulses[qubit].serial]
         data.register_qubit(
-            ClassificationType, qubit, 0, i=result.voltage_i, q=result.voltage_q
+            ClassificationType, (qubit, 0), dict(i=result.voltage_i, q=result.voltage_q)
         )
     # execute the second pulse sequence
     state1_results = platform.execute_pulse_sequence(
@@ -223,7 +223,7 @@ def _acquisition(
     for qubit in qubits:
         result = state1_results[ro_pulses[qubit].serial]
         data.register_qubit(
-            ClassificationType, qubit, 1, i=result.voltage_i, q=result.voltage_q
+            ClassificationType, (qubit, 1), dict(i=result.voltage_i, q=result.voltage_q)
         )
 
     return data

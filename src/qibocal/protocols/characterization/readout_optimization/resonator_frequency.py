@@ -145,9 +145,11 @@ def _acquisition(
             model.fit(np.stack((i_values, q_values), axis=-1), np.array(states))
             data.register_qubit(
                 ResonatorFrequencyType,
-                qubit,
-                freq=np.array([(ro_pulses[qubit].frequency + freq) * HZ_TO_GHZ]),
-                assignment_fidelity=np.array([model.assignment_fidelity]),
+                (qubit),
+                dict(
+                    freq=np.array([(ro_pulses[qubit].frequency + freq) * HZ_TO_GHZ]),
+                    assignment_fidelity=np.array([model.assignment_fidelity]),
+                ),
             )
     return data
 

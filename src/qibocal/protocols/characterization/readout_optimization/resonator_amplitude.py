@@ -128,9 +128,11 @@ def _acquisition(
             error = model.probability_error
             data.register_qubit(
                 ResonatorAmplitudeType,
-                qubit,
-                amp=np.array([new_amp]),
-                error=np.array([error]),
+                (qubit),
+                dict(
+                    amp=np.array([new_amp]),
+                    error=np.array([error]),
+                ),
             )
             platform.qubits[qubit].native_gates.MZ.amplitude = old_amp
             new_amp += params.amplitude_step

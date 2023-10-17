@@ -162,13 +162,14 @@ def _acquisition(
             # store the results
             data.register_qubit(
                 DispersiveShiftType,
-                qubit,
-                i,
-                freq=ro_pulses[qubit].frequency + delta_frequency_range,
-                msr=result.magnitude,
-                phase=result.phase,
-                i=result.voltage_i,
-                q=result.voltage_q,
+                (qubit, i),
+                dict(
+                    freq=ro_pulses[qubit].frequency + delta_frequency_range,
+                    msr=result.magnitude,
+                    phase=result.phase,
+                    i=result.voltage_i,
+                    q=result.voltage_q,
+                ),
             )
     return data
 
@@ -176,7 +177,6 @@ def _acquisition(
 def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
     """Post-Processing for dispersive shift"""
     qubits = data.qubits
-    results = []
     iq_couples = [[], []]  # axis 0: states, axis 1: qubit
 
     frequency_0 = {}

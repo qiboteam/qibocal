@@ -100,10 +100,14 @@ def _acquisition(
         for qubit in qubits:
             data.register_qubit(
                 TwpaPowerType,
-                qubit,
-                power=np.array([platform.qubits[qubit].twpa.local_oscillator.power]),
-                assignment_fidelity=np.array(
-                    [classification_result.assignment_fidelity[qubit]]
+                (qubit),
+                dict(
+                    power=np.array(
+                        [platform.qubits[qubit].twpa.local_oscillator.power]
+                    ),
+                    assignment_fidelity=np.array(
+                        [classification_result.assignment_fidelity[qubit]]
+                    ),
                 ),
             )
 
