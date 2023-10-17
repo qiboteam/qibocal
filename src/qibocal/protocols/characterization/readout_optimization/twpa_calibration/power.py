@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
+from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 from qibocal.protocols.characterization import classification
 from qibocal.protocols.characterization.utils import table_dict, table_html
@@ -110,14 +111,12 @@ def _acquisition(
                     ),
                 ),
             )
-
     return data
 
 
 def _fit(data: TwpaPowerData) -> TwpaPowerResults:
     """Extract fidelity for each configuration qubit / param.
     Where param can be either frequency or power."""
-
     qubits = data.qubits
     best_power = {}
     best_fidelity = {}
@@ -164,5 +163,9 @@ def _plot(data: TwpaPowerData, fit: TwpaPowerResults, qubit):
     return figures, fitting_report
 
 
-twpa_power = Routine(_acquisition, _fit, _plot)
+def _update(results: TwpaPowerResults, platform: Platform, qubit: QubitId):
+    update.twpa_power(results.best_powers[qubit], platform, qubit)
+
+
+twpa_power = Routine(_acquisition, _fit, _plot, _update)
 """Twpa power Routine  object."""
