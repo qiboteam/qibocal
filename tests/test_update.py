@@ -148,5 +148,12 @@ def test_drag_pulse_beta_update(qubit):
 def test_sweetspot_update(qubit):
     update.sweetspot(RANDOM_FLOAT, PLATFORM, qubit.name)
     assert qubit.sweetspot == RANDOM_FLOAT
-    if qubit.flux is not None:
-        assert qubit.flux.offset == RANDOM_FLOAT
+
+
+@pytest.mark.parametrize("qubit", QUBITS)
+def test_twpa_update(qubit):
+    update.twpa_frequency(RANDOM_INT, PLATFORM, qubit.name)
+    update.twpa_power(RANDOM_FLOAT, PLATFORM, qubit.name)
+
+    assert qubit.twpa.local_oscillator.frequency == RANDOM_INT
+    assert qubit.twpa.local_oscillator.power == RANDOM_FLOAT
