@@ -36,9 +36,9 @@ def show_logs(func):
 
     @wraps(func)
     # necessary to maintain the function signature
-    def wrapper(*data_keys, **kwds):
+    def wrapper(*args, **kwds):
         start = time.perf_counter()
-        out = func(*data_keys, **kwds)
+        out = func(*args, **kwds)
         end = time.perf_counter()
         if end - start < 1:
             message = " in less than 1 second."
