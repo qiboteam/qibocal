@@ -59,15 +59,15 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
 
     # Guess parameters for Lorentzian max or min
     # TODO: probably this is not working on HW
+    guess_offset = np.mean(
+        voltages[np.abs(voltages - np.mean(voltages)) < np.std(voltages)]
+    )
     if (resonator_type == "3D" and fit == "resonator") or (
         resonator_type == "2D" and fit == "qubit"
     ):
         guess_center = frequencies[
             np.argmax(voltages)
         ]  # Argmax = Returns the indices of the maximum values along an axis.
-        guess_offset = np.mean(
-            voltages[np.abs(voltages - np.mean(voltages) < np.std(voltages))]
-        )
         guess_sigma = abs(frequencies[np.argmin(voltages)] - guess_center)
         guess_amp = (np.max(voltages) - guess_offset) * guess_sigma * np.pi
 
@@ -75,9 +75,6 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         guess_center = frequencies[
             np.argmin(voltages)
         ]  # Argmin = Returns the indices of the minimum values along an axis.
-        guess_offset = np.mean(
-            voltages[np.abs(voltages - np.mean(voltages) < np.std(voltages))]
-        )
         guess_sigma = abs(frequencies[np.argmax(voltages)] - guess_center)
         guess_amp = (np.min(voltages) - guess_offset) * guess_sigma * np.pi
 
