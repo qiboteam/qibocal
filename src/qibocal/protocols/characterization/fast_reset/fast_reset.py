@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -11,6 +10,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.protocols.characterization.utils import table_dict, table_html
 
 # TODO: IBM Fast Reset until saturation loop
 # https://quantum-computing.ibm.com/lab/docs/iql/manage/systems/reset/backend_reset
@@ -19,11 +19,6 @@ from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 @dataclass
 class FastResetParameters(Parameters):
     """FastReset runcard inputs."""
-
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -176,7 +171,7 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
     # Maybe the plot can just be something like a confusion matrix between 0s and 1s ???
 
     figures = []
-    fitting_report = None
+    fitting_report = ""
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -189,7 +184,6 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
     )
 
     if fit is not None:
-        fitting_report = ""
         fig.add_trace(
             go.Heatmap(
                 z=fit.Lambda_M_fr[qubit],
@@ -198,12 +192,15 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
             row=1,
             col=1,
         )
-
-        fitting_report += (
-            f"{qubit} | Fidelity [Fast Reset]: {fit.fidelity_fr[qubit]:.6f}<br>"
-        )
-        fitting_report += (
-            f"{qubit}| Fidelity [Relaxation Time]: {fit.fidelity_nfr[qubit]:.6f}<br>"
+        fitting_report = table_html(
+            table_dict(
+                qubit,
+                ["Fidelity [Fast Reset]", "Fidelity [Relaxation Time]"],
+                [
+                    np.round(fit.fidelity_fr[qubit], 6),
+                    np.round(fit.fidelity_nfr[qubit], 6),
+                ],
+            )
         )
 
         fig.add_trace(

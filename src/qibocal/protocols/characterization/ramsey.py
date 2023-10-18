@@ -15,7 +15,7 @@ from scipy.signal import find_peaks
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
-from .utils import GHZ_TO_HZ, chi2_reduced, fill_table
+from .utils import GHZ_TO_HZ, chi2_reduced, table_dict, table_html
 
 POPT_EXCEPTION = [0, 0, 0, 0, 0]
 """Fit parameters output to handle exceptions"""
@@ -39,10 +39,6 @@ class RamseyParameters(Parameters):
     n_osc: Optional[int] = 0
     """Number of oscillations to induce detuning (optional).
         If 0 standard Ramsey experiment is performed."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -274,7 +270,9 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
     """Plotting function for Ramsey Experiment."""
 
     figures = []
-    fitting_report = None
+    fig = go.Figure()
+    fitting_report = ""
+
     qubit_data = data.data[qubit]
     waits = data.waits
     probs = qubit_data["prob"]
@@ -318,32 +316,25 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
                 line=go.scatter.Line(dash="dot"),
             )
         )
-        fitting_report = (
-            ""
-            + (
-                fill_table(
-                    qubit,
-                    "Delta_frequency",
-                    fit.delta_phys[qubit][0],
-                    fit.delta_phys[qubit][1],
-                    "Hz",
-                )
-            )
-            + (
-                fill_table(
-                    qubit,
-                    "Drive_frequency",
-                    fit.frequency[qubit][0],
-                    fit.frequency[qubit][1],
-                    "Hz",
-                )
-            )
-            + (fill_table(qubit, "T2*", fit.t2[qubit][0], fit.t2[qubit][1], "ns"))
-            + "<br>"
-            + fill_table(
-                qubit, "chi2 reduced", fit.chi2[qubit][0], error=fit.chi2[qubit][1]
+        fitting_report = table_html(
+            table_dict(
+                qubit,
+                [
+                    "Delta frequnecy [Hz]",
+                    "Drive Frequency [Hz]",
+                    "T2* [ns]",
+                    "chi2 reduced",
+                ],
+                [
+                    fit.delta_phys[qubit],
+                    fit.frequency[qubit],
+                    fit.t2[qubit],
+                    fit.chi2[qubit],
+                ],
+                display_error=True,
             )
         )
+
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting

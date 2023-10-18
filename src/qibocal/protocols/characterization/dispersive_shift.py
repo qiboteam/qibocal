@@ -1,5 +1,4 @@
 from dataclasses import asdict, dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -19,6 +18,8 @@ from qibocal.protocols.characterization.utils import (
     V_TO_UV,
     lorentzian,
     lorentzian_fit,
+    table_dict,
+    table_html,
 )
 
 
@@ -30,10 +31,6 @@ class DispersiveShiftParameters(Parameters):
     """Width [Hz] for frequency sweep relative to the readout frequency (Hz)."""
     freq_step: int
     """Frequency step for sweep (Hz)."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -242,7 +239,7 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
     )
     # iterate over multiple data folders
 
-    fitting_report = None
+    fitting_report = ""
 
     data_0 = data[qubit, 0]
     data_1 = data[qubit, 1]
@@ -306,8 +303,6 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
             )
 
     if fit is not None:
-        fitting_report = ""
-
         fig.add_trace(
             go.Scatter(
                 x=[fit.best_freq[qubit], fit.best_freq[qubit]],
@@ -329,18 +324,24 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
             row=1,
             col=1,
         )
-
-        fitting_report = fitting_report + (
-            f"{qubit} | State zero freq : {fit_data_0['frequency_state_zero'][qubit]*GHZ_TO_HZ:,.0f} Hz.<br>"
-        )
-        fitting_report = fitting_report + (
-            f"{qubit} | State one freq : {fit_data_1['frequency_state_one'][qubit]*GHZ_TO_HZ:,.0f} Hz.<br>"
-        )
-        fitting_report = fitting_report + (
-            f"{qubit} | Chi : {(fit_data_0['frequency_state_zero'][qubit]*GHZ_TO_HZ - fit_data_1['frequency_state_one'][qubit]*GHZ_TO_HZ)/2:,.0f} Hz.<br>"
-        )
-        fitting_report = fitting_report + (
-            f"{qubit} | Best frequency : {fit.best_freq[qubit]*GHZ_TO_HZ:,.0f} Hz.<br>"
+        fitting_report = table_html(
+            table_dict(
+                qubit,
+                ["State zero freq", "State one freq", "ChiBest", "Frequency"],
+                np.round(
+                    [
+                        fit_data_0["frequency_state_zero"][qubit],
+                        fit_data_1["frequency_state_one"][qubit],
+                        (
+                            fit_data_0["frequency_state_zero"][qubit]
+                            - fit_data_1["frequency_state_one"][qubit]
+                        )
+                        / 2,
+                        fit.best_freq[qubit],
+                    ]
+                )
+                * GHZ_TO_HZ,
+            )
         )
     fig.update_layout(
         showlegend=True,
