@@ -67,11 +67,10 @@ def flux_dependence_plot(data, fit, qubit):
         msr_mask = 0.5
         if data.resonator_type == "3D":
             msr = -msr
-    elif data.__class__.__name__ == "QubitFluxData":
-        msr_mask = 0.3
-        if data.resonator_type == "2D":
-            msr = -msr
-    else:
+    elif (
+        data.__class__.__name__ == "QubitFluxData"
+        or data.__class__.__name__ == "CouplerSpectroscopyData"
+    ):
         msr_mask = 0.3
         if data.resonator_type == "2D":
             msr = -msr
@@ -89,19 +88,22 @@ def flux_dependence_plot(data, fit, qubit):
         col=1,
     )
 
-    fig.add_trace(
-        go.Scatter(
-            x=frequencies1,
-            y=biases1,
-            mode="markers",
-            marker_color="green",
-            showlegend=True,
-            name="Curve estimation",
-        ),
-        row=1,
-        col=1,
-    )
-    if fit is not None:
+    if not data.__class__.__name__ == "CouplerSpectroscopyData":
+        fig.add_trace(
+            go.Scatter(
+                x=frequencies1,
+                y=biases1,
+                mode="markers",
+                marker_color="green",
+                showlegend=True,
+                name="Curve estimation",
+            ),
+            row=1,
+            col=1,
+        )
+
+    # TODO: This fit is for frequency, can it be reused here, do we even want the fit ?
+    if fit is not None and not data.__class__.__name__ == "CouplerSpectroscopyData":
         fitting_report = ""
         params = fit.fitted_parameters[qubit]
         fitting_report_label = "Frequency"

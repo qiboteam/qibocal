@@ -162,3 +162,10 @@ def sweetspot(sweetspot: float, platform: Platform, qubit: QubitId):
     platform.qubits[qubit].sweetspot = float(sweetspot)
     if platform.qubits[qubit].flux is not None:
         platform.qubits[qubit].flux.offset = sweetspot
+
+
+# TODO: Proper update
+def coupler_sweetspot(sweetspot: float, platform: Platform, qubit: QubitId):
+    platform.couplers[qubit].sweetspot = float(sweetspot)
+    if platform.qubits[qubit].flux is not None:
+        platform.qubits[qubit].flux.offset = sweetspot
