@@ -10,6 +10,7 @@ from .coherence.t1_sequences import t1_sequences
 from .coherence.t2 import t2
 from .coherence.t2_sequences import t2_sequences
 from .coherence.zeno import zeno
+from .couplers.coupler_chevron_flux import chevron_flux_time
 from .couplers.coupler_qubit_spectroscopy import coupler_qubit_spectroscopy
 from .couplers.coupler_resonator_spectroscopy import coupler_resonator_spectroscopy
 from .dispersive_shift import dispersive_shift
@@ -83,3 +84,4 @@ class Operation(Enum):
     resonator_amplitude = resonator_amplitude
     coupler_resonator_spectroscopy = coupler_resonator_spectroscopy
     coupler_qubit_spectroscopy = coupler_qubit_spectroscopy
+    chevron_flux_time = chevron_flux_time
