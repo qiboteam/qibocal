@@ -89,7 +89,7 @@ actions:
       bias_step: 0.1
       freq_width: 10_000_000
       freq_step: 1_000_000
-      measured_qubit: [1]
+      measured_qubit: 1
       amplitude: .3
       nshots: 10
       relaxation_time: 3_000

@@ -23,6 +23,7 @@ class CouplerSpectroscopyParameters(Parameters):
     freq_step: int
     """Frequency step for frequency sweep (Hz)."""
     # TODO: It may be better not to use readout multiplex to avoid readout crosstalk
+    # TODO: The code works for this being QubitId, change to list[QubitId]
     measured_qubit: list[QubitId]
     """Qubit to readout from the pair"""
     amplitude: Optional[float] = None
