@@ -112,7 +112,7 @@ def _plot(data: RabiAmplitudeEFData, qubit, fit: RabiAmplitudeEFResults = None):
     """Plotting function for RabiAmplitude."""
     figures, report = utils.plot(data, qubit, fit)
     if report is not None:
-        report = report.replace("pi_pulse", "pi_pulse_12")
+        report = report.replace("Pi pulse", "Pi pulse 12")
     return figures, report
 
 
