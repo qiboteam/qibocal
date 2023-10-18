@@ -46,10 +46,6 @@ SPACING = 0.1
 class SingleShotClassificationParameters(Parameters):
     """SingleShotClassification runcard inputs."""
 
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
     classifiers_list: Optional[list[str]] = field(default_factory=lambda: ["qubit_fit"])
     """List of models to classify the qubit states"""
     savedir: Optional[str] = " "

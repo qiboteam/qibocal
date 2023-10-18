@@ -26,10 +26,6 @@ class ResonatorSpectroscopyAttenuationParameters(Parameters):
     power_level: PowerLevel
     """Power regime (low or high). If low the readout frequency will be updated.
     If high both the readout frequency and the bare resonator frequency will be updated."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
     amplitude: Optional[float] = None
     """Readout amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""

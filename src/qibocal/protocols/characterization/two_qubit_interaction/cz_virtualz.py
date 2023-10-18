@@ -32,10 +32,6 @@ class CZVirtualZParameters(Parameters):
     """Step size for the theta sweep in radians."""
     flux_pulse_amplitude: Optional[float] = None
     """Amplitude of flux pulse implementing CZ."""
-    nshots: Optional[int] = None
-    """Number of shots per point."""
-    relaxation_time: Optional[float] = None
-    """Relaxation time."""
     dt: Optional[float] = 20
     """Time delay between flux pulses and readout."""
     parking: bool = True

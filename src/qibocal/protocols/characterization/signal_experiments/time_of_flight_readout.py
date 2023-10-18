@@ -19,10 +19,6 @@ class TimeOfFlightReadoutParameters(Parameters):
 
     readout_amplitude: Optional[int] = None
     """Amplitude of the readout pulse."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
     window_size: Optional[int] = 10
     """Window size for the moving average."""
 
