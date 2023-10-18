@@ -20,7 +20,9 @@ from .flux_dependence.resonator_flux_dependence import (
 )
 from .qubit_spectroscopy import qubit_spectroscopy
 from .rabi.amplitude import rabi_amplitude
+from .rabi.amplitude_msr import rabi_amplitude_msr
 from .rabi.length import rabi_length
+from .rabi.length_msr import rabi_length_msr
 from .rabi.length_sequences import rabi_length_sequences
 from .ramsey import ramsey
 from .ramsey_sequences import ramsey_sequences
@@ -52,6 +54,8 @@ class Operation(Enum):
     rabi_amplitude = rabi_amplitude
     rabi_length = rabi_length
     rabi_length_sequences = rabi_length_sequences
+    rabi_amplitude_msr = rabi_amplitude_msr
+    rabi_length_msr = rabi_length_msr
     ramsey = ramsey
     ramsey_sequences = ramsey_sequences
     t1 = t1

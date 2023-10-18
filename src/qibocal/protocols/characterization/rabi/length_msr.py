@@ -44,7 +44,9 @@ class RabiLengthResults(Results):
     """Raw fitting output."""
 
 
-RabiLenType = np.dtype([("length", np.float64), ("prob", np.float64)])
+RabiLenType = np.dtype(
+    [("length", np.float64), ("msr", np.float64), ("phase", np.float64)]
+)
 """Custom dtype for rabi amplitude."""
 
 
@@ -57,13 +59,14 @@ class RabiLengthData(Data):
     data: dict[QubitId, npt.NDArray[RabiLenType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, length, prob):
+    def register_qubit(self, qubit, length, msr, phase):
         """Store output for single qubit."""
         # to be able to handle the non-sweeper case
         shape = (1,) if np.isscalar(length) else length.shape
         ar = np.empty(shape, dtype=RabiLenType)
         ar["length"] = length
-        ar["prob"] = prob
+        ar["msr"] = msr
+        ar["phase"] = phase
         if qubit in self.data:
             self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
         else:
@@ -125,18 +128,20 @@ def _acquisition(
         ExecutionParameters(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.DISCRIMINATION,
-            averaging_mode=AveragingMode.SINGLESHOT,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
         ),
         sweeper,
     )
 
     for qubit in qubits:
-        # average prob, phase, i and q over the number of shots defined in the runcard
+        # average msr, phase, i and q over the number of shots defined in the runcard
+        result = results[ro_pulses[qubit].serial]
         data.register_qubit(
             qubit,
             length=qd_pulse_duration_range,
-            prob=results[qubit].probability(state=1),
+            msr=result.magnitude,
+            phase=result.phase,
         )
     return data
 
@@ -151,14 +156,14 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
     for qubit in qubits:
         qubit_data = data[qubit]
         rabi_parameter = qubit_data.length
-        prob = qubit_data.prob
+        voltages = qubit_data.msr
 
-        y_min = np.min(prob)
-        y_max = np.max(prob)
+        y_min = np.min(voltages)
+        y_max = np.max(voltages)
         x_min = np.min(rabi_parameter)
         x_max = np.max(rabi_parameter)
         x = (rabi_parameter - x_min) / (x_max - x_min)
-        y = (prob - y_min) / (y_max - y_min)
+        y = (voltages - y_min) / (y_max - y_min)
 
         # Guessing period using fourier transform
         ft = np.fft.rfft(y)
@@ -206,8 +211,8 @@ def _update(results: RabiLengthResults, platform: Platform, qubit: QubitId):
 
 def _plot(data: RabiLengthData, fit: RabiLengthResults, qubit):
     """Plotting function for RabiLength experiment."""
-    return utils.plot_proba(data, qubit, fit)
+    return utils.plot(data, qubit, fit)
 
 
-rabi_length = Routine(_acquisition, _fit, _plot, _update)
+rabi_length_msr = Routine(_acquisition, _fit, _plot, _update)
 """RabiLength Routine object."""

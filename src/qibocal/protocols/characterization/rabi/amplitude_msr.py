@@ -44,7 +44,9 @@ class RabiAmplitudeResults(Results):
     """Raw fitted parameters."""
 
 
-RabiAmpType = np.dtype([("amp", np.float64), ("prob", np.float64)])
+RabiAmpType = np.dtype(
+    [("amp", np.float64), ("msr", np.float64), ("phase", np.float64)]
+)
 """Custom dtype for rabi amplitude."""
 
 
@@ -57,11 +59,12 @@ class RabiAmplitudeData(Data):
     data: dict[QubitId, npt.NDArray[RabiAmpType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, amp, prob):
+    def register_qubit(self, qubit, amp, msr, phase):
         """Store output for single qubit."""
         ar = np.empty(amp.shape, dtype=RabiAmpType)
         ar["amp"] = amp
-        ar["prob"] = prob
+        ar["msr"] = msr
+        ar["phase"] = phase
         self.data[qubit] = np.rec.array(ar)
 
 
@@ -116,17 +119,19 @@ def _acquisition(
         ExecutionParameters(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.DISCRIMINATION,
-            averaging_mode=AveragingMode.SINGLESHOT,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
         ),
         sweeper,
     )
     for qubit in qubits:
         # average msr, phase, i and q over the number of shots defined in the runcard
+        result = results[ro_pulses[qubit].serial]
         data.register_qubit(
             qubit,
             amp=qd_pulses[qubit].amplitude * qd_pulse_amplitude_range,
-            prob=results[qubit].probability(state=1),
+            msr=result.magnitude,
+            phase=result.phase,
         )
     return data
 
@@ -142,14 +147,14 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
         qubit_data = data[qubit]
 
         rabi_parameter = qubit_data.amp
-        prob = qubit_data.prob
+        voltages = qubit_data.msr
 
-        y_min = np.min(prob)
-        y_max = np.max(prob)
+        y_min = np.min(voltages)
+        y_max = np.max(voltages)
         x_min = np.min(rabi_parameter)
         x_max = np.max(rabi_parameter)
         x = (rabi_parameter - x_min) / (x_max - x_min)
-        y = (prob - y_min) / (y_max - y_min)
+        y = (voltages - y_min) / (y_max - y_min)
 
         # Guessing period using fourier transform
         ft = np.fft.rfft(y)
@@ -192,12 +197,12 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
 
 def _plot(data: RabiAmplitudeData, qubit, fit: RabiAmplitudeResults = None):
     """Plotting function for RabiAmplitude."""
-    return utils.plot_proba(data, qubit, fit)
+    return utils.plot(data, qubit, fit)
 
 
 def _update(results: RabiAmplitudeResults, platform: Platform, qubit: QubitId):
     update.drive_amplitude(results.amplitude[qubit], platform, qubit)
 
 
-rabi_amplitude = Routine(_acquisition, _fit, _plot, _update)
+rabi_amplitude_msr = Routine(_acquisition, _fit, _plot, _update)
 """RabiAmplitude Routine object."""
