@@ -1,11 +1,11 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
+from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Routine
 from qibocal.protocols.characterization import classification
 from qibocal.protocols.characterization.utils import table_dict, table_html
@@ -21,10 +21,6 @@ class TwpaPowerParameters(Parameters):
     """Power total width."""
     power_step: float
     """Power step to be probed."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -80,7 +76,9 @@ def _acquisition(
             )
 
         classification_data = classification._acquisition(
-            classification.SingleShotClassificationParameters(nshots=params.nshots),
+            classification.SingleShotClassificationParameters.load(
+                {"nshots": params.nshots}
+            ),
             platform,
             qubits,
         )
@@ -114,7 +112,7 @@ def _plot(data: TwpaPowerData, fit: TwpaPowerResults, qubit):
                 ["Best assignment fidelity", "TWPA Power"],
                 [
                     np.round(np.max(fidelities), 3),
-                    np.round(powers[np.argmax(fidelities)], 3),
+                    np.round(fit.best[qubit], 3),
                 ],
             )
         )
@@ -131,5 +129,9 @@ def _plot(data: TwpaPowerData, fit: TwpaPowerResults, qubit):
     return figures, fitting_report
 
 
-twpa_power = Routine(_acquisition, frequency._fit, _plot)
+def _update(results: TwpaPowerResults, platform: Platform, qubit: QubitId):
+    update.twpa_power(results.best[qubit], platform, qubit)
+
+
+twpa_power = Routine(_acquisition, frequency._fit, _plot, _update)
 """Twpa power Routine  object."""

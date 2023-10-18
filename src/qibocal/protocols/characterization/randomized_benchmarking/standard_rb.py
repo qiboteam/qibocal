@@ -42,8 +42,6 @@ class StandardRBParameters(Parameters):
     """A list of depths/sequence lengths. If a dictionary is given the list will be build."""
     niter: int
     """Sets how many iterations over the same depth value."""
-    nshots: int
-    """For each sequence how many shots for statistics should be performed."""
     uncertainties: Union[str, float] = 95
     """Method of computing the error bars of the signal and uncertainties of the fit. If ``None``,
     does not compute them. If ``"std"``, computes the standard deviation. If ``float`` or ``int``

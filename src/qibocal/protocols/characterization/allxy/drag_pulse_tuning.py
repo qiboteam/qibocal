@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -29,10 +28,6 @@ class DragPulseTuningParameters(allxy_drag_pulse_tuning.AllXYDragParameters):
     """DRAG pulse beta end sweep parameter."""
     beta_step: float
     """DRAG pulse beta sweep step parameter."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 @dataclass

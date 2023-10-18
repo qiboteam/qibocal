@@ -167,5 +167,13 @@ def sweetspot(sweetspot: float, platform: Platform, qubit: QubitId):
 # TODO: Proper update
 def coupler_sweetspot(sweetspot: float, platform: Platform, qubit: QubitId):
     platform.couplers[qubit].sweetspot = float(sweetspot)
-    if platform.qubits[qubit].flux is not None:
-        platform.qubits[qubit].flux.offset = sweetspot
+    if platform.couplers[qubit].flux is not None:
+        platform.couplers[qubit].flux.offset = sweetspot
+
+
+def twpa_frequency(frequency: int, platform: Platform, qubit: QubitId):
+    platform.qubits[qubit].twpa.local_oscillator.frequency = int(frequency)
+
+
+def twpa_power(power: float, platform: Platform, qubit: QubitId):
+    platform.qubits[qubit].twpa.local_oscillator.power = float(power)
