@@ -9,43 +9,31 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
-from qibocal.auto.operation import Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Qubits, Routine
 
-from ..utils import table_dict, table_html
-from . import t1, utils
-
-
-@dataclass
-class T2Parameters(Parameters):
-    """T2 runcard inputs."""
-
-    delay_between_pulses_start: int
-    """Initial delay between RX(pi/2) pulses in ns."""
-    delay_between_pulses_end: int
-    """Final delay between RX(pi/2) pulses in ns."""
-    delay_between_pulses_step: int
-    """Step delay between RX(pi/2) pulses in ns."""
+from ..utils import V_TO_UV, table_dict, table_html
+from . import t1_msr, t2, utils
 
 
 @dataclass
-class T2Results(Results):
-    """T2 outputs."""
-
-    t2: dict[QubitId, float]
-    """T2 for each qubit (ns)."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
-    """Raw fitting output."""
+class T2MSRParameters(t2.T2Parameters):
+    """T2MSR runcard inputs."""
 
 
-class T2Data(t1.T1Data):
-    """T2 acquisition outputs."""
+@dataclass
+class T2MSRResults(t2.T2Results):
+    """T2MSR outputs."""
+
+
+class T2MSRData(t1_msr.T1MSRData):
+    """T2MSR acquisition outputs."""
 
 
 def _acquisition(
-    params: T2Parameters,
+    params: T2MSRParameters,
     platform: Platform,
     qubits: Qubits,
-) -> T2Data:
+) -> T2MSRData:
     """Data acquisition for Ramsey Experiment (detuned)."""
     # create a sequence of pulses for the experiment
     # RX90 - t - RX90 - MZ
@@ -74,7 +62,10 @@ def _acquisition(
         params.delay_between_pulses_step,
     )
 
-    data = T2Data()
+    # create a DataUnits object to store the results,
+    # DataUnits stores by default MSR, phase, i, q
+    # additionally include wait time and t_max
+    data = T2MSRData()
 
     sweeper = Sweeper(
         Parameter.start,
@@ -89,60 +80,46 @@ def _acquisition(
         ExecutionParameters(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.DISCRIMINATION,
-            averaging_mode=AveragingMode.SINGLESHOT,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
         ),
         sweeper,
     )
 
     for qubit in qubits:
-        probs = results[ro_pulses[qubit].serial].probability(state=1)
-        errors = np.sqrt(probs * (1 - probs) / params.nshots)
-        data.register_qubit(qubit, wait=waits, prob=probs, error=errors)
+        result = results[ro_pulses[qubit].serial]
+        data.register_qubit(qubit, wait=waits, msr=result.magnitude, phase=result.phase)
     return data
 
 
-def _fit(data: T2Data) -> T2Results:
+def _fit(data: T2MSRData) -> T2MSRResults:
     r"""
     Fitting routine for Ramsey experiment. The used model is
     .. math::
         y = p_0 - p_1 e^{-x p_2}.
     """
-    t2s, fitted_parameters = utils.exponential_fit_probability(data)
-    return T2Results(t2s, fitted_parameters)
+    t2s, fitted_parameters = utils.exponential_fit(data)
+    return T2MSRResults(t2s, fitted_parameters)
 
 
-def _plot(data: T2Data, qubit, fit: T2Results = None):
+def _plot(data: T2MSRData, qubit, fit: T2MSRResults = None):
     """Plotting function for Ramsey Experiment."""
 
     figures = []
-    fitting_report = ""
-    qubit_data = data[qubit]
-    waits = qubit_data.wait
-    probs = qubit_data.prob
-    error_bars = qubit_data.error
+    fig = go.Figure()
+    fitting_report = None
 
-    fig = go.Figure(
-        [
-            go.Scatter(
-                x=waits,
-                y=probs,
-                opacity=1,
-                name="Probability of 1",
-                showlegend=True,
-                legendgroup="Probability of 1",
-                mode="lines",
-            ),
-            go.Scatter(
-                x=np.concatenate((waits, waits[::-1])),
-                y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
-                fill="toself",
-                fillcolor=t1.COLORBAND,
-                line=dict(color=t1.COLORBAND_LINE),
-                showlegend=True,
-                name="Errors",
-            ),
-        ]
+    qubit_data = data[qubit]
+
+    fig.add_trace(
+        go.Scatter(
+            x=qubit_data.wait,
+            y=qubit_data.msr * V_TO_UV,
+            opacity=1,
+            name="Voltage",
+            showlegend=True,
+            legendgroup="Voltage",
+        )
     )
 
     if fit is not None:
@@ -166,13 +143,14 @@ def _plot(data: T2Data, qubit, fit: T2Results = None):
             )
         )
         fitting_report = table_html(
-            table_dict(qubit, ["T2"], [fit.t2[qubit]], display_error=True)
+            table_dict(qubit, "T2 [ns]", np.round(fit.t2[qubit]))
         )
+
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Time (ns)",
-        yaxis_title="Probability of State 1",
+        yaxis_title="MSR (uV)",
     )
 
     figures.append(fig)
@@ -180,9 +158,9 @@ def _plot(data: T2Data, qubit, fit: T2Results = None):
     return figures, fitting_report
 
 
-def _update(results: T2Results, platform: Platform, qubit: QubitId):
+def _update(results: T2MSRResults, platform: Platform, qubit: QubitId):
     update.t2(results.t2[qubit], platform, qubit)
 
 
-t2 = Routine(_acquisition, _fit, _plot, _update)
-"""T2 Routine object."""
+t2_msr = Routine(_acquisition, _fit, _plot, _update)
+"""T2MSR Routine object."""

@@ -5,14 +5,14 @@ from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Qubits, Routine
 
-from .t2 import T2Data, T2Parameters, _fit, _plot, _update
+from .t2_msr import T2MSRData, T2MSRParameters, _fit, _plot, _update
 
 
 def _acquisition(
-    params: T2Parameters,
+    params: T2MSRParameters,
     platform: Platform,
     qubits: Qubits,
-) -> T2Data:
+) -> T2MSRData:
     """Data acquisition for Ramsey Experiment (detuned)."""
     # create a sequence of pulses for the experiment
     # RX90 - t - RX90 - MZ
@@ -44,7 +44,7 @@ def _acquisition(
     # create a DataUnits object to store the results,
     # DataUnits stores by default MSR, phase, i, q
     # additionally include wait time and t_max
-    data = T2Data()
+    data = T2MSRData()
 
     # sweep the parameter
     for wait in waits:
