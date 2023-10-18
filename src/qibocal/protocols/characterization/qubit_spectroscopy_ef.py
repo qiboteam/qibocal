@@ -18,6 +18,8 @@ from .qubit_spectroscopy import (
 )
 from .utils import spectroscopy_plot
 
+DEFAULT_ANHARMONICITY = 300e6
+
 
 @dataclass
 class QubitSpectroscopyEFParameters(QubitSpectroscopyParameters):
@@ -51,6 +53,7 @@ def _acquisition(
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=rx_pulses[qubit].finish, duration=params.drive_duration
         )
+        qd_pulses[qubit].frequency -= DEFAULT_ANHARMONICITY
         if params.drive_amplitude is not None:
             qd_pulses[qubit].amplitude = params.drive_amplitude
 
@@ -65,7 +68,9 @@ def _acquisition(
 
     # define the parameter to sweep and its range:
     # sweep only before qubit frequency
-    delta_frequency_range = np.arange(-params.freq_width, 0, params.freq_step)
+    delta_frequency_range = np.arange(
+        -params.freq_width, params.freq_width, params.freq_step
+    )
     sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
