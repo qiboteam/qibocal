@@ -14,6 +14,7 @@ from qibolab.qubits import QubitId
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.fitting.classifier.qubit_fit import QubitFit
+from qibocal.protocols.characterization.utils import table_dict, table_html
 
 
 @dataclass
@@ -174,8 +175,12 @@ def _plot(data: ResonatorAmplitudeData, fit: ResonatorAmplitudeResults, qubit):
             col=1,
         )
 
-        fitting_report = "" + (
-            f"{qubit} | Best Readout Amplitude : {fit.best_amp[qubit]:,.4f}<br>"
+        fitting_report = table_html(
+            table_dict(
+                qubit,
+                "Best Readout Amplitude",
+                np.round(fit.best_amp[qubit], 4),
+            )
         )
 
     fig.update_layout(
