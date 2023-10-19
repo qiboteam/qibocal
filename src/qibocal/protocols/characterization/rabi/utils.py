@@ -22,7 +22,7 @@ def rabi_length_fit(x, p0, p1, p2, p3, p4):
     #   Period    T                  : 1/p[2]
     #   Phase                        : p[3]
     #   Arbitrary parameter T_2      : 1/p[4]
-    return p0 + p1 * np.sin(2 * np.pi * x / p2 + p3) * np.exp(-x / p4)
+    return p0 + p1 * np.sin(2 * np.pi * x / p2 + p3) * np.exp(-x * p4)
 
 
 def plot(data, qubit, fit):
@@ -179,8 +179,8 @@ def plot_proba(data, qubit, fit):
         fitting_report = table_html(
             table_dict(
                 qubit,
-                ["Pi pulse amplitude", "Pi pulse length"],
-                [fit.amplitude[qubit], fit.length[qubit]],
+                ["Pi pulse amplitude", "Pi pulse length", "chi2 reduced"],
+                [fit.amplitude[qubit], fit.length[qubit], fit.chi2[qubit]],
                 display_error=True,
             )
         )

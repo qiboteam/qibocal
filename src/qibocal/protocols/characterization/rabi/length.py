@@ -15,6 +15,7 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 
+from ..utils import chi2_reduced
 from . import utils
 
 
@@ -46,6 +47,7 @@ class RabiLengthResults(Results):
     """Pi pulse amplitude. Same for all qubits."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
+    chi2: dict[QubitId, tuple[float, Optional[float]]] = field(default_factory=dict)
 
 
 RabiLenType = np.dtype(
@@ -156,6 +158,7 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
     qubits = data.qubits
     fitted_parameters = {}
     durations = {}
+    chi2 = {}
 
     for qubit in qubits:
         qubit_data = data[qubit]
@@ -169,8 +172,7 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
         index = local_maxima[0] if len(local_maxima) > 0 else None
         # 0.5 hardcoded guess for less than one oscillation
         f = x[index] / (x[1] - x[0]) if index is not None else 0.5
-
-        pguess = [1, 1, f, np.pi / 2, np.max(x) / 2]
+        pguess = [1 / 2.0, 1 / 2.0, np.max(x) / f, np.pi / 2, 0]
         try:
             popt, perr = curve_fit(
                 utils.rabi_length_fit,
@@ -191,10 +193,18 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
             pi_pulse_parameter = 0
             popt = [0] * 4 + [1]
 
-        durations[qubit] = (pi_pulse_parameter, 0)
+        durations[qubit] = (pi_pulse_parameter, perr[2] / 2)
         fitted_parameters[qubit] = popt.tolist()
         amplitudes = {key: (value, 0) for key, value in data.amplitudes.items()}
-    return RabiLengthResults(durations, amplitudes, fitted_parameters)
+        chi2[qubit] = (
+            chi2_reduced(
+                y,
+                utils.rabi_length_fit(x, *popt),
+                qubit_data.error,
+            ),
+            np.sqrt(2 / len(y)),
+        )
+    return RabiLengthResults(durations, amplitudes, fitted_parameters, chi2)
 
 
 def _update(results: RabiLengthResults, platform: Platform, qubit: QubitId):

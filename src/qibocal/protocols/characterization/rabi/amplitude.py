@@ -15,6 +15,7 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 
+from ..utils import chi2_reduced
 from . import utils
 
 
@@ -46,6 +47,7 @@ class RabiAmplitudeResults(Results):
     """Drive pulse duration. Same for all qubits."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitted parameters."""
+    chi2: dict[QubitId, tuple[float, Optional[float]]] = field(default_factory=dict)
 
 
 RabiAmpType = np.dtype(
@@ -146,6 +148,7 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
 
     pi_pulse_amplitudes = {}
     fitted_parameters = {}
+    chi2 = {}
 
     for qubit in qubits:
         qubit_data = data[qubit]
@@ -160,7 +163,7 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
         index = local_maxima[0] if len(local_maxima) > 0 else None
         # 0.5 hardcoded guess for less than one oscillation
         f = x[index] / (x[1] - x[0]) if index is not None else 0.5
-        pguess = [0.5, 1, f, np.pi / 2]
+        pguess = [0.5, 0.5, np.max(x) / f, np.pi / 2]
         try:
             popt, perr = curve_fit(
                 utils.rabi_amplitude_fit,
@@ -186,7 +189,15 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
         pi_pulse_amplitudes[qubit] = (pi_pulse_parameter, perr[2] / 2)
         fitted_parameters[qubit] = popt.tolist()
         durations = {key: (value, 0) for key, value in data.durations.items()}
-    return RabiAmplitudeResults(pi_pulse_amplitudes, durations, fitted_parameters)
+        chi2[qubit] = (
+            chi2_reduced(
+                y,
+                utils.rabi_amplitude_fit(x, *popt),
+                qubit_data.error,
+            ),
+            np.sqrt(2 / len(y)),
+        )
+    return RabiAmplitudeResults(pi_pulse_amplitudes, durations, fitted_parameters, chi2)
 
 
 def _plot(data: RabiAmplitudeData, qubit, fit: RabiAmplitudeResults = None):

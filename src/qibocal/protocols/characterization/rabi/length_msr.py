@@ -155,7 +155,7 @@ def _fit(data: RabiLengthVoltData) -> RabiLengthVoltResults:
         # 0.5 hardcoded guess for less than one oscillation
         f = x[index] / (x[1] - x[0]) if index is not None else 0.5
 
-        pguess = [1, 1, 1 / f, np.pi / 2, x_max]
+        pguess = [1, 1, 1 / f, np.pi / 2, 0]
         try:
             popt, _ = curve_fit(
                 utils.rabi_length_fit,
@@ -173,13 +173,13 @@ def _fit(data: RabiLengthVoltData) -> RabiLengthVoltResults:
                 (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
                 popt[2] * (x_max - x_min),
                 popt[3] - 2 * np.pi * x_min * popt[2] / (x_max - x_min),
-                popt[4] * (x_max - x_min),
+                popt[4] / (x_max - x_min),
             ]
-            pi_pulse_parameter = np.abs((1.0 / translated_popt[2]) / 2)
+            pi_pulse_parameter = np.abs((translated_popt[2]) / 2)
         except:
             log.warning("rabi_fit: the fitting was not succesful")
             pi_pulse_parameter = 0
-            translated_popt = [0, 0, 1, 0, 1]
+            translated_popt = [0, 0, 1, 0, 0]
 
         durations[qubit] = pi_pulse_parameter
         fitted_parameters[qubit] = translated_popt
@@ -188,6 +188,7 @@ def _fit(data: RabiLengthVoltData) -> RabiLengthVoltResults:
 
 
 def _update(results: RabiLengthVoltResults, platform: Platform, qubit: QubitId):
+    print(results.length[qubit])
     update.drive_duration(results.length[qubit], platform, qubit)
 
 
