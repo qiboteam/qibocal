@@ -150,19 +150,19 @@ def _acquisition(
 
 def _plot(data: QubitSpectroscopyEFData, qubit, fit: QubitSpectroscopyEFResults):
     """Plotting function for QubitSpectroscopy."""
-    figures, _ = spectroscopy_plot(data, qubit, fit)
-
-    report = table_html(
-        table_dict(
-            qubit,
-            ["Frequency 1->2", "Amplitude", "Anharmonicity"],
-            [
-                np.round(fit.frequency[qubit] * GHZ_TO_HZ, 0),
-                fit.amplitude[qubit],
-                np.round(fit.anharmonicity[qubit] * GHZ_TO_HZ, 0),
-            ],
+    figures, report = spectroscopy_plot(data, qubit, fit)
+    if fit is not None:
+        report = table_html(
+            table_dict(
+                qubit,
+                ["Frequency 1->2", "Amplitude", "Anharmonicity"],
+                [
+                    np.round(fit.frequency[qubit] * GHZ_TO_HZ, 0),
+                    fit.amplitude[qubit],
+                    np.round(fit.anharmonicity[qubit] * GHZ_TO_HZ, 0),
+                ],
+            )
         )
-    )
 
     return figures, report
 
