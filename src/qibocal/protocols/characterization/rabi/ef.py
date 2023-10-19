@@ -39,9 +39,12 @@ def _acquisition(
     params: RabiAmplitudeEFParameters, platform: Platform, qubits: Qubits
 ) -> RabiAmplitudeEFData:
     r"""
-    Data acquisition for Rabi experiment sweeping amplitude.
-    In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse amplitude
-    to find the drive pulse amplitude that creates a rotation of a desired angle.
+    Data acquisition for Rabi EF experiment sweeping amplitude.
+
+    The rabi protocol is performed after exciting the qubit to state 1.
+    This protocol allows to compute the amplitude of the RX12 pulse to excite
+    the qubit to state 2 starting from state 1.
+
     """
 
     # create a sequence of pulses for the experiment

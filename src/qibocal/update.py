@@ -176,3 +176,7 @@ def twpa_frequency(frequency: int, platform: Platform, qubit: QubitId):
 
 def twpa_power(power: float, platform: Platform, qubit: QubitId):
     platform.qubits[qubit].twpa.local_oscillator.power = float(power)
+
+
+def anharmonicity(anharmonicity: float, platform: Platform, qubit: QubitId):
+    platform.qubits[qubit].anharmonicity = int(anharmonicity * GHZ_TO_HZ)
