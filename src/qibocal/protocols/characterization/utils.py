@@ -21,6 +21,8 @@ V_TO_UV = 1e6
 S_TO_NS = 1e9
 EXTREME_CHI = 1e4
 """Chi2 output when errors list contains zero elements"""
+COLORBAND = "rgba(0,100,80,0.2)"
+COLORBAND_LINE = "rgba(255,255,255,0)"
 
 
 def calculate_frequencies(results, qubit_list):

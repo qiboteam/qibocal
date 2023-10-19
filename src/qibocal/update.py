@@ -44,23 +44,24 @@ def readout_attenuation(att: int, platform: Platform, qubit: QubitId):
 
 def drive_frequency(freq: Union[float, tuple], platform: Platform, qubit: QubitId):
     """Update drive frequency value in platform for specific qubit."""
-    if isinstance(
-        freq, tuple
-    ):  # TODO: remove this branching after error bars propagation
-        freq = int(freq[0] * GHZ_TO_HZ)
-    else:
-        freq = int(freq * GHZ_TO_HZ)
+    if isinstance(freq, tuple):
+        freq = freq[0]
+    freq = int(freq * GHZ_TO_HZ)
     platform.qubits[qubit].native_gates.RX.frequency = int(freq)
     platform.qubits[qubit].drive_frequency = int(freq)
 
 
-def drive_amplitude(amp: float, platform: Platform, qubit: QubitId):
+def drive_amplitude(amp: Union[float, tuple], platform: Platform, qubit: QubitId):
     """Update drive frequency value in platform for specific qubit."""
+    if isinstance(amp, tuple):
+        amp = amp[0]
     platform.qubits[qubit].native_gates.RX.amplitude = float(amp)
 
 
 def drive_duration(duration: int, platform: Platform, qubit: QubitId):
     """Update drive duration value in platform for specific qubit."""
+    if isinstance(duration, tuple):
+        duration = duration[0]
     platform.qubits[qubit].native_gates.RX.duration = int(duration)
 
 

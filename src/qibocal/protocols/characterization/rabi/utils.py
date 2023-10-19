@@ -2,7 +2,7 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from ..utils import V_TO_UV, table_dict, table_html
+from ..utils import COLORBAND, COLORBAND_LINE, V_TO_UV, table_dict, table_html
 
 
 def rabi_amplitude_fit(x, p0, p1, p2, p3):
@@ -12,7 +12,7 @@ def rabi_amplitude_fit(x, p0, p1, p2, p3):
     #   Period    T                  : 1/p[2]
     #   Phase                        : p[3]
     #   Arbitrary parameter T_2      : 1/p[4]
-    return p0 + p1 * np.sin(2 * np.pi * x * p2 + p3)
+    return p0 + p1 * np.sin(2 * np.pi * x / p2 + p3)
 
 
 def rabi_length_fit(x, p0, p1, p2, p3, p4):
@@ -22,15 +22,15 @@ def rabi_length_fit(x, p0, p1, p2, p3, p4):
     #   Period    T                  : 1/p[2]
     #   Phase                        : p[3]
     #   Arbitrary parameter T_2      : 1/p[4]
-    return p0 + p1 * np.sin(2 * np.pi * x * p2 + p3) * np.exp(-x * p4)
+    return p0 + p1 * np.sin(2 * np.pi * x / p2 + p3) * np.exp(-x / p4)
 
 
 def plot(data, qubit, fit):
-    if data.__class__.__name__ == "RabiAmplitudeData":
+    if data.__class__.__name__ == "RabiAmplitudeVoltData":
         quantity = "amp"
         title = "Amplitude (dimensionless)"
         fitting = rabi_amplitude_fit
-    elif data.__class__.__name__ == "RabiLengthData":
+    elif data.__class__.__name__ == "RabiLengthVoltData":
         quantity = "length"
         title = "Time (ns)"
         fitting = rabi_length_fit
@@ -131,26 +131,32 @@ def plot_proba(data, qubit, fit):
     figures = []
     fitting_report = ""
 
-    fig = make_subplots(
-        rows=1,
-        cols=1,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
-        subplot_titles=("Probability",),
-    )
-
     qubit_data = data[qubit]
+    probs = qubit_data.prob
+    error_bars = qubit_data.error
 
     rabi_parameters = getattr(qubit_data, quantity)
-    fig.add_trace(
-        go.Scatter(
-            x=rabi_parameters,
-            y=qubit_data.prob,
-            opacity=1,
-            name="Voltage",
-            showlegend=True,
-            legendgroup="Voltage",
-        ),
+    fig = go.Figure(
+        [
+            go.Scatter(
+                x=rabi_parameters,
+                y=qubit_data.prob,
+                opacity=1,
+                name="Probability",
+                showlegend=True,
+                legendgroup="Probability",
+                mode="lines",
+            ),
+            go.Scatter(
+                x=np.concatenate((rabi_parameters, rabi_parameters[::-1])),
+                y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
+                fill="toself",
+                fillcolor=COLORBAND,
+                line=dict(color=COLORBAND_LINE),
+                showlegend=True,
+                name="Errors",
+            ),
+        ]
     )
 
     if fit is not None:
@@ -168,15 +174,14 @@ def plot_proba(data, qubit, fit):
                 line=go.scatter.Line(dash="dot"),
                 marker_color="rgb(255, 130, 67)",
             ),
-            row=1,
-            col=1,
         )
 
         fitting_report = table_html(
             table_dict(
                 qubit,
                 ["Pi pulse amplitude", "Pi pulse length"],
-                [np.round(fit.amplitude[qubit], 3), np.round(fit.length[qubit], 3)],
+                [fit.amplitude[qubit], fit.length[qubit]],
+                display_error=True,
             )
         )
 

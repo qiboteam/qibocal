@@ -36,15 +36,21 @@ class RabiAmplitudeParameters(Parameters):
 class RabiAmplitudeResults(Results):
     """RabiAmplitude outputs."""
 
-    amplitude: dict[QubitId, float] = field(metadata=dict(update="drive_amplitude"))
+    amplitude: dict[QubitId, tuple[float, Optional[float]]] = field(
+        metadata=dict(update="drive_amplitude")
+    )
     """Drive amplitude for each qubit."""
-    length: dict[QubitId, float] = field(metadata=dict(update="drive_length"))
+    length: dict[QubitId, tuple[float, Optional[float]]] = field(
+        metadata=dict(update="drive_length")
+    )
     """Drive pulse duration. Same for all qubits."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitted parameters."""
 
 
-RabiAmpType = np.dtype([("amp", np.float64), ("prob", np.float64)])
+RabiAmpType = np.dtype(
+    [("amp", np.float64), ("prob", np.float64), ("error", np.float64)]
+)
 """Custom dtype for rabi amplitude."""
 
 
@@ -57,11 +63,12 @@ class RabiAmplitudeData(Data):
     data: dict[QubitId, npt.NDArray[RabiAmpType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, amp, prob):
+    def register_qubit(self, qubit, amp, prob, error):
         """Store output for single qubit."""
         ar = np.empty(amp.shape, dtype=RabiAmpType)
         ar["amp"] = amp
         ar["prob"] = prob
+        ar["error"] = error
         self.data[qubit] = np.rec.array(ar)
 
 
@@ -123,10 +130,12 @@ def _acquisition(
     )
     for qubit in qubits:
         # average msr, phase, i and q over the number of shots defined in the runcard
+        prob = results[qubit].probability(state=1)
         data.register_qubit(
             qubit,
             amp=qd_pulses[qubit].amplitude * qd_pulse_amplitude_range,
-            prob=results[qubit].probability(state=1),
+            prob=prob.tolist(),
+            error=np.sqrt(prob * (1 - prob) / params.nshots).tolist(),
         )
     return data
 
@@ -141,15 +150,8 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
     for qubit in qubits:
         qubit_data = data[qubit]
 
-        rabi_parameter = qubit_data.amp
-        prob = qubit_data.prob
-
-        y_min = np.min(prob)
-        y_max = np.max(prob)
-        x_min = np.min(rabi_parameter)
-        x_max = np.max(rabi_parameter)
-        x = (rabi_parameter - x_min) / (x_max - x_min)
-        y = (prob - y_min) / (y_max - y_min)
+        x = qubit_data.amp
+        y = qubit_data.prob
 
         # Guessing period using fourier transform
         ft = np.fft.rfft(y)
@@ -160,7 +162,7 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
         f = x[index] / (x[1] - x[0]) if index is not None else 0.5
         pguess = [0.5, 1, f, np.pi / 2]
         try:
-            popt, _ = curve_fit(
+            popt, perr = curve_fit(
                 utils.rabi_amplitude_fit,
                 x,
                 y,
@@ -170,24 +172,21 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
                     [0, 0, 0, -np.pi],
                     [1, 1, np.inf, np.pi],
                 ),
+                sigma=qubit_data.error,
             )
-            translated_popt = [
-                y_min + (y_max - y_min) * popt[0],
-                (y_max - y_min) * popt[1],
-                popt[2] / (x_max - x_min),
-                popt[3] - 2 * np.pi * x_min / (x_max - x_min) * popt[2],
-            ]
-            pi_pulse_parameter = np.abs((1.0 / translated_popt[2]) / 2)
+            perr = np.sqrt(np.diag(perr))
+            pi_pulse_parameter = np.abs(popt[2] / 2)
 
         except:
             log.warning("rabi_fit: the fitting was not succesful")
             pi_pulse_parameter = 0
-            fitted_parameters = [0] * 4
+            popt = [0] * 4
+            perr = [1] * 4
 
-        pi_pulse_amplitudes[qubit] = pi_pulse_parameter
-        fitted_parameters[qubit] = translated_popt
-
-    return RabiAmplitudeResults(pi_pulse_amplitudes, data.durations, fitted_parameters)
+        pi_pulse_amplitudes[qubit] = (pi_pulse_parameter, perr[2] / 2)
+        fitted_parameters[qubit] = popt.tolist()
+        durations = {key: (value, 0) for key, value in data.durations.items()}
+    return RabiAmplitudeResults(pi_pulse_amplitudes, durations, fitted_parameters)
 
 
 def _plot(data: RabiAmplitudeData, qubit, fit: RabiAmplitudeResults = None):
