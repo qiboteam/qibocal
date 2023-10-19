@@ -79,16 +79,6 @@ class DispersiveShiftData(Data):
         default_factory=dict
     )
 
-    def register_qubit(self, qubit, state, freq, msr, phase, i, q):
-        """Store output for single qubit."""
-        ar = np.empty(i.shape, dtype=DispersiveShiftType)
-        ar["freq"] = freq
-        ar["msr"] = msr
-        ar["phase"] = phase
-        ar["i"] = i
-        ar["q"] = q
-        self.data[qubit, state] = np.rec.array(ar)
-
 
 def _acquisition(
     params: DispersiveShiftParameters, platform: Platform, qubits: Qubits
@@ -166,13 +156,15 @@ def _acquisition(
             result = results[ro_pulses[qubit].serial]
             # store the results
             data.register_qubit(
-                qubit=qubit,
-                state=i,
-                freq=ro_pulses[qubit].frequency + delta_frequency_range,
-                msr=result.magnitude,
-                phase=result.phase,
-                i=result.voltage_i,
-                q=result.voltage_q,
+                DispersiveShiftType,
+                (qubit, i),
+                dict(
+                    freq=ro_pulses[qubit].frequency + delta_frequency_range,
+                    msr=result.magnitude,
+                    phase=result.phase,
+                    i=result.voltage_i,
+                    q=result.voltage_q,
+                ),
             )
     return data
 
@@ -180,7 +172,6 @@ def _acquisition(
 def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
     """Post-Processing for dispersive shift"""
     qubits = data.qubits
-    results = []
     iq_couples = [[], []]  # axis 0: states, axis 1: qubit
 
     frequency_0 = {}

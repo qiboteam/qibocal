@@ -54,16 +54,6 @@ class T1Data(Data):
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, prob, error, wait):
-        """Store output for single qubit."""
-        # to be able to handle the non-sweeper case
-        shape = (1,) if np.isscalar(wait) else wait.shape
-        ar = np.empty(shape, dtype=CoherenceProbType)
-        ar["wait"] = wait
-        ar["prob"] = prob
-        ar["error"] = error
-        self.data[qubit] = np.rec.array(ar)
-
 
 def _acquisition(params: T1Parameters, platform: Platform, qubits: Qubits) -> T1Data:
     r"""Data acquisition for T1 experiment.
@@ -130,7 +120,11 @@ def _acquisition(params: T1Parameters, platform: Platform, qubits: Qubits) -> T1
     for qubit in qubits:
         probs = results[ro_pulses[qubit].serial].probability(state=1)
         errors = np.sqrt(probs * (1 - probs) / params.nshots)
-        data.register_qubit(qubit, wait=ro_wait_range, prob=probs, error=errors)
+        data.register_qubit(
+            CoherenceProbType,
+            (qubit),
+            dict(wait=ro_wait_range, prob=probs, error=errors),
+        )
 
     return data
 

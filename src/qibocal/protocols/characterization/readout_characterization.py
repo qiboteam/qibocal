@@ -46,12 +46,6 @@ class ReadoutCharacterizationData(Data):
     )
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, probability, state, readout_number):
-        """Store output for single qubit."""
-        ar = np.empty(probability.shape, dtype=ReadoutCharacterizationType)
-        ar["probability"] = probability
-        self.data[qubit, state, readout_number] = np.rec.array(ar)
-
 
 def _acquisition(
     params: ReadoutCharacterizationParameters, platform: Platform, qubits: Qubits
@@ -97,10 +91,9 @@ def _acquisition(
                 result = results[ro_pulse.serial]
                 qubit = ro_pulse.qubit
                 data.register_qubit(
-                    qubit,
-                    probability=result.samples,
-                    state=state,
-                    readout_number=i,
+                    ReadoutCharacterizationType,
+                    (qubit, state, i),
+                    dict(probability=result.samples),
                 )
                 i += 1
 

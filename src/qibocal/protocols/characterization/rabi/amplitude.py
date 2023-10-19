@@ -59,14 +59,6 @@ class RabiAmplitudeData(Data):
     data: dict[QubitId, npt.NDArray[RabiAmpType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, amp, msr, phase):
-        """Store output for single qubit."""
-        ar = np.empty(amp.shape, dtype=RabiAmpType)
-        ar["amp"] = amp
-        ar["msr"] = msr
-        ar["phase"] = phase
-        self.data[qubit] = np.rec.array(ar)
-
 
 def _acquisition(
     params: RabiAmplitudeParameters, platform: Platform, qubits: Qubits
@@ -128,10 +120,13 @@ def _acquisition(
         # average msr, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulses[qubit].serial]
         data.register_qubit(
-            qubit,
-            amp=qd_pulses[qubit].amplitude * qd_pulse_amplitude_range,
-            msr=result.magnitude,
-            phase=result.phase,
+            RabiAmpType,
+            (qubit),
+            dict(
+                amp=qd_pulses[qubit].amplitude * qd_pulse_amplitude_range,
+                msr=result.magnitude,
+                phase=result.phase,
+            ),
         )
     return data
 

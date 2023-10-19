@@ -106,7 +106,11 @@ def _acquisition(
 
     for qubit in qubits:
         errors = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs[qubit]]
-        data.register_qubit(qubit, wait=ro_wait_range, prob=probs[qubit], error=errors)
+        data.register_qubit(
+            t1.CoherenceProbType,
+            (qubit),
+            dict(wait=ro_wait_range, prob=probs[qubit], error=errors),
+        )
 
     return data
 

@@ -37,12 +37,7 @@ class ResonatorFrequencyResults(Results):
 
 
 ResonatorFrequencyType = np.dtype(
-    [
-        ("freq", np.float64),
-        ("i", np.float64),
-        ("q", np.float64),
-        ("state", int),
-    ]
+    [("freq", np.float64), ("assignment_fidelity", np.float64)]
 )
 """Custom dtype for Optimization RO frequency."""
 
@@ -56,18 +51,6 @@ class ResonatorFrequencyData(Data):
     data: dict[QubitId, npt.NDArray[ResonatorFrequencyType]] = field(
         default_factory=dict
     )
-
-    def append_data(self, qubit, state, freq, i, q):
-        """Append elements to data for single qubit."""
-        ar = np.empty(i.shape, dtype=ResonatorFrequencyType)
-        ar["freq"] = freq
-        ar["i"] = i
-        ar["q"] = q
-        ar["state"] = state
-        if qubit in self.data.keys():
-            self.data[qubit] = np.append(self.data[qubit], np.rec.array(ar))
-        else:
-            self.data[qubit] = np.rec.array(ar)
 
     def unique_freqs(self, qubit: QubitId) -> np.ndarray:
         return np.unique(self.data[qubit]["freq"])
@@ -143,15 +126,25 @@ def _acquisition(
 
     # retrieve the results for every qubit
     for qubit in qubits:
-        for i, results in enumerate([results_0, results_1]):
-            result = results[ro_pulses[qubit].serial]
-            # store the results
-            data.append_data(
-                qubit=qubit,
-                state=i,
-                freq=(ro_pulses[qubit].frequency + delta_frequency_range) * HZ_TO_GHZ,
-                i=result.voltage_i,
-                q=result.voltage_q,
+        for k, freq in enumerate(delta_frequency_range):
+            i_values = []
+            q_values = []
+            states = []
+            for i, results in enumerate([results_0, results_1]):
+                result = results[ro_pulses[qubit].serial]
+                i_values.extend(result.voltage_i[k])
+                q_values.extend(result.voltage_q[k])
+                states.extend([i] * len(result.voltage_i[k]))
+
+            model = QubitFit()
+            model.fit(np.stack((i_values, q_values), axis=-1), np.array(states))
+            data.register_qubit(
+                ResonatorFrequencyType,
+                (qubit),
+                dict(
+                    freq=np.array([(ro_pulses[qubit].frequency + freq) * HZ_TO_GHZ]),
+                    assignment_fidelity=np.array([model.assignment_fidelity]),
+                ),
             )
     return data
 
@@ -159,43 +152,35 @@ def _acquisition(
 def _fit(data: ResonatorFrequencyData) -> ResonatorFrequencyResults:
     """Post-Processing for Optimization RO frequency"""
     qubits = data.qubits
-    fidelities_dict = {}
-    best_freqs = {}
+    best_freq = {}
+    highest_fidelity = {}
     for qubit in qubits:
-        fidelities = []
-        freqs = data.unique_freqs(qubit)
-        for freq in freqs:
-            fit_method = QubitFit()
-            data_freq = data[qubit][data[qubit]["freq"] == freq]
-            iq_couples = np.array(data_freq[["i", "q"]].tolist())[:, :]
-            states = np.array(data_freq[["state"]].tolist())[:, 0]
-            fit_method.fit(iq_couples, states)
-            fidelities.append(fit_method.assignment_fidelity)
-        fidelities_dict[qubit] = fidelities
-        best_freqs[qubit] = freqs[np.argmax(fidelities_dict[qubit])]
+        data_qubit = data[qubit]
+        index_best_fid = np.argmax(data_qubit["assignment_fidelity"])
+        highest_fidelity[qubit] = data_qubit["assignment_fidelity"][index_best_fid]
+        best_freq[qubit] = data_qubit["freq"][index_best_fid]
 
     return ResonatorFrequencyResults(
-        fidelities=fidelities_dict,
-        best_freq=best_freqs,
+        fidelities=highest_fidelity,
+        best_freq=best_freq,
     )
 
 
 def _plot(data: ResonatorFrequencyData, fit: ResonatorFrequencyResults, qubit):
     """Plotting function for Optimization RO frequency."""
     figures = []
-    freqs = data.unique_freqs(qubit)
+    freqs = data[qubit]["freq"]
     opacity = 1
     fitting_report = ""
     fig = make_subplots(
         rows=1,
         cols=1,
     )
-
     if fit is not None:
         fig.add_trace(
             go.Scatter(
                 x=freqs,
-                y=fit.fidelities[qubit],
+                y=data[qubit]["assignment_fidelity"],
                 opacity=opacity,
                 showlegend=True,
             ),
