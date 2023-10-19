@@ -29,10 +29,6 @@ class ResonatorSpectroscopyParameters(Parameters):
     amplitude: Optional[float] = None
     """Readout amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
     def __post_init__(self):
         # TODO: ask Alessandro if there is a proper way to pass Enum to class

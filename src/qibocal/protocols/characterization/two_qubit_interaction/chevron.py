@@ -40,10 +40,6 @@ class ChevronParameters(Parameters):
     """Duration step."""
     dt: Optional[int] = 0
     """Time delay between flux pulses and readout."""
-    nshots: Optional[int] = None
-    """Number of shots per point."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time [ns]"""
     parking: bool = True
     """Wether to park non interacting qubits or not."""
 

@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
 from os import error
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -27,10 +26,6 @@ class ResonatorAmplitudeParameters(Parameters):
     """Amplitude start."""
     amplitude_stop: float = 1.0
     """Amplitude stop value"""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
     error_threshold: float = 0.003
     """Probability error threshold to stop the best amplitude search"""
 

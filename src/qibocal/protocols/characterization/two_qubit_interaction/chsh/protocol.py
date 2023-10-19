@@ -37,8 +37,6 @@ class CHSHParameters(Parameters):
     2 -> |10>-|01>
     3 -> |10>+|01>
     """
-    nshots: int
-    """Number of shots."""
     ntheta: int
     """Number of angles probed linearly between 0 and 2 pi."""
     native: Optional[bool] = False

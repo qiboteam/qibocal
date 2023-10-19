@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -21,10 +20,6 @@ class TwpaFrequencyParameters(Parameters):
     """Relative frequency width [Hz]"""
     frequency_step: float
     """Frequency step [Hz]"""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 TwpaFrequencyType = np.dtype(
@@ -97,7 +92,9 @@ def _acquisition(
             )
 
         classification_data = classification._acquisition(
-            classification.SingleShotClassificationParameters(nshots=params.nshots),
+            classification.SingleShotClassificationParameters.load(
+                {"nshots": params.nshots}
+            ),
             platform,
             qubits,
         )

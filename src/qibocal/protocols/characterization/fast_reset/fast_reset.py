@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -20,11 +19,6 @@ from qibocal.protocols.characterization.utils import table_dict, table_html
 @dataclass
 class FastResetParameters(Parameters):
     """FastReset runcard inputs."""
-
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 @dataclass

@@ -24,10 +24,6 @@ class AllXYDragParameters(Parameters):
     """Final beta parameter for Drag pulse."""
     beta_step: float
     """Step beta parameter for Drag pulse."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 @dataclass

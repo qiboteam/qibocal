@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import plotly.graph_objects as go
@@ -22,10 +21,6 @@ class TwpaPowerParameters(Parameters):
     """Power total width."""
     power_step: float
     """Power step to be probed."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 TwpaPowerType = np.dtype(
@@ -92,7 +87,9 @@ def _acquisition(
             )
 
         classification_data = classification._acquisition(
-            classification.SingleShotClassificationParameters(nshots=params.nshots),
+            classification.SingleShotClassificationParameters.load(
+                {"nshots": params.nshots}
+            ),
             platform,
             qubits,
         )

@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -27,10 +26,6 @@ class FlippingParameters(Parameters):
     """Maximum number of flips ([RX(pi) - RX(pi)] sequences). """
     nflips_step: int
     """Flip step."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 @dataclass
