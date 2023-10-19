@@ -138,13 +138,22 @@ def _aquisition(
         qd_pulse2 = platform.create_RX_pulse(q_highfreq, start=0 + params.dt)
         sequence = qd_pulse1 + qd_pulse2
 
+        # TODO: This should get calibrated in another routine
+        # fq_pulse = platform.create_flux_pulse(
+        #     qubit = platform.qubits[q_highfreq],
+        #     start=sequence.finish + params.dt,
+        #     duration=params.duration_min,
+        #     amplitude=1,
+        # )
+
         fx_pulse = platform.create_coupler_pulse(
             coupler=coupler,
             start=sequence.finish + params.dt,
-            duration=params.duration_min,
-            amplitude=1,
+            duration=200,
+            amplitude=-0.29,
         )
 
+        # sequence += fq_pulse
         sequence += fx_pulse
 
         ro_pulse1 = platform.create_MZ_pulse(
@@ -166,6 +175,17 @@ def _aquisition(
             delta_duration_range,
             pulses=[fx_pulse],
         )
+
+        # sweeper_amplitude = Sweeper(
+        #     Parameter.amplitude,
+        #     delta_amplitude_range,
+        #     pulses=[fq_pulse],
+        # )
+        # sweeper_duration = Sweeper(
+        #     Parameter.duration,
+        #     delta_duration_range,
+        #     pulses=[fq_pulse],
+        # )
 
         # repeat the experiment as many times as defined by nshots
         results = platform.sweep(
@@ -233,13 +253,14 @@ def _plot(data: ChevronFluxTimeData, fit: ChevronFluxTimeResults, qubit):
         "high_iq distance",
     ]
     figures = []
-    fig = make_subplots(
-        rows=3, cols=2, shared_xaxes=True, shared_yaxes=True, subplot_titles=titles
-    )
+    # fig = make_subplots(
+    #     rows=3, cols=2, shared_xaxes=True, shared_yaxes=True, subplot_titles=titles
+    # )
     colouraxis = ["coloraxis", "coloraxis2"]
     fitting_report = "No fitting data"
     labels = ["MSR", "phase", "iq_distance"]
 
+    # TODO: FIX plotting
     for state, q in zip(states, pair):
         # FIXME: Get qubits
         # for x in pair.qubit1.flux_coupler.keys():
@@ -257,6 +278,14 @@ def _plot(data: ChevronFluxTimeData, fit: ChevronFluxTimeResults, qubit):
             ],
             labels,
         ):
+            fig = make_subplots(
+                rows=1,
+                cols=2,
+                shared_xaxes=True,
+                shared_yaxes=True,
+                subplot_titles=titles,
+            )
+
             fig.add_trace(
                 go.Heatmap(
                     y=duration,
@@ -265,26 +294,31 @@ def _plot(data: ChevronFluxTimeData, fit: ChevronFluxTimeResults, qubit):
                     name=f"Qubit {q} |{state}>",
                     coloraxis=colouraxis[states.index(state)],
                 ),
-                row=labels.index(label) + 1,
+                # row=labels.index(label) + 1,
+                # col=states.index(state) + 1,
+                row=1,
                 col=states.index(state) + 1,
             )
 
-        fig.update_layout(
-            coloraxis=dict(colorscale="Viridis", colorbar=dict(x=0.45)),
-            coloraxis2=dict(colorscale="Cividis", colorbar=dict(x=1)),
-        )
+            fig.update_layout(
+                coloraxis=dict(colorscale="Viridis", colorbar=dict(x=0.45)),
+                coloraxis2=dict(colorscale="Cividis", colorbar=dict(x=1)),
+            )
 
-    fig.update_layout(
-        title=f"Qubit {coupler} Interaction {label}",
-        yaxis_title="Duration [ns]",
-        yaxis3_title="Duration [ns]",
-        yaxis5_title="Duration [ns]",
-        xaxis5_title="Amplitude [dimensionless]",
-        xaxis6_title="Amplitude [dimensionless]",
-        legend_title="States",
-    )
+            fig.update_layout(
+                title=f"Qubit {coupler} Interaction {label}",
+                yaxis_title="Duration [ns]",
+                # yaxis3_title="Duration [ns]",
+                # yaxis5_title="Duration [ns]",
+                xaxis_title="Amplitude [dimensionless]",
+                # xaxis5_title="Amplitude [dimensionless]",
+                # xaxis6_title="Amplitude [dimensionless]",
+                legend_title="States",
+            )
 
-    figures.append(fig)
+            figures.append(fig)
+
+    # figures.append(fig)
     return figures, fitting_report
 
 
