@@ -112,9 +112,7 @@ def _acquisition(
             z_proj = 2 * results[ro_pulses[qubit].serial].probability(0) - 1
             # store the results
             gate = "-".join(gates)
-            data.register_qubit(
-                AllXYType, (qubit), dict(prob=np.array([z_proj]), gate=gate)
-            )
+            data.register_qubit(qubit=qubit, prob=np.array([z_proj]), gate=gate)
     # finally, save the remaining data
     return data
 
