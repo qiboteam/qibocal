@@ -38,19 +38,6 @@ class T1MSRData(Data):
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, wait, msr, phase):
-        """Store output for single qubit."""
-        # to be able to handle the non-sweeper case
-        shape = (1,) if np.isscalar(wait) else wait.shape
-        ar = np.empty(shape, dtype=CoherenceType)
-        ar["wait"] = wait
-        ar["msr"] = msr
-        ar["phase"] = phase
-        if qubit in self.data:
-            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
-        else:
-            self.data[qubit] = np.rec.array(ar)
-
 
 def _acquisition(
     params: T1MSRParameters, platform: Platform, qubits: Qubits
@@ -120,7 +107,9 @@ def _acquisition(
     for qubit in qubits:
         result = results[ro_pulses[qubit].serial]
         data.register_qubit(
-            qubit, wait=ro_wait_range, msr=result.magnitude, phase=result.phase
+            CoherenceType,
+            (qubit),
+            dict(wait=ro_wait_range, msr=result.magnitude, phase=result.phase),
         )
 
     return data

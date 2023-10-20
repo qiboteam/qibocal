@@ -90,10 +90,13 @@ def _acquisition(
             probs[qubit].append(results[ro_pulse.serial].probability(state=1))
         errors = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs[qubit]]
         data.register_qubit(
-            qubit,
-            wait=np.arange(1, len(probs[qubit]) + 1),
-            prob=probs[qubit],
-            error=errors,
+            t1.CoherenceProbType,
+            (qubit),
+            dict(
+                wait=np.arange(1, len(probs[qubit]) + 1),
+                prob=probs[qubit],
+                error=errors,
+            ),
         )
     return data
 

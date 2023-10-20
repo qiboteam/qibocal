@@ -73,7 +73,13 @@ def _acquisition(
             # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulses[qubit].serial]
             data.register_qubit(
-                qubit, wait=wait, msr=result.magnitude, phase=result.phase
+                t1_msr.CoherenceType,
+                (qubit),
+                dict(
+                    wait=np.array([wait]),
+                    msr=np.array([result.magnitude]),
+                    phase=np.array([result.phase]),
+                ),
             )
     return data
 

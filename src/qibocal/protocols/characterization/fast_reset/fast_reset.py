@@ -50,12 +50,6 @@ class FastResetData(Data):
     data: dict[tuple, npt.NDArray[FastResetType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, probability, state, fast_reset):
-        """Store output for single qubit."""
-        ar = np.empty(probability.shape, dtype=FastResetType)
-        ar["probability"] = probability
-        self.data[qubit, state, fast_reset] = np.rec.array(ar)
-
 
 def _acquisition(
     params: FastResetParameters, platform: Platform, qubits: Qubits
@@ -98,10 +92,9 @@ def _acquisition(
                 result = results[ro_pulse.serial]
                 qubit = ro_pulse.qubit
                 data.register_qubit(
-                    qubit,
-                    probability=result.samples,
-                    state=state,
-                    fast_reset=fast_reset,
+                    FastResetType,
+                    (qubit, state, fast_reset),
+                    dict(probability=result.samples),
                 )
 
     return data
@@ -124,11 +117,9 @@ def _fit(data: FastResetData) -> FastResetResults:
 
         state1_count_1fr = np.count_nonzero(fr_states)
         state0_count_1fr = nshots - state1_count_1fr
-        error_fr1 = 1 - (nshots - state0_count_1fr) / nshots
 
         state1_count_1nfr = np.count_nonzero(nfr_states)
         state0_count_1nfr = nshots - state1_count_1nfr
-        error_nfr1 = 1 - (nshots - state0_count_1nfr) / nshots
 
         # state 0
         fr_states = data[qubit, 0, True].probability
@@ -136,11 +127,9 @@ def _fit(data: FastResetData) -> FastResetResults:
 
         state1_count_0fr = np.count_nonzero(fr_states)
         state0_count_0fr = nshots - state1_count_0fr
-        error_fr0 = (nshots - state0_count_0fr) / nshots
 
         state1_count_0nfr = np.count_nonzero(nfr_states)
         state0_count_0nfr = nshots - state1_count_0nfr
-        error_nfr0 = (nshots - state0_count_0nfr) / nshots
 
         # Repeat Lambda and fidelity for each measurement ?
         Lambda_M_nfr[qubit] = [

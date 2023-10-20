@@ -77,19 +77,6 @@ class RamseyData(Data):
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, wait, prob, errors):
-        """Store output for single qubit."""
-        # to be able to handle the non-sweeper case
-        shape = (1,) if np.isscalar(prob) else prob.shape
-        ar = np.empty(shape, dtype=RamseyType)
-        ar["wait"] = wait
-        ar["prob"] = prob
-        ar["errors"] = errors
-        if qubit in self.data:
-            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
-        else:
-            self.data[qubit] = np.rec.array(ar)
-
     @property
     def waits(self):
         """
@@ -165,12 +152,14 @@ def _acquisition(
             # The probability errors are the standard errors of the binomial distribution
             errors = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs]
             data.register_qubit(
-                qubit,
-                wait=waits,
-                prob=probs,
-                errors=errors,
+                RamseyType,
+                (qubit),
+                dict(
+                    wait=waits,
+                    prob=probs,
+                    errors=errors,
+                ),
             )
-
     else:
         for wait in waits:
             for qubit in qubits:
@@ -198,10 +187,13 @@ def _acquisition(
                 prob = results[qubit].probability()
                 error = np.sqrt(prob * (1 - prob) / params.nshots)
                 data.register_qubit(
-                    qubit,
-                    wait=wait,
-                    prob=prob,
-                    errors=error,
+                    RamseyType,
+                    (qubit),
+                    dict(
+                        wait=np.array([wait]),
+                        prob=np.array([prob]),
+                        errors=np.array([error]),
+                    ),
                 )
     return data
 

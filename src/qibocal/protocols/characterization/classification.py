@@ -52,7 +52,7 @@ class SingleShotClassificationParameters(Parameters):
     """Dumping folder of the classification results"""
 
 
-ClassificationType = np.dtype([("i", np.float64), ("q", np.float64), ("state", int)])
+ClassificationType = np.dtype([("i", np.float64), ("q", np.float64)])
 """Custom dtype for rabi amplitude."""
 
 
@@ -68,22 +68,6 @@ class SingleShotClassificationData(Data):
     """Raw data acquired."""
     classifiers_list: Optional[list[str]] = field(default_factory=lambda: ["qubit_fit"])
     """List of models to classify the qubit states"""
-
-    def register_qubit(self, qubit, state, i, q):
-        """Store output for single qubit."""
-        ar = np.empty(i.shape, dtype=ClassificationType)
-        ar["i"] = i
-        ar["q"] = q
-        ar["state"] = state
-        self.data[qubit] = np.rec.array(ar)
-
-    def add_data(self, qubit, state, i, q):
-        """Store output for single qubit."""
-        ar = np.empty(i.shape, dtype=ClassificationType)
-        ar["i"] = i
-        ar["q"] = q
-        ar["state"] = state
-        self.data[qubit] = np.append(self.data[qubit], np.rec.array(ar))
 
 
 @dataclass
@@ -220,9 +204,8 @@ def _acquisition(
     for qubit in qubits:
         result = state0_results[ro_pulses[qubit].serial]
         data.register_qubit(
-            qubit=qubit, state=0, i=result.voltage_i, q=result.voltage_q
+            ClassificationType, (qubit, 0), dict(i=result.voltage_i, q=result.voltage_q)
         )
-
     # execute the second pulse sequence
     state1_results = platform.execute_pulse_sequence(
         state1_sequence,
@@ -235,7 +218,9 @@ def _acquisition(
     # retrieve and store the results for every qubit
     for qubit in qubits:
         result = state1_results[ro_pulses[qubit].serial]
-        data.add_data(qubit=qubit, state=1, i=result.voltage_i, q=result.voltage_q)
+        data.register_qubit(
+            ClassificationType, (qubit, 1), dict(i=result.voltage_i, q=result.voltage_q)
+        )
 
     return data
 
@@ -257,7 +242,6 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
     y_test_predict = {}
     grid_preds_dict = {}
     for qubit in qubits:
-        qubit_data = data.data[qubit]
         benchmark_table, y_test, x_test, models, names, hpars_list = run.train_qubit(
             data, qubit
         )
@@ -268,8 +252,8 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         hpars[qubit] = {}
         y_preds = []
         grid_preds = []
-        state0_data = qubit_data[qubit_data["state"] == 0]
-        state1_data = qubit_data[qubit_data["state"] == 1]
+        state0_data = data.data[qubit, 0]
+        state1_data = data.data[qubit, 1]
 
         grid = evaluate_grid(state0_data, state1_data)
         for i, model_name in enumerate(names):
@@ -317,9 +301,8 @@ def _plot(
     figures = []
     fitting_report = ""
     models_name = data.classifiers_list
-    qubit_data = data.data[qubit]
-    state0_data = qubit_data[qubit_data["state"] == 0]
-    state1_data = qubit_data[qubit_data["state"] == 1]
+    state0_data = data.data[qubit, 0]
+    state1_data = data.data[qubit, 1]
     grid = evaluate_grid(state0_data, state1_data)
 
     fig = make_subplots(
