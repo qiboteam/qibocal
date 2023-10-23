@@ -26,7 +26,6 @@ def rabi_length_fit(x, p0, p1, p2, p3, p4):
 
 
 def plot(data, qubit, fit):
-  
     if "RabiAmplitude" in data.__class__.__name__:
         quantity = "amp"
         title = "Amplitude (dimensionless)"
