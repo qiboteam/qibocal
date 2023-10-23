@@ -137,8 +137,8 @@ def _plot(
 
 def _update(results: CouplerSpectroscopyResults, platform: Platform, qubit: QubitId):
     # TODO: Need Couplers in the update
-    if 1 == 0:
-        update.coupler_sweetspot(results.sweetspot[qubit], platform, qubit)
+    pass
+    # update.coupler_sweetspot(results.sweetspot[qubit], platform, qubit)
 
 
 coupler_resonator_spectroscopy = Routine(_acquisition, _fit, _plot, _update)
