@@ -41,14 +41,6 @@ RabiAmpVoltType = np.dtype(
 class RabiAmplitudeVoltData(RabiAmplitudeData):
     """RabiAmplitude data acquisition."""
 
-    def register_qubit(self, qubit, amp, msr, phase):
-        """Store output for single qubit."""
-        ar = np.empty(amp.shape, dtype=RabiAmpVoltType)
-        ar["amp"] = amp
-        ar["msr"] = msr
-        ar["phase"] = phase
-        self.data[qubit] = np.rec.array(ar)
-
 
 def _acquisition(
     params: RabiAmplitudeVoltParameters, platform: Platform, qubits: Qubits
@@ -110,10 +102,13 @@ def _acquisition(
         # average msr, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulses[qubit].serial]
         data.register_qubit(
-            qubit,
-            amp=qd_pulses[qubit].amplitude * qd_pulse_amplitude_range,
-            msr=result.magnitude,
-            phase=result.phase,
+            RabiAmpVoltType,
+            (qubit),
+            dict(
+                amp=qd_pulses[qubit].amplitude * qd_pulse_amplitude_range,
+                msr=result.magnitude,
+                phase=result.phase,
+            ),
         )
     return data
 

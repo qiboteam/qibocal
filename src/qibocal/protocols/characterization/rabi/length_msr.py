@@ -145,7 +145,7 @@ def _fit(data: RabiLengthVoltData) -> RabiLengthVoltResults:
         # 0.5 hardcoded guess for less than one oscillation
         f = x[index] / (x[1] - x[0]) if index is not None else 0.5
 
-        pguess = [1, 1, 1 / f, np.pi / 2, 0]
+        pguess = [0.5, 0.5, 1 / f, np.pi / 2, 0]
         try:
             popt, _ = curve_fit(
                 utils.rabi_length_fit,
