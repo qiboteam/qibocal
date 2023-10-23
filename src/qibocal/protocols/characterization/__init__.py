@@ -26,8 +26,11 @@ from .readout_characterization import readout_characterization
 from .readout_optimization.resonator_frequency import resonator_frequency
 from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
+from .resonator_qubit_spectroscopy import resonator_qubit_spectroscopy
 from .resonator_spectroscopy import resonator_spectroscopy
 from .resonator_spectroscopy_attenuation import resonator_spectroscopy_attenuation
+from .resonator_twpa_freq import resonator_twpa_freq
+from .resonator_twpa_pow import resonator_twpa_pow
 from .signal_experiments.time_of_flight_readout import time_of_flight_readout
 from .t1_t2_vs_temperature import t1_t2_vs_temperature
 from .two_qubit_interaction.chevron import chevron
@@ -67,3 +70,6 @@ class Operation(Enum):
     fast_reset = fast_reset
     zeno = zeno
     t1_t2_vs_temperature = t1_t2_vs_temperature
+    resonator_twpa_pow = resonator_twpa_pow
+    resonator_twpa_freq = resonator_twpa_freq
+    resonator_qubit_spectroscopy = resonator_qubit_spectroscopy
