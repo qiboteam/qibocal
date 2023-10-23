@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -18,10 +17,6 @@ class AllXYParameters(Parameters):
 
     beta_param: float = None
     """Beta parameter for drag pulse."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -38,18 +33,8 @@ class AllXYData(Data):
 
     beta_param: float = None
     """Beta parameter for drag pulse."""
-    data: dict[QubitId, npt.NDArray[AllXYType]] = field(default_factory=dict)
+    data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
-
-    def register_qubit(self, qubit, prob, gate):
-        """Store output for single qubit."""
-        ar = np.empty((1,), dtype=AllXYType)
-        ar["prob"] = prob
-        ar["gate"] = gate
-        if qubit in self.data:
-            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
-        else:
-            self.data[qubit] = np.rec.array(ar)
 
 
 gatelist = [
@@ -91,7 +76,7 @@ def _acquisition(
     """
 
     # create a Data object to store the results
-    data = AllXYData(params.beta_param)
+    data = AllXYData(beta_param=params.beta_param)
 
     # repeat the experiment as many times as defined by software_averages
     # for iteration in range(params.software_averages):
@@ -117,7 +102,9 @@ def _acquisition(
             z_proj = 2 * results[ro_pulses[qubit].serial].probability(0) - 1
             # store the results
             gate = "-".join(gates)
-            data.register_qubit(qubit, z_proj, gate)
+            data.register_qubit(
+                AllXYType, (qubit), dict(prob=np.array([z_proj]), gate=np.array([gate]))
+            )
     # finally, save the remaining data
     return data
 
@@ -219,11 +206,11 @@ def _fit(_data: AllXYData) -> AllXYResults:
 
 
 # allXY
-def _plot(data: AllXYData, _fit: AllXYResults, qubit):
+def _plot(data: AllXYData, qubit, fit: AllXYResults = None):
     """Plotting function for allXY."""
 
     figures = []
-    fitting_report = "No fitting data"
+    fitting_report = ""
     fig = go.Figure()
 
     qubit_data = data[qubit]

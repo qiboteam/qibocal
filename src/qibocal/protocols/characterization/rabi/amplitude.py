@@ -11,6 +11,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 
@@ -29,10 +30,6 @@ class RabiAmplitudeParameters(Parameters):
     """Step amplitude multiplicative factor."""
     pulse_length: Optional[float]
     """RX pulse duration (ns)."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -61,14 +58,6 @@ class RabiAmplitudeData(Data):
     """Pulse durations provided by the user."""
     data: dict[QubitId, npt.NDArray[RabiAmpType]] = field(default_factory=dict)
     """Raw data acquired."""
-
-    def register_qubit(self, qubit, amp, msr, phase):
-        """Store output for single qubit."""
-        ar = np.empty(amp.shape, dtype=RabiAmpType)
-        ar["amp"] = amp
-        ar["msr"] = msr
-        ar["phase"] = phase
-        self.data[qubit] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -131,10 +120,13 @@ def _acquisition(
         # average msr, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulses[qubit].serial]
         data.register_qubit(
-            qubit,
-            amp=qd_pulses[qubit].amplitude * qd_pulse_amplitude_range,
-            msr=result.magnitude,
-            phase=result.phase,
+            RabiAmpType,
+            (qubit),
+            dict(
+                amp=qd_pulses[qubit].amplitude * qd_pulse_amplitude_range,
+                msr=result.magnitude,
+                phase=result.phase,
+            ),
         )
     return data
 
@@ -198,10 +190,14 @@ def _fit(data: RabiAmplitudeData) -> RabiAmplitudeResults:
     return RabiAmplitudeResults(pi_pulse_amplitudes, data.durations, fitted_parameters)
 
 
-def _plot(data: RabiAmplitudeData, fit: RabiAmplitudeResults, qubit):
+def _plot(data: RabiAmplitudeData, qubit, fit: RabiAmplitudeResults = None):
     """Plotting function for RabiAmplitude."""
-    return utils.plot(data, fit, qubit)
+    return utils.plot(data, qubit, fit)
 
 
-rabi_amplitude = Routine(_acquisition, _fit, _plot)
+def _update(results: RabiAmplitudeResults, platform: Platform, qubit: QubitId):
+    update.drive_amplitude(results.amplitude[qubit], platform, qubit)
+
+
+rabi_amplitude = Routine(_acquisition, _fit, _plot, _update)
 """RabiAmplitude Routine object."""

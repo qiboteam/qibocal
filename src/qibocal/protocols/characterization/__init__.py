@@ -5,25 +5,39 @@ from .allxy.allxy_drag_pulse_tuning import allxy_drag_pulse_tuning
 from .allxy.drag_pulse_tuning import drag_pulse_tuning
 from .classification import single_shot_classification
 from .coherence.spin_echo import spin_echo
+from .coherence.spin_echo_msr import spin_echo_msr
 from .coherence.t1 import t1
+from .coherence.t1_msr import t1_msr
 from .coherence.t1_sequences import t1_sequences
 from .coherence.t2 import t2
+from .coherence.t2_msr import t2_msr
 from .coherence.t2_sequences import t2_sequences
 from .coherence.zeno import zeno
+from .coherence.zeno_msr import zeno_msr
 from .dispersive_shift import dispersive_shift
 from .fast_reset.fast_reset import fast_reset
 from .flipping import flipping
-from .flux_dependence.qubit_flux_dependence import qubit_flux
-from .flux_dependence.resonator_flux_dependence import resonator_flux
+from .flux_dependence.qubit_flux_dependence import qubit_crosstalk, qubit_flux
+from .flux_dependence.resonator_flux_dependence import (
+    resonator_crosstalk,
+    resonator_flux,
+)
 from .qubit_spectroscopy import qubit_spectroscopy
+from .qubit_spectroscopy_ef import qubit_spectroscopy_ef
 from .rabi.amplitude import rabi_amplitude
+from .rabi.ef import rabi_amplitude_ef
 from .rabi.length import rabi_length
 from .rabi.length_sequences import rabi_length_sequences
 from .ramsey import ramsey
+from .ramsey_msr import ramsey_msr
 from .ramsey_sequences import ramsey_sequences
 from .randomized_benchmarking.standard_rb import standard_rb
 from .readout_characterization import readout_characterization
+from .readout_mitigation_matrix import readout_mitigation_matrix
+from .readout_optimization.resonator_amplitude import resonator_amplitude
 from .readout_optimization.resonator_frequency import resonator_frequency
+from .readout_optimization.twpa_calibration.frequency import twpa_frequency
+from .readout_optimization.twpa_calibration.power import twpa_power
 from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_qubit_spectroscopy import resonator_qubit_spectroscopy
@@ -35,6 +49,7 @@ from .signal_experiments.time_of_flight_readout import time_of_flight_readout
 from .t1_t2_vs_temperature import t1_t2_vs_temperature
 from .two_qubit_interaction.chevron import chevron
 from .two_qubit_interaction.cz_virtualz import cz_virtualz
+from .two_qubit_interaction import chevron, chsh_circuits, chsh_pulses, cz_virtualz
 
 
 class Operation(Enum):
@@ -43,20 +58,26 @@ class Operation(Enum):
     resonator_punchout = resonator_punchout
     resonator_punchout_attenuation = resonator_punchout_attenuation
     resonator_flux = resonator_flux
+    resonator_crosstalk = resonator_crosstalk
     qubit_spectroscopy = qubit_spectroscopy
     qubit_flux = qubit_flux
+    qubit_crosstalk = qubit_crosstalk
     rabi_amplitude = rabi_amplitude
     rabi_length = rabi_length
     rabi_length_sequences = rabi_length_sequences
     ramsey = ramsey
+    ramsey_msr = ramsey_msr
     ramsey_sequences = ramsey_sequences
     t1 = t1
+    t1_msr = t1_msr
     t1_sequences = t1_sequences
     t2 = t2
+    t2_msr = t2_msr
     t2_sequences = t2_sequences
     time_of_flight_readout = time_of_flight_readout
     single_shot_classification = single_shot_classification
     spin_echo = spin_echo
+    spin_echo_msr = spin_echo_msr
     allxy = allxy
     allxy_drag_pulse_tuning = allxy_drag_pulse_tuning
     drag_pulse_tuning = drag_pulse_tuning
@@ -73,3 +94,12 @@ class Operation(Enum):
     resonator_twpa_pow = resonator_twpa_pow
     resonator_twpa_freq = resonator_twpa_freq
     resonator_qubit_spectroscopy = resonator_qubit_spectroscopy
+    zeno_msr = zeno_msr
+    chsh_pulses = chsh_pulses
+    chsh_circuits = chsh_circuits
+    readout_mitigation_matrix = readout_mitigation_matrix
+    twpa_frequency = twpa_frequency
+    twpa_power = twpa_power
+    rabi_amplitude_ef = rabi_amplitude_ef
+    qubit_spectroscopy_ef = qubit_spectroscopy_ef
+    resonator_amplitude = resonator_amplitude

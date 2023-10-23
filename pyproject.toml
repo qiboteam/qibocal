@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "qibocal"
-version = "0.0.4"
+version = "0.0.5"
 description = ""
 authors = ["andrea-pasquale <andreapasquale97@gmail.com>"]
 license = "Apache License 2.0"
@@ -14,10 +14,11 @@ classifiers = [
   "Topic :: Scientific/Engineering :: Physics",
 ]
 
+
 [tool.poetry.dependencies]
 python = ">=3.9,<3.12"
-qibolab = "^0.1.0"
-qibo = "^0.2.0"
+qibolab = "^0.1.2"
+qibo = "^0.2.1"
 numpy = "^1.24.0"
 scipy = "^1.10.1"
 pandas = "^1.4.3"
@@ -108,7 +109,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 qq = "qibocal:command"
-qq-upload = "qibocal:upload"
+
 
 [tool.poe.tasks]
 test = "pytest"
@@ -130,6 +131,7 @@ jobs = 1
 
 [tool.pylint.messages_control]
 disable = ["invalid-name", "fixme"]
+extension-pkg-whitelist = "pydantic"
 
 [tool.pylint.reports]
 # Available formats are:

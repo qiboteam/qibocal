@@ -1,16 +1,18 @@
 import inspect
 import json
 import time
-from dataclasses import asdict, dataclass, fields
+from dataclasses import asdict, dataclass
 from functools import wraps
-from typing import Callable, Generic, NewType, TypeVar, Union
+from typing import Callable, Generic, NewType, Optional, TypeVar, Union
 
 import numpy as np
 import numpy.typing as npt
 from qibolab.platform import Platform
-from qibolab.qubits import Qubit, QubitId
+from qibolab.qubits import Qubit, QubitId, QubitPairId
 
 from qibocal.config import log
+
+from .serialize import deserialize, load, serialize
 
 OperationId = NewType("OperationId", str)
 """Identifier for a calibration routine."""
@@ -19,6 +21,7 @@ ParameterValue = Union[float, int]
 Qubits = dict[QubitId, Qubit]
 """Convenient way of passing qubit pairs in the routines."""
 QubitsPairs = dict[tuple[QubitId, QubitId], Qubit]
+
 
 DATAFILE = "data.npz"
 """Name of the file where data acquired (arrays) by calibration are dumped."""
@@ -47,6 +50,13 @@ def show_logs(func):
     return wrapper
 
 
+DEFAULT_PARENT_PARAMETERS = {
+    "nshots": None,
+    "relaxation_time": None,
+}
+"""Default values of the parameters of `Parameters`"""
+
+
 class Parameters:
     """Generic action parameters.
 
@@ -67,6 +77,9 @@ class Parameters:
         """Load parameters from runcard.
 
         Possibly looking into previous steps outputs.
+        Parameters defined in Parameters class are removed from `parameters`
+        before `cls` is created.
+        Then `nshots` and `relaxation_time` are assigned to cls.
 
         .. todo::
 
@@ -74,7 +87,12 @@ class Parameters:
             the linked outputs
 
         """
-        return cls(**parameters)
+        for parameter, value in DEFAULT_PARENT_PARAMETERS.items():
+            DEFAULT_PARENT_PARAMETERS[parameter] = parameters.pop(parameter, value)
+        instantiated_class = cls(**parameters)
+        for parameter, value in DEFAULT_PARENT_PARAMETERS.items():
+            setattr(instantiated_class, parameter, value)
+        return instantiated_class
 
 
 class Data:
@@ -100,7 +118,7 @@ class Data:
         return self.data[qubit]
 
     @property
-    def global_params_dict(self):
+    def global_params(self) -> dict:
         """Convert non-arrays attributes into dict."""
         global_dict = asdict(self)
         global_dict.pop("data")
@@ -108,17 +126,56 @@ class Data:
 
     def save(self, path):
         """Store results."""
-        self.to_json(path)
-        self.to_npz(path)
+        self._to_json(path)
+        self._to_npz(path)
 
-    def to_npz(self, path):
+    def _to_npz(self, path):
         """Helper function to use np.savez while converting keys into strings."""
-        np.savez(path / DATAFILE, **{str(i): self.data[i] for i in self.data})
+        np.savez(path / DATAFILE, **{json.dumps(i): self.data[i] for i in self.data})
 
-    def to_json(self, path):
+    def _to_json(self, path):
         """Helper function to dump to json in JSONFILE path."""
-        if self.global_params_dict:
-            (path / JSONFILE).write_text(json.dumps(self.global_params_dict, indent=4))
+        if self.global_params:
+            (path / JSONFILE).write_text(
+                json.dumps(serialize(self.global_params), indent=4)
+            )
+
+    @classmethod
+    def load(cls, path):
+        with open(path / DATAFILE) as f:
+            raw_data_dict = dict(np.load(path / DATAFILE))
+            data_dict = {}
+
+            for data_key, array in raw_data_dict.items():
+                data_dict[load(data_key)] = np.rec.array(array)
+        if (path / JSONFILE).is_file():
+            params = json.loads((path / JSONFILE).read_text())
+
+            params = deserialize(params)
+            obj = cls(data=data_dict, **params)
+        else:
+            obj = cls(data=data_dict)
+
+        return obj
+
+    def register_qubit(self, dtype, data_keys, data_dict):
+        """Store output for single qubit.
+
+        Args:
+            data_keys (tuple): Keys of Data.data.
+            data_dict (dict): The keys are the fields of `dtype` and
+            the values are the related arrays.
+        """
+        # to be able to handle the non-sweeper case
+        ar = np.empty(np.shape(data_dict[list(data_dict.keys())[0]]), dtype=dtype)
+        for key, value in data_dict.items():
+            ar[key] = value
+        if data_keys in self.data:
+            self.data[data_keys] = np.rec.array(
+                np.concatenate((self.data[data_keys], ar))
+            )
+        else:
+            self.data[data_keys] = np.rec.array(ar)
 
 
 @dataclass
@@ -143,35 +200,15 @@ class Results:
 
     """
 
-    @property
-    def update(self) -> dict[str, ParameterValue]:
-        """Produce an update from a result object.
-
-        This is later used to update the runcard.
-
-        """
-        up: dict[str, ParameterValue] = {}
-        for fld in fields(self):
-            if "update" in fld.metadata:
-                up[fld.metadata["update"]] = getattr(self, fld.name)
-
-        return up
-
     def save(self, path):
         """Store results to json."""
-        # FIXME: remove hardcoded conversion to str for tuple
-        result_dict = {}
-        for result_name, result in asdict(self).items():
-            result_dict[result_name] = {}
-            if isinstance(result, dict):
-                for key, elem in result.items():
-                    if isinstance(key, tuple):
-                        result_dict[result_name][str(key)] = elem
-                    else:
-                        result_dict[result_name][key] = elem
-            else:
-                result_dict[result_name] = result
-        (path / RESULTSFILE).write_text(json.dumps(result_dict, indent=4))
+        (path / RESULTSFILE).write_text(json.dumps(serialize(asdict(self))))
+
+    @classmethod
+    def load(cls, path):
+        params = json.loads((path / RESULTSFILE).read_text())
+        params = deserialize(params)
+        return cls(**params)
 
 
 # Internal types, in particular `_ParametersT` is used to address function
@@ -191,17 +228,17 @@ class Routine(Generic[_ParametersT, _DataT, _ResultsT]):
     """Post-processing function."""
     report: Callable[[_DataT, _ResultsT], None] = None
     """Plotting function."""
+    update: Callable[[_ResultsT, Platform], None] = None
+    """Update function platform."""
+    two_qubit_gates: Optional[bool] = False
+    """Flag to determine whether to allocate list of Qubits or Pairs."""
 
     def __post_init__(self):
         # add decorator to show logs
         self.acquisition = show_logs(self.acquisition)
         self.fit = show_logs(self.fit)
-
-        # TODO: this could be improved
-        if self.fit is None:
-            self.fit = _dummy_fit
-        if self.report is None:
-            self.report = _dummy_report
+        if self.update is None:
+            self.update = _dummy_update
 
     @property
     def parameters_type(self):
@@ -255,15 +292,11 @@ def _dummy_acquisition(pars: DummyPars, platform: Platform) -> DummyData:
     return DummyData()
 
 
-def _dummy_fit(data: DummyData) -> DummyRes:
-    """Dummy fitting."""
-    return DummyRes()
+def _dummy_update(
+    results: DummyRes, platform: Platform, qubit: Union[QubitId, QubitPairId]
+) -> None:
+    """Dummy update function"""
 
 
-def _dummy_report(data: DummyData, result: DummyRes):
-    """Dummy plotting."""
-    return [], ""
-
-
-dummy_operation = Routine(_dummy_acquisition, _dummy_fit, _dummy_report)
+dummy_operation = Routine(_dummy_acquisition)
 """Example of a dummy operation."""

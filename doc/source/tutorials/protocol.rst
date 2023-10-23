@@ -245,7 +245,7 @@ use `plotly <https://plotly.com/python/>`_ in order to properly generate the rep
         angle = 3.14
         report += f" {qubit} | rotation angle: {angle:.3f}<br>"
 
-    This table can be omitted by returnig ``No fitting data``.
+    This table can be omitted by returnig ``None``.
 
 Here is the plotting function for the protocol that we are coding:
 
@@ -261,7 +261,7 @@ Here is the plotting function for the protocol that we are coding:
         figures = []
         fig = go.Figure()
 
-        fitting_report = "No fitting data"
+        fitting_report = ""
         qubit_data = data[qubit]
 
         fig.add_trace(
@@ -275,21 +275,23 @@ Here is the plotting function for the protocol that we are coding:
             ),
         )
 
-        fig.add_trace(
-            go.Scatter(
-                x=qubit_data.theta,
-                y=cos_fit(
-                    qubit_data.theta,
-                    *fit.fitted_parameters[qubit],
+        if fit is not None:
+            fig.add_trace(
+                go.Scatter(
+                    x=qubit_data.theta,
+                    y=cos_fit(
+                        qubit_data.theta,
+                        *fit.fitted_parameters[qubit],
+                    ),
+                    name="Fit",
+                    line=go.scatter.Line(dash="dot"),
                 ),
-                name="Fit",
-                line=go.scatter.Line(dash="dot"),
-            ),
-        )
+            )
 
         # last part
         fig.update_layout(
             showlegend=True,
+            uirevision="0",  # ``uirevision`` allows zooming while live plotting
             xaxis_title="Theta [rad]",
             yaxis_title="Probability",
         )
