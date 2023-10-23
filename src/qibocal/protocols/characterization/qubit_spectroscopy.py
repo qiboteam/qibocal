@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 import numpy as np
@@ -8,9 +8,10 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
+from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
-from .resonator_spectroscopy import ResonatorSpectroscopyData
+from .resonator_spectroscopy import ResonatorSpectroscopyData, ResSpecType
 from .utils import lorentzian_fit, spectroscopy_plot
 
 
@@ -26,19 +27,13 @@ class QubitSpectroscopyParameters(Parameters):
     """Drive pulse duration [ns]. Same for all qubits."""
     drive_amplitude: Optional[float] = None
     """Drive pulse amplitude (optional). Same for all qubits."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 @dataclass
 class QubitSpectroscopyResults(Results):
     """QubitSpectroscopy outputs."""
 
-    frequency: dict[QubitId, dict[str, float]] = field(
-        metadata=dict(update="drive_frequency")
-    )
+    frequency: dict[QubitId, dict[str, float]]
     """Drive frequecy [GHz] for each qubit."""
     amplitude: dict[QubitId, float]
     """Input drive amplitude. Same for all qubits."""
@@ -110,10 +105,13 @@ def _acquisition(
         result = results[ro_pulse.serial]
         # store the results
         data.register_qubit(
-            qubit,
-            msr=result.magnitude,
-            phase=result.phase,
-            freq=delta_frequency_range + qd_pulses[qubit].frequency,
+            ResSpecType,
+            (qubit),
+            dict(
+                msr=result.magnitude,
+                phase=result.phase,
+                freq=delta_frequency_range + qd_pulses[qubit].frequency,
+            ),
         )
     return data
 
@@ -137,10 +135,14 @@ def _fit(data: QubitSpectroscopyData) -> QubitSpectroscopyResults:
     )
 
 
-def _plot(data: QubitSpectroscopyData, fit: QubitSpectroscopyResults, qubit):
+def _plot(data: QubitSpectroscopyData, qubit, fit: QubitSpectroscopyResults):
     """Plotting function for QubitSpectroscopy."""
-    return spectroscopy_plot(data, fit, qubit)
+    return spectroscopy_plot(data, qubit, fit)
 
 
-qubit_spectroscopy = Routine(_acquisition, _fit, _plot)
+def _update(results: QubitSpectroscopyResults, platform: Platform, qubit: QubitId):
+    update.drive_frequency(results.frequency[qubit], platform, qubit)
+
+
+qubit_spectroscopy = Routine(_acquisition, _fit, _plot, _update)
 """QubitSpectroscopy Routine object."""

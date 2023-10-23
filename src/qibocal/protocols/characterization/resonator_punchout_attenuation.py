@@ -11,9 +11,18 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
-from .utils import GHZ_TO_HZ, HZ_TO_GHZ, V_TO_UV, fit_punchout, norm
+from .utils import (
+    GHZ_TO_HZ,
+    HZ_TO_GHZ,
+    V_TO_UV,
+    fit_punchout,
+    norm,
+    table_dict,
+    table_html,
+)
 
 
 @dataclass
@@ -30,26 +39,17 @@ class ResonatorPunchoutAttenuationParameters(Parameters):
     """Attenuation maximum value (dB)."""
     step_att: int
     """Attenuation step (dB)."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 @dataclass
 class ResonatorPunchoutAttenuationResults(Results):
     """ResonatorPunchoutAttenation outputs."""
 
-    readout_frequency: dict[QubitId, float] = field(
-        metadata=dict(update="readout_frequency")
-    )
+    readout_frequency: dict[QubitId, float]
     """Readout frequency [GHz] for each qubit."""
-    bare_frequency: Optional[dict[QubitId, float]] = field(
-        metadata=dict(update="bare_resonator_frequency")
-    )
-    readout_attenuation: dict[QubitId, int] = field(
-        metadata=dict(update="readout_attenuation")
-    )
+    bare_frequency: Optional[dict[QubitId, float]]
+    """Bare resonator frequency [GHZ] for each qubit."""
+    readout_attenuation: dict[QubitId, int]
     """Readout attenuation [dB] for each qubit."""
 
 
@@ -123,7 +123,7 @@ def _acquisition(
         type=SweeperType.ABSOLUTE,
     )
 
-    data = ResonatorPunchoutAttenuationData(platform.resonator_type)
+    data = ResonatorPunchoutAttenuationData(resonator_type=platform.resonator_type)
 
     results = platform.sweep(
         sequence,
@@ -167,8 +167,8 @@ def _fit(
 
 def _plot(
     data: ResonatorPunchoutAttenuationData,
-    fit: ResonatorPunchoutAttenuationResults,
     qubit,
+    fit: ResonatorPunchoutAttenuationResults = None,
 ):
     """Plotting for ResonatorPunchoutAttenuation."""
 
@@ -205,8 +205,8 @@ def _plot(
         row=1,
         col=1,
     )
-    fig.update_xaxes(title_text=f"{qubit}: Frequency (Hz)", row=1, col=1)
-    fig.update_yaxes(title_text="Attenuation", row=1, col=1)
+    fig.update_xaxes(title_text="Frequency (Hz)", row=1, col=1)
+    fig.update_yaxes(title_text="Attenuation (dB)", row=1, col=1)
     fig.add_trace(
         go.Heatmap(
             x=frequencies,
@@ -217,34 +217,41 @@ def _plot(
         row=1,
         col=2,
     )
-    fig.update_xaxes(title_text=f"{qubit}/: Frequency (Hz)", row=1, col=2)
-    fig.update_yaxes(title_text="Attenuation", row=1, col=2)
+    fig.update_xaxes(title_text="Frequency (Hz)", row=1, col=2)
+    fig.update_yaxes(title_text="Attenuation (dB)", row=1, col=2)
 
-    fig.add_trace(
-        go.Scatter(
-            x=[
-                fit.readout_frequency[qubit],
-            ],
-            y=[
-                fit.readout_attenuation[qubit],
-            ],
-            mode="markers",
-            marker=dict(
-                size=8,
-                color="gray",
-                symbol="circle",
-            ),
+    if fit is not None:
+        fig.add_trace(
+            go.Scatter(
+                x=[
+                    fit.readout_frequency[qubit],
+                ],
+                y=[
+                    fit.readout_attenuation[qubit],
+                ],
+                mode="markers",
+                marker=dict(
+                    size=8,
+                    color="gray",
+                    symbol="circle",
+                ),
+            )
         )
-    )
-    title_text = ""
-    title_text += f"{qubit} | Resonator Frequency at Low Power:  {fit.readout_frequency[qubit] * GHZ_TO_HZ} Hz.<br>"
-    title_text += (
-        f"{qubit} | Readout Attenuation: {fit.readout_attenuation[qubit]} db.<br>"
-    )
-    title_text += f"{qubit} | Resonator Frequency at High Power: {fit.bare_frequency[qubit] * GHZ_TO_HZ} Hz.<br>"
-
-    fitting_report = fitting_report + title_text
-
+        fitting_report = table_html(
+            table_dict(
+                qubit,
+                [
+                    "Low Power Resonator Frequency",
+                    "Readout Attenuation",
+                    "High Power Resonator Frequency",
+                ],
+                [
+                    np.round(fit.readout_frequency[qubit] * GHZ_TO_HZ, 0),
+                    fit.readout_attenuation[qubit],
+                    np.round(fit.bare_frequency[qubit] * GHZ_TO_HZ),
+                ],
+            )
+        )
     fig.update_layout(
         showlegend=False,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
@@ -255,5 +262,13 @@ def _plot(
     return figures, fitting_report
 
 
-resonator_punchout_attenuation = Routine(_acquisition, _fit, _plot)
+def _update(
+    results: ResonatorPunchoutAttenuationResults, platform: Platform, qubit: QubitId
+):
+    update.readout_frequency(results.readout_frequency[qubit], platform, qubit)
+    update.bare_resonator_frequency(results.bare_frequency[qubit], platform, qubit)
+    update.readout_attenuation(results.readout_attenuation[qubit], platform, qubit)
+
+
+resonator_punchout_attenuation = Routine(_acquisition, _fit, _plot, _update)
 """ResonatorPunchoutAttenuation Routine object."""

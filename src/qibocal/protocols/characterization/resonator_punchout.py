@@ -11,9 +11,18 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
-from .utils import GHZ_TO_HZ, HZ_TO_GHZ, V_TO_UV, fit_punchout, norm
+from .utils import (
+    GHZ_TO_HZ,
+    HZ_TO_GHZ,
+    V_TO_UV,
+    fit_punchout,
+    norm,
+    table_dict,
+    table_html,
+)
 
 
 @dataclass
@@ -32,27 +41,17 @@ class ResonatorPunchoutParameters(Parameters):
     """Step amplitude multiplicative factor."""
     amplitude: float = None
     """Initial readout amplitude."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 @dataclass
 class ResonatorPunchoutResults(Results):
     """ResonatorPunchout outputs."""
 
-    readout_frequency: dict[QubitId, float] = field(
-        metadata=dict(update="readout_frequency")
-    )
+    readout_frequency: dict[QubitId, float]
     """Readout frequency [GHz] for each qubit."""
-    bare_frequency: Optional[dict[QubitId, float]] = field(
-        metadata=dict(update="bare_resonator_frequency")
-    )
+    bare_frequency: Optional[dict[QubitId, float]]
     """Bare resonator frequency [GHz] for each qubit."""
-    readout_amplitude: dict[QubitId, float] = field(
-        metadata=dict(update="readout_amplitude")
-    )
+    readout_amplitude: dict[QubitId, float]
     """Readout amplitude for each qubit."""
 
 
@@ -176,11 +175,10 @@ def _fit(data: ResonatorPunchoutData, fit_type="amp") -> ResonatorPunchoutResult
     return ResonatorPunchoutResults(*fit_punchout(data, fit_type))
 
 
-def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
+def _plot(data: ResonatorPunchoutData, qubit, fit: ResonatorPunchoutResults = None):
     """Plotting function for ResonatorPunchout."""
     figures = []
     fitting_report = ""
-
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -191,7 +189,6 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
             "phase (rad)",
         ),
     )
-
     qubit_data = data[qubit]
     frequencies = qubit_data.freq * HZ_TO_GHZ
     amplitudes = qubit_data.amp
@@ -227,28 +224,38 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
         col=2,
     )
 
-    fig.add_trace(
-        go.Scatter(
-            x=[
-                fit.readout_frequency[qubit],
-            ],
-            y=[
-                fit.readout_amplitude[qubit],
-            ],
-            mode="markers",
-            marker=dict(
-                size=8,
-                color="gray",
-                symbol="circle",
-            ),
+    if fit is not None:
+        fig.add_trace(
+            go.Scatter(
+                x=[
+                    fit.readout_frequency[qubit],
+                ],
+                y=[
+                    fit.readout_amplitude[qubit],
+                ],
+                mode="markers",
+                marker=dict(
+                    size=8,
+                    color="gray",
+                    symbol="circle",
+                ),
+            )
         )
-    )
-    title_text = ""
-    title_text += f"{qubit} | Resonator frequency at low power:  {fit.readout_frequency[qubit]*GHZ_TO_HZ:,.0f} Hz<br>"
-    title_text += f"{qubit} | Resonator frequency at high power: {fit.bare_frequency[qubit]*GHZ_TO_HZ:,.0f} Hz<br>"
-    title_text += f"{qubit} | Readout amplitude at low power: {fit.readout_amplitude[qubit]:,.3f} <br>"
-
-    fitting_report = fitting_report + title_text
+        fitting_report = table_html(
+            table_dict(
+                qubit,
+                [
+                    "Low Power Resonator Frequency",
+                    "Low Power readout amplitude",
+                    "High Power Resonator Frequency",
+                ],
+                [
+                    np.round(fit.readout_frequency[qubit] * GHZ_TO_HZ),
+                    np.round(fit.readout_amplitude[qubit], 3),
+                    np.round(fit.bare_frequency[qubit] * GHZ_TO_HZ),
+                ],
+            )
+        )
 
     fig.update_layout(
         showlegend=False,
@@ -260,5 +267,11 @@ def _plot(data: ResonatorPunchoutData, fit: ResonatorPunchoutResults, qubit):
     return figures, fitting_report
 
 
-resonator_punchout = Routine(_acquisition, _fit, _plot)
+def _update(results: ResonatorPunchoutResults, platform: Platform, qubit: QubitId):
+    update.readout_frequency(results.readout_frequency[qubit], platform, qubit)
+    update.bare_resonator_frequency(results.bare_frequency[qubit], platform, qubit)
+    update.readout_amplitude(results.readout_amplitude[qubit], platform, qubit)
+
+
+resonator_punchout = Routine(_acquisition, _fit, _plot, _update)
 """ResonatorPunchout Routine object."""

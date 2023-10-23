@@ -1,0 +1,105 @@
+platform: dummy
+
+qubits: [0]
+
+actions:
+
+  - id: resonator spectroscopy high power
+    priority: 0
+    operation: resonator_spectroscopy
+    main: resonator punchout
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 500_000
+      amplitude: 0.4
+      power_level: high
+      relaxation_time: 5_000
+
+  - id: resonator punchout
+    priority: 10
+    operation: resonator_punchout
+    main: resonator spectroscopy low power
+    parameters:
+      freq_width: 20_000_000
+      freq_step: 2_000_000
+      min_amp_factor: 0.02
+      max_amp_factor: 2.4
+      step_amp_factor: 0.1
+      relaxation_time: 5_000
+
+  - id: resonator spectroscopy low power
+    priority: 20
+    operation: resonator_spectroscopy
+    main: qubit spectroscopy
+    parameters:
+      freq_width: 100_000_000
+      freq_step: 1_000_000
+      amplitude: 0.5
+      power_level: low
+      relaxation_time: 5_000
+
+  - id: qubit spectroscopy
+    priority: 30
+    operation: qubit_spectroscopy
+    main: rabi amplitude
+    parameters:
+      drive_amplitude: 0.1
+      drive_duration: 5000
+      freq_width: 30_000_000
+      freq_step: 100_000
+      relaxation_time: 5_000
+
+  - id: rabi amplitude
+    priority: 40
+    operation: rabi_amplitude
+    main: ramsey detuned
+    parameters:
+      min_amp_factor: 0.0
+      max_amp_factor: 1.5
+      step_amp_factor: 0.02
+      pulse_length: 40
+
+  - id: ramsey detuned
+    priority: 50
+    operation: ramsey
+    main: t1
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 30_000
+      delay_between_pulses_step: 1_000
+      n_osc: 10
+
+  - id: t1
+    priority: 60
+    operation: t1
+    main: ramsey
+    parameters:
+      delay_before_readout_start: 0
+      delay_before_readout_end: 200_000
+      delay_before_readout_step: 5_000
+
+  - id: ramsey
+    priority: 70
+    operation: ramsey
+    main: single shot classification
+    parameters:
+      delay_between_pulses_start: 16
+      delay_between_pulses_end: 65_000
+      delay_between_pulses_step: 2_000
+      n_osc: 0
+
+  - id: single shot classification
+    priority: 80
+    main: standard rb
+    operation: single_shot_classification
+    parameters:
+      nshots: 5_000
+
+  - id: standard rb
+    priority: 90
+    operation: standard_rb
+    parameters:
+      depths: [10, 20, 30, 40]
+      niter: 50
+      nshots: 128
+      seed: 420

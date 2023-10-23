@@ -5,7 +5,14 @@ from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Qubits, Routine
 
-from .length import RabiLengthData, RabiLengthParameters, _fit, _plot
+from .length import (
+    RabiLengthData,
+    RabiLengthParameters,
+    RabiLenType,
+    _fit,
+    _plot,
+    _update,
+)
 
 
 def _acquisition(
@@ -69,14 +76,17 @@ def _acquisition(
             # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulses[qubit].serial]
             data.register_qubit(
-                qubit,
-                length=duration,
-                msr=result.magnitude,
-                phase=result.phase,
+                RabiLenType,
+                (qubit),
+                dict(
+                    length=np.array([duration]),
+                    msr=np.array([result.magnitude]),
+                    phase=np.array([result.phase]),
+                ),
             )
 
     return data
 
 
-rabi_length_sequences = Routine(_acquisition, _fit, _plot)
+rabi_length_sequences = Routine(_acquisition, _fit, _plot, _update)
 """RabiLength Routine object."""

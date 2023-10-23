@@ -1,4 +1,3 @@
-from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Iterable, Optional, TypedDict, Union
 
@@ -20,6 +19,7 @@ from .circuit_tools import (
     embed_circuit,
     layer_circuit,
 )
+from .data import RBData
 from .fitting import exp1B_func, fit_exp1B_func
 from .utils import extract_from_data, number_to_str, random_clifford
 
@@ -42,8 +42,6 @@ class StandardRBParameters(Parameters):
     """A list of depths/sequence lengths. If a dictionary is given the list will be build."""
     niter: int
     """Sets how many iterations over the same depth value."""
-    nshots: int
-    """For each sequence how many shots for statistics should be performed."""
     uncertainties: Union[str, float] = 95
     """Method of computing the error bars of the signal and uncertainties of the fit. If ``None``,
     does not compute them. If ``"std"``, computes the standard deviation. If ``float`` or ``int``
@@ -66,17 +64,6 @@ class StandardRBParameters(Parameters):
             self.depths = list(
                 range(self.depths["start"], self.depths["stop"], self.depths["step"])
             )
-
-
-class RBData(pd.DataFrame):
-    """A pandas DataFrame child. The output of the acquisition function."""
-
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-
-    def save(self, path):
-        """Overwrite because qibocal action builder calls this function with a directory."""
-        super().to_json(f"{path}/{self.__class__.__name__}.json", default_handler=str)
 
 
 # TODO: uniform RB to implement results as dictionaries
@@ -333,27 +320,21 @@ def _fit(data: RBData) -> StandardRBResult:
     return StandardRBResult(fidelity, pulse_fidelity, popt, perr, error_bars)
 
 
-def _plot(data: RBData, result: StandardRBResult, qubit) -> tuple[list[go.Figure], str]:
+def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], str]:
     """Builds the table for the qq pipe, calls the plot function of the result object
     and returns the figure es list.
 
     Args:
         data (RBData): Data object used for the table.
-        result (StandardRBResult): Is called for the plot.
+        fit (StandardRBResult): Is called for the plot.
         qubit (_type_): Not used yet.
 
     Returns:
         tuple[list[go.Figure], str]:
     """
-
     x, y_scatter = extract_from_data(data, "signal", "depth", list)
     y = [np.mean(y_row) for y_row in y_scatter]
-    popt, perr = result.fit_parameters, result.fit_uncertainties
-    label = "Fit: y=Ap^x<br>A: {}<br>p: {}<br>B: {}".format(
-        number_to_str(popt[0], perr[0]),
-        number_to_str(popt[1], perr[1]),
-        number_to_str(popt[2], perr[2]),
-    )
+
     fig = go.Figure()
     fig.add_trace(
         go.Scatter(
@@ -376,61 +357,71 @@ def _plot(data: RBData, result: StandardRBResult, qubit) -> tuple[list[go.Figure
     )
     # Create a dictionary for the error bars
     error_y_dict = None
-    if result.error_bars is not None:
-        # Constant error bars
-        if isinstance(result.error_bars, Iterable) is False:
-            error_y_dict = {"type": "constant", "value": result.error_bars}
-        # Symmetric error bars
-        elif isinstance(result.error_bars[0], Iterable) is False:
-            error_y_dict = {"type": "data", "array": result.error_bars}
-        # Asymmetric error bars
-        else:
-            error_y_dict = {
-                "type": "data",
-                "symmetric": False,
-                "array": result.error_bars[1],
-                "arrayminus": result.error_bars[0],
-            }
+    if fit is not None:
+        popt, perr = fit.fit_parameters, fit.fit_uncertainties
+        label = "Fit: y=Ap^x<br>A: {}<br>p: {}<br>B: {}".format(
+            number_to_str(popt[0], perr[0]),
+            number_to_str(popt[1], perr[1]),
+            number_to_str(popt[2], perr[2]),
+        )
+        x_fit = np.linspace(min(x), max(x), len(x) * 20)
+        y_fit = exp1B_func(x_fit, *popt)
         fig.add_trace(
             go.Scatter(
-                x=x,
-                y=y,
-                error_y=error_y_dict,
-                line={"color": "#aa6464"},
-                mode="markers",
-                name="error bars",
+                x=x_fit,
+                y=y_fit,
+                name=label,
+                line=go.scatter.Line(dash="dot", color="#00cc96"),
             )
         )
-    x_fit = np.linspace(min(x), max(x), len(x) * 20)
-    y_fit = exp1B_func(x_fit, *popt)
-    fig.add_trace(
-        go.Scatter(
-            x=x_fit,
-            y=y_fit,
-            name=label,
-            line=go.scatter.Line(dash="dot", color="#00cc96"),
-        )
-    )
+        if fit.error_bars is not None:
+            # Constant error bars
+            if isinstance(fit.error_bars, Iterable) is False:
+                error_y_dict = {"type": "constant", "value": fit.error_bars}
+            # Symmetric error bars
+            elif isinstance(fit.error_bars[0], Iterable) is False:
+                error_y_dict = {"type": "data", "array": fit.error_bars}
+            # Asymmetric error bars
+            else:
+                error_y_dict = {
+                    "type": "data",
+                    "symmetric": False,
+                    "array": fit.error_bars[1],
+                    "arrayminus": fit.error_bars[0],
+                }
+            fig.add_trace(
+                go.Scatter(
+                    x=x,
+                    y=y,
+                    error_y=error_y_dict,
+                    line={"color": "#aa6464"},
+                    mode="markers",
+                    name="error bars",
+                )
+            )
 
-    meta_data = deepcopy(data.attrs)
-    meta_data.pop("depths")
-    if not meta_data["noise_model"]:
-        meta_data.pop("noise_model")
-        meta_data.pop("noise_params")
+    # TODO: fix this mess
+    # meta_data = deepcopy(data.attrs)
+    # meta_data.pop("depths")
+    # if not meta_data["noise_model"]:
+    #     meta_data.pop("noise_model")
+    #     meta_data.pop("noise_params")
 
-    table_str = "".join(
-        [
-            f" | {key}: {value}<br>"
-            for key, value in {
-                **meta_data,
-                "fidelity": number_to_str(result.fidelity, np.array(perr[1]) / 2),
-                "pulse_fidelity": number_to_str(
-                    result.pulse_fidelity,
-                    np.array(perr[1]) / (2 * NPULSES_PER_CLIFFORD),
-                ),
-            }.items()
-        ]
-    )
+    table_str = ""
+    # TODO: and this mess
+    # table_str = "".join(
+    #     [
+    #         f" | {key}: {value}<br>"
+    #         for key, value in {
+    #             **meta_data,
+    #             "fidelity": number_to_str(fit.fidelity, np.array(perr[1]) / 2),
+    #             "pulse_fidelity": number_to_str(
+    #                 fit.pulse_fidelity,
+    #                 np.array(perr[1]) / (2 * NPULSES_PER_CLIFFORD),
+    #             ),
+    #         }.items()
+    #     ]
+    # )
 
     fig.update_layout(
         showlegend=True,

@@ -28,9 +28,9 @@ class Action:
     """Alternative subsequent actions, branching from the current one."""
     priority: Optional[int] = None
     """Priority level, determining the execution order."""
-    qubits: Union[list[QubitId], list[tuple[QubitId, QubitId]]] = Field(
-        default_factory=list
-    )
+    qubits: Union[
+        list[QubitId], list[tuple[QubitId, QubitId]], list[list[QubitId]]
+    ] = Field(default_factory=list)
     """Local qubits (optional)."""
     update: bool = True
     """Runcard update mechanism."""

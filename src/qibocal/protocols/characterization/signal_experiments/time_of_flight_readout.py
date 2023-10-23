@@ -10,7 +10,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.protocols.characterization.utils import S_TO_NS
+from qibocal.protocols.characterization.utils import S_TO_NS, table_dict, table_html
 
 
 @dataclass
@@ -19,10 +19,6 @@ class TimeOfFlightReadoutParameters(Parameters):
 
     readout_amplitude: Optional[int] = None
     """Amplitude of the readout pulse."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
     window_size: Optional[int] = 10
     """Window size for the moving average."""
 
@@ -45,16 +41,8 @@ class TimeOfFlightReadoutData(Data):
     windows_size: int
     sampling_rate: int
 
-    data: dict[QubitId, npt.NDArray[TimeOfFlightReadoutType]] = field(
-        default_factory=dict
-    )
+    data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
-
-    def register_qubit(self, qubit, samples):
-        """Store output for single qubit."""
-        ar = np.empty(samples.shape, dtype=TimeOfFlightReadoutType)
-        ar["samples"] = samples
-        self.data[qubit] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -85,14 +73,15 @@ def _acquisition(
         ),
     )
 
-    data = TimeOfFlightReadoutData(params.window_size, platform.settings.sampling_rate)
+    data = TimeOfFlightReadoutData(
+        windows_size=params.window_size, sampling_rate=platform.settings.sampling_rate
+    )
 
     # retrieve and store the results for every qubit
     for qubit in qubits:
         samples = results[ro_pulses[qubit].serial].magnitude
         # store the results
-        data.register_qubit(qubit, samples)
-
+        data.register_qubit(TimeOfFlightReadoutType, (qubit), dict(samples=samples))
     return data
 
 
@@ -121,13 +110,12 @@ def _fit(data: TimeOfFlightReadoutData) -> TimeOfFlightReadoutResults:
     return TimeOfFlightReadoutResults(fitted_parameters)
 
 
-def _plot(data: TimeOfFlightReadoutData, fit: TimeOfFlightReadoutResults, qubit):
+def _plot(data: TimeOfFlightReadoutData, qubit, fit: TimeOfFlightReadoutResults):
     """Plotting function for TimeOfFlightReadout."""
 
     figures = []
     fitting_report = ""
     fig = go.Figure()
-
     qubit_data = data[qubit]
     sampling_rate = data.sampling_rate
     y = qubit_data.samples
@@ -148,18 +136,18 @@ def _plot(data: TimeOfFlightReadoutData, fit: TimeOfFlightReadoutResults, qubit)
         xaxis_title="Sample",
         yaxis_title="MSR (uV)",
     )
-
-    fig.add_vline(
-        x=fit.fitted_parameters[qubit] * sampling_rate,
-        line_width=2,
-        line_dash="dash",
-        line_color="grey",
-    )
-
-    fitting_report += (
-        f"{qubit} | Time of flight(ns) : {fit.fitted_parameters[qubit] * S_TO_NS}<br>"
-    )
-
+    if fit is not None:
+        fig.add_vline(
+            x=fit.fitted_parameters[qubit] * sampling_rate,
+            line_width=2,
+            line_dash="dash",
+            line_color="grey",
+        )
+        fitting_report = table_html(
+            table_dict(
+                qubit, "Time of flights [ns]", fit.fitted_parameters[qubit] * S_TO_NS
+            )
+        )
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting

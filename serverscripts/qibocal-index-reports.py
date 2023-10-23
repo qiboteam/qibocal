@@ -6,8 +6,6 @@ import pathlib
 import sys
 from collections import ChainMap
 
-import yaml
-
 ROOT = "/home/users/qibocal/qibocal-reports"
 ROOT_URL = "http://login.qrccluster.com:9000/"
 OUT = "/home/users/qibocal/qibocal-reports/index.json"
@@ -17,36 +15,38 @@ DEFAULTS = {
     "platform": "-",
     "start-time": "-",
     "end-time": "-",
+    "tag": "-",
 }
-REQUIRED_FILE_METADATA = {"title", "date", "platform", "start-time" "end-time"}
+REQUIRED_FILE_METADATA = {"title", "date", "platform", "start-time" "end-time", "tag"}
 
 
 def meta_from_path(p):
     meta = ChainMap(DEFAULTS)
-    yaml_meta = p / "meta.yml"
-    yaml_res = {}
-    if yaml_meta.exists():
-        with yaml_meta.open() as f:
+    json_meta = p / "meta.json"
+    json_res = {}
+    if json_meta.exists():
+        with json_meta.open() as f:
             try:
-                yaml_res = yaml.safe_load(f)
-            except yaml.YAMLError as e:
-                print(f"Error processing {yaml_meta}: {e}", file=sys.stderr)
-    meta = meta.new_child(yaml_res)
+                json_res = json.load(f)
+            except json.decoder.JSONDecodeError as e:
+                print(f"Error processing {json_meta}: {e}", file=sys.stderr)
+    meta = meta.new_child(json_res)
     return meta
 
 
 def register(p):
     path_meta = meta_from_path(p)
-    title, date, platform, start_time, end_time = (
+    title, date, platform, start_time, end_time, tag = (
         path_meta["title"],
         path_meta["date"],
         path_meta["platform"],
         path_meta["start-time"],
         path_meta["end-time"],
+        path_meta["tag"],
     )
     url = ROOT_URL + p.name
     titlelink = f'<a href="{url}">{title}</a>'
-    return (titlelink, date, platform, start_time, end_time)
+    return (titlelink, date, platform, start_time, end_time, tag)
 
 
 def make_index():

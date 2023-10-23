@@ -9,7 +9,9 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
+from scipy.signal import find_peaks
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 
@@ -28,10 +30,6 @@ class RabiLengthParameters(Parameters):
     """Step pi pulse duration (ns)."""
     pulse_amplitude: Optional[float] = None
     """Pi pulse amplitude. Same for all qubits."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -61,19 +59,6 @@ class RabiLengthData(Data):
     data: dict[QubitId, npt.NDArray[RabiLenType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, length, msr, phase):
-        """Store output for single qubit."""
-        # to be able to handle the non-sweeper case
-        shape = (1,) if np.isscalar(length) else length.shape
-        ar = np.empty(shape, dtype=RabiLenType)
-        ar["length"] = length
-        ar["msr"] = msr
-        ar["phase"] = phase
-        if qubit in self.data:
-            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
-        else:
-            self.data[qubit] = np.rec.array(ar)
-
 
 def _acquisition(
     params: RabiLengthParameters, platform: Platform, qubits: Qubits
@@ -91,7 +76,9 @@ def _acquisition(
     amplitudes = {}
     for qubit in qubits:
         # TODO: made duration optional for qd pulse?
-        qd_pulses[qubit] = platform.create_qubit_drive_pulse(qubit, start=0, duration=4)
+        qd_pulses[qubit] = platform.create_qubit_drive_pulse(
+            qubit, start=0, duration=params.pulse_duration_start
+        )
         if params.pulse_amplitude is not None:
             qd_pulses[qubit].amplitude = params.pulse_amplitude
         amplitudes[qubit] = qd_pulses[qubit].amplitude
@@ -138,10 +125,13 @@ def _acquisition(
         # average msr, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulses[qubit].serial]
         data.register_qubit(
-            qubit,
-            length=qd_pulse_duration_range,
-            msr=result.magnitude,
-            phase=result.phase,
+            RabiLenType,
+            (qubit),
+            dict(
+                length=qd_pulse_duration_range,
+                msr=result.magnitude,
+                phase=result.phase,
+            ),
         )
     return data
 
@@ -168,8 +158,10 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
         # Guessing period using fourier transform
         ft = np.fft.rfft(y)
         mags = abs(ft)
-        index = np.argmax(mags) if np.argmax(mags) != 0 else np.argmax(mags[1:]) + 1
-        f = x[index] / (x[1] - x[0])
+        local_maxima = find_peaks(mags, threshold=1)[0]
+        index = local_maxima[0] if len(local_maxima) > 0 else None
+        # 0.5 hardcoded guess for less than one oscillation
+        f = x[index] / (x[1] - x[0]) if index is not None else 0.5
 
         pguess = [1, 1, f, np.pi / 2, 0]
         try:
@@ -203,10 +195,14 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
     return RabiLengthResults(durations, data.amplitudes, fitted_parameters)
 
 
+def _update(results: RabiLengthResults, platform: Platform, qubit: QubitId):
+    update.drive_duration(results.length[qubit], platform, qubit)
+
+
 def _plot(data: RabiLengthData, fit: RabiLengthResults, qubit):
     """Plotting function for RabiLength experiment."""
-    return utils.plot(data, fit, qubit)
+    return utils.plot(data, qubit, fit)
 
 
-rabi_length = Routine(_acquisition, _fit, _plot)
+rabi_length = Routine(_acquisition, _fit, _plot, _update)
 """RabiLength Routine object."""

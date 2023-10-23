@@ -1,4 +1,3 @@
-from math import ceil, isinf, log10
 from numbers import Number
 from typing import Callable, Optional, Union
 
@@ -7,6 +6,7 @@ from pandas import DataFrame
 from qibo import gates
 
 from qibocal.config import raise_error
+from qibocal.protocols.characterization.utils import significant_digit
 
 SINGLE_QUBIT_CLIFFORDS = {
     # Virtual gates
@@ -87,28 +87,6 @@ def random_clifford(qubits, seed=None):
     return clifford_gates
 
 
-def significant_digit(number: Number):
-    """Computes the position of the first significant digit of a given number.
-
-    Args:
-        number (Number): number for which the significant digit is computed. Can be complex.
-
-    Returns:
-        int: position of the first significant digit. Returns ``-1`` if the given number
-            is ``>= 1``, ``= 0`` or ``inf``.
-    """
-
-    if isinf(np.real(number)) or np.real(number) >= 1 or number == 0:
-        return -1
-
-    position = max(ceil(-log10(abs(np.real(number)))), -1)
-
-    if np.imag(number) != 0:
-        position = max(position, ceil(-log10(abs(np.imag(number)))))
-
-    return position
-
-
 def number_to_str(
     value: Number,
     uncertainty: Optional[Union[Number, list, tuple, np.ndarray]] = None,
@@ -177,6 +155,7 @@ def extract_from_data(
     """
     if isinstance(data, list):
         data = DataFrame(data)
+
     # Check what parameters where given.
     if not groupby_key and not agg_type:
         # No grouping and no aggreagtion is wanted. Just return the wanted output key.

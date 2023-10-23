@@ -1,70 +1,25 @@
 """Track execution history."""
-import copy
-import os
-from dataclasses import dataclass
-from functools import cached_property
-from pathlib import Path
-from typing import Optional
 
-from .operation import Data, Results
 from .runcard import Id
-from .status import Status
-from .task import Task
+from .task import Completed
 
 
-@dataclass
-class Completed:
-    """A completed task."""
+def add_timings_to_meta(meta, history):
+    for task_id, iteration in history:
+        completed = history[(task_id, iteration)]
+        if task_id not in meta:
+            meta[task_id] = {}
 
-    task: Task
-    """A snapshot of the task when it was completed.
+        if "acquisition" not in meta[task_id] and completed.data_time > 0:
+            meta[task_id]["acquisition"] = completed.data_time
+        if "fit" not in meta[task_id] and completed.results_time > 0:
+            meta[task_id]["fit"] = completed.results_time
+        if "acquisition" in meta[task_id]:
+            meta[task_id]["tot"] = meta[task_id]["acquisition"]
+        if "fit" in meta[task_id]:
+            meta[task_id]["tot"] += meta[task_id]["fit"]
 
-    .. todo::
-
-        once tasks will be immutable, a separate `iteration` attribute should
-        be added
-
-    """
-    status: Status
-    """Protocol status."""
-    folder: Path
-    """Folder with data and results."""
-    _data: Optional[Data] = None
-    """Protocol data."""
-    _results: Optional[Results] = None
-    """Fitting output."""
-
-    @cached_property
-    def datapath(self):
-        """Path contaning data and results file for task."""
-        path = self.folder / "data" / f"{self.task.id}_{self.task.iteration}"
-        os.makedirs(path)
-        return path
-
-    @property
-    def results(self):
-        """Access task's results."""
-        return self._results
-
-    @results.setter
-    def results(self, results: Results):
-        """Set and store results."""
-        self._results = results
-        self._results.save(self.datapath)
-
-    @property
-    def data(self):
-        """Access task's data."""
-        return self._data
-
-    @data.setter
-    def data(self, data: Data):
-        """Set and store data."""
-        self._data = data
-        self._data.save(self.datapath)
-
-    def __post_init__(self):
-        self.task = copy.deepcopy(self.task)
+    return meta
 
 
 class History(dict[tuple[Id, int], Completed]):
@@ -79,6 +34,8 @@ class History(dict[tuple[Id, int], Completed]):
     def push(self, completed: Completed):
         """Adding completed task to history."""
         self[(completed.task.id, completed.task.iteration)] = completed
-        completed.task.iteration += 1
+
+        # TODO: re-implement this
+        # completed.task.iteration += 1
 
     # TODO: implemet time_travel()
