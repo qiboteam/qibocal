@@ -8,7 +8,7 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
-from qibocal.auto.operation import Qubits, Results, Routine
+from qibocal.auto.operation import Qubits, Routine
 
 from . import amplitude, utils
 
@@ -19,15 +19,8 @@ class RabiAmplitudeEFParameters(amplitude.RabiAmplitudeParameters):
 
 
 @dataclass
-class RabiAmplitudeEFResults(Results):
+class RabiAmplitudeEFResults(amplitude.RabiAmplitudeResults):
     """RabiAmplitudeEF outputs."""
-
-    amplitude: dict[QubitId, float]
-    """Drive amplitude for each qubit."""
-    length: dict[QubitId, float]
-    """Drive pulse duration. Same for all qubits."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
-    """Raw fitted parameters."""
 
 
 @dataclass
