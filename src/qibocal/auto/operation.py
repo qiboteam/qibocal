@@ -158,6 +158,25 @@ class Data:
 
         return obj
 
+    def register_qubit(self, dtype, data_keys, data_dict):
+        """Store output for single qubit.
+
+        Args:
+            data_keys (tuple): Keys of Data.data.
+            data_dict (dict): The keys are the fields of `dtype` and
+            the values are the related arrays.
+        """
+        # to be able to handle the non-sweeper case
+        ar = np.empty(np.shape(data_dict[list(data_dict.keys())[0]]), dtype=dtype)
+        for key, value in data_dict.items():
+            ar[key] = value
+        if data_keys in self.data:
+            self.data[data_keys] = np.rec.array(
+                np.concatenate((self.data[data_keys], ar))
+            )
+        else:
+            self.data[data_keys] = np.rec.array(ar)
+
 
 @dataclass
 class Results:

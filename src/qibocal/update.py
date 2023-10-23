@@ -137,18 +137,27 @@ def CZ_amplitude(amp: float, platform: Platform, pair: QubitPairId):
 
 
 def t1(t1: int, platform: Platform, qubit: QubitId):
-    """Update mean excited state value in platform for specific qubit."""
-    platform.qubits[qubit].t1 = int(t1)
+    """Update t1 value in platform for specific qubit."""
+    if isinstance(t1, tuple):
+        platform.qubits[qubit].t1 = int(t1[0])
+    else:
+        platform.qubits[qubit].t1 = int(t1)
 
 
 def t2(t2: int, platform: Platform, qubit: QubitId):
-    """Update mean excited state value in platform for specific qubit."""
-    platform.qubits[qubit].t2 = int(t2)
+    """Update t2 value in platform for specific qubit."""
+    if isinstance(t2, tuple):
+        platform.qubits[qubit].t2 = int(t2[0])
+    else:
+        platform.qubits[qubit].t2 = int(t2)
 
 
 def t2_spin_echo(t2_spin_echo: float, platform: Platform, qubit: QubitId):
-    """Update mean excited state value in platform for specific qubit."""
-    platform.qubits[qubit].t2_spin_echo = int(t2_spin_echo)
+    """Update t2 echo value in platform for specific qubit."""
+    if isinstance(t2_spin_echo, tuple):
+        platform.qubits[qubit].t2_spin_echo = int(t2_spin_echo[0])
+    else:
+        platform.qubits[qubit].t2_spin_echo = int(t2_spin_echo)
 
 
 def drag_pulse_beta(beta: float, platform: Platform, qubit: QubitId):

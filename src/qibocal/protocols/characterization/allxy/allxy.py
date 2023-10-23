@@ -36,16 +36,6 @@ class AllXYData(Data):
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, prob, gate):
-        """Store output for single qubit."""
-        ar = np.empty((1,), dtype=AllXYType)
-        ar["prob"] = prob
-        ar["gate"] = gate
-        if qubit in self.data:
-            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
-        else:
-            self.data[qubit] = np.rec.array(ar)
-
 
 gatelist = [
     ["I", "I"],
@@ -112,7 +102,7 @@ def _acquisition(
             z_proj = 2 * results[ro_pulses[qubit].serial].probability(0) - 1
             # store the results
             gate = "-".join(gates)
-            data.register_qubit(qubit, z_proj, gate)
+            data.register_qubit(AllXYType, (qubit), dict(prob=z_proj, gate=gate))
     # finally, save the remaining data
     return data
 
