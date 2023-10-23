@@ -5,7 +5,6 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-from qibocal import update
 from qibocal.auto.operation import Qubits, Routine
 
 from ..flux_dependence.utils import flux_dependence_plot
