@@ -43,7 +43,13 @@ from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
 from .resonator_spectroscopy_attenuation import resonator_spectroscopy_attenuation
 from .signal_experiments.time_of_flight_readout import time_of_flight_readout
-from .two_qubit_interaction import chevron, chsh_circuits, chsh_pulses, cz_virtualz
+from .two_qubit_interaction import (
+    chevron,
+    chsh_circuits,
+    chsh_pulses,
+    cryoscope,
+    cz_virtualz,
+)
 
 
 class Operation(Enum):
@@ -78,6 +84,7 @@ class Operation(Enum):
     flipping = flipping
     dispersive_shift = dispersive_shift
     chevron = chevron
+    cryoscope = cryoscope
     cz_virtualz = cz_virtualz
     standard_rb = standard_rb
     readout_characterization = readout_characterization
