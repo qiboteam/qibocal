@@ -95,13 +95,16 @@ def _acquisition(
         rx_pulse = platform.create_RX_pulse(qubit, start=0)
         rx12_pulse = platform.create_RX12_pulse(qubit, start=rx_pulse.finish)
         drive_pulses = [rx_pulse, rx12_pulse]
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=rx12_pulse.finish
-        )
         hpars[qubit] = qubits[qubit].classifiers_hpars
+        ro_pulses[qubit] = []
         for i, sequence in enumerate(states_sequences):
             sequence.add(*drive_pulses[:i])
-            sequence.add(ro_pulses[qubit])
+            start = drive_pulses[i - 1].finish if i != 0 else 0
+            ro_pulses[qubit].append(
+                platform.create_qubit_readout_pulse(qubit, start=start)
+            )
+            sequence.add(ro_pulses[qubit][-1])
+
     # create a DataUnits object to store the results
     data = QutritClassificationData(
         nshots=params.nshots,
@@ -124,8 +127,7 @@ def _acquisition(
 
     for qubit in qubits:
         for state, state_result in enumerate(states_results):
-            result = state_result[ro_pulses[qubit].serial]
-            print(params.nshots, len(result.voltage_i))
+            result = state_result[ro_pulses[qubit][state].serial]
             data.register_qubit(
                 ClassificationType,
                 (qubit),
