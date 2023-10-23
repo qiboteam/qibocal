@@ -23,8 +23,10 @@ from .flux_dependence.resonator_flux_dependence import (
     resonator_flux,
 )
 from .qubit_spectroscopy import qubit_spectroscopy
+from .qubit_spectroscopy_ef import qubit_spectroscopy_ef
 from .rabi.amplitude import rabi_amplitude
 from .rabi.amplitude_msr import rabi_amplitude_msr
+from .rabi.ef import rabi_amplitude_ef
 from .rabi.length import rabi_length
 from .rabi.length_msr import rabi_length_msr
 from .rabi.length_sequences import rabi_length_sequences
@@ -92,4 +94,6 @@ class Operation(Enum):
     readout_mitigation_matrix = readout_mitigation_matrix
     twpa_frequency = twpa_frequency
     twpa_power = twpa_power
+    rabi_amplitude_ef = rabi_amplitude_ef
+    qubit_spectroscopy_ef = qubit_spectroscopy_ef
     resonator_amplitude = resonator_amplitude

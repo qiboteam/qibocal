@@ -26,7 +26,8 @@ def rabi_length_fit(x, p0, p1, p2, p3, p4):
 
 
 def plot(data, qubit, fit):
-    if data.__class__.__name__ == "RabiAmplitudeVoltData":
+  
+    if "RabiAmplitude" in data.__class__.__name__:
         quantity = "amp"
         title = "Amplitude (dimensionless)"
         fitting = rabi_amplitude_fit
@@ -44,7 +45,7 @@ def plot(data, qubit, fit):
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
         subplot_titles=(
-            "MSR (V)",
+            "MSR (uV)",
             "phase (rad)",
         ),
     )
