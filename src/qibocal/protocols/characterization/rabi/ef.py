@@ -8,7 +8,7 @@ from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal import update
-from qibocal.auto.operation import Qubits, Results, Routine
+from qibocal.auto.operation import Qubits, Routine
 
 from . import amplitude, utils
 
@@ -19,15 +19,8 @@ class RabiAmplitudeEFParameters(amplitude.RabiAmplitudeParameters):
 
 
 @dataclass
-class RabiAmplitudeEFResults(Results):
+class RabiAmplitudeEFResults(amplitude.RabiAmplitudeResults):
     """RabiAmplitudeEF outputs."""
-
-    amplitude: dict[QubitId, float]
-    """Drive amplitude for each qubit."""
-    length: dict[QubitId, float]
-    """Drive pulse duration. Same for all qubits."""
-    fitted_parameters: dict[QubitId, dict[str, float]]
-    """Raw fitted parameters."""
 
 
 @dataclass
@@ -39,9 +32,12 @@ def _acquisition(
     params: RabiAmplitudeEFParameters, platform: Platform, qubits: Qubits
 ) -> RabiAmplitudeEFData:
     r"""
-    Data acquisition for Rabi experiment sweeping amplitude.
-    In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse amplitude
-    to find the drive pulse amplitude that creates a rotation of a desired angle.
+    Data acquisition for Rabi EF experiment sweeping amplitude.
+
+    The rabi protocol is performed after exciting the qubit to state 1.
+    This protocol allows to compute the amplitude of the RX12 pulse to excite
+    the qubit to state 2 starting from state 1.
+
     """
 
     # create a sequence of pulses for the experiment
@@ -100,10 +96,13 @@ def _acquisition(
         # average msr, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulses[qubit].serial]
         data.register_qubit(
-            qubit,
-            amp=qd_pulses[qubit].amplitude * qd_pulse_amplitude_range,
-            msr=result.magnitude,
-            phase=result.phase,
+            amplitude.RabiAmpType,
+            (qubit),
+            dict(
+                amp=qd_pulses[qubit].amplitude * qd_pulse_amplitude_range,
+                msr=result.magnitude,
+                phase=result.phase,
+            ),
         )
     return data
 
@@ -112,7 +111,7 @@ def _plot(data: RabiAmplitudeEFData, qubit, fit: RabiAmplitudeEFResults = None):
     """Plotting function for RabiAmplitude."""
     figures, report = utils.plot(data, qubit, fit)
     if report is not None:
-        report = report.replace("pi_pulse", "pi_pulse_12")
+        report = report.replace("Pi pulse", "Pi pulse 12")
     return figures, report
 
 

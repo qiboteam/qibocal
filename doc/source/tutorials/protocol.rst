@@ -261,7 +261,7 @@ Here is the plotting function for the protocol that we are coding:
         figures = []
         fig = go.Figure()
 
-        fitting_report = None
+        fitting_report = ""
         qubit_data = data[qubit]
 
         fig.add_trace(

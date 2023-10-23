@@ -2,7 +2,7 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from ..utils import V_TO_UV
+from ..utils import V_TO_UV, table_dict, table_html
 
 
 def rabi_amplitude_fit(x, p0, p1, p2, p3):
@@ -36,7 +36,7 @@ def plot(data, qubit, fit):
         fitting = rabi_length_fit
 
     figures = []
-    fitting_report = None
+    fitting_report = ""
 
     fig = make_subplots(
         rows=1,
@@ -96,11 +96,12 @@ def plot(data, qubit, fit):
             col=1,
         )
 
-        fitting_report = (
-            f"{qubit} | pi_pulse_amplitude: {float(fit.amplitude[qubit]):.3f}<br>"
-        )
-        fitting_report += (
-            f"{qubit} | pi_pulse_length: {float(fit.length[qubit]):.3f}<br>"
+        fitting_report = table_html(
+            table_dict(
+                qubit,
+                ["Pi pulse amplitude", "Pi pulse length"],
+                [np.round(fit.amplitude[qubit], 3), np.round(fit.length[qubit], 3)],
+            )
         )
 
         fig.update_layout(

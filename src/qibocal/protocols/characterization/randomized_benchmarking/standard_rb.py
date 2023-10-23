@@ -42,8 +42,6 @@ class StandardRBParameters(Parameters):
     """A list of depths/sequence lengths. If a dictionary is given the list will be build."""
     niter: int
     """Sets how many iterations over the same depth value."""
-    nshots: int
-    """For each sequence how many shots for statistics should be performed."""
     uncertainties: Union[str, float] = 95
     """Method of computing the error bars of the signal and uncertainties of the fit. If ``None``,
     does not compute them. If ``"std"``, computes the standard deviation. If ``float`` or ``int``
@@ -409,7 +407,7 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
     #     meta_data.pop("noise_model")
     #     meta_data.pop("noise_params")
 
-    table_str = None
+    table_str = ""
     # TODO: and this mess
     # table_str = "".join(
     #     [

@@ -11,6 +11,7 @@ from qibocal import update
 from qibocal.auto.operation import Qubits, Routine
 from qibocal.fitting.classifier import run
 from qibocal.protocols.characterization.classification import (
+    ClassificationType,
     SingleShotClassificationData,
     SingleShotClassificationParameters,
     SingleShotClassificationResults,
@@ -124,8 +125,15 @@ def _acquisition(
     for qubit in qubits:
         for state, state_result in enumerate(states_results):
             result = state_result[ro_pulses[qubit].serial]
+            print(params.nshots, len(result.voltage_i))
             data.register_qubit(
-                qubit=qubit, state=state, i=result.voltage_i, q=result.voltage_q
+                ClassificationType,
+                (qubit),
+                dict(
+                    state=[state] * params.nshots,
+                    i=result.voltage_i,
+                    q=result.voltage_q,
+                ),
             )
 
     return data

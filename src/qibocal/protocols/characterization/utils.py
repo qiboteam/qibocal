@@ -1,10 +1,11 @@
 from colorsys import hls_to_rgb
 from enum import Enum
-from typing import Optional
+from typing import Union
 
 import lmfit
 import numpy as np
 import numpy.typing as npt
+import pandas as pd
 import plotly.graph_objects as go
 from numba import njit
 from plotly.subplots import make_subplots
@@ -25,6 +26,23 @@ SPACING = 0.1
 COLUMNWIDTH = 600
 LEGEND_FONT_SIZE = 20
 TITLE_SIZE = 25
+EXTREME_CHI = 1e4
+"""Chi2 output when errors list contains zero elements"""
+
+
+def calculate_frequencies(results, qubit_list):
+    """Calculates outcome frequencies from individual shots.
+    Args:
+        results (dict): return of execute_pulse_sequence
+        qubit_list (list): list of qubit ids executed in pulse sequence.
+
+    Returns:
+        dictionary containing frequencies.
+    """
+    shots = np.stack([results[i].samples for i in qubit_list]).T
+    values, counts = np.unique(shots, axis=0, return_counts=True)
+
+    return {"".join(str(int(i)) for i in v): cnt for v, cnt in zip(values, counts)}
 
 
 class PowerLevel(str, Enum):
@@ -48,15 +66,15 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
 
     # Guess parameters for Lorentzian max or min
     # TODO: probably this is not working on HW
+    guess_offset = np.mean(
+        voltages[np.abs(voltages - np.mean(voltages)) < np.std(voltages)]
+    )
     if (resonator_type == "3D" and fit == "resonator") or (
         resonator_type == "2D" and fit == "qubit"
     ):
         guess_center = frequencies[
             np.argmax(voltages)
         ]  # Argmax = Returns the indices of the maximum values along an axis.
-        guess_offset = np.mean(
-            voltages[np.abs(voltages - np.mean(voltages) < np.std(voltages))]
-        )
         guess_sigma = abs(frequencies[np.argmin(voltages)] - guess_center)
         guess_amp = (np.max(voltages) - guess_offset) * guess_sigma * np.pi
 
@@ -64,9 +82,6 @@ def lorentzian_fit(data, resonator_type=None, fit=None):
         guess_center = frequencies[
             np.argmin(voltages)
         ]  # Argmin = Returns the indices of the minimum values along an axis.
-        guess_offset = np.mean(
-            voltages[np.abs(voltages - np.mean(voltages) < np.std(voltages))]
-        )
         guess_sigma = abs(frequencies[np.argmax(voltages)] - guess_center)
         guess_amp = (np.min(voltages) - guess_offset) * guess_sigma * np.pi
 
@@ -100,7 +115,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
         vertical_spacing=0.1,
     )
     qubit_data = data[qubit]
-    fitting_report = None
+    fitting_report = ""
 
     frequencies = qubit_data.freq * HZ_TO_GHZ
     fig.add_trace(
@@ -158,15 +173,23 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
             label = "qubit frequency"
             freq = fit.frequency
 
-        fitting_report = f"{qubit} | {label}: {freq[qubit]*GHZ_TO_HZ:,.0f} Hz<br>"
-
         if fit.amplitude[qubit] is not None:
-            fitting_report += f"{qubit} | amplitude: {fit.amplitude[qubit]} <br>"
+            fitting_report = table_html(
+                table_dict(
+                    qubit,
+                    [label, "amplitude"],
+                    [np.round(freq[qubit] * GHZ_TO_HZ, 0), fit.amplitude[qubit]],
+                )
+            )
 
         if data.__class__.__name__ == "ResonatorSpectroscopyAttenuationData":
             if fit.attenuation[qubit] is not None and fit.attenuation[qubit] != 0:
-                fitting_report += (
-                    f"{qubit} | attenuation: {fit.attenuation[qubit]} <br>"
+                fitting_report = table_html(
+                    table_dict(
+                        qubit,
+                        [label, "attenuation"],
+                        [np.round(freq[qubit] * GHZ_TO_HZ, 0), fit.attenuation[qubit]],
+                    )
                 )
 
     fig.update_layout(
@@ -276,44 +299,40 @@ def fit_punchout(data: Data, fit_type: str):
 
 def eval_magnitude(value):
     """number of non decimal digits in `value`"""
+    if value == 0 or not np.isfinite(value):
+        return 0
     return int(np.floor(np.log10(abs(value))))
 
 
-def fill_table(
-    qubit: QubitId,
-    name: str,
-    value: float,
-    error: Optional[float],
-    unit: str = None,
-    ndigits: int = 2,
-) -> str:
+def round_report(
+    measure: list,
+) -> tuple[list, list]:
     """
-    Return a row of the report table with the correct number of
-    significant digits.
+    Rounds the measured values and their errors according to their significant digits.
 
     Args:
-        qubit (QubitId): Qubit.
-        name (str): Variable's name.
-        value (float): Variable's value.
-        error (float): Error associated to the variable.
-        unit (str): Measurement unit. Default value `None`.
-        ndigits (int): Number of decimal digits to display when error is `None`
-            (i.e. it is not evaluated).
+        measure (list): Variable-Errors couples.
+
+    Returns:
+        A tuple with the lists of values and errors in the correct string format.
     """
-    row = f"{qubit}| {name}: "
-    if value:
-        magnitude = eval_magnitude(value)
-    else:
-        magnitude = 0
-    if error:
+    rounded_values = []
+    rounded_errors = []
+    for value, error in measure:
+        if value:
+            magnitude = eval_magnitude(value)
+        else:
+            magnitude = 0
+
         ndigits = max(significant_digit(error * 10 ** (-1 * magnitude)), 0)
-        row += f"({round(value*10**(-1*magnitude), ndigits)} ± {np.format_float_positional(round(error*10**(-1*magnitude), ndigits), trim = '-')})"
-    else:
-        row += f"{round(value*10**(-1* magnitude), ndigits)}"
-    if magnitude != 0:
-        row += f"* 10^{magnitude}"
-    row += f" {unit} <br>" if unit else f"<br>"
-    return row
+        rounded_values.append(
+            f"{round(value * 10 ** (-1 * magnitude), ndigits)} * 10 ^{magnitude}"
+        )
+        rounded_errors.append(
+            f"{np.format_float_positional(round(error*10**(-1*magnitude), ndigits), trim = '-')}* 10 ^ {magnitude}"
+        )
+
+    return rounded_values, rounded_errors
 
 
 def chi2_reduced(
@@ -322,10 +341,15 @@ def chi2_reduced(
     errors: npt.NDArray,
     dof: float = None,
 ):
+    if np.count_nonzero(errors) < len(errors):
+        return EXTREME_CHI
+
     if dof is None:
         dof = len(observed) - 1
 
-    return np.sum(np.square((observed - estimated) / errors)) / dof
+    chi2 = np.sum(np.square((observed - estimated) / errors)) / dof
+
+    return chi2
 
 
 def get_color_state0(number):
@@ -545,3 +569,56 @@ def plot_results(data: Data, qubit, qubit_states, fit: Results):
 
         figures.append(fig_benchmarks)
     return figures
+
+
+def table_dict(
+    qubit: Union[list[QubitId], QubitId],
+    names: list[str],
+    values: list,
+    display_error=False,
+) -> dict:
+    """
+    Build a dictionary to generate HTML table with `table_html`.
+
+    Args:
+        qubit (Union[list[QubitId], QubitId]): If qubit is a scalar value,
+        the "Qubit" entries will have only this value repeated.
+        names (list[str]): List of the names of the parameters.
+        values (list): List of the values of the parameters.
+        display_errors (bool): if `True`, it means that `values` is a list of value-error couples,
+        so an `Errors` key will be displayed in the dictionary. The function will round the couples according to their significant digits. Default False.
+
+    Return:
+        A dictionary with keys `Qubit`, `Parameters`, `Values` (`Errors`).
+    """
+    if not np.isscalar(values):
+        if np.isscalar(qubit):
+            qubit = [qubit] * len(names)
+
+        if display_error:
+            rounded_values, rounded_errors = round_report(values)
+
+            return {
+                "Qubit": qubit,
+                "Parameters": names,
+                "Values": rounded_values,
+                "Errors": rounded_errors,
+            }
+    else:  # If `values` is scalar also `qubit` should be a scalar
+        qubit = [
+            qubit
+        ]  # In this way when the Dataframe is generated, an index is not required.
+    return {"Qubit": qubit, "Parameters": names, "Values": values}
+
+
+def table_html(data: dict) -> str:
+    """This function converts a dictionary into an HTML table.
+
+    Args:
+        data (dict): the keys will be converted into table entries and the
+        values will be the columns of the table.
+
+    Return:
+        str
+    """
+    return pd.DataFrame(data).to_html(classes="fitting-table", index=False, border=0)

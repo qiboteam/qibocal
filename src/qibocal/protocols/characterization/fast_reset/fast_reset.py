@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -11,6 +10,7 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.protocols.characterization.utils import table_dict, table_html
 
 # TODO: IBM Fast Reset until saturation loop
 # https://quantum-computing.ibm.com/lab/docs/iql/manage/systems/reset/backend_reset
@@ -19,11 +19,6 @@ from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 @dataclass
 class FastResetParameters(Parameters):
     """FastReset runcard inputs."""
-
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -54,12 +49,6 @@ class FastResetData(Data):
 
     data: dict[tuple, npt.NDArray[FastResetType]] = field(default_factory=dict)
     """Raw data acquired."""
-
-    def register_qubit(self, qubit, probability, state, fast_reset):
-        """Store output for single qubit."""
-        ar = np.empty(probability.shape, dtype=FastResetType)
-        ar["probability"] = probability
-        self.data[qubit, state, fast_reset] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -103,10 +92,9 @@ def _acquisition(
                 result = results[ro_pulse.serial]
                 qubit = ro_pulse.qubit
                 data.register_qubit(
-                    qubit,
-                    probability=result.samples,
-                    state=state,
-                    fast_reset=fast_reset,
+                    FastResetType,
+                    (qubit, state, fast_reset),
+                    dict(probability=result.samples),
                 )
 
     return data
@@ -129,11 +117,9 @@ def _fit(data: FastResetData) -> FastResetResults:
 
         state1_count_1fr = np.count_nonzero(fr_states)
         state0_count_1fr = nshots - state1_count_1fr
-        error_fr1 = 1 - (nshots - state0_count_1fr) / nshots
 
         state1_count_1nfr = np.count_nonzero(nfr_states)
         state0_count_1nfr = nshots - state1_count_1nfr
-        error_nfr1 = 1 - (nshots - state0_count_1nfr) / nshots
 
         # state 0
         fr_states = data[qubit, 0, True].probability
@@ -141,11 +127,9 @@ def _fit(data: FastResetData) -> FastResetResults:
 
         state1_count_0fr = np.count_nonzero(fr_states)
         state0_count_0fr = nshots - state1_count_0fr
-        error_fr0 = (nshots - state0_count_0fr) / nshots
 
         state1_count_0nfr = np.count_nonzero(nfr_states)
         state0_count_0nfr = nshots - state1_count_0nfr
-        error_nfr0 = (nshots - state0_count_0nfr) / nshots
 
         # Repeat Lambda and fidelity for each measurement ?
         Lambda_M_nfr[qubit] = [
@@ -176,7 +160,7 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
     # Maybe the plot can just be something like a confusion matrix between 0s and 1s ???
 
     figures = []
-    fitting_report = None
+    fitting_report = ""
     fig = make_subplots(
         rows=1,
         cols=2,
@@ -189,7 +173,6 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
     )
 
     if fit is not None:
-        fitting_report = ""
         fig.add_trace(
             go.Heatmap(
                 z=fit.Lambda_M_fr[qubit],
@@ -198,12 +181,15 @@ def _plot(data: FastResetData, fit: FastResetResults, qubit):
             row=1,
             col=1,
         )
-
-        fitting_report += (
-            f"{qubit} | Fidelity [Fast Reset]: {fit.fidelity_fr[qubit]:.6f}<br>"
-        )
-        fitting_report += (
-            f"{qubit}| Fidelity [Relaxation Time]: {fit.fidelity_nfr[qubit]:.6f}<br>"
+        fitting_report = table_html(
+            table_dict(
+                qubit,
+                ["Fidelity [Fast Reset]", "Fidelity [Relaxation Time]"],
+                [
+                    np.round(fit.fidelity_fr[qubit], 6),
+                    np.round(fit.fidelity_nfr[qubit], 6),
+                ],
+            )
         )
 
         fig.add_trace(

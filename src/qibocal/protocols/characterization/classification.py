@@ -42,10 +42,6 @@ DEFAULT_CLASSIFIER = "qubit_fit"
 class SingleShotClassificationParameters(Parameters):
     """SingleShotClassification runcard inputs."""
 
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
     classifiers_list: Optional[list[str]] = field(
         default_factory=lambda: [DEFAULT_CLASSIFIER]
     )
@@ -72,18 +68,6 @@ class SingleShotClassificationData(Data):
         default_factory=lambda: [DEFAULT_CLASSIFIER]
     )
     """List of models to classify the qubit states"""
-
-    def register_qubit(self, qubit, state, i, q):
-        """Store output for single qubit."""
-        shape = (1,) if np.isscalar(i) else i.shape
-        ar = np.empty(shape, dtype=ClassificationType)
-        ar["i"] = i
-        ar["q"] = q
-        ar["state"] = state
-        if qubit in self.data:
-            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
-        else:
-            self.data[qubit] = np.rec.array(ar)
 
 
 @dataclass
@@ -220,9 +204,10 @@ def _acquisition(
     for qubit in qubits:
         result = state0_results[ro_pulses[qubit].serial]
         data.register_qubit(
-            qubit=qubit, state=0, i=result.voltage_i, q=result.voltage_q
+            ClassificationType,
+            (qubit),
+            dict(i=result.voltage_i, q=result.voltage_q, state=[0] * params.nshots),
         )
-
     # execute the second pulse sequence
     state1_results = platform.execute_pulse_sequence(
         state1_sequence,
@@ -236,7 +221,9 @@ def _acquisition(
     for qubit in qubits:
         result = state1_results[ro_pulses[qubit].serial]
         data.register_qubit(
-            qubit=qubit, state=1, i=result.voltage_i, q=result.voltage_q
+            ClassificationType,
+            (qubit),
+            dict(i=result.voltage_i, q=result.voltage_q, state=[1] * params.nshots),
         )
 
     return data
@@ -292,7 +279,6 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
                 assignment_fidelity[qubit] = models[i].assignment_fidelity
         y_test_predict[qubit] = y_preds
         grid_preds_dict[qubit] = grid_preds
-
     return SingleShotClassificationResults(
         benchmark_table=benchmark_tables,
         y_tests=y_tests,
@@ -358,16 +344,28 @@ def _plot(
             )
             figures.append(fig_roc)
 
-            if model == "qubit_fit":
-                fitting_report = ""
-                fitting_report += f"{qubit} | average state 0: {np.round(fit.mean_gnd_states[qubit], 3)}<br>"
-                fitting_report += f"{qubit} | average state 1: {np.round(fit.mean_exc_states[qubit], 3)}<br>"
-                fitting_report += (
-                    f"{qubit} | rotation angle: {fit.rotation_angle[qubit]:.3f}<br>"
+            if models_name[i] == "qubit_fit":
+                fitting_report = table_html(
+                    table_dict(
+                        qubit,
+                        [
+                            "Average State 0",
+                            "Average State 1",
+                            "Rotational Angle",
+                            "Threshold",
+                            "Readout Fidelity",
+                            "Assignment Fidelity",
+                        ],
+                        [
+                            np.round(fit.mean_gnd_states[qubit], 3),
+                            np.round(fit.mean_exc_states[qubit], 3),
+                            np.round(fit.rotation_angle[qubit], 3),
+                            np.round(fit.threshold[qubit], 6),
+                            np.round(fit.fidelity[qubit], 3),
+                            np.round(fit.assignment_fidelity[qubit], 3),
+                        ],
+                    )
                 )
-                fitting_report += f"{qubit} | threshold: {fit.threshold[qubit]:.6f}<br>"
-                fitting_report += f"{qubit} | fidelity: {fit.fidelity[qubit]:.3f}<br>"
-                fitting_report += f"{qubit} | assignment fidelity: {fit.assignment_fidelity[qubit]:.3f}<br>"
 
     return figures, fitting_report
 
@@ -380,6 +378,8 @@ def _update(
     update.mean_gnd_states(results.mean_gnd_states[qubit], platform, qubit)
     update.mean_exc_states(results.mean_exc_states[qubit], platform, qubit)
     update.classifiers_hpars(results.classifiers_hpars[qubit], platform, qubit)
+    update.readout_fidelity(results.fidelity[qubit], platform, qubit)
+    update.assignment_fidelity(results.assignment_fidelity[qubit], platform, qubit)
 
 
 single_shot_classification = Routine(_acquisition, _fit, _plot, _update)

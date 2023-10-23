@@ -11,7 +11,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
-from .resonator_spectroscopy import ResonatorSpectroscopyData
+from .resonator_spectroscopy import ResonatorSpectroscopyData, ResSpecType
 from .utils import lorentzian_fit, spectroscopy_plot
 
 
@@ -27,10 +27,6 @@ class QubitSpectroscopyParameters(Parameters):
     """Drive pulse duration [ns]. Same for all qubits."""
     drive_amplitude: Optional[float] = None
     """Drive pulse amplitude (optional). Same for all qubits."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -109,10 +105,13 @@ def _acquisition(
         result = results[ro_pulse.serial]
         # store the results
         data.register_qubit(
-            qubit,
-            msr=result.magnitude,
-            phase=result.phase,
-            freq=delta_frequency_range + qd_pulses[qubit].frequency,
+            ResSpecType,
+            (qubit),
+            dict(
+                msr=result.magnitude,
+                phase=result.phase,
+                freq=delta_frequency_range + qd_pulses[qubit].frequency,
+            ),
         )
     return data
 

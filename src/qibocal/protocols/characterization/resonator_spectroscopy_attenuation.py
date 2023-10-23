@@ -11,7 +11,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
-from .resonator_spectroscopy import ResonatorSpectroscopyData
+from .resonator_spectroscopy import ResonatorSpectroscopyData, ResSpecType
 from .utils import PowerLevel, lorentzian_fit, spectroscopy_plot
 
 
@@ -26,10 +26,6 @@ class ResonatorSpectroscopyAttenuationParameters(Parameters):
     power_level: PowerLevel
     """Power regime (low or high). If low the readout frequency will be updated.
     If high both the readout frequency and the bare resonator frequency will be updated."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
     amplitude: Optional[float] = None
     """Readout amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
@@ -134,10 +130,13 @@ def _acquisition(
         result = results[ro_pulses[qubit].serial]
         # store the results
         data.register_qubit(
-            qubit,
-            msr=result.magnitude,
-            phase=result.phase,
-            freq=delta_frequency_range + ro_pulses[qubit].frequency,
+            ResSpecType,
+            (qubit),
+            dict(
+                msr=result.magnitude,
+                phase=result.phase,
+                freq=delta_frequency_range + ro_pulses[qubit].frequency,
+            ),
         )
     # finally, save the remaining data
     return data
