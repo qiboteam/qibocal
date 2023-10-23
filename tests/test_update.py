@@ -150,6 +150,18 @@ def test_sweetspot_update(qubit):
     assert qubit.sweetspot == RANDOM_FLOAT
 
 
+# FIXME: missing qubit 4 RX12
+@pytest.mark.parametrize("qubit", QUBITS[:-1])
+def test_12_transition_update(qubit):
+    update.drive_12_amplitude(RANDOM_FLOAT, PLATFORM, qubit.name)
+    update.frequency_12_transition(FREQUENCIES_GHZ, PLATFORM, qubit.name)
+    update.anharmonicity(FREQUENCIES_GHZ, PLATFORM, qubit.name)
+
+    assert qubit.native_gates.RX12.amplitude == RANDOM_FLOAT
+    assert qubit.native_gates.RX12.frequency == FREQUENCIES_HZ
+    assert qubit.anharmonicity == FREQUENCIES_HZ
+
+
 @pytest.mark.parametrize("qubit", QUBITS)
 def test_twpa_update(qubit):
     update.twpa_frequency(RANDOM_INT, PLATFORM, qubit.name)

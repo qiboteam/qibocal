@@ -93,6 +93,18 @@ actions:
       nshots: 10
 
 
+  - id: qubit spectroscopy ef
+    priority: 0
+    operation: qubit_spectroscopy_ef
+    #FIXME: add RX12 for qubit 4
+    qubits: [0, 1, 2, 3]
+    parameters:
+      drive_amplitude: 0.001
+      drive_duration: 1000
+      freq_width: 2_000_000
+      freq_step: 500_000
+      nshots: 10
+
 
   - id: resonator flux dependence
     priority: 0
@@ -174,6 +186,17 @@ actions:
       pulse_length: 30
       nshots: 1024
 
+  - id: rabi_ef
+    priority: 0
+    operation: rabi_amplitude_ef
+    #FIXME: add RX12 for qubit 4
+    qubits: [0, 1, 2, 3]
+    parameters:
+      min_amp_factor: 0.0
+      max_amp_factor: 1.0
+      step_amp_factor: 0.1
+      pulse_length: 30
+      nshots: 1024
 
   - id: rabi length
     priority: 0

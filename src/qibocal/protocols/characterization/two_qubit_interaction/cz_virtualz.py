@@ -395,8 +395,8 @@ def _plot(data: CZVirtualZData, fit: CZVirtualZResults, qubit):
 
 
 def _update(results: CZVirtualZResults, platform: Platform, qubit_pair: QubitPairId):
-    if qubit_pair[0] > qubit_pair[1]:
-        qubit_pair = (qubit_pair[1], qubit_pair[0])
+    # FIXME: quick fix for qubit order
+    qubit_pair = tuple(sorted(qubit_pair))
     update.virtual_phases(results.virtual_phase[qubit_pair], platform, qubit_pair)
 
 
