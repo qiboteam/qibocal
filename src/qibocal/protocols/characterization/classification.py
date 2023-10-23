@@ -31,6 +31,8 @@ from qibocal.protocols.characterization.utils import (
     evaluate_grid,
     get_color_state0,
     plot_results,
+    table_dict,
+    table_html,
 )
 
 ROC_LENGHT = 800
