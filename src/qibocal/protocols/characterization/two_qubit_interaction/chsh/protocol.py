@@ -67,17 +67,6 @@ class CHSHData(Data):
             if i not in frequencies:
                 frequencies[i] = 0
 
-        # TODO: improve this
-        # for state, freq in frequencies.items():
-        #     if (pair[0], pair[1], bell_state) not in self.data:
-        #         self.data[pair[0], pair[1], bell_state] = {}
-        #     if basis not in self.data[pair[0], pair[1], bell_state]:
-        #         self.data[pair[0], pair[1], bell_state][basis] = {}
-        #     if state in self.data[pair[0], pair[1], bell_state][basis]:
-        #         self.data[pair[0], pair[1], bell_state][basis][state].append(freq)
-        #     else:
-        #         self.data[pair[0], pair[1], bell_state][basis][state] = [freq]
-
         for state, freq in frequencies.items():
             if (pair[0], pair[1], bell_state, basis, state) in self.data:
                 self.data[pair[0], pair[1], bell_state, basis, state] = np.concatenate(

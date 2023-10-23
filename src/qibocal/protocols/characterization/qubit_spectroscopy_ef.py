@@ -16,6 +16,7 @@ from .qubit_spectroscopy import (
     QubitSpectroscopyResults,
     _fit,
 )
+from .resonator_spectroscopy import ResSpecType
 from .utils import GHZ_TO_HZ, HZ_TO_GHZ, spectroscopy_plot, table_dict, table_html
 
 DEFAULT_ANHARMONICITY = 300e6
@@ -140,10 +141,13 @@ def _acquisition(
         result = results[ro_pulse.serial]
         # store the results
         data.register_qubit(
-            qubit,
-            msr=result.magnitude,
-            phase=result.phase,
-            freq=delta_frequency_range + qd_pulses[qubit].frequency,
+            ResSpecType,
+            (qubit),
+            dict(
+                msr=result.magnitude,
+                phase=result.phase,
+                freq=delta_frequency_range + qd_pulses[qubit].frequency,
+            ),
         )
     return data
 

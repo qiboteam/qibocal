@@ -227,6 +227,15 @@ actions:
       delay_before_readout_step: 2000
       nshots: 1024
 
+  - id: t1_msr
+    priority: 0
+    operation: t1_msr
+    parameters:
+      delay_before_readout_start: 0
+      delay_before_readout_end: 20_000
+      delay_before_readout_step: 2000
+      nshots: 1024
+
   - id: t1 sequences
     priority: 0
     operation: t1_sequences
@@ -240,12 +249,28 @@ actions:
     priority: 00
     operation: zeno
     parameters:
-      readouts: 2
+      readouts: 10
+      nshots: 10
+
+  - id: zeno_msr
+    priority: 00
+    operation: zeno_msr
+    parameters:
+      readouts: 10
       nshots: 10
 
   - id: t2
     priority: 0
     operation: t2
+    parameters:
+      delay_between_pulses_start: 16
+      delay_between_pulses_end: 20000
+      delay_between_pulses_step: 100
+      nshots: 10
+
+  - id: t2_msr
+    priority: 0
+    operation: t2_msr
     parameters:
       delay_between_pulses_start: 16
       delay_between_pulses_end: 20000
@@ -269,6 +294,25 @@ actions:
       delay_between_pulses_end: 50
       delay_between_pulses_step: 1
       n_osc: 2
+      nshots: 10
+
+  - id: ramsey_msr
+    priority: 0
+    operation: ramsey_msr
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 50
+      delay_between_pulses_step: 1
+      n_osc: 2
+      nshots: 10
+
+  - id: ramsey_msr_detuned
+    priority: 0
+    operation: ramsey_msr
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 50
+      delay_between_pulses_step: 1
       nshots: 10
 
   - id: ramsey detuned sequences
@@ -347,6 +391,14 @@ actions:
       delay_between_pulses_step: 1
       nshots: 10
 
+  - id: spin_echo_msr
+    priority: 0
+    operation: spin_echo_msr
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 5
+      delay_between_pulses_step: 1
+      nshots: 10
 
   - id: flipping
     priority: 0
