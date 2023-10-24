@@ -416,6 +416,14 @@ actions:
       freq_step: 100_000
       nshots: 10
 
+  - id: dispersive shift qutrit
+    priority: 0
+    operation: dispersive_shift_qutrit
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 100_000
+      nshots: 10
+
   - id: standard rb no error
     priority: 0
     operation: standard_rb
