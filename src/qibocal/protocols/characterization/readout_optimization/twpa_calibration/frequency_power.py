@@ -6,12 +6,9 @@ import numpy.typing as npt
 import plotly.graph_objects as go
 from qibolab.platform import Platform
 from qibolab.qubits import QubitId
-from sklearn.model_selection import train_test_split
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.fitting.classifier.qubit_fit import QubitFit
-from qibocal.fitting.classifier.run import benchmarking
 from qibocal.protocols.characterization import classification
 from qibocal.protocols.characterization.utils import HZ_TO_GHZ, table_dict, table_html
 
@@ -33,6 +30,7 @@ class TwpaFrequencyPowerParameters(Parameters):
     relaxation_time: Optional[int] = None
     """Relaxation time (ns)."""
 
+
 TwpaFrequencyPowerType = np.dtype(
     [
         ("freq", np.float64),
@@ -40,6 +38,7 @@ TwpaFrequencyPowerType = np.dtype(
         ("assignment_fidelity", np.float64),
     ]
 )
+
 
 @dataclass
 class TwpaFrequencyPowerData(Data):
@@ -53,6 +52,7 @@ class TwpaFrequencyPowerData(Data):
     """Frequencies for each qubit."""
     powers: dict[QubitId, float] = field(default_factory=dict)
     """Frequencies for each qubit."""
+
 
 @dataclass
 class TwpaFrequencyPowerResults(Results):
@@ -146,12 +146,12 @@ def _acquisition(
 def _fit(data: TwpaFrequencyPowerData) -> TwpaFrequencyPowerResults:
     """Extract fidelity for each configuration qubit / param.
     Where param can be either frequency or power."""
-    
+
     best_freq = {}
     best_power = {}
     best_fidelity = {}
     qubits = data.qubits
-    
+
     for qubit in qubits:
         data_qubit = data[qubit]
         index_best_err = np.argmax(data_qubit["assignment_fidelity"])
@@ -160,6 +160,7 @@ def _fit(data: TwpaFrequencyPowerData) -> TwpaFrequencyPowerResults:
         best_power[qubit] = data_qubit["power"][index_best_err]
 
     return TwpaFrequencyPowerResults(best_freq, best_power, best_fidelity)
+
 
 def _plot(data: TwpaFrequencyPowerData, fit: TwpaFrequencyPowerResults, qubit):
     """Plotting function that shows the assignment fidelity
@@ -184,8 +185,14 @@ def _plot(data: TwpaFrequencyPowerData, fit: TwpaFrequencyPowerResults, qubit):
             )
         )
 
-        fig = go.Figure([go.Heatmap(x=frequencies * HZ_TO_GHZ, y=powers, z=fidelities, name="Fidelity")])
-        
+        fig = go.Figure(
+            [
+                go.Heatmap(
+                    x=frequencies * HZ_TO_GHZ, y=powers, z=fidelities, name="Fidelity"
+                )
+            ]
+        )
+
         fig.update_layout(
             showlegend=True,
             xaxis_title="TWPA Frequency [GHz]",
@@ -196,9 +203,11 @@ def _plot(data: TwpaFrequencyPowerData, fit: TwpaFrequencyPowerResults, qubit):
 
     return figures, fitting_report
 
+
 def _update(results: TwpaFrequencyPowerResults, platform: Platform, qubit: QubitId):
     update.twpa_frequency(results.best_freqs[qubit], platform, qubit)
     update.twpa_power(results.best_powers[qubit], platform, qubit)
+
 
 twpa_frequency_power = Routine(_acquisition, _fit, _plot, _update)
 """Twpa frequency Routine  object."""
