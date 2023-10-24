@@ -56,31 +56,14 @@ def _acquisition(
     Args:
         nshots (int): number of times the pulse sequence will be repeated.
         classifiers (list): list of classifiers, the available ones are:
-            - linear_svm
-            - ada_boost
-            - gaussian_process
             - naive_bayes
             - nn
-            - qubit_fit
             - random_forest
-            - rbf_svm
-            - qblox_fit.
-        The default value is `["qubit_fit"]`.
+            - decision_tree
+        The default value is `["naive_bayes"]`.
         savedir (str): Dumping folder of the classification results.
         If not given the dumping folder will be the report one.
         relaxation_time (float): Relaxation time.
-
-        Example:
-        .. code-block:: yaml
-
-            - id: single_shot_classification_1
-                priority: 0
-                operation: single_shot_classification
-                parameters:
-                nshots: 5000
-                savedir: "single_shot"
-                classifiers_list: ["qubit_fit","naive_bayes", "linear_svm"]
-
     """
 
     # create two sequences of pulses:
