@@ -180,7 +180,6 @@ def _acquisition(
     # For simulations, a noise model can be added.
     noise_model = None
     if params.noise_model:
-        # FIXME: implement this check outside acquisition
         if platform and platform.name != "dummy":
             raise_error(
                 NotImplementedError,

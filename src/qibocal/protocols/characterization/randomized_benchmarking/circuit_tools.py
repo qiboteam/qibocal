@@ -98,11 +98,13 @@ def add_inverse_layer(circuit: Circuit, single_qubit=True):
             )
 
 
-def add_measurement_layer(circuit: Circuit):
+def add_measurement_layer(circuit: Circuit, qubit_ids=None):
     """Adds a measurement layer at the end of the circuit.
 
     Args:
         circuit (Circuit): Measurement gates added in place to end of this circuit.
     """
-
-    circuit.add(gates.M(*range(circuit.nqubits)))
+    if qubit_ids:
+        circuit.add(gates.M(*qubit_ids))
+    else:
+        circuit.add(gates.M(*range(circuit.nqubits)))
