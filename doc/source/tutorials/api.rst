@@ -34,10 +34,10 @@ in the following way:
     parameters = experiment.parameters_type.load(dict(nshots=1024))
 
 
-After defining the user can perform the acquisition using
+After defining the parameters, the user can perform the acquisition using
 ``experiment.acquisition`` which accepts the following parameters:
 
-* params (experiment.parameters_type): inputs parameters for the experiment
+* params (experiment.parameters_type): input parameters for the experiment
 * platform (qibolab.platform.Platform): Qibolab platform class
 * qubits (dict[QubitId, QubitPairId]) dictionary with qubits where the acquisition will run
 
@@ -53,10 +53,10 @@ and returns the following:
 
 
 The user can now use the raw data acquired by the quantum processor to perform
-an arbitrary post-processing analysis. This one of the main advatanges of this API
+an arbitrary post-processing analysis. This is one of the main advantages of this API
 compared to the cli execution.
 
-The fitting associate with the experiment (``experiment.fit``) can be launched in the
+The fitting corresponding to the experiment (``experiment.fit``) can be launched in the
 following way:
 
 .. code-block:: python
@@ -66,12 +66,12 @@ following way:
 To be more specific the user should pass as input ``data`` which is of type
 ``experiment.data_type`` and the outputs are the following:
 
-* fit: (experiment.results_type) inputs parameters for the experiment
+* fit: (experiment.results_type) input parameters for the experiment
 * fit_time (float): post-processing time
 
 
 It is also possible to access the plots and the tables generated in the
-report using ``experiment.report`` which accept the following parameters:
+report using ``experiment.report`` which accepts the following parameters:
 
 * data: (``experiment.data_type``) data structure used by ``experiment``
 * qubit (Union[QubitId, QubitPairId]): post-processing time
