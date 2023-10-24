@@ -25,6 +25,7 @@ from .rabi.length_sequences import rabi_length_sequences
 from .ramsey import ramsey
 from .ramsey_sequences import ramsey_sequences
 from .randomized_benchmarking.clifford_filtered_rb import clifford_filtered_rb
+from .randomized_benchmarking.clifford_filtered_rb_2q import clifford_filtered_rb_2q
 from .randomized_benchmarking.standard_rb import standard_rb
 from .readout_characterization import readout_characterization
 from .readout_mitigation_matrix import readout_mitigation_matrix
@@ -81,3 +82,4 @@ class Operation(Enum):
     twpa_power = twpa_power
     resonator_amplitude = resonator_amplitude
     clifford_filtered_rb = clifford_filtered_rb
+    clifford_filtered_rb_2q = clifford_filtered_rb_2q

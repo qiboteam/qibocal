@@ -1,3 +1,4 @@
+import json
 from numbers import Number
 from typing import Callable, Optional, Union
 
@@ -5,6 +6,7 @@ import numpy as np
 from pandas import DataFrame
 from qibo import gates
 from qibo.config import PRECISION_TOL
+from qibolab.qubits import QubitPair
 from uncertainties import ufloat
 
 from qibocal.config import raise_error
@@ -202,3 +204,79 @@ def crosstalk(q0, q1, fit_results):
     if p0 == 0 or p1 == 0:
         return None
     return p01 / (p0 * p1)
+
+
+# FIXME: Proper gates
+SINGLE_QUBIT = {
+    "X": lambda q: gates.X(q),
+    "minusX": lambda q: gates.Unitary(-gates.X(q).matrix(), q),
+    # 'minusX' : lambda q: gates.X(q),
+    "Y": lambda q: gates.Y(q),
+    "minusY": lambda q: gates.Unitary(-gates.Y(q).matrix(), q),
+    # 'minusY' : lambda q: gates.Y(q),
+    # 'sqrtX' : lambda q: gates.SX(q),
+    # 'sqrtMinusX' : lambda q: gates.Unitary(-(gates.SX(q).matrix()), q),
+    # 'sqrtY' : lambda q: gates.Unitary(np.sqrt(gates.Y(q).matrix()), q),
+    # 'sqrtMinusY' : lambda q: gates.Unitary(-np.sqrt(gates.Y(q).matrix()), q),
+    "sqrtX": lambda q: gates.X(q),
+    "sqrtMinusX": lambda q: gates.X(q),
+    "sqrtY": lambda q: gates.X(q),
+    "sqrtMinusY": lambda q: gates.X(q),
+}
+
+TWO_QUBIT = {
+    "CZ": lambda q0, q1: gates.CZ(q0, q1),
+}
+
+f = open("2qubitCliffs.json")
+twoq_cliffs = json.loads(f.read())
+n = len(twoq_cliffs.keys())
+
+
+def random_clifford_2q(qubit_pairs, seed=None):
+    """Generates random Clifford operator(s).
+
+    Args:
+        qubits (int or list or ndarray): if ``int``, the number of qubits for the Clifford.
+            If ``list`` or ``ndarray``, indexes of the qubits for the Clifford to act on.
+        seed (int or ``numpy.random.Generator``, optional): Either a generator of
+            random numbers or a fixed seed to initialize a generator. If ``None``,
+            initializes a generator with a random seed. Default is ``None``.
+
+    Returns:
+        (list of :class:`qibo.gates.Gate`): Random Clifford operator(s).
+    """
+
+    if not isinstance(qubit_pairs, QubitPair) and not isinstance(qubit_pairs, list):
+        raise_error(
+            TypeError,
+            f"qubits must be either type QubitPair, list of QubitPair, but it is type {type(qubit_pairs)}.",
+        )
+
+    local_state = (
+        np.random.default_rng(seed) if seed is None or isinstance(seed, int) else seed
+    )
+
+    if isinstance(qubit_pairs, QubitPair):
+        qubit_pairs = list(qubit_pairs)
+
+    random_indexes = local_state.integers(0, n + 1, len(qubit_pairs))
+
+    clifford_gates = []
+    for random_index, qubit_pair in zip(random_indexes, qubit_pairs):
+        cliff = twoq_cliffs[str(random_index)]
+        single_gates = cliff.split(",")
+        for g in single_gates:
+            if g == "CZ":
+                gate = TWO_QUBIT[g](
+                    int(qubit_pair.qubit1.name), int(qubit_pair.qubit2.name)
+                )
+            else:
+                g, q = g[:-1], g[-1]
+                if q == "1":
+                    gate = SINGLE_QUBIT[g](int(qubit_pair.qubit1.name))
+                elif q == "2":
+                    gate = SINGLE_QUBIT[g](int(qubit_pair.qubit2.name))
+            clifford_gates.append(gate)
+
+    return clifford_gates
