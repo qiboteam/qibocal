@@ -99,7 +99,7 @@ def _acquisition(
     sequence_1 = PulseSequence()
     sequence_2 = PulseSequence()
 
-    for qubit in platform.qubits:
+    for qubit in qubits:
         rx_pulse = platform.create_RX_pulse(qubit, start=0)
         rx_12_pulse = platform.create_RX12_pulse(qubit, start=rx_pulse.finish)
         ro_pulse = platform.create_qubit_readout_pulse(qubit, start=0)
