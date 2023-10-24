@@ -58,7 +58,7 @@ def drive_amplitude(amp: Union[float, tuple], platform: Platform, qubit: QubitId
     platform.qubits[qubit].native_gates.RX.amplitude = float(amp)
 
 
-def drive_duration(duration: int, platform: Platform, qubit: QubitId):
+def drive_duration(duration: Union[int, tuple], platform: Platform, qubit: QubitId):
     """Update drive duration value in platform for specific qubit."""
     if isinstance(duration, tuple):
         duration = duration[0]
