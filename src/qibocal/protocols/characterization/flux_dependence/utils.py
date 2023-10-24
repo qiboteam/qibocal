@@ -28,6 +28,11 @@ FREQUENCY_PARAMETERS = [
 ]
 
 
+def is_crosstalk(data):
+    """Check if keys are tuple which corresponds to crosstalk data structure."""
+    return all(isinstance(key, tuple) for key in data.data.keys())
+
+
 def create_data_array(freq, bias, msr, phase, dtype):
     """Create custom dtype array for acquired data."""
     size = len(freq) * len(bias)
