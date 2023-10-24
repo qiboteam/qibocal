@@ -17,7 +17,6 @@ from qibocal.config import log
 
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ
 from . import utils
-from .resonator_flux_dependence import _fit_crosstalk
 
 
 @dataclass
@@ -35,12 +34,6 @@ class QubitFluxParameters(Parameters):
     drive_amplitude: Optional[float] = None
     """Drive amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
-    flux_qubits: Optional[list[QubitId]] = None
-    """IDs of the qubits that we will sweep the flux on.
-    If ``None`` flux will be swept on all qubits that we are running the routine on in a multiplex fashion.
-    If given flux will be swept on the given qubits in a sequential fashion (n qubits will result to n different executions).
-    Multiple qubits may be measured in each execution as specified by the ``qubits`` option in the runcard.
-    """
     transition: Optional[str] = "01"
     """Flux spectroscopy transition type ("01" or "02"). Default value is 01"""
 
@@ -90,31 +83,11 @@ class QubitFluxData(Data):
     data: dict[QubitId, npt.NDArray[QubitFluxType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, flux_qubit, freq, bias, msr, phase):
+    def register_qubit(self, qubit, freq, bias, msr, phase):
         """Store output for single qubit."""
         self.data[qubit] = utils.create_data_array(
             freq, bias, msr, phase, dtype=QubitFluxType
         )
-
-
-@dataclass
-class FluxCrosstalkData(QubitFluxData):
-    """QubitFlux acquisition outputs when ``flux_qubits`` are given."""
-
-    data: dict[QubitId, dict[QubitId, npt.NDArray[QubitFluxType]]] = field(
-        default_factory=dict
-    )
-    """Raw data acquired for (qubit, qubit_flux) pairs saved in nested dictionaries."""
-
-    def register_qubit(self, qubit, flux_qubit, freq, bias, msr, phase):
-        """Store output for single qubit."""
-        ar = utils.create_data_array(freq, bias, msr, phase, dtype=QubitFluxType)
-        if (qubit, flux_qubit) in self.data:
-            self.data[qubit, flux_qubit] = np.rec.array(
-                np.concatenate((self.data[qubit, flux_qubit], ar))
-            )
-        else:
-            self.data[qubit, flux_qubit] = ar
 
 
 def _acquisition(
@@ -164,30 +137,15 @@ def _acquisition(
     delta_bias_range = np.arange(
         -params.bias_width / 2, params.bias_width / 2, params.bias_step
     )
-    if params.flux_qubits is None:
-        flux_qubits = [None]
-        bias_sweepers = [
-            Sweeper(
-                Parameter.bias,
-                delta_bias_range,
-                qubits=list(qubits.values()),
-                type=SweeperType.OFFSET,
-            )
-        ]
-        data = QubitFluxData(resonator_type=platform.resonator_type, Ec=Ec, Ej=Ej)
-
-    else:
-        flux_qubits = params.flux_qubits
-        bias_sweepers = [
-            Sweeper(
-                Parameter.bias,
-                delta_bias_range,
-                qubits=[platform.qubits[flux_qubit]],
-                type=SweeperType.OFFSET,
-            )
-            for flux_qubit in flux_qubits
-        ]
-        data = FluxCrosstalkData(resonator_type=platform.resonator_type, Ec=Ec, Ej=Ej)
+    bias_sweepers = [
+        Sweeper(
+            Parameter.bias,
+            delta_bias_range,
+            qubits=list(qubits.values()),
+            type=SweeperType.OFFSET,
+        )
+    ]
+    data = QubitFluxData(resonator_type=platform.resonator_type, Ec=Ec, Ej=Ej)
 
     options = ExecutionParameters(
         nshots=params.nshots,
@@ -195,18 +153,14 @@ def _acquisition(
         acquisition_type=AcquisitionType.INTEGRATION,
         averaging_mode=AveragingMode.CYCLIC,
     )
-    for flux_qubit, bias_sweeper in zip(flux_qubits, bias_sweepers):
+    for bias_sweeper in bias_sweepers:
         results = platform.sweep(sequence, options, bias_sweeper, freq_sweeper)
         # retrieve the results for every qubit
         for qubit in qubits:
             result = results[ro_pulses[qubit].serial]
-            if flux_qubit is None:
-                sweetspot = qubits[qubit].sweetspot
-            else:
-                sweetspot = platform.qubits[flux_qubit].sweetspot
+            sweetspot = qubits[qubit].sweetspot
             data.register_qubit(
                 qubit,
-                flux_qubit,
                 msr=result.magnitude,
                 phase=result.phase,
                 freq=delta_frequency_range + qd_pulses[qubit].frequency,
@@ -345,8 +299,6 @@ def _fit(data: QubitFluxData) -> QubitFluxResults:
 
 def _plot(data: QubitFluxData, fit: QubitFluxResults, qubit):
     """Plotting function for QubitFlux Experiment."""
-    if utils.is_crosstalk(data):
-        return utils.flux_crosstalk_plot(data, fit, qubit)
     return utils.flux_dependence_plot(data, fit, qubit)
 
 
@@ -357,5 +309,3 @@ def _update(results: QubitFluxResults, platform: Platform, qubit: QubitId):
 
 qubit_flux = Routine(_acquisition, _fit, _plot, _update)
 """QubitFlux Routine object."""
-qubit_crosstalk = Routine(_acquisition, _fit_crosstalk, _plot)
-"""Qubit crosstalk Routine object"""

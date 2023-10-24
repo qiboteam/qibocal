@@ -17,7 +17,8 @@ from .coherence.zeno_msr import zeno_msr
 from .dispersive_shift import dispersive_shift
 from .fast_reset.fast_reset import fast_reset
 from .flipping import flipping
-from .flux_dependence.qubit_flux_dependence import qubit_crosstalk, qubit_flux
+from .flux_dependence.crosstalk import qubit_crosstalk
+from .flux_dependence.qubit_flux_dependence import qubit_flux
 from .flux_dependence.resonator_flux_dependence import (
     resonator_crosstalk,
     resonator_flux,
