@@ -36,6 +36,10 @@ class QubitFluxParameters(Parameters):
     Otherwise the default amplitude defined on the platform runcard will be used"""
     transition: Optional[str] = "01"
     """Flux spectroscopy transition type ("01" or "02"). Default value is 01"""
+    drive_duration: int = 2000
+    """
+    Duration of the drive pulse.
+    """
 
 
 @dataclass
@@ -108,7 +112,7 @@ def _acquisition(
         Ej[qubit] = qubits[qubit].Ej
 
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
-            qubit, start=0, duration=2000
+            qubit, start=0, duration=params.drive_duration
         )
 
         if params.transition == "02":
