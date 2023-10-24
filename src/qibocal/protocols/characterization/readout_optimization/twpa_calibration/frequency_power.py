@@ -161,24 +161,6 @@ def _fit(data: TwpaFrequencyPowerData) -> TwpaFrequencyPowerResults:
 
     return TwpaFrequencyPowerResults(best_freq, best_power, best_fidelity)
 
-    # for qubit, freq, pow in data.data:
-    #     qubit_data = data.data[qubit, freq, pow]
-    #     x_train, x_test, y_train, y_test = train_test_split(
-    #         np.array(qubit_data[["i", "q"]].tolist())[:, :],
-    #         np.array(qubit_data[["state"]].tolist())[:, 0],
-    #         test_size=0.25,
-    #         random_state=0,
-    #         shuffle=True,
-    #     )
-
-    #     model = QubitFit()
-    #     results, y_pred, model, fit_info = benchmarking(
-    #         model, x_train, y_train, x_test, y_test
-    #     )
-    #     fidelities[qubit, freq, pow] = model.assignment_fidelity
-
-    # return TwpaFrequencyPowerResults(fidelities=fidelities)
-
 def _plot(data: TwpaFrequencyPowerData, fit: TwpaFrequencyPowerResults, qubit):
     """Plotting function that shows the assignment fidelity
     for different values of the twpa frequency for a single qubit"""
