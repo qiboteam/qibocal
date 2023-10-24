@@ -419,6 +419,8 @@ actions:
   - id: dispersive shift qutrit
     priority: 0
     operation: dispersive_shift_qutrit
+    #FIXME: add qubit 4 with new release of Qibolab
+    qubits: [0, 1, 2, 3]
     parameters:
       freq_width: 10_000_000
       freq_step: 100_000
