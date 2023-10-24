@@ -23,6 +23,11 @@ EXTREME_CHI = 1e4
 """Chi2 output when errors list contains zero elements"""
 
 
+def is_crosstalk(data):
+    """Check if keys are tuple which corresponds to crosstalk data structure."""
+    return all(isinstance(key, tuple) for key in data.data.keys())
+
+
 def calculate_frequencies(results, qubit_list):
     """Calculates outcome frequencies from individual shots.
     Args:
