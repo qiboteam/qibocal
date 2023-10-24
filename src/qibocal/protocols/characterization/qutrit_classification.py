@@ -62,7 +62,7 @@ def _acquisition(
             - decision_tree
         The default value is `["naive_bayes"]`.
         savedir (str): Dumping folder of the classification results.
-        If not given the dumping folder will be the report one.
+        If not given, the dumping folder will be the report one.
         relaxation_time (float): Relaxation time.
     """
 
