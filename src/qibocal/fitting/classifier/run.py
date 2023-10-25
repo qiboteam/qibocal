@@ -23,6 +23,7 @@ CLS_MODULES = [
     "random_forest",
     "rbf_svm",
     "qblox_fit",
+    "decision_tree",
 ]
 
 PRETTY_NAME = [
@@ -35,6 +36,7 @@ PRETTY_NAME = [
     "Random Forest",
     "RBF SVM",
     "Qblox Fit",
+    "Decision Tree",
 ]
 
 
@@ -63,10 +65,10 @@ def pretty_name(classifier_name: str):
 
 
 class Classifier:
-    r"""Classs to define the different classifiers used in the benchmarking.
+    r"""Class to define the different classifiers used in the benchmarking.
 
     Args:
-        mod: Classsification model.
+        mod: Classification model.
         base_dir (Path): Where to store the classification results.
 
     """

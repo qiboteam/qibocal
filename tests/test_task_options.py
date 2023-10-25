@@ -1,6 +1,4 @@
 """Test routines' acquisition method using dummy platform"""
-import pathlib
-import tempfile
 from copy import deepcopy
 
 import pytest
@@ -93,7 +91,7 @@ UPDATE_CARD = {
 
 @pytest.mark.parametrize("global_update", [True, False])
 @pytest.mark.parametrize("local_update", [True, False])
-def test_update_argument(global_update, local_update):
+def test_update_argument(global_update, local_update, tmp_path):
     """Test possible update combinations between global and local."""
     platform = deepcopy(create_platform("dummy"))
     old_readout_frequency = platform.qubits[0].readout_frequency
@@ -101,7 +99,7 @@ def test_update_argument(global_update, local_update):
     NEW_CARD = modify_card(deepcopy(UPDATE_CARD), update=local_update)
     executor = Executor.load(
         Runcard.load(NEW_CARD),
-        pathlib.Path(tempfile.mkdtemp()),
+        tmp_path,
         platform,
         platform.qubits,
         global_update,

@@ -4,7 +4,6 @@ from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
-import skops.io as sio
 
 from qibocal.protocols.characterization.utils import cumulative
 
@@ -37,6 +36,9 @@ normalize = lambda x: x
 
 def dump(model, save_path: Path):
     r"""Dumps the `model` in `save_path`"""
+    # relative import to reduce overhead when importing qibocal
+    import skops.io as sio
+
     sio.dump(model, save_path.with_suffix(".skops"))
 
 
@@ -44,6 +46,9 @@ def predict_from_file(loading_path: Path, input: np.typing.NDArray):
     r"""This function loads the model saved in `loading_path`
     and returns the predictions of `input`.
     """
+    # relative import to reduce overhead when importing qibocal
+    import skops.io as sio
+
     model = sio.load(loading_path, trusted=True)
     return model.predict(input)
 

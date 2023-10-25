@@ -8,4 +8,5 @@ In this section we present code examples from basic to advanced features impleme
 .. toctree::
     :maxdepth: 2
 
+    api
     protocol

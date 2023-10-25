@@ -564,3 +564,11 @@ actions:
     parameters:
       amplitude_step: 0.1
       amplitude_stop: 0.5
+
+  - id: qutrit
+    priority: 0
+    qubits: [0,1]
+    operation: qutrit_classification
+    parameters:
+      nshots: 100
+      classifiers_list: ["naive_bayes", "decision_tree"]

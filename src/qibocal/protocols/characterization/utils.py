@@ -14,11 +14,18 @@ from scipy.stats import mode
 
 from qibocal.auto.operation import Data, Results
 from qibocal.config import log
+from qibocal.fitting.classifier import run
 
 GHZ_TO_HZ = 1e9
 HZ_TO_GHZ = 1e-9
 V_TO_UV = 1e6
 S_TO_NS = 1e9
+MESH_SIZE = 50
+MARGIN = 0
+SPACING = 0.1
+COLUMNWIDTH = 600
+LEGEND_FONT_SIZE = 20
+TITLE_SIZE = 25
 EXTREME_CHI = 1e4
 """Chi2 output when errors list contains zero elements"""
 
@@ -373,6 +380,195 @@ def significant_digit(number: float):
         position = max(position, np.ceil(-np.log10(abs(np.imag(number)))))
 
     return int(position)
+
+
+def evaluate_grid(
+    data: npt.NDArray,
+):
+    """
+    This function returns a matrix grid evaluated from
+    the datapoints `data`.
+    """
+    max_x = (
+        max(
+            0,
+            data["i"].max(),
+        )
+        + MARGIN
+    )
+    max_y = (
+        max(
+            0,
+            data["q"].max(),
+        )
+        + MARGIN
+    )
+    min_x = (
+        min(
+            0,
+            data["i"].min(),
+        )
+        - MARGIN
+    )
+    min_y = (
+        min(
+            0,
+            data["q"].min(),
+        )
+        - MARGIN
+    )
+    i_values, q_values = np.meshgrid(
+        np.linspace(min_x, max_x, num=MESH_SIZE),
+        np.linspace(min_y, max_y, num=MESH_SIZE),
+    )
+    return np.vstack([i_values.ravel(), q_values.ravel()]).T
+
+
+def plot_results(data: Data, qubit, qubit_states, fit: Results):
+    figures = []
+    models_name = data.classifiers_list
+    qubit_data = data.data[qubit]
+    grid = evaluate_grid(qubit_data)
+
+    fig = make_subplots(
+        rows=1,
+        cols=len(models_name),
+        horizontal_spacing=SPACING * 3 / len(models_name) * 3,
+        vertical_spacing=SPACING,
+        subplot_titles=[run.pretty_name(model) for model in models_name],
+        column_width=[COLUMNWIDTH] * len(models_name),
+    )
+
+    for i, model in enumerate(models_name):
+        if fit is not None:
+            predictions = fit.grid_preds[qubit][i]
+            fig.add_trace(
+                go.Contour(
+                    x=grid[:, 0],
+                    y=grid[:, 1],
+                    z=np.array(predictions).flatten(),
+                    showscale=False,
+                    colorscale=[get_color_state0(i), get_color_state1(i)],
+                    opacity=0.2,
+                    name="Score",
+                    hoverinfo="skip",
+                    showlegend=True,
+                ),
+                row=1,
+                col=i + 1,
+            )
+
+        model = run.pretty_name(model)
+        max_x = max(grid[:, 0])
+        max_y = max(grid[:, 1])
+        min_x = min(grid[:, 0])
+        min_y = min(grid[:, 1])
+
+        for state in range(qubit_states):
+            state_data = qubit_data[qubit_data["state"] == state]
+
+            fig.add_trace(
+                go.Scatter(
+                    x=state_data["i"],
+                    y=state_data["q"],
+                    name=f"{model}: state {state}",
+                    legendgroup=f"{model}: state {state}",
+                    mode="markers",
+                    showlegend=True,
+                    opacity=0.7,
+                    marker=dict(size=3),
+                ),
+                row=1,
+                col=i + 1,
+            )
+
+            fig.add_trace(
+                go.Scatter(
+                    x=[np.average(state_data["i"])],
+                    y=[np.average(state_data["q"])],
+                    name=f"{model}: state {state}",
+                    legendgroup=f"{model}: state {state}",
+                    showlegend=False,
+                    mode="markers",
+                    marker=dict(size=10),
+                ),
+                row=1,
+                col=i + 1,
+            )
+
+        fig.update_xaxes(
+            title_text=f"i (V)",
+            range=[min_x, max_x],
+            row=1,
+            col=i + 1,
+            autorange=False,
+            rangeslider=dict(visible=False),
+        )
+        fig.update_yaxes(
+            title_text="q (V)",
+            range=[min_y, max_y],
+            scaleanchor="x",
+            scaleratio=1,
+            row=1,
+            col=i + 1,
+        )
+
+    fig.update_layout(
+        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        autosize=False,
+        height=COLUMNWIDTH,
+        width=COLUMNWIDTH * len(models_name),
+        title=dict(text="Results", font=dict(size=TITLE_SIZE)),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            xanchor="left",
+            y=-0.3,
+            x=0,
+            itemsizing="constant",
+            font=dict(size=LEGEND_FONT_SIZE),
+        ),
+    )
+    figures.append(fig)
+
+    if fit is not None and len(models_name) != 1:
+        fig_benchmarks = make_subplots(
+            rows=1,
+            cols=3,
+            horizontal_spacing=SPACING,
+            vertical_spacing=SPACING,
+            subplot_titles=(
+                "accuracy",
+                "testing time (s)",
+                "training time (s)",
+            )
+            # pylint: disable=E1101
+        )
+        for i, model in enumerate(models_name):
+            for plot in range(3):
+                fig_benchmarks.add_trace(
+                    go.Scatter(
+                        x=[model],
+                        y=[fit.benchmark_table[qubit][i][plot]],
+                        mode="markers",
+                        showlegend=False,
+                        marker=dict(size=10, color=get_color_state1(i)),
+                    ),
+                    row=1,
+                    col=plot + 1,
+                )
+
+        fig_benchmarks.update_yaxes(type="log", row=1, col=2)
+        fig_benchmarks.update_yaxes(type="log", row=1, col=3)
+        fig_benchmarks.update_layout(
+            autosize=False,
+            height=COLUMNWIDTH,
+            width=COLUMNWIDTH * 3,
+            title=dict(text="Benchmarks", font=dict(size=TITLE_SIZE)),
+        )
+
+        figures.append(fig_benchmarks)
+    return figures
 
 
 def table_dict(

@@ -1,6 +1,5 @@
 """Test routines' acquisition method using dummy platform"""
 import pathlib
-import tempfile
 
 import pytest
 import yaml
@@ -29,28 +28,25 @@ def idfn(val):
 
 @pytest.mark.parametrize("update", [True, False])
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
-def test_action_builder(runcard, update):
+def test_action_builder(runcard, update, tmp_path):
     """Test ActionBuilder for all protocols."""
-    path = pathlib.Path(tempfile.mkdtemp())
-    autocalibrate(runcard, path, force=True, update=update)
-    report(path)
+    autocalibrate(runcard, tmp_path, force=True, update=update)
+    report(tmp_path)
 
 
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
-def test_acquisition_builder(runcard):
+def test_acquisition_builder(runcard, tmp_path):
     """Test AcquisitionBuilder for all protocols."""
-    path = pathlib.Path(tempfile.mkdtemp())
-    acquire(runcard, path, force=True)
-    report(path)
+    acquire(runcard, tmp_path, force=True)
+    report(tmp_path)
 
 
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
-def test_fit_builder(runcard):
+def test_fit_builder(runcard, tmp_path):
     """Test FitBuilder."""
-    output_folder = pathlib.Path(tempfile.mkdtemp())
-    acquire(runcard, output_folder, force=True)
-    fit(output_folder, update=False)
-    report(output_folder)
+    acquire(runcard, tmp_path, force=True)
+    fit(tmp_path, update=False)
+    report(tmp_path)
 
 
 # TODO: compare report by calling qq report

@@ -1,6 +1,5 @@
 """Test graph execution."""
 import pathlib
-import tempfile
 
 import pytest
 import yaml
@@ -29,7 +28,7 @@ class TestCard:
 
 
 @pytest.mark.parametrize("card", cards.glob("*.yaml"))
-def test_execution(card: pathlib.Path):
+def test_execution(card: pathlib.Path, tmp_path):
     """Execute a set of example runcards.
 
     The declared result is asserted to be the expected one.
@@ -38,7 +37,7 @@ def test_execution(card: pathlib.Path):
     testcard = TestCard(**yaml.safe_load(card.read_text(encoding="utf-8")))
     executor = Executor.load(
         testcard.runcard,
-        output=pathlib.Path(tempfile.mkdtemp()),
+        output=tmp_path,
         qubits=testcard.runcard.qubits,
     )
     list(executor.run(mode=ExecutionMode.acquire))
