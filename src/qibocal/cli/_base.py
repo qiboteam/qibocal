@@ -1,7 +1,6 @@
 """Adds global CLI options."""
-import os
+import getpass
 import pathlib
-import pwd
 
 import click
 import yaml
@@ -130,7 +129,7 @@ def fit(folder: pathlib.Path, update):
 )
 @click.option(
     "--author",
-    default=pwd.getpwuid(os.getuid())[0],
+    default=getpass.getuser(),
     type=str,
     help="Default is UID username.",
 )
