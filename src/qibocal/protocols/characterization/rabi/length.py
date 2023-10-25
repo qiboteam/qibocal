@@ -194,7 +194,7 @@ def _update(results: RabiLengthResults, platform: Platform, qubit: QubitId):
 
 def _plot(data: RabiLengthData, fit: RabiLengthResults, qubit):
     """Plotting function for RabiLength experiment."""
-    return utils.plot_proba(data, qubit, fit)
+    return utils.plot_probabilities(data, qubit, fit)
 
 
 rabi_length = Routine(_acquisition, _fit, _plot, _update)
