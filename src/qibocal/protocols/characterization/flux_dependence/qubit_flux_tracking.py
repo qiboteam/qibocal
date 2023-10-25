@@ -15,10 +15,10 @@ from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log, raise_error
 
+from ..qubit_spectroscopy_ef import DEFAULT_ANHARMONICITY
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ
 from . import utils
 
-from ..qubit_spectroscopy_ef import DEFAULT_ANHARMONICITY
 """Initial guess for anharmonicity."""
 
 
