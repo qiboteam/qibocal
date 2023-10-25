@@ -185,7 +185,7 @@ def _plot(
         cols=1,
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
-        subplot_titles=("Kernel0",),
+        subplot_titles=("Kernel state 0",),
     )
     fitting_report = ""
 
@@ -194,9 +194,9 @@ def _plot(
             x=fit.data[qubit].real,
             y=fit.data[qubit].imag,
             opacity=1,
-            name="kernel0",
+            name="kernel state 0",
             showlegend=True,
-            legendgroup="kernel0",
+            legendgroup="kernel state 0",
         ),
         row=1,
         col=1,
@@ -205,8 +205,8 @@ def _plot(
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Samples",
-        yaxis_title="Kernel",
+        xaxis_title="Kernel Imag",
+        yaxis_title="Kernel Real",
     )
 
     figures.append(fig)

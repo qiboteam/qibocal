@@ -215,9 +215,6 @@ class Results:
 
     def save(self, path):
         """Store results."""
-        import pdb
-
-        pdb.set_trace()
         self._to_json(path)
         if self.data:
             self._to_npz(path)
