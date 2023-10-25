@@ -25,10 +25,6 @@ class TwpaFrequencyPowerParameters(Parameters):
     """Power total width."""
     power_step: float
     """Power step to be probed."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 TwpaFrequencyPowerType = np.dtype(
@@ -51,7 +47,7 @@ class TwpaFrequencyPowerData(Data):
     frequencies: dict[QubitId, float] = field(default_factory=dict)
     """Frequencies for each qubit."""
     powers: dict[QubitId, float] = field(default_factory=dict)
-    """Frequencies for each qubit."""
+    """Powers for each qubit."""
 
 
 @dataclass
@@ -69,18 +65,18 @@ def _acquisition(
     qubits: Qubits,
 ) -> TwpaFrequencyPowerData:
     r"""
-    Data acquisition for TWPA power optmization.
+    Data acquisition for TWPA frequency vs. power optmization.
     This protocol perform a classification protocol for twpa frequencies
     in the range [twpa_frequency - frequency_width / 2, twpa_frequency + frequency_width / 2]
-    with step frequency_step.
+    with step frequency_step and powers in the range [twpa_power - power_width / 2, twpa_power + power_width / 2]
 
     Args:
-        params (:class:`TwpaFrequencyParameters`): input parameters
+        params (:class:`TwpaFrequencyPowerParameters`): input parameters
         platform (:class:`Platform`): Qibolab's platform
         qubits (dict): dict of target :class:`Qubit` objects to be characterized
 
     Returns:
-        data (:class:`TwpaFrequencyData`)
+        data (:class:`TwpaFrequencyPowerData`)
     """
 
     data = TwpaFrequencyPowerData()
@@ -101,28 +97,27 @@ def _acquisition(
         ].twpa.local_oscillator.frequency
         initial_twpa_power[qubit] = platform.qubits[qubit].twpa.local_oscillator.power
 
-    for freq in freq_range:
-        for qubit in qubits:
+        for freq in freq_range:
             platform.qubits[qubit].twpa.local_oscillator.frequency = (
                 initial_twpa_freq[qubit] + freq
             )
 
-        for power in power_range:
-            for qubit in qubits:
-                platform.qubits[qubit].twpa.local_oscillator.power = (
-                    initial_twpa_power[qubit] + power
+            for power in power_range:
+                for qubit in qubits:
+                    platform.qubits[qubit].twpa.local_oscillator.power = (
+                        initial_twpa_power[qubit] + power
+                    )
+
+                classification_data = classification._acquisition(
+                    classification.SingleShotClassificationParameters.load(
+                        {"nshots": params.nshots}
+                    ),
+                    platform,
+                    qubits,
                 )
 
-            classification_data = classification._acquisition(
-                classification.SingleShotClassificationParameters.load(
-                    {"nshots": params.nshots}
-                ),
-                platform,
-                qubits,
-            )
-
-            classification_result = classification._fit(classification_data)
-            for qubit in qubits:
+                classification_result = classification._fit(classification_data)
+    
                 data.register_qubit(
                     TwpaFrequencyPowerType,
                     (qubit),

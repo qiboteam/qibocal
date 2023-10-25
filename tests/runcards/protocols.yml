@@ -558,6 +558,16 @@ actions:
       power_width: 10
       power_step: 1
 
+  - id: twpa frequency power
+    priority: 0
+    operation: twpa_frequency_power
+    parameters:
+      frequency_width: 1_000_000
+      frequency_step: 100_000
+      power_width: 1
+      power_step: 0.1
+      nshots: 10      
+
   - id: resoantor_amplitude
     priority: 0
     operation: resonator_amplitude
