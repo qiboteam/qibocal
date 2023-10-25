@@ -5,7 +5,6 @@ from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
-import plotly.graph_objects as go
 from qibolab.execution_parameters import (
     AcquisitionType,
     AveragingMode,
@@ -54,10 +53,7 @@ class CryoscopeParameters(Parameters):
 class CryoscopeResults(Results):
     """Cryoscope outputs."""
 
-    distorted_pulses: dict[QubitId, npt.NDArray[np.float64]]
-    """Reconstructed distorted pulses."""
-    ideal_pulses: dict[QubitId, npt.NDArray[np.float64]]
-    """Ideally sent pulses."""
+    pass
 
 
 # TODO: use probabilities
@@ -226,56 +222,16 @@ def _acquisition(
 
 
 def _fit(data: CryoscopeData) -> CryoscopeResults:
-    distorted_pulses = {}
-    ideal_pulses = {}
-
-    qubits = data.qubits
-
-    for qubit in qubits:
-        data_q = data[qubit]
-        durations = data_q.duration
-        amplitudes = data_q.amp
-
-        num_points = durations.shape[0]
-        interval = (durations[1] - durations[0]) * 1e-9  # TODO check why
-        amp_freqs = np.fft.fftfreq(n=num_points, d=interval)
-        mask = np.argsort(amp_freqs)
-        amp_freqs = amp_freqs[mask]
-
-        # TODO I am copying from old implementation, but here there are a lot of hardcoded stuff
-        sampling_rate = 1 / (durations[1] - durations[0])
-        derivative_window_length = 7 / sampling_rate
-        derivative_window_size = max(3, int(derivative_window_length * sampling_rate))
-        derivative_window_size += (derivative_window_size + 1) % 2
-        derivative_window_size = 15
-        derivative_order = 3
-        nyquist_order = 0
-
-    return CryoscopeResults(distorted_pulses, ideal_pulses)
+    return CryoscopeResults()
 
 
 def _plot(data: CryoscopeData, fit: CryoscopeResults, qubit: QubitId):
     """Cryoscope plots."""
-
-    result = data[qubit]
-
     figures = []
-
-    # first it's a figure "comparison" of ideal pulse Vs distorted
-    fig = go.Figure()
-    fig.add_trace(
-        go.Scatter(
-            x=result.duration, y=fit.distorted_pulses[qubit], name="Distorted pulse"
-        ),
-    )
-    fig.add_trace(
-        go.Scatter(x=result.duration, y=fit.ideal_pulses[qubit], name="Ideal pulse"),
-    )
-    figures.append(fig)
 
     fitting_report = f"Cryoscope of qubit {qubit}"
 
     return figures, fitting_report
 
 
-cryoscope = Routine(_acquisition)
+cryoscope = Routine(_acquisition, _fit, _plot)
