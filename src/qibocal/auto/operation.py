@@ -29,6 +29,8 @@ JSONFILE = "conf.json"
 """Name of the file where data acquired (global configuration) by calibration are dumped."""
 RESULTSFILE = "results.json"
 """Name of the file where results are dumped."""
+RESULTSFILE_DATA = "results.npz"
+"""Name of the file where post_processed data (arrays) are dumped."""
 
 
 def show_logs(func):
@@ -200,15 +202,56 @@ class Results:
 
     """
 
+    data: Optional[dict[Union[tuple[QubitId, int], QubitId], npt.NDArray]]
+    """Data object to store arrays"""
+
+    @property
+    def global_params(self) -> dict:
+        """Convert non-arrays attributes into dict."""
+        global_dict = asdict(self)
+        if self.data:
+            global_dict.pop("data")
+        return global_dict
+
     def save(self, path):
-        """Store results to json."""
-        (path / RESULTSFILE).write_text(json.dumps(serialize(asdict(self))))
+        """Store results."""
+        import pdb
+
+        pdb.set_trace()
+        self._to_json(path)
+        if self.data:
+            self._to_npz(path)
+
+    def _to_npz(self, path):
+        """Helper function to use np.savez while converting keys into strings."""
+        if self.data:
+            np.savez(
+                path / RESULTSFILE_DATA,
+                **{json.dumps(i): self.data[i] for i in self.data},
+            )
+
+    def _to_json(self, path):
+        """Helper function to dump to json in RESULTSFILE path."""
+        (path / RESULTSFILE).write_text(
+            json.dumps(serialize(self.global_params), indent=4)
+        )
 
     @classmethod
     def load(cls, path):
         params = json.loads((path / RESULTSFILE).read_text())
         params = deserialize(params)
-        return cls(**params)
+
+        if (path / RESULTSFILE_DATA).is_file():
+            raw_data_dict = dict(np.load(path / RESULTSFILE_DATA))
+            data_dict = {}
+
+            for data_key, array in raw_data_dict.items():
+                data_dict[load(data_key)] = np.rec.array(array)
+            obj = cls(data=data_dict, **params)
+        else:
+            obj = cls(params)
+
+        return obj
 
 
 # Internal types, in particular `_ParametersT` is used to address function
