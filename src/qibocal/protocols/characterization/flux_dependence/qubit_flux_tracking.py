@@ -18,6 +18,8 @@ from qibocal.config import log, raise_error
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ
 from . import utils
 
+DEFAULT_ANHARMONICITY = 300e6
+"""Initial guess for anharmonicity."""
 
 @dataclass
 class QubitFluxParameters(Parameters):
@@ -121,7 +123,10 @@ def _acquisition(
         )
 
         if params.transition == "02":
-            qd_pulses[qubit].frequency -= qubits[qubit].anharmonicity / 2
+            if qubits[qubit].anharmonicity != 0:
+                qd_pulses[qubit].frequency -= qubits[qubit].anharmonicity / 2
+            else:
+                qd_pulses[qubit].frequency -= DEFAULT_ANHARMONICITY / 2
 
         if params.drive_amplitude is not None:
             qd_pulses[qubit].amplitude = params.drive_amplitude
@@ -175,7 +180,6 @@ def _acquisition(
 
             # modify qubit flux
             qubits[qubit].flux.offset = bias
-            # platform.set_bias(qubit, bias)
 
             # execute pulse sequence sweeping only qubit resonator
             results = platform.sweep(
