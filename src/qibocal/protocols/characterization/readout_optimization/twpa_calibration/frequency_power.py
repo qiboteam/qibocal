@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -117,7 +116,7 @@ def _acquisition(
                 )
 
                 classification_result = classification._fit(classification_data)
-    
+
                 data.register_qubit(
                     TwpaFrequencyPowerType,
                     (qubit),
