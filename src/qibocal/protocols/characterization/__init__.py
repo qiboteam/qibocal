@@ -37,6 +37,9 @@ from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
 from .resonator_spectroscopy import resonator_spectroscopy
 from .resonator_spectroscopy_attenuation import resonator_spectroscopy_attenuation
+from .signal_experiments.calibrate_state_discrimination import (
+    calibrate_state_discrimination,
+)
 from .signal_experiments.time_of_flight_readout import time_of_flight_readout
 from .two_qubit_interaction import chevron, chsh_circuits, chsh_pulses, cz_virtualz
 
@@ -83,3 +86,4 @@ class Operation(Enum):
     resonator_amplitude = resonator_amplitude
     clifford_filtered_rb = clifford_filtered_rb
     clifford_filtered_rb_2q = clifford_filtered_rb_2q
+    calibrate_state_discrimination = calibrate_state_discrimination

@@ -71,12 +71,12 @@ DispersiveShiftType = np.dtype(
         ("phase", np.float64),
     ]
 )
-"""Custom dtype for rabi amplitude."""
+"""Custom dtype for Dispersive shift."""
 
 
 @dataclass
 class DispersiveShiftData(Data):
-    """Dipsersive shift acquisition outputs."""
+    """Dispersive shift acquisition outputs."""
 
     resonator_type: str
     """Resonator type."""
