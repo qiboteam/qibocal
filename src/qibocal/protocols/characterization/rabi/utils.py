@@ -118,7 +118,7 @@ def plot(data, qubit, fit):
     return figures, fitting_report
 
 
-def plot_proba(data, qubit, fit):
+def plot_probabilities(data, qubit, fit):
     if data.__class__.__name__ == "RabiAmplitudeData":
         quantity = "amp"
         title = "Amplitude (dimensionless)"
