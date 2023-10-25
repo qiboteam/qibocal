@@ -22,6 +22,7 @@ from qibocal.protocols.characterization.utils import (
 )
 
 from .dispersive_shift import DispersiveShiftData, DispersiveShiftParameters
+from .resonator_spectroscopy import ResSpecType
 
 
 @dataclass
@@ -59,13 +60,6 @@ class DispersiveShiftQutritResults(Results):
         return {key: value for key, value in asdict(self).items() if "two" in key}
 
 
-DispersiveShiftQutritType = np.dtype(
-    [
-        ("freq", np.float64),
-        ("msr", np.float64),
-        ("phase", np.float64),
-    ]
-)
 """Custom dtype for rabi amplitude."""
 
 
@@ -115,7 +109,6 @@ def _acquisition(
         -params.freq_width // 2, params.freq_width // 2, params.freq_step
     )
 
-    # create a DataUnits objects to store the results
     data = DispersiveShiftQutritData(resonator_type=platform.resonator_type)
 
     for state, sequence in enumerate([sequence_0, sequence_1, sequence_2]):
@@ -142,7 +135,7 @@ def _acquisition(
             result = results[sequence.ro_pulses[qubit].serial]
             # store the results
             data.register_qubit(
-                DispersiveShiftQutritType,
+                ResSpecType,
                 (qubit, state),
                 dict(
                     freq=sequence.ro_pulses[qubit].frequency + delta_frequency_range,
