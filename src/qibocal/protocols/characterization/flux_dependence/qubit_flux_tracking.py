@@ -18,7 +18,7 @@ from qibocal.config import log, raise_error
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ
 from . import utils
 
-DEFAULT_ANHARMONICITY = 300e6
+from ..qubit_spectroscopy_ef import DEFAULT_ANHARMONICITY
 """Initial guess for anharmonicity."""
 
 @dataclass

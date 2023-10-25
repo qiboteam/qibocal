@@ -144,7 +144,7 @@ actions:
       relaxation_time: 2000
       transition: "01"
 
-  - id: qubit flux dependence #"02" transition
+  - id: qubit flux dependence 02 #"02" transition
     priority: 0
     operation: qubit_flux
     parameters:
