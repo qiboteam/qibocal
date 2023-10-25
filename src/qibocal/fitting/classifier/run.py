@@ -65,10 +65,10 @@ def pretty_name(classifier_name: str):
 
 
 class Classifier:
-    r"""Classs to define the different classifiers used in the benchmarking.
+    r"""Class to define the different classifiers used in the benchmarking.
 
     Args:
-        mod: Classsification model.
+        mod: Classification model.
         base_dir (Path): Where to store the classification results.
 
     """
