@@ -37,13 +37,9 @@ class RabiAmplitudeParameters(Parameters):
 class RabiAmplitudeResults(Results):
     """RabiAmplitude outputs."""
 
-    amplitude: dict[QubitId, tuple[float, Optional[float]]] = field(
-        metadata=dict(update="drive_amplitude")
-    )
+    amplitude: dict[QubitId, tuple[float, Optional[float]]]
     """Drive amplitude for each qubit."""
-    length: dict[QubitId, tuple[float, Optional[float]]] = field(
-        metadata=dict(update="drive_length")
-    )
+    length: dict[QubitId, tuple[float, Optional[float]]]
     """Drive pulse duration. Same for all qubits."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitted parameters."""
@@ -106,9 +102,6 @@ def _acquisition(
         type=SweeperType.FACTOR,
     )
 
-    # create a DataUnits object to store the results,
-    # DataUnits stores by default MSR, phase, i, q
-    # additionally include qubit drive pulse amplitude
     data = RabiAmplitudeData(durations=durations)
 
     # sweep the parameter
@@ -123,7 +116,6 @@ def _acquisition(
         sweeper,
     )
     for qubit in qubits:
-        # average msr, phase, i and q over the number of shots defined in the runcard
         prob = results[qubit].probability(state=1)
         data.register_qubit(
             RabiAmpType,

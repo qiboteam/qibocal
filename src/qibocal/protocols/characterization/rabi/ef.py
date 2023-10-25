@@ -76,9 +76,6 @@ def _acquisition(
         type=SweeperType.FACTOR,
     )
 
-    # create a DataUnits object to store the results,
-    # DataUnits stores by default MSR, phase, i, q
-    # additionally include qubit drive pulse amplitude
     data = RabiAmplitudeEFData(durations=durations)
 
     # sweep the parameter
@@ -93,7 +90,6 @@ def _acquisition(
         sweeper,
     )
     for qubit in qubits:
-        # average msr, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulses[qubit].serial]
         data.register_qubit(
             amplitude_msr.RabiAmpVoltType,

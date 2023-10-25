@@ -37,13 +37,9 @@ class RabiLengthParameters(Parameters):
 class RabiLengthResults(Results):
     """RabiLength outputs."""
 
-    length: dict[QubitId, tuple[int, Optional[float]]] = field(
-        metadata=dict(update="drive_length")
-    )
+    length: dict[QubitId, tuple[int, Optional[float]]]
     """Pi pulse duration for each qubit."""
-    amplitude: dict[QubitId, tuple[float, Optional[float]]] = field(
-        metadata=dict(update="drive_amplitude")
-    )
+    amplitude: dict[QubitId, tuple[float, Optional[float]]]
     """Pi pulse amplitude. Same for all qubits."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
@@ -110,9 +106,6 @@ def _acquisition(
         type=SweeperType.ABSOLUTE,
     )
 
-    # create a DataUnits object to store the results,
-    # DataUnits stores by default MSR, phase, i, q
-    # additionally include qubit drive pulse length
     data = RabiLengthData(amplitudes=amplitudes)
 
     # execute the sweep
@@ -128,7 +121,6 @@ def _acquisition(
     )
 
     for qubit in qubits:
-        # average prob, phase, i and q over the number of shots defined in the runcard
         prob = results[qubit].probability(state=1)
         data.register_qubit(
             RabiLenType,
@@ -163,7 +155,6 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
         # 0.5 hardcoded guess for less than one oscillation
         f = x[index] / (x[1] - x[0]) if index is not None else 0.5
         pguess = [0.5, 0.5, np.max(x) / f, np.pi / 2, 0]
-        print(pguess)
         try:
             popt, perr = curve_fit(
                 utils.rabi_length_fit,
@@ -183,7 +174,6 @@ def _fit(data: RabiLengthData) -> RabiLengthResults:
             log.warning("rabi_fit: the fitting was not succesful")
             pi_pulse_parameter = 0
             popt = [0] * 4 + [1]
-        print(popt)
         durations[qubit] = (pi_pulse_parameter, perr[2] / 2)
         fitted_parameters[qubit] = popt.tolist()
         amplitudes = {key: (value, 0) for key, value in data.amplitudes.items()}

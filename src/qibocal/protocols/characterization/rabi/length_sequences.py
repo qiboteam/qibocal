@@ -50,9 +50,6 @@ def _acquisition(
         params.pulse_duration_step,
     )
 
-    # create a DataUnits object to store the results,
-    # DataUnits stores by default MSR, phase, i, q
-    # additionally include qubit drive pulse length
     data = RabiLengthVoltData(amplitudes=amplitudes)
 
     # sweep the parameter
@@ -73,7 +70,6 @@ def _acquisition(
         )
 
         for qubit in qubits:
-            # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulses[qubit].serial]
             data.register_qubit(
                 RabiLenVoltType,

@@ -86,9 +86,6 @@ def _acquisition(
         type=SweeperType.ABSOLUTE,
     )
 
-    # create a DataUnits object to store the results,
-    # DataUnits stores by default MSR, phase, i, q
-    # additionally include qubit drive pulse length
     data = RabiLengthVoltData(amplitudes=amplitudes)
 
     # execute the sweep
@@ -104,7 +101,6 @@ def _acquisition(
     )
 
     for qubit in qubits:
-        # average msr, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulses[qubit].serial]
         data.register_qubit(
             RabiLenVoltType,
@@ -178,7 +174,6 @@ def _fit(data: RabiLengthVoltData) -> RabiLengthVoltResults:
 
 
 def _update(results: RabiLengthVoltResults, platform: Platform, qubit: QubitId):
-    print(results.length[qubit])
     update.drive_duration(results.length[qubit], platform, qubit)
 
 
