@@ -21,6 +21,7 @@ from . import utils
 from ..qubit_spectroscopy_ef import DEFAULT_ANHARMONICITY
 """Initial guess for anharmonicity."""
 
+
 @dataclass
 class QubitFluxParameters(Parameters):
     """QubitFlux runcard inputs."""

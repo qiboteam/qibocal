@@ -155,7 +155,7 @@ actions:
       drive_amplitude: 0.5
       nshots: 1024
       relaxation_time: 2000
-      transition: "02"      
+      transition: "02"
 
 
 
