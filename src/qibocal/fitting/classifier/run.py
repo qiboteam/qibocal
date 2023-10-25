@@ -254,7 +254,7 @@ def train_qubit(
                 x_train, y_train.astype(np.int64), classifier.savedir
             )
         else:
-            hyperpars = cls_data.hpars[qubit][classifier.name]
+            hyperpars = cls_data.classifiers_hpars[qubit][classifier.name]
         hpars_list.append(hyperpars)
         classifier.dump_hyper(hyperpars)
         model = classifier.create_model(hyperpars)

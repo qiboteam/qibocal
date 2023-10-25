@@ -15,6 +15,7 @@ from scipy.optimize import curve_fit
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.protocols.characterization.utils import table_dict, table_html
 
 from .utils import fit_flux_amplitude, order_pair
 
@@ -39,10 +40,6 @@ class ChevronParameters(Parameters):
     """Duration step."""
     dt: Optional[int] = 0
     """Time delay between flux pulses and readout."""
-    nshots: Optional[int] = None
-    """Number of shots per point."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time [ns]"""
     parking: bool = True
     """Wether to park non interacting qubits or not."""
 
@@ -126,9 +123,16 @@ def _aquisition(
         sequence.add(cz.get_qubit_pulses(ordered_pair[0]))
         sequence.add(cz.get_qubit_pulses(ordered_pair[1]))
 
+        # Patch to get the coupler until the routines use QubitPair
+        sequence.add(
+            cz.coupler_pulses(platform.pairs[tuple(sorted(ordered_pair))].coupler.name)
+        )
+
         if params.parking:
             for pulse in cz:
                 if pulse.qubit not in ordered_pair:
+                    pulse.start = 0
+                    pulse.duration = 100
                     sequence.add(pulse)
 
         # add readout
@@ -240,7 +244,7 @@ def _plot(data: ChevronData, fit: ChevronResults, qubit):
             f"Qubit {qubit[1]} - High Frequency",
         ),
     )
-    fitting_report = None
+    fitting_report = ""
 
     fig.add_trace(
         go.Heatmap(
@@ -300,10 +304,13 @@ def _plot(data: ChevronData, fit: ChevronResults, qubit):
     )
 
     if fit is not None:
-        reports = []
-        reports.append(f"{qubit[1]} | CZ amplitude: {fit.amplitude[qubit]:.4f}<br>")
-        reports.append(f"{qubit[1]} | CZ duration: {fit.duration[qubit]}<br>")
-        fitting_report = "".join(list(dict.fromkeys(reports)))
+        fitting_report = table_html(
+            table_dict(
+                qubit[1],
+                ["CZ amplitude", "CZ duration"],
+                [fit.amplitude[qubit], fit.duration[qubit]],
+            )
+        )
 
     return [fig], fitting_report
 
@@ -315,5 +322,5 @@ def _update(results: ChevronResults, platform: Platform, qubit_pair: QubitPairId
     update.CZ_amplitude(results.amplitude[qubit_pair], platform, qubit_pair)
 
 
-chevron = Routine(_aquisition, _fit, _plot, _update)
+chevron = Routine(_aquisition, _fit, _plot, _update, two_qubit_gates=True)
 """Chevron routine."""

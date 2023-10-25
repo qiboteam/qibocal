@@ -25,7 +25,12 @@ from qibocal.auto.operation import (
 )
 from qibocal.auto.serialize import serialize
 from qibocal.fitting.classifier import run
-from qibocal.protocols.characterization.utils import get_color_state0, get_color_state1
+from qibocal.protocols.characterization.utils import (
+    get_color_state0,
+    get_color_state1,
+    table_dict,
+    table_html,
+)
 
 MESH_SIZE = 50
 MARGIN = 0
@@ -41,17 +46,13 @@ SPACING = 0.1
 class SingleShotClassificationParameters(Parameters):
     """SingleShotClassification runcard inputs."""
 
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
     classifiers_list: Optional[list[str]] = field(default_factory=lambda: ["qubit_fit"])
     """List of models to classify the qubit states"""
     savedir: Optional[str] = " "
     """Dumping folder of the classification results"""
 
 
-ClassificationType = np.dtype([("i", np.float64), ("q", np.float64), ("state", int)])
+ClassificationType = np.dtype([("i", np.float64), ("q", np.float64)])
 """Custom dtype for rabi amplitude."""
 
 
@@ -67,22 +68,6 @@ class SingleShotClassificationData(Data):
     """Raw data acquired."""
     classifiers_list: Optional[list[str]] = field(default_factory=lambda: ["qubit_fit"])
     """List of models to classify the qubit states"""
-
-    def register_qubit(self, qubit, state, i, q):
-        """Store output for single qubit."""
-        ar = np.empty(i.shape, dtype=ClassificationType)
-        ar["i"] = i
-        ar["q"] = q
-        ar["state"] = state
-        self.data[qubit] = np.rec.array(ar)
-
-    def add_data(self, qubit, state, i, q):
-        """Store output for single qubit."""
-        ar = np.empty(i.shape, dtype=ClassificationType)
-        ar["i"] = i
-        ar["q"] = q
-        ar["state"] = state
-        self.data[qubit] = np.append(self.data[qubit], np.rec.array(ar))
 
 
 @dataclass
@@ -219,9 +204,8 @@ def _acquisition(
     for qubit in qubits:
         result = state0_results[ro_pulses[qubit].serial]
         data.register_qubit(
-            qubit=qubit, state=0, i=result.voltage_i, q=result.voltage_q
+            ClassificationType, (qubit, 0), dict(i=result.voltage_i, q=result.voltage_q)
         )
-
     # execute the second pulse sequence
     state1_results = platform.execute_pulse_sequence(
         state1_sequence,
@@ -234,7 +218,9 @@ def _acquisition(
     # retrieve and store the results for every qubit
     for qubit in qubits:
         result = state1_results[ro_pulses[qubit].serial]
-        data.add_data(qubit=qubit, state=1, i=result.voltage_i, q=result.voltage_q)
+        data.register_qubit(
+            ClassificationType, (qubit, 1), dict(i=result.voltage_i, q=result.voltage_q)
+        )
 
     return data
 
@@ -256,7 +242,6 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
     y_test_predict = {}
     grid_preds_dict = {}
     for qubit in qubits:
-        qubit_data = data.data[qubit]
         benchmark_table, y_test, x_test, models, names, hpars_list = run.train_qubit(
             data, qubit
         )
@@ -267,8 +252,8 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
         hpars[qubit] = {}
         y_preds = []
         grid_preds = []
-        state0_data = qubit_data[qubit_data["state"] == 0]
-        state1_data = qubit_data[qubit_data["state"] == 1]
+        state0_data = data.data[qubit, 0]
+        state1_data = data.data[qubit, 1]
 
         grid = evaluate_grid(state0_data, state1_data)
         for i, model_name in enumerate(names):
@@ -291,7 +276,6 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
                 assignment_fidelity[qubit] = models[i].assignment_fidelity
         y_test_predict[qubit] = y_preds
         grid_preds_dict[qubit] = grid_preds
-
     return SingleShotClassificationResults(
         benchmark_table=benchmark_tables,
         y_tests=y_tests,
@@ -315,11 +299,10 @@ def _plot(
     data: SingleShotClassificationData, qubit, fit: SingleShotClassificationResults
 ):
     figures = []
-    fitting_report = None
+    fitting_report = ""
     models_name = data.classifiers_list
-    qubit_data = data.data[qubit]
-    state0_data = qubit_data[qubit_data["state"] == 0]
-    state1_data = qubit_data[qubit_data["state"] == 1]
+    state0_data = data.data[qubit, 0]
+    state1_data = data.data[qubit, 1]
     grid = evaluate_grid(state0_data, state1_data)
 
     fig = make_subplots(
@@ -524,15 +507,27 @@ def _plot(
                 )
 
             if models_name[i] == "qubit_fit":
-                fitting_report = ""
-                fitting_report += f"{qubit} | average state 0: {np.round(fit.mean_gnd_states[qubit], 3)}<br>"
-                fitting_report += f"{qubit} | average state 1: {np.round(fit.mean_exc_states[qubit], 3)}<br>"
-                fitting_report += (
-                    f"{qubit} | rotation angle: {fit.rotation_angle[qubit]:.3f}<br>"
+                fitting_report = table_html(
+                    table_dict(
+                        qubit,
+                        [
+                            "Average State 0",
+                            "Average State 1",
+                            "Rotational Angle",
+                            "Threshold",
+                            "Readout Fidelity",
+                            "Assignment Fidelity",
+                        ],
+                        [
+                            np.round(fit.mean_gnd_states[qubit], 3),
+                            np.round(fit.mean_exc_states[qubit], 3),
+                            np.round(fit.rotation_angle[qubit], 3),
+                            np.round(fit.threshold[qubit], 6),
+                            np.round(fit.fidelity[qubit], 3),
+                            np.round(fit.assignment_fidelity[qubit], 3),
+                        ],
+                    )
                 )
-                fitting_report += f"{qubit} | threshold: {fit.threshold[qubit]:.6f}<br>"
-                fitting_report += f"{qubit} | fidelity: {fit.fidelity[qubit]:.3f}<br>"
-                fitting_report += f"{qubit} | assignment fidelity: {fit.assignment_fidelity[qubit]:.3f}<br>"
 
     fig.update_layout(
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
@@ -566,6 +561,8 @@ def _update(
     update.mean_gnd_states(results.mean_gnd_states[qubit], platform, qubit)
     update.mean_exc_states(results.mean_exc_states[qubit], platform, qubit)
     update.classifiers_hpars(results.classifiers_hpars[qubit], platform, qubit)
+    update.readout_fidelity(results.fidelity[qubit], platform, qubit)
+    update.assignment_fidelity(results.assignment_fidelity[qubit], platform, qubit)
 
 
 single_shot_classification = Routine(_acquisition, _fit, _plot, _update)

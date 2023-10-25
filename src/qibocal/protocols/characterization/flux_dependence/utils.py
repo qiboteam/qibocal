@@ -4,20 +4,28 @@ from plotly.subplots import make_subplots
 from scipy.special import mathieu_a, mathieu_b
 from sklearn.linear_model import Ridge
 
-from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, V_TO_UV
+from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, V_TO_UV, table_dict, table_html
 
 FLUX_PARAMETERS = {
-    "Xi": ["Constant to map flux to bias", "V"],
-    "d": ["Junction asymmetry d", "(1)"],
-    "Ec": ["Charge energy Ec", "GHz"],
-    "Ej": ["Josephson energy Ej", "GHz"],
-    "f_q_offset": ["Qubit frequency offset", "GHz"],
-    "C_ii": ["Flux matrix element C_ii", "GHz/V"],
-    "g": ["Readout coupling", "(1)"],
-    "bare_resonator_frequency": ["Bare resonator frequency", "GHz"],
-    "f_qs": ["Qubit frequency", "GHz"],
-    "f_r_offset": ["Resonator frequency offset", "GHz"],
+    "Xi": "Constant to map flux to bias [V]",
+    "d": "Junction asymmetry",
+    "Ec": "Charge energy Ec [GHz]",
+    "Ej": "Josephson energy Ej [GHz]",
+    "f_q_offset": "Qubit frequency offset [GHz]",
+    "C_ii": "Flux matrix element C_ii [GHz/V]",
+    "g": "Readout coupling",
+    "bare_resonator_frequency": "Bare resonator frequency [GHz]",
+    "f_qs": "Qubit frequency [GHz]",
+    "f_r_offset": "Resonator frequency offset [GHz]",
 }
+FREQUENCY_PARAMETERS = [
+    "Ec",
+    "Ej",
+    "f_q_offset",
+    "bare_resonator_frequency",
+    "f_qs",
+    "f_r_offset",
+]
 
 
 def is_crosstalk(data):
@@ -39,7 +47,7 @@ def create_data_array(freq, bias, msr, phase, dtype):
 
 def flux_dependence_plot(data, fit, qubit):
     figures = []
-    fitting_report = None
+    fitting_report = ""
 
     qubit_data = data[qubit]
 
@@ -95,7 +103,7 @@ def flux_dependence_plot(data, fit, qubit):
         fitting_report_label = "Frequency"
         if fit.frequency[qubit] != 0:
             if data.__class__.__name__ == "ResonatorFluxData":
-                fitting_report_label = "Resonator Frequency"
+                fitting_report_label = "Resonator Frequency [GHz]"
                 if all(param in params for param in ["Ec", "Ej"]):
                     popt = [
                         params["bare_resonator_frequency"],
@@ -118,7 +126,7 @@ def flux_dependence_plot(data, fit, qubit):
                     ]
                     freq_fit = freq_r_transmon(biases1, *popt) * HZ_TO_GHZ
             elif data.__class__.__name__ == "QubitFluxData":
-                fitting_report_label = "Qubit Frequency"
+                fitting_report_label = "Qubit Frequency [GHz]"
                 if all(param in params for param in ["Ec", "Ej"]):
                     popt = [
                         fit.sweetspot[qubit],
@@ -148,31 +156,21 @@ def flux_dependence_plot(data, fit, qubit):
                 col=1,
             )
 
-            if fit.frequency[qubit] != 0:
-                fitting_report += f"{qubit} | {fitting_report_label}: {fit.frequency[qubit]:,.5f} GHz<br>"
-            else:
-                fitting_report += (
-                    f"{qubit} | {fitting_report_label}: Fitting not successful<br>"
-                )
-            if fit.sweetspot[qubit] != 0:
-                fitting_report += (
-                    f"{qubit} | Sweetspot: {float(fit.sweetspot[qubit]):.3f} V<br>"
-                )
-            else:
-                fitting_report += f"{qubit} | Sweetspot: Fitting not successful<br>"
+            parameters = []
+            values = []
 
             for key, value in fit.fitted_parameters[qubit].items():
-                if FLUX_PARAMETERS[key][1] == "GHz":
+                if key in FREQUENCY_PARAMETERS:  # Select frequency parameters
                     value *= HZ_TO_GHZ
-                elif key != "d" and value == 0:
-                    value = "Fitting not successful"
-                    fitting_report += (
-                        f"{qubit} | {FLUX_PARAMETERS[key][0]}: {value}<br>"
-                    )
-                else:
-                    fitting_report += f"{qubit} | {FLUX_PARAMETERS[key][0]}: {float(value):,.3f} {FLUX_PARAMETERS[key][1]}<br>"
+                values.append(np.round(value, 5))
+                parameters.append(FLUX_PARAMETERS[key])
 
-            fitting_report += "<br>"
+            parameters.extend([fitting_report_label, "Sweetspot"])
+            values.extend(
+                [np.round(fit.frequency[qubit], 5), np.round(fit.sweetspot[qubit], 3)]
+            )
+
+            fitting_report = table_html(table_dict(qubit, parameters, values))
 
     fig.update_xaxes(
         title_text=f"Frequency (GHz)",

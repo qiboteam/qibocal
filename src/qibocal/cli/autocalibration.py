@@ -55,6 +55,8 @@ def autocalibrate(card, folder, force, update):
         platform.setup()
         platform.start()
 
+    e = datetime.datetime.now(datetime.timezone.utc)
+    meta["end-time"] = e.strftime("%H:%M:%S")
     # run protocols
     for task_uid in executor.run(mode=ExecutionMode.autocalibration):
         report = ReportBuilder(path, runcard.qubits, executor, meta, executor.history)
@@ -71,6 +73,4 @@ def autocalibrate(card, folder, force, update):
 
     # dump updated meta
     meta = add_timings_to_meta(meta, executor.history)
-    e = datetime.datetime.now(datetime.timezone.utc)
-    meta["end-time"] = e.strftime("%H:%M:%S")
     (path / META).write_text(json.dumps(meta, indent=4))

@@ -41,10 +41,6 @@ class QubitFluxParameters(Parameters):
     If given flux will be swept on the given qubits in a sequential fashion (n qubits will result to n different executions).
     Multiple qubits may be measured in each execution as specified by the ``qubits`` option in the runcard.
     """
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
     transition: Optional[str] = "01"
     """Flux spectroscopy transition type ("01" or "02"). Default value is 01"""
 

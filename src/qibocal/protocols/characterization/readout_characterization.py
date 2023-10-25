@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -10,16 +9,12 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.protocols.characterization.utils import table_dict, table_html
 
 
 @dataclass
 class ReadoutCharacterizationParameters(Parameters):
     """ReadoutCharacterization runcard inputs."""
-
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -50,12 +45,6 @@ class ReadoutCharacterizationData(Data):
         default_factory=dict
     )
     """Raw data acquired."""
-
-    def register_qubit(self, qubit, probability, state, readout_number):
-        """Store output for single qubit."""
-        ar = np.empty(probability.shape, dtype=ReadoutCharacterizationType)
-        ar["probability"] = probability
-        self.data[qubit, state, readout_number] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -102,10 +91,9 @@ def _acquisition(
                 result = results[ro_pulse.serial]
                 qubit = ro_pulse.qubit
                 data.register_qubit(
-                    qubit,
-                    probability=result.samples,
-                    state=state,
-                    readout_number=i,
+                    ReadoutCharacterizationType,
+                    (qubit, state, i),
+                    dict(probability=result.samples),
                 )
                 i += 1
 
@@ -175,17 +163,21 @@ def _plot(
     # Maybe the plot can just be something like a confusion matrix between 0s and 1s ???
 
     figures = []
-    fitting_report = None
+    fitting_report = ""
     fig = go.Figure()
     if fit is not None:
-        fitting_report = ""
         fig.add_trace(
             go.Heatmap(
                 z=fit.Lambda_M[qubit],
             ),
         )
-        fitting_report += f"{qubit} | Fidelity : {fit.fidelity[qubit]:.6f}<br>"
-        fitting_report += f"{qubit} | QND: {fit.qnd[qubit]:.6f}<br>"
+        fitting_report = table_html(
+            table_dict(
+                qubit,
+                ["Fidelity", "QND"],
+                [np.round(fit.fidelity[qubit], 6), np.round(fit.qnd[qubit], 6)],
+            )
+        )
 
     fig.update_xaxes(title_text="Shot")
     fig.update_xaxes(tickvals=[0, 1])

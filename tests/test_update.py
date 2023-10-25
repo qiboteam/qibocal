@@ -78,6 +78,8 @@ def test_classification_update(qubit):
     update.mean_gnd_states(mean_gnd_state, PLATFORM, qubit.name)
     update.mean_exc_states(mean_exc_state, PLATFORM, qubit.name)
     update.classifiers_hpars(classifiers_hpars, PLATFORM, qubit.name)
+    update.readout_fidelity(RANDOM_FLOAT, PLATFORM, qubit.name)
+    update.assignment_fidelity(RANDOM_FLOAT, PLATFORM, qubit.name)
 
     # assert
     assert qubit.iq_angle == RANDOM_FLOAT
@@ -85,6 +87,8 @@ def test_classification_update(qubit):
     assert qubit.mean_gnd_states == mean_gnd_state
     assert qubit.mean_exc_states == mean_exc_state
     assert qubit.classifiers_hpars == classifiers_hpars
+    assert qubit.readout_fidelity == RANDOM_FLOAT
+    assert qubit.assignment_fidelity == RANDOM_FLOAT
 
 
 @pytest.mark.parametrize("pair", PAIRS)
@@ -146,26 +150,22 @@ def test_sweetspot_update(qubit):
     assert qubit.sweetspot == RANDOM_FLOAT
 
 
-@pytest.mark.parametrize("qubit", QUBITS)
-def test_resonator_coefficients_update(qubit):
-    # perform update
-    update.readout_frequency(FREQUENCIES_GHZ, PLATFORM, qubit.name)
-    update.bare_resonator_frequency_sweetspot(FREQUENCIES_GHZ, PLATFORM, qubit.name)
-    update.flux_to_bias(RANDOM_FLOAT, PLATFORM, qubit.name)
-    update.asymmetry(RANDOM_FLOAT, PLATFORM, qubit.name)
-    update.ratio_sweetspot_qubit_freq_bare_resonator_freq(
-        RANDOM_FLOAT, PLATFORM, qubit.name
-    )
-    update.charging_energy(RANDOM_FLOAT, PLATFORM, qubit.name)
-    update.josephson_energy(RANDOM_FLOAT, PLATFORM, qubit.name)
-    update.coupling(RANDOM_FLOAT, PLATFORM, qubit.name)
+# FIXME: missing qubit 4 RX12
+@pytest.mark.parametrize("qubit", QUBITS[:-1])
+def test_12_transition_update(qubit):
+    update.drive_12_amplitude(RANDOM_FLOAT, PLATFORM, qubit.name)
+    update.frequency_12_transition(FREQUENCIES_GHZ, PLATFORM, qubit.name)
+    update.anharmonicity(FREQUENCIES_GHZ, PLATFORM, qubit.name)
 
-    # assert
-    assert qubit.readout_frequency == FREQUENCIES_HZ
-    assert qubit.bare_resonator_frequency_sweetspot == FREQUENCIES_HZ
-    assert qubit.flux_to_bias == RANDOM_FLOAT
-    assert qubit.asymmetry == RANDOM_FLOAT
-    assert qubit.ssf_brf == RANDOM_FLOAT
-    assert qubit.Ec == RANDOM_FLOAT
-    assert qubit.Ej == RANDOM_FLOAT
-    assert qubit.g == RANDOM_FLOAT
+    assert qubit.native_gates.RX12.amplitude == RANDOM_FLOAT
+    assert qubit.native_gates.RX12.frequency == FREQUENCIES_HZ
+    assert qubit.anharmonicity == FREQUENCIES_HZ
+
+
+@pytest.mark.parametrize("qubit", QUBITS)
+def test_twpa_update(qubit):
+    update.twpa_frequency(RANDOM_INT, PLATFORM, qubit.name)
+    update.twpa_power(RANDOM_FLOAT, PLATFORM, qubit.name)
+
+    assert qubit.twpa.local_oscillator.frequency == RANDOM_INT
+    assert qubit.twpa.local_oscillator.power == RANDOM_FLOAT
