@@ -4,9 +4,10 @@ from typing import Callable, Optional, Union
 import numpy as np
 from pandas import DataFrame
 from qibo import gates
+from qibo.config import PRECISION_TOL
+from uncertainties import ufloat
 
 from qibocal.config import raise_error
-from qibocal.protocols.characterization.utils import significant_digit
 
 SINGLE_QUBIT_CLIFFORDS = {
     # Virtual gates
@@ -89,8 +90,8 @@ def random_clifford(qubits, seed=None):
 
 def number_to_str(
     value: Number,
-    uncertainty: Optional[Union[Number, list, tuple, np.ndarray]] = None,
-    precision: Optional[int] = None,
+    uncertainty: Optional[Union[float, list, tuple, np.ndarray]] = None,
+    precision: Optional[int] = 3,
 ):
     """Converts a number into a string.
 
@@ -99,12 +100,33 @@ def number_to_str(
         uncertainty (Number or list or tuple or np.ndarray, optional): number or 2-element
             interval with the low and high uncertainties of ``value``. Defaults to ``None``.
         precision (int, optional): nonnegative number of floating points of the displayed value.
-            If ``None``, defaults to the second significant digit of ``uncertainty``
-            or ``3`` if ``uncertainty`` is ``None``. Defaults to ``None``.
+            Defaults to ``3`` or the second significant digit of the uncertainty.
 
     Returns:
         str: The number expressed as a string, with the uncertainty if given.
     """
+
+    def _sign(val):
+        "Return the correct sign to display imaginary numbers"
+        return "+" if float(val) > -PRECISION_TOL else "-"
+
+    def _display(val, dev):
+        "Gets a string representing imaginary numbers"
+        # inf uncertainty
+        if np.isinf(dev):
+            return f"{value:.{precision}f}", "inf"
+        # Real values
+        if not np.iscomplex(val) and not np.iscomplex(dev):
+            if dev >= 1e-4:
+                return f"{ufloat(val, dev):.2u}".split("+/-")
+            dev_display = f"{dev:.1e}" if np.real(dev) > PRECISION_TOL else "0"
+            return f"{val:.{precision}f}", dev_display
+        # Complex case
+        val_display, dev_display = _display(np.real(val), np.real(dev))
+        val_imag, dev_imag = _display(np.imag(val), np.imag(dev))
+        val_display = f"({val_display}{_sign(val_imag)}{val_imag.strip('-')}j)"
+        dev_display = f"({dev_display}{_sign(dev_imag)}{dev_imag.strip('-')}j)"
+        return val_display, dev_display
 
     # If uncertainty is not given, return the value with precision
     if uncertainty is None:
@@ -112,23 +134,21 @@ def number_to_str(
         return f"{value:.{precision}f}"
 
     if isinstance(uncertainty, Number):
-        if precision is None:
-            precision = (significant_digit(uncertainty) + 1) or 3
-        return f"{value:.{precision}f} \u00B1 {uncertainty:.{precision}f}"
+        value_display, uncertainty_display = _display(value, uncertainty)
+        return value_display + " \u00B1 " + uncertainty_display
 
     # If any uncertainty is None, return the value with precision
     if any(u is None for u in uncertainty):
-        return f"{value:.{precision if precision is not None else 3}f}"
+        return f"{value:.{precision}f}"
 
-    # If precision is None, get the first significant digit of the uncertainty
-    if precision is None:
-        precision = max(significant_digit(u) + 1 for u in uncertainty) or 3
+    value_0, uncertainty_0 = _display(value, uncertainty[0])
+    value_1, uncertainty_1 = _display(value, uncertainty[1])
+    value_display = max(value_0, value_1, key=len)
 
-    # Check if both uncertainties are equal up to precision
-    if np.round(uncertainty[0], precision) == np.round(uncertainty[1], precision):
-        return f"{value:.{precision}f} \u00B1 {uncertainty[0]:.{precision}f}"
+    if uncertainty_0 == uncertainty_1:
+        return value_display + " \u00B1 " + uncertainty_0
 
-    return f"{value:.{precision}f} +{uncertainty[1]:.{precision}f} / -{uncertainty[0]:.{precision}f}"
+    return f"{value_display} +{uncertainty_1} / -{uncertainty_0}"
 
 
 def extract_from_data(
@@ -173,3 +193,12 @@ def extract_from_data(
     df = data.get([output_key, groupby_key])
     grouped_df = df.groupby(groupby_key, group_keys=True).agg(agg_type)
     return grouped_df.index.to_numpy(), grouped_df[output_key].values.tolist()
+
+
+def crosstalk(q0, q1, fit_results):
+    p0 = fit_results["fit_parameters"][f"irrep{2 ** q0}"][1]
+    p1 = fit_results["fit_parameters"][f"irrep{2 ** q1}"][1]
+    p01 = fit_results["fit_parameters"][f"irrep{2 ** q1 + 2 ** q0}"][1]
+    if p0 == 0 or p1 == 0:
+        return None
+    return p01 / (p0 * p1)

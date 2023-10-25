@@ -31,6 +31,7 @@ from .rabi.length_sequences import rabi_length_sequences
 from .ramsey import ramsey
 from .ramsey_msr import ramsey_msr
 from .ramsey_sequences import ramsey_sequences
+from .randomized_benchmarking.clifford_filtered_rb import clifford_filtered_rb
 from .randomized_benchmarking.standard_rb import standard_rb
 from .readout_characterization import readout_characterization
 from .readout_mitigation_matrix import readout_mitigation_matrix
@@ -93,3 +94,4 @@ class Operation(Enum):
     rabi_amplitude_ef = rabi_amplitude_ef
     qubit_spectroscopy_ef = qubit_spectroscopy_ef
     resonator_amplitude = resonator_amplitude
+    clifford_filtered_rb = clifford_filtered_rb

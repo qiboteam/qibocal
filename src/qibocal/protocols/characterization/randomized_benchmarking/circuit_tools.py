@@ -31,7 +31,7 @@ def embed_circuit(circuit: Circuit, nqubits: int, qubits: list) -> Circuit:
     return large_circuit
 
 
-def layer_circuit(layer_gen: Callable, depth: int) -> Circuit:
+def layer_circuit(layer_gen: Callable, depth: int, **kwargs) -> Circuit:
     """Creates a circuit of `depth` layers from a generator `layer_gen` yielding `Circuit` or `Gate`.
 
     Args:
@@ -42,29 +42,36 @@ def layer_circuit(layer_gen: Callable, depth: int) -> Circuit:
         Circuit: with `depth` many layers.
     """
 
-    if not isinstance(depth, int) or depth <= 0:
-        raise_error(ValueError, "Depth must be type int and positive.")
-    full_circuit = None
+    if not isinstance(depth, int) or depth < 0:
+        raise_error(ValueError, f"Depth: {depth}, must be type int and >= 0.")
+
+    # Generate a layer to get nqubits.
+    new_layer = layer_gen()
+    if isinstance(new_layer, Gate):
+        nqubits = max(new_layer.qubits) + 1
+    elif all(isinstance(gate, Gate) for gate in new_layer):
+        nqubits = max(max(gate.qubits) for gate in new_layer) + 1
+    elif isinstance(new_layer, Circuit):
+        nqubits = new_layer.nqubits
+    else:
+        raise_error(
+            TypeError,
+            f"layer_gen must return type Circuit or Gate, but it is type {type(new_layer)}.",
+        )
+
+    # instantiate an empty circuit
+    full_circuit = Circuit(nqubits, **kwargs)
+
     # Build each layer, there will be depth many in the final circuit.
     for _ in range(depth):
-        # Generate a layer.
+        # Generate a new layer.
         new_layer = layer_gen()
         # Ensure new_layer is a circuit
-        if isinstance(new_layer, Gate):
-            new_circuit = Circuit(max(new_layer.qubits) + 1)
-            new_circuit.add(new_layer)
-        elif all(isinstance(gate, Gate) for gate in new_layer):
-            new_circuit = Circuit(max(max(gate.qubits) for gate in new_layer) + 1)
-            new_circuit.add(new_layer)
-        elif isinstance(new_layer, Circuit):
+        if isinstance(new_layer, Circuit):
             new_circuit = new_layer
         else:
-            raise_error(
-                TypeError,
-                f"layer_gen must return type Circuit or Gate, but it is type {type(new_layer)}.",
-            )
-        if full_circuit is None:  # instantiate in first loop
-            full_circuit = Circuit(new_circuit.nqubits)
+            new_circuit = Circuit(nqubits, **kwargs)
+            new_circuit.add(new_layer)
         full_circuit = full_circuit + new_circuit
     return full_circuit
 

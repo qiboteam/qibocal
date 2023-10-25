@@ -76,7 +76,7 @@ class StandardRBResult(Results):
     pulse_fidelity: float
     """The pulse fidelity of the gates acting on this qubit."""
     fit_parameters: tuple[float, float, float]
-    """Raw fitting parameters."""
+    """Fitting parameters."""
     fit_uncertainties: tuple[float, float, float]
     """Fitting parameters uncertainties."""
     error_bars: Optional[Union[float, list[float]]] = None
@@ -133,7 +133,10 @@ def resample_p0(data, sample_size=100, homogeneous: bool = True):
 
 
 def setup_scan(
-    params: StandardRBParameters, qubits: Union[Qubits, list[QubitId]], nqubits: int
+    params: StandardRBParameters,
+    qubits: Union[Qubits, list[QubitId]],
+    nqubits: int,
+    **kwargs,
 ) -> Iterable:
     """Returns an iterator of single-qubit random self-inverting Clifford circuits.
 
@@ -160,7 +163,7 @@ def setup_scan(
             """Returns a circuit with a random single-qubit clifford unitary."""
             return random_clifford(len(qubit_ids), params.seed)
 
-        circuit = layer_circuit(layer_gen, depth)
+        circuit = layer_circuit(layer_gen, depth, **kwargs)
         add_inverse_layer(circuit)
         add_measurement_layer(circuit)
         return embed_circuit(circuit, nqubits, qubit_ids)
@@ -213,7 +216,7 @@ def _acquisition(
 
     # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
     nqubits = platform.nqubits if platform else max(qubits) + 1
-    scan = setup_scan(params, qubits, nqubits)
+    scan = setup_scan(params, qubits, nqubits, density_matrix=(noise_model is not None))
 
     # 2. Execute the scan.
     data_list = []
@@ -225,7 +228,7 @@ def _acquisition(
             circuit = noise_model.apply(circuit)
         samples = circuit.execute(nshots=params.nshots).samples()
         # Every executed circuit gets a row where the data is stored.
-        data_list.append({"depth": depth, "samples": samples})
+        data_list.append({"depth": depth, "circuit": circuit, "samples": samples})
     # Build the data object which will be returned and later saved.
     data = pd.DataFrame(data_list)
 

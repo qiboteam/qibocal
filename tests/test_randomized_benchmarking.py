@@ -61,13 +61,13 @@ def test_1expfitting():
     # Catch exceptions
     x = np.linspace(-np.pi / 2, np.pi / 2, 100)
     y_dist = np.tan(x)
-    popt, perr = fitting.fit_exp1_func(x, y_dist, maxfev=1, p0=[1])
+    popt, perr = fitting.fit_expn_func(x, y_dist, n=1, maxfev=1, p0=[1])
     assert not (np.all(np.array([*popt, *perr]), 0))
     popt, perr = fitting.fit_exp1B_func(x, y_dist, maxfev=1)
     assert not (np.all(np.array([*popt, *perr]), 0))
 
 
-def test_exp2_fitting():
+def test_expn_fitting():
     successes = 0
     number_runs = 50
     for count in range(number_runs):
@@ -80,10 +80,10 @@ def test_exp2_fitting():
         else:
             f1, f2 = np.random.uniform(0.1, 0.99, size=2)
         y = A1 * f1**x + A2 * f2**x
-        assert np.allclose(fitting.exp2_func(x, A1, A2, f1, f2), y)
+        assert np.allclose(fitting.expn_func(x, A1, A2, f1, f2), y)
         # Distort ``y`` a bit.
         y_dist = y + np.random.uniform(-1, 1, size=len(y)) * 0.001
-        popt, perr = fitting.fit_exp2_func(x, y_dist)
+        popt, _ = fitting.fit_expn_func(x, y_dist, 2)
         worked = np.all(
             np.logical_or(
                 np.allclose(np.array(popt), [A2, A1, f2, f1], atol=0.05, rtol=0.1),
@@ -108,7 +108,7 @@ def test_exp2_fitting():
         y = A1 * f1**x + A2 * f2**x
         # Distort ``y`` a bit.
         y_dist = y + np.random.uniform(-1, 1, size=len(y)) * 0.001
-        popt, perr = fitting.fit_exp2_func(x, y_dist)
+        popt, _ = fitting.fit_expn_func(x, y_dist, 2)
 
 
 # Test noisemodels
@@ -172,17 +172,31 @@ def test_random_clifford(qubits, seed):
     assert np.allclose(matrix, result)
 
 
-@pytest.mark.parametrize("value", [0.555555, 2, -0.1 + 0.1j])
-def test_number_to_str(value):
-    assert number_to_str(value) == f"{value:.3f}"
-    assert number_to_str(value, [None, None]) == f"{value:.3f}"
-    assert number_to_str(value, 0.0123) == f"{value:.3f} \u00B1 0.012"
-    assert number_to_str(value, [0.0123, 0.012]) == f"{value:.3f} \u00B1 0.012"
-    assert number_to_str(value, 0.1 + 0.02j) == f"{value:.3f} \u00B1 0.100+0.020j"
-    assert number_to_str(value, [0.203, 0.001]) == f"{value:.4f} +0.0010 / -0.2030"
+@pytest.mark.parametrize("prec", [2, 3])
+def test_number_to_str(prec):
+    # Real values
+    value = np.random.uniform(0, 1)
+    assert number_to_str(value, precision=prec) == f"{value:.{prec}f}"
+    assert number_to_str(value, [None, None], prec) == f"{value:.{prec}f}"
+    assert number_to_str(value, 0.0123, prec) == f"{value:.3f} \u00B1 0.012"
+    assert number_to_str(value, [0.0123, 0.012], prec) == f"{value:.3f} \u00B1 0.012"
     assert (
-        number_to_str(value, [float("inf"), float("inf")]) == f"{value:.3f} \u00B1 inf"
+        number_to_str(value, [0.2, 1e-5], prec) == f"{value:.{prec}f} +1.0e-05 / -0.20"
     )
+    assert number_to_str(value, [np.inf] * 2, prec) == f"{value:.{prec}f} \u00B1 inf"
+    # Complex values
+    value += np.random.uniform(0, 1) * 1j
+    assert number_to_str(value, precision=prec) == f"{value:.{prec}f}"
+    assert number_to_str(value, [None, None], prec) == f"{value:.{prec}f}"
+    assert (
+        number_to_str(value, 0.0123, prec)
+        == f"({np.real(value):.3f}+{np.imag(value):.{prec}f}j) \u00B1 (0.012+0j)"
+    )
+    assert (
+        number_to_str(value, [0.2, 1e-5], prec)
+        == f"({value:.{prec}f}) +(1.0e-05+0j) / -(0.20+0j)"
+    )
+    assert number_to_str(value, [np.inf] * 2, prec) == f"{value:.{prec}f} \u00B1 inf"
 
 
 def test_extract_from_data():

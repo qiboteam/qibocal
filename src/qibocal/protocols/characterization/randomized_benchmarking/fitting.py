@@ -24,21 +24,13 @@ def exp1B_func(x: np.ndarray, A: float, f: float, B: float) -> np.ndarray:
     return A * f**x + B
 
 
-def exp2_func(x: np.ndarray, A1: float, A2: float, f1: float, f2: float) -> np.ndarray:
-    """Return :math:`A_1\\cdot f_1^x+A_2\\cdot f_2^x` where ``x`` is an ``np.ndarray`` and
-    ``A1``, ``f1``, ``A2``, ``f2`` are floats. There is no linear offsett B.
-    """
-    x = np.array(x, dtype=complex)
-    return A1 * f1**x + A2 * f2**x
-
-
 def expn_func(x: Union[np.ndarray, list], *args) -> np.ndarray:
     """Compute the sum of exponentials :math:`\\sum A_i\\cdot f_i^x`
 
     Args:
         x (np.ndarray | list): list of exponents.
         *args: Parameters of type `float` in the order
-            :math:`A_1`, :math:`A_2`, :math:`f_1`, :math:`f_2`,...
+            :math:`A_1`, :math:`A_2`, ... :math:`f_1`, :math:`f_2`,...
 
     Returns:
         The resulting sum of exponentials.
@@ -153,7 +145,11 @@ def fit_exp1_func(
         # If the search for fitting parameters does not work just return
         # fixed parameters where one can see that the fit did not work
         try:
-            kwargs.setdefault("p0", (np.max(ydata) - np.min(ydata), 0.9))
+            bounds = kwargs.get("bounds", [-np.inf, np.inf])
+
+            kwargs.setdefault(
+                "p0", (np.clip(np.max(ydata) - np.min(ydata), *bounds), 0.9)
+            )
             # Build a new function such that the linear offset is zero.
             popt, pcov = curve_fit(exp1_func, xdata, ydata, **kwargs)
             perr = tuple(np.sqrt(np.diag(pcov)))
@@ -179,27 +175,12 @@ def fit_expn_func(
         tuple[tuple, tuple]: (A1, ..., An, f1, ..., fn) with f* the decay parameters.
     """
 
+    if n == 1:
+        return fit_exp1_func(xdata, ydata, **kwargs)
+
     # TODO how are the errors estimated?
     # TODO the data has to have a sufficiently big size, check that.
     decays = esprit(np.array(xdata), np.array(ydata), n)
     vandermonde = np.array([decays**x for x in xdata])
     alphas = np.linalg.pinv(vandermonde) @ np.array(ydata).reshape(-1, 1).flatten()
     return tuple([*alphas, *decays]), (0,) * (len(alphas) + len(decays))
-
-
-def fit_exp2_func(
-    xdata: Union[np.ndarray, list], ydata: Union[np.ndarray, list], **kwargs
-) -> tuple[tuple, tuple]:
-    """Calculate 2 exponentials on top of each other, fit to the given ydata.
-
-    No linear offset, the ESPRIT algorithm is used to identify the two exponential decays.
-
-    Args:
-        xdata (Union[np.ndarray, list]): The x-labels.
-        ydata (Union[np.ndarray, list]): The data to be fitted
-
-    Returns:
-        tuple[tuple, tuple]: (A1, A2, f1, f2) with f* the decay parameters.
-    """
-
-    return fit_expn_func(xdata, ydata, 2)

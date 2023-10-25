@@ -429,17 +429,6 @@ actions:
       uncertainties: None
       n_bootstrap: 0
 
-  - id: standard rb bootstrap
-    priority: 0
-    operation: standard_rb
-    qubits: [1]
-    parameters:
-      depths: [1, 2, 3, 5]
-      niter: 5
-      nshots: 50
-      n_bootstrap: 10
-      noise_model: PauliErrorOnAll
-
   - id: chevron id
     priority: 0
     operation: chevron
@@ -558,9 +547,33 @@ actions:
       power_width: 10
       power_step: 1
 
-  - id: resoantor_amplitude
+  - id: resonator_amplitude
     priority: 0
     operation: resonator_amplitude
     parameters:
       amplitude_step: 0.1
       amplitude_stop: 0.5
+
+  - id: clifford rb no error
+    priority: 0
+    operation: clifford_filtered_rb
+    parameters:
+      depths:
+        start: 1
+        stop: 10
+        step: 2
+      niter: 2
+      nshots: 50
+      uncertainties: None
+      n_bootstrap: 0
+
+  - id: clifford rb bootstrap
+    priority: 0
+    operation: clifford_filtered_rb
+    qubits: [1]
+    parameters:
+      depths: [0, 1, 2, 3, 5]
+      niter: 5
+      nshots: 50
+      n_bootstrap: 10
+      noise_model: PauliErrorOnAll
