@@ -1,5 +1,7 @@
 """Adds global CLI options."""
+import os
 import pathlib
+import pwd
 
 import click
 import yaml
@@ -126,11 +128,17 @@ def fit(folder: pathlib.Path, update):
     type=str,
     help="Optional tag.",
 )
-def upload(path, tag):
+@click.option(
+    "--author",
+    default=pwd.getpwuid(os.getuid())[0],
+    type=str,
+    help="Default is UID username.",
+)
+def upload(path, tag, author):
     """Uploads output folder to server
 
     Arguments:
 
     - FOLDER: input folder.
     """
-    upload_report(path, tag)
+    upload_report(path, tag, author)
