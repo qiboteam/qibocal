@@ -37,12 +37,13 @@ in the following way:
 After defining the parameters, the user can perform the acquisition using
 ``experiment.acquisition`` which accepts the following parameters:
 
-* params (experiment.parameters_type): input parameters for the experiment
-* platform (qibolab.platform.Platform): Qibolab platform class
-* qubits (dict[QubitId, QubitPairId]) dictionary with qubits where the acquisition will run
+* params (`experiment.parameters_type <https://qibo.science/qibocal/latest/api-reference/qibocal.auto.html#qibocal.auto.operation.Routine.parameters_type>`_): input parameters for the experiment
+* platform (`qibolab.platform.Platform <https://qibo.science/qibolab/latest/api-reference/qibolab.html#qibolab.platform.Platform>`_): Qibolab platform class
+* qubits (dict[`QubitId <https://qibo.science/qibolab/latest/api-reference/qibolab.html#qibolab.qubits.QubitId>`_, `QubitPairId <https://qibo.science/qibolab/latest/api-reference/qibolab.html#qibolab.qubits.QubitPairId>`_]) dictionary with qubits where the acquisition will run
 
 and returns the following:
-* data (experiment.data_type): data acquired
+
+* data (`experiment.data_type <https://qibo.science/qibocal/latest/api-reference/qibocal.auto.html#qibocal.auto.operation.Routine.data_type>`_): data acquired
 * acquisition_time (float): acquisition time on hardware
 
 .. code-block:: python
@@ -66,16 +67,16 @@ following way:
 To be more specific the user should pass as input ``data`` which is of type
 ``experiment.data_type`` and the outputs are the following:
 
-* fit: (experiment.results_type) input parameters for the experiment
+* fit: (`experiment.results_type <https://qibo.science/qibocal/latest/api-reference/qibocal.auto.html#qibocal.auto.operation.Routine.results_type>`_) input parameters for the experiment
 * fit_time (float): post-processing time
 
 
 It is also possible to access the plots and the tables generated in the
 report using ``experiment.report`` which accepts the following parameters:
 
-* data: (``experiment.data_type``) data structure used by ``experiment``
-* qubit (Union[QubitId, QubitPairId]): post-processing time
-* fit: (``experiment.results_type``): data structure for post-processing used by ``experiment``
+* data: (`experiment.data_type <https://qibo.science/qibocal/latest/api-reference/qibocal.auto.html#qibocal.auto.operation.Routine.data_type>`_) data structure used by ``experiment``
+* qubit (dict[`QubitId <https://qibo.science/qibolab/latest/api-reference/qibolab.html#qibolab.qubits.QubitId>`_, `QubitPairId <https://qibo.science/qibolab/latest/api-reference/qibolab.html#qibolab.qubits.QubitPairId>`_]): qubit / qubit pair to be plotted
+* fit: (`experiment.results_type <https://qibo.science/qibocal/latest/api-reference/qibocal.auto.html#qibocal.auto.operation.Routine.results_type>`_): data structure for post-processing used by ``experiment``
 
 .. code-block:: python
 
