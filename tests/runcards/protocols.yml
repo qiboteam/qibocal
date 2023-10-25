@@ -119,6 +119,22 @@ actions:
       nshots: 10
       relaxation_time: 3_000
 
+  - id: chevron flux time
+    priority: 0
+    operation: chevron_flux_time
+    qubits: [[1, 2]]
+    parameters:
+      amplitude_factor_min: -0.5
+      amplitude_factor_max: -0.0
+      amplitude_factor_step: 0.05
+      duration_min: 50
+      duration_max: 200
+      duration_step: 4
+      native_gate: "CZ"
+      dt: 5
+      nshots: 1024
+      relaxation_time: 100_000
+
   - id: resonator flux dependence
     priority: 0
     operation: resonator_flux
@@ -416,6 +432,18 @@ actions:
       dt: 0
       parking: True
 
+  - id: iSWAP virtualz
+    priority: 0
+    operation: iswap_virtualz
+    qubits: [[1, 2]]
+    parameters:
+      theta_start: 0.0
+      theta_end: 5
+      theta_step: 0.1
+      nshots: 1024
+      dt: 0
+      parking: False
+
   - id: standard rb inhomogeneous
     priority: 0
     operation: standard_rb
@@ -508,7 +536,7 @@ actions:
       power_width: 10
       power_step: 1
 
-  - id: resoantor_amplitude
+  - id: resonator_amplitude
     priority: 0
     operation: resonator_amplitude
     parameters:
