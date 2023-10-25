@@ -170,7 +170,7 @@ def _fit(data: QutritClassificationData) -> SingleShotClassificationResults:
 
 def _plot(data: QutritClassificationData, qubit, fit: SingleShotClassificationResults):
     figures = plot_results(data, qubit, 3, fit)
-    fitting_report = None
+    fitting_report = ""
     return figures, fitting_report
 
 
