@@ -251,12 +251,12 @@ def train_qubit(
         classifier = Classifier(mod, qubit_dir)
         classifier.savedir.mkdir(exist_ok=True)
         logging.info(f"Training quibt with classifier: {pretty_name(classifier.name)}")
-        if classifier.name not in cls_data.classifiers_hpars[qubit]:
-            hyperpars = classifier.hyperopt(
-                x_train, y_train.astype(np.int64), classifier.savedir
-            )
-        else:
-            hyperpars = cls_data.classifiers_hpars[qubit][classifier.name]
+        # if classifier.name not in cls_data.classifiers_hpars[qubit]:
+        hyperpars = classifier.hyperopt(
+            x_train, y_train.astype(np.int64), classifier.savedir
+        )
+        # else:
+        #     hyperpars = cls_data.classifiers_hpars[qubit][classifier.name]
         hpars_list.append(hyperpars)
         classifier.dump_hyper(hyperpars)
         model = classifier.create_model(hyperpars)
