@@ -239,9 +239,6 @@ class Results:
     def load(cls, path):
         params = json.loads((path / RESULTSFILE).read_text())
         params = deserialize(params)
-        import pdb
-
-        pdb.set_trace()
         if (path / RESULTSFILE_DATA).is_file():
             raw_data_dict = dict(np.load(path / RESULTSFILE_DATA))
             data_dict = {}

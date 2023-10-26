@@ -191,10 +191,6 @@ def _plot(
             subplot_titles=("Kernel state 0",),
         )
 
-        import pdb
-
-        pdb.set_trace()
-
         fig.add_trace(
             go.Scatter(
                 x=fit.data[qubit].real,
