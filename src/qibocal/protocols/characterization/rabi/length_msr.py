@@ -158,7 +158,7 @@ def _fit(data: RabiLengthVoltData) -> RabiLengthVoltResults:
                 (y_max - y_min) * popt[0] + y_min,
                 (y_max - y_min) * popt[1] * np.exp(x_min * popt[4] / (x_max - x_min)),
                 popt[2] * (x_max - x_min),
-                popt[3] - 2 * np.pi * x_min * popt[2] / (x_max - x_min),
+                popt[3] - 2 * np.pi * x_min / popt[2] / (x_max - x_min),
                 popt[4] / (x_max - x_min),
             ]
             pi_pulse_parameter = np.abs(translated_popt[2] / 2)
