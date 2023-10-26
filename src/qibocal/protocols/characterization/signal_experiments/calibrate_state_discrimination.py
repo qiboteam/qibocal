@@ -180,36 +180,42 @@ def _plot(
     """Plotting function for Calibrate State Discrimination."""
     # Plot kernels
     figures = []
-    fig = make_subplots(
-        rows=1,
-        cols=1,
-        horizontal_spacing=0.1,
-        vertical_spacing=0.1,
-        subplot_titles=("Kernel state 0",),
-    )
     fitting_report = ""
 
-    fig.add_trace(
-        go.Scatter(
-            x=fit.data[qubit].real,
-            y=fit.data[qubit].imag,
-            opacity=1,
-            name="kernel state 0",
+    if fit is not None:
+        fig = make_subplots(
+            rows=1,
+            cols=1,
+            horizontal_spacing=0.1,
+            vertical_spacing=0.1,
+            subplot_titles=("Kernel state 0",),
+        )
+
+        import pdb
+
+        pdb.set_trace()
+
+        fig.add_trace(
+            go.Scatter(
+                x=fit.data[qubit].real,
+                y=fit.data[qubit].imag,
+                opacity=1,
+                name="kernel state 0",
+                showlegend=True,
+                legendgroup="kernel state 0",
+            ),
+            row=1,
+            col=1,
+        )
+
+        fig.update_layout(
             showlegend=True,
-            legendgroup="kernel state 0",
-        ),
-        row=1,
-        col=1,
-    )
+            uirevision="0",  # ``uirevision`` allows zooming while live plotting
+            xaxis_title="Kernel Imag",
+            yaxis_title="Kernel Real",
+        )
 
-    fig.update_layout(
-        showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Kernel Imag",
-        yaxis_title="Kernel Real",
-    )
-
-    figures.append(fig)
+        figures.append(fig)
 
     return figures, fitting_report
 

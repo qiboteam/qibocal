@@ -202,8 +202,11 @@ class Results:
 
     """
 
-    data: Optional[dict[Union[tuple[QubitId, int], QubitId], npt.NDArray]]
-    """Data object to store arrays"""
+    def __post_init__(self):
+        if "data" not in self.__dict__:
+            self.data: Optional[
+                dict[Union[tuple[QubitId, int], QubitId], npt.NDArray]
+            ] = None
 
     @property
     def global_params(self) -> dict:
@@ -216,8 +219,7 @@ class Results:
     def save(self, path):
         """Store results."""
         self._to_json(path)
-        if self.data:
-            self._to_npz(path)
+        self._to_npz(path)
 
     def _to_npz(self, path):
         """Helper function to use np.savez while converting keys into strings."""
@@ -237,7 +239,9 @@ class Results:
     def load(cls, path):
         params = json.loads((path / RESULTSFILE).read_text())
         params = deserialize(params)
+        import pdb
 
+        pdb.set_trace()
         if (path / RESULTSFILE_DATA).is_file():
             raw_data_dict = dict(np.load(path / RESULTSFILE_DATA))
             data_dict = {}
@@ -246,8 +250,7 @@ class Results:
                 data_dict[load(data_key)] = np.rec.array(array)
             obj = cls(data=data_dict, **params)
         else:
-            obj = cls(params)
-
+            obj = cls(**params)
         return obj
 
 
