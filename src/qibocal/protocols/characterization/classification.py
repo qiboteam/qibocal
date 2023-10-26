@@ -379,3 +379,4 @@ def _update(
 
 
 single_shot_classification = Routine(_acquisition, _fit, _plot, _update)
+"""Qubit classification routine object."""

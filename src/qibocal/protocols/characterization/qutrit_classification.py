@@ -5,9 +5,7 @@ import numpy as np
 from qibolab import AcquisitionType, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
-from qibolab.qubits import QubitId
 
-from qibocal import update
 from qibocal.auto.operation import Qubits, Routine
 from qibocal.fitting.classifier import run
 from qibocal.protocols.characterization.classification import (
@@ -53,39 +51,21 @@ def _acquisition(
     qubits: Qubits,
 ) -> QutritClassificationData:
     """
+    This Routine prepares the qubits in 0,1 and 2 states and measures their
+    respective I, Q values.
+
     Args:
         nshots (int): number of times the pulse sequence will be repeated.
         classifiers (list): list of classifiers, the available ones are:
-            - linear_svm
-            - ada_boost
-            - gaussian_process
             - naive_bayes
             - nn
-            - qubit_fit
             - random_forest
-            - rbf_svm
-            - qblox_fit.
-        The default value is `["qubit_fit"]`.
+            - decision_tree
+        The default value is `["naive_bayes"]`.
         savedir (str): Dumping folder of the classification results.
-        If not given the dumping folder will be the report one.
+        If not given, the dumping folder will be the report one.
         relaxation_time (float): Relaxation time.
-
-        Example:
-        .. code-block:: yaml
-
-            - id: single_shot_classification_1
-                priority: 0
-                operation: single_shot_classification
-                parameters:
-                nshots: 5000
-                savedir: "single_shot"
-                classifiers_list: ["qubit_fit","naive_bayes", "linear_svm"]
-
     """
-
-    # create two sequences of pulses:
-    # state0_sequence: I  - MZ
-    # state1_sequence: RX - MZ
 
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     states_sequences = [PulseSequence() for _ in range(3)]
@@ -103,7 +83,6 @@ def _acquisition(
             )
             sequence.add(ro_pulses[qubit][-1])
 
-    # create a DataUnits object to store the results
     data = QutritClassificationData(
         nshots=params.nshots,
         classifiers_list=params.classifiers_list,
@@ -192,10 +171,5 @@ def _plot(data: QutritClassificationData, qubit, fit: SingleShotClassificationRe
     return figures, fitting_report
 
 
-def _update(
-    results: SingleShotClassificationResults, platform: Platform, qubit: QubitId
-):
-    update.qutrit_classifiers_hpars(results.classifiers_hpars[qubit], platform, qubit)
-
-
-qutrit_classification = Routine(_acquisition, _fit, _plot, _update)
+qutrit_classification = Routine(_acquisition, _fit, _plot)
+"""Qutrit classification Routine object."""
