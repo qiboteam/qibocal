@@ -90,12 +90,10 @@ def _acquisition(
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     states_sequences = [PulseSequence() for _ in range(3)]
     ro_pulses = {}
-    # hpars = {}
     for qubit in qubits:
         rx_pulse = platform.create_RX_pulse(qubit, start=0)
         rx12_pulse = platform.create_RX12_pulse(qubit, start=rx_pulse.finish)
         drive_pulses = [rx_pulse, rx12_pulse]
-        # hpars[qubit] = qubits[qubit].classifiers_hpars
         ro_pulses[qubit] = []
         for i, sequence in enumerate(states_sequences):
             sequence.add(*drive_pulses[:i])
@@ -109,7 +107,6 @@ def _acquisition(
     data = QutritClassificationData(
         nshots=params.nshots,
         classifiers_list=params.classifiers_list,
-        # classifiers_hpars=hpars,
         savedir=params.savedir,
     )
     states_results = []
@@ -198,9 +195,7 @@ def _plot(data: QutritClassificationData, qubit, fit: SingleShotClassificationRe
 def _update(
     results: SingleShotClassificationResults, platform: Platform, qubit: QubitId
 ):
-    update.qutrit_classifiers_hpars(
-        results.classifiers_hpars[qubit], platform, qubit
-    )  # TODO: implement a qutrit classifiers hpars (?)
+    update.qutrit_classifiers_hpars(results.classifiers_hpars[qubit], platform, qubit)
 
 
 qutrit_classification = Routine(_acquisition, _fit, _plot, _update)

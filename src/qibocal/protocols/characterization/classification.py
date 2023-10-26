@@ -60,8 +60,6 @@ ClassificationType = np.dtype([("i", np.float64), ("q", np.float64), ("state", i
 class SingleShotClassificationData(Data):
     nshots: int
     """Number of shots."""
-    # classifiers_hpars: dict[QubitId, dict]
-    # """Models' hyperparameters"""
     savedir: str
     """Dumping folder of the classification results"""
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
@@ -173,7 +171,6 @@ def _acquisition(
 
     RX_pulses = {}
     ro_pulses = {}
-    # hpars = {}
     for qubit in qubits:
         RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
@@ -183,12 +180,10 @@ def _acquisition(
         state0_sequence.add(ro_pulses[qubit])
         state1_sequence.add(RX_pulses[qubit])
         state1_sequence.add(ro_pulses[qubit])
-        # hpars[qubit] = qubits[qubit].classifiers_hpars
-    # create a DataUnits object to store the results
+
     data = SingleShotClassificationData(
         nshots=params.nshots,
         classifiers_list=params.classifiers_list,
-        # classifiers_hpars=hpars,
         savedir=params.savedir,
     )
 
@@ -379,7 +374,6 @@ def _update(
     update.threshold(results.threshold[qubit], platform, qubit)
     update.mean_gnd_states(results.mean_gnd_states[qubit], platform, qubit)
     update.mean_exc_states(results.mean_exc_states[qubit], platform, qubit)
-    # update.classifiers_hpars(results.classifiers_hpars[qubit], platform, qubit)
     update.readout_fidelity(results.fidelity[qubit], platform, qubit)
     update.assignment_fidelity(results.assignment_fidelity[qubit], platform, qubit)
 
