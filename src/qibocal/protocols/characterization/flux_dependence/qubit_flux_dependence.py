@@ -54,11 +54,6 @@ class QubitFluxResults(Results):
     """Raw fitting output."""
 
 
-@dataclass
-class FluxCrosstalkResults(Results):
-    """Empty fitting outputs for cross talk because fitting is not implemented in this case."""
-
-
 QubitFluxType = np.dtype(
     [
         ("freq", np.float64),

@@ -44,11 +44,6 @@ class ResonatorFluxResults(Results):
     """Raw fitting output."""
 
 
-@dataclass
-class FluxCrosstalkResults(Results):
-    """Empty fitting outputs for cross talk because fitting is not implemented in this case."""
-
-
 ResFluxType = np.dtype(
     [
         ("freq", np.float64),
@@ -89,26 +84,6 @@ class ResonatorFluxData(Data):
         )
 
 
-# @dataclass
-# class FluxCrosstalkData(ResonatorFluxData):
-#     """QubitFlux acquisition outputs when ``flux_qubits`` are given."""
-
-#     data: dict[tuple[QubitId, QubitId], npt.NDArray[ResFluxType]] = field(
-#         default_factory=dict
-#     )
-#     """Raw data acquired for (qubit, qubit_flux) pairs saved in nested dictionaries."""
-
-#     def register_qubit(self, qubit, flux_qubit, freq, bias, msr, phase):
-#         """Store output for single qubit."""
-#         ar = utils.create_data_array(freq, bias, msr, phase, dtype=ResFluxType)
-#         if (qubit, flux_qubit) in self.data:
-#             self.data[qubit, flux_qubit] = np.rec.array(
-#                 np.concatenate((self.data[qubit, flux_qubit], ar))
-#             )
-#         else:
-#             self.data[qubit, flux_qubit] = ar
-
-
 def _acquisition(
     params: ResonatorFluxParameters, platform: Platform, qubits: Qubits
 ) -> ResonatorFluxData:
@@ -146,8 +121,6 @@ def _acquisition(
     delta_bias_range = np.arange(
         -params.bias_width / 2, params.bias_width / 2, params.bias_step
     )
-    # if params.flux_qubits is None:
-    #    flux_qubits = [None]
     bias_sweepers = [
         Sweeper(
             Parameter.bias,
@@ -156,19 +129,6 @@ def _acquisition(
             type=SweeperType.OFFSET,
         )
     ]
-
-    # else:
-    #     flux_qubits = params.flux_qubits
-    #     bias_sweepers = [
-    #         Sweeper(
-    #             Parameter.bias,
-    #             delta_bias_range,
-    #             qubits=[platform.qubits[flux_qubit]],
-    #             type=SweeperType.OFFSET,
-    #         )
-    #         for flux_qubit in flux_qubits
-    #     ]
-    #     data_cls = FluxCrosstalkData
 
     data = ResonatorFluxData(
         resonator_type=platform.resonator_type,
@@ -242,7 +202,6 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
             frequencies, biases, msr, msr_mask=0.5
         )
 
-        # scaler = 10**9
         bare_resonator_frequency = data.bare_resonator_frequency[
             qubit
         ]  # Resonator frequency at high power.
