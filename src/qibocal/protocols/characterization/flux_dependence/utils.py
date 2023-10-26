@@ -211,7 +211,7 @@ def flux_dependence_plot(data, fit, qubit):
 
 def flux_crosstalk_plot(data, fit, qubit):
     figures = []
-    fitting_report = None
+    fitting_report = ""
 
     all_qubit_data = {
         index: data_qubit
