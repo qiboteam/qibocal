@@ -426,7 +426,16 @@ def evaluate_grid(
     return np.vstack([i_values.ravel(), q_values.ravel()]).T
 
 
-def plot_results(data: Data, qubit, qubit_states, fit: Results):
+def plot_results(data: Data, qubit: QubitId, qubit_states: list, fit: Results):
+    """
+    Plots for the qubit and qutrit classification.
+
+    Args:
+        data (Data): acquisition data
+        qubit (QubitID): qubit
+        qubit_states (list): list of qubit states available.
+        fit (Results): fit results
+    """
     figures = []
     models_name = data.classifiers_list
     qubit_data = data.data[qubit]
