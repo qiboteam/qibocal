@@ -70,11 +70,11 @@ Lowering the amplitude we can see a shift in the peak, e.g.:
 Lowering the amplitude value reduces the height of the peak and increases the noise.
 
 Another parameter connected to the amplitude, is also the relaxation time (in some
-literature also referred to as repetition duration) and the number of shots. 
+literature also referred to as repetition duration) and the number of shots.
 The number of shots represents the number of repetitions of the same experiment (at the same
 frequency), while the relaxation time is the waiting time between repetitions. A higher
 number of shots will increase the S/N ratio by averaging the noise, but will also slow
-down the acquisition. 
+down the acquisition.
 As per the relaxation time, for this experiment in particular we
 can leave it at zero: since we are not exciting the qubit we do not particularly care
 about it. However note that, for 3D cavities, we could end up damaging the qubit if we
