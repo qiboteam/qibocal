@@ -124,9 +124,12 @@ def _aquisition(
         sequence.add(cz.get_qubit_pulses(ordered_pair[1]))
 
         # Patch to get the coupler until the routines use QubitPair
-        sequence.add(
-            cz.coupler_pulses(platform.pairs[tuple(sorted(ordered_pair))].coupler.name)
-        )
+        if platform.couplers:
+            sequence.add(
+                cz.coupler_pulses(
+                    platform.pairs[tuple(sorted(ordered_pair))].coupler.name
+                )
+            )
 
         if params.parking:
             for pulse in cz:
