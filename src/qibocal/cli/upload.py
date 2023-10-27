@@ -23,12 +23,13 @@ TARGET_DIR = "qibocal-reports/"
 ROOT_URL = "http://login.qrccluster.com:9000/"
 
 
-def upload_report(path: pathlib.Path, tag: str):
+def upload_report(path: pathlib.Path, tag: str, author: str):
     # load meta and update tag
+    meta = yaml.safe_load((path / META).read_text())
+    meta["author"] = author
     if tag is not None:
-        meta = yaml.safe_load((path / META).read_text())
         meta["tag"] = tag
-        (path / META).write_text(json.dumps(meta, indent=4))
+    (path / META).write_text(json.dumps(meta, indent=4))
 
     # check the rsync command exists.
     if not shutil.which("rsync"):

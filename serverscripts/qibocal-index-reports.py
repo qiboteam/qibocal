@@ -16,8 +16,17 @@ DEFAULTS = {
     "start-time": "-",
     "end-time": "-",
     "tag": "-",
+    "author": "-",
 }
-REQUIRED_FILE_METADATA = {"title", "date", "platform", "start-time" "end-time", "tag"}
+REQUIRED_FILE_METADATA = {
+    "title",
+    "date",
+    "platform",
+    "start-time",
+    "end-time",
+    "tag",
+    "author",
+}
 
 
 def meta_from_path(p):
@@ -36,17 +45,18 @@ def meta_from_path(p):
 
 def register(p):
     path_meta = meta_from_path(p)
-    title, date, platform, start_time, end_time, tag = (
+    title, date, platform, start_time, end_time, tag, author = (
         path_meta["title"],
         path_meta["date"],
         path_meta["platform"],
         path_meta["start-time"],
         path_meta["end-time"],
         path_meta["tag"],
+        path_meta["author"],
     )
     url = ROOT_URL + p.name
     titlelink = f'<a href="{url}">{title}</a>'
-    return (titlelink, date, platform, start_time, end_time, tag)
+    return (titlelink, date, platform, start_time, end_time, tag, author)
 
 
 def make_index():

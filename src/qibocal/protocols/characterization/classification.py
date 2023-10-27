@@ -60,8 +60,6 @@ ClassificationType = np.dtype([("i", np.float64), ("q", np.float64), ("state", i
 class SingleShotClassificationData(Data):
     nshots: int
     """Number of shots."""
-    classifiers_hpars: dict[QubitId, dict]
-    """Models' hyperparameters"""
     savedir: str
     """Dumping folder of the classification results"""
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
@@ -173,7 +171,6 @@ def _acquisition(
 
     RX_pulses = {}
     ro_pulses = {}
-    hpars = {}
     for qubit in qubits:
         RX_pulses[qubit] = platform.create_RX_pulse(qubit, start=0)
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
@@ -183,12 +180,10 @@ def _acquisition(
         state0_sequence.add(ro_pulses[qubit])
         state1_sequence.add(RX_pulses[qubit])
         state1_sequence.add(ro_pulses[qubit])
-        hpars[qubit] = qubits[qubit].classifiers_hpars
-    # create a DataUnits object to store the results
+
     data = SingleShotClassificationData(
         nshots=params.nshots,
         classifiers_list=params.classifiers_list,
-        classifiers_hpars=hpars,
         savedir=params.savedir,
     )
 
@@ -303,7 +298,7 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
 def _plot(
     data: SingleShotClassificationData, qubit, fit: SingleShotClassificationResults
 ):
-    fitting_report = None
+    fitting_report = ""
     models_name = data.classifiers_list
     figures = plot_results(data, qubit, 2, fit)
     if fit is not None:
@@ -346,28 +341,28 @@ def _plot(
             )
             figures.append(fig_roc)
 
-            if models_name[i] == "qubit_fit":
-                fitting_report = table_html(
-                    table_dict(
-                        qubit,
-                        [
-                            "Average State 0",
-                            "Average State 1",
-                            "Rotational Angle",
-                            "Threshold",
-                            "Readout Fidelity",
-                            "Assignment Fidelity",
-                        ],
-                        [
-                            np.round(fit.mean_gnd_states[qubit], 3),
-                            np.round(fit.mean_exc_states[qubit], 3),
-                            np.round(fit.rotation_angle[qubit], 3),
-                            np.round(fit.threshold[qubit], 6),
-                            np.round(fit.fidelity[qubit], 3),
-                            np.round(fit.assignment_fidelity[qubit], 3),
-                        ],
-                    )
+        if "qubit_fit" in models_name:
+            fitting_report = table_html(
+                table_dict(
+                    qubit,
+                    [
+                        "Average State 0",
+                        "Average State 1",
+                        "Rotational Angle",
+                        "Threshold",
+                        "Readout Fidelity",
+                        "Assignment Fidelity",
+                    ],
+                    [
+                        np.round(fit.mean_gnd_states[qubit], 3),
+                        np.round(fit.mean_exc_states[qubit], 3),
+                        np.round(fit.rotation_angle[qubit], 3),
+                        np.round(fit.threshold[qubit], 6),
+                        np.round(fit.fidelity[qubit], 3),
+                        np.round(fit.assignment_fidelity[qubit], 3),
+                    ],
                 )
+            )
 
     return figures, fitting_report
 

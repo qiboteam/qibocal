@@ -10,21 +10,21 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Qubits, Routine
 
-from . import amplitude, utils
+from . import amplitude_msr, utils
 
 
 @dataclass
-class RabiAmplitudeEFParameters(amplitude.RabiAmplitudeParameters):
+class RabiAmplitudeEFParameters(amplitude_msr.RabiAmplitudeVoltParameters):
     """RabiAmplitudeEF runcard inputs."""
 
 
 @dataclass
-class RabiAmplitudeEFResults(amplitude.RabiAmplitudeResults):
+class RabiAmplitudeEFResults(amplitude_msr.RabiAmplitudeVoltResults):
     """RabiAmplitudeEF outputs."""
 
 
 @dataclass
-class RabiAmplitudeEFData(amplitude.RabiAmplitudeData):
+class RabiAmplitudeEFData(amplitude_msr.RabiAmplitudeVoltData):
     """RabiAmplitude data acquisition."""
 
 
@@ -76,9 +76,6 @@ def _acquisition(
         type=SweeperType.FACTOR,
     )
 
-    # create a DataUnits object to store the results,
-    # DataUnits stores by default MSR, phase, i, q
-    # additionally include qubit drive pulse amplitude
     data = RabiAmplitudeEFData(durations=durations)
 
     # sweep the parameter
@@ -93,10 +90,9 @@ def _acquisition(
         sweeper,
     )
     for qubit in qubits:
-        # average msr, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulses[qubit].serial]
         data.register_qubit(
-            amplitude.RabiAmpType,
+            amplitude_msr.RabiAmpVoltType,
             (qubit),
             dict(
                 amp=qd_pulses[qubit].amplitude * qd_pulse_amplitude_range,
@@ -116,9 +112,9 @@ def _plot(data: RabiAmplitudeEFData, qubit, fit: RabiAmplitudeEFResults = None):
 
 
 def _update(results: RabiAmplitudeEFResults, platform: Platform, qubit: QubitId):
-    """Update RX2 amplitude"""
+    """Update RX2 amplitude_msr"""
     update.drive_12_amplitude(results.amplitude[qubit], platform, qubit)
 
 
-rabi_amplitude_ef = Routine(_acquisition, amplitude._fit, _plot, _update)
+rabi_amplitude_ef = Routine(_acquisition, amplitude_msr._fit, _plot, _update)
 """RabiAmplitudeEF Routine object."""
