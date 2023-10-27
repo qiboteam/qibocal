@@ -90,24 +90,24 @@ def _acquisition(
     sequence = PulseSequence()
     ro_pulses = {}
     qd_pulses = {}
-    drive_amplitudes = {}
-    readout_amplitudes = {}
     for qubit in qubits:
-        qd_pulses[qubit] = platform.create_qubit_drive_pulse(
-            qubit, start=0, duration=params.drive_duration
-        )
-        if params.drive_amplitude is not None:
-            qd_pulses[qubit].amplitude = params.drive_amplitude
-        drive_amplitudes[qubit] = qd_pulses[qubit].amplitude
+        qd_pulses[qubit] = []
+        qd_pulse_start = 0
+        for _ in range(10):
+            qd_pulse = platform.create_qubit_drive_pulse(
+                qubit, start=qd_pulse_start, duration=params.drive_duration
+            )
+            if params.drive_amplitude is not None:
+                qd_pulse.amplitude = params.drive_amplitude
+            qd_pulses[qubit] += [qd_pulse]
+            qd_pulse_start += params.drive_duration
+            sequence.add(qd_pulse)
 
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=qd_pulses[qubit].finish
+            qubit, start=qd_pulse.finish
         )
         if params.readout_amplitude is not None:
             ro_pulses[qubit].amplitude = params.readout_amplitude
-        readout_amplitudes[qubit] = ro_pulses[qubit].amplitude
-
-        sequence.add(qd_pulses[qubit])
         sequence.add(ro_pulses[qubit])
 
     # define the parameter to sweep and its range:
@@ -124,7 +124,7 @@ def _acquisition(
     qubit_freq_sweeper = Sweeper(
         Parameter.frequency,
         drive_delta_frequency_range,
-        pulses=[qd_pulses[qubit] for qubit in qubits],
+        pulses=[p for qubit in qubits for p in qd_pulses[qubit]],
         type=SweeperType.OFFSET,
     )
     resonator_freq_sweeper = Sweeper(
@@ -159,7 +159,7 @@ def _acquisition(
             msr=result.magnitude,
             phase=result.phase,
             resonator_freq=readout_delta_frequency_range + ro_pulses[qubit].frequency,
-            qubit_freq=drive_delta_frequency_range + qd_pulses[qubit].frequency,
+            qubit_freq=drive_delta_frequency_range + qd_pulses[qubit][0].frequency,
         )
     return data
 
