@@ -53,7 +53,7 @@ class ResidualPopulationResults(Results):
 
 
 ResPopType = np.dtype(
-    [("length", np.float64), ("msr_g_start", np.float64), ("msr_e_start", np.float64)]
+    [("length", np.float64), ("prob_g_start", np.float64), ("prob_e_start", np.float64)]
 )
 """Custom dtype for residual population."""
 
@@ -68,14 +68,14 @@ class ResidualPopulationData(Data):
     frequencies: dict[QubitId, np.float64] = field(default_factory=dict)
     """Transition frequencies 0-1."""
 
-    def register_qubit(self, qubit, length, msr_g_start, msr_e_start, frequency):
+    def register_qubit(self, qubit, length, prob_g_start, prob_e_start, frequency):
         """Store output for single qubit."""
         # to be able to handle the non-sweeper case
         shape = (1,) if np.isscalar(length) else length.shape
         ar = np.empty(shape, dtype=ResPopType)
         ar["length"] = length
-        ar["msr_g_start"] = msr_g_start
-        ar["msr_e_start"] = msr_e_start
+        ar["prob_g_start"] = prob_g_start
+        ar["prob_e_start"] = prob_e_start
         if qubit in self.data:
             self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
         else:
@@ -148,8 +148,6 @@ def _acquisition(
     )
 
     # create a DataUnits object to store the results,
-    # DataUnits stores by default MSR, phase, i, q
-    # additionally include qubit drive pulse length
     data = ResidualPopulationData()
 
     # execute the sweep
@@ -175,18 +173,40 @@ def _acquisition(
     )
 
     for qubit in qubits:
-        # average msr, phase, i and q over the number of shots defined in the runcard
         result_g = results_g_start[ro_g_pulses[qubit].serial]
         result_e = results_e_start[ro_e_pulses[qubit].serial]
+
+        # HERE I should convert the results into state probabilities,
+        # but how does the qutrit work?
+        # for now let's write a pseudo code
+
+        """
+        if not check_qutrit_cls_present:
+            raise_error(RuntimeError, "Qutrit classification parameters not found!")
+
+        model = get_qutrit_cls_model()
+        result_g = model.convert_to_probabilities(result_g)  # probability of 1 or 2
+        result_e = model.convert_to_probabilities(result_e)
+
+        """
+
+        # TODO change to real function
+        result_g = convert_to_probabilities(result_g)
+        result_e = convert_to_probabilities(result_e)
 
         data.register_qubit(
             qubit,
             length=rx12_duration_range,
-            msr_g_start=result_g.magnitude,
-            msr_e_start=result_e.magnitude,
+            prob_g_start=result_g,
+            prob_e_start=result_e,
             frequency=qubits[qubit].native_gates.RX.frequency,
         )
     return data
+
+
+def convert_to_probabilities(result):
+    """Fake placeholder"""
+    return result.magnitude / np.max(result.magnitude)
 
 
 def _fit_and_get_amplitude(
@@ -247,8 +267,8 @@ def _fit(data: ResidualPopulationData) -> ResidualPopulationResults:
     for qubit in qubits:
         qubit_data = data[qubit]
         rabi_parameter = qubit_data.length
-        voltages_g_start = qubit_data.msr_g_start
-        voltages_e_start = qubit_data.msr_e_start
+        voltages_g_start = qubit_data.prob_g_start
+        voltages_e_start = qubit_data.prob_e_start
 
         g_start_amp, raw_fit_g = _fit_and_get_amplitude(
             rabi_parameter, voltages_g_start
@@ -280,7 +300,7 @@ def _plot(data: ResidualPopulationData, fit: ResidualPopulationResults, qubit):
         cols=1,
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
-        subplot_titles=("MSR (V)",),
+        subplot_titles=("Excited state probability: P(1)",),
     )
 
     qubit_data = data[qubit]
@@ -288,7 +308,7 @@ def _plot(data: ResidualPopulationData, fit: ResidualPopulationResults, qubit):
     fig.add_trace(
         go.Scatter(
             x=qubit_data.length,
-            y=qubit_data.msr_g_start * V_TO_UV,
+            y=qubit_data.prob_g_start * V_TO_UV,
             name="Rabi starting from g",
             opacity=1,
             showlegend=True,
@@ -299,7 +319,7 @@ def _plot(data: ResidualPopulationData, fit: ResidualPopulationResults, qubit):
     fig.add_trace(
         go.Scatter(
             x=qubit_data.length,
-            y=qubit_data.msr_e_start * V_TO_UV,
+            y=qubit_data.prob_e_start * V_TO_UV,
             opacity=1,
             name="Rabi starting from e",
             showlegend=True,
@@ -353,7 +373,7 @@ def _plot(data: ResidualPopulationData, fit: ResidualPopulationResults, qubit):
             showlegend=True,
             uirevision="0",  # ``uirevision`` allows zooming while live plotting
             xaxis_title="Length pulse [ns]",
-            yaxis_title="MSR (uV)",
+            yaxis_title="Excited state probability: P(1)",
         )
 
     figures.append(fig)
