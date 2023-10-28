@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -29,10 +28,6 @@ class DragPulseTuningParameters(allxy_drag_pulse_tuning.AllXYDragParameters):
     """DRAG pulse beta end sweep parameter."""
     beta_step: float
     """DRAG pulse beta sweep step parameter."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -54,16 +49,6 @@ class DragPulseTuningData(Data):
 
     data: dict[QubitId, npt.NDArray[DragPulseTuningType]] = field(default_factory=dict)
     """Raw data acquired."""
-
-    def register_qubit(self, qubit, msr, beta):
-        """Store output for single qubit."""
-        ar = np.empty((1,), dtype=DragPulseTuningType)
-        ar["msr"] = msr
-        ar["beta"] = beta
-        if qubit in self.data:
-            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
-        else:
-            self.data[qubit] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -155,7 +140,14 @@ def _acquisition(
             r1 = result1[ro_pulses[qubit].serial]
             r2 = result2[ro_pulses[qubit].serial]
             # store the results
-            data.register_qubit(qubit, r1.magnitude - r2.magnitude, beta_param)
+            data.register_qubit(
+                DragPulseTuningType,
+                (qubit),
+                dict(
+                    msr=r1.magnitude - r2.magnitude,
+                    beta=beta_param,
+                ),
+            )
 
     return data
 

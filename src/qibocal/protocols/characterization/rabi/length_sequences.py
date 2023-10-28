@@ -5,12 +5,19 @@ from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Qubits, Routine
 
-from .length import RabiLengthData, RabiLengthParameters, _fit, _plot, _update
+from .length_msr import (
+    RabiLengthVoltData,
+    RabiLengthVoltParameters,
+    RabiLenVoltType,
+    _fit,
+    _plot,
+    _update,
+)
 
 
 def _acquisition(
-    params: RabiLengthParameters, platform: Platform, qubits: Qubits
-) -> RabiLengthData:
+    params: RabiLengthVoltParameters, platform: Platform, qubits: Qubits
+) -> RabiLengthVoltData:
     r"""
     Data acquisition for RabiLength Experiment.
     In the Rabi experiment we apply a pulse at the frequency of the qubit and scan the drive pulse length
@@ -43,10 +50,7 @@ def _acquisition(
         params.pulse_duration_step,
     )
 
-    # create a DataUnits object to store the results,
-    # DataUnits stores by default MSR, phase, i, q
-    # additionally include qubit drive pulse length
-    data = RabiLengthData(amplitudes=amplitudes)
+    data = RabiLengthVoltData(amplitudes=amplitudes)
 
     # sweep the parameter
     for duration in qd_pulse_duration_range:
@@ -66,13 +70,15 @@ def _acquisition(
         )
 
         for qubit in qubits:
-            # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulses[qubit].serial]
             data.register_qubit(
-                qubit,
-                length=duration,
-                msr=result.magnitude,
-                phase=result.phase,
+                RabiLenVoltType,
+                (qubit),
+                dict(
+                    length=np.array([duration]),
+                    msr=np.array([result.magnitude]),
+                    phase=np.array([result.phase]),
+                ),
             )
 
     return data

@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -27,10 +26,6 @@ class FlippingParameters(Parameters):
     """Maximum number of flips ([RX(pi) - RX(pi)] sequences). """
     nflips_step: int
     """Flip step."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -58,16 +53,6 @@ class FlippingData(Data):
     """Pi pulse amplitudes for each qubit."""
     data: dict[QubitId, npt.NDArray[FlippingType]] = field(default_factory=dict)
     """Raw data acquired."""
-
-    def register_qubit(self, qubit, flips, msr):
-        """Store output for single qubit."""
-        ar = np.empty((1,), dtype=FlippingType)
-        ar["flips"] = flips
-        ar["msr"] = msr
-        if qubit in self.data:
-            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
-        else:
-            self.data[qubit] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -107,7 +92,7 @@ def _acquisition(
             sequence.add(RX90_pulse)
             # execute sequence RX(pi/2) - [RX(pi) - RX(pi)] from 0...flips times - RO
             start1 = RX90_pulse.duration
-            for j in range(flips):
+            for _ in range(flips):
                 RX_pulse1 = platform.create_RX_pulse(qubit, start=start1)
                 start2 = start1 + RX_pulse1.duration
                 RX_pulse2 = platform.create_RX_pulse(qubit, start=start2)
@@ -130,7 +115,14 @@ def _acquisition(
         )
         for qubit in qubits:
             result = results[ro_pulses[qubit].serial]
-            data.register_qubit(qubit=qubit, flips=flips, msr=result.magnitude)
+            data.register_qubit(
+                FlippingType,
+                (qubit),
+                dict(
+                    flips=np.array([flips]),
+                    msr=np.array([result.magnitude]),
+                ),
+            )
 
     return data
 

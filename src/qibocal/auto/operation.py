@@ -50,6 +50,13 @@ def show_logs(func):
     return wrapper
 
 
+DEFAULT_PARENT_PARAMETERS = {
+    "nshots": None,
+    "relaxation_time": None,
+}
+"""Default values of the parameters of `Parameters`"""
+
+
 class Parameters:
     """Generic action parameters.
 
@@ -70,6 +77,9 @@ class Parameters:
         """Load parameters from runcard.
 
         Possibly looking into previous steps outputs.
+        Parameters defined in Parameters class are removed from `parameters`
+        before `cls` is created.
+        Then `nshots` and `relaxation_time` are assigned to cls.
 
         .. todo::
 
@@ -77,7 +87,12 @@ class Parameters:
             the linked outputs
 
         """
-        return cls(**parameters)
+        for parameter, value in DEFAULT_PARENT_PARAMETERS.items():
+            DEFAULT_PARENT_PARAMETERS[parameter] = parameters.pop(parameter, value)
+        instantiated_class = cls(**parameters)
+        for parameter, value in DEFAULT_PARENT_PARAMETERS.items():
+            setattr(instantiated_class, parameter, value)
+        return instantiated_class
 
 
 class Data:
@@ -142,6 +157,25 @@ class Data:
             obj = cls(data=data_dict)
 
         return obj
+
+    def register_qubit(self, dtype, data_keys, data_dict):
+        """Store output for single qubit.
+
+        Args:
+            data_keys (tuple): Keys of Data.data.
+            data_dict (dict): The keys are the fields of `dtype` and
+            the values are the related arrays.
+        """
+        # to be able to handle the non-sweeper case
+        ar = np.empty(np.shape(data_dict[list(data_dict.keys())[0]]), dtype=dtype)
+        for key, value in data_dict.items():
+            ar[key] = value
+        if data_keys in self.data:
+            self.data[data_keys] = np.rec.array(
+                np.concatenate((self.data[data_keys], ar))
+            )
+        else:
+            self.data[data_keys] = np.rec.array(ar)
 
 
 @dataclass

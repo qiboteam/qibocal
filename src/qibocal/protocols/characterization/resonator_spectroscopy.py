@@ -29,10 +29,6 @@ class ResonatorSpectroscopyParameters(Parameters):
     amplitude: Optional[float] = None
     """Readout amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
     def __post_init__(self):
         # TODO: ask Alessandro if there is a proper way to pass Enum to class
@@ -79,14 +75,6 @@ class ResonatorSpectroscopyData(Data):
     """Raw data acquired."""
     power_level: Optional[PowerLevel] = None
     """Power regime of the resonator."""
-
-    def register_qubit(self, qubit, freq, msr, phase):
-        """Store output for single qubit."""
-        ar = np.empty(freq.shape, dtype=ResSpecType)
-        ar["freq"] = freq
-        ar["msr"] = msr
-        ar["phase"] = phase
-        self.data[qubit] = np.rec.array(ar)
 
     @classmethod
     def load(cls, path):
@@ -151,10 +139,13 @@ def _acquisition(
         result = results[ro_pulses[qubit].serial]
         # store the results
         data.register_qubit(
-            qubit,
-            msr=result.magnitude,
-            phase=result.phase,
-            freq=delta_frequency_range + ro_pulses[qubit].frequency,
+            ResSpecType,
+            (qubit),
+            dict(
+                msr=result.magnitude,
+                phase=result.phase,
+                freq=delta_frequency_range + ro_pulses[qubit].frequency,
+            ),
         )
     return data
 

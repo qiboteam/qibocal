@@ -1,15 +1,20 @@
 """Test routines' acquisition method using dummy platform"""
-import pathlib
-import tempfile
 from copy import deepcopy
 
 import pytest
 from qibolab import create_platform
 
 from qibocal.auto.execute import Executor
+from qibocal.auto.operation import DEFAULT_PARENT_PARAMETERS
 from qibocal.auto.runcard import Runcard
 from qibocal.auto.task import Task
 from qibocal.cli.report import ExecutionMode
+from qibocal.protocols.characterization.classification import (
+    SingleShotClassificationParameters,
+)
+from qibocal.protocols.characterization.readout_mitigation_matrix import (
+    ReadoutMitigationMatrixParameters,
+)
 from qibocal.utils import allocate_single_qubits
 
 PLATFORM = create_platform("dummy")
@@ -86,7 +91,7 @@ UPDATE_CARD = {
 
 @pytest.mark.parametrize("global_update", [True, False])
 @pytest.mark.parametrize("local_update", [True, False])
-def test_update_argument(global_update, local_update):
+def test_update_argument(global_update, local_update, tmp_path):
     """Test possible update combinations between global and local."""
     platform = deepcopy(create_platform("dummy"))
     old_readout_frequency = platform.qubits[0].readout_frequency
@@ -94,7 +99,7 @@ def test_update_argument(global_update, local_update):
     NEW_CARD = modify_card(deepcopy(UPDATE_CARD), update=local_update)
     executor = Executor.load(
         Runcard.load(NEW_CARD),
-        pathlib.Path(tempfile.mkdtemp()),
+        tmp_path,
         platform,
         platform.qubits,
         global_update,
@@ -109,3 +114,22 @@ def test_update_argument(global_update, local_update):
     else:
         assert old_readout_frequency == platform.qubits[0].readout_frequency
         assert old_iq_angle == platform.qubits[1].iq_angle
+
+
+@pytest.mark.parametrize(
+    "ChildClass",
+    [SingleShotClassificationParameters, ReadoutMitigationMatrixParameters],
+)
+@pytest.mark.parametrize("use_parameters", [True, False])
+def test_parameters_load(ChildClass, use_parameters):
+    if use_parameters:
+        parameters = {key: 10 for key in DEFAULT_PARENT_PARAMETERS.keys()}
+    else:
+        parameters = {}
+    parameters2 = deepcopy(parameters)
+    child_class = ChildClass().load(parameters)
+    for parameter, value in DEFAULT_PARENT_PARAMETERS.items():
+        if parameter in parameters2:
+            assert getattr(child_class, parameter) == parameters2[parameter]
+        else:
+            assert getattr(child_class, parameter) == value

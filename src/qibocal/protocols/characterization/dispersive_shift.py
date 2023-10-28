@@ -1,5 +1,4 @@
 from dataclasses import asdict, dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -32,10 +31,6 @@ class DispersiveShiftParameters(Parameters):
     """Width [Hz] for frequency sweep relative to the readout frequency (Hz)."""
     freq_step: int
     """Frequency step for sweep (Hz)."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -83,16 +78,6 @@ class DispersiveShiftData(Data):
     data: dict[tuple[QubitId, int], npt.NDArray[DispersiveShiftType]] = field(
         default_factory=dict
     )
-
-    def register_qubit(self, qubit, state, freq, msr, phase, i, q):
-        """Store output for single qubit."""
-        ar = np.empty(i.shape, dtype=DispersiveShiftType)
-        ar["freq"] = freq
-        ar["msr"] = msr
-        ar["phase"] = phase
-        ar["i"] = i
-        ar["q"] = q
-        self.data[qubit, state] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -171,13 +156,15 @@ def _acquisition(
             result = results[ro_pulses[qubit].serial]
             # store the results
             data.register_qubit(
-                qubit=qubit,
-                state=i,
-                freq=ro_pulses[qubit].frequency + delta_frequency_range,
-                msr=result.magnitude,
-                phase=result.phase,
-                i=result.voltage_i,
-                q=result.voltage_q,
+                DispersiveShiftType,
+                (qubit, i),
+                dict(
+                    freq=ro_pulses[qubit].frequency + delta_frequency_range,
+                    msr=result.magnitude,
+                    phase=result.phase,
+                    i=result.voltage_i,
+                    q=result.voltage_q,
+                ),
             )
     return data
 
@@ -185,7 +172,6 @@ def _acquisition(
 def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
     """Post-Processing for dispersive shift"""
     qubits = data.qubits
-    results = []
     iq_couples = [[], []]  # axis 0: states, axis 1: qubit
 
     frequency_0 = {}
@@ -219,7 +205,6 @@ def _fit(data: DispersiveShiftData) -> DispersiveShiftResults:
             np.linalg.norm(iq_couples[0][idx] - iq_couples[1][idx], axis=-1)
         )
         best_freqs[qubit] = frequencies[max_index]
-
     return DispersiveShiftResults(
         frequency_state_zero=frequency_0,
         frequency_state_one=frequency_1,
@@ -332,25 +317,29 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
         fitting_report = table_html(
             table_dict(
                 qubit,
-                ["State zero freq", "State one freq", "ChiBest", "Frequency"],
+                [
+                    "State Zero Frequency [Hz]",
+                    "State One Frequency [Hz]",
+                    "Chi Best [Hz]",
+                    "Best Frequency [Hz]",
+                ],
                 np.round(
                     [
-                        fit_data_0["frequency_state_zero"][qubit],
-                        fit_data_1["frequency_state_one"][qubit],
+                        fit_data_0["frequency_state_zero"][qubit] * GHZ_TO_HZ,
+                        fit_data_1["frequency_state_one"][qubit] * GHZ_TO_HZ,
                         (
                             fit_data_0["frequency_state_zero"][qubit]
                             - fit_data_1["frequency_state_one"][qubit]
                         )
-                        / 2,
-                        fit.best_freq[qubit],
+                        / 2
+                        * GHZ_TO_HZ,
+                        fit.best_freq[qubit] * GHZ_TO_HZ,
                     ]
-                )
-                * GHZ_TO_HZ,
+                ),
             )
         )
     fig.update_layout(
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Frequency (GHz)",
         yaxis_title="MSR (uV)",
         xaxis2_title="Frequency (GHz)",

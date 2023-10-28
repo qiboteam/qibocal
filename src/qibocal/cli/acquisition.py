@@ -57,6 +57,8 @@ def acquire(card, folder, force):
     # run protocols
     list(executor.run(mode=ExecutionMode.acquire))
 
+    e = datetime.datetime.now(datetime.timezone.utc)
+    meta["end-time"] = e.strftime("%H:%M:%S")
     # stop and disconnect platform
     if platform is not None:
         platform.stop()
@@ -64,6 +66,4 @@ def acquire(card, folder, force):
 
     # dump updated meta
     meta = add_timings_to_meta(meta, executor.history)
-    e = datetime.datetime.now(datetime.timezone.utc)
-    meta["end-time"] = e.strftime("%H:%M:%S")
     (path / META).write_text(json.dumps(meta, indent=4))

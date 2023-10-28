@@ -44,23 +44,24 @@ def readout_attenuation(att: int, platform: Platform, qubit: QubitId):
 
 def drive_frequency(freq: Union[float, tuple], platform: Platform, qubit: QubitId):
     """Update drive frequency value in platform for specific qubit."""
-    if isinstance(
-        freq, tuple
-    ):  # TODO: remove this branching after error bars propagation
-        freq = int(freq[0] * GHZ_TO_HZ)
-    else:
-        freq = int(freq * GHZ_TO_HZ)
+    if isinstance(freq, tuple):
+        freq = freq[0]
+    freq = int(freq * GHZ_TO_HZ)
     platform.qubits[qubit].native_gates.RX.frequency = int(freq)
     platform.qubits[qubit].drive_frequency = int(freq)
 
 
-def drive_amplitude(amp: float, platform: Platform, qubit: QubitId):
+def drive_amplitude(amp: Union[float, tuple], platform: Platform, qubit: QubitId):
     """Update drive frequency value in platform for specific qubit."""
+    if isinstance(amp, tuple):
+        amp = amp[0]
     platform.qubits[qubit].native_gates.RX.amplitude = float(amp)
 
 
-def drive_duration(duration: int, platform: Platform, qubit: QubitId):
+def drive_duration(duration: Union[int, tuple], platform: Platform, qubit: QubitId):
     """Update drive duration value in platform for specific qubit."""
+    if isinstance(duration, tuple):
+        duration = duration[0]
     platform.qubits[qubit].native_gates.RX.duration = int(duration)
 
 
@@ -91,11 +92,6 @@ def readout_fidelity(fidelity: float, platform: Platform, qubit: QubitId):
 def assignment_fidelity(fidelity: float, platform: Platform, qubit: QubitId):
     """Update fidelity of single shot classification."""
     platform.qubits[qubit].assignment_fidelity = float(fidelity)
-
-
-def classifiers_hpars(hpars: list, platform: Platform, qubit: QubitId):
-    """Update classifier hyperparameters in platform for specific qubit."""
-    platform.qubits[qubit].classifiers_hpars = hpars
 
 
 def virtual_phases(phases: dict[QubitId, float], platform: Platform, pair: QubitPairId):
@@ -136,18 +132,27 @@ def CZ_amplitude(amp: float, platform: Platform, pair: QubitPairId):
 
 
 def t1(t1: int, platform: Platform, qubit: QubitId):
-    """Update mean excited state value in platform for specific qubit."""
-    platform.qubits[qubit].t1 = int(t1)
+    """Update t1 value in platform for specific qubit."""
+    if isinstance(t1, tuple):
+        platform.qubits[qubit].t1 = int(t1[0])
+    else:
+        platform.qubits[qubit].t1 = int(t1)
 
 
 def t2(t2: int, platform: Platform, qubit: QubitId):
-    """Update mean excited state value in platform for specific qubit."""
-    platform.qubits[qubit].t2 = int(t2)
+    """Update t2 value in platform for specific qubit."""
+    if isinstance(t2, tuple):
+        platform.qubits[qubit].t2 = int(t2[0])
+    else:
+        platform.qubits[qubit].t2 = int(t2)
 
 
 def t2_spin_echo(t2_spin_echo: float, platform: Platform, qubit: QubitId):
-    """Update mean excited state value in platform for specific qubit."""
-    platform.qubits[qubit].t2_spin_echo = int(t2_spin_echo)
+    """Update t2 echo value in platform for specific qubit."""
+    if isinstance(t2_spin_echo, tuple):
+        platform.qubits[qubit].t2_spin_echo = int(t2_spin_echo[0])
+    else:
+        platform.qubits[qubit].t2_spin_echo = int(t2_spin_echo)
 
 
 def drag_pulse_beta(beta: float, platform: Platform, qubit: QubitId):
@@ -160,5 +165,23 @@ def drag_pulse_beta(beta: float, platform: Platform, qubit: QubitId):
 
 def sweetspot(sweetspot: float, platform: Platform, qubit: QubitId):
     platform.qubits[qubit].sweetspot = float(sweetspot)
-    if platform.qubits[qubit].flux is not None:
-        platform.qubits[qubit].flux.offset = sweetspot
+
+
+def frequency_12_transition(frequency: int, platform: Platform, qubit: QubitId):
+    platform.qubits[qubit].native_gates.RX12.frequency = int(frequency * GHZ_TO_HZ)
+
+
+def drive_12_amplitude(amplitude: float, platform: Platform, qubit: QubitId):
+    platform.qubits[qubit].native_gates.RX12.amplitude = float(amplitude)
+
+
+def twpa_frequency(frequency: int, platform: Platform, qubit: QubitId):
+    platform.qubits[qubit].twpa.local_oscillator.frequency = int(frequency)
+
+
+def twpa_power(power: float, platform: Platform, qubit: QubitId):
+    platform.qubits[qubit].twpa.local_oscillator.power = float(power)
+
+
+def anharmonicity(anharmonicity: float, platform: Platform, qubit: QubitId):
+    platform.qubits[qubit].anharmonicity = int(anharmonicity * GHZ_TO_HZ)

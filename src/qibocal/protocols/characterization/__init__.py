@@ -5,11 +5,15 @@ from .allxy.allxy_drag_pulse_tuning import allxy_drag_pulse_tuning
 from .allxy.drag_pulse_tuning import drag_pulse_tuning
 from .classification import single_shot_classification
 from .coherence.spin_echo import spin_echo
+from .coherence.spin_echo_msr import spin_echo_msr
 from .coherence.t1 import t1
+from .coherence.t1_msr import t1_msr
 from .coherence.t1_sequences import t1_sequences
 from .coherence.t2 import t2
+from .coherence.t2_msr import t2_msr
 from .coherence.t2_sequences import t2_sequences
 from .coherence.zeno import zeno
+from .coherence.zeno_msr import zeno_msr
 from .dispersive_shift import dispersive_shift
 from .excited_state_population import residual_excited_population
 from .fast_reset.fast_reset import fast_reset
@@ -20,10 +24,16 @@ from .flux_dependence.resonator_flux_dependence import (
     resonator_flux,
 )
 from .qubit_spectroscopy import qubit_spectroscopy
+from .qubit_spectroscopy_ef import qubit_spectroscopy_ef
+from .qutrit_classification import qutrit_classification
 from .rabi.amplitude import rabi_amplitude
+from .rabi.amplitude_msr import rabi_amplitude_msr
+from .rabi.ef import rabi_amplitude_ef
 from .rabi.length import rabi_length
+from .rabi.length_msr import rabi_length_msr
 from .rabi.length_sequences import rabi_length_sequences
 from .ramsey import ramsey
+from .ramsey_msr import ramsey_msr
 from .ramsey_sequences import ramsey_sequences
 from .randomized_benchmarking.standard_rb import standard_rb
 from .readout_characterization import readout_characterization
@@ -53,15 +63,21 @@ class Operation(Enum):
     rabi_amplitude = rabi_amplitude
     rabi_length = rabi_length
     rabi_length_sequences = rabi_length_sequences
+    rabi_amplitude_msr = rabi_amplitude_msr
+    rabi_length_msr = rabi_length_msr
     ramsey = ramsey
+    ramsey_msr = ramsey_msr
     ramsey_sequences = ramsey_sequences
     t1 = t1
+    t1_msr = t1_msr
     t1_sequences = t1_sequences
     t2 = t2
+    t2_msr = t2_msr
     t2_sequences = t2_sequences
     time_of_flight_readout = time_of_flight_readout
     single_shot_classification = single_shot_classification
     spin_echo = spin_echo
+    spin_echo_msr = spin_echo_msr
     allxy = allxy
     allxy_drag_pulse_tuning = allxy_drag_pulse_tuning
     drag_pulse_tuning = drag_pulse_tuning
@@ -74,10 +90,14 @@ class Operation(Enum):
     resonator_frequency = resonator_frequency
     fast_reset = fast_reset
     zeno = zeno
+    zeno_msr = zeno_msr
     chsh_pulses = chsh_pulses
     chsh_circuits = chsh_circuits
     readout_mitigation_matrix = readout_mitigation_matrix
     twpa_frequency = twpa_frequency
     twpa_power = twpa_power
+    rabi_amplitude_ef = rabi_amplitude_ef
+    qubit_spectroscopy_ef = qubit_spectroscopy_ef
+    qutrit_classification = qutrit_classification
     resonator_amplitude = resonator_amplitude
     residual_excited_population = residual_excited_population

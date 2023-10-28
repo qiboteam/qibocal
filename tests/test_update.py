@@ -71,13 +71,11 @@ def test_classification_update(qubit):
     # generate random lists
     mean_gnd_state = generate_update_list(2)
     mean_exc_state = generate_update_list(2)
-    classifiers_hpars = generate_update_list(4)
     # perform update
     update.iq_angle(RANDOM_FLOAT, PLATFORM, qubit.name)
     update.threshold(RANDOM_FLOAT, PLATFORM, qubit.name)
     update.mean_gnd_states(mean_gnd_state, PLATFORM, qubit.name)
     update.mean_exc_states(mean_exc_state, PLATFORM, qubit.name)
-    update.classifiers_hpars(classifiers_hpars, PLATFORM, qubit.name)
     update.readout_fidelity(RANDOM_FLOAT, PLATFORM, qubit.name)
     update.assignment_fidelity(RANDOM_FLOAT, PLATFORM, qubit.name)
 
@@ -86,7 +84,6 @@ def test_classification_update(qubit):
     assert qubit.threshold == RANDOM_FLOAT
     assert qubit.mean_gnd_states == mean_gnd_state
     assert qubit.mean_exc_states == mean_exc_state
-    assert qubit.classifiers_hpars == classifiers_hpars
     assert qubit.readout_fidelity == RANDOM_FLOAT
     assert qubit.assignment_fidelity == RANDOM_FLOAT
 
@@ -148,5 +145,24 @@ def test_drag_pulse_beta_update(qubit):
 def test_sweetspot_update(qubit):
     update.sweetspot(RANDOM_FLOAT, PLATFORM, qubit.name)
     assert qubit.sweetspot == RANDOM_FLOAT
-    if qubit.flux is not None:
-        assert qubit.flux.offset == RANDOM_FLOAT
+
+
+# FIXME: missing qubit 4 RX12
+@pytest.mark.parametrize("qubit", QUBITS[:-1])
+def test_12_transition_update(qubit):
+    update.drive_12_amplitude(RANDOM_FLOAT, PLATFORM, qubit.name)
+    update.frequency_12_transition(FREQUENCIES_GHZ, PLATFORM, qubit.name)
+    update.anharmonicity(FREQUENCIES_GHZ, PLATFORM, qubit.name)
+
+    assert qubit.native_gates.RX12.amplitude == RANDOM_FLOAT
+    assert qubit.native_gates.RX12.frequency == FREQUENCIES_HZ
+    assert qubit.anharmonicity == FREQUENCIES_HZ
+
+
+@pytest.mark.parametrize("qubit", QUBITS)
+def test_twpa_update(qubit):
+    update.twpa_frequency(RANDOM_INT, PLATFORM, qubit.name)
+    update.twpa_power(RANDOM_FLOAT, PLATFORM, qubit.name)
+
+    assert qubit.twpa.local_oscillator.frequency == RANDOM_INT
+    assert qubit.twpa.local_oscillator.power == RANDOM_FLOAT

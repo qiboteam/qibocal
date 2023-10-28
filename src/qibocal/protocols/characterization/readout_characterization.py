@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-from typing import Optional
 
 import numpy as np
 import numpy.typing as npt
@@ -16,11 +15,6 @@ from qibocal.protocols.characterization.utils import table_dict, table_html
 @dataclass
 class ReadoutCharacterizationParameters(Parameters):
     """ReadoutCharacterization runcard inputs."""
-
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
 
 
 @dataclass
@@ -51,12 +45,6 @@ class ReadoutCharacterizationData(Data):
         default_factory=dict
     )
     """Raw data acquired."""
-
-    def register_qubit(self, qubit, probability, state, readout_number):
-        """Store output for single qubit."""
-        ar = np.empty(probability.shape, dtype=ReadoutCharacterizationType)
-        ar["probability"] = probability
-        self.data[qubit, state, readout_number] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -103,10 +91,9 @@ def _acquisition(
                 result = results[ro_pulse.serial]
                 qubit = ro_pulse.qubit
                 data.register_qubit(
-                    qubit,
-                    probability=result.samples,
-                    state=state,
-                    readout_number=i,
+                    ReadoutCharacterizationType,
+                    (qubit, state, i),
+                    dict(probability=result.samples),
                 )
                 i += 1
 

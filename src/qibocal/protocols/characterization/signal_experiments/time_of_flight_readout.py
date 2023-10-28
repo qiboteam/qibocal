@@ -19,10 +19,6 @@ class TimeOfFlightReadoutParameters(Parameters):
 
     readout_amplitude: Optional[int] = None
     """Amplitude of the readout pulse."""
-    nshots: Optional[int] = None
-    """Number of shots."""
-    relaxation_time: Optional[int] = None
-    """Relaxation time (ns)."""
     window_size: Optional[int] = 10
     """Window size for the moving average."""
 
@@ -47,12 +43,6 @@ class TimeOfFlightReadoutData(Data):
 
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
-
-    def register_qubit(self, qubit, samples):
-        """Store output for single qubit."""
-        ar = np.empty(samples.shape, dtype=TimeOfFlightReadoutType)
-        ar["samples"] = samples
-        self.data[qubit] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -91,8 +81,7 @@ def _acquisition(
     for qubit in qubits:
         samples = results[ro_pulses[qubit].serial].magnitude
         # store the results
-        data.register_qubit(qubit, samples)
-
+        data.register_qubit(TimeOfFlightReadoutType, (qubit), dict(samples=samples))
     return data
 
 
