@@ -94,27 +94,20 @@ def _acquisition(
         -params.bias_width / 2, params.bias_width / 2, params.bias_step
     )
     if params.flux_qubits is None:
-        flux_qubits = [None]
-        bias_sweepers = [
-            Sweeper(
-                Parameter.bias,
-                delta_bias_range,
-                qubits=list(qubits.values()),
-                type=SweeperType.OFFSET,
-            )
-        ]
+        flux_qubits = list(platform.qubits.keys())
 
     else:
         flux_qubits = params.flux_qubits
-        bias_sweepers = [
-            Sweeper(
-                Parameter.bias,
-                delta_bias_range,
-                qubits=[platform.qubits[flux_qubit]],
-                type=SweeperType.OFFSET,
-            )
-            for flux_qubit in flux_qubits
-        ]
+
+    bias_sweepers = [
+        Sweeper(
+            Parameter.bias,
+            delta_bias_range,
+            qubits=[platform.qubits[flux_qubit]],
+            type=SweeperType.OFFSET,
+        )
+        for flux_qubit in flux_qubits
+    ]
 
     data = ResCrosstalkData(
         resonator_type=platform.resonator_type,

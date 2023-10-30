@@ -226,8 +226,6 @@ def flux_crosstalk_plot(data, qubit):
         vertical_spacing=0.1,
         subplot_titles=len(all_qubit_data) * ("MSR [V]",),
     )
-    print(all_qubit_data)
-    print(all_qubit_data.items())
     for col, (flux_qubit, qubit_data) in enumerate(all_qubit_data.items()):
         frequencies = qubit_data.freq * HZ_TO_GHZ
         msr = qubit_data.msr
