@@ -1,3 +1,4 @@
+from copy import deepcopy
 import inspect
 import json
 import time
@@ -87,10 +88,11 @@ class Parameters:
             the linked outputs
 
         """
-        for parameter, value in DEFAULT_PARENT_PARAMETERS.items():
-            DEFAULT_PARENT_PARAMETERS[parameter] = parameters.pop(parameter, value)
+        default_parent_parameters = deepcopy(DEFAULT_PARENT_PARAMETERS)
+        for parameter, value in default_parent_parameters.items():
+            default_parent_parameters[parameter] = parameters.pop(parameter, value)
         instantiated_class = cls(**parameters)
-        for parameter, value in DEFAULT_PARENT_PARAMETERS.items():
+        for parameter, value in default_parent_parameters.items():
             setattr(instantiated_class, parameter, value)
         return instantiated_class
 
