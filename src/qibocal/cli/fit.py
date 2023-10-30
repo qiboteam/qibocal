@@ -20,14 +20,18 @@ def fit(path, update):
     - FOLDER: input folder.
 
     """
-    # load path, meta, runcard and executor
-    meta = yaml.safe_load((path / META).read_text())
+    # load meta
+    meta = json.loads((path / META).read_text())
+    # load runcard
     runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
 
+    # set backend, platform and qubits
     GlobalBackend.set_backend(backend=meta["backend"], platform=meta["platform"])
     backend = GlobalBackend()
     platform = backend.platform
     qubits = create_qubits_dict(qubits=runcard.qubits, platform=platform)
+
+    # load executor
     executor = Executor.load(
         runcard, path, update=update, platform=platform, qubits=qubits
     )
@@ -35,12 +39,14 @@ def fit(path, update):
     # perform post-processing
     list(executor.run(mode=ExecutionMode.fit))
 
+    # update time in meta
+    meta = add_timings_to_meta(meta, executor.history)
+    e = datetime.datetime.now(datetime.timezone.utc)
+    meta["end-time"] = e.strftime("%H:%M:%S")
+
     # dump updated runcard
     if platform is not None and update:
         dump_runcard(platform, path / UPDATED_PLATFORM)
 
-    # update time in meta.yml
-    meta = add_timings_to_meta(meta, executor.history)
-    e = datetime.datetime.now(datetime.timezone.utc)
-    meta["end-time"] = e.strftime("%H:%M:%S")
+    # dump json
     (path / META).write_text(json.dumps(meta, indent=4))

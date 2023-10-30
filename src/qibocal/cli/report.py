@@ -1,3 +1,4 @@
+import json
 import tempfile
 from functools import cached_property
 from pathlib import Path
@@ -27,13 +28,17 @@ def report(path):
     - FOLDER: input folder.
 
     """
-    # load path, meta and runcard
-    meta = yaml.safe_load((path / META).read_text())
+    # load meta
+    meta = json.loads((path / META).read_text())
+    # load runcard
     runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
+
+    # set backend, platform and qubits
     GlobalBackend.set_backend(backend=meta["backend"], platform=meta["platform"])
     backend = GlobalBackend()
     platform = backend.platform
     qubits = create_qubits_dict(qubits=runcard.qubits, platform=platform)
+
     # load executor
     executor = Executor.load(runcard, path, qubits=qubits)
 

@@ -27,10 +27,10 @@ def acquire(runcard, folder, force, platform_name, backend_name):
      - RUNCARD: runcard with declarative inputs.
     """
 
+    # generate output folder
     path = generate_output_folder(folder, force)
 
-    # FIXME: it should be a function
-    # allocate qubits, runcard and executor
+    # set backend, platform and qubits
     GlobalBackend.set_backend(backend=backend_name, platform=platform_name)
     backend = GlobalBackend()
     platform = backend.platform

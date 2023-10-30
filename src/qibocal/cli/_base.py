@@ -61,11 +61,10 @@ def auto(runcard, folder, force, update, platform, backend):
 
      - RUNCARD: runcard with declarative inputs.
     """
-    card = yaml.safe_load(runcard.read_text(encoding="utf-8"))
-    action_runcard = Runcard.load(card)
-    plat = platform if platform is not None else action_runcard.platform
-    back = backend if backend is not None else action_runcard.backend
-    autocalibrate(action_runcard, folder, force, update, plat, back)
+    runcard = Runcard.load(yaml.safe_load(runcard.read_text(encoding="utf-8")))
+    plat = platform if platform is not None else runcard.platform
+    back = backend if backend is not None else runcard.backend
+    autocalibrate(runcard, folder, force, update, plat, back)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
@@ -101,11 +100,10 @@ def acquire(runcard, folder, force, platform, backend):
 
      - RUNCARD: runcard with declarative inputs.
     """
-    card = yaml.safe_load(runcard.read_text(encoding="utf-8"))
-    action_runcard = Runcard.load(card)
-    plat = platform if platform is not None else action_runcard.platform
-    back = backend if backend is not None else action_runcard.backend
-    acquisition(action_runcard, folder, force, plat, back)
+    runcard = Runcard.load(yaml.safe_load(runcard.read_text(encoding="utf-8")))
+    plat = platform if platform is not None else runcard.platform
+    back = backend if backend is not None else runcard.backend
+    acquisition(runcard, folder, force, plat, back)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
