@@ -30,18 +30,6 @@ def create_qubits_dict(qubits, platform):
     return qubits
 
 
-# def create_qubits_dict(runcard):
-#     """Qubits dictionary."""
-#     platform = runcard.platform_obj
-#     if platform is not None:
-#         if any(isinstance(i, list) for i in runcard.qubits):
-#             return allocate_qubits_pairs(platform, runcard.qubits)
-
-#         return allocate_single_qubits(platform, runcard.qubits)
-
-#     return runcard.qubits
-
-
 def generate_meta(backend, platform, path):
     """Methods that takes care of:
     - dumping original platform
