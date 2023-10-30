@@ -109,7 +109,10 @@ def _acquisition(
         -params.bias_width / 2, params.bias_width / 2, params.bias_step
     )
     # TODO : abstract common lines with qubit flux dep routine
-    flux_qubits = params.flux_qubits
+    if params.flux_qubits is None:
+        flux_qubits = list(platform.qubits.keys)
+    else:
+        flux_qubits = params.flux_qubits
     bias_sweepers = [
         Sweeper(
             Parameter.bias,
