@@ -110,7 +110,7 @@ def _acquisition(
     )
     # TODO : abstract common lines with qubit flux dep routine
     if params.flux_qubits is None:
-        flux_qubits = list(platform.qubits.keys)
+        flux_qubits = list(platform.qubits.keys())
     else:
         flux_qubits = params.flux_qubits
     bias_sweepers = [
