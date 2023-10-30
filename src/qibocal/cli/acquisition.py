@@ -39,7 +39,7 @@ def acquire(runcard, folder, force, platform_name, backend_name):
     # generate meta
     meta = generate_meta(backend, platform, path)
     # dump platform
-    if backend == "qibolab":
+    if backend.name == "qibolab":
         dump_runcard(platform, path / PLATFORM)
 
     # dump action runcard

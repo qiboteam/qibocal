@@ -32,8 +32,7 @@ def autocalibrate(runcard, folder, force, update, platform_name, backend_name):
     # generate output folder
     path = generate_output_folder(folder, force)
 
-    # FIXME: it should be a function
-    # allocate qubits, runcard and executor
+    # allocate backend, platform, qubits
     GlobalBackend.set_backend(backend=backend_name, platform=platform_name)
     backend = GlobalBackend()
     platform = backend.platform
@@ -42,7 +41,7 @@ def autocalibrate(runcard, folder, force, update, platform_name, backend_name):
     # generate meta
     meta = generate_meta(backend, platform, path)
     # dump platform
-    if backend == "qibolab":
+    if backend.name == "qibolab":
         dump_runcard(platform, path / PLATFORM)
 
     # dump action runcard
@@ -50,6 +49,7 @@ def autocalibrate(runcard, folder, force, update, platform_name, backend_name):
     # dump meta
     (path / META).write_text(json.dumps(meta, indent=4))
 
+    # allocate executor
     executor = Executor.load(runcard, path, platform, qubits, update)
 
     # connect and initialize platform
