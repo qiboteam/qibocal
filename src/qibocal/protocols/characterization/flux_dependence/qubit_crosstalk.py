@@ -154,7 +154,7 @@ def _fit(data: QubitCrosstalkData) -> QubitCrosstalkResult:
 
 def _plot(data: QubitFluxData, fit: QubitFluxResults, qubit):
     """Plotting function for Crosstalk Experiment."""
-    return utils.flux_crosstalk_plot(data, fit, qubit)
+    return utils.flux_crosstalk_plot(data, qubit)
 
 
 qubit_crosstalk = Routine(_acquisition, _fit, _plot)

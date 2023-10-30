@@ -209,7 +209,7 @@ def flux_dependence_plot(data, fit, qubit):
     return figures, fitting_report
 
 
-def flux_crosstalk_plot(data, fit, qubit):
+def flux_crosstalk_plot(data, qubit):
     figures = []
     fitting_report = ""
 
@@ -226,7 +226,8 @@ def flux_crosstalk_plot(data, fit, qubit):
         vertical_spacing=0.1,
         subplot_titles=len(all_qubit_data) * ("MSR [V]",),
     )
-
+    print(all_qubit_data)
+    print(all_qubit_data.items())
     for col, (flux_qubit, qubit_data) in enumerate(all_qubit_data.items()):
         frequencies = qubit_data.freq * HZ_TO_GHZ
         msr = qubit_data.msr
@@ -244,7 +245,7 @@ def flux_crosstalk_plot(data, fit, qubit):
         )
 
         fig.update_xaxes(
-            title_text="Frequency (Hz)",
+            title_text="Frequency (GHz)",
             row=1,
             col=col + 1,
         )
