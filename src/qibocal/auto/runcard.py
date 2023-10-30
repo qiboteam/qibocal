@@ -44,7 +44,7 @@ class Runcard:
     """Structure of an execution runcard."""
 
     actions: list[Action]
-    qubits: Union[list[QubitId], list[tuple[QubitId, QubitId]]]
+    qubits: Union[list[QubitId], list[tuple[QubitId, QubitId]]] = None
     backend: str = "qibolab"
     platform: str = "dummy"
 

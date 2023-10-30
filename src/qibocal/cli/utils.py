@@ -23,10 +23,11 @@ def dump_report(meta, path):
 
 def create_qubits_dict(qubits, platform):
     if platform is not None:
-        if any(isinstance(i, list) for i in qubits):
-            return allocate_qubits_pairs(platform, qubits)
-
-        return allocate_single_qubits(platform, qubits)
+        if qubits is not None:
+            if any(isinstance(i, list) for i in qubits):
+                return allocate_qubits_pairs(platform, qubits)
+            return allocate_single_qubits(platform, qubits)
+        return allocate_single_qubits(platform, list(platform.qubits))
     return qubits
 
 
