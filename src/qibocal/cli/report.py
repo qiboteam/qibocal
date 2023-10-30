@@ -3,6 +3,7 @@ from functools import cached_property
 from pathlib import Path
 
 import yaml
+from qibo.backends import GlobalBackend
 from qibolab.qubits import QubitId
 
 from qibocal.auto.execute import Executor
@@ -29,12 +30,15 @@ def report(path):
     # load path, meta and runcard
     meta = yaml.safe_load((path / META).read_text())
     runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
-    qubits = create_qubits_dict(runcard)
+    GlobalBackend.set_backend(backend=meta["backend"], platform=meta["platform"])
+    backend = GlobalBackend()
+    platform = backend.platform
+    qubits = create_qubits_dict(qubits=runcard.qubits, platform=platform)
     # load executor
     executor = Executor.load(runcard, path, qubits=qubits)
 
     # produce html
-    builder = ReportBuilder(path, runcard.qubits, executor, meta)
+    builder = ReportBuilder(path, qubits, executor, meta)
     builder.run(path)
 
 

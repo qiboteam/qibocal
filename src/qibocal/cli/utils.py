@@ -21,19 +21,28 @@ def dump_report(meta, path):
     (path / META).write_text(json.dumps(meta, indent=4))
 
 
-def create_qubits_dict(runcard):
-    """Qubits dictionary."""
-    platform = runcard.platform_obj
+def create_qubits_dict(qubits, platform):
     if platform is not None:
-        if any(isinstance(i, list) for i in runcard.qubits):
-            return allocate_qubits_pairs(platform, runcard.qubits)
+        if any(isinstance(i, list) for i in qubits):
+            return allocate_qubits_pairs(platform, qubits)
 
-        return allocate_single_qubits(platform, runcard.qubits)
+        return allocate_single_qubits(platform, qubits)
+    return qubits
 
-    return runcard.qubits
+
+# def create_qubits_dict(runcard):
+#     """Qubits dictionary."""
+#     platform = runcard.platform_obj
+#     if platform is not None:
+#         if any(isinstance(i, list) for i in runcard.qubits):
+#             return allocate_qubits_pairs(platform, runcard.qubits)
+
+#         return allocate_single_qubits(platform, runcard.qubits)
+
+#     return runcard.qubits
 
 
-def generate_meta(runcard, path):
+def generate_meta(backend, platform, path):
     """Methods that takes care of:
     - dumping original platform
     - storing qq runcard
@@ -45,12 +54,12 @@ def generate_meta(runcard, path):
     e = datetime.datetime.now(datetime.timezone.utc)
     meta = {}
     meta["title"] = path.name
-    meta["backend"] = str(runcard.backend_obj)
-    meta["platform"] = str(runcard.platform_obj)
+    meta["backend"] = backend.name
+    meta["platform"] = str(platform)
     meta["date"] = e.strftime("%Y-%m-%d")
     meta["start-time"] = e.strftime("%H:%M:%S")
     meta["end-time"] = e.strftime("%H:%M:%S")
-    meta["versions"] = runcard.backend_obj.versions  # pylint: disable=E1101
+    meta["versions"] = backend.versions  # pylint: disable=E1101
     meta["versions"]["qibocal"] = qibocal.__version__
 
     return meta

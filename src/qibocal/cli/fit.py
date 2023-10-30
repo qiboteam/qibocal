@@ -2,6 +2,7 @@ import datetime
 import json
 
 import yaml
+from qibo.backends import GlobalBackend
 from qibolab.serialize import dump_runcard
 
 from ..auto.execute import Executor
@@ -22,17 +23,21 @@ def fit(path, update):
     # load path, meta, runcard and executor
     meta = yaml.safe_load((path / META).read_text())
     runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
-    qubits = create_qubits_dict(runcard)
+
+    GlobalBackend.set_backend(backend=meta["backend"], platform=meta["platform"])
+    backend = GlobalBackend()
+    platform = backend.platform
+    qubits = create_qubits_dict(qubits=runcard.qubits, platform=platform)
     executor = Executor.load(
-        runcard, path, update=update, platform=runcard.platform_obj, qubits=qubits
+        runcard, path, update=update, platform=platform, qubits=qubits
     )
 
     # perform post-processing
     list(executor.run(mode=ExecutionMode.fit))
 
     # dump updated runcard
-    if runcard.platform_obj is not None and update:
-        dump_runcard(runcard.platform_obj, path / UPDATED_PLATFORM)
+    if platform is not None and update:
+        dump_runcard(platform, path / UPDATED_PLATFORM)
 
     # update time in meta.yml
     meta = add_timings_to_meta(meta, executor.history)

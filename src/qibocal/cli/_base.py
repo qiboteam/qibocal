@@ -5,6 +5,7 @@ import pathlib
 import click
 import yaml
 
+from ..auto.runcard import Runcard
 from .acquisition import acquire as acquisition
 from .autocalibration import autocalibrate
 from .fit import fit as fitting
@@ -43,7 +44,17 @@ def command():
     help="Use --no-update option to avoid updating iteratively the platform."
     "With this option the new runcard will not be produced.",
 )
-def auto(runcard, folder, force, update):
+@click.option(
+    "--platform",
+    default=None,  # FIXME: choose default value
+    help="Name of the Qibolab platform.",
+)
+@click.option(
+    "--backend",
+    default=None,  # FIXME: choose default value
+    help="Name of the Qibo backend.,",
+)
+def auto(runcard, folder, force, update, platform, backend):
     """Autocalibration
 
     Arguments:
@@ -51,7 +62,10 @@ def auto(runcard, folder, force, update):
      - RUNCARD: runcard with declarative inputs.
     """
     card = yaml.safe_load(runcard.read_text(encoding="utf-8"))
-    autocalibrate(card, folder, force, update)
+    action_runcard = Runcard.load(card)
+    plat = platform if platform is not None else action_runcard.platform
+    back = backend if backend is not None else action_runcard.backend
+    autocalibrate(action_runcard, folder, force, update, plat, back)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
@@ -70,7 +84,17 @@ def auto(runcard, folder, force, update):
     is_flag=True,
     help="Use --force option to overwrite the output folder.",
 )
-def acquire(runcard, folder, force):
+@click.option(
+    "--platform",
+    default=None,  # FIXME: choose default value
+    help="Name of the Qibolab platform.",
+)
+@click.option(
+    "--backend",
+    default=None,  # FIXME: choose default value
+    help="Name of the Qibo backend.,",
+)
+def acquire(runcard, folder, force, platform, backend):
     """Data acquisition
 
     Arguments:
@@ -78,7 +102,10 @@ def acquire(runcard, folder, force):
      - RUNCARD: runcard with declarative inputs.
     """
     card = yaml.safe_load(runcard.read_text(encoding="utf-8"))
-    acquisition(card, folder, force)
+    action_runcard = Runcard.load(card)
+    plat = platform if platform is not None else action_runcard.platform
+    back = backend if backend is not None else action_runcard.backend
+    acquisition(action_runcard, folder, force, plat, back)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
