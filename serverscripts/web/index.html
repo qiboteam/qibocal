@@ -21,7 +21,7 @@
       var data = json['data'];
       var global_table = $('#global').DataTable({
         "data": data,
-        "order": [[2, "desc"]],
+        "order": [[1, "desc"]],
         "dom": "frtipl"
       });
     });
@@ -55,6 +55,7 @@
             <th scope="col">Start-time (UTC)</th>
             <th scope="col">End-time (UTC)</th>
             <th scope="col">Tag</th>
+            <th scope="col">Author</th>
           </tr>
         </thead>
       </table>
