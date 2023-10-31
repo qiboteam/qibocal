@@ -39,8 +39,8 @@ qubits_record_type = np.dtype(
     [
         ("effective_temperature", np.float64),
         ("frequency", np.float64),
-        ("T1", np.int64),
-        ("T2", np.int64),
+        ("T1", np.float64),
+        ("T2", np.float64),
     ]
 )
 
@@ -248,13 +248,15 @@ def _acquisition(
 
         operation: Routine = qubit_spectroscopy
         qubit_spectroscopy_params: QubitSpectroscopyParameters = (
-            QubitSpectroscopyParameters(
-                freq_width=10_000_000,
-                freq_step=100_000,
-                drive_duration=5_000,
-                drive_amplitude=0.05,
-                nshots=2000,  # params.nshots,
-                relaxation_time=1000,
+            QubitSpectroscopyParameters.load(
+                {
+                    "freq_width": 10_000_000,
+                    "freq_step": 100_000,
+                    "drive_duration": 5_000,
+                    "drive_amplitude": 0.05,
+                    "nshots": 2000,  # params.nshots,
+                    "relaxation_time": 1000,
+                }
             )
         )
         qubit_spectroscopy_data: QubitSpectroscopyData
@@ -277,23 +279,25 @@ def _acquisition(
         platform: Platform,
         qubits: Qubits,
     ) -> dict[QubitId, float]:
-        from qibocal.protocols.characterization.coherence.t1 import (
-            T1Data,
-            T1Parameters,
-            T1Results,
-            t1,
+        from qibocal.protocols.characterization.coherence.t1_msr import (
+            T1MSRData,
+            T1MSRParameters,
+            T1MSRResults,
+            t1_msr,
         )
 
-        operation: Routine = t1
-        t1_params: T1Parameters = T1Parameters(
-            delay_before_readout_start=4,
-            delay_before_readout_end=8000,
-            delay_before_readout_step=32,
-            nshots=2000,  # params.nshots,
-            relaxation_time=params.relaxation_time,
+        operation: Routine = t1_msr
+        t1_params: T1MSRParameters = T1MSRParameters.load(
+            {
+                "delay_before_readout_start": 4,
+                "delay_before_readout_end": 8000,
+                "delay_before_readout_step": 32,
+                "nshots": 2000,  # params.nshots,
+                "relaxation_time": params.relaxation_time,
+            }
         )
-        t1_data: T1Data
-        t1_results: T1Results
+        t1_data: T1MSRData
+        t1_results: T1MSRResults
 
         t1_data, time = operation.acquisition(
             t1_params, platform=platform, qubits=qubits
@@ -312,24 +316,26 @@ def _acquisition(
         platform: Platform,
         qubits: Qubits,
     ) -> dict[QubitId, float]:
-        from qibocal.protocols.characterization.ramsey import (
-            RamseyData,
-            RamseyParameters,
-            RamseyResults,
-            ramsey,
+        from qibocal.protocols.characterization.ramsey_msr import (
+            RamseyMSRData,
+            RamseyMSRParameters,
+            RamseyMSRResults,
+            ramsey_msr,
         )
 
-        operation: Routine = ramsey
-        ramsey_params: RamseyParameters = RamseyParameters(
-            delay_between_pulses_start=4,
-            delay_between_pulses_end=2000,
-            delay_between_pulses_step=8,
-            n_osc=10,
-            nshots=2000,  # params.nshots,
-            relaxation_time=params.relaxation_time,
+        operation: Routine = ramsey_msr
+        ramsey_params: RamseyMSRParameters = RamseyMSRParameters.load(
+            {
+                "delay_between_pulses_start": 4,
+                "delay_between_pulses_end": 2000,
+                "delay_between_pulses_step": 8,
+                "n_osc": 10,
+                "nshots": 2000,  # params.nshots,
+                "relaxation_time": params.relaxation_time,
+            }
         )
-        ramsey_data: RamseyData
-        ramsey_results: RamseyResults
+        ramsey_data: RamseyMSRData
+        ramsey_results: RamseyMSRResults
 
         ramsey_data, time = operation.acquisition(
             ramsey_params, platform=platform, qubits=qubits
