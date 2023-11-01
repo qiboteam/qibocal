@@ -137,7 +137,9 @@ class Task:
         if self.parameters.nshots is None:
             self.action.parameters["nshots"] = platform.settings.nshots
         if self.parameters.relaxation_time is None:
-            self.action.parameters["relaxation_time"] = platform.settings.relaxation_time
+            self.action.parameters[
+                "relaxation_time"
+            ] = platform.settings.relaxation_time
 
         try:
             operation: Routine = self.operation
