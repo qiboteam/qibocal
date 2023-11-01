@@ -60,6 +60,7 @@ def _acquisition(
     )
 
     # TODO: fix loop
+    """This sweeper is implemented in the flux pulse amplitude and we need it to be that way. """
     sweeper_bias = Sweeper(
         Parameter.bias,
         delta_bias_range,
@@ -135,9 +136,7 @@ def _plot(
 
 
 def _update(results: CouplerSpectroscopyResults, platform: Platform, qubit: QubitId):
-    # TODO: Need Couplers in the update
     pass
-    # update.coupler_sweetspot(results.sweetspot[qubit], platform, qubit)
 
 
 coupler_resonator_spectroscopy = Routine(_acquisition, _fit, _plot, _update)

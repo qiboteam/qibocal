@@ -59,6 +59,7 @@ def _acquisition(
     )
 
     # TODO: fix loop
+    """This sweeper is implemented in the flux pulse amplitude and we need it to be that way. """
     sweeper_bias = Sweeper(
         Parameter.bias,
         delta_bias_range,
