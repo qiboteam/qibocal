@@ -29,6 +29,8 @@ class CouplerSpectroscopyParameters(Parameters):
     amplitude: Optional[float] = None
     """Readout or qubit drive amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
+    readout_delay: Optional[int] = 1000
+    """Readout delay before the measurament is done to let the flux coupler pulse act"""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None

@@ -44,7 +44,9 @@ def _acquisition(
         coupler = platform.pairs[tuple(sorted(ordered_pair))].coupler
 
         # TODO: Does it need time or can it start at 0 ???
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=1000)
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+            qubit, start=params.readout_delay
+        )
         if params.amplitude is not None:
             ro_pulses[qubit].amplitude = params.amplitude
 

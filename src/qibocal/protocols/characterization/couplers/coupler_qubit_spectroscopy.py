@@ -40,7 +40,9 @@ def _acquisition(
         ordered_pair = order_pair(pair, platform.qubits)
         coupler = platform.pairs[tuple(sorted(ordered_pair))].coupler
 
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(qubit, start=1000)
+        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+            qubit, start=params.readout_delay
+        )
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
             qubit, start=0, duration=2000
         )
