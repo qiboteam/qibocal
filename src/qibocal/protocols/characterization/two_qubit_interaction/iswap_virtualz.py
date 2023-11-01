@@ -18,6 +18,8 @@ from qibocal.config import log
 from qibocal.protocols.characterization.two_qubit_interaction.chevron import order_pair
 from qibocal.protocols.characterization.utils import table_dict, table_html
 
+# TODO: This should get comparaed to cz_virtualz and reduce code duplication
+
 
 @dataclass
 class iSWAPVirtualZParameters(Parameters):

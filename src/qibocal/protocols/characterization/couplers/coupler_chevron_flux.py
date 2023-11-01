@@ -138,22 +138,23 @@ def _aquisition(
         qd_pulse2 = platform.create_RX_pulse(q_highfreq, start=0 + params.dt)
         sequence = qd_pulse1 + qd_pulse2
 
+        # TODO: Both pulses should have a better way of getting them from the platform
         # TODO: This should get calibrated in another routine
-        # fq_pulse = platform.create_flux_pulse(
-        #     qubit = platform.qubits[q_highfreq],
-        #     start=sequence.finish + params.dt,
-        #     duration=params.duration_min,
-        #     amplitude=1,
-        # )
+        fq_pulse = platform.create_flux_pulse(
+            qubit=platform.qubits[q_highfreq],
+            start=sequence.finish + params.dt,
+            duration=params.duration_min,
+            amplitude=params.flux_amplitude,
+        )
 
         fx_pulse = platform.create_coupler_pulse(
             coupler=coupler,
             start=sequence.finish + params.dt,
-            duration=200,
-            amplitude=-0.29,
+            duration=1,  # Just any value to get the pulse built
+            amplitude=1,  # Just any value to get the pulse built
         )
 
-        # sequence += fq_pulse
+        sequence += fq_pulse
         sequence += fx_pulse
 
         ro_pulse1 = platform.create_MZ_pulse(
@@ -175,17 +176,6 @@ def _aquisition(
             delta_duration_range,
             pulses=[fx_pulse],
         )
-
-        # sweeper_amplitude = Sweeper(
-        #     Parameter.amplitude,
-        #     delta_amplitude_range,
-        #     pulses=[fq_pulse],
-        # )
-        # sweeper_duration = Sweeper(
-        #     Parameter.duration,
-        #     delta_duration_range,
-        #     pulses=[fq_pulse],
-        # )
 
         # repeat the experiment as many times as defined by nshots
         results = platform.sweep(
@@ -260,7 +250,7 @@ def _plot(data: ChevronFluxTimeData, fit: ChevronFluxTimeResults, qubit):
     fitting_report = "No fitting data"
     labels = ["MSR", "phase", "iq_distance"]
 
-    # TODO: FIX plotting
+    # TODO: FIX plotting to display 3 full size plot pairs
     for state, q in zip(states, pair):
         # FIXME: Get qubits
         # for x in pair.qubit1.flux_coupler.keys():
