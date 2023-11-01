@@ -165,7 +165,7 @@ actions:
       freq_width: 150_000_000
       freq_step: 500_000
       bias_width: 0.2
-      bias_step:  0.05      
+      bias_step:  0.05
       nshots: 1024
       relaxation_time: 2000
       transition: "01"
