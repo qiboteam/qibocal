@@ -46,12 +46,12 @@ def command():
 )
 @click.option(
     "--platform",
-    default=None,  # FIXME: choose default value
+    default=None,
     help="Name of the Qibolab platform.",
 )
 @click.option(
     "--backend",
-    default=None,  # FIXME: choose default value
+    default=None,
     help="Name of the Qibo backend.,",
 )
 def auto(runcard, folder, force, update, platform, backend):
@@ -62,9 +62,13 @@ def auto(runcard, folder, force, update, platform, backend):
      - RUNCARD: runcard with declarative inputs.
     """
     runcard = Runcard.load(yaml.safe_load(runcard.read_text(encoding="utf-8")))
-    plat = platform if platform is not None else runcard.platform
-    back = backend if backend is not None else runcard.backend
-    autocalibrate(runcard, folder, force, update, plat, back)
+
+    if platform is not None:
+        runcard.platform = platform
+    if backend is not None:
+        runcard.backend = backend
+
+    autocalibrate(runcard, folder, force, update, platform, backend)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
@@ -85,12 +89,12 @@ def auto(runcard, folder, force, update, platform, backend):
 )
 @click.option(
     "--platform",
-    default=None,  # FIXME: choose default value
+    default=None,
     help="Name of the Qibolab platform.",
 )
 @click.option(
     "--backend",
-    default=None,  # FIXME: choose default value
+    default=None,
     help="Name of the Qibo backend.,",
 )
 def acquire(runcard, folder, force, platform, backend):
@@ -101,9 +105,13 @@ def acquire(runcard, folder, force, platform, backend):
      - RUNCARD: runcard with declarative inputs.
     """
     runcard = Runcard.load(yaml.safe_load(runcard.read_text(encoding="utf-8")))
-    plat = platform if platform is not None else runcard.platform
-    back = backend if backend is not None else runcard.backend
-    acquisition(runcard, folder, force, plat, back)
+
+    if platform is not None:
+        runcard.platform = platform
+    if backend is not None:
+        runcard.backend = backend
+
+    acquisition(runcard, folder, force, platform, backend)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
