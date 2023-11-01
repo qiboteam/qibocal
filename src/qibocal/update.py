@@ -208,7 +208,9 @@ def asymmetry(asymmetry: float, platform: Platform, qubit: QubitId):
     platform.qubits[qubit].asymmetry = float(asymmetry)
 
 
-def ratio_sweetspot_qubit_freq_bare_resonator_freq(ssf_brf: float, platform: Platform, qubit: QubitId):
+def ratio_sweetspot_qubit_freq_bare_resonator_freq(
+    ssf_brf: float, platform: Platform, qubit: QubitId
+):
     platform.qubits[qubit].ssf_brf = float(ssf_brf)
 
 
