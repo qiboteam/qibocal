@@ -5,7 +5,7 @@ import numpy as np
 import plotly.graph_objects as go
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
-from qibolab.pulses import PulseSequence
+from qibolab.pulses import Custom, PulseSequence, ReadoutPulse
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
@@ -90,10 +90,45 @@ def _acquisition(
             qubit,
             start=RX90_pulses1[qubit].finish,
         )
-        ro_pulses[qubit] = platform.create_qubit_readout_pulse(
+        unpadded_ro_pulse = platform.create_qubit_readout_pulse(
             qubit, start=RX90_pulses2[qubit].finish
         )
+        padded_ro_pulse = ReadoutPulse(
+            start=unpadded_ro_pulse.start - RX90_pulses2[qubit].duration,
+            duration=unpadded_ro_pulse.duration + RX90_pulses2[qubit].duration,
+            amplitude=unpadded_ro_pulse.amplitude,
+            frequency=unpadded_ro_pulse.frequency,
+            relative_phase=unpadded_ro_pulse.relative_phase,
+            shape=Custom(
+                envelope_i=np.concatenate(
+                    (
+                        np.zeros(RX90_pulses2[qubit].duration),
+                        unpadded_ro_pulse.envelope_waveform_i.data
+                        / unpadded_ro_pulse.amplitude,
+                    )
+                ),
+                envelope_q=np.concatenate(
+                    (
+                        np.zeros(RX90_pulses2[qubit].duration),
+                        unpadded_ro_pulse.envelope_waveform_q.data
+                        / unpadded_ro_pulse.amplitude,
+                    )
+                ),
+            ),
+            channel=unpadded_ro_pulse.channel,
+            qubit=unpadded_ro_pulse.qubit,
+        )
+        ro_pulses[qubit] = padded_ro_pulse
         freqs[qubit] = qubits[qubit].drive_frequency
+
+        if params.n_osc != 0:
+            RX90_pulses1[qubit].frequency += (
+                params.n_osc / params.delay_between_pulses_end * 1e9
+            )
+            RX90_pulses2[qubit].frequency += (
+                params.n_osc / params.delay_between_pulses_end * 1e9
+            )
+
         sequence.add(RX90_pulses1[qubit])
         sequence.add(RX90_pulses2[qubit])
         sequence.add(ro_pulses[qubit])
@@ -113,64 +148,29 @@ def _acquisition(
         qubit_freqs=freqs,
     )
 
-    if params.n_osc == 0:
-        sweeper = Sweeper(
-            Parameter.start,
-            waits,
-            [RX90_pulses2[qubit] for qubit in qubits],
-            type=SweeperType.ABSOLUTE,
-        )
+    sweeper = Sweeper(
+        Parameter.start,
+        waits,
+        [RX90_pulses2[qubit] for qubit in qubits]
+        + [ro_pulses[qubit] for qubit in qubits],
+        type=SweeperType.ABSOLUTE,
+    )
 
-        # execute the sweep
-        results = platform.sweep(
-            sequence,
-            ExecutionParameters(
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.INTEGRATION,
-                averaging_mode=AveragingMode.CYCLIC,
-            ),
-            sweeper,
-        )
-        for qubit in qubits:
-            result = results[ro_pulses[qubit].serial]
-            # The probability errors are the standard errors of the binomial distribution
-            data.register_qubit(
-                qubit,
-                wait=waits,
-                msr=result.magnitude,
-            )
+    # execute the sweep
+    results = platform.sweep(
+        sequence,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.INTEGRATION,
+            averaging_mode=AveragingMode.CYCLIC,
+        ),
+        sweeper,
+    )
+    for qubit in qubits:
+        result = results[ro_pulses[qubit].serial]
+        data.register_qubit(qubit, wait=waits, msr=result.magnitude)
 
-    else:
-        for wait in waits:
-            for qubit in qubits:
-                RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
-                ro_pulses[qubit].start = RX90_pulses2[qubit].finish
-                if params.n_osc != 0:
-                    RX90_pulses2[qubit].relative_phase = (
-                        RX90_pulses2[qubit].start
-                        * (-2 * np.pi)
-                        * (params.n_osc)
-                        / params.delay_between_pulses_end
-                    )
-
-            results = platform.execute_pulse_sequence(
-                sequence,
-                ExecutionParameters(
-                    nshots=params.nshots,
-                    relaxation_time=params.relaxation_time,
-                    acquisition_type=AcquisitionType.INTEGRATION,
-                    averaging_mode=(AveragingMode.CYCLIC),
-                ),
-            )
-
-            for qubit in qubits:
-                result = results[ro_pulses[qubit].serial]
-                data.register_qubit(
-                    qubit,
-                    wait=wait,
-                    msr=result.magnitude,
-                )
     return data
 
 

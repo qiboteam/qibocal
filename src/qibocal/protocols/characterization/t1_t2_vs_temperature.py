@@ -129,7 +129,7 @@ class T1T2vsTemperatureData(Data):
         super().save(destination_folder)
 
     @property
-    def global_params_dict(self):
+    def global_params(self) -> dict:
         """Convert non-arrays attributes into dict."""
         global_dict = asdict(self)
         global_dict.pop("data")
@@ -250,12 +250,12 @@ def _acquisition(
         qubit_spectroscopy_params: QubitSpectroscopyParameters = (
             QubitSpectroscopyParameters.load(
                 {
-                    "freq_width": 10_000_000,
+                    "freq_width": 30_000_000,
                     "freq_step": 100_000,
                     "drive_duration": 5_000,
-                    "drive_amplitude": 0.05,
+                    "drive_amplitude": 0.2,
                     "nshots": 2000,  # params.nshots,
-                    "relaxation_time": 1000,
+                    "relaxation_time": params.relaxation_time,
                 }
             )
         )
@@ -290,8 +290,8 @@ def _acquisition(
         t1_params: T1MSRParameters = T1MSRParameters.load(
             {
                 "delay_before_readout_start": 4,
-                "delay_before_readout_end": 8000,
-                "delay_before_readout_step": 32,
+                "delay_before_readout_end": 10_000,
+                "delay_before_readout_step": 40,
                 "nshots": 2000,  # params.nshots,
                 "relaxation_time": params.relaxation_time,
             }
@@ -310,46 +310,84 @@ def _acquisition(
 
         return t1_results.t1
 
-    def _run_ramsey(
+    def _run_t2(
         timestamp,
         params: T1T2vsTemperatureParameters,
         platform: Platform,
         qubits: Qubits,
     ) -> dict[QubitId, float]:
-        from qibocal.protocols.characterization.ramsey_msr import (
-            RamseyMSRData,
-            RamseyMSRParameters,
-            RamseyMSRResults,
-            ramsey_msr,
+        from qibocal.protocols.characterization.coherence.t2_msr import (
+            T2MSRData,
+            T2MSRParameters,
+            T2MSRResults,
+            t2_msr,
         )
 
-        operation: Routine = ramsey_msr
-        ramsey_params: RamseyMSRParameters = RamseyMSRParameters.load(
+        operation: Routine = t2_msr
+        t2_params: T2MSRParameters = T2MSRParameters.load(
             {
                 "delay_between_pulses_start": 4,
-                "delay_between_pulses_end": 2000,
-                "delay_between_pulses_step": 8,
-                "n_osc": 10,
+                "delay_between_pulses_end": 6_000,
+                "delay_between_pulses_step": 40,
                 "nshots": 2000,  # params.nshots,
                 "relaxation_time": params.relaxation_time,
             }
         )
-        ramsey_data: RamseyMSRData
-        ramsey_results: RamseyMSRResults
+        t2_data: T2MSRData
+        t2_results: T2MSRResults
 
-        ramsey_data, time = operation.acquisition(
-            ramsey_params, platform=platform, qubits=qubits
+        t2_data, time = operation.acquisition(
+            t2_params, platform=platform, qubits=qubits
         )
-        ramsey_results, time = operation.fit(ramsey_data)
+        t2_results, time = operation.fit(t2_data)
         time = datetime.now().strftime("%Y%m%d_%H%M")
-        (folder / f"{time}_ramsey").mkdir(exist_ok=True)
-        ramsey_data.save(folder / f"{time}_ramsey")
-        ramsey_results.save(folder / f"{time}_ramsey")
+        (folder / f"{time}_t2").mkdir(exist_ok=True)
+        t2_data.save(folder / f"{time}_t2")
+        t2_results.save(folder / f"{time}_t2")
 
-        return ramsey_results.t2
+        return t2_results.t2
+
+    # def _run_ramsey(
+    #     timestamp,
+    #     params: T1T2vsTemperatureParameters,
+    #     platform: Platform,
+    #     qubits: Qubits,
+    # ) -> dict[QubitId, float]:
+    #     from qibocal.protocols.characterization.ramsey_msr import (
+    #         RamseyMSRData,
+    #         RamseyMSRParameters,
+    #         RamseyMSRResults,
+    #         ramsey_msr,
+    #     )
+
+    #     operation: Routine = ramsey_msr
+    #     ramsey_params: RamseyMSRParameters = RamseyMSRParameters.load(
+    #         {
+    #             "delay_between_pulses_start": 4,
+    #             "delay_between_pulses_end": 2000,
+    #             "delay_between_pulses_step": 8,
+    #             "n_osc": 10,
+    #             "nshots": 2000,  # params.nshots,
+    #             "relaxation_time": params.relaxation_time,
+    #         }
+    #     )
+    #     ramsey_data: RamseyMSRData
+    #     ramsey_results: RamseyMSRResults
+
+    #     ramsey_data, time = operation.acquisition(
+    #         ramsey_params, platform=platform, qubits=qubits
+    #     )
+    #     ramsey_results, time = operation.fit(ramsey_data)
+    #     time = datetime.now().strftime("%Y%m%d_%H%M")
+    #     (folder / f"{time}_ramsey").mkdir(exist_ok=True)
+    #     ramsey_data.save(folder / f"{time}_ramsey")
+    #     ramsey_results.save(folder / f"{time}_ramsey")
+
+    #     return {k:v[0] for k, v in ramsey_results.t2.items()}
 
     def _get_datapoint():
         timestamp = datetime.now().timestamp()
+        sensor_temperature = tc.get_data("MXC-flange")["measurements"]["temperature"]
 
         effective_temperature = _run_effective_temperature(
             params.nshots, params.relaxation_time, platform, qubits
@@ -358,9 +396,8 @@ def _acquisition(
             timestamp, params, platform, qubits
         )  # ~5s
         t1s = _run_t1(timestamp, params, platform, qubits)  # ~30s
-        t2s = _run_ramsey(timestamp, params, platform, qubits)  # ~30s
+        t2s = _run_t2(timestamp, params, platform, qubits)  # ~30s
 
-        sensor_temperature = tc.get_data("MXC-flange")["measurements"]["temperature"]
         experiment_record = np.array(
             [
                 (
@@ -413,15 +450,19 @@ def _acquisition(
         )
         * uW_to_W
     )
+
     for heater_power in heater_powers:
         tc.set_heater(channel="MXC-heater", active=True, power=heater_power)
         try:
-            time_track = datetime.now().timestamp()
-            while (datetime.now().timestamp() - time_track) < params.stabilization_time:
-                if params.intermediate_measurements:
-                    _get_datapoint()
-                else:
-                    sleep(1)
+            if heater_power != 0:
+                time_track = datetime.now().timestamp()
+                while (
+                    datetime.now().timestamp() - time_track
+                ) < params.stabilization_time:
+                    if params.intermediate_measurements:
+                        _get_datapoint()
+                    else:
+                        sleep(1)
             _get_datapoint()
 
         except Exception as e:

@@ -163,74 +163,38 @@ def _acquisition(
         qubit_freqs=freqs,
     )
 
-    if params.n_osc == 0:
-        sweeper = Sweeper(
-            Parameter.start,
-            waits,
-            [RX90_pulses2[qubit] for qubit in qubits]
-            + [ro_pulses[qubit] for qubit in qubits],
-            type=SweeperType.ABSOLUTE,
-        )
+    sweeper = Sweeper(
+        Parameter.start,
+        waits,
+        [RX90_pulses2[qubit] for qubit in qubits]
+        + [ro_pulses[qubit] for qubit in qubits],
+        type=SweeperType.ABSOLUTE,
+    )
 
-        # execute the sweep
-        results = platform.sweep(
-            sequence,
-            ExecutionParameters(
-                nshots=params.nshots,
-                relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.DISCRIMINATION,
-                averaging_mode=AveragingMode.SINGLESHOT,
+    # execute the sweep
+    results = platform.sweep(
+        sequence,
+        ExecutionParameters(
+            nshots=params.nshots,
+            relaxation_time=params.relaxation_time,
+            acquisition_type=AcquisitionType.DISCRIMINATION,
+            averaging_mode=AveragingMode.SINGLESHOT,
+        ),
+        sweeper,
+    )
+    for qubit in qubits:
+        probs = results[qubit].probability()
+        # The probability errors are the standard errors of the binomial distribution
+        errors = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs]
+        data.register_qubit(
+            RamseyType,
+            (qubit),
+            dict(
+                wait=waits,
+                prob=probs,
+                errors=errors,
             ),
-            sweeper,
         )
-        for qubit in qubits:
-            probs = results[qubit].probability()
-            # The probability errors are the standard errors of the binomial distribution
-            errors = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs]
-            data.register_qubit(
-                RamseyType,
-                (qubit),
-                dict(
-                    wait=waits,
-                    prob=probs,
-                    errors=errors,
-                ),
-            )
-    else:
-        for wait in waits:
-            for qubit in qubits:
-                RX90_pulses2[qubit].start = RX90_pulses1[qubit].finish + wait
-                ro_pulses[qubit].start = RX90_pulses2[qubit].finish
-                if params.n_osc != 0:
-                    RX90_pulses2[qubit].relative_phase = (
-                        RX90_pulses2[qubit].start
-                        * (-2 * np.pi)
-                        * (params.n_osc)
-                        / params.delay_between_pulses_end
-                    )
-
-            results = platform.execute_pulse_sequence(
-                sequence,
-                ExecutionParameters(
-                    nshots=params.nshots,
-                    relaxation_time=params.relaxation_time,
-                    acquisition_type=AcquisitionType.DISCRIMINATION,
-                    averaging_mode=(AveragingMode.SINGLESHOT),
-                ),
-            )
-
-            for qubit in qubits:
-                prob = results[qubit].probability()
-                error = np.sqrt(prob * (1 - prob) / params.nshots)
-                data.register_qubit(
-                    RamseyType,
-                    (qubit),
-                    dict(
-                        wait=np.array([wait]),
-                        prob=np.array([prob]),
-                        errors=np.array([error]),
-                    ),
-                )
     return data
 
 
