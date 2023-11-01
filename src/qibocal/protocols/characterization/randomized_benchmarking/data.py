@@ -1,18 +1,49 @@
-import pandas as pd
+from dataclasses import dataclass, field
 
-from qibocal.auto.operation import DATAFILE
+import numpy as np
+import numpy.typing as npt
+from qibolab.qubits import QubitId
+
+from qibocal.auto.operation import Data
+
+# RBType = np.dtype(
+#     [("depth", np.int64), ("signal", np.float64),]
+# )
+# """Custom dtype for RB."""
+
+RBType = np.dtype(
+    [
+        ("signal", np.float64),
+    ]
+)
+"""Custom dtype for RB."""
 
 
-class RBData(pd.DataFrame):
-    """A pandas DataFrame child. The output of the acquisition function."""
+@dataclass
+class RBData(Data):
+    """A pandas DataFrame bastard child. The output of the acquisition function."""
 
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
+    params: dict
+    # depths: dict
+    data: dict[QubitId, npt.NDArray[RBType]] = field(default_factory=dict)
+    """Raw data acquired."""
 
-    def save(self, path):
-        """Overwrite because qibocal action builder calls this function with a directory."""
-        super().to_json(path / DATAFILE, default_handler=str)
+    def register_qubit(self, dtype, data_keys, data_dict):
+        """Store output for single qubit.
 
-    @classmethod
-    def load(cls, path):
-        return cls(pd.read_json(path / DATAFILE))
+        Args:
+            data_keys (tuple): Keys of Data.data.
+            data_dict (dict): The keys are the fields of `dtype` and
+            the values are the related arrays.
+        """
+        # to be able to handle the non-sweeper case
+        ar = np.empty(np.shape(data_dict[list(data_dict.keys())[0]]), dtype=dtype)
+        for key, value in data_dict.items():
+            ar[key] = value
+
+        if data_keys in self.data:
+            # FIXME: Let's work directly with a list for now
+            self.data[data_keys] = np.append(self.data[data_keys], data_dict["signal"])
+        else:
+            # print("here")
+            self.data[data_keys] = data_dict["signal"]

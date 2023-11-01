@@ -1,8 +1,9 @@
+from collections import defaultdict
 from dataclasses import dataclass, field
+from itertools import chain
 from typing import Iterable, Optional, TypedDict, Union
 
 import numpy as np
-import pandas as pd
 import plotly.graph_objects as go
 import qibo
 from qibolab.platform import Platform
@@ -13,15 +14,16 @@ from qibocal.bootstrap import bootstrap, data_uncertainties
 from qibocal.config import log, raise_error
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
 
+from ..utils import table_dict, table_html
 from .circuit_tools import (
     add_inverse_layer,
     add_measurement_layer,
     embed_circuit,
     layer_circuit,
 )
-from .data import RBData
+from .data import RBData, RBType
 from .fitting import exp1B_func, fit_exp1B_func
-from .utils import extract_from_data, number_to_str, random_clifford
+from .utils import number_to_str, random_clifford
 
 NPULSES_PER_CLIFFORD = 1.875
 
@@ -53,6 +55,8 @@ class StandardRBParameters(Parameters):
     seed: Optional[int] = None
     """A fixed seed to initialize ``np.random.Generator``. If ``None``, uses a random seed.
     Defaults is ``None``."""
+    parallel: bool = False
+    """Marginalize data to get several RBs from a big circuit"""
     noise_model: str = ""
     """For simulation purposes, string has to match what is in
     :mod:`qibocal.protocols.characterization.randomized_benchmarking.noisemodels`"""
@@ -71,15 +75,15 @@ class StandardRBParameters(Parameters):
 class StandardRBResult(Results):
     """Standard RB outputs."""
 
-    fidelity: float
+    fidelity: dict[QubitId, float]
     """The overall fidelity of this qubit."""
-    pulse_fidelity: float
+    pulse_fidelity: dict[QubitId, float]
     """The pulse fidelity of the gates acting on this qubit."""
-    fit_parameters: tuple[float, float, float]
+    fit_parameters: dict[QubitId, tuple[float, float, float]]
     """Raw fitting parameters."""
-    fit_uncertainties: tuple[float, float, float]
+    fit_uncertainties: dict[QubitId, tuple[float, float, float]]
     """Fitting parameters uncertainties."""
-    error_bars: Optional[Union[float, list[float]]] = None
+    error_bars: dict[QubitId, Optional[Union[float, list[float]]]] = None
     """Error bars for y."""
 
 
@@ -100,6 +104,22 @@ def samples_to_p0(samples_list):
     return np.count_nonzero((samples_list == ground).all(axis=2), axis=1) / len(
         samples_list[0]
     )
+
+
+def samples_to_p0s(samples_list):
+    """Computes the probabilitiy of 0 from the list of samples.
+
+    Args:
+        samples_list (list or np.ndarray): 3d array with ``ncircuits`` rows containing
+            ``nshots`` lists with ``nqubits`` amount of ``0`` and ``1`` samples.
+            e.g. ``samples_list`` for 1 circuit, 3 shots and 2 qubits looks like
+            ``[[[0, 0], [0, 1], [1, 0]]]`` and ``p0=[1/2, 1/2]``.
+
+    Returns:
+        list: list of probabilities corresponding to each row.
+    """
+
+    return 1 - np.count_nonzero(np.array(samples_list), axis=0) / len(samples_list)
 
 
 def resample_p0(data, sample_size=100, homogeneous: bool = True):
@@ -163,6 +183,7 @@ def setup_scan(
         circuit = layer_circuit(layer_gen, depth)
         add_inverse_layer(circuit)
         add_measurement_layer(circuit)
+
         return embed_circuit(circuit, nqubits, qubit_ids)
 
     return map(make_circuit, params.depths * params.niter)
@@ -216,26 +237,57 @@ def _acquisition(
     scan = setup_scan(params, qubits, nqubits)
 
     # 2. Execute the scan.
-    data_list = []
+    # depth_list = []
+    data = RBData(params=params.__dict__)
+    samples = defaultdict(list)
     # Iterate through the scan and execute each circuit.
     for circuit in scan:
         # The inverse and measurement gate don't count for the depth.
         depth = (circuit.depth - 2) if circuit.depth > 1 else 0
         if noise_model is not None:
             circuit = noise_model.apply(circuit)
-        samples = circuit.execute(nshots=params.nshots).samples()
+        sample = circuit.execute(nshots=params.nshots).samples()
         # Every executed circuit gets a row where the data is stored.
-        data_list.append({"depth": depth, "samples": samples})
-    # Build the data object which will be returned and later saved.
-    data = pd.DataFrame(data_list)
+        # depth_list.append({"depth": depth})
+        samples[depth].append(sample.tolist())
 
-    # The signal here is the survival probability.
-    standardrb_data = RBData(
-        data.assign(signal=lambda x: samples_to_p0(x.samples.to_list()))
-    )
+        signals = defaultdict(list)
+        for key, value in samples.items():
+            if params.parallel:
+                signals[key] = samples_to_p0s(list(chain.from_iterable(value)))
+            else:
+                # TODO: Fix this
+                signals[key] = samples_to_p0(list(chain.from_iterable(value)))
+
+    for i, qubit in enumerate(qubits):
+        for depth in params.depths:
+            import pdb
+
+            pdb.set_trace()
+            data.register_qubit(
+                RBType,
+                (qubit, depth),
+                dict(
+                    # signal=signals[depth][i],
+                    # I can reduce the numbers I compute this by placing it elsewhere
+                    signal=samples_to_p0s(list(chain.from_iterable(samples[depth])))[i]
+                ),
+            )
+
+    # else:
+    #     # The signal here is the survival probability.
+    #     standardrb_data = RBData(
+    #         data.assign(signal=lambda x: samples_to_p0(x.samples.to_list()))
+    #     )
+
     # Store the parameters to display them later.
-    standardrb_data.attrs = params.__dict__
-    return standardrb_data
+    data.params = params.__dict__
+
+    import pdb
+
+    pdb.set_trace()
+
+    return data
 
 
 def _fit(data: RBData) -> StandardRBResult:
@@ -248,76 +300,104 @@ def _fit(data: RBData) -> StandardRBResult:
     Returns:
         StandardRBResult: Aggregated and processed data.
     """
-    # Extract depths and probabilities
-    x, y_scatter = extract_from_data(data, "signal", "depth", list)
-    homogeneous = all(len(y_scatter[0]) == len(row) for row in y_scatter)
 
-    # Extract fitting and bootstrap parameters if given
-    uncertainties = data.attrs.get("uncertainties", None)
-    n_bootstrap = data.attrs.get("n_bootstrap", 0)
+    qubits = data.qubits
 
-    y_estimates, popt_estimates = y_scatter, []
-    if uncertainties and n_bootstrap:
-        # Non-parametric bootstrap resampling
-        bootstrap_y = bootstrap(
-            y_scatter,
-            n_bootstrap,
-            homogeneous=homogeneous,
-            seed=data.attrs.get("seed", None),
+    fidelity = {}
+    pulse_fidelity = {}
+    popts = {}
+    perrs = {}
+    error_barss = {}
+
+    # TODO: This should work for several qubits as well
+    for qubit in qubits:
+        # Extract depths and probabilities
+
+        x = data.params["depths"]
+        # TODO: Better way of recover signals for qubit and depths
+        y_scatter = []
+        for depth in x:
+            y_scatter.append(data[qubit, depth])
+        y_scatter = [y_scatter]
+
+        # TODO: What is this for ???
+        """This is when you sample a depth more than once"""
+        # homogeneous = all(len(y_scatter[0]) == len(row) for row in y_scatter)
+        homogeneous = True
+
+        # Extract fitting and bootstrap parameters if given
+        uncertainties = data.params.get("uncertainties", None)
+        n_bootstrap = data.params.get("n_bootstrap", 0)
+
+        y_estimates, popt_estimates = y_scatter, []
+        if uncertainties and n_bootstrap:
+            # Non-parametric bootstrap resampling
+            bootstrap_y = bootstrap(
+                y_scatter,
+                n_bootstrap,
+                homogeneous=homogeneous,
+                seed=data.params.get("seed", None),
+            )
+
+            # Parametric bootstrap resampling of "corrected" probabilites from binomial distribution
+            bootstrap_y = resample_p0(
+                bootstrap_y, data.params.get("nshots", 1), homogeneous=homogeneous
+            )
+
+            # Compute y and popt estimates for each bootstrap iteration
+            y_estimates = (
+                np.mean(bootstrap_y, axis=1)
+                if homogeneous
+                else [np.mean(y_iter, axis=0) for y_iter in bootstrap_y]
+            )
+            popt_estimates = np.apply_along_axis(
+                lambda y_iter: fit_exp1B_func(x, y_iter, bounds=[0, 1])[0],
+                axis=0,
+                arr=np.array(y_estimates),
+            )
+
+        # Fit the initial data and compute error bars
+        y = [np.mean(y_row) for y_row in y_scatter]
+
+        # If bootstrap was not performed, y_estimates can be inhomogeneous
+        error_bars = data_uncertainties(
+            y_estimates,
+            uncertainties,
+            data_median=y,
+            homogeneous=(homogeneous or n_bootstrap != 0),
         )
+        # Generate symmetric non-zero uncertainty of y for the fit
+        sigma = None
+        if error_bars is not None:
+            sigma = (
+                np.max(error_bars, axis=0)
+                if isinstance(error_bars[0], Iterable)
+                else error_bars
+            ) + 0.1
 
-        # Parametric bootstrap resampling of "corrected" probabilites from binomial distribution
-        bootstrap_y = resample_p0(
-            bootstrap_y, data.attrs.get("nshots", 1), homogeneous=homogeneous
-        )
+        popt, perr = fit_exp1B_func(x, y, sigma=sigma, bounds=[0, 1])
 
-        # Compute y and popt estimates for each bootstrap iteration
-        y_estimates = (
-            np.mean(bootstrap_y, axis=1)
-            if homogeneous
-            else [np.mean(y_iter, axis=0) for y_iter in bootstrap_y]
-        )
-        popt_estimates = np.apply_along_axis(
-            lambda y_iter: fit_exp1B_func(x, y_iter, bounds=[0, 1])[0],
-            axis=0,
-            arr=np.array(y_estimates),
-        )
+        popts[qubit] = popt
+        perrs[qubit] = perr
 
-    # Fit the initial data and compute error bars
-    y = [np.mean(y_row) for y_row in y_scatter]
+        # Compute fit uncertainties
+        if len(popt_estimates):
+            perr = data_uncertainties(popt_estimates, uncertainties, data_median=popt)
+            perr = perr.T if perr is not None else (0,) * len(popt)
 
-    # If bootstrap was not performed, y_estimates can be inhomogeneous
-    error_bars = data_uncertainties(
-        y_estimates,
-        uncertainties,
-        data_median=y,
-        homogeneous=(homogeneous or n_bootstrap != 0),
-    )
-    # Generate symmetric non-zero uncertainty of y for the fit
-    sigma = None
-    if error_bars is not None:
-        sigma = (
-            np.max(error_bars, axis=0)
-            if isinstance(error_bars[0], Iterable)
-            else error_bars
-        ) + 0.1
+        # Compute the fidelities
+        infidelity = (1 - popt[1]) / 2
+        fidelity[qubit] = 1 - infidelity
+        pulse_fidelity[qubit] = 1 - infidelity / NPULSES_PER_CLIFFORD
 
-    popt, perr = fit_exp1B_func(x, y, sigma=sigma, bounds=[0, 1])
+        # conversion from np.array to list/tuple
+        error_bars = error_bars.tolist() if error_bars is not None else error_bars
+        error_barss[qubit] = error_bars
+        perr = perr if isinstance(perr, tuple) else perr.tolist()
 
-    # Compute fit uncertainties
-    if len(popt_estimates):
-        perr = data_uncertainties(popt_estimates, uncertainties, data_median=popt)
-        perr = perr.T if perr is not None else (0,) * len(popt)
+        # Store in dicts the values
 
-    # Compute the fidelities
-    infidelity = (1 - popt[1]) / 2
-    fidelity = 1 - infidelity
-    pulse_fidelity = 1 - infidelity / NPULSES_PER_CLIFFORD
-
-    # conversion from np.array to list/tuple
-    error_bars = error_bars.tolist() if error_bars is not None else error_bars
-    perr = perr if isinstance(perr, tuple) else perr.tolist()
-    return StandardRBResult(fidelity, pulse_fidelity, popt, perr, error_bars)
+    return StandardRBResult(fidelity, pulse_fidelity, popts, perrs, error_barss)
 
 
 def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], str]:
@@ -332,20 +412,16 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
     Returns:
         tuple[list[go.Figure], str]:
     """
-    x, y_scatter = extract_from_data(data, "signal", "depth", list)
-    y = [np.mean(y_row) for y_row in y_scatter]
 
     fig = go.Figure()
-    fig.add_trace(
-        go.Scatter(
-            x=data.depth.tolist(),
-            y=data.signal.tolist(),
-            line=dict(color="#6597aa"),
-            mode="markers",
-            marker={"opacity": 0.2, "symbol": "square"},
-            name="iterations",
-        )
-    )
+    fitting_report = ""
+
+    # TODO: Better way of recover signals for qubit and depths
+    x = data.params["depths"]
+    y = []
+    for depth in x:
+        y.append(data[qubit, depth])
+
     fig.add_trace(
         go.Scatter(
             x=x,
@@ -358,7 +434,7 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
     # Create a dictionary for the error bars
     error_y_dict = None
     if fit is not None:
-        popt, perr = fit.fit_parameters, fit.fit_uncertainties
+        popt, perr = fit.fit_parameters[qubit], fit.fit_uncertainties[qubit]
         label = "Fit: y=Ap^x<br>A: {}<br>p: {}<br>B: {}".format(
             number_to_str(popt[0], perr[0]),
             number_to_str(popt[1], perr[1]),
@@ -375,19 +451,20 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
             )
         )
         if fit.error_bars is not None:
+            error_bars = fit.error_bars[qubit]
             # Constant error bars
-            if isinstance(fit.error_bars, Iterable) is False:
-                error_y_dict = {"type": "constant", "value": fit.error_bars}
+            if isinstance(error_bars, Iterable) is False:
+                error_y_dict = {"type": "constant", "value": error_bars}
             # Symmetric error bars
-            elif isinstance(fit.error_bars[0], Iterable) is False:
-                error_y_dict = {"type": "data", "array": fit.error_bars}
+            elif isinstance(error_bars[0], Iterable) is False:
+                error_y_dict = {"type": "data", "array": error_bars}
             # Asymmetric error bars
             else:
                 error_y_dict = {
                     "type": "data",
                     "symmetric": False,
-                    "array": fit.error_bars[1],
-                    "arrayminus": fit.error_bars[0],
+                    "array": error_bars[1],
+                    "arrayminus": error_bars[0],
                 }
             fig.add_trace(
                 go.Scatter(
@@ -400,37 +477,34 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
                 )
             )
 
-    # TODO: fix this mess
-    # meta_data = deepcopy(data.attrs)
-    # meta_data.pop("depths")
-    # if not meta_data["noise_model"]:
-    #     meta_data.pop("noise_model")
-    #     meta_data.pop("noise_params")
-
-    table_str = ""
-    # TODO: and this mess
-    # table_str = "".join(
-    #     [
-    #         f" | {key}: {value}<br>"
-    #         for key, value in {
-    #             **meta_data,
-    #             "fidelity": number_to_str(fit.fidelity, np.array(perr[1]) / 2),
-    #             "pulse_fidelity": number_to_str(
-    #                 fit.pulse_fidelity,
-    #                 np.array(perr[1]) / (2 * NPULSES_PER_CLIFFORD),
-    #             ),
-    #         }.items()
-    #     ]
-    # )
+    fitting_report = table_html(
+        table_dict(
+            qubit,
+            ["niter", "nshots", "uncertainties", "fidelity", "pulse_fidelity"],
+            [
+                data.params["niter"],
+                data.params["nshots"],
+                data.params["uncertainties"],
+                number_to_str(
+                    fit.fidelity[qubit], np.array(fit.fit_uncertainties[qubit][1]) / 2
+                ),
+                number_to_str(
+                    fit.pulse_fidelity[qubit],
+                    np.array(fit.fit_uncertainties[qubit][1])
+                    / (2 * NPULSES_PER_CLIFFORD),
+                ),
+            ],
+        )
+    )
 
     fig.update_layout(
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
+        uirevision="0",
         xaxis_title="Circuit depth",
         yaxis_title="Survival Probability",
     )
 
-    return [fig], table_str
+    return [fig], fitting_report
 
 
 # Build the routine object which is used by qq-auto.
