@@ -1,3 +1,5 @@
+from typing import Optional
+
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
@@ -9,6 +11,11 @@ from qibocal.auto.operation import Qubits, Routine
 from ..two_qubit_interaction.utils import order_pair
 from .coupler_resonator_spectroscopy import _fit, _plot, _update
 from .utils import CouplerSpectroscopyData, CouplerSpectroscopyParameters
+
+
+class CouplerSpectroscopyParameters(CouplerSpectroscopyParameters):
+    drive_duration: Optional[int] = 2000
+    """Drive pulse duration to excite the qubit before the measurament"""
 
 
 def _acquisition(
@@ -25,26 +32,30 @@ def _acquisition(
     on the flux coupler pulse amplitude requiered to enable 2q interactions.
 
     """
-    # create a sequence of pulses for the experiment:
-    # MZ
+    """
+    We may want to measure both qubits on the pair,
+    that will require a different acquisition, for now I suggest to only measure one and reduce possible crosstalk.
+    Zurich crashes on several pairs due to the single oscillator issue.
+    """
 
-    # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
+    # create a sequence of pulses for the experiment:
+    # Coupler pulse while Drive pulse - MZ
+
     sequence = PulseSequence()
     ro_pulses = {}
     qd_pulses = {}
-
-    for pair in qubits:
-        # TODO: DO general
-        qubit = platform.qubits[params.measured_qubit].name
+    couplers = []
+    for i, pair in enumerate(qubits):
+        qubit = platform.qubits[params.measured_qubit[i]].name
         # TODO: Qubit pair patch
         ordered_pair = order_pair(pair, platform.qubits)
-        coupler = platform.pairs[tuple(sorted(ordered_pair))].coupler
+        couplers.append(platform.pairs[tuple(sorted(ordered_pair))].coupler)
 
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
-            qubit, start=params.readout_delay
+            qubit, start=params.drive_duration
         )
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
-            qubit, start=0, duration=2000
+            qubit, start=0, duration=params.drive_duration
         )
         if params.amplitude is not None:
             qd_pulses[qubit].amplitude = params.amplitude
@@ -57,11 +68,10 @@ def _acquisition(
         -params.freq_width // 2, params.freq_width // 2, params.freq_step
     )
 
-    # TODO: fix loop
     sweeper_freq = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
-        pulses=[qd_pulses[qubit] for qubit in [params.measured_qubit]],
+        pulses=[qd_pulses[qubit] for qubit in params.measured_qubit],
         type=SweeperType.OFFSET,
     )
 
@@ -70,12 +80,11 @@ def _acquisition(
         -params.bias_width / 2, params.bias_width / 2, params.bias_step
     )
 
-    # TODO: fix loop
     """This sweeper is implemented in the flux pulse amplitude and we need it to be that way. """
     sweeper_bias = Sweeper(
         Parameter.bias,
         delta_bias_range,
-        couplers=[coupler],
+        couplers=couplers,
         type=SweeperType.ABSOLUTE,
     )
 
@@ -95,11 +104,10 @@ def _acquisition(
         sweeper_freq,
     )
 
-    # TODO: fix loop
     # retrieve the results for every qubit
-    for pair in qubits:
-        # TODO: DO general
-        qubit = platform.qubits[params.measured_qubit].name
+    for i, pair in enumerate(qubits):
+        # TODO: May measure both qubits on the pair
+        qubit = platform.qubits[params.measured_qubit[i]].name
         # average msr, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulses[qubit].serial]
         # store the results

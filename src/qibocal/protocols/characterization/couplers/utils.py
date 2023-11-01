@@ -23,14 +23,11 @@ class CouplerSpectroscopyParameters(Parameters):
     freq_step: int
     """Frequency step for frequency sweep (Hz)."""
     # TODO: It may be better not to use readout multiplex to avoid readout crosstalk
-    # TODO: The code works for this being QubitId, change to list[QubitId]
     measured_qubit: list[QubitId]
     """Qubit to readout from the pair"""
     amplitude: Optional[float] = None
     """Readout or qubit drive amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
-    readout_delay: Optional[int] = 1000
-    """Readout delay before the measurament is done to let the flux coupler pulse act"""
     nshots: Optional[int] = None
     """Number of shots."""
     relaxation_time: Optional[int] = None
@@ -54,6 +51,8 @@ class CouplerSpectroscopyResults(Results):
 
     sweetspot: dict[QubitId, float]
     """Sweetspot for each coupler."""
+    pulse_amp: dict[QubitId, float]
+    """Pulse amplitude for the coupler."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitted parameters."""
 
