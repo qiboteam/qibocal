@@ -566,7 +566,6 @@ actions:
       frequency_step: 100_000
       power_width: 1
       power_step: 0.1
-      nshots: 10
 
   - id: resoantor_amplitude
     priority: 0
