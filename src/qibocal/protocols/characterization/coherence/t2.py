@@ -168,7 +168,7 @@ def _plot(data: T2Data, qubit, fit: T2Results = None):
             )
         )
         fitting_report = table_html(
-            table_dict(qubit, ["T2"], [fit.t2[qubit]], display_error=True)
+            table_dict(qubit, ["T2 [ns]"], [fit.t2[qubit]], display_error=True)
         )
     fig.update_layout(
         showlegend=True,

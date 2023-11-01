@@ -119,6 +119,20 @@ actions:
       nshots: 10
       relaxation_time: 3_000
 
+      
+  - id: qubit spectroscopy ef
+    priority: 0
+    operation: qubit_spectroscopy_ef
+    #FIXME: add RX12 for qubit 4
+    qubits: [0, 1, 2, 3]
+    parameters:
+      drive_amplitude: 0.001
+      drive_duration: 1000
+      freq_width: 2_000_000
+      freq_step: 500_000
+      nshots: 10
+
+
   - id: resonator flux dependence
     priority: 0
     operation: resonator_flux
@@ -199,10 +213,42 @@ actions:
       pulse_length: 30
       nshots: 1024
 
+  - id: rabi msr
+    priority: 0
+    operation: rabi_amplitude_msr
+    parameters:
+      min_amp_factor: 0.0
+      max_amp_factor: 4.0
+      step_amp_factor: 0.1
+      pulse_length: 30
+      nshots: 1024
+
+
+  - id: rabi_ef
+    priority: 0
+    operation: rabi_amplitude_ef
+    #FIXME: add RX12 for qubit 4
+    qubits: [0, 1, 2, 3]
+    parameters:
+      min_amp_factor: 0.0
+      max_amp_factor: 1.0
+      step_amp_factor: 0.1
+      pulse_length: 30
+      nshots: 1024
 
   - id: rabi length
     priority: 0
     operation: rabi_length
+    parameters:
+      pulse_duration_start: 4
+      pulse_duration_end: 84
+      pulse_duration_step: 8
+      pulse_amplitude: 0.5
+      nshots: 1024
+
+  - id: rabi length msr
+    priority: 0
+    operation: rabi_length_msr
     parameters:
       pulse_duration_start: 4
       pulse_duration_end: 84
@@ -566,3 +612,11 @@ actions:
     parameters:
       amplitude_step: 0.1
       amplitude_stop: 0.5
+
+  - id: qutrit
+    priority: 0
+    qubits: [0,1]
+    operation: qutrit_classification
+    parameters:
+      nshots: 100
+      classifiers_list: ["naive_bayes", "decision_tree"]

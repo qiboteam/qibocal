@@ -50,7 +50,7 @@ def exponential_fit(data, zeno=None):
             popt = [
                 (y_max - y_min) * popt[0] + y_min,
                 (y_max - y_min) * popt[1] * np.exp(x_min * popt[2] / (x_max - x_min)),
-                popt[2] / (x_max - x_min),
+                popt[2] * (x_max - x_min),
             ]
             t2 = popt[2]
 

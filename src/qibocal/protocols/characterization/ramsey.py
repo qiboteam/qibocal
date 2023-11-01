@@ -15,7 +15,7 @@ from scipy.signal import find_peaks
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
-from .utils import GHZ_TO_HZ, chi2_reduced, table_dict, table_html
+from .utils import GHZ_TO_HZ, HZ_TO_GHZ, chi2_reduced, table_dict, table_html
 
 POPT_EXCEPTION = [0, 0, 0, 0, 0]
 """Fit parameters output to handle exceptions"""
@@ -340,7 +340,7 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
 
 
 def _update(results: RamseyResults, platform: Platform, qubit: QubitId):
-    update.drive_frequency(results.frequency[qubit], platform, qubit)
+    update.drive_frequency(results.frequency[qubit][0] * HZ_TO_GHZ, platform, qubit)
 
 
 ramsey = Routine(_acquisition, _fit, _plot, _update)

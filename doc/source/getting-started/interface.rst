@@ -1,3 +1,5 @@
+.. _interface:
+
 How to use Qibocal?
 ===================
 

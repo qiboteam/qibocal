@@ -25,8 +25,13 @@ from .flux_dependence.resonator_flux_dependence import (
     resonator_flux,
 )
 from .qubit_spectroscopy import qubit_spectroscopy
+from .qubit_spectroscopy_ef import qubit_spectroscopy_ef
+from .qutrit_classification import qutrit_classification
 from .rabi.amplitude import rabi_amplitude
+from .rabi.amplitude_msr import rabi_amplitude_msr
+from .rabi.ef import rabi_amplitude_ef
 from .rabi.length import rabi_length
+from .rabi.length_msr import rabi_length_msr
 from .rabi.length_sequences import rabi_length_sequences
 from .ramsey import ramsey
 from .ramsey_msr import ramsey_msr
@@ -59,6 +64,8 @@ class Operation(Enum):
     rabi_amplitude = rabi_amplitude
     rabi_length = rabi_length
     rabi_length_sequences = rabi_length_sequences
+    rabi_amplitude_msr = rabi_amplitude_msr
+    rabi_length_msr = rabi_length_msr
     ramsey = ramsey
     ramsey_msr = ramsey_msr
     ramsey_sequences = ramsey_sequences
@@ -90,6 +97,9 @@ class Operation(Enum):
     readout_mitigation_matrix = readout_mitigation_matrix
     twpa_frequency = twpa_frequency
     twpa_power = twpa_power
+    rabi_amplitude_ef = rabi_amplitude_ef
+    qubit_spectroscopy_ef = qubit_spectroscopy_ef
+    qutrit_classification = qutrit_classification
     resonator_amplitude = resonator_amplitude
     coupler_resonator_spectroscopy = coupler_resonator_spectroscopy
     coupler_qubit_spectroscopy = coupler_qubit_spectroscopy
