@@ -139,7 +139,7 @@ class Task:
         #     self.parameters.nshots = platform.settings.nshots
         # if self.parameters.relaxation_time is None:
         #     self.parameters.relaxation_time = platform.settings.relaxation_time
-        
+
         parameters_keys = set(
             self.operation.parameters_type.__dict__["__annotations__"].keys()
         ) | set(Parameters.__dict__["__annotations__"].keys())
@@ -147,8 +147,10 @@ class Task:
         for setting in parameters_keys:
             if setting not in self.action.parameters:
                 if hasattr(platform.settings, setting):
-                    self.action.parameters[setting]=getattr(platform.settings, setting)
-        
+                    self.action.parameters[setting] = getattr(
+                        platform.settings, setting
+                    )
+
         try:
             operation: Routine = self.operation
             parameters = self.parameters
