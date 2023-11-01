@@ -135,17 +135,11 @@ class Task:
         completed = Completed(self, Normal(), folder)
         task_qubits = self._allocate_local_qubits(qubits, platform)
 
-        # get parent and child class data_members
-        parameters_keys = set(
-            self.operation.parameters_type.__dict__["__annotations__"].keys()
-        ) | set(Parameters.__dict__["__annotations__"].keys())
-        # read all settings defined in platform-specific qibolab runcard
-        for setting, value in platform.settings.__dict__.items():
-            # save values non defined in qibocal runcard,
-            # but that are used by the class
-            if setting not in self.action.parameters:
-                if setting in parameters_keys:
-                    self.action.parameters[setting] = value
+        if self.parameters.nshots is None:
+            self.parameters.nshots = platform.settings.nshots
+
+        if self.parameters.relaxation_time is None:
+            self.parameters.relaxation_time = platform.settings.relaxation_time
 
         try:
             operation: Routine = self.operation
