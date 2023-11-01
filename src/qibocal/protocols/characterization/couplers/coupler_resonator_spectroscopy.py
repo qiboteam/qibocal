@@ -18,13 +18,13 @@ from .utils import (
 )
 
 
-class CouplerSpectroscopyParameters(CouplerSpectroscopyParameters):
+class CouplerSpectroscopyParametersResonator(CouplerSpectroscopyParameters):
     readout_delay: Optional[int] = 1000
     """Readout delay before the measurament is done to let the flux coupler pulse act"""
 
 
 def _acquisition(
-    params: CouplerSpectroscopyParameters, platform: Platform, qubits: Qubits
+    params: CouplerSpectroscopyParametersResonator, platform: Platform, qubits: Qubits
 ) -> CouplerSpectroscopyData:
     """
     Data acquisition for CouplerResonator spectroscopy.

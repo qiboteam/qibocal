@@ -13,13 +13,13 @@ from .coupler_resonator_spectroscopy import _fit, _plot, _update
 from .utils import CouplerSpectroscopyData, CouplerSpectroscopyParameters
 
 
-class CouplerSpectroscopyParameters(CouplerSpectroscopyParameters):
+class CouplerSpectroscopyParametersQubit(CouplerSpectroscopyParameters):
     drive_duration: Optional[int] = 2000
     """Drive pulse duration to excite the qubit before the measurament"""
 
 
 def _acquisition(
-    params: CouplerSpectroscopyParameters, platform: Platform, qubits: Qubits
+    params: CouplerSpectroscopyParametersQubit, platform: Platform, qubits: Qubits
 ) -> CouplerSpectroscopyData:
     """
     Data acquisition for CouplerQubit spectroscopy.
