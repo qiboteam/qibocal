@@ -284,7 +284,6 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
             frequencies, biases, msr, msr_mask=0.5
         )
 
-        # scaler = 10**9
         bare_resonator_frequency = data.bare_resonator_frequency[
             qubit
         ]  # Resonator frequency at high power.
