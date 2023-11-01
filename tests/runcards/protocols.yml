@@ -119,7 +119,7 @@ actions:
       nshots: 10
       relaxation_time: 3_000
 
-      
+
   - id: qubit spectroscopy ef
     priority: 0
     operation: qubit_spectroscopy_ef
