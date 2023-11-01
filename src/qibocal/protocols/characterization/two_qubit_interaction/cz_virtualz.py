@@ -14,7 +14,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from scipy.optimize import curve_fit
 
 from qibocal import update
-from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
+from qibocal.auto.operation import Data, Parameters, QubitsPairs, Results, Routine
 from qibocal.config import log
 from qibocal.protocols.characterization.two_qubit_interaction.chevron import order_pair
 from qibocal.protocols.characterization.utils import table_dict, table_html
@@ -147,7 +147,7 @@ def create_sequence(
 def _acquisition(
     params: CZVirtualZParameters,
     platform: Platform,
-    qubits: Qubits,
+    qubits: QubitsPairs,
 ) -> CZVirtualZData:
     r"""
     Acquisition for CZVirtualZ.
@@ -160,14 +160,23 @@ def _acquisition(
     is undone in the high frequency qubit and a theta90 pulse is applied to the low
     frequency qubit before measurement. That is, a pi-half pulse around the relative phase
     parametereized by the angle theta.
-    Measurements on the low frequency qubit yield the the 2Q-phase of the gate and the
+    Measurements on the low frequency qubit yield the 2Q-phase of the gate and the
     remnant single qubit Z phase aquired during the execution to be corrected.
     Population of the high frequency qubit yield the leakage to the non-computational states
     during the execution of the flux pulse.
     """
 
     theta_absolute = np.arange(params.theta_start, params.theta_end, params.theta_step)
-
+    l = list(qubits.keys())
+    print(type(qubits[(0, 2)]))
+    print(l)
+    _, indeces = np.unique(l, return_index=True)
+    print(indeces[1])
+    couple = indeces[1] // 2
+    qubit_order = indeces[1] % 2
+    print(qubit_order, couple)
+    print(l[1])
+    # print(list(qubits.items())[0][1].qubit1)
     data = CZVirtualZData(thetas=theta_absolute.tolist())
     for pair in qubits:
         # order the qubits so that the low frequency one is the first
@@ -249,6 +258,7 @@ def _fit(
     """
     fitted_parameters = {}
     pairs = data.pairs
+    print("OOOOOOO", pairs)
     virtual_phase = {}
     cz_angle = {}
     for pair in pairs:

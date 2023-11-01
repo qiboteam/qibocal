@@ -17,6 +17,7 @@ from .coherence.zeno_msr import zeno_msr
 from .dispersive_shift import dispersive_shift
 from .fast_reset.fast_reset import fast_reset
 from .flipping import flipping
+from .flux_dependence.avoided_crossing import avoided_crossing
 from .flux_dependence.qubit_crosstalk import qubit_crosstalk
 from .flux_dependence.qubit_flux_dependence import qubit_flux
 from .flux_dependence.resonator_crosstalk import resonator_crosstalk
@@ -98,3 +99,4 @@ class Operation(Enum):
     qubit_spectroscopy_ef = qubit_spectroscopy_ef
     qutrit_classification = qutrit_classification
     resonator_amplitude = resonator_amplitude
+    avoided_crossing = avoided_crossing
