@@ -214,6 +214,15 @@ actions:
       pulse_length: 30
       nshots: 1024
 
+  - id: rabi without nshots
+    priority: 0
+    operation: rabi_amplitude
+    parameters:
+      min_amp_factor: 0.0
+      max_amp_factor: 4.0
+      step_amp_factor: 0.1
+      pulse_length: 30
+
   - id: rabi msr
     priority: 0
     operation: rabi_amplitude_msr
