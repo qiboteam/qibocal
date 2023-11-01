@@ -192,8 +192,12 @@ def anharmonicity(anharmonicity: float, platform: Platform, qubit: QubitId):
     platform.qubits[qubit].anharmonicity = int(anharmonicity * GHZ_TO_HZ)
 
 
-def bare_resonator_frequency_sweetspot(bare_resonator_frequency_sweetspot: float, platform: Platform, qubit: QubitId):
-    platform.qubits[qubit].bare_resonator_frequency_sweetspot = int(bare_resonator_frequency_sweetspot * GHZ_TO_HZ)
+def bare_resonator_frequency_sweetspot(
+    bare_resonator_frequency_sweetspot: float, platform: Platform, qubit: QubitId
+):
+    platform.qubits[qubit].bare_resonator_frequency_sweetspot = int(
+        bare_resonator_frequency_sweetspot * GHZ_TO_HZ
+    )
 
 
 def flux_to_bias(flux_to_bias: float, platform: Platform, qubit: QubitId):
@@ -217,4 +221,4 @@ def josephson_energy(Ej: float, platform: Platform, qubit: QubitId):
 
 
 def coupling(g: float, platform: Platform, qubit: QubitId):
-    platform.qubits[qubit].g = float(g) 
+    platform.qubits[qubit].g = float(g)
