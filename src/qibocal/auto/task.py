@@ -19,7 +19,6 @@ from .operation import (
     RESULTSFILE,
     Data,
     DummyPars,
-    Parameters,
     Qubits,
     QubitsPairs,
     Results,
@@ -139,7 +138,7 @@ class Task:
             self.parameters.nshots = platform.settings.nshots
         if self.parameters.relaxation_time is None:
             self.parameters.relaxation_time = platform.settings.relaxation_time
-        
+
         try:
             operation: Routine = self.operation
             parameters = self.parameters
