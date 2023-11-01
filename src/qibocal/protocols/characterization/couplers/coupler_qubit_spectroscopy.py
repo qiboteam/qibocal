@@ -46,7 +46,7 @@ def _acquisition(
     qd_pulses = {}
     couplers = []
     for i, pair in enumerate(qubits):
-        qubit = platform.qubits[params.measured_qubit[i]].name
+        qubit = platform.qubits[params.measured_qubits[i]].name
         # TODO: Qubit pair patch
         ordered_pair = order_pair(pair, platform.qubits)
         couplers.append(platform.pairs[tuple(sorted(ordered_pair))].coupler)
@@ -71,7 +71,7 @@ def _acquisition(
     sweeper_freq = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
-        pulses=[qd_pulses[qubit] for qubit in params.measured_qubit],
+        pulses=[qd_pulses[qubit] for qubit in params.measured_qubits],
         type=SweeperType.OFFSET,
     )
 
@@ -107,7 +107,7 @@ def _acquisition(
     # retrieve the results for every qubit
     for i, pair in enumerate(qubits):
         # TODO: May measure both qubits on the pair
-        qubit = platform.qubits[params.measured_qubit[i]].name
+        qubit = platform.qubits[params.measured_qubits[i]].name
         # average msr, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulses[qubit].serial]
         # store the results
