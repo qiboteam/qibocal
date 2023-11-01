@@ -19,6 +19,7 @@ from .operation import (
     RESULTSFILE,
     Data,
     DummyPars,
+    Parameters,
     Qubits,
     QubitsPairs,
     Results,
@@ -134,12 +135,20 @@ class Task:
         completed = Completed(self, Normal(), folder)
         task_qubits = self._allocate_local_qubits(qubits, platform)
 
-        if self.parameters.nshots is None:
-            self.parameters.nshots = platform.settings.nshots
-
-        if self.parameters.relaxation_time is None:
-            self.parameters.relaxation_time = platform.settings.relaxation_time
-
+        # if self.parameters.nshots is None:
+        #     self.parameters.nshots = platform.settings.nshots
+        # if self.parameters.relaxation_time is None:
+        #     self.parameters.relaxation_time = platform.settings.relaxation_time
+        
+        parameters_keys = set(
+            self.operation.parameters_type.__dict__["__annotations__"].keys()
+        ) | set(Parameters.__dict__["__annotations__"].keys())
+        # read all settings defined in platform-specific qibolab runcard
+        for setting in parameters_keys:
+            if setting not in self.action.parameters:
+                if hasattr(platform.settings, setting):
+                    self.action.parameters[setting]=getattr(platform.settings, setting)
+        
         try:
             operation: Routine = self.operation
             parameters = self.parameters
