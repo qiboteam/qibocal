@@ -561,6 +561,7 @@ actions:
   - id: twpa frequency power
     priority: 0
     operation: twpa_frequency_power
+    qubits: [0]
     parameters:
       frequency_width: 1_000_000
       frequency_step: 100_000
