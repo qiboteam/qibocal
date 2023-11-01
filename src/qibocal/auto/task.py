@@ -19,7 +19,6 @@ from .operation import (
     RESULTSFILE,
     Data,
     DummyPars,
-    Parameters,
     Qubits,
     QubitsPairs,
     Results,
