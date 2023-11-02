@@ -3,16 +3,14 @@ import pathlib
 
 import pytest
 import yaml
+from click.testing import CliRunner
 from qibolab import create_platform
 
-from qibocal.auto.runcard import Runcard
-from qibocal.cli.acquisition import acquire
-from qibocal.cli.autocalibration import autocalibrate
-from qibocal.cli.fit import fit
-from qibocal.cli.report import report
+from qibocal.cli._base import command
 
 PATH_TO_RUNCARD = pathlib.Path(__file__).parent / "runcards/protocols.yml"
 PLATFORM = create_platform("dummy")
+SINGLE_ACTION_RUNCARD = "action.yml"
 
 
 def generate_runcard_single_protocol():
@@ -20,40 +18,92 @@ def generate_runcard_single_protocol():
         actions = yaml.safe_load(file)
     for action in actions["actions"]:
         card = {"actions": [action], "qubits": list(PLATFORM.qubits)}
-        yield Runcard.load(card)
+        yield card
 
 
 def idfn(val):
     """Helper function to indentify the protocols when testing."""
-    return val.actions[0].id
+    return val["actions"][0]["id"]
 
 
-@pytest.mark.parametrize("update", [True, False])
+@pytest.mark.parametrize("update", ["--update", "--no-update"])
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
-def test_action_builder(runcard, update, tmp_path):
-    """Test ActionBuilder for all protocols."""
-    autocalibrate(
-        runcard,
-        tmp_path,
-        force=True,
-        update=update,
+def test_auto_command(runcard, update, tmp_path):
+    """Test auto command pipeline."""
+
+    (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
+    runner = CliRunner()
+    results = runner.invoke(
+        command,
+        [
+            "auto",
+            str(tmp_path / SINGLE_ACTION_RUNCARD),
+            "-o",
+            f"{str(tmp_path)}",
+            "-f",
+            update,
+        ],
     )
-    report(tmp_path)
+    assert not results.exception
+    assert results.exit_code == 0
 
 
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
-def test_acquisition_builder(runcard, tmp_path):
-    """Test AcquisitionBuilder for all protocols."""
-    acquire(runcard, tmp_path, force=True)
-    report(tmp_path)
+def test_acquire_command(runcard, tmp_path):
+    """Test acquire command pipeline and report generated."""
+    (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
+    runner = CliRunner()
+
+    # test acquisition
+    results = runner.invoke(
+        command,
+        [
+            "acquire",
+            str(tmp_path / SINGLE_ACTION_RUNCARD),
+            "-o",
+            f"{str(tmp_path)}",
+            "-f",
+        ],
+    )
+    assert not results.exception
+    assert results.exit_code == 0
+
+    # generate report from acquired data
+    results_report = runner.invoke(command, ["report", str(tmp_path)])
+    assert not results_report.exception
+    assert results_report.exit_code == 0
 
 
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
-def test_fit_builder(runcard, tmp_path):
-    """Test FitBuilder."""
-    acquire(runcard, tmp_path, force=True)
-    fit(tmp_path, update=False)
-    report(tmp_path)
+def test_fit_command(runcard, tmp_path):
+    """Test fit builder and report generated."""
+    (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
+    runner = CliRunner()
+
+    # test acquisition
+    results = runner.invoke(
+        command,
+        [
+            "acquire",
+            str(tmp_path / SINGLE_ACTION_RUNCARD),
+            "-o",
+            f"{str(tmp_path)}",
+            "-f",
+        ],
+    )
+    assert not results.exception
+    assert results.exit_code == 0
+
+    # perform fit
+    results_fit = runner.invoke(command, ["fit", str(tmp_path), "--no-update"])
+
+    assert not results_fit.exception
+    assert results_fit.exit_code == 0
+
+    # generate report with fit and plot
+    results_plot = runner.invoke(command, ["report", str(tmp_path)])
+    assert not results_plot.exception
+    assert results_plot.exit_code == 0
 
 
 # TODO: compare report by calling qq report

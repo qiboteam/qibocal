@@ -76,7 +76,7 @@ def auto(runcard, folder, force, update, platform, backend):
     "runcard", metavar="RUNCARD", type=click.Path(exists=True, path_type=pathlib.Path)
 )
 @click.option(
-    "folder",
+    "--folder",
     "-o",
     type=click.Path(path_type=pathlib.Path),
     help="Output folder. If not provided a standard name will generated.",
