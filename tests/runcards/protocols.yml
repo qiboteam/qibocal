@@ -179,6 +179,7 @@ actions:
   - id: rabi
     priority: 0
     operation: rabi_amplitude
+    update: false
     parameters:
       min_amp_factor: 0.0
       max_amp_factor: 4.0
@@ -189,6 +190,7 @@ actions:
   - id: rabi msr
     priority: 0
     operation: rabi_amplitude_msr
+    update: false
     parameters:
       min_amp_factor: 0.0
       max_amp_factor: 4.0
@@ -424,6 +426,7 @@ actions:
   - id: flipping
     priority: 0
     operation: flipping
+    update: false
     parameters:
       nflips_max: 5
       nflips_step: 1

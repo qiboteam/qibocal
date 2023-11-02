@@ -1,8 +1,11 @@
 """Specify runcard layout, handles (de)serialization."""
+from functools import cached_property
 from typing import Any, NewType, Optional, Union
 
 from pydantic import Field
 from pydantic.dataclasses import dataclass
+from qibo.backends import Backend, GlobalBackend
+from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
 from .operation import OperationId
@@ -47,6 +50,17 @@ class Runcard:
     qubits: Optional[Union[list[QubitId], list[tuple[QubitId, QubitId]]]] = None
     backend: str = "qibolab"
     platform: str = "dummy"
+
+    @cached_property
+    def backend_obj(self) -> Backend:
+        """Allocate backend."""
+        GlobalBackend.set_backend(self.backend, self.platform)
+        return GlobalBackend()
+
+    @property
+    def platform_obj(self) -> Platform:
+        """Allocate platform."""
+        return self.backend_obj.platform
 
     @classmethod
     def load(cls, params: dict):

@@ -37,8 +37,6 @@ def test_action_builder(runcard, update, tmp_path):
         tmp_path,
         force=True,
         update=update,
-        platform_name="dummy",
-        backend_name="qibolab",
     )
     report(tmp_path)
 
@@ -46,18 +44,14 @@ def test_action_builder(runcard, update, tmp_path):
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
 def test_acquisition_builder(runcard, tmp_path):
     """Test AcquisitionBuilder for all protocols."""
-    acquire(
-        runcard, tmp_path, force=True, platform_name="dummy", backend_name="qibolab"
-    )
+    acquire(runcard, tmp_path, force=True)
     report(tmp_path)
 
 
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
 def test_fit_builder(runcard, tmp_path):
     """Test FitBuilder."""
-    acquire(
-        runcard, tmp_path, force=True, platform_name="dummy", backend_name="qibolab"
-    )
+    acquire(runcard, tmp_path, force=True)
     fit(tmp_path, update=False)
     report(tmp_path)
 

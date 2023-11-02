@@ -3,7 +3,6 @@ import json
 from dataclasses import asdict
 
 import yaml
-from qibo.backends import GlobalBackend
 from qibolab.serialize import dump_runcard
 
 from ..auto.execute import Executor
@@ -19,7 +18,7 @@ from .utils import (
 )
 
 
-def acquire(runcard, folder, force, platform_name, backend_name):
+def acquire(runcard, folder, force):
     """Data acquisition
 
     Arguments:
@@ -27,13 +26,13 @@ def acquire(runcard, folder, force, platform_name, backend_name):
      - RUNCARD: runcard with declarative inputs.
     """
 
+    # rename for brevity
+    backend = runcard.backend_obj
+    platform = runcard.platform_obj
     # generate output folder
     path = generate_output_folder(folder, force)
 
     # set backend, platform and qubits
-    GlobalBackend.set_backend(backend=backend_name, platform=platform_name)
-    backend = GlobalBackend()
-    platform = backend.platform
     qubits = create_qubits_dict(qubits=runcard.qubits, platform=platform)
 
     # generate meta

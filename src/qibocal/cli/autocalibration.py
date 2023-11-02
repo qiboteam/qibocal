@@ -3,7 +3,6 @@ import json
 from dataclasses import asdict
 
 import yaml
-from qibo.backends import GlobalBackend
 from qibolab.serialize import dump_runcard
 
 from ..auto.execute import Executor
@@ -21,7 +20,7 @@ from .utils import (
 )
 
 
-def autocalibrate(runcard, folder, force, update, platform_name, backend_name):
+def autocalibrate(runcard, folder, force, update):
     """Autocalibration
 
     Arguments:
@@ -29,13 +28,13 @@ def autocalibrate(runcard, folder, force, update, platform_name, backend_name):
      - RUNCARD: runcard with declarative inputs.
     """
 
+    # rename for brevity
+    backend = runcard.backend_obj
+    platform = runcard.platform_obj
     # generate output folder
     path = generate_output_folder(folder, force)
 
-    # allocate backend, platform, qubits
-    GlobalBackend.set_backend(backend=backend_name, platform=platform_name)
-    backend = GlobalBackend()
-    platform = backend.platform
+    # allocate qubits
     qubits = create_qubits_dict(qubits=runcard.qubits, platform=platform)
 
     # generate meta

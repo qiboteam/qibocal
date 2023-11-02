@@ -68,7 +68,7 @@ def auto(runcard, folder, force, update, platform, backend):
     if backend is not None:
         runcard.backend = backend
 
-    autocalibrate(runcard, folder, force, update, platform, backend)
+    autocalibrate(runcard, folder, force, update)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
@@ -111,7 +111,7 @@ def acquire(runcard, folder, force, platform, backend):
     if backend is not None:
         runcard.backend = backend
 
-    acquisition(runcard, folder, force, platform, backend)
+    acquisition(runcard, folder, force)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
