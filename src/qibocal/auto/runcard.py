@@ -1,4 +1,5 @@
 """Specify runcard layout, handles (de)serialization."""
+import os
 from functools import cached_property
 from typing import Any, NewType, Optional, Union
 
@@ -49,7 +50,7 @@ class Runcard:
     actions: list[Action]
     qubits: Optional[Union[list[QubitId], list[tuple[QubitId, QubitId]]]] = None
     backend: str = "qibolab"
-    platform: str = "dummy"
+    platform: str = os.environ.get("QIBO_PLATFORM", "dummy")
 
     @cached_property
     def backend_obj(self) -> Backend:
