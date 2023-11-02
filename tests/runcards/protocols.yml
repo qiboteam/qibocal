@@ -464,6 +464,16 @@ actions:
       freq_step: 100_000
       nshots: 10
 
+  - id: dispersive shift qutrit
+    priority: 0
+    operation: dispersive_shift_qutrit
+    #FIXME: add qubit 4 with new release of Qibolab
+    qubits: [0, 1, 2, 3]
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 100_000
+      nshots: 10
+
   - id: standard rb no error
     priority: 0
     operation: standard_rb
@@ -603,6 +613,16 @@ actions:
     operation: twpa_power
     parameters:
       nshots: 10
+      power_width: 10
+      power_step: 1
+
+  - id: twpa frequency power
+    priority: 0
+    operation: twpa_frequency_power
+    qubits: [0]
+    parameters:
+      frequency_width: 1_000_000
+      frequency_step: 100_000
       power_width: 10
       power_step: 1
 
