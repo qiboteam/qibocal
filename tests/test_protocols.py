@@ -26,9 +26,11 @@ def idfn(val):
     return val["actions"][0]["id"]
 
 
+@pytest.mark.parametrize("platform", ["dummy"])
+@pytest.mark.parametrize("backend", ["qibolab"])
 @pytest.mark.parametrize("update", ["--update", "--no-update"])
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
-def test_auto_command(runcard, update, tmp_path):
+def test_auto_command(runcard, update, platform, backend, tmp_path):
     """Test auto command pipeline."""
 
     (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
@@ -41,6 +43,10 @@ def test_auto_command(runcard, update, tmp_path):
             "-o",
             f"{str(tmp_path)}",
             "-f",
+            "--backend",
+            backend,
+            "--platform",
+            platform,
             update,
         ],
     )
@@ -48,8 +54,10 @@ def test_auto_command(runcard, update, tmp_path):
     assert results.exit_code == 0
 
 
+@pytest.mark.parametrize("platform", ["dummy"])
+@pytest.mark.parametrize("backend", ["qibolab"])
 @pytest.mark.parametrize("runcard", generate_runcard_single_protocol(), ids=idfn)
-def test_acquire_command(runcard, tmp_path):
+def test_acquire_command(runcard, backend, platform, tmp_path):
     """Test acquire command pipeline and report generated."""
     (tmp_path / SINGLE_ACTION_RUNCARD).write_text(yaml.safe_dump(runcard))
     runner = CliRunner()
@@ -63,6 +71,10 @@ def test_acquire_command(runcard, tmp_path):
             "-o",
             f"{str(tmp_path)}",
             "-f",
+            "--backend",
+            backend,
+            "--platform",
+            platform,
         ],
     )
     assert not results.exception

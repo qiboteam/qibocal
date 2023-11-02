@@ -45,7 +45,8 @@ def fit(path, update):
     meta["end-time"] = e.strftime("%H:%M:%S")
 
     # dump updated runcard
-    if platform is not None and update:
+    if platform is not None and update:  # pragma: no cover
+        # cannot test update since dummy may produce wrong values and trigger errors
         dump_runcard(platform, path / UPDATED_PLATFORM)
 
     # dump json
