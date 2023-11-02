@@ -65,15 +65,6 @@ class CalibrateStateDiscriminationData(Data):
         tuple[QubitId, int], npt.NDArray[CalibrateStateDiscriminationType]
     ] = field(default_factory=dict)
 
-    def register_qubit(self, qubit, state, msr, phase, i, q):
-        """Store output for single qubit."""
-        ar = np.empty(i.shape, dtype=CalibrateStateDiscriminationType)
-        ar["msr"] = msr
-        ar["phase"] = phase
-        ar["i"] = i
-        ar["q"] = q
-        self.data[qubit, state] = np.rec.array(ar)
-
 
 def _acquisition(
     params: CalibrateStateDiscriminationParameters, platform: Platform, qubits: Qubits
@@ -108,7 +99,6 @@ def _acquisition(
         sequence_1.add(qd_pulses[qubit])
         sequence_1.add(ro_pulses[qubit])
 
-    # create a DataUnits objects to store the results
     data = CalibrateStateDiscriminationData(resonator_type=platform.resonator_type)
 
     results_0 = platform.execute_pulse_sequence(
@@ -138,13 +128,16 @@ def _acquisition(
             result = results[ro_pulses[qubit].serial]
             # store the results
             data.register_qubit(
-                qubit=qubit,
-                state=i,
-                msr=result.magnitude,
-                phase=result.phase,
-                i=result.voltage_i,
-                q=result.voltage_q,
+                CalibrateStateDiscriminationType,
+                (qubit, i),
+                dict(
+                    msr=result.magnitude,
+                    phase=result.phase,
+                    i=result.voltage_i,
+                    q=result.voltage_q,
+                ),
             )
+
     return data
 
 
