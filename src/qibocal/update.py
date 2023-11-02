@@ -175,13 +175,6 @@ def drive_12_amplitude(amplitude: float, platform: Platform, qubit: QubitId):
     platform.qubits[qubit].native_gates.RX12.amplitude = float(amplitude)
 
 
-# TODO: Proper update
-def coupler_sweetspot(sweetspot: float, platform: Platform, qubit: QubitId):
-    platform.couplers[qubit].sweetspot = float(sweetspot)
-    if platform.couplers[qubit].flux is not None:
-        platform.couplers[qubit].flux.offset = sweetspot
-
-
 def twpa_frequency(frequency: int, platform: Platform, qubit: QubitId):
     platform.qubits[qubit].twpa.local_oscillator.frequency = int(frequency)
 

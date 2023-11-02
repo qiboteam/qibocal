@@ -20,7 +20,7 @@ from .utils import (
 
 class CouplerSpectroscopyParametersResonator(CouplerSpectroscopyParameters):
     readout_delay: Optional[int] = 1000
-    """Readout delay before the measurament is done to let the flux coupler pulse act"""
+    """Readout delay before the measurement is done to let the flux coupler pulse act"""
 
 
 def _acquisition(
@@ -37,11 +37,8 @@ def _acquisition(
 
     """
 
-    """
-    We may want to measure both qubits on the pair,
-    that will require a different acquisition, for now I suggest to only measure one and reduce possible crosstalk.
-    Zurich crashes on several pairs due to the single oscillator issue.
-    """
+    # TODO: Do we  want to measure both qubits on the pair ?
+    # Different acquisition, for now only measure one and reduce possible crosstalk.
 
     # create a sequence of pulses for the experiment:
     # Coupler pulse while MZ
@@ -59,7 +56,6 @@ def _acquisition(
         coupler = platform.pairs[tuple(sorted(ordered_pair))].coupler
         couplers.append(coupler)
 
-        # TODO: Does it need time or can it start at 0 ???
         # TODO: May measure both qubits on the pair
         ro_pulses[qubit] = platform.create_qubit_readout_pulse(
             qubit, start=params.readout_delay
@@ -86,7 +82,7 @@ def _acquisition(
         -params.bias_width / 2, params.bias_width / 2, params.bias_step
     )
 
-    """This sweeper is implemented in the flux pulse amplitude and we need it to be that way. """
+    # This sweeper is implemented in the flux pulse amplitude and we need it to be that way.
     sweeper_bias = Sweeper(
         Parameter.bias,
         delta_bias_range,

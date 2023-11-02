@@ -15,7 +15,7 @@ from .utils import CouplerSpectroscopyData, CouplerSpectroscopyParameters
 
 class CouplerSpectroscopyParametersQubit(CouplerSpectroscopyParameters):
     drive_duration: Optional[int] = 2000
-    """Drive pulse duration to excite the qubit before the measurament"""
+    """Drive pulse duration to excite the qubit before the measurement"""
 
 
 def _acquisition(
@@ -32,11 +32,9 @@ def _acquisition(
     on the flux coupler pulse amplitude requiered to enable 2q interactions.
 
     """
-    """
-    We may want to measure both qubits on the pair,
-    that will require a different acquisition, for now I suggest to only measure one and reduce possible crosstalk.
-    Zurich crashes on several pairs due to the single oscillator issue.
-    """
+
+    # TODO: Do we  want to measure both qubits on the pair ?
+    # Different acquisition, for now only measure one and reduce possible crosstalk.
 
     # create a sequence of pulses for the experiment:
     # Coupler pulse while Drive pulse - MZ
@@ -80,7 +78,7 @@ def _acquisition(
         -params.bias_width / 2, params.bias_width / 2, params.bias_step
     )
 
-    """This sweeper is implemented in the flux pulse amplitude and we need it to be that way. """
+    # This sweeper is implemented in the flux pulse amplitude and we need it to be that way.
     sweeper_bias = Sweeper(
         Parameter.bias,
         delta_bias_range,

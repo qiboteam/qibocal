@@ -58,8 +58,8 @@ def flux_dependence_plot(data, fit, qubit):
         )
     else:
         subplot_titles = (
-            "MSR [V]_q" + str(qubit),
-            "Phase [rad]_q" + str(qubit),
+            "MSR [V] Qubit" + str(qubit),
+            "Phase [rad] Qubit" + str(qubit),
         )
 
     fig = make_subplots(
