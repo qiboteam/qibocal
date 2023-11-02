@@ -14,6 +14,8 @@ from .coherence.t2_msr import t2_msr
 from .coherence.t2_sequences import t2_sequences
 from .coherence.zeno import zeno
 from .coherence.zeno_msr import zeno_msr
+from .couplers.coupler_qubit_spectroscopy import coupler_qubit_spectroscopy
+from .couplers.coupler_resonator_spectroscopy import coupler_resonator_spectroscopy
 from .dispersive_shift import dispersive_shift
 from .dispersive_shift_qutrit import dispersive_shift_qutrit
 from .fast_reset.fast_reset import fast_reset
@@ -103,3 +105,5 @@ class Operation(Enum):
     qutrit_classification = qutrit_classification
     resonator_amplitude = resonator_amplitude
     dispersive_shift_qutrit = dispersive_shift_qutrit
+    coupler_resonator_spectroscopy = coupler_resonator_spectroscopy
+    coupler_qubit_spectroscopy = coupler_qubit_spectroscopy
