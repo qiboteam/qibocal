@@ -54,7 +54,9 @@ class QubitCrosstalkData(QubitFluxData):
 
 @dataclass
 class QubitCrosstalkResult(Results):
-    ...
+    """
+    Qubit Crosstalk outputs.
+    """
 
 
 def _acquisition(
