@@ -1,6 +1,4 @@
 from dataclasses import dataclass, field
-
-# from functools import partial
 from typing import Optional
 
 import numpy as np
@@ -11,10 +9,8 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-# from qibocal import update
 from qibocal.auto.operation import Qubits, Results, Routine
 
-# from ..utils import GHZ_TO_HZ, HZ_TO_GHZ
 from . import utils
 from .qubit_flux_dependence import (
     QubitFluxData,
