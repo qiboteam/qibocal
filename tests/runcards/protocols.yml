@@ -420,27 +420,29 @@ actions:
       nshots: 1000
       parking: True
 
-  - id: tune landscape
+  - id: CZ tune landscape
     priority: 0
-    operation: cz_virtualz
+    operation: native_gate_virtualz
     qubits: [[0, 2],[1,2],[3,2]]
     parameters:
       theta_start: 0
       theta_end: 180
       theta_step: 10
       flux_pulse_amplitude: 0.5
+      native_gate: "CZ"
       dt: 0
       parking: True
 
-  - id: iSWAP virtualz
+  - id: iSWAP tune landscape
     priority: 0
-    operation: iswap_virtualz
-    qubits: [[1, 2]]
+    operation: native_gate_virtualz
+    qubits: [[0, 2],[1,2],[3,2]]
     parameters:
-      theta_start: 0.0
-      theta_end: 5
-      theta_step: 0.1
-      nshots: 1024
+      theta_start: 0
+      theta_end: 180
+      theta_step: 10
+      flux_pulse_amplitude: 0.5
+      native_gate: "iSWAP"
       dt: 0
       parking: False
 
