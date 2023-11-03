@@ -5,9 +5,9 @@ description = "https://qibo.science/"
 authors = ["andrea-pasquale <andreapasquale97@gmail.com>"]
 license = "Apache License 2.0"
 readme = "README.md"
-homepage = ""
+homepage = "https://github.com/qiboteam/qibocal/"
 repository = "https://github.com/qiboteam/qibocal/"
-documentation = ""
+documentation = "https://qibo.science/"
 keywords = []
 classifiers = [
   "Programming Language :: Python :: 3",
