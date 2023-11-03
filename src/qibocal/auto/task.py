@@ -136,7 +136,6 @@ class Task:
 
         try:
             if self.parameters.nshots is None:
-                print(self.action)
                 self.action.parameters["nshots"] = platform.settings.nshots
             if self.parameters.relaxation_time is None:
                 self.action.parameters[
