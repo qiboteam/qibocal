@@ -5,9 +5,9 @@ description = "Qibo's quantum calibration, characterization and validation modul
 authors = ["andrea-pasquale <andreapasquale97@gmail.com>"]
 license = "Apache License 2.0"
 readme = "README.md"
-homepage = "https://qibo.science/"
+homepage = "https://github.com/qiboteam/qibocal/"
 repository = "https://github.com/qiboteam/qibocal/"
-documentation = "https://qibo.science/qibocal/stable/"
+documentation = "https://qibo.science/"
 keywords = []
 classifiers = [
   "Programming Language :: Python :: 3",
