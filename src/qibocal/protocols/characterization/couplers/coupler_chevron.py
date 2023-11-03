@@ -1,4 +1,3 @@
-
 import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
@@ -12,23 +11,6 @@ from qibocal.auto.operation import Qubits, Routine
 
 from ..two_qubit_interaction.chevron import ChevronData, ChevronParameters, _fit, _plot
 from ..two_qubit_interaction.utils import order_pair
-
-# @dataclass
-# class ChevronCouplerData(Data):
-#     """Chevron acquisition outputs."""
-
-#     data: dict[tuple(QubitPairId, CouplerId), npt.NDArray[ChevronType]] = field(default_factory=dict)
-
-#     def register_qubit(self, low_qubit, high_qubit, coupler, length, amp, prob_low, prob_high):
-#         """Store output for single qubit."""
-#         size = len(length) * len(amp)
-#         amplitude, duration = np.meshgrid(amp, length)
-#         ar = np.empty(size, dtype=ChevronType)
-#         ar["length"] = duration.ravel()
-#         ar["amp"] = amplitude.ravel()
-#         ar["prob_low"] = prob_low.ravel()
-#         ar["prob_high"] = prob_high.ravel()
-#         self.data[low_qubit, high_qubit, coupler] = np.rec.array(ar)
 
 
 def _aquisition(
@@ -72,7 +54,6 @@ def _aquisition(
         sequence = PulseSequence()
 
         ordered_pair = order_pair(pair, platform.qubits)
-        # coupler = platform.pairs[tuple(sorted(ordered_pair))].coupler
 
         # initialize in system in 11(CZ) or 10(iSWAP) state
         if params.native_gate == "CZ":
@@ -104,22 +85,6 @@ def _aquisition(
 
         sequence += fq_pulse
         sequence += fx_pulse
-
-        # TODO: Both pulses should have a better way of getting them from the platform
-        # TODO: This should get calibrated in another routine
-        # fq_pulse = platform.create_flux_pulse(
-        #     qubit=platform.qubits[q_highfreq],
-        #     start=sequence.finish + params.dt,
-        #     duration=params.duration_min,
-        #     amplitude=params.flux_amplitude,
-        # )
-
-        # fx_pulse = platform.create_coupler_pulse(
-        #     coupler=coupler.name,
-        #     start=sequence.finish + params.dt,
-        #     duration=1,  # Just any value to get the pulse built
-        #     amplitude=1,  # Just any value to get the pulse built
-        # )
 
         ro_pulse1 = platform.create_MZ_pulse(
             ordered_pair[1], start=sequence.finish + params.dt
