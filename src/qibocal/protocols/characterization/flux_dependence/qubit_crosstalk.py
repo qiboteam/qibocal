@@ -11,6 +11,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Qubits, Results, Routine
 
+from ..qubit_spectroscopy_ef import DEFAULT_ANHARMONICITY
 from . import utils
 from .qubit_flux_dependence import (
     QubitFluxData,
@@ -81,7 +82,10 @@ def _acquisition(
         )
 
         if params.transition == "02":
-            qd_pulses[qubit].frequency -= qubits[qubit].anharmonicity / 2
+            if qubits[qubit].anharmonicity:
+                qd_pulses[qubit].frequency -= qubits[qubit].anharmonicity / 2
+            else:
+                qd_pulses[qubit].frequency -= DEFAULT_ANHARMONICITY / 2
 
         if params.drive_amplitude is not None:
             qd_pulses[qubit].amplitude = params.drive_amplitude

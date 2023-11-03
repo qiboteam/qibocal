@@ -14,6 +14,9 @@ from scipy.optimize import curve_fit
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
+from qibocal.protocols.characterization.qubit_spectroscopy_ef import (
+    DEFAULT_ANHARMONICITY,
+)
 
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ
 from . import utils
@@ -111,7 +114,10 @@ def _acquisition(
         )
 
         if params.transition == "02":
-            qd_pulses[qubit].frequency -= qubits[qubit].anharmonicity / 2
+            if qubits[qubit].anharmonicity:
+                qd_pulses[qubit].frequency -= qubits[qubit].anharmonicity / 2
+            else:
+                qd_pulses[qubit].frequency -= DEFAULT_ANHARMONICITY / 2
 
         if params.drive_amplitude is not None:
             qd_pulses[qubit].amplitude = params.drive_amplitude
