@@ -15,7 +15,7 @@ from scipy.signal import find_peaks
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
-from .utils import GHZ_TO_HZ, chi2_reduced, table_dict, table_html
+from .utils import GHZ_TO_HZ, HZ_TO_GHZ, chi2_reduced, table_dict, table_html
 
 POPT_EXCEPTION = [0, 0, 0, 0, 0]
 """Fit parameters output to handle exceptions"""
@@ -76,19 +76,6 @@ class RamseyData(Data):
     """Qubit freqs for each qubit."""
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
-
-    def register_qubit(self, qubit, wait, prob, errors):
-        """Store output for single qubit."""
-        # to be able to handle the non-sweeper case
-        shape = (1,) if np.isscalar(prob) else prob.shape
-        ar = np.empty(shape, dtype=RamseyType)
-        ar["wait"] = wait
-        ar["prob"] = prob
-        ar["errors"] = errors
-        if qubit in self.data:
-            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
-        else:
-            self.data[qubit] = np.rec.array(ar)
 
     @property
     def waits(self):
@@ -165,12 +152,14 @@ def _acquisition(
             # The probability errors are the standard errors of the binomial distribution
             errors = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs]
             data.register_qubit(
-                qubit,
-                wait=waits,
-                prob=probs,
-                errors=errors,
+                RamseyType,
+                (qubit),
+                dict(
+                    wait=waits,
+                    prob=probs,
+                    errors=errors,
+                ),
             )
-
     else:
         for wait in waits:
             for qubit in qubits:
@@ -198,10 +187,13 @@ def _acquisition(
                 prob = results[qubit].probability()
                 error = np.sqrt(prob * (1 - prob) / params.nshots)
                 data.register_qubit(
-                    qubit,
-                    wait=wait,
-                    prob=prob,
-                    errors=error,
+                    RamseyType,
+                    (qubit),
+                    dict(
+                        wait=np.array([wait]),
+                        prob=np.array([prob]),
+                        errors=np.array([error]),
+                    ),
                 )
     return data
 
@@ -320,7 +312,7 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
             table_dict(
                 qubit,
                 [
-                    "Delta frequnecy [Hz]",
+                    "Delta Frequency [Hz]",
                     "Drive Frequency [Hz]",
                     "T2* [ns]",
                     "chi2 reduced",
@@ -348,14 +340,14 @@ def _plot(data: RamseyData, qubit, fit: RamseyResults = None):
 
 
 def _update(results: RamseyResults, platform: Platform, qubit: QubitId):
-    update.drive_frequency(results.frequency[qubit], platform, qubit)
+    update.drive_frequency(results.frequency[qubit][0] * HZ_TO_GHZ, platform, qubit)
 
 
 ramsey = Routine(_acquisition, _fit, _plot, _update)
 """Ramsey Routine object."""
 
 
-def fitting(x: list, y: list, errors: list) -> list:
+def fitting(x: list, y: list, errors: list = None) -> list:
     """
     Given the inputs list `x` and outputs one `y`, this function fits the
     `ramsey_fit` function and returns a list with the fit parameters.
@@ -368,7 +360,7 @@ def fitting(x: list, y: list, errors: list) -> list:
     delta_x = x_max - x_min
     y = (y - y_min) / delta_y
     x = (x - x_min) / delta_x
-    err = errors / delta_y
+    err = errors / delta_y if errors is not None else None
     ft = np.fft.rfft(y)
     freqs = np.fft.rfftfreq(len(y), x[1] - x[0])
     mags = abs(ft)

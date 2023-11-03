@@ -10,9 +10,9 @@ from qibolab.qubits import QubitId
 from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
-from ..utils import V_TO_UV, table_dict, table_html
-from .t1 import T1Data
-from .utils import exp_decay, exponential_fit
+from ..utils import table_dict, table_html
+from . import t1
+from .utils import exp_decay, exponential_fit_probability
 
 
 @dataclass
@@ -37,7 +37,7 @@ class SpinEchoResults(Results):
     """Raw fitting output."""
 
 
-class SpinEchoData(T1Data):
+class SpinEchoData(t1.T1Data):
     """SpinEcho acquisition outputs."""
 
 
@@ -79,7 +79,7 @@ def _acquisition(
     )
 
     data = SpinEchoData()
-
+    probs = {qubit: [] for qubit in qubits}
     # sweep the parameter
     for wait in ro_wait_range:
         # save data as often as defined by points
@@ -95,22 +95,29 @@ def _acquisition(
             ExecutionParameters(
                 nshots=params.nshots,
                 relaxation_time=params.relaxation_time,
-                acquisition_type=AcquisitionType.INTEGRATION,
-                averaging_mode=AveragingMode.CYCLIC,
+                acquisition_type=AcquisitionType.DISCRIMINATION,
+                averaging_mode=AveragingMode.SINGLESHOT,
             ),
         )
 
         for qubit in qubits:
-            result = results[ro_pulses[qubit].serial]
-            data.register_qubit(
-                qubit, wait=wait, msr=result.magnitude, phase=result.phase
-            )
+            prob = results[ro_pulses[qubit].serial].probability(state=0)
+            probs[qubit].append(prob)
+
+    for qubit in qubits:
+        errors = [np.sqrt(prob * (1 - prob) / params.nshots) for prob in probs[qubit]]
+        data.register_qubit(
+            t1.CoherenceProbType,
+            (qubit),
+            dict(wait=ro_wait_range, prob=probs[qubit], error=errors),
+        )
+
     return data
 
 
 def _fit(data: SpinEchoData) -> SpinEchoResults:
     """Post-processing for SpinEcho."""
-    t2Echos, fitted_parameters = exponential_fit(data)
+    t2Echos, fitted_parameters = exponential_fit_probability(data)
 
     return SpinEchoResults(t2Echos, fitted_parameters)
 
@@ -119,23 +126,35 @@ def _plot(data: SpinEchoData, qubit, fit: SpinEchoResults = None):
     """Plotting for SpinEcho"""
 
     figures = []
-    fig = go.Figure()
-
     # iterate over multiple data folders
     fitting_report = ""
 
     qubit_data = data[qubit]
     waits = qubit_data.wait
+    probs = qubit_data.prob
+    error_bars = qubit_data.error
 
-    fig.add_trace(
-        go.Scatter(
-            x=waits,
-            y=qubit_data.msr * V_TO_UV,
-            opacity=1,
-            name="Voltage",
-            showlegend=True,
-            legendgroup="Voltage",
-        ),
+    fig = go.Figure(
+        [
+            go.Scatter(
+                x=waits,
+                y=probs,
+                opacity=1,
+                name="Probability of 0",
+                showlegend=True,
+                legendgroup="Probability of 0",
+                mode="lines",
+            ),
+            go.Scatter(
+                x=np.concatenate((waits, waits[::-1])),
+                y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
+                fill="toself",
+                fillcolor=t1.COLORBAND,
+                line=dict(color=t1.COLORBAND_LINE),
+                showlegend=True,
+                name="Errors",
+            ),
+        ]
     )
 
     if fit is not None:
@@ -155,20 +174,19 @@ def _plot(data: SpinEchoData, qubit, fit: SpinEchoResults = None):
                 line=go.scatter.Line(dash="dot"),
             ),
         )
-
         fitting_report = table_html(
             table_dict(
                 qubit,
-                "T2 Spin Echo",
-                np.round(fit.t2_spin_echo[qubit]),
+                ["T2 Spin Echo [ns]"],
+                [fit.t2_spin_echo[qubit]],
+                display_error=True,
             )
         )
 
     fig.update_layout(
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Time (ns)",
-        yaxis_title="MSR (uV)",
+        yaxis_title="Probability of State 0",
     )
 
     figures.append(fig)

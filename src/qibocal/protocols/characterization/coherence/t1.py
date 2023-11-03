@@ -12,8 +12,11 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
-from ..utils import V_TO_UV, table_dict, table_html
+from ..utils import table_dict, table_html
 from . import utils
+
+COLORBAND = "rgba(0,100,80,0.2)"
+COLORBAND_LINE = "rgba(255,255,255,0)"
 
 
 @dataclass
@@ -32,14 +35,14 @@ class T1Parameters(Parameters):
 class T1Results(Results):
     """T1 outputs."""
 
-    t1: dict[QubitId, float]
+    t1: dict[QubitId, tuple[float]]
     """T1 for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
 
 
-CoherenceType = np.dtype(
-    [("wait", np.float64), ("msr", np.float64), ("phase", np.float64)]
+CoherenceProbType = np.dtype(
+    [("wait", np.float64), ("prob", np.float64), ("error", np.float64)]
 )
 """Custom dtype for coherence routines."""
 
@@ -50,19 +53,6 @@ class T1Data(Data):
 
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
-
-    def register_qubit(self, qubit, wait, msr, phase):
-        """Store output for single qubit."""
-        # to be able to handle the non-sweeper case
-        shape = (1,) if np.isscalar(wait) else wait.shape
-        ar = np.empty(shape, dtype=CoherenceType)
-        ar["wait"] = wait
-        ar["msr"] = msr
-        ar["phase"] = phase
-        if qubit in self.data:
-            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
-        else:
-            self.data[qubit] = np.rec.array(ar)
 
 
 def _acquisition(params: T1Parameters, platform: Platform, qubits: Qubits) -> T1Data:
@@ -112,7 +102,6 @@ def _acquisition(params: T1Parameters, platform: Platform, qubits: Qubits) -> T1
         type=SweeperType.ABSOLUTE,
     )
 
-    # create a DataUnits object to store the MSR, phase, i, q and the delay time
     data = T1Data()
 
     # sweep the parameter
@@ -122,16 +111,19 @@ def _acquisition(params: T1Parameters, platform: Platform, qubits: Qubits) -> T1
         ExecutionParameters(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
+            acquisition_type=AcquisitionType.DISCRIMINATION,
+            averaging_mode=AveragingMode.SINGLESHOT,
         ),
         sweeper,
     )
 
     for qubit in qubits:
-        result = results[ro_pulses[qubit].serial]
+        probs = results[ro_pulses[qubit].serial].probability(state=1)
+        errors = np.sqrt(probs * (1 - probs) / params.nshots)
         data.register_qubit(
-            qubit, wait=ro_wait_range, msr=result.magnitude, phase=result.phase
+            CoherenceProbType,
+            (qubit),
+            dict(wait=ro_wait_range, prob=probs, error=errors),
         )
 
     return data
@@ -145,8 +137,7 @@ def _fit(data: T1Data) -> T1Results:
 
             y = p_0-p_1 e^{-x p_2}.
     """
-    t1s, fitted_parameters = utils.exponential_fit(data)
-
+    t1s, fitted_parameters = utils.exponential_fit_probability(data)
     return T1Results(t1s, fitted_parameters)
 
 
@@ -154,21 +145,33 @@ def _plot(data: T1Data, qubit, fit: T1Results = None):
     """Plotting function for T1 experiment."""
 
     figures = []
-    fig = go.Figure()
-
     fitting_report = ""
     qubit_data = data[qubit]
     waits = qubit_data.wait
+    probs = qubit_data.prob
+    error_bars = qubit_data.error
 
-    fig.add_trace(
-        go.Scatter(
-            x=waits,
-            y=qubit_data.msr * V_TO_UV,
-            opacity=1,
-            name="Voltage",
-            showlegend=True,
-            legendgroup="Voltage",
-        )
+    fig = go.Figure(
+        [
+            go.Scatter(
+                x=waits,
+                y=probs,
+                opacity=1,
+                name="Probability of 1",
+                showlegend=True,
+                legendgroup="Probability of 1",
+                mode="lines",
+            ),
+            go.Scatter(
+                x=np.concatenate((waits, waits[::-1])),
+                y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
+                fill="toself",
+                fillcolor=COLORBAND,
+                line=dict(color=COLORBAND_LINE),
+                showlegend=True,
+                name="Errors",
+            ),
+        ]
     )
 
     if fit is not None:
@@ -187,13 +190,14 @@ def _plot(data: T1Data, qubit, fit: T1Results = None):
                 line=go.scatter.Line(dash="dot"),
             )
         )
-        fitting_report = table_html(table_dict(qubit, "t1", np.round(fit.t1[qubit])))
+        fitting_report = table_html(
+            table_dict(qubit, ["T1 [ns]"], [fit.t1[qubit]], display_error=True)
+        )
     # last part
     fig.update_layout(
         showlegend=True,
-        uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Time (ns)",
-        yaxis_title="MSR (uV)",
+        yaxis_title="Probability of State 1",
     )
 
     figures.append(fig)

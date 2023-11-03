@@ -51,15 +51,23 @@ def flux_dependence_plot(data, fit, qubit):
 
     qubit_data = data[qubit]
 
+    if not data.__class__.__name__ == "CouplerSpectroscopyData":
+        subplot_titles = (
+            "MSR [V]",
+            "Phase [rad]",
+        )
+    else:
+        subplot_titles = (
+            "MSR [V] Qubit" + str(qubit),
+            "Phase [rad] Qubit" + str(qubit),
+        )
+
     fig = make_subplots(
         rows=1,
         cols=2,
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
-        subplot_titles=(
-            "MSR [V]",
-            "Phase [rad]",
-        ),
+        subplot_titles=subplot_titles,
     )
     frequencies = qubit_data.freq * HZ_TO_GHZ
     msr = qubit_data.msr
@@ -183,7 +191,10 @@ def flux_dependence_plot(data, fit, qubit):
         row=1,
         col=1,
     )
-    fig.update_yaxes(title_text="Bias (V)", row=1, col=1)
+    if not data.__class__.__name__ == "CouplerSpectroscopyData":
+        fig.update_yaxes(title_text="Bias (V)", row=1, col=1)
+    else:
+        fig.update_yaxes(title_text="Pulse Amplitude", row=1, col=1)
 
     fig.add_trace(
         go.Heatmap(
@@ -200,7 +211,11 @@ def flux_dependence_plot(data, fit, qubit):
         row=1,
         col=2,
     )
-    fig.update_yaxes(title_text="Bias (V)", row=1, col=2)
+
+    if not data.__class__.__name__ == "CouplerSpectroscopyData":
+        fig.update_yaxes(title_text="Bias (V)", row=1, col=2)
+    else:
+        fig.update_yaxes(title_text="Pulse Amplitude", row=1, col=2)
 
     fig.update_layout(xaxis1=dict(range=[np.min(frequencies), np.max(frequencies)]))
 
@@ -254,6 +269,7 @@ def flux_crosstalk_plot(data, fit, qubit):
             row=1,
             col=col + 1,
         )
+
         fig.update_yaxes(
             title_text=f"Qubit {flux_qubit[1]}: Bias (V)", row=1, col=col + 1
         )

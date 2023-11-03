@@ -30,7 +30,7 @@ def scikit_normalize(constructor):
 
 def scikit_dump(model, path: Path):
     r"""Dumps scikit `model` in `path`"""
-    initial_type = [("float_input", FloatTensorType([1, 2]))]
+    initial_type = [("float_input", FloatTensorType([None, 2]))]
     onx = to_onnx(model, initial_types=initial_type)
     with open(path.with_suffix(".onnx"), "wb") as f:
         f.write(onx.SerializeToString())

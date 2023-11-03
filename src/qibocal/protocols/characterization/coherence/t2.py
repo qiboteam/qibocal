@@ -11,7 +11,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
 
-from ..utils import V_TO_UV, table_dict, table_html
+from ..utils import table_dict, table_html
 from . import t1, utils
 
 
@@ -74,9 +74,6 @@ def _acquisition(
         params.delay_between_pulses_step,
     )
 
-    # create a DataUnits object to store the results,
-    # DataUnits stores by default MSR, phase, i, q
-    # additionally include wait time and t_max
     data = T2Data()
 
     sweeper = Sweeper(
@@ -92,15 +89,18 @@ def _acquisition(
         ExecutionParameters(
             nshots=params.nshots,
             relaxation_time=params.relaxation_time,
-            acquisition_type=AcquisitionType.INTEGRATION,
-            averaging_mode=AveragingMode.CYCLIC,
+            acquisition_type=AcquisitionType.DISCRIMINATION,
+            averaging_mode=AveragingMode.SINGLESHOT,
         ),
         sweeper,
     )
 
     for qubit in qubits:
-        result = results[ro_pulses[qubit].serial]
-        data.register_qubit(qubit, wait=waits, msr=result.magnitude, phase=result.phase)
+        probs = results[ro_pulses[qubit].serial].probability(state=1)
+        errors = np.sqrt(probs * (1 - probs) / params.nshots)
+        data.register_qubit(
+            t1.CoherenceProbType, (qubit), dict(wait=waits, prob=probs, error=errors)
+        )
     return data
 
 
@@ -110,7 +110,7 @@ def _fit(data: T2Data) -> T2Results:
     .. math::
         y = p_0 - p_1 e^{-x p_2}.
     """
-    t2s, fitted_parameters = utils.exponential_fit(data)
+    t2s, fitted_parameters = utils.exponential_fit_probability(data)
     return T2Results(t2s, fitted_parameters)
 
 
@@ -118,20 +118,33 @@ def _plot(data: T2Data, qubit, fit: T2Results = None):
     """Plotting function for Ramsey Experiment."""
 
     figures = []
-    fig = go.Figure()
     fitting_report = ""
-
     qubit_data = data[qubit]
+    waits = qubit_data.wait
+    probs = qubit_data.prob
+    error_bars = qubit_data.error
 
-    fig.add_trace(
-        go.Scatter(
-            x=qubit_data.wait,
-            y=qubit_data.msr * V_TO_UV,
-            opacity=1,
-            name="Voltage",
-            showlegend=True,
-            legendgroup="Voltage",
-        )
+    fig = go.Figure(
+        [
+            go.Scatter(
+                x=waits,
+                y=probs,
+                opacity=1,
+                name="Probability of 1",
+                showlegend=True,
+                legendgroup="Probability of 1",
+                mode="lines",
+            ),
+            go.Scatter(
+                x=np.concatenate((waits, waits[::-1])),
+                y=np.concatenate((probs + error_bars, (probs - error_bars)[::-1])),
+                fill="toself",
+                fillcolor=t1.COLORBAND,
+                line=dict(color=t1.COLORBAND_LINE),
+                showlegend=True,
+                name="Errors",
+            ),
+        ]
     )
 
     if fit is not None:
@@ -154,12 +167,14 @@ def _plot(data: T2Data, qubit, fit: T2Results = None):
                 line=go.scatter.Line(dash="dot"),
             )
         )
-        fitting_report = table_html(table_dict(qubit, "T2", np.round(fit.t2[qubit])))
+        fitting_report = table_html(
+            table_dict(qubit, ["T2 [ns]"], [fit.t2[qubit]], display_error=True)
+        )
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Time (ns)",
-        yaxis_title="MSR (uV)",
+        yaxis_title="Probability of State 1",
     )
 
     figures.append(fig)

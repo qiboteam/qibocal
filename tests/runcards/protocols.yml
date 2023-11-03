@@ -82,13 +82,13 @@ actions:
   - id: coupler_resonator_spectroscopy
     priority: 0
     operation: coupler_resonator_spectroscopy
-    qubits: [[1, 2]]
+    qubits: [[1, 2], [0, 2]]
     parameters:
       bias_width: 1
       bias_step: 0.1
       freq_width: 10_000_000
       freq_step: 1_000_000
-      measured_qubit: 1
+      measured_qubits: [1, 0]
       amplitude: .3
       nshots: 10
       relaxation_time: 3_000
@@ -107,16 +107,30 @@ actions:
   - id: coupler qubit spectroscopy
     priority: 0
     operation: coupler_qubit_spectroscopy
-    qubits: [[1, 2]]
+    qubits: [[1, 2], [0, 2]]
     parameters:
       bias_width: 1
       bias_step: 0.1
       freq_width: 10_000_000
       freq_step: 1_000_000
-      measured_qubit: 1
+      measured_qubits: [1, 0]
       amplitude: .1
       nshots: 10
       relaxation_time: 3_000
+
+
+  - id: qubit spectroscopy ef
+    priority: 0
+    operation: qubit_spectroscopy_ef
+    #FIXME: add RX12 for qubit 4
+    qubits: [0, 1, 2, 3]
+    parameters:
+      drive_amplitude: 0.001
+      drive_duration: 1000
+      freq_width: 2_000_000
+      freq_step: 500_000
+      nshots: 10
+
 
   - id: coupler chevron
     priority: 0
@@ -207,6 +221,18 @@ actions:
   - id: rabi
     priority: 0
     operation: rabi_amplitude
+    update: false
+    parameters:
+      min_amp_factor: 0.0
+      max_amp_factor: 4.0
+      step_amp_factor: 0.1
+      pulse_length: 30
+      nshots: 1024
+
+  - id: rabi msr
+    priority: 0
+    operation: rabi_amplitude_msr
+    update: false
     parameters:
       min_amp_factor: 0.0
       max_amp_factor: 4.0
@@ -215,9 +241,31 @@ actions:
       nshots: 1024
 
 
+  - id: rabi_ef
+    priority: 0
+    operation: rabi_amplitude_ef
+    #FIXME: add RX12 for qubit 4
+    qubits: [0, 1, 2, 3]
+    parameters:
+      min_amp_factor: 0.0
+      max_amp_factor: 1.0
+      step_amp_factor: 0.1
+      pulse_length: 30
+      nshots: 1024
+
   - id: rabi length
     priority: 0
     operation: rabi_length
+    parameters:
+      pulse_duration_start: 4
+      pulse_duration_end: 84
+      pulse_duration_step: 8
+      pulse_amplitude: 0.5
+      nshots: 1024
+
+  - id: rabi length msr
+    priority: 0
+    operation: rabi_length_msr
     parameters:
       pulse_duration_start: 4
       pulse_duration_end: 84
@@ -244,6 +292,15 @@ actions:
       delay_before_readout_step: 2000
       nshots: 1024
 
+  - id: t1_msr
+    priority: 0
+    operation: t1_msr
+    parameters:
+      delay_before_readout_start: 0
+      delay_before_readout_end: 20_000
+      delay_before_readout_step: 2000
+      nshots: 1024
+
   - id: t1 sequences
     priority: 0
     operation: t1_sequences
@@ -257,12 +314,28 @@ actions:
     priority: 00
     operation: zeno
     parameters:
-      readouts: 2
+      readouts: 10
+      nshots: 10
+
+  - id: zeno_msr
+    priority: 00
+    operation: zeno_msr
+    parameters:
+      readouts: 10
       nshots: 10
 
   - id: t2
     priority: 0
     operation: t2
+    parameters:
+      delay_between_pulses_start: 16
+      delay_between_pulses_end: 20000
+      delay_between_pulses_step: 100
+      nshots: 10
+
+  - id: t2_msr
+    priority: 0
+    operation: t2_msr
     parameters:
       delay_between_pulses_start: 16
       delay_between_pulses_end: 20000
@@ -286,6 +359,25 @@ actions:
       delay_between_pulses_end: 50
       delay_between_pulses_step: 1
       n_osc: 2
+      nshots: 10
+
+  - id: ramsey_msr
+    priority: 0
+    operation: ramsey_msr
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 50
+      delay_between_pulses_step: 1
+      n_osc: 2
+      nshots: 10
+
+  - id: ramsey_msr_detuned
+    priority: 0
+    operation: ramsey_msr
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 50
+      delay_between_pulses_step: 1
       nshots: 10
 
   - id: ramsey detuned sequences
@@ -364,10 +456,19 @@ actions:
       delay_between_pulses_step: 1
       nshots: 10
 
+  - id: spin_echo_msr
+    priority: 0
+    operation: spin_echo_msr
+    parameters:
+      delay_between_pulses_start: 0
+      delay_between_pulses_end: 5
+      delay_between_pulses_step: 1
+      nshots: 10
 
   - id: flipping
     priority: 0
     operation: flipping
+    update: false
     parameters:
       nflips_max: 5
       nflips_step: 1
@@ -376,6 +477,16 @@ actions:
   - id: dispersive shift
     priority: 0
     operation: dispersive_shift
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 100_000
+      nshots: 10
+
+  - id: dispersive shift qutrit
+    priority: 0
+    operation: dispersive_shift_qutrit
+    #FIXME: add qubit 4 with new release of Qibolab
+    qubits: [0, 1, 2, 3]
     parameters:
       freq_width: 10_000_000
       freq_step: 100_000
@@ -537,9 +648,27 @@ actions:
       power_width: 10
       power_step: 1
 
+  - id: twpa frequency power
+    priority: 0
+    operation: twpa_frequency_power
+    qubits: [0]
+    parameters:
+      frequency_width: 1_000_000
+      frequency_step: 100_000
+      power_width: 10
+      power_step: 1
+
   - id: resonator_amplitude
     priority: 0
     operation: resonator_amplitude
     parameters:
       amplitude_step: 0.1
       amplitude_stop: 0.5
+
+  - id: qutrit
+    priority: 0
+    qubits: [0,1]
+    operation: qutrit_classification
+    parameters:
+      nshots: 100
+      classifiers_list: ["naive_bayes", "decision_tree"]

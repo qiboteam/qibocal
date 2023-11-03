@@ -8,6 +8,7 @@ from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 
+from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.protocols.characterization.utils import table_dict, table_html
 
@@ -23,6 +24,8 @@ class ReadoutCharacterizationResults(Results):
 
     fidelity: dict[QubitId, float]
     "Fidelity of the measurement"
+    assignment_fidelity: dict[QubitId, float]
+    """Assignment fidelity."""
     qnd: dict[QubitId, float]
     "QND-ness of the measurement"
     Lambda_M: dict[QubitId, float]
@@ -45,12 +48,6 @@ class ReadoutCharacterizationData(Data):
         default_factory=dict
     )
     """Raw data acquired."""
-
-    def register_qubit(self, qubit, probability, state, readout_number):
-        """Store output for single qubit."""
-        ar = np.empty(probability.shape, dtype=ReadoutCharacterizationType)
-        ar["probability"] = probability
-        self.data[qubit, state, readout_number] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -97,10 +94,9 @@ def _acquisition(
                 result = results[ro_pulse.serial]
                 qubit = ro_pulse.qubit
                 data.register_qubit(
-                    qubit,
-                    probability=result.samples,
-                    state=state,
-                    readout_number=i,
+                    ReadoutCharacterizationType,
+                    (qubit, state, i),
+                    dict(probability=result.samples),
                 )
                 i += 1
 
@@ -111,6 +107,7 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
     """Post-processing function for ReadoutCharacterization."""
 
     qubits = data.qubits
+    assignment_fidelity = {}
     fidelity = {}
     qnd = {}
     Lambda_M = {}
@@ -144,9 +141,11 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
             [state1_count_0_m1 / nshots, state1_count_1_m1 / nshots],
         ]
 
-        fidelity[qubit] = (
+        assignment_fidelity[qubit] = (
             1 - (state1_count_0_m1 / nshots + state0_count_1_m1 / nshots) / 2
         )
+
+        fidelity[qubit] = 2 * assignment_fidelity[qubit] - 1
 
         # QND FIXME: Careful revision
         P_0o_m0_1i = state0_count_1_m1 * state0_count_0_m2 / nshots**2
@@ -159,7 +158,7 @@ def _fit(data: ReadoutCharacterizationData) -> ReadoutCharacterizationResults:
 
         qnd[qubit] = 1 - (P_0o_1i + P_1o_0i) / 2
 
-    return ReadoutCharacterizationResults(fidelity, qnd, Lambda_M)
+    return ReadoutCharacterizationResults(fidelity, assignment_fidelity, qnd, Lambda_M)
 
 
 def _plot(
@@ -181,8 +180,12 @@ def _plot(
         fitting_report = table_html(
             table_dict(
                 qubit,
-                ["Fidelity", "QND"],
-                [np.round(fit.fidelity[qubit], 6), np.round(fit.qnd[qubit], 6)],
+                ["Assignment Fidelity", "Fidelity", "QND"],
+                [
+                    np.round(fit.assignment_fidelity[qubit], 6),
+                    np.round(fit.fidelity[qubit], 6),
+                    np.round(fit.qnd[qubit], 6),
+                ],
             )
         )
 
@@ -203,5 +206,12 @@ def _plot(
     return figures, fitting_report
 
 
-readout_characterization = Routine(_acquisition, _fit, _plot)
+def _update(
+    results: ReadoutCharacterizationResults, platform: Platform, qubit: QubitId
+):
+    update.readout_fidelity(results.fidelity[qubit], platform, qubit)
+    update.assignment_fidelity(results.assignment_fidelity[qubit], platform, qubit)
+
+
+readout_characterization = Routine(_acquisition, _fit, _plot, _update)
 """ReadoutCharacterization Routine object."""

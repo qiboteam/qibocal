@@ -1,9 +1,11 @@
 """Adds global CLI options."""
+import getpass
 import pathlib
 
 import click
 import yaml
 
+from ..auto.runcard import Runcard
 from .acquisition import acquire as acquisition
 from .autocalibration import autocalibrate
 from .fit import fit as fitting
@@ -42,15 +44,31 @@ def command():
     help="Use --no-update option to avoid updating iteratively the platform."
     "With this option the new runcard will not be produced.",
 )
-def auto(runcard, folder, force, update):
+@click.option(
+    "--platform",
+    default=None,
+    help="Name of the Qibolab platform.",
+)
+@click.option(
+    "--backend",
+    default=None,
+    help="Name of the Qibo backend.,",
+)
+def auto(runcard, folder, force, update, platform, backend):
     """Autocalibration
 
     Arguments:
 
      - RUNCARD: runcard with declarative inputs.
     """
-    card = yaml.safe_load(runcard.read_text(encoding="utf-8"))
-    autocalibrate(card, folder, force, update)
+    runcard = Runcard.load(yaml.safe_load(runcard.read_text(encoding="utf-8")))
+
+    if platform is not None:
+        runcard.platform = platform
+    if backend is not None:
+        runcard.backend = backend
+
+    autocalibrate(runcard, folder, force, update)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
@@ -58,7 +76,7 @@ def auto(runcard, folder, force, update):
     "runcard", metavar="RUNCARD", type=click.Path(exists=True, path_type=pathlib.Path)
 )
 @click.option(
-    "folder",
+    "--folder",
     "-o",
     type=click.Path(path_type=pathlib.Path),
     help="Output folder. If not provided a standard name will generated.",
@@ -69,15 +87,31 @@ def auto(runcard, folder, force, update):
     is_flag=True,
     help="Use --force option to overwrite the output folder.",
 )
-def acquire(runcard, folder, force):
+@click.option(
+    "--platform",
+    default=None,
+    help="Name of the Qibolab platform.",
+)
+@click.option(
+    "--backend",
+    default=None,
+    help="Name of the Qibo backend.,",
+)
+def acquire(runcard, folder, force, platform, backend):
     """Data acquisition
 
     Arguments:
 
      - RUNCARD: runcard with declarative inputs.
     """
-    card = yaml.safe_load(runcard.read_text(encoding="utf-8"))
-    acquisition(card, folder, force)
+    runcard = Runcard.load(yaml.safe_load(runcard.read_text(encoding="utf-8")))
+
+    if platform is not None:
+        runcard.platform = platform
+    if backend is not None:
+        runcard.backend = backend
+
+    acquisition(runcard, folder, force)
 
 
 @command.command(context_settings=CONTEXT_SETTINGS)
@@ -126,11 +160,17 @@ def fit(folder: pathlib.Path, update):
     type=str,
     help="Optional tag.",
 )
-def upload(path, tag):
+@click.option(
+    "--author",
+    default=getpass.getuser(),
+    type=str,
+    help="Default is UID username.",
+)
+def upload(path, tag, author):
     """Uploads output folder to server
 
     Arguments:
 
     - FOLDER: input folder.
     """
-    upload_report(path, tag)
+    upload_report(path, tag, author)
