@@ -7,7 +7,7 @@ license = "Apache License 2.0"
 readme = "README.md"
 homepage = "https://qibo.science/"
 repository = "https://github.com/qiboteam/qibocal/"
-documentation = "https://qibo.science/"
+documentation = "https://qibo.science/qibocal/stable/"
 keywords = []
 classifiers = [
   "Programming Language :: Python :: 3",
