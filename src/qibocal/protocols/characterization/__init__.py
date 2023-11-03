@@ -43,8 +43,7 @@ from .two_qubit_interaction import (
     chevron,
     chsh_circuits,
     chsh_pulses,
-    cz_virtualz,
-    iswap_virtualz,
+    native_gate_virtualz,
 )
 
 
@@ -76,7 +75,7 @@ class Operation(Enum):
     flipping = flipping
     dispersive_shift = dispersive_shift
     chevron = chevron
-    cz_virtualz = cz_virtualz
+    native_gate_virtualz = native_gate_virtualz
     standard_rb = standard_rb
     readout_characterization = readout_characterization
     resonator_frequency = resonator_frequency
@@ -91,4 +90,3 @@ class Operation(Enum):
     coupler_resonator_spectroscopy = coupler_resonator_spectroscopy
     coupler_qubit_spectroscopy = coupler_qubit_spectroscopy
     chevron_flux_time = chevron_flux_time
-    iswap_virtualz = iswap_virtualz
