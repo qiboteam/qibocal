@@ -69,7 +69,6 @@ actions:
       nshots: 1000
 
 
-
   - id: resonator spectroscopy low power
     priority: 0
     operation: resonator_spectroscopy
@@ -119,9 +118,9 @@ actions:
       nshots: 10
       relaxation_time: 3_000
 
-  - id: chevron flux time
+  - id: coupler chevron
     priority: 0
-    operation: chevron_flux_time
+    operation: coupler_chevron
     qubits: [[1, 2]]
     parameters:
       amplitude_factor_min: -0.5

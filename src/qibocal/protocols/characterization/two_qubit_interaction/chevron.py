@@ -38,6 +38,8 @@ class ChevronParameters(Parameters):
     """Duration maximum."""
     duration_step: float
     """Duration step."""
+    native_gate: Optional[str] = "CZ"
+    """Native gate to implement, CZ or iSWAP."""
     dt: Optional[int] = 0
     """Time delay between flux pulses and readout."""
     parking: bool = True
@@ -106,15 +108,22 @@ def _aquisition(
         # order the qubits so that the low frequency one is the first
         sequence = PulseSequence()
         ordered_pair = order_pair(pair, platform.qubits)
-        # initialize in system in 11 state
-        initialize_lowfreq = platform.create_RX_pulse(
-            ordered_pair[0], start=0, relative_phase=0
-        )
+        # initialize in system in 11(CZ) or 10(iSWAP) state
+
+        if params.native_gate == "CZ":
+            initialize_lowfreq = platform.create_RX_pulse(
+                ordered_pair[0], start=0, relative_phase=0
+            )
+            sequence.add(initialize_lowfreq)
+
         initialize_highfreq = platform.create_RX_pulse(
             ordered_pair[1], start=0, relative_phase=0
         )
         sequence.add(initialize_highfreq)
-        sequence.add(initialize_lowfreq)
+
+        # TODO: Is this the best way to assume you have a 2q gate on the runcard
+        # instead of using platform.create_flux_pulse and platform.create_coupler_pulse ?
+        # TODO: Do general for cz and iSWAP
         cz, _ = platform.create_CZ_pulse_sequence(
             qubits=(ordered_pair[1], ordered_pair[0]),
             start=initialize_highfreq.finish,
@@ -284,7 +293,7 @@ def _plot(data: ChevronData, fit: ChevronResults, qubit):
                         color="black",
                         symbol="cross",
                     ),
-                    name="CZ estimate",
+                    name="CZ estimate",  #  Change name from the params
                     showlegend=True if measured_qubit == qubit[0] else False,
                     legendgroup="Voltage",
                 ),
@@ -307,7 +316,7 @@ def _plot(data: ChevronData, fit: ChevronResults, qubit):
         fitting_report = table_html(
             table_dict(
                 qubit[1],
-                ["CZ amplitude", "CZ duration"],
+                ["CZ amplitude", "CZ duration"],  #  Change name from the params
                 [fit.amplitude[qubit], fit.duration[qubit]],
             )
         )
