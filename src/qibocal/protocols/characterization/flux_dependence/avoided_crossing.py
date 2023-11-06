@@ -1,3 +1,4 @@
+from copy import deepcopy
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -8,7 +9,7 @@ from qibolab.qubits import QubitId
 from qibocal.auto.operation import Data, QubitsPairs, Results, Routine
 from qibocal.protocols.characterization.two_qubit_interaction.utils import order_pair
 
-from .qubit_flux_dependence import QubitFluxData, QubitFluxParameters, QubitFluxType
+from .qubit_flux_dependence import QubitFluxParameters, QubitFluxType
 from .qubit_flux_dependence import _acquisition as flux_acquisition
 
 
@@ -19,9 +20,11 @@ class AvoidCrossParameters(QubitFluxParameters):
 
 @dataclass
 class AvoidCrossResults(Results):
-    parabolas: dict[str, dict]
+    parabolas: dict
     # TODO: doc
     fits: dict
+    cz: dict
+    iswap: dict
 
 
 @dataclass
@@ -40,8 +43,7 @@ def _acquisition(
 ) -> AvoidCrossData:
     qubit_pairs = list(qubits.keys())
     order_pairs = np.array([order_pair(pair, platform.qubits) for pair in qubit_pairs])
-    print("PPPPPPPP", qubit_pairs, order_pairs)
-    data = AvoidCrossData(qubit_pairs=order_pairs)
+    data = AvoidCrossData(qubit_pairs=order_pairs.tolist())
     # Extract the qubits in the qubits pairs and evaluate their flux dep
     # qubits_keys = list(qubits.keys())
     unique_qubits = np.unique(
@@ -62,7 +64,6 @@ def _acquisition(
             bias = qubit_data["bias"]
             msr = qubit_data["msr"]
             phase = qubit_data["phase"]
-            print(freq.dtype, bias.dtype, msr.dtype, phase.dtype)
             data.register_qubit(
                 QubitFluxType,
                 (float(qubit), transition),
@@ -73,27 +74,59 @@ def _acquisition(
                     phase=phase.tolist(),
                 ),
             )
+
+    unique_high_qubits = np.unique(order_pairs[:, 1])
+    for qubit in unique_high_qubits:
+        data.register_qubit(
+            QubitFluxType,
+            (float(qubit), "01"),
+            dict(
+                freq=[platform.qubits[qubit].readout_frequency],
+                bias=[0],
+                msr=[0],
+                phase=[0],
+            ),
+        )
     return data
 
 
-def _fit(data: QubitFluxData) -> AvoidCrossResults:
+def _fit(data: AvoidCrossData) -> AvoidCrossResults:
     # qubits = data.qubits
     qubit_data = data.data
     fits = {}
-    for couple in data.qubit_pairs:
-        curves = {key: find_parabola(val) for key, val in qubit_data.items()}
-        print(curves)
-        for state in ["01", "02"]:
-            for qubit in data.qubits:
-                x = np.unique(
-                    qubit_data[qubit, state]["bias"]
-                )  # - np.mean(data[state]["bias"])
-                y = np.copy(curves[qubit, state])
-                print(x, y, qubit_data[qubit, state])
-                fits[qubit, state] = np.polyfit(x, y, 2)
-                pred = sum(p * x ** (2 - i) for i, p in enumerate(fits[qubit, state]))
-
-    return AvoidCrossResults(curves, fits)
+    cz = {}
+    iswap = {}
+    curves = {key: find_parabola(val) for key, val in qubit_data.items()}
+    for qubit_pair in data.qubit_pairs:
+        qubit_pair = tuple(qubit_pair)
+        low = qubit_pair[0]
+        high = qubit_pair[1]
+        # Fit the 02*2 curve
+        curve_02 = np.array(curves[low, "02"]) * 2
+        x_02 = np.unique(qubit_data[low, "02"]["bias"])
+        fit_02 = np.polyfit(x_02, curve_02, 2)
+        fits[qubit_pair, "02"] = fit_02.tolist()
+        # Fit the 01+10 curve
+        curve_01 = np.array(curves[low, "01"])
+        x_01 = np.unique(qubit_data[low, "01"]["bias"])
+        fit_01_10 = np.polyfit(x_01, curve_01 + qubit_data[high, "01"]["freq"][0], 2)
+        fits[qubit_pair, "01+10"] = fit_01_10.tolist()
+        # find the intersection of the two parabolas
+        delta_fit = fit_02 - fit_01_10
+        x1, x2 = solve_eq(delta_fit)
+        cz[qubit_pair] = [
+            [x1, np.polyval(fit_02, x1)],
+            [x2, np.polyval(fit_02, x2)],
+        ]
+        # find the intersection of the 01 parabola and the 10 line
+        fit_01 = np.polyfit(x_01, curve_01, 2)
+        fits[qubit_pair, "01"] = fit_01.tolist()
+        fit_pars = deepcopy(fit_01)
+        line_val = qubit_data[high, "01"]["freq"][0]
+        fit_pars[2] -= line_val
+        x1, x2 = solve_eq(fit_pars)
+        iswap[qubit_pair] = [[x1, line_val], [x2, line_val]]
+    return AvoidCrossResults(curves, fits, cz, iswap)
 
 
 def _plot(data: AvoidCrossData, fit: AvoidCrossResults, qubit):
@@ -114,3 +147,11 @@ def find_parabola(data):
         index = data[currs == bias]["msr"].argmax()
         frequencies.append(freqs[index])
     return frequencies
+
+
+def solve_eq(pars):
+    first_term = -1 * pars[1]
+    second_term = np.sqrt(pars[1] ** 2 - 4 * pars[0] * pars[2])
+    x1 = (first_term + second_term) / pars[0] / 2
+    x2 = (first_term - second_term) / pars[0] / 2
+    return x1, x2
