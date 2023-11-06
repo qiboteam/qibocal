@@ -1,6 +1,7 @@
 import inspect
 import json
 import time
+from copy import deepcopy
 from dataclasses import asdict, dataclass
 from functools import wraps
 from typing import Callable, Generic, NewType, Optional, TypeVar, Union
@@ -73,7 +74,7 @@ class Parameters:
     """Wait time for the qubit to decohere back to the `gnd` state"""
 
     @classmethod
-    def load(cls, parameters):
+    def load(cls, input_parameters):
         """Load parameters from runcard.
 
         Possibly looking into previous steps outputs.
@@ -87,10 +88,12 @@ class Parameters:
             the linked outputs
 
         """
-        for parameter, value in DEFAULT_PARENT_PARAMETERS.items():
-            DEFAULT_PARENT_PARAMETERS[parameter] = parameters.pop(parameter, value)
+        default_parent_parameters = deepcopy(DEFAULT_PARENT_PARAMETERS)
+        parameters = deepcopy(input_parameters)
+        for parameter, value in default_parent_parameters.items():
+            default_parent_parameters[parameter] = parameters.pop(parameter, value)
         instantiated_class = cls(**parameters)
-        for parameter, value in DEFAULT_PARENT_PARAMETERS.items():
+        for parameter, value in default_parent_parameters.items():
             setattr(instantiated_class, parameter, value)
         return instantiated_class
 

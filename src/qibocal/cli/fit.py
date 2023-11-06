@@ -2,6 +2,7 @@ import datetime
 import json
 
 import yaml
+from qibo.backends import GlobalBackend
 from qibolab.serialize import dump_runcard
 
 from ..auto.execute import Executor
@@ -19,23 +20,34 @@ def fit(path, update):
     - FOLDER: input folder.
 
     """
-    # load path, meta, runcard and executor
-    meta = yaml.safe_load((path / META).read_text())
+    # load meta
+    meta = json.loads((path / META).read_text())
+    # load runcard
     runcard = Runcard.load(yaml.safe_load((path / RUNCARD).read_text()))
-    qubits = create_qubits_dict(runcard)
+
+    # set backend, platform and qubits
+    GlobalBackend.set_backend(backend=meta["backend"], platform=meta["platform"])
+    backend = GlobalBackend()
+    platform = backend.platform
+    qubits = create_qubits_dict(qubits=runcard.qubits, platform=platform)
+
+    # load executor
     executor = Executor.load(
-        runcard, path, update=update, platform=runcard.platform_obj, qubits=qubits
+        runcard, path, update=update, platform=platform, qubits=qubits
     )
 
     # perform post-processing
     list(executor.run(mode=ExecutionMode.fit))
 
-    # dump updated runcard
-    if runcard.platform_obj is not None and update:
-        dump_runcard(runcard.platform_obj, path / UPDATED_PLATFORM)
-
-    # update time in meta.yml
+    # update time in meta
     meta = add_timings_to_meta(meta, executor.history)
     e = datetime.datetime.now(datetime.timezone.utc)
     meta["end-time"] = e.strftime("%H:%M:%S")
+
+    # dump updated runcard
+    if platform is not None and update:  # pragma: no cover
+        # cannot test update since dummy may produce wrong values and trigger errors
+        dump_runcard(platform, path / UPDATED_PLATFORM)
+
+    # dump json
     (path / META).write_text(json.dumps(meta, indent=4))

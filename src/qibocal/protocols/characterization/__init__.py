@@ -14,7 +14,10 @@ from .coherence.t2_msr import t2_msr
 from .coherence.t2_sequences import t2_sequences
 from .coherence.zeno import zeno
 from .coherence.zeno_msr import zeno_msr
+from .couplers.coupler_qubit_spectroscopy import coupler_qubit_spectroscopy
+from .couplers.coupler_resonator_spectroscopy import coupler_resonator_spectroscopy
 from .dispersive_shift import dispersive_shift
+from .dispersive_shift_qutrit import dispersive_shift_qutrit
 from .fast_reset.fast_reset import fast_reset
 from .flipping import flipping
 from .flux_dependence.avoided_crossing import avoided_crossing
@@ -40,6 +43,7 @@ from .readout_mitigation_matrix import readout_mitigation_matrix
 from .readout_optimization.resonator_amplitude import resonator_amplitude
 from .readout_optimization.resonator_frequency import resonator_frequency
 from .readout_optimization.twpa_calibration.frequency import twpa_frequency
+from .readout_optimization.twpa_calibration.frequency_power import twpa_frequency_power
 from .readout_optimization.twpa_calibration.power import twpa_power
 from .resonator_punchout import resonator_punchout
 from .resonator_punchout_attenuation import resonator_punchout_attenuation
@@ -95,8 +99,12 @@ class Operation(Enum):
     readout_mitigation_matrix = readout_mitigation_matrix
     twpa_frequency = twpa_frequency
     twpa_power = twpa_power
+    twpa_frequency_power = twpa_frequency_power
     rabi_amplitude_ef = rabi_amplitude_ef
     qubit_spectroscopy_ef = qubit_spectroscopy_ef
     qutrit_classification = qutrit_classification
     resonator_amplitude = resonator_amplitude
     avoided_crossing = avoided_crossing
+    dispersive_shift_qutrit = dispersive_shift_qutrit
+    coupler_resonator_spectroscopy = coupler_resonator_spectroscopy
+    coupler_qubit_spectroscopy = coupler_qubit_spectroscopy

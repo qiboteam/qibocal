@@ -80,6 +80,19 @@ actions:
       power_level: low
       nshots: 10
 
+  - id: coupler_resonator_spectroscopy
+    priority: 0
+    operation: coupler_resonator_spectroscopy
+    qubits: [[1, 2], [0, 2]]
+    parameters:
+      bias_width: 1
+      bias_step: 0.1
+      freq_width: 10_000_000
+      freq_step: 1_000_000
+      measured_qubits: [1, 0]
+      amplitude: .3
+      nshots: 10
+      relaxation_time: 3_000
 
 
   - id: qubit spectroscopy
@@ -91,6 +104,20 @@ actions:
       freq_width: 2_000_000
       freq_step: 500_000
       nshots: 10
+
+  - id: coupler qubit spectroscopy
+    priority: 0
+    operation: coupler_qubit_spectroscopy
+    qubits: [[1, 2], [0, 2]]
+    parameters:
+      bias_width: 1
+      bias_step: 0.1
+      freq_width: 10_000_000
+      freq_step: 1_000_000
+      measured_qubits: [1, 0]
+      amplitude: .1
+      nshots: 10
+      relaxation_time: 3_000
 
 
   - id: qubit spectroscopy ef
@@ -179,6 +206,7 @@ actions:
   - id: rabi
     priority: 0
     operation: rabi_amplitude
+    update: false
     parameters:
       min_amp_factor: 0.0
       max_amp_factor: 4.0
@@ -186,9 +214,19 @@ actions:
       pulse_length: 30
       nshots: 1024
 
+  - id: rabi without nshots
+    priority: 0
+    operation: rabi_amplitude
+    parameters:
+      min_amp_factor: 0.0
+      max_amp_factor: 4.0
+      step_amp_factor: 0.1
+      pulse_length: 30
+
   - id: rabi msr
     priority: 0
     operation: rabi_amplitude_msr
+    update: false
     parameters:
       min_amp_factor: 0.0
       max_amp_factor: 4.0
@@ -424,6 +462,7 @@ actions:
   - id: flipping
     priority: 0
     operation: flipping
+    update: false
     parameters:
       nflips_max: 5
       nflips_step: 1
@@ -432,6 +471,16 @@ actions:
   - id: dispersive shift
     priority: 0
     operation: dispersive_shift
+    parameters:
+      freq_width: 10_000_000
+      freq_step: 100_000
+      nshots: 10
+
+  - id: dispersive shift qutrit
+    priority: 0
+    operation: dispersive_shift_qutrit
+    #FIXME: add qubit 4 with new release of Qibolab
+    qubits: [0, 1, 2, 3]
     parameters:
       freq_width: 10_000_000
       freq_step: 100_000
@@ -576,6 +625,16 @@ actions:
     operation: twpa_power
     parameters:
       nshots: 10
+      power_width: 10
+      power_step: 1
+
+  - id: twpa frequency power
+    priority: 0
+    operation: twpa_frequency_power
+    qubits: [0]
+    parameters:
+      frequency_width: 1_000_000
+      frequency_step: 100_000
       power_width: 10
       power_step: 1
 
