@@ -20,11 +20,10 @@ from .dispersive_shift import dispersive_shift
 from .dispersive_shift_qutrit import dispersive_shift_qutrit
 from .fast_reset.fast_reset import fast_reset
 from .flipping import flipping
-from .flux_dependence.qubit_flux_dependence import qubit_crosstalk, qubit_flux
-from .flux_dependence.resonator_flux_dependence import (
-    resonator_crosstalk,
-    resonator_flux,
-)
+from .flux_dependence.qubit_crosstalk import qubit_crosstalk
+from .flux_dependence.qubit_flux_dependence import qubit_flux
+from .flux_dependence.resonator_crosstalk import resonator_crosstalk
+from .flux_dependence.resonator_flux_dependence import resonator_flux
 from .qubit_spectroscopy import qubit_spectroscopy
 from .qubit_spectroscopy_ef import qubit_spectroscopy_ef
 from .qutrit_classification import qutrit_classification
