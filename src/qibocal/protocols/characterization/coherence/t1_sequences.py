@@ -5,12 +5,12 @@ from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Qubits, Routine
 
-from . import t1, t1_msr
+from . import t1, t1_signal
 
 
 def _acquisition(
-    params: t1_msr.T1MSRParameters, platform: Platform, qubits: Qubits
-) -> t1_msr.T1MSRData:
+    params: t1_signal.T1MSRParameters, platform: Platform, qubits: Qubits
+) -> t1_signal.T1MSRData:
     r"""Data acquisition for T1 experiment.
     In a T1 experiment, we measure an excited qubit after a delay. Due to decoherence processes
     (e.g. amplitude damping channel), it is possible that, at the time of measurement, after the delay,
@@ -51,7 +51,7 @@ def _acquisition(
     )
 
     # create a DataUnits object to store the MSR, phase, i, q and the delay time
-    data = t1_msr.T1MSRData()
+    data = t1_signal.T1MSRData()
 
     # repeat the experiment as many times as defined by software_averages
     # sweep the parameter
@@ -73,7 +73,7 @@ def _acquisition(
             # average msr, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulses[qubit].serial]
             data.register_qubit(
-                t1_msr.CoherenceType,
+                t1_signal.CoherenceType,
                 (qubit),
                 dict(
                     wait=np.array([wait]),
@@ -84,5 +84,5 @@ def _acquisition(
     return data
 
 
-t1_sequences = Routine(_acquisition, t1_msr._fit, t1_msr._plot, t1._update)
+t1_sequences = Routine(_acquisition, t1_signal._fit, t1_signal._plot, t1._update)
 """T1 Routine object."""

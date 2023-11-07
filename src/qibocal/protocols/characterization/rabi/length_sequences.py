@@ -5,7 +5,7 @@ from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Qubits, Routine
 
-from .length_msr import (
+from .length_signal import (
     RabiLengthVoltData,
     RabiLengthVoltParameters,
     RabiLenVoltType,

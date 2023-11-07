@@ -5,8 +5,8 @@ from qibolab.pulses import PulseSequence
 
 from qibocal.auto.operation import Qubits, Routine
 
-from .t1_msr import CoherenceType
-from .t2_msr import T2MSRData, T2MSRParameters, _fit, _plot, _update
+from .t1_signal import CoherenceType
+from .t2_signal import T2MSRData, T2MSRParameters, _fit, _plot, _update
 
 
 def _acquisition(

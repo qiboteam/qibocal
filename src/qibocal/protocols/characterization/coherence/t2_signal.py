@@ -12,7 +12,7 @@ from qibocal import update
 from qibocal.auto.operation import Qubits, Routine
 
 from ..utils import V_TO_UV, table_dict, table_html
-from . import t1_msr, t2, utils
+from . import t1_signal, t2, utils
 
 
 @dataclass
@@ -25,7 +25,7 @@ class T2MSRResults(t2.T2Results):
     """T2MSR outputs."""
 
 
-class T2MSRData(t1_msr.T1MSRData):
+class T2MSRData(t1_signal.T1MSRData):
     """T2MSR acquisition outputs."""
 
 
@@ -89,7 +89,7 @@ def _acquisition(
     for qubit in qubits:
         result = results[ro_pulses[qubit].serial]
         data.register_qubit(
-            t1_msr.CoherenceType,
+            t1_signal.CoherenceType,
             (qubit),
             dict(wait=waits, msr=result.magnitude, phase=result.phase),
         )

@@ -12,7 +12,7 @@ from qibocal.auto.operation import Qubits, Routine
 
 from ..utils import V_TO_UV, table_dict, table_html
 from . import spin_echo
-from .t1_msr import CoherenceType, T1MSRData
+from .t1_signal import CoherenceType, T1MSRData
 from .utils import exp_decay, exponential_fit
 
 
