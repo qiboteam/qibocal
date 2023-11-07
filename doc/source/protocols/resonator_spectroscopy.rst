@@ -93,7 +93,7 @@ Running the ``qibocal`` routines above produces outputs like these in the report
 IMAGES
 
 The peaks are Lorentzian. As we can see, at low power the resonator fequency shifts.
-This is due to the Hamiltonian of the system (insert equation???). Therefore, the dressed resonator
+This is due to the Hamiltonian of the system :cite:p:`Blais_2004, wallraff2004strong`. Therefore, the dressed resonator
 frequency is larger than the bare resonator frequency.
 
 The resonator frequencies can be then inserted into the platform runcards (in ``qibolab_platforms_qrc``).
@@ -131,3 +131,9 @@ and also here:
                 bare_resonator_frequency: <high_power_resonator_frequency>
                 readout_frequency: 5_227_920_060
                 drive_frequency: <low_power_resonator_frequency>
+
+.. rubric:: References
+
+.. bibliography::
+   :cited:
+   :style: plain
