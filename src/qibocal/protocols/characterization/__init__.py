@@ -7,11 +7,11 @@ from .classification import single_shot_classification
 from .coherence.spin_echo import spin_echo
 from .coherence.spin_echo_msr import spin_echo_msr
 from .coherence.t1 import t1
-from .coherence.t1_msr import t1_msr
 from .coherence.t1_sequences import t1_sequences
+from .coherence.t1_signal import t1_signal
 from .coherence.t2 import t2
-from .coherence.t2_msr import t2_msr
 from .coherence.t2_sequences import t2_sequences
+from .coherence.t2_signal import t2_signal
 from .coherence.zeno import zeno
 from .coherence.zeno_msr import zeno_msr
 from .couplers.coupler_qubit_spectroscopy import coupler_qubit_spectroscopy
@@ -71,10 +71,10 @@ class Operation(Enum):
     ramsey_signal = ramsey_signal
     ramsey_sequences = ramsey_sequences
     t1 = t1
-    t1_msr = t1_msr
+    t1_signal = t1_signal
     t1_sequences = t1_sequences
     t2 = t2
-    t2_msr = t2_msr
+    t2_signal = t2_signal
     t2_sequences = t2_sequences
     time_of_flight_readout = time_of_flight_readout
     single_shot_classification = single_shot_classification

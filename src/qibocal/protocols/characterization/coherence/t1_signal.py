@@ -182,5 +182,5 @@ def _plot(data: T1MSRData, qubit, fit: T1MSRResults = None):
     return figures, fitting_report
 
 
-t1_msr = Routine(_acquisition, _fit, _plot, t1._update)
+t1_signal = Routine(_acquisition, _fit, _plot, t1._update)
 """T1 MSR Routine object."""

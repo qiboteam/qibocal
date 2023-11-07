@@ -166,5 +166,5 @@ def _update(results: T2MSRResults, platform: Platform, qubit: QubitId):
     update.t2(results.t2[qubit], platform, qubit)
 
 
-t2_msr = Routine(_acquisition, _fit, _plot, _update)
+t2_signal = Routine(_acquisition, _fit, _plot, _update)
 """T2MSR Routine object."""
