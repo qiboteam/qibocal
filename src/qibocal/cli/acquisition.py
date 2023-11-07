@@ -8,7 +8,6 @@ from qibolab.serialize import dump_runcard
 from ..auto.execute import Executor
 from ..auto.history import add_timings_to_meta
 from ..auto.mode import ExecutionMode
-from ..auto.runcard import Runcard
 from .utils import (
     META,
     PLATFORM,
@@ -19,33 +18,34 @@ from .utils import (
 )
 
 
-def acquire(card, folder, force):
+def acquire(runcard, folder, force):
     """Data acquisition
 
     Arguments:
 
      - RUNCARD: runcard with declarative inputs.
     """
-    # load and initialize Runcard from file
-    runcard = Runcard.load(card)
 
+    # rename for brevity
+    backend = runcard.backend_obj
+    platform = runcard.platform_obj
     # generate output folder
     path = generate_output_folder(folder, force)
-    # generate meta
-    meta = generate_meta(runcard, path)
 
+    # set backend, platform and qubits
+    qubits = create_qubits_dict(qubits=runcard.qubits, platform=platform)
+
+    # generate meta
+    meta = generate_meta(backend, platform, path)
     # dump platform
-    if runcard.backend == "qibolab":
-        dump_runcard(runcard.platform_obj, path / PLATFORM)
+    if backend.name == "qibolab":
+        dump_runcard(platform, path / PLATFORM)
 
     # dump action runcard
     (path / RUNCARD).write_text(yaml.safe_dump(asdict(runcard)))
     # dump meta
     (path / META).write_text(json.dumps(meta, indent=4))
 
-    # allocate qubits, runcard and executor
-    qubits = create_qubits_dict(runcard)
-    platform = runcard.platform_obj
     executor = Executor.load(runcard, path, platform, qubits)
 
     # connect and initialize platform
@@ -59,6 +59,7 @@ def acquire(card, folder, force):
 
     e = datetime.datetime.now(datetime.timezone.utc)
     meta["end-time"] = e.strftime("%H:%M:%S")
+
     # stop and disconnect platform
     if platform is not None:
         platform.stop()

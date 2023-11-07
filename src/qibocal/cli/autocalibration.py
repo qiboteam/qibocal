@@ -8,7 +8,6 @@ from qibolab.serialize import dump_runcard
 from ..auto.execute import Executor
 from ..auto.history import add_timings_to_meta
 from ..auto.mode import ExecutionMode
-from ..auto.runcard import Runcard
 from ..cli.report import ReportBuilder
 from .utils import (
     META,
@@ -21,32 +20,35 @@ from .utils import (
 )
 
 
-def autocalibrate(card, folder, force, update):
+def autocalibrate(runcard, folder, force, update):
     """Autocalibration
 
     Arguments:
 
      - RUNCARD: runcard with declarative inputs.
     """
-    # load and initialize Runcard from file
-    runcard = Runcard.load(card)
 
+    # rename for brevity
+    backend = runcard.backend_obj
+    platform = runcard.platform_obj
     # generate output folder
     path = generate_output_folder(folder, force)
-    # generate meta
-    meta = generate_meta(runcard, path)
 
+    # allocate qubits
+    qubits = create_qubits_dict(qubits=runcard.qubits, platform=platform)
+
+    # generate meta
+    meta = generate_meta(backend, platform, path)
     # dump platform
-    if runcard.backend == "qibolab":
-        dump_runcard(runcard.platform_obj, path / PLATFORM)
+    if backend.name == "qibolab":
+        dump_runcard(platform, path / PLATFORM)
+
     # dump action runcard
     (path / RUNCARD).write_text(yaml.safe_dump(asdict(runcard)))
     # dump meta
     (path / META).write_text(json.dumps(meta, indent=4))
 
-    # allocate qubits, runcard and executor
-    qubits = create_qubits_dict(runcard)
-    platform = runcard.platform_obj
+    # allocate executor
     executor = Executor.load(runcard, path, platform, qubits, update)
 
     # connect and initialize platform
@@ -55,12 +57,13 @@ def autocalibrate(card, folder, force, update):
         platform.setup()
         platform.start()
 
+    # run protocols
+    for _ in executor.run(mode=ExecutionMode.autocalibration):
+        report = ReportBuilder(path, qubits, executor, meta, executor.history)
+        report.run(path)
+
     e = datetime.datetime.now(datetime.timezone.utc)
     meta["end-time"] = e.strftime("%H:%M:%S")
-    # run protocols
-    for task_uid in executor.run(mode=ExecutionMode.autocalibration):
-        report = ReportBuilder(path, runcard.qubits, executor, meta, executor.history)
-        report.run(path)
 
     # stop and disconnect platform
     if platform is not None:

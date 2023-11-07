@@ -135,6 +135,12 @@ class Task:
         task_qubits = self._allocate_local_qubits(qubits, platform)
 
         try:
+            if self.parameters.nshots is None:
+                self.action.parameters["nshots"] = platform.settings.nshots
+            if self.parameters.relaxation_time is None:
+                self.action.parameters[
+                    "relaxation_time"
+                ] = platform.settings.relaxation_time
             operation: Routine = self.operation
             parameters = self.parameters
         except RuntimeError:
