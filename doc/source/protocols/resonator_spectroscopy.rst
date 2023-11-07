@@ -9,12 +9,12 @@ signal: if the resonator is a 3D cavity we will observe an amplified signal, whi
 Lorentzian peak (positive for 3D cavity or negative for 2D resonators).
 
 In the experiment, we send a readout pulse with fixed duration and amplitude and,
-after waiting for the TOF, we acquire a waveform that we average, obtaining a single
-point. This experiment is extremely dependent on the amplitude of the pulse and on its duration.
+after waiting for the time of flight, we acquire a waveform that we average, obtaining a single
+point. This experiment is extremely dependent on the amplitude of the pulse.
 
 Since the objective of this experiment is to find the resonator frequency, without any readout
 optimization (something that we will have to do afterwards), we can fix the duration of
-the pulse at 2 µs.
+the pulse in the order of magnitude of µs.
 For the amplitude the discussion is slightly more complex and there are several
 elements to take into consideration:
 
@@ -77,7 +77,8 @@ As per the relaxation time, for this experiment in particular we
 can leave it at zero: since we are not exciting the qubit we do not particularly care
 about it. However note that, for 3D cavities, we could end up damaging the qubit if we
 send too much energy over a small period of time so it could be worth to increase the
-relaxation time.
+relaxation time. However, some electronics do not support zero relaxation times, therefore 
+a relaxation time greater than zero is a safer choice.
 
 Last but not least, we have to choose which frequencies are probed during the scan:
 a very wide scan can be useful if nothing is known about the studied resonator, but in
