@@ -171,5 +171,5 @@ def _update(results: SpinEchoMSRResults, platform: Platform, qubit: QubitId):
     update.t2_spin_echo(results.t2_spin_echo[qubit], platform, qubit)
 
 
-spin_echo_msr = Routine(_acquisition, _fit, _plot, _update)
+spin_echo_signal = Routine(_acquisition, _fit, _plot, _update)
 """SpinEcho Routine object."""
