@@ -182,5 +182,5 @@ def _plot(data: RabiLengthVoltData, fit: RabiLengthVoltResults, qubit):
     return utils.plot(data, qubit, fit)
 
 
-rabi_length_msr = Routine(_acquisition, _fit, _plot, _update)
+rabi_length_signal = Routine(_acquisition, _fit, _plot, _update)
 """RabiLength Routine object."""

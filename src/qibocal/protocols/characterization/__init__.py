@@ -28,11 +28,11 @@ from .qubit_spectroscopy import qubit_spectroscopy
 from .qubit_spectroscopy_ef import qubit_spectroscopy_ef
 from .qutrit_classification import qutrit_classification
 from .rabi.amplitude import rabi_amplitude
-from .rabi.amplitude_msr import rabi_amplitude_msr
+from .rabi.amplitude_signal import rabi_amplitude_signal
 from .rabi.ef import rabi_amplitude_ef
 from .rabi.length import rabi_length
-from .rabi.length_msr import rabi_length_msr
 from .rabi.length_sequences import rabi_length_sequences
+from .rabi.length_signal import rabi_length_signal
 from .ramsey import ramsey
 from .ramsey_sequences import ramsey_sequences
 from .ramsey_signal import ramsey_signal
@@ -65,8 +65,8 @@ class Operation(Enum):
     rabi_amplitude = rabi_amplitude
     rabi_length = rabi_length
     rabi_length_sequences = rabi_length_sequences
-    rabi_amplitude_msr = rabi_amplitude_msr
-    rabi_length_msr = rabi_length_msr
+    rabi_amplitude_signal = rabi_amplitude_signal
+    rabi_length_signal = rabi_length_signal
     ramsey = ramsey
     ramsey_signal = ramsey_signal
     ramsey_sequences = ramsey_sequences

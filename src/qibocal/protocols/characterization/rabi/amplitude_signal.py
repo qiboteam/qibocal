@@ -179,5 +179,5 @@ def _update(results: RabiAmplitudeVoltResults, platform: Platform, qubit: QubitI
     update.drive_amplitude(results.amplitude[qubit], platform, qubit)
 
 
-rabi_amplitude_msr = Routine(_acquisition, _fit, _plot, _update)
+rabi_amplitude_signal = Routine(_acquisition, _fit, _plot, _update)
 """RabiAmplitude Routine object."""
