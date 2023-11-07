@@ -192,4 +192,4 @@ def _update(results: ZenoResults, platform: Platform, qubit: QubitId):
     update.t1(results.zeno_t1[qubit], platform, qubit)
 
 
-zeno_msr = Routine(_acquisition, _fit, _plot, _update)
+zeno_signal = Routine(_acquisition, _fit, _plot, _update)

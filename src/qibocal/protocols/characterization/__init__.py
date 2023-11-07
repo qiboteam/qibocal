@@ -13,7 +13,7 @@ from .coherence.t2 import t2
 from .coherence.t2_sequences import t2_sequences
 from .coherence.t2_signal import t2_signal
 from .coherence.zeno import zeno
-from .coherence.zeno_msr import zeno_msr
+from .coherence.zeno_signal import zeno_signal
 from .couplers.coupler_qubit_spectroscopy import coupler_qubit_spectroscopy
 from .couplers.coupler_resonator_spectroscopy import coupler_resonator_spectroscopy
 from .dispersive_shift import dispersive_shift
@@ -92,7 +92,7 @@ class Operation(Enum):
     resonator_frequency = resonator_frequency
     fast_reset = fast_reset
     zeno = zeno
-    zeno_msr = zeno_msr
+    zeno_signal = zeno_signal
     chsh_pulses = chsh_pulses
     chsh_circuits = chsh_circuits
     readout_mitigation_matrix = readout_mitigation_matrix
