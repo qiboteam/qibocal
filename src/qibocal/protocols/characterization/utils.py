@@ -10,6 +10,7 @@ import plotly.graph_objects as go
 from numba import njit
 from plotly.subplots import make_subplots
 from qibolab.qubits import QubitId
+from scipy import constants
 from scipy.stats import mode
 
 from qibocal.auto.operation import Data, Results
@@ -27,9 +28,29 @@ COLUMNWIDTH = 600
 LEGEND_FONT_SIZE = 20
 TITLE_SIZE = 25
 EXTREME_CHI = 1e4
+KB = constants.physical_constants["Boltzmann constant in Hz/K"][0]
+HBAR = constants.hbar
 """Chi2 output when errors list contains zero elements"""
 COLORBAND = "rgba(0,100,80,0.2)"
 COLORBAND_LINE = "rgba(255,255,255,0)"
+
+
+def effective_qubit_temperature(
+    prob_0: np.array, prob_1: np.array, qubit_frequency: float
+):
+    """Calculates the qubit effective temperature.
+
+    The formula used in this one:
+
+    kB Teff = - hbar qubit_freq / ln(prob_1/prob_0)
+
+    """
+    try:
+        temp = -HBAR * qubit_frequency / np.log(prob_1 / prob_0) / KB
+    except ZeroDivisionError:
+        # TODO: choose appropriate value to return
+        temp = -1
+    return temp
 
 
 def calculate_frequencies(results, qubit_list):

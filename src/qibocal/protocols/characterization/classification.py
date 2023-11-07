@@ -60,6 +60,8 @@ ClassificationType = np.dtype([("i", np.float64), ("q", np.float64), ("state", i
 class SingleShotClassificationData(Data):
     nshots: int
     """Number of shots."""
+    qubit_frequencies: dict[QubitId, float]
+    """Qubit frequencies."""
     savedir: str
     """Dumping folder of the classification results"""
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
@@ -94,6 +96,8 @@ class SingleShotClassificationResults(Results):
     """Fidelity evaluated only with the `qubit_fit` model."""
     assignment_fidelity: dict[QubitId, float] = field(default_factory=dict)
     """Assignment fidelity evaluated only with the `qubit_fit` model."""
+    effective_temperature: dict[QubitId, float] = field(default_factory=dict)
+    """Qubit effective temperature from Boltzmann distribution."""
     models: dict[QubitId, list] = field(default_factory=list)
     """List of trained classification models."""
     benchmark_table: Optional[dict[QubitId, pd.DataFrame]] = field(default_factory=dict)
@@ -183,6 +187,9 @@ def _acquisition(
 
     data = SingleShotClassificationData(
         nshots=params.nshots,
+        qubit_frequencies={
+            qubit: platform.qubits[qubit].drive_frequency for qubit in qubits
+        },
         classifiers_list=params.classifiers_list,
         savedir=params.savedir,
     )
@@ -242,6 +249,7 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
     assignment_fidelity = {}
     y_test_predict = {}
     grid_preds_dict = {}
+    effective_temperature = {}
     for qubit in qubits:
         qubit_data = data.data[qubit]
         benchmark_table, y_test, x_test, models, names, hpars_list = run.train_qubit(
@@ -274,6 +282,9 @@ def _fit(data: SingleShotClassificationData) -> SingleShotClassificationResults:
                 mean_exc_states[qubit] = models[i].iq_mean1.tolist()
                 fidelity[qubit] = models[i].fidelity
                 assignment_fidelity[qubit] = models[i].assignment_fidelity
+                effective_temperature[qubit] = models[i].effective_temperature(
+                    y_preds[-1], data.qubit_frequencies[qubit]
+                )
         y_test_predict[qubit] = y_preds
         grid_preds_dict[qubit] = grid_preds
     return SingleShotClassificationResults(
