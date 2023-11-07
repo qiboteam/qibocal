@@ -285,5 +285,5 @@ def _plot(data: RamseyMSRData, qubit, fit: RamseyMSRResults = None):
     return figures, fitting_report
 
 
-ramsey_msr = Routine(_acquisition, _fit, _plot, _update)
+ramsey_signal = Routine(_acquisition, _fit, _plot, _update)
 """Ramsey Routine object."""

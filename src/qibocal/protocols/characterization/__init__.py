@@ -34,8 +34,8 @@ from .rabi.length import rabi_length
 from .rabi.length_msr import rabi_length_msr
 from .rabi.length_sequences import rabi_length_sequences
 from .ramsey import ramsey
-from .ramsey_msr import ramsey_msr
 from .ramsey_sequences import ramsey_sequences
+from .ramsey_signal import ramsey_signal
 from .randomized_benchmarking.standard_rb import standard_rb
 from .readout_characterization import readout_characterization
 from .readout_mitigation_matrix import readout_mitigation_matrix
@@ -68,7 +68,7 @@ class Operation(Enum):
     rabi_amplitude_msr = rabi_amplitude_msr
     rabi_length_msr = rabi_length_msr
     ramsey = ramsey
-    ramsey_msr = ramsey_msr
+    ramsey_signal = ramsey_signal
     ramsey_sequences = ramsey_sequences
     t1 = t1
     t1_msr = t1_msr
