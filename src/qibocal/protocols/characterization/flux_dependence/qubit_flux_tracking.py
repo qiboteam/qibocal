@@ -13,13 +13,13 @@ from scipy.optimize import curve_fit
 
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
-from qibocal.config import log
-from qibocal.protocols.characterization.qubit_spectroscopy_ef import (
-    DEFAULT_ANHARMONICITY,
-)
+from qibocal.config import log, raise_error
 
+from ..qubit_spectroscopy_ef import DEFAULT_ANHARMONICITY
 from ..utils import GHZ_TO_HZ, HZ_TO_GHZ
 from . import utils
+
+"""Initial guess for anharmonicity."""
 
 
 @dataclass
@@ -34,15 +34,17 @@ class QubitFluxParameters(Parameters):
     """Width for bias sweep [V]."""
     bias_step: float
     """Bias step for sweep (V)."""
+    drive_duration: int
+    """Drive pulse duration [ns]. Same for all qubits."""
     drive_amplitude: Optional[float] = None
     """Drive amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
+    nshots: Optional[int] = None
+    """Number of shots."""
+    relaxation_time: Optional[int] = None
+    """Relaxation time (ns)."""
     transition: Optional[str] = "01"
     """Flux spectroscopy transition type ("01" or "02"). Default value is 01"""
-    drive_duration: int = 2000
-    """
-    Duration of the drive pulse.
-    """
 
 
 @dataclass
@@ -76,20 +78,28 @@ class QubitFluxData(Data):
     resonator_type: str
 
     """ResonatorFlux acquisition outputs."""
-    Ec: dict[QubitId, float] = field(default_factory=dict)
+    Ec: dict[QubitId, int] = field(default_factory=dict)
     """Qubit Ec provided by the user."""
 
-    Ej: dict[QubitId, float] = field(default_factory=dict)
+    Ej: dict[QubitId, int] = field(default_factory=dict)
     """Qubit Ej provided by the user."""
 
     data: dict[QubitId, npt.NDArray[QubitFluxType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, freq, bias, msr, phase):
+    def register_qubit_track(self, qubit, freq, bias, msr, phase):
         """Store output for single qubit."""
-        self.data[qubit] = utils.create_data_array(
-            freq, bias, msr, phase, dtype=QubitFluxType
-        )
+        # to be able to handle the 1D sweeper case
+        size = len(freq)
+        ar = np.empty(size, dtype=QubitFluxType)
+        ar["freq"] = freq
+        ar["bias"] = [bias] * size
+        ar["msr"] = msr
+        ar["phase"] = phase
+        if qubit in self.data:
+            self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
+        else:
+            self.data[qubit] = np.rec.array(ar)
 
 
 def _acquisition(
@@ -98,6 +108,8 @@ def _acquisition(
     qubits: Qubits,
 ) -> QubitFluxData:
     """Data acquisition for QubitFlux Experiment."""
+    # create a sequence of pulses for the experiment:
+    # MZ
 
     # taking advantage of multiplexing, apply the same set of gates to all qubits in parallel
     sequence = PulseSequence()
@@ -114,7 +126,7 @@ def _acquisition(
         )
 
         if params.transition == "02":
-            if qubits[qubit].anharmonicity:
+            if qubits[qubit].anharmonicity != 0:
                 qd_pulses[qubit].frequency -= qubits[qubit].anharmonicity / 2
             else:
                 qd_pulses[qubit].frequency -= DEFAULT_ANHARMONICITY / 2
@@ -132,6 +144,11 @@ def _acquisition(
     delta_frequency_range = np.arange(
         -params.freq_width // 2, params.freq_width // 2, params.freq_step
     )
+
+    delta_bias_range = np.arange(
+        -params.bias_width / 2, params.bias_width / 2, params.bias_step
+    )
+
     freq_sweeper = Sweeper(
         Parameter.frequency,
         delta_frequency_range,
@@ -139,37 +156,55 @@ def _acquisition(
         type=SweeperType.OFFSET,
     )
 
-    delta_bias_range = np.arange(
-        -params.bias_width / 2, params.bias_width / 2, params.bias_step
-    )
-    bias_sweepers = [
-        Sweeper(
-            Parameter.bias,
-            delta_bias_range,
-            qubits=list(qubits.values()),
-            type=SweeperType.OFFSET,
-        )
-    ]
     data = QubitFluxData(resonator_type=platform.resonator_type, Ec=Ec, Ej=Ej)
 
-    options = ExecutionParameters(
-        nshots=params.nshots,
-        relaxation_time=params.relaxation_time,
-        acquisition_type=AcquisitionType.INTEGRATION,
-        averaging_mode=AveragingMode.CYCLIC,
-    )
-    for bias_sweeper in bias_sweepers:
-        results = platform.sweep(sequence, options, bias_sweeper, freq_sweeper)
+    for bias in delta_bias_range:
+        for qubit in qubits:
+            try:
+                freq_resonator = utils.get_resonator_freq_flux(
+                    bias,
+                    qubits[qubit].sweetspot,
+                    qubits[qubit].flux_to_bias,
+                    qubits[qubit].asymmetry,
+                    qubits[qubit].g,
+                    qubits[qubit].brf,
+                    qubits[qubit].ssf_brf,
+                    qubits[qubit].Ec,
+                    qubits[qubit].Ej,
+                )
+                # modify qubit resonator frequency
+                qubits[qubit].readout_frequency = freq_resonator
+            except:
+                raise_error
+                (
+                    RuntimeError,
+                    "qubit_flux_track: Not enough parameters to estimate the resonator freq for the given bias. Please run resonator spectroscopy flux and update the runcard",
+                )
+
+            # modify qubit flux
+            qubits[qubit].flux.offset = bias
+
+            # execute pulse sequence sweeping only qubit resonator
+            results = platform.sweep(
+                sequence,
+                ExecutionParameters(
+                    nshots=params.nshots,
+                    relaxation_time=params.relaxation_time,
+                    acquisition_type=AcquisitionType.INTEGRATION,
+                    averaging_mode=AveragingMode.CYCLIC,
+                ),
+                freq_sweeper,
+            )
+
         # retrieve the results for every qubit
         for qubit in qubits:
             result = results[ro_pulses[qubit].serial]
-            sweetspot = qubits[qubit].sweetspot
-            data.register_qubit(
+            data.register_qubit_track(
                 qubit,
                 msr=result.magnitude,
                 phase=result.phase,
                 freq=delta_frequency_range + qd_pulses[qubit].frequency,
-                bias=delta_bias_range + sweetspot,
+                bias=bias + qubits[qubit].sweetspot,
             )
 
     return data
@@ -308,9 +343,9 @@ def _plot(data: QubitFluxData, fit: QubitFluxResults, qubit):
 
 
 def _update(results: QubitFluxResults, platform: Platform, qubit: QubitId):
-    update.drive_frequency(results.frequency[qubit], platform, qubit)
     update.sweetspot(results.sweetspot[qubit], platform, qubit)
+    update.drive_frequency(results.frequency[qubit], platform, qubit)
 
 
-qubit_flux = Routine(_acquisition, _fit, _plot, _update)
+qubit_flux_tracking = Routine(_acquisition, _fit, _plot, _update)
 """QubitFlux Routine object."""

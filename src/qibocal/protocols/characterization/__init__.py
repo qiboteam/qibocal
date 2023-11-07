@@ -22,6 +22,7 @@ from .fast_reset.fast_reset import fast_reset
 from .flipping import flipping
 from .flux_dependence.qubit_crosstalk import qubit_crosstalk
 from .flux_dependence.qubit_flux_dependence import qubit_flux
+from .flux_dependence.qubit_flux_tracking import qubit_flux_tracking
 from .flux_dependence.resonator_crosstalk import resonator_crosstalk
 from .flux_dependence.resonator_flux_dependence import resonator_flux
 from .qubit_spectroscopy import qubit_spectroscopy
@@ -61,6 +62,7 @@ class Operation(Enum):
     resonator_crosstalk = resonator_crosstalk
     qubit_spectroscopy = qubit_spectroscopy
     qubit_flux = qubit_flux
+    qubit_flux_tracking = qubit_flux_tracking
     qubit_crosstalk = qubit_crosstalk
     rabi_amplitude = rabi_amplitude
     rabi_length = rabi_length
