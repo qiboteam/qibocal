@@ -77,7 +77,7 @@ As per the relaxation time, for this experiment in particular we
 can leave it at zero: since we are not exciting the qubit we do not particularly care
 about it. However note that, for 3D cavities, we could end up damaging the qubit if we
 send too much energy over a small period of time so it could be worth to increase the
-relaxation time. However, some electronics do not support zero relaxation times, therefore 
+relaxation time. However, some electronics do not support zero relaxation times, therefore
 a relaxation time greater than zero is a safer choice.
 
 Last but not least, we have to choose which frequencies are probed during the scan:
