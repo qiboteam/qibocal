@@ -60,10 +60,10 @@ ClassificationType = np.dtype([("i", np.float64), ("q", np.float64), ("state", i
 class SingleShotClassificationData(Data):
     nshots: int
     """Number of shots."""
-    qubit_frequencies: dict[QubitId, float]
-    """Qubit frequencies."""
     savedir: str
     """Dumping folder of the classification results"""
+    qubit_frequencies: dict[QubitId, float] = field(default_factory=dict)
+    """Qubit frequencies."""
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
     """Raw data acquired."""
     classifiers_list: Optional[list[str]] = field(
