@@ -123,7 +123,6 @@ def _acquisition(
 
     # retrieve the results for every qubit
     for qubit in qubits:
-        # average msr, phase, i and q over the number of shots defined in the runcard
         for i, results in enumerate([results_0, results_1]):
             result = results[ro_pulses[qubit].serial]
             # store the results
