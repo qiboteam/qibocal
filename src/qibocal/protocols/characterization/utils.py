@@ -46,7 +46,7 @@ def effective_qubit_temperature(
 
     """
     try:
-        temp = -HBAR * qubit_frequency / np.log(prob_1 / prob_0) / KB
+        temp = -HBAR * qubit_frequency / (np.log(prob_1 / prob_0) * KB)
     except ZeroDivisionError:
         # TODO: choose appropriate value to return
         temp = -1
