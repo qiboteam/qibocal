@@ -34,6 +34,8 @@ class QubitFluxParameters(Parameters):
     """Width for bias sweep [V]."""
     bias_step: float
     """Bias step for sweep (V)."""
+    drive_duration: int
+    """Drive pulse duration [ns]. Same for all qubits."""
     drive_amplitude: Optional[float] = None
     """Drive amplitude (optional). If defined, same amplitude will be used in all qubits.
     Otherwise the default amplitude defined on the platform runcard will be used"""
@@ -120,7 +122,7 @@ def _acquisition(
         Ej[qubit] = qubits[qubit].Ej
 
         qd_pulses[qubit] = platform.create_qubit_drive_pulse(
-            qubit, start=0, duration=2000
+            qubit, start=0, duration=params.drive_duration
         )
 
         if params.transition == "02":
