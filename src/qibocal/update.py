@@ -156,7 +156,7 @@ def t2_spin_echo(t2_spin_echo: float, platform: Platform, qubit: QubitId):
 
 
 def drag_pulse_beta(beta: float, platform: Platform, qubit: QubitId):
-    """Update beta parameter e value in platform for specific qubit."""
+    """Update beta parameter value in platform for specific qubit."""
     pulse = platform.qubits[qubit].native_gates.RX.pulse(start=0)
     rel_sigma = pulse.shape.rel_sigma
     drag_pulse = pulses.Drag(rel_sigma=rel_sigma, beta=beta)
@@ -164,6 +164,7 @@ def drag_pulse_beta(beta: float, platform: Platform, qubit: QubitId):
 
 
 def sweetspot(sweetspot: float, platform: Platform, qubit: QubitId):
+    """Update sweetspot parameter in platform for specific qubit."""
     platform.qubits[qubit].sweetspot = float(sweetspot)
 
 
@@ -185,3 +186,37 @@ def twpa_power(power: float, platform: Platform, qubit: QubitId):
 
 def anharmonicity(anharmonicity: float, platform: Platform, qubit: QubitId):
     platform.qubits[qubit].anharmonicity = int(anharmonicity * GHZ_TO_HZ)
+
+
+def bare_resonator_frequency_sweetspot(
+    bare_resonator_frequency_sweetspot: float, platform: Platform, qubit: QubitId
+):
+    platform.qubits[qubit].bare_resonator_frequency_sweetspot = int(
+        bare_resonator_frequency_sweetspot * GHZ_TO_HZ
+    )
+
+
+def flux_to_bias(flux_to_bias: float, platform: Platform, qubit: QubitId):
+    platform.qubits[qubit].flux_to_bias = float(flux_to_bias)
+
+
+def asymmetry(asymmetry: float, platform: Platform, qubit: QubitId):
+    platform.qubits[qubit].asymmetry = float(asymmetry)
+
+
+def ratio_sweetspot_qubit_freq_bare_resonator_freq(
+    ssf_brf: float, platform: Platform, qubit: QubitId
+):
+    platform.qubits[qubit].ssf_brf = float(ssf_brf)
+
+
+def charging_energy(Ec: float, platform: Platform, qubit: QubitId):
+    platform.qubits[qubit].Ec = float(Ec)
+
+
+def josephson_energy(Ej: float, platform: Platform, qubit: QubitId):
+    platform.qubits[qubit].Ej = float(Ej)
+
+
+def coupling(g: float, platform: Platform, qubit: QubitId):
+    platform.qubits[qubit].g = float(g)

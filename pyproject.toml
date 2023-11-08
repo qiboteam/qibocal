@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "qibocal"
-version = "0.0.5"
-description = ""
+version = "0.0.6"
+description = "Qibo's quantum calibration, characterization and validation module."
 authors = ["andrea-pasquale <andreapasquale97@gmail.com>"]
 license = "Apache License 2.0"
 readme = "README.md"
-homepage = ""
+homepage = "https://qibo.science/"
 repository = "https://github.com/qiboteam/qibocal/"
-documentation = ""
+documentation = "https://qibo.science/qibocal/stable/"
 keywords = []
 classifiers = [
   "Programming Language :: Python :: 3",

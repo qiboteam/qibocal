@@ -34,10 +34,19 @@ class ResonatorFrequencyResults(Results):
     """Assignment fidelities."""
     best_freq: dict[QubitId, float]
     """Resonator Frequency with the highest assignment fidelity."""
+    best_angle: dict[QubitId, float]
+    """IQ angle that maximes assignment fidelity"""
+    best_threshold: dict[QubitId, float]
+    """Threshold that maximes assignment fidelity"""
 
 
 ResonatorFrequencyType = np.dtype(
-    [("freq", np.float64), ("assignment_fidelity", np.float64)]
+    [
+        ("freq", np.float64),
+        ("assignment_fidelity", np.float64),
+        ("angle", np.float64),
+        ("threshold", np.float64),
+    ]
 )
 """Custom dtype for Optimization RO frequency."""
 
@@ -144,6 +153,8 @@ def _acquisition(
                 dict(
                     freq=np.array([(ro_pulses[qubit].frequency + freq) * HZ_TO_GHZ]),
                     assignment_fidelity=np.array([model.assignment_fidelity]),
+                    angle=np.array([model.angle]),
+                    threshold=np.array([model.threshold]),
                 ),
             )
     return data
@@ -153,16 +164,22 @@ def _fit(data: ResonatorFrequencyData) -> ResonatorFrequencyResults:
     """Post-Processing for Optimization RO frequency"""
     qubits = data.qubits
     best_freq = {}
+    best_angle = {}
+    best_threshold = {}
     highest_fidelity = {}
     for qubit in qubits:
         data_qubit = data[qubit]
         index_best_fid = np.argmax(data_qubit["assignment_fidelity"])
         highest_fidelity[qubit] = data_qubit["assignment_fidelity"][index_best_fid]
         best_freq[qubit] = data_qubit["freq"][index_best_fid]
+        best_angle[qubit] = data_qubit["angle"][index_best_fid]
+        best_threshold[qubit] = data_qubit["threshold"][index_best_fid]
 
     return ResonatorFrequencyResults(
         fidelities=highest_fidelity,
         best_freq=best_freq,
+        best_angle=best_angle,
+        best_threshold=best_threshold,
     )
 
 
@@ -210,6 +227,8 @@ def _plot(data: ResonatorFrequencyData, fit: ResonatorFrequencyResults, qubit):
 
 def _update(results: ResonatorFrequencyResults, platform: Platform, qubit: QubitId):
     update.readout_frequency(results.best_freq[qubit], platform, qubit)
+    update.threshold(results.best_threshold[qubit], platform, qubit)
+    update.iq_angle(results.best_angle[qubit], platform, qubit)
 
 
 resonator_frequency = Routine(_acquisition, _fit, _plot, _update)
