@@ -172,7 +172,7 @@ def _plot(data: T1SignalData, qubit, fit: T1SignalResults = None):
     fig.update_layout(
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
-        xaxis_title="Time (ns)",
+        xaxis_title="Time [ns]",
         yaxis_title="Signal [a.u.]",
     )
 
