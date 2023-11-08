@@ -67,7 +67,6 @@ def _acquisition(
         params.beta_start, params.beta_end, params.beta_step
     ).round(4)
 
-    # create a DataUnits object to store the Signal, phase, i, q and the beta parameter
     data = DragPulseTuningData()
 
     for beta_param in beta_param_range:
