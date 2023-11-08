@@ -27,7 +27,7 @@ def fit_flux_amplitude(matrix, amps, times):
     The FFT also gives a first estimate for the duration of the CZ gate.
 
     Args:
-     matrix (np.ndarray): msr matrix
+     matrix (np.ndarray): signal matrix
      amps (np.ndarray): amplitudes swept
      times (np.ndarray): duration swept
 
