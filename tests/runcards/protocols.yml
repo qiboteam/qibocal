@@ -186,9 +186,7 @@ actions:
       relaxation_time: 2000
       transition: "01"
 
-
-
-  - id: qubit flux dependence 02
+  - id: qubit flux dependence 02 #"02" transition
     priority: 0
     operation: qubit_flux
     parameters:
@@ -201,6 +199,19 @@ actions:
       relaxation_time: 2000
       transition: "02"
 
+
+  - id: qubit flux dependence tracking
+    priority: 0 #50
+    operation: qubit_flux_tracking
+    parameters:
+      freq_width: 150_000_000
+      freq_step: 500_000
+      bias_width: 0.2
+      bias_step:  0.05
+      drive_duration: 2000
+      nshots: 1024
+      relaxation_time: 2000
+      transition: "01"
 
 
   - id: qubit flux crosstalk # using ``flux_qubits``
@@ -228,6 +239,15 @@ actions:
       step_amp_factor: 0.1
       pulse_length: 30
       nshots: 1024
+
+  - id: rabi without nshots
+    priority: 0
+    operation: rabi_amplitude
+    parameters:
+      min_amp_factor: 0.0
+      max_amp_factor: 4.0
+      step_amp_factor: 0.1
+      pulse_length: 30
 
   - id: rabi msr
     priority: 0

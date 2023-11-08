@@ -9,6 +9,9 @@ from qibolab.qubits import QubitId
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.protocols.characterization import classification
+from qibocal.protocols.characterization.readout_optimization.resonator_frequency import (
+    ResonatorFrequencyType,
+)
 from qibocal.protocols.characterization.utils import HZ_TO_GHZ, table_dict, table_html
 
 
@@ -20,14 +23,6 @@ class TwpaFrequencyParameters(Parameters):
     """Relative frequency width [Hz]"""
     frequency_step: float
     """Frequency step [Hz]"""
-
-
-TwpaFrequencyType = np.dtype(
-    [
-        ("freq", np.float64),
-        ("assignment_fidelity", np.float64),
-    ]
-)
 
 
 @dataclass
@@ -48,6 +43,8 @@ class TwpaFrequencyResults(Results):
 
     best_freqs: dict[QubitId, float] = field(default_factory=dict)
     best_fidelities: dict[QubitId, float] = field(default_factory=dict)
+    best_angles: dict[QubitId, float] = field(default_factory=dict)
+    best_thresholds: dict[QubitId, float] = field(default_factory=dict)
 
 
 def _acquisition(
@@ -101,7 +98,7 @@ def _acquisition(
         classification_result = classification._fit(classification_data)
         for qubit in qubits:
             data.register_qubit(
-                TwpaFrequencyType,
+                ResonatorFrequencyType,
                 (qubit),
                 dict(
                     freq=np.array(
@@ -111,9 +108,10 @@ def _acquisition(
                     assignment_fidelity=np.array(
                         [classification_result.assignment_fidelity[qubit]],
                     ),
+                    angle=np.array([classification_result.rotation_angle[qubit]]),
+                    threshold=np.array([classification_result.threshold[qubit]]),
                 ),
             )
-    print(data)
     return data
 
 
@@ -124,12 +122,19 @@ def _fit(data: TwpaFrequencyData) -> TwpaFrequencyResults:
     qubits = data.qubits
     best_freq = {}
     best_fidelity = {}
+    best_angle = {}
+    best_threshold = {}
     for qubit in qubits:
         data_qubit = data[qubit]
         index_best_err = np.argmax(data_qubit["assignment_fidelity"])
         best_fidelity[qubit] = data_qubit["assignment_fidelity"][index_best_err]
         best_freq[qubit] = data_qubit["freq"][index_best_err]
-    return TwpaFrequencyResults(best_freq, best_fidelity)
+        best_angle[qubit] = data_qubit["angle"][index_best_err]
+        best_threshold[qubit] = data_qubit["threshold"][index_best_err]
+
+    return TwpaFrequencyResults(
+        best_freq, best_fidelity, best_thresholds=best_threshold, best_angles=best_angle
+    )
 
 
 def _plot(data: TwpaFrequencyData, fit: TwpaFrequencyResults, qubit):
@@ -169,6 +174,8 @@ def _plot(data: TwpaFrequencyData, fit: TwpaFrequencyResults, qubit):
 
 def _update(results: TwpaFrequencyResults, platform: Platform, qubit: QubitId):
     update.twpa_frequency(results.best_freqs[qubit], platform, qubit)
+    update.iq_angle(results.best_angles[qubit], platform, qubit)
+    update.threshold(results.best_thresholds[qubit], platform, qubit)
 
 
 twpa_frequency = Routine(_acquisition, _fit, _plot, _update)
