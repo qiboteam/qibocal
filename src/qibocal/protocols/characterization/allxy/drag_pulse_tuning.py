@@ -40,7 +40,7 @@ class DragPulseTuningResults(Results):
     """Raw fitting output."""
 
 
-DragPulseTuningType = np.dtype([("msr", np.float64), ("beta", np.float64)])
+DragPulseTuningType = np.dtype([("signal", np.float64), ("beta", np.float64)])
 
 
 @dataclass
@@ -144,7 +144,7 @@ def _acquisition(
                 DragPulseTuningType,
                 (qubit),
                 dict(
-                    msr=r1.magnitude - r2.magnitude,
+                    signal=r1.magnitude - r2.magnitude,
                     beta=beta_param,
                 ),
             )
@@ -175,7 +175,7 @@ def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
 
     for qubit in qubits:
         qubit_data = data[qubit]
-        voltages = qubit_data.msr * V_TO_UV
+        voltages = qubit_data.signal * V_TO_UV
         beta_params = qubit_data.beta
 
         try:
@@ -209,7 +209,7 @@ def _plot(data: DragPulseTuningData, qubit, fit: DragPulseTuningResults):
     fig.add_trace(
         go.Scatter(
             x=qubit_data.beta,
-            y=qubit_data.msr * V_TO_UV,
+            y=qubit_data.signal * V_TO_UV,
             mode="markers",
             name="Probability",
             showlegend=True,
