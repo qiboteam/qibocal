@@ -1,6 +1,4 @@
 from dataclasses import dataclass, field
-
-# from functools import partial
 from typing import Optional
 
 import numpy as np
@@ -11,10 +9,9 @@ from qibolab.pulses import PulseSequence
 from qibolab.qubits import QubitId
 from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
-# from qibocal import update
 from qibocal.auto.operation import Qubits, Results, Routine
 
-# from ..utils import GHZ_TO_HZ, HZ_TO_GHZ
+from ..qubit_spectroscopy_ef import DEFAULT_ANHARMONICITY
 from . import utils
 from .qubit_flux_dependence import (
     QubitFluxData,
@@ -58,7 +55,9 @@ class QubitCrosstalkData(QubitFluxData):
 
 @dataclass
 class QubitCrosstalkResult(Results):
-    ...
+    """
+    Qubit Crosstalk outputs.
+    """
 
 
 def _acquisition(
@@ -83,7 +82,10 @@ def _acquisition(
         )
 
         if params.transition == "02":
-            qd_pulses[qubit].frequency -= qubits[qubit].anharmonicity / 2
+            if qubits[qubit].anharmonicity:
+                qd_pulses[qubit].frequency -= qubits[qubit].anharmonicity / 2
+            else:
+                qd_pulses[qubit].frequency -= DEFAULT_ANHARMONICITY / 2
 
         if params.drive_amplitude is not None:
             qd_pulses[qubit].amplitude = params.drive_amplitude

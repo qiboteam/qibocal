@@ -36,10 +36,24 @@ class ResonatorFluxParameters(Parameters):
 class ResonatorFluxResults(Results):
     """ResonatoFlux outputs."""
 
-    sweetspot: dict[QubitId, float] = field(metadata=dict(update="sweetspot"))
-    """Sweetspot for each qubit."""
-    frequency: dict[QubitId, float] = field(metadata=dict(update="readout_frequency"))
+    frequency: dict[QubitId, float]
     """Readout frequency for each qubit."""
+    sweetspot: dict[QubitId, float]
+    """Sweetspot for each qubit."""
+    flux_to_bias: dict[QubitId, float]
+    """flux_to_bias for each qubit."""
+    asymmetry: dict[QubitId, float]
+    """asymmetry for each qubit."""
+    Gs: dict[QubitId, float]
+    """readout_coupling for each qubit."""
+    brf: dict[QubitId, float]
+    """bare_resonator_frequency for each qubit."""
+    ssf_brf: dict[QubitId, float]
+    """sweetspot_qubit_frequency/bare_resonator_frequency for each qubit."""
+    ECs: dict[QubitId, float]
+    """Ec for each qubit."""
+    EJs: dict[QubitId, float]
+    """Ej for each qubit."""
     fitted_parameters: dict[QubitId, dict[str, float]]
     """Raw fitting output."""
 
@@ -62,13 +76,13 @@ class ResonatorFluxData(Data):
     resonator_type: str
 
     """ResonatorFlux acquisition outputs."""
-    Ec: dict[QubitId, int] = field(default_factory=dict)
+    Ec: dict[QubitId, float] = field(default_factory=dict)
     """Qubit Ec provided by the user."""
 
-    Ej: dict[QubitId, int] = field(default_factory=dict)
+    Ej: dict[QubitId, float] = field(default_factory=dict)
     """Qubit Ej provided by the user."""
 
-    g: dict[QubitId, int] = field(default_factory=dict)
+    g: dict[QubitId, float] = field(default_factory=dict)
     """Qubit g provided by the user."""
 
     bare_resonator_frequency: dict[QubitId, int] = field(default_factory=dict)
@@ -170,6 +184,14 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     qubits = data.qubits
     frequency = {}
     sweetspot = {}
+    flux_to_bias = {}
+    asymmetry = {}
+    Gs = {}
+    brf = {}
+    ssf_brf = {}
+    ECs = {}
+    EJs = {}
+
     fitted_parameters = {}
 
     for qubit in qubits:
@@ -179,6 +201,14 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
 
         frequency[qubit] = 0
         sweetspot[qubit] = 0
+        flux_to_bias[qubit] = 0
+        asymmetry[qubit] = 0
+        Gs[qubit] = 0
+        brf[qubit] = 0
+        ssf_brf[qubit] = 0
+        ECs[qubit] = 0
+        EJs[qubit] = 0
+
         fitted_parameters[qubit] = {
             "Xi": 0,
             "d": 0,
@@ -237,6 +267,14 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                     ),
                     maxfev=2000000,
                 )[0]
+
+                sweetspot[qubit] = popt[0]
+                flux_to_bias[qubit] = popt[1]
+                asymmetry[qubit] = popt[2]
+                Gs[qubit] = popt[4]
+                brf[qubit] = popt[5]
+                ssf_brf[qubit] = popt[3]
+
                 popt[4] *= GHZ_TO_HZ
                 popt[5] *= GHZ_TO_HZ
                 f_qs = popt[3] * popt[5]  # Qubit frequency at sweet spot.
@@ -251,7 +289,6 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                 ]  # Corresponding flux matrix element.
 
                 frequency[qubit] = f_rs * HZ_TO_GHZ
-                sweetspot[qubit] = popt[0]
                 fitted_parameters[qubit] = {
                     "Xi": popt[1],
                     "d": abs(popt[2]),
@@ -290,6 +327,15 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
                     ),
                     maxfev=2000000,
                 )[0]
+
+                sweetspot[qubit] = popt[2]
+                flux_to_bias[qubit] = popt[3]
+                asymmetry[qubit] = popt[4]
+                Gs[qubit] = popt[1]
+                brf[qubit] = popt[0]
+                ECs[qubit] = popt[5]
+                EJs[qubit] = popt[6]
+
                 popt[0] *= GHZ_TO_HZ
                 popt[1] *= GHZ_TO_HZ
                 popt[5] *= GHZ_TO_HZ
@@ -331,6 +377,13 @@ def _fit(data: ResonatorFluxData) -> ResonatorFluxResults:
     return ResonatorFluxResults(
         frequency=frequency,
         sweetspot=sweetspot,
+        flux_to_bias=flux_to_bias,
+        asymmetry=asymmetry,
+        Gs=Gs,
+        brf=brf,
+        ssf_brf=ssf_brf,
+        ECs=ECs,
+        EJs=EJs,
         fitted_parameters=fitted_parameters,
     )
 
@@ -341,8 +394,16 @@ def _plot(data: ResonatorFluxData, fit: ResonatorFluxResults, qubit):
 
 
 def _update(results: ResonatorFluxResults, platform: Platform, qubit: QubitId):
+    update.bare_resonator_frequency_sweetspot(results.brf[qubit], platform, qubit)
     update.readout_frequency(results.frequency[qubit], platform, qubit)
-    update.sweetspot(results.sweetspot[qubit], platform, qubit)
+    update.flux_to_bias(results.flux_to_bias[qubit], platform, qubit)
+    update.asymmetry(results.asymmetry[qubit], platform, qubit)
+    update.ratio_sweetspot_qubit_freq_bare_resonator_freq(
+        results.ssf_brf[qubit], platform, qubit
+    )
+    update.charging_energy(results.ECs[qubit], platform, qubit)
+    update.josephson_energy(results.EJs[qubit], platform, qubit)
+    update.coupling(results.Gs[qubit], platform, qubit)
 
 
 resonator_flux = Routine(_acquisition, _fit, _plot, _update)
