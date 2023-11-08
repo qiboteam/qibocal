@@ -9,7 +9,7 @@ from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.bootstrap import data_uncertainties
+from qibocal.bootstrap import bootstrap, data_uncertainties
 from qibocal.config import log, raise_error
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
 
@@ -242,15 +242,14 @@ def _acquisition(
                 for n in range(params.nshots):
                     new_samples[q, d].append(samples[d][i][n][qn])
 
-    for i, qubit in enumerate(qubits):
-        for depth in params.depths:
-            data.register_qubit(
-                RBType,
-                (qubit, depth),
-                dict(
-                    samples=new_samples[qubit, depth],
-                ),
-            )
+    for key in list(new_samples.keys()):
+        data.register_qubit(
+            RBType,
+            key,
+            dict(
+                samples=new_samples[key[0], key[1]],
+            ),
+        )
 
     #     # signals = defaultdict(list)
     #     # for key, value in samples.items():
@@ -293,14 +292,25 @@ def _fit(data: RBData) -> StandardRBResult:
 
     for qubit in qubits:
         # Extract depths and probabilities
-        x = data.params["depths"]
+        x = list(set(data.params["depths"]))
         y_scatter = data.samples_to_p0s(qubit, x)
+
+        # TODO: Remove this extra list needed to work
+        special_y = []
+        for y in y_scatter:
+            special_y.append([y])
         # TODO: Remove this extra list needed to work
         y_scatter = [y_scatter]
 
+        y_estimates = []
+        for depth in x:
+            y_estimates.append(data.data[qubit, depth])
+
         """This is when you sample a depth more than once"""
-        # homogeneous = all(len(y_scatter[0]) == len(row) for row in y_scatter)
-        homogeneous = True
+        homogeneous = all(len(y_estimates[0]) == len(row) for row in y_estimates)
+        if homogeneous is False:
+            raise NotImplementedError
+        y_estimates = np.array(y_estimates)
 
         # Extract fitting and bootstrap parameters if given
         uncertainties = data.params["uncertainties"]
@@ -308,56 +318,50 @@ def _fit(data: RBData) -> StandardRBResult:
 
         popt_estimates = []
 
-        # FIXME: Let's disable it for now
-        n_bootstrap = None
-        # if uncertainties and n_bootstrap:
-        #     # Non-parametric bootstrap resampling
-        #     bootstrap_y = bootstrap(
-        #         y_scatter,
-        #         n_bootstrap,
-        #         homogeneous=homogeneous,
-        #         seed=data.params["seed"],
-        #     )
+        # FIXME: Check if working correctly
+        # n_bootstrap = None
+        if uncertainties and n_bootstrap:
+            # Non-parametric bootstrap resampling
+            bootstrap_y = bootstrap(
+                special_y,
+                n_bootstrap,
+                homogeneous=homogeneous,
+                seed=data.params["seed"],
+            )
 
-        #     # Parametric bootstrap resampling of "corrected" probabilites from binomial distribution
-        #     bootstrap_y = resample_p0(
-        #         bootstrap_y, data.params["nshots"], homogeneous=homogeneous
-        #     )
+            # Parametric bootstrap resampling of "corrected" probabilites from binomial distribution
+            bootstrap_y = resample_p0(
+                bootstrap_y, data.params["nshots"], homogeneous=homogeneous
+            )
 
-        #     # Compute y and popt estimates for each bootstrap iteration
-        #     y_estimates = (
-        #         np.mean(bootstrap_y, axis=1)
-        #         if homogeneous
-        #         else [np.mean(y_iter, axis=0) for y_iter in bootstrap_y]
-        #     )
-        #     popt_estimates = np.apply_along_axis(
-        #         lambda y_iter: fit_exp1B_func(x, y_iter, bounds=[0, 1])[0],
-        #         axis=0,
-        #         arr=np.array(y_estimates),
-        #     )
+            # Compute y and popt estimates for each bootstrap iteration
+            y_estimates = (
+                np.mean(bootstrap_y, axis=1)
+                if homogeneous
+                else [np.mean(y_iter, axis=0) for y_iter in bootstrap_y]
+            )
+            popt_estimates = np.apply_along_axis(
+                lambda y_iter: fit_exp1B_func(x, y_iter, bounds=[0, 1])[0],
+                axis=0,
+                arr=np.array(y_estimates),
+            )
 
         # Fit the initial data and compute error bars
-        # Where they usng the mean to get a median ???
         # y = [np.mean(y_row) for y_row in y_scatter]
-
         # If bootstrap was not performed, y_estimates can be inhomogeneous
+        # samples + bootstrap ???
+        # y_estimates = []
+        # for depth in x:
+        #     y_estimates.append(data.data[qubit, depth])
+        # y_estimates = np.array(y_estimates)
 
-        # are these the samples ?
-        y_estimates = []
-        for depth in x:
-            y_estimates.append(data.data[qubit, depth])
-
-        # Give the qubit
+        # FIXME: Check if working correctly
         error_bars = data_uncertainties(
-            y_scatter,
+            y_estimates,
             uncertainties,
-            # data_median=y,
+            data_median=y_scatter,
             homogeneous=(homogeneous or n_bootstrap != 0),
         )
-
-        import pdb
-
-        pdb.set_trace()
 
         # Generate symmetric non-zero uncertainty of y for the fit
         # are they overeestimating uncertanties for the fit ???
@@ -372,7 +376,6 @@ def _fit(data: RBData) -> StandardRBResult:
         popt, perr = fit_exp1B_func(x, y_scatter, sigma=sigma, bounds=[0, 1])
 
         popts[qubit] = popt
-        perrs[qubit] = perr
 
         # Compute fit uncertainties
         if len(popt_estimates):
@@ -388,11 +391,8 @@ def _fit(data: RBData) -> StandardRBResult:
         error_bars = error_bars.tolist() if error_bars is not None else error_bars
         error_barss[qubit] = error_bars
 
-        import pdb
-
-        pdb.set_trace()
-
         perr = perr if isinstance(perr, tuple) else perr.tolist()
+        perrs[qubit] = perr
 
         # Store in dicts the values
 

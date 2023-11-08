@@ -50,9 +50,8 @@ class RBData(Data):
         for key, value in data_dict.items():
             ar[key] = value
 
+        # FIXME: Let's work directly with a list for now
         if data_keys in self.data:
-            # FIXME: Let's work directly with a list for now
-            self.data[data_keys] = np.append(self.data[data_keys], data_dict["samples"])
+            self.data[data_keys] += data_dict["samples"]
         else:
-            # Going here for now
             self.data[data_keys] = data_dict["samples"]
