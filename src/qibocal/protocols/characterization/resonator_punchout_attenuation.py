@@ -172,7 +172,7 @@ def _plot(
         horizontal_spacing=0.1,
         vertical_spacing=0.2,
         subplot_titles=(
-            "Normalised Signal",
+            "Normalised Signal [a.u.]",
             "phase (rad)",
         ),
     )

@@ -134,7 +134,7 @@ def _plot(data: TimeOfFlightReadoutData, qubit, fit: TimeOfFlightReadoutResults)
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Sample",
-        yaxis_title="Signal",
+        yaxis_title="Signal [a.u.]",
     )
     if fit is not None:
         fig.add_vline(
@@ -152,7 +152,7 @@ def _plot(data: TimeOfFlightReadoutData, qubit, fit: TimeOfFlightReadoutResults)
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Sample",
-        yaxis_title="Signal",
+        yaxis_title="Signal [a.u.]",
     )
 
     figures.append(fig)

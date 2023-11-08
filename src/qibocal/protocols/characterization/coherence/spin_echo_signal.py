@@ -159,7 +159,7 @@ def _plot(data: SpinEchoSignalData, qubit, fit: SpinEchoSignalResults = None):
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Time (ns)",
-        yaxis_title="Signal",
+        yaxis_title="Signal [a.u.]",
     )
 
     figures.append(fig)

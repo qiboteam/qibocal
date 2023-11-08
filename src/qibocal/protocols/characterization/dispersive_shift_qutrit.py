@@ -192,7 +192,7 @@ def _plot(data: DispersiveShiftQutritData, qubit, fit: DispersiveShiftQutritResu
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
         subplot_titles=(
-            "Signal",
+            "Signal [a.u.]",
             "phase (rad)",
         ),
     )
@@ -287,7 +287,7 @@ def _plot(data: DispersiveShiftQutritData, qubit, fit: DispersiveShiftQutritResu
     fig.update_layout(
         showlegend=True,
         xaxis_title="Frequency (GHz)",
-        yaxis_title="Signal",
+        yaxis_title="Signal [a.u.]",
         xaxis2_title="Frequency (GHz)",
         yaxis2_title="Phase (rad)",
     )

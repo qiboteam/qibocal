@@ -53,12 +53,12 @@ def flux_dependence_plot(data, fit, qubit):
 
     if not data.__class__.__name__ == "CouplerSpectroscopyData":
         subplot_titles = (
-            "Signal [V]",
+            "Signal [a.u.]",
             "Phase [rad]",
         )
     else:
         subplot_titles = (
-            "Signal [V] Qubit" + str(qubit),
+            "Signal [a.u.] Qubit" + str(qubit),
             "Phase [rad] Qubit" + str(qubit),
         )
 
@@ -247,7 +247,7 @@ def flux_crosstalk_plot(data, qubit):
         cols=len(all_qubit_data),
         horizontal_spacing=0.3 / len(all_qubit_data),
         vertical_spacing=0.1,
-        subplot_titles=len(all_qubit_data) * ("Signal [V]",),
+        subplot_titles=len(all_qubit_data) * ("Signal [a.u.]",),
     )
     for col, (flux_qubit, qubit_data) in enumerate(all_qubit_data.items()):
         frequencies = qubit_data.freq * HZ_TO_GHZ
