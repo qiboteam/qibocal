@@ -59,7 +59,7 @@ ResPunchoutType = np.dtype(
     [
         ("freq", np.float64),
         ("amp", np.float64),
-        ("msr", np.float64),
+        ("signal", np.float64),
         ("phase", np.float64),
     ]
 )
@@ -77,14 +77,14 @@ class ResonatorPunchoutData(Data):
     data: dict[QubitId, npt.NDArray[ResPunchoutType]] = field(default_factory=dict)
     """Raw data acquired."""
 
-    def register_qubit(self, qubit, freq, amp, msr, phase):
+    def register_qubit(self, qubit, freq, amp, signal, phase):
         """Store output for single qubit."""
         size = len(freq) * len(amp)
         frequency, amplitude = np.meshgrid(freq, amp)
         ar = np.empty(size, dtype=ResPunchoutType)
         ar["freq"] = frequency.ravel()
         ar["amp"] = amplitude.ravel()
-        ar["msr"] = msr.ravel()
+        ar["signal"] = signal.ravel()
         ar["phase"] = phase.ravel()
         self.data[qubit] = np.rec.array(ar)
 
@@ -156,11 +156,11 @@ def _acquisition(
 
     # retrieve the results for every qubit
     for qubit, ro_pulse in ro_pulses.items():
-        # average msr, phase, i and q over the number of shots defined in the runcard
+        # average signal, phase, i and q over the number of shots defined in the runcard
         result = results[ro_pulse.serial]
         data.register_qubit(
             qubit,
-            msr=result.magnitude,
+            signal=result.magnitude,
             phase=result.phase,
             freq=delta_frequency_range + ro_pulse.frequency,
             amp=amplitude_range * amplitudes[qubit],
@@ -195,15 +195,15 @@ def _plot(data: ResonatorPunchoutData, qubit, fit: ResonatorPunchoutResults = No
     n_amps = len(np.unique(qubit_data.amp))
     n_freq = len(np.unique(qubit_data.freq))
     for i in range(n_amps):
-        qubit_data.msr[i * n_freq : (i + 1) * n_freq] = norm(
-            qubit_data.msr[i * n_freq : (i + 1) * n_freq]
+        qubit_data.signal[i * n_freq : (i + 1) * n_freq] = norm(
+            qubit_data.signal[i * n_freq : (i + 1) * n_freq]
         )
 
     fig.add_trace(
         go.Heatmap(
             x=frequencies,
             y=amplitudes,
-            z=qubit_data.msr * V_TO_UV,
+            z=qubit_data.signal * V_TO_UV,
             colorbar_x=0.46,
         ),
         row=1,

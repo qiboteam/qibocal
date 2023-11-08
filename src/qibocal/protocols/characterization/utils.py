@@ -63,7 +63,7 @@ def lorentzian(frequency, amplitude, center, sigma, offset):
 
 def lorentzian_fit(data, resonator_type=None, fit=None):
     frequencies = data.freq * HZ_TO_GHZ
-    voltages = data.msr * V_TO_UV
+    voltages = data.signal * V_TO_UV
     model_Q = lmfit.Model(lorentzian)
 
     # Guess parameters for Lorentzian max or min
@@ -123,7 +123,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
     fig.add_trace(
         go.Scatter(
             x=frequencies,
-            y=qubit_data.msr * 1e6,
+            y=qubit_data.signal * 1e6,
             opacity=1,
             name="Frequency",
             showlegend=True,
@@ -257,11 +257,11 @@ def fit_punchout(data: Data, fit_type: str):
         freqs = np.unique(qubit_data.freq)
         nvalues = len(np.unique(qubit_data[fit_type]))
         nfreq = len(freqs)
-        msrs = np.reshape(qubit_data.msr, (nvalues, nfreq))
+        signals = np.reshape(qubit_data.signal, (nvalues, nfreq))
         if data.resonator_type == "3D":
-            peak_freqs = freqs[np.argmax(msrs, axis=1)]
+            peak_freqs = freqs[np.argmax(signals, axis=1)]
         else:
-            peak_freqs = freqs[np.argmin(msrs, axis=1)]
+            peak_freqs = freqs[np.argmin(signals, axis=1)]
 
         max_freq = np.max(peak_freqs)
         min_freq = np.min(peak_freqs)
@@ -276,11 +276,15 @@ def fit_punchout(data: Data, fit_type: str):
         if fit_type == "amp":
             if data.resonator_type == "3D":
                 ro_val = getattr(qubit_data, fit_type)[
-                    np.argmax(qubit_data.msr[np.where(qubit_data.freq == freq_lp)[0]])
+                    np.argmax(
+                        qubit_data.signal[np.where(qubit_data.freq == freq_lp)[0]]
+                    )
                 ]
             else:
                 ro_val = getattr(qubit_data, fit_type)[
-                    np.argmin(qubit_data.msr[np.where(qubit_data.freq == freq_lp)[0]])
+                    np.argmin(
+                        qubit_data.signal[np.where(qubit_data.freq == freq_lp)[0]]
+                    )
                 ]
         else:
             high_att_max = np.max(

@@ -42,7 +42,7 @@ class RamseySignalResults(Results):
     """Raw fitting output."""
 
 
-RamseySignalType = np.dtype([("wait", np.float64), ("msr", np.float64)])
+RamseySignalType = np.dtype([("wait", np.float64), ("signal", np.float64)])
 """Custom dtype for coherence routines."""
 
 
@@ -50,13 +50,13 @@ RamseySignalType = np.dtype([("wait", np.float64), ("msr", np.float64)])
 class RamseySignalData(RamseyData):
     """Ramsey acquisition outputs."""
 
-    def register_qubit(self, qubit, wait, msr):
+    def register_qubit(self, qubit, wait, signal):
         """Store output for single qubit."""
         # to be able to handle the non-sweeper case
-        shape = (1,) if np.isscalar(msr) else msr.shape
+        shape = (1,) if np.isscalar(signal) else signal.shape
         ar = np.empty(shape, dtype=RamseySignalType)
         ar["wait"] = wait
-        ar["msr"] = msr
+        ar["signal"] = signal
         if qubit in self.data:
             self.data[qubit] = np.rec.array(np.concatenate((self.data[qubit], ar)))
         else:
@@ -138,7 +138,7 @@ def _acquisition(
             data.register_qubit(
                 qubit,
                 wait=waits,
-                msr=result.magnitude,
+                signal=result.magnitude,
             )
 
     else:
@@ -169,7 +169,7 @@ def _acquisition(
                 data.register_qubit(
                     qubit,
                     wait=wait,
-                    msr=result.magnitude,
+                    signal=result.magnitude,
                 )
     return data
 
@@ -189,9 +189,9 @@ def _fit(data: RamseySignalData) -> RamseySignalResults:
     for qubit in qubits:
         qubit_data = data[qubit]
         qubit_freq = data.qubit_freqs[qubit]
-        msr = qubit_data["msr"]
+        signal = qubit_data["signal"]
         try:
-            popt, perr = fitting(waits, msr)
+            popt, perr = fitting(waits, signal)
         except:
             popt = POPT_EXCEPTION
             perr = PERR_EXCEPTION
@@ -225,12 +225,12 @@ def _plot(data: RamseySignalData, qubit, fit: RamseySignalResults = None):
 
     qubit_data = data.data[qubit]
     waits = data.waits
-    msr = qubit_data["msr"]
+    signal = qubit_data["signal"]
     fig = go.Figure(
         [
             go.Scatter(
                 x=waits,
-                y=msr * V_TO_UV,
+                y=signal * V_TO_UV,
                 opacity=1,
                 name="Voltage",
                 showlegend=True,

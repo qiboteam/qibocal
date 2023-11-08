@@ -139,7 +139,7 @@ def _acquisition(
                 dict(
                     freq=sequence.get_qubit_pulses(qubit).ro_pulses[0].frequency
                     + delta_frequency_range,
-                    msr=result.magnitude,
+                    signal=result.magnitude,
                     phase=result.phase,
                 ),
             )
@@ -220,7 +220,7 @@ def _plot(data: DispersiveShiftQutritData, qubit, fit: DispersiveShiftQutritResu
         fig.add_trace(
             go.Scatter(
                 x=frequencies,
-                y=q_data.msr * V_TO_UV,
+                y=q_data.signal * V_TO_UV,
                 opacity=opacity,
                 name=f"{label}",
                 showlegend=True,
