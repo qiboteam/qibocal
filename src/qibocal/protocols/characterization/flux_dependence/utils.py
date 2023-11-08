@@ -4,7 +4,7 @@ from plotly.subplots import make_subplots
 from scipy.special import mathieu_a, mathieu_b
 from sklearn.linear_model import Ridge
 
-from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, V_TO_UV, table_dict, table_html
+from ..utils import GHZ_TO_HZ, HZ_TO_GHZ, table_dict, table_html
 
 FLUX_PARAMETERS = {
     "Xi": "Constant to map flux to bias [V]",
@@ -91,7 +91,7 @@ def flux_dependence_plot(data, fit, qubit):
         go.Heatmap(
             x=frequencies,
             y=qubit_data.bias,
-            z=qubit_data.signal * V_TO_UV,
+            z=qubit_data.signal,
             colorbar_x=0.46,
         ),
         row=1,
@@ -259,7 +259,7 @@ def flux_crosstalk_plot(data, qubit):
             go.Heatmap(
                 x=frequencies,
                 y=qubit_data.bias,
-                z=qubit_data.signal * V_TO_UV,
+                z=qubit_data.signal,
             ),
             row=1,
             col=col + 1,

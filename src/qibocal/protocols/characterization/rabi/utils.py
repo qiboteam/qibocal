@@ -2,7 +2,7 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from ..utils import COLORBAND, COLORBAND_LINE, V_TO_UV, table_dict, table_html
+from ..utils import COLORBAND, COLORBAND_LINE, table_dict, table_html
 
 
 def rabi_amplitude_fit(x, p0, p1, p2, p3):
@@ -44,7 +44,7 @@ def plot(data, qubit, fit):
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
         subplot_titles=(
-            "Signal (uV)",
+            "Signal",
             "phase (rad)",
         ),
     )
@@ -55,7 +55,7 @@ def plot(data, qubit, fit):
     fig.add_trace(
         go.Scatter(
             x=rabi_parameters,
-            y=qubit_data.signal * V_TO_UV,
+            y=qubit_data.signal,
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -87,7 +87,7 @@ def plot(data, qubit, fit):
         fig.add_trace(
             go.Scatter(
                 x=rabi_parameter_range,
-                y=fitting(rabi_parameter_range, *params) * V_TO_UV,
+                y=fitting(rabi_parameter_range, *params),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
                 marker_color="rgb(255, 130, 67)",
@@ -108,7 +108,7 @@ def plot(data, qubit, fit):
             showlegend=True,
             uirevision="0",  # ``uirevision`` allows zooming while live plotting
             xaxis_title=title,
-            yaxis_title="Signal (uV)",
+            yaxis_title="Signal",
             xaxis2_title=title,
             yaxis2_title="Phase (rad)",
         )

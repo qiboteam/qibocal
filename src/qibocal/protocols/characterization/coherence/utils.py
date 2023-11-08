@@ -3,8 +3,6 @@ from scipy.optimize import curve_fit
 
 from qibocal.config import log
 
-from ..utils import V_TO_UV
-
 
 def exp_decay(x, *p):
     return p[0] - p[1] * np.exp(-1 * x / p[2])
@@ -17,7 +15,7 @@ def exponential_fit(data, zeno=None):
     fitted_parameters = {}
 
     for qubit in qubits:
-        voltages = data[qubit].signal * V_TO_UV
+        voltages = data[qubit].signal
         if zeno:
             times = np.arange(1, len(data[qubit].signal) + 1)
         else:

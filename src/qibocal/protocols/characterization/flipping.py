@@ -15,8 +15,6 @@ from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.config import log
 from qibocal.protocols.characterization.utils import table_dict, table_html
 
-from .utils import V_TO_UV
-
 
 @dataclass
 class FlippingParameters(Parameters):
@@ -225,7 +223,7 @@ def _plot(data: FlippingData, qubit, fit: FlippingResults = None):
     fig.add_trace(
         go.Scatter(
             x=qubit_data.flips,
-            y=qubit_data.signal * V_TO_UV,
+            y=qubit_data.signal,
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -271,7 +269,7 @@ def _plot(data: FlippingData, qubit, fit: FlippingResults = None):
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Flips (dimensionless)",
-        yaxis_title="Signal (uV)",
+        yaxis_title="Signal",
     )
 
     figures.append(fig)

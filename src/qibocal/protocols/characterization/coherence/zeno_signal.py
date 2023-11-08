@@ -12,7 +12,7 @@ from qibolab.qubits import QubitId
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
-from ..utils import V_TO_UV, table_dict, table_html
+from ..utils import table_dict, table_html
 from . import utils
 
 
@@ -141,7 +141,7 @@ def _plot(data: ZenoData, fit: ZenoResults, qubit):
     fig.add_trace(
         go.Scatter(
             x=readouts,
-            y=qubit_data.signal * V_TO_UV,
+            y=qubit_data.signal,
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -182,7 +182,7 @@ def _plot(data: ZenoData, fit: ZenoResults, qubit):
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Number of readouts",
-        yaxis_title="Signal (uV)",
+        yaxis_title="Signal",
     )
 
     figures.append(fig)

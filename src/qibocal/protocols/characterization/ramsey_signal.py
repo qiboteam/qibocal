@@ -20,7 +20,7 @@ from .ramsey import (
     fitting,
     ramsey_fit,
 )
-from .utils import GHZ_TO_HZ, V_TO_UV, table_dict, table_html
+from .utils import GHZ_TO_HZ, table_dict, table_html
 
 
 @dataclass
@@ -230,7 +230,7 @@ def _plot(data: RamseySignalData, qubit, fit: RamseySignalResults = None):
         [
             go.Scatter(
                 x=waits,
-                y=signal * V_TO_UV,
+                y=signal,
                 opacity=1,
                 name="Voltage",
                 showlegend=True,
@@ -251,8 +251,7 @@ def _plot(data: RamseySignalData, qubit, fit: RamseySignalResults = None):
                     float(fit.fitted_parameters[qubit][2]),
                     float(fit.fitted_parameters[qubit][3]),
                     float(fit.fitted_parameters[qubit][4]),
-                )
-                * V_TO_UV,
+                ),
                 name="Fit",
                 line=go.scatter.Line(dash="dot"),
             )
@@ -277,7 +276,7 @@ def _plot(data: RamseySignalData, qubit, fit: RamseySignalResults = None):
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Time (ns)",
-        yaxis_title="Signal [uV]",
+        yaxis_title="Signal",
     )
 
     figures.append(fig)

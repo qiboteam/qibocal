@@ -14,7 +14,7 @@ from qibocal import update
 from qibocal.auto.operation import Data, Qubits, Results, Routine
 from qibocal.config import log
 
-from ..utils import V_TO_UV, table_dict, table_html
+from ..utils import table_dict, table_html
 from . import allxy_drag_pulse_tuning
 
 
@@ -175,7 +175,7 @@ def _fit(data: DragPulseTuningData) -> DragPulseTuningResults:
 
     for qubit in qubits:
         qubit_data = data[qubit]
-        voltages = qubit_data.signal * V_TO_UV
+        voltages = qubit_data.signal
         beta_params = qubit_data.beta
 
         try:
@@ -209,7 +209,7 @@ def _plot(data: DragPulseTuningData, qubit, fit: DragPulseTuningResults):
     fig.add_trace(
         go.Scatter(
             x=qubit_data.beta,
-            y=qubit_data.signal * V_TO_UV,
+            y=qubit_data.signal,
             mode="markers",
             name="Probability",
             showlegend=True,
@@ -247,7 +247,7 @@ def _plot(data: DragPulseTuningData, qubit, fit: DragPulseTuningResults):
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Beta parameter",
-        yaxis_title="Signal[uV] [Rx(pi/2) - Ry(pi)] - [Ry(pi/2) - Rx(pi)]",
+        yaxis_title="Signal [Rx(pi/2) - Ry(pi)] - [Ry(pi/2) - Rx(pi)]",
     )
 
     figures.append(fig)

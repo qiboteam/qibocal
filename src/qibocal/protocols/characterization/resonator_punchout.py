@@ -14,15 +14,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 from qibocal import update
 from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 
-from .utils import (
-    GHZ_TO_HZ,
-    HZ_TO_GHZ,
-    V_TO_UV,
-    fit_punchout,
-    norm,
-    table_dict,
-    table_html,
-)
+from .utils import GHZ_TO_HZ, HZ_TO_GHZ, fit_punchout, norm, table_dict, table_html
 
 
 @dataclass
@@ -203,7 +195,7 @@ def _plot(data: ResonatorPunchoutData, qubit, fit: ResonatorPunchoutResults = No
         go.Heatmap(
             x=frequencies,
             y=amplitudes,
-            z=qubit_data.signal * V_TO_UV,
+            z=qubit_data.signal,
             colorbar_x=0.46,
         ),
         row=1,

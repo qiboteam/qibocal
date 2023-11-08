@@ -63,7 +63,7 @@ def lorentzian(frequency, amplitude, center, sigma, offset):
 
 def lorentzian_fit(data, resonator_type=None, fit=None):
     frequencies = data.freq * HZ_TO_GHZ
-    voltages = data.signal * V_TO_UV
+    voltages = data.signal
     model_Q = lmfit.Model(lorentzian)
 
     # Guess parameters for Lorentzian max or min
@@ -198,7 +198,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Frequency (GHz)",
-        yaxis_title="Signal (uV)",
+        yaxis_title="Signal",
         xaxis2_title="Frequency (GHz)",
         yaxis2_title="Phase (rad)",
     )

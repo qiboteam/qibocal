@@ -10,7 +10,7 @@ from qibolab.qubits import QubitId
 from qibocal import update
 from qibocal.auto.operation import Qubits, Routine
 
-from ..utils import V_TO_UV, table_dict, table_html
+from ..utils import table_dict, table_html
 from . import spin_echo
 from .t1_signal import CoherenceType, T1SignalData
 from .utils import exp_decay, exponential_fit
@@ -125,7 +125,7 @@ def _plot(data: SpinEchoSignalData, qubit, fit: SpinEchoSignalResults = None):
     fig.add_trace(
         go.Scatter(
             x=waits,
-            y=qubit_data.signal * V_TO_UV,
+            y=qubit_data.signal,
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -159,7 +159,7 @@ def _plot(data: SpinEchoSignalData, qubit, fit: SpinEchoSignalResults = None):
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Time (ns)",
-        yaxis_title="Signal (uV)",
+        yaxis_title="Signal",
     )
 
     figures.append(fig)

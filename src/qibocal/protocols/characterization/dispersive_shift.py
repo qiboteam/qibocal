@@ -15,7 +15,6 @@ from qibocal.auto.operation import Data, Parameters, Qubits, Results, Routine
 from qibocal.protocols.characterization.utils import (
     GHZ_TO_HZ,
     HZ_TO_GHZ,
-    V_TO_UV,
     lorentzian,
     lorentzian_fit,
     table_dict,
@@ -249,7 +248,7 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
         fig.add_trace(
             go.Scatter(
                 x=frequencies,
-                y=q_data.signal * V_TO_UV,
+                y=q_data.signal,
                 opacity=opacity,
                 name=f"{label}",
                 showlegend=True,
@@ -341,7 +340,7 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
     fig.update_layout(
         showlegend=True,
         xaxis_title="Frequency (GHz)",
-        yaxis_title="Signal (uV)",
+        yaxis_title="Signal",
         xaxis2_title="Frequency (GHz)",
         yaxis2_title="Phase (rad)",
     )

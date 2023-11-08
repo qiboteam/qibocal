@@ -11,7 +11,7 @@ from qibolab.sweeper import Parameter, Sweeper, SweeperType
 
 from qibocal.auto.operation import Data, Qubits, Routine
 
-from ..utils import V_TO_UV, table_dict, table_html
+from ..utils import table_dict, table_html
 from . import t1, utils
 
 
@@ -141,7 +141,7 @@ def _plot(data: T1SignalData, qubit, fit: T1SignalResults = None):
     fig.add_trace(
         go.Scatter(
             x=waits,
-            y=qubit_data.signal * V_TO_UV,
+            y=qubit_data.signal,
             opacity=1,
             name="Voltage",
             showlegend=True,
@@ -174,7 +174,7 @@ def _plot(data: T1SignalData, qubit, fit: T1SignalResults = None):
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Time (ns)",
-        yaxis_title="Signal (uV)",
+        yaxis_title="Signal",
     )
 
     figures.append(fig)
