@@ -73,7 +73,6 @@ def _acquisition(
         data (:class:`FlippingData`)
     """
 
-    # create a DataUnits object to store Signal, phase, i, q and the number of flips
     data = FlippingData(
         resonator_type=platform.resonator_type,
         pi_pulse_amplitudes={
