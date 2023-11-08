@@ -1,6 +1,5 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
-from itertools import chain
 from typing import Iterable, Optional, TypedDict, Union
 
 import numpy as np
@@ -10,7 +9,7 @@ from qibolab.platform import Platform
 from qibolab.qubits import QubitId
 
 from qibocal.auto.operation import Parameters, Qubits, Results, Routine
-from qibocal.bootstrap import bootstrap, data_uncertainties
+from qibocal.bootstrap import data_uncertainties
 from qibocal.config import log, raise_error
 from qibocal.protocols.characterization.randomized_benchmarking import noisemodels
 
@@ -62,6 +61,8 @@ class StandardRBParameters(Parameters):
     :mod:`qibocal.protocols.characterization.randomized_benchmarking.noisemodels`"""
     noise_params: Optional[list] = field(default_factory=list)
     """With this the noise model will be initialized, if not given random values will be used."""
+    nshots: int = 1
+    """Just to add the default value"""
 
     def __post_init__(self):
         if isinstance(self.depths, dict):
@@ -70,7 +71,6 @@ class StandardRBParameters(Parameters):
             )
 
 
-# TODO: uniform RB to implement results as dictionaries
 @dataclass
 class StandardRBResult(Results):
     """Standard RB outputs."""
@@ -106,22 +106,6 @@ def samples_to_p0(samples_list):
     )
 
 
-def samples_to_p0s(samples_list):
-    """Computes the probabilitiy of 0 from the list of samples.
-
-    Args:
-        samples_list (list or np.ndarray): 3d array with ``ncircuits`` rows containing
-            ``nshots`` lists with ``nqubits`` amount of ``0`` and ``1`` samples.
-            e.g. ``samples_list`` for 1 circuit, 3 shots and 2 qubits looks like
-            ``[[[0, 0], [0, 1], [1, 0]]]`` and ``p0=[1/2, 1/2]``.
-
-    Returns:
-        list: list of probabilities corresponding to each row.
-    """
-
-    return 1 - np.count_nonzero(np.array(samples_list), axis=0) / len(samples_list)
-
-
 def resample_p0(data, sample_size=100, homogeneous: bool = True):
     """Preforms parametric resampling of shots with binomial distribution
         and returns a list of "corrected" probabilites.
@@ -141,6 +125,7 @@ def resample_p0(data, sample_size=100, homogeneous: bool = True):
             0,
             data,
         )
+
     resampled_data = []
     for row in data:
         resampled_data.append([])
@@ -230,14 +215,13 @@ def _acquisition(
             platform = None
 
         noise_model = getattr(noisemodels, params.noise_model)(params.noise_params)
-        params.noise_params = noise_model.params
+        params.noise_params = list(noise_model.params)
 
     # 1. Set up the scan (here an iterator of circuits of random clifford gates with an inverse).
     nqubits = platform.nqubits if platform else max(qubits) + 1
     scan = setup_scan(params, qubits, nqubits)
 
     # 2. Execute the scan.
-    # depth_list = []
     data = RBData(params=params.__dict__)
     samples = defaultdict(list)
     # Iterate through the scan and execute each circuit.
@@ -248,31 +232,33 @@ def _acquisition(
             circuit = noise_model.apply(circuit)
         sample = circuit.execute(nshots=params.nshots).samples()
         # Every executed circuit gets a row where the data is stored.
-        # depth_list.append({"depth": depth})
+        # TODO: Try to get register qubit here
         samples[depth].append(sample.tolist())
 
-        signals = defaultdict(list)
-        for key, value in samples.items():
-            if params.parallel:
-                signals[key] = samples_to_p0s(list(chain.from_iterable(value)))
-            else:
-                # TODO: Fix this
-                signals[key] = samples_to_p0(list(chain.from_iterable(value)))
+    new_samples = defaultdict(list)
+    for qn, q in enumerate(qubits):
+        for d in params.depths:
+            for i in range(params.niter):
+                for n in range(params.nshots):
+                    new_samples[q, d].append(samples[d][i][n][qn])
 
     for i, qubit in enumerate(qubits):
         for depth in params.depths:
-            import pdb
-
-            pdb.set_trace()
             data.register_qubit(
                 RBType,
                 (qubit, depth),
                 dict(
-                    # signal=signals[depth][i],
-                    # I can reduce the numbers I compute this by placing it elsewhere
-                    signal=samples_to_p0s(list(chain.from_iterable(samples[depth])))[i]
+                    samples=new_samples[qubit, depth],
                 ),
             )
+
+    #     # signals = defaultdict(list)
+    #     # for key, value in samples.items():
+    #     #     if params.parallel:
+    #     #         signals[key] = samples_to_p0s(list(chain.from_iterable(value)))
+    #     #     else:
+    #     #         # TODO: Fix this
+    #     #         signals[key] = samples_to_p0(list(chain.from_iterable(value)))
 
     # else:
     #     # The signal here is the survival probability.
@@ -282,10 +268,6 @@ def _acquisition(
 
     # Store the parameters to display them later.
     data.params = params.__dict__
-
-    import pdb
-
-    pdb.set_trace()
 
     return data
 
@@ -309,64 +291,76 @@ def _fit(data: RBData) -> StandardRBResult:
     perrs = {}
     error_barss = {}
 
-    # TODO: This should work for several qubits as well
     for qubit in qubits:
         # Extract depths and probabilities
-
         x = data.params["depths"]
-        # TODO: Better way of recover signals for qubit and depths
-        y_scatter = []
-        for depth in x:
-            y_scatter.append(data[qubit, depth])
+        y_scatter = data.samples_to_p0s(qubit, x)
+        # TODO: Remove this extra list needed to work
         y_scatter = [y_scatter]
 
-        # TODO: What is this for ???
         """This is when you sample a depth more than once"""
         # homogeneous = all(len(y_scatter[0]) == len(row) for row in y_scatter)
         homogeneous = True
 
         # Extract fitting and bootstrap parameters if given
-        uncertainties = data.params.get("uncertainties", None)
-        n_bootstrap = data.params.get("n_bootstrap", 0)
+        uncertainties = data.params["uncertainties"]
+        n_bootstrap = data.params["n_bootstrap"]
 
-        y_estimates, popt_estimates = y_scatter, []
-        if uncertainties and n_bootstrap:
-            # Non-parametric bootstrap resampling
-            bootstrap_y = bootstrap(
-                y_scatter,
-                n_bootstrap,
-                homogeneous=homogeneous,
-                seed=data.params.get("seed", None),
-            )
+        popt_estimates = []
 
-            # Parametric bootstrap resampling of "corrected" probabilites from binomial distribution
-            bootstrap_y = resample_p0(
-                bootstrap_y, data.params.get("nshots", 1), homogeneous=homogeneous
-            )
+        # FIXME: Let's disable it for now
+        n_bootstrap = None
+        # if uncertainties and n_bootstrap:
+        #     # Non-parametric bootstrap resampling
+        #     bootstrap_y = bootstrap(
+        #         y_scatter,
+        #         n_bootstrap,
+        #         homogeneous=homogeneous,
+        #         seed=data.params["seed"],
+        #     )
 
-            # Compute y and popt estimates for each bootstrap iteration
-            y_estimates = (
-                np.mean(bootstrap_y, axis=1)
-                if homogeneous
-                else [np.mean(y_iter, axis=0) for y_iter in bootstrap_y]
-            )
-            popt_estimates = np.apply_along_axis(
-                lambda y_iter: fit_exp1B_func(x, y_iter, bounds=[0, 1])[0],
-                axis=0,
-                arr=np.array(y_estimates),
-            )
+        #     # Parametric bootstrap resampling of "corrected" probabilites from binomial distribution
+        #     bootstrap_y = resample_p0(
+        #         bootstrap_y, data.params["nshots"], homogeneous=homogeneous
+        #     )
+
+        #     # Compute y and popt estimates for each bootstrap iteration
+        #     y_estimates = (
+        #         np.mean(bootstrap_y, axis=1)
+        #         if homogeneous
+        #         else [np.mean(y_iter, axis=0) for y_iter in bootstrap_y]
+        #     )
+        #     popt_estimates = np.apply_along_axis(
+        #         lambda y_iter: fit_exp1B_func(x, y_iter, bounds=[0, 1])[0],
+        #         axis=0,
+        #         arr=np.array(y_estimates),
+        #     )
 
         # Fit the initial data and compute error bars
-        y = [np.mean(y_row) for y_row in y_scatter]
+        # Where they usng the mean to get a median ???
+        # y = [np.mean(y_row) for y_row in y_scatter]
 
         # If bootstrap was not performed, y_estimates can be inhomogeneous
+
+        # are these the samples ?
+        y_estimates = []
+        for depth in x:
+            y_estimates.append(data.data[qubit, depth])
+
+        # Give the qubit
         error_bars = data_uncertainties(
-            y_estimates,
+            y_scatter,
             uncertainties,
-            data_median=y,
+            # data_median=y,
             homogeneous=(homogeneous or n_bootstrap != 0),
         )
+
+        import pdb
+
+        pdb.set_trace()
+
         # Generate symmetric non-zero uncertainty of y for the fit
+        # are they overeestimating uncertanties for the fit ???
         sigma = None
         if error_bars is not None:
             sigma = (
@@ -375,7 +369,7 @@ def _fit(data: RBData) -> StandardRBResult:
                 else error_bars
             ) + 0.1
 
-        popt, perr = fit_exp1B_func(x, y, sigma=sigma, bounds=[0, 1])
+        popt, perr = fit_exp1B_func(x, y_scatter, sigma=sigma, bounds=[0, 1])
 
         popts[qubit] = popt
         perrs[qubit] = perr
@@ -393,6 +387,11 @@ def _fit(data: RBData) -> StandardRBResult:
         # conversion from np.array to list/tuple
         error_bars = error_bars.tolist() if error_bars is not None else error_bars
         error_barss[qubit] = error_bars
+
+        import pdb
+
+        pdb.set_trace()
+
         perr = perr if isinstance(perr, tuple) else perr.tolist()
 
         # Store in dicts the values
@@ -416,11 +415,9 @@ def _plot(data: RBData, fit: StandardRBResult, qubit) -> tuple[list[go.Figure], 
     fig = go.Figure()
     fitting_report = ""
 
-    # TODO: Better way of recover signals for qubit and depths
+    # Find a better way of recover signals for qubit and depths
     x = data.params["depths"]
-    y = []
-    for depth in x:
-        y.append(data[qubit, depth])
+    y = data.samples_to_p0s(qubit, x)
 
     fig.add_trace(
         go.Scatter(

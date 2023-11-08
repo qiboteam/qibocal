@@ -13,7 +13,7 @@ from qibocal.auto.operation import Data
 
 RBType = np.dtype(
     [
-        ("signal", np.float64),
+        ("samples", np.float64),
     ]
 )
 """Custom dtype for RB."""
@@ -28,9 +28,18 @@ class RBData(Data):
     data: dict[QubitId, npt.NDArray[RBType]] = field(default_factory=dict)
     """Raw data acquired."""
 
+    def samples_to_p0s(self, qubit, depths):
+        p0s = []
+        for depth in depths:
+            p0s.append(
+                1
+                - np.count_nonzero(np.array(self.data[qubit, depth]))
+                / len(self.data[qubit, depth])
+            )
+        return p0s
+
     def register_qubit(self, dtype, data_keys, data_dict):
         """Store output for single qubit.
-
         Args:
             data_keys (tuple): Keys of Data.data.
             data_dict (dict): The keys are the fields of `dtype` and
@@ -43,7 +52,7 @@ class RBData(Data):
 
         if data_keys in self.data:
             # FIXME: Let's work directly with a list for now
-            self.data[data_keys] = np.append(self.data[data_keys], data_dict["signal"])
+            self.data[data_keys] = np.append(self.data[data_keys], data_dict["samples"])
         else:
-            # print("here")
-            self.data[data_keys] = data_dict["signal"]
+            # Going here for now
+            self.data[data_keys] = data_dict["samples"]
