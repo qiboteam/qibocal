@@ -33,14 +33,14 @@ def is_crosstalk(data):
     return all(isinstance(key, tuple) for key in data.data.keys())
 
 
-def create_data_array(freq, bias, msr, phase, dtype):
+def create_data_array(freq, bias, signal, phase, dtype):
     """Create custom dtype array for acquired data."""
     size = len(freq) * len(bias)
     ar = np.empty(size, dtype=dtype)
     frequency, biases = np.meshgrid(freq, bias)
     ar["freq"] = frequency.ravel()
     ar["bias"] = biases.ravel()
-    ar["msr"] = msr.ravel()
+    ar["signal"] = signal.ravel()
     ar["phase"] = phase.ravel()
     return np.rec.array(ar)
 
@@ -70,26 +70,28 @@ def flux_dependence_plot(data, fit, qubit):
         subplot_titles=subplot_titles,
     )
     frequencies = qubit_data.freq * HZ_TO_GHZ
-    msr = qubit_data.msr
+    signal = qubit_data.signal
     if data.__class__.__name__ == "ResonatorFluxData":
-        msr_mask = 0.5
+        signal_mask = 0.5
         if data.resonator_type == "3D":
-            msr = -msr
+            signal = -signal
     elif (
         data.__class__.__name__ == "QubitFluxData"
         or data.__class__.__name__ == "CouplerSpectroscopyData"
     ):
-        msr_mask = 0.3
+        signal_mask = 0.3
         if data.resonator_type == "2D":
-            msr = -msr
+            signal = -signal
 
-    frequencies1, biases1 = image_to_curve(frequencies, qubit_data.bias, msr, msr_mask)
+    frequencies1, biases1 = image_to_curve(
+        frequencies, qubit_data.bias, signal, signal_mask
+    )
 
     fig.add_trace(
         go.Heatmap(
             x=frequencies,
             y=qubit_data.bias,
-            z=qubit_data.msr * V_TO_UV,
+            z=qubit_data.signal * V_TO_UV,
             colorbar_x=0.46,
         ),
         row=1,
@@ -249,15 +251,15 @@ def flux_crosstalk_plot(data, qubit):
     )
     for col, (flux_qubit, qubit_data) in enumerate(all_qubit_data.items()):
         frequencies = qubit_data.freq * HZ_TO_GHZ
-        msr = qubit_data.msr
+        signal = qubit_data.signal
         if data.resonator_type == "2D":
-            msr = -msr
+            signal = -signal
 
         fig.add_trace(
             go.Heatmap(
                 x=frequencies,
                 y=qubit_data.bias,
-                z=qubit_data.msr * V_TO_UV,
+                z=qubit_data.signal * V_TO_UV,
             ),
             row=1,
             col=col + 1,
@@ -444,14 +446,14 @@ def feature(x, order=3):
     return np.power(x, np.arange(order + 1).reshape(1, -1))
 
 
-def image_to_curve(x, y, z, msr_mask=0.5, alpha=1e-5, order=50):
+def image_to_curve(x, y, z, signal_mask=0.5, alpha=1e-5, order=50):
     """
     Extracts a feature characterized by min(z(x, y)). It considers all the data and applies Ridge regression on a polynomial ansatz in x. This allows obtaining a set of points describing the feature as y vs x.
 
     Args:
         x (ndarray) frequencies
         y (ndarray) bias
-        z (ndarray) msr
+        z (ndarray) signal
 
     Returns:
         y_pred (ndarray) frequencies
@@ -474,7 +476,7 @@ def image_to_curve(x, y, z, msr_mask=0.5, alpha=1e-5, order=50):
     znorm = (z - zmin) / (zmax - zmin)
 
     # Mask out region
-    mask = znorm < msr_mask
+    mask = znorm < signal_mask
     z = np.argwhere(mask)
     weights = znorm[mask] / float(znorm.max())
     # Column indices
