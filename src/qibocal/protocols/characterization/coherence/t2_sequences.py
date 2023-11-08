@@ -42,9 +42,6 @@ def _acquisition(
         params.delay_between_pulses_step,
     )
 
-    # create a DataUnits object to store the results,
-    # DataUnits stores by default Signal, phase, i, q
-    # additionally include wait time and t_max
     data = T2SignalData()
 
     # sweep the parameter

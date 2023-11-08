@@ -88,7 +88,6 @@ def _acquisition(
         type=SweeperType.ABSOLUTE,
     )
 
-    # create a DataUnits object to store the Signal, phase, i, q and the delay time
     data = T1SignalData()
 
     # sweep the parameter

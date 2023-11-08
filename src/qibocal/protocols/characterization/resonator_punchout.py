@@ -126,9 +126,6 @@ def _acquisition(
         type=SweeperType.FACTOR,
     )
 
-    # create a DataUnits object to store the results,
-    # DataUnits stores by default Signal, phase, i, q
-    # additionally include resonator frequency and attenuation
     data = ResonatorPunchoutData(
         amplitudes=amplitudes,
         resonator_type=platform.resonator_type,
