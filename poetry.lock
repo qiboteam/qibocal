@@ -2697,7 +2697,7 @@ zh = ["laboneq (>=2.12.0)"]
 [package.source]
 type = "git"
 url = "https://github.com/qiboteam/qibolab.git"
-reference = "main"
+reference = "HEAD"
 resolved_reference = "4546d40ca1930c8408304226beb9a561e7d56a27"
 
 [[package]]
@@ -3664,4 +3664,4 @@ viz = ["pydot"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.12"
-content-hash = "433dc6efa9fcb9f647821d61d61b11311c09745b0b9c17ea21dbb17b4ade190b"
+content-hash = "920dabfc70065ccd7b4c6eda6d48274e4094a455b337f140f9ff416329085aed"
