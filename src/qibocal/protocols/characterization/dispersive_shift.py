@@ -223,7 +223,7 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
         vertical_spacing=0.1,
         subplot_titles=(
             "Signal [a.u.]",
-            "phase (rad)",
+            "phase [rad]",
         ),
     )
     # iterate over multiple data folders
