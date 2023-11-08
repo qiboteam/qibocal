@@ -167,16 +167,6 @@ def _acquisition(
     """
 
     theta_absolute = np.arange(params.theta_start, params.theta_end, params.theta_step)
-    l = list(qubits.keys())
-    print(type(qubits[(0, 2)]))
-    print(l)
-    _, indeces = np.unique(l, return_index=True)
-    print(indeces[1])
-    couple = indeces[1] // 2
-    qubit_order = indeces[1] % 2
-    print(qubit_order, couple)
-    print(l[1])
-    # print(list(qubits.items())[0][1].qubit1)
     data = CZVirtualZData(thetas=theta_absolute.tolist())
     for pair in qubits:
         # order the qubits so that the low frequency one is the first
@@ -258,7 +248,6 @@ def _fit(
     """
     fitted_parameters = {}
     pairs = data.pairs
-    print("OOOOOOO", pairs)
     virtual_phase = {}
     cz_angle = {}
     for pair in pairs:
