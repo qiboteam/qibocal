@@ -55,7 +55,7 @@ def plot(data, qubit, fit):
     fig.add_trace(
         go.Scatter(
             x=rabi_parameters,
-            y=qubit_data.msr * V_TO_UV,
+            y=qubit_data.signal * V_TO_UV,
             opacity=1,
             name="Voltage",
             showlegend=True,

@@ -32,7 +32,7 @@ class RabiLengthVoltResults(RabiLengthResults):
 
 
 RabiLenVoltType = np.dtype(
-    [("length", np.float64), ("msr", np.float64), ("phase", np.float64)]
+    [("length", np.float64), ("signal", np.float64), ("phase", np.float64)]
 )
 """Custom dtype for rabi amplitude."""
 
@@ -107,7 +107,7 @@ def _acquisition(
             (qubit),
             dict(
                 length=qd_pulse_duration_range,
-                msr=result.magnitude,
+                signal=result.magnitude,
                 phase=result.phase,
             ),
         )
@@ -124,7 +124,7 @@ def _fit(data: RabiLengthVoltData) -> RabiLengthVoltResults:
     for qubit in qubits:
         qubit_data = data[qubit]
         rabi_parameter = qubit_data.length
-        voltages = qubit_data.msr
+        voltages = qubit_data.signal
 
         y_min = np.min(voltages)
         y_max = np.max(voltages)

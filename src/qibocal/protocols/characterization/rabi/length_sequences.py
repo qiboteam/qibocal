@@ -76,7 +76,7 @@ def _acquisition(
                 (qubit),
                 dict(
                     length=np.array([duration]),
-                    msr=np.array([result.magnitude]),
+                    signal=np.array([result.magnitude]),
                     phase=np.array([result.phase]),
                 ),
             )
