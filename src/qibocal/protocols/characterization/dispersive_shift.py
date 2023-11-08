@@ -342,7 +342,7 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
         xaxis_title="Frequency [GHz]",
         yaxis_title="Signal [a.u.]",
         xaxis2_title="Frequency [GHz]",
-        yaxis2_title="Phase (rad)",
+        yaxis2_title="Phase [rad]",
     )
 
     figures.append(fig)
