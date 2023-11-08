@@ -67,7 +67,7 @@ def _acquisition(
         params.beta_start, params.beta_end, params.beta_step
     ).round(4)
 
-    # create a DataUnits object to store the MSR, phase, i, q and the beta parameter
+    # create a DataUnits object to store the Signal, phase, i, q and the beta parameter
     data = DragPulseTuningData()
 
     for beta_param in beta_param_range:
@@ -247,7 +247,7 @@ def _plot(data: DragPulseTuningData, qubit, fit: DragPulseTuningResults):
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Beta parameter",
-        yaxis_title="MSR[uV] [Rx(pi/2) - Ry(pi)] - [Ry(pi/2) - Rx(pi)]",
+        yaxis_title="Signal[uV] [Rx(pi/2) - Ry(pi)] - [Ry(pi/2) - Rx(pi)]",
     )
 
     figures.append(fig)

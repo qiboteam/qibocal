@@ -135,7 +135,7 @@ def _acquisition(
     )
 
     # create a DataUnits object to store the results,
-    # DataUnits stores by default MSR, phase, i, q
+    # DataUnits stores by default Signal, phase, i, q
     # additionally include resonator frequency and attenuation
     data = ResonatorPunchoutData(
         amplitudes=amplitudes,
@@ -185,7 +185,7 @@ def _plot(data: ResonatorPunchoutData, qubit, fit: ResonatorPunchoutResults = No
         horizontal_spacing=0.1,
         vertical_spacing=0.2,
         subplot_titles=(
-            "Normalised MSR",
+            "Normalised Signal",
             "phase (rad)",
         ),
     )

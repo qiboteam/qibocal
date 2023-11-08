@@ -198,7 +198,7 @@ def spectroscopy_plot(data, qubit, fit: Results = None):
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Frequency (GHz)",
-        yaxis_title="MSR (uV)",
+        yaxis_title="Signal (uV)",
         xaxis2_title="Frequency (GHz)",
         yaxis2_title="Phase (rad)",
     )

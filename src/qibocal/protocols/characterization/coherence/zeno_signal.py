@@ -180,7 +180,7 @@ def _plot(data: ZenoData, fit: ZenoResults, qubit):
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Number of readouts",
-        yaxis_title="MSR (uV)",
+        yaxis_title="Signal (uV)",
     )
 
     figures.append(fig)

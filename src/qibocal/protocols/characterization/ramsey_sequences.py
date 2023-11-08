@@ -44,7 +44,7 @@ def _acquisition(
     )
 
     # create a DataUnits object to store the results,
-    # DataUnits stores by default MSR, phase, i, q
+    # DataUnits stores by default Signal, phase, i, q
     # additionally include wait time and t_max
     data = RamseyData(
         n_osc=params.n_osc,

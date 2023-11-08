@@ -16,13 +16,13 @@ from . import t1, utils
 
 
 @dataclass
-class T1MSRParameters(t1.T1Parameters):
-    """T1 MSR runcard inputs."""
+class T1SignalParameters(t1.T1Parameters):
+    """T1 Signal runcard inputs."""
 
 
 @dataclass
-class T1MSRResults(t1.T1Results):
-    """T1 MSR outputs."""
+class T1SignalResults(t1.T1Results):
+    """T1 Signal outputs."""
 
 
 CoherenceType = np.dtype(
@@ -32,7 +32,7 @@ CoherenceType = np.dtype(
 
 
 @dataclass
-class T1MSRData(Data):
+class T1SignalData(Data):
     """T1 acquisition outputs."""
 
     data: dict[QubitId, npt.NDArray] = field(default_factory=dict)
@@ -40,8 +40,8 @@ class T1MSRData(Data):
 
 
 def _acquisition(
-    params: T1MSRParameters, platform: Platform, qubits: Qubits
-) -> T1MSRData:
+    params: T1SignalParameters, platform: Platform, qubits: Qubits
+) -> T1SignalData:
     r"""Data acquisition for T1 experiment.
     In a T1 experiment, we measure an excited qubit after a delay. Due to decoherence processes
     (e.g. amplitude damping channel), it is possible that, at the time of measurement, after the delay,
@@ -88,8 +88,8 @@ def _acquisition(
         type=SweeperType.ABSOLUTE,
     )
 
-    # create a DataUnits object to store the MSR, phase, i, q and the delay time
-    data = T1MSRData()
+    # create a DataUnits object to store the Signal, phase, i, q and the delay time
+    data = T1SignalData()
 
     # sweep the parameter
     # execute the pulse sequence
@@ -115,7 +115,7 @@ def _acquisition(
     return data
 
 
-def _fit(data: T1MSRData) -> T1MSRResults:
+def _fit(data: T1SignalData) -> T1SignalResults:
     """
     Fitting routine for T1 experiment. The used model is
 
@@ -125,10 +125,10 @@ def _fit(data: T1MSRData) -> T1MSRResults:
     """
     t1s, fitted_parameters = utils.exponential_fit(data)
 
-    return T1MSRResults(t1s, fitted_parameters)
+    return T1SignalResults(t1s, fitted_parameters)
 
 
-def _plot(data: T1MSRData, qubit, fit: T1MSRResults = None):
+def _plot(data: T1SignalData, qubit, fit: T1SignalResults = None):
     """Plotting function for T1 experiment."""
 
     figures = []
@@ -174,7 +174,7 @@ def _plot(data: T1MSRData, qubit, fit: T1MSRResults = None):
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Time (ns)",
-        yaxis_title="MSR (uV)",
+        yaxis_title="Signal (uV)",
     )
 
     figures.append(fig)
@@ -183,4 +183,4 @@ def _plot(data: T1MSRData, qubit, fit: T1MSRResults = None):
 
 
 t1_signal = Routine(_acquisition, _fit, _plot, t1._update)
-"""T1 MSR Routine object."""
+"""T1 Signal Routine object."""

@@ -223,7 +223,7 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
         subplot_titles=(
-            "MSR (V)",
+            "Signal (V)",
             "phase (rad)",
         ),
     )
@@ -341,7 +341,7 @@ def _plot(data: DispersiveShiftData, qubit, fit: DispersiveShiftResults):
     fig.update_layout(
         showlegend=True,
         xaxis_title="Frequency (GHz)",
-        yaxis_title="MSR (uV)",
+        yaxis_title="Signal (uV)",
         xaxis2_title="Frequency (GHz)",
         yaxis2_title="Phase (rad)",
     )

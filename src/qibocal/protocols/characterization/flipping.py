@@ -75,7 +75,7 @@ def _acquisition(
         data (:class:`FlippingData`)
     """
 
-    # create a DataUnits object to store MSR, phase, i, q and the number of flips
+    # create a DataUnits object to store Signal, phase, i, q and the number of flips
     data = FlippingData(
         resonator_type=platform.resonator_type,
         pi_pulse_amplitudes={
@@ -271,7 +271,7 @@ def _plot(data: FlippingData, qubit, fit: FlippingResults = None):
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Flips (dimensionless)",
-        yaxis_title="MSR (uV)",
+        yaxis_title="Signal (uV)",
     )
 
     figures.append(fig)

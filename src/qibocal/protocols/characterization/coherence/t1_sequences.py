@@ -9,8 +9,8 @@ from . import t1, t1_signal
 
 
 def _acquisition(
-    params: t1_signal.T1MSRParameters, platform: Platform, qubits: Qubits
-) -> t1_signal.T1MSRData:
+    params: t1_signal.T1SignalParameters, platform: Platform, qubits: Qubits
+) -> t1_signal.T1SignalData:
     r"""Data acquisition for T1 experiment.
     In a T1 experiment, we measure an excited qubit after a delay. Due to decoherence processes
     (e.g. amplitude damping channel), it is possible that, at the time of measurement, after the delay,
@@ -50,8 +50,8 @@ def _acquisition(
         params.delay_before_readout_step,
     )
 
-    # create a DataUnits object to store the MSR, phase, i, q and the delay time
-    data = t1_signal.T1MSRData()
+    # create a DataUnits object to store the Signal, phase, i, q and the delay time
+    data = t1_signal.T1SignalData()
 
     # repeat the experiment as many times as defined by software_averages
     # sweep the parameter

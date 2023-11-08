@@ -16,24 +16,24 @@ from . import t1_signal, t2, utils
 
 
 @dataclass
-class T2MSRParameters(t2.T2Parameters):
-    """T2MSR runcard inputs."""
+class T2SignalParameters(t2.T2Parameters):
+    """T2Signal runcard inputs."""
 
 
 @dataclass
-class T2MSRResults(t2.T2Results):
-    """T2MSR outputs."""
+class T2SignalResults(t2.T2Results):
+    """T2Signal outputs."""
 
 
-class T2MSRData(t1_signal.T1MSRData):
-    """T2MSR acquisition outputs."""
+class T2SignalData(t1_signal.T1SignalData):
+    """T2Signal acquisition outputs."""
 
 
 def _acquisition(
-    params: T2MSRParameters,
+    params: T2SignalParameters,
     platform: Platform,
     qubits: Qubits,
-) -> T2MSRData:
+) -> T2SignalData:
     """Data acquisition for Ramsey Experiment (detuned)."""
     # create a sequence of pulses for the experiment
     # RX90 - t - RX90 - MZ
@@ -63,9 +63,9 @@ def _acquisition(
     )
 
     # create a DataUnits object to store the results,
-    # DataUnits stores by default MSR, phase, i, q
+    # DataUnits stores by default Signal, phase, i, q
     # additionally include wait time and t_max
-    data = T2MSRData()
+    data = T2SignalData()
 
     sweeper = Sweeper(
         Parameter.start,
@@ -96,17 +96,17 @@ def _acquisition(
     return data
 
 
-def _fit(data: T2MSRData) -> T2MSRResults:
+def _fit(data: T2SignalData) -> T2SignalResults:
     r"""
     Fitting routine for Ramsey experiment. The used model is
     .. math::
         y = p_0 - p_1 e^{-x p_2}.
     """
     t2s, fitted_parameters = utils.exponential_fit(data)
-    return T2MSRResults(t2s, fitted_parameters)
+    return T2SignalResults(t2s, fitted_parameters)
 
 
-def _plot(data: T2MSRData, qubit, fit: T2MSRResults = None):
+def _plot(data: T2SignalData, qubit, fit: T2SignalResults = None):
     """Plotting function for Ramsey Experiment."""
 
     figures = []
@@ -154,7 +154,7 @@ def _plot(data: T2MSRData, qubit, fit: T2MSRResults = None):
         showlegend=True,
         uirevision="0",  # ``uirevision`` allows zooming while live plotting
         xaxis_title="Time (ns)",
-        yaxis_title="MSR (uV)",
+        yaxis_title="Signal (uV)",
     )
 
     figures.append(fig)
@@ -162,9 +162,9 @@ def _plot(data: T2MSRData, qubit, fit: T2MSRResults = None):
     return figures, fitting_report
 
 
-def _update(results: T2MSRResults, platform: Platform, qubit: QubitId):
+def _update(results: T2SignalResults, platform: Platform, qubit: QubitId):
     update.t2(results.t2[qubit], platform, qubit)
 
 
 t2_signal = Routine(_acquisition, _fit, _plot, _update)
-"""T2MSR Routine object."""
+"""T2Signal Routine object."""

@@ -44,7 +44,7 @@ def plot(data, qubit, fit):
         horizontal_spacing=0.1,
         vertical_spacing=0.1,
         subplot_titles=(
-            "MSR (uV)",
+            "Signal (uV)",
             "phase (rad)",
         ),
     )
@@ -108,7 +108,7 @@ def plot(data, qubit, fit):
             showlegend=True,
             uirevision="0",  # ``uirevision`` allows zooming while live plotting
             xaxis_title=title,
-            yaxis_title="MSR (uV)",
+            yaxis_title="Signal (uV)",
             xaxis2_title=title,
             yaxis2_title="Phase (rad)",
         )
