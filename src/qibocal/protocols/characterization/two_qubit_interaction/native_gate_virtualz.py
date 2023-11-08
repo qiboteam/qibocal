@@ -419,4 +419,4 @@ def _update(results: VirtualZResults, platform: Platform, qubit_pair: QubitPairI
 
 
 native_gate_virtualz = Routine(_acquisition, _fit, _plot, _update, two_qubit_gates=True)
-""" virtual Z correction routine."""
+"""virtual Z correction routine."""
