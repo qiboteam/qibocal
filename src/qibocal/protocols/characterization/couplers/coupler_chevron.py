@@ -2,7 +2,6 @@ import numpy as np
 from qibolab import AcquisitionType, AveragingMode, ExecutionParameters
 from qibolab.platform import Platform
 from qibolab.pulses import PulseSequence
-
 from qibolab.sweeper import Parameter, Sweeper
 
 from qibocal.auto.operation import Qubits, Routine
