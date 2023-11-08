@@ -96,7 +96,7 @@ def _acquisition(
                 (qubit),
                 dict(
                     wait=np.array([wait]),
-                    msr=np.array([result.magnitude]),
+                    signal=np.array([result.magnitude]),
                     phase=np.array([result.phase]),
                 ),
             )
@@ -125,7 +125,7 @@ def _plot(data: SpinEchoSignalData, qubit, fit: SpinEchoSignalResults = None):
     fig.add_trace(
         go.Scatter(
             x=waits,
-            y=qubit_data.msr * V_TO_UV,
+            y=qubit_data.signal * V_TO_UV,
             opacity=1,
             name="Voltage",
             showlegend=True,

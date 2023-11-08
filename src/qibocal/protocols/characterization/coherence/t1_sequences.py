@@ -70,14 +70,14 @@ def _acquisition(
             ),
         )
         for qubit in qubits:
-            # average msr, phase, i and q over the number of shots defined in the runcard
+            # average signal, phase, i and q over the number of shots defined in the runcard
             result = results[ro_pulses[qubit].serial]
             data.register_qubit(
                 t1_signal.CoherenceType,
                 (qubit),
                 dict(
                     wait=np.array([wait]),
-                    msr=np.array([result.magnitude]),
+                    signal=np.array([result.magnitude]),
                     phase=np.array([result.phase]),
                 ),
             )

@@ -26,7 +26,7 @@ class T1SignalResults(t1.T1Results):
 
 
 CoherenceType = np.dtype(
-    [("wait", np.float64), ("msr", np.float64), ("phase", np.float64)]
+    [("wait", np.float64), ("signal", np.float64), ("phase", np.float64)]
 )
 """Custom dtype for coherence routines."""
 
@@ -109,7 +109,7 @@ def _acquisition(
         data.register_qubit(
             CoherenceType,
             (qubit),
-            dict(wait=ro_wait_range, msr=result.magnitude, phase=result.phase),
+            dict(wait=ro_wait_range, signal=result.magnitude, phase=result.phase),
         )
 
     return data
@@ -141,7 +141,7 @@ def _plot(data: T1SignalData, qubit, fit: T1SignalResults = None):
     fig.add_trace(
         go.Scatter(
             x=waits,
-            y=qubit_data.msr * V_TO_UV,
+            y=qubit_data.signal * V_TO_UV,
             opacity=1,
             name="Voltage",
             showlegend=True,

@@ -91,7 +91,7 @@ def _acquisition(
         data.register_qubit(
             t1_signal.CoherenceType,
             (qubit),
-            dict(wait=waits, msr=result.magnitude, phase=result.phase),
+            dict(wait=waits, signal=result.magnitude, phase=result.phase),
         )
     return data
 
@@ -118,7 +118,7 @@ def _plot(data: T2SignalData, qubit, fit: T2SignalResults = None):
     fig.add_trace(
         go.Scatter(
             x=qubit_data.wait,
-            y=qubit_data.msr * V_TO_UV,
+            y=qubit_data.signal * V_TO_UV,
             opacity=1,
             name="Voltage",
             showlegend=True,

@@ -17,9 +17,9 @@ def exponential_fit(data, zeno=None):
     fitted_parameters = {}
 
     for qubit in qubits:
-        voltages = data[qubit].msr * V_TO_UV
+        voltages = data[qubit].signal * V_TO_UV
         if zeno:
-            times = np.arange(1, len(data[qubit].msr) + 1)
+            times = np.arange(1, len(data[qubit].signal) + 1)
         else:
             times = data[qubit].wait
 
