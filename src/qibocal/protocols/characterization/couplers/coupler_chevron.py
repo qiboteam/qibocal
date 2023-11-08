@@ -118,7 +118,6 @@ def _aquisition(
             sweeper_amplitude,
         )
 
-        # I removed both phase and iq distance, they didn't seem that relevant
         # TODO: Explore probabilities instead of magnitude
         data.register_qubit(
             ordered_pair[0],
