@@ -137,9 +137,9 @@ actions:
     operation: coupler_chevron
     qubits: [[1, 2]]
     parameters:
-      amplitude_factor_min: -0.5
-      amplitude_factor_max: -0.0
-      amplitude_factor_step: 0.05
+      amplitude_min: -0.5
+      amplitude_max: -0.0
+      amplitude_step: 0.05
       duration_min: 50
       duration_max: 200
       duration_step: 4
