@@ -34,6 +34,8 @@ ResonatorAmplitudeType = np.dtype(
     [
         ("error", np.float64),
         ("amp", np.float64),
+        ("angle", np.float64),
+        ("threshold", np.float64),
     ]
 )
 """Custom dtype for Optimization RO amplitude."""
@@ -54,6 +56,10 @@ class ResonatorAmplitudeResults(Results):
     """Lowest probability errors"""
     best_amp: dict[QubitId, list]
     """Amplitude with lowest error"""
+    best_angle: dict[QubitId, float]
+    """IQ angle that gives lower error."""
+    best_threshold: dict[QubitId, float]
+    """Thershold that gives lower error."""
 
 
 def _acquisition(
@@ -128,6 +134,8 @@ def _acquisition(
                 dict(
                     amp=np.array([new_amp]),
                     error=np.array([error]),
+                    angle=np.array([model.angle]),
+                    threshold=np.array([model.threshold]),
                 ),
             )
             platform.qubits[qubit].native_gates.MZ.amplitude = old_amp
@@ -138,14 +146,18 @@ def _acquisition(
 def _fit(data: ResonatorAmplitudeData) -> ResonatorAmplitudeResults:
     qubits = data.qubits
     best_amps = {}
+    best_angle = {}
+    best_threshold = {}
     lowest_err = {}
     for qubit in qubits:
         data_qubit = data[qubit]
         index_best_err = np.argmin(data_qubit["error"])
         lowest_err[qubit] = data_qubit["error"][index_best_err]
         best_amps[qubit] = data_qubit["amp"][index_best_err]
+        best_angle[qubit] = data_qubit["angle"][index_best_err]
+        best_threshold[qubit] = data_qubit["threshold"][index_best_err]
 
-    return ResonatorAmplitudeResults(lowest_err, best_amps)
+    return ResonatorAmplitudeResults(lowest_err, best_amps, best_angle, best_threshold)
 
 
 def _plot(data: ResonatorAmplitudeData, fit: ResonatorAmplitudeResults, qubit):
@@ -192,6 +204,8 @@ def _plot(data: ResonatorAmplitudeData, fit: ResonatorAmplitudeResults, qubit):
 
 def _update(results: ResonatorAmplitudeResults, platform: Platform, qubit: QubitId):
     update.readout_amplitude(results.best_amp[qubit], platform, qubit)
+    update.iq_angle(results.best_angle[qubit], platform, qubit)
+    update.threshold(results.best_threshold[qubit], platform, qubit)
 
 
 resonator_amplitude = Routine(_acquisition, _fit, _plot, _update)
