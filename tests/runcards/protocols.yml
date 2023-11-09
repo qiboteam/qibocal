@@ -450,9 +450,9 @@ actions:
       delay_between_pulses_step: 1
       nshots: 10
 
-  - id: spin_echo_signal
+  - id: spin_echo_sequence
     priority: 0
-    operation: spin_echo_signal
+    operation: spin_echo_sequence
     parameters:
       delay_between_pulses_start: 0
       delay_between_pulses_end: 5
