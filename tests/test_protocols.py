@@ -50,6 +50,7 @@ def test_auto_command(runcard, update, platform, backend, tmp_path):
             update,
         ],
     )
+    print(results.output)
     assert not results.exception
     assert results.exit_code == 0
 
