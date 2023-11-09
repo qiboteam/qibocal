@@ -72,7 +72,6 @@ def _acquisition(
     order_pairs = np.array([order_pair(pair, platform.qubits) for pair in qubit_pairs])
     data = AvoidCrossData(qubit_pairs=order_pairs.tolist())
     # Extract the qubits in the qubits pairs and evaluate their flux dep
-    # qubits_keys = list(qubits.keys())
     unique_qubits = np.unique(
         order_pairs[:, 0]
     )  # select qubits with lower freq in each couple
@@ -149,12 +148,6 @@ def _fit(data: AvoidCrossData) -> AvoidCrossResults:
         fit_pars[2] -= line_val
         x1, x2 = solve_eq(fit_pars)
         iswap[qubit_pair] = [[x1, line_val], [x2, line_val]]
-        import matplotlib.pyplot as plt
-
-        plt.plot(x_02, curve_02)
-        plt.scatter(x_02, np.polyval(fit_02, x_02))
-        plt.title(f"{qubit_pair}")
-        plt.savefig(f"{qubit_pair}")
 
     return AvoidCrossResults(curves, fits, cz, iswap)
 
