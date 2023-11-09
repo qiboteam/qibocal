@@ -44,6 +44,9 @@ class Chi2Validator(Validator):
     def __call__(
         self, results: Results, qubit: Union[QubitId, QubitPairId, list[QubitId]]
     ) -> Status:
+        log.info(
+            f"Performing validation in qubit {qubit} of {results.__class__.__name__} using {self.scheme} scheme."
+        )
         try:
             chi2 = getattr(results, "chi2")[qubit][0]
             if chi2 < self.chi2_max_value:
